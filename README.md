@@ -27,7 +27,7 @@ AGPL-3.0 applies to new project source unless stated otherwise. Follow [`docs/te
 This repository uses **[Gitleaks](https://github.com/gitleaks/gitleaks)** so keys and tokens are not committed by mistake.
 
 - **CI:** [`.github/workflows/gitleaks.yml`](.github/workflows/gitleaks.yml) runs on every push and pull request.
-- **Local hooks:** after `git init`, point Git at the repo hooks and install the `gitleaks` binary (e.g. from [releases](https://github.com/gitleaks/gitleaks/releases) or `brew install gitleaks`):
+- **Local hooks:** after `git clone` or `git init`, point Git at the repo hooks and install the `gitleaks` binary (e.g. from [releases](https://github.com/gitleaks/gitleaks/releases) or `brew install gitleaks`):
 
 ```bash
 git config core.hooksPath .githooks
