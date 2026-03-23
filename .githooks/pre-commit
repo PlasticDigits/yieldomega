@@ -1,0 +1,11 @@
+#!/bin/sh
+# Run Gitleaks on staged changes before commit. Install: https://github.com/gitleaks/gitleaks
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks: not found in PATH. Install from https://github.com/gitleaks/gitleaks/releases" >&2
+  echo "  Example: brew install gitleaks   or   download a release binary" >&2
+  exit 1
+fi
+
+exec gitleaks protect --staged --verbose --config .gitleaks.toml

@@ -1,0 +1,7 @@
+# Gitleaks — https://github.com/gitleaks/gitleaks
+# Extend built-in rules; add [[allowlist]] entries here only for verified false positives.
+
+title = "yieldomega"
+
+[extend]
+useDefault = true
