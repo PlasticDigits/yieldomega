@@ -1,8 +1,8 @@
-# Rabbit NFTs (collection, gameplay, agents)
+# Leprechaun NFTs (collection, gameplay, agents)
 
 ## Role in the ecosystem
 
-Rabbit NFTs are the **collection, progression, identity, and agent layer**. The rabbit mascot appears across **outfits, roles, and scenes** with **strong visual consistency** and **explicit onchain metadata**. NFTs are **not only art**: they provide **gameplay bonuses**, **set bonuses**, and **team or faction** functionality.
+Leprechaun NFTs are the **collection, progression, identity, and agent layer**. The leprechaun mascot appears across **outfits, roles, and scenes** with **strong visual consistency** and **explicit onchain metadata**. NFTs are **not only art**: they provide **gameplay bonuses**, **set bonuses**, and **team or faction** functionality.
 
 ## Thematic series
 
@@ -41,20 +41,24 @@ Exact encoding (JSON in URI vs pure onchain tuples vs hybrid) is an implementati
 
 Metadata must be sufficient for **AI agents** to:
 
-- Evaluate **expected utility** of holding or trading a rabbit under published rules.
+- Evaluate **expected utility** of holding or trading a Leprechaun NFT under published rules.
 - **Compose strategies** across sets and factions without scraping proprietary APIs.
 - Respect **flags** that restrict automation where required by policy or law (flags are descriptive; legal compliance remains with operators and users).
 
 ## Versioning
 
-- **Schema version** field mandatory on new collections.
+- **Schema version** field mandatory on new collections (`schemaVersion` in the JSON shape; semver string).
 - **Backward compatibility**: indexers should accept multiple versions concurrently with explicit migration notes in [../indexer/design.md](../indexer/design.md).
+- **Draft JSON Schema** (trait keys, types, bounds): [../schemas/leprechaun-nft-metadata-v1.schema.json](../schemas/leprechaun-nft-metadata-v1.schema.json).
+- **Schema index and integration links** (how this folder relates to the rest of the docs): [../schemas/README.md](../schemas/README.md).
+- **Schema changelog** (when the outline file changes, additive vs breaking): [../schemas/CHANGELOG.md](../schemas/CHANGELOG.md).
+- **Documentation entry point**: [../README.md](../README.md) (includes schemas in the document map).
 
 ## Links
 
-- Fee and governance context: [../onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md)
+- Fee and governance context: [../onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md) — [sinks](../onchain/fee-routing-and-governance.md#fee-sinks), [governance](../onchain/fee-routing-and-governance.md#governance-actors), [invariants](../onchain/fee-routing-and-governance.md#post-update-invariants)
 - Glossary: [../glossary.md](../glossary.md)
 
 ---
 
-**Agent phase:** [Phase 8 — Rabbit NFTs and onchain metadata schema](../agent-phases.md#phase-8)
+**Agent phase:** [Phase 8 — Leprechaun NFTs and onchain metadata schema](../agent-phases.md#phase-8)

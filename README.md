@@ -1,26 +1,52 @@
 # Yieldomega
 
-MegaETH-native, **fully onchain** gamefi monorepo (design phase): **TimeCurve**, **Rabbit Treasury**, and **Rabbit NFTs** aligned with **CL8Y** governance and treasury mission.
+MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**, and **Leprechaun NFTs**, with ecosystem expansion governed via **CL8Y** (see [`docs/product/vision.md`](docs/product/vision.md)).
+
+**Status:** **early** — [`docs/`](docs/README.md) is ahead of the three package trees; contracts, indexer, and frontend are partial scaffolds and prototypes relative to the written architecture.
+
+**License:** original work is under [**GNU Affero General Public License v3.0 (AGPL-3.0)**](LICENSE); details in [`docs/licensing.md`](docs/licensing.md).
+
+**Agents and phased work:** numbered phases and copy-paste prompts are in [`docs/agent-phases.md`](docs/agent-phases.md).
+
+## Monorepo package directories
+
+Authoritative layout and naming are in [`docs/architecture/repository-layout.md`](docs/architecture/repository-layout.md). The three package roots are:
+
+| Directory | Role |
+|-----------|------|
+| [`contracts/`](contracts/) | Foundry / Solidity — onchain rules and treasury logic |
+| [`indexer/`](indexer/) | Rust + Postgres — derived read model and APIs |
+| [`frontend/`](frontend/) | Vite (static) — wallet UX against RPC and indexer |
+
+## Non-goals
+
+What this ecosystem explicitly does **not** optimize for:
+
+- **Speculation-first product** — not passive institutional DeFi or “empty infrastructure”; the thesis is spend-for-joy, identity, status, and participation in a full-cycle onchain consumer economy.
+- **Opaque or “risk-free” yield marketing** — no pretending unsustainable returns are safe or legible rules are optional.
+- **Offchain authority for outcomes** — no private servers, hidden registries, or indexers-as-source-of-truth that decide winners, balances, or canonical game state.
+- **Ecosystem direction via CL8Y** — **governance over how the ecosystem expands** (including fee routing into productive sinks) is anchored in **CL8Y**; this is **not** framed around a separate **TimeCurve-token DAO** as the default governance home.
+- **Governance fragmentation** — avoid parallel DAOs that compete with CL8Y for ecosystem direction unless deliberately chosen later with clear rationale.
 
 ## Status
 
-- **Documentation** lives in [`docs/`](docs/README.md). Contracts, indexer, and frontend package scaffolding may land in later phases; see [`docs/agent-phases.md`](docs/agent-phases.md) for **numbered phases** and **copy-paste agent prompts**.
-
-## Packages (planned)
-
-| Path | Stack | Role |
-|------|--------|------|
-| `contracts/` | Foundry / Solidity | Authoritative game and treasury logic on MegaEVM |
-| `indexer/` | Rust + Postgres | Derived read model and APIs |
-| `frontend/` | Vite (static) | Wallet UX against RPC + indexer |
+- **`docs/`** — architecture, product specs, and process; entry point [`docs/README.md`](docs/README.md). This is the reference for trust boundaries and behavior; implementation in the package directories should follow it.
+- **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests live here and evolve with the roadmap in [`docs/agent-phases.md`](docs/agent-phases.md).
+- **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
+- **Agent skills:** [`.cursor/skills/README.md`](.cursor/skills/README.md); repo guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md).
+- **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.
 
 ## License
 
-Original work in this repository is licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE) and [docs/licensing.md](docs/licensing.md).
+Same as the note at the top: **AGPL-3.0** — [LICENSE](LICENSE), [docs/licensing.md](docs/licensing.md).
 
-## Contributing (intent)
+## Contributing
 
-AGPL-3.0 applies to new project source unless stated otherwise. Follow [`docs/testing/strategy.md`](docs/testing/strategy.md) before merging risky changes once code exists.
+New project source defaults to **AGPL-3.0** unless stated otherwise. Follow [`docs/testing/strategy.md`](docs/testing/strategy.md) before merging risky changes.
+
+## CI
+
+Continuous integration is summarized in [`docs/testing/ci.md`](docs/testing/ci.md): **Stage 1** runs **`forge test`** and **`cargo test`** in [`.github/workflows/unit-tests.yml`](.github/workflows/unit-tests.yml) with **no repository secrets**. Secret scanning uses [`.github/workflows/gitleaks.yml`](.github/workflows/gitleaks.yml). Devnet and testnet gates are documented in the testing strategy; they are not fully automated in that minimal workflow.
 
 ## Secret scanning (Gitleaks)
 

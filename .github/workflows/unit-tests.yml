@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Minimal unit gate: forge test + cargo test. No repository secrets.
+# Forge deps: see contracts/README.md (not committed).
+name: unit-tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  forge-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install Forge dependencies
+        run: |
+          forge install foundry-rs/forge-std@v1.15.0 --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+          forge install PaulRBerg/prb-math@v4.1.1 --no-git
+
+      - name: Forge build
+        run: forge build --sizes
+
+      - name: Forge test (CI profile)
+        env:
+          FOUNDRY_PROFILE: ci
+        run: forge test -vv
+
+  cargo-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo test
+        run: cargo test

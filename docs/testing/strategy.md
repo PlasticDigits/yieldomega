@@ -1,5 +1,7 @@
 # Testing strategy
 
+**CI mapping (what runs in GitHub Actions vs manual gates):** [ci.md](ci.md).
+
 ## Three stages (plus production)
 
 Quality gates progress from **fast feedback** to **realistic integration** to **public testnet** before **mainnet**. Shared vocabulary: [../glossary.md](../glossary.md).
@@ -8,7 +10,8 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 
 **Scope**
 
-- **Contracts:** `forge test` — invariants, edge cases, fuzz on TimeCurve timers and purchase caps; treasury accounting math; NFT mint constraints.
+- **Simulations:** `simulations/` — `PYTHONPATH=. python3 -m unittest discover -s tests -v` for bounded repricing and faction comeback (see [../simulations/README.md](../simulations/README.md)).
+- **Contracts:** `forge test` — invariants, edge cases, fuzz on TimeCurve timers and purchase caps; treasury accounting math (`BurrowMath`); NFT mint constraints.
 - **Indexer:** Rust unit tests for decoders, reorg rollback logic, schema migrations (where testable without chain).
 - **Frontend:** Component and pure logic tests as appropriate (Vitest or similar TBD).
 
@@ -19,7 +22,7 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 **Exit criteria**
 
 - No failing tests on default branch.
-- Critical invariants documented next to tests (for example “fee weights sum to 100%”).
+- Critical invariants documented next to tests; align fee-routing expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants) in [fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md).
 
 ### Stage 2 — Devnet integration
 
@@ -33,11 +36,15 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 
 - Stage 1 green; deployment scripts or documented manual deploy steps exist.
 
-**Exit criteria**
+**Exit criteria (checklist)**
 
-- **Indexer lag** under an agreed threshold (for example **&lt; N blocks** behind tip under normal load).
-- **Reorg simulation** at least once in CI or manual checklist (document result).
-- No **critical** broken flows on smoke paths.
+- [ ] **Contracts** deployed to the target dev environment; versions/commits recorded (match the branch under test).
+- [ ] **Indexer** runs against that chain with a **fresh** Postgres database; migrations applied cleanly from empty.
+- [ ] **Smoke E2E** completed: connect wallet → **buy** → **deposit** → **NFT read path**; no blocking failures on these paths.
+- [ ] **Indexer lag** is under the agreed threshold (for example **&lt; N blocks** behind tip under normal load); **N** and measurement conditions noted in the run log or ticket.
+- [ ] **History consistency:** indexer shows transactions/events that match chain state for the smoke actions (no missing or contradictory rows for those paths).
+- [ ] **Reorg handling** exercised at least once: **reorg simulation in CI** *or* **documented manual reorg test** with outcome (pass/fail and what was observed).
+- [ ] **No critical regressions** on smoke paths (security or fund-flow breakages block exit until fixed or explicitly waived with sign-off).
 
 ### Stage 3 — Testnet release → final deployment
 

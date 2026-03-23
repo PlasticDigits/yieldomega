@@ -14,11 +14,11 @@ The long-term thesis: crypto should move beyond institutional finance, passive s
 
 ## Primitives in one paragraph
 
-- **TimeCurve** is the **token launch primitive**: skill- and timing-forward participation, rising minimum buy, capped purchase size, timer extension, and explicit prize categories. Value routes into productive sinks (buy/burn, liquidity, prizes, Rabbit Treasury, ecosystem treasury) per governance.
+- **TimeCurve** is the **token launch primitive**: skill- and timing-forward participation, rising minimum buy, capped purchase size, timer extension, and explicit **podium** prize categories. Its canonical fee split routes to **DOUB LP, Rabbit Treasury, prizes (including team rewards in DOUB), and CL8Y buy-and-burn** per [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) ([governance](../onchain/fee-routing-and-governance.md#governance-actors), [invariants](../onchain/fee-routing-and-governance.md#post-update-invariants)) in [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md); other ecosystem flows use separate schedules.
 
 - **Rabbit Treasury** is the **treasury game layer** that receives ecosystem value and retains users over time. It should be understood as **reserve-linked** with **internal accounting** and **honest repricing** when reserve health weakens—avoiding brittle collapse narratives while admitting sustainability depends on **real usage and fees**.
 
-- **Rabbit NFTs** are the **collection, progression, identity, and agent layer**: consistent rabbit mascot canon, **explicit onchain metadata**, gameplay bonuses, sets, factions, and machine-readable fields so **AI agents** can collect, trade, optimize, and play autonomously.
+- **Leprechaun NFTs** are the **collection, progression, identity, and agent layer**: consistent leprechaun mascot canon, **explicit onchain metadata**, gameplay bonuses, sets, factions, and machine-readable fields so **AI agents** can collect, trade, optimize, and play autonomously.
 
 ## Design values
 
@@ -36,8 +36,8 @@ The long-term thesis: crypto should move beyond institutional finance, passive s
 
 - TimeCurve mechanics: [primitives.md](primitives.md)
 - Rabbit Treasury: [rabbit-treasury.md](rabbit-treasury.md)
-- NFTs and metadata: [rabbit-nfts.md](rabbit-nfts.md)
-- Fees and CL8Y: [../onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md)
+- NFTs and metadata: [leprechaun-nfts.md](leprechaun-nfts.md)
+- Fees and CL8Y: [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md) — [sinks](../onchain/fee-routing-and-governance.md#fee-sinks), [governance](../onchain/fee-routing-and-governance.md#governance-actors), [invariants](../onchain/fee-routing-and-governance.md#post-update-invariants)
 
 ---
 

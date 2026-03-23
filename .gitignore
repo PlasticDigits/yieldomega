@@ -12,6 +12,9 @@ credentials.json
 Thumbs.db
 
 # Editors / IDE
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
 .idea/
 .vscode/*
 !.vscode/extensions.json
@@ -20,24 +23,30 @@ Thumbs.db
 *.swo
 *~
 
-# Foundry / Solidity
+# Foundry / Solidity (contracts root and nested forge projects)
 contracts/cache/
 contracts/out/
 contracts/broadcast/
 contracts/lib/
 contracts/node_modules/
+contracts/**/cache/
+contracts/**/out/
+contracts/**/broadcast/
 
 # Rust / Cargo
-indexer/target/
-indexer/**/target/
+target/
 **/*.rs.bk
 
 # Node / Vite / frontend
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+**/.vite/
 **/.turbo/
 **/node_modules/
+.npm/
+.eslintcache
+.stylelintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -65,3 +74,10 @@ gitleaks-report.json
 dist/
 build/
 out/
+
+# Python simulations
+simulations/.venv/
+simulations/output/
+__pycache__/
+*.py[cod]
+*$py.class
