@@ -2,7 +2,7 @@
 
 ## Why this matters
 
-The ecosystem is designed for **humans and AI agents** to participate **transparently**. **Onchain metadata** encodes traits, bonuses, and **agent skill flags** ([../product/rabbit-nfts.md](../product/rabbit-nfts.md)). **Repository agent skills** encode how coding agents should behave so they do not violate architecture or licensing.
+The ecosystem is designed for **humans and AI agents** to participate **transparently**. **Onchain metadata** encodes traits, bonuses, and **agent skill flags** ([../product/leprechaun-nfts.md](../product/leprechaun-nfts.md)). **Repository agent skills** encode how coding agents should behave so they do not violate architecture or licensing.
 
 ## Onchain metadata (product side)
 
@@ -19,9 +19,11 @@ Cursor **skills** are typically small markdown instruction files (for example un
 4. Run or propose tests per [../testing/strategy.md](../testing/strategy.md) before claiming completion.
 5. Prefer **small, reviewable diffs**; do not refactor unrelated packages.
 
-### Suggested skill placement (when implementation exists)
+### Implemented skill placement
 
-- `.cursor/rules/` or `.cursor/skills/yieldomega/` — one skill for **contracts**, one for **indexer**, one for **frontend**, each pointing to phase prompts **11–13** respectively plus shared governance from **phase 14**.
+- [../.cursor/skills/README.md](../../.cursor/skills/README.md) is the discoverable index for project skills.
+- [../.cursor/skills/yieldomega-guardrails/SKILL.md](../../.cursor/skills/yieldomega-guardrails/SKILL.md) is the shared repo guardrails skill: read phase guidance, respect AGPL-3.0, keep logic onchain, and follow testing strategy expectations.
+- Add future package-specific skills under `.cursor/skills/` only if they add guidance beyond the shared guardrails.
 
 ## Prompting discipline
 

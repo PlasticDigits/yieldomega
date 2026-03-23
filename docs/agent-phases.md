@@ -22,7 +22,7 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 **Agent prompt (copy-paste):**
 
 ```text
-You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) how USDm/MUSD naming should be used in docs vs informal chat, (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
+You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) that documentation uses **USDm** only for the native stable name, (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
 ```
 
 ---
@@ -102,7 +102,7 @@ Read docs/product/vision.md. Write a short “non-goals” list (what this ecosy
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/primitives.md and docs/glossary.md. Produce a requirements checklist for a Foundry implementation: state variables, events, and edge cases (timer cap, minimum buy growth, max purchase multiple, sale end). Flag any underspecified numeric policy (growth formula, tranche size) as TODOs needing human parameters. Do not write Solidity yet unless asked.
+Read docs/product/primitives.md and docs/glossary.md. Produce a requirements checklist for a Foundry implementation: state variables, events, and edge cases (timer cap, minimum buy growth, max purchase multiple, sale end). Flag any underspecified numeric policy (for example per-category prize weights inside the prizes fee bucket) as TODOs needing human parameters. Do not write Solidity yet unless asked.
 ```
 
 ---
@@ -125,16 +125,16 @@ Read docs/product/rabbit-treasury.md. Summarize the honest sustainability story 
 
 <a id="phase-8"></a>
 
-## Phase 8 — Rabbit NFTs and onchain metadata schema
+## Phase 8 — Leprechaun NFTs and onchain metadata schema
 
-**Doc:** [product/rabbit-nfts.md](product/rabbit-nfts.md)
+**Doc:** [product/leprechaun-nfts.md](product/leprechaun-nfts.md)
 
 **Goal:** Machine-readable traits for gameplay and agents.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/rabbit-nfts.md. Draft a versioned JSON schema outline for onchain metadata fields (trait keys, types, allowed ranges). Include set, faction, bonus, synergy tags, and agent skill flags. Explain how upgrades or seasonal series would bump schema version. No Solidity until parameters are approved.
+Read docs/product/leprechaun-nfts.md. Draft a versioned JSON schema outline for onchain metadata fields (trait keys, types, allowed ranges). Include set, faction, bonus, synergy tags, and agent skill flags. Explain how upgrades or seasonal series would bump schema version. No Solidity until parameters are approved.
 ```
 
 ---
@@ -143,7 +143,7 @@ Read docs/product/rabbit-nfts.md. Draft a versioned JSON schema outline for onch
 
 ## Phase 9 — Fee routing and governance
 
-**Doc:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md)
+**Doc:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) — [Fee sinks](onchain/fee-routing-and-governance.md#fee-sinks), [governance](onchain/fee-routing-and-governance.md#governance-actors), [post-update invariants](onchain/fee-routing-and-governance.md#post-update-invariants)
 
 **Goal:** Define where fees may flow and who controls parameter changes.
 

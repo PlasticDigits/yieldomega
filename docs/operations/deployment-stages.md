@@ -12,6 +12,8 @@ Deployments move **devnet → testnet → mainnet** with **repeatable checklists
 
 ## Checklist template (copy per release)
 
+For a columnar table (network, contract set version, addresses, verification, indexer, frontend, signers, rollback), use [deployment-checklist.md](deployment-checklist.md).
+
 | Field | Value |
 |--------|--------|
 | Release name / git tag | |
@@ -21,7 +23,7 @@ Deployments move **devnet → testnet → mainnet** with **repeatable checklists
 | RPC URL (internal) | |
 | Contract: TimeCurve | Address: … Verified: Y/N Link: … |
 | Contract: Rabbit Treasury | Address: … Verified: Y/N Link: … |
-| Contract: Rabbit NFT | Address: … Verified: Y/N Link: … |
+| Contract: Leprechaun NFT | Address: … Verified: Y/N Link: … |
 | Contract: Fee router / registry | Address: … Verified: Y/N Link: … |
 | Indexer migration version | |
 | Indexer image / binary digest | |

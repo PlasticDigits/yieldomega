@@ -10,7 +10,7 @@
 
 - **TimeCurve** — live timer, min buy curve, buy flow, prize leaderboards (from indexer + contract reads).
 - **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
-- **Collection** — Rabbit NFT gallery, set progress, trait filters for humans and agents.
+- **Collection** — Leprechaun NFT gallery, set progress, trait filters for humans and agents.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
 
 ## Data sources

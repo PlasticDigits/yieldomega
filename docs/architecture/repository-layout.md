@@ -9,6 +9,7 @@ yieldomega/
   LICENSE                 # AGPL-3.0 (full text)
   README.md               # Points to docs/; high-level mission
   docs/                   # Architecture and product (this tree)
+  simulations/            # Python: bounded repricing + comeback scenario sims (DOUB / Burrow)
   contracts/              # Foundry: TimeCurve, Rabbit Treasury, NFTs, routers
   indexer/                # Rust workspace or crate: sync, decode, API, migrations
   frontend/               # Vite + TypeScript: static deployable site

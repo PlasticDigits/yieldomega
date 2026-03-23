@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yieldomega.local/schemas/leprechaun-nft-metadata-v1.schema.json",
+  "$comment": "Docs: docs/schemas/README.md. Changelog: docs/schemas/CHANGELOG.md. Product: docs/product/leprechaun-nfts.md. Top-level doc map: docs/README.md.",
+  "title": "Leprechaun NFT onchain gameplay metadata (v1 outline)",
+  "description": "Draft outline for verifiable onchain or URI-backed JSON. Authority for gameplay fields remains onchain per product spec. Bump schemaVersion when the shape changes; record file edits in docs/schemas/CHANGELOG.md. Semver rules: docs/product/leprechaun-nfts.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "series", "traits", "set", "faction", "bonus", "synergy", "agentSkills"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Semantic version of this metadata shape (not the token contract). Indexers key migrations on this string.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "examples": ["1.0.0"]
+    },
+    "series": {
+      "type": "string",
+      "description": "Machine-readable thematic series identifier (onchain-facing).",
+      "enum": ["vault", "clocktower", "market", "forest", "seasonal_faction"]
+    },
+    "traits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "rarityTier", "passiveEffectType"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Gameplay role; extend enum in minor versions.",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$"
+        },
+        "rarityTier": {
+          "type": "integer",
+          "description": "Ordinal rarity band; higher = scarcer within rules.",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "passiveEffectType": {
+          "type": "string",
+          "description": "Machine-readable passive category (e.g. fee_discount, timer_skew).",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9][a-z0-9_-]*$"
+        }
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setId", "positionInSet", "setSize", "synergyThresholdCount"],
+      "properties": {
+        "setId": {
+          "type": "string",
+          "description": "Stable id for the set across the collection.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "positionInSet": {
+          "type": "integer",
+          "description": "1-based slot index within the set.",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "setSize": {
+          "type": "integer",
+          "description": "Total distinct pieces in the set definition.",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "synergyThresholdCount": {
+          "type": "integer",
+          "description": "Minimum distinct held pieces to unlock set synergy (e.g. 3 of 5).",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "requiredSiblingTokenIds": {
+          "type": "array",
+          "description": "Optional explicit sibling keys when rules are not purely count-based.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "maxItems": 64
+        }
+      }
+    },
+    "faction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factionId"],
+      "properties": {
+        "factionId": {
+          "type": "string",
+          "description": "Team/faction key for treasury-war style mechanics.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "seasonalSeriesId": {
+          "type": "string",
+          "description": "When series is seasonal_faction, binds token to a specific limited run.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._-]*$"
+        },
+        "seasonStartUnix": {
+          "type": "integer",
+          "description": "Inclusive start of seasonal eligibility window (unix seconds).",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "seasonEndUnix": {
+          "type": "integer",
+          "description": "Exclusive or inclusive end per published rules; document interpretation at bump.",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      }
+    },
+    "bonus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "valueRaw"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Bonus channel; v1 examples align with product doc.",
+          "enum": [
+            "treasury_deposit_bonus",
+            "timer_skew",
+            "fee_discount",
+            "none"
+          ]
+        },
+        "valueRaw": {
+          "type": "integer",
+          "description": "Signed or unsigned magnitude in fixed-point units; sign policy per category.",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "scale": {
+          "type": "integer",
+          "description": "Denominator for fixed-point interpretation (e.g. 10000 = four decimal places).",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "valueCapRaw": {
+          "type": "integer",
+          "description": "Optional ceiling for stacking or per-tx application.",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "synergy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tags"],
+      "properties": {
+        "tags": {
+          "type": "array",
+          "description": "Composability keys for cross-NFT effects; namespace with prefixes in practice.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[a-z][a-z0-9._:-]*$"
+          },
+          "minItems": 0,
+          "maxItems": 64
+        }
+      }
+    },
+    "agentSkills": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tradable",
+        "lendable",
+        "factionLocked",
+        "requiresHumanSignature"
+      ],
+      "properties": {
+        "tradable": { "type": "boolean" },
+        "lendable": { "type": "boolean" },
+        "factionLocked": { "type": "boolean" },
+        "requiresHumanSignature": { "type": "boolean" },
+        "soulbound": {
+          "type": "boolean",
+          "description": "Hint: non-transferable or listing-restricted per policy."
+        },
+        "metadataMutableByOwner": {
+          "type": "boolean",
+          "description": "Hint for agents: cosmetic vs gameplay-locked fields."
+        }
+      }
+    }
+  }
+}

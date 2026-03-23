@@ -6,6 +6,8 @@ The indexer is an **offchain read model**. It **follows** MegaETH chain history,
 
 It must **never** be the **authority** for balances, winners, or treasury outcomes ([../architecture/overview.md](../architecture/overview.md)).
 
+**Fee and routing parameters:** Contracts should emit **old value, new value, actor** on changes ([invariant: parameter change events](../onchain/fee-routing-and-governance.md#invariant-parameter-change-events)); the indexer should decode and store them for reconciliation. Canonical sinks and governance intent: [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks), [governance actors](../onchain/fee-routing-and-governance.md#governance-actors).
+
 ## Core responsibilities
 
 1. **Ingestion** — Follow new heads via JSON-RPC or streaming APIs (mechanism TBD). Respect MegaETH **~1s** block time.
@@ -19,11 +21,15 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 Examples of tables or projections (names illustrative):
 
 - **timecurve_sales** — sale id, parameters snapshot, timer state transitions.
-- **timecurve_buys** — buyer, amount, tranche, block, tx index for ordering.
+- **timecurve_buys** — buyer, amount (spend), tokens minted or credited if emitted, block, tx index for ordering.
 - **timecurve_prizes** — derived winner rows **verified against** onchain claims or explicit contract events.
 - **rabbit_deposits_withdrawals** — amounts, epochs, user, faction id.
-- **rabbit_health_epochs** — reserve snapshots and repricing factors **as emitted onchain**.
-- **rabbits** — token id, collection id, trait blob or hash, schema version.
+- **rabbit_health_epochs** — reserve snapshots and repricing factors **as emitted onchain**; canonical **`Burrow*`** event names and metric mapping live in [product/rabbit-treasury.md](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events).
+- **leprechauns** — token id, collection id, trait blob or hash, schema version.
+
+### Rabbit Treasury (`RabbitTreasury` / Burrow) logs
+
+Decode **`BurrowEpochOpened`**, **`BurrowHealthEpochFinalized`**, **`BurrowEpochReserveSnapshot`**, **`BurrowReserveBalanceUpdated`**, **`BurrowDeposited`**, **`BurrowWithdrawn`**, **`BurrowFeeAccrued`**, and **`BurrowRepricingApplied`** per the spec table in [product/rabbit-treasury.md](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Version decoder mappings when the deployment ABI changes; reject unknown `topic0` or register them explicitly.
 - **factions** — membership rules referencing NFT traits.
 
 **Derived** winner rows must record **derivation rules** (contract version + block) for auditability.

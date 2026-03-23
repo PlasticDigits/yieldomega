@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yieldomega-simulations"
+version = "0.1.0"
+description = "Python simulations for Rabbit Treasury bounded repricing and faction comeback"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+burrow-sim = "bounded_formulas.cli:main"
+timecurve-sim = "timecurve_sim.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bounded_formulas*", "timecurve_sim*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

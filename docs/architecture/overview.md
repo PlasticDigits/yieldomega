@@ -49,7 +49,7 @@ flowchart LR
   subgraph chain [MegaETH_MegaEVM]
     TC[TimeCurve]
     RT[RabbitTreasury]
-    NFT[RabbitNFTs]
+    NFT[LeprechaunNFTs]
     Router[FeeRouter]
   end
   subgraph offchain [Offchain_read_models]
@@ -65,8 +65,12 @@ flowchart LR
 
 ## Relationship to product primitives
 
-- **TimeCurve** and **Rabbit Treasury** generate fees and participation; portions flow per [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md).
-- **Rabbit NFTs** attach identity and bonuses; metadata must remain **machine-readable onchain** (see [product/rabbit-nfts.md](../product/rabbit-nfts.md)).
+- **TimeCurve** and **Rabbit Treasury** generate fees and participation; **TimeCurve** uses the canonical split in [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) ([full doc](../onchain/fee-routing-and-governance.md)); other modules use **their own** documented routes.
+- **Leprechaun NFTs** attach identity and bonuses; metadata must remain **machine-readable onchain** (see [product/leprechaun-nfts.md](../product/leprechaun-nfts.md)).
+
+## User data flows
+
+Step-by-step flows (mermaid diagrams, onchain vs offchain per step, indexer failure modes): [data-flows.md](data-flows.md).
 
 ---
 

@@ -8,33 +8,31 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **CL8Y treasury** — Protocol- or DAO-controlled treasury used for buy-and-burn, liquidity, ecosystem grants, and aligned missions. Distinct from the **Rabbit Treasury** player-facing layer.
 
-- **Ecosystem treasury** — CL8Y-governed pool that receives a portion of fees from primitives (for example TimeCurve) alongside other destinations (prizes, Rabbit Treasury, liquidity).
+- **Ecosystem treasury** — CL8Y-governed pool for grants, expansion, and aligned missions. It is **not** a line item in the **TimeCurve** canonical fee table ([fee sinks](onchain/fee-routing-and-governance.md#fee-sinks)); it may receive flows from **other** primitives, governance, or allocations outside that table.
 
 ## Primitives
 
-- **TimeCurve** — Token launch primitive combining bonding-curve-like pricing, timer extension, and strategic participation. **Minimum buy** rises over time on a defined schedule; each purchase is **capped** at a fixed multiple of that minimum; purchases extend a **countdown** up to a cap; the sale **ends** when the timer hits zero. Prize categories (for example last buyer, most buys, biggest buy, first buyer in a window) are first-class design goals.
+- **TimeCurve** — Token launch primitive combining bonding-curve-like pricing, timer extension, and strategic participation. **Minimum buy** rises over time on a defined schedule (canonical **25% per day** target unless governance changes it); each purchase is **capped** at a fixed multiple of that minimum; purchases extend a **countdown** up to a cap; the sale **ends** when the timer hits zero. Each buy is a **spend** in the accepted asset between that minimum and the cap; **allocation** follows the onchain pricing rule. **Prize** categories include **1st, 2nd, 3rd** placements across multiple categories (see [product/primitives.md](product/primitives.md)). Canonical fees route to **DOUB LP**, **Rabbit Treasury**, **prizes**, and **CL8Y buy-and-burn** per [fee sinks](onchain/fee-routing-and-governance.md#fee-sinks) in [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md).
 
-- **Tranche** — Unit of sale for TimeCurve (for example tokens per tranche at the current **price per tranche**). Exact sizing is specified in [product/primitives.md](product/primitives.md).
+- **Rabbit Treasury** — Reserve-linked **treasury game layer** (also called the **Burrow** in UX): users deposit reserve assets and hold internal claims whose effective value can adjust based on **reserve health** over rolling periods (for example 24 hours). Designed to avoid brittle “hard rug” dynamics while staying honest that sustainability depends on real fees and usage—not magic yield. **Not** the primary governance treasury.
 
-- **Rabbit Treasury** — Reserve-linked **treasury game layer**: users deposit reserve assets and hold internal claims whose effective value can adjust based on **reserve health** over rolling periods (for example 24 hours). Designed to avoid brittle “hard rug” dynamics while staying honest that sustainability depends on real fees and usage—not magic yield. **Not** the primary governance treasury.
-
-- **Rabbit NFTs** — Collectibles with **onchain, machine-readable metadata**: gameplay bonuses, sets, factions, synergy tags, and **agent skill flags**. NFTs anchor identity, progression, and team play inside the ecosystem.
+- **Leprechaun NFTs** — Collectibles with **onchain, machine-readable metadata**: gameplay bonuses, sets, factions, synergy tags, and **agent skill flags**. NFTs anchor identity, progression, and team play inside the ecosystem.
 
 ## Assets and naming
 
-- **USDm (MegaUSD)** — Native MegaETH stablecoin (informal team shorthand **MUSD** may appear in prompts or chat; documentation should prefer **USDm** where precision matters). Used as a primary reserve and routing asset where the design calls for dollar-stable liquidity. See [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
+- **USDm (MegaUSD)** — Native MegaETH stablecoin. **Documentation uses USDm only** (do not use alternate spellings). Used as a primary reserve and routing asset where the design calls for dollar-stable liquidity. See [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
 
 - **Reserve asset** — Asset accepted by Rabbit Treasury (often USDm or other approved stablecoins/tokens per governance). “Reserve health” is defined relative to these assets and onchain accounting rules.
 
 ## Gameplay and agents
 
-- **Set** — A defined group of Rabbit NFTs that unlocks synergies when completed or partially completed.
+- **Set** — A defined group of Leprechaun NFTs that unlocks synergies when completed or partially completed.
 
 - **Faction / team** — Onchain grouping used for competitive treasury or seasonal play; mechanics should include **comeback** levers so one faction cannot win permanently by early lead alone.
 
 - **Agent skill flags** — Boolean or enumerated fields in **onchain** metadata indicating capabilities or constraints for autonomous agents (for example “tradable,” “stakable,” “faction-locked”). See [agents/metadata-and-skills.md](agents/metadata-and-skills.md).
 
-- **Internal units / claims** — Accounting representation inside Rabbit Treasury (names TBD at implementation time). Not necessarily 1:1 with a fixed offchain promise; repricing rules are onchain.
+- **Doubloons (DOUB)** — Fungible receipt token for Rabbit Treasury (**Burrow**) deposits: internal accounting and repricing rules are **onchain**; not a bank deposit or fixed offchain promise.
 
 ## Technical
 

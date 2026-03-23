@@ -15,11 +15,7 @@ The project includes **network-facing components** (for example a Rust indexer o
 
 ### Contributor expectations
 
-Until a `CONTRIBUTING.md` exists, treat the following as design intent:
-
-- New **original** source files in this repo: AGPL-3.0 unless explicitly marked otherwise and approved.
-- **Patches** to AGPL files: AGPL-3.0.
-- If the project later adds a **Contributor License Agreement** or **Developer Certificate of Origin (DCO)**, this document should link to it.
+See the repository root [CONTRIBUTING.md](../CONTRIBUTING.md). If the project later adds a **Contributor License Agreement** or **Developer Certificate of Origin (DCO)**, this document should link to it.
 
 ### Interpreting “open source” for agents and operators
 

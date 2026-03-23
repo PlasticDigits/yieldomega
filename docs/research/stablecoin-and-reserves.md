@@ -4,7 +4,7 @@
 
 MegaETH promotes **USDm** (also referred to as **MegaUSD**) as a native stable asset designed for ecosystem use, with public documentation on issuance and fee-subsidy mechanics. For **this** project:
 
-- Prefer the canonical name **USDm** in documentation; **MUSD** may appear informally—define both in [../glossary.md](../glossary.md).
+- Use the canonical name **USDm** in all documentation ([../glossary.md](../glossary.md)).
 - **Contract address** and **interfaces** must be taken from **official MegaETH sources** or onchain registries at implementation time (do not hardcode unverified addresses in this doc).
 
 Public background (verify with primary sources):
@@ -14,6 +14,12 @@ Public background (verify with primary sources):
 ## Rabbit Treasury reserves
 
 Rabbit Treasury ([../product/rabbit-treasury.md](../product/rabbit-treasury.md)) should start with a **small, explicit basket** of **onchain-auditable** assets (for example USDm only on v1 testnet) unless governance expands the list.
+
+### v1 testnet reserve policy
+
+Default **accepted reserves**: **testnet USDm only**—the single vault token for deposits and withdrawals. Resolve its **contract address** from **official MegaETH testnet artifacts** or an **onchain registry** at deploy time; do not add informal mints or unaudited stand-ins unless documented as an approved test double with the **same ERC-20 surface** intended for production USDm.
+
+**Deferred** until governance defines **onchain** eligibility, caps, and (if needed) conversion rules: additional stablecoins, LP positions, rebasing tokens, and bridged or wrapped assets that need **oracle** marks to value fairly. Keeping one ERC-20 reserve on testnet avoids cross-asset pricing and shrinks **oracle attack surface** while reserve balances and **`Burrow*`** events remain the sole chart authority ([../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events)).
 
 ## “Fully onchain” alignment
 
