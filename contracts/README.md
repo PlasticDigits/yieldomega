@@ -6,14 +6,19 @@ Original Solidity and documentation in this directory follow the repository **GN
 
 ## Setup
 
-Install dependencies (`lib/` is not committed; run after clone):
+Foundry dependencies live under `lib/` as **git submodules** (pinned in `.gitmodules`; lockfile: [`foundry.lock`](./foundry.lock)). After clone:
 
 ```bash
-cd contracts
-forge install foundry-rs/forge-std@v1.15.0 --no-git
-forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
-forge install PaulRBerg/prb-math@v4.1.1 --no-git
+git submodule update --init --recursive
 ```
+
+Or clone with submodules in one step:
+
+```bash
+git clone --recurse-submodules <repository-url>
+```
+
+To bump a dependency, from `contracts/` use `forge update lib/<name>`, or check out a new tag inside the submodule and commit the updated pointer in this repository.
 
 Copy [`.env.example`](./.env.example) if you want a local `.env` for RPC URLs (optional for unit tests).
 
