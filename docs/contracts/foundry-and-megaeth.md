@@ -34,7 +34,7 @@ Exact **chain IDs**, **RPC URLs**, and **explorer** links should be copied from 
 
 - **Forge tests** are **Stage 1** ([../testing/strategy.md](../testing/strategy.md)).
 - Fuzz timer and ordering edge cases for TimeCurve; property tests for treasury invariants where possible (see `BurrowMath` in [`contracts/README.md`](../../contracts/README.md) and Python sims in [`simulations/README.md`](../../simulations/README.md)).
-- After clone, run `forge install` per `contracts/README.md` so `lib/` dependencies exist locally.
+- After clone, run `git submodule update --init --recursive` (or clone with `--recurse-submodules`) so `contracts/lib/` dependencies are present; see [`contracts/README.md`](../../contracts/README.md).
 
 ---
 

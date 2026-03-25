@@ -29,7 +29,6 @@ contracts/out/
 contracts/out-user/
 contracts/out-e2e-anvil/
 contracts/broadcast/
-contracts/lib/
 contracts/node_modules/
 contracts/**/cache/
 contracts/**/out/
