@@ -12,7 +12,36 @@ PYTHONPATH=. python3 -m bounded_formulas
 PYTHONPATH=. python3 -m timecurve_sim --seeds 40 --top 8 --out output/timecurve_sweep.json
 ```
 
-Use `python3 -m timecurve_sim --full-grid` for a larger grid (slower). Each TimeCurve run uses a fixed **observation horizon** (default 8h simulated time) so timer extensions cannot make the run unbounded; metrics favor **lower Gini**, **lower top-5% spend share**, and **lower labeled-whale spend share** among 500 agents with mixed budgets.
+Use `python3 -m timecurve_sim --full-grid` for a larger grid (slower). The Monte Carlo sweep uses **canonical timer policy** aligned with deploy docs: **24 h** initial countdown, **96 h** remaining-time cap, **120 s** extension per buy, **25%/day** min-buy growth (see `timecurve_sim.model.canonical_timecurve_params`). Each TimeCurve run uses a fixed **observation horizon** (default 8h simulated time) so timer extensions cannot make the run unbounded; metrics favor **lower Gini**, **lower top-5% spend share**, and **lower labeled-whale spend share** among 500 agents with mixed budgets.
+
+**Wall-clock sale duration** (timer runs until the sale ends, optional tier compliance JSON):
+
+```bash
+PYTHONPATH=. python3 -m timecurve_sim.duration_study
+```
+
+**Raise milestones** (time to first cross \$1k … \$1b simulated raised, plus sale-end day distribution):
+
+```bash
+PYTHONPATH=. python3 -m timecurve_sim.raise_milestone_report --seeds 48 --dt-sec 240
+```
+
+**Raise milestones + 30-day curves** (`raise_milestone_sim`): per-seed time series for sim **days 1–30** (calendar days in simulation time): **daily spend** and **cumulative raise** at end of each day. Aggregates **min / max / mean** across seeds and includes **10 sample runs** (first seeds) for the dashed lines. JSON includes **days to reach** each USDm milestone and **sale duration** distribution.
+
+Requires **matplotlib** and **numpy** for PNG charts (or pass a `.svg` path for a pure-Python SVG). Example:
+
+```bash
+pip install matplotlib numpy
+PYTHONPATH=. python3 -m timecurve_sim.raise_milestone_sim \
+  --seeds 80 \
+  --out-json output/raise_milestone_sim.json \
+  --out-chart ../docs/img/timecurve-raise-curves.png \
+  --chart-scenario medium
+```
+
+Chart (medium scenario: Poisson arrival λ=0.03, budget scale 1×, canonical TimeCurve params):
+
+![TimeCurve sim: daily spend and cumulative raise (medium scenario)](../docs/img/timecurve-raise-curves.png)
 
 Optional CSV traces (folder is gitignored by default at repo root):
 

@@ -17,6 +17,7 @@ contract TimeCurveTest is Test {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700; // ln(1.25) WAD
     uint256 internal constant ONE_DAY = 86_400;
+    uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
     MockERC20 usdm;
     MockERC20 launchedToken;
@@ -57,9 +58,9 @@ contract TimeCurveTest is Test {
             1e18,            // initialMinBuy: 1 USDm
             GROWTH_RATE,
             10,              // purchaseCapMultiple
-            60,              // timerExtensionSec
-            ONE_DAY,         // initialTimerSec
-            ONE_DAY,         // timerCapSec
+            120,             // timerExtensionSec (2 min; canonical deploy)
+            ONE_DAY,         // initialTimerSec (24h)
+            FOUR_DAYS,       // timerCapSec (max 96h remaining)
             1_000_000e18,    // totalTokensForSale
             3600,            // openingWindowSec
             3600             // closingWindowSec
@@ -107,9 +108,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
@@ -189,7 +190,7 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(2e18);
 
-        assertGt(tc.deadline(), initialDeadline - 100 + 60);
+        assertGt(tc.deadline(), initialDeadline - 100 + 120);
     }
 
     /// @dev Invariant: deadline never exceeds block.timestamp + timerCapSec.
@@ -202,7 +203,7 @@ contract TimeCurveTest is Test {
             _fundAndApprove(alice, minBuy);
             vm.prank(alice);
             tc.buy(minBuy);
-            assertLe(tc.deadline(), block.timestamp + ONE_DAY, "deadline exceeds cap");
+            assertLe(tc.deadline(), block.timestamp + FOUR_DAYS, "deadline exceeds cap");
         }
     }
 
@@ -218,7 +219,7 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
             fourDay,
             1_000_000e18,
@@ -248,7 +249,7 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
             ONE_DAY - 1,
             1_000_000e18,
@@ -436,7 +437,7 @@ contract TimeCurveTest is Test {
             1e18,
             0,
             10,
-            60,
+            120,
             ONE_DAY,
             ONE_DAY,
             1_000_000e18,
@@ -564,9 +565,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
@@ -584,9 +585,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
@@ -604,9 +605,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
@@ -624,9 +625,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
@@ -644,9 +645,9 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1,
             3600,
             3600

@@ -20,6 +20,7 @@ contract MockERC20 is ERC20 {
 contract TimeCurveReferralTest is Test {
     uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700;
     uint256 internal constant ONE_DAY = 86_400;
+    uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
     MockERC20 usdm;
     MockERC20 launchedToken;
@@ -58,9 +59,9 @@ contract TimeCurveReferralTest is Test {
             1e18,
             GROWTH_RATE,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600
