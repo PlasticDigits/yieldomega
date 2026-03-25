@@ -125,6 +125,8 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_rabbit_withdrawal",
         "idx_nft_minted",
         "idx_nft_series_created",
+        "idx_fee_router_sinks_updated",
+        "idx_fee_router_fees_distributed",
     ] {
         let q = format!("DELETE FROM {table} WHERE block_number > $1");
         sqlx::query(&q).bind(cut).execute(&mut *tx).await?;

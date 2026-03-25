@@ -103,9 +103,25 @@ mod contracts {
             event Minted(uint256 indexed tokenId, uint256 indexed seriesId, address indexed to);
         }
     }
+
+    sol! {
+        contract FeeRouterEvents {
+            event SinksUpdated(
+                address indexed actor,
+                address[4] oldDestinations,
+                uint16[4] oldWeights,
+                address[4] newDestinations,
+                uint16[4] newWeights
+            );
+            event FeesDistributed(address indexed token, uint256 amount, uint256[4] shares);
+        }
+    }
 }
 
-use contracts::{LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveEvents};
+use contracts::{
+    FeeRouterEvents, LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents, ReferralRegistryEvents,
+    TimeCurveEvents,
+};
 
 /// Fully decoded log plus block metadata for persistence.
 #[derive(Debug, Clone)]
@@ -230,6 +246,18 @@ pub enum DecodedEvent {
         token_id: U256,
         series_id: U256,
         to: Address,
+    },
+    FeeRouterSinksUpdated {
+        actor: Address,
+        old_destinations: [Address; 4],
+        old_weights: [u16; 4],
+        new_destinations: [Address; 4],
+        new_weights: [u16; 4],
+    },
+    FeeRouterFeesDistributed {
+        token: Address,
+        amount: U256,
+        shares: [U256; 4],
     },
     Unknown {
         #[allow(dead_code)]
@@ -462,6 +490,28 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 token_id: e.tokenId,
                 series_id: e.seriesId,
                 to: e.to,
+            };
+        }
+    }
+    if topic0 == FeeRouterEvents::SinksUpdated::SIGNATURE_HASH {
+        if let Ok(d) = FeeRouterEvents::SinksUpdated::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::FeeRouterSinksUpdated {
+                actor: e.actor,
+                old_destinations: e.oldDestinations,
+                old_weights: e.oldWeights,
+                new_destinations: e.newDestinations,
+                new_weights: e.newWeights,
+            };
+        }
+    }
+    if topic0 == FeeRouterEvents::FeesDistributed::SIGNATURE_HASH {
+        if let Ok(d) = FeeRouterEvents::FeesDistributed::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::FeeRouterFeesDistributed {
+                token: e.token,
+                amount: e.amount,
+                shares: e.shares,
             };
         }
     }

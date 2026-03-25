@@ -14,7 +14,7 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.2.0";
+const SCHEMA_VERSION: &str = "1.3.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -53,6 +53,9 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
         .route("/v1/referrals/registrations", get(referral_registrations))
         .route("/v1/referrals/applied", get(referral_applied))
+        .route("/v1/fee-router/sinks-updates", get(fee_router_sinks_updates))
+        .route("/v1/fee-router/fees-distributed", get(fee_router_fees_distributed))
+        .route("/v1/rabbit/faction-stats", get(rabbit_faction_stats))
         .with_state(state)
 }
 
@@ -930,6 +933,222 @@ async fn referral_applied(
         "offset": off,
         "next_offset": next_offset,
     });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct FeeRouterSinksUpdateRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    contract_address: String,
+    actor: String,
+    old_sinks_json: String,
+    new_sinks_json: String,
+}
+
+async fn fee_router_sinks_updates(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT block_number, tx_hash, log_index, contract_address, actor,
+                  old_sinks_json, new_sinks_json
+           FROM idx_fee_router_sinks_updated
+           ORDER BY block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<FeeRouterSinksUpdateRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(FeeRouterSinksUpdateRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                contract_address: r.try_get("contract_address").ok()?,
+                actor: r.try_get("actor").ok()?,
+                old_sinks_json: r.try_get("old_sinks_json").ok()?,
+                new_sinks_json: r.try_get("new_sinks_json").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct FeeRouterFeesDistributedRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    contract_address: String,
+    token: String,
+    amount: String,
+    shares_json: String,
+}
+
+async fn fee_router_fees_distributed(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT block_number, tx_hash, log_index, contract_address, token,
+                  amount::text AS amount, shares_json
+           FROM idx_fee_router_fees_distributed
+           ORDER BY block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<FeeRouterFeesDistributedRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(FeeRouterFeesDistributedRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                contract_address: r.try_get("contract_address").ok()?,
+                token: r.try_get("token").ok()?,
+                amount: r.try_get("amount").ok()?,
+                shares_json: r.try_get("shares_json").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct FactionStatRow {
+    faction_id: String,
+    net_deposits: String,
+    deposit_count: String,
+    withdrawal_count: String,
+}
+
+async fn rabbit_faction_stats(State(state): State<AppState>) -> Response {
+    let rows = sqlx::query(
+        r#"WITH dep AS (
+               SELECT faction_id, SUM(amount) AS dep_amt, COUNT(*)::bigint AS dep_cnt
+               FROM idx_rabbit_deposit
+               GROUP BY faction_id
+           ),
+           wit AS (
+               SELECT faction_id, SUM(amount) AS wit_amt, COUNT(*)::bigint AS wit_cnt
+               FROM idx_rabbit_withdrawal
+               GROUP BY faction_id
+           ),
+           joined AS (
+               SELECT COALESCE(dep.faction_id, wit.faction_id) AS faction_id,
+                      (COALESCE(dep.dep_amt, 0) - COALESCE(wit.wit_amt, 0)) AS net_amt,
+                      COALESCE(dep.dep_cnt, 0) AS deposit_count,
+                      COALESCE(wit.wit_cnt, 0) AS withdrawal_count
+               FROM dep
+               FULL OUTER JOIN wit ON dep.faction_id = wit.faction_id
+           )
+           SELECT faction_id::text AS faction_id,
+                  net_amt::text AS net_deposits,
+                  deposit_count::text AS deposit_count,
+                  withdrawal_count::text AS withdrawal_count
+           FROM joined
+           ORDER BY net_amt DESC NULLS LAST"#,
+    )
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<FactionStatRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(FactionStatRow {
+                faction_id: r.try_get::<String, _>("faction_id").ok()?,
+                net_deposits: r.try_get("net_deposits").ok()?,
+                deposit_count: r.try_get("deposit_count").ok()?,
+                withdrawal_count: r.try_get("withdrawal_count").ok()?,
+            })
+        })
+        .collect();
+
+    let body = json!({ "items": items });
 
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());

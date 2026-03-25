@@ -8,7 +8,7 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { erc20Abi, referralRegistryReadAbi, referralRegistryWriteAbi } from "@/lib/abis";
 import { normalizeReferralCode } from "@/lib/referralCode";
-import { friendlyRevertMessage } from "@/lib/revertMessage";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchReferralApplied,
@@ -50,10 +50,10 @@ export function ReferralsPage() {
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
   const base = typeof window !== "undefined" ? window.location.origin : "";
-  let sharePreview = `${base}/?ref=yourcode`;
+  let sharePreview = `${base}/timecurve?ref=yourcode`;
   try {
     if (codeInput.trim()) {
-      sharePreview = `${base}/?ref=${encodeURIComponent(normalizeReferralCode(codeInput))}`;
+      sharePreview = `${base}/timecurve?ref=${encodeURIComponent(normalizeReferralCode(codeInput))}`;
     }
   } catch {
     /* invalid while typing */
@@ -123,7 +123,7 @@ export function ReferralsPage() {
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: tx });
     } catch (e) {
-      setErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+      setErr(friendlyRevertFromUnknown(e));
     }
   }
 
@@ -136,7 +136,7 @@ export function ReferralsPage() {
         setErr("Enter a valid code first.");
         return;
       }
-      const link = `${base}/?ref=${encodeURIComponent(normalized)}`;
+      const link = `${base}/timecurve?ref=${encodeURIComponent(normalized)}`;
       void navigator.clipboard.writeText(link);
     } catch {
       setErr("Could not copy to clipboard.");
