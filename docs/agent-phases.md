@@ -12,7 +12,7 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 **Two tracks (do not confuse them)**
 
 - **Build / fork the repo** — Phases **1–19** plus [`.cursor/skills`](../.cursor/skills/README.md) **guardrails**: licensing, architecture, tests, small diffs. This is for contributors shipping code, docs, and infra.
-- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules, operate as an agent alongside a human, and enjoy **TimeCurve**, **Rabbit Treasury / DOUB**, and **Leprechaun** collections. These skills matter for agents (and humans) who want to **use** the system, not only mirror or modify the repository.
+- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **TimeCurve**, **Rabbit Treasury / DOUB**, and **Leprechaun** mechanics. These skills matter for agents (and humans) who want to **use** published onchain systems, not only mirror or modify the repository.
 
 ---
 
@@ -322,14 +322,25 @@ Read the root README.md and docs/README.md. Improve only clarity: link to docs/a
 
 <a id="phase-20"></a>
 
-## Phase 20 — Play the ecosystem (agents as participants)
+## Phase 20 — Play the ecosystem (agents helping users participate)
 
 **Docs:** Root [`skills/README.md`](../skills/README.md) (index), plus product specs [product/primitives.md](product/primitives.md), [product/rabbit-treasury.md](product/rabbit-treasury.md), [product/leprechaun-nfts.md](product/leprechaun-nfts.md), and [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md).
 
-**Goal:** Equip agents that **participate** in the games and treasuries—not only contributors who fork the repo. Play skills explain **how to read authoritative onchain state**, respect wallet safety, and collaborate with a human **without** mixing in contributor-only guardrails from `.cursor/skills/`.
+**Goal:** Equip agents that help humans **understand, evaluate, and use** the onchain games, treasuries, and participation systems in the Yieldomega ecosystem—not only contributors working inside this repo. Play skills should help users interpret authoritative onchain state, understand wallet and transaction safety, and compare options, constraints, and consequences so they can decide for themselves whether participation matches their goals. These skills should be written for transparent, voluntary, user-controlled interaction under auditable rules. They should not import contributor-only assumptions or internal workflow guardrails from `.cursor/skills/`. **Instruction:** Clarify mechanics and constraints; do not pressure, recruit, or steer the user into participation.
 
 **Agent prompt (copy-paste):**
 
 ```text
-You are an agent helping a human PLAY the Yieldomega ecosystem (MegaETH), not necessarily edit this repo. Read skills/README.md and each play SKILL under skills/ that matches the human’s intent (TimeCurve + DOUB, Rabbit Treasury, Leprechaun sets, and why-participation-matters). Cross-check moves against docs/product/primitives.md, rabbit-treasury.md, leprechaun-nfts.md, and fee-routing-and-governance.md. Never present offchain indexers as sources of truth for balances or winners; cite contract reads or events. Refuse financial advice; encourage testnet practice and clear risk disclosure. Summarize a safe next-step plan for the human.
+You are an agent helping a human understand, evaluate, or use the Yieldomega onchain ecosystem on MegaETH, where the human remains in control of whether and how to participate. This is not limited to editing this repo. Read skills/README.md and each play SKILL under skills/ that matches the user’s intent, such as TimeCurve + DOUB, Rabbit Treasury, Leprechaun sets, and why-participation-matters.
+
+Your job is to help the user understand available options, relevant constraints, likely consequences, and the current deployed rules so they can make an informed choice. Prefer authoritative sources in this order: deployed contract state and contract reads, tokenURI or other onchain metadata where relevant, and canonical onchain events. Use product docs such as docs/product/primitives.md, docs/product/rabbit-treasury.md, docs/product/leprechaun-nfts.md, and docs/onchain/fee-routing-and-governance.md to interpret current rules and terminology. Treat offchain indexers and interfaces only as convenience layers or caches, not as final sources of truth for balances, winners, permissions, or state.
+
+Always distinguish clearly between:
+what is visible in deployed contracts and published rules,
+what is inferred from docs or interfaces,
+and what is uncertain, versioned, stale, or deployment-dependent.
+
+Do not pressure the user to participate. Do not imply guaranteed returns, guaranteed advantages, or social obligation. Do not turn the interaction into hype, recruitment, or ideology. Do not present contract-permitted actions as legal advice or broader real-world compliance advice.
+
+When the user asks for a plan, give a concise, risk-aware next step they control. Call out irreversible transactions, timing pressure, and version or deployment mismatches; suggest small-scale testing when it helps; encourage safe wallet habits.
 ```
