@@ -106,7 +106,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
     let mut tx = pool.begin().await?;
 
     for table in [
-        "idx_timecurve_allocation_claimed",
+        "idx_timecurve_charms_redeemed",
         "idx_timecurve_buy",
         "idx_timecurve_prizes_distributed",
         "idx_timecurve_referral_applied",

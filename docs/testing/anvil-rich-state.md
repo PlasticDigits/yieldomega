@@ -23,7 +23,7 @@ The script:
 
 1. **`SimulateAnvilRichStatePart1`** — Transfers USDM from the deployer to test accounts, **max-size** TimeCurve buys (avoids stale `minBuy` across broadcast txs), Rabbit deposits + one partial withdraw.
 2. **Warps time** past `TimeCurve.deadline` via `anvil_increaseTime` (required because `vm.warp` in `forge script --broadcast` is not replayed on Anvil).
-3. **`SimulateAnvilRichStatePart2`** — `endSale`, `claimAllocation` ×4, `distributePrizes`, NFT `createSeries` ×2 + `mint` ×2, `setAlphaWad`.
+3. **`SimulateAnvilRichStatePart2`** — `endSale`, `redeemCharms` ×4, `distributePrizes`, NFT `createSeries` ×2 + `mint` ×2, `setAlphaWad`.
 4. **Three `finalizeEpoch()`** calls on RabbitTreasury with warps to each `epochEnd` (86400s epochs per DeployDev).
 
 `USDM_ADDRESS` for the Forge scripts is taken from **`TimeCurve.acceptedAsset()`** (not from broadcast JSON), so it stays correct even when `MockUSDm` was skipped at deploy time.
@@ -51,14 +51,14 @@ With the indexer listening on e.g. `127.0.0.1:3100` and caught up to the same RP
 BASE=http://127.0.0.1:3100
 curl -sS "$BASE/v1/status" | jq .
 curl -sS "$BASE/v1/timecurve/buys?limit=20" | jq .
-curl -sS "$BASE/v1/timecurve/allocation-claims?limit=20" | jq .
+curl -sS "$BASE/v1/timecurve/charm-redemptions?limit=20" | jq .
 curl -sS "$BASE/v1/rabbit/deposits?limit=20" | jq .
 curl -sS "$BASE/v1/rabbit/withdrawals?limit=20" | jq .
 curl -sS "$BASE/v1/rabbit/health-epochs?limit=10" | jq .
 curl -sS "$BASE/v1/leprechauns/mints?limit=20" | jq .
 ```
 
-Expect multiple rows in buys, deposits, health epochs (after finalizes), allocation claims, mints, and withdrawals if the withdraw path ran.
+Expect multiple rows in buys, deposits, health epochs (after finalizes), charm redemptions, mints, and withdrawals if the withdraw path ran.
 
 ## Frontend
 
@@ -74,7 +74,7 @@ See [`docs/testing/e2e-anvil.md`](e2e-anvil.md) for the `VITE_*` contract.
 | Phase | Contracts | Notable decoded events (indexer) |
 |-------|-----------|----------------------------------|
 | Part1 | TimeCurve, RabbitTreasury | `Buy`, `BurrowDeposited`, `BurrowReserveBalanceUpdated`, `BurrowWithdrawn` |
-| Warp + Part2 | TimeCurve, LeprechaunNFT, RabbitTreasury | `SaleEnded`, `AllocationClaimed`, `PrizesDistributed`, `SeriesCreated`, `Minted`, `ParamsUpdated` |
+| Warp + Part2 | TimeCurve, LeprechaunNFT, RabbitTreasury | `SaleEnded`, `CharmsRedeemed`, `PrizesDistributed`, `SeriesCreated`, `Minted`, `ParamsUpdated` |
 | Shell epochs | RabbitTreasury | `BurrowRepricingApplied`, `BurrowEpochReserveSnapshot`, `BurrowHealthEpochFinalized`, `BurrowEpochOpened` |
 
 FeeRouter `FeesDistributed` / `SinksUpdated` are **not** indexed by the current decoder.

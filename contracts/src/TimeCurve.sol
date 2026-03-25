@@ -11,10 +11,10 @@ import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 
 /// @title TimeCurve — token launch primitive
 /// @notice Implements the sale lifecycle per docs/product/primitives.md:
-///         continuous min-buy growth, per-tx cap, timer extension with cap,
-///         deterministic prize podiums, proportional token allocation.
-/// @dev Allocation model: each buyer's share = userSpend / totalRaised * totalTokensForSale.
-///      Claimed after sale ends.
+///         continuous min charm price (floor) growth, per-tx cap, timer extension with cap,
+///         deterministic prize podiums, proportional charm redemption into launched tokens.
+/// @dev Charm model: each buyer accumulates `charmWeight` (accepted-asset spend). After `endSale`,
+///      `redeemCharms` sends `totalTokensForSale * charmWeight / totalRaised` of launched token.
 contract TimeCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -55,11 +55,11 @@ contract TimeCurve is ReentrancyGuard {
     bool public prizesDistributed;
 
     // ── Per-user tracking ──────────────────────────────────────────────
-    mapping(address => uint256) public userSpend;
+    mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
     mapping(address => uint256) public biggestSingleBuy;
     mapping(address => uint256) public closingWindowBuyCount;
-    mapping(address => bool) public allocationClaimed;
+    mapping(address => bool) public charmsRedeemed;
 
     // ── Podium tracking ────────────────────────────────────────────────
     struct Podium {
@@ -88,7 +88,7 @@ contract TimeCurve is ReentrancyGuard {
         uint256 buyIndex
     );
     event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
-    event AllocationClaimed(address indexed buyer, uint256 tokenAmount);
+    event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
     event PrizesDistributed();
     event ReferralApplied(
         address indexed buyer,
@@ -172,7 +172,7 @@ contract TimeCurve is ReentrancyGuard {
         uint256 minBuy = TimeMath.currentMinBuy(initialMinBuy, growthRateWad, elapsed);
         uint256 maxBuy = minBuy * purchaseCapMultiple;
 
-        require(amount >= minBuy, "TimeCurve: below min buy");
+        require(amount >= minBuy, "TimeCurve: below min charm price");
         require(amount <= maxBuy, "TimeCurve: above cap");
 
         if (codeHash != bytes32(0)) {
@@ -199,7 +199,7 @@ contract TimeCurve is ReentrancyGuard {
 
         // Update state
         totalRaised += amount;
-        userSpend[msg.sender] += amount;
+        charmWeight[msg.sender] += amount;
         buyCount[msg.sender] += 1;
         _totalBuys += 1;
 
@@ -213,7 +213,7 @@ contract TimeCurve is ReentrancyGuard {
             biggestSingleBuy[msg.sender] = amount;
         }
         _updateTopThree(CAT_BIGGEST_BUY, msg.sender, biggestSingleBuy[msg.sender]);
-        _updateTopThree(CAT_HIGHEST_CUMULATIVE, msg.sender, userSpend[msg.sender]);
+        _updateTopThree(CAT_HIGHEST_CUMULATIVE, msg.sender, charmWeight[msg.sender]);
         _trackOpeningWindow(msg.sender, elapsed);
         _trackClosingWindow(msg.sender);
 
@@ -231,17 +231,17 @@ contract TimeCurve is ReentrancyGuard {
         emit SaleEnded(block.timestamp, totalRaised, _totalBuys);
     }
 
-    /// @notice Claim proportional token allocation after sale ends.
-    function claimAllocation() external nonReentrant {
+    /// @notice Redeem charm weight for launched tokens after sale ends (pro-rata clearing).
+    function redeemCharms() external nonReentrant {
         require(ended, "TimeCurve: not ended");
-        require(userSpend[msg.sender] > 0, "TimeCurve: no spend");
-        require(!allocationClaimed[msg.sender], "TimeCurve: already claimed");
-        allocationClaimed[msg.sender] = true;
+        require(charmWeight[msg.sender] > 0, "TimeCurve: no charm weight");
+        require(!charmsRedeemed[msg.sender], "TimeCurve: already redeemed");
+        charmsRedeemed[msg.sender] = true;
 
-        uint256 allocation = (totalTokensForSale * userSpend[msg.sender]) / totalRaised;
-        require(allocation > 0, "TimeCurve: zero allocation");
-        launchedToken.safeTransfer(msg.sender, allocation);
-        emit AllocationClaimed(msg.sender, allocation);
+        uint256 tokenOut = (totalTokensForSale * charmWeight[msg.sender]) / totalRaised;
+        require(tokenOut > 0, "TimeCurve: nothing to redeem");
+        launchedToken.safeTransfer(msg.sender, tokenOut);
+        emit CharmsRedeemed(msg.sender, tokenOut);
     }
 
     /// @notice Distribute prizes from PrizeVault to podium winners.
@@ -286,6 +286,7 @@ contract TimeCurve is ReentrancyGuard {
 
     // ── View helpers ───────────────────────────────────────────────────
 
+    /// @notice Current minimum buy (charm price floor) in accepted asset units.
     function currentMinBuyAmount() external view returns (uint256) {
         if (saleStart == 0) return initialMinBuy;
         return TimeMath.currentMinBuy(initialMinBuy, growthRateWad, block.timestamp - saleStart);

@@ -10,6 +10,13 @@ mod contracts {
     use alloy_sol_types::sol;
 
     sol! {
+        /// Legacy event name (same payload as `CharmsRedeemed`); keep for historical logs.
+        contract TimeCurveEventsLegacy {
+            event AllocationClaimed(address indexed buyer, uint256 tokenAmount);
+        }
+    }
+
+    sol! {
         contract TimeCurveEvents {
             event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
             event Buy(
@@ -21,7 +28,7 @@ mod contracts {
                 uint256 buyIndex
             );
             event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
-            event AllocationClaimed(address indexed buyer, uint256 tokenAmount);
+            event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
             event PrizesDistributed();
             event ReferralApplied(
                 address indexed buyer,
@@ -120,7 +127,7 @@ mod contracts {
 
 use contracts::{
     FeeRouterEvents, LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents, ReferralRegistryEvents,
-    TimeCurveEvents,
+    TimeCurveEvents, TimeCurveEventsLegacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -154,7 +161,7 @@ pub enum DecodedEvent {
         total_raised: U256,
         total_buys: U256,
     },
-    TimeCurveAllocationClaimed {
+    TimeCurveCharmsRedeemed {
         buyer: Address,
         token_amount: U256,
     },
@@ -321,10 +328,19 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
-    if topic0 == TimeCurveEvents::AllocationClaimed::SIGNATURE_HASH {
-        if let Ok(d) = TimeCurveEvents::AllocationClaimed::decode_log(log, true) {
+    if topic0 == TimeCurveEvents::CharmsRedeemed::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::CharmsRedeemed::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveAllocationClaimed {
+            return DecodedEvent::TimeCurveCharmsRedeemed {
+                buyer: e.buyer,
+                token_amount: e.tokenAmount,
+            };
+        }
+    }
+    if topic0 == TimeCurveEventsLegacy::AllocationClaimed::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEventsLegacy::AllocationClaimed::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveCharmsRedeemed {
                 buyer: e.buyer,
                 token_amount: e.tokenAmount,
             };

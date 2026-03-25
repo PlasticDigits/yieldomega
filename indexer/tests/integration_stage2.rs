@@ -144,7 +144,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/rabbit/deposits?limit=2",
         "/v1/rabbit/withdrawals?limit=2",
         "/v1/rabbit/health-epochs?limit=2",
-        "/v1/timecurve/allocation-claims?limit=2",
+        "/v1/timecurve/charm-redemptions?limit=2",
         "/v1/leprechauns/mints?limit=2",
         "/v1/fee-router/sinks-updates?limit=2",
         "/v1/fee-router/fees-distributed?limit=2",
@@ -209,7 +209,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let stats = response_json(res).await;
-    assert_eq!(stats["indexed_total_spend"], "1");
+    assert_eq!(stats["indexed_charm_weight"], "1");
     assert_eq!(stats["indexed_buy_count"], "1");
     assert_eq!(
         stats["buyer"],
@@ -263,7 +263,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             total_raised: u2,
             total_buys: u1,
         }),
-        next(DecodedEvent::TimeCurveAllocationClaimed {
+        next(DecodedEvent::TimeCurveCharmsRedeemed {
             buyer: alice,
             token_amount: u1,
         }),
@@ -360,7 +360,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_timecurve_sale_ended", 100).await, 1);
     assert_eq!(
-        count_where(&pool, "idx_timecurve_allocation_claimed", 100).await,
+        count_where(&pool, "idx_timecurve_charms_redeemed", 100).await,
         1
     );
     assert_eq!(

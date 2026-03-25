@@ -21,9 +21,9 @@ export const timeCurveReadAbi = parseAbi([
   "function openingWindowSec() view returns (uint256)",
   "function closingWindowSec() view returns (uint256)",
   "function podium(uint8 category) view returns (address[3] winners, uint256[3] values)",
-  "function userSpend(address user) view returns (uint256)",
+  "function charmWeight(address user) view returns (uint256)",
   "function buyCount(address user) view returns (uint256)",
-  "function allocationClaimed(address user) view returns (bool)",
+  "function charmsRedeemed(address user) view returns (bool)",
   "function biggestSingleBuy(address user) view returns (uint256)",
   "function prizesDistributed() view returns (bool)",
 ]);
@@ -32,7 +32,7 @@ export const timeCurveWriteAbi = parseAbi([
   "function buy(uint256 amount)",
   "function buy(uint256 amount, bytes32 codeHash)",
   "function endSale()",
-  "function claimAllocation()",
+  "function redeemCharms()",
   "function distributePrizes()",
 ]);
 

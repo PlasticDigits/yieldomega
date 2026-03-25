@@ -48,7 +48,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
         .route("/v1/rabbit/withdrawals", get(rabbit_withdrawals))
         .route("/v1/rabbit/health-epochs", get(rabbit_health_epochs))
-        .route("/v1/timecurve/allocation-claims", get(timecurve_allocation_claims))
+        .route("/v1/timecurve/charm-redemptions", get(timecurve_charm_redemptions))
         .route("/v1/leprechauns/mints", get(leprechaun_mints))
         .route("/v1/timecurve/prize-distributions", get(timecurve_prize_distributions))
         .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
@@ -208,7 +208,7 @@ async fn timecurve_buyer_stats(
     }
 
     let row = sqlx::query(
-        r#"SELECT COALESCE(SUM(amount), 0)::text AS indexed_total_spend,
+        r#"SELECT COALESCE(SUM(amount), 0)::text AS indexed_charm_weight,
                   COUNT(*)::text AS indexed_buy_count
            FROM idx_timecurve_buy
            WHERE LOWER(buyer) = LOWER($1)"#,
@@ -228,12 +228,12 @@ async fn timecurve_buyer_stats(
         }
     };
 
-    let indexed_total_spend: String = row.try_get("indexed_total_spend").unwrap_or_else(|_| "0".into());
+    let indexed_charm_weight: String = row.try_get("indexed_charm_weight").unwrap_or_else(|_| "0".into());
     let indexed_buy_count: String = row.try_get("indexed_buy_count").unwrap_or_else(|_| "0".into());
 
     let body = json!({
         "buyer": q.buyer,
-        "indexed_total_spend": indexed_total_spend,
+        "indexed_charm_weight": indexed_charm_weight,
         "indexed_buy_count": indexed_buy_count,
     });
 
@@ -534,7 +534,7 @@ async fn rabbit_health_epochs(
 }
 
 #[derive(Serialize)]
-struct AllocationClaimRow {
+struct CharmRedemptionRow {
     block_number: String,
     tx_hash: String,
     log_index: i32,
@@ -542,7 +542,7 @@ struct AllocationClaimRow {
     token_amount: String,
 }
 
-async fn timecurve_allocation_claims(
+async fn timecurve_charm_redemptions(
     State(state): State<AppState>,
     Query(p): Query<PageParams>,
 ) -> Response {
@@ -551,7 +551,7 @@ async fn timecurve_allocation_claims(
 
     let rows = sqlx::query(
         r#"SELECT block_number, tx_hash, log_index, buyer, token_amount::text AS token_amount
-           FROM idx_timecurve_allocation_claimed
+           FROM idx_timecurve_charms_redeemed
            ORDER BY block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
     )
@@ -571,10 +571,10 @@ async fn timecurve_allocation_claims(
         }
     };
 
-    let items: Vec<AllocationClaimRow> = rows
+    let items: Vec<CharmRedemptionRow> = rows
         .into_iter()
         .filter_map(|r| {
-            Some(AllocationClaimRow {
+            Some(CharmRedemptionRow {
                 block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
                 tx_hash: r.try_get("tx_hash").ok()?,
                 log_index: r.try_get("log_index").ok()?,

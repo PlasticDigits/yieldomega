@@ -55,7 +55,7 @@ export type HealthEpochItem = {
   internal_state_e_wad: string;
 };
 
-export type AllocationClaimItem = {
+export type CharmRedemptionItem = {
   block_number: string;
   tx_hash: string;
   log_index: number;
@@ -89,7 +89,7 @@ export async function fetchTimecurveBuys(limit = 20, offset = 0) {
 
 export type TimecurveBuyerStats = {
   buyer: string;
-  indexed_total_spend: string;
+  indexed_charm_weight: string;
   indexed_buy_count: string;
 };
 
@@ -117,9 +117,9 @@ export async function fetchRabbitHealthEpochs(limit = 10) {
   return getJson<{ items: HealthEpochItem[] }>(`/v1/rabbit/health-epochs?limit=${limit}`);
 }
 
-export async function fetchTimecurveAllocationClaims(limit = 20) {
-  return getJson<{ items: AllocationClaimItem[] }>(
-    `/v1/timecurve/allocation-claims?limit=${limit}`,
+export async function fetchTimecurveCharmRedemptions(limit = 20) {
+  return getJson<{ items: CharmRedemptionItem[] }>(
+    `/v1/timecurve/charm-redemptions?limit=${limit}`,
   );
 }
 
