@@ -19,7 +19,8 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Daily growth fraction | 25 % (`0.25`) → `growthRateWad = ln(1.25) ≈ 223_143_551_314_209_700` | Must be > 0; governance-set | Default |
 | Purchase cap multiple | 10× current min buy | Must be ≥ 2 | Default |
 | Timer extension per buy | 60 seconds | Must be > 0 | Default |
-| Maximum remaining timer | 86 400 seconds (24 h) | Must be ≥ timer extension | Default |
+| Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |
+| Maximum remaining timer | 345 600 seconds (96 h) | Ceiling on remaining time after each buy (`now + cap`); must be ≥ extension and ≥ initial | Default (dev deploy) |
 | Opening window duration | 3 600 seconds (1 h) | Must be > 0 | Default |
 | Closing window duration | 3 600 seconds (1 h) | Must be > 0 | Default |
 | Total tokens for sale | **TODO** — depends on launched token supply | > 0 | **TODO** |

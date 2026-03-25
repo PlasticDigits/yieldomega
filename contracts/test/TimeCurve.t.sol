@@ -58,6 +58,7 @@ contract TimeCurveTest is Test {
             GROWTH_RATE,
             10,              // purchaseCapMultiple
             60,              // timerExtensionSec
+            ONE_DAY,         // initialTimerSec
             ONE_DAY,         // timerCapSec
             1_000_000e18,    // totalTokensForSale
             3600,            // openingWindowSec
@@ -107,6 +108,7 @@ contract TimeCurveTest is Test {
             GROWTH_RATE,
             10,
             60,
+            ONE_DAY,
             ONE_DAY,
             1_000_000e18,
             3600,
@@ -202,6 +204,57 @@ contract TimeCurveTest is Test {
             tc.buy(minBuy);
             assertLe(tc.deadline(), block.timestamp + ONE_DAY, "deadline exceeds cap");
         }
+    }
+
+    /// @dev Initial sale window can be shorter than the per-buy remaining-time ceiling (e.g. 24h vs 96h).
+    function test_timer_initial_can_be_lower_than_cap() public {
+        uint256 fourDay = 4 * ONE_DAY;
+        TimeCurve tcWide = new TimeCurve(
+            usdm,
+            launchedToken,
+            router,
+            prizeVault,
+            address(0),
+            1e18,
+            GROWTH_RATE,
+            10,
+            60,
+            ONE_DAY,
+            fourDay,
+            1_000_000e18,
+            3600,
+            3600
+        );
+        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tcWide));
+        launchedToken.mint(address(tcWide), 1_000_000e18);
+        tcWide.startSale();
+        assertEq(tcWide.deadline(), block.timestamp + ONE_DAY);
+
+        _fundAndApproveCurve(alice, 2e18, tcWide);
+        vm.prank(alice);
+        tcWide.buy(1e18);
+        assertLe(tcWide.deadline(), block.timestamp + fourDay);
+        assertGt(tcWide.deadline(), block.timestamp + ONE_DAY);
+    }
+
+    function test_constructor_cap_below_initial_timer_reverts() public {
+        vm.expectRevert("TimeCurve: cap < initial timer");
+        new TimeCurve(
+            usdm,
+            launchedToken,
+            router,
+            prizeVault,
+            address(0),
+            1e18,
+            GROWTH_RATE,
+            10,
+            60,
+            ONE_DAY,
+            ONE_DAY - 1,
+            1_000_000e18,
+            3600,
+            3600
+        );
     }
 
     // ── Sale end and claims ────────────────────────────────────────────
@@ -385,6 +438,7 @@ contract TimeCurveTest is Test {
             10,
             60,
             ONE_DAY,
+            ONE_DAY,
             1_000_000e18,
             3600,
             3600
@@ -512,6 +566,7 @@ contract TimeCurveTest is Test {
             10,
             60,
             ONE_DAY,
+            ONE_DAY,
             1_000_000e18,
             3600,
             3600
@@ -530,6 +585,7 @@ contract TimeCurveTest is Test {
             GROWTH_RATE,
             10,
             60,
+            ONE_DAY,
             ONE_DAY,
             1_000_000e18,
             3600,
@@ -550,6 +606,7 @@ contract TimeCurveTest is Test {
             10,
             60,
             ONE_DAY,
+            ONE_DAY,
             1_000_000e18,
             3600,
             3600
@@ -569,6 +626,7 @@ contract TimeCurveTest is Test {
             10,
             60,
             ONE_DAY,
+            ONE_DAY,
             1_000_000e18,
             3600,
             3600
@@ -587,6 +645,7 @@ contract TimeCurveTest is Test {
             GROWTH_RATE,
             10,
             60,
+            ONE_DAY,
             ONE_DAY,
             1,
             3600,
