@@ -25,6 +25,7 @@ contract MockPlain is ERC20 {
 contract NonStandardERC20Test is Test {
     uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700;
     uint256 internal constant ONE_DAY = 86_400;
+    uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
     uint256 internal constant C_MAX = 2e18;
     uint256 internal constant C_STAR = 1_050_000_000_000_000_000;
@@ -55,9 +56,9 @@ contract NonStandardERC20Test is Test {
             1e18,
             0,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600

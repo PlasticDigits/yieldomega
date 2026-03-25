@@ -22,12 +22,34 @@ class TimeCurveParams:
     timer_cap_from_now_sec: float
     # Initial countdown until sale end at t=0 (before first buy).
     initial_timer_sec: float
+    # If set, use hybrid min-buy: linear leg for the first `hybrid_linear_days` calendar days
+    # (slope = daily_growth_frac per day from start), then compound tail at `hybrid_tail_daily_frac`.
+    # Sim-only unless mirrored in TimeMath.sol (v1 contracts use pure exponential).
+    hybrid_linear_days: float | None = None
+    hybrid_tail_daily_frac: float | None = None
 
 
 def min_buy_at(t_sec: float, p: TimeCurveParams) -> float:
-    """Continuous compounding: min_buy_0 * (1 + daily_growth_frac) ** (t_sec / 86400)."""
+    """
+    Minimum buy at elapsed `t_sec`.
+
+    Default: continuous compounding min_buy_0 * (1 + daily_growth_frac) ** (t_sec / 86400)
+    (matches `TimeMath.currentMinBuy` onchain).
+
+    Hybrid: if `hybrid_linear_days` is set, `min = min_buy_0 * (1 + f * d)` for d <= D, then
+    `m_knot * (1 + tail)^(d - D)` for d > D, where `f = daily_growth_frac`, `D = hybrid_linear_days`,
+    `tail = hybrid_tail_daily_frac` (default ~max(f*1.5, 0.30)).
+    """
     days = t_sec / 86400.0
-    return p.min_buy_0 * math.pow(1.0 + p.daily_growth_frac, days)
+    f = p.daily_growth_frac
+    if p.hybrid_linear_days is None:
+        return p.min_buy_0 * math.pow(1.0 + f, days)
+    d_hi = p.hybrid_linear_days
+    tail = p.hybrid_tail_daily_frac if p.hybrid_tail_daily_frac is not None else max(f * 1.5, 0.30)
+    if days <= d_hi:
+        return p.min_buy_0 * (1.0 + f * days)
+    m_knot = p.min_buy_0 * (1.0 + f * d_hi)
+    return m_knot * math.pow(1.0 + tail, days - d_hi)
 
 
 def next_sale_end(now_sec: float, current_end_sec: float, p: TimeCurveParams) -> float:
@@ -52,3 +74,42 @@ def clamp_spend(
     lo = min_buy_at(t_sec, p)
     hi = lo * p.purchase_cap_mult
     return max(lo, min(hi, desired))
+
+
+def canonical_timecurve_params(
+    *,
+    daily_growth_frac: float = 0.25,
+    min_buy_0: float = 1.0,
+    purchase_cap_mult: float = 10.0,
+    extension_sec: float = 120.0,
+    timer_cap_from_now_sec: float = 96 * 3600.0,
+    initial_timer_sec: float = 24 * 3600.0,
+    hybrid_linear_days: float | None = None,
+    hybrid_tail_daily_frac: float | None = None,
+) -> TimeCurveParams:
+    """
+    Canonical deployment targets (docs + `DeployDev.s.sol`): 24h initial, 96h timer cap,
+    120s extension per buy, 25% daily min-buy growth (exponential onchain), 10× cap unless overridden.
+    """
+    return TimeCurveParams(
+        daily_growth_frac=daily_growth_frac,
+        min_buy_0=min_buy_0,
+        purchase_cap_mult=purchase_cap_mult,
+        extension_sec=extension_sec,
+        timer_cap_from_now_sec=timer_cap_from_now_sec,
+        initial_timer_sec=initial_timer_sec,
+        hybrid_linear_days=hybrid_linear_days,
+        hybrid_tail_daily_frac=hybrid_tail_daily_frac,
+    )
+
+
+def hybrid_exploration_params(
+    *,
+    linear_days: float = 5.0,
+    tail_daily_frac: float = 0.38,
+) -> TimeCurveParams:
+    """Sim-only: linear early leg + stronger exponential tail (steeper long-run floor)."""
+    return canonical_timecurve_params(
+        hybrid_linear_days=linear_days,
+        hybrid_tail_daily_frac=tail_daily_frac,
+    )
