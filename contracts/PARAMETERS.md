@@ -6,6 +6,7 @@ fields without confirmed values carry explicit TODOs with bounds.
 
 Sources: [product/primitives.md](../docs/product/primitives.md),
 [product/rabbit-treasury.md](../docs/product/rabbit-treasury.md),
+[product/referrals.md](../docs/product/referrals.md),
 [onchain/fee-routing-and-governance.md](../docs/onchain/fee-routing-and-governance.md),
 [research/stablecoin-and-reserves.md](../docs/research/stablecoin-and-reserves.md).
 
@@ -24,6 +25,15 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Total tokens for sale | **TODO** — depends on launched token supply | > 0 | **TODO** |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
+| Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
+| Referral reward split | `10%` referrer + `10%` referee rebate + `80%` to `FeeRouter` | Fixed in `TimeCurve` bps constants | Default |
+
+## Referral registry
+
+| Parameter | Testnet default | Notes |
+|-----------|-----------------|--------|
+| CL8Y token (ERC-20) | Mock deploy or env address | **Not** `CL8YProtocolTreasury` — see [product/referrals.md](../docs/product/referrals.md) |
+| Registration burn | `1e18` (1 token, 18 decimals) | Must match token decimals on mainnet |
 
 ## TimeCurve fee split (basis points, must sum to 10 000)
 

@@ -140,6 +140,85 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveReferralApplied {
+            buyer,
+            referrer,
+            code_hash,
+            referrer_amount,
+            referee_amount,
+            amount_to_fee_router,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_referral_applied (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*buyer))
+            .bind(addr_hex(*referrer))
+            .bind(b256_hex(*code_hash))
+            .bind(u256_dec(*referrer_amount))
+            .bind(u256_dec(*referee_amount))
+            .bind(u256_dec(*amount_to_fee_router))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::ReferralCodeRegistered {
+            owner,
+            code_hash,
+            normalized_code,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_referral_code_registered (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    owner_address, code_hash, normalized_code
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*owner))
+            .bind(b256_hex(*code_hash))
+            .bind(normalized_code.as_str())
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::PrizeVaultPrizePaid {
+            winner,
+            token,
+            amount,
+            category,
+            placement,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_prize_vault_prize_paid (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    winner, token, amount, category, placement
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*winner))
+            .bind(addr_hex(*token))
+            .bind(u256_dec(*amount))
+            .bind(i16::from(*category))
+            .bind(i16::from(*placement))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::RabbitEpochOpened {
             epoch_id,
             start_timestamp,

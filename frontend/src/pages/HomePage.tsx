@@ -23,6 +23,10 @@ export function HomePage() {
           <Link to="/collection">Collection</Link> — browse minted leprechauns, token
           traits, and lucky relic status
         </li>
+        <li>
+          <Link to="/referrals">Referrals</Link> — register a code, share links, track
+          rewards
+        </li>
       </ul>
     </section>
   );
