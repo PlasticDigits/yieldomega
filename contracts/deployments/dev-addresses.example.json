@@ -14,7 +14,9 @@
     "FeeRouter": "",
     "TimeCurve": "",
     "LeprechaunNFT": "",
-    "LaunchedToken": ""
+    "LaunchedToken": "",
+    "MockCL8Y": "",
+    "ReferralRegistry": ""
   },
   "deployer": "",
   "deployBlock": 0,

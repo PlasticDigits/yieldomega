@@ -112,6 +112,8 @@ need human decisions before mainnet.
 | `DoubLPIncentives` | DOUB liquidity sink (30 %) — LP mechanics TODO |
 | `EcosystemTreasury` | CL8Y-governed pool (not a direct fee sink) |
 | `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting |
+| `ReferralRegistry` | Short referral codes; CL8Y burn to register; used by `TimeCurve` buys |
+| `MockCL8Y` | Dev-only burnable CL8Y for registration tests / local deploy |
 
 ## Libraries
 

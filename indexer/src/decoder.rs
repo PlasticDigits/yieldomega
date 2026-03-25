@@ -23,6 +23,26 @@ mod contracts {
             event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
             event AllocationClaimed(address indexed buyer, uint256 tokenAmount);
             event PrizesDistributed();
+            event ReferralApplied(
+                address indexed buyer,
+                address indexed referrer,
+                bytes32 indexed codeHash,
+                uint256 referrerAmount,
+                uint256 refereeAmount,
+                uint256 amountToFeeRouter
+            );
+        }
+    }
+
+    sol! {
+        contract ReferralRegistryEvents {
+            event ReferralCodeRegistered(address indexed owner, bytes32 indexed codeHash, string normalizedCode);
+        }
+    }
+
+    sol! {
+        contract PrizeVaultEvents {
+            event PrizePaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
         }
     }
 
@@ -85,7 +105,7 @@ mod contracts {
     }
 }
 
-use contracts::{LeprechaunEvents, RabbitTreasuryEvents, TimeCurveEvents};
+use contracts::{LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveEvents};
 
 /// Fully decoded log plus block metadata for persistence.
 #[derive(Debug, Clone)]
@@ -123,6 +143,26 @@ pub enum DecodedEvent {
         token_amount: U256,
     },
     TimeCurvePrizesDistributed,
+    TimeCurveReferralApplied {
+        buyer: Address,
+        referrer: Address,
+        code_hash: B256,
+        referrer_amount: U256,
+        referee_amount: U256,
+        amount_to_fee_router: U256,
+    },
+    ReferralCodeRegistered {
+        owner: Address,
+        code_hash: B256,
+        normalized_code: String,
+    },
+    PrizeVaultPrizePaid {
+        winner: Address,
+        token: Address,
+        amount: U256,
+        category: u8,
+        placement: u8,
+    },
     RabbitEpochOpened {
         epoch_id: U256,
         start_timestamp: U256,
@@ -265,6 +305,41 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
     if topic0 == TimeCurveEvents::PrizesDistributed::SIGNATURE_HASH {
         if TimeCurveEvents::PrizesDistributed::decode_log(log, true).is_ok() {
             return DecodedEvent::TimeCurvePrizesDistributed;
+        }
+    }
+    if topic0 == TimeCurveEvents::ReferralApplied::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::ReferralApplied::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveReferralApplied {
+                buyer: e.buyer,
+                referrer: e.referrer,
+                code_hash: e.codeHash,
+                referrer_amount: e.referrerAmount,
+                referee_amount: e.refereeAmount,
+                amount_to_fee_router: e.amountToFeeRouter,
+            };
+        }
+    }
+    if topic0 == ReferralRegistryEvents::ReferralCodeRegistered::SIGNATURE_HASH {
+        if let Ok(d) = ReferralRegistryEvents::ReferralCodeRegistered::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::ReferralCodeRegistered {
+                owner: e.owner,
+                code_hash: e.codeHash,
+                normalized_code: e.normalizedCode,
+            };
+        }
+    }
+    if topic0 == PrizeVaultEvents::PrizePaid::SIGNATURE_HASH {
+        if let Ok(d) = PrizeVaultEvents::PrizePaid::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::PrizeVaultPrizePaid {
+                winner: e.winner,
+                token: e.token,
+                amount: e.amount,
+                category: e.category,
+                placement: e.placement,
+            };
         }
     }
     if topic0 == RabbitTreasuryEvents::BurrowEpochOpened::SIGNATURE_HASH {

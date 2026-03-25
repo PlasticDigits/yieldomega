@@ -1,6 +1,9 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { NavLink, Outlet } from "react-router-dom";
-import { useChainId } from "wagmi";
+import { useChainId, useChains } from "wagmi";
+import { FeeTransparency } from "@/components/FeeTransparency";
+import { IndexerStatusBar } from "@/components/IndexerStatusBar";
+import { governanceUrl } from "@/lib/addresses";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -9,6 +12,9 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function RootLayout() {
   const chainId = useChainId();
+  const chains = useChains();
+  const chainName = chains.find((c) => c.id === chainId)?.name ?? `chain ${chainId}`;
+  const gov = governanceUrl();
 
   return (
     <div className="app-shell">
@@ -28,11 +34,14 @@ export function RootLayout() {
           <NavLink to="/collection" className={navLinkClass}>
             Collection
           </NavLink>
+          <NavLink to="/referrals" className={navLinkClass}>
+            Referrals
+          </NavLink>
         </nav>
         <div className="app-header__wallet">
-          <span className="chain-pill" title="Connected chain id">
-            <span className="chain-pill__label">chain</span>
-            <span className="chain-pill__value">{chainId}</span>
+          <span className="chain-pill" title="Connected network">
+            <span className="chain-pill__label">network</span>
+            <span className="chain-pill__value">{chainName}</span>
           </span>
           <ConnectButton.Custom>
             {({
@@ -123,6 +132,20 @@ export function RootLayout() {
       <main className="app-main">
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <div className="app-footer__row">
+          <IndexerStatusBar />
+          {gov && (
+            <a href={gov} target="_blank" rel="noreferrer">
+              Governance / CL8Y
+            </a>
+          )}
+        </div>
+        <div className="data-panel data-panel--footer">
+          <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
+          <FeeTransparency />
+        </div>
+      </footer>
     </div>
   );
 }

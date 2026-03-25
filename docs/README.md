@@ -28,6 +28,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | TimeCurve primitive | [product/primitives.md](product/primitives.md) |
 | Rabbit Treasury (incl. **`Burrow*`** indexer events) | [product/rabbit-treasury.md](product/rabbit-treasury.md) |
 | Leprechaun NFTs | [product/leprechaun-nfts.md](product/leprechaun-nfts.md) |
+| Referrals (TimeCurve) | [product/referrals.md](product/referrals.md) |
 | JSON schemas (metadata drafts, changelog) | [schemas/README.md](schemas/README.md) · [schemas/CHANGELOG.md](schemas/CHANGELOG.md) |
 | Fee routing and governance | [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) ([sinks](onchain/fee-routing-and-governance.md#fee-sinks), [governance](onchain/fee-routing-and-governance.md#governance-actors), [invariants](onchain/fee-routing-and-governance.md#post-update-invariants)) |
 | Treasury contracts (separation, roles) | [onchain/treasury-contracts.md](onchain/treasury-contracts.md) |

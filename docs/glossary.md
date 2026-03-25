@@ -34,6 +34,8 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **Doubloons (DOUB)** — Fungible receipt token for Rabbit Treasury (**Burrow**) deposits: internal accounting and repricing rules are **onchain**; not a bank deposit or fixed offchain promise.
 
+- **Referral code** — Short alphanumeric string registered onchain via **`ReferralRegistry`** by burning **CL8Y**; used on **`TimeCurve`** buys to attribute **referrer** and **referee** rewards per [product/referrals.md](product/referrals.md). Distinct from the **CL8Y protocol treasury** sink.
+
 ## Technical
 
 - **MegaETH / MegaEVM** — MegaETH L2; MegaEVM is the execution environment (EVM-compatible with MegaETH-specific gas and limits). See [research/megaeth.md](research/megaeth.md).
