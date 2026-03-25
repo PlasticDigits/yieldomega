@@ -139,7 +139,7 @@ contract TimeCurveTest is Test {
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
-        assertEq(tc.userSpend(alice), 1e18);
+        assertEq(tc.charmWeight(alice), 1e18);
         assertEq(tc.totalRaised(), 1e18);
     }
 
@@ -147,7 +147,7 @@ contract TimeCurveTest is Test {
         tc.startSale();
         _fundAndApprove(alice, 1e18);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: below min buy");
+        vm.expectRevert("TimeCurve: below min charm price");
         tc.buy(0.5e18);
     }
 
@@ -221,16 +221,16 @@ contract TimeCurveTest is Test {
         assertTrue(tc.ended());
 
         vm.prank(alice);
-        tc.claimAllocation();
+        tc.redeemCharms();
         // alice: 2/5 of 1M tokens = 400_000
         assertEq(launchedToken.balanceOf(alice), 400_000e18);
 
         vm.prank(bob);
-        tc.claimAllocation();
+        tc.redeemCharms();
         assertEq(launchedToken.balanceOf(bob), 600_000e18);
     }
 
-    function test_claimAllocation_reverts_before_end() public {
+    function test_redeemCharms_reverts_before_end() public {
         tc.startSale();
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
@@ -238,10 +238,10 @@ contract TimeCurveTest is Test {
 
         vm.prank(alice);
         vm.expectRevert("TimeCurve: not ended");
-        tc.claimAllocation();
+        tc.redeemCharms();
     }
 
-    function test_double_claim_reverts() public {
+    function test_double_redeem_reverts() public {
         tc.startSale();
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
@@ -250,10 +250,10 @@ contract TimeCurveTest is Test {
         tc.endSale();
 
         vm.prank(alice);
-        tc.claimAllocation();
+        tc.redeemCharms();
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: already claimed");
-        tc.claimAllocation();
+        vm.expectRevert("TimeCurve: already redeemed");
+        tc.redeemCharms();
     }
 
     // ── Min buy growth ─────────────────────────────────────────────────
@@ -576,7 +576,7 @@ contract TimeCurveTest is Test {
     }
 
     /// @dev Integer division can round claim to 0 when `totalTokensForSale` is tiny vs `totalRaised`.
-    function test_claimAllocation_zero_allocation_reverts() public {
+    function test_redeemCharms_nothing_to_redeem_reverts() public {
         TimeCurve tcSmall = new TimeCurve(
             usdm,
             launchedToken,
@@ -604,8 +604,8 @@ contract TimeCurveTest is Test {
         vm.warp(tcSmall.deadline() + 1);
         tcSmall.endSale();
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: zero allocation");
-        tcSmall.claimAllocation();
+        vm.expectRevert("TimeCurve: nothing to redeem");
+        tcSmall.redeemCharms();
     }
 
     // ── Prize distribution (griefing / sad paths) ──────────────────────

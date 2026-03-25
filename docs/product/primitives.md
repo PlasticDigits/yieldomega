@@ -2,7 +2,7 @@
 
 ## Intent
 
-TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players compete to accumulate **token allocation** from each buy while pursuing **prize categories** with **podium finishes** (1st, 2nd, 3rd) per category.
+TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players earn **charm weight** from each buy (accepted-asset spend) and redeem it for launched tokens after the sale; they also pursue **prize categories** with **podium finishes** (1st, 2nd, 3rd) per category.
 
 ## Core mechanics (requirements)
 
@@ -17,9 +17,9 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 - Each purchase amount is **capped** at a **fixed multiple** of the current minimum buy (for example **10x**). The multiple is a configurable constant or governed parameter.
 
-### Buy and allocation semantics
+### Buy and charm redemption semantics
 
-- A buy is a single **spend** in the accepted asset between the current **minimum buy** and the **per-transaction cap**. Token **allocation** for that spend is computed onchain from the sale’s pricing rule (for example proportional to spend against the active curve). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
+- A buy is a single **spend** in the accepted asset between the current **minimum buy** (charm price floor) and the **per-transaction cap**. Each buy increases the buyer’s **charm weight**. After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalRaised` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
 
 ### Timer extension
 
@@ -29,7 +29,7 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 ### Sale end condition
 
 - The sale **ends** when the **timer reaches zero** without further extension past the end boundary.
-- After end, **no further buys** are accepted; **claims** for allocation and prizes follow rules defined onchain.
+- After end, **no further buys** are accepted; **redemption** of charms for tokens and **prize** payouts follow rules defined onchain.
 
 ### Prize categories (first-class) — podiums and breadth
 
@@ -44,7 +44,7 @@ The system should support **onchain-trackable** leaderboards or deterministic wi
 | **Biggest buy** | **1st–3rd** by single-transaction spend. |
 | **Opening window** | **1st–3rd** buyers by tx order in the opening window (for example first hour). |
 | **Closing window** | **1st–3rd** by buy count in the closing window (for example final hour). |
-| **Highest cumulative spend** | **1st–3rd** by total USDm spent in the sale (distinct from single-tx “biggest buy”). |
+| **Highest cumulative spend** | **1st–3rd** by total accepted-asset spend (charm weight) in the sale (distinct from single-tx “biggest buy”). |
 
 Additional seasonal or governance-defined categories may be added; each must define **podium rules** and **tie-breaking** in the contract.
 

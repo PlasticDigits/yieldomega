@@ -105,12 +105,12 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
-        DecodedEvent::TimeCurveAllocationClaimed {
+        DecodedEvent::TimeCurveCharmsRedeemed {
             buyer,
             token_amount,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_allocation_claimed (
+                r#"INSERT INTO idx_timecurve_charms_redeemed (
                     block_number, block_hash, tx_hash, log_index, contract_address,
                     buyer, token_amount
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)

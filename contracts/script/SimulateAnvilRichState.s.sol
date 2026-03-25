@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /// @notice Two-part Anvil simulation (see `script/anvil_rich_state.sh` for time warps).
 /// @dev Part 1: fund actors, TimeCurve buys, Rabbit deposits + optional withdraw.
-///      Part 2: end sale, allocation claims, prize distribution, NFT series/mints, ParamsUpdated.
+///      Part 2: end sale, charm redemptions, prize distribution, NFT series/mints, ParamsUpdated.
 ///      Epoch finalizations run from the shell (vm.warp is not replayed on Anvil during `forge script --broadcast`).
 
 import {Script, console2} from "forge-std/Script.sol";
@@ -12,7 +12,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface ITimeCurve {
     function buy(uint256 amount) external;
     function endSale() external;
-    function claimAllocation() external;
+    function redeemCharms() external;
     function distributePrizes() external;
     function deadline() external view returns (uint256);
     function currentMinBuyAmount() external view returns (uint256);
@@ -195,7 +195,7 @@ contract SimulateAnvilRichStatePart2 is Script {
 
     function _claim(uint256 pk, address tc) internal {
         vm.startBroadcast(pk);
-        ITimeCurve(tc).claimAllocation();
+        ITimeCurve(tc).redeemCharms();
         vm.stopBroadcast();
     }
 }
