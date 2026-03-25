@@ -168,6 +168,7 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
           { address: tc, abi: timeCurveReadAbi, functionName: "purchaseCapMultiple" },
           { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
           { address: tc, abi: timeCurveReadAbi, functionName: "openingWindowSec" },
@@ -207,6 +208,7 @@ export function TimeCurvePage() {
     growthRateWadR,
     purchaseCapMultipleR,
     timerExtensionSecR,
+    initialTimerSecR,
     timerCapSecR,
     totalTokensForSaleR,
     openingWindowSecR,
@@ -760,6 +762,10 @@ export function TimeCurvePage() {
             <dt>timerExtensionSec</dt>
             <dd>
               {timerExtensionSecR?.status === "success" ? String(timerExtensionSecR.result) : "—"}
+            </dd>
+            <dt>initialTimerSec</dt>
+            <dd>
+              {initialTimerSecR?.status === "success" ? String(initialTimerSecR.result) : "—"}
             </dd>
             <dt>timerCapSec</dt>
             <dd>{timerCapSecR?.status === "success" ? String(timerCapSecR.result) : "—"}</dd>

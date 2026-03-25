@@ -11,7 +11,7 @@ import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 
 /// @title TimeCurve — token launch primitive
 /// @notice Implements the sale lifecycle per docs/product/primitives.md:
-///         continuous min charm price (floor) growth, per-tx cap, timer extension with cap,
+///         continuous min charm price (floor) growth, per-tx cap, timer extension with initial window + cap,
 ///         deterministic prize podiums, proportional charm redemption into launched tokens.
 /// @dev Charm model: each buyer accumulates `charmWeight` (accepted-asset spend). After `endSale`,
 ///      `redeemCharms` sends `totalTokensForSale * charmWeight / totalRaised` of launched token.
@@ -42,6 +42,9 @@ contract TimeCurve is ReentrancyGuard {
     uint256 public immutable growthRateWad;
     uint256 public immutable purchaseCapMultiple;
     uint256 public immutable timerExtensionSec;
+    /// @notice Seconds from `startSale` until the first sale deadline (before any buyer extends).
+    uint256 public immutable initialTimerSec;
+    /// @notice Upper bound on remaining time from `block.timestamp` after each buy (may exceed `initialTimerSec`).
     uint256 public immutable timerCapSec;
     uint256 public immutable totalTokensForSale;
     uint256 public immutable openingWindowSec;
@@ -109,6 +112,7 @@ contract TimeCurve is ReentrancyGuard {
         uint256 _growthRateWad,
         uint256 _purchaseCapMultiple,
         uint256 _timerExtensionSec,
+        uint256 _initialTimerSec,
         uint256 _timerCapSec,
         uint256 _totalTokensForSale,
         uint256 _openingWindowSec,
@@ -121,7 +125,9 @@ contract TimeCurve is ReentrancyGuard {
         require(_initialMinBuy > 0, "TimeCurve: zero minBuy");
         require(_purchaseCapMultiple >= 2, "TimeCurve: capMultiple < 2");
         require(_timerExtensionSec > 0, "TimeCurve: zero extension");
+        require(_initialTimerSec > 0, "TimeCurve: zero initial timer");
         require(_timerCapSec >= _timerExtensionSec, "TimeCurve: cap < extension");
+        require(_timerCapSec >= _initialTimerSec, "TimeCurve: cap < initial timer");
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
 
         acceptedAsset = _acceptedAsset;
@@ -132,6 +138,7 @@ contract TimeCurve is ReentrancyGuard {
         growthRateWad = _growthRateWad;
         purchaseCapMultiple = _purchaseCapMultiple;
         timerExtensionSec = _timerExtensionSec;
+        initialTimerSec = _initialTimerSec;
         timerCapSec = _timerCapSec;
         totalTokensForSale = _totalTokensForSale;
         openingWindowSec = _openingWindowSec;
@@ -147,7 +154,7 @@ contract TimeCurve is ReentrancyGuard {
             "TimeCurve: insufficient launched tokens"
         );
         saleStart = block.timestamp;
-        deadline = block.timestamp + timerCapSec;
+        deadline = block.timestamp + initialTimerSec;
         emit SaleStarted(block.timestamp, deadline, totalTokensForSale);
     }
 

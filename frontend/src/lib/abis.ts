@@ -16,6 +16,7 @@ export const timeCurveReadAbi = parseAbi([
   "function growthRateWad() view returns (uint256)",
   "function purchaseCapMultiple() view returns (uint256)",
   "function timerExtensionSec() view returns (uint256)",
+  "function initialTimerSec() view returns (uint256)",
   "function timerCapSec() view returns (uint256)",
   "function totalTokensForSale() view returns (uint256)",
   "function openingWindowSec() view returns (uint256)",
