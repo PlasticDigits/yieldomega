@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
-import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
-import { addresses } from "@/lib/addresses";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { estimateGasUnits } from "@/lib/estimateContractGas";
+import { TxHash } from "@/components/TxHash";
 import { erc20Abi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
@@ -15,6 +17,7 @@ import { sampleMinBuyCurve } from "@/lib/timeCurveMath";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchTimecurveAllocationClaims,
+  fetchTimecurveBuyerStats,
   fetchTimecurveBuys,
   fetchTimecurvePrizeDistributions,
   fetchTimecurvePrizePayouts,
@@ -24,6 +27,7 @@ import {
   type PrizeDistributionItem,
   type PrizePayoutItem,
   type ReferralAppliedItem,
+  type TimecurveBuyerStats,
 } from "@/lib/indexerApi";
 
 const PODIUM_LABELS = [
@@ -37,6 +41,7 @@ const PODIUM_LABELS = [
 
 export function TimeCurvePage() {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const tc = addresses.timeCurve;
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
   const [claims, setClaims] = useState<AllocationClaimItem[] | null>(null);
@@ -53,6 +58,10 @@ export function TimeCurvePage() {
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
   const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
   const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
+  const [buyerStats, setBuyerStats] = useState<TimecurveBuyerStats | null>(null);
+  const [gasBuy, setGasBuy] = useState<bigint | undefined>(undefined);
+  const [gasClaim, setGasClaim] = useState<bigint | undefined>(undefined);
+  const [gasDistribute, setGasDistribute] = useState<bigint | undefined>(undefined);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -127,6 +136,23 @@ export function TimeCurvePage() {
     };
   }, [address]);
 
+  useEffect(() => {
+    if (!address || !indexerBaseUrl()) {
+      setBuyerStats(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const s = await fetchTimecurveBuyerStats(address);
+      if (!cancelled) {
+        setBuyerStats(s);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
   const { data, isPending, isError, refetch } = useReadContracts({
     contracts: tc
       ? [
@@ -146,9 +172,26 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "openingWindowSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "closingWindowSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
         ]
       : [],
     query: { enabled: Boolean(tc) },
+  });
+
+  const {
+    data: userSaleData,
+    refetch: refetchUserSale,
+  } = useReadContracts({
+    contracts:
+      tc && address
+        ? [
+            { address: tc, abi: timeCurveReadAbi, functionName: "userSpend", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "allocationClaimed", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "biggestSingleBuy", args: [address] },
+          ]
+        : [],
+    query: { enabled: Boolean(tc && address) },
   });
 
   const [
@@ -168,7 +211,10 @@ export function TimeCurvePage() {
     openingWindowSecR,
     closingWindowSecR,
     launchedTokenR,
+    prizesDistributedR,
   ] = data ?? [];
+
+  const [userSpendR, buyCountR, allocationClaimedR, biggestSingleBuyR] = userSaleData ?? [];
 
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
@@ -242,6 +288,161 @@ export function TimeCurvePage() {
       40,
     );
   }, [initialMinBuyR, growthRateWadR, saleStart, now]);
+
+  const refetchAll = useCallback(() => {
+    void refetch();
+    void refetchUserSale();
+    if (address && indexerBaseUrl()) {
+      void fetchTimecurveBuyerStats(address).then(setBuyerStats);
+    }
+  }, [refetch, refetchUserSale, address]);
+
+  const expectedTokenAllocation = useMemo(() => {
+    if (ended?.status !== "success" || !ended.result) {
+      return undefined;
+    }
+    if (totalRaised?.status !== "success" || totalTokensForSaleR?.status !== "success") {
+      return undefined;
+    }
+    if (userSpendR?.status !== "success") {
+      return undefined;
+    }
+    const tr = totalRaised.result as bigint;
+    if (tr === 0n) {
+      return undefined;
+    }
+    const us = userSpendR.result as bigint;
+    const tts = totalTokensForSaleR.result as bigint;
+    return (tts * us) / tr;
+  }, [ended, totalRaised, totalTokensForSaleR, userSpendR]);
+
+  const indexerMismatch = useMemo(() => {
+    if (!buyerStats || userSpendR?.status !== "success" || buyCountR?.status !== "success") {
+      return null;
+    }
+    let idxSpend: bigint;
+    let idxCount: bigint;
+    try {
+      idxSpend = BigInt(buyerStats.indexed_total_spend);
+      idxCount = BigInt(buyerStats.indexed_buy_count);
+    } catch {
+      return "Could not parse indexer stats.";
+    }
+    const chainSpend = userSpendR.result as bigint;
+    const chainBuys = buyCountR.result as bigint;
+    if (idxSpend !== chainSpend || idxCount !== chainBuys) {
+      return "Indexer totals differ from onchain userSpend / buyCount (lag, reorg, or indexing bug). Trust the contract for execution.";
+    }
+    return null;
+  }, [buyerStats, userSpendR, buyCountR]);
+
+  const claimHint = useMemo(() => {
+    if (ended?.status !== "success" || !ended.result) {
+      return null;
+    }
+    if (userSpendR?.status !== "success" || (userSpendR.result as bigint) === 0n) {
+      return "No qualifying spend.";
+    }
+    if (allocationClaimedR?.status === "success" && allocationClaimedR.result) {
+      return "Already claimed.";
+    }
+    if (expectedTokenAllocation === undefined) {
+      return undefined;
+    }
+    if (expectedTokenAllocation === 0n) {
+      return "Zero token allocation at current totals.";
+    }
+    return null;
+  }, [ended, userSpendR, allocationClaimedR, expectedTokenAllocation]);
+
+  const distributeHint = useMemo(() => {
+    if (ended?.status !== "success" || !ended.result) {
+      return "End the sale first.";
+    }
+    if (prizesDistributedR?.status === "success" && prizesDistributedR.result) {
+      return "Prizes already marked distributed.";
+    }
+    return "May return without changing state if the prize vault balance is too small; retry after fees accrue.";
+  }, [ended, prizesDistributedR]);
+
+  useEffect(() => {
+    if (!address || !tc || !saleActive) {
+      setGasBuy(undefined);
+      return;
+    }
+    let amount: bigint;
+    try {
+      amount = parseUnits(buyStr.trim() || "0", decimals);
+    } catch {
+      setGasBuy(undefined);
+      return;
+    }
+    if (amount <= 0n) {
+      setGasBuy(undefined);
+      return;
+    }
+    const t = setTimeout(() => {
+      void (async () => {
+        let codeHash: `0x${string}` | undefined;
+        if (useReferral && referralRegistryOn && pendingRef) {
+          try {
+            codeHash = hashReferralCode(pendingRef);
+          } catch {
+            setGasBuy(undefined);
+            return;
+          }
+        }
+        const g = await estimateGasUnits({
+          address: tc,
+          abi: timeCurveWriteAbi,
+          functionName: "buy",
+          args: codeHash ? [amount, codeHash] : [amount],
+          account: address,
+          chainId,
+        });
+        setGasBuy(g);
+      })();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [
+    address,
+    tc,
+    saleActive,
+    buyStr,
+    decimals,
+    useReferral,
+    referralRegistryOn,
+    pendingRef,
+    chainId,
+  ]);
+
+  useEffect(() => {
+    if (!address || !tc || ended?.status !== "success" || !ended.result) {
+      setGasClaim(undefined);
+      return;
+    }
+    void estimateGasUnits({
+      address: tc,
+      abi: timeCurveWriteAbi,
+      functionName: "claimAllocation",
+      account: address,
+      chainId,
+    }).then(setGasClaim);
+  }, [address, tc, ended, chainId]);
+
+  useEffect(() => {
+    if (!address || !tc || ended?.status !== "success" || !ended.result) {
+      setGasDistribute(undefined);
+      return;
+    }
+    void estimateGasUnits({
+      address: tc,
+      abi: timeCurveWriteAbi,
+      functionName: "distributePrizes",
+      account: address,
+      chainId,
+    }).then(setGasDistribute);
+  }, [address, tc, ended, chainId]);
 
   async function handleLoadMoreBuys() {
     if (buysNextOffset === null) {
@@ -320,7 +521,7 @@ export function TimeCurvePage() {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       }
-      void refetch();
+      refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e));
     }
@@ -334,7 +535,7 @@ export function TimeCurvePage() {
     referralRegistryOn,
     pendingRef,
     writeContractAsync,
-    refetch,
+    refetchAll,
   ]);
 
   async function runVoid(fn: "endSale" | "claimAllocation" | "distributePrizes") {
@@ -349,7 +550,7 @@ export function TimeCurvePage() {
         functionName: fn,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      void refetch();
+      refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e));
     }
@@ -432,7 +633,66 @@ export function TimeCurvePage() {
                 "—"
               )}
             </dd>
+            <dt>prizesDistributed</dt>
+            <dd>
+              {prizesDistributedR?.status === "success" ? String(prizesDistributedR.result) : "—"}
+            </dd>
           </dl>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Your participation</h2>
+        {!isConnected && <p className="placeholder">Connect a wallet to see your onchain stats.</p>}
+        {isConnected && address && (
+          <>
+            <dl className="kv">
+              <dt>userSpend</dt>
+              <dd>
+                {userSpendR?.status === "success" ? (
+                  <AmountDisplay raw={userSpendR.result as bigint} decimals={decimals} />
+                ) : (
+                  "—"
+                )}
+              </dd>
+              <dt>buyCount</dt>
+              <dd>
+                {buyCountR?.status === "success" ? String(buyCountR.result) : "—"}
+              </dd>
+              <dt>biggestSingleBuy</dt>
+              <dd>
+                {biggestSingleBuyR?.status === "success" ? (
+                  <AmountDisplay raw={biggestSingleBuyR.result as bigint} decimals={decimals} />
+                ) : (
+                  "—"
+                )}
+              </dd>
+              <dt>allocationClaimed</dt>
+              <dd>
+                {allocationClaimedR?.status === "success"
+                  ? String(allocationClaimedR.result)
+                  : "—"}
+              </dd>
+              <dt>expected token allocation (if ended)</dt>
+              <dd>
+                {expectedTokenAllocation !== undefined ? (
+                  <AmountDisplay raw={expectedTokenAllocation} decimals={18} />
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </dl>
+            {indexerBaseUrl() && buyerStats && (
+              <p className="muted">
+                Indexer: spend {buyerStats.indexed_total_spend} · buys {buyerStats.indexed_buy_count}
+              </p>
+            )}
+            {indexerMismatch && <p className="error-text">{indexerMismatch}</p>}
+            {claimHint && <p className="muted">{claimHint}</p>}
+            {distributeHint && ended?.status === "success" && ended.result && (
+              <p className="muted">{distributeHint}</p>
+            )}
+          </>
         )}
       </div>
 
@@ -560,6 +820,9 @@ export function TimeCurvePage() {
                 {isWriting ? "Confirm in wallet…" : "Approve (if needed) & buy"}
               </button>
             </p>
+            {gasBuy !== undefined && (
+              <p className="muted">Est. gas (buy): ~{gasBuy.toString()} units</p>
+            )}
           </>
         )}
         {buyErr && <p className="error-text">{buyErr}</p>}
@@ -594,6 +857,13 @@ export function TimeCurvePage() {
             distributePrizes
           </button>
         </p>
+        {(gasClaim !== undefined || gasDistribute !== undefined) && (
+          <p className="muted">
+            {gasClaim !== undefined && <>Est. gas (claim): ~{gasClaim.toString()} units</>}
+            {gasClaim !== undefined && gasDistribute !== undefined && <> · </>}
+            {gasDistribute !== undefined && <>Est. gas (distribute): ~{gasDistribute.toString()} units</>}
+          </p>
+        )}
       </div>
 
       <div className="data-panel">
@@ -623,7 +893,8 @@ export function TimeCurvePage() {
             {buys.map((b) => (
               <li key={`${b.tx_hash}-${b.log_index}`}>
                 <span className="mono">{b.buyer.slice(0, 10)}…</span> — amount{" "}
-                <AmountDisplay raw={b.amount} decimals={decimals} /> — block {b.block_number}
+                <AmountDisplay raw={b.amount} decimals={decimals} /> — block {b.block_number} — tx{" "}
+                <TxHash hash={b.tx_hash} />
               </li>
             ))}
           </ul>
@@ -651,7 +922,8 @@ export function TimeCurvePage() {
             {claims.map((c) => (
               <li key={`${c.tx_hash}-${c.log_index}`}>
                 <span className="mono">{c.buyer.slice(0, 10)}…</span> — tokens{" "}
-                <AmountDisplay raw={c.token_amount} decimals={18} /> — block {c.block_number}
+                <AmountDisplay raw={c.token_amount} decimals={18} /> — block {c.block_number} — tx{" "}
+                <TxHash hash={c.tx_hash} />
               </li>
             ))}
           </ul>
@@ -665,7 +937,7 @@ export function TimeCurvePage() {
           <ul className="event-list">
             {prizeDist.map((p) => (
               <li key={`${p.tx_hash}-${p.log_index}`}>
-                PrizesDistributed — block {p.block_number} — tx {p.tx_hash.slice(0, 10)}…
+                PrizesDistributed — block {p.block_number} — tx <TxHash hash={p.tx_hash} />
               </li>
             ))}
           </ul>
@@ -680,7 +952,8 @@ export function TimeCurvePage() {
             {prizePayouts.map((p) => (
               <li key={`${p.tx_hash}-${p.log_index}`}>
                 winner <span className="mono">{p.winner.slice(0, 10)}…</span> — cat {p.category} place{" "}
-                {p.placement} — <AmountDisplay raw={BigInt(p.amount)} decimals={decimals} />
+                {p.placement} — <AmountDisplay raw={BigInt(p.amount)} decimals={decimals} /> — tx{" "}
+                <TxHash hash={p.tx_hash} />
               </li>
             ))}
           </ul>
@@ -696,7 +969,8 @@ export function TimeCurvePage() {
             {refApplied.map((r) => (
               <li key={`${r.tx_hash}-${r.log_index}`}>
                 buyer <span className="mono">{r.buyer.slice(0, 10)}…</span> — referrer reward{" "}
-                <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block {r.block_number}
+                <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block {r.block_number}{" "}
+                — tx <TxHash hash={r.tx_hash} />
               </li>
             ))}
           </ul>
