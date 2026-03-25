@@ -134,6 +134,9 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/rabbit/health-epochs?limit=2",
         "/v1/timecurve/allocation-claims?limit=2",
         "/v1/leprechauns/mints?limit=2",
+        "/v1/fee-router/sinks-updates?limit=2",
+        "/v1/fee-router/fees-distributed?limit=2",
+        "/v1/rabbit/faction-stats",
     ] {
         let res = app
             .clone()
@@ -302,6 +305,18 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             series_id: u1,
             to: alice,
         }),
+        next(DecodedEvent::FeeRouterSinksUpdated {
+            actor: alice,
+            old_destinations: [addr_byte(1); 4],
+            old_weights: [1000, 2000, 3000, 4000],
+            new_destinations: [addr_byte(2); 4],
+            new_weights: [2500, 2500, 2500, 2500],
+        }),
+        next(DecodedEvent::FeeRouterFeesDistributed {
+            token: reserve,
+            amount: u2,
+            shares: [u1, u1, u1, u2],
+        }),
     ];
 
     for d in &logs {
@@ -344,6 +359,14 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_rabbit_params_updated", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_nft_series_created", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_nft_minted", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_sinks_updated", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_fees_distributed", 100).await,
+        1
+    );
 
     // Idempotency: same (tx_hash, log_index) again
     let first = &logs[1];

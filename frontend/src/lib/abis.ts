@@ -9,8 +9,17 @@ export const timeCurveReadAbi = parseAbi([
   "function ended() view returns (bool)",
   "function currentMinBuyAmount() view returns (uint256)",
   "function acceptedAsset() view returns (address)",
+  "function launchedToken() view returns (address)",
   "function referralRegistry() view returns (address)",
   "function REFERRAL_EACH_BPS() view returns (uint16)",
+  "function initialMinBuy() view returns (uint256)",
+  "function growthRateWad() view returns (uint256)",
+  "function purchaseCapMultiple() view returns (uint256)",
+  "function timerExtensionSec() view returns (uint256)",
+  "function timerCapSec() view returns (uint256)",
+  "function totalTokensForSale() view returns (uint256)",
+  "function openingWindowSec() view returns (uint256)",
+  "function closingWindowSec() view returns (uint256)",
   "function podium(uint8 category) view returns (address[3] winners, uint256[3] values)",
 ]);
 

@@ -26,9 +26,11 @@ export type DepositItem = {
   tx_hash: string;
   log_index: number;
   user_address: string;
+  reserve_asset: string;
   amount: string;
   doub_out: string;
   epoch_id: string;
+  faction_id: string;
 };
 
 export type MintItem = {
@@ -74,8 +76,15 @@ async function getJson<T>(path: string): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
-export async function fetchTimecurveBuys(limit = 20) {
-  return getJson<{ items: BuyItem[] }>(`/v1/timecurve/buys?limit=${limit}`);
+export type PaginatedItems<T> = {
+  items: T[];
+  limit: number;
+  offset: number;
+  next_offset: number | null;
+};
+
+export async function fetchTimecurveBuys(limit = 20, offset = 0) {
+  return getJson<PaginatedItems<BuyItem>>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
 }
 
 export async function fetchRabbitDeposits(user: string | undefined, limit = 20) {
@@ -105,9 +114,11 @@ export type WithdrawalItem = {
   tx_hash: string;
   log_index: number;
   user_address: string;
+  reserve_asset: string;
   amount: string;
   doub_in: string;
   epoch_id: string;
+  faction_id: string;
 };
 
 export async function fetchRabbitWithdrawals(user: string | undefined, limit = 20) {
@@ -176,4 +187,47 @@ export async function fetchReferralApplied(referrer: string | undefined, limit =
     ? `/v1/referrals/applied?limit=${limit}&referrer=${encodeURIComponent(referrer)}`
     : `/v1/referrals/applied?limit=${limit}`;
   return getJson<{ items: ReferralAppliedItem[] }>(q);
+}
+
+export type FeeRouterSinksUpdateItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  contract_address: string;
+  actor: string;
+  old_sinks_json: string;
+  new_sinks_json: string;
+};
+
+export type FeeRouterFeesDistributedItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  contract_address: string;
+  token: string;
+  amount: string;
+  shares_json: string;
+};
+
+export async function fetchFeeRouterSinksUpdates(limit = 20, offset = 0) {
+  return getJson<PaginatedItems<FeeRouterSinksUpdateItem>>(
+    `/v1/fee-router/sinks-updates?limit=${limit}&offset=${offset}`,
+  );
+}
+
+export async function fetchFeeRouterFeesDistributed(limit = 20, offset = 0) {
+  return getJson<PaginatedItems<FeeRouterFeesDistributedItem>>(
+    `/v1/fee-router/fees-distributed?limit=${limit}&offset=${offset}`,
+  );
+}
+
+export type FactionStatItem = {
+  faction_id: string;
+  net_deposits: string;
+  deposit_count: string;
+  withdrawal_count: string;
+};
+
+export async function fetchRabbitFactionStats() {
+  return getJson<{ items: FactionStatItem[] }>("/v1/rabbit/faction-stats");
 }

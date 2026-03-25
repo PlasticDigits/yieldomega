@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useEffect, useState } from "react";
 import { useReadContracts } from "wagmi";
-import { addresses } from "@/lib/addresses";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { feeRouterReadAbi } from "@/lib/abis";
+import { fetchFeeRouterSinksUpdates, type FeeRouterSinksUpdateItem } from "@/lib/indexerApi";
 
 const LABELS = ["DOUB LP", "Rabbit Treasury", "Prizes", "CL8Y buy-and-burn"];
 
 export function FeeTransparency() {
   const fr = addresses.feeRouter;
+  const [sinksHistory, setSinksHistory] = useState<FeeRouterSinksUpdateItem[] | null>(null);
+  const [historyNote, setHistoryNote] = useState<string | null>(null);
+
   const { data, isPending, isError } = useReadContracts({
     contracts: fr
       ? ([0, 1, 2, 3] as const).map((i) => ({
@@ -19,6 +24,31 @@ export function FeeTransparency() {
       : [],
     query: { enabled: Boolean(fr) },
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!indexerBaseUrl()) {
+        setHistoryNote(null);
+        setSinksHistory(null);
+        return;
+      }
+      const res = await fetchFeeRouterSinksUpdates(8, 0);
+      if (cancelled) {
+        return;
+      }
+      if (!res) {
+        setHistoryNote("Indexer unreachable for history.");
+        setSinksHistory([]);
+        return;
+      }
+      setHistoryNote(null);
+      setSinksHistory(res.items);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (!fr) {
     return (
@@ -36,19 +66,55 @@ export function FeeTransparency() {
   }
 
   return (
-    <ul className="fee-sink-list">
-      {data.map((row, i) => {
-        if (row.status !== "success" || row.result === undefined) {
-          return null;
-        }
-        const [dest, bps] = row.result as readonly [`0x${string}`, number];
-        return (
-          <li key={i}>
-            <strong>{LABELS[i] ?? `Sink ${i}`}</strong>: {bps} bps →{" "}
-            <span className="mono">{dest}</span>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="fee-transparency">
+      <p className="muted">
+        <strong>Current onchain sinks</strong> (canonical for balances and routing)
+      </p>
+      <ul className="fee-sink-list">
+        {data.map((row, i) => {
+          if (row.status !== "success" || row.result === undefined) {
+            return null;
+          }
+          const [dest, bps] = row.result as readonly [`0x${string}`, number];
+          return (
+            <li key={i}>
+              <strong>{LABELS[i] ?? `Sink ${i}`}</strong>: {bps} bps →{" "}
+              <span className="mono">{dest}</span>
+            </li>
+          );
+        })}
+      </ul>
+      {sinksHistory && sinksHistory.length > 0 && (
+        <>
+          <p className="muted" style={{ marginTop: "0.75rem" }}>
+            <strong>Recent SinksUpdated events</strong> (indexer mirror)
+          </p>
+          <ul className="fee-sink-list fee-sink-list--compact">
+            {sinksHistory.map((row) => (
+              <li key={`${row.tx_hash}-${row.log_index}`}>
+                block {row.block_number} — actor <span className="mono">{row.actor.slice(0, 10)}…</span> —{" "}
+                new weights {summarizeSinksJson(row.new_sinks_json)}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {historyNote && <p className="muted">{historyNote}</p>}
+      {!indexerBaseUrl() && (
+        <p className="muted">Set <code>VITE_INDEXER_URL</code> for historical sink updates.</p>
+      )}
+    </div>
   );
+}
+
+function summarizeSinksJson(json: string): string {
+  try {
+    const p = JSON.parse(json) as { weights?: number[] };
+    if (Array.isArray(p.weights)) {
+      return p.weights.join(", ");
+    }
+  } catch {
+    /* ignore */
+  }
+  return json.length > 40 ? `${json.slice(0, 40)}…` : json;
 }

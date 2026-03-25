@@ -2,6 +2,8 @@
 
 Files here are **templates** or **ephemeral dev** snapshots for wiring the indexer (`ADDRESS_REGISTRY_PATH`) and frontend (`VITE_*` addresses).
 
+The indexer’s `contracts` object may include **`FeeRouter`**, **`ReferralRegistry`**, and **`PrizeVault`** (in addition to `TimeCurve`, `RabbitTreasury`, `LeprechaunNFT`). When set, those addresses are included in `eth_getLogs` filtering so FeeRouter `SinksUpdated` / `FeesDistributed`, referral registrations, and prize payouts are indexed.
+
 | File | Purpose |
 |------|---------|
 | `dev-addresses.example.json` | Copy to a local `dev-addresses.json` (do not commit secrets); fill after `DeployDev` on testnet/mainnet. |
