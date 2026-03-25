@@ -102,7 +102,7 @@ contract TimeCurveInvariantTest is Test {
         assertEq(tc.totalRaised(), handler.ghost_buyVolume(), "totalRaised");
     }
 
-    function invariant_timeCurve_userSpendLteTotalRaised() public view {
-        assertLe(tc.userSpend(alice), tc.totalRaised(), "userSpend");
+    function invariant_timeCurve_charmWeightLteTotalRaised() public view {
+        assertLe(tc.charmWeight(alice), tc.totalRaised(), "charmWeight");
     }
 }

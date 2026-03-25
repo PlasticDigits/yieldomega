@@ -5,6 +5,7 @@ import { formatUnits, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
@@ -16,13 +17,13 @@ import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { sampleMinBuyCurve } from "@/lib/timeCurveMath";
 import { wagmiConfig } from "@/wagmi-config";
 import {
-  fetchTimecurveAllocationClaims,
+  fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
   fetchTimecurveBuys,
   fetchTimecurvePrizeDistributions,
   fetchTimecurvePrizePayouts,
   fetchReferralApplied,
-  type AllocationClaimItem,
+  type CharmRedemptionItem,
   type BuyItem,
   type PrizeDistributionItem,
   type PrizePayoutItem,
@@ -36,7 +37,7 @@ const PODIUM_LABELS = [
   "Biggest buy",
   "Opening window",
   "Closing window",
-  "Highest cumulative spend",
+  "Highest cumulative charm weight",
 ];
 
 export function TimeCurvePage() {
@@ -44,7 +45,7 @@ export function TimeCurvePage() {
   const chainId = useChainId();
   const tc = addresses.timeCurve;
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
-  const [claims, setClaims] = useState<AllocationClaimItem[] | null>(null);
+  const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
   const [indexerNote, setIndexerNote] = useState<string | null>(null);
   const [claimsNote, setClaimsNote] = useState<string | null>(null);
   const [buyStr, setBuyStr] = useState("");
@@ -99,12 +100,12 @@ export function TimeCurvePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const data = await fetchTimecurveAllocationClaims(15);
+      const data = await fetchTimecurveCharmRedemptions(15);
       if (cancelled) {
         return;
       }
       if (!data) {
-        setClaimsNote("Set VITE_INDEXER_URL to load allocation claims.");
+        setClaimsNote("Set VITE_INDEXER_URL to load charm redemptions.");
         setClaims([]);
         return;
       }
@@ -185,9 +186,9 @@ export function TimeCurvePage() {
     contracts:
       tc && address
         ? [
-            { address: tc, abi: timeCurveReadAbi, functionName: "userSpend", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
             { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "allocationClaimed", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
             { address: tc, abi: timeCurveReadAbi, functionName: "biggestSingleBuy", args: [address] },
           ]
         : [],
@@ -214,7 +215,7 @@ export function TimeCurvePage() {
     prizesDistributedR,
   ] = data ?? [];
 
-  const [userSpendR, buyCountR, allocationClaimedR, biggestSingleBuyR] = userSaleData ?? [];
+  const [charmWeightR, buyCountR, charmsRedeemedR, biggestSingleBuyR] = userSaleData ?? [];
 
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
@@ -227,6 +228,18 @@ export function TimeCurvePage() {
   });
 
   const decimals = tokenDecimals !== undefined ? Number(tokenDecimals) : 18;
+
+  const launchedAddr =
+    launchedTokenR?.status === "success" ? (launchedTokenR.result as `0x${string}`) : undefined;
+
+  const { data: launchedDecimals } = useReadContract({
+    address: launchedAddr,
+    abi: erc20Abi,
+    functionName: "decimals",
+    query: { enabled: Boolean(launchedAddr) },
+  });
+
+  const launchedDec = launchedDecimals !== undefined ? Number(launchedDecimals) : 18;
 
   const referralRegistryOn =
     refRegAddr?.status === "success" &&
@@ -297,63 +310,63 @@ export function TimeCurvePage() {
     }
   }, [refetch, refetchUserSale, address]);
 
-  const expectedTokenAllocation = useMemo(() => {
+  const expectedTokenFromCharms = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {
       return undefined;
     }
     if (totalRaised?.status !== "success" || totalTokensForSaleR?.status !== "success") {
       return undefined;
     }
-    if (userSpendR?.status !== "success") {
+    if (charmWeightR?.status !== "success") {
       return undefined;
     }
     const tr = totalRaised.result as bigint;
     if (tr === 0n) {
       return undefined;
     }
-    const us = userSpendR.result as bigint;
+    const us = charmWeightR.result as bigint;
     const tts = totalTokensForSaleR.result as bigint;
     return (tts * us) / tr;
-  }, [ended, totalRaised, totalTokensForSaleR, userSpendR]);
+  }, [ended, totalRaised, totalTokensForSaleR, charmWeightR]);
 
   const indexerMismatch = useMemo(() => {
-    if (!buyerStats || userSpendR?.status !== "success" || buyCountR?.status !== "success") {
+    if (!buyerStats || charmWeightR?.status !== "success" || buyCountR?.status !== "success") {
       return null;
     }
     let idxSpend: bigint;
     let idxCount: bigint;
     try {
-      idxSpend = BigInt(buyerStats.indexed_total_spend);
+      idxSpend = BigInt(buyerStats.indexed_charm_weight);
       idxCount = BigInt(buyerStats.indexed_buy_count);
     } catch {
       return "Could not parse indexer stats.";
     }
-    const chainSpend = userSpendR.result as bigint;
+    const chainSpend = charmWeightR.result as bigint;
     const chainBuys = buyCountR.result as bigint;
     if (idxSpend !== chainSpend || idxCount !== chainBuys) {
-      return "Indexer totals differ from onchain userSpend / buyCount (lag, reorg, or indexing bug). Trust the contract for execution.";
+      return "Indexer totals differ from onchain charmWeight / buyCount (lag, reorg, or indexing bug). Trust the contract for execution.";
     }
     return null;
-  }, [buyerStats, userSpendR, buyCountR]);
+  }, [buyerStats, charmWeightR, buyCountR]);
 
   const claimHint = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {
       return null;
     }
-    if (userSpendR?.status !== "success" || (userSpendR.result as bigint) === 0n) {
-      return "No qualifying spend.";
+    if (charmWeightR?.status !== "success" || (charmWeightR.result as bigint) === 0n) {
+      return "No charm weight.";
     }
-    if (allocationClaimedR?.status === "success" && allocationClaimedR.result) {
-      return "Already claimed.";
+    if (charmsRedeemedR?.status === "success" && charmsRedeemedR.result) {
+      return "Already redeemed.";
     }
-    if (expectedTokenAllocation === undefined) {
+    if (expectedTokenFromCharms === undefined) {
       return undefined;
     }
-    if (expectedTokenAllocation === 0n) {
-      return "Zero token allocation at current totals.";
+    if (expectedTokenFromCharms === 0n) {
+      return "Nothing to redeem at current totals (rounding).";
     }
     return null;
-  }, [ended, userSpendR, allocationClaimedR, expectedTokenAllocation]);
+  }, [ended, charmWeightR, charmsRedeemedR, expectedTokenFromCharms]);
 
   const distributeHint = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {
@@ -424,7 +437,7 @@ export function TimeCurvePage() {
     void estimateGasUnits({
       address: tc,
       abi: timeCurveWriteAbi,
-      functionName: "claimAllocation",
+      functionName: "redeemCharms",
       account: address,
       chainId,
     }).then(setGasClaim);
@@ -538,7 +551,7 @@ export function TimeCurvePage() {
     refetchAll,
   ]);
 
-  async function runVoid(fn: "endSale" | "claimAllocation" | "distributePrizes") {
+  async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
     setBuyErr(null);
     if (!tc) {
       return;
@@ -571,7 +584,10 @@ export function TimeCurvePage() {
   return (
     <section className="page">
       <h1>TimeCurve</h1>
-      <p className="lede">Live reads from RPC + indexer feeds; post-sale actions below.</p>
+      <p className="lede">
+        Charms: earn weight by buying within the curve; after the sale, redeem for launched tokens.
+        Live RPC + indexer feeds below.
+      </p>
 
       <div className="data-panel">
         <h2>Onchain (contract)</h2>
@@ -609,7 +625,7 @@ export function TimeCurvePage() {
             </dd>
             <dt>ended</dt>
             <dd>{ended?.status === "success" ? String(ended.result) : "—"}</dd>
-            <dt>currentMinBuyAmount</dt>
+            <dt>currentMinBuyAmount (charm price floor)</dt>
             <dd>
               {minBuy?.status === "success" ? (
                 <AmountDisplay raw={minBuy.result as bigint} decimals={decimals} />
@@ -642,15 +658,37 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
+        <h2>Charm redemption curve (implied average)</h2>
+        <p className="muted">
+          Implied average accepted asset per one launched token vs total charm weight in the sale
+          (clears at sale end). The dot is today&apos;s pool; dashed line is your charm weight. This is
+          not the per-tx charm price floor — see <strong>Min buy curve</strong> and <strong>Buy</strong>{" "}
+          below.
+        </p>
+        {data && totalRaised?.status === "success" && totalTokensForSaleR?.status === "success" && (
+          <CharmRedemptionCurve
+            totalRaised={totalRaised.result as bigint}
+            totalTokensForSale={totalTokensForSaleR.result as bigint}
+            acceptedDecimals={decimals}
+            launchedDecimals={launchedDec}
+            userCharmWeight={
+              charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined
+            }
+            saleStarted={saleStart?.status === "success" && (saleStart.result as bigint) > 0n}
+          />
+        )}
+      </div>
+
+      <div className="data-panel">
         <h2>Your participation</h2>
         {!isConnected && <p className="placeholder">Connect a wallet to see your onchain stats.</p>}
         {isConnected && address && (
           <>
             <dl className="kv">
-              <dt>userSpend</dt>
+              <dt>charmWeight</dt>
               <dd>
-                {userSpendR?.status === "success" ? (
-                  <AmountDisplay raw={userSpendR.result as bigint} decimals={decimals} />
+                {charmWeightR?.status === "success" ? (
+                  <AmountDisplay raw={charmWeightR.result as bigint} decimals={decimals} />
                 ) : (
                   "—"
                 )}
@@ -667,16 +705,16 @@ export function TimeCurvePage() {
                   "—"
                 )}
               </dd>
-              <dt>allocationClaimed</dt>
+              <dt>charmsRedeemed</dt>
               <dd>
-                {allocationClaimedR?.status === "success"
-                  ? String(allocationClaimedR.result)
+                {charmsRedeemedR?.status === "success"
+                  ? String(charmsRedeemedR.result)
                   : "—"}
               </dd>
-              <dt>expected token allocation (if ended)</dt>
+              <dt>expected tokens from charms (if ended)</dt>
               <dd>
-                {expectedTokenAllocation !== undefined ? (
-                  <AmountDisplay raw={expectedTokenAllocation} decimals={18} />
+                {expectedTokenFromCharms !== undefined ? (
+                  <AmountDisplay raw={expectedTokenFromCharms} decimals={18} />
                 ) : (
                   "—"
                 )}
@@ -684,7 +722,8 @@ export function TimeCurvePage() {
             </dl>
             {indexerBaseUrl() && buyerStats && (
               <p className="muted">
-                Indexer: spend {buyerStats.indexed_total_spend} · buys {buyerStats.indexed_buy_count}
+                Indexer: charm weight {buyerStats.indexed_charm_weight} · buys{" "}
+                {buyerStats.indexed_buy_count}
               </p>
             )}
             {indexerMismatch && <p className="error-text">{indexerMismatch}</p>}
@@ -745,13 +784,14 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Min buy curve (illustrative)</h2>
+        <h2>Min charm price curve (illustrative)</h2>
         <p className="muted">
-          Theoretical minimum buy vs time since sale start (same growth rule as onchain math).{" "}
-          <strong>Authoritative value:</strong> <code>currentMinBuyAmount()</code> on the contract.
+          Theoretical minimum per-tx buy (charm price floor) vs time since sale start — same growth rule
+          as onchain math. <strong>Authoritative value:</strong> <code>currentMinBuyAmount()</code> on the
+          contract.
         </p>
         {minBuyCurvePoints.length > 1 && (
-          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min buy curve">
+          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min charm price curve">
             {(() => {
               const vals = minBuyCurvePoints.map((p) => Number(p.minBuy));
               const vmin = Math.min(...vals);
@@ -778,11 +818,11 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Buy (wallet)</h2>
+        <h2>Buy charms (wallet)</h2>
         <p>
-          Approves the sale asset for <strong>TimeCurve</strong>, then calls{" "}
-          <code>buy(amount)</code> or <code>buy(amount, codeHash)</code> when a referral code is
-          active. Use a funded wallet on the configured chain.
+          Approves the accepted asset for <strong>TimeCurve</strong>, then calls{" "}
+          <code>buy(amount)</code> or <code>buy(amount, codeHash)</code> to add charm weight. Referral
+          codes split a portion off the gross spend. Use a funded wallet on the configured chain.
         </p>
         {!isConnected && <p className="placeholder">Connect a wallet to buy.</p>}
         {isConnected && isPending && <p className="placeholder">Loading contract…</p>}
@@ -832,9 +872,9 @@ export function TimeCurvePage() {
         <h2>After sale</h2>
         <p>
           When the timer has expired: call <code>endSale</code> to finalize the sale, then{" "}
-          <code>claimAllocation</code> to receive your share of the launched token, then{" "}
-          <code>distributePrizes</code> to pay prize winners from the prize vault. Order matters for
-          claims; anyone may submit these transactions if the contract allows.
+          <code>redeemCharms</code> to convert your charm weight into launched tokens, then{" "}
+          <code>distributePrizes</code> to pay prize winners from the prize vault. Anyone may submit
+          these transactions where the contract allows.
         </p>
         <p>
           <button type="button" className="btn-secondary" disabled={isWriting} onClick={() => runVoid("endSale")}>
@@ -844,9 +884,9 @@ export function TimeCurvePage() {
             type="button"
             className="btn-secondary"
             disabled={isWriting}
-            onClick={() => runVoid("claimAllocation")}
+            onClick={() => runVoid("redeemCharms")}
           >
-            claimAllocation
+            redeemCharms
           </button>{" "}
           <button
             type="button"
@@ -914,9 +954,9 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Allocation claims (indexer)</h2>
+        <h2>Charm redemptions (indexer)</h2>
         {claimsNote && <p className="placeholder">{claimsNote}</p>}
-        {claims && claims.length === 0 && !claimsNote && <p>No allocation claims indexed yet.</p>}
+        {claims && claims.length === 0 && !claimsNote && <p>No charm redemptions indexed yet.</p>}
         {claims && claims.length > 0 && (
           <ul className="event-list">
             {claims.map((c) => (

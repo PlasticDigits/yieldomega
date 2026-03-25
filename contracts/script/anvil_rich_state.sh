@@ -113,4 +113,4 @@ forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2 \
 echo "=== Finalize Rabbit epochs (3x) ==="
 finalize_epochs "$RABBIT_TREASURY_ADDRESS" 3
 
-echo "Done. Indexer should pick up Buy, Burrow*, SaleEnded, AllocationClaimed, PrizesDistributed, Minted, ParamsUpdated, etc."
+echo "Done. Indexer should pick up Buy, Burrow*, SaleEnded, CharmsRedeemed, PrizesDistributed, Minted, ParamsUpdated, etc."

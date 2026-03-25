@@ -54,7 +54,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 | Area | Intent (short) | Product / onchain spec |
 |------|----------------|-------------------------|
-| **TimeCurve** | Sale lifecycle: min-buy growth, per-tx cap, timer extension with cap, fees to router, sale end, allocation claim, prize podiums. | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol) |
+| **TimeCurve** | Sale lifecycle: min-buy growth, per-tx cap, timer extension with cap, fees to router, sale end, charm redemption, prize podiums. | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol) |
 | **Rabbit Treasury (Burrow)** | Reserve in → DOUB mint, DOUB burn → reserve out; epoch open/finalize; repricing via BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
 | **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
@@ -64,7 +64,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 ### Business rules (narrative, for reviewers)
 
-- **TimeCurve + TimeMath:** The minimum buy amount grows with configured time (continuous formula in `TimeMath`); each purchase must sit between the current floor and a multiple of that floor. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants claim a pro-rata allocation once; podium slots (last buyers, most buys, largest buy, opening window) are updated on each buy. Sale proceeds route through the configured `FeeRouter` (see fee doc). **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the requested `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale`; it only sets `prizesDistributed` once there is a non-zero prize pool and integer podium shares are non-zero for at least one place, so empty or dust pools cannot permanently brick payouts (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
+- **TimeCurve + TimeMath:** The minimum buy amount grows with configured time (continuous formula in `TimeMath`); each purchase must sit between the current floor and a multiple of that floor. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens; podium slots (last buyers, most buys, largest buy, opening window) are updated on each buy. Sale proceeds route through the configured `FeeRouter` (see fee doc). **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the requested `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale`; it only sets `prizesDistributed` once there is a non-zero prize pool and integer podium shares are non-zero for at least one place, so empty or dust pools cannot permanently brick payouts (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
 - **RabbitTreasury + BurrowMath:** Users deposit the reserve asset during an **open** epoch and receive DOUB; withdraw burns DOUB and returns reserve. Epoch finalization after `epochEnd` applies the Burrow repricing step with clipped coverage and bounded multiplier; math is fuzzed and cross-checked against Python reference and simulations.
 - **FeeRouter + FeeMath:** Sink weights are validated to sum to 10_000 bps; distribution uses integer division with **remainder assigned to the last sink** so no dust remains in the router. Governance roles control sink updates.
 - **LeprechaunNFT:** Series are created with a max supply; only the minter role can mint; trait structs are stored onchain for indexer/UI derivation.
@@ -91,21 +91,21 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | Sale start | `startSale` transitions once | `test_startSale`, `test_startSale_reverts_twice`, `test_startSale_insufficient_launched_tokens_reverts` |
 | Happy-path buy | Valid buy updates state and transfers | `test_buy_basic` |
 | Min buy monotonic (integration) | On-chain min buy increases with time | `test_minBuy_grows_over_time` |
-| Purchase bounds | Each buy in `[minBuy, minBuy * capMultiple]` | `test_buy_below_minBuy_reverts`, `test_buy_above_cap_reverts` |
+| Purchase bounds | Each buy in `[minBuy, minBuy * capMultiple]` | `test_buy_below_minBuy_reverts` (below min charm price), `test_buy_above_cap_reverts` |
 | Timer extension capped | Extended deadline respects `timerCapSec` | `test_timer_extends_on_buy`, `test_timer_cap_fuzz` |
 | Sale state machine | No buy before start / after end / after timer expiry | `test_buy_not_started_reverts`, `test_buy_after_end_reverts`, `test_buy_after_timer_expires_reverts` |
 | `endSale` gating | Not before start; not twice | `test_endSale_not_started_reverts`, `test_endSale_already_ended_reverts` |
-| End + allocation | Sale can end; user claims once | `test_endSale_and_claim`, `test_claimAllocation_reverts_before_end`, `test_double_claim_reverts` |
-| Allocation rounding | Integer claim can be zero (tiny sale supply vs raised) | `test_claimAllocation_zero_allocation_reverts` |
+| End + redemption | Sale can end; user redeems once | `test_endSale_and_claim`, `test_redeemCharms_reverts_before_end`, `test_double_redeem_reverts` |
+| Redemption rounding | Integer redeem can be zero (tiny sale supply vs raised) | `test_redeemCharms_nothing_to_redeem_reverts` |
 | Fees to router | Buy path pulls from buyer and routes via `FeeRouter` | `test_fees_routed_on_buy` |
 | Prize podium consistency | Category winners updated consistently with buys | `test_last_buyers_podium`, `test_most_buys_podium`, `test_biggest_buy_podium`, `test_opening_window_podium` |
 | Closing window podium | Buys when `remaining <= closingWindowSec` rank by in-window buy count | `test_closing_window_podium` |
-| Highest cumulative podium | Rank by `userSpend` (cumulative) | `test_highest_cumulative_podium` |
+| Highest cumulative podium | Rank by `charmWeight` (cumulative) | `test_highest_cumulative_podium` |
 | Same-block call order | Last-buyer podium reflects sequential buy order (Foundry single-tx context; aligns with tx-index ordering) | `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall` |
 | Prize payout liveness | Empty vault or all-zero integer podium shares do **not** set `prizesDistributed`; later call can pay | `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable` |
 | Prize payout happy path | Vault balance decreases after distribution; flag set | `test_distributePrizes_reduces_vault_and_sets_flag` |
 | Constructor sanity | Non-zero asset, router, `launchedToken`, `prizeVault` | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_prizeVault_reverts` |
-| Stateful `totalRaised` (fuzz) | Ghost buy volume matches `totalRaised`; `userSpend <= totalRaised` | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_userSpendLteTotalRaised` |
+| Stateful `totalRaised` (fuzz) | Ghost buy volume matches `totalRaised`; `charmWeight <= totalRaised` | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_charmWeightLteTotalRaised` |
 
 ### Non-standard ERC-20 (intentionally unsupported assets)
 
@@ -226,8 +226,8 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | File | Count | Focus |
 |------|------:|--------|
 | [TimeMath.t.sol](../../contracts/test/TimeMath.t.sol) | 7 | Pure math: min-buy growth, deadline cap |
-| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | 33 | Sale lifecycle, buys, fees, podiums (incl. closing + cumulative), claims, **same-block ordering**, **prize griefing / constructor / endSale / allocation rounding** |
-| [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `userSpend` bound |
+| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | 33 | Sale lifecycle, buys, fees, podiums (incl. closing + cumulative), redemption, **same-block ordering**, **prize griefing / constructor / endSale / redemption rounding** |
+| [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `charmWeight` bound |
 | [TimeCurveFork.t.sol](../../contracts/test/TimeCurveFork.t.sol) | 1 | Optional `FORK_URL` fork smoke (no-op if unset) |
 | [BurrowMath.t.sol](../../contracts/test/BurrowMath.t.sol) | 4 | Coverage clip, multiplier/epoch fuzz, Python parity |
 | [RabbitTreasury.t.sol](../../contracts/test/RabbitTreasury.t.sol) | 20 | Epochs, deposit/withdraw, finalize, pause, fees, params |
