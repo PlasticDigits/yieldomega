@@ -6,7 +6,13 @@ import math
 import random
 from dataclasses import dataclass
 
-from timecurve_sim.model import TimeCurveParams, clamp_spend, min_buy_at, next_sale_end
+from timecurve_sim.model import (
+    TimeCurveParams,
+    canonical_timecurve_params,
+    clamp_spend,
+    min_buy_at,
+    next_sale_end,
+)
 
 
 def gini_coefficient(values: list[float]) -> float:
@@ -204,33 +210,27 @@ def sweep_configs(
 
 
 def default_sweep_grid(*, full: bool = False) -> list[TimeCurveParams]:
-    """Parameter grid; default is coarser for fast runs. Set full=True for larger search."""
+    """
+    Parameter grid; timers match canonical deploy (24h initial, 96h cap, 120s extension).
+
+    Sweeps purchase-cap multiple and daily growth; `full=True` adds more points per axis.
+    """
+    base = canonical_timecurve_params()
     rows: list[TimeCurveParams] = []
-    base = TimeCurveParams(
-        daily_growth_frac=0.25,
-        min_buy_0=1.0,
-        purchase_cap_mult=8.0,
-        extension_sec=120.0,
-        timer_cap_from_now_sec=36 * 3600.0,
-        initial_timer_sec=3600.0,
-    )
     mults = (5.0, 8.0, 12.0, 20.0) if full else (5.0, 8.0, 12.0)
     growths = (0.15, 0.20, 0.25, 0.30) if full else (0.20, 0.25, 0.30)
-    exts = (60.0, 120.0, 300.0) if full else (90.0, 180.0)
-    caps = (12.0, 24.0, 48.0) if full else (18.0, 36.0)
     for mult in mults:
         for g in growths:
-            for ext in exts:
-                for cap_h in caps:
-                    p = TimeCurveParams(
-                        daily_growth_frac=g,
-                        min_buy_0=base.min_buy_0,
-                        purchase_cap_mult=mult,
-                        extension_sec=ext,
-                        timer_cap_from_now_sec=cap_h * 3600.0,
-                        initial_timer_sec=base.initial_timer_sec,
-                    )
-                    rows.append(p)
+            rows.append(
+                TimeCurveParams(
+                    daily_growth_frac=g,
+                    min_buy_0=base.min_buy_0,
+                    purchase_cap_mult=mult,
+                    extension_sec=base.extension_sec,
+                    timer_cap_from_now_sec=base.timer_cap_from_now_sec,
+                    initial_timer_sec=base.initial_timer_sec,
+                )
+            )
     return rows
 
 

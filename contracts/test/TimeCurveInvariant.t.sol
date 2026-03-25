@@ -52,6 +52,7 @@ contract TimeCurveHandler is Test {
 
 contract TimeCurveInvariantTest is Test {
     uint256 internal constant ONE_DAY = 86_400;
+    uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
     MockTokTC internal usdm;
     MockTokTC internal launched;
@@ -85,9 +86,9 @@ contract TimeCurveInvariantTest is Test {
             1e18,
             0,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600

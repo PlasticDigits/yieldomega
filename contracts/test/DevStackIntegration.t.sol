@@ -16,6 +16,7 @@ import {MockUSDm, MockLaunchToken} from "../script/DeployDev.s.sol";
 /// @notice Mirrors `DeployDev` wiring: after deploy, epoch + sale are live; deposit + buy succeed.
 contract DevStackIntegrationTest is Test {
     uint256 internal constant ONE_DAY = 86_400;
+    uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
     uint256 internal constant GROWTH_WAD = 223_143_551_314_209_700;
 
     MockUSDm usdm;
@@ -76,9 +77,9 @@ contract DevStackIntegrationTest is Test {
             1e18,
             GROWTH_WAD,
             10,
-            60,
+            120,
             ONE_DAY,
-            ONE_DAY,
+            FOUR_DAYS,
             1_000_000e18,
             3600,
             3600

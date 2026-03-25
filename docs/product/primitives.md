@@ -23,8 +23,8 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 ### Timer extension
 
-- Each qualifying buy **extends** a **countdown timer** by a fixed duration (for example **one minute**).
-- Total remaining time is **capped** (for example **24 hours** from “now” or from a defined ceiling policy). The cap rule must be explicit to avoid ambiguity at boundary conditions.
+- Each qualifying buy **extends** a **countdown timer** by a fixed duration. Canonical deployment targets: **120 seconds (2 minutes)** per qualifying buy, **24 hours** initial countdown before the first extension, and a **96-hour** ceiling on remaining time from “now” after each buy (`timerCapSec` ≥ extension and ≥ initial timer).
+- Total remaining time is **capped** so the deadline cannot be pushed arbitrarily far with a single buy; the cap rule must be explicit to avoid ambiguity at boundary conditions.
 
 ### Sale end condition
 

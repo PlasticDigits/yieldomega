@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+charts = ["matplotlib>=3.8", "numpy>=2"]
+
 [project.scripts]
 burrow-sim = "bounded_formulas.cli:main"
 timecurve-sim = "timecurve_sim.__main__:main"

@@ -100,7 +100,7 @@ contract DeployDev is Script {
             1e18,                               // initialMinBuy
             223_143_551_314_209_700,             // growthRateWad (ln(1.25))
             10,                                 // purchaseCapMultiple
-            60,                                 // timerExtensionSec
+            120,                                // timerExtensionSec (2 min per buy)
             86_400,                             // initialTimerSec (24h first deadline)
             4 * 86_400,                         // timerCapSec (max 96h remaining from any buy)
             1_000_000e18,                       // totalTokensForSale
