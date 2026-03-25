@@ -1,18 +1,25 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { http } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { createConfig, http, mock } from "wagmi";
+import { configuredChain, referenceChains } from "@/lib/chain";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
-const chains = [mainnet, sepolia] as const;
+/** Anvil default account #0 — matches DeployDev when using the well-known Anvil private key. */
+const ANVIL_DEFAULT_ACCOUNT =
+  "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 
-const chainId = Number.parseInt(import.meta.env.VITE_CHAIN_ID || "1", 10);
-const initialChain = chains.find((c) => c.id === chainId) ?? mainnet;
+const targetChain = configuredChain();
+const chains = [targetChain, ...referenceChains] as const;
+
+const chainId = Number.parseInt(import.meta.env.VITE_CHAIN_ID || "6343", 10);
+const initialChain =
+  chains.find((c) => c.id === chainId) ?? targetChain;
 
 const rpcOverride = import.meta.env.VITE_RPC_URL?.trim();
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
+const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
-if (!projectId) {
+if (!projectId && !useE2EMockWallet) {
   console.warn(
     "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty; WalletConnect may not work. See .env.example.",
   );
@@ -25,13 +32,31 @@ function transportFor(chain: (typeof chains)[number]) {
   return http();
 }
 
-export const wagmiConfig = getDefaultConfig({
-  appName: "YieldOmega",
-  projectId: projectId || "00000000000000000000000000000000",
-  chains,
-  transports: {
-    [mainnet.id]: transportFor(mainnet),
-    [sepolia.id]: transportFor(sepolia),
-  },
-  ssr: false,
-});
+const transports = Object.fromEntries(
+  chains.map((c) => [c.id, transportFor(c)] as const),
+) as Record<(typeof chains)[number]["id"], ReturnType<typeof http>>;
+
+/**
+ * Playwright Anvil E2E only: wagmi `mock` connector forwards JSON-RPC to the chain URL (see
+ * `@wagmi/core` mock connector). MegaETH behavior still differs; do not ship production builds
+ * with `VITE_E2E_MOCK_WALLET=1`.
+ */
+export const wagmiConfig = useE2EMockWallet
+  ? createConfig({
+      chains,
+      connectors: [
+        mock({
+          accounts: [ANVIL_DEFAULT_ACCOUNT],
+          features: { defaultConnected: true, reconnect: true },
+        }),
+      ],
+      transports,
+      ssr: false,
+    })
+  : getDefaultConfig({
+      appName: "YieldOmega",
+      projectId: projectId || "00000000000000000000000000000000",
+      chains,
+      transports,
+      ssr: false,
+    });

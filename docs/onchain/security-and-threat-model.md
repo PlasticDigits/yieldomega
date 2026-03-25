@@ -74,6 +74,22 @@ Maps each numbered threat above to **unit** (Stage 1), **integration** (Stage 2 
 - **Indexer compromise** — Should not **move funds**, but could **mislead users**. Mitigate with **client-side verification** for critical actions and **checksum addresses**.
 - **Frontend supply chain** — Static hosting reduces runtime risk; still protect **build pipelines** and **dependency pinning**.
 
+## Implementation notes (contract hardening)
+
+Internal review items (not a substitute for an **external audit**):
+
+| Area | Issue class | Mitigation in code / tests |
+|------|-------------|----------------------------|
+| **TimeCurve `distributePrizes`** | **Griefing / bricking** — If `prizesDistributed` were set when the vault was empty (or when integer podium shares all rounded to zero), a caller could **permanently block** real prize distribution. | Set `prizesDistributed` only after a non-zero pool and at least one non-zero podium share integer; **return early** otherwise so the function is **retryable**. Tests: `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable`, `test_distributePrizes_reduces_vault_and_sets_flag` in [`contracts/test/TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol). |
+| **TimeCurve constructor** | **Misconfiguration** — Zero `launchedToken` or `prizeVault` bricks claims and prizes. | `require` non-zero addresses. Tests: `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_prizeVault_reverts`. |
+| **TimeCurve `buy`** | **Non-standard ERC20** — Fee-on-transfer or rebasing tokens desync `totalRaised` from tokens actually moved. | NatSpec: standard ERC20 only; [`invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md). Tests: [`test_feeOnTransfer_timeCurve_buyReverts_distributeExpectsFullAmount`](../../contracts/test/NonStandardERC20.t.sol) (buy reverts once `distributeFees` expects full `amount` but router received less). |
+| **FeeRouter `distributeFees`** | **`amount` exceeds balance** | Reverts via OZ ERC20 checks. Test: `test_distributeFees_insufficient_balance_reverts`. |
+| **FeeRouter `distributeFees`** | **Transfer reverts** — Token always reverts on P2P transfer, or reverts when paying a specific sink. | Griefing / misconfiguration. Tests: [`test_alwaysRevert_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol), [`test_blockedSink_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: **asset allowlist**, **pull payments** to sinks, governance swap of sink/token. |
+| **RabbitTreasury `deposit` / accounting** | **Rebasing / balance drift** — `totalReserves` tracks internal sums; a rebasing token can change `balanceOf` without going through deposit/withdraw/fee paths. | Prefer **non-rebasing** reserve asset for v1. Test: [`test_rebasing_treasury_balanceCanDesyncFromTotalReserves`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: disallow rebasing assets, periodic **reconciliation** jobs offchain, or measure **balance deltas** per tx (larger contract change). |
+| **RabbitTreasury `deposit`** | **Non-standard transfer** | Same as TimeCurve for the pull path. Test: [`test_alwaysRevert_rabbitTreasury_depositReverts`](../../contracts/test/NonStandardERC20.t.sol). |
+
+**Still accepted** (by design / governance): MEV and block ordering on podiums and timer; anyone may call `distributeFees` when the router holds balance (funds only go to configured sinks); permissionless `endSale` / `finalizeEpoch` for liveness; small rounding residue in allocations and prize splits.
+
 ## Audit and bug bounty (intent)
 
 - Engage **independent audits** before mainnet deployments of financial modules.

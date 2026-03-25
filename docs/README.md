@@ -37,6 +37,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Frontend (Vite static) | [frontend/design.md](frontend/design.md) |
 | Testing strategy (3 stages) | [testing/strategy.md](testing/strategy.md) |
 | CI (workflows vs stages) | [testing/ci.md](testing/ci.md) |
+| Anvil-backed E2E (Playwright + local chain) | [testing/e2e-anvil.md](testing/e2e-anvil.md) |
 | Deployment stages | [operations/deployment-stages.md](operations/deployment-stages.md) |
 | Research: MegaETH | [research/megaeth.md](research/megaeth.md) |
 | Research: USDm and reserves | [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md) |
