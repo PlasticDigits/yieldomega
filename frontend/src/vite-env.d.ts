@@ -7,6 +7,11 @@ interface ImportMetaEnv {
   readonly VITE_CHAIN_ID: string;
   readonly VITE_RPC_URL: string;
   readonly VITE_INDEXER_URL: string;
+  readonly VITE_TIMECURVE_ADDRESS: string;
+  readonly VITE_RABBIT_TREASURY_ADDRESS: string;
+  readonly VITE_LEPRECHAUN_NFT_ADDRESS: string;
+  /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
+  readonly VITE_E2E_MOCK_WALLET: string;
 }
 
 interface ImportMeta {

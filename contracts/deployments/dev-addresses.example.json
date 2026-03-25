@@ -1,0 +1,22 @@
+{
+  "_comment": "Template — fill after running: forge script script/DeployDev.s.sol --broadcast. Optional abiHashesSha256: run contracts/script/export_abi_hashes.sh and merge (see deployments/README.md).",
+  "chainId": 6343,
+  "network": "megaeth_testnet",
+  "abiHashesSha256": {},
+  "contracts": {
+    "USDm": "",
+    "Doubloon": "",
+    "PrizeVault": "",
+    "CL8YProtocolTreasury": "",
+    "DoubLPIncentives": "",
+    "EcosystemTreasury": "",
+    "RabbitTreasury": "",
+    "FeeRouter": "",
+    "TimeCurve": "",
+    "LeprechaunNFT": "",
+    "LaunchedToken": ""
+  },
+  "deployer": "",
+  "deployBlock": 0,
+  "gitCommit": ""
+}

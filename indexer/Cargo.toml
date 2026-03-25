@@ -5,6 +5,10 @@ edition = "2021"
 license = "AGPL-3.0-or-later"
 description = "Offchain read-model indexer for YieldOmega (MegaETH)"
 
+[lib]
+name = "yieldomega_indexer"
+path = "src/lib.rs"
+
 [[bin]]
 name = "yieldomega-indexer"
 path = "src/main.rs"
@@ -37,3 +41,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 # Error handling
 eyre = "0.6"
 color-eyre = "0.6"
+alloy-sol-types = "0.8"
+alloy-provider = "0.8"
+alloy-rpc-types = "0.8"
+alloy-transport-http = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+
+[dev-dependencies]
+axum = "0.8"
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }

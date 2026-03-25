@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS idx_timecurve_prizes_distributed;
+DROP TABLE IF EXISTS idx_timecurve_allocation_claimed;
+DROP TABLE IF EXISTS idx_rabbit_params_updated;
+DROP TABLE IF EXISTS idx_rabbit_repricing_applied;
+DROP TABLE IF EXISTS idx_rabbit_fee_accrued;
+DROP TABLE IF EXISTS idx_rabbit_reserve_balance_updated;
+DROP TABLE IF EXISTS idx_rabbit_epoch_reserve_snapshot;
+DROP TABLE IF EXISTS idx_rabbit_health_epoch_finalized;
+DROP TABLE IF EXISTS idx_rabbit_epoch_opened;

@@ -24,11 +24,35 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 
 “100%” is **not** “every possible feature”—it is **production promotion** with agreed security and ops gates. Scope gaps stay explicit **TODOs** in code or issues, not hidden assumptions.
 
+### Repository vs operational completion
+
+| Layer | What “done” means |
+|-------|-------------------|
+| **Repository (impl-0 … impl-10)** | Code, tests, CI, Stage 2 evidence, and operator templates/scripts live in git. Maintainers run the matrix in [testing/invariants-and-business-logic.md](testing/invariants-and-business-logic.md) before merge. |
+| **~90% / 100% (impl-11 … impl-12)** | Requires **live networks**, keys, explorer verification, soak, audit/sign-off, and filled rows in [operations/deployment-checklist.md](operations/deployment-checklist.md). Follow [operations/stage3-mainnet-operator-runbook.md](operations/stage3-mainnet-operator-runbook.md). No commit alone substitutes for these steps. |
+
 ---
 
 ## Baseline (today)
 
-Roughly: **[`docs/`](README.md)** is ahead of code. **Present in tree:** Foundry project with [`BurrowMath`](../contracts/src/libraries/BurrowMath.sol) + tests; Rust **indexer** scaffold ([`indexer/`](../indexer/)); Vite **frontend** routes ([`frontend/`](../frontend/)). Treat anything not yet merged as **not done** for percentage tracking.
+**Implementation phases in this repo (code + docs):**
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| impl-0 | Parameters / interfaces tracked | [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md), [`contracts/README.md`](../contracts/README.md) |
+| impl-1 … impl-5 | Libraries, TimeCurve, RabbitTreasury, fee router + sinks, Leprechaun NFT | Implemented under `contracts/src/` with matching tests in `contracts/test/` |
+| impl-6 | Deploy + address registry | [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol), [`dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json), [`stage2-anvil-registry.json`](../contracts/deployments/stage2-anvil-registry.json), [`contracts/deployments/README.md`](../contracts/deployments/README.md) |
+| impl-7 … impl-8 | Indexer schema, decoders, API, reorg | `indexer/` migrations + `cargo test` (incl. Postgres rollback integration when `YIELDOMEGA_PG_TEST_URL` is set in CI) |
+| impl-9 | Frontend wallet + reads | `frontend/` + [`frontend/.env.example`](../frontend/.env.example) |
+| impl-10 | Stage 2 exit checklist | [testing/strategy.md](testing/strategy.md) Stage 2 boxes checked; evidence [operations/stage2-run-log.md](operations/stage2-run-log.md) |
+| impl-11 | Stage 3 testnet | **Operator-run** — runbook [operations/stage3-mainnet-operator-runbook.md](operations/stage3-mainnet-operator-runbook.md) §Stage 3 |
+| impl-12 | Mainnet + audit | **Operator-run** — same runbook §Mainnet; record audited commit in checklist |
+
+**Contracts (~25% row):** Foundry stack implements core mechanics — [`TimeCurve`](../contracts/src/TimeCurve.sol), [`RabbitTreasury`](../contracts/src/RabbitTreasury.sol) (with [`BurrowMath`](../contracts/src/libraries/BurrowMath.sol)), [`FeeRouter`](../contracts/src/FeeRouter.sol) and fee sinks, [`LeprechaunNFT`](../contracts/src/LeprechaunNFT.sol), shared libs ([`TimeMath`](../contracts/src/libraries/TimeMath.sol), [`FeeMath`](../contracts/src/libraries/FeeMath.sol)); **Stage 1** contract tests green via `forge test` (CI: `FOUNDRY_PROFILE=ci` per [testing/ci.md](testing/ci.md)); dev deploy via [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol) and [`contracts/deployments/dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json). Parameter checklist: [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md).
+
+**~50% row (indexer + frontend reads):** Rust [**indexer**](../indexer/) decodes canonical TimeCurve / RabbitTreasury / Leprechaun events via `sol!` definitions, persists to Postgres ([`migrations/`](../indexer/migrations/)), runs JSON-RPC ingestion with reorg rollback ([`ingestion.rs`](../indexer/src/ingestion.rs), [`reorg.rs`](../indexer/src/reorg.rs)), and exposes versioned HTTP endpoints + CORS ([`api.rs`](../indexer/src/api.rs)). Vite [**frontend**](../frontend/) reads contract state via wagmi/viem and optional indexer URLs configured in [`frontend/.env.example`](../frontend/.env.example).
+
+**~75% row (Stage 2 devnet integration):** Exit checklist in [testing/strategy.md](testing/strategy.md) is **satisfied** with evidence in [**operations/stage2-run-log.md**](operations/stage2-run-log.md) (deploy + fresh DB + smoke txs + lag + history). **Reorg:** Postgres integration tests exercise `rollback_after` in CI (see `indexer/tests/integration_stage2.rs`); optional **live Anvil reorg drill** remains in [indexer/REORG_STRATEGY.md](../indexer/REORG_STRATEGY.md). **Verification:** run the full matrix in [testing/invariants-and-business-logic.md](testing/invariants-and-business-logic.md) before claiming this milestone. **Next milestone (~90%):** execute Stage 3 per [operations/stage3-mainnet-operator-runbook.md](operations/stage3-mainnet-operator-runbook.md) and [testing/strategy.md](testing/strategy.md) Stage 3.
 
 ---
 
@@ -296,6 +320,7 @@ Wire frontend/ to indexer API and public RPC per docs/frontend/design.md. Use ad
 **Exit criteria**
 
 - Every box in **Stage 2 — Exit criteria** in [testing/strategy.md](testing/strategy.md) is checked or waived with maintainer sign-off.
+- [testing/invariants-and-business-logic.md](testing/invariants-and-business-logic.md) is up to date with the automated test matrix (contracts, indexer, frontend, simulations) and any known gaps.
 
 **Agent prompt (copy-paste):**
 

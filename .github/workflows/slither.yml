@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Static analysis for contracts/ (Slither). Does not use repo secrets.
+name: slither
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install Forge dependencies
+        working-directory: contracts
+        run: |
+          forge install foundry-rs/forge-std@v1.15.0 --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+          forge install PaulRBerg/prb-math@v4.1.1 --no-git
+
+      - name: Forge build
+        working-directory: contracts
+        run: forge build
+
+      - name: Slither
+        uses: crytic/slither-action@v0.4.0
+        with:
+          target: contracts
+          slither-config: contracts/slither.config.json
+          fail-on: high

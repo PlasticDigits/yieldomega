@@ -29,6 +29,21 @@ CI uses the `ci` profile (pinned fuzz runs). To match locally:
 FOUNDRY_PROFILE=ci forge test -vv
 ```
 
+## Slither (static analysis)
+
+CI runs Slither on push/PR via [`.github/workflows/slither.yml`](../.github/workflows/slither.yml) using [`slither.config.json`](./slither.config.json) (`fail-on: high`). Locally, after `forge build`:
+
+```bash
+pip install --user slither-analyzer   # or: python3 -m venv .venv && . .venv/bin/activate && pip install slither-analyzer
+cd contracts && slither . --config-file slither.config.json --fail-high
+```
+
+Use `--fail-high` so the CLI matches CI; without it, Slither exits non-zero on **medium** (or lower) findings by default.
+
+If `forge build` fails with permission errors on `out/` or `cache/` (for example after a root-owned Docker compile), fix ownership of those directories or point Forge at writable paths (`FOUNDRY_OUT`, `forge build --cache-path …`).
+
+This is a **pre-audit** hygiene gate, not a substitute for a professional review.
+
 ## MegaETH RPC (testnet and mainnet)
 
 Official parameters and endpoints change over time; confirm on [MegaETH documentation](https://docs.megaeth.com/) before relying on values below. High-level research notes live in [`../docs/research/megaeth.md`](../docs/research/megaeth.md).
@@ -42,7 +57,7 @@ Official parameters and endpoints change over time; confirm on [MegaETH document
 
 ```bash
 # Fork testnet (e.g. for script debugging)
-forge script script/Example.s.sol --fork-url megaeth_testnet
+forge script script/DeployDev.s.sol --fork-url megaeth_testnet
 
 # cast against testnet
 cast chain-id --rpc-url https://carrot.megaeth.com/rpc
@@ -61,8 +76,51 @@ MegaEVM uses a **multidimensional gas** model (for example **compute** vs **stor
 
 More context: [`../docs/contracts/foundry-and-megaeth.md`](../docs/contracts/foundry-and-megaeth.md).
 
-## Burrow math
+## Deploy (dev)
 
-`src/libraries/BurrowMath.sol` implements coverage, multiplier, and epoch `e` update aligned with [`simulations/bounded_formulas/model.py`](../simulations/bounded_formulas/model.py).
+Deploy all core contracts to a local or dev environment:
 
-When adding **`RabbitTreasury`**, emit the canonical **`Burrow*`** events (and indexed fields) defined in [`docs/product/rabbit-treasury.md`](../docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events) so indexers stay ABI-aligned with the repo spec.
+```bash
+forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC>
+```
+
+The script deploys mock tokens (USDm, launched token) when `USDM_ADDRESS` is not set.
+To use a real testnet USDm, export `USDM_ADDRESS` before running.
+
+Addresses are printed to console — copy them into
+[`deployments/dev-addresses.example.json`](./deployments/dev-addresses.example.json).
+ABIs live in `out/` after `forge build`. Registry templates and **ABI hash export** for consumers: [`deployments/README.md`](./deployments/README.md). See
+[`docs/operations/deployment-stages.md`](../docs/operations/deployment-stages.md),
+[`docs/operations/deployment-checklist.md`](../docs/operations/deployment-checklist.md), and
+[`docs/operations/stage3-mainnet-operator-runbook.md`](../docs/operations/stage3-mainnet-operator-runbook.md).
+
+## Parameters
+
+See [`PARAMETERS.md`](./PARAMETERS.md) for testnet defaults and `TODO`s that
+need human decisions before mainnet.
+
+## Contract map
+
+| Contract | Purpose |
+|----------|---------|
+| `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing |
+| `RabbitTreasury` | Player-facing reserve game — USDm ↔ DOUB, epoch repricing via `BurrowMath` |
+| `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
+| `FeeRouter` | Splits fees to 4 canonical sinks (bps weights, governed) |
+| `PrizeVault` | Holds prize portion of fees; `TimeCurve` distributes to winners |
+| `CL8YProtocolTreasury` | CL8Y buy-and-burn sink (15 %) |
+| `DoubLPIncentives` | DOUB liquidity sink (30 %) — LP mechanics TODO |
+| `EcosystemTreasury` | CL8Y-governed pool (not a direct fee sink) |
+| `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting |
+
+## Libraries
+
+- `BurrowMath` — coverage, multiplier, epoch `e` step (aligned with `simulations/bounded_formulas/model.py`).
+- `TimeMath` — continuous min-buy growth (`exp`-based), timer extension with cap.
+- `FeeMath` — basis-point weight validation and share computation.
+
+## Burrow events
+
+`RabbitTreasury` emits the canonical `Burrow*` events defined in
+[`docs/product/rabbit-treasury.md`](../docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events)
+so indexers decode a stable ABI.

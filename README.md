@@ -2,7 +2,7 @@
 
 MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**, and **Leprechaun NFTs**, with ecosystem expansion governed via **CL8Y** (see [`docs/product/vision.md`](docs/product/vision.md)).
 
-**Status:** **early** — [`docs/`](docs/README.md) is ahead of the three package trees; contracts, indexer, and frontend are partial scaffolds and prototypes relative to the written architecture.
+**Status:** **Stage 2 complete in-repo** — contracts, indexer, and frontend implement the core stack with Stage 1 CI and a recorded Stage 2 devnet smoke ([`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md)). **~90% / 100%** (public testnet verification, soak, mainnet, audit) are **operator gates**: [`docs/operations/stage3-mainnet-operator-runbook.md`](docs/operations/stage3-mainnet-operator-runbook.md), [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md).
 
 **License:** original work is under [**GNU Affero General Public License v3.0 (AGPL-3.0)**](LICENSE); details in [`docs/licensing.md`](docs/licensing.md).
 
@@ -31,7 +31,7 @@ What this ecosystem explicitly does **not** optimize for:
 ## Status
 
 - **`docs/`** — architecture, product specs, and process; entry point [`docs/README.md`](docs/README.md). This is the reference for trust boundaries and behavior; implementation in the package directories should follow it.
-- **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests live here and evolve with the roadmap in [`docs/agent-phases.md`](docs/agent-phases.md).
+- **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests; roadmap alignment in [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md) and [`docs/agent-phases.md`](docs/agent-phases.md).
 - **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
 - **Agent skills:** [`.cursor/skills/README.md`](.cursor/skills/README.md); repo guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md).
 - **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.

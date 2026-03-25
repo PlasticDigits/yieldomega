@@ -45,6 +45,22 @@ jobs:
     defaults:
       run:
         working-directory: indexer
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: yieldomega_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d yieldomega_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      YIELDOMEGA_PG_TEST_URL: postgres://postgres:postgres@localhost:5432/yieldomega_test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,3 +70,66 @@ jobs:
 
       - name: Cargo test
         run: cargo test
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and test
+        run: |
+          npm ci
+          npm test
+
+  simulations-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: simulations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: PYTHONPATH=. python3 -m unittest discover -s tests -v
+
+  playwright-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install, build, browsers, E2E
+        run: |
+          npm ci
+          npm run build
+          npx playwright install --with-deps
+          npm run test:e2e

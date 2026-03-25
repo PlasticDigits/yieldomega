@@ -1,19 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! YieldOmega Indexer — offchain read model for MegaETH chain events.
-//!
-//! This binary is a **scaffold**. It wires configuration, Postgres migrations,
-//! and HTTP API stubs. Actual event decoding and ingestion require contract
-//! ABIs that do not yet exist; all domain interfaces are explicitly stubbed.
-
-mod api;
-mod config;
-mod db;
-mod decoder;
-mod ingestion;
-mod reorg;
+//! Binary entrypoint — see `lib.rs` for modules.
 
 use eyre::Result;
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
+use yieldomega_indexer::{api, config, db, ingestion};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -30,7 +22,6 @@ async fn main() -> Result<()> {
 
     let pool = db::connect_and_migrate(&config.database_url).await?;
 
-    // Spawn the block ingestion loop in the background.
     let ingest_pool = pool.clone();
     let ingest_config = config.clone();
     let ingestion_handle = tokio::spawn(async move {
@@ -39,9 +30,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Start the HTTP API on the configured address.
     let state = api::AppState { pool };
-    let app = api::router(state);
+    let app = api::router(state)
+        .layer(CorsLayer::permissive())
+        .layer(TraceLayer::new_for_http());
     let listener = tokio::net::TcpListener::bind(config.listen_addr).await?;
     tracing::info!(addr = %config.listen_addr, "API listening");
 

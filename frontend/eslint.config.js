@@ -6,7 +6,7 @@ import tseslint from "typescript-eslint";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "e2e/**", "playwright.config.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
