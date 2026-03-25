@@ -24,6 +24,12 @@ pub struct RegistryContracts {
     pub rabbit_treasury: String,
     #[serde(rename = "LeprechaunNFT", default)]
     pub leprechaun_nft: String,
+    #[serde(rename = "FeeRouter", default)]
+    pub fee_router: String,
+    #[serde(rename = "ReferralRegistry", default)]
+    pub referral_registry: String,
+    #[serde(rename = "PrizeVault", default)]
+    pub prize_vault: String,
 }
 
 impl AddressRegistry {
@@ -34,6 +40,9 @@ impl AddressRegistry {
             self.contracts.timecurve.trim(),
             self.contracts.rabbit_treasury.trim(),
             self.contracts.leprechaun_nft.trim(),
+            self.contracts.fee_router.trim(),
+            self.contracts.referral_registry.trim(),
+            self.contracts.prize_vault.trim(),
         ] {
             if s.is_empty() {
                 continue;

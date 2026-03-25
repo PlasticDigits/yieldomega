@@ -8,13 +8,15 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses } from "@/lib/addresses";
 import { erc20Abi, rabbitTreasuryReadAbi, rabbitTreasuryWriteAbi } from "@/lib/abis";
-import { friendlyRevertMessage } from "@/lib/revertMessage";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchRabbitDeposits,
+  fetchRabbitFactionStats,
   fetchRabbitHealthEpochs,
   fetchRabbitWithdrawals,
   type DepositItem,
+  type FactionStatItem,
   type HealthEpochItem,
   type WithdrawalItem,
 } from "@/lib/indexerApi";
@@ -25,6 +27,8 @@ export function RabbitTreasuryPage() {
   const [deposits, setDeposits] = useState<DepositItem[] | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[] | null>(null);
   const [healthEpochs, setHealthEpochs] = useState<HealthEpochItem[] | null>(null);
+  const [factionStats, setFactionStats] = useState<FactionStatItem[] | null>(null);
+  const [factionNote, setFactionNote] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [wNote, setWNote] = useState<string | null>(null);
   const [healthNote, setHealthNote] = useState<string | null>(null);
@@ -89,6 +93,26 @@ export function RabbitTreasuryPage() {
       }
       setHealthEpochs(data.items);
       setHealthNote(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const data = await fetchRabbitFactionStats();
+      if (cancelled) {
+        return;
+      }
+      if (!data) {
+        setFactionNote("Set VITE_INDEXER_URL for faction standings.");
+        setFactionStats([]);
+        return;
+      }
+      setFactionStats(data.items);
+      setFactionNote(null);
     })();
     return () => {
       cancelled = true;
@@ -160,6 +184,18 @@ export function RabbitTreasuryPage() {
     }));
   }, [healthEpochs]);
 
+  const backingChartPoints = useMemo(() => {
+    if (!healthEpochs || healthEpochs.length === 0) {
+      return [];
+    }
+    const sorted = [...healthEpochs].sort((a, b) => Number(a.epoch_id) - Number(b.epoch_id));
+    return sorted.map((h) => ({
+      epoch: h.epoch_id,
+      backing: Number(h.backing_per_doubloon_wad) / 1e18,
+      repricing: Number(h.repricing_factor_wad) / 1e18,
+    }));
+  }, [healthEpochs]);
+
   async function handleDeposit() {
     setDepositErr(null);
     if (!address || !rt || !reserveAddr) {
@@ -204,7 +240,7 @@ export function RabbitTreasuryPage() {
       await waitForTransactionReceipt(wagmiConfig, { hash: depHash });
       void refetch();
     } catch (e) {
-      setDepositErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+      setDepositErr(friendlyRevertFromUnknown(e));
     }
   }
 
@@ -252,7 +288,7 @@ export function RabbitTreasuryPage() {
       await waitForTransactionReceipt(wagmiConfig, { hash: wHash });
       void refetch();
     } catch (e) {
-      setDepositErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+      setDepositErr(friendlyRevertFromUnknown(e));
     }
   }
 
@@ -271,6 +307,15 @@ export function RabbitTreasuryPage() {
     <section className="page">
       <h1>Rabbit Treasury</h1>
       <p className="lede">Burrow metrics from RPC; history from indexer.</p>
+
+      <div className="data-panel">
+        <h2>Understanding Rabbit Treasury</h2>
+        <p>
+          This is a <strong>reserve-linked treasury game</strong>: DOUB is internal accounting, not a
+          bank deposit. Returns are not guaranteed; sustainability depends on fees, activity, and
+          reserve health. The protocol may reprice when metrics weaken—see onchain events and docs.
+        </p>
+      </div>
 
       <div className="data-panel">
         <h2>Onchain</h2>
@@ -345,6 +390,72 @@ export function RabbitTreasuryPage() {
         )}
         {chartPoints.length > 0 && chartPoints.length <= 1 && (
           <p className="muted">Need multiple epochs for a line chart.</p>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Backing per DOUB and repricing (indexer)</h2>
+        {healthNote && <p className="placeholder">{healthNote}</p>}
+        {backingChartPoints.length > 1 && (
+          <svg
+            className="epoch-chart"
+            viewBox="0 0 400 120"
+            role="img"
+            aria-label="Backing and repricing by epoch"
+          >
+            {(() => {
+              const backs = backingChartPoints.map((p) => p.backing);
+              const reprs = backingChartPoints.map((p) => p.repricing);
+              const vmin = Math.min(...backs, ...reprs);
+              const vmax = Math.max(...backs, ...reprs);
+              const span = Math.max(vmax - vmin, 1e-9);
+              const line = (vals: number[]) =>
+                vals
+                  .map((v, i) => {
+                    const x = (i / (vals.length - 1)) * 380 + 10;
+                    const y = 110 - ((v - vmin) / span) * 100;
+                    return `${x},${y}`;
+                  })
+                  .join(" ");
+              return (
+                <>
+                  <polyline fill="none" stroke="var(--line)" strokeWidth="3" points={line(backs)} />
+                  <polyline
+                    fill="none"
+                    stroke="var(--accent, #8fa)"
+                    strokeWidth="2"
+                    strokeDasharray="6 4"
+                    points={line(reprs)}
+                  />
+                </>
+              );
+            })()}
+          </svg>
+        )}
+        {backingChartPoints.length > 0 && backingChartPoints.length <= 1 && (
+          <p className="muted">Need multiple epochs for dual-series chart.</p>
+        )}
+        <p className="muted">
+          Solid: backing per DOUB (WAD scale in chart as float). Dashed: repricing factor.
+        </p>
+      </div>
+
+      <div className="data-panel">
+        <h2>Faction standings (indexer)</h2>
+        {factionNote && <p className="placeholder">{factionNote}</p>}
+        {factionStats && factionStats.length === 0 && !factionNote && (
+          <p>No faction deposit data indexed yet.</p>
+        )}
+        {factionStats && factionStats.length > 0 && (
+          <ul className="event-list">
+            {factionStats.map((f) => (
+              <li key={f.faction_id}>
+                faction <span className="mono">{f.faction_id}</span> — net reserves{" "}
+                <AmountDisplay raw={BigInt(f.net_deposits)} decimals={reserveTokenDecimals} /> —{" "}
+                deposits {f.deposit_count} / withdrawals {f.withdrawal_count}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -433,7 +544,8 @@ export function RabbitTreasuryPage() {
               <li key={`${d.tx_hash}-${d.log_index}`}>
                 <span className="mono">{d.user_address.slice(0, 10)}…</span> — amount{" "}
                 <AmountDisplay raw={d.amount} decimals={reserveTokenDecimals} /> — doubOut{" "}
-                <AmountDisplay raw={d.doub_out} decimals={18} /> — block {d.block_number}
+                <AmountDisplay raw={d.doub_out} decimals={18} /> — faction {d.faction_id} — asset{" "}
+                <span className="mono">{d.reserve_asset.slice(0, 10)}…</span> — block {d.block_number}
               </li>
             ))}
           </ul>
@@ -450,7 +562,8 @@ export function RabbitTreasuryPage() {
               <li key={`${w.tx_hash}-${w.log_index}`}>
                 <span className="mono">{w.user_address.slice(0, 10)}…</span> — reserve out{" "}
                 <AmountDisplay raw={w.amount} decimals={reserveTokenDecimals} /> — doubIn{" "}
-                <AmountDisplay raw={w.doub_in} decimals={18} /> — block {w.block_number}
+                <AmountDisplay raw={w.doub_in} decimals={18} /> — faction {w.faction_id} — asset{" "}
+                <span className="mono">{w.reserve_asset.slice(0, 10)}…</span> — block {w.block_number}
               </li>
             ))}
           </ul>

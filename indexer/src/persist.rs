@@ -4,6 +4,7 @@
 
 use alloy_primitives::{Address, U256};
 use eyre::Result;
+use serde_json::json;
 use sqlx::PgPool;
 
 use crate::decoder::{DecodedEvent, DecodedLog};
@@ -496,6 +497,68 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*token_id))
             .bind(u256_dec(*series_id))
             .bind(addr_hex(*to))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::FeeRouterSinksUpdated {
+            actor,
+            old_destinations,
+            old_weights,
+            new_destinations,
+            new_weights,
+        } => {
+            let old_json = json!({
+                "destinations": old_destinations.map(|a| addr_hex(a)),
+                "weights": old_weights,
+            })
+            .to_string();
+            let new_json = json!({
+                "destinations": new_destinations.map(|a| addr_hex(a)),
+                "weights": new_weights,
+            })
+            .to_string();
+            sqlx::query(
+                r#"INSERT INTO idx_fee_router_sinks_updated (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    actor, old_sinks_json, new_sinks_json
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*actor))
+            .bind(&old_json)
+            .bind(&new_json)
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::FeeRouterFeesDistributed {
+            token,
+            amount,
+            shares,
+        } => {
+            let shares_json = json!({
+                "shares": shares.map(|s| u256_dec(s)),
+            })
+            .to_string();
+            sqlx::query(
+                r#"INSERT INTO idx_fee_router_fees_distributed (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    token, amount, shares_json
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(u256_dec(*amount))
+            .bind(&shares_json)
             .execute(pool)
             .await?;
         }

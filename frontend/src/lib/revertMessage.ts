@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { BaseError } from "viem";
+
 /** Map common revert strings to short UI copy (still show raw tail if unknown). */
 export function friendlyRevertMessage(raw: string): string {
   const s = raw.toLowerCase();
@@ -17,6 +19,7 @@ export function friendlyRevertMessage(raw: string): string {
     ["referralregistry: already registered", "This wallet already registered a code."],
     ["referralregistry: invalid length", "Referral code must be 3–16 characters."],
     ["referralregistry: invalid charset", "Referral code may only use letters and digits."],
+    ["burrow:", "Treasury rule rejected this transaction (see wallet details)."],
     ["user rejected", "Transaction was rejected in the wallet."],
     ["user denied", "Transaction was rejected in the wallet."],
   ];
@@ -26,4 +29,18 @@ export function friendlyRevertMessage(raw: string): string {
     }
   }
   return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
+}
+
+/** Prefer viem `BaseError` fields (`shortMessage`, `details`) when present. */
+export function friendlyRevertFromUnknown(err: unknown): string {
+  let raw: string;
+  if (err instanceof BaseError) {
+    const details = "details" in err && typeof err.details === "string" ? err.details : "";
+    raw = [err.shortMessage, details, err.message].filter(Boolean).join(" ");
+  } else if (err instanceof Error) {
+    raw = err.message;
+  } else {
+    raw = String(err);
+  }
+  return friendlyRevertMessage(raw);
 }

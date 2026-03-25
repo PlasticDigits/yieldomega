@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
@@ -10,7 +10,8 @@ import { addresses } from "@/lib/addresses";
 import { erc20Abi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
-import { friendlyRevertMessage } from "@/lib/revertMessage";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { sampleMinBuyCurve } from "@/lib/timeCurveMath";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchTimecurveAllocationClaims,
@@ -50,6 +51,8 @@ export function TimeCurvePage() {
   const [prizePayouts, setPrizePayouts] = useState<PrizePayoutItem[] | null>(null);
   const [prizeDist, setPrizeDist] = useState<PrizeDistributionItem[] | null>(null);
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
+  const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
+  const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -65,16 +68,18 @@ export function TimeCurvePage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const data = await fetchTimecurveBuys(25);
+      const data = await fetchTimecurveBuys(25, 0);
       if (cancelled) {
         return;
       }
       if (!data) {
         setIndexerNote("Set VITE_INDEXER_URL to load recent buys from the indexer.");
         setBuys([]);
+        setBuysNextOffset(null);
         return;
       }
       setBuys(data.items);
+      setBuysNextOffset(data.next_offset);
       setIndexerNote(null);
     })();
     return () => {
@@ -132,12 +137,38 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
           { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
           { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "purchaseCapMultiple" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "openingWindowSec" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "closingWindowSec" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
         ]
       : [],
     query: { enabled: Boolean(tc) },
   });
 
-  const [saleStart, deadline, totalRaised, ended, minBuy, acceptedAsset, refRegAddr] = data ?? [];
+  const [
+    saleStart,
+    deadline,
+    totalRaised,
+    ended,
+    minBuy,
+    acceptedAsset,
+    refRegAddr,
+    initialMinBuyR,
+    growthRateWadR,
+    purchaseCapMultipleR,
+    timerExtensionSecR,
+    timerCapSecR,
+    totalTokensForSaleR,
+    openingWindowSecR,
+    closingWindowSecR,
+    launchedTokenR,
+  ] = data ?? [];
 
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
@@ -180,6 +211,51 @@ export function TimeCurvePage() {
     deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
   const remaining =
     deadlineSec !== undefined ? Math.max(0, deadlineSec - now) : undefined;
+
+  const maxBuyAmount = useMemo(() => {
+    if (minBuy?.status !== "success" || purchaseCapMultipleR?.status !== "success") {
+      return undefined;
+    }
+    return (minBuy.result as bigint) * (purchaseCapMultipleR.result as bigint);
+  }, [minBuy, purchaseCapMultipleR]);
+
+  const minBuyCurvePoints = useMemo(() => {
+    if (
+      initialMinBuyR?.status !== "success" ||
+      growthRateWadR?.status !== "success" ||
+      saleStart?.status !== "success"
+    ) {
+      return [];
+    }
+    const start = Number(saleStart.result as bigint);
+    if (start <= 0) {
+      return [];
+    }
+    const elapsed = BigInt(Math.max(0, now - start));
+    if (elapsed === 0n) {
+      return [];
+    }
+    return sampleMinBuyCurve(
+      initialMinBuyR.result as bigint,
+      growthRateWadR.result as bigint,
+      elapsed,
+      40,
+    );
+  }, [initialMinBuyR, growthRateWadR, saleStart, now]);
+
+  async function handleLoadMoreBuys() {
+    if (buysNextOffset === null) {
+      return;
+    }
+    setLoadingMoreBuys(true);
+    const data = await fetchTimecurveBuys(25, buysNextOffset);
+    setLoadingMoreBuys(false);
+    if (!data) {
+      return;
+    }
+    setBuys((prev) => (prev ? [...prev, ...data.items] : data.items));
+    setBuysNextOffset(data.next_offset);
+  }
 
   const handleBuy = useCallback(async () => {
     setBuyErr(null);
@@ -246,7 +322,7 @@ export function TimeCurvePage() {
       }
       void refetch();
     } catch (e) {
-      setBuyErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+      setBuyErr(friendlyRevertFromUnknown(e));
     }
   }, [
     address,
@@ -275,7 +351,7 @@ export function TimeCurvePage() {
       await waitForTransactionReceipt(wagmiConfig, { hash });
       void refetch();
     } catch (e) {
-      setBuyErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+      setBuyErr(friendlyRevertFromUnknown(e));
     }
   }
 
@@ -344,8 +420,101 @@ export function TimeCurvePage() {
             <dd className="mono">
               {refRegAddr?.status === "success" ? String(refRegAddr.result) : "—"}
             </dd>
+            <dt>launchedToken</dt>
+            <dd className="mono">
+              {launchedTokenR?.status === "success" ? String(launchedTokenR.result) : "—"}
+            </dd>
+            <dt>max buy (per tx)</dt>
+            <dd>
+              {maxBuyAmount !== undefined ? (
+                <AmountDisplay raw={maxBuyAmount} decimals={decimals} />
+              ) : (
+                "—"
+              )}
+            </dd>
           </dl>
         )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Sale parameters (immutable)</h2>
+        {data && (
+          <dl className="kv">
+            <dt>initialMinBuy</dt>
+            <dd>
+              {initialMinBuyR?.status === "success" ? (
+                <AmountDisplay raw={initialMinBuyR.result as bigint} decimals={decimals} />
+              ) : (
+                "—"
+              )}
+            </dd>
+            <dt>growthRateWad</dt>
+            <dd>
+              {growthRateWadR?.status === "success" ? String(growthRateWadR.result) : "—"}
+            </dd>
+            <dt>purchaseCapMultiple</dt>
+            <dd>
+              {purchaseCapMultipleR?.status === "success"
+                ? String(purchaseCapMultipleR.result)
+                : "—"}
+            </dd>
+            <dt>timerExtensionSec</dt>
+            <dd>
+              {timerExtensionSecR?.status === "success" ? String(timerExtensionSecR.result) : "—"}
+            </dd>
+            <dt>timerCapSec</dt>
+            <dd>{timerCapSecR?.status === "success" ? String(timerCapSecR.result) : "—"}</dd>
+            <dt>totalTokensForSale</dt>
+            <dd>
+              {totalTokensForSaleR?.status === "success" ? (
+                <AmountDisplay raw={totalTokensForSaleR.result as bigint} decimals={18} />
+              ) : (
+                "—"
+              )}
+            </dd>
+            <dt>openingWindowSec</dt>
+            <dd>
+              {openingWindowSecR?.status === "success" ? String(openingWindowSecR.result) : "—"}
+            </dd>
+            <dt>closingWindowSec</dt>
+            <dd>
+              {closingWindowSecR?.status === "success" ? String(closingWindowSecR.result) : "—"}
+            </dd>
+          </dl>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Min buy curve (illustrative)</h2>
+        <p className="muted">
+          Theoretical minimum buy vs time since sale start (same growth rule as onchain math).{" "}
+          <strong>Authoritative value:</strong> <code>currentMinBuyAmount()</code> on the contract.
+        </p>
+        {minBuyCurvePoints.length > 1 && (
+          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min buy curve">
+            {(() => {
+              const vals = minBuyCurvePoints.map((p) => Number(p.minBuy));
+              const vmin = Math.min(...vals);
+              const vmax = Math.max(...vals);
+              const span = Math.max(vmax - vmin, 1);
+              return (
+                <polyline
+                  fill="none"
+                  stroke="var(--line)"
+                  strokeWidth="3"
+                  points={minBuyCurvePoints
+                    .map((p, i) => {
+                      const x = (i / (minBuyCurvePoints.length - 1)) * 380 + 10;
+                      const y = 110 - ((Number(p.minBuy) - vmin) / span) * 100;
+                      return `${x},${y}`;
+                    })
+                    .join(" ")}
+                />
+              );
+            })()}
+          </svg>
+        )}
+        {minBuyCurvePoints.length <= 1 && <p className="muted">Curve appears after sale has started.</p>}
       </div>
 
       <div className="data-panel">
@@ -398,6 +567,12 @@ export function TimeCurvePage() {
 
       <div className="data-panel">
         <h2>After sale</h2>
+        <p>
+          When the timer has expired: call <code>endSale</code> to finalize the sale, then{" "}
+          <code>claimAllocation</code> to receive your share of the launched token, then{" "}
+          <code>distributePrizes</code> to pay prize winners from the prize vault. Order matters for
+          claims; anyone may submit these transactions if the contract allows.
+        </p>
         <p>
           <button type="button" className="btn-secondary" disabled={isWriting} onClick={() => runVoid("endSale")}>
             endSale (timer expired)
@@ -452,6 +627,18 @@ export function TimeCurvePage() {
               </li>
             ))}
           </ul>
+        )}
+        {buysNextOffset !== null && (
+          <p>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={loadingMoreBuys}
+              onClick={() => void handleLoadMoreBuys()}
+            >
+              {loadingMoreBuys ? "Loading…" : "Load more"}
+            </button>
+          </p>
         )}
       </div>
 
