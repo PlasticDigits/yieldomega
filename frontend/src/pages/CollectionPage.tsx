@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import { TxHash } from "@/components/TxHash";
 import { addresses } from "@/lib/addresses";
 import { leprechaunReadAbi } from "@/lib/abis";
 import { fetchLeprechaunMints, type MintItem } from "@/lib/indexerApi";
@@ -31,6 +32,9 @@ export function CollectionPage() {
   const [mints, setMints] = useState<MintItem[] | null>(null);
   const [mintNote, setMintNote] = useState<string | null>(null);
   const [seriesFilter, setSeriesFilter] = useState("");
+  const [rarityFilter, setRarityFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [passiveFilter, setPassiveFilter] = useState("");
   const [imagesByToken, setImagesByToken] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {
@@ -226,16 +230,35 @@ export function CollectionPage() {
   }, [traitsResults, tokenIdList]);
 
   const filteredBundles = useMemo(() => {
-    if (!seriesFilter.trim()) {
-      return traitBundles;
+    let out = traitBundles;
+    if (seriesFilter.trim()) {
+      try {
+        const sid = BigInt(seriesFilter.trim());
+        out = out.filter((b) => b.seriesId === sid);
+      } catch {
+        /* invalid bigint */
+      }
     }
-    try {
-      const sid = BigInt(seriesFilter.trim());
-      return traitBundles.filter((b) => b.seriesId === sid);
-    } catch {
-      return traitBundles;
+    if (rarityFilter.trim()) {
+      const r = Number.parseInt(rarityFilter.trim(), 10);
+      if (!Number.isNaN(r)) {
+        out = out.filter((b) => b.rarityTier === r);
+      }
     }
-  }, [traitBundles, seriesFilter]);
+    if (roleFilter.trim()) {
+      const r = Number.parseInt(roleFilter.trim(), 10);
+      if (!Number.isNaN(r)) {
+        out = out.filter((b) => b.role === r);
+      }
+    }
+    if (passiveFilter.trim()) {
+      const r = Number.parseInt(passiveFilter.trim(), 10);
+      if (!Number.isNaN(r)) {
+        out = out.filter((b) => b.passiveEffectType === r);
+      }
+    }
+    return out;
+  }, [traitBundles, seriesFilter, rarityFilter, roleFilter, passiveFilter]);
 
   if (!nft) {
     return (
@@ -278,6 +301,36 @@ export function CollectionPage() {
             className="form-input"
             value={seriesFilter}
             onChange={(e) => setSeriesFilter(e.target.value)}
+            spellCheck={false}
+          />
+        </label>
+        <label className="form-label">
+          Rarity tier (exact match, 0–255)
+          <input
+            type="text"
+            className="form-input"
+            value={rarityFilter}
+            onChange={(e) => setRarityFilter(e.target.value)}
+            spellCheck={false}
+          />
+        </label>
+        <label className="form-label">
+          Role (exact match)
+          <input
+            type="text"
+            className="form-input"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            spellCheck={false}
+          />
+        </label>
+        <label className="form-label">
+          Passive effect (exact match)
+          <input
+            type="text"
+            className="form-input"
+            value={passiveFilter}
+            onChange={(e) => setPassiveFilter(e.target.value)}
             spellCheck={false}
           />
         </label>
@@ -337,7 +390,7 @@ export function CollectionPage() {
               <li key={`${m.tx_hash}-${m.log_index}`}>
                 token <span className="mono">#{m.token_id}</span> →{" "}
                 <span className="mono">{m.to_address.slice(0, 10)}…</span> — series{" "}
-                {m.series_id} — block {m.block_number}
+                {m.series_id} — block {m.block_number} — tx <TxHash hash={m.tx_hash} />
               </li>
             ))}
           </ul>

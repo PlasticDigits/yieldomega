@@ -14,7 +14,7 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.3.0";
+const SCHEMA_VERSION: &str = "1.4.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -44,6 +44,7 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
         .route("/v1/timecurve/buys", get(timecurve_buys))
+        .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
         .route("/v1/rabbit/withdrawals", get(rabbit_withdrawals))
         .route("/v1/rabbit/health-epochs", get(rabbit_health_epochs))
@@ -178,6 +179,62 @@ async fn timecurve_buys(
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct BuyerStatsQuery {
+    pub buyer: String,
+}
+
+fn valid_0x_address20(s: &str) -> bool {
+    s.starts_with("0x") && s.len() == 42 && s[2..].chars().all(|c| c.is_ascii_hexdigit())
+}
+
+async fn timecurve_buyer_stats(
+    State(state): State<AppState>,
+    Query(q): Query<BuyerStatsQuery>,
+) -> Response {
+    if !valid_0x_address20(&q.buyer) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "buyer must be a 0x-prefixed 20-byte address" })),
+        )
+            .into_response();
+    }
+
+    let row = sqlx::query(
+        r#"SELECT COALESCE(SUM(amount), 0)::text AS indexed_total_spend,
+                  COUNT(*)::text AS indexed_buy_count
+           FROM idx_timecurve_buy
+           WHERE LOWER(buyer) = LOWER($1)"#,
+    )
+    .bind(&q.buyer)
+    .fetch_one(&state.pool)
+    .await;
+
+    let row = match row {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let indexed_total_spend: String = row.try_get("indexed_total_spend").unwrap_or_else(|_| "0".into());
+    let indexed_buy_count: String = row.try_get("indexed_buy_count").unwrap_or_else(|_| "0".into());
+
+    let body = json!({
+        "buyer": q.buyer,
+        "indexed_total_spend": indexed_total_spend,
+        "indexed_buy_count": indexed_buy_count,
     });
 
     let mut res = Json(body).into_response();

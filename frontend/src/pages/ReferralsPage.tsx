@@ -5,6 +5,7 @@ import { maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { erc20Abi, referralRegistryReadAbi, referralRegistryWriteAbi } from "@/lib/abis";
 import { normalizeReferralCode } from "@/lib/referralCode";
@@ -208,7 +209,8 @@ export function ReferralsPage() {
             {regs.map((r) => (
               <li key={`${r.tx_hash}-${r.log_index}`}>
                 <span className="mono">{r.normalized_code}</span> —{" "}
-                <span className="mono">{r.owner_address.slice(0, 10)}…</span> — block {r.block_number}
+                <span className="mono">{r.owner_address.slice(0, 10)}…</span> — block {r.block_number} — tx{" "}
+                <TxHash hash={r.tx_hash} />
               </li>
             ))}
           </ul>
@@ -227,7 +229,8 @@ export function ReferralsPage() {
             {applied.map((x) => (
               <li key={`${x.tx_hash}-${x.log_index}`}>
                 buyer <span className="mono">{x.buyer.slice(0, 10)}…</span> — referrer reward{" "}
-                <AmountDisplay raw={BigInt(x.referrer_amount)} decimals={18} /> — block {x.block_number}
+                <AmountDisplay raw={BigInt(x.referrer_amount)} decimals={18} /> — block {x.block_number} — tx{" "}
+                <TxHash hash={x.tx_hash} />
               </li>
             ))}
           </ul>

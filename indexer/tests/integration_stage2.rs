@@ -127,6 +127,18 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/buyer-stats?buyer=0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
     for path in [
         "/v1/timecurve/buys?limit=2",
         "/v1/rabbit/deposits?limit=2",
@@ -169,6 +181,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     .expect("insert api test buy");
 
     let res = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/v1/timecurve/buys?limit=10")
@@ -183,6 +196,24 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     assert!(
         items.iter().any(|row| row["block_number"] == "42"),
         "expected seeded row in items: {items:?}"
+    );
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/buyer-stats?buyer=0xdddddddddddddddddddddddddddddddddddddddd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let stats = response_json(res).await;
+    assert_eq!(stats["indexed_total_spend"], "1");
+    assert_eq!(stats["indexed_buy_count"], "1");
+    assert_eq!(
+        stats["buyer"],
+        "0xdddddddddddddddddddddddddddddddddddddddd"
     );
 }
 
