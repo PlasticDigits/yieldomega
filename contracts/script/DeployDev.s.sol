@@ -11,6 +11,8 @@ import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {ReferralRegistry} from "../src/ReferralRegistry.sol";
+import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 
 /// @notice Deploy all core contracts to a dev/local environment.
@@ -76,6 +78,13 @@ contract DeployDev is Script {
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
         console.log("FeeRouter:", address(router));
 
+        // ── Referral registry (dev MockCL8Y — replace with real CL8Y on testnet/mainnet) ──
+        MockCL8Y cl8y = new MockCL8Y();
+        cl8y.mint(deployer, 10_000_000e18);
+        ReferralRegistry referralRegistry = new ReferralRegistry(cl8y, 1e18);
+        console.log("MockCL8Y (dev):", address(cl8y));
+        console.log("ReferralRegistry:", address(referralRegistry));
+
         // ── TimeCurve (dev placeholder — needs launched token) ─────────
         // For dev, deploy a mock launched token and fund the TimeCurve.
         MockLaunchToken lt = new MockLaunchToken();
@@ -87,6 +96,7 @@ contract DeployDev is Script {
             lt,
             router,
             prizeVault,
+            address(referralRegistry),
             1e18,                               // initialMinBuy
             223_143_551_314_209_700,             // growthRateWad (ln(1.25))
             10,                                 // purchaseCapMultiple

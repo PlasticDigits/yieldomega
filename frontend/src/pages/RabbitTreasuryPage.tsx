@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
@@ -8,22 +8,29 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses } from "@/lib/addresses";
 import { erc20Abi, rabbitTreasuryReadAbi, rabbitTreasuryWriteAbi } from "@/lib/abis";
+import { friendlyRevertMessage } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchRabbitDeposits,
   fetchRabbitHealthEpochs,
+  fetchRabbitWithdrawals,
   type DepositItem,
   type HealthEpochItem,
+  type WithdrawalItem,
 } from "@/lib/indexerApi";
 
 export function RabbitTreasuryPage() {
   const { address, isConnected } = useAccount();
   const rt = addresses.rabbitTreasury;
   const [deposits, setDeposits] = useState<DepositItem[] | null>(null);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalItem[] | null>(null);
   const [healthEpochs, setHealthEpochs] = useState<HealthEpochItem[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [wNote, setWNote] = useState<string | null>(null);
   const [healthNote, setHealthNote] = useState<string | null>(null);
   const [depositStr, setDepositStr] = useState("10");
+  const [withdrawStr, setWithdrawStr] = useState("1");
+  const [factionStr, setFactionStr] = useState("0");
   const [depositErr, setDepositErr] = useState<string | null>(null);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
@@ -51,7 +58,27 @@ export function RabbitTreasuryPage() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const data = await fetchRabbitHealthEpochs(5);
+      const data = await fetchRabbitWithdrawals(address, 30);
+      if (cancelled) {
+        return;
+      }
+      if (!data) {
+        setWNote("Set VITE_INDEXER_URL to load withdrawals.");
+        setWithdrawals([]);
+        return;
+      }
+      setWithdrawals(data.items);
+      setWNote(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const data = await fetchRabbitHealthEpochs(20);
       if (cancelled) {
         return;
       }
@@ -77,15 +104,18 @@ export function RabbitTreasuryPage() {
           { address: rt, abi: rabbitTreasuryReadAbi, functionName: "eWad" },
           { address: rt, abi: rabbitTreasuryReadAbi, functionName: "reserveAsset" },
           { address: rt, abi: rabbitTreasuryReadAbi, functionName: "paused" },
+          { address: rt, abi: rabbitTreasuryReadAbi, functionName: "doub" },
         ]
       : [],
     query: { enabled: Boolean(rt) },
   });
 
-  const [epochId, epochEnd, totalReserves, eWad, reserveAsset, paused] = data ?? [];
+  const [epochId, epochEnd, totalReserves, eWad, reserveAsset, paused, doubAddr] = data ?? [];
 
   const reserveAddr =
     reserveAsset?.status === "success" ? (reserveAsset.result as `0x${string}`) : undefined;
+  const doubToken =
+    doubAddr?.status === "success" ? (doubAddr.result as `0x${string}`) : undefined;
 
   const { data: reserveDecimals } = useReadContract({
     address: reserveAddr,
@@ -94,13 +124,41 @@ export function RabbitTreasuryPage() {
     query: { enabled: Boolean(reserveAddr) },
   });
 
+  const { data: doubDecimals } = useReadContract({
+    address: doubToken,
+    abi: erc20Abi,
+    functionName: "decimals",
+    query: { enabled: Boolean(doubToken) },
+  });
+
+  const { data: doubBal } = useReadContract({
+    address: doubToken,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(doubToken && address) },
+  });
+
   const reserveTokenDecimals = reserveDecimals !== undefined ? Number(reserveDecimals) : 18;
+  const doubTokenDecimals = doubDecimals !== undefined ? Number(doubDecimals) : 18;
+
   const canDeposit =
     !isPending &&
     epochId?.status === "success" &&
     (epochId.result as bigint) > 0n &&
     paused?.status === "success" &&
     paused.result === false;
+
+  const chartPoints = useMemo(() => {
+    if (!healthEpochs || healthEpochs.length === 0) {
+      return [];
+    }
+    const sorted = [...healthEpochs].sort((a, b) => Number(a.epoch_id) - Number(b.epoch_id));
+    return sorted.map((h) => ({
+      epoch: h.epoch_id,
+      ratio: Number(h.reserve_ratio_wad) / 1e18,
+    }));
+  }, [healthEpochs]);
 
   async function handleDeposit() {
     setDepositErr(null);
@@ -109,10 +167,12 @@ export function RabbitTreasuryPage() {
       return;
     }
     let amount: bigint;
+    let factionId: bigint;
     try {
       amount = parseUnits(depositStr.trim() || "0", reserveTokenDecimals);
+      factionId = BigInt(factionStr.trim() || "0");
     } catch {
-      setDepositErr(`Invalid amount (use a decimal number, ${reserveTokenDecimals} decimals).`);
+      setDepositErr("Invalid amount or faction.");
       return;
     }
     if (amount <= 0n) {
@@ -139,12 +199,60 @@ export function RabbitTreasuryPage() {
         address: rt,
         abi: rabbitTreasuryWriteAbi,
         functionName: "deposit",
-        args: [amount, 0n],
+        args: [amount, factionId],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: depHash });
       void refetch();
     } catch (e) {
-      setDepositErr(e instanceof Error ? e.message : String(e));
+      setDepositErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
+    }
+  }
+
+  async function handleWithdraw() {
+    setDepositErr(null);
+    if (!address || !rt || !doubToken) {
+      setDepositErr("Connect a wallet and ensure DOUB token address loaded.");
+      return;
+    }
+    let doubAmount: bigint;
+    let factionId: bigint;
+    try {
+      doubAmount = parseUnits(withdrawStr.trim() || "0", doubTokenDecimals);
+      factionId = BigInt(factionStr.trim() || "0");
+    } catch {
+      setDepositErr("Invalid withdraw amount or faction.");
+      return;
+    }
+    if (doubAmount <= 0n) {
+      setDepositErr("Withdraw amount must be positive.");
+      return;
+    }
+    try {
+      const allow = await readContract(wagmiConfig, {
+        address: doubToken,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address, rt],
+      });
+      if (allow < doubAmount) {
+        const approveHash = await writeContractAsync({
+          address: doubToken,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [rt, maxUint256],
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+      }
+      const wHash = await writeContractAsync({
+        address: rt,
+        abi: rabbitTreasuryWriteAbi,
+        functionName: "withdraw",
+        args: [doubAmount, factionId],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: wHash });
+      void refetch();
+    } catch (e) {
+      setDepositErr(friendlyRevertMessage(e instanceof Error ? e.message : String(e)));
     }
   }
 
@@ -162,7 +270,7 @@ export function RabbitTreasuryPage() {
   return (
     <section className="page">
       <h1>Rabbit Treasury</h1>
-      <p className="lede">Treasury metrics from RPC; deposits from indexer (filtered by wallet when connected).</p>
+      <p className="lede">Burrow metrics from RPC; history from indexer.</p>
 
       <div className="data-panel">
         <h2>Onchain</h2>
@@ -204,17 +312,57 @@ export function RabbitTreasuryPage() {
             </dd>
             <dt>paused</dt>
             <dd>{paused?.status === "success" ? String(paused.result) : "—"}</dd>
+            <dt>your DOUB</dt>
+            <dd>
+              {doubBal !== undefined ? (
+                <AmountDisplay raw={doubBal as bigint} decimals={doubTokenDecimals} />
+              ) : (
+                "—"
+              )}
+            </dd>
           </dl>
         )}
       </div>
 
       <div className="data-panel">
-        <h2>Deposit (wallet)</h2>
+        <h2>Reserve ratio by epoch (indexer)</h2>
+        {healthNote && <p className="placeholder">{healthNote}</p>}
+        {chartPoints.length > 1 && (
+          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Reserve ratio trend">
+            <polyline
+              fill="none"
+              stroke="var(--line)"
+              strokeWidth="3"
+              points={chartPoints
+                .map((p, i) => {
+                  const x = (i / (chartPoints.length - 1)) * 380 + 10;
+                  const y = 110 - Math.min(100, p.ratio * 50);
+                  return `${x},${y}`;
+                })
+                .join(" ")}
+            />
+          </svg>
+        )}
+        {chartPoints.length > 0 && chartPoints.length <= 1 && (
+          <p className="muted">Need multiple epochs for a line chart.</p>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Deposit / withdraw (wallet)</h2>
         <p>
-          Approves the reserve asset for <strong>RabbitTreasury</strong>, then calls{" "}
-          <code>deposit(amount, 0)</code> (faction id 0).
+          <label className="form-label">
+            Faction id
+            <input
+              type="text"
+              className="form-input"
+              value={factionStr}
+              onChange={(e) => setFactionStr(e.target.value)}
+              spellCheck={false}
+            />
+          </label>
         </p>
-        {!isConnected && <p className="placeholder">Connect a wallet to deposit.</p>}
+        {!isConnected && <p className="placeholder">Connect a wallet.</p>}
         {isConnected && isPending && <p className="placeholder">Loading contract…</p>}
         {isConnected && !canDeposit && !isPending && (
           <p className="placeholder">Deposits disabled (no open epoch or contract is paused).</p>
@@ -222,7 +370,7 @@ export function RabbitTreasuryPage() {
         {isConnected && canDeposit && (
           <>
             <label className="form-label">
-              Amount (reserve token, {reserveTokenDecimals} decimals)
+              Deposit amount (reserve token, {reserveTokenDecimals} decimals)
               <input
                 type="text"
                 className="form-input"
@@ -233,7 +381,26 @@ export function RabbitTreasuryPage() {
             </label>
             <p>
               <button type="button" className="btn-primary" disabled={isWriting} onClick={handleDeposit}>
-                {isWriting ? "Confirm in wallet…" : "Approve (if needed) & deposit"}
+                {isWriting ? "Confirm…" : "Approve (if needed) & deposit"}
+              </button>
+            </p>
+          </>
+        )}
+        {isConnected && (
+          <>
+            <label className="form-label">
+              Withdraw DOUB amount ({doubTokenDecimals} decimals)
+              <input
+                type="text"
+                className="form-input"
+                value={withdrawStr}
+                onChange={(e) => setWithdrawStr(e.target.value)}
+                spellCheck={false}
+              />
+            </label>
+            <p>
+              <button type="button" className="btn-secondary" disabled={isWriting} onClick={handleWithdraw}>
+                {isWriting ? "Confirm…" : "Approve DOUB (if needed) & withdraw"}
               </button>
             </p>
           </>
@@ -243,14 +410,6 @@ export function RabbitTreasuryPage() {
 
       <div className="data-panel">
         <h2>Health epochs (indexer)</h2>
-        <p>
-          Latest <code>BurrowHealthEpochFinalized</code> rows: reserve ratio, repricing factor, backing per
-          DOUB.
-        </p>
-        {healthNote && <p className="placeholder">{healthNote}</p>}
-        {healthEpochs && healthEpochs.length === 0 && !healthNote && (
-          <p>No finalized health epochs indexed yet.</p>
-        )}
         {healthEpochs && healthEpochs.length > 0 && (
           <ul className="event-list">
             {healthEpochs.map((h) => (
@@ -275,6 +434,23 @@ export function RabbitTreasuryPage() {
                 <span className="mono">{d.user_address.slice(0, 10)}…</span> — amount{" "}
                 <AmountDisplay raw={d.amount} decimals={reserveTokenDecimals} /> — doubOut{" "}
                 <AmountDisplay raw={d.doub_out} decimals={18} /> — block {d.block_number}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Withdrawals {address ? `(wallet)` : ""}</h2>
+        {wNote && <p className="placeholder">{wNote}</p>}
+        {withdrawals && withdrawals.length === 0 && !wNote && <p>No matching withdrawals.</p>}
+        {withdrawals && withdrawals.length > 0 && (
+          <ul className="event-list">
+            {withdrawals.map((w) => (
+              <li key={`${w.tx_hash}-${w.log_index}`}>
+                <span className="mono">{w.user_address.slice(0, 10)}…</span> — reserve out{" "}
+                <AmountDisplay raw={w.amount} decimals={reserveTokenDecimals} /> — doubIn{" "}
+                <AmountDisplay raw={w.doub_in} decimals={18} /> — block {w.block_number}
               </li>
             ))}
           </ul>

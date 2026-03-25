@@ -72,6 +72,7 @@ contract DevStackIntegrationTest is Test {
             lt,
             router,
             prizeVault,
+            address(0),
             1e18,
             GROWTH_WAD,
             10,

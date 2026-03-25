@@ -269,6 +269,87 @@ body {
 }
 
 .lede,
+.muted {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.epoch-chart {
+  width: 100%;
+  max-height: 140px;
+  display: block;
+}
+
+.nft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.nft-card {
+  border: 3px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 251, 227, 0.65);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.nft-card__id {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.kv--compact dt {
+  font-size: 0.78rem;
+}
+
+.kv--compact dd {
+  font-size: 0.85rem;
+}
+
+.app-footer {
+  position: relative;
+  z-index: 1;
+  margin: 2rem auto 1.5rem;
+  width: min(72rem, calc(100% - 2rem));
+  padding: 1rem 1.2rem;
+  border: 3px solid var(--line);
+  border-radius: 1.2rem;
+  background: rgba(255, 251, 227, 0.75);
+  font-size: 0.92rem;
+}
+
+.app-footer__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.indexer-status {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.h-footer {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.data-panel--footer {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.fee-sink-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
 .placeholder {
   margin: 0 0 1rem;
   max-width: 52rem;
@@ -495,6 +576,23 @@ body {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+.btn-secondary {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-cream);
+  color: var(--text-main);
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+}
+
 button,
 input,
 textarea,

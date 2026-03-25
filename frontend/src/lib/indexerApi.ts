@@ -99,3 +99,81 @@ export async function fetchTimecurveAllocationClaims(limit = 20) {
     `/v1/timecurve/allocation-claims?limit=${limit}`,
   );
 }
+
+export type WithdrawalItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  user_address: string;
+  amount: string;
+  doub_in: string;
+  epoch_id: string;
+};
+
+export async function fetchRabbitWithdrawals(user: string | undefined, limit = 20) {
+  const q =
+    user !== undefined
+      ? `/v1/rabbit/withdrawals?limit=${limit}&user=${encodeURIComponent(user)}`
+      : `/v1/rabbit/withdrawals?limit=${limit}`;
+  return getJson<{ items: WithdrawalItem[] }>(q);
+}
+
+export type PrizePayoutItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  winner: string;
+  token: string;
+  amount: string;
+  category: number;
+  placement: number;
+};
+
+export async function fetchTimecurvePrizePayouts(limit = 30) {
+  return getJson<{ items: PrizePayoutItem[] }>(`/v1/timecurve/prize-payouts?limit=${limit}`);
+}
+
+export type PrizeDistributionItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  contract_address: string;
+};
+
+export async function fetchTimecurvePrizeDistributions(limit = 20) {
+  return getJson<{ items: PrizeDistributionItem[] }>(
+    `/v1/timecurve/prize-distributions?limit=${limit}`,
+  );
+}
+
+export type ReferralRegistrationItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  owner_address: string;
+  code_hash: string;
+  normalized_code: string;
+};
+
+export async function fetchReferralRegistrations(limit = 30) {
+  return getJson<{ items: ReferralRegistrationItem[] }>(`/v1/referrals/registrations?limit=${limit}`);
+}
+
+export type ReferralAppliedItem = {
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+  buyer: string;
+  referrer: string;
+  code_hash: string;
+  referrer_amount: string;
+  referee_amount: string;
+  amount_to_fee_router: string;
+};
+
+export async function fetchReferralApplied(referrer: string | undefined, limit = 30) {
+  const q = referrer
+    ? `/v1/referrals/applied?limit=${limit}&referrer=${encodeURIComponent(referrer)}`
+    : `/v1/referrals/applied?limit=${limit}`;
+  return getJson<{ items: ReferralAppliedItem[] }>(q);
+}

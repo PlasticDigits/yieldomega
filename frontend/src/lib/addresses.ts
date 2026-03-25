@@ -23,7 +23,15 @@ export const addresses = {
   timeCurve: parseAddr("VITE_TIMECURVE_ADDRESS"),
   rabbitTreasury: parseAddr("VITE_RABBIT_TREASURY_ADDRESS"),
   leprechaunNft: parseAddr("VITE_LEPRECHAUN_NFT_ADDRESS"),
+  referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
+  feeRouter: parseAddr("VITE_FEE_ROUTER_ADDRESS"),
 };
+
+/** Optional public URL for CL8Y / governance (footer link). */
+export function governanceUrl(): string | undefined {
+  const u = import.meta.env.VITE_GOVERNANCE_URL?.trim();
+  return u && u.length > 0 ? u : undefined;
+}
 
 export function normalizeIndexerBaseUrl(u: string | undefined | null): string | undefined {
   const t = u?.trim();

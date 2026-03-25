@@ -7,6 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {TimeMath} from "./libraries/TimeMath.sol";
 import {FeeRouter} from "./FeeRouter.sol";
 import {PrizeVault} from "./sinks/PrizeVault.sol";
+import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 
 /// @title TimeCurve — token launch primitive
 /// @notice Implements the sale lifecycle per docs/product/primitives.md:
@@ -26,11 +27,16 @@ contract TimeCurve is ReentrancyGuard {
     uint8 public constant CAT_HIGHEST_CUMULATIVE = 5;
     uint8 public constant NUM_CATEGORIES = 6;
 
+    /// @notice Per docs/product/referrals.md: 10% to referrer + 10% referee rebate (bps each).
+    uint16 public constant REFERRAL_EACH_BPS = 1000;
+
     // ── Configuration (immutable after deploy) ─────────────────────────
     IERC20 public immutable acceptedAsset;
     IERC20 public immutable launchedToken;
     FeeRouter public immutable feeRouter;
     PrizeVault public immutable prizeVault;
+    /// @notice Zero address disables `buy(amount, codeHash)` referral path.
+    IReferralRegistry public immutable referralRegistry;
 
     uint256 public immutable initialMinBuy;
     uint256 public immutable growthRateWad;
@@ -84,12 +90,21 @@ contract TimeCurve is ReentrancyGuard {
     event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
     event AllocationClaimed(address indexed buyer, uint256 tokenAmount);
     event PrizesDistributed();
+    event ReferralApplied(
+        address indexed buyer,
+        address indexed referrer,
+        bytes32 indexed codeHash,
+        uint256 referrerAmount,
+        uint256 refereeAmount,
+        uint256 amountToFeeRouter
+    );
 
     constructor(
         IERC20 _acceptedAsset,
         IERC20 _launchedToken,
         FeeRouter _feeRouter,
         PrizeVault _prizeVault,
+        address _referralRegistry,
         uint256 _initialMinBuy,
         uint256 _growthRateWad,
         uint256 _purchaseCapMultiple,
@@ -121,6 +136,7 @@ contract TimeCurve is ReentrancyGuard {
         totalTokensForSale = _totalTokensForSale;
         openingWindowSec = _openingWindowSec;
         closingWindowSec = _closingWindowSec;
+        referralRegistry = IReferralRegistry(_referralRegistry);
     }
 
     /// @notice Start the sale. Caller must have transferred launched tokens to this contract.
@@ -135,10 +151,19 @@ contract TimeCurve is ReentrancyGuard {
         emit SaleStarted(block.timestamp, deadline, totalTokensForSale);
     }
 
-    /// @notice Execute a buy during the active sale.
+    /// @notice Execute a buy during the active sale (no referral).
     /// @dev Assumes `acceptedAsset` behaves as a standard ERC20: `transferFrom` debits exactly `amount`
     ///      from the buyer. Fee-on-transfer or rebasing tokens are unsupported (`totalRaised` tracks `amount`).
     function buy(uint256 amount) external nonReentrant {
+        _buy(amount, bytes32(0));
+    }
+
+    /// @notice Buy with an optional referral `codeHash` (see `ReferralRegistry.hashCode`).
+    function buy(uint256 amount, bytes32 codeHash) external nonReentrant {
+        _buy(amount, codeHash);
+    }
+
+    function _buy(uint256 amount, bytes32 codeHash) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
         require(block.timestamp < deadline, "TimeCurve: timer expired");
@@ -150,9 +175,27 @@ contract TimeCurve is ReentrancyGuard {
         require(amount >= minBuy, "TimeCurve: below min buy");
         require(amount <= maxBuy, "TimeCurve: above cap");
 
-        // Transfer accepted asset from buyer to fee router
-        acceptedAsset.safeTransferFrom(msg.sender, address(feeRouter), amount);
-        feeRouter.distributeFees(acceptedAsset, amount);
+        if (codeHash != bytes32(0)) {
+            require(address(referralRegistry) != address(0), "TimeCurve: referral disabled");
+        }
+
+        acceptedAsset.safeTransferFrom(msg.sender, address(this), amount);
+
+        uint256 toFee = amount;
+        if (codeHash != bytes32(0)) {
+            address referrer = referralRegistry.ownerOfCode(codeHash);
+            require(referrer != address(0), "TimeCurve: invalid referral");
+            require(referrer != msg.sender, "TimeCurve: self-referral");
+            uint256 refEach = (amount * uint256(REFERRAL_EACH_BPS)) / 10_000;
+            require(refEach > 0 && refEach * 2 <= amount, "TimeCurve: referral amount");
+            toFee = amount - refEach * 2;
+            acceptedAsset.safeTransfer(referrer, refEach);
+            acceptedAsset.safeTransfer(msg.sender, refEach);
+            emit ReferralApplied(msg.sender, referrer, codeHash, refEach, refEach, toFee);
+        }
+
+        acceptedAsset.safeTransfer(address(feeRouter), toFee);
+        feeRouter.distributeFees(acceptedAsset, toFee);
 
         // Update state
         totalRaised += amount;

@@ -81,6 +81,7 @@ contract TimeCurveInvariantTest is Test {
             IERC20(address(launched)),
             router,
             prizeVault,
+            address(0),
             1e18,
             0,
             10,

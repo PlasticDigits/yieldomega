@@ -14,7 +14,7 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.1.0";
+const SCHEMA_VERSION: &str = "1.2.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -49,6 +49,10 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/rabbit/health-epochs", get(rabbit_health_epochs))
         .route("/v1/timecurve/allocation-claims", get(timecurve_allocation_claims))
         .route("/v1/leprechauns/mints", get(leprechaun_mints))
+        .route("/v1/timecurve/prize-distributions", get(timecurve_prize_distributions))
+        .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
+        .route("/v1/referrals/registrations", get(referral_registrations))
+        .route("/v1/referrals/applied", get(referral_applied))
         .with_state(state)
 }
 
@@ -588,6 +592,328 @@ async fn leprechaun_mints(
                 token_id: r.try_get("token_id").ok()?,
                 series_id: r.try_get("series_id").ok()?,
                 to_address: r.try_get("to_address").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ReferralAppliedQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+    pub referrer: Option<String>,
+}
+
+#[derive(Serialize)]
+struct PrizeDistributionRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    contract_address: String,
+}
+
+async fn timecurve_prize_distributions(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT block_number, tx_hash, log_index, contract_address
+           FROM idx_timecurve_prizes_distributed
+           ORDER BY block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<PrizeDistributionRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(PrizeDistributionRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                contract_address: r.try_get("contract_address").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct PrizePayoutRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    winner: String,
+    token: String,
+    amount: String,
+    category: i16,
+    placement: i16,
+}
+
+async fn timecurve_prize_payouts(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT block_number, tx_hash, log_index,
+                  winner, token, amount::text AS amount, category, placement
+           FROM idx_prize_vault_prize_paid
+           ORDER BY block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<PrizePayoutRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(PrizePayoutRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                winner: r.try_get("winner").ok()?,
+                token: r.try_get("token").ok()?,
+                amount: r.try_get("amount").ok()?,
+                category: r.try_get("category").ok()?,
+                placement: r.try_get("placement").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct ReferralRegistrationRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    owner_address: String,
+    code_hash: String,
+    normalized_code: String,
+}
+
+async fn referral_registrations(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT block_number, tx_hash, log_index, owner_address, code_hash, normalized_code
+           FROM idx_referral_code_registered
+           ORDER BY block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<ReferralRegistrationRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(ReferralRegistrationRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                owner_address: r.try_get("owner_address").ok()?,
+                code_hash: r.try_get("code_hash").ok()?,
+                normalized_code: r.try_get("normalized_code").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct ReferralAppliedRow {
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    buyer: String,
+    referrer: String,
+    code_hash: String,
+    referrer_amount: String,
+    referee_amount: String,
+    amount_to_fee_router: String,
+}
+
+async fn referral_applied(
+    State(state): State<AppState>,
+    Query(p): Query<ReferralAppliedQuery>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = if let Some(ref addr) = p.referrer {
+        let addr_l = addr.to_lowercase();
+        sqlx::query(
+            r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
+                      referrer_amount::text AS referrer_amount,
+                      referee_amount::text AS referee_amount,
+                      amount_to_fee_router::text AS amount_to_fee_router
+               FROM idx_timecurve_referral_applied
+               WHERE lower(referrer) = lower($3)
+               ORDER BY block_number DESC, log_index ASC
+               LIMIT $1 OFFSET $2"#,
+        )
+        .bind(lim)
+        .bind(off)
+        .bind(addr_l)
+        .fetch_all(&state.pool)
+        .await
+    } else {
+        sqlx::query(
+            r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
+                      referrer_amount::text AS referrer_amount,
+                      referee_amount::text AS referee_amount,
+                      amount_to_fee_router::text AS amount_to_fee_router
+               FROM idx_timecurve_referral_applied
+               ORDER BY block_number DESC, log_index ASC
+               LIMIT $1 OFFSET $2"#,
+        )
+        .bind(lim)
+        .bind(off)
+        .fetch_all(&state.pool)
+        .await
+    };
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<ReferralAppliedRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(ReferralAppliedRow {
+                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                buyer: r.try_get("buyer").ok()?,
+                referrer: r.try_get("referrer").ok()?,
+                code_hash: r.try_get("code_hash").ok()?,
+                referrer_amount: r.try_get("referrer_amount").ok()?,
+                referee_amount: r.try_get("referee_amount").ok()?,
+                amount_to_fee_router: r.try_get("amount_to_fee_router").ok()?,
             })
         })
         .collect();
