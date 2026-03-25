@@ -87,6 +87,20 @@ export async function fetchTimecurveBuys(limit = 20, offset = 0) {
   return getJson<PaginatedItems<BuyItem>>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
 }
 
+export type TimecurveBuyerStats = {
+  buyer: string;
+  indexed_total_spend: string;
+  indexed_buy_count: string;
+};
+
+export function timecurveBuyerStatsApiPath(buyer: string): string {
+  return `/v1/timecurve/buyer-stats?buyer=${encodeURIComponent(buyer)}`;
+}
+
+export async function fetchTimecurveBuyerStats(buyer: string) {
+  return getJson<TimecurveBuyerStats>(timecurveBuyerStatsApiPath(buyer));
+}
+
 export async function fetchRabbitDeposits(user: string | undefined, limit = 20) {
   return getJson<{ items: DepositItem[] }>(rabbitDepositsApiPath(user, limit));
 }

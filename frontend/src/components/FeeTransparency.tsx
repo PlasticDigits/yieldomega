@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { useReadContracts } from "wagmi";
+import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { feeRouterReadAbi } from "@/lib/abis";
-import { fetchFeeRouterSinksUpdates, type FeeRouterSinksUpdateItem } from "@/lib/indexerApi";
+import {
+  fetchFeeRouterFeesDistributed,
+  fetchFeeRouterSinksUpdates,
+  type FeeRouterFeesDistributedItem,
+  type FeeRouterSinksUpdateItem,
+} from "@/lib/indexerApi";
 
 const LABELS = ["DOUB LP", "Rabbit Treasury", "Prizes", "CL8Y buy-and-burn"];
 
 export function FeeTransparency() {
   const fr = addresses.feeRouter;
   const [sinksHistory, setSinksHistory] = useState<FeeRouterSinksUpdateItem[] | null>(null);
+  const [feesDistributed, setFeesDistributed] = useState<FeeRouterFeesDistributedItem[] | null>(null);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
 
   const { data, isPending, isError } = useReadContracts({
@@ -31,19 +38,25 @@ export function FeeTransparency() {
       if (!indexerBaseUrl()) {
         setHistoryNote(null);
         setSinksHistory(null);
+        setFeesDistributed(null);
         return;
       }
-      const res = await fetchFeeRouterSinksUpdates(8, 0);
+      const [res, fd] = await Promise.all([
+        fetchFeeRouterSinksUpdates(8, 0),
+        fetchFeeRouterFeesDistributed(8, 0),
+      ]);
       if (cancelled) {
         return;
       }
       if (!res) {
         setHistoryNote("Indexer unreachable for history.");
         setSinksHistory([]);
+        setFeesDistributed(fd?.items ?? []);
         return;
       }
       setHistoryNote(null);
       setSinksHistory(res.items);
+      setFeesDistributed(fd?.items ?? []);
     })();
     return () => {
       cancelled = true;
@@ -93,7 +106,22 @@ export function FeeTransparency() {
             {sinksHistory.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
                 block {row.block_number} — actor <span className="mono">{row.actor.slice(0, 10)}…</span> —{" "}
-                new weights {summarizeSinksJson(row.new_sinks_json)}
+                new weights {summarizeSinksJson(row.new_sinks_json)} — tx <TxHash hash={row.tx_hash} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {feesDistributed && feesDistributed.length > 0 && (
+        <>
+          <p className="muted" style={{ marginTop: "0.75rem" }}>
+            <strong>Recent fee distributions</strong> (indexer mirror)
+          </p>
+          <ul className="fee-sink-list fee-sink-list--compact">
+            {feesDistributed.map((row) => (
+              <li key={`${row.tx_hash}-${row.log_index}`}>
+                block {row.block_number} — token <span className="mono">{row.token.slice(0, 10)}…</span> —{" "}
+                amount {row.amount} — {summarizeSharesJson(row.shares_json)} — tx <TxHash hash={row.tx_hash} />
               </li>
             ))}
           </ul>
@@ -117,4 +145,8 @@ function summarizeSinksJson(json: string): string {
     /* ignore */
   }
   return json.length > 40 ? `${json.slice(0, 40)}…` : json;
+}
+
+function summarizeSharesJson(json: string): string {
+  return json.length > 48 ? `${json.slice(0, 48)}…` : json;
 }

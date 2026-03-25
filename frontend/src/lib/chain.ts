@@ -39,9 +39,10 @@ export function configuredChain() {
     import.meta.env.VITE_CHAIN_ID,
     import.meta.env.VITE_RPC_URL,
   );
+  const nameOverride = import.meta.env.VITE_CHAIN_NAME?.trim();
   return defineChain({
     id,
-    name: `Chain ${id}`,
+    name: nameOverride && nameOverride.length > 0 ? nameOverride : `Chain ${id}`,
     nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
     rpcUrls: {
       default: { http: [defaultRpcHttp] },

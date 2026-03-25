@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
-import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { TxHash } from "@/components/TxHash";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses } from "@/lib/addresses";
 import { erc20Abi, rabbitTreasuryReadAbi, rabbitTreasuryWriteAbi } from "@/lib/abis";
+import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
 import {
@@ -23,6 +25,7 @@ import {
 
 export function RabbitTreasuryPage() {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const rt = addresses.rabbitTreasury;
   const [deposits, setDeposits] = useState<DepositItem[] | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[] | null>(null);
@@ -36,6 +39,8 @@ export function RabbitTreasuryPage() {
   const [withdrawStr, setWithdrawStr] = useState("1");
   const [factionStr, setFactionStr] = useState("0");
   const [depositErr, setDepositErr] = useState<string | null>(null);
+  const [gasDeposit, setGasDeposit] = useState<bigint | undefined>(undefined);
+  const [gasWithdraw, setGasWithdraw] = useState<bigint | undefined>(undefined);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -172,6 +177,68 @@ export function RabbitTreasuryPage() {
     (epochId.result as bigint) > 0n &&
     paused?.status === "success" &&
     paused.result === false;
+
+  useEffect(() => {
+    if (!address || !rt || !canDeposit) {
+      setGasDeposit(undefined);
+      return;
+    }
+    let amount: bigint;
+    let factionId: bigint;
+    try {
+      amount = parseUnits(depositStr.trim() || "0", reserveTokenDecimals);
+      factionId = BigInt(factionStr.trim() || "0");
+    } catch {
+      setGasDeposit(undefined);
+      return;
+    }
+    if (amount <= 0n) {
+      setGasDeposit(undefined);
+      return;
+    }
+    const t = setTimeout(() => {
+      void estimateGasUnits({
+        address: rt,
+        abi: rabbitTreasuryWriteAbi,
+        functionName: "deposit",
+        args: [amount, factionId],
+        account: address,
+        chainId,
+      }).then(setGasDeposit);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [address, rt, canDeposit, depositStr, factionStr, reserveTokenDecimals, chainId]);
+
+  useEffect(() => {
+    if (!address || !rt || !doubToken) {
+      setGasWithdraw(undefined);
+      return;
+    }
+    let doubAmount: bigint;
+    let factionId: bigint;
+    try {
+      doubAmount = parseUnits(withdrawStr.trim() || "0", doubTokenDecimals);
+      factionId = BigInt(factionStr.trim() || "0");
+    } catch {
+      setGasWithdraw(undefined);
+      return;
+    }
+    if (doubAmount <= 0n) {
+      setGasWithdraw(undefined);
+      return;
+    }
+    const t = setTimeout(() => {
+      void estimateGasUnits({
+        address: rt,
+        abi: rabbitTreasuryWriteAbi,
+        functionName: "withdraw",
+        args: [doubAmount, factionId],
+        account: address,
+        chainId,
+      }).then(setGasWithdraw);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [address, rt, doubToken, withdrawStr, factionStr, doubTokenDecimals, chainId]);
 
   const chartPoints = useMemo(() => {
     if (!healthEpochs || healthEpochs.length === 0) {
@@ -314,6 +381,11 @@ export function RabbitTreasuryPage() {
           This is a <strong>reserve-linked treasury game</strong>: DOUB is internal accounting, not a
           bank deposit. Returns are not guaranteed; sustainability depends on fees, activity, and
           reserve health. The protocol may reprice when metrics weaken—see onchain events and docs.
+        </p>
+        <p className="muted">
+          <strong>Faction id</strong> is a numeric game parameter for this Burrow. Onchain Leprechaun
+          metadata does not expose a faction id for auto-selection in this release—enter the faction
+          your team or rules specify (see product docs for Burrow ↔ NFT interplay).
         </p>
       </div>
 
@@ -495,6 +567,9 @@ export function RabbitTreasuryPage() {
                 {isWriting ? "Confirm…" : "Approve (if needed) & deposit"}
               </button>
             </p>
+            {gasDeposit !== undefined && (
+              <p className="muted">Est. gas (deposit): ~{gasDeposit.toString()} units</p>
+            )}
           </>
         )}
         {isConnected && (
@@ -514,6 +589,9 @@ export function RabbitTreasuryPage() {
                 {isWriting ? "Confirm…" : "Approve DOUB (if needed) & withdraw"}
               </button>
             </p>
+            {gasWithdraw !== undefined && (
+              <p className="muted">Est. gas (withdraw): ~{gasWithdraw.toString()} units</p>
+            )}
           </>
         )}
         {depositErr && <p className="error-text">{depositErr}</p>}
@@ -527,7 +605,8 @@ export function RabbitTreasuryPage() {
               <li key={`${h.tx_hash}-${h.log_index}`}>
                 <span className="mono">epoch {h.epoch_id}</span> — repricing{" "}
                 <AmountDisplay raw={h.repricing_factor_wad} decimals={18} /> — backing/DOUB{" "}
-                <AmountDisplay raw={h.backing_per_doubloon_wad} decimals={18} /> — block {h.block_number}
+                <AmountDisplay raw={h.backing_per_doubloon_wad} decimals={18} /> — block {h.block_number} — tx{" "}
+                <TxHash hash={h.tx_hash} />
               </li>
             ))}
           </ul>
@@ -545,7 +624,8 @@ export function RabbitTreasuryPage() {
                 <span className="mono">{d.user_address.slice(0, 10)}…</span> — amount{" "}
                 <AmountDisplay raw={d.amount} decimals={reserveTokenDecimals} /> — doubOut{" "}
                 <AmountDisplay raw={d.doub_out} decimals={18} /> — faction {d.faction_id} — asset{" "}
-                <span className="mono">{d.reserve_asset.slice(0, 10)}…</span> — block {d.block_number}
+                <span className="mono">{d.reserve_asset.slice(0, 10)}…</span> — block {d.block_number} — tx{" "}
+                <TxHash hash={d.tx_hash} />
               </li>
             ))}
           </ul>
@@ -563,7 +643,8 @@ export function RabbitTreasuryPage() {
                 <span className="mono">{w.user_address.slice(0, 10)}…</span> — reserve out{" "}
                 <AmountDisplay raw={w.amount} decimals={reserveTokenDecimals} /> — doubIn{" "}
                 <AmountDisplay raw={w.doub_in} decimals={18} /> — faction {w.faction_id} — asset{" "}
-                <span className="mono">{w.reserve_asset.slice(0, 10)}…</span> — block {w.block_number}
+                <span className="mono">{w.reserve_asset.slice(0, 10)}…</span> — block {w.block_number} — tx{" "}
+                <TxHash hash={w.tx_hash} />
               </li>
             ))}
           </ul>
