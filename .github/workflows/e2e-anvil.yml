@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Optional: full-stack Anvil E2E (Foundry + deploy + Playwright). Not a PR merge gate.
+name: e2e-anvil
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-anvil-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anvil-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install Forge dependencies
+        working-directory: contracts
+        run: |
+          forge install foundry-rs/forge-std@v1.15.0 --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+          forge install PaulRBerg/prb-math@v4.1.1 --no-git
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend install and Playwright browsers
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Anvil E2E script
+        run: bash scripts/e2e-anvil.sh

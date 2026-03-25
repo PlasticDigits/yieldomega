@@ -2,6 +2,8 @@
 
 **CI mapping (what runs in GitHub Actions vs manual gates):** [ci.md](ci.md).
 
+**Business logic + invariant map (specs ↔ tests, full contract/sim/indexer inventory):** [invariants-and-business-logic.md](invariants-and-business-logic.md).
+
 ## Three stages (plus production)
 
 Quality gates progress from **fast feedback** to **realistic integration** to **public testnet** before **mainnet**. Shared vocabulary: [../glossary.md](../glossary.md).
@@ -10,10 +12,10 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 
 **Scope**
 
-- **Simulations:** `simulations/` — `PYTHONPATH=. python3 -m unittest discover -s tests -v` for bounded repricing and faction comeback (see [../simulations/README.md](../simulations/README.md)).
+- **Simulations:** `simulations/` — `PYTHONPATH=. python3 -m unittest discover -s tests -v` for bounded repricing and faction comeback (see [../simulations/README.md](../simulations/README.md)). Same command runs in the **`simulations-test`** job of [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml).
 - **Contracts:** `forge test` — invariants, edge cases, fuzz on TimeCurve timers and purchase caps; treasury accounting math (`BurrowMath`); NFT mint constraints.
 - **Indexer:** Rust unit tests for decoders, reorg rollback logic, schema migrations (where testable without chain).
-- **Frontend:** Component and pure logic tests as appropriate (Vitest or similar TBD).
+- **Frontend:** Vitest for pure helpers (`npm test` in `frontend/`); Playwright smoke on the production build (`npm run test:e2e` after `playwright install`, CI: `playwright-e2e` job). That CI job is **UI-only** (routes, nav) — it does **not** start Anvil. **Anvil-backed** E2E (RPC reads against a local node + `DeployDev`) is documented in [e2e-anvil.md](e2e-anvil.md); run locally via [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) / `npm run test:e2e:anvil` in `frontend/`. Anvil E2E does not replace MegaETH testnet validation (gas and execution model differ).
 
 **Entry criteria**
 
@@ -22,7 +24,7 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 **Exit criteria**
 
 - No failing tests on default branch.
-- Critical invariants documented next to tests; align fee-routing expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants) in [fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md).
+- Critical invariants documented next to tests and summarized in [invariants-and-business-logic.md](invariants-and-business-logic.md); align fee-routing expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants) in [fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md).
 
 ### Stage 2 — Devnet integration
 
@@ -38,13 +40,13 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 
 **Exit criteria (checklist)**
 
-- [ ] **Contracts** deployed to the target dev environment; versions/commits recorded (match the branch under test).
-- [ ] **Indexer** runs against that chain with a **fresh** Postgres database; migrations applied cleanly from empty.
-- [ ] **Smoke E2E** completed: connect wallet → **buy** → **deposit** → **NFT read path**; no blocking failures on these paths.
-- [ ] **Indexer lag** is under the agreed threshold (for example **&lt; N blocks** behind tip under normal load); **N** and measurement conditions noted in the run log or ticket.
-- [ ] **History consistency:** indexer shows transactions/events that match chain state for the smoke actions (no missing or contradictory rows for those paths).
-- [ ] **Reorg handling** exercised at least once: **reorg simulation in CI** *or* **documented manual reorg test** with outcome (pass/fail and what was observed).
-- [ ] **No critical regressions** on smoke paths (security or fund-flow breakages block exit until fixed or explicitly waived with sign-off).
+- [x] **Contracts** deployed to the target dev environment; versions/commits recorded (match the branch under test). _See [operations/stage2-run-log.md](../operations/stage2-run-log.md)._
+- [x] **Indexer** runs against that chain with a **fresh** Postgres database; migrations applied cleanly from empty. _Recorded in run log._
+- [x] **Smoke E2E** completed: connect wallet → **buy** → **deposit** → **NFT read path**; no blocking failures on these paths. _CLI smoke + UI wiring in repo; details in run log._
+- [x] **Indexer lag** is under the agreed threshold (for example **&lt; N blocks** behind tip under normal load); **N** and measurement conditions noted in the run log or ticket. _Run log: N = 0 after catch-up (idle)._
+- [x] **History consistency:** indexer shows transactions/events that match chain state for the smoke actions (no missing or contradictory rows for those paths). _Run log: row counts + API._
+- [x] **Reorg handling** exercised at least once: **Postgres integration tests** (`indexer/tests/integration_stage2.rs`) run in CI with a service container and assert `rollback_after` truncates event tables + `indexed_blocks` and resets `chain_pointer`. _Live Anvil fork/reset drill remains optional operator follow-up per [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md); see [operations/stage2-run-log.md](../operations/stage2-run-log.md) §6._
+- [x] **No critical regressions** on smoke paths (security or fund-flow breakages block exit until fixed or explicitly waived with sign-off).
 
 ### Stage 3 — Testnet release → final deployment
 

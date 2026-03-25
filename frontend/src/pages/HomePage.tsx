@@ -7,19 +7,21 @@ export function HomePage() {
     <section className="page">
       <h1>YieldOmega</h1>
       <p className="lede">
-        Static Vite frontend: indexer reads, direct RPC where needed, wallet-native
-        actions (no custody in the app).
+        Mint jackpot mode: bright, chunky, wallet-native, and built to make TimeCurve,
+        Rabbit Treasury, and the leprechaun collection feel like one joyful onchain world.
       </p>
       <ul className="card-list">
         <li>
-          <Link to="/timecurve">TimeCurve</Link> — timer, curve, buys, leaderboards
+          <Link to="/timecurve">TimeCurve</Link> — race the clock, read the floor buy,
+          and watch the feed move in public
         </li>
         <li>
-          <Link to="/rabbit-treasury">Rabbit Treasury</Link> — deposits, epochs,
-          standings
+          <Link to="/rabbit-treasury">Rabbit Treasury</Link> — deposit into the burrow,
+          track reserve health, and follow the epochs
         </li>
         <li>
-          <Link to="/collection">Collection</Link> — NFT gallery and traits
+          <Link to="/collection">Collection</Link> — browse minted leprechauns, token
+          traits, and lucky relic status
         </li>
       </ul>
     </section>

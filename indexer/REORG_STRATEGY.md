@@ -71,6 +71,17 @@ window of `(block_number, block_hash)` pairs in an `indexed_blocks` table
 (or equivalent). Rows older than `MAX_REORG_DEPTH` blocks behind head can
 be pruned periodically.
 
+**Implementation (current):** `indexed_blocks` is updated for every successfully
+processed block. `find_common_ancestor` walks backward at most `MAX_REORG_DEPTH`
+steps (see `reorg.rs`), comparing RPC block hashes to stored rows. `rollback_after`
+deletes event rows and `indexed_blocks` entries with `block_number` strictly
+greater than the ancestor, then resets `chain_pointer` in a single transaction.
+
+**Manual reorg check (Stage 2):** With a local chain, reorg the fork (e.g. Anvil
+`anvil_reset` / alternative parent) once, confirm the indexer logs a reorg and
+API lists remain consistent for the smoke transactions, and record the outcome
+in the Stage 2 run log per `docs/testing/strategy.md`.
+
 ## Open questions
 
 - **Streaming vs polling:** MegaETH may offer `eth_subscribe("newHeads")`

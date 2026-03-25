@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "leprechaun-nft-metadata-v1",
+  "title": "Leprechaun NFT Metadata v1",
+  "description": "Onchain metadata schema for Leprechaun NFTs. Field keys align with LeprechaunNFT.Traits struct in contracts/src/LeprechaunNFT.sol.",
+  "type": "object",
+  "required": ["schemaVersion", "seriesId", "rarityTier", "role"],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0.0" },
+    "seriesId": { "type": "integer", "minimum": 0, "description": "Series identifier (onchain uint256)." },
+    "rarityTier": { "type": "integer", "minimum": 0, "maximum": 4, "description": "0=common, 1=uncommon, 2=rare, 3=epic, 4=legendary." },
+    "role": { "type": "integer", "minimum": 0, "description": "Game role enum (implementation-defined)." },
+    "passiveEffectType": { "type": "integer", "minimum": 0 },
+    "setId": { "type": "integer", "minimum": 0 },
+    "setPosition": { "type": "integer", "minimum": 0 },
+    "bonusCategory": { "type": "integer", "minimum": 0, "maximum": 2, "description": "0=treasuryDeposit, 1=timerSkew, 2=feeDiscount." },
+    "bonusValue": { "type": "integer", "minimum": 0, "description": "Fixed-point or integer within safe bounds." },
+    "synergyTag": { "type": "integer", "minimum": 0, "description": "Composability key for cross-NFT effects." },
+    "agentTradable": { "type": "boolean" },
+    "agentLendable": { "type": "boolean" },
+    "factionLocked": { "type": "boolean" }
+  }
+}

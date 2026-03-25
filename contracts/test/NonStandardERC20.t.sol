@@ -1,0 +1,157 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+pragma solidity ^0.8.24;
+
+import {Test} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {TimeCurve} from "../src/TimeCurve.sol";
+import {FeeRouter} from "../src/FeeRouter.sol";
+import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {RabbitTreasury} from "../src/RabbitTreasury.sol";
+import {Doubloon} from "../src/tokens/Doubloon.sol";
+import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
+import {MockERC20AlwaysRevert} from "./mocks/MockERC20AlwaysRevert.sol";
+import {MockERC20BlockedSink} from "./mocks/MockERC20BlockedSink.sol";
+import {MockERC20Rebasing} from "./mocks/MockERC20Rebasing.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract MockPlain is ERC20 {
+    constructor() ERC20("P", "P") {}
+    function mint(address to, uint256 a) external {
+        _mint(to, a);
+    }
+}
+
+/// @dev Sad-path tests for non-standard ERC-20 behavior (see docs/onchain/security-and-threat-model.md).
+contract NonStandardERC20Test is Test {
+    uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700;
+    uint256 internal constant ONE_DAY = 86_400;
+
+    uint256 internal constant C_MAX = 2e18;
+    uint256 internal constant C_STAR = 1_050_000_000_000_000_000;
+    uint256 internal constant ALPHA = 2e16;
+    uint256 internal constant BETA = 2e18;
+    uint256 internal constant M_MIN = 98e16;
+    uint256 internal constant M_MAX = 102e16;
+    uint256 internal constant LAM = 5e17;
+    uint256 internal constant DELTA_MAX_FRAC = 2e16;
+    uint256 internal constant EPS = 1;
+
+    address internal s0 = makeAddr("s0");
+    address internal s1 = makeAddr("s1");
+    address internal s2 = makeAddr("s2");
+    address internal s3 = makeAddr("s3");
+
+    function test_feeOnTransfer_timeCurve_buyReverts_distributeExpectsFullAmount() public {
+        MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
+        MockPlain lt = new MockPlain();
+        PrizeVault pv = new PrizeVault(address(this));
+        FeeRouter r = new FeeRouter(address(this), [s0, s1, address(pv), s3], [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]);
+        TimeCurve tc = new TimeCurve(
+            IERC20(address(ft)),
+            IERC20(address(lt)),
+            r,
+            pv,
+            1e18,
+            0,
+            10,
+            60,
+            ONE_DAY,
+            1_000_000e18,
+            3600,
+            3600
+        );
+        pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
+        lt.mint(address(tc), 1_000_000e18);
+        tc.startSale();
+
+        address user = makeAddr("user");
+        ft.mint(user, 100e18);
+        vm.prank(user);
+        ft.approve(address(tc), 100e18);
+
+        vm.prank(user);
+        vm.expectRevert();
+        tc.buy(100e18);
+    }
+
+    function test_alwaysRevert_feeRouter_distributeReverts() public {
+        MockERC20AlwaysRevert t = new MockERC20AlwaysRevert();
+        FeeRouter r = new FeeRouter(address(this), [s0, s1, s2, s3], [uint16(2500), uint16(2500), uint16(2500), uint16(2500)]);
+        t.mint(address(r), 1000);
+        vm.expectRevert(MockERC20AlwaysRevert.TransferBlocked.selector);
+        r.distributeFees(IERC20(address(t)), 1000);
+    }
+
+    function test_blockedSink_feeRouter_distributeReverts() public {
+        address sinkA = makeAddr("sinkA");
+        MockERC20BlockedSink t = new MockERC20BlockedSink(sinkA);
+        FeeRouter r = new FeeRouter(address(this), [sinkA, s1, s2, s3], [uint16(2500), uint16(2500), uint16(2500), uint16(2500)]);
+        t.mint(address(r), 1000);
+        vm.expectRevert(MockERC20BlockedSink.BlockedRecipient.selector);
+        r.distributeFees(IERC20(address(t)), 1000);
+    }
+
+    function test_alwaysRevert_rabbitTreasury_depositReverts() public {
+        MockERC20AlwaysRevert usdm = new MockERC20AlwaysRevert();
+        Doubloon d = new Doubloon(address(this));
+        RabbitTreasury rt = new RabbitTreasury(
+            IERC20(address(usdm)),
+            d,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            address(this)
+        );
+        d.grantRole(d.MINTER_ROLE(), address(rt));
+        rt.openFirstEpoch();
+
+        address u = makeAddr("u");
+        usdm.mint(u, 100e18);
+        vm.prank(u);
+        usdm.approve(address(rt), 100e18);
+        vm.prank(u);
+        vm.expectRevert(MockERC20AlwaysRevert.TransferBlocked.selector);
+        rt.deposit(100e18, 0);
+    }
+
+    function test_rebasing_treasury_balanceCanDesyncFromTotalReserves() public {
+        MockERC20Rebasing usdm = new MockERC20Rebasing();
+        Doubloon d = new Doubloon(address(this));
+        RabbitTreasury rt = new RabbitTreasury(
+            IERC20(address(usdm)),
+            d,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            address(this)
+        );
+        d.grantRole(d.MINTER_ROLE(), address(rt));
+        rt.openFirstEpoch();
+
+        address u = makeAddr("u");
+        usdm.mint(u, 100e18);
+        vm.prank(u);
+        usdm.approve(address(rt), 100e18);
+        vm.prank(u);
+        rt.deposit(100e18, 0);
+
+        assertEq(rt.totalReserves(), 100e18);
+        usdm.rebaseSimple(address(rt), 150e18);
+        assertEq(usdm.balanceOf(address(rt)), 150e18);
+        assertEq(rt.totalReserves(), 100e18);
+    }
+}

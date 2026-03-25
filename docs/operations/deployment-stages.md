@@ -12,7 +12,7 @@ Deployments move **devnet → testnet → mainnet** with **repeatable checklists
 
 ## Checklist template (copy per release)
 
-For a columnar table (network, contract set version, addresses, verification, indexer, frontend, signers, rollback), use [deployment-checklist.md](deployment-checklist.md).
+For a columnar table (network, contract set version, addresses, verification, indexer, frontend, signers, rollback), use [deployment-checklist.md](deployment-checklist.md). Stage 3 and mainnet execution steps: [stage3-mainnet-operator-runbook.md](stage3-mainnet-operator-runbook.md).
 
 | Field | Value |
 |--------|--------|
