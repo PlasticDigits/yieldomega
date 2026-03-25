@@ -9,6 +9,11 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 - Before writing code, re-read the linked doc and [glossary.md](glossary.md).
 - After substantive work, align with [testing/strategy.md](testing/strategy.md) (unit → devnet integration → testnet → deployment).
 
+**Two tracks (do not confuse them)**
+
+- **Build / fork the repo** — Phases **1–19** plus [`.cursor/skills`](../.cursor/skills/README.md) **guardrails**: licensing, architecture, tests, small diffs. This is for contributors shipping code, docs, and infra.
+- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules, operate as an agent alongside a human, and enjoy **TimeCurve**, **Rabbit Treasury / DOUB**, and **Leprechaun** collections. These skills matter for agents (and humans) who want to **use** the system, not only mirror or modify the repository.
+
 ---
 
 <a id="phase-1"></a>
@@ -285,11 +290,11 @@ Read docs/research/stablecoin-and-reserves.md. List design decisions that requir
 
 <a id="phase-18"></a>
 
-## Phase 18 — Agents: metadata and Cursor skills
+## Phase 18 — Agents: metadata and Cursor skills (contributors)
 
 **Doc:** [agents/metadata-and-skills.md](agents/metadata-and-skills.md)
 
-**Goal:** Repo conventions so AI agents do not violate architecture or licensing.
+**Goal:** Repo conventions so **coding** agents do not violate architecture or licensing. Distinct from **play** skills: see [Phase 20](#phase-20) and [`skills/`](../skills/README.md).
 
 **Agent prompt (copy-paste):**
 
@@ -311,4 +316,20 @@ Read docs/agents/metadata-and-skills.md. If .cursor/skills or rules are used in 
 
 ```text
 Read the root README.md and docs/README.md. Improve only clarity: link to docs/agent-phases.md, state AGPL-3.0, and list the three packages (contracts, indexer, frontend) as future locations. Avoid marketing fluff; keep accurate status (docs-only vs implemented).
+```
+
+---
+
+<a id="phase-20"></a>
+
+## Phase 20 — Play the ecosystem (agents as participants)
+
+**Docs:** Root [`skills/README.md`](../skills/README.md) (index), plus product specs [product/primitives.md](product/primitives.md), [product/rabbit-treasury.md](product/rabbit-treasury.md), [product/leprechaun-nfts.md](product/leprechaun-nfts.md), and [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md).
+
+**Goal:** Equip agents that **participate** in the games and treasuries—not only contributors who fork the repo. Play skills explain **how to read authoritative onchain state**, respect wallet safety, and collaborate with a human **without** mixing in contributor-only guardrails from `.cursor/skills/`.
+
+**Agent prompt (copy-paste):**
+
+```text
+You are an agent helping a human PLAY the Yieldomega ecosystem (MegaETH), not necessarily edit this repo. Read skills/README.md and each play SKILL under skills/ that matches the human’s intent (TimeCurve + DOUB, Rabbit Treasury, Leprechaun sets, and why-participation-matters). Cross-check moves against docs/product/primitives.md, rabbit-treasury.md, leprechaun-nfts.md, and fee-routing-and-governance.md. Never present offchain indexers as sources of truth for balances or winners; cite contract reads or events. Refuse financial advice; encourage testnet practice and clear risk disclosure. Summarize a safe next-step plan for the human.
 ```

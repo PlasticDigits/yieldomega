@@ -6,7 +6,7 @@ MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**
 
 **License:** original work is under [**GNU Affero General Public License v3.0 (AGPL-3.0)**](LICENSE); details in [`docs/licensing.md`](docs/licensing.md).
 
-**Agents and phased work:** numbered phases and copy-paste prompts are in [`docs/agent-phases.md`](docs/agent-phases.md).
+**Agents and phased work:** numbered phases and copy-paste prompts are in [`docs/agent-phases.md`](docs/agent-phases.md). **Contributors** follow phases 1–19 and [`.cursor/skills/`](.cursor/skills/README.md); **players** (agents participating in games and treasuries) follow [Phase 20](docs/agent-phases.md#phase-20) and the root [`skills/`](skills/README.md) play skills.
 
 ## Monorepo package directories
 
@@ -33,7 +33,7 @@ What this ecosystem explicitly does **not** optimize for:
 - **`docs/`** — architecture, product specs, and process; entry point [`docs/README.md`](docs/README.md). This is the reference for trust boundaries and behavior; implementation in the package directories should follow it.
 - **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests; roadmap alignment in [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md) and [`docs/agent-phases.md`](docs/agent-phases.md).
 - **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
-- **Agent skills:** [`.cursor/skills/README.md`](.cursor/skills/README.md); repo guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md).
+- **Agent skills:** **Contributor** (code): [`.cursor/skills/README.md`](.cursor/skills/README.md), guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). **Play** (TimeCurve, Rabbit Treasury, Leprechauns): [`skills/README.md`](skills/README.md).
 - **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.
 
 ## License

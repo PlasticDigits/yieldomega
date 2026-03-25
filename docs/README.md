@@ -13,13 +13,14 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeCurve, Rabbit Treasury, Doubloons / DOUB, USDm, agents).
 4. Use [agent-phases.md](agent-phases.md) when executing the roadmap in order or by task: each phase links one doc section and includes a **copy-paste prompt**.
 5. For **Leprechaun NFT onchain metadata** (JSON Schema drafts, semver, changelog), see [schemas/README.md](schemas/README.md) and [schemas/CHANGELOG.md](schemas/CHANGELOG.md).
-6. For project-specific Cursor skills, see [../.cursor/skills/README.md](../.cursor/skills/README.md).
+6. For **contributor** Cursor skills (code and licensing guardrails), see [../.cursor/skills/README.md](../.cursor/skills/README.md).
+7. For **play** skills (TimeCurve, Rabbit Treasury, Leprechaun collections — agents as participants), see [../skills/README.md](../skills/README.md) and [agent-phases.md](agent-phases.md#phase-20).
 
 ## Document map
 
 | Topic | Path |
 |--------|------|
-| **Agent phases and prompts** | [agent-phases.md](agent-phases.md) |
+| **Agent phases and prompts** | [agent-phases.md](agent-phases.md) (build: phases 1–19; **play:** [phase 20](agent-phases.md#phase-20), [`skills/`](../skills/README.md)) |
 | Glossary | [glossary.md](glossary.md) |
 | Licensing (AGPL-3.0) | [licensing.md](licensing.md) |
 | Architecture overview | [architecture/overview.md](architecture/overview.md) |
@@ -43,7 +44,8 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Research: MegaETH | [research/megaeth.md](research/megaeth.md) |
 | Research: USDm and reserves | [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md) |
 | Agents: metadata and skills | [agents/metadata-and-skills.md](agents/metadata-and-skills.md) |
-| Cursor skills folder | [../.cursor/skills/README.md](../.cursor/skills/README.md) |
+| Contributor Cursor skills | [../.cursor/skills/README.md](../.cursor/skills/README.md) |
+| Play skills (participation) | [../skills/README.md](../skills/README.md) · [Phase 20](agent-phases.md#phase-20) |
 
 ## Principles (short)
 
@@ -52,4 +54,4 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 - **AGPL-3.0:** default for original work; see [licensing.md](licensing.md).
 - **Agents:** [agent-phases.md](agent-phases.md) sequences work; onchain metadata and repo conventions support safe human and AI operation — [agents/metadata-and-skills.md](agents/metadata-and-skills.md).
 
-After onboarding here, follow [Phase 1 in agent-phases.md](agent-phases.md#phase-1) in order, or open the phase that matches your task.
+After onboarding here, **contributors** follow [Phase 1 in agent-phases.md](agent-phases.md#phase-1) in order, or open the phase that matches your task. **Players** (agents helping humans use the games) start with [Phase 20](agent-phases.md#phase-20) and [`skills/`](../skills/README.md).
