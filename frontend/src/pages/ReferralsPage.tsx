@@ -4,7 +4,7 @@ import { UnderConstruction } from "@/pages/UnderConstruction";
 
 export function ReferralsPage() {
   return (
-    <UnderConstruction title="Referrals" slug="referrals">
+    <UnderConstruction title="Referrals" slug="referrals" imageSrc="/art/referrals-card.jpg">
       CL8Y-backed registration, referral codes, and reward tracking — returning when this surface is back in scope for the launch track.
     </UnderConstruction>
   );

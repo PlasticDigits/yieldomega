@@ -8,6 +8,7 @@ export function KumbayaPage() {
     <ThirdPartyDexPage
       title="Kumbaya"
       slug="kumbaya"
+      heroImage="/art/kumbaya-card.jpg"
       venueDescription="DOUB / USDm (spot pool)"
       externalUrl={kumbayaDexUrl()}
       linkLabel="Open Kumbaya DEX"
