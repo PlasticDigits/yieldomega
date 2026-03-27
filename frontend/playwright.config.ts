@@ -7,7 +7,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // Request up to 20 workers in CI; Playwright uses at most the number of tests.
-  workers: process.env.CI ? 20 : undefined,
+  workers: process.env.CI ? 5 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",

@@ -47,27 +47,4 @@ test.describe("Anvil wallet writes", () => {
     });
   });
 
-  test("Rabbit Treasury approve and deposit", async ({ page }) => {
-    await page.goto("/rabbit-treasury");
-    await expect(page.getByRole("heading", { name: "Rabbit Treasury" })).toBeVisible();
-    await expect(page.locator('dt:text-is("currentEpochId") + dd')).not.toHaveText(
-      "—",
-      { timeout: 120_000 },
-    );
-
-    await connectMockIfPlaceholderVisible(page, "Connect a wallet to deposit.");
-    await expect(page.getByText("Connect a wallet to deposit.")).not.toBeVisible({
-      timeout: 60_000,
-    });
-
-    const depPanel = page.locator(".data-panel").filter({ hasText: "Deposit (wallet)" });
-    await expect(
-      depPanel.getByRole("button", { name: /deposit/i }),
-    ).toBeVisible({ timeout: 60_000 });
-    await depPanel.getByRole("textbox").fill("1");
-    await depPanel.getByRole("button", { name: /deposit/i }).click();
-    await expect(depPanel.locator(".error-text")).toHaveCount(0, {
-      timeout: 120_000,
-    });
-  });
 });

@@ -2,8 +2,10 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { RootLayout } from "@/layout/RootLayout";
 import { CollectionPage } from "@/pages/CollectionPage";
 import { HomePage } from "@/pages/HomePage";
+import { KumbayaPage } from "@/pages/KumbayaPage";
 import { RabbitTreasuryPage } from "@/pages/RabbitTreasuryPage";
 import { ReferralsPage } from "@/pages/ReferralsPage";
+import { SirPage } from "@/pages/SirPage";
 import { TimeCurvePage } from "@/pages/TimeCurvePage";
 
 // SPDX-License-Identifier: AGPL-3.0-only
@@ -18,6 +20,8 @@ export default function App() {
           <Route path="rabbit-treasury" element={<RabbitTreasuryPage />} />
           <Route path="collection" element={<CollectionPage />} />
           <Route path="referrals" element={<ReferralsPage />} />
+          <Route path="kumbaya" element={<KumbayaPage />} />
+          <Route path="sir" element={<SirPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

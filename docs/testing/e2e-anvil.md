@@ -25,9 +25,9 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 | Wallet UX | wagmi **`mock`** connector (when `VITE_E2E_MOCK_WALLET=1`) forwards RPC; not a real browser wallet | WalletConnect, mobile wallets, network add flows |
 | Precompiles / fork height | Anvil default | Confirm against MegaETH docs for your target |
 
-**Phase B (wallet writes)** — implemented in [`frontend/e2e/anvil-wallet-writes.spec.ts`](../../frontend/e2e/anvil-wallet-writes.spec.ts): TimeCurve **buy** and Rabbit Treasury **deposit** using the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). This is **not** MetaMask or WalletConnect; it exercises the same `writeContract` paths against Anvil only. Re-verify critical flows on **MegaETH testnet** before release. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration) for the broader smoke checklist.
+**Phase B (wallet writes)** — [`frontend/e2e/anvil-wallet-writes.spec.ts`](../../frontend/e2e/anvil-wallet-writes.spec.ts): TimeCurve **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). Rabbit Treasury **deposit** is not covered in Playwright while that page is an under-construction placeholder ([`launchplan-timecurve.md`](../../launchplan-timecurve.md)); use `cast` against devnet per the Stage 2 runbook. This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
 
-**Collection (NFT read path)** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts `totalSupply` and, after connect, **`balanceOf`** via “Your balance: …”. A fresh `DeployDev` typically shows balance **0**; that still validates RPC + wagmi read wiring. The **Recent mints (indexer)** panel is **not** covered by this spec: leave `VITE_INDEXER_URL` unset unless you intentionally run the indexer and want to verify that feed in the browser.
+**Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts the placeholder **under construction** state during the TimeCurve launch milestone (not NFT reads).
 
 ## Environment contract (build time)
 

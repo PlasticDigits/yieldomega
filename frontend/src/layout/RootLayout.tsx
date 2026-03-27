@@ -37,6 +37,12 @@ export function RootLayout() {
           <NavLink to="/referrals" className={navLinkClass}>
             Referrals
           </NavLink>
+          <NavLink to="/kumbaya" className={navLinkClass}>
+            Kumbaya
+          </NavLink>
+          <NavLink to="/sir" className={navLinkClass}>
+            Sir
+          </NavLink>
         </nav>
         <div className="app-header__wallet">
           <span className="chain-pill" title="Connected network">

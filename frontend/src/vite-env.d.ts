@@ -12,6 +12,10 @@ interface ImportMetaEnv {
   readonly VITE_LEPRECHAUN_NFT_ADDRESS: string;
   /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
   readonly VITE_E2E_MOCK_WALLET: string;
+  /** Optional: third-party Kumbaya DEX (e.g. pool page on external AMM). */
+  readonly VITE_KUMBAYA_DEX_URL?: string;
+  /** Optional: third-party Sir perps DEX. */
+  readonly VITE_SIR_DEX_URL?: string;
 }
 
 interface ImportMeta {

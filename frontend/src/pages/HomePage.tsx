@@ -7,25 +7,30 @@ export function HomePage() {
     <section className="page">
       <h1>YieldOmega</h1>
       <p className="lede">
-        Bright, wallet-native, and built to make TimeCurve, Rabbit Treasury, and the leprechaun
-        collection feel like one coherent onchain world.
+        This milestone is the <strong>TimeCurve Doubloon (DOUB)</strong> launch. Other surfaces
+        are placeholders until devnet E2E is green — see <code>launchplan-timecurve.md</code> in
+        the repo.
       </p>
       <ul className="card-list">
         <li>
-          <Link to="/timecurve">TimeCurve</Link> — race the clock, read the floor buy,
-          and watch the feed move in public
+          <Link to="/timecurve">TimeCurve</Link> — <strong>active</strong>: DOUB sale, timer,
+          charms, and prizes per onchain rules
         </li>
         <li>
-          <Link to="/rabbit-treasury">Rabbit Treasury</Link> — deposit into the burrow,
-          track reserve health, and follow the epochs
+          <Link to="/rabbit-treasury">Rabbit Treasury</Link> — under construction (Burrow deposits
+          and epochs return later)
         </li>
         <li>
-          <Link to="/collection">Collection</Link> — browse minted leprechauns with onchain
-          traits and metadata images when available
+          <Link to="/collection">Collection</Link> — under construction (Leprechaun NFTs)
         </li>
         <li>
-          <Link to="/referrals">Referrals</Link> — register a code, share links, track
-          rewards
+          <Link to="/referrals">Referrals</Link> — under construction
+        </li>
+        <li>
+          <Link to="/kumbaya">Kumbaya</Link> — third-party spot DEX; LP snapshot (placeholder) + link
+        </li>
+        <li>
+          <Link to="/sir">Sir</Link> — third-party perps DEX; LP snapshot (placeholder) + link
         </li>
       </ul>
     </section>
