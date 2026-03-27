@@ -6,12 +6,14 @@ type Props = {
   title: string;
   slug: string;
   heroImage: string;
-  /** Shown in the LP panel (e.g. spot pair vs perps product). */
+  /** Shown in the LP panel (e.g. spot pair vs derivatives venue). */
   venueDescription: string;
   externalUrl: string | undefined;
   linkLabel: string;
   /** Shown when `externalUrl` is unset (must match Vite env name). */
   envVarName: "VITE_KUMBAYA_DEX_URL" | "VITE_SIR_DEX_URL";
+  /** Noun phrase after "third-party" in the lede (e.g. spot DEX vs leverage venue). */
+  venueKind?: string;
 };
 
 /** Third-party DEX: disclaimer, placeholder LP readout, outbound link. */
@@ -23,6 +25,7 @@ export function ThirdPartyDexPage({
   externalUrl,
   linkLabel,
   envVarName,
+  venueKind = "decentralized exchange",
 }: Props) {
   return (
     <section className="page page--placeholder" data-testid={`third-party-dex-${slug}`}>
@@ -38,7 +41,7 @@ export function ThirdPartyDexPage({
         />
         <div className="arcade-banner__text">
           <p className="lede">
-            {title} is a <strong>third-party</strong> decentralized exchange. YieldOmega does not
+            {title} is a <strong>third-party</strong> {venueKind}. YieldOmega does not
             operate or custody this venue; this page surfaces DOUB-related liquidity for convenience.
           </p>
         </div>

@@ -74,7 +74,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO_ROOT / "frontend" / "public" / "art"
 DEFAULT_STYLE_REF = DEFAULT_OUT / "style.png"
 DEFAULT_TOKEN_REF = DEFAULT_OUT / "token-logo.png"
-DEFAULT_SIRDOUB_REF = REPO_ROOT / "frontend" / "public" / "sirdoub.png"
+DEFAULT_SIR_CARD_REF = REPO_ROOT / "frontend" / "public" / "sir.png"
 
 # Replicate only allows Prefer: wait between 1 and 60 seconds. Longer generations
 # still complete: the Python client polls prediction.reload() until a terminal state.
@@ -258,8 +258,8 @@ JOBS: list[tuple[str, str, Resolution, OutputFmt, str]] = [
         "sir-card",
         "3:2",
         "2K",
-        "jpg",
-        "Trading arena feature art: SIRDoub gorilla mascot behind the counter as the main merchant, using the supplied gorilla logo reference translated into the same bright Yieldomega blocky arcade cartoon style, with a green leprechaun-style hat and fantasy marketkeeper presentation, plus a smaller red-bearded leprechaun customer at the counter, green gold banners, hat-coin trophies, bold readable shapes, fantasy not gritty, no text",
+        "png",
+        "Trading arena feature art: SIRDoub gorilla mascot behind the counter as the main merchant, using the supplied gorilla logo reference translated into the same bright Yieldomega blocky arcade cartoon style, with a black top hat with gold band (not a green leprechaun hat) and fantasy marketkeeper presentation, plus a smaller red-bearded leprechaun customer at the counter, green gold banners, hat-coin trophies, bold readable shapes, fantasy not gritty, no text",
     ),
     (
         "bg-voxel-hills",
@@ -312,8 +312,8 @@ def _read_output_bytes(output: object) -> bytes:
 
 def ref_paths_for_job(name: str, style_ref: Path, token_ref: Path) -> list[Path]:
     refs = [style_ref, token_ref]
-    if name == "sir-card" and DEFAULT_SIRDOUB_REF.is_file():
-        refs.append(DEFAULT_SIRDOUB_REF)
+    if name == "sir-card" and DEFAULT_SIR_CARD_REF.is_file():
+        refs.append(DEFAULT_SIR_CARD_REF)
     return refs
 
 
