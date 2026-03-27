@@ -19,4 +19,12 @@ test("deep link from home to each surface", async ({ page }) => {
   await page.goto("/");
   await nav.getByRole("link", { name: "Referrals" }).click();
   await expect(page).toHaveURL(/\/referrals$/);
+
+  await page.goto("/");
+  await nav.getByRole("link", { name: "Kumbaya" }).click();
+  await expect(page).toHaveURL(/\/kumbaya$/);
+
+  await page.goto("/");
+  await nav.getByRole("link", { name: "Sir" }).click();
+  await expect(page).toHaveURL(/\/sir$/);
 });

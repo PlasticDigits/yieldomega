@@ -33,6 +33,18 @@ export function governanceUrl(): string | undefined {
   return u && u.length > 0 ? u : undefined;
 }
 
+/** Optional outbound link for third-party Kumbaya DEX (spot / v3 pool). */
+export function kumbayaDexUrl(): string | undefined {
+  const u = import.meta.env.VITE_KUMBAYA_DEX_URL?.trim();
+  return u && u.length > 0 ? u : undefined;
+}
+
+/** Optional outbound link for third-party Sir DEX (perps / derivatives). */
+export function sirDexUrl(): string | undefined {
+  const u = import.meta.env.VITE_SIR_DEX_URL?.trim();
+  return u && u.length > 0 ? u : undefined;
+}
+
 export function normalizeIndexerBaseUrl(u: string | undefined | null): string | undefined {
   const t = u?.trim();
   if (!t || t.length === 0) {
