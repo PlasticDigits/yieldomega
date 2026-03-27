@@ -39,7 +39,7 @@ export function kumbayaDexUrl(): string | undefined {
   return u && u.length > 0 ? u : undefined;
 }
 
-/** Optional outbound link for third-party Sir DEX (perps / derivatives). */
+/** Optional outbound link for third-party Sir DEX (levs / derivatives). */
 export function sirDexUrl(): string | undefined {
   const u = import.meta.env.VITE_SIR_DEX_URL?.trim();
   return u && u.length > 0 ? u : undefined;

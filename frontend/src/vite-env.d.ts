@@ -14,7 +14,7 @@ interface ImportMetaEnv {
   readonly VITE_E2E_MOCK_WALLET: string;
   /** Optional: third-party Kumbaya DEX (e.g. pool page on external AMM). */
   readonly VITE_KUMBAYA_DEX_URL?: string;
-  /** Optional: third-party Sir perps DEX. */
+  /** Optional: third-party Sir levs DEX. */
   readonly VITE_SIR_DEX_URL?: string;
 }
 
