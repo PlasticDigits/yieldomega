@@ -573,27 +573,62 @@ export function TimeCurvePage() {
 
   if (!tc) {
     return (
-      <section className="page">
+      <section className="page page--timecurve">
         <h1>TimeCurve</h1>
-        <p className="placeholder">
-          Set <code>VITE_TIMECURVE_ADDRESS</code> in <code>.env</code> (see{" "}
-          <code>.env.example</code>) to read onchain sale state.
-        </p>
+        <div className="arcade-banner">
+          <img
+            className="arcade-banner__coin"
+            src="/art/token-logo.png"
+            alt=""
+            width={72}
+            height={72}
+            decoding="async"
+          />
+          <div className="arcade-banner__text">
+            <p className="placeholder">
+              Set <code>VITE_TIMECURVE_ADDRESS</code> in <code>.env</code> (see{" "}
+              <code>.env.example</code>) to read onchain sale state.
+            </p>
+          </div>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="page">
+    <section className="page page--timecurve">
       <h1>TimeCurve</h1>
-      <p className="lede">
-        Charms: earn weight by buying within the curve; after the sale, redeem for launched tokens.
-        Live RPC + indexer feeds below.
-      </p>
+      <div className="arcade-banner">
+        <img
+          className="arcade-banner__coin"
+          src="/art/token-logo.png"
+          alt=""
+          width={72}
+          height={72}
+          decoding="async"
+        />
+        <div className="arcade-banner__text">
+          <p className="lede">
+            Charms: earn weight by buying within the curve; after the sale, redeem for launched tokens.
+            Live RPC + indexer feeds below.
+          </p>
+        </div>
+      </div>
 
       <div className="data-panel">
         <h2>Onchain (contract)</h2>
-        {isPending && <p>Loading contract reads…</p>}
+        {isPending && (
+          <div className="loading-state">
+            <img
+              src="/art/loading-mascot.png"
+              alt=""
+              width={96}
+              height={96}
+              decoding="async"
+            />
+            <p>Loading contract reads…</p>
+          </div>
+        )}
         {isError && <p className="error-text">Could not read contract (check RPC / network).</p>}
         {data && (
           <dl className="kv">
@@ -831,7 +866,18 @@ export function TimeCurvePage() {
           codes split a portion off the gross spend. Use a funded wallet on the configured chain.
         </p>
         {!isConnected && <p className="placeholder">Connect a wallet to buy.</p>}
-        {isConnected && isPending && <p className="placeholder">Loading contract…</p>}
+        {isConnected && isPending && (
+          <div className="loading-state">
+            <img
+              src="/art/loading-mascot.png"
+              alt=""
+              width={96}
+              height={96}
+              decoding="async"
+            />
+            <p>Loading contract…</p>
+          </div>
+        )}
         {isConnected && !saleActive && !isPending && (
           <p className="placeholder">Sale is not active (not started or already ended).</p>
         )}

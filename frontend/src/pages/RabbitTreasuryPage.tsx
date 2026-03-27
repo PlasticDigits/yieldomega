@@ -4,7 +4,11 @@ import { UnderConstruction } from "@/pages/UnderConstruction";
 
 export function RabbitTreasuryPage() {
   return (
-    <UnderConstruction title="Rabbit Treasury" slug="rabbit-treasury">
+    <UnderConstruction
+      title="Rabbit Treasury"
+      slug="rabbit-treasury"
+      imageSrc="/art/rabbit-treasury-card.jpg"
+    >
       The Burrow will return: USDm deposits, DOUB claims, reserve health, and epoch repricing — full UI after the TimeCurve (DOUB) launch stabilizes on devnet.
     </UnderConstruction>
   );

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 type Props = {
   title: string;
   slug: string;
+  heroImage: string;
   /** Shown in the LP panel (e.g. spot pair vs perps product). */
   venueDescription: string;
   externalUrl: string | undefined;
@@ -17,18 +18,34 @@ type Props = {
 export function ThirdPartyDexPage({
   title,
   slug,
+  heroImage,
   venueDescription,
   externalUrl,
   linkLabel,
   envVarName,
 }: Props) {
   return (
-    <section className="page" data-testid={`third-party-dex-${slug}`}>
+    <section className="page page--placeholder" data-testid={`third-party-dex-${slug}`}>
       <h1>{title}</h1>
-      <p className="lede">
-        {title} is a <strong>third-party</strong> decentralized exchange. YieldOmega does not
-        operate or custody this venue; this page surfaces DOUB-related liquidity for convenience.
-      </p>
+      <div className="arcade-banner">
+        <img
+          className="arcade-banner__coin"
+          src="/art/hat-coin-stack.png"
+          alt=""
+          width={72}
+          height={72}
+          decoding="async"
+        />
+        <div className="arcade-banner__text">
+          <p className="lede">
+            {title} is a <strong>third-party</strong> decentralized exchange. YieldOmega does not
+            operate or custody this venue; this page surfaces DOUB-related liquidity for convenience.
+          </p>
+        </div>
+      </div>
+      <div className="placeholder-figure placeholder-figure--wide">
+        <img src={heroImage} alt="" width={768} height={512} loading="lazy" decoding="async" />
+      </div>
       <div className="data-panel">
         <h2>Liquidity (placeholder)</h2>
         <dl className="kv">

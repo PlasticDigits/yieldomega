@@ -5,17 +5,28 @@ import { Link } from "react-router-dom";
 type Props = {
   title: string;
   slug: string;
+  imageSrc?: string;
   children: React.ReactNode;
 };
 
 /** Placeholder surface while TimeCurve is the active launch milestone. */
-export function UnderConstruction({ title, slug, children }: Props) {
+export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-leprechaun-wave.jpg", children }: Props) {
   return (
-    <section className="page" data-testid={`under-construction-${slug}`}>
+    <section className="page page--placeholder" data-testid={`under-construction-${slug}`}>
       <h1>{title}</h1>
       <p className="under-construction-banner" role="status">
         Under construction
       </p>
+      <div className="placeholder-figure">
+        <img
+          src={imageSrc}
+          alt=""
+          width={512}
+          height={640}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
       <p className="lede">{children}</p>
       <p>
         <Link to="/timecurve">TimeCurve</Link> is the active launch surface for this milestone.
