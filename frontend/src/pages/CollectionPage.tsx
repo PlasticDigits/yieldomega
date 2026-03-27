@@ -4,7 +4,11 @@ import { UnderConstruction } from "@/pages/UnderConstruction";
 
 export function CollectionPage() {
   return (
-    <UnderConstruction title="Leprechaun collection" slug="collection">
+    <UnderConstruction
+      title="Leprechaun collection"
+      slug="collection"
+      imageSrc="/art/collection-card.jpg"
+    >
       Onchain traits, metadata, and indexer-backed mint history — coming after the launch milestone.
     </UnderConstruction>
   );

@@ -78,6 +78,7 @@ out/
 
 # Python simulations
 simulations/.venv/
+scripts/replicate-art/.venv/
 simulations/output/
 __pycache__/
 *.py[cod]

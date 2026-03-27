@@ -21,6 +21,14 @@ export function RootLayout() {
       <header className="app-header">
         <div className="app-header__brand">
           <NavLink to="/" className="brand-link">
+            <img
+              className="brand-link__mark"
+              src="/art/token-logo.png"
+              alt=""
+              width={40}
+              height={40}
+              decoding="async"
+            />
             YieldOmega
           </NavLink>
         </div>
