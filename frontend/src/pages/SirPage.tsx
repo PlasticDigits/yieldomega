@@ -8,11 +8,12 @@ export function SirPage() {
     <ThirdPartyDexPage
       title="Sir"
       slug="sir"
-      heroImage="/art/sir-card.jpg"
-      venueDescription="DOUB perps / derivatives (per venue listing)"
+      heroImage="/art/sir-card.png"
+      venueDescription="DOUB levs / derivatives (per venue listing)"
       externalUrl={sirDexUrl()}
       linkLabel="Open Sir DEX"
       envVarName="VITE_SIR_DEX_URL"
+      venueKind="leverage trading platform"
     />
   );
 }

@@ -55,8 +55,8 @@ const CTAS: Cta[] = [
   {
     to: "/sir",
     title: "Sir",
-    blurb: "Third-party perps DEX snapshot + outbound link when configured.",
-    image: "/art/sir-card.jpg",
+    blurb: "Third-party Leverage Platform snapshot + outbound link",
+    image: "/art/sir-card.png",
     badge: "soon",
     imageAlt: "Sir trading arena feature illustration",
   },
