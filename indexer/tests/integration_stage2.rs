@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Postgres integration: migrations, every `persist_decoded_log` arm, idempotency, `rollback_after`.
+//! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted,
+//! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
+//! referral / prize tables), then HTTP API smoke.
 //!
 //! **When `YIELDOMEGA_PG_TEST_URL` is unset or empty:** the test returns immediately and still
 //! **reports `ok`** — it does not connect to Postgres. For real coverage, set the URL (see
@@ -72,9 +74,7 @@ async fn response_json(response: axum::response::Response) -> Value {
 }
 
 async fn api_http_smoke(pool: &sqlx::PgPool) {
-    let app = router(AppState {
-        pool: pool.clone(),
-    });
+    let app = router(AppState { pool: pool.clone() });
 
     let res = app
         .clone()
@@ -156,9 +156,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     ] {
         let res = app
             .clone()
-            .oneshot(
-                Request::builder().uri(path).body(Body::empty()).unwrap(),
-            )
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK, "path {path}");
@@ -215,10 +213,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     let stats = response_json(res).await;
     assert_eq!(stats["indexed_charm_weight"], "1");
     assert_eq!(stats["indexed_buy_count"], "1");
-    assert_eq!(
-        stats["buyer"],
-        "0xdddddddddddddddddddddddddddddddddddddddd"
-    );
+    assert_eq!(stats["buyer"], "0xdddddddddddddddddddddddddddddddddddddddd");
 }
 
 /// Single test body: persist + reorg + HTTP API on one Postgres database.
@@ -233,7 +228,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         .await
         .expect("connect_and_migrate");
 
-    // ── A) Every `DecodedEvent` variant persists ─────────────────────────
+    // ── A) Every non-Unknown `DecodedEvent` variant persists ───────────────
     let u1 = U256::from(1u8);
     let u2 = U256::from(2u8);
     let alice = addr_byte(0xa1);
@@ -380,7 +375,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             .unwrap_or_else(|e| panic!("persist {:?}: {e}", d.event));
     }
 
-    assert_eq!(count_where(&pool, "idx_timecurve_sale_started", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_sale_started", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_timecurve_sale_ended", 100).await, 1);
     assert_eq!(
@@ -423,7 +421,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_rabbit_repricing_applied", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_rabbit_params_updated", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_rabbit_params_updated", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_nft_series_created", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_nft_minted", 100).await, 1);
     assert_eq!(
@@ -447,9 +448,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         tx_hash: b256_lo(999_001),
         log_index: 999,
         contract: CONTRACT,
-        event: DecodedEvent::Unknown {
-            topic0: B256::ZERO,
-        },
+        event: DecodedEvent::Unknown { topic0: B256::ZERO },
     };
     persist_decoded_log(&pool, &unknown).await.expect("unknown");
 
@@ -457,7 +456,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     let h5 = b256_lo(5);
     let h20 = b256_lo(20);
     upsert_indexed_block(&pool, 5, h5).await.expect("upsert 5");
-    upsert_indexed_block(&pool, 20, h20).await.expect("upsert 20");
+    upsert_indexed_block(&pool, 20, h20)
+        .await
+        .expect("upsert 20");
 
     let anc = ChainPointer {
         block_number: 5,
@@ -509,6 +510,21 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 5).await, 1);
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 0);
+    // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
+    assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_referral_applied", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_referral_code_registered", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_prize_vault_prize_paid", 100).await,
+        0
+    );
+    assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);
 
     let row = sqlx::query("SELECT block_number FROM indexed_blocks WHERE block_number = 20")
         .fetch_optional(&pool)
