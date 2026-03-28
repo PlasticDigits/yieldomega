@@ -45,14 +45,24 @@ describe("timecurvePrizeDistributionsApiPath", () => {
 });
 
 describe("timecurvePrizePayoutsApiPath", () => {
-  it("includes limit and offset", () => {
+  it("includes limit and default offset", () => {
+    expect(timecurvePrizePayoutsApiPath(30)).toBe("/v1/timecurve/prize-payouts?limit=30&offset=0");
+  });
+
+  it("includes custom offset", () => {
     expect(timecurvePrizePayoutsApiPath(25, 5)).toBe("/v1/timecurve/prize-payouts?limit=25&offset=5");
   });
 });
 
 describe("referralRegistrationsApiPath", () => {
-  it("includes pagination params", () => {
-    expect(referralRegistrationsApiPath(15, 0)).toBe("/v1/referrals/registrations?limit=15&offset=0");
+  it("includes limit and default offset", () => {
+    expect(referralRegistrationsApiPath(15)).toBe("/v1/referrals/registrations?limit=15&offset=0");
+  });
+
+  it("includes custom offset", () => {
+    expect(referralRegistrationsApiPath(20, 40)).toBe(
+      "/v1/referrals/registrations?limit=20&offset=40",
+    );
   });
 });
 
