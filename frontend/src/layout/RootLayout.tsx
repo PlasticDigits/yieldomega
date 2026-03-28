@@ -1,6 +1,8 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { NavLink, Outlet } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useChainId, useChains } from "wagmi";
+import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { governanceUrl } from "@/lib/addresses";
@@ -13,6 +15,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function RootLayout() {
   const chainId = useChainId();
   const chains = useChains();
+  const location = useLocation();
+  const prefersReducedMotion = useReducedMotion();
   const chainName = chains.find((c) => c.id === chainId)?.name ?? `chain ${chainId}`;
   const gov = governanceUrl();
 
@@ -31,6 +35,12 @@ export function RootLayout() {
             />
             YieldOmega
           </NavLink>
+          <CutoutDecoration
+            className="app-header__mascot cutout-decoration--sway"
+            src="/art/cutouts/loading-mascot-circle.png"
+            width={120}
+            height={120}
+          />
         </div>
         <nav className="app-nav" aria-label="Primary">
           <NavLink to="/timecurve" className={navLinkClass}>
@@ -89,7 +99,7 @@ export function RootLayout() {
                   <div className="wallet-controls">
                     <button
                       type="button"
-                      className="wallet-action wallet-action--connect"
+                      className="wallet-action wallet-action--connect wallet-action--priority"
                       onClick={openConnectModal}
                       aria-label="Connect wallet"
                     >
@@ -144,7 +154,18 @@ export function RootLayout() {
         </div>
       </header>
       <main className="app-main">
-        <Outlet />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            className="route-stage"
+            initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.985 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.99 }}
+            transition={{ duration: prefersReducedMotion ? 0.12 : 0.28, ease: "easeOut" }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
       <footer className="app-footer">
         <div className="app-footer__row">

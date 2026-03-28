@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
+import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
@@ -41,6 +43,7 @@ const PODIUM_LABELS = [
 ];
 
 export function TimeCurvePage() {
+  const prefersReducedMotion = useReducedMotion();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const tc = addresses.timeCurve;
@@ -65,6 +68,18 @@ export function TimeCurvePage() {
   const [gasDistribute, setGasDistribute] = useState<bigint | undefined>(undefined);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
+  const primaryButtonMotion = prefersReducedMotion
+    ? {}
+    : {
+        whileHover: { scale: 1.02, y: -2 },
+        whileTap: { scale: 0.98, y: 1 },
+      };
+  const secondaryButtonMotion = prefersReducedMotion
+    ? {}
+    : {
+        whileHover: { scale: 1.015, y: -2 },
+        whileTap: { scale: 0.985, y: 1 },
+      };
 
   useEffect(() => {
     setPendingRef(getPendingReferralCode());
@@ -575,7 +590,7 @@ export function TimeCurvePage() {
     return (
       <section className="page page--timecurve">
         <h1>TimeCurve</h1>
-        <div className="arcade-banner">
+        <div className="arcade-banner arcade-banner--with-sidekick">
           <img
             className="arcade-banner__coin"
             src="/art/token-logo.png"
@@ -590,6 +605,12 @@ export function TimeCurvePage() {
               <code>.env.example</code>) to read onchain sale state.
             </p>
           </div>
+          <CutoutDecoration
+            className="arcade-banner__mascot cutout-decoration--sway"
+            src="/art/cutouts/loading-mascot-circle.png"
+            width={192}
+            height={192}
+          />
         </div>
       </section>
     );
@@ -598,7 +619,7 @@ export function TimeCurvePage() {
   return (
     <section className="page page--timecurve">
       <h1>TimeCurve</h1>
-      <div className="arcade-banner">
+      <div className="arcade-banner arcade-banner--with-sidekick">
         <img
           className="arcade-banner__coin"
           src="/art/token-logo.png"
@@ -613,6 +634,12 @@ export function TimeCurvePage() {
             Live RPC + indexer feeds below.
           </p>
         </div>
+        <CutoutDecoration
+          className="arcade-banner__mascot cutout-decoration--float"
+          src="/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png"
+          width={220}
+          height={220}
+        />
       </div>
 
       <div className="data-panel">
@@ -858,7 +885,13 @@ export function TimeCurvePage() {
         {minBuyCurvePoints.length <= 1 && <p className="muted">Curve appears after sale has started.</p>}
       </div>
 
-      <div className="data-panel">
+      <div className="data-panel data-panel--spotlight">
+        <CutoutDecoration
+          className="panel-cutout panel-cutout--mid-right cutout-decoration--sway"
+          src="/art/cutouts/cutout-bunnyleprechaungirl-head.png"
+          width={196}
+          height={196}
+        />
         <h2>Buy charms (wallet)</h2>
         <p>
           Approves the accepted asset for <strong>TimeCurve</strong>, then calls{" "}
@@ -908,9 +941,15 @@ export function TimeCurvePage() {
               <p className="muted">Open a referral link with ?ref=CODE to enable referral bonuses.</p>
             )}
             <p>
-              <button type="button" className="btn-primary" disabled={isWriting} onClick={handleBuy}>
+              <motion.button
+                type="button"
+                className="btn-primary btn-primary--priority"
+                disabled={isWriting}
+                onClick={handleBuy}
+                {...primaryButtonMotion}
+              >
                 {isWriting ? "Confirm in wallet…" : "Approve (if needed) & buy"}
-              </button>
+              </motion.button>
             </p>
             {gasBuy !== undefined && (
               <p className="muted">Est. gas (buy): ~{gasBuy.toString()} units</p>
@@ -920,7 +959,13 @@ export function TimeCurvePage() {
         {buyErr && <p className="error-text">{buyErr}</p>}
       </div>
 
-      <div className="data-panel">
+      <div className="data-panel data-panel--spotlight">
+        <CutoutDecoration
+          className="panel-cutout panel-cutout--lower-right cutout-decoration--float"
+          src="/art/cutouts/mascot-leprechaun-with-bag-cutout.png"
+          width={228}
+          height={228}
+        />
         <h2>After sale</h2>
         <p>
           When the timer has expired: call <code>endSale</code> to finalize the sale, then{" "}
@@ -928,27 +973,35 @@ export function TimeCurvePage() {
           <code>distributePrizes</code> to pay prize winners from the prize vault. Anyone may submit
           these transactions where the contract allows.
         </p>
-        <p>
-          <button type="button" className="btn-secondary" disabled={isWriting} onClick={() => runVoid("endSale")}>
-            endSale (timer expired)
-          </button>{" "}
-          <button
+        <div className="timecurve-action-row">
+          <motion.button
             type="button"
-            className="btn-secondary"
+            className="btn-secondary btn-secondary--critical"
+            disabled={isWriting}
+            onClick={() => runVoid("endSale")}
+            {...secondaryButtonMotion}
+          >
+            endSale (timer expired)
+          </motion.button>
+          <motion.button
+            type="button"
+            className="btn-secondary btn-secondary--priority"
             disabled={isWriting}
             onClick={() => runVoid("redeemCharms")}
+            {...secondaryButtonMotion}
           >
             redeemCharms
-          </button>{" "}
-          <button
+          </motion.button>
+          <motion.button
             type="button"
-            className="btn-secondary"
+            className="btn-secondary btn-secondary--priority"
             disabled={isWriting}
             onClick={() => runVoid("distributePrizes")}
+            {...secondaryButtonMotion}
           >
             distributePrizes
-          </button>
-        </p>
+          </motion.button>
+        </div>
         {(gasClaim !== undefined || gasDistribute !== undefined) && (
           <p className="muted">
             {gasClaim !== undefined && <>Est. gas (claim): ~{gasClaim.toString()} units</>}
