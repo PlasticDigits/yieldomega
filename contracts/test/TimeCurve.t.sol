@@ -193,7 +193,7 @@ contract TimeCurveTest is Test {
         assertGt(tc.deadline(), initialDeadline - 100 + 120);
     }
 
-    /// @dev Invariant: deadline never exceeds block.timestamp + timerCapSec.
+    /// @dev Invariant: deadline never exceeds block.timestamp + timerCapSec (extension cap; threat #2).
     function test_timer_cap_fuzz(uint16 numBuys) public {
         uint256 n = uint256(numBuys) % 20 + 1;
         tc.startSale();
@@ -509,6 +509,55 @@ contract TimeCurveTest is Test {
         assertEq(usdm.balanceOf(sink1), 2e18);
         assertEq(usdm.balanceOf(address(prizeVault)), 3.5e18);
         assertEq(usdm.balanceOf(sink3), 1.5e18);
+    }
+
+    /// @dev Same-block opening-window podium follows **call order** (threat #1: MEV / ordering).
+    function test_sameBlock_openingWindow_orderMatchesCallOrder() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        _fundAndApprove(bob, 5e18);
+        _fundAndApprove(carol, 5e18);
+
+        uint256 bn = block.number;
+        vm.prank(alice);
+        tc.buy(1e18);
+        assertEq(block.number, bn);
+        vm.prank(bob);
+        tc.buy(1e18);
+        assertEq(block.number, bn);
+        vm.prank(carol);
+        tc.buy(1e18);
+        assertEq(block.number, bn);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        (address[3] memory winners,) = tc.podium(tc.CAT_OPENING_WINDOW());
+        assertEq(winners[0], alice, "first opening slot");
+        assertEq(winners[1], bob, "second opening slot");
+        assertEq(winners[2], carol, "third opening slot");
+    }
+
+    /// @dev Curve timing parameters are constructor immutables — no mid-sale governance drift (threat #3).
+    function test_timeCurve_saleParams_immutable_across_sale() public {
+        uint256 gr = tc.growthRateWad();
+        uint256 ext = tc.timerExtensionSec();
+        uint256 cap = tc.timerCapSec();
+        uint256 initT = tc.initialTimerSec();
+        uint256 capMult = tc.purchaseCapMultiple();
+        uint256 initMin = tc.initialMinBuy();
+
+        tc.startSale();
+        _fundAndApprove(alice, 3e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        assertEq(tc.growthRateWad(), gr);
+        assertEq(tc.timerExtensionSec(), ext);
+        assertEq(tc.timerCapSec(), cap);
+        assertEq(tc.initialTimerSec(), initT);
+        assertEq(tc.purchaseCapMultiple(), capMult);
+        assertEq(tc.initialMinBuy(), initMin);
     }
 
     /// @dev Sequential `vm.prank` buys in one test share `block.number` in Foundry; last-buyer podium

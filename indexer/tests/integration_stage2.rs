@@ -145,6 +145,10 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/rabbit/withdrawals?limit=2",
         "/v1/rabbit/health-epochs?limit=2",
         "/v1/timecurve/charm-redemptions?limit=2",
+        "/v1/timecurve/prize-distributions?limit=2",
+        "/v1/timecurve/prize-payouts?limit=2",
+        "/v1/referrals/registrations?limit=2",
+        "/v1/referrals/applied?limit=2",
         "/v1/leprechauns/mints?limit=2",
         "/v1/fee-router/sinks-updates?limit=2",
         "/v1/fee-router/fees-distributed?limit=2",
@@ -268,6 +272,26 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             token_amount: u1,
         }),
         next(DecodedEvent::TimeCurvePrizesDistributed),
+        next(DecodedEvent::TimeCurveReferralApplied {
+            buyer: alice,
+            referrer: addr_byte(0xee),
+            code_hash: b256_lo(77_777),
+            referrer_amount: u1,
+            referee_amount: u1,
+            amount_to_fee_router: u2,
+        }),
+        next(DecodedEvent::ReferralCodeRegistered {
+            owner: alice,
+            code_hash: b256_lo(88_888),
+            normalized_code: "TESTCODE".to_string(),
+        }),
+        next(DecodedEvent::PrizeVaultPrizePaid {
+            winner: alice,
+            token: reserve,
+            amount: u2,
+            category: 0,
+            placement: 1,
+        }),
         next(DecodedEvent::RabbitEpochOpened {
             epoch_id: u1,
             start_timestamp: u1,
@@ -365,6 +389,18 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_prizes_distributed", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_referral_applied", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_referral_code_registered", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_prize_vault_prize_paid", 100).await,
         1
     );
     assert_eq!(count_where(&pool, "idx_rabbit_epoch_opened", 100).await, 1);

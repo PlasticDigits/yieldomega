@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Optional RPC fork smoke. When `FORK_URL` is unset or empty, tests no-op (pass) — same pattern as indexer Postgres integration.
-///      Set `export FORK_URL=https://...` to exercise against a live endpoint (rate limits / flakiness possible).
+///      For MegaETH: set `export FORK_URL=...` or use `forge test --fork-url <rpc>` with URLs from `foundry.toml`
+///      (`[rpc_endpoints]` keys `megaeth`, `megaeth_testnet`). CI does not run fork tests against live RPC.
 contract TimeCurveForkTest is Test {
     function test_fork_smoke_chainIdAndBlock() public {
         string memory url = vm.envOr("FORK_URL", string(""));

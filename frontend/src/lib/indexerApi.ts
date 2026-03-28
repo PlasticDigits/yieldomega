@@ -123,6 +123,28 @@ export async function fetchTimecurveCharmRedemptions(limit = 20) {
   );
 }
 
+/** `/v1/timecurve/prize-distributions` with limit/offset for safe query embedding. */
+export function timecurvePrizeDistributionsApiPath(limit: number, offset = 0): string {
+  return `/v1/timecurve/prize-distributions?limit=${limit}&offset=${offset}`;
+}
+
+/** `/v1/timecurve/prize-payouts` with limit/offset for safe query embedding. */
+export function timecurvePrizePayoutsApiPath(limit: number, offset = 0): string {
+  return `/v1/timecurve/prize-payouts?limit=${limit}&offset=${offset}`;
+}
+
+/** `/v1/referrals/registrations` with limit/offset for safe query embedding. */
+export function referralRegistrationsApiPath(limit: number, offset = 0): string {
+  return `/v1/referrals/registrations?limit=${limit}&offset=${offset}`;
+}
+
+/** `/v1/referrals/applied` — encodes `referrer` when set. */
+export function referralAppliedApiPath(referrer: string | undefined, limit: number): string {
+  return referrer
+    ? `/v1/referrals/applied?limit=${limit}&referrer=${encodeURIComponent(referrer)}`
+    : `/v1/referrals/applied?limit=${limit}`;
+}
+
 export type WithdrawalItem = {
   block_number: string;
   tx_hash: string;
@@ -154,8 +176,8 @@ export type PrizePayoutItem = {
   placement: number;
 };
 
-export async function fetchTimecurvePrizePayouts(limit = 30) {
-  return getJson<{ items: PrizePayoutItem[] }>(`/v1/timecurve/prize-payouts?limit=${limit}`);
+export async function fetchTimecurvePrizePayouts(limit = 30, offset = 0) {
+  return getJson<{ items: PrizePayoutItem[] }>(timecurvePrizePayoutsApiPath(limit, offset));
 }
 
 export type PrizeDistributionItem = {
@@ -165,9 +187,9 @@ export type PrizeDistributionItem = {
   contract_address: string;
 };
 
-export async function fetchTimecurvePrizeDistributions(limit = 20) {
+export async function fetchTimecurvePrizeDistributions(limit = 20, offset = 0) {
   return getJson<{ items: PrizeDistributionItem[] }>(
-    `/v1/timecurve/prize-distributions?limit=${limit}`,
+    timecurvePrizeDistributionsApiPath(limit, offset),
   );
 }
 
@@ -180,8 +202,10 @@ export type ReferralRegistrationItem = {
   normalized_code: string;
 };
 
-export async function fetchReferralRegistrations(limit = 30) {
-  return getJson<{ items: ReferralRegistrationItem[] }>(`/v1/referrals/registrations?limit=${limit}`);
+export async function fetchReferralRegistrations(limit = 30, offset = 0) {
+  return getJson<{ items: ReferralRegistrationItem[] }>(
+    referralRegistrationsApiPath(limit, offset),
+  );
 }
 
 export type ReferralAppliedItem = {
@@ -197,10 +221,7 @@ export type ReferralAppliedItem = {
 };
 
 export async function fetchReferralApplied(referrer: string | undefined, limit = 30) {
-  const q = referrer
-    ? `/v1/referrals/applied?limit=${limit}&referrer=${encodeURIComponent(referrer)}`
-    : `/v1/referrals/applied?limit=${limit}`;
-  return getJson<{ items: ReferralAppliedItem[] }>(q);
+  return getJson<{ items: ReferralAppliedItem[] }>(referralAppliedApiPath(referrer, limit));
 }
 
 export type FeeRouterSinksUpdateItem = {

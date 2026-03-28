@@ -2,9 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
+import {BurrowMath} from "../src/libraries/BurrowMath.sol";
 
 contract MockUSDm is ERC20 {
     constructor() ERC20("USDm", "USDM") {}
@@ -31,7 +34,11 @@ contract RabbitTreasuryTest is Test {
     RabbitTreasury rt;
 
     address alice = makeAddr("alice");
+    address bob = makeAddr("bob_rt_wd");
     address feeSource = makeAddr("feeSource");
+
+    bytes32 internal constant BURROW_HEALTH_SIG =
+        0x476424d2159ae843d833615e61b543b8cb93f382b9ad46d8b1545307620a4d6d;
 
     function setUp() public {
         usdm = new MockUSDm();
@@ -165,6 +172,87 @@ contract RabbitTreasuryTest is Test {
         rt.finalizeEpoch();
         // With zero supply, e stays at 1.0
         assertEq(rt.eWad(), WAD);
+    }
+
+    /// @dev Bank-run style: many partial withdrawals across two holders; token balance always matches `totalReserves`.
+    function test_extremeWithdrawal_sequence_preservesReservesBalanceMatch() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 50_000_000e18);
+        vm.prank(alice);
+        rt.deposit(50_000_000e18, 0);
+
+        vm.prank(alice);
+        doub.transfer(bob, 25_000_000e18);
+
+        for (uint256 i; i < 60; ++i) {
+            assertEq(usdm.balanceOf(address(rt)), rt.totalReserves(), "USDM balance vs totalReserves");
+            if (i % 2 == 0) {
+                uint256 aBal = doub.balanceOf(alice);
+                if (aBal > 1000e18) {
+                    vm.prank(alice);
+                    rt.withdraw(aBal / 20, 0);
+                }
+            } else {
+                uint256 bBal = doub.balanceOf(bob);
+                if (bBal > 1000e18) {
+                    vm.prank(bob);
+                    rt.withdraw(bBal / 20, 0);
+                }
+            }
+        }
+        assertEq(usdm.balanceOf(address(rt)), rt.totalReserves());
+    }
+
+    /// @dev `BurrowHealthEpochFinalized` reserve ratio and backing match on-chain BurrowMath (threat model: accounting mismatch).
+    function test_finalizeEpoch_emittedHealthMetrics_matchBurrowFormula() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 2_000_000e18);
+        vm.prank(alice);
+        rt.deposit(2_000_000e18, 0);
+
+        uint256 supply = doub.totalSupply();
+        uint256 totalRes = rt.totalReserves();
+        uint256 priorE = rt.eWad();
+        assertGt(supply, 0);
+
+        uint256 C = BurrowMath.coverageWad(totalRes, supply, priorE, rt.cMaxWad(), rt.eps());
+        uint256 m = BurrowMath.multiplierWad(
+            C, rt.cStarWad(), rt.alphaWad(), rt.betaWad(), rt.mMinWad(), rt.mMaxWad()
+        );
+        uint256 nextE = BurrowMath.nextEWad(priorE, m, rt.lamWad(), rt.deltaMaxFracWad());
+        uint256 expRepricing = nextE > 0 ? Math.mulDiv(nextE, WAD, priorE) : WAD;
+        uint256 expReserveRatio = Math.mulDiv(totalRes, WAD, Math.mulDiv(supply, nextE, WAD) + rt.eps());
+        uint256 expBacking = Math.mulDiv(totalRes, WAD, supply);
+
+        vm.warp(rt.epochEnd());
+
+        vm.recordLogs();
+        rt.finalizeEpoch();
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bool found;
+        for (uint256 i; i < logs.length; i++) {
+            Vm.Log memory lg = logs[i];
+            if (lg.emitter != address(rt) || lg.topics[0] != BURROW_HEALTH_SIG) continue;
+            (
+                uint256 finalizedAt,
+                uint256 reserveRatioWad,
+                uint256 doubTotalSupply,
+                uint256 repricingFactorWad,
+                uint256 backingPerDoubloonWad,
+                uint256 internalStateEWad
+            ) = abi.decode(lg.data, (uint256, uint256, uint256, uint256, uint256, uint256));
+            finalizedAt; // silence unused
+            assertEq(doubTotalSupply, supply, "emitted supply");
+            assertEq(reserveRatioWad, expReserveRatio, "reserveRatioWad");
+            assertEq(repricingFactorWad, expRepricing, "repricingFactorWad");
+            assertEq(backingPerDoubloonWad, expBacking, "backingPerDoubloonWad");
+            assertEq(internalStateEWad, nextE, "internalStateEWad");
+            found = true;
+            break;
+        }
+        assertTrue(found, "BurrowHealthEpochFinalized not found");
+        assertEq(rt.eWad(), nextE);
     }
 
     /// @dev Invariant: reserves never go negative; DOUB supply matches mint-burn accounting.
