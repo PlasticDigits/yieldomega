@@ -5,9 +5,9 @@
 use std::time::Duration;
 
 use alloy_primitives::B256;
+use alloy_provider::{Provider, ProviderBuilder, ReqwestProvider};
 use alloy_rpc_types::{BlockTransactionsKind, Filter};
 use eyre::{Result, WrapErr};
-use alloy_provider::{Provider, ProviderBuilder, ReqwestProvider};
 use sqlx::PgPool;
 
 use crate::config::Config;

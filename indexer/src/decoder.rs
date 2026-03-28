@@ -126,8 +126,8 @@ mod contracts {
 }
 
 use contracts::{
-    FeeRouterEvents, LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents, ReferralRegistryEvents,
-    TimeCurveEvents, TimeCurveEventsLegacy,
+    FeeRouterEvents, LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents,
+    ReferralRegistryEvents, TimeCurveEvents, TimeCurveEventsLegacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -548,7 +548,11 @@ mod tests {
             totalTokensForSale: U256::from(3u64),
         };
         let data = e.encode_log_data();
-        let log = Log::new_unchecked(Address::repeat_byte(0xab), data.topics().to_vec(), data.data.clone());
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
         let topic0 = *log.topics().first().unwrap();
         let dec = decode_primitive_log(&log, topic0);
         match dec {
@@ -577,7 +581,11 @@ mod tests {
             buyIndex: U256::from(0u64),
         };
         let data = e.encode_log_data();
-        let log = Log::new_unchecked(Address::repeat_byte(1), data.topics().to_vec(), data.data.clone());
+        let log = Log::new_unchecked(
+            Address::repeat_byte(1),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
         let topic0 = *log.topics().first().unwrap();
         let dec = decode_primitive_log(&log, topic0);
         match dec {
@@ -607,7 +615,11 @@ mod tests {
             internalStateEWad: U256::from(9u64),
         };
         let data = e.encode_log_data();
-        let log = Log::new_unchecked(Address::repeat_byte(3), data.topics().to_vec(), data.data.clone());
+        let log = Log::new_unchecked(
+            Address::repeat_byte(3),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
         let topic0 = *log.topics().first().unwrap();
         let dec = decode_primitive_log(&log, topic0);
         match dec {
@@ -628,11 +640,17 @@ mod tests {
             reasonCode: 2,
         };
         let data = e.encode_log_data();
-        let log = Log::new_unchecked(Address::repeat_byte(4), data.topics().to_vec(), data.data.clone());
+        let log = Log::new_unchecked(
+            Address::repeat_byte(4),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
         let topic0 = *log.topics().first().unwrap();
         let dec = decode_primitive_log(&log, topic0);
         match dec {
-            DecodedEvent::RabbitReserveBalanceUpdated { delta, reason_code, .. } => {
+            DecodedEvent::RabbitReserveBalanceUpdated {
+                delta, reason_code, ..
+            } => {
                 assert_eq!(delta, "-50");
                 assert_eq!(reason_code, 2);
             }
@@ -648,7 +666,11 @@ mod tests {
             to: Address::repeat_byte(0xee),
         };
         let data = e.encode_log_data();
-        let log = Log::new_unchecked(Address::repeat_byte(2), data.topics().to_vec(), data.data.clone());
+        let log = Log::new_unchecked(
+            Address::repeat_byte(2),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
         let topic0 = *log.topics().first().unwrap();
         let dec = decode_primitive_log(&log, topic0);
         match dec {

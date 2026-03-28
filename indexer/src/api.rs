@@ -48,14 +48,26 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
         .route("/v1/rabbit/withdrawals", get(rabbit_withdrawals))
         .route("/v1/rabbit/health-epochs", get(rabbit_health_epochs))
-        .route("/v1/timecurve/charm-redemptions", get(timecurve_charm_redemptions))
+        .route(
+            "/v1/timecurve/charm-redemptions",
+            get(timecurve_charm_redemptions),
+        )
         .route("/v1/leprechauns/mints", get(leprechaun_mints))
-        .route("/v1/timecurve/prize-distributions", get(timecurve_prize_distributions))
+        .route(
+            "/v1/timecurve/prize-distributions",
+            get(timecurve_prize_distributions),
+        )
         .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
         .route("/v1/referrals/registrations", get(referral_registrations))
         .route("/v1/referrals/applied", get(referral_applied))
-        .route("/v1/fee-router/sinks-updates", get(fee_router_sinks_updates))
-        .route("/v1/fee-router/fees-distributed", get(fee_router_fees_distributed))
+        .route(
+            "/v1/fee-router/sinks-updates",
+            get(fee_router_sinks_updates),
+        )
+        .route(
+            "/v1/fee-router/fees-distributed",
+            get(fee_router_fees_distributed),
+        )
         .route("/v1/rabbit/faction-stats", get(rabbit_faction_stats))
         .with_state(state)
 }
@@ -119,10 +131,7 @@ struct BuyRow {
     buy_index: String,
 }
 
-async fn timecurve_buys(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
+async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
@@ -228,8 +237,12 @@ async fn timecurve_buyer_stats(
         }
     };
 
-    let indexed_charm_weight: String = row.try_get("indexed_charm_weight").unwrap_or_else(|_| "0".into());
-    let indexed_buy_count: String = row.try_get("indexed_buy_count").unwrap_or_else(|_| "0".into());
+    let indexed_charm_weight: String = row
+        .try_get("indexed_charm_weight")
+        .unwrap_or_else(|_| "0".into());
+    let indexed_buy_count: String = row
+        .try_get("indexed_buy_count")
+        .unwrap_or_else(|_| "0".into());
 
     let body = json!({
         "buyer": q.buyer,
@@ -255,10 +268,7 @@ struct DepositRow {
     faction_id: String,
 }
 
-async fn rabbit_deposits(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
+async fn rabbit_deposits(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
@@ -612,10 +622,7 @@ struct MintRow {
     to_address: String,
 }
 
-async fn leprechaun_mints(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
+async fn leprechaun_mints(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
