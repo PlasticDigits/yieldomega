@@ -164,6 +164,13 @@ def run_with_retries(
 # Jobs: name, aspect_ratio (nano-banana enum), resolution ("1K"|"2K"|"4K"), output_format ("jpg"|"png"), subject
 JOBS: list[tuple[str, str, Resolution, OutputFmt, str]] = [
     (
+        "timecurve-doubloon-launch",
+        "16:9",
+        "2K",
+        "jpg",
+        "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Bunny leprechaun girl and red-bearded leprechaun mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
+    ),
+    (
         "hero-home",
         "3:2",
         "2K",
