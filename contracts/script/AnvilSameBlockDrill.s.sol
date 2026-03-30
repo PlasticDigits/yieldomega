@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 
 contract DrillUSDM is ERC20 {
     constructor() ERC20("DrillUSDM", "DUSDM") {}
@@ -36,12 +36,13 @@ contract AnvilSameBlockDrill is Script {
         DrillLT lt = new DrillLT();
         address s0 = address(0x100);
         address s1 = address(0x101);
-        PrizeVault pv = new PrizeVault(deployer);
+        PodiumPool pv = new PodiumPool(deployer);
         address s3 = address(0x103);
+        address s4 = address(0x104);
         FeeRouter router = new FeeRouter(
             deployer,
-            [s0, s1, address(pv), s3],
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [s0, s1, address(pv), s3, s4],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
         TimeCurve tc = new TimeCurve(
             IERC20(address(usdm)),
@@ -55,9 +56,7 @@ contract AnvilSameBlockDrill is Script {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);

@@ -64,7 +64,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 ### Business rules (narrative, for reviewers)
 
-- **TimeCurve + TimeMath:** The minimum buy amount grows with configured time (continuous formula in `TimeMath`); each purchase must sit between the current floor and a multiple of that floor. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens; podium slots (last buyers, most buys, largest buy, opening window) are updated on each buy. Sale proceeds route through the configured `FeeRouter` (see fee doc). **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the requested `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale`; it only sets `prizesDistributed` once there is a non-zero prize pool and integer podium shares are non-zero for at least one place, so empty or dust pools cannot permanently brick payouts (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
+- **TimeCurve + TimeMath:** The minimum buy amount grows with configured time (continuous formula in `TimeMath`); each purchase must sit between the current floor and a multiple of that floor. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens using **`totalCharmWeight`** in the denominator; podium slots (**last buyers, most buys, biggest buy, highest cumulative CHARM**) are updated on each buy. Each buy routes the **full gross** accepted asset through **`FeeRouter`** (five sinks — see fee doc). Referral incentives add **CHARM weight** without reserve rebates. **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the requested `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale` and pays the **podium pool** in the reserve asset (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
 - **RabbitTreasury + BurrowMath:** Users deposit the reserve asset during an **open** epoch and receive DOUB; withdraw burns DOUB and returns reserve. Epoch finalization after `epochEnd` applies the Burrow repricing step with clipped coverage and bounded multiplier; math is fuzzed and cross-checked against Python reference and simulations.
 - **FeeRouter + FeeMath:** Sink weights are validated to sum to 10_000 bps; distribution uses integer division with **remainder assigned to the last sink** so no dust remains in the router. Governance roles control sink updates.
 - **LeprechaunNFT:** Series are created with a max supply; only the minter role can mint; trait structs are stored onchain for indexer/UI derivation.
@@ -98,14 +98,13 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | End + redemption | Sale can end; user redeems once | `test_endSale_and_claim`, `test_redeemCharms_reverts_before_end`, `test_double_redeem_reverts` |
 | Redemption rounding | Integer redeem can be zero (tiny sale supply vs raised) | `test_redeemCharms_nothing_to_redeem_reverts` |
 | Fees to router | Buy path pulls from buyer and routes via `FeeRouter` | `test_fees_routed_on_buy` |
-| Prize podium consistency | Category winners updated consistently with buys | `test_last_buyers_podium`, `test_most_buys_podium`, `test_biggest_buy_podium`, `test_opening_window_podium` |
-| Closing window podium | Buys when `remaining <= closingWindowSec` rank by in-window buy count | `test_closing_window_podium` |
+| Podium consistency | Category winners updated consistently with buys | `test_last_buyers_podium`, `test_most_buys_podium`, `test_biggest_buy_podium`, `test_highest_cumulative_podium` |
 | Highest cumulative podium | Rank by `charmWeight` (cumulative) | `test_highest_cumulative_podium` |
 | Same-block call order | Last-buyer podium reflects sequential buy order (Foundry single-tx context; aligns with tx-index ordering) | `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall` |
-| Prize payout liveness | Empty vault or all-zero integer podium shares do **not** set `prizesDistributed`; later call can pay | `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable` |
-| Prize payout happy path | Vault balance decreases after distribution; flag set | `test_distributePrizes_reduces_vault_and_sets_flag` |
-| Constructor sanity | Non-zero asset, router, `launchedToken`, `prizeVault` | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_prizeVault_reverts` |
-| Stateful `totalRaised` (fuzz) | Ghost buy volume matches `totalRaised`; `charmWeight <= totalRaised` | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_charmWeightLteTotalRaised` |
+| Podium payout liveness | Empty **podium pool** does **not** set `prizesDistributed`; funded pool can pay later | `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable` |
+| Podium payout happy path | Podium pool balance decreases after distribution; flag set | `test_distributePrizes_reduces_vault_and_sets_flag` |
+| Constructor sanity | Non-zero asset, router, `launchedToken`, `podiumPool` | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts` |
+| Stateful raised + CHARM (fuzz) | Ghost buy volume matches `totalRaised` and `totalCharmWeight` (no referral in fuzz handler) | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_totalCharmWeightMatchesGhostBuys` |
 
 ### Non-standard ERC-20 (intentionally unsupported assets)
 
@@ -147,17 +146,17 @@ Mitigations and product stance: [security-and-threat-model.md — Implementation
 | Non-zero distribution | Zero total amount reverts | `test_distributeFees_zero_reverts` |
 | Sufficient balance | Cannot distribute more than router holds | `test_distributeFees_insufficient_balance_reverts` |
 | Remainder to last sink | No dust stuck in router | `test_distributeFees_remainder_to_last_sink`, `test_no_dust_fuzz` |
-| Canonical 30/20/35/15 split | Matches governance doc | `test_distributeFees_canonical_split` |
+| Canonical 30/10/20/5/35 split | Matches governance doc | `test_distributeFees_canonical_split` |
 | Governance on sinks | `updateSinks` happy path + auth + zero address | `test_updateSinks`, `test_updateSinks_unauthorized_reverts`, `test_updateSinks_zero_address_reverts` |
 
 Align fee expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants).
 
-### FeeSink and PrizeVault
+### FeeSink and PodiumPool
 
 | Invariant | Meaning | Tests |
 |-----------|---------|--------|
 | Sink withdraw | Only `WITHDRAWER_ROLE`; `to != address(0)` | `FeeSinks.t.sol`: `test_feeSink_withdraw_happy_path`, `test_feeSink_withdraw_unauthorized_reverts`, `test_feeSink_withdraw_zero_to_reverts` |
-| Prize payout | Only `DISTRIBUTOR_ROLE`; `winner != address(0)` | `test_prizeVault_payPrize_happy_path`, `test_prizeVault_payPrize_unauthorized_reverts`, `test_prizeVault_payPrize_zero_winner_reverts` |
+| Podium payout | Only `DISTRIBUTOR_ROLE`; `winner != address(0)` | `test_podiumPool_payPodiumPayout_happy_path`, `test_podiumPool_payPodiumPayout_unauthorized_reverts`, `test_podiumPool_payPodiumPayout_zero_winner_reverts` |
 
 ### LeprechaunNFT
 
@@ -226,7 +225,7 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | File | Count | Focus |
 |------|------:|--------|
 | [TimeMath.t.sol](../../contracts/test/TimeMath.t.sol) | 7 | Pure math: min-buy growth, deadline cap |
-| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | 33 | Sale lifecycle, buys, fees, podiums (incl. closing + cumulative), redemption, **same-block ordering**, **prize griefing / constructor / endSale / redemption rounding** |
+| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | — | Sale lifecycle, buys, fees, podiums (four categories + cumulative), redemption, **same-block ordering**, **podium griefing / constructor / endSale / redemption rounding** |
 | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `charmWeight` bound |
 | [TimeCurveFork.t.sol](../../contracts/test/TimeCurveFork.t.sol) | 1 | Optional `FORK_URL` fork smoke (no-op if unset) |
 | [BurrowMath.t.sol](../../contracts/test/BurrowMath.t.sol) | 4 | Coverage clip, multiplier/epoch fuzz, Python parity |
@@ -235,7 +234,7 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | [FeeMath.t.sol](../../contracts/test/FeeMath.t.sol) | 6 | Weight validation, BPS shares |
 | [FeeRouter.t.sol](../../contracts/test/FeeRouter.t.sol) | 10 | Distribution, dust, **insufficient balance**, governance |
 | [FeeRouterInvariant.t.sol](../../contracts/test/FeeRouterInvariant.t.sol) | 2 | Foundry **invariant** handlers: router ledger + sink totals |
-| [FeeSinks.t.sol](../../contracts/test/FeeSinks.t.sol) | 6 | `FeeSink` withdraw access + zero `to`; `PrizeVault.payPrize` auth + zero winner |
+| [FeeSinks.t.sol](../../contracts/test/FeeSinks.t.sol) | 6 | `FeeSink` withdraw access + zero `to`; `PodiumPool.payPodiumPayout` auth + zero winner |
 | [NonStandardERC20.t.sol](../../contracts/test/NonStandardERC20.t.sol) | 5 | Fee-on-transfer, revert-all, blocked sink, rebasing stub vs treasury |
 | [LeprechaunNFT.t.sol](../../contracts/test/LeprechaunNFT.t.sol) | 8 | Series, mint, supply cap, URI |
 | [DevStackIntegration.t.sol](../../contracts/test/DevStackIntegration.t.sol) | 2 | Deploy script wiring + buy/deposit |

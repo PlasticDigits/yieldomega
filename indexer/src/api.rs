@@ -779,7 +779,7 @@ async fn timecurve_prize_payouts(
     let rows = sqlx::query(
         r#"SELECT block_number, tx_hash, log_index,
                   winner, token, amount::text AS amount, category, placement
-           FROM idx_prize_vault_prize_paid
+           FROM idx_podium_pool_paid
            ORDER BY block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
     )

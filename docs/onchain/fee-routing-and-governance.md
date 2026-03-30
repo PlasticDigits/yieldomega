@@ -17,16 +17,17 @@ Fees routed from **TimeCurve** (and the same split applies wherever this policy 
 
 | Destination | Share |
 |-------------|-------|
-| **DOUB liquidity (LP)** | **30%** |
-| **Rabbit Treasury** ([Burrow](../product/rabbit-treasury.md), **DOUB** / reserve layer) | **20%** |
-| **Prizes** | **35%** |
-| **CL8Y buy-and-burn** | **15%** |
+| **DOUB locked liquidity** (SIR / Kumbaya seeding — **not** generic farm incentives) | **30%** |
+| **CL8Y buy-and-burn** | **10%** |
+| **Podium pool** (TimeCurve competition payouts in the **accepted reserve asset**) | **20%** |
+| **Team** | **5%** |
+| **Rabbit Treasury** ([Burrow](../product/rabbit-treasury.md)) | **35%** |
 
-Basis points (illustrative): **3000** / **2000** / **3500** / **1500** = **10000**.
+Basis points: **3000** / **1000** / **2000** / **500** / **3500** = **10000**.
 
-The **30% DOUB LP** slice should land at **`DoubLPIncentives`** (working name; **TODO** finalize in [treasury-contracts.md](treasury-contracts.md)). Implementation may use **separate receiving addresses** per row (for example **RabbitTreasury** for the 20% share, prize vaults, **CL8YProtocolTreasury** for buy-and-burn); the split is **policy** and must be **emitted on change** ([Events and observability](#events-and-observability), [invariant: events](#invariant-parameter-change-events)).
+Each **buy** routes the **full gross** amount in the accepted asset through **`FeeRouter`** (referral economics use **CHARM weight**, not reserve carve-outs — see [referrals](../product/referrals.md)). The **30%** slice lands at **`DoubLPIncentives`** for **locked** DOUB/reserve liquidity policy (paired at **1.2×** the projected **final reserve-per-DOUB** clearing anchor; **Kumbaya v3** uses a **0.8×–∞** band around the **launch anchor** — see [launchplan-timecurve.md](../../launchplan-timecurve.md) and product UX). **Team** typically uses **`EcosystemTreasury`** (or a dedicated multisig) in dev deploys. The **podium pool** is the **`PodiumPool`** contract; **`TimeCurve.distributePrizes`** pays winners in **reserve**, not DOUB. **Charm redemption** (`redeemCharms`) is **DOUB-only** and is **separate** from this routing (sale allocation, not fee slice).
 
-**Prize bucket (35%)** funds **TimeCurve** prize categories defined in [product/primitives.md](../product/primitives.md), including **1st, 2nd, and 3rd** placements per category. **Team preference:** distribute prizes in **DOUB** (and route that slice accordingly) rather than only USDm or raw launch assets; internal per-category weights remain **governance-set** with onchain events — authority in [Governance actors](#governance-actors) ([Prize pool internal weights](#governance-prize-internal-weights)).
+**Podium internals (onchain defaults):** four categories — **last buyers (50%** of pool**)** · **most buys (20%)** · **biggest single buy (10%)** · **highest cumulative CHARM (20%)**; within each category placements use **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). Opening/closing window categories are **removed**.
 
 <a id="fee-sinks"></a>
 
@@ -36,10 +37,11 @@ Each row is a **fee sink**: a destination that receives a share of the **TimeCur
 
 | Fee sink | Share | Example onchain receiver | Who may change weight or destination |
 |----------|-------|--------------------------|--------------------------------------|
-| **DOUB liquidity (LP)** | 30% | **`DoubLPIncentives`** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — fee split / routing parameters (timelock + vote or delegated process TBD). |
-| **Rabbit Treasury** | 20% | **RabbitTreasury** ([treasury-contracts.md](treasury-contracts.md), [rabbit-treasury.md](../product/rabbit-treasury.md)) | **[CL8Y](#governance-fee-split-weights)** — same as above for the **TimeCurve** fee slice; **repricing** and other Burrow knobs are a separate class ([Rabbit Treasury repricing](#governance-rabbit-repricing)). |
-| **Prizes** | 35% | Prize vaults (per implementation) | **Top-level 35% weight and prize routing address(es):** **[CL8Y](#governance-fee-split-weights)**. **Weights inside the bucket** (per category, etc.): **[CL8Y or delegated sub-governance](#governance-prize-internal-weights)**. |
-| **CL8Y buy-and-burn** | 15% | **CL8YProtocolTreasury** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — same fee split / routing surface. |
+| **DOUB locked liquidity** | 30% | **`DoubLPIncentives`** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — fee split / routing parameters (timelock + vote or delegated process TBD). |
+| **CL8Y buy-and-burn** | 10% | **CL8YProtocolTreasury** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — same fee split / routing surface. |
+| **Podium pool** | 20% | **`PodiumPool`** | **Top-level weight and destination:** **[CL8Y](#governance-fee-split-weights)**. **Internal category / placement rules** are fixed in **`TimeCurve`** today (see [product/primitives.md](../product/primitives.md)); changing them requires a contract upgrade unless parameterized later. |
+| **Team** | 5% | **`EcosystemTreasury`** / ops multisig (per deploy) | **[CL8Y](#governance-fee-split-weights)**. |
+| **Rabbit Treasury** | 35% | **RabbitTreasury** ([treasury-contracts.md](treasury-contracts.md), [rabbit-treasury.md](../product/rabbit-treasury.md)) | **[CL8Y](#governance-fee-split-weights)** — **TimeCurve** fee slice; **repricing** and other Burrow knobs are a separate class ([Rabbit Treasury repricing](#governance-rabbit-repricing)). |
 
 Related checks: [Post-update invariants](#post-update-invariants). **Other products** may define **additional** sinks and schedules; those must be documented per contract ([Other products](#other-products)).
 
@@ -67,15 +69,15 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 **Intended governor:** **CL8Y** or explicitly delegated sub-governance with transparent scope.
 
-**Scope:** Growth, caps, timer, and other numeric **TimeCurve** policy **other than** the four-way fee sink split (which is [Fee split weights and TimeCurve sink destinations](#governance-fee-split-weights)).
+**Scope:** Growth, caps, timer, and other numeric **TimeCurve** policy **other than** the five-sink fee split (which is [Fee split weights and TimeCurve sink destinations](#governance-fee-split-weights)).
 
 <a id="governance-prize-internal-weights"></a>
 
-### Prize pool internal weights
+### Podium pool internal split (product / future upgrades)
 
-**Intended governor:** **CL8Y** or explicitly delegated sub-governance with transparent scope.
+**Today:** category shares (50% / 20% / 10% / 20%) and placement ratio (4∶2∶1) are **fixed in `TimeCurve` bytecode**.
 
-**Scope:** Per-category (or other internal) shares **inside** the [35% prize bucket](#fee-sinks). Must remain consistent with [invariant: prize sub-weights](#invariant-prize-sub-weights).
+**If parameterized later:** **CL8Y** or delegated sub-governance would own onchain updates; until then, changes require **contract upgrade** and doc sync.
 
 <a id="governance-rabbit-repricing"></a>
 
@@ -97,7 +99,7 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 |-----------------|---------|
 | Fee split weights + TimeCurve sink destinations | [Fee split weights and TimeCurve sink destinations](#governance-fee-split-weights) |
 | TimeCurve numeric policy (non–fee-split) | [TimeCurve numeric policy](#governance-timecurve-numeric) |
-| Prize pool internal weights | [Prize pool internal weights](#governance-prize-internal-weights) |
+| Podium internals (future) | [Podium pool internal split](#governance-prize-internal-weights) |
 | Rabbit Treasury repricing | [Rabbit Treasury repricing parameters](#governance-rabbit-repricing) |
 | NFT collection issuance | [NFT collection issuance](#nft-collection-issuance-new-series) |
 
@@ -109,11 +111,11 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 | Fee sink | Change **weight** (share of routed fee) | Change **destination** (receiver for that sink) |
 |----------|----------------------------------------|--------------------------------------------------|
-| DOUB LP | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
-| Rabbit Treasury (TimeCurve slice) | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
-| Prizes (top-level bucket) | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
-| Prizes (internal category split) | [Prize pool internal weights](#governance-prize-internal-weights) | N/A (distribution **within** the bucket; receiver strategy follows product rules) |
+| DOUB locked liquidity | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
 | CL8Y buy-and-burn | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
+| Podium pool | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
+| Team | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
+| Rabbit Treasury (TimeCurve slice) | [Fee split weights](#governance-fee-split-weights) → **CL8Y** | [Fee split weights](#governance-fee-split-weights) → **CL8Y** |
 
 <a id="post-update-invariants"></a>
 
@@ -121,13 +123,13 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 Plain-language checks that should hold **after any** fee-routing or related parameter update (and after governance-bound delays execute, if applicable). Align testing posture with [../testing/strategy.md](../testing/strategy.md) and risk framing in [security-and-threat-model.md](security-and-threat-model.md).
 
-**Invariant index:** [TimeCurve split totals](#invariant-timecurve-split-totals) · [No invalid weights](#invariant-non-negative-weights) · [Carve-out layering](#invariant-carve-out-layering) · [Destinations match policy](#invariant-destination-policy) · [Prize sub-weights](#invariant-prize-sub-weights) · [No hidden fee paths](#invariant-no-hidden-paths) · [Parameter change events](#invariant-parameter-change-events) · [Governance bounds](#invariant-governance-bounds) · [Module schedule match](#invariant-module-schedule-match)
+**Invariant index:** [TimeCurve split totals](#invariant-timecurve-split-totals) · [No invalid weights](#invariant-non-negative-weights) · [Carve-out layering](#invariant-carve-out-layering) · [Destinations match policy](#invariant-destination-policy) · [Podium sub-weights](#invariant-prize-sub-weights) · [No hidden fee paths](#invariant-no-hidden-paths) · [Parameter change events](#invariant-parameter-change-events) · [Governance bounds](#invariant-governance-bounds) · [Module schedule match](#invariant-module-schedule-match)
 
 <a id="invariant-timecurve-split-totals"></a>
 
 ### Invariant: TimeCurve split totals
 
-The four [canonical TimeCurve sinks](#fee-sinks) are non-negative shares of the **routed fee** layer and **sum to 100%** (or **10,000** basis points) within the project’s chosen integer rounding rules.
+The five [canonical TimeCurve sinks](#fee-sinks) are non-negative shares of the **routed fee** layer and **sum to 100%** (or **10,000** basis points) within the project’s chosen integer rounding rules.
 
 <a id="invariant-non-negative-weights"></a>
 
@@ -145,13 +147,13 @@ No sink has a negative share; any **documented cap** per sink or parameter class
 
 ### Invariant: Destinations match policy
 
-Each non-zero sink’s configured **destination** matches the intended receiver class in this doc and [treasury-contracts.md](treasury-contracts.md) (e.g. LP incentives vs player reserve vs protocol treasury vs prize vaults). **No silent retargeting** to unrelated EOAs or commingled wallets unless explicitly allowed by governance policy and documented.
+Each non-zero sink’s configured **destination** matches the intended receiver class in this doc and [treasury-contracts.md](treasury-contracts.md) (e.g. locked LP vs Burrow reserve vs protocol treasury vs **podium pool** vs team). **No silent retargeting** to unrelated EOAs or commingled wallets unless explicitly allowed by governance policy and documented.
 
 <a id="invariant-prize-sub-weights"></a>
 
-### Invariant: Prize sub-weights
+### Invariant: Podium sub-weights
 
-Weights for **per-category** (or other internal) allocation **inside** the [35% prize bucket](#fee-sinks) sum to **100% of that bucket’s allocation** (or a documented reserved remainder), and do **not** change the **top-level** four-way split unless the **fee split weights** governor explicitly updates that layer.
+Category shares **inside** the [20% podium pool bucket](#fee-sinks) sum to **100%** of that bucket (50% last buyers · 20% most buys · 10% biggest single buy · 20% highest cumulative CHARM). Within each category, top-3 placements use ratio **4∶2∶1** (1st = 2× 2nd, 2nd = 2× 3rd). Internal splits are **fixed in `TimeCurve`** today; they do **not** change the **top-level** five-sink split unless the **fee split weights** governor updates that layer.
 
 <a id="invariant-no-hidden-paths"></a>
 

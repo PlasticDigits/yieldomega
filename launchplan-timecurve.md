@@ -107,9 +107,9 @@ All percentages are **of total genesis mint**.
 | Mechanism | What moves | Canonical split |
 |-----------|------------|-----------------|
 | **Genesis mint** | One-time DOUB allocation | Section 4 |
-| **TimeCurve buys** | **Accepted asset** (USDm) into `FeeRouter`, then to sinks | **30%** DoubLPIncentives · **20%** RabbitTreasury · **35%** Prizes · **15%** CL8Y — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
+| **TimeCurve buys** | **Accepted asset** (USDm) into `FeeRouter`, then to sinks | **30%** DoubLPIncentives · **10%** CL8Y · **20%** PodiumPool · **5%** Team (`EcosystemTreasury` in dev) · **35%** RabbitTreasury — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
 
-**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (today USDm). The **30% “DOUB LP”** row is a **policy name** for the LP incentive sink; routing **USDm** there is still valid (buy DOUB off market, seed pool, or operate incentives). If governance routes **prizes** in DOUB, that requires swap / mint policy — see fee doc “team preference” for prizes in DOUB.
+**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (today USDm). **Referral** incentives are **CHARM weight**; the **full gross** still routes through the fee router. **DOUB locked liquidity** targets SIR / Kumbaya seeding (see fee doc for **1.2×** launch anchor and **0.8×–∞** Kumbaya band). **Podium** payouts are **reserve-only**; **DOUB** is for **`redeemCharms`** (genesis / sale allocation). Genesis DOUB not needed for LP may be **burned** or reallocated per governance — document any change next to [Section 4](launchplan-timecurve.md#4-doub-supply-genesis-allocation-canonical-proposal).
 
 ---
 
