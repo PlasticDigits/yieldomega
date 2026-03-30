@@ -12,11 +12,19 @@ import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
-import { erc20Abi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
+import { erc20Abi, feeRouterReadAbi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { sampleMinBuyCurve } from "@/lib/timeCurveMath";
+import {
+  RESERVE_FEE_ROUTING_BPS,
+  kumbayaBandLowerWad,
+  launchLiquidityAnchorWad,
+  podiumCategorySlices,
+  podiumPlacementShares,
+  projectedReservePerDoubWad,
+} from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
 import {
   fetchTimecurveCharmRedemptions,
@@ -34,12 +42,10 @@ import {
 } from "@/lib/indexerApi";
 
 const PODIUM_LABELS = [
-  "Last buyers",
-  "Most buys",
-  "Biggest buy",
-  "Opening window",
-  "Closing window",
-  "Highest cumulative charm weight",
+  "Last buyers (50% of podium pool)",
+  "Most buys (20%)",
+  "Biggest single buy (10%)",
+  "Highest cumulative CHARM (20%)",
 ];
 
 export function TimeCurvePage() {
@@ -186,10 +192,11 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "openingWindowSec" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "closingWindowSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
           { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
         ]
       : [],
     query: { enabled: Boolean(tc) },
@@ -226,10 +233,11 @@ export function TimeCurvePage() {
     initialTimerSecR,
     timerCapSecR,
     totalTokensForSaleR,
-    openingWindowSecR,
-    closingWindowSecR,
     launchedTokenR,
     prizesDistributedR,
+    feeRouterR,
+    podiumPoolR,
+    totalCharmWeightR,
   ] = data ?? [];
 
   const [charmWeightR, buyCountR, charmsRedeemedR, biggestSingleBuyR] = userSaleData ?? [];
@@ -261,6 +269,55 @@ export function TimeCurvePage() {
   const referralRegistryOn =
     refRegAddr?.status === "success" &&
     (refRegAddr.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
+
+  const feeRouterAddr =
+    feeRouterR?.status === "success" ? (feeRouterR.result as `0x${string}`) : undefined;
+  const podiumPoolAddr =
+    podiumPoolR?.status === "success" ? (podiumPoolR.result as `0x${string}`) : undefined;
+
+  const { data: sinkReads } = useReadContracts({
+    contracts: feeRouterAddr
+      ? ([0, 1, 2, 3, 4] as const).map((i) => ({
+          address: feeRouterAddr,
+          abi: feeRouterReadAbi,
+          functionName: "sinks" as const,
+          args: [BigInt(i)],
+        }))
+      : [],
+    query: { enabled: Boolean(feeRouterAddr) },
+  });
+
+  const { data: podiumPoolBal } = useReadContract({
+    address: tokenAddr,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: podiumPoolAddr ? [podiumPoolAddr] : undefined,
+    query: { enabled: Boolean(tokenAddr && podiumPoolAddr) },
+  });
+
+  const liquidityAnchors = useMemo(() => {
+    if (totalRaised?.status !== "success" || totalTokensForSaleR?.status !== "success") {
+      return null;
+    }
+    const tr = totalRaised.result as bigint;
+    const tts = totalTokensForSaleR.result as bigint;
+    const clearing = projectedReservePerDoubWad(tr, tts);
+    if (clearing === null) {
+      return null;
+    }
+    const launch = launchLiquidityAnchorWad(clearing);
+    const kLo = kumbayaBandLowerWad(launch);
+    return { clearing, launch, kLo };
+  }, [totalRaised, totalTokensForSaleR]);
+
+  const podiumPayoutPreview = useMemo(() => {
+    const bal = typeof podiumPoolBal === "bigint" ? podiumPoolBal : 0n;
+    const slices = podiumCategorySlices(bal);
+    return slices.map((slice, cat) => {
+      const [a, b, c] = podiumPlacementShares(slice);
+      return { cat, slice, places: [a, b, c] as const };
+    });
+  }, [podiumPoolBal]);
 
   const podiumReads = usePodiumReads(tc);
 
@@ -337,14 +394,14 @@ export function TimeCurvePage() {
     if (charmWeightR?.status !== "success") {
       return undefined;
     }
-    const tr = totalRaised.result as bigint;
-    if (tr === 0n) {
+    const tcw = totalCharmWeightR?.status === "success" ? (totalCharmWeightR.result as bigint) : 0n;
+    if (tcw === 0n) {
       return undefined;
     }
     const us = charmWeightR.result as bigint;
     const tts = totalTokensForSaleR.result as bigint;
-    return (tts * us) / tr;
-  }, [ended, totalRaised, totalTokensForSaleR, charmWeightR]);
+    return (tts * us) / tcw;
+  }, [ended, totalCharmWeightR, totalTokensForSaleR, charmWeightR]);
 
   const indexerMismatch = useMemo(() => {
     if (!buyerStats || charmWeightR?.status !== "success" || buyCountR?.status !== "success") {
@@ -392,7 +449,7 @@ export function TimeCurvePage() {
     if (prizesDistributedR?.status === "success" && prizesDistributedR.result) {
       return "Prizes already marked distributed.";
     }
-    return "May return without changing state if the prize vault balance is too small; retry after fees accrue.";
+    return "May return without changing state if the podium pool balance is too small; retry after fees accrue.";
   }, [ended, prizesDistributedR]);
 
   useEffect(() => {
@@ -839,13 +896,17 @@ export function TimeCurvePage() {
                 "—"
               )}
             </dd>
-            <dt>openingWindowSec</dt>
-            <dd>
-              {openingWindowSecR?.status === "success" ? String(openingWindowSecR.result) : "—"}
+            <dt>feeRouter</dt>
+            <dd className="mono">
+              {feeRouterR?.status === "success" ? String(feeRouterR.result) : "—"}
             </dd>
-            <dt>closingWindowSec</dt>
+            <dt>podiumPool</dt>
+            <dd className="mono">
+              {podiumPoolR?.status === "success" ? String(podiumPoolR.result) : "—"}
+            </dd>
+            <dt>totalCharmWeight</dt>
             <dd>
-              {closingWindowSecR?.status === "success" ? String(closingWindowSecR.result) : "—"}
+              {totalCharmWeightR?.status === "success" ? String(totalCharmWeightR.result) : "—"}
             </dd>
           </dl>
         )}
@@ -895,8 +956,10 @@ export function TimeCurvePage() {
         <h2>Buy charms (wallet)</h2>
         <p>
           Approves the accepted asset for <strong>TimeCurve</strong>, then calls{" "}
-          <code>buy(amount)</code> or <code>buy(amount, codeHash)</code> to add charm weight. Referral
-          codes split a portion off the gross spend. Use a funded wallet on the configured chain.
+          <code>buy(amount)</code> or <code>buy(amount, codeHash)</code> to add CHARM weight. The full gross
+          spend is routed through the fee router; with a valid referral, referrer and buyer each receive
+          extra CHARM weight (10% of gross each) — no reserve rebate transfer. Use a funded wallet on the
+          configured chain.
         </p>
         {!isConnected && <p className="placeholder">Connect a wallet to buy.</p>}
         {isConnected && isPending && (
@@ -938,7 +1001,7 @@ export function TimeCurvePage() {
               </label>
             )}
             {referralRegistryOn && !pendingRef && (
-              <p className="muted">Open a referral link with ?ref=CODE to enable referral bonuses.</p>
+              <p className="muted">Open a referral link with ?ref=CODE to enable referral CHARM bonuses.</p>
             )}
             <p>
               <motion.button
@@ -970,7 +1033,8 @@ export function TimeCurvePage() {
         <p>
           When the timer has expired: call <code>endSale</code> to finalize the sale, then{" "}
           <code>redeemCharms</code> to convert your charm weight into launched tokens, then{" "}
-          <code>distributePrizes</code> to pay prize winners from the prize vault. Anyone may submit
+          <code>distributePrizes</code> to pay podium winners from the podium pool (reserve asset). Anyone may
+          submit
           these transactions where the contract allows.
         </p>
         <div className="timecurve-action-row">
@@ -1009,6 +1073,91 @@ export function TimeCurvePage() {
             {gasDistribute !== undefined && <>Est. gas (distribute): ~{gasDistribute.toString()} units</>}
           </p>
         )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Reserve routing (per buy)</h2>
+        <p className="muted">
+          Each buy routes the <strong>full gross</strong> amount in the accepted reserve asset through{" "}
+          <code>FeeRouter</code>. Referral rewards are <strong>CHARM weight</strong> (not reserve transfers).
+          Canonical shares: DOUB locked-liquidity (SIR / Kumbaya) 30% · CL8Y buy-and-burn 10% · podium pool 20%
+          · team 5% · Rabbit Treasury 35%.
+        </p>
+        <ul className="event-list">
+          {(
+            [
+              ["DOUB LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
+              ["CL8Y buy-and-burn", RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn],
+              ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
+              ["Team", RESERVE_FEE_ROUTING_BPS.team],
+              ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],
+            ] as const
+          ).map(([label, bps], i) => {
+            const row = sinkReads?.[i];
+            const w =
+              row?.status === "success" ? Number((row.result as readonly [unknown, number])[1]) : null;
+            return (
+              <li key={label}>
+                <strong>{label}</strong> — policy {bps} bps
+                {w !== null ? ` · onchain ${w} bps` : ""}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div className="data-panel">
+        <h2>Clearing &amp; liquidity anchors (live projection)</h2>
+        <p className="muted">
+          <strong>Final reserve per DOUB</strong> (projection): reserve raised per wei of launched token
+          allocated to the sale — <code>totalRaised × 1e18 / totalTokensForSale</code>.{" "}
+          <strong>Launch liquidity anchor</strong> = that value × 1.2 (locked LP target for SIR / Kumbaya).{" "}
+          <strong>Kumbaya v3 band lower</strong> = launch anchor × 0.8 (one-sided range to ∞ is configured
+          offchain; DOUB depth depends on pool targets — excess genesis DOUB may be burned per launch policy).
+        </p>
+        {liquidityAnchors ? (
+          <dl>
+            <dt>Projected final reserve per 1 DOUB (WAD)</dt>
+            <dd className="mono">{liquidityAnchors.clearing.toString()}</dd>
+            <dt>Launch liquidity anchor (×1.2, WAD)</dt>
+            <dd className="mono">{liquidityAnchors.launch.toString()}</dd>
+            <dt>Kumbaya lower bound (0.8× launch, WAD)</dt>
+            <dd className="mono">{liquidityAnchors.kLo.toString()}</dd>
+          </dl>
+        ) : (
+          <p className="muted">Waiting for sale totals…</p>
+        )}
+      </div>
+
+      <div className="data-panel">
+        <h2>Podium pool (live)</h2>
+        <p className="muted">
+          Balance in the accepted reserve asset held by <code>podiumPool</code>. Projected payouts use the
+          onchain split: 50% / 20% / 10% / 20% across the four categories; within each category placements pay
+          4∶2∶1 (1st is twice 2nd; 2nd twice 3rd). Integer rounding applies onchain.
+        </p>
+        <p>
+          <strong>Current pool balance:</strong>{" "}
+          {podiumPoolBal !== undefined ? (
+            <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} />
+          ) : (
+            "—"
+          )}
+        </p>
+        <div className="podium-preview">
+          {podiumPayoutPreview.map((row, idx) => (
+            <div key={idx} className="podium-block">
+              <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
+              <ol className="podium-list">
+                {(["1st", "2nd", "3rd"] as const).map((lab, j) => (
+                  <li key={lab}>
+                    {lab}: <AmountDisplay raw={row.places[j]} decimals={decimals} />
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="data-panel">
@@ -1076,7 +1225,7 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Prize distributions (indexer)</h2>
+        <h2>Podium batch runs (indexer)</h2>
         {prizeDist && prizeDist.length === 0 && <p>No prize batch runs indexed yet.</p>}
         {prizeDist && prizeDist.length > 0 && (
           <ul className="event-list">
@@ -1090,8 +1239,8 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Prize payouts (indexer)</h2>
-        {prizePayouts && prizePayouts.length === 0 && <p>No PrizePaid rows indexed yet.</p>}
+        <h2>Podium payouts (indexer)</h2>
+        {prizePayouts && prizePayouts.length === 0 && <p>No PodiumPaid rows indexed yet.</p>}
         {prizePayouts && prizePayouts.length > 0 && (
           <ul className="event-list">
             {prizePayouts.map((p) => (
@@ -1113,7 +1262,7 @@ export function TimeCurvePage() {
           <ul className="event-list">
             {refApplied.map((r) => (
               <li key={`${r.tx_hash}-${r.log_index}`}>
-                buyer <span className="mono">{r.buyer.slice(0, 10)}…</span> — referrer reward{" "}
+                buyer <span className="mono">{r.buyer.slice(0, 10)}…</span> — referrer CHARM added{" "}
                 <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block {r.block_number}{" "}
                 — tx <TxHash hash={r.tx_hash} />
               </li>
@@ -1126,7 +1275,7 @@ export function TimeCurvePage() {
 }
 
 function usePodiumReads(tc: `0x${string}` | undefined) {
-  const cats = [0, 1, 2, 3, 4, 5] as const;
+  const cats = [0, 1, 2, 3] as const;
   const contracts = tc
     ? cats.map((c) => ({
         address: tc,

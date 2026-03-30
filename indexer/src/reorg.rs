@@ -112,7 +112,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_timecurve_referral_applied",
         "idx_timecurve_sale_ended",
         "idx_timecurve_sale_started",
-        "idx_prize_vault_prize_paid",
+        "idx_podium_pool_paid",
         "idx_referral_code_registered",
         "idx_rabbit_deposit",
         "idx_rabbit_epoch_opened",
