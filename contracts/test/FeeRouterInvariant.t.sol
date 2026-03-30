@@ -13,7 +13,6 @@ contract MockTokenInv is ERC20 {
     }
 }
 
-/// @dev Stateful handler for invariant fuzzing (fund + distribute only).
 contract FeeRouterHandler is Test {
     IERC20 public immutable token;
     FeeRouter public immutable router;
@@ -41,7 +40,6 @@ contract FeeRouterHandler is Test {
     }
 }
 
-/// @dev Stateful fuzz: random fund + distribute sequences must preserve router/sink accounting.
 contract FeeRouterInvariantTest is Test {
     MockTokenInv internal token;
     FeeRouter internal router;
@@ -51,28 +49,28 @@ contract FeeRouterInvariantTest is Test {
     address internal s1 = makeAddr("inv_sink1");
     address internal s2 = makeAddr("inv_sink2");
     address internal s3 = makeAddr("inv_sink3");
+    address internal s4 = makeAddr("inv_sink4");
 
     function setUp() public {
         token = new MockTokenInv();
-        address[4] memory sinks = [s0, s1, s2, s3];
+        address[5] memory sinks = [s0, s1, s2, s3, s4];
         router = new FeeRouter(
             address(this),
             sinks,
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
         handler = new FeeRouterHandler(token, router);
         targetContract(address(handler));
     }
 
-    /// @dev Router balance equals funds added minus amounts distributed.
     function invariant_feeRouter_routerBalanceMatchesGhost() public view {
         uint256 bal = token.balanceOf(address(router));
         assertEq(bal, handler.ghost_funded() - handler.ghost_distributed(), "router ledger");
     }
 
-    /// @dev Sinks (starting at zero) hold exactly what left the router.
     function invariant_feeRouter_sinksSumEqualsDistributed() public view {
-        uint256 sum = token.balanceOf(s0) + token.balanceOf(s1) + token.balanceOf(s2) + token.balanceOf(s3);
+        uint256 sum = token.balanceOf(s0) + token.balanceOf(s1) + token.balanceOf(s2) + token.balanceOf(s3)
+            + token.balanceOf(s4);
         assertEq(sum, handler.ghost_distributed(), "sink sum");
     }
 }

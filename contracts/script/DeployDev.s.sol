@@ -5,7 +5,7 @@ import {Script, console} from "forge-std/Script.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {CL8YProtocolTreasury} from "../src/sinks/CL8YProtocolTreasury.sol";
 import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
@@ -41,11 +41,11 @@ contract DeployDev is Script {
         console.log("Doubloon:", address(doub));
 
         // ── Fee sinks ──────────────────────────────────────────────────
-        PrizeVault prizeVault = new PrizeVault(deployer);
+        PodiumPool podiumPool = new PodiumPool(deployer);
         CL8YProtocolTreasury cl8yTreasury = new CL8YProtocolTreasury(deployer);
         DoubLPIncentives doubLP = new DoubLPIncentives(deployer);
         EcosystemTreasury ecoTreasury = new EcosystemTreasury(deployer);
-        console.log("PrizeVault:", address(prizeVault));
+        console.log("PodiumPool:", address(podiumPool));
         console.log("CL8YProtocolTreasury:", address(cl8yTreasury));
         console.log("DoubLPIncentives:", address(doubLP));
         console.log("EcosystemTreasury:", address(ecoTreasury));
@@ -72,8 +72,14 @@ contract DeployDev is Script {
         // ── Fee Router ─────────────────────────────────────────────────
         FeeRouter router = new FeeRouter(
             deployer,
-            [address(doubLP), address(rt), address(prizeVault), address(cl8yTreasury)],
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [
+                address(doubLP),
+                address(cl8yTreasury),
+                address(podiumPool),
+                address(ecoTreasury),
+                address(rt)
+            ],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
         console.log("FeeRouter:", address(router));
@@ -95,7 +101,7 @@ contract DeployDev is Script {
             ERC20(usdm),
             lt,
             router,
-            prizeVault,
+            podiumPool,
             address(referralRegistry),
             1e18,                               // initialMinBuy
             223_143_551_314_209_700,             // growthRateWad (ln(1.25))
@@ -103,12 +109,10 @@ contract DeployDev is Script {
             120,                                // timerExtensionSec (2 min per buy)
             86_400,                             // initialTimerSec (24h first deadline)
             4 * 86_400,                         // timerCapSec (max 96h remaining from any buy)
-            1_000_000e18,                       // totalTokensForSale
-            3600,                               // openingWindowSec
-            3600                                // closingWindowSec
+            1_000_000e18                        // totalTokensForSale
         );
         lt.transfer(address(tc), 1_000_000e18);
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tc));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         console.log("TimeCurve:", address(tc));
 
         // Burrow deposits require an open epoch; TimeCurve buys require a started sale.

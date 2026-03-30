@@ -27,7 +27,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
-| Referral reward split | `10%` referrer + `10%` referee rebate + `80%` to `FeeRouter` | Fixed in `TimeCurve` bps constants | Default |
+| Referral CHARM | `10%` referrer + `10%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | Fixed in `TimeCurve` bps constants | Default |
 
 ## Referral registry
 
@@ -40,13 +40,13 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 | Sink | Testnet default (bps) | Bounds |
 |------|-----------------------|--------|
-| DOUB liquidity (LP) — `DoubLPIncentives` | 3 000 | ≥ 0 |
-| Rabbit Treasury | 2 000 | ≥ 0 |
-| Prizes | 3 500 | ≥ 0 |
-| CL8Y buy-and-burn — `CL8YProtocolTreasury` | 1 500 | ≥ 0 |
+| DOUB locked liquidity (SIR / Kumbaya) — `DoubLPIncentives` | 3 000 | ≥ 0 |
+| CL8Y buy-and-burn — `CL8YProtocolTreasury` | 1 000 | ≥ 0 |
+| Podium pool — `PodiumPool` | 2 000 | ≥ 0 |
+| Team — `EcosystemTreasury` (or ops multisig) | 500 | ≥ 0 |
+| Rabbit Treasury | 3 500 | ≥ 0 |
 
-Prize internal weights (per-category and podium splits) are governance-set.
-Testnet defaults: equal category weight (1/6 each), podium 50 / 30 / 20 for 1st / 2nd / 3rd.
+**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: four categories (50% / 20% / 10% / 20% of pool); placements **4∶2∶1** per category.
 
 ## Rabbit Treasury (Burrow)
 

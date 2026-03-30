@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
@@ -41,12 +41,17 @@ contract NonStandardERC20Test is Test {
     address internal s1 = makeAddr("s1");
     address internal s2 = makeAddr("s2");
     address internal s3 = makeAddr("s3");
+    address internal s4 = makeAddr("s4");
 
     function test_feeOnTransfer_timeCurve_buyReverts_distributeExpectsFullAmount() public {
         MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
         MockPlain lt = new MockPlain();
-        PrizeVault pv = new PrizeVault(address(this));
-        FeeRouter r = new FeeRouter(address(this), [s0, s1, address(pv), s3], [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]);
+        PodiumPool pv = new PodiumPool(address(this));
+        FeeRouter r = new FeeRouter(
+            address(this),
+            [s0, s1, address(pv), s3, s4],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+        );
         TimeCurve tc = new TimeCurve(
             IERC20(address(ft)),
             IERC20(address(lt)),
@@ -59,9 +64,7 @@ contract NonStandardERC20Test is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);
@@ -79,7 +82,11 @@ contract NonStandardERC20Test is Test {
 
     function test_alwaysRevert_feeRouter_distributeReverts() public {
         MockERC20AlwaysRevert t = new MockERC20AlwaysRevert();
-        FeeRouter r = new FeeRouter(address(this), [s0, s1, s2, s3], [uint16(2500), uint16(2500), uint16(2500), uint16(2500)]);
+        FeeRouter r = new FeeRouter(
+            address(this),
+            [s0, s1, s2, s3, s4],
+            [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
+        );
         t.mint(address(r), 1000);
         vm.expectRevert(MockERC20AlwaysRevert.TransferBlocked.selector);
         r.distributeFees(IERC20(address(t)), 1000);
@@ -88,7 +95,11 @@ contract NonStandardERC20Test is Test {
     function test_blockedSink_feeRouter_distributeReverts() public {
         address sinkA = makeAddr("sinkA");
         MockERC20BlockedSink t = new MockERC20BlockedSink(sinkA);
-        FeeRouter r = new FeeRouter(address(this), [sinkA, s1, s2, s3], [uint16(2500), uint16(2500), uint16(2500), uint16(2500)]);
+        FeeRouter r = new FeeRouter(
+            address(this),
+            [sinkA, s1, s2, s3, s4],
+            [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
+        );
         t.mint(address(r), 1000);
         vm.expectRevert(MockERC20BlockedSink.BlockedRecipient.selector);
         r.distributeFees(IERC20(address(t)), 1000);

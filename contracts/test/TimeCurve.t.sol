@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
@@ -22,7 +22,7 @@ contract TimeCurveTest is Test {
     MockERC20 usdm;
     MockERC20 launchedToken;
     FeeRouter router;
-    PrizeVault prizeVault;
+    PodiumPool podiumPool;
     TimeCurve tc;
 
     address alice = makeAddr("alice");
@@ -30,30 +30,29 @@ contract TimeCurveTest is Test {
     address carol = makeAddr("carol");
     address dave = makeAddr("dave");
 
-    // Sink addresses (simple receivers)
-    address sink0 = makeAddr("sink0");
-    address sink1 = makeAddr("sink1");
-    address sink2; // prize vault
-    address sink3 = makeAddr("sink3");
+    // FeeRouter sinks: LP · CL8Y · podium pool · team · Rabbit (canonical bps)
+    address sinkLp = makeAddr("sinkLp");
+    address sinkCl8y = makeAddr("sinkCl8y");
+    address sinkTeam = makeAddr("sinkTeam");
+    address sinkRabbit = makeAddr("sinkRabbit");
 
     function setUp() public {
         usdm = new MockERC20("USDm", "USDM");
         launchedToken = new MockERC20("LaunchToken", "LT");
 
-        prizeVault = new PrizeVault(address(this));
-        sink2 = address(prizeVault);
+        podiumPool = new PodiumPool(address(this));
 
         router = new FeeRouter(
             address(this),
-            [sink0, sink1, sink2, sink3],
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [sinkLp, sinkCl8y, address(podiumPool), sinkTeam, sinkRabbit],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
 
         tc = new TimeCurve(
             usdm,
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,            // initialMinBuy: 1 USDm
             GROWTH_RATE,
@@ -61,12 +60,10 @@ contract TimeCurveTest is Test {
             120,             // timerExtensionSec (2 min; canonical deploy)
             ONE_DAY,         // initialTimerSec (24h)
             FOUR_DAYS,       // timerCapSec (max 96h remaining)
-            1_000_000e18,    // totalTokensForSale
-            3600,            // openingWindowSec
-            3600             // closingWindowSec
+            1_000_000e18     // totalTokensForSale
         );
 
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tc));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
 
         // Fund launched token pool
         launchedToken.mint(address(tc), 1_000_000e18);
@@ -103,7 +100,7 @@ contract TimeCurveTest is Test {
             usdm,
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -111,11 +108,9 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tcUnder));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcUnder));
         launchedToken.mint(address(tcUnder), 1_000_000e18 - 1);
         vm.expectRevert("TimeCurve: insufficient launched tokens");
         tcUnder.startSale();
@@ -143,6 +138,7 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(1e18);
         assertEq(tc.charmWeight(alice), 1e18);
+        assertEq(tc.totalCharmWeight(), 1e18);
         assertEq(tc.totalRaised(), 1e18);
     }
 
@@ -214,7 +210,7 @@ contract TimeCurveTest is Test {
             usdm,
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -222,11 +218,9 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             fourDay,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tcWide));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcWide));
         launchedToken.mint(address(tcWide), 1_000_000e18);
         tcWide.startSale();
         assertEq(tcWide.deadline(), block.timestamp + ONE_DAY);
@@ -244,7 +238,7 @@ contract TimeCurveTest is Test {
             usdm,
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -252,9 +246,7 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             ONE_DAY - 1,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
     }
 
@@ -404,75 +396,6 @@ contract TimeCurveTest is Test {
         assertEq(values[2], 3e18);
     }
 
-    function test_opening_window_podium() public {
-        tc.startSale();
-
-        _fundAndApprove(alice, 5e18);
-        vm.prank(alice);
-        tc.buy(1e18);
-
-        _fundAndApprove(bob, 5e18);
-        vm.prank(bob);
-        tc.buy(1e18);
-
-        _fundAndApprove(carol, 5e18);
-        vm.prank(carol);
-        tc.buy(1e18);
-
-        (address[3] memory winners,) = tc.podium(tc.CAT_OPENING_WINDOW());
-        assertEq(winners[0], alice);
-        assertEq(winners[1], bob);
-        assertEq(winners[2], carol);
-    }
-
-    function test_closing_window_podium() public {
-        // Flat min-buy curve so buys near the end of a long timer are still valid (growth would
-        // otherwise push minBuy above 1e18 when elapsed ~ 1 day).
-        TimeCurve tcFlat = new TimeCurve(
-            usdm,
-            launchedToken,
-            router,
-            prizeVault,
-            address(0),
-            1e18,
-            0,
-            10,
-            120,
-            ONE_DAY,
-            ONE_DAY,
-            1_000_000e18,
-            3600,
-            3600
-        );
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tcFlat));
-        launchedToken.mint(address(tcFlat), 1_000_000e18);
-        tcFlat.startSale();
-        uint256 d0 = tcFlat.deadline();
-        vm.warp(d0 - 100);
-
-        for (uint256 i; i < 3; i++) {
-            _fundAndApproveCurve(alice, 2e18, tcFlat);
-            vm.prank(alice);
-            tcFlat.buy(1e18);
-        }
-        for (uint256 i; i < 2; i++) {
-            _fundAndApproveCurve(bob, 2e18, tcFlat);
-            vm.prank(bob);
-            tcFlat.buy(1e18);
-        }
-        _fundAndApproveCurve(carol, 2e18, tcFlat);
-        vm.prank(carol);
-        tcFlat.buy(1e18);
-
-        (address[3] memory winners, uint256[3] memory values) = tcFlat.podium(tcFlat.CAT_CLOSING_WINDOW());
-        assertEq(winners[0], alice);
-        assertEq(values[0], 3);
-        assertEq(winners[1], bob);
-        assertEq(values[1], 2);
-        assertEq(winners[2], carol);
-        assertEq(values[2], 1);
-    }
-
     function test_highest_cumulative_podium() public {
         tc.startSale();
         _fundAndApprove(alice, 20e18);
@@ -504,38 +427,11 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(10e18);
 
-        // 30% to sink0, 20% to sink1, 35% to prizeVault, 15% to sink3
-        assertEq(usdm.balanceOf(sink0), 3e18);
-        assertEq(usdm.balanceOf(sink1), 2e18);
-        assertEq(usdm.balanceOf(address(prizeVault)), 3.5e18);
-        assertEq(usdm.balanceOf(sink3), 1.5e18);
-    }
-
-    /// @dev Same-block opening-window podium follows **call order** (threat #1: MEV / ordering).
-    function test_sameBlock_openingWindow_orderMatchesCallOrder() public {
-        tc.startSale();
-        _fundAndApprove(alice, 5e18);
-        _fundAndApprove(bob, 5e18);
-        _fundAndApprove(carol, 5e18);
-
-        uint256 bn = block.number;
-        vm.prank(alice);
-        tc.buy(1e18);
-        assertEq(block.number, bn);
-        vm.prank(bob);
-        tc.buy(1e18);
-        assertEq(block.number, bn);
-        vm.prank(carol);
-        tc.buy(1e18);
-        assertEq(block.number, bn);
-
-        vm.warp(tc.deadline() + 1);
-        tc.endSale();
-
-        (address[3] memory winners,) = tc.podium(tc.CAT_OPENING_WINDOW());
-        assertEq(winners[0], alice, "first opening slot");
-        assertEq(winners[1], bob, "second opening slot");
-        assertEq(winners[2], carol, "third opening slot");
+        assertEq(usdm.balanceOf(sinkLp), 3e18);
+        assertEq(usdm.balanceOf(sinkCl8y), 1e18);
+        assertEq(usdm.balanceOf(address(podiumPool)), 2e18);
+        assertEq(usdm.balanceOf(sinkTeam), 0.5e18);
+        assertEq(usdm.balanceOf(sinkRabbit), 3.5e18);
     }
 
     /// @dev Curve timing parameters are constructor immutables — no mid-sale governance drift (threat #3).
@@ -609,7 +505,7 @@ contract TimeCurveTest is Test {
             usdm,
             IERC20(address(0)),
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -617,19 +513,17 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
     }
 
-    function test_constructor_zero_prizeVault_reverts() public {
-        vm.expectRevert("TimeCurve: zero prize vault");
+    function test_constructor_zero_podiumPool_reverts() public {
+        vm.expectRevert("TimeCurve: zero podium pool");
         new TimeCurve(
             usdm,
             launchedToken,
             router,
-            PrizeVault(address(0)),
+            PodiumPool(address(0)),
             address(0),
             1e18,
             GROWTH_RATE,
@@ -637,9 +531,7 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
     }
 
@@ -649,7 +541,7 @@ contract TimeCurveTest is Test {
             IERC20(address(0)),
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -657,9 +549,7 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
     }
 
@@ -669,7 +559,7 @@ contract TimeCurveTest is Test {
             usdm,
             launchedToken,
             FeeRouter(address(0)),
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -677,9 +567,7 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
     }
 
@@ -689,7 +577,7 @@ contract TimeCurveTest is Test {
             usdm,
             launchedToken,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_RATE,
@@ -697,11 +585,9 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1,
-            3600,
-            3600
+            1
         );
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tcSmall));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcSmall));
         launchedToken.mint(address(tcSmall), 1);
         tcSmall.startSale();
         _fundAndApproveCurve(alice, 10e18, tcSmall);
@@ -728,19 +614,19 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        uint256 expectedPrize = usdm.balanceOf(address(prizeVault));
+        uint256 expectedPrize = usdm.balanceOf(address(podiumPool));
         assertGt(expectedPrize, 0);
-        deal(address(usdm), address(prizeVault), 0);
+        deal(address(usdm), address(podiumPool), 0);
 
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());
 
-        deal(address(usdm), address(prizeVault), expectedPrize);
+        deal(address(usdm), address(podiumPool), expectedPrize);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
     }
 
-    /// @dev Integer split rounds to zero for all podium places: must not lock distribution.
+    /// @dev Tiny pool with no payable integer splits for filled podiums should stay retryable.
     function test_distributePrizes_dust_pool_is_retryable() public {
         tc.startSale();
         _fundAndApprove(alice, 5e18);
@@ -749,11 +635,11 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        deal(address(usdm), address(prizeVault), 6); // perCategory == 1 → all shares 0
+        deal(address(usdm), address(podiumPool), 0);
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());
 
-        deal(address(usdm), address(prizeVault), 1_000_000e18);
+        deal(address(usdm), address(podiumPool), 1_000_000e18);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
     }
@@ -776,10 +662,10 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        uint256 vaultBefore = usdm.balanceOf(address(prizeVault));
+        uint256 vaultBefore = usdm.balanceOf(address(podiumPool));
         assertGt(vaultBefore, 0);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
-        assertLt(usdm.balanceOf(address(prizeVault)), vaultBefore);
+        assertLt(usdm.balanceOf(address(podiumPool)), vaultBefore);
     }
 }

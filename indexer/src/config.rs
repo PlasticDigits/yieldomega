@@ -28,8 +28,8 @@ pub struct RegistryContracts {
     pub fee_router: String,
     #[serde(rename = "ReferralRegistry", default)]
     pub referral_registry: String,
-    #[serde(rename = "PrizeVault", default)]
-    pub prize_vault: String,
+    #[serde(rename = "PodiumPool", alias = "PrizeVault", default)]
+    pub podium_pool: String,
 }
 
 impl AddressRegistry {
@@ -42,7 +42,7 @@ impl AddressRegistry {
             self.contracts.leprechaun_nft.trim(),
             self.contracts.fee_router.trim(),
             self.contracts.referral_registry.trim(),
-            self.contracts.prize_vault.trim(),
+            self.contracts.podium_pool.trim(),
         ] {
             if s.is_empty() {
                 continue;

@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {CL8YProtocolTreasury} from "../src/sinks/CL8YProtocolTreasury.sol";
 import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
@@ -21,7 +21,7 @@ contract DevStackIntegrationTest is Test {
 
     MockUSDm usdm;
     Doubloon doub;
-    PrizeVault prizeVault;
+    PodiumPool podiumPool;
     CL8YProtocolTreasury cl8yTreasury;
     DoubLPIncentives doubLP;
     EcosystemTreasury ecoTreasury;
@@ -36,10 +36,10 @@ contract DevStackIntegrationTest is Test {
         usdm = new MockUSDm();
         doub = new Doubloon(address(this));
 
-        prizeVault = new PrizeVault(address(this));
+        podiumPool = new PodiumPool(address(this));
         cl8yTreasury = new CL8YProtocolTreasury(address(this));
         doubLP = new DoubLPIncentives(address(this));
-        new EcosystemTreasury(address(this));
+        ecoTreasury = new EcosystemTreasury(address(this));
 
         rt = new RabbitTreasury(
             ERC20(address(usdm)),
@@ -60,8 +60,14 @@ contract DevStackIntegrationTest is Test {
 
         router = new FeeRouter(
             address(this),
-            [address(doubLP), address(rt), address(prizeVault), address(cl8yTreasury)],
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [
+                address(doubLP),
+                address(cl8yTreasury),
+                address(podiumPool),
+                address(ecoTreasury),
+                address(rt)
+            ],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
 
@@ -72,7 +78,7 @@ contract DevStackIntegrationTest is Test {
             ERC20(address(usdm)),
             lt,
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             GROWTH_WAD,
@@ -80,12 +86,10 @@ contract DevStackIntegrationTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
         lt.transfer(address(tc), 1_000_000e18);
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tc));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
 
         rt.openFirstEpoch();
         tc.startSale();

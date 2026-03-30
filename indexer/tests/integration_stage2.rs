@@ -280,7 +280,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             code_hash: b256_lo(88_888),
             normalized_code: "TESTCODE".to_string(),
         }),
-        next(DecodedEvent::PrizeVaultPrizePaid {
+        next(DecodedEvent::PodiumPoolPaid {
             winner: alice,
             token: reserve,
             amount: u2,
@@ -357,15 +357,15 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         }),
         next(DecodedEvent::FeeRouterSinksUpdated {
             actor: alice,
-            old_destinations: [addr_byte(1); 4],
-            old_weights: [1000, 2000, 3000, 4000],
-            new_destinations: [addr_byte(2); 4],
-            new_weights: [2500, 2500, 2500, 2500],
+            old_destinations: [addr_byte(1); 5],
+            old_weights: [3000, 1000, 2000, 500, 3500],
+            new_destinations: [addr_byte(2); 5],
+            new_weights: [2000, 2000, 2000, 2000, 2000],
         }),
         next(DecodedEvent::FeeRouterFeesDistributed {
             token: reserve,
             amount: u2,
-            shares: [u1, u1, u1, u2],
+            shares: [u1, u1, u1, u1, u2],
         }),
     ];
 
@@ -398,7 +398,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(
-        count_where(&pool, "idx_prize_vault_prize_paid", 100).await,
+        count_where(&pool, "idx_podium_pool_paid", 100).await,
         1
     );
     assert_eq!(count_where(&pool, "idx_rabbit_epoch_opened", 100).await, 1);
@@ -521,7 +521,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(
-        count_where(&pool, "idx_prize_vault_prize_paid", 100).await,
+        count_where(&pool, "idx_podium_pool_paid", 100).await,
         0
     );
     assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);

@@ -29,24 +29,22 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 ### Sale end condition
 
 - The sale **ends** when the **timer reaches zero** without further extension past the end boundary.
-- After end, **no further buys** are accepted; **redemption** of charms for tokens and **prize** payouts follow rules defined onchain.
+- After end, **no further buys** are accepted; **redemption** of charms for **DOUB** and **podium** payouts follow rules defined onchain.
 
-### Prize categories (first-class) — podiums and breadth
+### Podium categories (first-class)
 
-The system should support **onchain-trackable** leaderboards or deterministic winners. **Each category pays 1st, 2nd, and 3rd** (with explicit tie-breaking). Prize **pool share** for TimeCurve is routed per [canonical fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) and [prize internal weights](../onchain/fee-routing-and-governance.md#governance-prize-internal-weights) in [fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md).
+The system should support **onchain-trackable** leaderboards or deterministic winners. **Each category pays 1st, 2nd, and 3rd** (with explicit tie-breaking). The **podium pool** slice for TimeCurve is routed per [canonical fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks); category shares and placement ratio are **fixed in `TimeCurve`** today ([Podium pool internal split](../onchain/fee-routing-and-governance.md#governance-prize-internal-weights)).
 
-**Categories (minimum set):**
+**Categories (onchain v1):** four competition tracks; **opening** and **closing window** categories are **not** used.
 
-| Category | Podium meaning (deterministic onchain) |
-|----------|----------------------------------------|
-| **Last buyers** | **1st–3rd** last qualifying buyers before expiry (last, second-to-last, third-to-last). |
-| **Most buys** | **1st–3rd** by total qualifying buy count in the sale. |
-| **Biggest buy** | **1st–3rd** by single-transaction spend. |
-| **Opening window** | **1st–3rd** buyers by tx order in the opening window (for example first hour). |
-| **Closing window** | **1st–3rd** by buy count in the closing window (for example final hour). |
-| **Highest cumulative spend** | **1st–3rd** by total accepted-asset spend (charm weight) in the sale (distinct from single-tx “biggest buy”). |
+| Category | Share of **podium pool** (reserve asset) | Podium meaning (deterministic onchain) |
+|----------|----------------------------------------|----------------------------------------|
+| **Last buyers** | **50%** | **1st–3rd** last qualifying buyers before expiry. |
+| **Most buys** | **20%** | **1st–3rd** by total qualifying buy count in the sale. |
+| **Biggest buy** | **10%** | **1st–3rd** by single-transaction spend. |
+| **Highest cumulative CHARM** | **20%** (remainder of category split after integer rounding on other slices) | **1st–3rd** by **`charmWeight`** (includes referral CHARM bonuses). |
 
-Additional seasonal or governance-defined categories may be added; each must define **podium rules** and **tie-breaking** in the contract.
+Within each category, **1st : 2nd : 3rd** payouts use weights **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). **Podium payouts** are in the **accepted reserve asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**. **DOUB** is for **`redeemCharms`** only (sale allocation), not for podium payouts.
 
 Exact tie-breaking (same block, same timestamp granularity) must be **specified in contract design** (for example transaction index ordering, log index, buyer address ordering as last resort—transparent and deterministic).
 
@@ -62,7 +60,7 @@ Proceeds and fees are split per [fee routing and governance](../onchain/fee-rout
 
 - **Accepted asset** (for example USDm only vs basket).
 - **Auction cadence** if multiple rounds exist.
-- **Per-category prize weights** within the **prizes** fee bucket (how much of the prize pool goes to each category’s 1st/2nd/3rd), within onchain bounds.
+- **Future** parameterization of podium category shares or placement ratios if governance moves them out of bytecode (today fixed in **`TimeCurve`**).
 
 ---
 

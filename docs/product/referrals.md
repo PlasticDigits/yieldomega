@@ -4,7 +4,7 @@
 
 Let users **register a short referral code** by paying a **fixed CL8Y burn**, then share links so **new buyers** can be attributed onchain. Rewards are enforced in **`TimeCurve`** on qualifying buys—**not** by the indexer or local browser storage.
 
-See also: [fee routing](../onchain/fee-routing-and-governance.md) (canonical TimeCurve sink split is unchanged in policy; referral carve is an explicit **per-buy** adjustment documented below).
+See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross** buy is routed through `FeeRouter`; referral incentives are **CHARM weight**, documented below).
 
 ## CL8Y token
 
@@ -31,11 +31,13 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (canonical Tim
 
 On a referred buy of **gross** `amount` (accepted asset units):
 
-- **Referrer** receives **10%** of `amount` (`1000` bps).
-- **Referee** (buyer) receives **10%** of `amount` as an immediate rebate (`1000` bps).
-- **Remaining 80%** of `amount` is routed through the existing **`FeeRouter.distributeFees`** path (canonical sink weights apply to **this** routed amount).
+- **`FeeRouter` path:** the **entire** `amount` is transferred to **`FeeRouter.distributeFees`** (canonical **five-sink** split — see [fee routing](../onchain/fee-routing-and-governance.md)).
+- **CHARM (referral):** **Referrer** and **referee** each receive **10%** of `amount` (`1000` bps each) as additional **`charmWeight`** (same units as spend-based CHARM). No **reserve-asset** transfer is made to them on the referral path.
+- **`totalRaised`:** still increases by **`amount`** (gross) for sale accounting.
+- **`totalCharmWeight`:** increases by **`amount + 2 × (amount × 1000 / 10000)`** on a referred buy (buyer’s weight includes base spend plus referee bonus; referrer’s weight includes referrer bonus).
+- **DOUB redemption:** `redeemCharms` clears against **`totalCharmWeight`** in the denominator: `totalTokensForSale * charmWeight[user] / totalCharmWeight`.
 
-**Allocation and podiums:** `totalRaised`, `userSpend`, and prize tracking use the **full** `amount` (gross spend), consistent with the product rule that participation is measured on the **stated** buy size.
+**Podiums:** last-buy / most-buys / biggest-buy / cumulative CHARM podiums still key off **per-buy `amount`** and onchain counters as implemented in **`TimeCurve`** (referral CHARM bonuses affect **cumulative CHARM** and redemption shares).
 
 **Min buy and cap:** Checks use the **full** `amount` against `currentMinBuy` and per-transaction cap.
 

@@ -14,8 +14,8 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 ## Core ideas
 
 - **Minimum buy rises over time**; each buy has **min/max** bounds; **timer** extends on buys up to a **cap**; **`initialTimerSec`** may be shorter than the cap so early activity can still grow remaining time (see deployed parameters).
-- **Charm weight** tracks spend for **pro-rata** allocation of launched tokens after the sale ends; **podium** categories award prizes from the prize fee bucket per docs.
-- **Fees** split across sinks (DOUB LP incentives, Rabbit Treasury, Prize vault, CL8Y protocol treasury, etc.) per **canonical** weights in fee routing docs—**verify** live `FeeRouter` / deployment for the network you are on.
+- **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`**, separate from DOUB redemption.
+- **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sinks: locked DOUB LP, CL8Y buy-and-burn, podium pool, team, Rabbit Treasury) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
 
 ## Success function (non-financial)
 
@@ -38,7 +38,7 @@ When answering, make outputs explicit:
 Resolve truth in this order; **indexers must not override** onchain state for **balances, winners, or sale outcome**.
 
 1. **Deployed contracts** — `TimeCurve` / `FeeRouter` (and related) **addresses** and **reads** for the target chain.
-2. **Relevant events** — e.g. `SaleStarted`, `Buy`, `SaleEnded`, `CharmsRedeemed`, `PrizesDistributed`, `ReferralApplied` as emitted per [`docs/product/primitives.md`](../../docs/product/primitives.md) and deployment.
+2. **Relevant events** — e.g. `SaleStarted`, `Buy`, `SaleEnded`, `CharmsRedeemed`, `PrizesDistributed`, `ReferralApplied`, `PodiumPaid` as emitted per [`docs/product/primitives.md`](../../docs/product/primitives.md) and deployment.
 3. **Product docs** — [`docs/product/primitives.md`](../../docs/product/primitives.md), [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md).
 4. **Indexers / frontend** — **discovery only**; **flag** if they disagree with RPC.
 

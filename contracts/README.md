@@ -112,7 +112,7 @@ need human decisions before mainnet.
 | `RabbitTreasury` | Player-facing reserve game — USDm ↔ DOUB, epoch repricing via `BurrowMath` |
 | `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
 | `FeeRouter` | Splits fees to 4 canonical sinks (bps weights, governed) |
-| `PrizeVault` | Holds prize portion of fees; `TimeCurve` distributes to winners |
+| `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
 | `CL8YProtocolTreasury` | CL8Y buy-and-burn sink (15 %) |
 | `DoubLPIncentives` | DOUB liquidity sink (30 %) — LP mechanics TODO |
 | `EcosystemTreasury` | CL8Y-governed pool (not a direct fee sink) |

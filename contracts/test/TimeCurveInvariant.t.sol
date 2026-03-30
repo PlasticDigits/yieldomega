@@ -6,7 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 
 contract MockTokTC is ERC20 {
     constructor() ERC20("USDM", "USDM") {}
@@ -57,31 +57,30 @@ contract TimeCurveInvariantTest is Test {
     MockTokTC internal usdm;
     MockTokTC internal launched;
     FeeRouter internal router;
-    PrizeVault internal prizeVault;
+    PodiumPool internal podiumPool;
     TimeCurve internal tc;
     TimeCurveHandler internal handler;
 
     address internal alice = makeAddr("tc_inv_alice");
     address internal s0 = makeAddr("tc_s0");
     address internal s1 = makeAddr("tc_s1");
-    address internal s2;
     address internal s3 = makeAddr("tc_s3");
+    address internal s4 = makeAddr("tc_s4");
 
     function setUp() public {
         usdm = new MockTokTC();
         launched = new MockTokTC();
-        prizeVault = new PrizeVault(address(this));
-        s2 = address(prizeVault);
+        podiumPool = new PodiumPool(address(this));
         router = new FeeRouter(
             address(this),
-            [s0, s1, s2, s3],
-            [uint16(3000), uint16(2000), uint16(3500), uint16(1500)]
+            [s0, s1, address(podiumPool), s3, s4],
+            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
         tc = new TimeCurve(
             IERC20(address(usdm)),
             IERC20(address(launched)),
             router,
-            prizeVault,
+            podiumPool,
             address(0),
             1e18,
             0,
@@ -89,11 +88,9 @@ contract TimeCurveInvariantTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18,
-            3600,
-            3600
+            1_000_000e18
         );
-        prizeVault.grantRole(prizeVault.DISTRIBUTOR_ROLE(), address(tc));
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         launched.mint(address(tc), 1_000_000e18);
         tc.startSale();
         handler = new TimeCurveHandler(tc, usdm, alice);
@@ -104,7 +101,7 @@ contract TimeCurveInvariantTest is Test {
         assertEq(tc.totalRaised(), handler.ghost_buyVolume(), "totalRaised");
     }
 
-    function invariant_timeCurve_charmWeightLteTotalRaised() public view {
-        assertLe(tc.charmWeight(alice), tc.totalRaised(), "charmWeight");
+    function invariant_timeCurve_totalCharmWeightMatchesGhostBuys() public view {
+        assertEq(tc.totalCharmWeight(), handler.ghost_buyVolume(), "totalCharmWeight");
     }
 }

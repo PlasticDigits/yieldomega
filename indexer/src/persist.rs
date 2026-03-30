@@ -193,7 +193,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
-        DecodedEvent::PrizeVaultPrizePaid {
+        DecodedEvent::PodiumPoolPaid {
             winner,
             token,
             amount,
@@ -201,7 +201,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             placement,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_prize_vault_prize_paid (
+                r#"INSERT INTO idx_podium_pool_paid (
                     block_number, block_hash, tx_hash, log_index, contract_address,
                     winner, token, amount, category, placement
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10)

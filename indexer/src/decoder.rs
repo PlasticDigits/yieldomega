@@ -34,9 +34,9 @@ mod contracts {
                 address indexed buyer,
                 address indexed referrer,
                 bytes32 indexed codeHash,
-                uint256 referrerAmount,
-                uint256 refereeAmount,
-                uint256 amountToFeeRouter
+                uint256 referrerCharmAdded,
+                uint256 refereeCharmAdded,
+                uint256 grossAmountRoutedToFeeRouter
             );
         }
     }
@@ -48,8 +48,8 @@ mod contracts {
     }
 
     sol! {
-        contract PrizeVaultEvents {
-            event PrizePaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+        contract PodiumPoolEvents {
+            event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
         }
     }
 
@@ -115,18 +115,18 @@ mod contracts {
         contract FeeRouterEvents {
             event SinksUpdated(
                 address indexed actor,
-                address[4] oldDestinations,
-                uint16[4] oldWeights,
-                address[4] newDestinations,
-                uint16[4] newWeights
+                address[5] oldDestinations,
+                uint16[5] oldWeights,
+                address[5] newDestinations,
+                uint16[5] newWeights
             );
-            event FeesDistributed(address indexed token, uint256 amount, uint256[4] shares);
+            event FeesDistributed(address indexed token, uint256 amount, uint256[5] shares);
         }
     }
 }
 
 use contracts::{
-    FeeRouterEvents, LeprechaunEvents, PrizeVaultEvents, RabbitTreasuryEvents,
+    FeeRouterEvents, LeprechaunEvents, PodiumPoolEvents, RabbitTreasuryEvents,
     ReferralRegistryEvents, TimeCurveEvents, TimeCurveEventsLegacy,
 };
 
@@ -179,7 +179,7 @@ pub enum DecodedEvent {
         code_hash: B256,
         normalized_code: String,
     },
-    PrizeVaultPrizePaid {
+    PodiumPoolPaid {
         winner: Address,
         token: Address,
         amount: U256,
@@ -256,15 +256,15 @@ pub enum DecodedEvent {
     },
     FeeRouterSinksUpdated {
         actor: Address,
-        old_destinations: [Address; 4],
-        old_weights: [u16; 4],
-        new_destinations: [Address; 4],
-        new_weights: [u16; 4],
+        old_destinations: [Address; 5],
+        old_weights: [u16; 5],
+        new_destinations: [Address; 5],
+        new_weights: [u16; 5],
     },
     FeeRouterFeesDistributed {
         token: Address,
         amount: U256,
-        shares: [U256; 4],
+        shares: [U256; 5],
     },
     Unknown {
         #[allow(dead_code)]
@@ -358,9 +358,9 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 buyer: e.buyer,
                 referrer: e.referrer,
                 code_hash: e.codeHash,
-                referrer_amount: e.referrerAmount,
-                referee_amount: e.refereeAmount,
-                amount_to_fee_router: e.amountToFeeRouter,
+                referrer_amount: e.referrerCharmAdded,
+                referee_amount: e.refereeCharmAdded,
+                amount_to_fee_router: e.grossAmountRoutedToFeeRouter,
             };
         }
     }
@@ -374,10 +374,10 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
-    if topic0 == PrizeVaultEvents::PrizePaid::SIGNATURE_HASH {
-        if let Ok(d) = PrizeVaultEvents::PrizePaid::decode_log(log, true) {
+    if topic0 == PodiumPoolEvents::PodiumPaid::SIGNATURE_HASH {
+        if let Ok(d) = PodiumPoolEvents::PodiumPaid::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::PrizeVaultPrizePaid {
+            return DecodedEvent::PodiumPoolPaid {
                 winner: e.winner,
                 token: e.token,
                 amount: e.amount,

@@ -6,7 +6,7 @@ This document expands [architecture/overview.md](overview.md) with **step-by-ste
 
 ## TimeCurve: user claims a prize
 
-The user may use the UI (often backed by the indexer) to decide *when* and *whether* to claim. **Value movement and final eligibility** are determined only when a **signed transaction** is executed by the **TimeCurve** contract. Prize categories and tie-breaking are **onchain** per [product/primitives.md](../product/primitives.md).
+The user may use the UI (often backed by the indexer) to decide *when* and *whether* to claim. **Value movement and final eligibility** are determined only when a **signed transaction** is executed by the **TimeCurve** contract. Podium categories and tie-breaking are **onchain** per [product/primitives.md](../product/primitives.md).
 
 ```mermaid
 flowchart TD

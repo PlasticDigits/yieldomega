@@ -25,7 +25,7 @@ declare -a PAIRS=(
   "LeprechaunNFT.sol:LeprechaunNFT"
   "FeeRouter.sol:FeeRouter"
   "Doubloon.sol:Doubloon"
-  "PrizeVault.sol:PrizeVault"
+  "PodiumPool.sol:PodiumPool"
   "CL8YProtocolTreasury.sol:CL8YProtocolTreasury"
   "DoubLPIncentives.sol:DoubLPIncentives"
   "EcosystemTreasury.sol:EcosystemTreasury"

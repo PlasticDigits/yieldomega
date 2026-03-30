@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
-import {PrizeVault} from "../src/sinks/PrizeVault.sol";
+import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 
 contract MockToken is ERC20 {
     constructor() ERC20("MockToken", "MT") {}
@@ -18,17 +18,15 @@ contract MockToken is ERC20 {
 contract FeeSinksTest is Test {
     MockToken token;
     EcosystemTreasury sink;
-    PrizeVault vault;
+    PodiumPool podiumPool;
     address stranger = makeAddr("stranger");
     address winner = makeAddr("winner");
 
     function setUp() public {
         token = new MockToken();
         sink = new EcosystemTreasury(address(this));
-        vault = new PrizeVault(address(this));
+        podiumPool = new PodiumPool(address(this));
     }
-
-    // ── FeeSink (via EcosystemTreasury) ─────────────────────────────────
 
     function test_feeSink_withdraw_happy_path() public {
         token.mint(address(sink), 100);
@@ -49,30 +47,28 @@ contract FeeSinksTest is Test {
         sink.withdraw(IERC20(address(token)), winner, 1);
     }
 
-    // ── PrizeVault ──────────────────────────────────────────────────────
-
-    function test_prizeVault_payPrize_happy_path() public {
+    function test_podiumPool_payPodiumPayout_happy_path() public {
         address distributor = makeAddr("timecurve");
-        vault.grantRole(vault.DISTRIBUTOR_ROLE(), distributor);
-        token.mint(address(vault), 50);
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), distributor);
+        token.mint(address(podiumPool), 50);
         vm.prank(distributor);
-        vault.payPrize(IERC20(address(token)), winner, 50, 1, 1);
+        podiumPool.payPodiumPayout(IERC20(address(token)), winner, 50, 1, 1);
         assertEq(token.balanceOf(winner), 50);
     }
 
-    function test_prizeVault_payPrize_zero_winner_reverts() public {
+    function test_podiumPool_payPodiumPayout_zero_winner_reverts() public {
         address distributor = makeAddr("timecurve");
-        vault.grantRole(vault.DISTRIBUTOR_ROLE(), distributor);
-        token.mint(address(vault), 1);
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), distributor);
+        token.mint(address(podiumPool), 1);
         vm.prank(distributor);
-        vm.expectRevert("PrizeVault: zero winner");
-        vault.payPrize(IERC20(address(token)), address(0), 1, 0, 0);
+        vm.expectRevert("PodiumPool: zero winner");
+        podiumPool.payPodiumPayout(IERC20(address(token)), address(0), 1, 0, 0);
     }
 
-    function test_prizeVault_payPrize_unauthorized_reverts() public {
-        token.mint(address(vault), 1);
+    function test_podiumPool_payPodiumPayout_unauthorized_reverts() public {
+        token.mint(address(podiumPool), 1);
         vm.prank(stranger);
         vm.expectRevert();
-        vault.payPrize(IERC20(address(token)), winner, 1, 0, 0);
+        podiumPool.payPodiumPayout(IERC20(address(token)), winner, 1, 0, 0);
     }
 }
