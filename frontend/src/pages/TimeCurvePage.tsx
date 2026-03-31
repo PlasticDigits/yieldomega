@@ -10,6 +10,7 @@ import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
 import { erc20Abi, feeRouterReadAbi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
@@ -1118,11 +1119,11 @@ export function TimeCurvePage() {
         {liquidityAnchors ? (
           <dl>
             <dt>Projected final reserve per 1 DOUB (WAD)</dt>
-            <dd className="mono">{liquidityAnchors.clearing.toString()}</dd>
+            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.clearing, 18)}</dd>
             <dt>Launch liquidity anchor (×1.2, WAD)</dt>
-            <dd className="mono">{liquidityAnchors.launch.toString()}</dd>
+            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.launch, 18)}</dd>
             <dt>Kumbaya lower bound (0.8× launch, WAD)</dt>
-            <dd className="mono">{liquidityAnchors.kLo.toString()}</dd>
+            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.kLo, 18)}</dd>
           </dl>
         ) : (
           <p className="muted">Waiting for sale totals…</p>
@@ -1170,7 +1171,9 @@ export function TimeCurvePage() {
               {row.winners.map((w, j) => (
                 <li key={j}>
                   <span className="mono">{w.slice(0, 10)}…</span> — value{" "}
-                  {row.values[j]?.toString() ?? "—"}
+                  {row.values[j] !== undefined
+                    ? formatCompactFromRaw(row.values[j], decimals)
+                    : "—"}
                 </li>
               ))}
             </ol>
