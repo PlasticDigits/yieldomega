@@ -22,7 +22,7 @@ if ! command -v anvil >/dev/null || ! command -v cast >/dev/null || ! command -v
 fi
 
 echo "Starting anvil (manual mining) on port ${PORT}..."
-anvil --no-mining --port "${PORT}" >/tmp/anvil_drill.log 2>&1 &
+anvil --host 127.0.0.1 --no-mining --port "${PORT}" >/tmp/anvil_drill.log 2>&1 &
 ANVIL_PID=$!
 trap 'kill "${ANVIL_PID}" 2>/dev/null || true' EXIT
 sleep 1
