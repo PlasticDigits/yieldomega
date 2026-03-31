@@ -46,7 +46,7 @@ async fn bootstrap_pointer(
         .await?
         .ok_or_else(|| eyre::eyre!("bootstrap: missing block {parent}"))?;
 
-    let hash: B256 = block.header.hash.into();
+    let hash: B256 = block.header.hash;
     *pointer = ChainPointer {
         block_number: parent,
         block_hash: hash,
@@ -124,7 +124,7 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
                 .get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
                 .await?
                 .ok_or_else(|| eyre::eyre!("missing ancestor block {anc}"))?;
-            let ah: B256 = ab.header.hash.into();
+            let ah: B256 = ab.header.hash;
             rollback_after(
                 pool,
                 ChainPointer {
@@ -155,7 +155,7 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
             }
         }
 
-        let block_hash: B256 = block.header.hash.into();
+        let block_hash: B256 = block.header.hash;
         upsert_indexed_block(pool, next, block_hash).await?;
         pointer = ChainPointer {
             block_number: next,
@@ -163,7 +163,7 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
         };
         save_chain_pointer(pool, &pointer).await?;
 
-        if next % 100 == 0 {
+        if next.is_multiple_of(100) {
             tracing::debug!(block = next, "indexed block");
         }
     }

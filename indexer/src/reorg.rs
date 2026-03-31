@@ -165,7 +165,7 @@ pub async fn find_common_ancestor(
             .await?
             .ok_or_else(|| eyre::eyre!("missing block {n} from RPC during reorg"))?;
 
-        let rpc_b256: B256 = block.header.hash.into();
+        let rpc_b256: B256 = block.header.hash;
 
         if let Some(stored) = get_stored_block_hash(pool, n).await? {
             if stored == rpc_b256 {

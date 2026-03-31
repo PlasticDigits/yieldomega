@@ -346,10 +346,10 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
-    if topic0 == TimeCurveEvents::PrizesDistributed::SIGNATURE_HASH {
-        if TimeCurveEvents::PrizesDistributed::decode_log(log, true).is_ok() {
-            return DecodedEvent::TimeCurvePrizesDistributed;
-        }
+    if topic0 == TimeCurveEvents::PrizesDistributed::SIGNATURE_HASH
+        && TimeCurveEvents::PrizesDistributed::decode_log(log, true).is_ok()
+    {
+        return DecodedEvent::TimeCurvePrizesDistributed;
     }
     if topic0 == TimeCurveEvents::ReferralApplied::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::ReferralApplied::decode_log(log, true) {
