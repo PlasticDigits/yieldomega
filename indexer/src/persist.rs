@@ -508,12 +508,12 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             new_weights,
         } => {
             let old_json = json!({
-                "destinations": old_destinations.map(|a| addr_hex(a)),
+                "destinations": old_destinations.map(addr_hex),
                 "weights": old_weights,
             })
             .to_string();
             let new_json = json!({
-                "destinations": new_destinations.map(|a| addr_hex(a)),
+                "destinations": new_destinations.map(addr_hex),
                 "weights": new_weights,
             })
             .to_string();
@@ -541,7 +541,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             shares,
         } => {
             let shares_json = json!({
-                "shares": shares.map(|s| u256_dec(s)),
+                "shares": shares.map(u256_dec),
             })
             .to_string();
             sqlx::query(
