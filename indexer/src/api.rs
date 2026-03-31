@@ -924,6 +924,16 @@ async fn referral_applied(
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
+    if let Some(ref addr) = p.referrer {
+        if !valid_0x_address20(addr) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "referrer must be a 0x-prefixed 20-byte address" })),
+            )
+                .into_response();
+        }
+    }
+
     let rows = if let Some(ref addr) = p.referrer {
         let addr_l = addr.to_lowercase();
         sqlx::query(
@@ -1217,4 +1227,29 @@ async fn rabbit_faction_stats(State(state): State<AppState>) -> Response {
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
+}
+
+#[cfg(test)]
+mod address_validation_tests {
+    use super::valid_0x_address20;
+
+    #[test]
+    fn valid_0x_address20_accepts_20_byte_hex() {
+        assert!(valid_0x_address20(
+            "0xdddddddddddddddddddddddddddddddddddddddd"
+        ));
+        assert!(valid_0x_address20(
+            "0x0000000000000000000000000000000000000000"
+        ));
+    }
+
+    #[test]
+    fn valid_0x_address20_rejects_invalid() {
+        assert!(!valid_0x_address20("0xbad"));
+        assert!(!valid_0x_address20("not-an-address"));
+        assert!(!valid_0x_address20(""));
+        assert!(!valid_0x_address20(
+            "0xddddddddddddddddddddddddddddddddddddddddd"
+        ));
+    }
 }
