@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 
 /// @dev Optional RPC fork smoke. When `FORK_URL` is unset or empty, tests no-op (pass) — same pattern as indexer Postgres integration.
-///      For MegaETH: set `export FORK_URL=...` or use `forge test --fork-url <rpc>` with URLs from `foundry.toml`
-///      (`[rpc_endpoints]` keys `megaeth`, `megaeth_testnet`). CI does not run fork tests against live RPC.
+///      This contract reads `FORK_URL` only (not Foundry's global `--fork-url`). For MegaETH, set `export FORK_URL=<rpc>`;
+///      example URLs and labels live in `foundry.toml` (`megaeth`, `megaeth_testnet`).
+///      Policy, CI mapping, and manual runbook: `docs/testing/contract-fork-smoke.md`.
 contract TimeCurveForkTest is Test {
     function test_fork_smoke_chainIdAndBlock() public {
         string memory url = vm.envOr("FORK_URL", string(""));

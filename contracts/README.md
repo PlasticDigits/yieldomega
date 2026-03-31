@@ -34,6 +34,8 @@ CI uses the `ci` profile (pinned fuzz runs). To match locally:
 FOUNDRY_PROFILE=ci forge test -vv
 ```
 
+Optional **live RPC fork smoke** (`test/TimeCurveFork.t.sol`) is skipped unless `FORK_URL` is set; see [`../docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md).
+
 ## Slither (static analysis)
 
 CI runs Slither on push/PR via [`.github/workflows/slither.yml`](../.github/workflows/slither.yml) using [`slither.config.json`](./slither.config.json) (`fail-on: high`). Locally, after `forge build`:

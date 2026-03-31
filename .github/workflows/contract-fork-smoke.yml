@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Optional: TimeCurveFork.t.sol against a live RPC. Not a PR merge gate; not on push.
+# See docs/testing/contract-fork-smoke.md
+name: contract-fork-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      fork_url:
+        description: "RPC URL (optional if repo secret FORK_URL is set)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-fork-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  forge-fork-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Resolve FORK_URL and run fork smoke
+        working-directory: contracts
+        env:
+          FORK_URL_INPUT: ${{ github.event.inputs.fork_url }}
+          FORK_URL_SECRET: ${{ secrets.FORK_URL }}
+          FOUNDRY_PROFILE: ci
+        run: |
+          set -euo pipefail
+          if [ -n "${FORK_URL_INPUT}" ]; then
+            export FORK_URL="${FORK_URL_INPUT}"
+          else
+            export FORK_URL="${FORK_URL_SECRET}"
+          fi
+          if [ -z "${FORK_URL}" ]; then
+            echo "Set workflow input 'fork_url' or configure repository secret FORK_URL. See docs/testing/contract-fork-smoke.md"
+            exit 1
+          fi
+          forge build --sizes
+          forge test -vv --match-contract TimeCurveForkTest
