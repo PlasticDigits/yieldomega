@@ -13,8 +13,8 @@ Quality gates progress from **fast feedback** to **realistic integration** to **
 **Scope**
 
 - **Simulations:** `simulations/` — `PYTHONPATH=. python3 -m unittest discover -s tests -v` for bounded repricing and faction comeback (see [../simulations/README.md](../simulations/README.md)). Same command runs in the **`simulations-test`** job of [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml).
-- **Contracts:** `forge test` — invariants, edge cases, fuzz on TimeCurve timers and purchase caps; treasury accounting math (`BurrowMath`); NFT mint constraints.
-- **Indexer:** Rust unit tests for decoders, reorg rollback logic, schema migrations (where testable without chain).
+- **Contracts:** `forge test` — invariants, edge cases, fuzz on TimeCurve timers and purchase caps; treasury accounting math (`BurrowMath`); NFT mint constraints. Optional **public RPC fork smoke** (`TimeCurveFork.t.sol`) is off unless `FORK_URL` is set — CI stays deterministic; see [contract-fork-smoke.md](contract-fork-smoke.md).
+- **Indexer:** Rust unit tests for decoders, reorg rollback logic, schema migrations (where testable without chain). CI runs **`cargo clippy --all-targets -- -D warnings`** before `cargo test` (see [ci.md](ci.md)).
 - **Frontend:** Vitest for pure helpers (`npm test` in `frontend/`); Playwright smoke on the production build (`npm run test:e2e` after `playwright install`, CI: `playwright-e2e` job). That CI job is **UI-only** (routes, nav) — it does **not** start Anvil. **Anvil-backed** E2E (RPC reads against a local node + `DeployDev`) is documented in [e2e-anvil.md](e2e-anvil.md); run locally via [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) / `npm run test:e2e:anvil` in `frontend/`. Anvil E2E does not replace MegaETH testnet validation (gas and execution model differ).
 
 **Entry criteria**
