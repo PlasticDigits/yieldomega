@@ -273,7 +273,7 @@ async fn rabbit_deposits(State(state): State<AppState>, Query(p): Query<PagePara
     let off = p.offset.max(0);
 
     let result = if let Some(ref u) = p.user {
-        if !u.starts_with("0x") || u.len() != 42 {
+        if !valid_0x_address20(u) {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "error": "user must be a 0x-prefixed 20-byte address" })),
@@ -376,7 +376,7 @@ async fn rabbit_withdrawals(
     let off = p.offset.max(0);
 
     let result = if let Some(ref u) = p.user {
-        if !u.starts_with("0x") || u.len() != 42 {
+        if !valid_0x_address20(u) {
             return (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "error": "user must be a 0x-prefixed 20-byte address" })),
@@ -1250,6 +1250,9 @@ mod address_validation_tests {
         assert!(!valid_0x_address20(""));
         assert!(!valid_0x_address20(
             "0xddddddddddddddddddddddddddddddddddddddddd"
+        ));
+        assert!(!valid_0x_address20(
+            "0xgggggggggggggggggggggggggggggggggggggg"
         ));
     }
 }
