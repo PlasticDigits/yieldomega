@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Minimal unit gate: forge test + cargo test. No repository secrets.
+# Minimal unit gate: forge test; cargo clippy -D warnings + cargo test (indexer). No repository secrets.
 # Forge deps: git submodules under contracts/lib/ (see .gitmodules).
 name: unit-tests
 
@@ -63,6 +63,11 @@ jobs:
 
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Cargo test
         run: cargo test
