@@ -54,11 +54,25 @@ pick_indexer_port() {
   echo "${p}"
 }
 
-INDEXER_PORT="$(pick_indexer_port)"
+if [[ "${QA_USE_FIXED_INDEXER_PORT:-}" == "1" ]]; then
+  INDEXER_PORT="${INDEXER_PORT:-3100}"
+else
+  INDEXER_PORT="$(pick_indexer_port)"
+fi
 
 echo "=== Postgres (${DOCKER_PG} on localhost:${PG_HOST_PORT}) ==="
 if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
-  docker start "${DOCKER_PG}" >/dev/null
+  pg_host_ip="$(docker inspect "${DOCKER_PG}" 2>/dev/null | jq -r '.[0].HostConfig.PortBindings["5432/tcp"][0].HostIp // ""')"
+  # Empty HostIp means Docker published to 0.0.0.0 — recreate so QA only listens on loopback.
+  if [[ "${pg_host_ip}" != "127.0.0.1" ]]; then
+    echo "Recreating ${DOCKER_PG} for 127.0.0.1:${PG_HOST_PORT} bind (was HostIp='${pg_host_ip:-empty}')."
+    docker rm -f "${DOCKER_PG}" >/dev/null
+  fi
+fi
+if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
+  if ! docker ps --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
+    docker start "${DOCKER_PG}" >/dev/null
+  fi
 else
   docker run -d --name "${DOCKER_PG}" -p "127.0.0.1:${PG_HOST_PORT}:5432" \
     -e POSTGRES_USER=yieldomega \
@@ -161,6 +175,7 @@ VITE_TIMECURVE_ADDRESS=${TC}
 VITE_RABBIT_TREASURY_ADDRESS=${RT}
 VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}
 VITE_FEE_ROUTER_ADDRESS=${FR}
+VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 VITE_INDEXER_URL=http://127.0.0.1:${INDEXER_PORT}
 EOF
 

@@ -1,3 +1,6 @@
+# QA deploy artifact (generated on server; scp to laptop)
+.deploy/local.env
+
 # Environment and secrets (never commit)
 .env
 .env.*
