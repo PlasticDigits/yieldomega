@@ -36,7 +36,7 @@ jobs:
       - name: Resolve FORK_URL and run fork smoke
         working-directory: contracts
         env:
-          FORK_URL_INPUT: ${{ github.event.inputs.fork_url }}
+          FORK_URL_INPUT: ${{ inputs.fork_url }}
           FORK_URL_SECRET: ${{ secrets.FORK_URL }}
           FOUNDRY_PROFILE: ci
         run: |

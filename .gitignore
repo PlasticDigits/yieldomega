@@ -26,6 +26,7 @@ Thumbs.db
 # Foundry / Solidity (contracts root and nested forge projects)
 contracts/cache/
 contracts/out/
+contracts/out-local-dev/
 contracts/out-user/
 contracts/out-e2e-anvil/
 contracts/broadcast/
