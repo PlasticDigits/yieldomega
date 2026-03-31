@@ -119,6 +119,18 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .clone()
         .oneshot(
             Request::builder()
+                .uri("/v1/rabbit/deposits?limit=5&user=0xgggggggggggggggggggggggggggggggggggggg")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
                 .uri("/v1/rabbit/withdrawals?limit=5&user=0xbad")
                 .body(Body::empty())
                 .unwrap(),
