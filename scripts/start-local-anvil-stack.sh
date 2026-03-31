@@ -60,7 +60,7 @@ echo "=== Postgres (${DOCKER_PG} on localhost:${PG_HOST_PORT}) ==="
 if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
   docker start "${DOCKER_PG}" >/dev/null
 else
-  docker run -d --name "${DOCKER_PG}" -p "${PG_HOST_PORT}:5432" \
+  docker run -d --name "${DOCKER_PG}" -p "127.0.0.1:${PG_HOST_PORT}:5432" \
     -e POSTGRES_USER=yieldomega \
     -e POSTGRES_PASSWORD=password \
     -e POSTGRES_DB=yieldomega_indexer \
