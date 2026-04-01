@@ -17,19 +17,19 @@ export function AmountDisplay({ raw, decimals }: AmountDisplayProps) {
   const n = typeof raw === "string" ? parseBigIntString(raw) : raw;
   const t = triple(n, decimals);
   return (
-    <div className="amount-triple">
-      <div className="amount-triple__row">
+    <span className="amount-triple">
+      <span className="amount-triple__row">
         <span className="amount-triple__label">raw</span>
         <span className="mono amount-triple__value">{t.raw}</span>
-      </div>
-      <div className="amount-triple__row">
+      </span>
+      <span className="amount-triple__row">
         <span className="amount-triple__label">decimal</span>
         <span className="amount-triple__value">{t.decimal}</span>
-      </div>
-      <div className="amount-triple__row">
+      </span>
+      <span className="amount-triple__row">
         <span className="amount-triple__label">abbr</span>
         <span className="amount-triple__value">{t.abbrev}</span>
-      </div>
-    </div>
+      </span>
+    </span>
   );
 }
