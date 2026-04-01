@@ -10,14 +10,12 @@ import {Script, console2} from "forge-std/Script.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ITimeCurve {
-    function buy(uint256 amount) external;
+    function buy(uint256 charmWad) external;
     function endSale() external;
     function redeemCharms() external;
     function distributePrizes() external;
     function deadline() external view returns (uint256);
-    function currentMinBuyAmount() external view returns (uint256);
-    /// @dev Immutable cap multiple from DeployDev (10); avoids stale min between simulation and broadcast txs.
-    function purchaseCapMultiple() external view returns (uint256);
+    function currentCharmBoundsWad() external view returns (uint256 minCharmWad, uint256 maxCharmWad);
 }
 
 interface IRabbitTreasury {
@@ -112,12 +110,10 @@ contract SimulateAnvilRichStatePart1 is Script {
 
     function _buy(uint256 pk, address usdm, address tc) internal {
         ITimeCurve t = ITimeCurve(tc);
-        uint256 minB = t.currentMinBuyAmount();
-        uint256 cap = t.purchaseCapMultiple();
-        uint256 amt = minB * cap;
+        (, uint256 maxCharm) = t.currentCharmBoundsWad();
         vm.startBroadcast(pk);
         IERC20(usdm).approve(tc, type(uint256).max);
-        t.buy(amt);
+        t.buy(maxCharm);
         vm.stopBroadcast();
     }
 }

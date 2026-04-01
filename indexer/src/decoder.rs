@@ -21,8 +21,9 @@ mod contracts {
             event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
             event Buy(
                 address indexed buyer,
+                uint256 charmWad,
                 uint256 amount,
-                uint256 currentMinBuy,
+                uint256 pricePerCharmWad,
                 uint256 newDeadline,
                 uint256 totalRaisedAfter,
                 uint256 buyIndex
@@ -150,8 +151,9 @@ pub enum DecodedEvent {
     },
     TimeCurveBuy {
         buyer: Address,
+        charm_wad: U256,
         amount: U256,
-        current_min_buy: U256,
+        price_per_charm_wad: U256,
         new_deadline: U256,
         total_raised_after: U256,
         buy_index: U256,
@@ -310,8 +312,9 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             let e = d.data;
             return DecodedEvent::TimeCurveBuy {
                 buyer: e.buyer,
+                charm_wad: e.charmWad,
                 amount: e.amount,
-                current_min_buy: e.currentMinBuy,
+                price_per_charm_wad: e.pricePerCharmWad,
                 new_deadline: e.newDeadline,
                 total_raised_after: e.totalRaisedAfter,
                 buy_index: e.buyIndex,
@@ -574,8 +577,9 @@ mod tests {
         let buyer = Address::repeat_byte(0xcd);
         let e = TimeCurveEvents::Buy {
             buyer,
+            charmWad: U256::from(100u64),
             amount: U256::from(100u64),
-            currentMinBuy: U256::from(10u64),
+            pricePerCharmWad: U256::from(1u64),
             newDeadline: U256::from(999u64),
             totalRaisedAfter: U256::from(1000u64),
             buyIndex: U256::from(0u64),

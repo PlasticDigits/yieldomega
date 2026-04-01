@@ -11,6 +11,8 @@ import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
@@ -97,19 +99,24 @@ contract DeployDev is Script {
         lt.mint(deployer, 1_000_000e18);
         console.log("MockLaunchToken (dev):", address(lt));
 
+        LinearCharmPrice charmPrice = new LinearCharmPrice(
+            1e18, // base: 1.0 asset per 1e18 CHARM at sale start (18-dec asset)
+            1e17 // +0.10 per day (linear)
+        );
+        console.log("LinearCharmPrice:", address(charmPrice));
         TimeCurve tc = new TimeCurve(
             ERC20(usdm),
             lt,
             router,
             podiumPool,
             address(referralRegistry),
-            1e18,                               // initialMinBuy
-            223_143_551_314_209_700,             // growthRateWad (ln(1.25))
-            10,                                 // purchaseCapMultiple
-            120,                                // timerExtensionSec (2 min per buy)
-            86_400,                             // initialTimerSec (24h first deadline)
-            4 * 86_400,                         // timerCapSec (max 96h remaining from any buy)
-            1_000_000e18                        // totalTokensForSale
+            ICharmPrice(address(charmPrice)),
+            1e18, // charm envelope reference WAD (25%/day scaling of 0.99–10 CHARM band)
+            223_143_551_314_209_700, // growthRateWad (ln(1.25))
+            120, // timerExtensionSec (2 min per buy)
+            86_400, // initialTimerSec (24h first deadline)
+            4 * 86_400, // timerCapSec (max 96h remaining from any buy)
+            1_000_000e18 // totalTokensForSale
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
