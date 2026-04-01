@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits, maxUint256, parseUnits } from "viem";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
@@ -13,11 +13,17 @@ import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
-import { erc20Abi, feeRouterReadAbi, timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
+import {
+  erc20Abi,
+  feeRouterReadAbi,
+  linearCharmPriceReadAbi,
+  timeCurveReadAbi,
+  timeCurveWriteAbi,
+} from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
-import { sampleMinBuyCurve } from "@/lib/timeCurveMath";
+import { sampleMinSpendCurve, WAD } from "@/lib/timeCurveMath";
 import {
   RESERVE_FEE_ROUTING_BPS,
   kumbayaBandLowerWad,
@@ -58,9 +64,8 @@ export function TimeCurvePage() {
   const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
   const [indexerNote, setIndexerNote] = useState<string | null>(null);
   const [claimsNote, setClaimsNote] = useState<string | null>(null);
-  const [buyStr, setBuyStr] = useState("");
+  const [charmCount, setCharmCount] = useState(5);
   const [buyErr, setBuyErr] = useState<string | null>(null);
-  const minBuyInitialized = useRef(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [useReferral, setUseReferral] = useState(true);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
@@ -184,11 +189,14 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
           { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
           { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
           { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
           { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
           { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
           { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "purchaseCapMultiple" },
           { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
           { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
@@ -225,11 +233,14 @@ export function TimeCurvePage() {
     totalRaised,
     ended,
     minBuy,
+    maxBuy,
+    charmBoundsR,
+    pricePerCharmR,
+    charmPriceAddrR,
     acceptedAsset,
     refRegAddr,
     initialMinBuyR,
     growthRateWadR,
-    purchaseCapMultipleR,
     timerExtensionSecR,
     initialTimerSecR,
     timerCapSecR,
@@ -322,17 +333,31 @@ export function TimeCurvePage() {
 
   const podiumReads = usePodiumReads(tc);
 
-  useEffect(() => {
-    if (minBuy?.status !== "success" || minBuyInitialized.current) {
-      return;
-    }
-    if (tokenAddr && tokenDecimals === undefined) {
-      return;
-    }
-    const dec = tokenDecimals !== undefined ? Number(tokenDecimals) : 18;
-    minBuyInitialized.current = true;
-    setBuyStr(formatUnits(minBuy.result as bigint, dec));
-  }, [minBuy, tokenAddr, tokenDecimals]);
+  const linearCharmAddr =
+    charmPriceAddrR?.status === "success" &&
+    (charmPriceAddrR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000"
+      ? (charmPriceAddrR.result as `0x${string}`)
+      : undefined;
+
+  const { data: linearPriceReads } = useReadContracts({
+    contracts: linearCharmAddr
+      ? [
+          {
+            address: linearCharmAddr,
+            abi: linearCharmPriceReadAbi,
+            functionName: "basePriceWad",
+          },
+          {
+            address: linearCharmAddr,
+            abi: linearCharmPriceReadAbi,
+            functionName: "dailyIncrementWad",
+          },
+        ]
+      : [],
+    query: { enabled: Boolean(tc && linearCharmAddr) },
+  });
+
+  const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
 
   const saleActive =
     !isPending &&
@@ -346,18 +371,16 @@ export function TimeCurvePage() {
   const remaining =
     deadlineSec !== undefined ? Math.max(0, deadlineSec - now) : undefined;
 
-  const maxBuyAmount = useMemo(() => {
-    if (minBuy?.status !== "success" || purchaseCapMultipleR?.status !== "success") {
-      return undefined;
-    }
-    return (minBuy.result as bigint) * (purchaseCapMultipleR.result as bigint);
-  }, [minBuy, purchaseCapMultipleR]);
+  const maxBuyAmount =
+    maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
 
-  const minBuyCurvePoints = useMemo(() => {
+  const minSpendCurvePoints = useMemo(() => {
     if (
       initialMinBuyR?.status !== "success" ||
       growthRateWadR?.status !== "success" ||
-      saleStart?.status !== "success"
+      saleStart?.status !== "success" ||
+      basePriceWadR?.status !== "success" ||
+      dailyIncWadR?.status !== "success"
     ) {
       return [];
     }
@@ -369,13 +392,25 @@ export function TimeCurvePage() {
     if (elapsed === 0n) {
       return [];
     }
-    return sampleMinBuyCurve(
+    return sampleMinSpendCurve(
       initialMinBuyR.result as bigint,
       growthRateWadR.result as bigint,
+      basePriceWadR.result as bigint,
+      dailyIncWadR.result as bigint,
       elapsed,
       40,
     );
-  }, [initialMinBuyR, growthRateWadR, saleStart, now]);
+  }, [initialMinBuyR, growthRateWadR, saleStart, now, basePriceWadR, dailyIncWadR]);
+
+  const charmWadSelected = useMemo(() => BigInt(charmCount) * WAD, [charmCount]);
+
+  const estimatedSpend = useMemo(() => {
+    if (pricePerCharmR?.status !== "success") {
+      return undefined;
+    }
+    const p = pricePerCharmR.result as bigint;
+    return (charmWadSelected * p) / WAD;
+  }, [charmWadSelected, pricePerCharmR]);
 
   const refetchAll = useCallback(() => {
     void refetch();
@@ -458,14 +493,8 @@ export function TimeCurvePage() {
       setGasBuy(undefined);
       return;
     }
-    let amount: bigint;
-    try {
-      amount = parseUnits(buyStr.trim() || "0", decimals);
-    } catch {
-      setGasBuy(undefined);
-      return;
-    }
-    if (amount <= 0n) {
+    const cw = BigInt(charmCount) * WAD;
+    if (cw <= 0n) {
       setGasBuy(undefined);
       return;
     }
@@ -484,7 +513,7 @@ export function TimeCurvePage() {
           address: tc,
           abi: timeCurveWriteAbi,
           functionName: "buy",
-          args: codeHash ? [amount, codeHash] : [amount],
+          args: codeHash ? [cw, codeHash] : [cw],
           account: address,
           chainId,
         });
@@ -496,8 +525,7 @@ export function TimeCurvePage() {
     address,
     tc,
     saleActive,
-    buyStr,
-    decimals,
+    charmCount,
     useReferral,
     referralRegistryOn,
     pendingRef,
@@ -552,15 +580,21 @@ export function TimeCurvePage() {
       setBuyErr("Connect a wallet and ensure contract reads succeeded.");
       return;
     }
-    let amount: bigint;
-    try {
-      amount = parseUnits(buyStr.trim() || "0", decimals);
-    } catch {
-      setBuyErr(`Invalid amount (use a decimal number, ${decimals} decimals).`);
+    const cw = BigInt(charmCount) * WAD;
+    if (charmBoundsR?.status !== "success") {
+      setBuyErr("Waiting for onchain CHARM bounds.");
       return;
     }
-    if (amount <= 0n) {
-      setBuyErr("Amount must be positive.");
+    const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
+    if (cw < minC || cw > maxC) {
+      setBuyErr(
+        "Selected charm count is outside the onchain band for this moment (envelope moved). Refresh reads or pick another size.",
+      );
+      return;
+    }
+    const amount = estimatedSpend;
+    if (amount === undefined || amount <= 0n) {
+      setBuyErr("Could not compute spend from onchain price; wait for contract reads.");
       return;
     }
 
@@ -595,7 +629,7 @@ export function TimeCurvePage() {
           address: tc,
           abi: timeCurveWriteAbi,
           functionName: "buy",
-          args: [amount, codeHash],
+          args: [cw, codeHash],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
         clearPendingReferralCode();
@@ -605,7 +639,7 @@ export function TimeCurvePage() {
           address: tc,
           abi: timeCurveWriteAbi,
           functionName: "buy",
-          args: [amount],
+          args: [cw],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       }
@@ -617,8 +651,9 @@ export function TimeCurvePage() {
     address,
     tc,
     tokenAddr,
-    buyStr,
-    decimals,
+    charmCount,
+    charmBoundsR,
+    estimatedSpend,
     useReferral,
     referralRegistryOn,
     pendingRef,
@@ -747,13 +782,25 @@ export function TimeCurvePage() {
             </dd>
             <dt>ended</dt>
             <dd>{ended?.status === "success" ? String(ended.result) : "—"}</dd>
-            <dt>currentMinBuyAmount (charm price floor)</dt>
+            <dt>min gross spend (smallest CHARM tier × price)</dt>
             <dd>
               {minBuy?.status === "success" ? (
                 <AmountDisplay raw={minBuy.result as bigint} decimals={decimals} />
               ) : (
                 "—"
               )}
+            </dd>
+            <dt>price per 1e18 CHARM (WAD)</dt>
+            <dd>
+              {pricePerCharmR?.status === "success" ? (
+                <AmountDisplay raw={pricePerCharmR.result as bigint} decimals={decimals} />
+              ) : (
+                "—"
+              )}
+            </dd>
+            <dt>charmPrice (pricing module)</dt>
+            <dd className="mono">
+              {charmPriceAddrR?.status === "success" ? String(charmPriceAddrR.result) : "—"}
             </dd>
             <dt>referralRegistry</dt>
             <dd className="mono">
@@ -810,7 +857,7 @@ export function TimeCurvePage() {
               <dt>charmWeight</dt>
               <dd>
                 {charmWeightR?.status === "success" ? (
-                  <AmountDisplay raw={charmWeightR.result as bigint} decimals={decimals} />
+                  <AmountDisplay raw={charmWeightR.result as bigint} decimals={18} />
                 ) : (
                   "—"
                 )}
@@ -861,10 +908,10 @@ export function TimeCurvePage() {
         <h2>Sale parameters (immutable)</h2>
         {data && (
           <dl className="kv">
-            <dt>initialMinBuy</dt>
+            <dt>charm envelope ref WAD (exponential scaling)</dt>
             <dd>
               {initialMinBuyR?.status === "success" ? (
-                <AmountDisplay raw={initialMinBuyR.result as bigint} decimals={decimals} />
+                <AmountDisplay raw={initialMinBuyR.result as bigint} decimals={18} />
               ) : (
                 "—"
               )}
@@ -872,12 +919,6 @@ export function TimeCurvePage() {
             <dt>growthRateWad</dt>
             <dd>
               {growthRateWadR?.status === "success" ? String(growthRateWadR.result) : "—"}
-            </dd>
-            <dt>purchaseCapMultiple</dt>
-            <dd>
-              {purchaseCapMultipleR?.status === "success"
-                ? String(purchaseCapMultipleR.result)
-                : "—"}
             </dd>
             <dt>timerExtensionSec</dt>
             <dd>
@@ -914,16 +955,17 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
-        <h2>Min charm price curve (illustrative)</h2>
+        <h2>Min gross spend curve (illustrative)</h2>
         <p className="muted">
-          Theoretical minimum per-tx buy (charm price floor) vs time since sale start — same growth rule
-          as onchain math. <strong>Authoritative value:</strong> <code>currentMinBuyAmount()</code> on the
-          contract.
+          Minimum reserve spend for a buy (0.99 CHARM tier × linear price) vs time since sale start. The
+          CHARM band scales with the <strong>exponential daily envelope</strong>; per-CHARM price follows the
+          pluggable linear schedule. <strong>Authoritative values:</strong>{" "}
+          <code>currentMinBuyAmount()</code> and <code>currentPricePerCharmWad()</code>.
         </p>
-        {minBuyCurvePoints.length > 1 && (
-          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min charm price curve">
+        {minSpendCurvePoints.length > 1 && (
+          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min gross spend curve">
             {(() => {
-              const vals = minBuyCurvePoints.map((p) => Number(p.minBuy));
+              const vals = minSpendCurvePoints.map((p) => Number(p.minSpend));
               const vmin = Math.min(...vals);
               const vmax = Math.max(...vals);
               const span = Math.max(vmax - vmin, 1);
@@ -932,10 +974,10 @@ export function TimeCurvePage() {
                   fill="none"
                   stroke="var(--line)"
                   strokeWidth="3"
-                  points={minBuyCurvePoints
+                  points={minSpendCurvePoints
                     .map((p, i) => {
-                      const x = (i / (minBuyCurvePoints.length - 1)) * 380 + 10;
-                      const y = 110 - ((Number(p.minBuy) - vmin) / span) * 100;
+                      const x = (i / (minSpendCurvePoints.length - 1)) * 380 + 10;
+                      const y = 110 - ((Number(p.minSpend) - vmin) / span) * 100;
                       return `${x},${y}`;
                     })
                     .join(" ")}
@@ -944,7 +986,7 @@ export function TimeCurvePage() {
             })()}
           </svg>
         )}
-        {minBuyCurvePoints.length <= 1 && <p className="muted">Curve appears after sale has started.</p>}
+        {minSpendCurvePoints.length <= 1 && <p className="muted">Curve appears after sale has started.</p>}
       </div>
 
       <div className="data-panel data-panel--spotlight">
@@ -957,10 +999,11 @@ export function TimeCurvePage() {
         <h2>Buy charms (wallet)</h2>
         <p>
           Approves the accepted asset for <strong>TimeCurve</strong>, then calls{" "}
-          <code>buy(amount)</code> or <code>buy(amount, codeHash)</code> to add CHARM weight. The full gross
-          spend is routed through the fee router; with a valid referral, referrer and buyer each receive
-          extra CHARM weight (10% of gross each) — no reserve rebate transfer. Use a funded wallet on the
-          configured chain.
+          <code>buy(charmWad)</code> or <code>buy(charmWad, codeHash)</code> where{" "}
+          <code>charmWad</code> is whole charms × 1e18 (UI uses 1–10 only; onchain band is 0.99–10 CHARM scaled
+          by the exponential envelope). Gross spend = <code>charmWad × price / 1e18</code> with linear
+          per-CHARM pricing. Referral bonuses are extra CHARM weight (10% each side). Use a funded wallet on
+          the configured chain.
         </p>
         {!isConnected && <p className="placeholder">Connect a wallet to buy.</p>}
         {isConnected && isPending && (
@@ -981,14 +1024,26 @@ export function TimeCurvePage() {
         {isConnected && saleActive && (
           <>
             <label className="form-label">
-              Amount (token units, {decimals} decimals)
+              Charms (1–10, whole units; onchain CHARM = n × 1e18)
               <input
-                type="text"
+                type="range"
                 className="form-input"
-                value={buyStr}
-                onChange={(e) => setBuyStr(e.target.value)}
-                spellCheck={false}
+                min={1}
+                max={10}
+                step={1}
+                value={charmCount}
+                onChange={(e) => setCharmCount(Number(e.target.value))}
               />
+              <span className="muted">
+                {" "}
+                {charmCount} charm{charmCount === 1 ? "" : "s"}
+                {estimatedSpend !== undefined && (
+                  <>
+                    {" "}
+                    → ~<AmountDisplay raw={estimatedSpend} decimals={decimals} /> spend
+                  </>
+                )}
+              </span>
             </label>
             {referralRegistryOn && pendingRef && (
               <label className="form-label">

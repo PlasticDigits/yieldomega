@@ -11,6 +11,8 @@ import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {MockUSDm, MockLaunchToken} from "../script/DeployDev.s.sol";
 
 /// @notice Mirrors `DeployDev` wiring: after deploy, epoch + sale are live; deposit + buy succeed.
@@ -28,6 +30,7 @@ contract DevStackIntegrationTest is Test {
     RabbitTreasury rt;
     FeeRouter router;
     MockLaunchToken lt;
+    LinearCharmPrice charmPrice;
     TimeCurve tc;
 
     address alice = makeAddr("alice");
@@ -74,15 +77,16 @@ contract DevStackIntegrationTest is Test {
         lt = new MockLaunchToken();
         lt.mint(address(this), 1_000_000e18);
 
+        charmPrice = new LinearCharmPrice(1e18, 1e17); // $1 + $0.10/day (18-dec asset)
         tc = new TimeCurve(
             ERC20(address(usdm)),
             lt,
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(charmPrice)),
             1e18,
             GROWTH_WAD,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,

@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.24;
 
+// Stateful invariants ↔ docs/testing/invariants-and-business-logic.md (TimeCurve — Foundry invariant)
+
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 
 contract MockTokTC is ERC20 {
     constructor() ERC20("USDM", "USDM") {}
@@ -15,13 +19,14 @@ contract MockTokTC is ERC20 {
     }
 }
 
-/// @dev Random buys + small time warps while sale active (flat min-buy curve).
+/// @dev Random buys + small time warps while sale active (flat envelope: growthRateWad = 0).
 contract TimeCurveHandler is Test {
     TimeCurve public immutable tc;
     MockTokTC public immutable usdm;
     address public immutable alice;
 
     uint256 public ghost_buyVolume;
+    uint256 public ghost_charmVolume;
 
     constructor(TimeCurve _tc, MockTokTC _usdm, address _alice) {
         tc = _tc;
@@ -31,16 +36,19 @@ contract TimeCurveHandler is Test {
 
     function buyBounded(uint256 seed) external {
         if (tc.saleStart() == 0 || tc.ended()) return;
-        uint256 minB = tc.currentMinBuyAmount();
-        uint256 maxB = minB * tc.purchaseCapMultiple();
-        if (maxB < minB || minB == 0) return;
-        uint256 amt = bound(seed, minB, maxB);
+        (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
+        if (maxC < minC || minC == 0) return;
+        uint256 c = bound(seed, minC, maxC);
+        uint256 p = tc.currentPricePerCharmWad();
+        uint256 amt = (c * p) / 1e18;
+        if (amt == 0) return;
         usdm.mint(alice, amt);
         vm.prank(alice);
         usdm.approve(address(tc), amt);
         vm.prank(alice);
-        tc.buy(amt);
+        tc.buy(c);
         ghost_buyVolume += amt;
+        ghost_charmVolume += c;
     }
 
     function tickTime(uint256 dt) external {
@@ -58,6 +66,7 @@ contract TimeCurveInvariantTest is Test {
     MockTokTC internal launched;
     FeeRouter internal router;
     PodiumPool internal podiumPool;
+    LinearCharmPrice internal linearPrice;
     TimeCurve internal tc;
     TimeCurveHandler internal handler;
 
@@ -76,15 +85,16 @@ contract TimeCurveInvariantTest is Test {
             [s0, s1, address(podiumPool), s3, s4],
             [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
+        linearPrice = new LinearCharmPrice(1e18, 0);
         tc = new TimeCurve(
             IERC20(address(usdm)),
             IERC20(address(launched)),
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             0,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -102,6 +112,6 @@ contract TimeCurveInvariantTest is Test {
     }
 
     function invariant_timeCurve_totalCharmWeightMatchesGhostBuys() public view {
-        assertEq(tc.totalCharmWeight(), handler.ghost_buyVolume(), "totalCharmWeight");
+        assertEq(tc.totalCharmWeight(), handler.ghost_charmVolume(), "totalCharmWeight");
     }
 }

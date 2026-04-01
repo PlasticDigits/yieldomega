@@ -125,7 +125,8 @@ need human decisions before mainnet.
 ## Libraries
 
 - `BurrowMath` — coverage, multiplier, epoch `e` step (aligned with `simulations/bounded_formulas/model.py`).
-- `TimeMath` — continuous min-buy growth (`exp`-based), timer extension with cap.
+- `TimeMath` — exponential **envelope** factor for CHARM min/max band; timer extension with cap.
+- `LinearCharmPrice` — default linear per-CHARM price schedule (`ICharmPrice` for `TimeCurve`).
 - `FeeMath` — basis-point weight validation and share computation.
 
 ## Burrow events

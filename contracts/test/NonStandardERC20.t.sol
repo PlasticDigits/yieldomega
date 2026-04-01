@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
@@ -52,15 +54,16 @@ contract NonStandardERC20Test is Test {
             [s0, s1, address(pv), s3, s4],
             [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
+        LinearCharmPrice cp = new LinearCharmPrice(1e18, 0);
         TimeCurve tc = new TimeCurve(
             IERC20(address(ft)),
             IERC20(address(lt)),
             r,
             pv,
             address(0),
+            ICharmPrice(address(cp)),
             1e18,
             0,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -77,7 +80,7 @@ contract NonStandardERC20Test is Test {
 
         vm.prank(user);
         vm.expectRevert();
-        tc.buy(100e18);
+        tc.buy(10e18);
     }
 
     function test_alwaysRevert_feeRouter_distributeReverts() public {

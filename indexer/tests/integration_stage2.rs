@@ -191,7 +191,8 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     sqlx::query(
         r#"INSERT INTO idx_timecurve_buy (
             block_number, block_hash, tx_hash, log_index, contract_address,
-            buyer, amount, current_min_buy, new_deadline, total_raised_after, buy_index
+            buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
+            new_deadline, total_raised_after, buy_index
         ) VALUES (
             42,
             '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -199,7 +200,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
             1,
             '0xcccccccccccccccccccccccccccccccccccccccc',
             '0xdddddddddddddddddddddddddddddddddddddddd',
-            1, 2, 3, 4, 5
+            1, 1, 1, 1, 3, 4, 5
         )"#,
     )
     .execute(pool)
@@ -275,8 +276,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         }),
         next(DecodedEvent::TimeCurveBuy {
             buyer: alice,
+            charm_wad: u1,
             amount: u1,
-            current_min_buy: u1,
+            price_per_charm_wad: u1,
             new_deadline: u2,
             total_raised_after: u1,
             buy_index: u1,
@@ -504,8 +506,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0,
         DecodedEvent::TimeCurveBuy {
             buyer: addr_byte(1),
+            charm_wad: U256::from(1u8),
             amount: U256::from(1u8),
-            current_min_buy: U256::from(1u8),
+            price_per_charm_wad: U256::from(1u8),
             new_deadline: U256::from(2u8),
             total_raised_after: U256::from(1u8),
             buy_index: U256::from(1u8),
@@ -517,8 +520,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0,
         DecodedEvent::TimeCurveBuy {
             buyer: addr_byte(2),
+            charm_wad: U256::from(1u8),
             amount: U256::from(1u8),
-            current_min_buy: U256::from(1u8),
+            price_per_charm_wad: U256::from(1u8),
             new_deadline: U256::from(2u8),
             total_raised_after: U256::from(1u8),
             buy_index: U256::from(1u8),

@@ -8,6 +8,8 @@ import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
@@ -28,6 +30,7 @@ contract TimeCurveReferralTest is Test {
     PodiumPool podiumPool;
     MockCL8Y cl8y;
     ReferralRegistry reg;
+    LinearCharmPrice linearPrice;
     TimeCurve tc;
 
     address sink0 = makeAddr("sink0");
@@ -51,15 +54,16 @@ contract TimeCurveReferralTest is Test {
             [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
 
+        linearPrice = new LinearCharmPrice(1e18, 0);
         tc = new TimeCurve(
             usdm,
             launchedToken,
             router,
             podiumPool,
             address(reg),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -79,17 +83,18 @@ contract TimeCurveReferralTest is Test {
 
     function test_buy_with_referral_charms_and_full_gross_to_fee_router() public {
         bytes32 codeHash = reg.hashCode("ref1");
-        uint256 amount = 10e18;
+        uint256 charmWad = 10e18;
+        uint256 amount = charmWad; // price 1:1 in this test setup
         usdm.mint(bob, amount);
         vm.startPrank(bob);
         usdm.approve(address(tc), amount);
         uint256 bobBefore = usdm.balanceOf(bob);
-        tc.buy(amount, codeHash);
+        tc.buy(charmWad, codeHash);
         vm.stopPrank();
 
-        uint256 refEach = (amount * 1000) / 10_000;
+        uint256 refEach = (charmWad * 1000) / 10_000;
         assertEq(usdm.balanceOf(bob), bobBefore - amount, "bob pays full gross, no USDm rebate");
-        assertEq(tc.charmWeight(bob), amount + refEach, "referee CHARM = spend + bonus");
+        assertEq(tc.charmWeight(bob), charmWad + refEach, "referee CHARM = base + bonus");
         assertEq(tc.charmWeight(alice), refEach, "referrer CHARM");
 
         uint256 distributed = usdm.balanceOf(sink0) + usdm.balanceOf(sink1) + usdm.balanceOf(address(podiumPool))

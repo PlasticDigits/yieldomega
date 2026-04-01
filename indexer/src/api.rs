@@ -125,7 +125,8 @@ struct BuyRow {
     log_index: i32,
     buyer: String,
     amount: String,
-    current_min_buy: String,
+    charm_wad: String,
+    price_per_charm_wad: String,
     new_deadline: String,
     total_raised_after: String,
     buy_index: String,
@@ -137,7 +138,9 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
 
     let rows = sqlx::query(
         r#"SELECT block_number, tx_hash, log_index, buyer,
-                  amount::text AS amount, current_min_buy::text AS current_min_buy,
+                  amount::text AS amount,
+                  COALESCE(charm_wad, amount)::text AS charm_wad,
+                  COALESCE(price_per_charm_wad, current_min_buy, 0)::text AS price_per_charm_wad,
                   new_deadline::text AS new_deadline, total_raised_after::text AS total_raised_after,
                   buy_index::text AS buy_index
            FROM idx_timecurve_buy
@@ -169,7 +172,8 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                 log_index: r.try_get("log_index").ok()?,
                 buyer: r.try_get("buyer").ok()?,
                 amount: r.try_get("amount").ok()?,
-                current_min_buy: r.try_get("current_min_buy").ok()?,
+                charm_wad: r.try_get("charm_wad").ok()?,
+                price_per_charm_wad: r.try_get("price_per_charm_wad").ok()?,
                 new_deadline: r.try_get("new_deadline").ok()?,
                 total_raised_after: r.try_get("total_raised_after").ok()?,
                 buy_index: r.try_get("buy_index").ok()?,
@@ -217,7 +221,7 @@ async fn timecurve_buyer_stats(
     }
 
     let row = sqlx::query(
-        r#"SELECT COALESCE(SUM(amount), 0)::text AS indexed_charm_weight,
+        r#"SELECT COALESCE(SUM(COALESCE(charm_wad, amount)), 0)::text AS indexed_charm_weight,
                   COUNT(*)::text AS indexed_buy_count
            FROM idx_timecurve_buy
            WHERE LOWER(buyer) = LOWER($1)"#,

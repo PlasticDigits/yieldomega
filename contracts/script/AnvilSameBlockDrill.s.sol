@@ -7,6 +7,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 
 contract DrillUSDM is ERC20 {
     constructor() ERC20("DrillUSDM", "DUSDM") {}
@@ -44,15 +46,16 @@ contract AnvilSameBlockDrill is Script {
             [s0, s1, address(pv), s3, s4],
             [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
+        LinearCharmPrice cp = new LinearCharmPrice(1e18, 0);
         TimeCurve tc = new TimeCurve(
             IERC20(address(usdm)),
             IERC20(address(lt)),
             router,
             pv,
             address(0),
+            ICharmPrice(address(cp)),
             1e18,
             0,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
