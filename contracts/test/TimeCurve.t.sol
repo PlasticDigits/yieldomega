@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.24;
 
+// Invariant ↔ test mapping: docs/testing/invariants-and-business-logic.md (TimeCurve section)
+
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
+import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
+import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
@@ -23,6 +27,7 @@ contract TimeCurveTest is Test {
     MockERC20 launchedToken;
     FeeRouter router;
     PodiumPool podiumPool;
+    LinearCharmPrice linearPrice;
     TimeCurve tc;
 
     address alice = makeAddr("alice");
@@ -48,19 +53,20 @@ contract TimeCurveTest is Test {
             [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
         );
 
+        linearPrice = new LinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
         tc = new TimeCurve(
             usdm,
             launchedToken,
             router,
             podiumPool,
             address(0),
-            1e18,            // initialMinBuy: 1 USDm
+            ICharmPrice(address(linearPrice)),
+            1e18, // charm envelope reference WAD
             GROWTH_RATE,
-            10,              // purchaseCapMultiple
-            120,             // timerExtensionSec (2 min; canonical deploy)
-            ONE_DAY,         // initialTimerSec (24h)
-            FOUR_DAYS,       // timerCapSec (max 96h remaining)
-            1_000_000e18     // totalTokensForSale
+            120, // timerExtensionSec (2 min; canonical deploy)
+            ONE_DAY, // initialTimerSec (24h)
+            FOUR_DAYS, // timerCapSec (max 96h remaining)
+            1_000_000e18 // totalTokensForSale
         );
 
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
@@ -102,9 +108,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -146,16 +152,16 @@ contract TimeCurveTest is Test {
         tc.startSale();
         _fundAndApprove(alice, 1e18);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: below min charm price");
+        vm.expectRevert("TimeCurve: below min charms");
         tc.buy(0.5e18);
     }
 
     function test_buy_above_cap_reverts() public {
         tc.startSale();
-        // Cap = 10 * minBuy = 10e18
+        // Max CHARM at envelope start = 10e18 (flat 1:1 price → 10e18 asset cap)
         _fundAndApprove(alice, 20e18);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: above cap");
+        vm.expectRevert("TimeCurve: above max charms");
         tc.buy(11e18);
     }
 
@@ -195,10 +201,11 @@ contract TimeCurveTest is Test {
         tc.startSale();
         for (uint256 i; i < n; ++i) {
             vm.warp(block.timestamp + 10);
-            uint256 minBuy = tc.currentMinBuyAmount();
-            _fundAndApprove(alice, minBuy);
+            (uint256 minCharm,) = tc.currentCharmBoundsWad();
+            uint256 spend = tc.currentMinBuyAmount();
+            _fundAndApprove(alice, spend);
             vm.prank(alice);
-            tc.buy(minBuy);
+            tc.buy(minCharm);
             assertLe(tc.deadline(), block.timestamp + FOUR_DAYS, "deadline exceeds cap");
         }
     }
@@ -212,9 +219,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             fourDay,
@@ -240,9 +247,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             ONE_DAY - 1,
@@ -310,7 +317,8 @@ contract TimeCurveTest is Test {
         vm.warp(block.timestamp + ONE_DAY);
         uint256 mb1 = tc.currentMinBuyAmount();
         assertGt(mb1, mb0);
-        assertApproxEqRel(mb1, 1.25e18, 1e14); // ~25% growth after 1 day
+        // Envelope scales ~25%/day; min spend = minCharm × flat price (1:1 in test).
+        assertApproxEqRel(mb1, (mb0 * 125) / 100, 1e14);
     }
 
     // ── Prize podiums ──────────────────────────────────────────────────
@@ -440,8 +448,8 @@ contract TimeCurveTest is Test {
         uint256 ext = tc.timerExtensionSec();
         uint256 cap = tc.timerCapSec();
         uint256 initT = tc.initialTimerSec();
-        uint256 capMult = tc.purchaseCapMultiple();
         uint256 initMin = tc.initialMinBuy();
+        address cp = address(tc.charmPrice());
 
         tc.startSale();
         _fundAndApprove(alice, 3e18);
@@ -452,8 +460,8 @@ contract TimeCurveTest is Test {
         assertEq(tc.timerExtensionSec(), ext);
         assertEq(tc.timerCapSec(), cap);
         assertEq(tc.initialTimerSec(), initT);
-        assertEq(tc.purchaseCapMultiple(), capMult);
         assertEq(tc.initialMinBuy(), initMin);
+        assertEq(address(tc.charmPrice()), cp);
     }
 
     /// @dev Sequential `vm.prank` buys in one test share `block.number` in Foundry; last-buyer podium
@@ -507,9 +515,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -525,9 +533,9 @@ contract TimeCurveTest is Test {
             router,
             PodiumPool(address(0)),
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -543,9 +551,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -561,9 +569,27 @@ contract TimeCurveTest is Test {
             FeeRouter(address(0)),
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18
+        );
+    }
+
+    function test_constructor_zero_charmPrice_reverts() public {
+        vm.expectRevert("TimeCurve: zero charm price");
+        new TimeCurve(
+            usdm,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(0)),
+            1e18,
+            GROWTH_RATE,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -579,9 +605,9 @@ contract TimeCurveTest is Test {
             router,
             podiumPool,
             address(0),
+            ICharmPrice(address(linearPrice)),
             1e18,
             GROWTH_RATE,
-            10,
             120,
             ONE_DAY,
             FOUR_DAYS,
@@ -668,4 +694,82 @@ contract TimeCurveTest is Test {
         assertTrue(tc.prizesDistributed());
         assertLt(usdm.balanceOf(address(podiumPool)), vaultBefore);
     }
+
+    // ── CHARM band × exponential envelope vs linear price ─────────────────
+    // See docs/testing/invariants-and-business-logic.md (TimeCurve invariants).
+
+    /// @dev Min/max CHARM share one envelope factor; integer `mulDiv` floors ⇒ check ~10/0.99 within rounding slack.
+    function test_charmBounds_ratio_10_over_099_fuzz(uint32 elapsedSec) public {
+        tc.startSale();
+        uint256 el = uint256(elapsedSec) % (30 * ONE_DAY);
+        vm.warp(block.timestamp + el);
+        (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
+        assertGt(minC, 0);
+        assertGt(maxC, minC);
+        uint256 lhs = minC * 10e18;
+        uint256 rhs = maxC * 99e16;
+        uint256 diff = lhs > rhs ? lhs - rhs : rhs - lhs;
+        assertLe(diff, maxC, "10*minCharm ~ 0.99*maxCharm after floor division");
+    }
+
+    /// @dev CHARM bounds scale ~25%/day with canonical `growthRateWad` (exponential envelope).
+    function test_charmBounds_scale_approx_25_percent_per_day() public {
+        tc.startSale();
+        (uint256 min0, uint256 max0) = tc.currentCharmBoundsWad();
+        vm.warp(block.timestamp + ONE_DAY);
+        (uint256 min1, uint256 max1) = tc.currentCharmBoundsWad();
+        assertApproxEqRel(min1, (min0 * 125) / 100, 1e14);
+        assertApproxEqRel(max1, (max0 * 125) / 100, 1e14);
+    }
+
+    /// @dev Gross spend equals `charmWad * priceWad / WAD` for arbitrary valid CHARM in band (fuzz).
+    function test_buy_charmWad_in_bounds_fuzz(uint128 charmRaw) public {
+        tc.startSale();
+        (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
+        uint256 c = bound(uint256(charmRaw), minC, maxC);
+        uint256 p = tc.currentPricePerCharmWad();
+        uint256 spend = (c * p) / WAD;
+        _fundAndApprove(alice, spend);
+        vm.prank(alice);
+        tc.buy(c);
+        assertEq(tc.charmWeight(alice), c);
+        assertEq(tc.totalRaised(), spend);
+    }
+
+    /// @dev Linear `ICharmPrice` schedule: +daily per second step; envelope flat (`growthRateWad = 0`).
+    function test_linear_price_per_charm_independent_of_envelope() public {
+        LinearCharmPrice lp = new LinearCharmPrice(1e18, 1e17);
+        TimeCurve tcLin = new TimeCurve(
+            usdm,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(lp)),
+            1e18,
+            0,
+            120,
+            10 * ONE_DAY,
+            10 * ONE_DAY,
+            1_000_000e18
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcLin));
+        launchedToken.mint(address(tcLin), 1_000_000e18);
+        tcLin.startSale();
+
+        assertEq(tcLin.currentPricePerCharmWad(), 1e18);
+        vm.warp(block.timestamp + ONE_DAY);
+        assertEq(tcLin.currentPricePerCharmWad(), 1e18 + 1e17);
+
+        (uint256 minC, uint256 maxC) = tcLin.currentCharmBoundsWad();
+        assertEq(minC, 99e16);
+        assertEq(maxC, 10e18);
+
+        uint256 spend = (1e18 * tcLin.currentPricePerCharmWad()) / WAD;
+        _fundAndApproveCurve(alice, spend, tcLin);
+        vm.prank(alice);
+        tcLin.buy(1e18);
+        assertEq(tcLin.totalRaised(), spend);
+    }
 }
+

@@ -54,7 +54,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 | Area | Intent (short) | Product / onchain spec |
 |------|----------------|-------------------------|
-| **TimeCurve** | Sale lifecycle: min-buy growth, per-tx cap, timer extension with cap, fees to router, sale end, charm redemption, prize podiums. | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol) |
+| **TimeCurve** | Sale lifecycle: **exponential CHARM band** (0.99–10 CHARM × envelope), **linear per-CHARM price** (`ICharmPrice`), timer extension with cap, fees to router, sale end, CHARM-weighted redemption, prize podiums. | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol), [LinearCharmPrice.sol](../../contracts/src/pricing/LinearCharmPrice.sol) |
 | **Rabbit Treasury (Burrow)** | Reserve in → DOUB mint, DOUB burn → reserve out; epoch open/finalize; repricing via BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
 | **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
@@ -64,7 +64,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 ### Business rules (narrative, for reviewers)
 
-- **TimeCurve + TimeMath:** The minimum buy amount grows with configured time (continuous formula in `TimeMath`); each purchase must sit between the current floor and a multiple of that floor. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens using **`totalCharmWeight`** in the denominator; podium slots (**last buyers, most buys, biggest buy, highest cumulative CHARM**) are updated on each buy. Each buy routes the **full gross** accepted asset through **`FeeRouter`** (five sinks — see fee doc). Referral incentives add **CHARM weight** without reserve rebates. **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the requested `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale` and pays the **podium pool** in the reserve asset (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
+- **TimeCurve + TimeMath + `ICharmPrice`:** **CHARM quantity** per buy is bounded by an **exponential daily envelope** (same `TimeMath.currentMinBuy` factor on a reference WAD): onchain **min CHARM** = `0.99e18 × scale` and **max CHARM** = `10e18 × scale` (ratio **10 / 0.99** always). **Per-CHARM price** in the accepted asset is **decoupled** and comes from **`ICharmPrice`** (default **`LinearCharmPrice`**: `base + dailyIncrement × elapsed / 1 day`). **Gross spend** = `charmWad × priceWad / 1e18`. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens using **`totalCharmWeight`** in the denominator; podium slots (**last buyers, most buys, biggest buy, highest cumulative CHARM**) are updated on each buy. Each buy routes the **full gross** accepted asset through **`FeeRouter`** (five sinks — see fee doc). Referral incentives add **CHARM weight** (as a fraction of **`charmWad`**) without reserve rebates. **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the computed `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale` and pays the **podium pool** in the reserve asset (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
 - **RabbitTreasury + BurrowMath:** Users deposit the reserve asset during an **open** epoch and receive DOUB; withdraw burns DOUB and returns reserve. Epoch finalization after `epochEnd` applies the Burrow repricing step with clipped coverage and bounded multiplier; math is fuzzed and cross-checked against Python reference and simulations.
 - **FeeRouter + FeeMath:** Sink weights are validated to sum to 10_000 bps; distribution uses integer division with **remainder assigned to the last sink** so no dust remains in the router. Governance roles control sink updates.
 - **LeprechaunNFT:** Series are created with a max supply; only the minter role can mint; trait structs are stored onchain for indexer/UI derivation.
@@ -88,10 +88,15 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 | Invariant | Meaning | Tests |
 |-----------|---------|--------|
-| Sale start | `startSale` transitions once | `test_startSale`, `test_startSale_reverts_twice`, `test_startSale_insufficient_launched_tokens_reverts` |
-| Happy-path buy | Valid buy updates state and transfers | `test_buy_basic` |
-| Min buy monotonic (integration) | On-chain min buy increases with time | `test_minBuy_grows_over_time` |
-| Purchase bounds | Each buy in `[minBuy, minBuy * capMultiple]` | `test_buy_below_minBuy_reverts` (below min charm price), `test_buy_above_cap_reverts` |
+| Sale start | `startSale` transitions once | [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol): `test_startSale`, `test_startSale_reverts_twice`, `test_startSale_insufficient_launched_tokens_reverts` |
+| Happy-path buy | Valid buy updates CHARM weight and `totalRaised` | `test_buy_basic` |
+| Min / max gross spend monotonic | `currentMinBuyAmount` / `currentMaxBuyAmount` increase with time (envelope × price) | `test_minBuy_grows_over_time` |
+| CHARM bounds ratio | `10 × minCharm` and `0.99 × maxCharm` match within **floor-division slack** (shared envelope factor) | `test_charmBounds_ratio_10_over_099_fuzz` |
+| CHARM bounds exponential scale | Min/max CHARM ~25%/day with canonical `growthRateWad` | `test_charmBounds_scale_approx_25_percent_per_day` |
+| Purchase bounds (CHARM WAD) | Each buy in `[currentCharmBoundsWad.min, .max]` | `test_buy_below_minBuy_reverts`, `test_buy_above_cap_reverts`, `test_buy_charmWad_in_bounds_fuzz` |
+| Spend formula | `amount = charmWad × pricePerCharmWad / WAD`; `totalRaised` += `amount` | `test_buy_charmWad_in_bounds_fuzz`, `test_linear_price_per_charm_independent_of_envelope` |
+| Linear price schedule | `LinearCharmPrice.priceWad` matches `base + daily×elapsed/86400`; monotone in `elapsed` | [`LinearCharmPrice.t.sol`](../../contracts/test/LinearCharmPrice.t.sol): `test_priceWad_linear_matches_formula_fuzz`, `test_priceWad_monotonic_in_elapsed_fuzz`, `test_constructor_zero_base_reverts` |
+| Price decoupled from envelope | With `growthRateWad = 0`, CHARM bounds flat while `currentPricePerCharmWad` still ramps linearly | `test_linear_price_per_charm_independent_of_envelope` |
 | Timer extension capped | Extended deadline respects `timerCapSec` | `test_timer_extends_on_buy`, `test_timer_cap_fuzz` |
 | Sale state machine | No buy before start / after end / after timer expiry | `test_buy_not_started_reverts`, `test_buy_after_end_reverts`, `test_buy_after_timer_expires_reverts` |
 | `endSale` gating | Not before start; not twice | `test_endSale_not_started_reverts`, `test_endSale_already_ended_reverts` |
@@ -103,8 +108,9 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | Same-block call order | Last-buyer podium reflects sequential buy order (Foundry single-tx context; aligns with tx-index ordering) | `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall` |
 | Podium payout liveness | Empty **podium pool** does **not** set `prizesDistributed`; funded pool can pay later | `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable` |
 | Podium payout happy path | Podium pool balance decreases after distribution; flag set | `test_distributePrizes_reduces_vault_and_sets_flag` |
-| Constructor sanity | Non-zero asset, router, `launchedToken`, `podiumPool` | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts` |
-| Stateful raised + CHARM (fuzz) | Ghost buy volume matches `totalRaised` and `totalCharmWeight` (no referral in fuzz handler) | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_totalCharmWeightMatchesGhostBuys` |
+| Constructor sanity | Non-zero asset, router, `launchedToken`, `podiumPool`, **`ICharmPrice`** | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts`, `test_constructor_zero_charmPrice_reverts` |
+| Referral CHARM | Full gross to router; referee + referrer CHARM from `charmWad` | [`TimeCurveReferral.t.sol`](../../contracts/test/TimeCurveReferral.t.sol): `test_buy_with_referral_charms_and_full_gross_to_fee_router`, `test_buy_self_referral_reverts`, `test_buy_invalid_code_reverts` |
+| Stateful raised + CHARM (invariant fuzz) | Ghost **asset** volume matches `totalRaised`; ghost **CHARM** volume matches `totalCharmWeight` | [`TimeCurveInvariant.t.sol`](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_totalCharmWeightMatchesGhostBuys` |
 
 ### Non-standard ERC-20 (intentionally unsupported assets)
 
@@ -179,7 +185,7 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 
 | Invariant | Meaning | Tests |
 |-----------|---------|--------|
-| Decode round-trip | Canonical Solidity events → internal `DecodedEvent` | `decoder::tests`: `roundtrip_sale_started`, `roundtrip_buy`, `roundtrip_health_epoch_finalized`, `roundtrip_reserve_balance_negative_delta`, `roundtrip_minted` |
+| Decode round-trip | Canonical Solidity events → internal `DecodedEvent` (TimeCurve **`Buy`** includes `charmWad`, `pricePerCharmWad`) | `decoder::tests`: `roundtrip_sale_started`, `roundtrip_buy`, `roundtrip_health_epoch_finalized`, `roundtrip_reserve_balance_negative_delta`, `roundtrip_minted` |
 | Chain pointer JSON | Serialize / parse block hash hex | `reorg::tests`: `parse_b256_hex_accepts_prefixed_hash`, `parse_b256_hex_rejects_garbage`, `pointer_json_roundtrip` |
 | Ingestion cursor | Next block after genesis / tip | `ingestion::ingestion_tests`: `next_block_genesis_sentinel_uses_effective_start`, `next_block_after_indexed_tip_is_plus_one` |
 | Persist coverage + idempotency | Every `DecodedEvent` variant inserts; `ON CONFLICT DO NOTHING` | `tests/integration_stage2.rs` (`postgres_stage2_persist_all_events_and_rollback_after`, with `YIELDOMEGA_PG_TEST_URL` set) |
@@ -211,22 +217,23 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 |--------|----------------|------------|
 | `test_model.py` | Clip, coverage bounds, epoch step invariants, multiplier saturation, NaN freedom | `test_clip`, `test_coverage_bounds`, `test_epoch_step_invariants`, `test_multiplier_saturates`, `test_no_nan_after_many_steps` |
 | `test_scenarios.py` | Bundled scenario expectations | `test_all_scenarios_pass` |
-| `test_timecurve.py` | Continuous min-buy monotone, ~25%/day growth, timer/sale-end caps, spend clamp | `test_min_buy_monotone`, `test_daily_growth_25_percent`, `test_next_sale_end_cap`, `test_clamp_spend_continuous` |
+| `test_timecurve.py` | Legacy **sim** min-buy curve (exponential daily); does **not** yet model split **linear price × CHARM envelope** (track as sim gap vs [product/primitives.md](../product/primitives.md)) | `test_min_buy_monotone`, `test_daily_growth_25_percent`, `test_next_sale_end_cap`, `test_clamp_spend_continuous` |
 | `test_comeback.py` | Comeback scoring caps and baseline | `test_comeback_caps_trailing`, `test_leader_stays_high_baseline` |
 
 See [simulations/README.md](../../simulations/README.md) for run commands and pass/fail criteria. The **`simulations-test`** job in [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) runs this suite on every push/PR.
 
 ---
 
-## Contract test suite inventory (108 tests)
+## Contract test suite inventory
 
 Every `contracts/test/*.t.sol` test function maps to the invariant tables above. Quick index by file:
 
 | File | Count | Focus |
 |------|------:|--------|
-| [TimeMath.t.sol](../../contracts/test/TimeMath.t.sol) | 7 | Pure math: min-buy growth, deadline cap |
-| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | — | Sale lifecycle, buys, fees, podiums (four categories + cumulative), redemption, **same-block ordering**, **podium griefing / constructor / endSale / redemption rounding** |
-| [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `charmWeight` bound |
+| [TimeMath.t.sol](../../contracts/test/TimeMath.t.sol) | 7 | Pure math: exponential envelope factor (`currentMinBuy`), deadline cap |
+| [LinearCharmPrice.t.sol](../../contracts/test/LinearCharmPrice.t.sol) | 3 | Linear `priceWad` formula + monotonicity **fuzz**, zero-base revert |
+| [TimeCurve.t.sol](../../contracts/test/TimeCurve.t.sol) | — | Sale lifecycle, **CHARM bounds + linear price**, buys, fees, podiums, redemption, **same-block ordering**, constructor / griefing paths |
+| [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `totalCharmWeight` ghost |
 | [TimeCurveFork.t.sol](../../contracts/test/TimeCurveFork.t.sol) | 1 | Optional `FORK_URL` fork smoke (no-op if unset) |
 | [BurrowMath.t.sol](../../contracts/test/BurrowMath.t.sol) | 4 | Coverage clip, multiplier/epoch fuzz, Python parity |
 | [RabbitTreasury.t.sol](../../contracts/test/RabbitTreasury.t.sol) | 20 | Epochs, deposit/withdraw, finalize, pause, fees, params |
@@ -239,7 +246,7 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | [LeprechaunNFT.t.sol](../../contracts/test/LeprechaunNFT.t.sol) | 8 | Series, mint, supply cap, URI |
 | [DevStackIntegration.t.sol](../../contracts/test/DevStackIntegration.t.sol) | 2 | Deploy script wiring + buy/deposit |
 
-Run `cd contracts && forge test --list` for the authoritative list including fuzz parametrization. **Invariant** runs and depth are configured in [`contracts/foundry.toml`](../../contracts/foundry.toml) (`[invariant]`). **Local Anvil ordering drill:** [anvil-same-block-drill.md](anvil-same-block-drill.md).
+Run `cd contracts && forge test --list` for the authoritative list including fuzz parametrization (recent full run: **126** tests with `FOUNDRY_PROFILE=ci`). **Invariant** runs and depth are configured in [`contracts/foundry.toml`](../../contracts/foundry.toml) (`[invariant]`). **Local Anvil ordering drill:** [anvil-same-block-drill.md](anvil-same-block-drill.md).
 
 ---
 

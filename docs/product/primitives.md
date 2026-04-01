@@ -6,20 +6,15 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 ## Core mechanics (requirements)
 
-### Minimum buy growth
+### CHARM band (exponential envelope) vs per-CHARM price (linear schedule)
 
-- The **minimum buy** increases **continuously** over time from a defined start (for example equivalent to one dollar at launch, exact denomination TBD).
-- Growth follows a **daily rule** (for example per-second or per-block interpolation of a daily multiplier). The canonical target is **25% per day** (`daily_growth_frac = 0.25`), **governance-set** but must be:
-  - **Deterministic** from onchain time or block schedule.
-  - **Documented** in deployment parameters and events.
-
-### Purchase cap
-
-- Each purchase amount is **capped** at a **fixed multiple** of the current minimum buy (for example **10x**). The multiple is a configurable constant or governed parameter.
+- **CHARM quantity** for each buy is chosen in **WAD** (1e18 base units = one whole CHARM in UX). Onchain, the allowed band is **0.99–10 CHARM** at envelope factor 1, **scaled by the same exponential daily curve** as the legacy min-buy reference (`TimeMath`, canonical **~25% per day** on the envelope reference). So the **min and max CHARM** per transaction **grow exponentially** with elapsed sale time.
+- **Per-CHARM price** (accepted asset per 1e18 CHARM) is **decoupled** from that envelope: it comes from a **pluggable pricing module** (`ICharmPrice`). The default implementation is **linear in time**: `price = basePrice + dailyIncrement × elapsed / 1 day` (for example **$1.00** start and **+$0.10** per day in 18-decimal asset units).
+- **Gross spend** for a buy: `amount = charmWad × priceWad / 1e18` (fixed-point; rounding matches onchain `mulDiv`). The UI may restrict to **whole charms 1–10** to stay inside the onchain band and avoid edge reverts.
 
 ### Buy and charm redemption semantics
 
-- A buy is a single **spend** in the accepted asset between the current **minimum buy** (charm price floor) and the **per-transaction cap**. Each buy increases the buyer’s **charm weight**. After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalRaised` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
+- A buy specifies **`charmWad`** within the current **scaled** `[0.99e18, 10e18]` band (before scaling: base constants; scaled by envelope ÷ reference). The contract pulls **`amount`** in the accepted asset from the buyer and routes the **full gross** through `FeeRouter`. **CHARM weight** accrues in **CHARM WAD units** (plus referral bonuses as CHARM, not reserve transfers). After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalCharmWeight` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
 
 ### Timer extension
 
@@ -65,3 +60,5 @@ Proceeds and fees are split per [fee routing and governance](../onchain/fee-rout
 ---
 
 **Agent phase:** [Phase 6 — TimeCurve primitive requirements](../agent-phases.md#phase-6)
+
+**Automated invariant map (tests ↔ this spec):** [testing/invariants-and-business-logic.md](../testing/invariants-and-business-logic.md) (section *TimeCurve (contract)*).

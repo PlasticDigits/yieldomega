@@ -4,15 +4,17 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TimeMath} from "./libraries/TimeMath.sol";
 import {FeeRouter} from "./FeeRouter.sol";
 import {PodiumPool} from "./sinks/PodiumPool.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
+import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
 
 /// @title TimeCurve — token launch primitive
-/// @notice Sale lifecycle per docs/product/primitives.md and docs/onchain/fee-routing-and-governance.md:
-///         continuous min charm price growth, per-tx cap, timer extension, reserve-asset podium payouts,
-///         CHARM-weighted DOUB redemption after sale.
+/// @notice CHARM quantity bounds scale with the **exponential daily envelope** (`TimeMath`); per-CHARM
+///         **price** comes from a pluggable `ICharmPrice` (default **linear** in time). Gross spend =
+///         `charmWad * priceWad / 1e18`. See docs/product/primitives.md.
 /// @dev Referral rewards are **CHARM weight** (not reserve transfers). The full gross `amount` is routed
 ///      through `FeeRouter`; `redeemCharms` clears DOUB pro-rata to `totalCharmWeight`.
 contract TimeCurve is ReentrancyGuard {
@@ -25,20 +27,28 @@ contract TimeCurve is ReentrancyGuard {
     uint8 public constant CAT_HIGHEST_CUMULATIVE = 3;
     uint8 public constant NUM_PODIUM_CATEGORIES = 4;
 
-    /// @notice Referral: 10% of gross buy accrues as CHARM to referrer + 10% to referee (bps each).
+    /// @notice Referral: 10% of gross CHARM accrues to referrer + 10% to referee (bps each).
     uint16 public constant REFERRAL_EACH_BPS = 1000;
+
+    uint256 internal constant WAD = 1e18;
+    /// @notice Onchain min CHARM (WAD) at envelope factor 1; scales up with exponential envelope.
+    uint256 internal constant CHARM_MIN_BASE_WAD = 99e16; // 0.99e18
+    /// @notice Onchain max CHARM (WAD) at envelope factor 1; scales up with exponential envelope.
+    uint256 internal constant CHARM_MAX_BASE_WAD = 10e18;
 
     // ── Configuration (immutable after deploy) ─────────────────────────
     IERC20 public immutable acceptedAsset;
     IERC20 public immutable launchedToken;
     FeeRouter public immutable feeRouter;
     PodiumPool public immutable podiumPool;
-    /// @notice Zero address disables `buy(amount, codeHash)` referral path.
+    /// @notice Zero address disables `buy(charmWad, codeHash)` referral path.
     IReferralRegistry public immutable referralRegistry;
+    /// @notice Per-CHARM pricing schedule (linear or future swappable implementation).
+    ICharmPrice public immutable charmPrice;
 
+    /// @notice Reference unit for exponential **envelope** scaling of min/max CHARM (typically `1e18`).
     uint256 public immutable initialMinBuy;
     uint256 public immutable growthRateWad;
-    uint256 public immutable purchaseCapMultiple;
     uint256 public immutable timerExtensionSec;
     uint256 public immutable initialTimerSec;
     uint256 public immutable timerCapSec;
@@ -48,7 +58,7 @@ contract TimeCurve is ReentrancyGuard {
     uint256 public saleStart;
     uint256 public deadline;
     uint256 public totalRaised;
-    /// @notice Sum of all CHARM weight minted (spend + referral bonuses). Redemption denominator.
+    /// @notice Sum of all CHARM weight minted (CHARM units + referral bonuses). Redemption denominator.
     uint256 public totalCharmWeight;
     bool public ended;
     bool public prizesDistributed;
@@ -75,8 +85,9 @@ contract TimeCurve is ReentrancyGuard {
     event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
     event Buy(
         address indexed buyer,
+        uint256 charmWad,
         uint256 amount,
-        uint256 currentMinBuy,
+        uint256 pricePerCharmWad,
         uint256 newDeadline,
         uint256 totalRaisedAfter,
         uint256 buyIndex
@@ -99,9 +110,9 @@ contract TimeCurve is ReentrancyGuard {
         FeeRouter _feeRouter,
         PodiumPool _podiumPool,
         address _referralRegistry,
-        uint256 _initialMinBuy,
+        ICharmPrice _charmPrice,
+        uint256 _charmEnvelopeRefWad,
         uint256 _growthRateWad,
-        uint256 _purchaseCapMultiple,
         uint256 _timerExtensionSec,
         uint256 _initialTimerSec,
         uint256 _timerCapSec,
@@ -111,8 +122,8 @@ contract TimeCurve is ReentrancyGuard {
         require(address(_launchedToken) != address(0), "TimeCurve: zero launched token");
         require(address(_feeRouter) != address(0), "TimeCurve: zero router");
         require(address(_podiumPool) != address(0), "TimeCurve: zero podium pool");
-        require(_initialMinBuy > 0, "TimeCurve: zero minBuy");
-        require(_purchaseCapMultiple >= 2, "TimeCurve: capMultiple < 2");
+        require(address(_charmPrice) != address(0), "TimeCurve: zero charm price");
+        require(_charmEnvelopeRefWad > 0, "TimeCurve: zero envelope ref");
         require(_timerExtensionSec > 0, "TimeCurve: zero extension");
         require(_initialTimerSec > 0, "TimeCurve: zero initial timer");
         require(_timerCapSec >= _timerExtensionSec, "TimeCurve: cap < extension");
@@ -123,9 +134,9 @@ contract TimeCurve is ReentrancyGuard {
         launchedToken = _launchedToken;
         feeRouter = _feeRouter;
         podiumPool = _podiumPool;
-        initialMinBuy = _initialMinBuy;
+        charmPrice = _charmPrice;
+        initialMinBuy = _charmEnvelopeRefWad;
         growthRateWad = _growthRateWad;
-        purchaseCapMultiple = _purchaseCapMultiple;
         timerExtensionSec = _timerExtensionSec;
         initialTimerSec = _initialTimerSec;
         timerCapSec = _timerCapSec;
@@ -144,25 +155,33 @@ contract TimeCurve is ReentrancyGuard {
         emit SaleStarted(block.timestamp, deadline, totalTokensForSale);
     }
 
-    function buy(uint256 amount) external nonReentrant {
-        _buy(amount, bytes32(0));
+    function buy(uint256 charmWad) external nonReentrant {
+        _buy(charmWad, bytes32(0));
     }
 
-    function buy(uint256 amount, bytes32 codeHash) external nonReentrant {
-        _buy(amount, codeHash);
+    function buy(uint256 charmWad, bytes32 codeHash) external nonReentrant {
+        _buy(charmWad, codeHash);
     }
 
-    function _buy(uint256 amount, bytes32 codeHash) internal {
+    function _charmBounds(uint256 elapsed) internal view returns (uint256 minCharmWad, uint256 maxCharmWad) {
+        uint256 scale = TimeMath.currentMinBuy(initialMinBuy, growthRateWad, elapsed);
+        minCharmWad = Math.mulDiv(CHARM_MIN_BASE_WAD, scale, initialMinBuy);
+        maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, initialMinBuy);
+    }
+
+    function _buy(uint256 charmWad, bytes32 codeHash) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
         require(block.timestamp < deadline, "TimeCurve: timer expired");
 
         uint256 elapsed = block.timestamp - saleStart;
-        uint256 minBuy = TimeMath.currentMinBuy(initialMinBuy, growthRateWad, elapsed);
-        uint256 maxBuy = minBuy * purchaseCapMultiple;
+        (uint256 minCharm, uint256 maxCharm) = _charmBounds(elapsed);
+        require(charmWad >= minCharm, "TimeCurve: below min charms");
+        require(charmWad <= maxCharm, "TimeCurve: above max charms");
 
-        require(amount >= minBuy, "TimeCurve: below min charm price");
-        require(amount <= maxBuy, "TimeCurve: above cap");
+        uint256 priceWad = charmPrice.priceWad(elapsed);
+        uint256 amount = Math.mulDiv(charmWad, priceWad, WAD);
+        require(amount > 0, "TimeCurve: zero spend");
 
         if (codeHash != bytes32(0)) {
             require(address(referralRegistry) != address(0), "TimeCurve: referral disabled");
@@ -174,16 +193,16 @@ contract TimeCurve is ReentrancyGuard {
             address referrer = referralRegistry.ownerOfCode(codeHash);
             require(referrer != address(0), "TimeCurve: invalid referral");
             require(referrer != msg.sender, "TimeCurve: self-referral");
-            uint256 refEach = (amount * uint256(REFERRAL_EACH_BPS)) / 10_000;
-            require(refEach > 0 && refEach * 2 <= amount, "TimeCurve: referral amount");
+            uint256 refEach = (charmWad * uint256(REFERRAL_EACH_BPS)) / 10_000;
+            require(refEach > 0 && refEach * 2 <= charmWad, "TimeCurve: referral amount");
             charmWeight[referrer] += refEach;
             charmWeight[msg.sender] += refEach;
             totalCharmWeight += refEach * 2;
             emit ReferralApplied(msg.sender, referrer, codeHash, refEach, refEach, amount);
         }
 
-        charmWeight[msg.sender] += amount;
-        totalCharmWeight += amount;
+        charmWeight[msg.sender] += charmWad;
+        totalCharmWeight += charmWad;
 
         acceptedAsset.safeTransfer(address(feeRouter), amount);
         feeRouter.distributeFees(acceptedAsset, amount);
@@ -202,7 +221,7 @@ contract TimeCurve is ReentrancyGuard {
         _updateTopThree(CAT_BIGGEST_BUY, msg.sender, biggestSingleBuy[msg.sender]);
         _updateTopThree(CAT_HIGHEST_CUMULATIVE, msg.sender, charmWeight[msg.sender]);
 
-        emit Buy(msg.sender, amount, minBuy, deadline, totalRaised, _totalBuys);
+        emit Buy(msg.sender, charmWad, amount, priceWad, deadline, totalRaised, _totalBuys);
     }
 
     function endSale() external {
@@ -279,9 +298,30 @@ contract TimeCurve is ReentrancyGuard {
         }
     }
 
+    /// @notice Minimum **gross asset** for a buy at the current envelope × price (smallest allowed CHARM).
     function currentMinBuyAmount() external view returns (uint256) {
-        if (saleStart == 0) return initialMinBuy;
-        return TimeMath.currentMinBuy(initialMinBuy, growthRateWad, block.timestamp - saleStart);
+        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        (uint256 minCharm,) = _charmBounds(elapsed);
+        uint256 p = charmPrice.priceWad(elapsed);
+        return Math.mulDiv(minCharm, p, WAD);
+    }
+
+    /// @notice Maximum **gross asset** for a buy at the current envelope × price (largest allowed CHARM).
+    function currentMaxBuyAmount() external view returns (uint256) {
+        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        (, uint256 maxCharm) = _charmBounds(elapsed);
+        uint256 p = charmPrice.priceWad(elapsed);
+        return Math.mulDiv(maxCharm, p, WAD);
+    }
+
+    function currentCharmBoundsWad() external view returns (uint256 minCharmWad, uint256 maxCharmWad) {
+        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        return _charmBounds(elapsed);
+    }
+
+    function currentPricePerCharmWad() external view returns (uint256) {
+        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        return charmPrice.priceWad(elapsed);
     }
 
     function podium(uint8 category) external view returns (address[3] memory winners, uint256[3] memory values) {

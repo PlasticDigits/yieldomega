@@ -8,13 +8,16 @@ export const timeCurveReadAbi = parseAbi([
   "function totalRaised() view returns (uint256)",
   "function ended() view returns (bool)",
   "function currentMinBuyAmount() view returns (uint256)",
+  "function currentMaxBuyAmount() view returns (uint256)",
+  "function currentCharmBoundsWad() view returns (uint256 minCharmWad, uint256 maxCharmWad)",
+  "function currentPricePerCharmWad() view returns (uint256)",
+  "function charmPrice() view returns (address)",
   "function acceptedAsset() view returns (address)",
   "function launchedToken() view returns (address)",
   "function referralRegistry() view returns (address)",
   "function REFERRAL_EACH_BPS() view returns (uint16)",
   "function initialMinBuy() view returns (uint256)",
   "function growthRateWad() view returns (uint256)",
-  "function purchaseCapMultiple() view returns (uint256)",
   "function timerExtensionSec() view returns (uint256)",
   "function initialTimerSec() view returns (uint256)",
   "function timerCapSec() view returns (uint256)",
@@ -30,9 +33,14 @@ export const timeCurveReadAbi = parseAbi([
   "function prizesDistributed() view returns (bool)",
 ]);
 
+export const linearCharmPriceReadAbi = parseAbi([
+  "function basePriceWad() view returns (uint256)",
+  "function dailyIncrementWad() view returns (uint256)",
+]);
+
 export const timeCurveWriteAbi = parseAbi([
-  "function buy(uint256 amount)",
-  "function buy(uint256 amount, bytes32 codeHash)",
+  "function buy(uint256 charmWad)",
+  "function buy(uint256 charmWad, bytes32 codeHash)",
   "function endSale()",
   "function redeemCharms()",
   "function distributePrizes()",

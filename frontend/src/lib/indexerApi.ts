@@ -15,7 +15,8 @@ export type BuyItem = {
   log_index: number;
   buyer: string;
   amount: string;
-  current_min_buy: string;
+  charm_wad: string;
+  price_per_charm_wad: string;
   new_deadline: string;
   total_raised_after: string;
   buy_index: string;

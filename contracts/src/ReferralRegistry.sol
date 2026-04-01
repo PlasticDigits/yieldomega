@@ -28,7 +28,7 @@ contract ReferralRegistry is IReferralRegistry {
         registrationBurnAmount = _registrationBurnAmount;
     }
 
-    /// @notice Hash used by `TimeCurve.buy(amount, codeHash)`; same as `keccak256(bytes(normalized))`.
+    /// @notice Hash used by `TimeCurve.buy(charmWad, codeHash)`; same as `keccak256(bytes(normalized))`.
     function hashCode(string calldata code) external pure returns (bytes32) {
         return _hashNormalized(_normalizeToBytes(code));
     }

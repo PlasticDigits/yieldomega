@@ -55,8 +55,9 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
         }
         DecodedEvent::TimeCurveBuy {
             buyer,
+            charm_wad,
             amount,
-            current_min_buy,
+            price_per_charm_wad,
             new_deadline,
             total_raised_after,
             buy_index,
@@ -64,8 +65,9 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy (
                     block_number, block_hash, tx_hash, log_index, contract_address,
-                    buyer, amount, current_min_buy, new_deadline, total_raised_after, buy_index
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric)
+                    buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
+                    new_deadline, total_raised_after, buy_index
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
@@ -75,7 +77,9 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*buyer))
             .bind(u256_dec(*amount))
-            .bind(u256_dec(*current_min_buy))
+            .bind(u256_dec(*price_per_charm_wad))
+            .bind(u256_dec(*charm_wad))
+            .bind(u256_dec(*price_per_charm_wad))
             .bind(u256_dec(*new_deadline))
             .bind(u256_dec(*total_raised_after))
             .bind(u256_dec(*buy_index))
