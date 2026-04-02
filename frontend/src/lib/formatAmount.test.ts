@@ -35,11 +35,11 @@ describe("formatAmountTriple", () => {
     const t = formatAmountTriple(1953145177291660455n, 18);
     expect(t.raw).toBe("1953145177291660455");
     expect(t.decimal).toBe("1.953145177291660455");
-    expect(t.abbrev).toBe("1.953145177291660455");
+    expect(t.abbrev).toBe("1.95");
   });
   it("formats integer-like values with decimals 0", () => {
     const t = formatAmountTriple(1774436529n, 0);
     expect(t.decimal).toBe("1774436529");
-    expect(t.abbrev).toBe("1.774436529b");
+    expect(t.abbrev).toBe("1.77b");
   });
 });
