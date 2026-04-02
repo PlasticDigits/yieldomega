@@ -53,7 +53,7 @@ Proceeds and fees are split per [fee routing and governance](../onchain/fee-rout
 
 ## Open parameters (need human decisions before coding)
 
-- **Accepted asset** (for example USDm only vs basket).
+- **Accepted asset** (**CL8Y** at launch vs future basket).
 - **Auction cadence** if multiple rounds exist.
 - **Future** parameterization of podium category shares or placement ratios if governance moves them out of bytecode (today fixed in **`TimeCurve`**).
 

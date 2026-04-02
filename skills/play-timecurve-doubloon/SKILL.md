@@ -15,7 +15,7 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 
 - **Minimum buy rises over time**; each buy has **min/max** bounds; **timer** extends on buys up to a **cap**; **`initialTimerSec`** may be shorter than the cap so early activity can still grow remaining time (see deployed parameters).
 - **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`**, separate from DOUB redemption.
-- **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sinks: locked DOUB LP, CL8Y buy-and-burn, podium pool, team, Rabbit Treasury) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
+- **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **25%** locked DOUB LP · **35%** CL8Y buy-and-burn · **20%** podium pool · **0%** team/reserved · **20%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
 
 ## Success function (non-financial)
 

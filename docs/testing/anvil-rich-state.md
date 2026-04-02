@@ -14,25 +14,26 @@ From the repo root (or adjust paths):
 
 ```bash
 export RPC_URL=http://127.0.0.1:8545
-# Deploy stack first (unset USDM_ADDRESS unless you use a real token address)
-cd contracts && env -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "$RPC_URL"
+# Deploy stack first (unset RESERVE_ASSET_ADDRESS / USDM_ADDRESS unless you inject a real token address)
+cd contracts && env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "$RPC_URL"
 bash contracts/script/anvil_rich_state.sh
 ```
 
 The script:
 
-1. **`SimulateAnvilRichStatePart1`** — Transfers USDM from the deployer to test accounts, **max-size** TimeCurve buys (avoids stale `minBuy` across broadcast txs), Rabbit deposits + one partial withdraw.
+1. **`SimulateAnvilRichStatePart1`** — Transfers reserve (**CL8Y**) from the deployer to test accounts, **max-size** TimeCurve buys (avoids stale `minBuy` across broadcast txs), Rabbit deposits + one partial withdraw.
 2. **Warps time** past `TimeCurve.deadline` via `anvil_increaseTime` (required because `vm.warp` in `forge script --broadcast` is not replayed on Anvil).
 3. **`SimulateAnvilRichStatePart2`** — `endSale`, `redeemCharms` ×4, `distributePrizes`, NFT `createSeries` ×2 + `mint` ×2, `setAlphaWad`.
 4. **Three `finalizeEpoch()`** calls on RabbitTreasury with warps to each `epochEnd` (86400s epochs per DeployDev).
 
-`USDM_ADDRESS` for the Forge scripts is taken from **`TimeCurve.acceptedAsset()`** (not from broadcast JSON), so it stays correct even when `MockUSDm` was skipped at deploy time.
+`RESERVE_ASSET_ADDRESS` (and legacy `USDM_ADDRESS`) for the Forge scripts are taken from **`TimeCurve.acceptedAsset()`** (not from broadcast JSON), so they stay correct when a fixed address was injected at deploy time.
 
 ## Manual Forge (two parts + shell warps)
 
 ```bash
 export RPC_URL=http://127.0.0.1:8545
-export USDM_ADDRESS=$(cast call "$TIMECURVE_ADDRESS" "acceptedAsset()(address)" --rpc-url "$RPC_URL" | awk '{print $1}')
+export RESERVE_ASSET_ADDRESS=$(cast call "$TIMECURVE_ADDRESS" "acceptedAsset()(address)" --rpc-url "$RPC_URL" | awk '{print $1}')
+export USDM_ADDRESS="${RESERVE_ASSET_ADDRESS}"
 export TIMECURVE_ADDRESS=0x...
 export RABBIT_TREASURY_ADDRESS=0x...
 export LEPRECHAUN_NFT_ADDRESS=0x...

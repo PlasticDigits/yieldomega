@@ -4,7 +4,7 @@
   "network": "megaeth_testnet",
   "abiHashesSha256": {},
   "contracts": {
-    "USDm": "",
+    "CL8Y_reserve": "",
     "Doubloon": "",
     "PodiumPool": "",
     "CL8YProtocolTreasury": "",
@@ -15,7 +15,6 @@
     "TimeCurve": "",
     "LeprechaunNFT": "",
     "LaunchedToken": "",
-    "MockCL8Y": "",
     "ReferralRegistry": ""
   },
   "deployer": "",

@@ -13,7 +13,7 @@ import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
-import {MockUSDm, MockLaunchToken} from "../script/DeployDev.s.sol";
+import {MockReserveCl8y, MockLaunchToken} from "../script/DeployDev.s.sol";
 
 /// @notice Mirrors `DeployDev` wiring: after deploy, epoch + sale are live; deposit + buy succeed.
 contract DevStackIntegrationTest is Test {
@@ -21,7 +21,7 @@ contract DevStackIntegrationTest is Test {
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
     uint256 internal constant GROWTH_WAD = 223_143_551_314_209_700;
 
-    MockUSDm usdm;
+    MockReserveCl8y reserveAsset;
     Doubloon doub;
     PodiumPool podiumPool;
     CL8YProtocolTreasury cl8yTreasury;
@@ -36,7 +36,7 @@ contract DevStackIntegrationTest is Test {
     address alice = makeAddr("alice");
 
     function setUp() public {
-        usdm = new MockUSDm();
+        reserveAsset = new MockReserveCl8y();
         doub = new Doubloon(address(this));
 
         podiumPool = new PodiumPool(address(this));
@@ -45,7 +45,7 @@ contract DevStackIntegrationTest is Test {
         ecoTreasury = new EcosystemTreasury(address(this));
 
         rt = new RabbitTreasury(
-            ERC20(address(usdm)),
+            ERC20(address(reserveAsset)),
             doub,
             ONE_DAY,
             2e18,
@@ -57,6 +57,11 @@ contract DevStackIntegrationTest is Test {
             5e17,
             2e16,
             1,
+            25e16,
+            1e16,
+            5e17,
+            0,
+            address(0),
             address(this)
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
@@ -70,7 +75,7 @@ contract DevStackIntegrationTest is Test {
                 address(ecoTreasury),
                 address(rt)
             ],
-            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
 
@@ -79,7 +84,7 @@ contract DevStackIntegrationTest is Test {
 
         charmPrice = new LinearCharmPrice(1e18, 1e17); // $1 + $0.10/day (18-dec asset)
         tc = new TimeCurve(
-            ERC20(address(usdm)),
+            ERC20(address(reserveAsset)),
             lt,
             router,
             podiumPool,
@@ -108,13 +113,13 @@ contract DevStackIntegrationTest is Test {
     }
 
     function test_devStack_depositAndBuy() public {
-        usdm.mint(alice, 10_000e18);
+        reserveAsset.mint(alice, 10_000e18);
 
         vm.startPrank(alice);
-        usdm.approve(address(rt), 100e18);
+        reserveAsset.approve(address(rt), 100e18);
         rt.deposit(100e18, 0);
         // TimeCurve pulls accepted asset from buyer then forwards to FeeRouter.
-        usdm.approve(address(tc), 1e18);
+        reserveAsset.approve(address(tc), 1e18);
         tc.buy(1e18);
         vm.stopPrank();
 

@@ -44,7 +44,7 @@ contract AnvilSameBlockDrill is Script {
         FeeRouter router = new FeeRouter(
             deployer,
             [s0, s1, address(pv), s3, s4],
-            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
         );
         LinearCharmPrice cp = new LinearCharmPrice(1e18, 0);
         TimeCurve tc = new TimeCurve(

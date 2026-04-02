@@ -23,7 +23,7 @@ contract TimeCurveTest is Test {
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
-    MockERC20 usdm;
+    MockERC20 reserve;
     MockERC20 launchedToken;
     FeeRouter router;
     PodiumPool podiumPool;
@@ -35,14 +35,14 @@ contract TimeCurveTest is Test {
     address carol = makeAddr("carol");
     address dave = makeAddr("dave");
 
-    // FeeRouter sinks: LP · CL8Y · podium pool · team · Rabbit (canonical bps)
+    // FeeRouter sinks: LP 25% · CL8Y 35% · podium 20% · team 0% · Rabbit 20% (bps)
     address sinkLp = makeAddr("sinkLp");
     address sinkCl8y = makeAddr("sinkCl8y");
     address sinkTeam = makeAddr("sinkTeam");
     address sinkRabbit = makeAddr("sinkRabbit");
 
     function setUp() public {
-        usdm = new MockERC20("USDm", "USDM");
+        reserve = new MockERC20("CL8Y", "CL8Y");
         launchedToken = new MockERC20("LaunchToken", "LT");
 
         podiumPool = new PodiumPool(address(this));
@@ -50,12 +50,12 @@ contract TimeCurveTest is Test {
         router = new FeeRouter(
             address(this),
             [sinkLp, sinkCl8y, address(podiumPool), sinkTeam, sinkRabbit],
-            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
         );
 
         linearPrice = new LinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
         tc = new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -76,15 +76,15 @@ contract TimeCurveTest is Test {
     }
 
     function _fundAndApprove(address user, uint256 amount) internal {
-        usdm.mint(user, amount);
+        reserve.mint(user, amount);
         vm.prank(user);
-        usdm.approve(address(tc), amount);
+        reserve.approve(address(tc), amount);
     }
 
     function _fundAndApproveCurve(address user, uint256 amount, TimeCurve target) internal {
-        usdm.mint(user, amount);
+        reserve.mint(user, amount);
         vm.prank(user);
-        usdm.approve(address(target), amount);
+        reserve.approve(address(target), amount);
     }
 
     // ── Sale lifecycle ─────────────────────────────────────────────────
@@ -103,7 +103,7 @@ contract TimeCurveTest is Test {
 
     function test_startSale_insufficient_launched_tokens_reverts() public {
         TimeCurve tcUnder = new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -214,7 +214,7 @@ contract TimeCurveTest is Test {
     function test_timer_initial_can_be_lower_than_cap() public {
         uint256 fourDay = 4 * ONE_DAY;
         TimeCurve tcWide = new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -242,7 +242,7 @@ contract TimeCurveTest is Test {
     function test_constructor_cap_below_initial_timer_reverts() public {
         vm.expectRevert("TimeCurve: cap < initial timer");
         new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -435,11 +435,11 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(10e18);
 
-        assertEq(usdm.balanceOf(sinkLp), 3e18);
-        assertEq(usdm.balanceOf(sinkCl8y), 1e18);
-        assertEq(usdm.balanceOf(address(podiumPool)), 2e18);
-        assertEq(usdm.balanceOf(sinkTeam), 0.5e18);
-        assertEq(usdm.balanceOf(sinkRabbit), 3.5e18);
+        assertEq(reserve.balanceOf(sinkLp), 2.5e18);
+        assertEq(reserve.balanceOf(sinkCl8y), 3.5e18);
+        assertEq(reserve.balanceOf(address(podiumPool)), 2e18);
+        assertEq(reserve.balanceOf(sinkTeam), 0);
+        assertEq(reserve.balanceOf(sinkRabbit), 2e18);
     }
 
     /// @dev Curve timing parameters are constructor immutables — no mid-sale governance drift (threat #3).
@@ -510,7 +510,7 @@ contract TimeCurveTest is Test {
     function test_constructor_zero_launchedToken_reverts() public {
         vm.expectRevert("TimeCurve: zero launched token");
         new TimeCurve(
-            usdm,
+            reserve,
             IERC20(address(0)),
             router,
             podiumPool,
@@ -528,7 +528,7 @@ contract TimeCurveTest is Test {
     function test_constructor_zero_podiumPool_reverts() public {
         vm.expectRevert("TimeCurve: zero podium pool");
         new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             PodiumPool(address(0)),
@@ -564,7 +564,7 @@ contract TimeCurveTest is Test {
     function test_constructor_zero_feeRouter_reverts() public {
         vm.expectRevert("TimeCurve: zero router");
         new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             FeeRouter(address(0)),
             podiumPool,
@@ -582,7 +582,7 @@ contract TimeCurveTest is Test {
     function test_constructor_zero_charmPrice_reverts() public {
         vm.expectRevert("TimeCurve: zero charm price");
         new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -600,7 +600,7 @@ contract TimeCurveTest is Test {
     /// @dev Integer division can round claim to 0 when `totalTokensForSale` is tiny vs `totalRaised`.
     function test_redeemCharms_nothing_to_redeem_reverts() public {
         TimeCurve tcSmall = new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,
@@ -640,14 +640,14 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        uint256 expectedPrize = usdm.balanceOf(address(podiumPool));
+        uint256 expectedPrize = reserve.balanceOf(address(podiumPool));
         assertGt(expectedPrize, 0);
-        deal(address(usdm), address(podiumPool), 0);
+        deal(address(reserve), address(podiumPool), 0);
 
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());
 
-        deal(address(usdm), address(podiumPool), expectedPrize);
+        deal(address(reserve), address(podiumPool), expectedPrize);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
     }
@@ -661,11 +661,11 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        deal(address(usdm), address(podiumPool), 0);
+        deal(address(reserve), address(podiumPool), 0);
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());
 
-        deal(address(usdm), address(podiumPool), 1_000_000e18);
+        deal(address(reserve), address(podiumPool), 1_000_000e18);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
     }
@@ -688,11 +688,11 @@ contract TimeCurveTest is Test {
         vm.warp(tc.deadline() + 1);
         tc.endSale();
 
-        uint256 vaultBefore = usdm.balanceOf(address(podiumPool));
+        uint256 vaultBefore = reserve.balanceOf(address(podiumPool));
         assertGt(vaultBefore, 0);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
-        assertLt(usdm.balanceOf(address(podiumPool)), vaultBefore);
+        assertLt(reserve.balanceOf(address(podiumPool)), vaultBefore);
     }
 
     // ── CHARM band × exponential envelope vs linear price ─────────────────
@@ -740,7 +740,7 @@ contract TimeCurveTest is Test {
     function test_linear_price_per_charm_independent_of_envelope() public {
         LinearCharmPrice lp = new LinearCharmPrice(1e18, 1e17);
         TimeCurve tcLin = new TimeCurve(
-            usdm,
+            reserve,
             launchedToken,
             router,
             podiumPool,

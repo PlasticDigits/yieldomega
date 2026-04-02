@@ -1153,8 +1153,8 @@ export function TimeCurvePage() {
         <p className="muted">
           Each buy routes the <strong>full gross</strong> amount in the accepted reserve asset through{" "}
           <code>FeeRouter</code>. Referral rewards are <strong>CHARM weight</strong> (not reserve transfers).
-          Canonical shares: DOUB locked-liquidity (SIR / Kumbaya) 30% · CL8Y buy-and-burn 10% · podium pool 20%
-          · team 5% · Rabbit Treasury 35%.
+          Canonical shares: DOUB locked-liquidity (SIR / Kumbaya) 25% · CL8Y buy-and-burn 35% · podium pool 20%
+          · team / reserved sink 0% · Rabbit Treasury 20%.
         </p>
         <ul className="event-list">
           {(
@@ -1162,7 +1162,7 @@ export function TimeCurvePage() {
               ["DOUB LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
               ["CL8Y buy-and-burn", RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn],
               ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
-              ["Team", RESERVE_FEE_ROUTING_BPS.team],
+              ["Team / reserved (launch default 0%)", RESERVE_FEE_ROUTING_BPS.team],
               ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],
             ] as const
           ).map(([label, bps], i) => {
