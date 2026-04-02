@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { abbreviateDecimalString, formatAmountTriple, parseBigIntString } from "./formatAmount";
+import {
+  abbreviateDecimalString,
+  formatAmountTriple,
+  formatUnixSecIsoUtc,
+  parseBigIntString,
+} from "./formatAmount";
 
 describe("parseBigIntString", () => {
   it("parses decimal strings", () => {
@@ -27,6 +32,16 @@ describe("abbreviateDecimalString", () => {
     expect(abbreviateDecimalString("1000000")).toBe("1m");
     expect(abbreviateDecimalString("2500000")).toBe("2.5m");
     expect(abbreviateDecimalString("3000000000")).toBe("3b");
+  });
+});
+
+describe("formatUnixSecIsoUtc", () => {
+  it("formats valid unix seconds as UTC ISO", () => {
+    expect(formatUnixSecIsoUtc(1700000000n)).toBe("2023-11-14T22:13:20.000Z");
+  });
+  it("returns em dash out of range", () => {
+    expect(formatUnixSecIsoUtc(-1n)).toBe("—");
+    expect(formatUnixSecIsoUtc(10n ** 16n)).toBe("—");
   });
 });
 

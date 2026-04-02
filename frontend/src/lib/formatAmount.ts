@@ -84,9 +84,18 @@ export function formatAmountTriple(raw: bigint, decimals: number): AmountTriple 
   return { raw: rawStr, decimal, abbrev };
 }
 
-export function formatUnixSec(sec: bigint): string {
+function unixSecToValidNumber(sec: bigint): number | null {
   const n = Number(sec);
   if (!Number.isFinite(n) || n < 0 || n > 1e15) {
+    return null;
+  }
+  return n;
+}
+
+/** Locale date/time for display (see `docs/frontend/design.md` — timestamps). */
+export function formatUnixSec(sec: bigint): string {
+  const n = unixSecToValidNumber(sec);
+  if (n === null) {
     return "—";
   }
   try {
@@ -94,6 +103,19 @@ export function formatUnixSec(sec: bigint): string {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  } catch {
+    return "—";
+  }
+}
+
+/** UTC ISO-8601 for display (not raw unix seconds). */
+export function formatUnixSecIsoUtc(sec: bigint): string {
+  const n = unixSecToValidNumber(sec);
+  if (n === null) {
+    return "—";
+  }
+  try {
+    return new Date(n * 1000).toISOString();
   } catch {
     return "—";
   }
