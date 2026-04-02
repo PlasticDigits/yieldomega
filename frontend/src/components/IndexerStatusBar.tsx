@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { fetchIndexerStatus } from "@/lib/indexerApi";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 
 export function IndexerStatusBar() {
   const [line, setLine] = useState<string>("Indexer: not configured");
@@ -24,10 +25,9 @@ export function IndexerStatusBar() {
         return;
       }
       const ver = typeof s.schema_version === "string" ? s.schema_version : "?";
+      const blockRaw = s.max_indexed_block;
       const block =
-        typeof s.max_indexed_block === "number" || typeof s.max_indexed_block === "string"
-          ? String(s.max_indexed_block)
-          : "?";
+        typeof blockRaw === "number" || typeof blockRaw === "string" ? formatLocaleInteger(blockRaw) : "?";
       setLine(`Indexer v${ver} · max block ${block}`);
     })();
     return () => {

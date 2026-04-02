@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   abbreviateDecimalString,
   formatAmountTriple,
+  formatLocaleInteger,
   formatUnixSecIsoUtc,
   parseBigIntString,
 } from "./formatAmount";
@@ -32,6 +33,16 @@ describe("abbreviateDecimalString", () => {
     expect(abbreviateDecimalString("1000000")).toBe("1m");
     expect(abbreviateDecimalString("2500000")).toBe("2.5m");
     expect(abbreviateDecimalString("3000000000")).toBe("3b");
+  });
+});
+
+describe("formatLocaleInteger", () => {
+  it("preserves digit sequence for bigint and string (locale may add separators)", () => {
+    expect(formatLocaleInteger(1234567n).replace(/\D/g, "")).toBe("1234567");
+    expect(formatLocaleInteger("9876543210").replace(/\D/g, "")).toBe("9876543210");
+  });
+  it("truncates non-integer numbers", () => {
+    expect(formatLocaleInteger(3.9)).toBe("3");
   });
 });
 

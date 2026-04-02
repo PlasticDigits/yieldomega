@@ -39,6 +39,12 @@
 - **User-facing rule:** show **only human-readable** instants—**locale** date/time (`formatUnixSec`) and **UTC ISO-8601** (`formatUnixSecIsoUtc`). Do not render raw unix second integers in product UI.
 - The unix value remains the onchain/RPC input; conversion stays in `UnixTimestampDisplay` / `formatAmount.ts`.
 
+### Plain integers (`formatLocaleInteger`)
+
+- For **non-token** whole numbers (gas estimates, block heights, seconds-long timers, buy counts), use **`formatLocaleInteger`** in `formatAmount.ts` so digits are grouped per locale.
+- Do **not** use it for wei/WAD token amounts or CHARM weight — those use `AmountDisplay` / `formatCompactFromRaw`.
+- Indexer rows that expose raw transfer amounts should still be formatted with **`formatCompactFromRaw`** (and an assumed decimals value documented at the call site if the API does not carry token metadata).
+
 ## Security posture
 
 - **No private keys** in the client.
