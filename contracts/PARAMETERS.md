@@ -14,8 +14,8 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 | Parameter | Testnet default | Bounds / notes | Status |
 |-----------|-----------------|----------------|--------|
-| Accepted asset | Testnet USDm (ERC-20) | **Standard ERC-20 only** (no fee-on-transfer / rebasing for TimeCurve `buy` accounting). Single asset for v1; resolve address from MegaETH testnet artifacts at deploy | **TODO** — address |
-| Initial minimum buy | 1 USDm (`1e18` in asset decimals) | > 0 | Default |
+| Accepted asset | Testnet **CL8Y** (ERC-20) | **Standard ERC-20 only** (no fee-on-transfer / rebasing for TimeCurve `buy` accounting). Single asset for v1; resolve address from official artifacts at deploy | **TODO** — address |
+| Initial minimum buy | 1 CL8Y (`1e18` in asset decimals) | > 0 | Default |
 | Daily growth fraction | 25 % (`0.25`) → `growthRateWad = ln(1.25) ≈ 223_143_551_314_209_700` | Must be > 0; governance-set | Default |
 | Purchase cap multiple | 10× current min buy | Must be ≥ 2 | Default |
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
@@ -40,11 +40,11 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 | Sink | Testnet default (bps) | Bounds |
 |------|-----------------------|--------|
-| DOUB locked liquidity (SIR / Kumbaya) — `DoubLPIncentives` | 3 000 | ≥ 0 |
-| CL8Y buy-and-burn — `CL8YProtocolTreasury` | 1 000 | ≥ 0 |
+| DOUB locked liquidity (SIR / Kumbaya) — `DoubLPIncentives` | 2 500 | ≥ 0 |
+| CL8Y buy-and-burn — `CL8YProtocolTreasury` | 3 500 | ≥ 0 |
 | Podium pool — `PodiumPool` | 2 000 | ≥ 0 |
-| Team — `EcosystemTreasury` (or ops multisig) | 500 | ≥ 0 |
-| Rabbit Treasury | 3 500 | ≥ 0 |
+| Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
+| Rabbit Treasury | 2 000 | ≥ 0 |
 
 **FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: four categories (50% / 20% / 10% / 20% of pool); placements **4∶2∶1** per category.
 
@@ -52,7 +52,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 | Parameter | Testnet default | Bounds / notes | Status |
 |-----------|-----------------|----------------|--------|
-| Reserve asset | Testnet USDm | Same as TimeCurve accepted asset | **TODO** — address |
+| Reserve asset | Testnet **CL8Y** | Same as TimeCurve accepted asset | **TODO** — address |
 | Epoch duration | 86 400 seconds (24 h) | > 0 | Default |
 | `c_max` | `2e18` (2.0) | Per simulations | Default |
 | `c_star` | `1.05e18` (1.05) | Per simulations | Default |
@@ -64,6 +64,11 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | `delta_max_frac` | `2e16` (0.02) | Per simulations | Default |
 | `eps` (coverage denominator floor) | `1` | > 0 | Default |
 | Initial `e` (exchange rate) | `1e18` (1.0) | > 0 | Default |
+| `protocolRevenueBurnShareWad` | `25e16` (25% of `receiveFee` gross burned) | `< 1e18` | `PARAMS_ROLE` |
+| `withdrawFeeWad` | `1e16` (1% of gross redemption after efficiency) | `< 1e18` | `PARAMS_ROLE` |
+| `minRedemptionEfficiencyWad` | `5e17` (50% floor when redemption health is 0) | `(0, 1e18]` | `PARAMS_ROLE` |
+| `redemptionCooldownEpochs` | `0` (off) | ≥ 0 | `PARAMS_ROLE` |
+| `burnSink` | `address(0)` → `DEFAULT_BURN_SINK` (`0x…dEaD`) | Immutable at deploy | Constructor |
 
 ## Governance addresses
 
@@ -77,7 +82,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 ## Reserve asset allowlist (v1)
 
-Testnet: **USDm only** (single ERC-20).
+Testnet: **CL8Y only** (single ERC-20).
 Multi-asset basket deferred until governance defines eligibility, caps, and
 conversion rules per [research/stablecoin-and-reserves.md](../docs/research/stablecoin-and-reserves.md).
 

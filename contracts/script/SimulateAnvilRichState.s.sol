@@ -54,7 +54,10 @@ uint256 constant PK_C = 0x7c852118294e51e653712a81e05800f419141751be58f605c371e1
 
 contract SimulateAnvilRichStatePart1 is Script {
     function run() external {
-        address usdm = vm.envAddress("USDM_ADDRESS");
+        address reserve = vm.envOr("RESERVE_ASSET_ADDRESS", address(0));
+        if (reserve == address(0)) {
+            reserve = vm.envAddress("USDM_ADDRESS");
+        }
         address tc = vm.envAddress("TIMECURVE_ADDRESS");
         address rt = vm.envAddress("RABBIT_TREASURY_ADDRESS");
 
@@ -64,36 +67,36 @@ contract SimulateAnvilRichStatePart1 is Script {
         address deployer = vm.addr(PK_DEPLOYER);
 
         console2.log("SimulateAnvilRichStatePart1");
-        console2.log("  USDM", usdm);
+        console2.log("  reserve (CL8Y)", reserve);
         console2.log("  TimeCurve", tc);
         console2.log("  RabbitTreasury", rt);
 
-        // Fund from deployer balance (DeployDev mints 100M USDM to deployer when MockUSDm is used).
+        // Fund from deployer balance (DeployDev mints 100M CL8Y to deployer when mock reserve is used).
         uint256 fund = 500_000e18;
-        require(IERC20(usdm).balanceOf(deployer) >= fund * 4, "deployer USDM balance too low");
+        require(IERC20(reserve).balanceOf(deployer) >= fund * 4, "deployer reserve balance too low");
         vm.startBroadcast(PK_DEPLOYER);
-        IERC20(usdm).transfer(alice, fund);
-        IERC20(usdm).transfer(bob, fund);
-        IERC20(usdm).transfer(carol, fund);
+        IERC20(reserve).transfer(alice, fund);
+        IERC20(reserve).transfer(bob, fund);
+        IERC20(reserve).transfer(carol, fund);
         vm.stopBroadcast();
 
-        _buy(PK_A, usdm, tc);
-        _buy(PK_B, usdm, tc);
-        _buy(PK_C, usdm, tc);
-        _buy(PK_DEPLOYER, usdm, tc);
+        _buy(PK_A, reserve, tc);
+        _buy(PK_B, reserve, tc);
+        _buy(PK_C, reserve, tc);
+        _buy(PK_DEPLOYER, reserve, tc);
 
         vm.startBroadcast(PK_DEPLOYER);
-        IERC20(usdm).approve(rt, type(uint256).max);
+        IERC20(reserve).approve(rt, type(uint256).max);
         IRabbitTreasury(rt).deposit(10_000e18, 1);
         vm.stopBroadcast();
 
         vm.startBroadcast(PK_A);
-        IERC20(usdm).approve(rt, type(uint256).max);
+        IERC20(reserve).approve(rt, type(uint256).max);
         IRabbitTreasury(rt).deposit(5_000e18, 2);
         vm.stopBroadcast();
 
         vm.startBroadcast(PK_B);
-        IERC20(usdm).approve(rt, type(uint256).max);
+        IERC20(reserve).approve(rt, type(uint256).max);
         IRabbitTreasury(rt).deposit(3_000e18, 3);
         vm.stopBroadcast();
 
@@ -108,11 +111,11 @@ contract SimulateAnvilRichStatePart1 is Script {
         console2.log("SimulateAnvilRichStatePart1: done.");
     }
 
-    function _buy(uint256 pk, address usdm, address tc) internal {
+    function _buy(uint256 pk, address reserveToken, address tc) internal {
         ITimeCurve t = ITimeCurve(tc);
         (, uint256 maxCharm) = t.currentCharmBoundsWad();
         vm.startBroadcast(pk);
-        IERC20(usdm).approve(tc, type(uint256).max);
+        IERC20(reserveToken).approve(tc, type(uint256).max);
         t.buy(maxCharm);
         vm.stopBroadcast();
     }

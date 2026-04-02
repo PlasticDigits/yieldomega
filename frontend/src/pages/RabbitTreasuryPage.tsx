@@ -9,7 +9,7 @@ export function RabbitTreasuryPage() {
       slug="rabbit-treasury"
       imageSrc="/art/rabbit-treasury-card.jpg"
     >
-      The Burrow will return: USDm deposits, DOUB claims, reserve health, and epoch repricing — full UI after the TimeCurve (DOUB) launch stabilizes on devnet.
+      The Burrow will return: CL8Y deposits, DOUB claims, reserve health, and epoch repricing — full UI after the TimeCurve (DOUB) launch stabilizes on devnet.
     </UnderConstruction>
   );
 }

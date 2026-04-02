@@ -13,7 +13,7 @@ import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 
 contract MockTokTC is ERC20 {
-    constructor() ERC20("USDM", "USDM") {}
+    constructor() ERC20("CL8Y", "CL8Y") {}
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
@@ -83,7 +83,7 @@ contract TimeCurveInvariantTest is Test {
         router = new FeeRouter(
             address(this),
             [s0, s1, address(podiumPool), s3, s4],
-            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
         );
         linearPrice = new LinearCharmPrice(1e18, 0);
         tc = new TimeCurve(

@@ -15,17 +15,17 @@ Implementation detail for **where** fees land onchain (treasury contracts, route
 
 Fees routed from **TimeCurve** (and the same split applies wherever this policy is referenced as the launch default) are allocated as follows. Percentages are of the **routed fee** after any immutable protocol carve-outs (if any). **Weights must sum to 100%** — see [invariant: TimeCurve split totals](#invariant-timecurve-split-totals).
 
-| Destination | Share |
-|-------------|-------|
-| **DOUB locked liquidity** (SIR / Kumbaya seeding — **not** generic farm incentives) | **30%** |
-| **CL8Y buy-and-burn** | **10%** |
-| **Podium pool** (TimeCurve competition payouts in the **accepted reserve asset**) | **20%** |
-| **Team** | **5%** |
-| **Rabbit Treasury** ([Burrow](../product/rabbit-treasury.md)) | **35%** |
+| Destination (FeeRouter sink order) | Share |
+|------------------------------------|-------|
+| **DOUB locked liquidity** (SIR / Kumbaya seeding — **not** generic farm incentives) | **25%** |
+| **CL8Y direct burn** (buy-and-burn — **`CL8YProtocolTreasury`**) | **35%** |
+| **Podium pool** (TimeCurve prizes in the **accepted reserve asset**, **CL8Y** at launch) | **20%** |
+| **Team / ecosystem** (sink index reserved; **0%** at launch) | **0%** |
+| **Rabbit Treasury** ([Burrow](../product/rabbit-treasury.md)) | **20%** |
 
-Basis points: **3000** / **1000** / **2000** / **500** / **3500** = **10000**.
+Basis points (sink **order** on `FeeRouter`: LP · CL8Y · podium · team · Rabbit): **2500** / **3500** / **2000** / **0** / **2000** = **10000**.
 
-Each **buy** routes the **full gross** amount in the accepted asset through **`FeeRouter`** (referral economics use **CHARM weight**, not reserve carve-outs — see [referrals](../product/referrals.md)). The **30%** slice lands at **`DoubLPIncentives`** for **locked** DOUB/reserve liquidity policy (paired at **1.2×** the projected **final reserve-per-DOUB** clearing anchor; **Kumbaya v3** uses a **0.8×–∞** band around the **launch anchor** — see [launchplan-timecurve.md](../../launchplan-timecurve.md) and product UX). **Team** typically uses **`EcosystemTreasury`** (or a dedicated multisig) in dev deploys. The **podium pool** is the **`PodiumPool`** contract; **`TimeCurve.distributePrizes`** pays winners in **reserve**, not DOUB. **Charm redemption** (`redeemCharms`) is **DOUB-only** and is **separate** from this routing (sale allocation, not fee slice).
+Each **buy** routes the **full gross** amount in the accepted asset through **`FeeRouter`** (referral economics use **CHARM weight**, not reserve carve-outs — see [referrals](../product/referrals.md)). The **25%** slice lands at **`DoubLPIncentives`** for **locked** DOUB/**CL8Y** liquidity policy (paired at **1.2×** the projected **final reserve-per-DOUB** clearing anchor; **Kumbaya v3** uses a **0.8×–∞** band around the **launch anchor** — see [launchplan-timecurve.md](../../launchplan-timecurve.md) and product UX). The **podium pool** is the **`PodiumPool`** contract; **`TimeCurve.distributePrizes`** pays winners in **reserve** (CL8Y), not DOUB. **Charm redemption** (`redeemCharms`) is **DOUB-only** and is **separate** from this routing (sale allocation, not fee slice).
 
 **Podium internals (onchain defaults):** four categories — **last buyers (50%** of pool**)** · **most buys (20%)** · **biggest single buy (10%)** · **highest cumulative CHARM (20%)**; within each category placements use **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). Opening/closing window categories are **removed**.
 
@@ -37,11 +37,11 @@ Each row is a **fee sink**: a destination that receives a share of the **TimeCur
 
 | Fee sink | Share | Example onchain receiver | Who may change weight or destination |
 |----------|-------|--------------------------|--------------------------------------|
-| **DOUB locked liquidity** | 30% | **`DoubLPIncentives`** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — fee split / routing parameters (timelock + vote or delegated process TBD). |
-| **CL8Y buy-and-burn** | 10% | **CL8YProtocolTreasury** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — same fee split / routing surface. |
+| **DOUB locked liquidity** | 25% | **`DoubLPIncentives`** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — fee split / routing parameters (timelock + vote or delegated process TBD). |
+| **CL8Y buy-and-burn** | 35% | **CL8YProtocolTreasury** ([treasury-contracts.md](treasury-contracts.md)) | **[CL8Y](#governance-fee-split-weights)** — same fee split / routing surface. |
 | **Podium pool** | 20% | **`PodiumPool`** | **Top-level weight and destination:** **[CL8Y](#governance-fee-split-weights)**. **Internal category / placement rules** are fixed in **`TimeCurve`** today (see [product/primitives.md](../product/primitives.md)); changing them requires a contract upgrade unless parameterized later. |
-| **Team** | 5% | **`EcosystemTreasury`** / ops multisig (per deploy) | **[CL8Y](#governance-fee-split-weights)**. |
-| **Rabbit Treasury** | 35% | **RabbitTreasury** ([treasury-contracts.md](treasury-contracts.md), [rabbit-treasury.md](../product/rabbit-treasury.md)) | **[CL8Y](#governance-fee-split-weights)** — **TimeCurve** fee slice; **repricing** and other Burrow knobs are a separate class ([Rabbit Treasury repricing](#governance-rabbit-repricing)). |
+| **Team** | 0% (launch default) | **`EcosystemTreasury`** / ops multisig (per deploy) | **[CL8Y](#governance-fee-split-weights)** — weight may be increased via governance without redeploying `FeeRouter` layout. |
+| **Rabbit Treasury** | 20% | **RabbitTreasury** ([treasury-contracts.md](treasury-contracts.md), [rabbit-treasury.md](../product/rabbit-treasury.md)) | **[CL8Y](#governance-fee-split-weights)** — **TimeCurve** fee slice; **repricing** and other Burrow knobs are a separate class ([Rabbit Treasury repricing](#governance-rabbit-repricing)). |
 
 Related checks: [Post-update invariants](#post-update-invariants). **Other products** may define **additional** sinks and schedules; those must be documented per contract ([Other products](#other-products)).
 

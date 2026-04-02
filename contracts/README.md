@@ -91,8 +91,8 @@ Deploy all core contracts to a local or dev environment:
 forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC>
 ```
 
-The script deploys mock tokens (USDm, launched token) when `USDM_ADDRESS` is not set.
-To use a real testnet USDm, export `USDM_ADDRESS` before running.
+The script deploys mock tokens (**CL8Y** reserve + launched token) when neither `RESERVE_ASSET_ADDRESS` nor legacy `USDM_ADDRESS` is set.
+To use a real testnet CL8Y address, export `RESERVE_ASSET_ADDRESS` (or `USDM_ADDRESS`) before running.
 
 Addresses are printed to console — copy them into
 [`deployments/dev-addresses.example.json`](./deployments/dev-addresses.example.json).
@@ -111,16 +111,17 @@ need human decisions before mainnet.
 | Contract | Purpose |
 |----------|---------|
 | `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing |
-| `RabbitTreasury` | Player-facing reserve game — USDm ↔ DOUB, epoch repricing via `BurrowMath` |
+| `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
 | `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
-| `FeeRouter` | Splits fees to 4 canonical sinks (bps weights, governed) |
+| `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
 | `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
-| `CL8YProtocolTreasury` | CL8Y buy-and-burn sink (15 %) |
-| `DoubLPIncentives` | DOUB liquidity sink (30 %) — LP mechanics TODO |
-| `EcosystemTreasury` | CL8Y-governed pool (not a direct fee sink) |
+| `CL8YProtocolTreasury` | CL8Y buy-and-burn sink (**35%** launch default) |
+| `DoubLPIncentives` | DOUB liquidity sink (**25%** launch default) — LP mechanics TODO |
+| `EcosystemTreasury` | Team / ecosystem sink address (**0%** weight at launch; still wired in `DeployDev`) |
 | `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting |
-| `ReferralRegistry` | Short referral codes; CL8Y burn to register; used by `TimeCurve` buys |
-| `MockCL8Y` | Dev-only burnable CL8Y for registration tests / local deploy |
+| `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |
+| `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
+| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
 
 ## Libraries
 

@@ -384,7 +384,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::FeeRouterSinksUpdated {
             actor: alice,
             old_destinations: [addr_byte(1); 5],
-            old_weights: [3000, 1000, 2000, 500, 3500],
+            old_weights: [2500, 3500, 2000, 0, 2000],
             new_destinations: [addr_byte(2); 5],
             new_weights: [2000, 2000, 2000, 2000, 2000],
         }),

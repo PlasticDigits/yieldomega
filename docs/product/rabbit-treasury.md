@@ -2,7 +2,47 @@
 
 ## Positioning
 
-Rabbit Treasury is the **treasury game layer** that receives ecosystem value and **retains users over time**. It should **not** be marketed as a simple ROI dapp. It is best understood as a **reserve-linked treasury game** with **internal accounting**: users deposit **reserve assets** (for example **USDm**) and receive **Doubloons (DOUB)** on the **Burrow** whose effective value can **float** according to **reserve health**, especially over **rolling windows** (for example 24 hours).
+Rabbit Treasury is the **treasury game layer** that receives ecosystem value and **retains users over time**. It should **not** be marketed as a simple ROI dapp. It is best understood as a **reserve-linked treasury game** with **internal accounting**: users deposit **reserve assets** (**CL8Y** at launch) and receive **Doubloons (DOUB)** on the **Burrow** whose effective value can **float** according to **reserve health**, especially over **rolling windows** (for example 24 hours).
+
+## Reserve buckets (CL8Y accumulator)
+
+Rabbit holds the reserve asset in **two onchain buckets**:
+
+| Bucket | Meaning | Typical sources |
+|--------|---------|-----------------|
+| **Redeemable backing** | Backs ordinary DOUB redemptions | User deposits |
+| **Protocol-owned backing** | **Non-redeemable** exit path for normal DOUB holders | `receiveFee` share (after burn), withdrawal fees |
+
+**Total backing** = redeemable + protocol-owned. **`BurrowMath` coverage at epoch close** uses **total backing** so protocol inflows improve **system health** without minting DOUB.
+
+**Protocol revenue** (`receiveFee`): a configurable **WAD** fraction of each gross inflow is **burned** (transferred to an immutable burn sink, default `0x000…dEaD`); the remainder credits **protocol-owned backing**. Deploy defaults target about **25% burn / 75% protocol** (tunable toward the **20–40% burn / 60–80% protocol** range).
+
+**Withdrawals** only draw from **redeemable backing** for the user’s claim. A configurable **withdrawal fee** (WAD) stays in the vault and is credited to **protocol-owned backing**.
+
+### Deposit (mint) formula
+
+- `redeemableBacking += amount`
+- `doubOut = amount * WAD / eWad`
+
+Minting is keyed off **redeemable deposits**, not total CL8Y in the contract.
+
+### Withdraw (redeem) formula
+
+Let `S` = DOUB `totalSupply`, `R` = `redeemableBacking`, `e` = `eWad`, `L = S * e / WAD`.
+
+1. `nominalOut = doubAmount * e / WAD`
+2. `proRataCap = doubAmount * R / S` (fair share of redeemable if under-covered on the redeemable bucket)
+3. `baseOut = min(nominalOut, proRataCap)`
+4. `H = min(R * WAD / (L + eps), WAD)` — redemption health (1.0 = fully covered on redeemable vs nominal liability)
+5. `effWad = minRedemptionEfficiencyWad + (WAD - minRedemptionEfficiencyWad) * H / WAD`
+6. `grossFromRedeemable = baseOut * effWad / WAD` (debited from `redeemableBacking`)
+7. `fee = grossFromRedeemable * withdrawFeeWad / WAD` → `protocolOwnedBacking`; user receives `grossFromRedeemable - fee`
+
+Governance may set **redemption cooldown** (minimum epochs between withdrawals per address).
+
+### Onchain transparency
+
+In addition to legacy getters, the contract exposes **`redeemableBacking`**, **`protocolOwnedBacking`**, **`totalReserves()` / `totalBacking()`**, **`cumulativeBurned`**, **`cumulativeWithdrawFees`**, **`redemptionHealthWad()`**, **`redemptionLiabilityWad()`**, and **`previewWithdraw`**. New events: **`BurrowReserveBuckets`**, **`BurrowProtocolRevenueSplit`**, **`BurrowWithdrawalFeeAccrued`**. Indexers may treat these as a **strict superset** of the canonical table below (schema bump when persisting new fields).
 
 ## Honest sustainability
 
@@ -48,7 +88,7 @@ The table below is the **canonical naming spec** for **`RabbitTreasury` (Burrow)
 - All names are **Solidity `event` identifiers** (PascalCase after `Burrow`).
 - **`reasonCode`** on balance updates is an onchain enum (deposit, withdraw, fee, governance transfer, etc.); document numeric values in the contract NatSpec when frozen.
 - **WAD** means **1e18 fixed-point** unless the implementation fixes another decimals convention in NatSpec.
-- **`reserveAsset`** is the **vault token address** (for example USDm). Multi-asset treasuries emit one **`BurrowEpochReserveSnapshot`** per asset per epoch close.
+- **`reserveAsset`** is the **vault token address** (for example **CL8Y**). Multi-asset treasuries emit one **`BurrowEpochReserveSnapshot`** per asset per epoch close.
 - **DOUB** supply may also be tracked via standard **ERC-20 `Transfer`** on the Doubloon token; the epoch events below are the **authoritative snapshot** for charts aligned with repricing.
 
 | Chart metric (indexer / UX) | Canonical event(s) | Payload fields used (implementer fills exact types in ABI) | Notes |
@@ -66,6 +106,9 @@ The table below is the **canonical naming spec** for **`RabbitTreasury` (Burrow)
 | **Repricing factor** | `BurrowHealthEpochFinalized`, `BurrowRepricingApplied` | `repricingFactorWad`; on repricing steps also `priorInternalPriceWad`, `newInternalPriceWad` | Use **`BurrowRepricingApplied`** for every discrete repricing step; **`BurrowHealthEpochFinalized`** carries the epoch’s **summary** factor if the protocol defines one. |
 | **Internal epoch state (Burrow math)** | `BurrowHealthEpochFinalized` | `internalStateEWad` | Aligns with `BurrowMath` / simulations; name in ABI may be `eWad`—document alias in NatSpec. |
 | **Cumulative fees to treasury** | `BurrowFeeAccrued` | `asset`, `amount`, `cumulativeInAsset`, `epochId` | Sum of `amount` per window if `cumulativeInAsset` is not relied on; prefer emitted cumulative for exact chain truth. |
+| **Redeemable vs protocol buckets** | `BurrowReserveBuckets` | `epochId`, `redeemableBacking`, `protocolOwnedBacking`, `totalBacking` | Emitted on deposits, withdrawals, fee splits, and epoch finalize for charting. |
+| **Protocol revenue burn vs protocol bucket** | `BurrowProtocolRevenueSplit` | `epochId`, `grossAmount`, `toProtocolBucket`, `burnedAmount` | Ties `receiveFee` gross to burn and non-redeemable backing. |
+| **Withdrawal fee recycling** | `BurrowWithdrawalFeeAccrued` | `asset`, `feeAmount`, `cumulativeWithdrawFees` | Fee stays in vault; moves redeemable → protocol bucket internally. |
 | **Net reserve flow** (deposits minus withdrawals) | `BurrowDeposited`, `BurrowWithdrawn` | `reserveAsset`, `amount`, `epochId`, `user`, `factionId` | Aggregate per `epochId` or rolling window from both events; **faction** supports leaderboards without secret scoring. |
 | **Repricing / devaluation event count** | `BurrowRepricingApplied` | count per rolling window | If repricing only runs at epoch close, count may match epoch count; otherwise count steps. |
 
@@ -78,7 +121,12 @@ The table below is the **canonical naming spec** for **`RabbitTreasury` (Burrow)
 - `BurrowDeposited(address indexed user, address indexed reserveAsset, uint256 amount, uint256 doubOut, uint256 indexed epochId, uint256 factionId)`
 - `BurrowWithdrawn(address indexed user, address indexed reserveAsset, uint256 amount, uint256 doubIn, uint256 indexed epochId, uint256 factionId)`
 - `BurrowFeeAccrued(address indexed asset, uint256 amount, uint256 cumulativeInAsset, uint256 indexed epochId)`
+- `BurrowReserveBuckets(uint256 indexed epochId, uint256 redeemableBacking, uint256 protocolOwnedBacking, uint256 totalBacking)`
+- `BurrowProtocolRevenueSplit(uint256 indexed epochId, uint256 grossAmount, uint256 toProtocolBucket, uint256 burnedAmount)`
+- `BurrowWithdrawalFeeAccrued(address indexed asset, uint256 feeAmount, uint256 cumulativeWithdrawFees)`
 - `BurrowRepricingApplied(uint256 indexed epochId, uint256 repricingFactorWad, uint256 priorInternalPriceWad, uint256 newInternalPriceWad)`
+
+**`BurrowReserveBalanceUpdated.reasonCode` (v1):** `1` = deposit, `2` = withdraw (user payout), `3` = fee router inflow (`delta` = net change to vault balance after burn transfer).
 
 ## Open design questions
 
