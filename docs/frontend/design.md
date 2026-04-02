@@ -39,6 +39,11 @@
 - **User-facing rule:** show **only human-readable** instants—**locale** date/time (`formatUnixSec`) and **UTC ISO-8601** (`formatUnixSecIsoUtc`). Do not render raw unix second integers in product UI.
 - The unix value remains the onchain/RPC input; conversion stays in `UnixTimestampDisplay` / `formatAmount.ts`.
 
+### Basis points (fee routing)
+
+- Onchain and policy weights are stored as **basis points** (10_000 = 100%). In UI, show **`formatBpsAsPercent`** (e.g. `30.00%`), not raw `bps` integers.
+- Indexer mirror fields that store structured JSON (`*_sinks_json`, `shares_json`) must be **parsed and summarized** for display—do not show raw JSON strings or blobs to users.
+
 ### Plain integers (`formatLocaleInteger`)
 
 - For **non-token** whole numbers (gas estimates, block heights, seconds-long timers, buy counts), use **`formatLocaleInteger`** in `formatAmount.ts` so digits are grouped per locale.

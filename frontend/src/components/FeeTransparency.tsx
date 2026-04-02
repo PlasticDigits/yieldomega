@@ -5,7 +5,7 @@ import { useReadContracts } from "wagmi";
 import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { formatLocaleInteger } from "@/lib/formatAmount";
+import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { feeRouterReadAbi } from "@/lib/abis";
 import {
   fetchFeeRouterFeesDistributed,
@@ -14,7 +14,14 @@ import {
   type FeeRouterSinksUpdateItem,
 } from "@/lib/indexerApi";
 
-const LABELS = ["DOUB LP", "Rabbit Treasury", "Prizes", "CL8Y buy-and-burn"];
+/** Matches `FeeRouter` sink order: DOUB LP · CL8Y · podium · team · Rabbit. */
+const FEE_SINK_LABELS = [
+  "DOUB LP (locked)",
+  "CL8Y buy-and-burn",
+  "Podium pool",
+  "Team",
+  "Rabbit Treasury",
+] as const;
 
 export function FeeTransparency() {
   const fr = addresses.feeRouter;
@@ -24,7 +31,7 @@ export function FeeTransparency() {
 
   const { data, isPending, isError } = useReadContracts({
     contracts: fr
-      ? ([0, 1, 2, 3] as const).map((i) => ({
+      ? ([0, 1, 2, 3, 4] as const).map((i) => ({
           address: fr,
           abi: feeRouterReadAbi,
           functionName: "sinks" as const,
@@ -93,7 +100,7 @@ export function FeeTransparency() {
           const [dest, bps] = row.result as readonly [`0x${string}`, number];
           return (
             <li key={i}>
-              <strong>{LABELS[i] ?? `Sink ${i}`}</strong>: {bps} bps →{" "}
+              <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)} →{" "}
               <span className="mono">{dest}</span>
             </li>
           );
@@ -109,7 +116,8 @@ export function FeeTransparency() {
               <li key={`${row.tx_hash}-${row.log_index}`}>
                 block {formatLocaleInteger(row.block_number)} — actor{" "}
                 <span className="mono">{row.actor.slice(0, 10)}…</span> —{" "}
-                new weights {summarizeSinksJson(row.new_sinks_json)} — tx <TxHash hash={row.tx_hash} />
+                new routing {formatSinksJsonForDisplay(row.new_sinks_json)} — tx{" "}
+                <TxHash hash={row.tx_hash} />
               </li>
             ))}
           </ul>
@@ -129,7 +137,8 @@ export function FeeTransparency() {
                 <span className="mono">
                   {formatCompactFromRaw(rawToBigIntForFormat(row.amount), 18)}
                 </span>{" "}
-                — {summarizeSharesJson(row.shares_json)} — tx <TxHash hash={row.tx_hash} />
+                — per sink {formatFeeSharesJsonForDisplay(row.shares_json)} — tx{" "}
+                <TxHash hash={row.tx_hash} />
               </li>
             ))}
           </ul>
@@ -143,18 +152,44 @@ export function FeeTransparency() {
   );
 }
 
-function summarizeSinksJson(json: string): string {
+function formatSinksJsonForDisplay(json: string): string {
   try {
-    const p = JSON.parse(json) as { weights?: number[] };
-    if (Array.isArray(p.weights)) {
-      return p.weights.join(", ");
+    const p = JSON.parse(json) as { weights?: unknown };
+    const w = p.weights;
+    if (!Array.isArray(w)) {
+      return "—";
     }
+    const parts: string[] = [];
+    for (let i = 0; i < w.length; i++) {
+      const bps = Number(w[i]);
+      if (!Number.isFinite(bps)) {
+        continue;
+      }
+      const label = FEE_SINK_LABELS[i] ?? `Sink ${i}`;
+      parts.push(`${label} ${formatBpsAsPercent(bps)}`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "—";
   } catch {
-    /* ignore */
+    return "—";
   }
-  return json.length > 40 ? `${json.slice(0, 40)}…` : json;
 }
 
-function summarizeSharesJson(json: string): string {
-  return json.length > 48 ? `${json.slice(0, 48)}…` : json;
+/** `shares` from indexer are per-sink token amounts (wei); 18 dp assumed (see amount row). */
+function formatFeeSharesJsonForDisplay(json: string): string {
+  try {
+    const p = JSON.parse(json) as { shares?: unknown };
+    const s = p.shares;
+    if (!Array.isArray(s)) {
+      return "—";
+    }
+    const parts: string[] = [];
+    for (let i = 0; i < s.length; i++) {
+      const label = FEE_SINK_LABELS[i] ?? `Sink ${i}`;
+      const amt = formatCompactFromRaw(rawToBigIntForFormat(String(s[i])), 18);
+      parts.push(`${label} ${amt}`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "—";
+  } catch {
+    return "—";
+  }
 }
