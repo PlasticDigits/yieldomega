@@ -14,8 +14,21 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 ## Core ideas
 
 - **Minimum buy rises over time**; each buy has **min/max** bounds; **timer** extends on buys up to a **cap**; **`initialTimerSec`** may be shorter than the cap so early activity can still grow remaining time (see deployed parameters).
-- **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`**, separate from DOUB redemption.
+- **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**, separate from DOUB redemption.
 - **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **25%** locked DOUB LP · **35%** CL8Y buy-and-burn · **20%** podium pool · **0%** team/reserved · **20%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
+
+### TimeCurve podium categories (onchain v1 — four only)
+
+Authoritative rules and edge cases: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium section + Activity / Defended subsections). **Do not** describe legacy ideas (most-buys, biggest-buy, cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
+
+Plain language for participants:
+
+- **Last buy:** compete to be the last person to buy.
+- **Time booster:** most actual time added to the timer (effective `deadline` increase per buy, after cap clipping).
+- **Activity leader:** 250 points each buy, no matter size, and you can burn 1 CL8Y to steal 10% of the leader’s points (onchain: **floor** of 10% of the current #1’s integer points; then the buyer still gets **+250**; ties → lower address ranks higher on the activity podium).
+- **Defended streak:** how many times the same wallet resets the timer while it is under 15 minutes; the streak ends and is recorded when a second player buys under 15 minutes (**leaderboard uses `bestDefendedStreak`**, not only the live `activeDefendedStreak`).
+
+When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history.
 
 ## Success function (non-financial)
 

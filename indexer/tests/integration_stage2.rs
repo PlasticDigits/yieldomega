@@ -47,6 +47,7 @@ fn sample_log(block: u64, tx_id: u64, log_index: u64, event: DecodedEvent) -> De
         block_hash: b256_lo(block.saturating_add(10_000)),
         tx_hash: b256_lo(tx_id),
         log_index,
+        block_timestamp: None,
         contract: CONTRACT,
         event,
     }
@@ -177,6 +178,8 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/fee-router/sinks-updates?limit=2",
         "/v1/fee-router/fees-distributed?limit=2",
         "/v1/rabbit/faction-stats",
+        "/v1/timecurve/warbow/battle-feed?limit=2",
+        "/v1/timecurve/warbow/leaderboard?limit=2",
     ] {
         let res = app
             .clone()
@@ -187,6 +190,56 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         let j = response_json(res).await;
         assert!(j["items"].is_array(), "path {path}");
     }
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/warbow/steals-by-victim-day?victim=0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/warbow/steals-by-victim-day?victim=0xdddddddddddddddddddddddddddddddddddddddd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert!(j["items"].is_array());
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/warbow/guard-latest?player=0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/warbow/guard-latest?player=0xdddddddddddddddddddddddddddddddddddddddd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
 
     sqlx::query(
         r#"INSERT INTO idx_timecurve_buy (
@@ -282,6 +335,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             new_deadline: u2,
             total_raised_after: u1,
             buy_index: u1,
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
         }),
         next(DecodedEvent::TimeCurveSaleEnded {
             end_timestamp: u1,
@@ -393,6 +459,37 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             amount: u2,
             shares: [u1, u1, u1, u1, u2],
         }),
+        next(DecodedEvent::TimeCurveWarBowSteal {
+            attacker: alice,
+            victim: addr_byte(0xb2),
+            amount_bp: u1,
+            burn_paid_wad: u1,
+            bypassed_victim_daily_limit: false,
+            victim_bp_after: u2,
+            attacker_bp_after: u1,
+        }),
+        next(DecodedEvent::TimeCurveWarBowRevenge {
+            avenger: alice,
+            stealer: addr_byte(0xb2),
+            amount_bp: u1,
+            burn_paid_wad: u1,
+        }),
+        next(DecodedEvent::TimeCurveWarBowGuardActivated {
+            player: alice,
+            guard_until_ts: u2,
+            burn_paid_wad: u1,
+        }),
+        next(DecodedEvent::TimeCurveWarBowFlagClaimed {
+            player: alice,
+            bonus_bp: u2,
+            battle_points_after: u1,
+        }),
+        next(DecodedEvent::TimeCurveWarBowFlagPenalized {
+            former_holder: alice,
+            penalty_bp: u1,
+            triggering_buyer: addr_byte(0xb2),
+            battle_points_after: u2,
+        }),
     ];
 
     for d in &logs {
@@ -461,6 +558,20 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_fee_router_fees_distributed", 100).await,
         1
     );
+    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
+        1
+    );
+    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
+        1
+    );
 
     // Idempotency: same (tx_hash, log_index) again
     let first = &logs[1];
@@ -473,6 +584,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         block_hash: first.block_hash,
         tx_hash: b256_lo(999_001),
         log_index: 999,
+        block_timestamp: None,
         contract: CONTRACT,
         event: DecodedEvent::Unknown { topic0: B256::ZERO },
     };
@@ -512,6 +624,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             new_deadline: U256::from(2u8),
             total_raised_after: U256::from(1u8),
             buy_index: U256::from(1u8),
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
         },
     );
     let d20 = sample_log(
@@ -526,6 +651,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             new_deadline: U256::from(2u8),
             total_raised_after: U256::from(1u8),
             buy_index: U256::from(1u8),
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
         },
     );
     persist_decoded_log(&pool, &d5).await.expect("d5");
@@ -540,6 +678,20 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 0);
     // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
+    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
+        0
+    );
+    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_referral_applied", 100).await,
         0

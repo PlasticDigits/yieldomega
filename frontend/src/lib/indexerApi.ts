@@ -20,6 +20,14 @@ export type BuyItem = {
   new_deadline: string;
   total_raised_after: string;
   buy_index: string;
+  /** Effective seconds added to the deadline this tx (post cap); omitted on legacy indexer rows. */
+  actual_seconds_added?: string;
+  activity_attack?: boolean;
+  activity_points_taken_from_leader?: string;
+  buyer_activity_points_after?: string;
+  buyer_total_effective_timer_sec?: string;
+  buyer_active_defended_streak?: string;
+  buyer_best_defended_streak?: string;
 };
 
 export type DepositItem = {

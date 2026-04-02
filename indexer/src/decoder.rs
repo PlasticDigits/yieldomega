@@ -17,6 +17,43 @@ mod contracts {
     }
 
     sol! {
+        /// Pre–v1-category `Buy` payload (7 data fields after indexed buyer). Topic differs from current `Buy`.
+        contract TimeCurveBuyLegacy {
+            event Buy(
+                address indexed buyer,
+                uint256 charmWad,
+                uint256 amount,
+                uint256 pricePerCharmWad,
+                uint256 newDeadline,
+                uint256 totalRaisedAfter,
+                uint256 buyIndex
+            );
+        }
+    }
+
+    sol! {
+        /// Activity-era `Buy` (pre–WarBow); distinct topic from current `Buy`.
+        contract TimeCurveBuyV2Activity {
+            event Buy(
+                address indexed buyer,
+                uint256 charmWad,
+                uint256 amount,
+                uint256 pricePerCharmWad,
+                uint256 newDeadline,
+                uint256 totalRaisedAfter,
+                uint256 buyIndex,
+                uint256 actualSecondsAdded,
+                bool activityAttack,
+                uint256 activityPointsTakenFromLeader,
+                uint256 buyerActivityPointsAfter,
+                uint256 buyerTotalEffectiveTimerSecAdded,
+                uint256 buyerActiveDefendedStreak,
+                uint256 buyerBestDefendedStreak
+            );
+        }
+    }
+
+    sol! {
         contract TimeCurveEvents {
             event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
             event Buy(
@@ -26,7 +63,20 @@ mod contracts {
                 uint256 pricePerCharmWad,
                 uint256 newDeadline,
                 uint256 totalRaisedAfter,
-                uint256 buyIndex
+                uint256 buyIndex,
+                uint256 actualSecondsAdded,
+                bool timerHardReset,
+                uint256 battlePointsAfter,
+                uint256 bpBaseBuy,
+                uint256 bpTimerResetBonus,
+                uint256 bpClutchBonus,
+                uint256 bpStreakBreakBonus,
+                uint256 bpAmbushBonus,
+                uint256 bpFlagPenalty,
+                bool flagPlanted,
+                uint256 buyerTotalEffectiveTimerSecAdded,
+                uint256 buyerActiveDefendedStreak,
+                uint256 buyerBestDefendedStreak
             );
             event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
             event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
@@ -38,6 +88,37 @@ mod contracts {
                 uint256 referrerCharmAdded,
                 uint256 refereeCharmAdded,
                 uint256 grossAmountRoutedToFeeRouter
+            );
+            event WarBowSteal(
+                address indexed attacker,
+                address indexed victim,
+                uint256 amountBp,
+                uint256 burnPaidWad,
+                bool bypassedVictimDailyLimit,
+                uint256 victimBpAfter,
+                uint256 attackerBpAfter
+            );
+            event WarBowRevenge(
+                address indexed avenger,
+                address indexed stealer,
+                uint256 amountBp,
+                uint256 burnPaidWad
+            );
+            event WarBowGuardActivated(
+                address indexed player,
+                uint256 guardUntilTs,
+                uint256 burnPaidWad
+            );
+            event WarBowFlagClaimed(
+                address indexed player,
+                uint256 bonusBp,
+                uint256 battlePointsAfter
+            );
+            event WarBowFlagPenalized(
+                address indexed formerHolder,
+                uint256 penaltyBp,
+                address indexed triggeringBuyer,
+                uint256 battlePointsAfter
             );
         }
     }
@@ -128,7 +209,8 @@ mod contracts {
 
 use contracts::{
     FeeRouterEvents, LeprechaunEvents, PodiumPoolEvents, RabbitTreasuryEvents,
-    ReferralRegistryEvents, TimeCurveEvents, TimeCurveEventsLegacy,
+    ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyV2Activity, TimeCurveEvents,
+    TimeCurveEventsLegacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -138,6 +220,8 @@ pub struct DecodedLog {
     pub block_hash: B256,
     pub tx_hash: B256,
     pub log_index: u64,
+    /// Block time (Unix seconds) when present on the RPC log; used for UTC-day WarBow limits.
+    pub block_timestamp: Option<u64>,
     pub contract: Address,
     pub event: DecodedEvent,
 }
@@ -157,6 +241,19 @@ pub enum DecodedEvent {
         new_deadline: U256,
         total_raised_after: U256,
         buy_index: U256,
+        actual_seconds_added: U256,
+        timer_hard_reset: bool,
+        battle_points_after: U256,
+        bp_base_buy: U256,
+        bp_timer_reset_bonus: U256,
+        bp_clutch_bonus: U256,
+        bp_streak_break_bonus: U256,
+        bp_ambush_bonus: U256,
+        bp_flag_penalty: U256,
+        flag_planted: bool,
+        buyer_total_effective_timer_sec: U256,
+        buyer_active_defended_streak: U256,
+        buyer_best_defended_streak: U256,
     },
     TimeCurveSaleEnded {
         end_timestamp: U256,
@@ -175,6 +272,37 @@ pub enum DecodedEvent {
         referrer_amount: U256,
         referee_amount: U256,
         amount_to_fee_router: U256,
+    },
+    TimeCurveWarBowSteal {
+        attacker: Address,
+        victim: Address,
+        amount_bp: U256,
+        burn_paid_wad: U256,
+        bypassed_victim_daily_limit: bool,
+        victim_bp_after: U256,
+        attacker_bp_after: U256,
+    },
+    TimeCurveWarBowRevenge {
+        avenger: Address,
+        stealer: Address,
+        amount_bp: U256,
+        burn_paid_wad: U256,
+    },
+    TimeCurveWarBowGuardActivated {
+        player: Address,
+        guard_until_ts: U256,
+        burn_paid_wad: U256,
+    },
+    TimeCurveWarBowFlagClaimed {
+        player: Address,
+        bonus_bp: U256,
+        battle_points_after: U256,
+    },
+    TimeCurveWarBowFlagPenalized {
+        former_holder: Address,
+        penalty_bp: U256,
+        triggering_buyer: Address,
+        battle_points_after: U256,
     },
     ReferralCodeRegistered {
         owner: Address,
@@ -291,6 +419,7 @@ pub fn decode_rpc_log(rlog: &RpcLog) -> Option<DecodedLog> {
         block_hash,
         tx_hash,
         log_index,
+        block_timestamp: rlog.block_timestamp,
         contract: inner.address,
         event,
     })
@@ -318,6 +447,73 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 new_deadline: e.newDeadline,
                 total_raised_after: e.totalRaisedAfter,
                 buy_index: e.buyIndex,
+                actual_seconds_added: e.actualSecondsAdded,
+                timer_hard_reset: e.timerHardReset,
+                battle_points_after: e.battlePointsAfter,
+                bp_base_buy: e.bpBaseBuy,
+                bp_timer_reset_bonus: e.bpTimerResetBonus,
+                bp_clutch_bonus: e.bpClutchBonus,
+                bp_streak_break_bonus: e.bpStreakBreakBonus,
+                bp_ambush_bonus: e.bpAmbushBonus,
+                bp_flag_penalty: e.bpFlagPenalty,
+                flag_planted: e.flagPlanted,
+                buyer_total_effective_timer_sec: e.buyerTotalEffectiveTimerSecAdded,
+                buyer_active_defended_streak: e.buyerActiveDefendedStreak,
+                buyer_best_defended_streak: e.buyerBestDefendedStreak,
+            };
+        }
+    }
+    if topic0 == TimeCurveBuyV2Activity::Buy::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyV2Activity::Buy::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuy {
+                buyer: e.buyer,
+                charm_wad: e.charmWad,
+                amount: e.amount,
+                price_per_charm_wad: e.pricePerCharmWad,
+                new_deadline: e.newDeadline,
+                total_raised_after: e.totalRaisedAfter,
+                buy_index: e.buyIndex,
+                actual_seconds_added: e.actualSecondsAdded,
+                timer_hard_reset: e.activityAttack,
+                battle_points_after: e.buyerActivityPointsAfter,
+                bp_base_buy: U256::ZERO,
+                bp_timer_reset_bonus: U256::ZERO,
+                bp_clutch_bonus: U256::ZERO,
+                bp_streak_break_bonus: U256::ZERO,
+                bp_ambush_bonus: U256::ZERO,
+                bp_flag_penalty: U256::ZERO,
+                flag_planted: false,
+                buyer_total_effective_timer_sec: e.buyerTotalEffectiveTimerSecAdded,
+                buyer_active_defended_streak: e.buyerActiveDefendedStreak,
+                buyer_best_defended_streak: e.buyerBestDefendedStreak,
+            };
+        }
+    }
+    if topic0 == TimeCurveBuyLegacy::Buy::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyLegacy::Buy::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuy {
+                buyer: e.buyer,
+                charm_wad: e.charmWad,
+                amount: e.amount,
+                price_per_charm_wad: e.pricePerCharmWad,
+                new_deadline: e.newDeadline,
+                total_raised_after: e.totalRaisedAfter,
+                buy_index: e.buyIndex,
+                actual_seconds_added: U256::ZERO,
+                timer_hard_reset: false,
+                battle_points_after: U256::ZERO,
+                bp_base_buy: U256::ZERO,
+                bp_timer_reset_bonus: U256::ZERO,
+                bp_clutch_bonus: U256::ZERO,
+                bp_streak_break_bonus: U256::ZERO,
+                bp_ambush_bonus: U256::ZERO,
+                bp_flag_penalty: U256::ZERO,
+                flag_planted: false,
+                buyer_total_effective_timer_sec: U256::ZERO,
+                buyer_active_defended_streak: U256::ZERO,
+                buyer_best_defended_streak: U256::ZERO,
             };
         }
     }
@@ -364,6 +560,62 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 referrer_amount: e.referrerCharmAdded,
                 referee_amount: e.refereeCharmAdded,
                 amount_to_fee_router: e.grossAmountRoutedToFeeRouter,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowSteal::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowSteal::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowSteal {
+                attacker: e.attacker,
+                victim: e.victim,
+                amount_bp: e.amountBp,
+                burn_paid_wad: e.burnPaidWad,
+                bypassed_victim_daily_limit: e.bypassedVictimDailyLimit,
+                victim_bp_after: e.victimBpAfter,
+                attacker_bp_after: e.attackerBpAfter,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowRevenge::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowRevenge::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowRevenge {
+                avenger: e.avenger,
+                stealer: e.stealer,
+                amount_bp: e.amountBp,
+                burn_paid_wad: e.burnPaidWad,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowGuardActivated::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowGuardActivated::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowGuardActivated {
+                player: e.player,
+                guard_until_ts: e.guardUntilTs,
+                burn_paid_wad: e.burnPaidWad,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowFlagClaimed::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowFlagClaimed::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowFlagClaimed {
+                player: e.player,
+                bonus_bp: e.bonusBp,
+                battle_points_after: e.battlePointsAfter,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowFlagPenalized::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowFlagPenalized::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowFlagPenalized {
+                former_holder: e.formerHolder,
+                penalty_bp: e.penaltyBp,
+                triggering_buyer: e.triggeringBuyer,
+                battle_points_after: e.battlePointsAfter,
             };
         }
     }
@@ -583,6 +835,19 @@ mod tests {
             newDeadline: U256::from(999u64),
             totalRaisedAfter: U256::from(1000u64),
             buyIndex: U256::from(0u64),
+            actualSecondsAdded: U256::from(120u64),
+            timerHardReset: false,
+            battlePointsAfter: U256::from(250u64),
+            bpBaseBuy: U256::from(250u64),
+            bpTimerResetBonus: U256::ZERO,
+            bpClutchBonus: U256::ZERO,
+            bpStreakBreakBonus: U256::ZERO,
+            bpAmbushBonus: U256::ZERO,
+            bpFlagPenalty: U256::ZERO,
+            flagPlanted: true,
+            buyerTotalEffectiveTimerSecAdded: U256::from(120u64),
+            buyerActiveDefendedStreak: U256::ZERO,
+            buyerBestDefendedStreak: U256::ZERO,
         };
         let data = e.encode_log_data();
         let log = Log::new_unchecked(
@@ -657,6 +922,44 @@ mod tests {
             } => {
                 assert_eq!(delta, "-50");
                 assert_eq!(reason_code, 2);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_warbow_steal() {
+        let attacker = Address::repeat_byte(0x11);
+        let victim = Address::repeat_byte(0x22);
+        let e = TimeCurveEvents::WarBowSteal {
+            attacker,
+            victim,
+            amountBp: U256::from(50u64),
+            burnPaidWad: U256::from(1u64),
+            bypassedVictimDailyLimit: true,
+            victimBpAfter: U256::from(900u64),
+            attackerBpAfter: U256::from(100u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveWarBowSteal {
+                attacker: a,
+                victim: v,
+                amount_bp,
+                bypassed_victim_daily_limit,
+                ..
+            } => {
+                assert_eq!(a, attacker);
+                assert_eq!(v, victim);
+                assert_eq!(amount_bp, U256::from(50u64));
+                assert!(bypassed_victim_daily_limit);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

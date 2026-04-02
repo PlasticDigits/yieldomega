@@ -20,15 +20,16 @@ export function podiumPlacementShares(slice: bigint): [bigint, bigint, bigint] {
   return [first, second, third];
 }
 
+/** Slices match `TimeCurve.distributePrizes`: [last buy, time booster, activity leader, defended streak]. */
 export function podiumCategorySlices(pool: bigint): [bigint, bigint, bigint, bigint] {
   if (pool <= 0n) {
     return [0n, 0n, 0n, 0n];
   }
   const last = (pool * 50n) / 100n;
-  const most = (pool * 20n) / 100n;
-  const big = (pool * 10n) / 100n;
-  const cum = pool - last - most - big;
-  return [last, most, big, cum];
+  const timeBooster = (pool * 20n) / 100n;
+  const activity = (pool * 10n) / 100n;
+  const defended = pool - last - timeBooster - activity;
+  return [last, timeBooster, activity, defended];
 }
 
 /** Implied reserve (accepted asset wei) per 1 launched token wei at current totals — projection for UX. */
