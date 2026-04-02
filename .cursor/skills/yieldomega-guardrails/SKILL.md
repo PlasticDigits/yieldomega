@@ -11,5 +11,6 @@ Before making substantive changes in this repository:
 2. Respect `LICENSE` and `docs/licensing.md`: default new project code to AGPL-3.0, preserve license headers, and do not change licensing unless the maintainer asks.
 3. Keep game rules, fund flows, and authoritative state onchain. `indexer/` and `frontend/` are derived read-model and UX layers, not sources of truth.
 4. Follow `docs/testing/strategy.md` before claiming completion: run the relevant tests when possible, or clearly state what could not be run.
+5. For **TimeCurve** prizes, treat **`docs/product/primitives.md`** as the source of truth for the **three fixed v1 podium categories** (last buy, time booster, defended streak). **WarBow Ladder / Battle Points** are PvP scoring separate from prize slices. Do not reintroduce or assume **legacy** category sets (e.g. most-buys, biggest-buy, cumulative-CHARM podiums, opening/closing-window tracks, or a fourth “activity leader” prize).
 
 Prefer small, reviewable diffs and avoid unrelated refactors.

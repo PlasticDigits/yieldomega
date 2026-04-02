@@ -28,6 +28,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
     let tx_h = b256_hex(d.tx_hash);
     let log_i = d.log_index as i32;
     let contract = addr_hex(d.contract);
+    let block_ts: Option<i64> = d.block_timestamp.map(|t| t as i64);
 
     match &d.event {
         DecodedEvent::TimeCurveSaleStarted {
@@ -61,13 +62,33 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             new_deadline,
             total_raised_after,
             buy_index,
+            actual_seconds_added,
+            timer_hard_reset,
+            battle_points_after,
+            bp_base_buy,
+            bp_timer_reset_bonus,
+            bp_clutch_bonus,
+            bp_streak_break_bonus,
+            bp_ambush_bonus,
+            bp_flag_penalty,
+            flag_planted,
+            buyer_total_effective_timer_sec,
+            buyer_active_defended_streak,
+            buyer_best_defended_streak,
         } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy (
                     block_number, block_hash, tx_hash, log_index, contract_address,
                     buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
-                    new_deadline, total_raised_after, buy_index
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric)
+                    new_deadline, total_raised_after, buy_index,
+                    actual_seconds_added, timer_hard_reset, battle_points_after,
+                    bp_base_buy, bp_timer_reset_bonus, bp_clutch_bonus, bp_streak_break_bonus,
+                    bp_ambush_bonus, bp_flag_penalty, flag_planted,
+                    buyer_total_effective_timer_sec,
+                    buyer_active_defended_streak, buyer_best_defended_streak
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric,
+                    $14::numeric, $15, $16::numeric, $17::numeric, $18::numeric, $19::numeric, $20::numeric, $21::numeric, $22::numeric, $23,
+                    $24::numeric, $25::numeric, $26::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
@@ -77,12 +98,25 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*buyer))
             .bind(u256_dec(*amount))
-            .bind(u256_dec(*price_per_charm_wad))
+            .bind("0")
             .bind(u256_dec(*charm_wad))
             .bind(u256_dec(*price_per_charm_wad))
             .bind(u256_dec(*new_deadline))
             .bind(u256_dec(*total_raised_after))
             .bind(u256_dec(*buy_index))
+            .bind(u256_dec(*actual_seconds_added))
+            .bind(*timer_hard_reset)
+            .bind(u256_dec(*battle_points_after))
+            .bind(u256_dec(*bp_base_buy))
+            .bind(u256_dec(*bp_timer_reset_bonus))
+            .bind(u256_dec(*bp_clutch_bonus))
+            .bind(u256_dec(*bp_streak_break_bonus))
+            .bind(u256_dec(*bp_ambush_bonus))
+            .bind(u256_dec(*bp_flag_penalty))
+            .bind(*flag_planted)
+            .bind(u256_dec(*buyer_total_effective_timer_sec))
+            .bind(u256_dec(*buyer_active_defended_streak))
+            .bind(u256_dec(*buyer_best_defended_streak))
             .execute(pool)
             .await?;
         }
@@ -171,6 +205,139 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*referrer_amount))
             .bind(u256_dec(*referee_amount))
             .bind(u256_dec(*amount_to_fee_router))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowSteal {
+            attacker,
+            victim,
+            amount_bp,
+            burn_paid_wad,
+            bypassed_victim_daily_limit,
+            victim_bp_after,
+            attacker_bp_after,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_steal (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, attacker, victim, amount_bp, burn_paid_wad,
+                    bypassed_victim_daily_limit, victim_bp_after, attacker_bp_after
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11, $12::numeric, $13::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*attacker))
+            .bind(addr_hex(*victim))
+            .bind(u256_dec(*amount_bp))
+            .bind(u256_dec(*burn_paid_wad))
+            .bind(*bypassed_victim_daily_limit)
+            .bind(u256_dec(*victim_bp_after))
+            .bind(u256_dec(*attacker_bp_after))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowRevenge {
+            avenger,
+            stealer,
+            amount_bp,
+            burn_paid_wad,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_revenge (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, avenger, stealer, amount_bp, burn_paid_wad
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*avenger))
+            .bind(addr_hex(*stealer))
+            .bind(u256_dec(*amount_bp))
+            .bind(u256_dec(*burn_paid_wad))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowGuardActivated {
+            player,
+            guard_until_ts,
+            burn_paid_wad,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_guard (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, player, guard_until_ts, burn_paid_wad
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*guard_until_ts))
+            .bind(u256_dec(*burn_paid_wad))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowFlagClaimed {
+            player,
+            bonus_bp,
+            battle_points_after,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_flag_claimed (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, player, bonus_bp, battle_points_after
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*bonus_bp))
+            .bind(u256_dec(*battle_points_after))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowFlagPenalized {
+            former_holder,
+            penalty_bp,
+            triggering_buyer,
+            battle_points_after,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_flag_penalized (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, former_holder, penalty_bp, triggering_buyer, battle_points_after
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*former_holder))
+            .bind(u256_dec(*penalty_bp))
+            .bind(addr_hex(*triggering_buyer))
+            .bind(u256_dec(*battle_points_after))
             .execute(pool)
             .await?;
         }

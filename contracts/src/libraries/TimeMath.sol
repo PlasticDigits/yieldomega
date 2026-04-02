@@ -42,4 +42,27 @@ library TimeMath {
         uint256 maxDeadline = currentTimestamp + timerCapSec;
         newDeadline = extended < maxDeadline ? extended : maxDeadline;
     }
+
+    /// @notice If remaining time is below `resetBelowRemainingSec`, snap remaining to `resetToRemainingSec` (capped by `timerCapSec`);
+    ///         otherwise extend by `extensionSec` from the effective base (same as `extendDeadline`).
+    /// @return newDeadline Updated deadline.
+    /// @return didHardReset True iff the snap branch was used.
+    function extendDeadlineOrResetBelowThreshold(
+        uint256 currentDeadline,
+        uint256 currentTimestamp,
+        uint256 extensionSec,
+        uint256 timerCapSec,
+        uint256 resetBelowRemainingSec,
+        uint256 resetToRemainingSec
+    ) internal pure returns (uint256 newDeadline, bool didHardReset) {
+        uint256 remaining = currentDeadline > currentTimestamp ? currentDeadline - currentTimestamp : 0;
+        uint256 maxDeadline = currentTimestamp + timerCapSec;
+        if (remaining < resetBelowRemainingSec) {
+            uint256 target = currentTimestamp + resetToRemainingSec;
+            newDeadline = target < maxDeadline ? target : maxDeadline;
+            return (newDeadline, true);
+        }
+        newDeadline = extendDeadline(currentDeadline, currentTimestamp, extensionSec, timerCapSec);
+        return (newDeadline, false);
+    }
 }

@@ -22,24 +22,24 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 ## Attribution (TimeCurve buys)
 
-- The buyer calls `buy(amount, codeHash)` with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches `buy(amount)` (no referral split).
+- The buyer calls **`buy(charmWad, codeHash)`** (or the overload with `activityAttack`) with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** (no referral split).
 - **Referrer** is `ReferralRegistry.ownerOfCode(codeHash)`. If `codeHash` is non-zero but unregistered, the transaction **reverts**.
 - **Self-referral** (`referrer == buyer`) **reverts**.
 - **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer (the UI may cache a pending code for UX only).
 
 ## Reward math (TimeCurve, canonical)
 
-On a referred buy of **gross** `amount` (accepted asset units):
+On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and **`amount`** the **gross accepted-asset spend** = `charmWad × pricePerCharmWad / 1e18` (see [primitives](primitives.md)).
 
-- **`FeeRouter` path:** the **entire** `amount` is transferred to **`FeeRouter.distributeFees`** (canonical **five-sink** split — see [fee routing](../onchain/fee-routing-and-governance.md)).
-- **CHARM (referral):** **Referrer** and **referee** each receive **10%** of `amount` (`1000` bps each) as additional **`charmWeight`** (same units as spend-based CHARM). No **reserve-asset** transfer is made to them on the referral path.
-- **`totalRaised`:** still increases by **`amount`** (gross) for sale accounting.
-- **`totalCharmWeight`:** increases by **`amount + 2 × (amount × 1000 / 10000)`** on a referred buy (buyer’s weight includes base spend plus referee bonus; referrer’s weight includes referrer bonus).
-- **DOUB redemption:** `redeemCharms` clears against **`totalCharmWeight`** in the denominator: `totalTokensForSale * charmWeight[user] / totalCharmWeight`.
+- **`FeeRouter` path:** the **entire** **`amount`** is transferred to **`FeeRouter.distributeFees`** (canonical **five-sink** split — see [fee routing](../onchain/fee-routing-and-governance.md)).
+- **CHARM (referral):** **`refEach = charmWad × 1000 / 10_000`** (10% of `charmWad` each). **Referrer** and **buyer** each receive **`refEach`** as additional **`charmWeight`**. No **reserve-asset** transfer is made to them on the referral path.
+- **`totalRaised`:** increases by **`amount`** (gross) for sale accounting.
+- **`charmWeight` / `totalCharmWeight`:** buyer accrues **`charmWad + refEach`**; referrer accrues **`refEach`**; **`totalCharmWeight`** increases by **`charmWad + 2 × refEach`**.
+- **DOUB redemption:** `redeemCharms` uses **`totalCharmWeight`** in the denominator: `totalTokensForSale * charmWeight[user] / totalCharmWeight`.
 
-**Podiums:** last-buy / most-buys / biggest-buy / cumulative CHARM podiums still key off **per-buy `amount`** and onchain counters as implemented in **`TimeCurve`** (referral CHARM bonuses affect **cumulative CHARM** and redemption shares).
+**Podiums:** Onchain prize categories are **last buy**, **time booster**, **activity leader**, and **defended streak** only ([primitives](primitives.md)). Referral splits affect **`charmWeight`** and thus **redemption**; they do **not** pay reserve to referrer/referee and are unrelated to podium scoring except indirectly through participation patterns.
 
-**Min buy and cap:** Checks use the **full** `amount` against `currentMinBuy` and per-transaction cap.
+**Min buy and cap:** Enforced on **`charmWad`** within **`currentCharmBoundsWad`** and implied gross spend via **`currentMinBuyAmount` / `currentMaxBuyAmount`**.
 
 ## Anti-abuse
 
@@ -50,7 +50,7 @@ On a referred buy of **gross** `amount` (accepted asset units):
 ## Related contracts
 
 - `ReferralRegistry` — code ownership and CL8Y burn.
-- `TimeCurve` — optional `IReferralRegistry`; `buy(amount, codeHash)` applies splits.
+- `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash)` applies splits.
 
 ---
 

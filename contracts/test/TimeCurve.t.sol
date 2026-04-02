@@ -87,6 +87,28 @@ contract TimeCurveTest is Test {
         reserve.approve(address(target), amount);
     }
 
+    /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
+    function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
+        require(initialTimerSec >= 120, "test: initial timer");
+        TimeCurve t = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            initialTimerSec,
+            FOUR_DAYS,
+            1_000_000e18
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        return t;
+    }
+
     // ── Sale lifecycle ─────────────────────────────────────────────────
 
     function test_startSale() public {
@@ -351,82 +373,495 @@ contract TimeCurveTest is Test {
         assertEq(winners[2], bob);   // third to last = 3rd
     }
 
-    function test_most_buys_podium() public {
+    function test_warbow_ladder_podium_orders_by_battle_points() public {
         tc.startSale();
 
-        // Alice buys 3 times
         for (uint256 i; i < 3; ++i) {
             _fundAndApprove(alice, 2e18);
             vm.prank(alice);
             tc.buy(1e18);
         }
-        // Bob buys 2 times
         for (uint256 i; i < 2; ++i) {
             _fundAndApprove(bob, 2e18);
             vm.prank(bob);
             tc.buy(1e18);
         }
-        // Carol buys 1 time
         _fundAndApprove(carol, 2e18);
         vm.prank(carol);
         tc.buy(1e18);
 
-        (address[3] memory winners, uint256[3] memory values) = tc.podium(tc.CAT_MOST_BUYS());
+        uint256 base = tc.WARBOW_BASE_BUY_BP();
+        assertEq(tc.battlePoints(alice), 3 * base);
+        assertEq(tc.battlePoints(bob), 2 * base);
+        assertEq(tc.battlePoints(carol), base);
+
+        (address[3] memory winners, uint256[3] memory values) = tc.warbowLadderPodium();
         assertEq(winners[0], alice);
-        assertEq(values[0], 3);
+        assertEq(values[0], 3 * base);
         assertEq(winners[1], bob);
-        assertEq(values[1], 2);
+        assertEq(values[1], 2 * base);
         assertEq(winners[2], carol);
-        assertEq(values[2], 1);
+        assertEq(values[2], base);
     }
 
-    function test_biggest_buy_podium() public {
+    function test_time_booster_tracks_effective_seconds_not_nominal_when_clipped() public {
+        uint256 cap = 200;
+        TimeCurve tcClip = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            cap,
+            cap,
+            1_000_000e18
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcClip));
+        launchedToken.mint(address(tcClip), 1_000_000e18);
+        tcClip.startSale();
+
+        vm.warp(block.timestamp + 100);
+        _fundAndApproveCurve(alice, 2e18, tcClip);
+        vm.prank(alice);
+        tcClip.buy(1e18);
+
+        assertEq(tcClip.totalEffectiveTimerSecAdded(alice), 100);
+        (address[3] memory w, uint256[3] memory v) = tcClip.podium(tcClip.CAT_TIME_BOOSTER());
+        assertEq(w[0], alice);
+        assertEq(v[0], 100);
+    }
+
+    function test_time_booster_zero_when_already_at_cap() public {
+        uint256 cap = 200;
+        TimeCurve tcCap = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            cap,
+            cap,
+            1_000_000e18
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcCap));
+        launchedToken.mint(address(tcCap), 1_000_000e18);
+        tcCap.startSale();
+
+        _fundAndApproveCurve(alice, 2e18, tcCap);
+        vm.prank(alice);
+        tcCap.buy(1e18);
+
+        assertEq(tcCap.totalEffectiveTimerSecAdded(alice), 0);
+        (address[3] memory w, uint256[3] memory v) = tcCap.podium(tcCap.CAT_TIME_BOOSTER());
+        assertEq(w[0], address(0));
+        assertEq(v[0], 0);
+    }
+
+    function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
         tc.startSale();
 
-        _fundAndApprove(alice, 10e18);
+        _fundAndApprove(alice, 2e18);
         vm.prank(alice);
-        tc.buy(5e18);
+        tc.buy(1e18);
+        uint256 a0 = tc.battlePoints(alice);
 
-        _fundAndApprove(bob, 10e18);
+        uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
         vm.prank(bob);
-        tc.buy(3e18);
+        tc.warbowSteal(alice, false);
 
-        _fundAndApprove(carol, 10e18);
-        vm.prank(carol);
-        tc.buy(7e18);
-
-        (address[3] memory winners, uint256[3] memory values) = tc.podium(tc.CAT_BIGGEST_BUY());
-        assertEq(winners[0], carol);
-        assertEq(values[0], 7e18);
-        assertEq(winners[1], alice);
-        assertEq(values[1], 5e18);
-        assertEq(winners[2], bob);
-        assertEq(values[2], 3e18);
+        assertEq(tc.battlePoints(alice), a0 - (a0 * 1000) / 10_000);
+        assertEq(tc.battlePoints(bob), (a0 * 1000) / 10_000);
+        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
     }
 
-    function test_highest_cumulative_podium() public {
+    function test_warbow_steal_revert_2x_rule() public {
         tc.startSale();
-        _fundAndApprove(alice, 20e18);
+        _fundAndApprove(alice, 2e18);
         vm.prank(alice);
-        tc.buy(2e18);
+        tc.buy(1e18);
+        _fundAndApprove(bob, 2e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+        _fundAndApprove(carol, 2e18);
+        vm.prank(carol);
+        tc.buy(1e18);
+        _fundAndApprove(carol, tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(carol);
+        vm.expectRevert("TimeCurve: steal 2x rule");
+        tc.warbowSteal(bob, false);
+    }
+
+    function test_warbow_revenge_once() public {
+        tc.startSale();
+        _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
 
-        _fundAndApprove(bob, 20e18);
+        _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD());
         vm.prank(bob);
-        tc.buy(10e18);
+        tc.warbowSteal(alice, false);
+        uint256 bobBpAfterSteal = tc.battlePoints(bob);
 
-        _fundAndApprove(carol, 20e18);
+        uint256 dead0 = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        _fundAndApprove(alice, 2e18 + tc.WARBOW_REVENGE_BURN_WAD());
+        vm.prank(alice);
+        tc.warbowRevenge(bob);
+
+        uint256 revTake = (bobBpAfterSteal * 1000) / 10_000;
+        assertEq(tc.battlePoints(bob), bobBpAfterSteal - revTake);
+        assertEq(
+            reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - dead0,
+            tc.WARBOW_REVENGE_BURN_WAD()
+        );
+    }
+
+    /// @dev After a hard reset, remaining is exactly 15m; warp so remaining < 15m before the second qualifying buy.
+    function test_defended_streak_same_wallet_two_resets_under_15m_window() public {
+        TimeCurve t800 = _newTimeCurveShortTimer(800);
+        t800.startSale();
+        vm.warp(t800.saleStart() + 100);
+        _fundAndApproveCurve(alice, 4e18, t800);
+        vm.prank(alice);
+        t800.buy(1e18);
+        vm.warp(block.timestamp + 2);
+        vm.prank(alice);
+        t800.buy(1e18);
+
+        assertEq(t800.activeDefendedStreak(alice), 2);
+        assertEq(t800.bestDefendedStreak(alice), 2);
+        (address[3] memory w, uint256[3] memory v) = t800.podium(t800.CAT_DEFENDED_STREAK());
+        assertEq(w[0], alice);
+        assertEq(v[0], 2);
+    }
+
+    /// @dev Second wallet buying inside the window clears the first wallet's **active** streak; best stays recorded.
+    function test_defended_streak_second_player_under_window_ends_first_active() public {
+        TimeCurve t800 = _newTimeCurveShortTimer(800);
+        t800.startSale();
+        vm.warp(t800.saleStart() + 100);
+        _fundAndApproveCurve(alice, 2e18, t800);
+        vm.prank(alice);
+        t800.buy(1e18);
+        assertEq(t800.activeDefendedStreak(alice), 1);
+
+        vm.warp(block.timestamp + 2);
+        _fundAndApproveCurve(bob, 2e18, t800);
+        vm.prank(bob);
+        t800.buy(1e18);
+
+        assertEq(t800.activeDefendedStreak(alice), 0);
+        assertEq(t800.bestDefendedStreak(alice), 1);
+        assertEq(t800.activeDefendedStreak(bob), 1);
+        assertEq(t800.bestDefendedStreak(bob), 1);
+    }
+
+    /// @dev Buys while at least 15 minutes remain do not increase defended streak.
+    function test_defended_streak_no_increment_outside_15m_window() public {
+        tc.startSale();
+        _fundAndApprove(alice, 4e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        assertEq(tc.bestDefendedStreak(alice), 0);
+        assertEq(tc.activeDefendedStreak(alice), 0);
+    }
+
+    /// @dev Buy with remaining ≥ window clears active streak holder; best unchanged.
+    function test_defended_streak_leaving_window_clears_active() public {
+        TimeCurve t800 = _newTimeCurveShortTimer(800);
+        t800.startSale();
+        vm.warp(t800.saleStart() + 100);
+        _fundAndApproveCurve(alice, 4e18, t800);
+        vm.prank(alice);
+        t800.buy(1e18);
+        vm.warp(block.timestamp + 2);
+        vm.prank(alice);
+        t800.buy(1e18);
+        assertEq(t800.bestDefendedStreak(alice), 2);
+
+        uint256 dl = t800.deadline();
+        vm.warp(dl - 901);
+
+        _fundAndApproveCurve(bob, 2e18, t800);
+        vm.prank(bob);
+        t800.buy(1e18);
+
+        assertEq(t800.activeDefendedStreak(alice), 0);
+        assertEq(t800.bestDefendedStreak(alice), 2);
+    }
+
+    // ── Last buy (compete to be the last person to buy) ─────────────────
+
+    /// @dev With 5+ buys, podium keeps the three most recent buyers; values are 3,2,1 (ordering / ranking).
+    function test_last_buy_three_most_recent_rank_values() public {
+        address eve = makeAddr("eve");
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _fundAndApprove(bob, 5e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+        _fundAndApprove(carol, 5e18);
         vm.prank(carol);
-        tc.buy(5e18);
+        tc.buy(1e18);
+        _fundAndApprove(dave, 5e18);
+        vm.prank(dave);
+        tc.buy(1e18);
+        _fundAndApprove(eve, 5e18);
+        vm.prank(eve);
+        tc.buy(1e18);
 
-        (address[3] memory winners, uint256[3] memory values) = tc.podium(tc.CAT_HIGHEST_CUMULATIVE());
-        assertEq(winners[0], bob);
-        assertEq(values[0], 10e18);
-        assertEq(winners[1], carol);
-        assertEq(values[1], 5e18);
-        assertEq(winners[2], alice);
-        assertEq(values[2], 3e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        (address[3] memory w, uint256[3] memory v) = tc.podium(tc.CAT_LAST_BUYERS());
+        assertEq(w[0], eve, "1st = last person to buy");
+        assertEq(w[1], dave);
+        assertEq(w[2], carol);
+        assertEq(v[0], 3);
+        assertEq(v[1], 2);
+        assertEq(v[2], 1);
+    }
+
+    /// @dev Last-buy 1st place receives reserve from `distributePrizes` (three-category settlement).
+    function test_last_buy_distribute_prizes_pays_first_place() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _fundAndApprove(bob, 5e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+        _fundAndApprove(carol, 5e18);
+        vm.prank(carol);
+        tc.buy(1e18);
+        _fundAndApprove(dave, 5e18);
+        vm.prank(dave);
+        tc.buy(1e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        (address[3] memory w,) = tc.podium(tc.CAT_LAST_BUYERS());
+        address winner = w[0];
+        uint256 balBefore = reserve.balanceOf(winner);
+        tc.distributePrizes();
+        assertGt(reserve.balanceOf(winner), balBefore);
+    }
+
+    // ── Time booster (most actual time added) ───────────────────────────
+
+    /// @dev `totalEffectiveTimerSecAdded` matches the sum of per-buy deadline deltas.
+    function test_time_booster_score_matches_sum_of_deadline_deltas() public {
+        tc.startSale();
+        _fundAndApprove(alice, 20e18);
+        uint256 d0 = tc.deadline();
+        vm.prank(alice);
+        tc.buy(1e18);
+        uint256 d1 = tc.deadline();
+        uint256 add1 = d1 - d0;
+        vm.warp(block.timestamp + 50);
+        uint256 dPre2 = tc.deadline();
+        vm.prank(alice);
+        tc.buy(1e18);
+        uint256 d2 = tc.deadline();
+        uint256 add2 = d2 - dPre2;
+        assertEq(tc.totalEffectiveTimerSecAdded(alice), add1 + add2);
+    }
+
+    /// @dev Under-15m remaining: Time booster still credits **actual** `newDeadline - oldDeadline` only.
+    function test_time_booster_under_15m_window_uses_actual_seconds_added() public {
+        TimeCurve t800 = _newTimeCurveShortTimer(800);
+        t800.startSale();
+        vm.warp(t800.saleStart() + 100);
+        uint256 beforeD = t800.deadline();
+        _fundAndApproveCurve(alice, 4e18, t800);
+        vm.prank(alice);
+        t800.buy(1e18);
+        uint256 afterD = t800.deadline();
+        assertEq(t800.totalEffectiveTimerSecAdded(alice), afterD - beforeD);
+    }
+
+    /// @dev Leaderboard: higher total effective seconds ranks above lower.
+    function test_time_booster_leaderboard_orders_by_total_effective_seconds() public {
+        tc.startSale();
+        _fundAndApprove(alice, 30e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(block.timestamp + 10);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(block.timestamp + 10);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        _fundAndApprove(bob, 10e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+
+        (address[3] memory w, uint256[3] memory v) = tc.podium(tc.CAT_TIME_BOOSTER());
+        assertEq(w[0], alice);
+        assertEq(w[1], bob);
+        assertGt(v[0], v[1]);
+    }
+
+    // ── WarBow Ladder (Battle Points on buy) ───────────────────────────
+
+    /// @dev Min vs max CHARM in band at start: each qualifying buy adds base BP (no reset bonus on 24h clock).
+    function test_warbow_base_bp_flat_per_buy_independent_of_charm_wad() public {
+        tc.startSale();
+        (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
+        uint256 spendMin = tc.currentMinBuyAmount();
+        uint256 spendMax = tc.currentMaxBuyAmount();
+        uint256 b = tc.WARBOW_BASE_BUY_BP();
+        _fundAndApprove(alice, spendMin + spendMax + 1e18);
+        vm.prank(alice);
+        tc.buy(minC);
+        assertEq(tc.battlePoints(alice), b);
+        vm.prank(alice);
+        tc.buy(maxC);
+        assertEq(tc.battlePoints(alice), 2 * b);
+    }
+
+    function test_warbow_steal_burn_is_one_cl8y_wad() public view {
+        assertEq(tc.WARBOW_STEAL_BURN_WAD(), 1e18);
+    }
+
+    /// @dev Remaining < 13m triggers hard reset toward 15m; awards reset + ambush when breaking a 1-tick streak.
+    function test_timer_hard_reset_below_13m_and_ambush_bonus() public {
+        TimeCurve t800 = _newTimeCurveShortTimer(800);
+        t800.startSale();
+        vm.warp(t800.saleStart() + 100);
+        _fundAndApproveCurve(alice, 2e18, t800);
+        vm.prank(alice);
+        t800.buy(1e18);
+        // Remaining after reset is 15m; need <13m left before bob's buy for another hard reset + ambush.
+        vm.warp(block.timestamp + 121);
+        _fundAndApproveCurve(bob, 4e18, t800);
+        vm.prank(bob);
+        t800.buy(1e18);
+
+        uint256 b = t800.WARBOW_BASE_BUY_BP();
+        uint256 reset = t800.WARBOW_TIMER_RESET_BONUS_BP();
+        uint256 amb = t800.WARBOW_AMBUSH_BONUS_BP();
+        uint256 brk = t800.WARBOW_STREAK_BREAK_MULT_BP();
+        assertEq(t800.battlePoints(bob), b + reset + brk + amb);
+    }
+
+    // ── Defended streak (under 15m; second player ends & records) ────────
+
+    /// @dev Three defended increments: park `now` at `deadline - 700s` before buys 2–3 so remaining stays in (<13m, <15m) band.
+    function test_defended_streak_same_wallet_three_resets_under_15m() public {
+        TimeCurve t600 = _newTimeCurveShortTimer(600);
+        t600.startSale();
+        vm.warp(t600.saleStart() + 100);
+        _fundAndApproveCurve(alice, 20e18, t600);
+        vm.prank(alice);
+        t600.buy(1e18);
+        vm.warp(t600.deadline() - 700);
+        vm.prank(alice);
+        t600.buy(1e18);
+        vm.warp(t600.deadline() - 700);
+        vm.prank(alice);
+        t600.buy(1e18);
+
+        assertEq(t600.bestDefendedStreak(alice), 3);
+        assertEq(t600.activeDefendedStreak(alice), 3);
+    }
+
+    /// @dev Podium uses **best** streak; after a rival ends your active run, your peak stays on the board.
+    function test_defended_streak_podium_orders_by_best_streak() public {
+        TimeCurve t600 = _newTimeCurveShortTimer(600);
+        t600.startSale();
+        vm.warp(t600.saleStart() + 100);
+        _fundAndApproveCurve(alice, 20e18, t600);
+        vm.prank(alice);
+        t600.buy(1e18);
+        vm.warp(t600.deadline() - 700);
+        vm.prank(alice);
+        t600.buy(1e18);
+        vm.warp(t600.deadline() - 700);
+        vm.prank(alice);
+        t600.buy(1e18);
+
+        vm.warp(t600.deadline() - 700);
+        _fundAndApproveCurve(bob, 2e18, t600);
+        vm.prank(bob);
+        t600.buy(1e18);
+
+        assertEq(t600.bestDefendedStreak(alice), 3);
+        assertEq(t600.activeDefendedStreak(alice), 0);
+        assertEq(t600.bestDefendedStreak(bob), 1);
+
+        (address[3] memory w, uint256[3] memory v) = t600.podium(t600.CAT_DEFENDED_STREAK());
+        assertEq(w[0], alice);
+        assertEq(v[0], 3);
+        assertEq(w[1], bob);
+        assertEq(v[1], 1);
+    }
+
+    // ── Three-category round settlement (integration) ─────────────────
+
+    function test_round_settlement_three_categories_podium_payouts_smoke() public {
+        TimeCurve t = _newTimeCurveShortTimer(800);
+        t.startSale();
+        vm.warp(t.saleStart() + 100);
+
+        _fundAndApproveCurve(alice, 80e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+        vm.prank(alice);
+        t.buy(1e18);
+
+        _fundAndApproveCurve(bob, 80e18, t);
+        vm.prank(bob);
+        t.buy(1e18);
+
+        vm.warp(block.timestamp + 30);
+        _fundAndApproveCurve(carol, 80e18, t);
+        vm.prank(carol);
+        t.buy(2e18);
+
+        _fundAndApproveCurve(dave, 80e18, t);
+        vm.prank(dave);
+        t.buy(1e18);
+
+        vm.warp(block.timestamp + 30);
+        vm.prank(alice);
+        t.buy(1e18);
+        vm.warp(block.timestamp + 30);
+        vm.prank(alice);
+        t.buy(1e18);
+        vm.warp(block.timestamp + 30);
+        vm.prank(alice);
+        t.buy(1e18);
+
+        vm.warp(t.deadline() + 1);
+        t.endSale();
+
+        uint256 poolBefore = reserve.balanceOf(address(podiumPool));
+        assertGt(poolBefore, 0);
+
+        (address[3] memory lb,) = t.podium(t.CAT_LAST_BUYERS());
+        uint256 lastWinnerBalBefore = reserve.balanceOf(lb[0]);
+
+        t.distributePrizes();
+
+        assertTrue(t.prizesDistributed());
+        assertLt(reserve.balanceOf(address(podiumPool)), poolBefore);
+        assertGt(reserve.balanceOf(lb[0]), lastWinnerBalBefore);
     }
 
     function test_fees_routed_on_buy() public {

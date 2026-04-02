@@ -14,7 +14,7 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.4.0";
+const SCHEMA_VERSION: &str = "1.5.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -44,6 +44,22 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
         .route("/v1/timecurve/buys", get(timecurve_buys))
+        .route(
+            "/v1/timecurve/warbow/battle-feed",
+            get(timecurve_warbow_battle_feed),
+        )
+        .route(
+            "/v1/timecurve/warbow/leaderboard",
+            get(timecurve_warbow_leaderboard),
+        )
+        .route(
+            "/v1/timecurve/warbow/steals-by-victim-day",
+            get(timecurve_warbow_steals_by_victim_day),
+        )
+        .route(
+            "/v1/timecurve/warbow/guard-latest",
+            get(timecurve_warbow_guard_latest),
+        )
         .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
         .route("/v1/rabbit/withdrawals", get(rabbit_withdrawals))
@@ -130,6 +146,19 @@ struct BuyRow {
     new_deadline: String,
     total_raised_after: String,
     buy_index: String,
+    actual_seconds_added: String,
+    timer_hard_reset: bool,
+    battle_points_after: String,
+    bp_base_buy: String,
+    bp_timer_reset_bonus: String,
+    bp_clutch_bonus: String,
+    bp_streak_break_bonus: String,
+    bp_ambush_bonus: String,
+    bp_flag_penalty: String,
+    flag_planted: bool,
+    buyer_total_effective_timer_sec: String,
+    buyer_active_defended_streak: String,
+    buyer_best_defended_streak: String,
 }
 
 async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
@@ -142,7 +171,20 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                   COALESCE(charm_wad, amount)::text AS charm_wad,
                   COALESCE(price_per_charm_wad, current_min_buy, 0)::text AS price_per_charm_wad,
                   new_deadline::text AS new_deadline, total_raised_after::text AS total_raised_after,
-                  buy_index::text AS buy_index
+                  buy_index::text AS buy_index,
+                  COALESCE(actual_seconds_added, 0)::text AS actual_seconds_added,
+                  COALESCE(timer_hard_reset, false) AS timer_hard_reset,
+                  COALESCE(battle_points_after, 0)::text AS battle_points_after,
+                  COALESCE(bp_base_buy, 0)::text AS bp_base_buy,
+                  COALESCE(bp_timer_reset_bonus, 0)::text AS bp_timer_reset_bonus,
+                  COALESCE(bp_clutch_bonus, 0)::text AS bp_clutch_bonus,
+                  COALESCE(bp_streak_break_bonus, 0)::text AS bp_streak_break_bonus,
+                  COALESCE(bp_ambush_bonus, 0)::text AS bp_ambush_bonus,
+                  COALESCE(bp_flag_penalty, 0)::text AS bp_flag_penalty,
+                  COALESCE(flag_planted, false) AS flag_planted,
+                  COALESCE(buyer_total_effective_timer_sec, 0)::text AS buyer_total_effective_timer_sec,
+                  COALESCE(buyer_active_defended_streak, 0)::text AS buyer_active_defended_streak,
+                  COALESCE(buyer_best_defended_streak, 0)::text AS buyer_best_defended_streak
            FROM idx_timecurve_buy
            ORDER BY block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
@@ -177,6 +219,19 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                 new_deadline: r.try_get("new_deadline").ok()?,
                 total_raised_after: r.try_get("total_raised_after").ok()?,
                 buy_index: r.try_get("buy_index").ok()?,
+                actual_seconds_added: r.try_get("actual_seconds_added").ok()?,
+                timer_hard_reset: r.try_get("timer_hard_reset").ok()?,
+                battle_points_after: r.try_get("battle_points_after").ok()?,
+                bp_base_buy: r.try_get("bp_base_buy").ok()?,
+                bp_timer_reset_bonus: r.try_get("bp_timer_reset_bonus").ok()?,
+                bp_clutch_bonus: r.try_get("bp_clutch_bonus").ok()?,
+                bp_streak_break_bonus: r.try_get("bp_streak_break_bonus").ok()?,
+                bp_ambush_bonus: r.try_get("bp_ambush_bonus").ok()?,
+                bp_flag_penalty: r.try_get("bp_flag_penalty").ok()?,
+                flag_planted: r.try_get("flag_planted").ok()?,
+                buyer_total_effective_timer_sec: r.try_get("buyer_total_effective_timer_sec").ok()?,
+                buyer_active_defended_streak: r.try_get("buyer_active_defended_streak").ok()?,
+                buyer_best_defended_streak: r.try_get("buyer_best_defended_streak").ok()?,
             })
         })
         .collect();
@@ -192,6 +247,354 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct WarBowBattleFeedRow {
+    kind: String,
+    block_number: String,
+    log_index: i32,
+    tx_hash: String,
+    /// Unix seconds when the RPC log included `blockTimestamp`; null if unknown.
+    block_timestamp: Option<String>,
+    detail: serde_json::Value,
+}
+
+async fn timecurve_warbow_battle_feed(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"WITH u AS (
+            SELECT 'steal'::text AS kind, block_number, log_index, tx_hash,
+                   block_timestamp::text AS block_timestamp,
+                   jsonb_build_object(
+                     'attacker', attacker,
+                     'victim', victim,
+                     'amount_bp', amount_bp::text,
+                     'burn_paid_wad', burn_paid_wad::text,
+                     'bypassed_victim_daily_limit', bypassed_victim_daily_limit,
+                     'victim_bp_after', victim_bp_after::text,
+                     'attacker_bp_after', attacker_bp_after::text
+                   ) AS detail
+            FROM idx_timecurve_warbow_steal
+            UNION ALL
+            SELECT 'revenge', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'avenger', avenger,
+                     'stealer', stealer,
+                     'amount_bp', amount_bp::text,
+                     'burn_paid_wad', burn_paid_wad::text
+                   )
+            FROM idx_timecurve_warbow_revenge
+            UNION ALL
+            SELECT 'guard_activated', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'player', player,
+                     'guard_until_ts', guard_until_ts::text,
+                     'burn_paid_wad', burn_paid_wad::text
+                   )
+            FROM idx_timecurve_warbow_guard
+            UNION ALL
+            SELECT 'flag_claimed', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'player', player,
+                     'bonus_bp', bonus_bp::text,
+                     'battle_points_after', battle_points_after::text
+                   )
+            FROM idx_timecurve_warbow_flag_claimed
+            UNION ALL
+            SELECT 'flag_penalized', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'former_holder', former_holder,
+                     'penalty_bp', penalty_bp::text,
+                     'triggering_buyer', triggering_buyer,
+                     'battle_points_after', battle_points_after::text
+                   )
+            FROM idx_timecurve_warbow_flag_penalized
+        )
+        SELECT kind, block_number::text AS block_number, log_index, tx_hash, block_timestamp, detail
+        FROM u
+        ORDER BY block_number DESC, log_index ASC
+        LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<WarBowBattleFeedRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            let detail: serde_json::Value = r.try_get::<serde_json::Value, _>("detail").ok()?;
+            Some(WarBowBattleFeedRow {
+                kind: r.try_get("kind").ok()?,
+                block_number: r.try_get("block_number").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+                tx_hash: r.try_get("tx_hash").ok()?,
+                block_timestamp: r.try_get("block_timestamp").ok(),
+                detail,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+        "note": "UTC-day steal limits use floor(block_timestamp/86400) when block_timestamp is present; otherwise resolve block time from an RPC.",
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Serialize)]
+struct WarBowLeaderboardRow {
+    buyer: String,
+    battle_points_after: String,
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+}
+
+async fn timecurve_warbow_leaderboard(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT buyer,
+                  battle_points_after::text AS battle_points_after,
+                  block_number::text AS block_number,
+                  tx_hash,
+                  log_index
+           FROM (
+             SELECT DISTINCT ON (LOWER(buyer)) buyer, battle_points_after, block_number, tx_hash, log_index
+             FROM idx_timecurve_buy
+             ORDER BY LOWER(buyer), block_number DESC, log_index DESC
+           ) latest
+           ORDER BY battle_points_after::numeric DESC, block_number DESC, log_index ASC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<WarBowLeaderboardRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(WarBowLeaderboardRow {
+                buyer: r.try_get("buyer").ok()?,
+                battle_points_after: r.try_get("battle_points_after").ok()?,
+                block_number: r.try_get("block_number").ok()?,
+                tx_hash: r.try_get("tx_hash").ok()?,
+                log_index: r.try_get("log_index").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+        "note": "Per-wallet Battle Points are taken from the latest indexed Buy row for that buyer (matches onchain running total at last buy).",
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct WarBowVictimQuery {
+    pub victim: String,
+}
+
+#[derive(Serialize)]
+struct WarBowVictimDayRow {
+    /// Unix day = floor(block_timestamp / 86400) in UTC.
+    utc_day: String,
+    steal_count: String,
+}
+
+async fn timecurve_warbow_steals_by_victim_day(
+    State(state): State<AppState>,
+    Query(q): Query<WarBowVictimQuery>,
+) -> Response {
+    if !valid_0x_address20(&q.victim) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "victim must be a 0x-prefixed 20-byte address" })),
+        )
+            .into_response();
+    }
+
+    let rows = sqlx::query(
+        r#"SELECT (block_timestamp / 86400)::text AS utc_day,
+                  COUNT(*)::text AS steal_count
+           FROM idx_timecurve_warbow_steal
+           WHERE LOWER(victim) = LOWER($1)
+             AND block_timestamp IS NOT NULL
+           GROUP BY (block_timestamp / 86400)
+           ORDER BY (block_timestamp / 86400) DESC
+           LIMIT 366"#,
+    )
+    .bind(&q.victim)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<WarBowVictimDayRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(WarBowVictimDayRow {
+                utc_day: r.try_get("utc_day").ok()?,
+                steal_count: r.try_get("steal_count").ok()?,
+            })
+        })
+        .collect();
+
+    let body = json!({
+        "victim": q.victim,
+        "items": items,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct WarBowPlayerQuery {
+    pub player: String,
+}
+
+#[derive(Serialize)]
+struct WarBowGuardLatestRow {
+    player: String,
+    guard_until_ts: String,
+    burn_paid_wad: String,
+    block_number: String,
+    tx_hash: String,
+    log_index: i32,
+    block_timestamp: Option<String>,
+}
+
+async fn timecurve_warbow_guard_latest(
+    State(state): State<AppState>,
+    Query(q): Query<WarBowPlayerQuery>,
+) -> Response {
+    if !valid_0x_address20(&q.player) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "player must be a 0x-prefixed 20-byte address" })),
+        )
+            .into_response();
+    }
+
+    let row = sqlx::query(
+        r#"SELECT player, guard_until_ts::text AS guard_until_ts, burn_paid_wad::text AS burn_paid_wad,
+                  block_number::text AS block_number, tx_hash, log_index,
+                  block_timestamp::text AS block_timestamp
+           FROM idx_timecurve_warbow_guard
+           WHERE LOWER(player) = LOWER($1)
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT 1"#,
+    )
+    .bind(&q.player)
+    .fetch_optional(&state.pool)
+    .await;
+
+    let row = match row {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let item = row.and_then(|r| {
+        Some(WarBowGuardLatestRow {
+            player: r.try_get("player").ok()?,
+            guard_until_ts: r.try_get("guard_until_ts").ok()?,
+            burn_paid_wad: r.try_get("burn_paid_wad").ok()?,
+            block_number: r.try_get("block_number").ok()?,
+            tx_hash: r.try_get("tx_hash").ok()?,
+            log_index: r.try_get("log_index").ok()?,
+            block_timestamp: r.try_get("block_timestamp").ok(),
+        })
+    });
+
+    let body = json!({
+        "player": q.player,
+        "latest_guard_activation": item,
+        "note": "Compare guard_until_ts to the chain head timestamp to know if guard is active.",
     });
 
     let mut res = Json(body).into_response();
