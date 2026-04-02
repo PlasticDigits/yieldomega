@@ -51,4 +51,7 @@ describe("formatCompactFromRaw", () => {
     expect(formatCompactFromRaw(10n ** 19n, 18)).toBe("10");
     expect(formatCompactFromRaw(1953145177291660455n, 18)).toBe("1.95");
   });
+  it("coerces decimal string inputs (multicall / JSON bigint encoding)", () => {
+    expect(formatCompactFromRaw("1953145177291660455", 18)).toBe("1.95");
+  });
 });

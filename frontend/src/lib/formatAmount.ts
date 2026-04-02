@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { formatUnits } from "viem";
+import { formatCompactDecimalString } from "@/lib/compactNumberFormat";
 
 /** Thousand-step suffixes: 1k = 10³ … ud = 10³⁶ (12 steps). */
 export const THOUSAND_SUFFIXES = [
@@ -78,7 +79,7 @@ export function abbreviateDecimalString(decimalStr: string): string {
 export function formatAmountTriple(raw: bigint, decimals: number): AmountTriple {
   const rawStr = raw.toString();
   const decimal = formatUnits(raw, decimals);
-  const abbrev = abbreviateDecimalString(decimal);
+  const abbrev = formatCompactDecimalString(decimal);
   return { raw: rawStr, decimal, abbrev };
 }
 
