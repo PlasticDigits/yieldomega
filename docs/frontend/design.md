@@ -28,6 +28,12 @@
 - **Human-readable** errors from reverts where possible (`cast` / viem decoding patterns TBD).
 - Avoid **dark patterns** that obscure fees or timer rules.
 
+### Amount display (`AmountDisplay`)
+
+- **User-facing rule:** show **only human-readable** forms—full decimal (via `formatUnits`) and a **compact** abbreviation (significant figures with `k` / `m` / `b` / `t` / scientific notation as in `compactNumberFormat.ts`).
+- **Do not** render smallest-unit integers (wei, raw WAD strings) in product UI. The onchain integer is still the source passed into the component; conversion stays encapsulated in `AmountDisplay` / shared format helpers.
+- **Exceptions:** developer-only tooling or copy-paste debug surfaces (if any) must be explicitly labeled—not the default `AmountDisplay` path.
+
 ## Security posture
 
 - **No private keys** in the client.
