@@ -20,6 +20,7 @@ export const THOUSAND_SUFFIXES = [
   "ud",
 ] as const;
 
+/** Formatted views of one onchain amount; `raw` is the smallest-unit string for tests / tooling only—not for user-facing UI. */
 export interface AmountTriple {
   raw: string;
   decimal: string;
