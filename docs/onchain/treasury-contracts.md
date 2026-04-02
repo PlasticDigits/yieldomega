@@ -6,10 +6,10 @@ Use **separate contract deployments** (distinct addresses), not a single vault w
 
 | Contract | Role |
 |----------|------|
-| **RabbitTreasury** (Burrow) | Player-facing reserve game: USDm deposits, **DOUB** mint/burn, epoch repricing per [simulations bounded formulas](../../simulations/README.md). Receives a **20%** share of **TimeCurve** fees per [fee sinks](fee-routing-and-governance.md#fee-sinks) in [fee-routing-and-governance.md](fee-routing-and-governance.md). |
+| **RabbitTreasury** (Burrow) | Player-facing reserve game: **CL8Y** deposits, **DOUB** mint/burn, epoch repricing per [simulations bounded formulas](../../simulations/README.md). Receives a **20%** share of **TimeCurve** routed fees per [fee sinks](fee-routing-and-governance.md#fee-sinks) in [fee-routing-and-governance.md](fee-routing-and-governance.md). |
 | **EcosystemTreasury** | CL8Y-governed pool for grants, new games, consumer goods, tools. |
-| **DoubLPIncentives** | **TODO:** Dedicated receiver for **30%** of **TimeCurve** fees earmarked for **DOUB** liquidity (LP rewards, gauge, or vault-to-pool routing). Finalize **contract name**, **deployment address**, **AMM/pool targets**, and **claim mechanics**; wire **TimeCurve** / fee router to this address. See [fee sinks](fee-routing-and-governance.md#fee-sinks) and [governance](fee-routing-and-governance.md#governance-actors). |
-| **CL8YProtocolTreasury** | **CL8Y buy-and-burn** (**15%** of **TimeCurve** fees) and other **non-player** CL8Y mandates per [fee sinks](fee-routing-and-governance.md#fee-sinks). |
+| **DoubLPIncentives** | **TODO:** Dedicated receiver for **25%** of **TimeCurve** fees earmarked for **DOUB** liquidity (LP rewards, gauge, or vault-to-pool routing). Finalize **contract name**, **deployment address**, **AMM/pool targets**, and **claim mechanics**; wire **TimeCurve** / fee router to this address. See [fee sinks](fee-routing-and-governance.md#fee-sinks) and [governance](fee-routing-and-governance.md#governance-actors). |
+| **CL8YProtocolTreasury** | **CL8Y buy-and-burn** (**35%** of **TimeCurve** fees at launch) and other **non-player** CL8Y mandates per [fee sinks](fee-routing-and-governance.md#fee-sinks). |
 
 Routers and primitives send fees to explicit addresses; **no** silent commingling of player reserves with protocol buy/burn wallets.
 

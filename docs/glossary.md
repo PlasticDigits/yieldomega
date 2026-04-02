@@ -12,7 +12,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Primitives
 
-- **TimeCurve** — Token launch primitive combining bonding-curve-like pricing, timer extension, and strategic participation. **Minimum buy** (charm price floor) rises over time on a defined schedule (canonical **25% per day** target unless governance changes it); each purchase is **capped** at a fixed multiple of that minimum; purchases extend a **countdown** up to a cap; the sale **ends** when the timer hits zero. Buys add **CHARM weight** (including referral bonuses); after the sale, **`redeemCharms`** converts CHARM into launched **DOUB** pro-rata to **`totalCharmWeight`**. **Podium** payouts (reserve asset) come from **`PodiumPool`** after `endSale`. Canonical **reserve** routing: **locked DOUB LP** 30% · **CL8Y buy-and-burn** 10% · **podium pool** 20% · **team** 5% · **Rabbit Treasury** 35% — [fee routing](onchain/fee-routing-and-governance.md#fee-sinks).
+- **TimeCurve** — Token launch primitive combining bonding-curve-like pricing, timer extension, and strategic participation. **Minimum buy** (charm price floor) rises over time on a defined schedule (canonical **25% per day** target unless governance changes it); each purchase is **capped** at a fixed multiple of that minimum; purchases extend a **countdown** up to a cap; the sale **ends** when the timer hits zero. Buys add **CHARM weight** (including referral bonuses); after the sale, **`redeemCharms`** converts CHARM into launched **DOUB** pro-rata to **`totalCharmWeight`**. **Podium** payouts (reserve asset) come from **`PodiumPool`** after `endSale`. Canonical **TimeCurve** fee routing (of gross spend in the accepted asset): **DOUB locked LP** 25% · **CL8Y buy-and-burn** 35% · **podium pool** 20% · **team sink** 0% (reserved) · **Rabbit Treasury** 20% — [fee routing](onchain/fee-routing-and-governance.md#fee-sinks).
 
 - **Rabbit Treasury** — Reserve-linked **treasury game layer** (also called the **Burrow** in UX): users deposit reserve assets and hold internal claims whose effective value can adjust based on **reserve health** over rolling periods (for example 24 hours). Designed to avoid brittle “hard rug” dynamics while staying honest that sustainability depends on real fees and usage—not magic yield. **Not** the primary governance treasury.
 
@@ -20,9 +20,11 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Assets and naming
 
-- **USDm (MegaUSD)** — Native MegaETH stablecoin. **Documentation uses USDm only** (do not use alternate spellings). Used as a primary reserve and routing asset where the design calls for dollar-stable liquidity. See [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
+- **USDm (MegaUSD)** — Native MegaETH stablecoin (see [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md)). **Not** the default **TimeCurve** / **Rabbit Treasury** reserve in the current canonical design — that role is **CL8Y**.
 
-- **Reserve asset** — Asset accepted by Rabbit Treasury (often USDm or other approved stablecoins/tokens per governance). “Reserve health” is defined relative to these assets and onchain accounting rules.
+- **CL8Y (reserve role)** — **Canonical accepted asset** for **TimeCurve** buys and **Rabbit Treasury** (Burrow) deposits/withdrawals at launch: the same **CL8Y** ERC-20 used for protocol alignment, **`ReferralRegistry`** registration burns, and **`FeeRouter`** buy-and-burn sink routing. Distinct from “CL8Y treasury” as a governance wallet concept.
+
+- **Reserve asset** — Asset vault token for Rabbit Treasury and TimeCurve `acceptedAsset` (**CL8Y** at launch). “Reserve health” is defined relative to this asset and onchain accounting rules unless governance adds a basket.
 
 ## Gameplay and agents
 

@@ -19,7 +19,7 @@ const FEE_SINK_LABELS = [
   "DOUB LP (locked)",
   "CL8Y buy-and-burn",
   "Podium pool",
-  "Team",
+  "Team / reserved (0% default)",
   "Rabbit Treasury",
 ] as const;
 

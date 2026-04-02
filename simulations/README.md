@@ -26,7 +26,7 @@ PYTHONPATH=. python3 -m timecurve_sim.duration_study
 PYTHONPATH=. python3 -m timecurve_sim.raise_milestone_report --seeds 48 --dt-sec 240
 ```
 
-**Raise milestones + 30-day curves** (`raise_milestone_sim`): per-seed time series for sim **days 1–30** (calendar days in simulation time): **daily spend** and **cumulative raise** at end of each day. Aggregates **min / max / mean** across seeds and includes **10 sample runs** (first seeds) for the dashed lines. JSON includes **days to reach** each USDm milestone and **sale duration** distribution.
+**Raise milestones + 30-day curves** (`raise_milestone_sim`): per-seed time series for sim **days 1–30** (calendar days in simulation time): **daily spend** and **cumulative raise** at end of each day. Aggregates **min / max / mean** across seeds and includes **10 sample runs** (first seeds) for the dashed lines. JSON includes **days to reach** each reserve-asset milestone (axis labels may still say “USDm” historically) and **sale duration** distribution.
 
 Requires **matplotlib** and **numpy** for PNG charts (or pass a `.svg` path for a pure-Python SVG). Example:
 

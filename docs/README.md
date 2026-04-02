@@ -10,7 +10,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 
 1. Start with [product/vision.md](product/vision.md) for mission and boundaries.
 2. Read [architecture/overview.md](architecture/overview.md) for trust model and data flow.
-3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeCurve, Rabbit Treasury, Doubloons / DOUB, USDm, agents).
+3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeCurve, Rabbit Treasury, Doubloons / DOUB, reserve asset, agents).
 4. Use [agent-phases.md](agent-phases.md) when executing the roadmap in order or by task: each phase links one doc section and includes a **copy-paste prompt**.
 5. For **Leprechaun NFT onchain metadata** (JSON Schema drafts, semver, changelog), see [schemas/README.md](schemas/README.md) and [schemas/CHANGELOG.md](schemas/CHANGELOG.md).
 6. For **contributor** Cursor skills (code and licensing guardrails), see [../.cursor/skills/README.md](../.cursor/skills/README.md).

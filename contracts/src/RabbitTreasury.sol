@@ -10,13 +10,21 @@ import {BurrowMath} from "./libraries/BurrowMath.sol";
 import {Doubloon} from "./tokens/Doubloon.sol";
 
 /// @title RabbitTreasury (Burrow)
-/// @notice Player-facing reserve game: USDm deposits → DOUB mint, DOUB burn → USDm withdrawal,
-///         epoch-based repricing via BurrowMath. Canonical Burrow* events per
-///         docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events.
+/// @notice Player-facing reserve game: reserve deposits → DOUB mint, DOUB burn → reserve withdrawal,
+///         epoch-based repricing via BurrowMath. Protocol revenue (fees, router inflows) is split between
+///         a non-redeemable protocol bucket and burn, so DOUB redemption draws only from **redeemable**
+///         backing. Canonical Burrow* events per docs/product/rabbit-treasury.md.
+///
+/// @dev **reasonCode** on `BurrowReserveBalanceUpdated`: 1 deposit, 2 withdraw (user payout from vault),
+///      3 fee (protocol revenue; `delta` is net change to vault after burn to sink). Withdrawal fees are
+///      logged via `BurrowWithdrawalFeeAccrued` (redeemable → protocol bucket, no change to total balance).
 contract RabbitTreasury is AccessControlEnumerable, Pausable {
     using SafeERC20 for IERC20;
 
     uint256 internal constant WAD = 1e18;
+
+    /// @notice Default burn sink when constructor `_burnSink` is zero (standard dead address).
+    address public constant DEFAULT_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     // ── Roles ──────────────────────────────────────────────────────────
     bytes32 public constant FEE_ROUTER_ROLE = keccak256("FEE_ROUTER");
@@ -26,6 +34,9 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     // ── Assets ─────────────────────────────────────────────────────────
     IERC20 public immutable reserveAsset;
     Doubloon public immutable doub;
+
+    /// @notice Tokens sent here are treated as burned for accounting (not redeemable).
+    address public immutable burnSink;
 
     // ── BurrowMath parameters ──────────────────────────────────────────
     uint256 public cMaxWad;
@@ -46,9 +57,30 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
 
     // ── Internal pricing ───────────────────────────────────────────────
     uint256 public eWad;
-    uint256 public totalReserves;
 
-    // ── Reason codes for BurrowReserveBalanceUpdated ────────────────────
+    /// @notice CL8Y/reserve that backs ordinary DOUB redemption (user deposits).
+    uint256 public redeemableBacking;
+
+    /// @notice Non-redeemable reserve: protocol revenue share, withdrawal fees, etc.
+    uint256 public protocolOwnedBacking;
+
+    // ── Controlled redemption & fee policy (governed) ──────────────────
+    /// @notice Fraction of each `receiveFee` gross amount sent to `burnSink` (WAD). Rest → protocol bucket.
+    uint256 public protocolRevenueBurnShareWad;
+    /// @notice Fraction of each withdrawal payout (after efficiency) charged as fee (WAD) → protocol bucket.
+    uint256 public withdrawFeeWad;
+    /// @notice When redemption health is 0, withdrawals receive this fraction of the post-pro-rata amount (WAD).
+    uint256 public minRedemptionEfficiencyWad;
+    /// @notice Minimum epochs between successful withdrawals per address; 0 disables.
+    uint256 public redemptionCooldownEpochs;
+
+    // ── Cumulative accounting (transparency) ─────────────────────────────
+    /// @notice Sum of gross amounts passed to `receiveFee` (before burn / protocol split).
+    uint256 public cumulativeFees;
+    uint256 public cumulativeBurned;
+    uint256 public cumulativeWithdrawFees;
+
+    // ── Reason codes for BurrowReserveBalanceUpdated ───────────────────
     uint8 public constant REASON_DEPOSIT = 1;
     uint8 public constant REASON_WITHDRAW = 2;
     uint8 public constant REASON_FEE = 3;
@@ -70,6 +102,12 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         uint256 balanceAfter,
         int256 delta,
         uint8 reasonCode
+    );
+    event BurrowReserveBuckets(
+        uint256 indexed epochId,
+        uint256 redeemableBacking,
+        uint256 protocolOwnedBacking,
+        uint256 totalBacking
     );
     event BurrowDeposited(
         address indexed user,
@@ -93,6 +131,13 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         uint256 cumulativeInAsset,
         uint256 indexed epochId
     );
+    event BurrowProtocolRevenueSplit(
+        uint256 indexed epochId,
+        uint256 grossAmount,
+        uint256 toProtocolBucket,
+        uint256 burnedAmount
+    );
+    event BurrowWithdrawalFeeAccrued(address indexed asset, uint256 feeAmount, uint256 cumulativeWithdrawFees);
     event BurrowRepricingApplied(
         uint256 indexed epochId,
         uint256 repricingFactorWad,
@@ -101,7 +146,8 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     );
     event ParamsUpdated(address indexed actor, string paramName, uint256 oldValue, uint256 newValue);
 
-    uint256 public cumulativeFees;
+    /// @notice Last epoch in which `msg.sender` completed a withdrawal (for cooldown).
+    mapping(address => uint256) public lastWithdrawEpochId;
 
     constructor(
         IERC20 _reserveAsset,
@@ -116,14 +162,23 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         uint256 _lamWad,
         uint256 _deltaMaxFracWad,
         uint256 _eps,
+        uint256 _protocolRevenueBurnShareWad,
+        uint256 _withdrawFeeWad,
+        uint256 _minRedemptionEfficiencyWad,
+        uint256 _redemptionCooldownEpochs,
+        address _burnSink,
         address admin
     ) {
         require(address(_reserveAsset) != address(0), "RT: zero reserve");
         require(address(_doub) != address(0), "RT: zero doub");
         require(_epochDuration > 0, "RT: zero epoch");
+        require(_protocolRevenueBurnShareWad < WAD, "RT: burn share >= 100%");
+        require(_withdrawFeeWad < WAD, "RT: withdraw fee >= 100%");
+        require(_minRedemptionEfficiencyWad > 0 && _minRedemptionEfficiencyWad <= WAD, "RT: min eff");
 
         reserveAsset = _reserveAsset;
         doub = _doub;
+        burnSink = _burnSink == address(0) ? DEFAULT_BURN_SINK : _burnSink;
         epochDuration = _epochDuration;
 
         cMaxWad = _cMaxWad;
@@ -137,9 +192,74 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         eps = _eps;
         eWad = WAD; // initial exchange rate = 1.0
 
+        protocolRevenueBurnShareWad = _protocolRevenueBurnShareWad;
+        withdrawFeeWad = _withdrawFeeWad;
+        minRedemptionEfficiencyWad = _minRedemptionEfficiencyWad;
+        redemptionCooldownEpochs = _redemptionCooldownEpochs;
+
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PARAMS_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
+    }
+
+    /// @notice Total reserve tokens held in accounting (must match `reserveAsset.balanceOf(this)` after ops).
+    function totalReserves() external view returns (uint256) {
+        return redeemableBacking + protocolOwnedBacking;
+    }
+
+    /// @notice Same as `totalReserves`; alias for docs/UI wording.
+    function totalBacking() external view returns (uint256) {
+        return redeemableBacking + protocolOwnedBacking;
+    }
+
+    /// @notice Nominal liability in reserve units: supply * e / WAD.
+    function redemptionLiabilityWad() external view returns (uint256) {
+        uint256 supply = doub.totalSupply();
+        if (supply == 0) return 0;
+        return Math.mulDiv(supply, eWad, WAD);
+    }
+
+    /// @notice Redemption health: redeemableBacking / liability (WAD), capped at 1.0 for penalty curve.
+    function redemptionHealthWad() public view returns (uint256) {
+        uint256 supply = doub.totalSupply();
+        if (supply == 0) return WAD;
+        uint256 liability = Math.mulDiv(supply, eWad, WAD) + eps;
+        uint256 raw = Math.mulDiv(redeemableBacking, WAD, liability);
+        return Math.min(raw, WAD);
+    }
+
+    /// @notice Preview withdrawal payout for `doubAmount` at current state (no state change).
+    function previewWithdraw(uint256 doubAmount) external view returns (uint256 userOut, uint256 feeToProtocol) {
+        (userOut, feeToProtocol,,) = _previewWithdraw(doubAmount, msg.sender);
+    }
+
+    function _previewWithdraw(
+        uint256 doubAmount,
+        address user
+    ) internal view returns (uint256 userOut, uint256 feeToProtocol, uint256 grossFromRedeemable, uint256 effWad) {
+        if (doubAmount == 0) return (0, 0, 0, WAD);
+        uint256 supply = doub.totalSupply();
+        require(supply > 0, "RT: zero supply");
+
+        uint256 nominalOut = Math.mulDiv(doubAmount, eWad, WAD);
+        uint256 proRataCap = Math.mulDiv(doubAmount, redeemableBacking, supply);
+        uint256 baseOut = Math.min(nominalOut, proRataCap);
+
+        uint256 h = redemptionHealthWad();
+        effWad = minRedemptionEfficiencyWad
+            + Math.mulDiv(WAD - minRedemptionEfficiencyWad, h, WAD);
+        grossFromRedeemable = Math.mulDiv(baseOut, effWad, WAD);
+
+        feeToProtocol = Math.mulDiv(grossFromRedeemable, withdrawFeeWad, WAD);
+        userOut = grossFromRedeemable - feeToProtocol;
+
+        if (redemptionCooldownEpochs > 0 && lastWithdrawEpochId[user] != 0) {
+            if (currentEpochId < lastWithdrawEpochId[user] + redemptionCooldownEpochs) {
+                userOut = 0;
+                feeToProtocol = 0;
+                grossFromRedeemable = 0;
+            }
+        }
     }
 
     // ── Epoch management ───────────────────────────────────────────────
@@ -154,35 +274,31 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     }
 
     /// @notice Finalize the current epoch and open the next one.
-    ///         Applies BurrowMath repricing.
+    ///         Applies BurrowMath repricing using **total** backing (redeemable + protocol) for coverage.
     function finalizeEpoch() external {
         require(currentEpochId > 0, "RT: no epoch");
         require(block.timestamp >= epochEnd, "RT: epoch not ended");
 
         uint256 supply = doub.totalSupply();
         uint256 priorE = eWad;
+        uint256 R = redeemableBacking + protocolOwnedBacking;
 
         // Coverage, multiplier, and repricing step
-        uint256 C = supply > 0
-            ? BurrowMath.coverageWad(totalReserves, supply, eWad, cMaxWad, eps)
-            : cMaxWad;
+        uint256 C = supply > 0 ? BurrowMath.coverageWad(R, supply, eWad, cMaxWad, eps) : cMaxWad;
         uint256 m = BurrowMath.multiplierWad(C, cStarWad, alphaWad, betaWad, mMinWad, mMaxWad);
-        uint256 nextE = supply > 0
-            ? BurrowMath.nextEWad(eWad, m, lamWad, deltaMaxFracWad)
-            : eWad;
+        uint256 nextE = supply > 0 ? BurrowMath.nextEWad(eWad, m, lamWad, deltaMaxFracWad) : eWad;
 
         uint256 repricingFactor = nextE > 0 ? Math.mulDiv(nextE, WAD, priorE) : WAD;
         uint256 reserveRatio = supply > 0
-            ? Math.mulDiv(totalReserves, WAD, Math.mulDiv(supply, nextE, WAD) + eps)
+            ? Math.mulDiv(R, WAD, Math.mulDiv(supply, nextE, WAD) + eps)
             : type(uint256).max;
-        uint256 backingPerDoub = supply > 0
-            ? Math.mulDiv(totalReserves, WAD, supply)
-            : 0;
+        uint256 backingPerDoub = supply > 0 ? Math.mulDiv(R, WAD, supply) : 0;
 
         eWad = nextE;
 
         emit BurrowRepricingApplied(currentEpochId, repricingFactor, priorE, nextE);
-        emit BurrowEpochReserveSnapshot(currentEpochId, address(reserveAsset), totalReserves);
+        emit BurrowEpochReserveSnapshot(currentEpochId, address(reserveAsset), R);
+        emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, R);
         emit BurrowHealthEpochFinalized(
             currentEpochId,
             block.timestamp,
@@ -202,65 +318,84 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
 
     // ── User actions ───────────────────────────────────────────────────
 
-    /// @notice Deposit reserve asset and receive DOUB at current exchange rate.
-    /// @param amount Reserve asset amount to deposit.
-    /// @param factionId Faction identifier for leaderboard tracking (0 if none).
+    /// @notice Deposit reserve asset and receive DOUB at current exchange rate. Increases **redeemable** backing only.
     function deposit(uint256 amount, uint256 factionId) external whenNotPaused {
         require(currentEpochId > 0, "RT: no epoch");
         require(amount > 0, "RT: zero amount");
 
         reserveAsset.safeTransferFrom(msg.sender, address(this), amount);
-        totalReserves += amount;
+        redeemableBacking += amount;
 
         uint256 doubOut = Math.mulDiv(amount, WAD, eWad);
         doub.mint(msg.sender, doubOut);
 
-        emit BurrowReserveBalanceUpdated(
-            address(reserveAsset),
-            totalReserves,
-            int256(amount),
-            REASON_DEPOSIT
-        );
+        uint256 total = redeemableBacking + protocolOwnedBacking;
+        emit BurrowReserveBalanceUpdated(address(reserveAsset), total, int256(amount), REASON_DEPOSIT);
+        emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, total);
         emit BurrowDeposited(msg.sender, address(reserveAsset), amount, doubOut, currentEpochId, factionId);
     }
 
-    /// @notice Burn DOUB and withdraw reserve asset at current exchange rate.
-    /// @param doubAmount Amount of DOUB to burn.
-    /// @param factionId Faction identifier for leaderboard tracking (0 if none).
+    /// @notice Burn DOUB and withdraw reserve from **redeemable** backing only, with pro-rata cap,
+    ///         health-aware efficiency, optional cooldown, and withdrawal fee to protocol bucket.
     function withdraw(uint256 doubAmount, uint256 factionId) external whenNotPaused {
         require(currentEpochId > 0, "RT: no epoch");
         require(doubAmount > 0, "RT: zero amount");
 
-        uint256 reserveOut = Math.mulDiv(doubAmount, eWad, WAD);
-        require(reserveOut <= totalReserves, "RT: insufficient reserves");
+        if (redemptionCooldownEpochs > 0) {
+            require(
+                lastWithdrawEpochId[msg.sender] == 0
+                    || currentEpochId >= lastWithdrawEpochId[msg.sender] + redemptionCooldownEpochs,
+                "RT: redemption cooldown"
+            );
+        }
+
+        (uint256 userOut, uint256 feeToProtocol, uint256 grossFromRedeemable,) =
+            _previewWithdraw(doubAmount, msg.sender);
+        require(userOut > 0, "RT: zero payout");
+
+        require(grossFromRedeemable <= redeemableBacking, "RT: redeemable underflow");
 
         doub.burn(msg.sender, doubAmount);
-        totalReserves -= reserveOut;
-        reserveAsset.safeTransfer(msg.sender, reserveOut);
+        redeemableBacking -= grossFromRedeemable;
+        protocolOwnedBacking += feeToProtocol;
+        reserveAsset.safeTransfer(msg.sender, userOut);
 
+        lastWithdrawEpochId[msg.sender] = currentEpochId;
+        cumulativeWithdrawFees += feeToProtocol;
+
+        uint256 total = redeemableBacking + protocolOwnedBacking;
         emit BurrowReserveBalanceUpdated(
-            address(reserveAsset),
-            totalReserves,
-            -int256(reserveOut),
-            REASON_WITHDRAW
+            address(reserveAsset), total, -int256(userOut), REASON_WITHDRAW
         );
-        emit BurrowWithdrawn(msg.sender, address(reserveAsset), reserveOut, doubAmount, currentEpochId, factionId);
+        if (feeToProtocol > 0) {
+            emit BurrowWithdrawalFeeAccrued(address(reserveAsset), feeToProtocol, cumulativeWithdrawFees);
+        }
+        emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, total);
+        emit BurrowWithdrawn(msg.sender, address(reserveAsset), userOut, doubAmount, currentEpochId, factionId);
     }
 
-    /// @notice Receive fee income from fee router (increases reserves without minting DOUB).
+    /// @notice Receive fee income from fee router: split burn / protocol bucket; no DOUB minted.
     function receiveFee(uint256 amount) external onlyRole(FEE_ROUTER_ROLE) {
         require(amount > 0, "RT: zero fee");
         reserveAsset.safeTransferFrom(msg.sender, address(this), amount);
-        totalReserves += amount;
-        cumulativeFees += amount;
 
-        emit BurrowReserveBalanceUpdated(
-            address(reserveAsset),
-            totalReserves,
-            int256(amount),
-            REASON_FEE
-        );
+        uint256 burned = Math.mulDiv(amount, protocolRevenueBurnShareWad, WAD);
+        uint256 toProtocol = amount - burned;
+
+        cumulativeFees += amount;
+        cumulativeBurned += burned;
+        protocolOwnedBacking += toProtocol;
+
+        if (burned > 0) {
+            reserveAsset.safeTransfer(burnSink, burned);
+        }
+
+        uint256 total = redeemableBacking + protocolOwnedBacking;
+        int256 netDelta = int256(amount) - int256(burned);
+        emit BurrowReserveBalanceUpdated(address(reserveAsset), total, netDelta, REASON_FEE);
         emit BurrowFeeAccrued(address(reserveAsset), amount, cumulativeFees, currentEpochId);
+        emit BurrowProtocolRevenueSplit(currentEpochId, amount, toProtocol, burned);
+        emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, total);
     }
 
     // ── Pause ──────────────────────────────────────────────────────────
@@ -306,5 +441,28 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     function setDeltaMaxFracWad(uint256 val) external onlyRole(PARAMS_ROLE) {
         emit ParamsUpdated(msg.sender, "deltaMaxFracWad", deltaMaxFracWad, val);
         deltaMaxFracWad = val;
+    }
+
+    function setProtocolRevenueBurnShareWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val < WAD, "RT: burn share >= 100%");
+        emit ParamsUpdated(msg.sender, "protocolRevenueBurnShareWad", protocolRevenueBurnShareWad, val);
+        protocolRevenueBurnShareWad = val;
+    }
+
+    function setWithdrawFeeWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val < WAD, "RT: withdraw fee >= 100%");
+        emit ParamsUpdated(msg.sender, "withdrawFeeWad", withdrawFeeWad, val);
+        withdrawFeeWad = val;
+    }
+
+    function setMinRedemptionEfficiencyWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val > 0 && val <= WAD, "RT: min eff");
+        emit ParamsUpdated(msg.sender, "minRedemptionEfficiencyWad", minRedemptionEfficiencyWad, val);
+        minRedemptionEfficiencyWad = val;
+    }
+
+    function setRedemptionCooldownEpochs(uint256 val) external onlyRole(PARAMS_ROLE) {
+        emit ParamsUpdated(msg.sender, "redemptionCooldownEpochs", redemptionCooldownEpochs, val);
+        redemptionCooldownEpochs = val;
     }
 }

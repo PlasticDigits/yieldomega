@@ -6,7 +6,8 @@
 # Prerequisites: Foundry (forge, cast), jq optional for loading addresses from broadcast JSON.
 # Usage (from repo root or contracts/):
 #   export RPC_URL=http://127.0.0.1:8545
-#   export USDM_ADDRESS=0x... TIMECURVE_ADDRESS=0x... RABBIT_TREASURY_ADDRESS=0x... LEPRECHAUN_NFT_ADDRESS=0x...
+#   export RESERVE_ASSET_ADDRESS=0x... TIMECURVE_ADDRESS=0x... RABBIT_TREASURY_ADDRESS=0x... LEPRECHAUN_NFT_ADDRESS=0x...
+#   (legacy: USDM_ADDRESS is accepted as the same value)
 #   bash contracts/script/anvil_rich_state.sh
 #
 # Or omit addresses if contracts/broadcast/DeployDev.s.sol/31337/run-latest.json exists (jq required).
@@ -33,11 +34,12 @@ load_addresses_from_broadcast() {
   LEPRECHAUN_NFT_ADDRESS="${LEPRECHAUN_NFT_ADDRESS:-$(jq -r '.transactions[] | select(.contractName=="LeprechaunNFT") | .contractAddress' "$RUN" | head -1)}"
 }
 
-# USDM must match TimeCurve.acceptedAsset (broadcast may omit MockUSDm when USDM_ADDRESS was set at deploy time).
-resolve_usdm_from_timecurve() {
+# Reserve token must match TimeCurve.acceptedAsset (same as RabbitTreasury reserve).
+resolve_reserve_from_timecurve() {
   : "${TIMECURVE_ADDRESS:?}"
-  USDM_ADDRESS="$(cast call "$TIMECURVE_ADDRESS" "acceptedAsset()(address)" --rpc-url "$RPC")"
-  echo "USDM_ADDRESS (from TimeCurve.acceptedAsset)=$USDM_ADDRESS"
+  RESERVE_ASSET_ADDRESS="$(cast call "$TIMECURVE_ADDRESS" "acceptedAsset()(address)" --rpc-url "$RPC")"
+  USDM_ADDRESS="${RESERVE_ASSET_ADDRESS}"
+  echo "RESERVE_ASSET_ADDRESS (from TimeCurve.acceptedAsset)=$RESERVE_ASSET_ADDRESS"
 }
 
 block_ts() {
@@ -94,9 +96,9 @@ load_addresses_from_broadcast
 : "${RABBIT_TREASURY_ADDRESS:?Set RABBIT_TREASURY_ADDRESS or run DeployDev so broadcast JSON exists}"
 : "${LEPRECHAUN_NFT_ADDRESS:?Set LEPRECHAUN_NFT_ADDRESS or run DeployDev so broadcast JSON exists}"
 
-resolve_usdm_from_timecurve
+resolve_reserve_from_timecurve
 
-export USDM_ADDRESS TIMECURVE_ADDRESS RABBIT_TREASURY_ADDRESS LEPRECHAUN_NFT_ADDRESS
+export RESERVE_ASSET_ADDRESS USDM_ADDRESS TIMECURVE_ADDRESS RABBIT_TREASURY_ADDRESS LEPRECHAUN_NFT_ADDRESS
 
 echo "=== SimulateAnvilRichState Part1 ==="
 cd "${CONTRACTS_ROOT}"

@@ -22,12 +22,12 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 
 **Doc:** [glossary.md](glossary.md)
 
-**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeCurve, Rabbit Treasury, USDm, agents).
+**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeCurve, Rabbit Treasury, reserve asset, agents).
 
 **Agent prompt (copy-paste):**
 
 ```text
-You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) that documentation uses **USDm** only for the native stable name, (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
+You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) that **CL8Y** is the canonical **reserve / accepted asset** for TimeCurve and Rabbit Treasury at launch (and how **USDm** fits as MegaETH context in research docs), (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
 ```
 
 ---
@@ -274,11 +274,11 @@ Read docs/research/megaeth.md. Verify official doc URLs still resolve; update th
 
 <a id="phase-17"></a>
 
-## Phase 17 — Research: USDm and reserves
+## Phase 17 — Research: Reserves (CL8Y, USDm, and baskets)
 
 **Doc:** [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md)
 
-**Goal:** Clarify reserve assumptions for Rabbit Treasury and fee routing.
+**Goal:** Clarify reserve assumptions for Rabbit Treasury, TimeCurve accepted asset, and fee routing.
 
 **Agent prompt (copy-paste):**
 

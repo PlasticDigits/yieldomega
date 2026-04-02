@@ -13,8 +13,8 @@ import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
-import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 
 /// @notice Deploy all core contracts to a dev/local environment.
@@ -30,12 +30,15 @@ contract DeployDev is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // ── USDm placeholder (dev only — replace with real testnet USDm) ──
-        address usdm = vm.envOr("USDM_ADDRESS", address(0));
-        if (usdm == address(0)) {
-            MockUSDm mock = new MockUSDm();
-            usdm = address(mock);
-            console.log("MockUSDm deployed (dev only):", usdm);
+        // ── Reserve asset: CL8Y (dev mock, or set RESERVE_ASSET_ADDRESS / legacy USDM_ADDRESS) ──
+        address reserveAsset = vm.envOr("RESERVE_ASSET_ADDRESS", address(0));
+        if (reserveAsset == address(0)) {
+            reserveAsset = vm.envOr("USDM_ADDRESS", address(0));
+        }
+        if (reserveAsset == address(0)) {
+            MockReserveCl8y mock = new MockReserveCl8y();
+            reserveAsset = address(mock);
+            console.log("MockReserveCl8y deployed (dev only):", reserveAsset);
         }
 
         // ── Doubloon (DOUB) ────────────────────────────────────────────
@@ -54,7 +57,7 @@ contract DeployDev is Script {
 
         // ── Rabbit Treasury ────────────────────────────────────────────
         RabbitTreasury rt = new RabbitTreasury(
-            ERC20(usdm),
+            ERC20(reserveAsset),
             doub,
             86_400,                             // epochDuration
             2e18,                               // cMaxWad
@@ -66,6 +69,11 @@ contract DeployDev is Script {
             5e17,                               // lamWad (0.5)
             2e16,                               // deltaMaxFracWad (0.02)
             1,                                  // eps
+            25e16,                              // protocolRevenueBurnShareWad (25% of fee gross burned)
+            1e16,                               // withdrawFeeWad (1%)
+            5e17,                               // minRedemptionEfficiencyWad (50% floor when health is 0)
+            0,                                  // redemptionCooldownEpochs (0 = off)
+            address(0),                         // burnSink (0 → DEFAULT_BURN_SINK)
             deployer
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
@@ -81,16 +89,13 @@ contract DeployDev is Script {
                 address(ecoTreasury),
                 address(rt)
             ],
-            [uint16(3000), uint16(1000), uint16(2000), uint16(500), uint16(3500)]
+            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
         console.log("FeeRouter:", address(router));
 
-        // ── Referral registry (dev MockCL8Y — replace with real CL8Y on testnet/mainnet) ──
-        MockCL8Y cl8y = new MockCL8Y();
-        cl8y.mint(deployer, 10_000_000e18);
-        ReferralRegistry referralRegistry = new ReferralRegistry(cl8y, 1e18);
-        console.log("MockCL8Y (dev):", address(cl8y));
+        // ── Referral registry (CL8Y burns for codes — same token as reserve when using dev mock) ──
+        ReferralRegistry referralRegistry = new ReferralRegistry(IERC20(reserveAsset), 1e18);
         console.log("ReferralRegistry:", address(referralRegistry));
 
         // ── TimeCurve (dev placeholder — needs launched token) ─────────
@@ -105,7 +110,7 @@ contract DeployDev is Script {
         );
         console.log("LinearCharmPrice:", address(charmPrice));
         TimeCurve tc = new TimeCurve(
-            ERC20(usdm),
+            ERC20(reserveAsset),
             lt,
             router,
             podiumPool,
@@ -136,12 +141,15 @@ contract DeployDev is Script {
     }
 }
 
-/// @dev Dev-only mock tokens. NOT for production.
-contract MockUSDm is ERC20 {
-    constructor() ERC20("Mock USDm", "USDM") {
+/// @dev Mintable CL8Y stand-in for TimeCurve accepted asset + Rabbit Treasury reserve + referral burns. NOT for production.
+contract MockReserveCl8y is ERC20 {
+    constructor() ERC20("CL8Y", "CL8Y") {
         _mint(msg.sender, 100_000_000e18);
     }
-    function mint(address to, uint256 amount) external { _mint(to, amount); }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
 }
 
 contract MockLaunchToken is ERC20 {

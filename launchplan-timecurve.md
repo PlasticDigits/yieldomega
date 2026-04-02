@@ -1,6 +1,6 @@
 # TimeCurve — Doubloon (DOUB) launch plan
 
-**Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: real USDm, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only).
+**Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only).
 
 **Authoritative policy elsewhere:** Runtime fee **weights** (30 / 20 / 35 / 15) and governance intent are in [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md). Parameter checklist: [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md). Stage 2 smoke criteria: [`docs/testing/strategy.md`](docs/testing/strategy.md) and [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md).
 
@@ -10,7 +10,7 @@
 
 | Milestone | Definition |
 |-----------|------------|
-| **Contracts** | `TimeCurve.launchedToken` = **DOUB**; `totalTokensForSale` + DOUB pre-positioned on `TimeCurve`; `acceptedAsset` = **official devnet USDm**; `FeeRouter` + sinks wired per canonical bps; `RabbitTreasury` + `Doubloon` roles correct. |
+| **Contracts** | `TimeCurve.launchedToken` = **DOUB**; `totalTokensForSale` + DOUB pre-positioned on `TimeCurve`; `acceptedAsset` = **official devnet CL8Y**; `FeeRouter` + sinks wired per canonical bps; `RabbitTreasury` + `Doubloon` roles correct. |
 | **Indexer** | Ingests devnet from empty DB; smoke txs visible; lag acceptable per runbook. |
 | **Frontend** | **TimeCurve** path is the real launch UX. **Rabbit Treasury, NFT collection, and any “Kumbaya” / “Sir” pages** show **under construction** messaging (what the feature will be), not full flows — unless explicitly pulled into this milestone. |
 | **Simulations** | TimeCurve Monte Carlo + duration / raise studies run on a schedule (CI nightly or tagged releases) with saved JSON artifacts for regression comparison. |
@@ -22,10 +22,10 @@
 
 ### 2.1 Contracts & deploy
 
-1. Resolve **devnet USDm** address from MegaETH artifacts (no informal mocks on devnet unless explicitly documented as test doubles).
+1. Resolve **devnet CL8Y** address from official artifacts (no informal mocks on devnet unless explicitly documented as test doubles).
 2. **DOUB as launched token:** mint or transfer **`totalTokensForSale`** DOUB into `TimeCurve` before `startSale`. Today only [`Doubloon`](contracts/src/tokens/Doubloon.sol) `MINTER_ROLE` can mint — typically held by `RabbitTreasury`; launch deploy must either temporarily grant minter to a deploy script / multisig, or mint via an agreed bootstrap path. Record the chosen pattern in [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md).
 3. Align **genesis DOUB allocation** (Section 4) with `totalTokensForSale` and any multisig-held seed for LP / Sir / Rabbit.
-4. Deploy via [`contracts/script/DeployDev.s.sol`](contracts/script/DeployDev.s.sol) pattern (or a devnet-specific script) with **`USDM_ADDRESS` set**; record commit + addresses in a dev registry JSON (same idea as [`contracts/deployments/stage2-anvil-registry.json`](contracts/deployments/stage2-anvil-registry.json)).
+4. Deploy via [`contracts/script/DeployDev.s.sol`](contracts/script/DeployDev.s.sol) pattern (or a devnet-specific script) with **`RESERVE_ASSET_ADDRESS` set** (or legacy `USDM_ADDRESS` for the same role); record commit + addresses in a dev registry JSON (same idea as [`contracts/deployments/stage2-anvil-registry.json`](contracts/deployments/stage2-anvil-registry.json)).
 5. Run **`forge test`** (full suite) before pointing humans at devnet.
 
 ### 2.2 Indexer
@@ -37,7 +37,7 @@
 
 1. Env: `VITE_*` for devnet chain id, RPC, contract addresses, indexer URL.
 2. **TimeCurve:** wallet connect, read sale state, buy, post-sale charm redemption when applicable.
-3. **Everything else:** single-purpose **“Under construction”** copy describing future **Rabbit Treasury**, **Leprechaun NFTs**, **Kumbaya v3 DOUB/USDM liquidity**, and **Sir** (perps-style DEX) — no fake trading UIs.
+3. **Everything else:** single-purpose **“Under construction”** copy describing future **Rabbit Treasury**, **Leprechaun NFTs**, **Kumbaya v3 DOUB/CL8Y liquidity**, and **Sir** (perps-style DEX) — no fake trading UIs.
 
 ### 2.4 Local E2E before devnet (sanity)
 
@@ -88,8 +88,8 @@ All percentages are **of total genesis mint**.
 | Destination | Share | DOUB (whole tokens, 18-decimal ERC-20) | Purpose |
 |-------------|-------|------------------------------------------|---------|
 | **A — TimeCurve sale** | **45%** | **450_000_000** | Locked in `TimeCurve` as `totalTokensForSale`; redeemed via `redeemCharms` pro-rata to charm weight after `endSale`. |
-| **B — Rabbit Treasury (Burrow)** | **15%** | **150_000_000** | **Treasury-controlled DOUB** for Burrow incentives, bootstrap liquidity with USDm reserves, or slow-release programs — **not** the same as player DOUB minted 1:1 on deposit (that remains `RabbitTreasury` mint rules). Exact use is ops/governance. |
-| **C — Kumbaya v3 LP (DOUB / USDm)** | **25%** | **250_000_000** | Seed **Uniswap v3** (or MegaETH-native concentrated liquidity) **DOUB/USDm** pool + **ongoing LP incentive compatibility** with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol). Pair with matching **USDm** from treasury or raise proceeds per pool strategy. |
+| **B — Rabbit Treasury (Burrow)** | **15%** | **150_000_000** | **Treasury-controlled DOUB** for Burrow incentives, bootstrap liquidity with **CL8Y** reserves, or slow-release programs — **not** the same as player DOUB minted 1:1 on deposit (that remains `RabbitTreasury` mint rules). Exact use is ops/governance. |
+| **C — Kumbaya v3 LP (DOUB / CL8Y)** | **25%** | **250_000_000** | Seed **Uniswap v3** (or MegaETH-native concentrated liquidity) **DOUB/CL8Y** pool + **ongoing LP incentive compatibility** with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol). Pair with matching **CL8Y** from treasury or raise proceeds per pool strategy. |
 | **D — Sir (perps-style DEX)** | **15%** | **150_000_000** | Insurance fund, liquidity / maker incentives, and bootstrap for the **Sir** derivatives venue — **off-chain or future contracts** until that product ships; hold in **multisig / vesting** so it cannot be confused with TimeCurve or Burrow balances. |
 
 **Checksum:** 45 + 15 + 25 + 15 = **100%**.
@@ -107,9 +107,9 @@ All percentages are **of total genesis mint**.
 | Mechanism | What moves | Canonical split |
 |-----------|------------|-----------------|
 | **Genesis mint** | One-time DOUB allocation | Section 4 |
-| **TimeCurve buys** | **Accepted asset** (USDm) into `FeeRouter`, then to sinks | **30%** DoubLPIncentives · **10%** CL8Y · **20%** PodiumPool · **5%** Team (`EcosystemTreasury` in dev) · **35%** RabbitTreasury — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
+| **TimeCurve buys** | **Accepted asset** (**CL8Y**) into `FeeRouter`, then to sinks | **25%** DoubLPIncentives · **35%** CL8YProtocolTreasury · **20%** PodiumPool · **0%** Team (`EcosystemTreasury` in dev) · **20%** RabbitTreasury — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
 
-**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (today USDm). **Referral** incentives are **CHARM weight**; the **full gross** still routes through the fee router. **DOUB locked liquidity** targets SIR / Kumbaya seeding (see fee doc for **1.2×** launch anchor and **0.8×–∞** Kumbaya band). **Podium** payouts are **reserve-only**; **DOUB** is for **`redeemCharms`** (genesis / sale allocation). Genesis DOUB not needed for LP may be **burned** or reallocated per governance — document any change next to [Section 4](launchplan-timecurve.md#4-doub-supply-genesis-allocation-canonical-proposal).
+**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (**CL8Y** at launch). **Referral** incentives are **CHARM weight**; the **full gross** still routes through the fee router. **DOUB locked liquidity** targets SIR / Kumbaya seeding (see fee doc for **1.2×** launch anchor and **0.8×–∞** Kumbaya band). **Podium** payouts are **reserve-only**; **DOUB** is for **`redeemCharms`** (genesis / sale allocation). Genesis DOUB not needed for LP may be **burned** or reallocated per governance — document any change next to [Section 4](launchplan-timecurve.md#4-doub-supply-genesis-allocation-canonical-proposal).
 
 ---
 
@@ -121,7 +121,7 @@ Routes **`/rabbit-treasury`**, **`/collection`**, **`/referrals`** use the **Und
 
 ## 7. Exit checklist (devnet E2E)
 
-- [ ] USDm + DOUB addresses published for devnet.
+- [ ] CL8Y + DOUB addresses published for devnet.
 - [ ] `totalTokensForSale` + genesis split match Section 4 (or updated signed table).
 - [ ] `forge test` + simulation sweep green.
 - [ ] Indexer smoke + optional frontend buy on devnet.

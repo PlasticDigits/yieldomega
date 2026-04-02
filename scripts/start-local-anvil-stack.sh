@@ -101,7 +101,7 @@ cast block-number --rpc-url "${RPC_URL}" >/dev/null || die "No RPC at ${RPC_URL}
 
 echo "=== Deploy (DeployDev) ==="
 cd "${CONTRACTS}"
-env -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC_URL}" >/dev/null
+env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC_URL}" >/dev/null
 [[ -f "${RUN_JSON}" ]] || die "Missing ${RUN_JSON}"
 
 echo "=== Simulate (rich state) ==="

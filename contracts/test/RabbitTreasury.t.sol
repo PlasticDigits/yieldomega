@@ -9,8 +9,8 @@ import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {BurrowMath} from "../src/libraries/BurrowMath.sol";
 
-contract MockUSDm is ERC20 {
-    constructor() ERC20("USDm", "USDM") {}
+contract MockReserveCl8y is ERC20 {
+    constructor() ERC20("CL8Y", "CL8Y") {}
     function mint(address to, uint256 amount) external { _mint(to, amount); }
 }
 
@@ -29,7 +29,7 @@ contract RabbitTreasuryTest is Test {
     uint256 internal constant DELTA_MAX_FRAC = 2e16;
     uint256 internal constant EPS = 1;
 
-    MockUSDm usdm;
+    MockReserveCl8y reserve;
     Doubloon doub;
     RabbitTreasury rt;
 
@@ -41,11 +41,26 @@ contract RabbitTreasuryTest is Test {
         0x476424d2159ae843d833615e61b543b8cb93f382b9ad46d8b1545307620a4d6d;
 
     function setUp() public {
-        usdm = new MockUSDm();
+        reserve = new MockReserveCl8y();
         doub = new Doubloon(address(this));
         rt = new RabbitTreasury(
-            usdm, doub, ONE_DAY,
-            C_MAX, C_STAR, ALPHA, BETA, M_MIN, M_MAX, LAM, DELTA_MAX_FRAC, EPS,
+            reserve,
+            doub,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            25e16, // protocolRevenueBurnShareWad
+            1e16, // withdrawFeeWad 1%
+            5e17, // minRedemptionEfficiencyWad
+            0, // redemptionCooldownEpochs
+            address(0), // burnSink
             address(this)
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
@@ -53,9 +68,9 @@ contract RabbitTreasuryTest is Test {
     }
 
     function _fundAndApprove(address user, uint256 amount) internal {
-        usdm.mint(user, amount);
+        reserve.mint(user, amount);
         vm.prank(user);
-        usdm.approve(address(rt), amount);
+        reserve.approve(address(rt), amount);
     }
 
     // ── Epoch management ───────────────────────────────────────────────
@@ -81,8 +96,10 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.deposit(100e18, 0);
 
-        // At e=1.0, 100 USDm → 100 DOUB
+        // At e=1.0, 100 CL8Y → 100 DOUB; all in redeemable bucket
         assertEq(doub.balanceOf(alice), 100e18);
+        assertEq(rt.redeemableBacking(), 100e18);
+        assertEq(rt.protocolOwnedBacking(), 0);
         assertEq(rt.totalReserves(), 100e18);
     }
 
@@ -111,9 +128,15 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.withdraw(50e18, 0);
 
+        uint256 gross = 50e18;
+        uint256 wFee = gross * rt.withdrawFeeWad() / WAD;
+        uint256 userOut = gross - wFee;
+
         assertEq(doub.balanceOf(alice), 50e18);
-        assertEq(usdm.balanceOf(alice), 50e18);
-        assertEq(rt.totalReserves(), 50e18);
+        assertEq(reserve.balanceOf(alice), userOut);
+        assertEq(rt.redeemableBacking(), 50e18);
+        assertEq(rt.protocolOwnedBacking(), wFee);
+        assertEq(rt.totalReserves(), 50e18 + wFee);
     }
 
     function test_withdraw_more_than_balance_reverts() public {
@@ -185,7 +208,7 @@ contract RabbitTreasuryTest is Test {
         doub.transfer(bob, 25_000_000e18);
 
         for (uint256 i; i < 60; ++i) {
-            assertEq(usdm.balanceOf(address(rt)), rt.totalReserves(), "USDM balance vs totalReserves");
+            assertEq(reserve.balanceOf(address(rt)), rt.totalReserves(), "reserve balance vs totalReserves");
             if (i % 2 == 0) {
                 uint256 aBal = doub.balanceOf(alice);
                 if (aBal > 1000e18) {
@@ -200,7 +223,7 @@ contract RabbitTreasuryTest is Test {
                 }
             }
         }
-        assertEq(usdm.balanceOf(address(rt)), rt.totalReserves());
+        assertEq(reserve.balanceOf(address(rt)), rt.totalReserves());
     }
 
     /// @dev `BurrowHealthEpochFinalized` reserve ratio and backing match on-chain BurrowMath (threat model: accounting mismatch).
@@ -279,21 +302,26 @@ contract RabbitTreasuryTest is Test {
 
     function test_receiveFee() public {
         rt.openFirstEpoch();
-        usdm.mint(feeSource, 50e18);
+        reserve.mint(feeSource, 50e18);
         vm.prank(feeSource);
-        usdm.approve(address(rt), 50e18);
+        reserve.approve(address(rt), 50e18);
         vm.prank(feeSource);
         rt.receiveFee(50e18);
 
-        assertEq(rt.totalReserves(), 50e18);
+        assertEq(rt.redeemableBacking(), 0);
+        assertEq(rt.protocolOwnedBacking(), 375e17); // 75% of 50
+        assertEq(rt.cumulativeBurned(), 125e17);
         assertEq(rt.cumulativeFees(), 50e18);
+        assertEq(rt.totalReserves(), 375e17);
+        assertEq(reserve.balanceOf(address(rt)), 375e17);
+        assertEq(reserve.balanceOf(rt.DEFAULT_BURN_SINK()), 125e17);
     }
 
     function test_receiveFee_unauthorized_reverts() public {
         rt.openFirstEpoch();
-        usdm.mint(alice, 50e18);
+        reserve.mint(alice, 50e18);
         vm.prank(alice);
-        usdm.approve(address(rt), 50e18);
+        reserve.approve(address(rt), 50e18);
         vm.prank(alice);
         vm.expectRevert();
         rt.receiveFee(50e18);
@@ -345,5 +373,157 @@ contract RabbitTreasuryTest is Test {
     function test_setMBounds_invalid_reverts() public {
         vm.expectRevert("RT: mMin >= mMax");
         rt.setMBoundsWad(M_MAX, M_MIN);
+    }
+
+    // ── Bucket model & anti-leak ───────────────────────────────────────
+
+    function test_receiveFee_doesNotMintDoub_andDoesNotIncreaseRedeemable() public {
+        rt.openFirstEpoch();
+        reserve.mint(feeSource, 200e18);
+        vm.prank(feeSource);
+        reserve.approve(address(rt), type(uint256).max);
+        vm.prank(feeSource);
+        rt.receiveFee(200e18);
+        assertEq(doub.totalSupply(), 0);
+        assertEq(rt.redeemableBacking(), 0);
+        assertGt(rt.protocolOwnedBacking(), 0);
+    }
+
+    function test_protocolOwned_notExtracted_viaOrdinaryWithdraw() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        rt.deposit(100e18, 0);
+
+        reserve.mint(feeSource, 1_000e18);
+        vm.prank(feeSource);
+        reserve.approve(address(rt), type(uint256).max);
+        vm.prank(feeSource);
+        rt.receiveFee(1_000e18);
+
+        uint256 protocolBefore = rt.protocolOwnedBacking();
+        assertGt(protocolBefore, 500e18);
+
+        uint256 balBefore = reserve.balanceOf(alice);
+        vm.prank(alice);
+        rt.withdraw(doub.balanceOf(alice), 0);
+
+        // User only receives redeemable-backed payout (+ withdrawal fee stays in protocol bucket)
+        assertLt(reserve.balanceOf(alice) - balBefore, protocolBefore);
+        assertEq(rt.redeemableBacking(), 0);
+        assertGe(rt.protocolOwnedBacking(), protocolBefore);
+    }
+
+    function test_burn_share_zero_sends_all_to_protocol_bucket() public {
+        Doubloon d0 = new Doubloon(address(this));
+        RabbitTreasury rt0 = new RabbitTreasury(
+            reserve,
+            d0,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            0, // no burn
+            0, // no withdraw fee
+            WAD, // min eff = 100%
+            0,
+            address(0),
+            address(this)
+        );
+        d0.grantRole(d0.MINTER_ROLE(), address(rt0));
+        rt0.grantRole(rt0.FEE_ROUTER_ROLE(), feeSource);
+        rt0.openFirstEpoch();
+
+        reserve.mint(feeSource, 100e18);
+        vm.prank(feeSource);
+        reserve.approve(address(rt0), type(uint256).max);
+        vm.prank(feeSource);
+        rt0.receiveFee(100e18);
+
+        assertEq(rt0.cumulativeBurned(), 0);
+        assertEq(rt0.protocolOwnedBacking(), 100e18);
+        assertEq(reserve.balanceOf(address(rt0)), 100e18);
+    }
+
+    function test_redemptionCooldown_blocks_consecutive_withdraws() public {
+        rt.openFirstEpoch();
+        rt.setRedemptionCooldownEpochs(1);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        rt.deposit(100e18, 0);
+
+        vm.prank(alice);
+        rt.withdraw(10e18, 0);
+
+        vm.prank(alice);
+        vm.expectRevert("RT: redemption cooldown");
+        rt.withdraw(10e18, 0);
+
+        vm.warp(rt.epochEnd());
+        rt.finalizeEpoch();
+
+        vm.prank(alice);
+        rt.withdraw(10e18, 0);
+    }
+
+    /// @dev After a bullish repricing, nominal liability (S * e) can exceed redeemable backing; exits are pro-rata + efficiency capped.
+    function test_repricingRaisesLiability_redemptionBelowNominal() public {
+        rt.openFirstEpoch();
+        rt.setWithdrawFeeWad(0);
+        _fundAndApprove(alice, 2_000_000e18);
+        vm.prank(alice);
+        rt.deposit(2_000_000e18, 0);
+
+        vm.warp(rt.epochEnd());
+        rt.finalizeEpoch();
+
+        assertGt(rt.eWad(), WAD, "e should rise when coverage is strong");
+
+        uint256 s = doub.balanceOf(alice);
+        uint256 nominalFull = s * rt.eWad() / WAD;
+        assertGt(nominalFull, rt.redeemableBacking(), "nominal liability exceeds redeemable bucket");
+
+        vm.prank(alice);
+        (uint256 userOut, uint256 fee) = rt.previewWithdraw(s);
+        assertEq(fee, 0);
+        assertLt(userOut, nominalFull);
+        assertLe(userOut, rt.redeemableBacking());
+
+        vm.prank(alice);
+        rt.withdraw(s, 0);
+        assertEq(rt.redeemableBacking(), 0);
+    }
+
+    function test_stress_manyUsersExit_protocolBucketUntouched() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 1_000e18);
+        vm.prank(alice);
+        rt.deposit(1_000e18, 0);
+        vm.prank(alice);
+        doub.transfer(bob, 400e18);
+
+        reserve.mint(feeSource, 5_000e18);
+        vm.prank(feeSource);
+        reserve.approve(address(rt), type(uint256).max);
+        vm.prank(feeSource);
+        rt.receiveFee(5_000e18);
+
+        uint256 protoMid = rt.protocolOwnedBacking();
+
+        vm.prank(alice);
+        rt.withdraw(doub.balanceOf(alice), 0);
+        vm.prank(bob);
+        rt.withdraw(doub.balanceOf(bob), 0);
+
+        assertEq(doub.totalSupply(), 0);
+        assertEq(rt.redeemableBacking(), 0);
+        assertGe(rt.protocolOwnedBacking(), protoMid);
+        assertEq(reserve.balanceOf(address(rt)), rt.totalReserves());
     }
 }

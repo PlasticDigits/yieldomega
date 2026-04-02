@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/** Canonical TimeCurve → FeeRouter weights (basis points, sum 10_000). */
+/** Canonical TimeCurve → FeeRouter weights (basis points, sum 10_000). Order: LP · CL8Y · podium · team · Rabbit. */
 export const RESERVE_FEE_ROUTING_BPS = {
-  doubLpLockedLiquidity: 3000,
-  cl8yBuyAndBurn: 1000,
+  doubLpLockedLiquidity: 2500,
+  cl8yBuyAndBurn: 3500,
   podiumPool: 2000,
-  team: 500,
-  rabbitTreasury: 3500,
+  team: 0,
+  rabbitTreasury: 2000,
 } as const;
 
 /** Within a category slice: 1st : 2nd : 3rd = 4 : 2 : 1. */

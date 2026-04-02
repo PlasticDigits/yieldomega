@@ -6,8 +6,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 
-contract MockUSDmInv is ERC20 {
-    constructor() ERC20("USDm", "USDM") {}
+contract MockReserveCl8yInv is ERC20 {
+    constructor() ERC20("CL8Y", "CL8Y") {}
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
@@ -15,7 +15,7 @@ contract MockUSDmInv is ERC20 {
 
 /// @dev Stateful handler: deposits, withdrawals, fees, epoch finalization (no pause).
 contract RabbitTreasuryHandler is Test {
-    MockUSDmInv public immutable usdm;
+    MockReserveCl8yInv public immutable reserve;
     Doubloon public immutable doub;
     RabbitTreasury public immutable rt;
     address public immutable alice;
@@ -24,8 +24,8 @@ contract RabbitTreasuryHandler is Test {
     uint256 public ghost_doubMinted;
     uint256 public ghost_doubBurned;
 
-    constructor(MockUSDmInv _usdm, Doubloon _doub, RabbitTreasury _rt, address _alice, address _bob) {
-        usdm = _usdm;
+    constructor(MockReserveCl8yInv _reserve, Doubloon _doub, RabbitTreasury _rt, address _alice, address _bob) {
+        reserve = _reserve;
         doub = _doub;
         rt = _rt;
         alice = _alice;
@@ -34,9 +34,9 @@ contract RabbitTreasuryHandler is Test {
 
     function depositAlice(uint256 amt) external {
         amt = bound(amt, 1, 1e27);
-        usdm.mint(alice, amt);
+        reserve.mint(alice, amt);
         vm.prank(alice);
-        usdm.approve(address(rt), amt);
+        reserve.approve(address(rt), amt);
         uint256 db = doub.balanceOf(alice);
         vm.prank(alice);
         rt.deposit(amt, 0);
@@ -45,9 +45,9 @@ contract RabbitTreasuryHandler is Test {
 
     function depositBob(uint256 amt) external {
         amt = bound(amt, 1, 1e27);
-        usdm.mint(bob, amt);
+        reserve.mint(bob, amt);
         vm.prank(bob);
-        usdm.approve(address(rt), amt);
+        reserve.approve(address(rt), amt);
         uint256 db = doub.balanceOf(bob);
         vm.prank(bob);
         rt.deposit(amt, 0);
@@ -75,8 +75,8 @@ contract RabbitTreasuryHandler is Test {
     /// @dev Fee router must be this handler (role granted in test `setUp`).
     function pushFee(uint256 amt) external {
         amt = bound(amt, 1, 1e24);
-        usdm.mint(address(this), amt);
-        usdm.approve(address(rt), amt);
+        reserve.mint(address(this), amt);
+        reserve.approve(address(rt), amt);
         rt.receiveFee(amt);
     }
 
@@ -100,16 +100,16 @@ contract RabbitTreasuryInvariantTest is Test {
     uint256 internal constant DELTA_MAX_FRAC = 2e16;
     uint256 internal constant EPS = 1;
 
-    MockUSDmInv internal usdm;
+    MockReserveCl8yInv internal reserve;
     Doubloon internal doub;
     RabbitTreasury internal rt;
     RabbitTreasuryHandler internal handler;
 
     function setUp() public {
-        usdm = new MockUSDmInv();
+        reserve = new MockReserveCl8yInv();
         doub = new Doubloon(address(this));
         rt = new RabbitTreasury(
-            usdm,
+            reserve,
             doub,
             ONE_DAY,
             C_MAX,
@@ -121,6 +121,11 @@ contract RabbitTreasuryInvariantTest is Test {
             LAM,
             DELTA_MAX_FRAC,
             EPS,
+            25e16,
+            1e16,
+            5e17,
+            0,
+            address(0),
             address(this)
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
@@ -128,13 +133,13 @@ contract RabbitTreasuryInvariantTest is Test {
 
         address alice = makeAddr("inv_rt_alice");
         address bob = makeAddr("inv_rt_bob");
-        handler = new RabbitTreasuryHandler(usdm, doub, rt, alice, bob);
+        handler = new RabbitTreasuryHandler(reserve, doub, rt, alice, bob);
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(handler));
         targetContract(address(handler));
     }
 
     function invariant_rabbitTreasury_reservesMatchTokenBalance() public view {
-        assertEq(usdm.balanceOf(address(rt)), rt.totalReserves(), "reserves vs balance");
+        assertEq(reserve.balanceOf(address(rt)), rt.totalReserves(), "reserves vs balance");
     }
 
     function invariant_rabbitTreasury_doubSupplyMatchesGhostMintBurn() public view {
