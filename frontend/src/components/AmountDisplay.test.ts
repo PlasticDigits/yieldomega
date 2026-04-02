@@ -19,7 +19,9 @@ describe("AmountDisplay (DOM nesting / SSR)", () => {
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");
-    expect(html).toContain("1953145177291660455");
+    expect(html).toContain("1.953145177291660455");
+    expect(html).toContain("1.95");
+    expect(html).not.toContain("1953145177291660455");
   });
 });
 

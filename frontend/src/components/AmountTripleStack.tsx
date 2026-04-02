@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 export type AmountTripleStackRow = {
   label: string;
   value: ReactNode;
-  /** When true, value cell uses mono styling (raw wei, etc.). */
+  /** When true, value cell uses mono styling (long decimal strings, hashes, etc.). */
   monoValue?: boolean;
 };
 
@@ -13,7 +13,7 @@ type AmountTripleStackProps = {
   rows: readonly AmountTripleStackRow[];
 };
 
-/** Raw / human / abbrev rows using only `span` so the block is valid inside `<p>` (see issue #9). */
+/** Label/value rows using only `span` so the block is valid inside `<p>` (see GitLab #9). */
 export function AmountTripleStack({ rows }: AmountTripleStackProps) {
   return (
     <span className="amount-triple">
