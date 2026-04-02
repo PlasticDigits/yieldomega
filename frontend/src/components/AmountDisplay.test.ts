@@ -32,6 +32,8 @@ describe("UnixTimestampDisplay (DOM nesting / SSR)", () => {
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");
-    expect(html).toContain("1700000000");
+    expect(html).toContain("utc");
+    expect(html).toMatch(/2023-11-14T22:13:20\.000Z/);
+    expect(html).not.toContain("1700000000");
   });
 });
