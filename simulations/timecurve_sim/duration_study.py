@@ -21,9 +21,9 @@ from timecurve_sim.model import (
     TimeCurveParams,
     canonical_timecurve_params,
     clamp_spend,
+    extend_deadline_or_reset_below_threshold,
     hybrid_exploration_params,
     min_buy_at,
-    next_sale_end,
 )
 from timecurve_sim.monte_carlo import _poisson
 
@@ -154,7 +154,7 @@ def _run_sale_core(
             budgets[idx] -= spend
             total_buys += 1
             total_spend += spend
-            end = next_sale_end(now, end, p)
+            end, _ = extend_deadline_or_reset_below_threshold(now, end, p)
 
             if milestone_first is not None and track_milestones is not None:
                 for m in track_milestones:

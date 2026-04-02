@@ -2,16 +2,26 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { maxUint256 } from "viem";
+import { isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
-import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useReadContract,
+  useReadContracts,
+  useWriteContract,
+} from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
+import {
+  formatBpsAsPercent,
+  formatLocaleInteger,
+  formatUnixSecIsoUtc,
+} from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
 import {
@@ -41,26 +51,28 @@ import {
   fetchTimecurvePrizeDistributions,
   fetchTimecurvePrizePayouts,
   fetchReferralApplied,
+  fetchTimecurveWarbowBattleFeed,
+  fetchTimecurveWarbowLeaderboard,
   type CharmRedemptionItem,
   type BuyItem,
   type PrizeDistributionItem,
   type PrizePayoutItem,
   type ReferralAppliedItem,
   type TimecurveBuyerStats,
+  type WarbowBattleFeedItem,
+  type WarbowLeaderboardItem,
 } from "@/lib/indexerApi";
 
 const PODIUM_LABELS = [
   "Last buy (50% of podium pool)",
-  "Time booster (20%)",
-  "Activity leader (10%)",
-  "Defended streak (20%)",
+  "Time booster (25%)",
+  "Defended streak (25%)",
 ] as const;
 
 const PODIUM_HELP = [
   "Compete to be the last person to buy.",
-  "most actual time added to the timer.",
-  "250 points each buy, no matter size, and you can burn 1 CL8Y to steal 10% of the leader’s points.",
-  "how many times the same wallet resets the timer while it is under 15 minutes; the streak ends and is recorded when a second player buys under 15 minutes.",
+  "Most actual time added to the timer (effective seconds per buy, after cap).",
+  "Peak count of under-15-minute timer resets by the same wallet; interrupted when another wallet buys under the window.",
 ] as const;
 
 function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): string {
@@ -83,8 +95,11 @@ export function TimeCurvePage() {
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [useReferral, setUseReferral] = useState(true);
-  const [activityAttack, setActivityAttack] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
+  const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
+  const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
+  const [stealVictimInput, setStealVictimInput] = useState("");
+  const [stealBypass, setStealBypass] = useState(false);
   const [prizePayouts, setPrizePayouts] = useState<PrizePayoutItem[] | null>(null);
   const [prizeDist, setPrizeDist] = useState<PrizeDistributionItem[] | null>(null);
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
@@ -134,6 +149,24 @@ export function TimeCurvePage() {
       setBuys(data.items);
       setBuysNextOffset(data.next_offset);
       setIndexerNote(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [lb, fd] = await Promise.all([
+        fetchTimecurveWarbowLeaderboard(12, 0),
+        fetchTimecurveWarbowBattleFeed(20, 0),
+      ]);
+      if (cancelled) {
+        return;
+      }
+      setWarbowLb(lb?.items ?? null);
+      setWarbowFeed(fd?.items ?? null);
     })();
     return () => {
       cancelled = true;
@@ -197,8 +230,13 @@ export function TimeCurvePage() {
     };
   }, [address]);
 
-  const { data, isPending, isError, refetch } = useReadContracts({
-    contracts: tc
+  const {
+    data: coreTcData,
+    isPending: coreTcPending,
+    isError: coreTcError,
+    refetch: refetchCoreTc,
+  } = useReadContracts({
+    contracts: (tc
       ? [
           { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
           { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
@@ -222,29 +260,77 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
           { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
           { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "ACTIVITY_ATTACK_BURN_WAD" },
         ]
-      : [],
+      : []) as any,
     query: { enabled: Boolean(tc) },
   });
+
+  const {
+    data: warbowPolicyData,
+    isPending: warbowPolicyPending,
+    isError: warbowPolicyError,
+    refetch: refetchWarbowPolicy,
+  } = useReadContracts({
+    contracts: (tc
+      ? [
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
+        ]
+      : []) as any,
+    query: { enabled: Boolean(tc) },
+  });
+
+  const isPending = coreTcPending || warbowPolicyPending;
+  const isError = coreTcError || warbowPolicyError;
+  const refetch = useCallback(() => {
+    void refetchCoreTc();
+    void refetchWarbowPolicy();
+  }, [refetchCoreTc, refetchWarbowPolicy]);
 
   const {
     data: userSaleData,
     refetch: refetchUserSale,
   } = useReadContracts({
-    contracts:
-      tc && address
-        ? [
-            { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "totalEffectiveTimerSecAdded", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "activityPoints", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak", args: [address] },
-          ]
-        : [],
+    contracts: (tc && address
+      ? [
+          { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "totalEffectiveTimerSecAdded", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "battlePoints", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowGuardUntil", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeStealer", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeExpiry", args: [address] },
+        ]
+      : []) as any,
     query: { enabled: Boolean(tc && address) },
+  });
+
+  const stealVictim =
+    stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
+      ? (stealVictimInput.trim() as `0x${string}`)
+      : undefined;
+
+  const utcDayId = BigInt(Math.floor(now / 86_400));
+
+  const { data: victimStealsToday } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "stealsReceivedOnDay",
+    args: stealVictim && tc ? [stealVictim, utcDayId] : undefined,
+    query: { enabled: Boolean(tc && stealVictim) },
   });
 
   const [
@@ -270,14 +356,53 @@ export function TimeCurvePage() {
     feeRouterR,
     podiumPoolR,
     totalCharmWeightR,
-    activityAttackBurnWadR,
-  ] = data ?? [];
+  ] = coreTcData ?? [];
 
-  const [charmWeightR, buyCountR, charmsRedeemedR, timerAddedR, activityPtsR, activeStreakR, bestStreakR] =
-    userSaleData ?? [];
+  const [
+    warbowFlagOwnerR,
+    warbowFlagPlantR,
+    warbowLadderPodiumR,
+    warbowStealBurnR,
+    warbowGuardBurnR,
+    warbowBypassBurnR,
+    warbowFlagSilenceR,
+    warbowFlagClaimBpR,
+    warbowMaxStealsR,
+    secondsPerDayR,
+    warbowRevengeWindowR,
+    warbowRevengeBurnR,
+  ] = warbowPolicyData ?? [];
 
-  const activityAttackBurnWad =
-    activityAttackBurnWadR?.status === "success" ? (activityAttackBurnWadR.result as bigint) : 10n ** 18n;
+  const [
+    charmWeightR,
+    buyCountR,
+    charmsRedeemedR,
+    timerAddedR,
+    battlePtsR,
+    activeStreakR,
+    bestStreakR,
+    warbowGuardUntilR,
+    revengeStealerR,
+    revengeExpiryR,
+  ] = userSaleData ?? [];
+
+  const warbowStealBurnWad =
+    warbowStealBurnR?.status === "success" ? (warbowStealBurnR.result as bigint) : 10n ** 18n;
+  const warbowGuardBurnWad =
+    warbowGuardBurnR?.status === "success" ? (warbowGuardBurnR.result as bigint) : 10n * 10n ** 18n;
+  const warbowBypassBurnWad =
+    warbowBypassBurnR?.status === "success" ? (warbowBypassBurnR.result as bigint) : 50n * 10n ** 18n;
+  const warbowFlagSilenceSec =
+    warbowFlagSilenceR?.status === "success" ? (warbowFlagSilenceR.result as bigint) : 300n;
+  const warbowFlagClaimBp =
+    warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : 1000n;
+  const warbowMaxSteals =
+    warbowMaxStealsR?.status === "success" ? Number(warbowMaxStealsR.result as number | bigint) : 3;
+  const warbowRevengeBurnWad =
+    warbowRevengeBurnR?.status === "success" ? (warbowRevengeBurnR.result as bigint) : 10n ** 18n;
+
+  void secondsPerDayR;
+  void warbowRevengeWindowR;
 
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
@@ -292,7 +417,9 @@ export function TimeCurvePage() {
   const decimals = tokenDecimals !== undefined ? Number(tokenDecimals) : 18;
 
   const launchedAddr =
-    launchedTokenR?.status === "success" ? (launchedTokenR.result as `0x${string}`) : undefined;
+    launchedTokenR?.status === "success"
+      ? (launchedTokenR.result as unknown as `0x${string}`)
+      : undefined;
 
   const { data: launchedDecimals } = useReadContract({
     address: launchedAddr,
@@ -390,6 +517,38 @@ export function TimeCurvePage() {
     (saleStart.result as bigint) > 0n &&
     ended?.status === "success" &&
     ended.result === false;
+
+  const flagOwnerAddr =
+    warbowFlagOwnerR?.status === "success"
+      ? (warbowFlagOwnerR.result as `0x${string}`)
+      : undefined;
+  const flagPlantAtSec =
+    warbowFlagPlantR?.status === "success" ? BigInt(warbowFlagPlantR.result as bigint) : 0n;
+  const iHoldPlantFlag =
+    Boolean(address && flagOwnerAddr && address.toLowerCase() === flagOwnerAddr.toLowerCase());
+  const flagSilenceEndSec = flagPlantAtSec + warbowFlagSilenceSec;
+  const canClaimWarBowFlag =
+    saleActive &&
+    iHoldPlantFlag &&
+    flagPlantAtSec > 0n &&
+    BigInt(now) >= flagSilenceEndSec;
+
+  const pendingRevengeStealer =
+    revengeStealerR?.status === "success"
+      ? (revengeStealerR.result as `0x${string}`)
+      : undefined;
+  const revengeDeadlineSec =
+    revengeExpiryR?.status === "success" ? BigInt(revengeExpiryR.result as bigint) : 0n;
+  const hasRevengeOpen =
+    Boolean(
+      pendingRevengeStealer &&
+        pendingRevengeStealer !== "0x0000000000000000000000000000000000000000" &&
+        BigInt(now) < revengeDeadlineSec,
+    );
+
+  const guardUntilSec =
+    warbowGuardUntilR?.status === "success" ? BigInt(warbowGuardUntilR.result as bigint) : 0n;
+  const guardedActive = BigInt(now) < guardUntilSec;
 
   const deadlineSec =
     deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
@@ -534,14 +693,7 @@ export function TimeCurvePage() {
             return;
           }
         }
-        const args =
-          codeHash && activityAttack
-            ? [cw, codeHash, true]
-            : codeHash
-              ? [cw, codeHash]
-              : activityAttack
-                ? [cw, true]
-                : [cw];
+        const args = codeHash ? [cw, codeHash] : [cw];
         const g = await estimateGasUnits({
           address: tc,
           abi: timeCurveWriteAbi,
@@ -562,7 +714,6 @@ export function TimeCurvePage() {
     useReferral,
     referralRegistryOn,
     pendingRef,
-    activityAttack,
     chainId,
   ]);
 
@@ -642,8 +793,7 @@ export function TimeCurvePage() {
       }
     }
 
-    const extraPull = activityAttack ? activityAttackBurnWad : 0n;
-    const totalPull = amount + extraPull;
+    const totalPull = amount;
 
     try {
       const allow = await readContract(wagmiConfig, {
@@ -661,23 +811,12 @@ export function TimeCurvePage() {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
-      const buyArgs =
-        codeHash && activityAttack
-          ? [cw, codeHash, true]
-          : codeHash
-            ? [cw, codeHash]
-            : activityAttack
-              ? [cw, true]
-              : [cw];
+      const buyArgs = codeHash ? [cw, codeHash] : [cw];
       const buyHash = await writeContractAsync({
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
-        args: buyArgs as
-          | [bigint]
-          | [bigint, `0x${string}`]
-          | [bigint, boolean]
-          | [bigint, `0x${string}`, boolean],
+        args: buyArgs as [bigint] | [bigint, `0x${string}`],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
@@ -700,9 +839,107 @@ export function TimeCurvePage() {
     pendingRef,
     writeContractAsync,
     refetchAll,
-    activityAttack,
-    activityAttackBurnWad,
   ]);
+
+  async function ensureTcAllowance(need: bigint) {
+    if (!address || !tokenAddr || !tc || need <= 0n) {
+      return;
+    }
+    const allow = await readContract(wagmiConfig, {
+      address: tokenAddr,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [address, tc],
+    });
+    if (allow < need) {
+      const approveHash = await writeContractAsync({
+        address: tokenAddr,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [tc, maxUint256],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+    }
+  }
+
+  async function runWarBowClaimFlag() {
+    setBuyErr(null);
+    if (!tc || !address) {
+      return;
+    }
+    try {
+      const hash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "claimWarBowFlag",
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      refetchAll();
+    } catch (e) {
+      setBuyErr(friendlyRevertFromUnknown(e));
+    }
+  }
+
+  async function runWarBowSteal() {
+    setBuyErr(null);
+    if (!tc || !address || !stealVictim) {
+      setBuyErr("Enter a valid victim address.");
+      return;
+    }
+    const need = warbowStealBurnWad + (stealBypass ? warbowBypassBurnWad : 0n);
+    try {
+      await ensureTcAllowance(need);
+      const hash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "warbowSteal",
+        args: [stealVictim, stealBypass],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      refetchAll();
+    } catch (e) {
+      setBuyErr(friendlyRevertFromUnknown(e));
+    }
+  }
+
+  async function runWarBowGuard() {
+    setBuyErr(null);
+    if (!tc || !address) {
+      return;
+    }
+    try {
+      await ensureTcAllowance(warbowGuardBurnWad);
+      const hash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "warbowActivateGuard",
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      refetchAll();
+    } catch (e) {
+      setBuyErr(friendlyRevertFromUnknown(e));
+    }
+  }
+
+  async function runWarBowRevenge() {
+    setBuyErr(null);
+    if (!tc || !address || !pendingRevengeStealer) {
+      return;
+    }
+    try {
+      await ensureTcAllowance(warbowRevengeBurnWad);
+      const hash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "warbowRevenge",
+        args: [pendingRevengeStealer],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      refetchAll();
+    } catch (e) {
+      setBuyErr(friendlyRevertFromUnknown(e));
+    }
+  }
 
   async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
     setBuyErr(null);
@@ -767,7 +1004,8 @@ export function TimeCurvePage() {
         <div className="arcade-banner__text">
           <p className="lede">
             Charms: earn weight by buying within the curve; after the sale, redeem for launched tokens.
-            Live RPC + indexer feeds below.
+            <strong> WarBow Ladder</strong> is onchain PvP <strong>Battle Points</strong> (steal, guard, revenge,
+            flag claim) — not a wholesome activity board. Live RPC + indexer feeds below.
           </p>
         </div>
         <CutoutDecoration
@@ -793,7 +1031,7 @@ export function TimeCurvePage() {
           </div>
         )}
         {isError && <p className="error-text">Could not read contract (check RPC / network).</p>}
-        {data && (
+        {coreTcData && (
           <dl className="kv">
             <dt>saleStart</dt>
             <dd>
@@ -877,7 +1115,7 @@ export function TimeCurvePage() {
           not the per-tx charm price floor — see <strong>Min buy curve</strong> and <strong>Buy</strong>{" "}
           below.
         </p>
-        {data && totalRaised?.status === "success" && totalTokensForSaleR?.status === "success" && (
+        {coreTcData && totalRaised?.status === "success" && totalTokensForSaleR?.status === "success" && (
           <CharmRedemptionCurve
             totalRaised={totalRaised.result as bigint}
             totalTokensForSale={totalTokensForSaleR.result as bigint}
@@ -917,10 +1155,10 @@ export function TimeCurvePage() {
                   ? `${formatLocaleInteger(timerAddedR.result as bigint)} s`
                   : "—"}
               </dd>
-              <dt>activityPoints</dt>
+              <dt>battlePoints (WarBow Ladder)</dt>
               <dd>
-                {activityPtsR?.status === "success"
-                  ? formatLocaleInteger(activityPtsR.result as bigint)
+                {battlePtsR?.status === "success"
+                  ? formatLocaleInteger(battlePtsR.result as bigint)
                   : "—"}
               </dd>
               <dt>activeDefendedStreak</dt>
@@ -935,10 +1173,35 @@ export function TimeCurvePage() {
                   ? formatLocaleInteger(bestStreakR.result as bigint)
                   : "—"}
               </dd>
+              <dt>warbowGuardUntil</dt>
+              <dd>
+                {warbowGuardUntilR?.status === "success" ? (
+                  guardedActive ? (
+                    <UnixTimestampDisplay raw={guardUntilSec} />
+                  ) : (
+                    "not active"
+                  )
+                ) : (
+                  "—"
+                )}
+              </dd>
+              <dt>revenge (pending stealer / deadline)</dt>
+              <dd className="mono">
+                {pendingRevengeStealer &&
+                pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
+                  ? `${pendingRevengeStealer.slice(0, 10)}… · ${
+                      revengeDeadlineSec > 0n
+                        ? `deadline ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
+                        : "—"
+                    }`
+                  : "—"}
+              </dd>
               <dt>charmsRedeemed</dt>
               <dd>
                 {charmsRedeemedR?.status === "success"
-                  ? formatLocaleInteger(charmsRedeemedR.result as bigint)
+                  ? charmsRedeemedR.result
+                    ? "true"
+                    : "false"
                   : "—"}
               </dd>
               <dt>expected tokens from charms (if ended)</dt>
@@ -967,7 +1230,7 @@ export function TimeCurvePage() {
 
       <div className="data-panel">
         <h2>Sale parameters (immutable)</h2>
-        {data && (
+        {coreTcData && (
           <dl className="kv">
             <dt>charm envelope ref WAD (exponential scaling)</dt>
             <dd>
@@ -1132,18 +1395,6 @@ export function TimeCurvePage() {
             {referralRegistryOn && !pendingRef && (
               <p className="muted">Open a referral link with ?ref=CODE to enable referral CHARM bonuses.</p>
             )}
-            <label className="form-label">
-              <input
-                type="checkbox"
-                checked={activityAttack}
-                onChange={(e) => setActivityAttack(e.target.checked)}
-              />{" "}
-              Activity attack — burn{" "}
-              <AmountDisplay raw={activityAttackBurnWad} decimals={decimals} /> (1 CL8Y at 18 decimals) to{" "}
-              <strong>steal 10%</strong> (floor) of the current leader&apos;s activity points (reverts if you
-              are #1 or there is no leader). You still earn <strong>250</strong> activity points for the buy
-              regardless of size.
-            </label>
             <p>
               <motion.button
                 type="button"
@@ -1161,6 +1412,142 @@ export function TimeCurvePage() {
           </>
         )}
         {buyErr && <p className="error-text">{buyErr}</p>}
+      </div>
+
+      <div className="data-panel data-panel--spotlight">
+        <h2>WarBow Ladder (PvP)</h2>
+        <p className="muted">
+          Steals require the victim to have <strong>≥ 2×</strong> your Battle Points. Each victim can be stolen
+          from <strong>{warbowMaxSteals}</strong> times per <strong>UTC day</strong> unless the attacker pays an
+          extra <AmountDisplay raw={warbowBypassBurnWad} decimals={decimals} /> burn. Guard reduces incoming steal
+          to <strong>1%</strong> for <strong>6h</strong>. Revenge: after someone steals from you, burn{" "}
+          <AmountDisplay raw={warbowRevengeBurnWad} decimals={decimals} /> within the onchain window to hit{" "}
+          <strong>10%</strong> of <em>that</em> stealer&apos;s BP once. Flag: after your buy, wait{" "}
+          {formatLocaleInteger(warbowFlagSilenceSec)}s with no other buyer, then claim{" "}
+          <strong>+{formatLocaleInteger(warbowFlagClaimBp)}</strong> BP; if another buy lands after silence elapses
+          before you claim, you can take a <strong>2×</strong> BP penalty (see docs).
+        </p>
+        {isConnected && saleActive && (
+          <>
+            <label className="form-label">
+              Steal victim address
+              <input
+                type="text"
+                className="form-input"
+                placeholder="0x…"
+                value={stealVictimInput}
+                onChange={(e) => setStealVictimInput(e.target.value)}
+                spellCheck={false}
+              />
+            </label>
+            {stealVictim && victimStealsToday !== undefined && (
+              <p className="muted">
+                Victim steals received today (UTC day):{" "}
+                {formatLocaleInteger(BigInt(victimStealsToday as bigint | number))} /{" "}
+                {warbowMaxSteals}
+              </p>
+            )}
+            <label className="form-label">
+              <input
+                type="checkbox"
+                checked={stealBypass}
+                onChange={(e) => setStealBypass(e.target.checked)}
+              />{" "}
+              Pay bypass burn (+ <AmountDisplay raw={warbowBypassBurnWad} decimals={decimals} />) if victim hit
+              daily cap
+            </label>
+            <div className="timecurve-action-row">
+              <motion.button
+                type="button"
+                className="btn-secondary btn-secondary--critical"
+                disabled={isWriting}
+                onClick={() => void runWarBowSteal()}
+                {...secondaryButtonMotion}
+              >
+                warbowSteal
+              </motion.button>
+              <motion.button
+                type="button"
+                className="btn-secondary"
+                disabled={isWriting}
+                onClick={() => void runWarBowGuard()}
+                {...secondaryButtonMotion}
+              >
+                warbowActivateGuard
+              </motion.button>
+              <motion.button
+                type="button"
+                className="btn-secondary"
+                disabled={isWriting || !canClaimWarBowFlag}
+                onClick={() => void runWarBowClaimFlag()}
+                {...secondaryButtonMotion}
+              >
+                claimWarBowFlag
+              </motion.button>
+              <motion.button
+                type="button"
+                className="btn-secondary btn-secondary--priority"
+                disabled={isWriting || !hasRevengeOpen}
+                onClick={() => void runWarBowRevenge()}
+                {...secondaryButtonMotion}
+              >
+                warbowRevenge
+              </motion.button>
+            </div>
+            {!canClaimWarBowFlag && iHoldPlantFlag && saleActive && (
+              <p className="muted">
+                Flag planted: silence ends at{" "}
+                <UnixTimestampDisplay raw={flagSilenceEndSec} /> (chain time).
+              </p>
+            )}
+          </>
+        )}
+        <h3>Battle Points top 3 (contract snapshot)</h3>
+        {warbowLadderPodiumR?.status === "success" ? (
+          <ol className="podium-list">
+            {(() => {
+              const t = warbowLadderPodiumR.result as readonly [
+                readonly `0x${string}`[],
+                readonly bigint[],
+              ];
+              const [ws, vs] = t;
+              return [0, 1, 2].map((j) => (
+                <li key={j}>
+                  <span className="mono">{ws[j]?.slice(0, 10) ?? "0x"}…</span> —{" "}
+                  {vs[j] !== undefined ? formatLocaleInteger(vs[j]) : "—"} BP
+                </li>
+              ));
+            })()}
+          </ol>
+        ) : (
+          <p className="muted">—</p>
+        )}
+        <h3>Indexer leaderboard (latest buy BP per wallet)</h3>
+        {warbowLb && warbowLb.length > 0 ? (
+          <ol className="podium-list">
+            {warbowLb.map((r) => (
+              <li key={r.buyer}>
+                <span className="mono">{r.buyer.slice(0, 10)}…</span> —{" "}
+                {formatLocaleInteger(BigInt(r.battle_points_after))} BP
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="muted">Set indexer URL or wait for indexed buys.</p>
+        )}
+        <h3>Battle feed (indexer)</h3>
+        {warbowFeed && warbowFeed.length > 0 ? (
+          <ul className="event-list">
+            {warbowFeed.map((f) => (
+              <li key={`${f.tx_hash}-${f.kind}-${f.log_index}`}>
+                <strong>{f.kind}</strong> — block {formatLocaleInteger(f.block_number)} —{" "}
+                <TxHash hash={f.tx_hash} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">No rows (or indexer unavailable).</p>
+        )}
       </div>
 
       <div className="data-panel data-panel--spotlight">
@@ -1288,7 +1675,7 @@ export function TimeCurvePage() {
         <h2>Podium pool (live)</h2>
         <p className="muted">
           Balance in the accepted reserve asset held by <code>podiumPool</code>. Projected payouts use the
-          onchain split: 50% / 20% / 10% / 20% across the four categories; within each category placements pay
+          onchain split: 50% / 25% / 25% across the three reserve categories; within each category placements pay
           4∶2∶1 (1st is twice 2nd; 2nd twice 3rd). Integer rounding applies onchain.
         </p>
         <p>
@@ -1351,7 +1738,11 @@ export function TimeCurvePage() {
                     — +{formatLocaleInteger(BigInt(b.actual_seconds_added))} s on timer
                   </>
                 )}
-                {b.activity_attack ? " — activity attack" : ""} — block{" "}
+                {b.timer_hard_reset ? " — timer hard-reset (15m snap)" : ""}
+                {b.battle_points_after !== undefined
+                  ? ` — BP ${formatLocaleInteger(BigInt(b.battle_points_after))}`
+                  : ""}
+                {b.bp_ambush_bonus !== undefined && BigInt(b.bp_ambush_bonus) > 0n ? " — ambush" : ""} — block{" "}
                 {formatLocaleInteger(b.block_number)} — tx{" "}
                 <TxHash hash={b.tx_hash} />
               </li>
@@ -1443,7 +1834,7 @@ export function TimeCurvePage() {
 }
 
 function usePodiumReads(tc: `0x${string}` | undefined) {
-  const cats = [0, 1, 2, 3] as const;
+  const cats = [0, 1, 2] as const;
   const contracts = tc
     ? cats.map((c) => ({
         address: tc,
@@ -1453,7 +1844,7 @@ function usePodiumReads(tc: `0x${string}` | undefined) {
       }))
     : [];
   const { data, isPending } = useReadContracts({
-    contracts,
+    contracts: contracts as any,
     query: { enabled: Boolean(tc) },
   });
 

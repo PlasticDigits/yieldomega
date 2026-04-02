@@ -10,8 +10,10 @@ from timecurve_sim.model import (
     TimeCurveParams,
     canonical_timecurve_params,
     clamp_spend,
+    extend_deadline_or_reset_below_threshold,
     min_buy_at,
-    next_sale_end,
+    process_defended_streak_sim,
+    warbow_buy_bp_delta,
 )
 
 
@@ -52,6 +54,11 @@ class SimMetrics:
     median_buys_per_player: float
     sale_duration_sec: float
     final_min_buy: float
+    # WarBow-aligned (buy path + simplified optional steals)
+    gini_bp: float
+    hard_reset_buys: int
+    pvp_steal_events: int
+    total_battle_points: float
 
 
 def run_single_sale(
@@ -65,6 +72,7 @@ def run_single_sale(
     population: int = 500,
     whale_frac: float = 0.05,
     small_frac: float = 0.75,
+    pvp_steal_prob: float = 0.0,
 ) -> SimMetrics:
     """
     Agents arrive Poisson-ish; each arrival picks a player id with replacement (crowd).
@@ -92,10 +100,16 @@ def run_single_sale(
 
     spend_by_player = [0.0] * population
     buys_by_player = [0] * population
+    battle_points = [0] * population
+    active_streak = [0] * population
+    best_streak = [0] * population
+    ds_last: int | None = None
     now = 0.0
     end = p.initial_timer_sec
     total_buys = 0
     total_spend = 0.0
+    hard_reset_buys = 0
+    pvp_steal_events = 0
 
     steps = 0
     # Bounded horizon: otherwise perpetual extensions make runtime unbounded.
@@ -125,12 +139,46 @@ def run_single_sale(
             if spend < mb - 1e-9:
                 continue
 
+            deadline_before = end
+            remaining_before = deadline_before - now
+            new_end, did_hard = extend_deadline_or_reset_below_threshold(now, deadline_before, p)
+            actual_added = new_end - deadline_before
+
+            sb, amb, rest = warbow_buy_bp_delta(
+                remaining_before,
+                did_hard,
+                ds_last_idx=ds_last,
+                active_streak=active_streak,
+                buyer_idx=idx,
+            )
+            battle_points[idx] += sb + amb + rest
+            if did_hard:
+                hard_reset_buys += 1
+
+            ds_last = process_defended_streak_sim(
+                idx,
+                remaining_before,
+                actual_added,
+                ds_last,
+                active_streak,
+                best_streak,
+            )
+
+            if pvp_steal_prob > 0 and rng.random() < pvp_steal_prob:
+                victims = [i for i in range(population) if i != idx and battle_points[i] > 0]
+                if victims:
+                    v = victims[rng.randrange(len(victims))]
+                    drain = int(battle_points[v] * 0.10)
+                    if drain > 0:
+                        battle_points[v] -= drain
+                        pvp_steal_events += 1
+
             budgets[idx] -= spend
             spend_by_player[idx] += spend
             buys_by_player[idx] += 1
             total_buys += 1
             total_spend += spend
-            end = next_sale_end(now, end, p)
+            end = new_end
 
         now += dt_sec
         steps += 1
@@ -148,6 +196,7 @@ def run_single_sale(
     w_spend = sum(spend_by_player[i] for i in whale_idx)
     whale_share = w_spend / total_spend if total_spend > 0 else 0.0
 
+    total_bp = float(sum(battle_points))
     return SimMetrics(
         gini_spend=gini_coefficient(spend_by_player),
         top5_share=top_k_share(spend_by_player, 0.05),
@@ -158,6 +207,10 @@ def run_single_sale(
         median_buys_per_player=med_buys,
         sale_duration_sec=now,
         final_min_buy=min_buy_at(now, p),
+        gini_bp=gini_coefficient([float(b) for b in battle_points]),
+        hard_reset_buys=hard_reset_buys,
+        pvp_steal_events=pvp_steal_events,
+        total_battle_points=total_bp,
     )
 
 
@@ -190,6 +243,10 @@ def sweep_configs(
         "whale_spend_share",
         "median_buys",
         "final_min_buy_ratio",
+        "gini_bp",
+        "hard_reset_frac",
+        "pvp_steal_mean",
+        "total_bp_mean",
     ]
     for p in configs:
         acc = {k: 0.0 for k in keys}
@@ -203,6 +260,12 @@ def sweep_configs(
             acc["whale_spend_share"] += m.whale_spend_share
             acc["median_buys"] += m.median_buys_per_player
             acc["final_min_buy_ratio"] += m.final_min_buy / p.min_buy_0 if p.min_buy_0 > 0 else 0.0
+            acc["gini_bp"] += m.gini_bp
+            acc["hard_reset_frac"] += (
+                m.hard_reset_buys / m.total_buys if m.total_buys > 0 else 0.0
+            )
+            acc["pvp_steal_mean"] += float(m.pvp_steal_events)
+            acc["total_bp_mean"] += m.total_battle_points
         for k in acc:
             acc[k] /= seeds
         out.append((p, acc))

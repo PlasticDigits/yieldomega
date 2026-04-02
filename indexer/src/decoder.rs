@@ -120,6 +120,18 @@ mod contracts {
                 address indexed triggeringBuyer,
                 uint256 battlePointsAfter
             );
+            event WarBowCl8yBurned(address indexed payer, uint8 indexed reason, uint256 amountWad);
+            event WarBowDefendedStreakContinued(
+                address indexed wallet,
+                uint256 activeStreak,
+                uint256 bestStreak
+            );
+            event WarBowDefendedStreakBroken(
+                address indexed formerHolder,
+                address indexed interrupter,
+                uint256 brokenActiveLength
+            );
+            event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
         }
     }
 
@@ -304,6 +316,24 @@ pub enum DecodedEvent {
         triggering_buyer: Address,
         battle_points_after: U256,
     },
+    TimeCurveWarBowCl8yBurned {
+        payer: Address,
+        reason: u8,
+        amount_wad: U256,
+    },
+    TimeCurveWarBowDefendedStreakContinued {
+        wallet: Address,
+        active_streak: U256,
+        best_streak: U256,
+    },
+    TimeCurveWarBowDefendedStreakBroken {
+        former_holder: Address,
+        interrupter: Address,
+        broken_active_length: U256,
+    },
+    TimeCurveWarBowDefendedStreakWindowCleared {
+        cleared_wallet: Address,
+    },
     ReferralCodeRegistered {
         owner: Address,
         code_hash: B256,
@@ -475,7 +505,8 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 total_raised_after: e.totalRaisedAfter,
                 buy_index: e.buyIndex,
                 actual_seconds_added: e.actualSecondsAdded,
-                timer_hard_reset: e.activityAttack,
+                // Activity-era `Buy` had no timer-hard-reset flag; do not map `activityAttack` here.
+                timer_hard_reset: false,
                 battle_points_after: e.buyerActivityPointsAfter,
                 bp_base_buy: U256::ZERO,
                 bp_timer_reset_bonus: U256::ZERO,
@@ -616,6 +647,44 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 penalty_bp: e.penaltyBp,
                 triggering_buyer: e.triggeringBuyer,
                 battle_points_after: e.battlePointsAfter,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowCl8yBurned::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowCl8yBurned::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowCl8yBurned {
+                payer: e.payer,
+                reason: e.reason,
+                amount_wad: e.amountWad,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowDefendedStreakContinued::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowDefendedStreakContinued::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
+                wallet: e.wallet,
+                active_streak: e.activeStreak,
+                best_streak: e.bestStreak,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowDefendedStreakBroken::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowDefendedStreakBroken::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
+                former_holder: e.formerHolder,
+                interrupter: e.interrupter,
+                broken_active_length: e.brokenActiveLength,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowDefendedStreakWindowCleared::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowDefendedStreakWindowCleared::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared {
+                cleared_wallet: e.clearedWallet,
             };
         }
     }
@@ -922,6 +991,36 @@ mod tests {
             } => {
                 assert_eq!(delta, "-50");
                 assert_eq!(reason_code, 2);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_warbow_cl8y_burned() {
+        let payer = Address::repeat_byte(0x33);
+        let e = TimeCurveEvents::WarBowCl8yBurned {
+            payer,
+            reason: 2u8,
+            amountWad: U256::from(10u128.pow(18)),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveWarBowCl8yBurned {
+                payer: p,
+                reason,
+                amount_wad,
+            } => {
+                assert_eq!(p, payer);
+                assert_eq!(reason, 2);
+                assert_eq!(amount_wad, U256::from(10u128.pow(18)));
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

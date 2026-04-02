@@ -13,7 +13,8 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 | Skill | Use when |
 |--------|----------|
 | [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing: voluntary participation, auditable rules, informed choice before other play skills. |
-| [`play-timecurve-doubloon/SKILL.md`](play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, prizes, and how **DOUB** / fee sinks connect. |
+| [`play-timecurve-doubloon/SKILL.md`](play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **three** reserve podiums, and how **DOUB** / fee sinks connect. |
+| [`play-timecurve-warbow/SKILL.md`](play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag, timer hard-reset band. |
 | [`play-rabbit-treasury/SKILL.md`](play-rabbit-treasury/SKILL.md) | Deposits, epochs, **Burrow**, withdraws, and reserve-linked behavior. |
 | [`collect-leprechaun-sets/SKILL.md`](collect-leprechaun-sets/SKILL.md) | Series, sets, traits, and collecting onchain. |
 

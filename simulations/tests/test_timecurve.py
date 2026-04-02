@@ -8,8 +8,11 @@ from timecurve_sim.model import (
     TimeCurveParams,
     canonical_timecurve_params,
     clamp_spend,
+    extend_deadline_or_reset_below_threshold,
     min_buy_at,
     next_sale_end,
+    process_defended_streak_sim,
+    warbow_buy_bp_delta,
 )
 
 
@@ -91,6 +94,57 @@ class TestTimeCurveModel(unittest.TestCase):
         )
         self.assertAlmostEqual(min_buy_at(2 * 86400.0, p), 1.5)
         self.assertAlmostEqual(min_buy_at(4 * 86400.0, p), 2.0)
+
+    def test_extend_deadline_or_reset_below_13m(self) -> None:
+        p = _sample_params(
+            daily_growth_frac=0.0,
+            min_buy_0=1.0,
+            extension_sec=120.0,
+            timer_cap_from_now_sec=96 * 3600.0,
+            initial_timer_sec=3600.0,
+        )
+        now = 1_000.0
+        end = now + 600.0  # 10m remaining → hard reset toward 15m
+        new_end, did_hard = extend_deadline_or_reset_below_threshold(now, end, p)
+        self.assertTrue(did_hard)
+        self.assertAlmostEqual(new_end, now + 900.0)
+
+    def test_extend_deadline_above_13m_extends(self) -> None:
+        p = _sample_params(
+            daily_growth_frac=0.0,
+            min_buy_0=1.0,
+            extension_sec=120.0,
+            timer_cap_from_now_sec=96 * 3600.0,
+            initial_timer_sec=3600.0,
+        )
+        now = 1_000.0
+        end = now + 800.0  # > 13m remaining… 800 > 780? 800 is 13m20s - actually 800 > 780 so extend branch
+        new_end, did_hard = extend_deadline_or_reset_below_threshold(now, end, p)
+        self.assertFalse(did_hard)
+        self.assertAlmostEqual(new_end, end + 120.0)
+
+    def test_warbow_buy_bp_delta_base_and_clutch(self) -> None:
+        active = [0, 0, 0]
+        sb, amb, rest = warbow_buy_bp_delta(
+            25.0, False, ds_last_idx=None, active_streak=active, buyer_idx=0
+        )
+        self.assertEqual(sb, 0)
+        self.assertEqual(amb, 0)
+        self.assertEqual(rest, 250 + 150)  # base + clutch (<30s)
+
+    def test_process_defended_streak_increments_same_wallet(self) -> None:
+        active = [0, 0]
+        best = [0, 0]
+        ds = process_defended_streak_sim(
+            0, 100.0, 50.0, None, active, best
+        )
+        self.assertEqual(ds, 0)
+        self.assertEqual(active[0], 1)
+        ds2 = process_defended_streak_sim(
+            0, 100.0, 40.0, 0, active, best
+        )
+        self.assertEqual(ds2, 0)
+        self.assertEqual(active[0], 2)
 
 
 if __name__ == "__main__":

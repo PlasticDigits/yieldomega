@@ -490,6 +490,24 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             triggering_buyer: addr_byte(0xb2),
             battle_points_after: u2,
         }),
+        next(DecodedEvent::TimeCurveWarBowCl8yBurned {
+            payer: alice,
+            reason: 0,
+            amount_wad: u1,
+        }),
+        next(DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
+            wallet: alice,
+            active_streak: u2,
+            best_streak: u2,
+        }),
+        next(DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
+            former_holder: alice,
+            interrupter: addr_byte(0xb3),
+            broken_active_length: u2,
+        }),
+        next(DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared {
+            cleared_wallet: alice,
+        }),
     ];
 
     for d in &logs {
@@ -570,6 +588,22 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_cl8y_burned", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_continued", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_broken", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
         1
     );
 
@@ -690,6 +724,22 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_cl8y_burned", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_continued", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_broken", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
         0
     );
     assert_eq!(

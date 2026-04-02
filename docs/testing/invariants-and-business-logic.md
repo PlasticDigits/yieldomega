@@ -64,7 +64,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 ### Business rules (narrative, for reviewers)
 
-- **TimeCurve + TimeMath + `ICharmPrice`:** **CHARM quantity** per buy is bounded by an **exponential daily envelope** (same `TimeMath.currentMinBuy` factor on a reference WAD): onchain **min CHARM** = `0.99e18 × scale` and **max CHARM** = `10e18 × scale` (ratio **10 / 0.99** always). **Per-CHARM price** in the accepted asset is **decoupled** and comes from **`ICharmPrice`** (default **`LinearCharmPrice`**: `base + dailyIncrement × elapsed / 1 day`). **Gross spend** = `charmWad × priceWad / 1e18`. Buys extend an auction-style deadline up to a hard cap. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens using **`totalCharmWeight`** in the denominator; podium slots (**last buy, time booster, activity leader, defended streak**) are updated on each buy (see [`docs/product/primitives.md`](../product/primitives.md)). Each buy routes the **full gross** accepted asset through **`FeeRouter`** (five sinks — see fee doc). Referral incentives add **CHARM weight** (as a fraction of **`charmWad`**) without reserve rebates. **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the computed `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale` and pays the **podium pool** in the reserve asset (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
+- **TimeCurve + TimeMath + `ICharmPrice`:** **CHARM quantity** per buy is bounded by an **exponential daily envelope** (same `TimeMath.currentMinBuy` factor on a reference WAD): onchain **min CHARM** = `0.99e18 × scale` and **max CHARM** = `10e18 × scale` (ratio **10 / 0.99** always). **Per-CHARM price** in the accepted asset is **decoupled** and comes from **`ICharmPrice`** (default **`LinearCharmPrice`**: `base + dailyIncrement × elapsed / 1 day`). **Gross spend** = `charmWad × priceWad / 1e18`. Buys extend the deadline (or apply the **under-13m → 15m remaining** hard reset) up to **`timerCapSec`**. When the sale ends, participants **`redeemCharms`** once for a pro-rata share of launched tokens using **`totalCharmWeight`** in the denominator; **reserve** podium slots (**last buy, time booster, defended streak**) and **WarBow Battle Points** (separate PvP layer) update per [`docs/product/primitives.md`](../product/primitives.md). Each buy routes the **full gross** accepted asset through **`FeeRouter`** (five sinks — see fee doc). Referral incentives add **CHARM weight** (as a fraction of **`charmWad`**) without reserve rebates. **`acceptedAsset` must be a standard ERC20** (no fee-on-transfer / rebasing): accounting uses the computed `amount`, not balance deltas. **`distributePrizes`** is permissionless after `endSale` and pays the **podium pool** in the reserve asset (see [security threat model — implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening)).
 - **RabbitTreasury + BurrowMath:** Users deposit the reserve asset during an **open** epoch and receive DOUB (credited to **redeemable** backing). **`receiveFee`** increases **total** backing but splits gross inflows into **burn** (sink transfer) and **protocol-owned** backing—no DOUB is minted. **Withdraw** burns DOUB and pays users from **redeemable** backing using `min(nominal, pro-rata)` on that bucket, a **health-linked efficiency** curve, an optional **epoch cooldown**, and a **withdrawal fee** that recycles into protocol-owned backing. **Epoch finalization** uses **total** backing (redeemable + protocol) inside `BurrowMath.coverageWad` so treasury strength reflects accumulated CL8Y. Math is fuzzed and cross-checked against Python reference and simulations where applicable.
 - **FeeRouter + FeeMath:** Sink weights are validated to sum to 10_000 bps; distribution uses integer division with **remainder assigned to the last sink** so no dust remains in the router. Governance roles control sink updates.
 - **LeprechaunNFT:** Series are created with a max supply; only the minter role can mint; trait structs are stored onchain for indexer/UI derivation.
@@ -110,15 +110,15 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | Referral CHARM | Full gross to router; referee + referrer CHARM from `charmWad` | [`TimeCurveReferral.t.sol`](../../contracts/test/TimeCurveReferral.t.sol): `test_buy_with_referral_charms_and_full_gross_to_fee_router`, `test_buy_self_referral_reverts`, `test_buy_invalid_code_reverts` |
 | Stateful raised + CHARM (invariant fuzz) | Ghost **asset** volume matches `totalRaised`; ghost **CHARM** volume matches `totalCharmWeight` | [`TimeCurveInvariant.t.sol`](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_totalCharmWeightMatchesGhostBuys` |
 
-#### TimeCurve podium categories — required test coverage
+#### TimeCurve reserve podium + WarBow — required test coverage
 
-Canonical definitions: [product/primitives.md](../product/primitives.md) (Last buy, Time booster, Activity leader, Defended streak). Implementation: [`TimeCurve.sol`](../../contracts/src/TimeCurve.sol). Tests live in [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol).
+Canonical definitions: [product/primitives.md](../product/primitives.md). Implementation: [`TimeCurve.sol`](../../contracts/src/TimeCurve.sol). Tests live in [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol).
 
 **Last buy** — *Compete to be the last person to buy.*
 
 - Verify the category tracks the final buyer correctly — `test_last_buyers_podium`, `test_last_buy_three_most_recent_rank_values`
 - Verify leaderboard / ranking logic — `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall`, `test_last_buy_three_most_recent_rank_values`
-- Verify podium resolution with Last buy in the four-category set — `test_last_buy_distribute_prizes_pays_first_place`, `test_round_settlement_four_categories_podium_payouts_smoke`
+- Verify podium resolution — `test_last_buy_distribute_prizes_pays_first_place`, `test_round_settlement_three_categories_podium_payouts_smoke`
 
 **Time booster** — *Tracks the most actual time added to the timer.*
 
@@ -127,15 +127,13 @@ Canonical definitions: [product/primitives.md](../product/primitives.md) (Last b
 - Resets in / near the under-15-minute zone use actual timer increase — `test_time_booster_under_15m_window_uses_actual_seconds_added`
 - Leaderboard ordering — `test_time_booster_leaderboard_orders_by_total_effective_seconds`
 
-**Activity leader** — *Each qualifying buy gives 250 Activity Points regardless of size. A buyer may optionally burn 1 CL8Y to steal 10% of the current leader’s Activity Points.*
+**WarBow Ladder (Battle Points)** — *PvP scoring separate from reserve podium; steals use standalone txs.*
 
-- Exactly 250 per buy regardless of size — `test_activity_points_250_flat_per_buy_independent_of_charm_wad`, `test_activity_leader_podium_two_hundred_fifty_per_buy`
-- Optional burn attack path — `test_activity_attack_drains_ten_percent_and_burns_one_reserve`, `test_activity_attack_revert_as_leader`, `test_activity_attack_revert_no_leader`
-- Steals exactly floor 10%; attacker still receives +250 for that buy — `test_activity_attack_attacker_receives_250_after_steal`, `test_activity_attack_drains_ten_percent_and_burns_one_reserve`
-- Burn amount exactly 1 CL8Y (`ACTIVITY_ATTACK_BURN_WAD == 1e18`) — `test_activity_attack_burn_is_exactly_one_cl8y_wad`
-- Tie / rounding / low balance (deterministic floor division; activity podium tie-break = lower address ranks higher) — `test_activity_attack_tied_leaders_drains_podium_slot_zero`, `test_activity_attack_ten_percent_floor_division_documented`
-- Leaderboard after attacks — `test_activity_attack_tied_leaders_drains_podium_slot_zero`, `test_activity_repeated_attacks_second_attacker_drains_new_leader`
-- Repeated attacks over time — `test_activity_repeated_attacks_second_attacker_drains_new_leader`
+- Base BP flat per buy — `test_warbow_base_bp_flat_per_buy_independent_of_charm_wad`
+- BP top-3 snapshot ordering — `test_warbow_ladder_podium_orders_by_battle_points`
+- Timer hard reset + ambush stacking — `test_timer_hard_reset_below_13m_and_ambush_bonus`
+- Steal path — `test_warbow_steal_drains_ten_percent_and_burns_one_reserve`, `test_warbow_steal_revert_2x_rule`, `test_warbow_steal_burn_is_one_cl8y_wad`
+- Revenge — `test_warbow_revenge_once`
 
 **Defended streak** — *Tracks how many times the same wallet resets the timer while it is under 15 minutes. The streak ends and is recorded when a second player buys under 15 minutes.*
 
@@ -149,8 +147,8 @@ Canonical definitions: [product/primitives.md](../product/primitives.md) (Last b
 
 **Integration / regression**
 
-- Four-category settlement — `test_round_settlement_four_categories_podium_payouts_smoke`
-- Podium ranking + payout resolution (all four) — `test_round_settlement_four_categories_podium_payouts_smoke`, `test_last_buy_distribute_prizes_pays_first_place`, `test_distributePrizes_reduces_vault_and_sets_flag`
+- Three-category settlement — `test_round_settlement_three_categories_podium_payouts_smoke`
+- Podium ranking + payout resolution — `test_round_settlement_three_categories_podium_payouts_smoke`, `test_last_buy_distribute_prizes_pays_first_place`, `test_distributePrizes_reduces_vault_and_sets_flag`
 - Indexer / API: `Buy` event fields and `idx_timecurve_buy` migration — [`indexer/tests/integration_stage2.rs`](../../indexer/tests/integration_stage2.rs), [`decoder` roundtrip_buy](../../indexer/src/decoder.rs)
 - Core round flow unchanged — existing sale lifecycle, `endSale`, `redeemCharms`, fee routing tests in `TimeCurve.t.sol` / `TimeCurveReferral.t.sol` / `TimeCurveInvariant.t.sol`
 

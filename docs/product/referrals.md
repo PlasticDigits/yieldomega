@@ -22,7 +22,7 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 ## Attribution (TimeCurve buys)
 
-- The buyer calls **`buy(charmWad, codeHash)`** (or the overload with `activityAttack`) with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** (no referral split).
+- The buyer calls **`buy(charmWad, codeHash)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** (no referral split).
 - **Referrer** is `ReferralRegistry.ownerOfCode(codeHash)`. If `codeHash` is non-zero but unregistered, the transaction **reverts**.
 - **Self-referral** (`referrer == buyer`) **reverts**.
 - **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer (the UI may cache a pending code for UX only).
@@ -37,7 +37,7 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 - **`charmWeight` / `totalCharmWeight`:** buyer accrues **`charmWad + refEach`**; referrer accrues **`refEach`**; **`totalCharmWeight`** increases by **`charmWad + 2 × refEach`**.
 - **DOUB redemption:** `redeemCharms` uses **`totalCharmWeight`** in the denominator: `totalTokensForSale * charmWeight[user] / totalCharmWeight`.
 
-**Podiums:** Onchain prize categories are **last buy**, **time booster**, **activity leader**, and **defended streak** only ([primitives](primitives.md)). Referral splits affect **`charmWeight`** and thus **redemption**; they do **not** pay reserve to referrer/referee and are unrelated to podium scoring except indirectly through participation patterns.
+**Reserve podiums:** Onchain **prize** categories are **last buy**, **time booster**, and **defended streak** only ([primitives](primitives.md)). **WarBow Ladder / Battle Points** are separate from reserve prizes. Referral splits affect **`charmWeight`** and thus **redemption**; they do **not** pay reserve to referrer/referee and are unrelated to podium scoring except indirectly through participation patterns.
 
 **Min buy and cap:** Enforced on **`charmWad`** within **`currentCharmBoundsWad`** and implied gross spend via **`currentMinBuyAmount` / `currentMaxBuyAmount`**.
 

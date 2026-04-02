@@ -27,7 +27,7 @@ Basis points (sink **order** on `FeeRouter`: LP · CL8Y · podium · team · Rab
 
 Each **buy** routes the **full gross** amount in the accepted asset through **`FeeRouter`** (referral economics use **CHARM weight**, not reserve carve-outs — see [referrals](../product/referrals.md)). The **25%** slice lands at **`DoubLPIncentives`** for **locked** DOUB/**CL8Y** liquidity policy (paired at **1.2×** the projected **final reserve-per-DOUB** clearing anchor; **Kumbaya v3** uses a **0.8×–∞** band around the **launch anchor** — see [launchplan-timecurve.md](../../launchplan-timecurve.md) and product UX). The **podium pool** is the **`PodiumPool`** contract; **`TimeCurve.distributePrizes`** pays winners in **reserve** (CL8Y), not DOUB. **Charm redemption** (`redeemCharms`) is **DOUB-only** and is **separate** from this routing (sale allocation, not fee slice).
 
-**Podium internals (onchain defaults):** four categories — **last buy (50%** of pool**)** · **time booster (20%)** · **activity leader (10%)** · **defended streak (20%)**; within each category placements use **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). Opening/closing window categories are **removed**.
+**Podium internals (onchain defaults):** three categories — **last buy (50%** of pool**)** · **time booster (25%)** · **defended streak (25%)**; within each category placements use **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). **WarBow Ladder** (Battle Points) is **not** funded from this pool. Opening/closing window categories are **removed**.
 
 <a id="fee-sinks"></a>
 
@@ -75,7 +75,7 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 ### Podium pool internal split (product / future upgrades)
 
-**Today:** category shares (50% / 20% / 10% / 20%) and placement ratio (4∶2∶1) are **fixed in `TimeCurve` bytecode**.
+**Today:** category shares (50% / 25% / 25%) and placement ratio (4∶2∶1) are **fixed in `TimeCurve` bytecode**.
 
 **If parameterized later:** **CL8Y** or delegated sub-governance would own onchain updates; until then, changes require **contract upgrade** and doc sync.
 
@@ -153,7 +153,7 @@ Each non-zero sink’s configured **destination** matches the intended receiver 
 
 ### Invariant: Podium sub-weights
 
-Category shares **inside** the [20% podium pool bucket](#fee-sinks) sum to **100%** of that bucket (50% last buy · 20% time booster · 10% activity leader · 20% defended streak). Within each category, top-3 placements use ratio **4∶2∶1** (1st = 2× 2nd, 2nd = 2× 3rd). Internal splits are **fixed in `TimeCurve`** today; they do **not** change the **top-level** five-sink split unless the **fee split weights** governor updates that layer.
+Category shares **inside** the [20% podium pool bucket](#fee-sinks) sum to **100%** of that bucket (50% last buy · 25% time booster · 25% defended streak). Within each category, top-3 placements use ratio **4∶2∶1** (1st = 2× 2nd, 2nd = 2× 3rd). Internal splits are **fixed in `TimeCurve`** today; they do **not** change the **top-level** five-sink split unless the **fee split weights** governor updates that layer.
 
 <a id="invariant-no-hidden-paths"></a>
 
