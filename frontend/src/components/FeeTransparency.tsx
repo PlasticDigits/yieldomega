@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useReadContracts } from "wagmi";
 import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import { feeRouterReadAbi } from "@/lib/abis";
 import {
   fetchFeeRouterFeesDistributed,
@@ -105,7 +107,8 @@ export function FeeTransparency() {
           <ul className="fee-sink-list fee-sink-list--compact">
             {sinksHistory.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
-                block {row.block_number} — actor <span className="mono">{row.actor.slice(0, 10)}…</span> —{" "}
+                block {formatLocaleInteger(row.block_number)} — actor{" "}
+                <span className="mono">{row.actor.slice(0, 10)}…</span> —{" "}
                 new weights {summarizeSinksJson(row.new_sinks_json)} — tx <TxHash hash={row.tx_hash} />
               </li>
             ))}
@@ -118,10 +121,15 @@ export function FeeTransparency() {
             <strong>Recent fee distributions</strong> (indexer mirror)
           </p>
           <ul className="fee-sink-list fee-sink-list--compact">
+            {/* `amount` is uint256 from indexer; format as 18 dp — matches dominant WAD/ERC-20 paths; adjust if API adds per-token decimals. */}
             {feesDistributed.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
-                block {row.block_number} — token <span className="mono">{row.token.slice(0, 10)}…</span> —{" "}
-                amount {row.amount} — {summarizeSharesJson(row.shares_json)} — tx <TxHash hash={row.tx_hash} />
+                block {formatLocaleInteger(row.block_number)} — token{" "}
+                <span className="mono">{row.token.slice(0, 10)}…</span> — amount{" "}
+                <span className="mono">
+                  {formatCompactFromRaw(rawToBigIntForFormat(row.amount), 18)}
+                </span>{" "}
+                — {summarizeSharesJson(row.shares_json)} — tx <TxHash hash={row.tx_hash} />
               </li>
             ))}
           </ul>

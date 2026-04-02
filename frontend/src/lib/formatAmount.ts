@@ -35,6 +35,25 @@ export function parseBigIntString(s: string): bigint {
   }
 }
 
+/**
+ * Locale grouping for plain whole numbers: gas units, block height, timer seconds, buy counts.
+ * **Not** for token wei/WAD or charm weight — use `AmountDisplay` / `formatCompactFromRaw` instead.
+ */
+export function formatLocaleInteger(value: bigint | number | string): string {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return String(value);
+    }
+    return Math.trunc(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+  try {
+    const b = typeof value === "bigint" ? value : BigInt(String(value).trim() || "0");
+    return b.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  } catch {
+    return String(value);
+  }
+}
+
 function trimTrailingZerosDecimal(s: string): string {
   if (!s.includes(".")) {
     return s;

@@ -11,6 +11,7 @@ import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
 import {
@@ -770,7 +771,7 @@ export function TimeCurvePage() {
             </dd>
             <dt>time remaining</dt>
             <dd>
-              {remaining !== undefined ? `${remaining}s` : "—"}
+              {remaining !== undefined ? `${formatLocaleInteger(remaining)}s` : "—"}
             </dd>
             <dt>totalRaised</dt>
             <dd>
@@ -864,7 +865,9 @@ export function TimeCurvePage() {
               </dd>
               <dt>buyCount</dt>
               <dd>
-                {buyCountR?.status === "success" ? String(buyCountR.result) : "—"}
+                {buyCountR?.status === "success"
+                  ? formatLocaleInteger(buyCountR.result as bigint)
+                  : "—"}
               </dd>
               <dt>biggestSingleBuy</dt>
               <dd>
@@ -877,7 +880,7 @@ export function TimeCurvePage() {
               <dt>charmsRedeemed</dt>
               <dd>
                 {charmsRedeemedR?.status === "success"
-                  ? String(charmsRedeemedR.result)
+                  ? formatLocaleInteger(charmsRedeemedR.result as bigint)
                   : "—"}
               </dd>
               <dt>expected tokens from charms (if ended)</dt>
@@ -891,8 +894,8 @@ export function TimeCurvePage() {
             </dl>
             {indexerBaseUrl() && buyerStats && (
               <p className="muted">
-                Indexer: charm weight {buyerStats.indexed_charm_weight} · buys{" "}
-                {buyerStats.indexed_buy_count}
+                Indexer: charm weight {formatCompactFromRaw(buyerStats.indexed_charm_weight, 18)} · buys{" "}
+                {formatLocaleInteger(buyerStats.indexed_buy_count)}
               </p>
             )}
             {indexerMismatch && <p className="error-text">{indexerMismatch}</p>}
@@ -924,14 +927,22 @@ export function TimeCurvePage() {
             </dd>
             <dt>timerExtensionSec</dt>
             <dd>
-              {timerExtensionSecR?.status === "success" ? String(timerExtensionSecR.result) : "—"}
+              {timerExtensionSecR?.status === "success"
+                ? formatLocaleInteger(timerExtensionSecR.result as bigint)
+                : "—"}
             </dd>
             <dt>initialTimerSec</dt>
             <dd>
-              {initialTimerSecR?.status === "success" ? String(initialTimerSecR.result) : "—"}
+              {initialTimerSecR?.status === "success"
+                ? formatLocaleInteger(initialTimerSecR.result as bigint)
+                : "—"}
             </dd>
             <dt>timerCapSec</dt>
-            <dd>{timerCapSecR?.status === "success" ? String(timerCapSecR.result) : "—"}</dd>
+            <dd>
+              {timerCapSecR?.status === "success"
+                ? formatLocaleInteger(timerCapSecR.result as bigint)
+                : "—"}
+            </dd>
             <dt>totalTokensForSale</dt>
             <dd>
               {totalTokensForSaleR?.status === "success" ? (
@@ -949,8 +960,10 @@ export function TimeCurvePage() {
               {podiumPoolR?.status === "success" ? String(podiumPoolR.result) : "—"}
             </dd>
             <dt>totalCharmWeight</dt>
-            <dd>
-              {totalCharmWeightR?.status === "success" ? String(totalCharmWeightR.result) : "—"}
+            <dd className="mono">
+              {totalCharmWeightR?.status === "success"
+                ? formatCompactFromRaw(rawToBigIntForFormat(totalCharmWeightR.result as bigint), 18)
+                : "—"}
             </dd>
           </dl>
         )}
@@ -1073,7 +1086,7 @@ export function TimeCurvePage() {
               </motion.button>
             </p>
             {gasBuy !== undefined && (
-              <p className="muted">Est. gas (buy): ~{gasBuy.toString()} units</p>
+              <p className="muted">Est. gas (buy): ~{formatLocaleInteger(gasBuy)} units</p>
             )}
           </>
         )}
@@ -1126,9 +1139,11 @@ export function TimeCurvePage() {
         </div>
         {(gasClaim !== undefined || gasDistribute !== undefined) && (
           <p className="muted">
-            {gasClaim !== undefined && <>Est. gas (claim): ~{gasClaim.toString()} units</>}
+            {gasClaim !== undefined && <>Est. gas (claim): ~{formatLocaleInteger(gasClaim)} units</>}
             {gasClaim !== undefined && gasDistribute !== undefined && <> · </>}
-            {gasDistribute !== undefined && <>Est. gas (distribute): ~{gasDistribute.toString()} units</>}
+            {gasDistribute !== undefined && (
+              <>Est. gas (distribute): ~{formatLocaleInteger(gasDistribute)} units</>
+            )}
           </p>
         )}
       </div>
@@ -1247,7 +1262,8 @@ export function TimeCurvePage() {
             {buys.map((b) => (
               <li key={`${b.tx_hash}-${b.log_index}`}>
                 <span className="mono">{b.buyer.slice(0, 10)}…</span> — amount{" "}
-                <AmountDisplay raw={b.amount} decimals={decimals} /> — block {b.block_number} — tx{" "}
+                <AmountDisplay raw={b.amount} decimals={decimals} /> — block{" "}
+                {formatLocaleInteger(b.block_number)} — tx{" "}
                 <TxHash hash={b.tx_hash} />
               </li>
             ))}
@@ -1276,7 +1292,8 @@ export function TimeCurvePage() {
             {claims.map((c) => (
               <li key={`${c.tx_hash}-${c.log_index}`}>
                 <span className="mono">{c.buyer.slice(0, 10)}…</span> — tokens{" "}
-                <AmountDisplay raw={c.token_amount} decimals={18} /> — block {c.block_number} — tx{" "}
+                <AmountDisplay raw={c.token_amount} decimals={18} /> — block{" "}
+                {formatLocaleInteger(c.block_number)} — tx{" "}
                 <TxHash hash={c.tx_hash} />
               </li>
             ))}
@@ -1291,7 +1308,8 @@ export function TimeCurvePage() {
           <ul className="event-list">
             {prizeDist.map((p) => (
               <li key={`${p.tx_hash}-${p.log_index}`}>
-                PrizesDistributed — block {p.block_number} — tx <TxHash hash={p.tx_hash} />
+                PrizesDistributed — block {formatLocaleInteger(p.block_number)} — tx{" "}
+                <TxHash hash={p.tx_hash} />
               </li>
             ))}
           </ul>
@@ -1323,7 +1341,8 @@ export function TimeCurvePage() {
             {refApplied.map((r) => (
               <li key={`${r.tx_hash}-${r.log_index}`}>
                 buyer <span className="mono">{r.buyer.slice(0, 10)}…</span> — referrer CHARM added{" "}
-                <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block {r.block_number}{" "}
+                <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block{" "}
+                {formatLocaleInteger(r.block_number)}{" "}
                 — tx <TxHash hash={r.tx_hash} />
               </li>
             ))}
