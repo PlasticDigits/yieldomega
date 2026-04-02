@@ -8,7 +8,7 @@
 
 ## Pages (illustrative)
 
-- **TimeCurve** — live timer, min buy curve, buy flow, prize leaderboards (from indexer + contract reads).
+- **TimeCurve** — live timer, min buy curve, buy flow, **three** reserve **podium** leaderboards, and **WarBow Ladder** (Battle Points + PvP actions: steal, guard, revenge, flag claim). Use **indexer** for history / battle feed and **RPC** for authoritative live views (`battlePoints`, `warbowPendingFlagOwner`, `warbowGuardUntil`, revenge pointers, steals-per-day reads).
 - **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
 - **Collection** — Leprechaun NFT gallery, set progress, trait filters for humans and agents.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
@@ -49,6 +49,12 @@
 - For **non-token** whole numbers (gas estimates, block heights, seconds-long timers, buy counts), use **`formatLocaleInteger`** in `formatAmount.ts` so digits are grouped per locale.
 - Do **not** use it for wei/WAD token amounts or CHARM weight — those use `AmountDisplay` / `formatCompactFromRaw`.
 - Indexer rows that expose raw transfer amounts should still be formatted with **`formatCompactFromRaw`** (and an assumed decimals value documented at the call site if the API does not carry token metadata).
+
+### WarBow Ladder (UX)
+
+- Frame as **adversarial PvP**, not a passive “activity” board: explain **2× BP rule** for steals, **UTC-day** steal cap + optional **50 CL8Y** bypass, **guard** (10 CL8Y → 1% drain), **revenge** window and **single** pending stealer, **flag** silence and **when** the **2×** BP penalty applies (only after silence elapses).
+- Break down **Battle Points** sources from **`Buy`** fields: base, timer-reset bonus, clutch (`< 30s` remaining), streak-break, ambush; plus flag claim / penalty events.
+- Show **eligibility and revert reasons** before users sign (read contract state + simulate where possible).
 
 ## Security posture
 

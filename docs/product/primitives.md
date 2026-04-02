@@ -2,7 +2,7 @@
 
 ## Intent
 
-TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players earn **charm weight** from each buy (accepted-asset spend) and redeem it for launched tokens after the sale; they also pursue **prize categories** with **podium finishes** (1st, 2nd, 3rd) per category.
+TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players earn **charm weight** from each buy (accepted-asset spend) and redeem it for launched tokens after the sale; they also compete for **reserve-asset podium** placements (three categories) and, separately, for **WarBow Ladder** — an adversarial **Battle Points (BP)** score used for status and PvP mechanics. WarBow is **not** a fourth podium prize slice.
 
 ## Core mechanics (requirements)
 
@@ -16,68 +16,103 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 - A buy specifies **`charmWad`** within the current **scaled** `[0.99e18, 10e18]` band (before scaling: base constants; scaled by envelope ÷ reference). The contract pulls **`amount`** in the accepted asset from the buyer and routes the **full gross** through `FeeRouter`. **CHARM weight** accrues in **CHARM WAD units** (plus referral bonuses as CHARM, not reserve transfers). After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalCharmWeight` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
 
-### Timer extension
+### Timer extension and hard reset
 
-- Each qualifying buy **extends** a **countdown timer** by a fixed duration. Canonical deployment targets: **120 seconds (2 minutes)** per qualifying buy, **24 hours** initial countdown before the first extension, and a **96-hour** ceiling on remaining time from “now” after each buy (`timerCapSec` ≥ extension and ≥ initial timer).
-- Total remaining time is **capped** so the deadline cannot be pushed arbitrarily far with a single buy; the cap rule must be explicit to avoid ambiguity at boundary conditions.
+- **Default branch:** each qualifying buy **extends** the sale **deadline** by **`timerExtensionSec`** (canonical **120 seconds**), subject to the **remaining-time cap** (`timerCapSec` from “now” after the update; canonical **96 hours** from current timestamp).
+- **Hard-reset branch:** if **remaining time before the buy** is **strictly below 13 minutes** (`TIMER_RESET_BELOW_REMAINING_SEC = 780`), the deadline is set toward **exactly 15 minutes** remaining (`TIMER_RESET_TO_REMAINING_SEC = 900`), i.e. `newDeadline = min(block.timestamp + 900, block.timestamp + timerCapSec)`, **not** a simple +2m extension. The `Buy` event exposes **`timerHardReset`** when this branch runs.
+- **Initial countdown** before the first buy is **`initialTimerSec`** (canonical **24 hours**). **`timerCapSec`** must be ≥ extension and ≥ initial timer.
 
 ### Sale end condition
 
 - The sale **ends** when the **timer reaches zero** without further extension past the end boundary.
-- After end, **no further buys** are accepted; **redemption** of charms for **DOUB** and **podium** payouts follow rules defined onchain.
+- After end, **no further buys** are accepted; **redemption** of charms for **DOUB** and **podium** payouts follow rules defined onchain. WarBow **actions** that require an open sale (`!ended`) are blocked after end; **revenge** may still be callable if the contract allows post-end (verify deployment); guard/steal/flag flows in v1 are gated to active sale phase in `TimeCurve`.
 
-### Podium categories (first-class)
+### Reserve podium categories (exactly three)
 
-The system should support **onchain-trackable** leaderboards or deterministic winners. **Each category pays 1st, 2nd, and 3rd** (with explicit tie-breaking). The **podium pool** slice for TimeCurve is routed per [canonical fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks); category shares and placement ratio are **fixed in `TimeCurve`** today ([Podium pool internal split](../onchain/fee-routing-and-governance.md#governance-prize-internal-weights)).
+The **podium pool** pays **reserve asset** to **1st / 2nd / 3rd** per category after `endSale` via **`distributePrizes`**. Category **shares of the podium pool** are fixed in **`TimeCurve`** bytecode:
 
-**Categories (onchain v1):** four competition tracks; **opening** and **closing window** categories are **not** used.
+| Category | Share of **podium pool** | Definition (onchain) |
+|----------|--------------------------|------------------------|
+| **Last buy** | **50%** | **Last qualifying buyers before expiry** — podium slots are the last three buyers in order (final buyer is 1st). |
+| **Time booster** | **25%** | **Most effective time added** — cumulative `newDeadline − oldDeadline` per buy (capped behavior reflected in `actualSecondsAdded`; no credit beyond the cap). Podium: top 3 by `totalEffectiveTimerSecAdded`. |
+| **Defended streak** | **25%** (remainder after integer split on other slices) | **Best** `bestDefendedStreak` for a wallet under the under-15m reset rules below. |
 
-| Category | Share of **podium pool** (reserve asset) | Definition (onchain) |
-|----------|----------------------------------------|------------------------|
-| **Last buy** | **50%** | **Compete to be the last person to buy.** Podium: **1st–3rd** last qualifying buyers before expiry (final buyer is 1st). |
-| **Time booster** | **20%** | **Most actual time added to the timer** (cumulative **effective** seconds: `newDeadline − oldDeadline` per buy; **nominal** extension beyond `timerCapSec` does not count). Podium: **1st–3rd** by `totalEffectiveTimerSecAdded`. |
-| **Activity leader** | **10%** | **Exactly 250 Activity Points per qualifying buy** (any size). Optional: burn **1 CL8Y** (`ACTIVITY_ATTACK_BURN_WAD`) to move **floor(10%)** of the **current #1** leader’s integer points to the buyer, then the buyer still receives **+250** for that buy. Reverts if no leader, zero leader points, or buyer is #1. Tie-break: lower `uint160(address)` ranks higher when scores tie. |
-| **Defended streak** | **20%** (remainder of category split after integer rounding on other slices) | **How many times the same wallet resets the timer while it is under 15 minutes** (`DEFENDED_STREAK_WINDOW_SEC = 900`: remaining time **strictly below** 900 seconds before the buy, and `actualSecondsAdded > 0`). **The streak ends and is recorded when a second player buys under 15 minutes** (prior holder’s **active** zeroed; **`bestDefendedStreak`** keeps the peak for the leaderboard). A buy with **≥ 15 minutes** remaining clears the active holder and resets the final-window marker. |
+Within each category, **1st : 2nd : 3rd** payouts use weights **4∶2∶1**. **DOUB** is for **`redeemCharms`** only, not podium payouts.
 
-**Plain language (aligns with frontend tooltips and play skills):**
+**Plain language:**
 
-- **Last buy:** compete to be the last person to buy.
-- **Time booster:** most actual time added to the timer.
-- **Activity leader:** 250 points each buy, no matter size, and you can burn 1 CL8Y to steal 10% of the leader’s points.
-- **Defended streak:** how many times the same wallet resets the timer while it is under 15 minutes; the streak ends and is recorded when a second player buys under 15 minutes.
+- **Last buy:** last movers before the timer dies.
+- **Time booster:** most net seconds actually added to the deadline across the sale.
+- **Defended streak:** peak count of under-threshold timer resets by the same wallet (see below).
 
-Within each category, **1st : 2nd : 3rd** payouts use weights **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). **Podium payouts** are in the **accepted reserve asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**. **DOUB** is for **`redeemCharms`** only (sale allocation), not for podium payouts.
+### WarBow Ladder (Battle Points — PvP, not reserve prizes)
 
-Exact tie-breaking (same block, same timestamp granularity) must be **specified in contract design** (for example transaction index ordering, log index, buyer address ordering as last resort—transparent and deterministic). **Activity leader** ties use **lower address preferred** when scores are equal; other categories use the contract’s existing top-3 insertion rules.
+WarBow is **adversarial PvP scoring** in **Battle Points**. It encourages **upward pressure** (e.g. steals require the victim to have **≥ 2×** the attacker’s BP). BP **does not** allocate the reserve podium pool; the contract still tracks a **top-3 BP snapshot** via `warbowLadderPodium()` for UX. **Tie-break:** higher BP ranks above; if BP equal, **lower `uint160(address)`** ranks above (deterministic).
 
-#### Activity leader — attack edge cases (onchain)
+#### BP from buys (defaults in `TimeCurve`)
 
-- **Leader identity:** “Current #1” is **`podium(CAT_ACTIVITY_LEADER).winners[0]`** after the last activity update; ties sort with **lower `uint160(address)`** ranked above higher.
-- **Steal amount:** `floor(leaderPoints × 1000 / 10_000)`; integer division rounds **down** (e.g. 1–9 leader points → 0 stolen).
-- **Order within one buy:** Burn 1 CL8Y (`ACTIVITY_ATTACK_BURN_WAD`) is pulled first; then steal runs, then **+250** is applied to the buyer (so the attacker always gets the normal buy points after the transfer).
-- **Reverts:** Attack if there is **no** leader, **zero** leader points, or **buyer is already #1** (cannot attack yourself as leader).
-- **Low balance:** Insufficient accepted asset for `amount + 1e18` reverts on `transferFrom` like any buy.
+| Component | Default (BP) | Rule |
+|-----------|--------------|------|
+| Base qualifying buy | **250** | `WARBOW_BASE_BUY_BP` — any qualifying buy. |
+| Timer hard-reset bonus | **500** | Added when **`timerHardReset`** is true (remaining was &lt; 13m before buy). |
+| Clutch / ambush timing bonus | **150** | Added when **remaining time before buy** is **strictly below 30 seconds** (`remainingBeforeBuy < 30`). |
+| Streak-break bonus | **`priorActiveStreak × 100`** | When this buy **interrupts** another wallet’s **active** defended streak under the 15m window; `WARBOW_STREAK_BREAK_MULT_BP = 100`. |
+| **Ambush** BP bonus | **200** | Added **in the same transaction** iff **`timerHardReset`** is true **and** the buyer **breaks** another wallet’s **active** defended streak under the 15m window (so **streak-break bonus &gt; 0** and ambush applies). Reconstruct from `Buy`: `bpAmbushBonus > 0` implies ambush recognized onchain. |
 
-#### Defended streak — recording (onchain)
+#### Defended streak (podium category + WarBow context)
 
-- **Qualifying reset:** Remaining time **before** the buy must be **strictly below** **`DEFENDED_STREAK_WINDOW_SEC` (900 seconds)** and the buy must add **positive** effective time (`actualSecondsAdded > 0`).
-- **Same wallet:** Increments **that** wallet’s `activeDefendedStreak` and updates `bestDefendedStreak` if higher; updates defended-streak podium by **best** score.
-- **Other wallet under 15m:** Zeros the previous holder’s **active** only; **`best`** for that holder is unchanged (streak is **recorded**, not discarded).
-- **Leaving the window** (≥15m remaining before buy): Zeros **active** for the prior window holder and clears the “last buyer in window” marker; there is **no** continuation of an old active count into a new under-15m phase without fresh increments.
+- **Qualifying increment:** remaining time **before** the buy **&lt; 900s** (15 minutes) **and** `actualSecondsAdded > 0`.
+- **Same wallet:** increments `activeDefendedStreak`; updates `bestDefendedStreak` if higher; updates defended-streak podium by **best**.
+- **Another wallet buys under 15m:** previous holder’s **active** streak is **zeroed**; **best** remains for leaderboard.
+- **Leaving the window** (≥ 15m remaining before buy): clears active holder tracking for the under-window phase (no carryover without fresh qualifying increments).
+
+Dedicated **`WarBowDefendedStreak*`** events (if enabled in bytecode) describe continuation, break, and window exit for indexers; otherwise reconstruct from `Buy` + storage reads.
+
+#### Steal (`warbowSteal`)
+
+- Attacker burns **`WARBOW_STEAL_BURN_WAD`** (**1e18** = 1 CL8Y at 18 decimals) of **accepted asset** to **dead** sink.
+- Transfers **`floor(victimBP × 1000 / 10_000)`** (10%) from victim to attacker, **unless** victim is guarded (`block.timestamp < warbowGuardUntil[victim]`), then **`floor(victimBP × 100 / 10_000)`** (1%).
+- **2× rule:** requires `victimBP >= 2 × attackerBP` (both at time of call, after any prior logic in the tx).
+- **Per-victim daily cap:** **`stealsReceivedOnDay[victim][dayId]`** with `dayId = block.timestamp / 86400` (**UTC day boundary**, Ethereum timestamp). Max **3** normal steals per victim per day; **4th+** in the same UTC day requires **`payBypassBurn == true`** and an extra burn of **50e18** CL8Y (`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`).
+- Each successful steal sets **revenge** pointers: victim may **`warbowRevenge(stealer)`** within **24 hours** (single pending stealer; overwritten if victim is stolen again).
+
+#### Revenge (`warbowRevenge`)
+
+- Victim burns **1e18** CL8Y; takes **`floor(stealerBP × 1000 / 10_000)`** from stealer to victim **once** per pending slot; clears pending stealer/expiry.
+- **Deterministic anti-loop:** only the **last stealer** recorded for that victim is eligible; revenge does not open a reciprocal automatic steal back-and-forth in one invariant — a **new** steal can occur in a later tx. No nested revenge chain in one call.
+
+#### Guard (`warbowActivateGuard`)
+
+- Burn **10e18** CL8Y; extends `warbowGuardUntil[msg.sender]` to **`max(existing, now + 6 hours)`**.
+
+#### Plant flag / claim flag
+
+- On each **buy**, the buyer becomes **`warbowPendingFlagOwner`** at **`warbowPendingFlagPlantAt = block.timestamp`** (`Buy` includes `flagPlanted` when a new plant occurs after clears).
+- **`claimWarBowFlag`:** after **`WARBOW_FLAG_SILENCE_SEC` (300s)** with **no other buyer** in between, holder may claim **`WARBOW_FLAG_CLAIM_BP` (1000)** BP.
+- **Invalidation:** if **another** buyer purchases **before** claim, pending flag is cleared. **Penalty `2 × WARBOW_FLAG_CLAIM_BP`** applies **only** if that intervening buy occurs **at or after** `plantAt + 300s` (claim was already possible); otherwise the holder loses the claim opportunity **without** the 2× BP penalty.
+
+### CL8Y burns — reasons and events
+
+All WarBow-related accepted-asset burns use **`WarBowCl8yBurned(address indexed payer, uint8 reason, uint256 amountWad)`** with **`WarBowBurnReason`**: e.g. **Steal**, **StealLimitBypass**, **Revenge**, **Guard** (exact numeric values are in Solidity). Specialized events (`WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, …) remain the source for amounts and participants; the burn-reason event is for uniform accounting.
+
+### Determinism and indexer reconstruction
+
+- **Canonical state** lives onchain; indexers **decode events** and MAY mirror views. **Do not** infer ambush or streak-break without **`Buy`** fields (`timerHardReset`, `bpStreakBreakBonus`, `bpAmbushBonus`, …).
+- **Tie-breaking** for podiums and WarBow top-3: contract-defined ordering (value desc, then address tie-break where specified).
 
 ## Fund routing (high level)
 
-Proceeds and fees are split per [fee routing and governance](../onchain/fee-routing-and-governance.md) ([sinks](../onchain/fee-routing-and-governance.md#fee-sinks), [governance](../onchain/fee-routing-and-governance.md#governance-actors), [invariants](../onchain/fee-routing-and-governance.md#post-update-invariants)). TimeCurve should emit **rich events** so the indexer can reconstruct participation history for UI and agents.
+Proceeds and fees are split per [fee routing and governance](../onchain/fee-routing-and-governance.md). TimeCurve emits **rich events** so the indexer can reconstruct participation history for UI and agents.
 
 ## Non-requirements (at primitive level)
 
 - TimeCurve does **not** need to own long-term ecosystem governance; **CL8Y** remains the primary governance home for expansion ([vision.md](vision.md)).
 
-## Open parameters (need human decisions before coding)
+## Open parameters (governance / deployment)
 
 - **Accepted asset** (**CL8Y** at launch vs future basket).
 - **Auction cadence** if multiple rounds exist.
-- **Future** parameterization of podium category shares or placement ratios if governance moves them out of bytecode (today fixed in **`TimeCurve`**).
+- **Future** parameterization of podium category shares, WarBow BP constants, or placement ratios if moved out of bytecode (today fixed constants in **`TimeCurve`**).
 
 ---
 

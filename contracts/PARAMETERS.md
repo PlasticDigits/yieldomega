@@ -21,10 +21,17 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
 | Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |
 | Maximum remaining timer | 345 600 seconds (96 h) | Ceiling on remaining time after each buy (`now + cap`); must be ≥ extension and ≥ initial | Default (dev deploy) |
-| Podium categories | **4** fixed in `TimeCurve` | **Last buy** · **Time booster** · **Activity leader** · **Defended streak** — see [primitives](../docs/product/primitives.md); legacy opening/closing-window podiums are **not** implemented | Canonical |
-| Activity points per buy | **250** | `ACTIVITY_POINTS_PER_BUY` | Fixed |
-| Activity attack burn | **1e18** accepted asset | `ACTIVITY_ATTACK_BURN_WAD` (1 CL8Y at 18 decimals) | Fixed |
-| Activity attack drain | **10%** of leader points (floor) | `ACTIVITY_ATTACK_DRAIN_BPS = 1000` | Fixed |
+| Reserve podium categories | **3** fixed in `TimeCurve` | **Last buy** · **Time booster** · **Defended streak** — see [primitives](../docs/product/primitives.md); **WarBow** BP is separate | Canonical |
+| WarBow base BP per buy | **250** | `WARBOW_BASE_BUY_BP` | Fixed |
+| WarBow timer-reset bonus BP | **500** | `WARBOW_TIMER_RESET_BONUS_BP` (when remaining &lt; 13m before buy) | Fixed |
+| WarBow clutch bonus BP | **150** | `WARBOW_CLUTCH_BONUS_BP` (remaining &lt; 30s before buy) | Fixed |
+| WarBow streak-break mult | **100** BP per prior active streak count | `WARBOW_STREAK_BREAK_MULT_BP` | Fixed |
+| WarBow ambush bonus BP | **200** | With hard reset + streak break under window | Fixed |
+| WarBow flag claim BP | **1000** | `WARBOW_FLAG_CLAIM_BP`; silence **300s** | Fixed |
+| WarBow steal / revenge burn | **1e18** each | `WARBOW_STEAL_BURN_WAD`, `WARBOW_REVENGE_BURN_WAD` | Fixed |
+| WarBow steal limit bypass burn | **50e18** | When victim already hit 3 steals that UTC day | Fixed |
+| WarBow guard burn / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
+| WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
 | Total tokens for sale | **TODO** — depends on launched token supply | > 0 | **TODO** |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
@@ -49,7 +56,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
 | Rabbit Treasury | 2 000 | ≥ 0 |
 
-**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: four categories — **last buy** 50% · **time booster** 20% · **activity leader** 10% · **defended streak** 20% of pool; placements **4∶2∶1** per category.
+**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: three categories — **last buy** 50% · **time booster** 25% · **defended streak** 25% of pool; placements **4∶2∶1** per category.
 
 ## Rabbit Treasury (Burrow)
 

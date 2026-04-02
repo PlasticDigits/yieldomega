@@ -22,9 +22,15 @@ export type BuyItem = {
   buy_index: string;
   /** Effective seconds added to the deadline this tx (post cap); omitted on legacy indexer rows. */
   actual_seconds_added?: string;
-  activity_attack?: boolean;
-  activity_points_taken_from_leader?: string;
-  buyer_activity_points_after?: string;
+  timer_hard_reset?: boolean;
+  battle_points_after?: string;
+  bp_base_buy?: string;
+  bp_timer_reset_bonus?: string;
+  bp_clutch_bonus?: string;
+  bp_streak_break_bonus?: string;
+  bp_ambush_bonus?: string;
+  bp_flag_penalty?: string;
+  flag_planted?: boolean;
   buyer_total_effective_timer_sec?: string;
   buyer_active_defended_streak?: string;
   buyer_best_defended_streak?: string;
@@ -94,6 +100,35 @@ export type PaginatedItems<T> = {
 
 export async function fetchTimecurveBuys(limit = 20, offset = 0) {
   return getJson<PaginatedItems<BuyItem>>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
+}
+
+export type WarbowLeaderboardItem = {
+  buyer: string;
+  battle_points_after: string;
+  block_number: string;
+  tx_hash: string;
+  log_index: number;
+};
+
+export async function fetchTimecurveWarbowLeaderboard(limit = 20, offset = 0) {
+  return getJson<PaginatedItems<WarbowLeaderboardItem>>(
+    `/v1/timecurve/warbow/leaderboard?limit=${limit}&offset=${offset}`,
+  );
+}
+
+export type WarbowBattleFeedItem = {
+  kind: string;
+  block_number: string;
+  log_index: number;
+  tx_hash: string;
+  block_timestamp: string | null;
+  detail: Record<string, unknown>;
+};
+
+export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
+  return getJson<PaginatedItems<WarbowBattleFeedItem>>(
+    `/v1/timecurve/warbow/battle-feed?limit=${limit}&offset=${offset}`,
+  );
 }
 
 export type TimecurveBuyerStats = {

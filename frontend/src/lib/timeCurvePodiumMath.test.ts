@@ -19,11 +19,10 @@ describe("timeCurvePodiumMath", () => {
   });
 
   it("category slices partition pool", () => {
-    const [a, b, c, d] = podiumCategorySlices(100n);
-    expect(a + b + c + d).toBe(100n);
+    const [a, b, c] = podiumCategorySlices(100n);
+    expect(a + b + c).toBe(100n);
     expect(a).toBe(50n);
-    expect(b).toBe(20n);
-    expect(c).toBe(10n);
-    expect(d).toBe(20n);
+    expect(b).toBe(25n);
+    expect(c).toBe(25n);
   });
 });
