@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   abbreviateDecimalString,
   formatAmountTriple,
+  formatBpsAsPercent,
   formatLocaleInteger,
   formatUnixSecIsoUtc,
   parseBigIntString,
@@ -33,6 +34,17 @@ describe("abbreviateDecimalString", () => {
     expect(abbreviateDecimalString("1000000")).toBe("1m");
     expect(abbreviateDecimalString("2500000")).toBe("2.5m");
     expect(abbreviateDecimalString("3000000000")).toBe("3b");
+  });
+});
+
+describe("formatBpsAsPercent", () => {
+  it("converts bps to percent", () => {
+    expect(formatBpsAsPercent(3000)).toBe("30.00%");
+    expect(formatBpsAsPercent(500)).toBe("5.00%");
+    expect(formatBpsAsPercent(10000)).toBe("100.00%");
+  });
+  it("returns em dash for non-finite", () => {
+    expect(formatBpsAsPercent(Number.NaN)).toBe("—");
   });
 });
 
