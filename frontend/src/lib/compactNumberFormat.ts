@@ -138,13 +138,35 @@ export function formatCompactDecimalString(
   return neg ? `-${out}` : out;
 }
 
+/** Coerce RPC / multicall values (sometimes serialized as decimal strings) for {@link formatUnits}. */
+export function rawToBigIntForFormat(raw: bigint | string | number): bigint {
+  if (typeof raw === "bigint") {
+    return raw;
+  }
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw) || !Number.isInteger(raw)) {
+      return 0n;
+    }
+    return BigInt(raw);
+  }
+  const s = String(raw).trim();
+  if (!s) {
+    return 0n;
+  }
+  try {
+    return BigInt(s);
+  } catch {
+    return 0n;
+  }
+}
+
 /**
  * `formatUnits(raw, decimals)` then {@link formatCompactDecimalString}.
  */
 export function formatCompactFromRaw(
-  raw: bigint,
+  raw: bigint | string | number,
   decimals: number,
   options?: FormatCompactOptions,
 ): string {
-  return formatCompactDecimalString(formatUnits(raw, decimals), options);
+  return formatCompactDecimalString(formatUnits(rawToBigIntForFormat(raw), decimals), options);
 }

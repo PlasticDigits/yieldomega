@@ -10,7 +10,7 @@ import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
 import {
@@ -311,8 +311,8 @@ export function TimeCurvePage() {
     if (totalRaised?.status !== "success" || totalTokensForSaleR?.status !== "success") {
       return null;
     }
-    const tr = totalRaised.result as bigint;
-    const tts = totalTokensForSaleR.result as bigint;
+    const tr = rawToBigIntForFormat(totalRaised.result as bigint);
+    const tts = rawToBigIntForFormat(totalTokensForSaleR.result as bigint);
     const clearing = projectedReservePerDoubWad(tr, tts);
     if (clearing === null) {
       return null;
@@ -917,8 +917,10 @@ export function TimeCurvePage() {
               )}
             </dd>
             <dt>growthRateWad</dt>
-            <dd>
-              {growthRateWadR?.status === "success" ? String(growthRateWadR.result) : "—"}
+            <dd className="mono">
+              {growthRateWadR?.status === "success"
+                ? formatCompactFromRaw(growthRateWadR.result as bigint, 18)
+                : "—"}
             </dd>
             <dt>timerExtensionSec</dt>
             <dd>
@@ -1352,12 +1354,19 @@ function usePodiumReads(tc: `0x${string}` | undefined) {
       if (r.status !== "success") {
         return { winners: ["0x0", "0x0", "0x0"] as const, values: [0n, 0n, 0n] as const };
       }
-      const result = r.result as readonly [readonly `0x${string}`[], readonly bigint[]];
+      const result = r.result as readonly [
+        readonly `0x${string}`[],
+        readonly (bigint | string)[],
+      ];
       const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
-      const values = result[1] as [bigint, bigint, bigint];
+      const v = result[1];
       return {
         winners: [winners[0], winners[1], winners[2]],
-        values: [values[0], values[1], values[2]],
+        values: [
+          rawToBigIntForFormat(v[0]),
+          rawToBigIntForFormat(v[1]),
+          rawToBigIntForFormat(v[2]),
+        ] as const,
       };
     }) ?? [];
 
