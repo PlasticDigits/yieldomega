@@ -116,7 +116,7 @@ export ADDRESS_REGISTRY_PATH=$PWD/contracts/deployments/stage2-anvil-registry.js
 export LISTEN_ADDR=127.0.0.1:3100
 cd indexer && cargo run --release
 
-# Smoke txs — set USDM, TC, RT, NFT, ACC, PK, RPC from your deploy output
+# Smoke txs — set reserve (CL8Y), TC, RT, NFT, ACC, PK, RPC from your deploy output
 # (see section 3 for approve target = TimeCurve)
 ```
 

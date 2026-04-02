@@ -50,11 +50,25 @@ import {
 } from "@/lib/indexerApi";
 
 const PODIUM_LABELS = [
-  "Last buyers (50% of podium pool)",
-  "Most buys (20%)",
-  "Biggest single buy (10%)",
-  "Highest cumulative CHARM (20%)",
-];
+  "Last buy (50% of podium pool)",
+  "Time booster (20%)",
+  "Activity leader (10%)",
+  "Defended streak (20%)",
+] as const;
+
+const PODIUM_HELP = [
+  "Compete to be the last person to buy.",
+  "most actual time added to the timer.",
+  "250 points each buy, no matter size, and you can burn 1 CL8Y to steal 10% of the leader’s points.",
+  "how many times the same wallet resets the timer while it is under 15 minutes; the streak ends and is recorded when a second player buys under 15 minutes.",
+] as const;
+
+function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): string {
+  if (categoryIndex === 1) {
+    return `${formatLocaleInteger(raw)} s`;
+  }
+  return formatLocaleInteger(raw);
+}
 
 export function TimeCurvePage() {
   const prefersReducedMotion = useReducedMotion();
@@ -69,6 +83,7 @@ export function TimeCurvePage() {
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [useReferral, setUseReferral] = useState(true);
+  const [activityAttack, setActivityAttack] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [prizePayouts, setPrizePayouts] = useState<PrizePayoutItem[] | null>(null);
   const [prizeDist, setPrizeDist] = useState<PrizeDistributionItem[] | null>(null);
@@ -207,6 +222,7 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
           { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
           { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
+          { address: tc, abi: timeCurveReadAbi, functionName: "ACTIVITY_ATTACK_BURN_WAD" },
         ]
       : [],
     query: { enabled: Boolean(tc) },
@@ -222,7 +238,10 @@ export function TimeCurvePage() {
             { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
             { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
             { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
-            { address: tc, abi: timeCurveReadAbi, functionName: "biggestSingleBuy", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "totalEffectiveTimerSecAdded", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "activityPoints", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
+            { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak", args: [address] },
           ]
         : [],
     query: { enabled: Boolean(tc && address) },
@@ -251,9 +270,14 @@ export function TimeCurvePage() {
     feeRouterR,
     podiumPoolR,
     totalCharmWeightR,
+    activityAttackBurnWadR,
   ] = data ?? [];
 
-  const [charmWeightR, buyCountR, charmsRedeemedR, biggestSingleBuyR] = userSaleData ?? [];
+  const [charmWeightR, buyCountR, charmsRedeemedR, timerAddedR, activityPtsR, activeStreakR, bestStreakR] =
+    userSaleData ?? [];
+
+  const activityAttackBurnWad =
+    activityAttackBurnWadR?.status === "success" ? (activityAttackBurnWadR.result as bigint) : 10n ** 18n;
 
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
@@ -510,11 +534,19 @@ export function TimeCurvePage() {
             return;
           }
         }
+        const args =
+          codeHash && activityAttack
+            ? [cw, codeHash, true]
+            : codeHash
+              ? [cw, codeHash]
+              : activityAttack
+                ? [cw, true]
+                : [cw];
         const g = await estimateGasUnits({
           address: tc,
           abi: timeCurveWriteAbi,
           functionName: "buy",
-          args: codeHash ? [cw, codeHash] : [cw],
+          args,
           account: address,
           chainId,
         });
@@ -530,6 +562,7 @@ export function TimeCurvePage() {
     useReferral,
     referralRegistryOn,
     pendingRef,
+    activityAttack,
     chainId,
   ]);
 
@@ -609,6 +642,9 @@ export function TimeCurvePage() {
       }
     }
 
+    const extraPull = activityAttack ? activityAttackBurnWad : 0n;
+    const totalPull = amount + extraPull;
+
     try {
       const allow = await readContract(wagmiConfig, {
         address: tokenAddr,
@@ -616,7 +652,7 @@ export function TimeCurvePage() {
         functionName: "allowance",
         args: [address, tc],
       });
-      if (allow < amount) {
+      if (allow < totalPull) {
         const approveHash = await writeContractAsync({
           address: tokenAddr,
           abi: erc20Abi,
@@ -625,24 +661,28 @@ export function TimeCurvePage() {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
+      const buyArgs =
+        codeHash && activityAttack
+          ? [cw, codeHash, true]
+          : codeHash
+            ? [cw, codeHash]
+            : activityAttack
+              ? [cw, true]
+              : [cw];
+      const buyHash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "buy",
+        args: buyArgs as
+          | [bigint]
+          | [bigint, `0x${string}`]
+          | [bigint, boolean]
+          | [bigint, `0x${string}`, boolean],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
-        const buyHash = await writeContractAsync({
-          address: tc,
-          abi: timeCurveWriteAbi,
-          functionName: "buy",
-          args: [cw, codeHash],
-        });
-        await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
         clearPendingReferralCode();
         setPendingRef(null);
-      } else {
-        const buyHash = await writeContractAsync({
-          address: tc,
-          abi: timeCurveWriteAbi,
-          functionName: "buy",
-          args: [cw],
-        });
-        await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       }
       refetchAll();
     } catch (e) {
@@ -660,6 +700,8 @@ export function TimeCurvePage() {
     pendingRef,
     writeContractAsync,
     refetchAll,
+    activityAttack,
+    activityAttackBurnWad,
   ]);
 
   async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
@@ -869,13 +911,29 @@ export function TimeCurvePage() {
                   ? formatLocaleInteger(buyCountR.result as bigint)
                   : "—"}
               </dd>
-              <dt>biggestSingleBuy</dt>
+              <dt>totalEffectiveTimerSecAdded</dt>
               <dd>
-                {biggestSingleBuyR?.status === "success" ? (
-                  <AmountDisplay raw={biggestSingleBuyR.result as bigint} decimals={decimals} />
-                ) : (
-                  "—"
-                )}
+                {timerAddedR?.status === "success"
+                  ? `${formatLocaleInteger(timerAddedR.result as bigint)} s`
+                  : "—"}
+              </dd>
+              <dt>activityPoints</dt>
+              <dd>
+                {activityPtsR?.status === "success"
+                  ? formatLocaleInteger(activityPtsR.result as bigint)
+                  : "—"}
+              </dd>
+              <dt>activeDefendedStreak</dt>
+              <dd>
+                {activeStreakR?.status === "success"
+                  ? formatLocaleInteger(activeStreakR.result as bigint)
+                  : "—"}
+              </dd>
+              <dt>bestDefendedStreak</dt>
+              <dd>
+                {bestStreakR?.status === "success"
+                  ? formatLocaleInteger(bestStreakR.result as bigint)
+                  : "—"}
               </dd>
               <dt>charmsRedeemed</dt>
               <dd>
@@ -1074,6 +1132,18 @@ export function TimeCurvePage() {
             {referralRegistryOn && !pendingRef && (
               <p className="muted">Open a referral link with ?ref=CODE to enable referral CHARM bonuses.</p>
             )}
+            <label className="form-label">
+              <input
+                type="checkbox"
+                checked={activityAttack}
+                onChange={(e) => setActivityAttack(e.target.checked)}
+              />{" "}
+              Activity attack — burn{" "}
+              <AmountDisplay raw={activityAttackBurnWad} decimals={decimals} /> (1 CL8Y at 18 decimals) to{" "}
+              <strong>steal 10%</strong> (floor) of the current leader&apos;s activity points (reverts if you
+              are #1 or there is no leader). You still earn <strong>250</strong> activity points for the buy
+              regardless of size.
+            </label>
             <p>
               <motion.button
                 type="button"
@@ -1203,6 +1273,18 @@ export function TimeCurvePage() {
       </div>
 
       <div className="data-panel">
+        <h2>Podium categories (how it works)</h2>
+        <ul className="event-list">
+          {PODIUM_LABELS.map((title, i) => (
+            <li key={title}>
+              <strong>{title}</strong>
+              <div className="muted">{PODIUM_HELP[i]}</div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="data-panel">
         <h2>Podium pool (live)</h2>
         <p className="muted">
           Balance in the accepted reserve asset held by <code>podiumPool</code>. Projected payouts use the
@@ -1221,6 +1303,7 @@ export function TimeCurvePage() {
           {podiumPayoutPreview.map((row, idx) => (
             <div key={idx} className="podium-block">
               <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
+              <p className="muted">{PODIUM_HELP[idx]}</p>
               <ol className="podium-list">
                 {(["1st", "2nd", "3rd"] as const).map((lab, j) => (
                   <li key={lab}>
@@ -1239,13 +1322,12 @@ export function TimeCurvePage() {
         {podiumReads.data?.map((row, i) => (
           <div key={i} className="podium-block">
             <h3>{PODIUM_LABELS[i] ?? `Category ${i}`}</h3>
+            <p className="muted">{PODIUM_HELP[i]}</p>
             <ol className="podium-list">
               {row.winners.map((w, j) => (
                 <li key={j}>
-                  <span className="mono">{w.slice(0, 10)}…</span> — value{" "}
-                  {row.values[j] !== undefined
-                    ? formatCompactFromRaw(row.values[j], decimals)
-                    : "—"}
+                  <span className="mono">{w.slice(0, 10)}…</span> —{" "}
+                  {row.values[j] !== undefined ? formatPodiumLeaderboardValue(i, row.values[j]) : "—"}
                 </li>
               ))}
             </ol>
@@ -1262,7 +1344,14 @@ export function TimeCurvePage() {
             {buys.map((b) => (
               <li key={`${b.tx_hash}-${b.log_index}`}>
                 <span className="mono">{b.buyer.slice(0, 10)}…</span> — amount{" "}
-                <AmountDisplay raw={b.amount} decimals={decimals} /> — block{" "}
+                <AmountDisplay raw={b.amount} decimals={decimals} />
+                {b.actual_seconds_added !== undefined && (
+                  <>
+                    {" "}
+                    — +{formatLocaleInteger(BigInt(b.actual_seconds_added))} s on timer
+                  </>
+                )}
+                {b.activity_attack ? " — activity attack" : ""} — block{" "}
                 {formatLocaleInteger(b.block_number)} — tx{" "}
                 <TxHash hash={b.tx_hash} />
               </li>

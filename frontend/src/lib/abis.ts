@@ -29,7 +29,18 @@ export const timeCurveReadAbi = parseAbi([
   "function charmWeight(address user) view returns (uint256)",
   "function buyCount(address user) view returns (uint256)",
   "function charmsRedeemed(address user) view returns (bool)",
-  "function biggestSingleBuy(address user) view returns (uint256)",
+  "function totalEffectiveTimerSecAdded(address user) view returns (uint256)",
+  "function activityPoints(address user) view returns (uint256)",
+  "function activeDefendedStreak(address user) view returns (uint256)",
+  "function bestDefendedStreak(address user) view returns (uint256)",
+  "function ACTIVITY_POINTS_PER_BUY() view returns (uint256)",
+  "function ACTIVITY_ATTACK_BURN_WAD() view returns (uint256)",
+  "function ACTIVITY_ATTACK_DRAIN_BPS() view returns (uint16)",
+  "function CAT_LAST_BUYERS() view returns (uint8)",
+  "function CAT_TIME_BOOSTER() view returns (uint8)",
+  "function CAT_ACTIVITY_LEADER() view returns (uint8)",
+  "function CAT_DEFENDED_STREAK() view returns (uint8)",
+  "function DEFENDED_STREAK_WINDOW_SEC() view returns (uint256)",
   "function prizesDistributed() view returns (bool)",
 ]);
 
@@ -41,6 +52,8 @@ export const linearCharmPriceReadAbi = parseAbi([
 export const timeCurveWriteAbi = parseAbi([
   "function buy(uint256 charmWad)",
   "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buy(uint256 charmWad, bool activityAttack)",
+  "function buy(uint256 charmWad, bytes32 codeHash, bool activityAttack)",
   "function endSale()",
   "function redeemCharms()",
   "function distributePrizes()",

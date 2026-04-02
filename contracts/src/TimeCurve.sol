@@ -11,42 +11,73 @@ import {PodiumPool} from "./sinks/PodiumPool.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
 
-/// @title TimeCurve — token launch primitive
-/// @notice CHARM quantity bounds scale with the **exponential daily envelope** (`TimeMath`); per-CHARM
-///         **price** comes from a pluggable `ICharmPrice` (default **linear** in time). Gross spend =
-///         `charmWad * priceWad / 1e18`. See docs/product/primitives.md.
-/// @dev Referral rewards are **CHARM weight** (not reserve transfers). The full gross `amount` is routed
-///      through `FeeRouter`; `redeemCharms` clears DOUB pro-rata to `totalCharmWeight`.
+/// @title TimeCurve — token launch primitive + WarBow Ladder (PvP Battle Points)
+/// @notice CHARM bounds × linear price; timer uses +2m extension, or **hard reset toward 15m remaining** when under 13m left
+///         (see `TIMER_RESET_BELOW_REMAINING_SEC` / `TIMER_RESET_TO_REMAINING_SEC`). Prize podiums (**3 only**): last buy,
+///         time booster, defended streak. **WarBow Ladder** is onchain **Battle Points** (not a reserve prize slice) with
+///         steals, guard, revenge, flag claim — see `docs/product/primitives.md`.
 contract TimeCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    /// @notice Podium categories (see docs/product/primitives.md). Indices 0–3 only.
+    // ── Prize podium categories (reserve payouts; exactly three) ─────────
     uint8 public constant CAT_LAST_BUYERS = 0;
-    uint8 public constant CAT_MOST_BUYS = 1;
-    uint8 public constant CAT_BIGGEST_BUY = 2;
-    uint8 public constant CAT_HIGHEST_CUMULATIVE = 3;
-    uint8 public constant NUM_PODIUM_CATEGORIES = 4;
+    uint8 public constant CAT_TIME_BOOSTER = 1;
+    uint8 public constant CAT_DEFENDED_STREAK = 2;
+    uint8 public constant NUM_PODIUM_CATEGORIES = 3;
 
-    /// @notice Referral: 10% of gross CHARM accrues to referrer + 10% to referee (bps each).
+    /// @notice Defended streak counts only when remaining time **before** buy is **strictly below** this (15 minutes).
+    uint256 public constant DEFENDED_STREAK_WINDOW_SEC = 900;
+
+    // ── Timer hard-reset band (13m → snap remaining toward 15m) ──────────
+    /// @dev If remaining < this **before** buy, deadline snaps to `min(now + TIMER_RESET_TO_REMAINING_SEC, now + timerCapSec)`.
+    uint256 public constant TIMER_RESET_BELOW_REMAINING_SEC = 780; // 13 minutes
+    /// @notice Target remaining after hard-reset branch (15 minutes).
+    uint256 public constant TIMER_RESET_TO_REMAINING_SEC = 900;
+
+    // ── WarBow Ladder — Battle Points (defaults; document in primitives) ─
+    uint256 public constant WARBOW_BASE_BUY_BP = 250;
+    /// @notice Extra BP when the **hard timer reset** branch fires on a buy.
+    uint256 public constant WARBOW_TIMER_RESET_BONUS_BP = 500;
+    /// @notice Extra BP when remaining time before buy was under 30 seconds (“clutch”).
+    uint256 public constant WARBOW_CLUTCH_BONUS_BP = 150;
+    /// @notice Streak-break bonus for buyer = `priorActiveStreak * WARBOW_STREAK_BREAK_MULT_BP`.
+    uint256 public constant WARBOW_STREAK_BREAK_MULT_BP = 100;
+    /// @notice Extra BP when hard-reset **and** buyer breaks another wallet’s active defended streak this tx (“ambush”).
+    uint256 public constant WARBOW_AMBUSH_BONUS_BP = 200;
+
+    /// @notice Successful flag claim awards this BP; intervening buy penalizes former holder `2 *` this.
+    uint256 public constant WARBOW_FLAG_CLAIM_BP = 1000;
+    /// @notice Silence required after own buy before `claimWarBowFlag` (5 minutes).
+    uint256 public constant WARBOW_FLAG_SILENCE_SEC = 300;
+
+    uint256 public constant WARBOW_STEAL_BURN_WAD = 1e18;
+    uint256 public constant WARBOW_REVENGE_BURN_WAD = 1e18;
+    uint256 public constant WARBOW_GUARD_BURN_WAD = 10e18;
+    uint256 public constant WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD = 50e18;
+    uint256 public constant WARBOW_GUARD_DURATION_SEC = 6 hours;
+
+    uint16 public constant WARBOW_STEAL_DRAIN_BPS = 1000; // 10%
+    uint16 public constant WARBOW_STEAL_DRAIN_GUARDED_BPS = 100; // 1%
+    uint8 public constant WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY = 3;
+
+    uint256 public constant SECONDS_PER_DAY = 86_400;
+    uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
+
     uint16 public constant REFERRAL_EACH_BPS = 1000;
 
+    address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
+
     uint256 internal constant WAD = 1e18;
-    /// @notice Onchain min CHARM (WAD) at envelope factor 1; scales up with exponential envelope.
-    uint256 internal constant CHARM_MIN_BASE_WAD = 99e16; // 0.99e18
-    /// @notice Onchain max CHARM (WAD) at envelope factor 1; scales up with exponential envelope.
+    uint256 internal constant CHARM_MIN_BASE_WAD = 99e16;
     uint256 internal constant CHARM_MAX_BASE_WAD = 10e18;
 
-    // ── Configuration (immutable after deploy) ─────────────────────────
     IERC20 public immutable acceptedAsset;
     IERC20 public immutable launchedToken;
     FeeRouter public immutable feeRouter;
     PodiumPool public immutable podiumPool;
-    /// @notice Zero address disables `buy(charmWad, codeHash)` referral path.
     IReferralRegistry public immutable referralRegistry;
-    /// @notice Per-CHARM pricing schedule (linear or future swappable implementation).
     ICharmPrice public immutable charmPrice;
 
-    /// @notice Reference unit for exponential **envelope** scaling of min/max CHARM (typically `1e18`).
     uint256 public immutable initialMinBuy;
     uint256 public immutable growthRateWad;
     uint256 public immutable timerExtensionSec;
@@ -54,34 +85,52 @@ contract TimeCurve is ReentrancyGuard {
     uint256 public immutable timerCapSec;
     uint256 public immutable totalTokensForSale;
 
-    // ── Sale state ─────────────────────────────────────────────────────
     uint256 public saleStart;
     uint256 public deadline;
     uint256 public totalRaised;
-    /// @notice Sum of all CHARM weight minted (CHARM units + referral bonuses). Redemption denominator.
     uint256 public totalCharmWeight;
     bool public ended;
     bool public prizesDistributed;
 
-    // ── Per-user tracking ──────────────────────────────────────────────
     mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
-    mapping(address => uint256) public biggestSingleBuy;
     mapping(address => bool) public charmsRedeemed;
 
-    // ── Podium tracking ────────────────────────────────────────────────
+    mapping(address => uint256) public totalEffectiveTimerSecAdded;
+    /// @notice **WarBow Ladder** score (Battle Points); not a reserve prize category.
+    mapping(address => uint256) public battlePoints;
+    mapping(address => uint256) public bestDefendedStreak;
+    mapping(address => uint256) public activeDefendedStreak;
+
+    /// @notice Unix-day id `block.timestamp / 86400` → steals **received** by this victim that day.
+    mapping(address => mapping(uint256 => uint8)) public stealsReceivedOnDay;
+
+    /// @notice Guard reduces incoming steal % until this timestamp (exclusive).
+    mapping(address => uint256) public warbowGuardUntil;
+
+    /// @notice Last stealer for revenge (overwritten on each new steal **to** this victim).
+    mapping(address => address) public warbowPendingRevengeStealer;
+    /// @notice Inclusive upper bound for `warbowRevenge` (`< expiry` check).
+    mapping(address => uint256) public warbowPendingRevengeExpiry;
+
     struct Podium {
         address[3] winners;
         uint256[3] values;
     }
 
     Podium[NUM_PODIUM_CATEGORIES] internal _podiums;
+    /// @dev Top-3 **Battle Points** for UX / indexers (no reserve slice).
+    Podium internal _warbowPodium;
 
     address[3] internal _lastBuyers;
     uint8 internal _lastBuyerIdx;
     uint256 internal _totalBuys;
 
-    // ── Events ─────────────────────────────────────────────────────────
+    address internal _dsLastUnderWindowBuyer;
+
+    address public warbowPendingFlagOwner;
+    uint256 public warbowPendingFlagPlantAt;
+
     event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
     event Buy(
         address indexed buyer,
@@ -90,7 +139,20 @@ contract TimeCurve is ReentrancyGuard {
         uint256 pricePerCharmWad,
         uint256 newDeadline,
         uint256 totalRaisedAfter,
-        uint256 buyIndex
+        uint256 buyIndex,
+        uint256 actualSecondsAdded,
+        bool timerHardReset,
+        uint256 battlePointsAfter,
+        uint256 bpBaseBuy,
+        uint256 bpTimerResetBonus,
+        uint256 bpClutchBonus,
+        uint256 bpStreakBreakBonus,
+        uint256 bpAmbushBonus,
+        uint256 bpFlagPenalty,
+        bool flagPlanted,
+        uint256 buyerTotalEffectiveTimerSecAdded,
+        uint256 buyerActiveDefendedStreak,
+        uint256 buyerBestDefendedStreak
     );
     event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
     event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
@@ -102,6 +164,24 @@ contract TimeCurve is ReentrancyGuard {
         uint256 referrerCharmAdded,
         uint256 refereeCharmAdded,
         uint256 grossAmountRoutedToFeeRouter
+    );
+    event WarBowSteal(
+        address indexed attacker,
+        address indexed victim,
+        uint256 amountBp,
+        uint256 burnPaidWad,
+        bool bypassedVictimDailyLimit,
+        uint256 victimBpAfter,
+        uint256 attackerBpAfter
+    );
+    event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 amountBp, uint256 burnPaidWad);
+    event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad);
+    event WarBowFlagClaimed(address indexed player, uint256 bonusBp, uint256 battlePointsAfter);
+    event WarBowFlagPenalized(
+        address indexed formerHolder,
+        uint256 penaltyBp,
+        address indexed triggeringBuyer,
+        uint256 battlePointsAfter
     );
 
     constructor(
@@ -129,7 +209,6 @@ contract TimeCurve is ReentrancyGuard {
         require(_timerCapSec >= _timerExtensionSec, "TimeCurve: cap < extension");
         require(_timerCapSec >= _initialTimerSec, "TimeCurve: cap < initial timer");
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
-
         acceptedAsset = _acceptedAsset;
         launchedToken = _launchedToken;
         feeRouter = _feeRouter;
@@ -211,17 +290,228 @@ contract TimeCurve is ReentrancyGuard {
         buyCount[msg.sender] += 1;
         _totalBuys += 1;
 
-        deadline = TimeMath.extendDeadline(deadline, block.timestamp, timerExtensionSec, timerCapSec);
+        uint256 deadlineBefore = deadline;
+        uint256 remainingBeforeBuy = deadlineBefore - block.timestamp;
+
+        // Flag: if another buyer snipes **after** the silence window (claim was available) before claim, penalize 2X.
+        uint256 flagPenalty;
+        if (warbowPendingFlagOwner != address(0) && msg.sender != warbowPendingFlagOwner) {
+            if (block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC) {
+                uint256 pen = WARBOW_FLAG_CLAIM_BP * 2;
+                _subBattlePoints(warbowPendingFlagOwner, pen);
+                flagPenalty = pen;
+                emit WarBowFlagPenalized(
+                    warbowPendingFlagOwner, pen, msg.sender, battlePoints[warbowPendingFlagOwner]
+                );
+            }
+            warbowPendingFlagOwner = address(0);
+            warbowPendingFlagPlantAt = 0;
+        }
+
+        (uint256 newDl, bool hardReset) = TimeMath.extendDeadlineOrResetBelowThreshold(
+            deadlineBefore,
+            block.timestamp,
+            timerExtensionSec,
+            timerCapSec,
+            TIMER_RESET_BELOW_REMAINING_SEC,
+            TIMER_RESET_TO_REMAINING_SEC
+        );
+        deadline = newDl;
+        uint256 actualSecondsAdded = newDl - deadlineBefore;
 
         _trackLastBuyer(msg.sender);
-        _updateTopThree(CAT_MOST_BUYS, msg.sender, buyCount[msg.sender]);
-        if (amount > biggestSingleBuy[msg.sender]) {
-            biggestSingleBuy[msg.sender] = amount;
-        }
-        _updateTopThree(CAT_BIGGEST_BUY, msg.sender, biggestSingleBuy[msg.sender]);
-        _updateTopThree(CAT_HIGHEST_CUMULATIVE, msg.sender, charmWeight[msg.sender]);
 
-        emit Buy(msg.sender, charmWad, amount, priceWad, deadline, totalRaised, _totalBuys);
+        if (actualSecondsAdded > 0) {
+            totalEffectiveTimerSecAdded[msg.sender] += actualSecondsAdded;
+            _updateTopThreeMonotonic(CAT_TIME_BOOSTER, msg.sender, totalEffectiveTimerSecAdded[msg.sender]);
+        }
+
+        uint256 bpStreakBreak;
+        uint256 bpAmbush;
+        if (
+            remainingBeforeBuy < DEFENDED_STREAK_WINDOW_SEC && _dsLastUnderWindowBuyer != address(0)
+                && msg.sender != _dsLastUnderWindowBuyer
+        ) {
+            uint256 len = activeDefendedStreak[_dsLastUnderWindowBuyer];
+            if (len > 0) {
+                bpStreakBreak = len * WARBOW_STREAK_BREAK_MULT_BP;
+                if (hardReset) {
+                    bpAmbush = WARBOW_AMBUSH_BONUS_BP;
+                }
+            }
+        }
+
+        _processDefendedStreak(msg.sender, remainingBeforeBuy, actualSecondsAdded);
+
+        uint256 bpBase = WARBOW_BASE_BUY_BP;
+        uint256 bpReset;
+        if (hardReset) {
+            bpReset = WARBOW_TIMER_RESET_BONUS_BP;
+        }
+        uint256 bpClutch;
+        if (remainingBeforeBuy < 30) {
+            bpClutch = WARBOW_CLUTCH_BONUS_BP;
+        }
+
+        _addBattlePoints(msg.sender, bpBase + bpReset + bpClutch + bpStreakBreak + bpAmbush);
+
+        warbowPendingFlagOwner = msg.sender;
+        warbowPendingFlagPlantAt = block.timestamp;
+
+        emit Buy(
+            msg.sender,
+            charmWad,
+            amount,
+            priceWad,
+            deadline,
+            totalRaised,
+            _totalBuys,
+            actualSecondsAdded,
+            hardReset,
+            battlePoints[msg.sender],
+            bpBase,
+            bpReset,
+            bpClutch,
+            bpStreakBreak,
+            bpAmbush,
+            flagPenalty,
+            true,
+            totalEffectiveTimerSecAdded[msg.sender],
+            activeDefendedStreak[msg.sender],
+            bestDefendedStreak[msg.sender]
+        );
+    }
+
+    /// @notice After **your** buy, wait `WARBOW_FLAG_SILENCE_SEC` with **no other buyer**; then claim **+WARBOW_FLAG_CLAIM_BP**.
+    function claimWarBowFlag() external nonReentrant {
+        require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(warbowPendingFlagOwner == msg.sender, "TimeCurve: not flag holder");
+        require(block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC, "TimeCurve: flag silence");
+
+        warbowPendingFlagOwner = address(0);
+        warbowPendingFlagPlantAt = 0;
+
+        _addBattlePoints(msg.sender, WARBOW_FLAG_CLAIM_BP);
+        emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP, battlePoints[msg.sender]);
+    }
+
+    /// @notice Burn **1 CL8Y** (accepted asset); steal **10%** (or **1%** if victim guarded) of victim’s BP. Victim must have **≥ 2×** your BP.
+    /// @param payBypassBurn If victim already hit **3** steals today, pass `true` and pay **+50 CL8Y** to proceed.
+    function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
+        require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
+
+        uint256 day = block.timestamp / SECONDS_PER_DAY;
+        uint8 received = stealsReceivedOnDay[victim][day];
+        uint256 burnExtra = WARBOW_STEAL_BURN_WAD;
+        if (received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
+            require(payBypassBurn, "TimeCurve: steal victim daily limit");
+            burnExtra += WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD;
+        }
+
+        acceptedAsset.safeTransferFrom(msg.sender, address(this), burnExtra);
+        acceptedAsset.safeTransfer(BURN_SINK, burnExtra);
+
+        uint256 vbp = battlePoints[victim];
+        uint256 abp = battlePoints[msg.sender];
+        require(vbp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
+
+        uint16 bps = block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
+        uint256 take = (vbp * uint256(bps)) / 10_000;
+        require(take > 0, "TimeCurve: steal zero");
+
+        _subBattlePoints(victim, take);
+        _addBattlePoints(msg.sender, take);
+
+        if (received < type(uint8).max) {
+            stealsReceivedOnDay[victim][day] = received + 1;
+        }
+
+        warbowPendingRevengeStealer[victim] = msg.sender;
+        warbowPendingRevengeExpiry[victim] = block.timestamp + WARBOW_REVENGE_WINDOW_SEC;
+
+        emit WarBowSteal(
+            msg.sender,
+            victim,
+            take,
+            burnExtra,
+            payBypassBurn && received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
+            battlePoints[victim],
+            battlePoints[msg.sender]
+        );
+    }
+
+    /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
+    function warbowRevenge(address stealer) external nonReentrant {
+        require(saleStart > 0, "TimeCurve: not started");
+        require(stealer != address(0), "TimeCurve: zero stealer");
+        require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
+        require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
+
+        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_REVENGE_BURN_WAD);
+        acceptedAsset.safeTransfer(BURN_SINK, WARBOW_REVENGE_BURN_WAD);
+
+        uint256 sbp = battlePoints[stealer];
+        uint256 take = (sbp * uint256(WARBOW_STEAL_DRAIN_BPS)) / 10_000;
+        require(take > 0, "TimeCurve: revenge zero");
+
+        _subBattlePoints(stealer, take);
+        _addBattlePoints(msg.sender, take);
+
+        warbowPendingRevengeStealer[msg.sender] = address(0);
+        warbowPendingRevengeExpiry[msg.sender] = 0;
+
+        emit WarBowRevenge(msg.sender, stealer, take, WARBOW_REVENGE_BURN_WAD);
+    }
+
+    /// @notice Burn **10 CL8Y**; for **6h** incoming steals use **1%** instead of **10%**.
+    function warbowActivateGuard() external nonReentrant {
+        require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
+        acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
+
+        uint256 u = block.timestamp + WARBOW_GUARD_DURATION_SEC;
+        if (u > warbowGuardUntil[msg.sender]) {
+            warbowGuardUntil[msg.sender] = u;
+        }
+        emit WarBowGuardActivated(msg.sender, warbowGuardUntil[msg.sender], WARBOW_GUARD_BURN_WAD);
+    }
+
+    function _addBattlePoints(address a, uint256 v) internal {
+        if (v == 0) return;
+        battlePoints[a] += v;
+        _updateWarbowPodium(a, battlePoints[a]);
+    }
+
+    function _subBattlePoints(address a, uint256 v) internal {
+        if (v == 0) return;
+        uint256 b = battlePoints[a];
+        battlePoints[a] = b > v ? b - v : 0;
+        _updateWarbowPodium(a, battlePoints[a]);
+    }
+
+    function _processDefendedStreak(address buyer, uint256 remainingBeforeBuy, uint256 actualSecondsAdded) internal {
+        if (remainingBeforeBuy >= DEFENDED_STREAK_WINDOW_SEC) {
+            if (_dsLastUnderWindowBuyer != address(0)) {
+                activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+            }
+            _dsLastUnderWindowBuyer = address(0);
+            return;
+        }
+
+        if (_dsLastUnderWindowBuyer != address(0) && buyer != _dsLastUnderWindowBuyer) {
+            activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+        }
+
+        if (actualSecondsAdded > 0) {
+            activeDefendedStreak[buyer] += 1;
+            if (activeDefendedStreak[buyer] > bestDefendedStreak[buyer]) {
+                bestDefendedStreak[buyer] = activeDefendedStreak[buyer];
+            }
+            _updateTopThreeMonotonic(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
+        }
+
+        _dsLastUnderWindowBuyer = buyer;
     }
 
     function endSale() external {
@@ -246,9 +536,7 @@ contract TimeCurve is ReentrancyGuard {
         emit CharmsRedeemed(msg.sender, tokenOut);
     }
 
-    /// @notice Distribute **podium pool** reserves to winners (permissionless after `endSale`).
-    /// @dev Category shares: 50% last buyers · 20% most buys · 10% biggest buy · 20% highest cumulative CHARM.
-    ///      Within each category: 1st = 2× 2nd, 2nd = 2× 3rd (weights 4∶2∶1 on the slice).
+    /// @notice **50%** last buy · **25%** time booster · **25%** defended streak (integer split; last slice takes remainder).
     function distributePrizes() external {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
@@ -259,16 +547,14 @@ contract TimeCurve is ReentrancyGuard {
         }
 
         uint256 sLast = (prizePool * 50) / 100;
-        uint256 sMost = (prizePool * 20) / 100;
-        uint256 sBig = (prizePool * 10) / 100;
-        uint256 sCum = prizePool - sLast - sMost - sBig;
+        uint256 sTime = (prizePool * 25) / 100;
+        uint256 sDef = prizePool - sLast - sTime;
 
         prizesDistributed = true;
 
         _payPodiumCategory(CAT_LAST_BUYERS, sLast);
-        _payPodiumCategory(CAT_MOST_BUYS, sMost);
-        _payPodiumCategory(CAT_BIGGEST_BUY, sBig);
-        _payPodiumCategory(CAT_HIGHEST_CUMULATIVE, sCum);
+        _payPodiumCategory(CAT_TIME_BOOSTER, sTime);
+        _payPodiumCategory(CAT_DEFENDED_STREAK, sDef);
 
         emit PrizesDistributed();
     }
@@ -298,7 +584,6 @@ contract TimeCurve is ReentrancyGuard {
         }
     }
 
-    /// @notice Minimum **gross asset** for a buy at the current envelope × price (smallest allowed CHARM).
     function currentMinBuyAmount() external view returns (uint256) {
         uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
         (uint256 minCharm,) = _charmBounds(elapsed);
@@ -306,7 +591,6 @@ contract TimeCurve is ReentrancyGuard {
         return Math.mulDiv(minCharm, p, WAD);
     }
 
-    /// @notice Maximum **gross asset** for a buy at the current envelope × price (largest allowed CHARM).
     function currentMaxBuyAmount() external view returns (uint256) {
         uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
         (, uint256 maxCharm) = _charmBounds(elapsed);
@@ -331,6 +615,12 @@ contract TimeCurve is ReentrancyGuard {
         values = p.values;
     }
 
+    /// @notice Top-3 **Battle Points** (WarBow Ladder display — not paid from podium pool).
+    function warbowLadderPodium() external view returns (address[3] memory winners, uint256[3] memory values) {
+        winners = _warbowPodium.winners;
+        values = _warbowPodium.values;
+    }
+
     function _trackLastBuyer(address buyer) internal {
         _lastBuyers[_lastBuyerIdx] = buyer;
         _lastBuyerIdx = (_lastBuyerIdx + 1) % 3;
@@ -346,13 +636,13 @@ contract TimeCurve is ReentrancyGuard {
         }
     }
 
-    function _updateTopThree(uint8 category, address candidate, uint256 candidateValue) internal {
+    function _updateTopThreeMonotonic(uint8 category, address candidate, uint256 candidateValue) internal {
         Podium storage p = _podiums[category];
 
         for (uint8 i; i < 3; ++i) {
             if (p.winners[i] == candidate) {
                 p.values[i] = candidateValue;
-                while (i > 0 && p.values[i] > p.values[i - 1]) {
+                while (i > 0 && _betterRanked(p, i, i - 1)) {
                     (p.winners[i], p.winners[i - 1]) = (p.winners[i - 1], p.winners[i]);
                     (p.values[i], p.values[i - 1]) = (p.values[i - 1], p.values[i]);
                     --i;
@@ -373,5 +663,65 @@ contract TimeCurve is ReentrancyGuard {
                 }
             }
         }
+    }
+
+    /// @dev Battle Points can decrease; maintain top-3 with deterministic tie-break (lower address ranks higher when tied).
+    function _updateWarbowPodium(address candidate, uint256 candidateValue) internal {
+        Podium storage p = _warbowPodium;
+        bool found;
+        for (uint8 i; i < 3; ++i) {
+            if (p.winners[i] == candidate) {
+                p.values[i] = candidateValue;
+                found = true;
+                break;
+            }
+        }
+        if (!found && candidateValue > 0) {
+            uint8 minIdx = 0;
+            uint256 minVal = p.values[0];
+            for (uint8 i = 1; i < 3; ++i) {
+                if (p.values[i] < minVal || p.winners[i] == address(0)) {
+                    minVal = p.values[i];
+                    minIdx = i;
+                }
+            }
+            if (p.winners[minIdx] == address(0) || candidateValue > minVal) {
+                p.winners[minIdx] = candidate;
+                p.values[minIdx] = candidateValue;
+            }
+        }
+        _sortPodiumTriplet(p);
+        for (uint8 i; i < 3; ++i) {
+            if (p.values[i] == 0) {
+                p.winners[i] = address(0);
+            }
+        }
+    }
+
+    function _sortPodiumTriplet(Podium storage p) internal {
+        for (uint8 iter; iter < 3; ++iter) {
+            bool swapped;
+            for (uint8 i; i < 2; ++i) {
+                if (_shouldSwapPodium(p, i, i + 1)) {
+                    (p.winners[i], p.winners[i + 1]) = (p.winners[i + 1], p.winners[i]);
+                    (p.values[i], p.values[i + 1]) = (p.values[i + 1], p.values[i]);
+                    swapped = true;
+                }
+            }
+            if (!swapped) break;
+        }
+    }
+
+    function _shouldSwapPodium(Podium storage p, uint8 a, uint8 b) internal view returns (bool) {
+        if (p.values[a] < p.values[b]) return true;
+        if (p.values[a] > p.values[b]) return false;
+        if (p.winners[a] == p.winners[b]) return false;
+        return uint160(p.winners[a]) > uint160(p.winners[b]);
+    }
+
+    function _betterRanked(Podium storage p, uint8 a, uint8 b) internal view returns (bool) {
+        if (p.values[a] > p.values[b]) return true;
+        if (p.values[a] < p.values[b]) return false;
+        return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
 }

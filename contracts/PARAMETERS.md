@@ -21,8 +21,11 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
 | Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |
 | Maximum remaining timer | 345 600 seconds (96 h) | Ceiling on remaining time after each buy (`now + cap`); must be ≥ extension and ≥ initial | Default (dev deploy) |
-| Opening window duration | 3 600 seconds (1 h) | Must be > 0 | Default |
-| Closing window duration | 3 600 seconds (1 h) | Must be > 0 | Default |
+| Podium categories | **4** fixed in `TimeCurve` | **Last buy** · **Time booster** · **Activity leader** · **Defended streak** — see [primitives](../docs/product/primitives.md); legacy opening/closing-window podiums are **not** implemented | Canonical |
+| Activity points per buy | **250** | `ACTIVITY_POINTS_PER_BUY` | Fixed |
+| Activity attack burn | **1e18** accepted asset | `ACTIVITY_ATTACK_BURN_WAD` (1 CL8Y at 18 decimals) | Fixed |
+| Activity attack drain | **10%** of leader points (floor) | `ACTIVITY_ATTACK_DRAIN_BPS = 1000` | Fixed |
+| Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
 | Total tokens for sale | **TODO** — depends on launched token supply | > 0 | **TODO** |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
@@ -46,7 +49,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
 | Rabbit Treasury | 2 000 | ≥ 0 |
 
-**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: four categories (50% / 20% / 10% / 20% of pool); placements **4∶2∶1** per category.
+**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: four categories — **last buy** 50% · **time booster** 20% · **activity leader** 10% · **defended streak** 20% of pool; placements **4∶2∶1** per category.
 
 ## Rabbit Treasury (Burrow)
 
