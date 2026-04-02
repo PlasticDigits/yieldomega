@@ -15,7 +15,13 @@ import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from timecurve_sim.model import TimeCurveParams, canonical_timecurve_params, clamp_spend, min_buy_at, next_sale_end
+from timecurve_sim.model import (
+    TimeCurveParams,
+    canonical_timecurve_params,
+    clamp_spend,
+    extend_deadline_or_reset_below_threshold,
+    min_buy_at,
+)
 from timecurve_sim.monte_carlo import _poisson
 
 # USDm float units (same as elsewhere in timecurve_sim)
@@ -113,7 +119,7 @@ def run_sale_tracked(
             budgets[idx] -= spend
             total_buys += 1
             total_spend += spend
-            end = next_sale_end(now, end, p)
+            end, _ = extend_deadline_or_reset_below_threshold(now, end, p)
 
             day_i = int(now // 86400.0)
             if 0 <= day_i < num_day_buckets:

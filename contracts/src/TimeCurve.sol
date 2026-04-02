@@ -19,6 +19,14 @@ import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
 contract TimeCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    /// @notice Reason codes for `WarBowCl8yBurned` (stable numeric values for indexers).
+    enum WarBowBurnReason {
+        Steal,
+        StealLimitBypass,
+        Revenge,
+        Guard
+    }
+
     // ── Prize podium categories (reserve payouts; exactly three) ─────────
     uint8 public constant CAT_LAST_BUYERS = 0;
     uint8 public constant CAT_TIME_BOOSTER = 1;
@@ -183,6 +191,15 @@ contract TimeCurve is ReentrancyGuard {
         address indexed triggeringBuyer,
         uint256 battlePointsAfter
     );
+    /// @notice Accepted-asset burn to `BURN_SINK` for WarBow actions (uniform accounting).
+    event WarBowCl8yBurned(address indexed payer, uint8 indexed reason, uint256 amountWad);
+    event WarBowDefendedStreakContinued(
+        address indexed wallet, uint256 activeStreak, uint256 bestStreak
+    );
+    event WarBowDefendedStreakBroken(
+        address indexed formerHolder, address indexed interrupter, uint256 brokenActiveLength
+    );
+    event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
 
     constructor(
         IERC20 _acceptedAsset,
@@ -403,14 +420,19 @@ contract TimeCurve is ReentrancyGuard {
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
         uint8 received = stealsReceivedOnDay[victim][day];
-        uint256 burnExtra = WARBOW_STEAL_BURN_WAD;
+        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_STEAL_BURN_WAD);
+        emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);
+        uint256 totalBurn = WARBOW_STEAL_BURN_WAD;
         if (received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
             require(payBypassBurn, "TimeCurve: steal victim daily limit");
-            burnExtra += WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD;
+            acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
+            emit WarBowCl8yBurned(
+                msg.sender, uint8(WarBowBurnReason.StealLimitBypass), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD
+            );
+            totalBurn += WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD;
         }
 
-        acceptedAsset.safeTransferFrom(msg.sender, address(this), burnExtra);
-        acceptedAsset.safeTransfer(BURN_SINK, burnExtra);
+        acceptedAsset.safeTransfer(BURN_SINK, totalBurn);
 
         uint256 vbp = battlePoints[victim];
         uint256 abp = battlePoints[msg.sender];
@@ -434,7 +456,7 @@ contract TimeCurve is ReentrancyGuard {
             msg.sender,
             victim,
             take,
-            burnExtra,
+            totalBurn,
             payBypassBurn && received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
             battlePoints[victim],
             battlePoints[msg.sender]
@@ -449,6 +471,7 @@ contract TimeCurve is ReentrancyGuard {
         require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
 
         acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_REVENGE_BURN_WAD);
+        emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Revenge), WARBOW_REVENGE_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_REVENGE_BURN_WAD);
 
         uint256 sbp = battlePoints[stealer];
@@ -468,6 +491,7 @@ contract TimeCurve is ReentrancyGuard {
     function warbowActivateGuard() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
+        emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
 
         uint256 u = block.timestamp + WARBOW_GUARD_DURATION_SEC;
@@ -494,13 +518,18 @@ contract TimeCurve is ReentrancyGuard {
         if (remainingBeforeBuy >= DEFENDED_STREAK_WINDOW_SEC) {
             if (_dsLastUnderWindowBuyer != address(0)) {
                 activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+                emit WarBowDefendedStreakWindowCleared(_dsLastUnderWindowBuyer);
             }
             _dsLastUnderWindowBuyer = address(0);
             return;
         }
 
         if (_dsLastUnderWindowBuyer != address(0) && buyer != _dsLastUnderWindowBuyer) {
+            uint256 brokenLen = activeDefendedStreak[_dsLastUnderWindowBuyer];
             activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+            if (brokenLen > 0) {
+                emit WarBowDefendedStreakBroken(_dsLastUnderWindowBuyer, buyer, brokenLen);
+            }
         }
 
         if (actualSecondsAdded > 0) {
@@ -509,6 +538,7 @@ contract TimeCurve is ReentrancyGuard {
                 bestDefendedStreak[buyer] = activeDefendedStreak[buyer];
             }
             _updateTopThreeMonotonic(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
+            emit WarBowDefendedStreakContinued(buyer, activeDefendedStreak[buyer], bestDefendedStreak[buyer]);
         }
 
         _dsLastUnderWindowBuyer = buyer;

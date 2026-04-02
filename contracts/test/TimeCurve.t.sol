@@ -524,6 +524,17 @@ contract TimeCurveTest is Test {
         );
     }
 
+    function test_warbow_guard_emits_cl8y_burned() public {
+        tc.startSale();
+        _fundAndApprove(alice, 100e18);
+        vm.expectEmit(true, true, false, true);
+        emit TimeCurve.WarBowCl8yBurned(
+            alice, uint8(TimeCurve.WarBowBurnReason.Guard), tc.WARBOW_GUARD_BURN_WAD()
+        );
+        vm.prank(alice);
+        tc.warbowActivateGuard();
+    }
+
     /// @dev After a hard reset, remaining is exactly 15m; warp so remaining < 15m before the second qualifying buy.
     function test_defended_streak_same_wallet_two_resets_under_15m_window() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);

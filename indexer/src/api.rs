@@ -324,6 +324,38 @@ async fn timecurve_warbow_battle_feed(
                      'battle_points_after', battle_points_after::text
                    )
             FROM idx_timecurve_warbow_flag_penalized
+            UNION ALL
+            SELECT 'cl8y_burned', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'payer', payer,
+                     'reason', reason,
+                     'amount_wad', amount_wad::text
+                   )
+            FROM idx_timecurve_warbow_cl8y_burned
+            UNION ALL
+            SELECT 'defended_streak_continued', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'wallet', wallet,
+                     'active_streak', active_streak::text,
+                     'best_streak', best_streak::text
+                   )
+            FROM idx_timecurve_warbow_ds_continued
+            UNION ALL
+            SELECT 'defended_streak_broken', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object(
+                     'former_holder', former_holder,
+                     'interrupter', interrupter,
+                     'broken_active_length', broken_active_length::text
+                   )
+            FROM idx_timecurve_warbow_ds_broken
+            UNION ALL
+            SELECT 'defended_streak_window_cleared', block_number, log_index, tx_hash,
+                   block_timestamp::text,
+                   jsonb_build_object('cleared_wallet', cleared_wallet)
+            FROM idx_timecurve_warbow_ds_window_cleared
         )
         SELECT kind, block_number::text AS block_number, log_index, tx_hash, block_timestamp, detail
         FROM u

@@ -17,16 +17,19 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 - **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**, separate from DOUB redemption.
 - **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **25%** locked DOUB LP · **35%** CL8Y buy-and-burn · **20%** podium pool · **0%** team/reserved · **20%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
 
-### TimeCurve podium categories (onchain v1 — four only)
+### TimeCurve reserve podium (onchain v1 — **three** categories)
 
-Authoritative rules and edge cases: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium section + Activity / Defended subsections). **Do not** describe legacy ideas (most-buys, biggest-buy, cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
+Authoritative rules: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium + timer + defended streak). **Do not** describe legacy ideas (fourth “activity” slice, most-buys / biggest-buy / cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
 
 Plain language for participants:
 
-- **Last buy:** compete to be the last person to buy.
-- **Time booster:** most actual time added to the timer (effective `deadline` increase per buy, after cap clipping).
-- **Activity leader:** 250 points each buy, no matter size, and you can burn 1 CL8Y to steal 10% of the leader’s points (onchain: **floor** of 10% of the current #1’s integer points; then the buyer still gets **+250**; ties → lower address ranks higher on the activity podium).
-- **Defended streak:** how many times the same wallet resets the timer while it is under 15 minutes; the streak ends and is recorded when a second player buys under 15 minutes (**leaderboard uses `bestDefendedStreak`**, not only the live `activeDefendedStreak`).
+- **Last buy:** compete to be the last person to buy before the sale ends.
+- **Time booster:** most **actual** seconds added to the sale end across your buys (after cap clipping), tracked onchain.
+- **Defended streak:** how many times the **same** wallet extends the timer while remaining time **before** the buy is **strictly under 15 minutes**; another buyer under that window **breaks** the active streak (**`bestDefendedStreak`** is what the podium uses).
+
+**WarBow Ladder / Battle Points** are **PvP scoring** (steal, guard, revenge, flag, buy-based BP bonuses) **separate** from these three reserve slices. For WarBow rules and eligibility, use **[`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md)** and onchain `battlePoints` / `warbowLadderPodium`.
+
+Reserve podium split from **`PodiumPool`** after the sale is documented as **50% / 25% / 25%** (last buy · time booster · defended streak) — verify `distributePrizes` on the deployment.
 
 When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history.
 
@@ -70,6 +73,7 @@ Resolve truth in this order; **indexers must not override** onchain state for **
 
 ## Related play skills
 
+- [`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md) — WarBow Ladder PvP (BP, steal/guard/revenge/flag).
 - [`play-rabbit-treasury/SKILL.md`](../play-rabbit-treasury/SKILL.md)
 - [`collect-leprechaun-sets/SKILL.md`](../collect-leprechaun-sets/SKILL.md)
 - [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md)

@@ -341,6 +341,96 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveWarBowCl8yBurned {
+            payer,
+            reason,
+            amount_wad,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_cl8y_burned (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, payer, reason, amount_wad
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*payer))
+            .bind(i16::from(*reason))
+            .bind(u256_dec(*amount_wad))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
+            wallet,
+            active_streak,
+            best_streak,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_ds_continued (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, wallet, active_streak, best_streak
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*wallet))
+            .bind(u256_dec(*active_streak))
+            .bind(u256_dec(*best_streak))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
+            former_holder,
+            interrupter,
+            broken_active_length,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_ds_broken (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, former_holder, interrupter, broken_active_length
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*former_holder))
+            .bind(addr_hex(*interrupter))
+            .bind(u256_dec(*broken_active_length))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared { cleared_wallet } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_ds_window_cleared (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, cleared_wallet
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*cleared_wallet))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::ReferralCodeRegistered {
             owner,
             code_hash,

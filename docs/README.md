@@ -26,7 +26,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Architecture overview | [architecture/overview.md](architecture/overview.md) |
 | Repository layout | [architecture/repository-layout.md](architecture/repository-layout.md) |
 | Product vision | [product/vision.md](product/vision.md) |
-| TimeCurve primitive | [product/primitives.md](product/primitives.md) |
+| TimeCurve primitive (incl. **WarBow Ladder** / Battle Points vs reserve podium) | [product/primitives.md](product/primitives.md) |
 | Rabbit Treasury (incl. **`Burrow*`** indexer events) | [product/rabbit-treasury.md](product/rabbit-treasury.md) |
 | Leprechaun NFTs | [product/leprechaun-nfts.md](product/leprechaun-nfts.md) |
 | Referrals (TimeCurve) | [product/referrals.md](product/referrals.md) |
