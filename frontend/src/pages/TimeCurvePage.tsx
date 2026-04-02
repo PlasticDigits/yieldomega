@@ -11,7 +11,7 @@ import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { formatLocaleInteger } from "@/lib/formatAmount";
+import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import { TxHash } from "@/components/TxHash";
 import {
@@ -1171,8 +1171,8 @@ export function TimeCurvePage() {
               row?.status === "success" ? Number((row.result as readonly [unknown, number])[1]) : null;
             return (
               <li key={label}>
-                <strong>{label}</strong> — policy {bps} bps
-                {w !== null ? ` · onchain ${w} bps` : ""}
+                <strong>{label}</strong> — policy {formatBpsAsPercent(bps)}
+                {w !== null ? ` · onchain ${formatBpsAsPercent(w)}` : ""}
               </li>
             );
           })}

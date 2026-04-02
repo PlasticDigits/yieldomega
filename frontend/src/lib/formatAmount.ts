@@ -39,6 +39,14 @@ export function parseBigIntString(s: string): bigint {
  * Locale grouping for plain whole numbers: gas units, block height, timer seconds, buy counts.
  * **Not** for token wei/WAD or charm weight — use `AmountDisplay` / `formatCompactFromRaw` instead.
  */
+/** Basis points → percent for display (10_000 bps = 100%). E.g. `3000` → `"30.00%"`. */
+export function formatBpsAsPercent(bps: number, fractionDigits = 2): string {
+  if (!Number.isFinite(bps)) {
+    return "—";
+  }
+  return `${(bps / 100).toFixed(fractionDigits)}%`;
+}
+
 export function formatLocaleInteger(value: bigint | number | string): string {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) {
