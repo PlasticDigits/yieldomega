@@ -229,8 +229,18 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     }
 
     /// @notice Preview withdrawal payout for `doubAmount` at current state (no state change).
+    /// @dev Uses `msg.sender` for redemption-cooldown preview; offchain callers simulating another user should use {previewWithdrawFor}.
     function previewWithdraw(uint256 doubAmount) external view returns (uint256 userOut, uint256 feeToProtocol) {
         (userOut, feeToProtocol,,) = _previewWithdraw(doubAmount, msg.sender);
+    }
+
+    /// @notice Same as {previewWithdraw} but with an explicit user (cooldown applies to `user`).
+    function previewWithdrawFor(address user, uint256 doubAmount)
+        external
+        view
+        returns (uint256 userOut, uint256 feeToProtocol)
+    {
+        (userOut, feeToProtocol,,) = _previewWithdraw(doubAmount, user);
     }
 
     function _previewWithdraw(
