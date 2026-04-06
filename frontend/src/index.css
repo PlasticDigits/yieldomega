@@ -1538,3 +1538,50 @@ code {
     scroll-behavior: auto !important;
   }
 }
+
+/* Timer hero — above the fold */
+.timer-hero {
+  text-align: center;
+  padding: 2rem 1rem;
+  margin: 1rem 0;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 100%);
+  border: 2px solid #4a8c5c;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.timer-hero__label {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #a8d5b8;
+  margin-bottom: 0.5rem;
+}
+.timer-hero__countdown {
+  font-size: 4rem;
+  font-weight: 900;
+  font-family: monospace;
+  color: #ffffff;
+  line-height: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.timer-hero__subtext {
+  font-size: 0.75rem;
+  color: #8cbf9a;
+  margin-top: 0.5rem;
+}
+.timer-hero--warning .timer-hero__countdown {
+  color: #fbbf24;
+}
+.timer-hero--critical .timer-hero__countdown {
+  color: #ef4444;
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+@media (max-width: 600px) {
+  .timer-hero__countdown {
+    font-size: 2.5rem;
+  }
+}
