@@ -94,6 +94,9 @@ export const rabbitTreasuryReadAbi = parseAbi([
   "function reserveAsset() view returns (address)",
   "function paused() view returns (bool)",
   "function doub() view returns (address)",
+  // Quote user payout + protocol fee; previewWithdraw uses msg.sender for cooldown, previewWithdrawFor(user) for wallets/RPC sims.
+  "function previewWithdraw(uint256 doubAmount) view returns (uint256 userOut, uint256 feeToProtocol)",
+  "function previewWithdrawFor(address user, uint256 doubAmount) view returns (uint256 userOut, uint256 feeToProtocol)",
 ]);
 
 export const rabbitTreasuryWriteAbi = parseAbi([

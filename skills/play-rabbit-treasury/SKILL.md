@@ -47,7 +47,8 @@ Resolve truth in this order; **indexers must not override** onchain state for **
 1. Read [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) end-to-end before suggesting amounts or strategies.
 2. Use **onchain** reads for **epoch id**, **balances**, **params**, and **pause** state relevant to the deployment.
 3. Explain that **withdraw** and **deposit** paths depend on **current parameters** the human can read from chain.
-4. Encourage the human to monitor **reserve health** concepts from **canonical events**, not social media rumors.
+4. For **expected reserve payout** on a withdraw, point to onchain **`previewWithdraw`** (when the caller is the user’s wallet) or **`previewWithdrawFor(user, …)`** when simulating from another address—see [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) § withdraw formula (not nominal 1:1 minus a simple fee).
+5. Encourage the human to monitor **reserve health** concepts from **canonical events**, not social media rumors.
 
 ## What you must not do
 
