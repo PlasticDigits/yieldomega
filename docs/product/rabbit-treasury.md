@@ -42,7 +42,7 @@ Governance may set **redemption cooldown** (minimum epochs between withdrawals p
 
 ### Onchain transparency
 
-In addition to legacy getters, the contract exposes **`redeemableBacking`**, **`protocolOwnedBacking`**, **`totalReserves()` / `totalBacking()`**, **`cumulativeBurned`**, **`cumulativeWithdrawFees`**, **`redemptionHealthWad()`**, **`redemptionLiabilityWad()`**, and **`previewWithdraw`**. New events: **`BurrowReserveBuckets`**, **`BurrowProtocolRevenueSplit`**, **`BurrowWithdrawalFeeAccrued`**. Indexers may treat these as a **strict superset** of the canonical table below (schema bump when persisting new fields).
+In addition to legacy getters, the contract exposes **`redeemableBacking`**, **`protocolOwnedBacking`**, **`totalReserves()` / `totalBacking()`**, **`cumulativeBurned`**, **`cumulativeWithdrawFees`**, **`redemptionHealthWad()`**, **`redemptionLiabilityWad()`**, **`previewWithdraw`**, and **`previewWithdrawFor(address user, …)`**. **`previewWithdraw`** applies **redemption cooldown** using **`msg.sender`** (fine for wallet `eth_call`s); **`previewWithdrawFor`** is for quoting a **specific user** (indexers, tests, or backend sims). New events: **`BurrowReserveBuckets`**, **`BurrowProtocolRevenueSplit`**, **`BurrowWithdrawalFeeAccrued`**. Indexers may treat these as a **strict superset** of the canonical table below (schema bump when persisting new fields).
 
 ## Honest sustainability
 
