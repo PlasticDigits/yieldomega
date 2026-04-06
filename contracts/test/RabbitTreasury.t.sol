@@ -73,6 +73,17 @@ contract RabbitTreasuryTest is Test {
         reserve.approve(address(rt), amount);
     }
 
+    /// @dev Withdraw math uses `minRedemptionEfficiencyWad` and `withdrawFeeWad`; tests that need nominal 1:1 redemption at `e=1` should pin efficiency to 100%.
+    function _setFullRedemptionEfficiency() internal {
+        rt.setMinRedemptionEfficiencyWad(WAD);
+    }
+
+    /// @dev No withdrawal fee and full efficiency — deterministic gross-out equals pro-rata/nominal cap before rounding.
+    function _setDeterministicWithdrawNoFee() internal {
+        _setFullRedemptionEfficiency();
+        rt.setWithdrawFeeWad(0);
+    }
+
     // ── Epoch management ───────────────────────────────────────────────
 
     function test_openFirstEpoch() public {
@@ -125,18 +136,41 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.deposit(100e18, 0);
 
+        (uint256 userOut, uint256 wFee) = rt.previewWithdrawFor(alice, 50e18);
         vm.prank(alice);
         rt.withdraw(50e18, 0);
 
-        uint256 gross = 50e18;
-        uint256 wFee = gross * rt.withdrawFeeWad() / WAD;
-        uint256 userOut = gross - wFee;
-
+        uint256 gross = userOut + wFee;
         assertEq(doub.balanceOf(alice), 50e18);
         assertEq(reserve.balanceOf(alice), userOut);
-        assertEq(rt.redeemableBacking(), 50e18);
+        assertEq(rt.redeemableBacking(), 100e18 - gross);
         assertEq(rt.protocolOwnedBacking(), wFee);
-        assertEq(rt.totalReserves(), 50e18 + wFee);
+        assertEq(rt.totalReserves(), 100e18 - userOut);
+    }
+
+    /// @dev Offchain previews and tests must use the same `user` as `withdraw`; {previewWithdrawFor} encodes that.
+    function test_previewWithdrawFor_agrees_with_withdraw_fuzz(uint128 depositRaw, uint16 withdrawBps) public {
+        rt.openFirstEpoch();
+        uint256 dep = bound(uint256(depositRaw), 1e18, 1_000_000e18);
+        _fundAndApprove(alice, dep);
+        vm.prank(alice);
+        rt.deposit(dep, 0);
+
+        uint256 doubBal = doub.balanceOf(alice);
+        uint256 amt = bound(uint256(withdrawBps), 1, doubBal);
+
+        uint256 redeemableBefore = rt.redeemableBacking();
+        uint256 protocolBefore = rt.protocolOwnedBacking();
+        (uint256 expectOut, uint256 expectFee) = rt.previewWithdrawFor(alice, amt);
+        vm.assume(expectOut > 0);
+
+        uint256 reserveBefore = reserve.balanceOf(alice);
+        vm.prank(alice);
+        rt.withdraw(amt, 0);
+
+        assertEq(reserve.balanceOf(alice) - reserveBefore, expectOut, "reserve to user");
+        assertEq(rt.protocolOwnedBacking() - protocolBefore, expectFee, "withdraw fee accrual");
+        assertEq(redeemableBefore - rt.redeemableBacking(), expectOut + expectFee, "redeemable draw");
     }
 
     function test_withdraw_more_than_balance_reverts() public {
@@ -281,7 +315,8 @@ contract RabbitTreasuryTest is Test {
     /// @dev Invariant: reserves never go negative; DOUB supply matches mint-burn accounting.
     function test_deposit_withdraw_fuzz(uint128 depositRaw, uint128 withdrawFrac) public {
         rt.openFirstEpoch();
-        uint256 dep = uint256(depositRaw) % 1_000_000e18 + 1;
+        // Large enough deposits avoid dust where health-scaled × fee math rounds `userOut` to 0.
+        uint256 dep = uint256(depositRaw) % 1_000_000e18 + 1e18;
         _fundAndApprove(alice, dep);
         vm.prank(alice);
         rt.deposit(dep, 0);
@@ -290,6 +325,9 @@ contract RabbitTreasuryTest is Test {
         uint256 toWithdraw = doubBal * (uint256(withdrawFrac) % 100 + 1) / 100;
         if (toWithdraw > doubBal) toWithdraw = doubBal;
         if (toWithdraw == 0) toWithdraw = 1;
+
+        (uint256 previewOut,) = rt.previewWithdrawFor(alice, toWithdraw);
+        vm.assume(previewOut > 0);
 
         vm.prank(alice);
         rt.withdraw(toWithdraw, 0);
@@ -391,6 +429,7 @@ contract RabbitTreasuryTest is Test {
 
     function test_protocolOwned_notExtracted_viaOrdinaryWithdraw() public {
         rt.openFirstEpoch();
+        _setFullRedemptionEfficiency();
         _fundAndApprove(alice, 100e18);
         vm.prank(alice);
         rt.deposit(100e18, 0);
@@ -405,8 +444,9 @@ contract RabbitTreasuryTest is Test {
         assertGt(protocolBefore, 500e18);
 
         uint256 balBefore = reserve.balanceOf(alice);
+        uint256 aliceDoub = doub.balanceOf(alice);
         vm.prank(alice);
-        rt.withdraw(doub.balanceOf(alice), 0);
+        rt.withdraw(aliceDoub, 0);
 
         // User only receives redeemable-backed payout (+ withdrawal fee stays in protocol bucket)
         assertLt(reserve.balanceOf(alice) - balBefore, protocolBefore);
@@ -476,9 +516,17 @@ contract RabbitTreasuryTest is Test {
     function test_repricingRaisesLiability_redemptionBelowNominal() public {
         rt.openFirstEpoch();
         rt.setWithdrawFeeWad(0);
+        _setFullRedemptionEfficiency();
         _fundAndApprove(alice, 2_000_000e18);
         vm.prank(alice);
         rt.deposit(2_000_000e18, 0);
+
+        // Fee inflow increases total backing without minting DOUB, lifting coverage above c* so e steps up.
+        reserve.mint(feeSource, 500_000e18);
+        vm.prank(feeSource);
+        reserve.approve(address(rt), 500_000e18);
+        vm.prank(feeSource);
+        rt.receiveFee(500_000e18);
 
         vm.warp(rt.epochEnd());
         rt.finalizeEpoch();
@@ -489,8 +537,7 @@ contract RabbitTreasuryTest is Test {
         uint256 nominalFull = s * rt.eWad() / WAD;
         assertGt(nominalFull, rt.redeemableBacking(), "nominal liability exceeds redeemable bucket");
 
-        vm.prank(alice);
-        (uint256 userOut, uint256 fee) = rt.previewWithdraw(s);
+        (uint256 userOut, uint256 fee) = rt.previewWithdrawFor(alice, s);
         assertEq(fee, 0);
         assertLt(userOut, nominalFull);
         assertLe(userOut, rt.redeemableBacking());
@@ -502,6 +549,7 @@ contract RabbitTreasuryTest is Test {
 
     function test_stress_manyUsersExit_protocolBucketUntouched() public {
         rt.openFirstEpoch();
+        _setDeterministicWithdrawNoFee();
         _fundAndApprove(alice, 1_000e18);
         vm.prank(alice);
         rt.deposit(1_000e18, 0);
@@ -516,10 +564,12 @@ contract RabbitTreasuryTest is Test {
 
         uint256 protoMid = rt.protocolOwnedBacking();
 
+        uint256 aliceDoub = doub.balanceOf(alice);
         vm.prank(alice);
-        rt.withdraw(doub.balanceOf(alice), 0);
+        rt.withdraw(aliceDoub, 0);
+        uint256 bobDoub = doub.balanceOf(bob);
         vm.prank(bob);
-        rt.withdraw(doub.balanceOf(bob), 0);
+        rt.withdraw(bobDoub, 0);
 
         assertEq(doub.totalSupply(), 0);
         assertEq(rt.redeemableBacking(), 0);
