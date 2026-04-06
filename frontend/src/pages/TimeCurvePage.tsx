@@ -75,6 +75,20 @@ const PODIUM_HELP = [
   "Peak count of under-15-minute timer resets by the same wallet; interrupted when another wallet buys under the window.",
 ] as const;
 
+function formatCountdown(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function timerUrgencyClass(sec: number | undefined): string {
+  if (sec === undefined) return "";
+  if (sec <= 300) return "timer-hero--critical";
+  if (sec <= 3600) return "timer-hero--warning";
+  return "";
+}
+
 function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): string {
   if (categoryIndex === 1) {
     return `${formatLocaleInteger(raw)} s`;
@@ -1014,6 +1028,22 @@ export function TimeCurvePage() {
           width={220}
           height={220}
         />
+      </div>
+
+      {/* Timer hero — above the fold */}
+      <div className={`timer-hero ${timerUrgencyClass(remaining)}`}>
+        <div className="timer-hero__label">
+          {saleActive ? "Time Remaining" : (ended?.result === true) ? "Sale Ended" : "Starts In"}
+        </div>
+        <div className="timer-hero__countdown">
+          {remaining !== undefined ? formatCountdown(remaining) : "—"}
+        </div>
+        {remaining !== undefined && remaining > 0 && (
+          <div className="timer-hero__subtext">
+            {formatLocaleInteger(remaining)}s · deadline{" "}
+            {deadlineSec ? new Date(deadlineSec * 1000).toLocaleString() : "—"}
+          </div>
+        )}
       </div>
 
       <div className="data-panel">
