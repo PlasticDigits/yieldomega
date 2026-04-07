@@ -5,6 +5,7 @@ import { useChainId, useChains } from "wagmi";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
+import { PageBadge } from "@/components/ui/PageBadge";
 import { governanceUrl } from "@/lib/addresses";
 
 // SPDX-License-Identifier: AGPL-3.0-only
@@ -35,6 +36,7 @@ export function RootLayout() {
             />
             YieldOmega
           </NavLink>
+          <PageBadge label="TimeCurve live" tone="live" className="app-header__status" />
           <CutoutDecoration
             className="app-header__mascot cutout-decoration--sway"
             src="/art/cutouts/loading-mascot-circle.png"
@@ -171,7 +173,7 @@ export function RootLayout() {
         <div className="app-footer__row">
           <IndexerStatusBar />
           {gov && (
-            <a href={gov} target="_blank" rel="noreferrer">
+            <a href={gov} target="_blank" rel="noreferrer" className="footer-link-pill">
               Governance / CL8Y
             </a>
           )}

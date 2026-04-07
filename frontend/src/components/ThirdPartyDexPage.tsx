@@ -1,5 +1,9 @@
 import { Link } from "react-router-dom";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
+import { PageHero } from "@/components/ui/PageHero";
+import { PageSection } from "@/components/ui/PageSection";
+import { StatusMessage } from "@/components/ui/StatusMessage";
+import { THIRD_PARTY_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -17,26 +21,6 @@ type Props = {
   venueKind?: string;
 };
 
-const CUTOUTS_BY_SLUG: Record<
-  string,
-  {
-    banner: string;
-    panel: string;
-    footer: string;
-  }
-> = {
-  kumbaya: {
-    banner: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
-    panel: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
-    footer: "/art/cutouts/loading-mascot-circle.png",
-  },
-  sir: {
-    banner: "/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png",
-    panel: "/art/cutouts/cutout-bunnyleprechaungirl-full.png",
-    footer: "/art/cutouts/loading-mascot-circle.png",
-  },
-};
-
 /** Third-party DEX: disclaimer, placeholder LP readout, outbound link. */
 export function ThirdPartyDexPage({
   title,
@@ -48,73 +32,92 @@ export function ThirdPartyDexPage({
   envVarName,
   venueKind = "decentralized exchange",
 }: Props) {
-  const cutouts = CUTOUTS_BY_SLUG[slug] ?? CUTOUTS_BY_SLUG.kumbaya;
+  const cutouts = THIRD_PARTY_CUTOUTS_BY_SLUG[slug as keyof typeof THIRD_PARTY_CUTOUTS_BY_SLUG]
+    ?? THIRD_PARTY_CUTOUTS_BY_SLUG.kumbaya;
+  const outboundStatus = externalUrl ? (
+    <p className="muted">Outbound link configured for this build.</p>
+  ) : (
+    <StatusMessage variant="muted">
+      Set <code>{envVarName}</code> at build time to add the outbound venue link.
+    </StatusMessage>
+  );
 
   return (
     <section className="page page--placeholder" data-testid={`third-party-dex-${slug}`}>
-      <h1>{title}</h1>
-      <div className="arcade-banner arcade-banner--with-sidekick">
-        <img
-          className="arcade-banner__coin"
-          src="/art/hat-coin-stack.png"
-          alt=""
-          width={72}
-          height={72}
-          decoding="async"
-        />
-        <div className="arcade-banner__text">
-          <p className="lede">
-            {title} is a <strong>third-party</strong> {venueKind}. YieldOmega does not
-            operate or custody this venue; this page surfaces DOUB-related liquidity for convenience.
-          </p>
-        </div>
-        <CutoutDecoration
-          className="arcade-banner__mascot cutout-decoration--sway"
-          src={cutouts.banner}
-          width={208}
-          height={208}
-        />
-      </div>
-      <div className="placeholder-figure placeholder-figure--wide">
-        <img src={heroImage} alt="" width={768} height={512} loading="lazy" decoding="async" />
-      </div>
-      <div className="data-panel data-panel--spotlight">
-        <CutoutDecoration
-          className="panel-cutout panel-cutout--lower-right cutout-decoration--float"
-          src={cutouts.panel}
-          width={248}
-          height={248}
-        />
-        <h2>Liquidity (placeholder)</h2>
-        <dl className="kv">
-          <dt>Pair / product</dt>
-          <dd>{venueDescription}</dd>
-          <dt>LP reported</dt>
-          <dd>—</dd>
-          <dt>Note</dt>
-          <dd>
-            <span className="muted">
-              On-chain or DEX API readout TBD; values are not live yet.
-            </span>
-          </dd>
-        </dl>
-      </div>
-      {externalUrl ? (
-        <p>
+      <PageHero
+        title={title}
+        badgeLabel="External venue"
+        badgeTone="external"
+        coinSrc="/art/hat-coin-stack.png"
+        lede={
+          <>
+            {title} is a <strong>third-party</strong> {venueKind}. YieldOmega does not operate or
+            custody this venue; this page keeps the art direction, hierarchy, and warnings aligned while pointing
+            to the external market.
+          </>
+        }
+        mascot={{
+          src: cutouts.banner,
+          width: 208,
+          height: 208,
+          className: "cutout-decoration--sway",
+        }}
+      >
+        {externalUrl ? (
           <a
             href={externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="wallet-action wallet-action--connect"
+            className="btn-primary"
           >
             {linkLabel}
           </a>
-        </p>
-      ) : (
-        <p className="muted">
-          Set <code>{envVarName}</code> at build time to add an outbound link to this DEX.
-        </p>
-      )}
+        ) : (
+          outboundStatus
+        )}
+      </PageHero>
+      <div className="split-layout">
+        <div className="placeholder-figure placeholder-figure--wide">
+          <img src={heroImage} alt="" width={768} height={512} loading="lazy" decoding="async" />
+        </div>
+        <PageSection
+          title="Venue Snapshot"
+          badgeLabel="Read-only framing"
+          badgeTone="info"
+          spotlight
+          cutout={{
+            src: cutouts.panel,
+            width: 248,
+            height: 248,
+            className: "panel-cutout panel-cutout--lower-right cutout-decoration--float",
+          }}
+          lede="This stays intentionally light until we wire a trustworthy onchain or venue-backed readout."
+        >
+          <dl className="kv">
+            <dt>Venue type</dt>
+            <dd>{venueKind}</dd>
+            <dt>Pair / product</dt>
+            <dd>{venueDescription}</dd>
+            <dt>Status</dt>
+            <dd>Outbound route ready, live depth readout not wired yet</dd>
+            <dt>Trust boundary</dt>
+            <dd>Third-party venue, linked from YieldOmega for convenience only</dd>
+          </dl>
+        </PageSection>
+      </div>
+      <PageSection
+        title="How to read this page"
+        badgeLabel="Clarity first"
+        badgeTone="warning"
+        lede="The goal is integration without pretending this venue is part of YieldOmega's authoritative onchain surface."
+      >
+        <ul className="accent-list">
+          <li>Use this page to understand where DOUB liquidity or leverage may live, then jump out to the venue itself.</li>
+          <li>TimeCurve remains the canonical launch surface for the sale, charms, podiums, and WarBow competition.</li>
+          <li>When live venue reads are added, they should remain clearly marked as third-party data and never replace contract authority.</li>
+        </ul>
+      </PageSection>
+      {externalUrl && outboundStatus}
       <p className="muted">
         <Link to="/timecurve">TimeCurve</Link> is the canonical DOUB launch surface.
       </p>
