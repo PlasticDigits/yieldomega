@@ -1444,7 +1444,7 @@ export function TimeCurvePage() {
         {buyErr && <p className="error-text">{buyErr}</p>}
       </div>
 
-      <div className="data-panel data-panel--spotlight">
+      <div className="data-panel data-panel--warbow">
         <h2>WarBow Ladder (PvP)</h2>
         <p className="muted">
           Steals require the victim to have <strong>≥ 2×</strong> your Battle Points. Each victim can be stolen
