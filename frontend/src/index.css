@@ -1023,6 +1023,37 @@ body {
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
 }
 
+
+/* ── WarBow arena containment (#24) ────────────────────────────── */
+.data-panel.data-panel--warbow {
+  border: 5px solid var(--arcade-gold-600);
+  border-radius: 1.5rem;
+  background:
+    var(--panel-gloss),
+    linear-gradient(180deg, #fff5f5 0%, #ffe8e0 50%, #fff0e6 100%);
+  box-shadow:
+    6px 6px 0 var(--arcade-gold-600),
+    var(--shadow-soft),
+    inset 0 0 20px rgba(255, 100, 50, 0.06);
+  padding-right: min(7.5rem, 22vw);
+}
+.data-panel.data-panel--warbow::after {
+  background: radial-gradient(circle at 30% 30%, #fff 0%, #ff6644 45%, #cc3311 100%);
+  border-color: var(--arcade-gold-600);
+}
+.data-panel.data-panel--warbow h2 {
+  color: #cc3311;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
+}
+.data-panel.data-panel--warbow .btn-secondary--critical {
+  border-color: #cc3311;
+  color: #cc3311;
+}
+.data-panel.data-panel--warbow .btn-secondary--priority {
+  border-color: var(--arcade-gold-600);
+  color: var(--arcade-gold-600);
+}
+
 .data-panel--spotlight {
   padding-right: min(7.5rem, 22vw);
 }
