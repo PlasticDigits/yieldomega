@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useState } from "react";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useReadContracts } from "wagmi";
 import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
@@ -74,17 +75,17 @@ export function FeeTransparency() {
 
   if (!fr) {
     return (
-      <p className="muted">
+      <StatusMessage variant="muted">
         Fee router: set <code>VITE_FEE_ROUTER_ADDRESS</code> to show sink destinations.
-      </p>
+      </StatusMessage>
     );
   }
 
   if (isPending) {
-    return <p className="muted">Loading fee router…</p>;
+    return <StatusMessage variant="loading">Loading fee router...</StatusMessage>;
   }
   if (isError || !data) {
-    return <p className="muted">Could not read fee router.</p>;
+    return <StatusMessage variant="error">Could not read fee router.</StatusMessage>;
   }
 
   return (
@@ -144,9 +145,11 @@ export function FeeTransparency() {
           </ul>
         </>
       )}
-      {historyNote && <p className="muted">{historyNote}</p>}
+      {historyNote && <StatusMessage variant="muted">{historyNote}</StatusMessage>}
       {!indexerBaseUrl() && (
-        <p className="muted">Set <code>VITE_INDEXER_URL</code> for historical sink updates.</p>
+        <StatusMessage variant="muted">
+          Set <code>VITE_INDEXER_URL</code> for historical sink updates.
+        </StatusMessage>
       )}
     </div>
   );

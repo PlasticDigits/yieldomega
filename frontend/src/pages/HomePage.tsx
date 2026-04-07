@@ -1,68 +1,10 @@
 import { motion, useReducedMotion } from "motion/react";
 import { Link } from "react-router-dom";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
+import { PageBadge } from "@/components/ui/PageBadge";
+import { HOME_SURFACE_CARDS } from "@/lib/surfaceContent";
 
 // SPDX-License-Identifier: AGPL-3.0-only
-
-type Cta = {
-  to: string;
-  title: string;
-  blurb: string;
-  image: string;
-  badge: "live" | "soon";
-  imageAlt: string;
-};
-
-const CTAS: Cta[] = [
-  {
-    to: "/timecurve",
-    title: "TimeCurve",
-    blurb: "DOUB sale, timer, charms, and prizes — the active launch surface.",
-    image: "/art/hero-home.jpg",
-    badge: "live",
-    imageAlt: "Arcade fantasy scene with mascots and coins",
-  },
-  {
-    to: "/rabbit-treasury",
-    title: "Rabbit Treasury",
-    blurb: "Burrow deposits and epochs — wiring returns after devnet E2E.",
-    image: "/art/rabbit-treasury-card.jpg",
-    badge: "soon",
-    imageAlt: "Rabbit Treasury feature illustration",
-  },
-  {
-    to: "/collection",
-    title: "Collection",
-    blurb: "Leprechaun NFTs, traits, and indexer-backed mint history.",
-    image: "/art/collection-card.jpg",
-    badge: "soon",
-    imageAlt: "Collection feature illustration with mascot roster",
-  },
-  {
-    to: "/referrals",
-    title: "Referrals",
-    blurb: "Share links and track referral-weighted buys.",
-    image: "/art/referrals-card.jpg",
-    badge: "soon",
-    imageAlt: "Referral rewards feature illustration",
-  },
-  {
-    to: "/kumbaya",
-    title: "Kumbaya",
-    blurb: "Third-party spot DEX snapshot + outbound link when configured.",
-    image: "/art/kumbaya-card.jpg",
-    badge: "soon",
-    imageAlt: "Kumbaya liquidity feature illustration",
-  },
-  {
-    to: "/sir",
-    title: "Sir",
-    blurb: "Third-party Leverage Platform snapshot + outbound link",
-    image: "/art/sir-card.png",
-    badge: "soon",
-    imageAlt: "Sir trading arena feature illustration",
-  },
-];
 
 export function HomePage() {
   const prefersReducedMotion = useReducedMotion();
@@ -131,7 +73,7 @@ export function HomePage() {
 
       <h2 className="visually-hidden">Where to go</h2>
       <ul className="home-cta-grid">
-        {CTAS.map((c, index) => (
+        {HOME_SURFACE_CARDS.map((c, index) => (
           <motion.li
             key={c.to}
             className="home-cta-grid__item"
@@ -144,15 +86,11 @@ export function HomePage() {
               <div className="home-cta-card__media">
                 <img src={c.image} alt={c.imageAlt} width={320} height={240} loading="lazy" />
               </div>
-              <span
-                className={
-                  c.badge === "live"
-                    ? "home-cta-card__badge home-cta-card__badge--live"
-                    : "home-cta-card__badge home-cta-card__badge--soon"
-                }
-              >
-                {c.badge === "live" ? "Live" : "Soon"}
-              </span>
+              <PageBadge
+                label={c.badgeLabel}
+                tone={c.badgeTone}
+                className="home-cta-card__badge"
+              />
               <h3 className="home-cta-card__title">{c.title}</h3>
               <p className="home-cta-card__blurb">{c.blurb}</p>
             </Link>

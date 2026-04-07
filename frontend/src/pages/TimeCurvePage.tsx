@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
@@ -13,7 +13,10 @@ import {
 } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
-import { CutoutDecoration } from "@/components/CutoutDecoration";
+import { PageBadge } from "@/components/ui/PageBadge";
+import { PageHero } from "@/components/ui/PageHero";
+import { PageSection } from "@/components/ui/PageSection";
+import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
@@ -94,6 +97,108 @@ function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): strin
     return `${formatLocaleInteger(raw)} s`;
   }
   return formatLocaleInteger(raw);
+}
+
+function sameAddress(a: string | undefined, b: string | undefined): boolean {
+  return Boolean(a && b && a.toLowerCase() === b.toLowerCase());
+}
+
+function shortAddress(value: string | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  return value.length > 12 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
+}
+
+function StatCard({
+  label,
+  value,
+  meta,
+}: {
+  label: string;
+  value: ReactNode;
+  meta?: ReactNode;
+}) {
+  return (
+    <div className="stat-card">
+      <div className="stat-card__label">{label}</div>
+      <div className="stat-card__value">{value}</div>
+      {meta && <div className="stat-card__meta">{meta}</div>}
+    </div>
+  );
+}
+
+type RankingRow = {
+  key: string;
+  rank: number;
+  label: ReactNode;
+  value: ReactNode;
+  meta?: ReactNode;
+  highlight?: boolean;
+};
+
+function RankingList({ rows, emptyText }: { rows: RankingRow[]; emptyText: string }) {
+  if (rows.length === 0) {
+    return <StatusMessage variant="muted">{emptyText}</StatusMessage>;
+  }
+
+  return (
+    <ol className="ranking-list">
+      {rows.map((row) => {
+        const classes = [
+          "ranking-list__item",
+          row.rank === 1 ? "ranking-list__item--first" : "",
+          row.rank === 2 ? "ranking-list__item--second" : "",
+          row.rank === 3 ? "ranking-list__item--third" : "",
+          row.highlight ? "ranking-list__item--you" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <li key={row.key} className={classes}>
+            <span className="ranking-list__rank">{row.rank}</span>
+            <div>
+              <div>{row.label}</div>
+              {row.meta && <div className="ranking-list__meta">{row.meta}</div>}
+            </div>
+            <strong>{row.value}</strong>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+type ContractReadRow = {
+  status: "success" | "failure";
+  result?: unknown;
+};
+
+function FeedCard({
+  title,
+  meta,
+  tags = [],
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  tags?: string[];
+}) {
+  return (
+    <li className="feed-card">
+      <div className="feed-card__title">{title}</div>
+      {meta && <div className="feed-card__meta">{meta}</div>}
+      {tags.length > 0 && (
+        <div className="feed-card__tags">
+          {tags.map((tag) => (
+            <span key={tag} className="feed-card__tag">
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </li>
+  );
 }
 
 export function TimeCurvePage() {
@@ -244,65 +349,69 @@ export function TimeCurvePage() {
     };
   }, [address]);
 
+  const coreTcContracts = tc
+    ? [
+        { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
+      ]
+    : [];
   const {
-    data: coreTcData,
+    data: coreTcDataRaw,
     isPending: coreTcPending,
     isError: coreTcError,
     refetch: refetchCoreTc,
   } = useReadContracts({
-    contracts: (tc
-      ? [
-          { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
-        ]
-      : []) as any,
+    contracts: coreTcContracts as readonly unknown[],
     query: { enabled: Boolean(tc) },
   });
+  const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
 
+  const warbowContracts = tc
+    ? [
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
+      ]
+    : [];
   const {
-    data: warbowPolicyData,
+    data: warbowPolicyDataRaw,
     isPending: warbowPolicyPending,
     isError: warbowPolicyError,
     refetch: refetchWarbowPolicy,
   } = useReadContracts({
-    contracts: (tc
-      ? [
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
-          { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
-        ]
-      : []) as any,
+    contracts: warbowContracts as readonly unknown[],
     query: { enabled: Boolean(tc) },
   });
+  const warbowPolicyData = warbowPolicyDataRaw as readonly ContractReadRow[] | undefined;
 
   const isPending = coreTcPending || warbowPolicyPending;
   const isError = coreTcError || warbowPolicyError;
@@ -311,11 +420,8 @@ export function TimeCurvePage() {
     void refetchWarbowPolicy();
   }, [refetchCoreTc, refetchWarbowPolicy]);
 
-  const {
-    data: userSaleData,
-    refetch: refetchUserSale,
-  } = useReadContracts({
-    contracts: (tc && address
+  const userSaleContracts =
+    tc && address
       ? [
           { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "buyCount", args: [address] },
@@ -328,9 +434,15 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeStealer", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeExpiry", args: [address] },
         ]
-      : []) as any,
+      : [];
+  const {
+    data: userSaleDataRaw,
+    refetch: refetchUserSale,
+  } = useReadContracts({
+    contracts: userSaleContracts as readonly unknown[],
     query: { enabled: Boolean(tc && address) },
   });
+  const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
   const stealVictim =
     stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
@@ -453,17 +565,18 @@ export function TimeCurvePage() {
   const podiumPoolAddr =
     podiumPoolR?.status === "success" ? (podiumPoolR.result as `0x${string}`) : undefined;
 
-  const { data: sinkReads } = useReadContracts({
-    contracts: feeRouterAddr
+  const { data: sinkReadsRaw } = useReadContracts({
+    contracts: (feeRouterAddr
       ? ([0, 1, 2, 3, 4] as const).map((i) => ({
           address: feeRouterAddr,
           abi: feeRouterReadAbi,
           functionName: "sinks" as const,
           args: [BigInt(i)],
         }))
-      : [],
+      : []) as readonly unknown[],
     query: { enabled: Boolean(feeRouterAddr) },
   });
+  const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
 
   const { data: podiumPoolBal } = useReadContract({
     address: tokenAddr,
@@ -505,8 +618,8 @@ export function TimeCurvePage() {
       ? (charmPriceAddrR.result as `0x${string}`)
       : undefined;
 
-  const { data: linearPriceReads } = useReadContracts({
-    contracts: linearCharmAddr
+  const { data: linearPriceReadsRaw } = useReadContracts({
+    contracts: (linearCharmAddr
       ? [
           {
             address: linearCharmAddr,
@@ -519,9 +632,10 @@ export function TimeCurvePage() {
             functionName: "dailyIncrementWad",
           },
         ]
-      : [],
+      : []) as readonly unknown[],
     query: { enabled: Boolean(tc && linearCharmAddr) },
   });
+  const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
 
   const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
 
@@ -610,6 +724,78 @@ export function TimeCurvePage() {
     return (charmWadSelected * p) / WAD;
   }, [charmWadSelected, pricePerCharmR]);
 
+  const timerCapSec =
+    timerCapSecR?.status === "success" ? Number(timerCapSecR.result as bigint) : undefined;
+  const timerExtensionPreview =
+    saleActive &&
+    remaining !== undefined &&
+    timerExtensionSecR?.status === "success" &&
+    timerCapSec !== undefined
+      ? Math.max(
+          0,
+          Math.min(
+            Number(timerExtensionSecR.result as bigint),
+            Math.max(0, timerCapSec - remaining),
+          ),
+        )
+      : undefined;
+  const timerFillPercent =
+    remaining !== undefined && timerCapSec
+      ? Math.max(0, Math.min(100, (remaining / Math.max(timerCapSec, 1)) * 100))
+      : undefined;
+  const timerPreviewPercent =
+    timerExtensionPreview !== undefined && timerCapSec
+      ? Math.max(0, Math.min(100, (timerExtensionPreview / Math.max(timerCapSec, 1)) * 100))
+      : undefined;
+  const saleEnded = ended?.status === "success" && ended.result === true;
+  const saleStartPending =
+    saleStart?.status === "success" && BigInt(now) < (saleStart.result as bigint);
+  const stateBadgeLabel = saleActive
+    ? "Sale live"
+    : saleEnded
+      ? "After sale"
+      : saleStartPending
+        ? "Starts soon"
+        : "Waiting on chain";
+  const stateBadgeTone = saleActive
+    ? "live"
+    : saleEnded
+      ? "warning"
+      : saleStartPending
+        ? "info"
+        : "warning";
+  const warbowRank =
+    address && warbowLb
+      ? warbowLb.findIndex((row) => sameAddress(row.buyer, address)) + 1 || null
+      : null;
+  const warbowTopRows: RankingRow[] =
+    warbowLadderPodiumR?.status === "success"
+      ? (() => {
+          const [wallets, values] = warbowLadderPodiumR.result as readonly [
+            readonly `0x${string}`[],
+            readonly bigint[],
+          ];
+          return [0, 1, 2].map((index) => ({
+            key: `warbow-contract-${index}`,
+            rank: index + 1,
+            label: <span className="mono">{shortAddress(wallets[index])}</span>,
+            meta: sameAddress(wallets[index], address) ? "Connected wallet" : "Contract snapshot",
+            value: `${values[index] !== undefined ? formatLocaleInteger(values[index]) : "—"} BP`,
+            highlight: sameAddress(wallets[index], address),
+          }));
+        })()
+      : [];
+  const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
+    key: `warbow-indexer-${row.buyer}`,
+    rank: index + 1,
+    label: <span className="mono">{shortAddress(row.buyer)}</span>,
+    meta: sameAddress(row.buyer, address)
+      ? "Connected wallet"
+      : `block ${formatLocaleInteger(row.block_number)}`,
+    value: `${formatLocaleInteger(BigInt(row.battle_points_after))} BP`,
+    highlight: sameAddress(row.buyer, address),
+  }));
+
   const refetchAll = useCallback(() => {
     void refetch();
     void refetchUserSale();
@@ -622,7 +808,7 @@ export function TimeCurvePage() {
     if (ended?.status !== "success" || !ended.result) {
       return undefined;
     }
-    if (totalRaised?.status !== "success" || totalTokensForSaleR?.status !== "success") {
+    if (totalTokensForSaleR?.status !== "success") {
       return undefined;
     }
     if (charmWeightR?.status !== "success") {
@@ -976,64 +1162,77 @@ export function TimeCurvePage() {
   if (!tc) {
     return (
       <section className="page page--timecurve">
-        <h1>TimeCurve</h1>
-        <div className="arcade-banner arcade-banner--with-sidekick">
-          <img
-            className="arcade-banner__coin"
-            src="/art/token-logo.png"
-            alt=""
-            width={72}
-            height={72}
-            decoding="async"
-          />
-          <div className="arcade-banner__text">
-            <p className="placeholder">
-              Set <code>VITE_TIMECURVE_ADDRESS</code> in <code>.env</code> (see{" "}
-              <code>.env.example</code>) to read onchain sale state.
-            </p>
-          </div>
-          <CutoutDecoration
-            className="arcade-banner__mascot cutout-decoration--sway"
-            src="/art/cutouts/loading-mascot-circle.png"
-            width={192}
-            height={192}
-          />
-        </div>
+        <PageHero
+          title="TimeCurve"
+          badgeLabel="Config needed"
+          badgeTone="warning"
+          lede={
+            <>
+              Set <code>VITE_TIMECURVE_ADDRESS</code> in <code>.env</code> (see <code>.env.example</code>) to
+              read live onchain sale state.
+            </>
+          }
+          mascot={{
+            src: "/art/cutouts/loading-mascot-circle.png",
+            width: 192,
+            height: 192,
+            className: "cutout-decoration--sway",
+          }}
+        />
       </section>
     );
   }
 
   return (
     <section className="page page--timecurve">
-      <h1>TimeCurve</h1>
-      <div className="arcade-banner arcade-banner--with-sidekick">
-        <img
-          className="arcade-banner__coin"
-          src="/art/token-logo.png"
-          alt=""
-          width={72}
-          height={72}
-          decoding="async"
-        />
-        <div className="arcade-banner__text">
-          <p className="lede">
-            Charms: earn weight by buying within the curve; after the sale, redeem for launched tokens.
-            <strong> WarBow Ladder</strong> is onchain PvP <strong>Battle Points</strong> (steal, guard, revenge,
-            flag claim) — not a wholesome activity board. Live RPC + indexer feeds below.
-          </p>
+      <PageHero
+        title="TimeCurve"
+        badgeLabel={stateBadgeLabel}
+        badgeTone={stateBadgeTone}
+        lede={
+          <>
+            Charms give you weight in the sale. During the live round, buys add timer pressure, move podium races,
+            and feed <strong>WarBow Ladder</strong> PvP. After the timer expires, the page pivots to redemption and
+            prize settlement.
+          </>
+        }
+        mascot={{
+          src: "/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png",
+          width: 220,
+          height: 220,
+          className: "cutout-decoration--float",
+        }}
+      >
+        <div className="status-strip" aria-label="Current TimeCurve status">
+          <PageBadge
+            label={saleActive ? "Buy + defend + steal" : saleEnded ? "Redeem + settle" : "Waiting for start"}
+            tone={saleActive ? "live" : saleEnded ? "warning" : "info"}
+          />
+          {guardedActive && <PageBadge label="Guard active" tone="info" />}
+          {hasRevengeOpen && <PageBadge label="Revenge open" tone="warning" />}
+          {canClaimWarBowFlag && <PageBadge label="Flag claim ready" tone="warning" />}
         </div>
-        <CutoutDecoration
-          className="arcade-banner__mascot cutout-decoration--float"
-          src="/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png"
-          width={220}
-          height={220}
-        />
-      </div>
+      </PageHero>
 
-      {/* Timer hero — above the fold */}
       <div className={`timer-hero ${timerUrgencyClass(remaining)}`}>
+        <div className="status-strip">
+          <span className={`status-pill status-pill--${saleActive ? "success" : saleEnded ? "warning" : "info"}`}>
+            {saleActive ? "Live round" : saleEnded ? "Timer expired" : "Pre-start"}
+          </span>
+          {guardedActive && (
+            <span className="status-pill status-pill--info">
+              Guard until <UnixTimestampDisplay raw={guardUntilSec} />
+            </span>
+          )}
+          {hasRevengeOpen && (
+            <span className="status-pill status-pill--warning">
+              Revenge window until <UnixTimestampDisplay raw={revengeDeadlineSec} />
+            </span>
+          )}
+          {canClaimWarBowFlag && <span className="status-pill status-pill--warning">Claim your WarBow flag now</span>}
+        </div>
         <div className="timer-hero__label">
-          {saleActive ? "Time Remaining" : (ended?.result === true) ? "Sale Ended" : "Starts In"}
+          {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
         </div>
         <div className="timer-hero__countdown">
           {remaining !== undefined ? formatCountdown(remaining) : "—"}
@@ -1045,418 +1244,344 @@ export function TimeCurvePage() {
           </div>
         )}
       </div>
-
-      <div className="data-panel">
-        <h2>Onchain (contract)</h2>
-        {isPending && (
-          <div className="loading-state">
-            <img
-              src="/art/loading-mascot.png"
-              alt=""
-              width={96}
-              height={96}
-              decoding="async"
-            />
-            <p>Loading contract reads…</p>
+      {saleActive &&
+        timerFillPercent !== undefined &&
+        timerPreviewPercent !== undefined &&
+        timerExtensionPreview !== undefined && (
+          <div className="progress-meter" aria-label="Timer pressure preview">
+            <div className="progress-meter__track">
+              <div className="progress-meter__current" style={{ width: `${timerFillPercent}%` }} />
+              <div
+                className="progress-meter__preview"
+                style={{
+                  left: `${timerFillPercent}%`,
+                  width: `${Math.max(0, Math.min(timerPreviewPercent, 100 - timerFillPercent))}%`,
+                }}
+              />
+            </div>
+            <div className="progress-meter__labels">
+              <span>Current timer fill</span>
+              <span>Next buy can add up to +{formatLocaleInteger(timerExtensionPreview)}s</span>
+            </div>
           </div>
         )}
-        {isError && <p className="error-text">Could not read contract (check RPC / network).</p>}
-        {coreTcData && (
-          <dl className="kv">
-            <dt>saleStart</dt>
-            <dd>
-              {saleStart?.status === "success" ? (
-                <UnixTimestampDisplay raw={saleStart.result as bigint} />
-              ) : (
-                "—"
-              )}
-            </dd>
-            <dt>deadline</dt>
-            <dd>
-              {deadline?.status === "success" ? (
-                <UnixTimestampDisplay raw={deadline.result as bigint} />
-              ) : (
-                "—"
-              )}
-            </dd>
-            <dt>time remaining</dt>
-            <dd>
-              {remaining !== undefined ? `${formatLocaleInteger(remaining)}s` : "—"}
-            </dd>
-            <dt>totalRaised</dt>
-            <dd>
-              {totalRaised?.status === "success" ? (
-                <AmountDisplay raw={totalRaised.result as bigint} decimals={decimals} />
-              ) : (
-                "—"
-              )}
-            </dd>
-            <dt>ended</dt>
-            <dd>{ended?.status === "success" ? String(ended.result) : "—"}</dd>
-            <dt>min gross spend (smallest CHARM tier × price)</dt>
-            <dd>
-              {minBuy?.status === "success" ? (
+
+      <PageSection
+        title="What matters now"
+        badgeLabel={saleActive ? "Player view" : saleEnded ? "Settlement view" : "Live setup"}
+        badgeTone={saleActive ? "live" : saleEnded ? "warning" : "info"}
+        lede="The page now adapts to sale state so live pressure, after-sale settlement, and PvP alerts surface before protocol detail."
+      >
+        <div className="stats-grid">
+          <StatCard
+            label={saleActive ? "Current min buy" : "Minimum buy"}
+            value={
+              minBuy?.status === "success" ? (
                 <AmountDisplay raw={minBuy.result as bigint} decimals={decimals} />
               ) : (
                 "—"
-              )}
-            </dd>
-            <dt>price per 1e18 CHARM (WAD)</dt>
-            <dd>
-              {pricePerCharmR?.status === "success" ? (
-                <AmountDisplay raw={pricePerCharmR.result as bigint} decimals={decimals} />
-              ) : (
-                "—"
-              )}
-            </dd>
-            <dt>charmPrice (pricing module)</dt>
-            <dd className="mono">
-              {charmPriceAddrR?.status === "success" ? String(charmPriceAddrR.result) : "—"}
-            </dd>
-            <dt>referralRegistry</dt>
-            <dd className="mono">
-              {refRegAddr?.status === "success" ? String(refRegAddr.result) : "—"}
-            </dd>
-            <dt>launchedToken</dt>
-            <dd className="mono">
-              {launchedTokenR?.status === "success" ? String(launchedTokenR.result) : "—"}
-            </dd>
-            <dt>max buy (per tx)</dt>
-            <dd>
-              {maxBuyAmount !== undefined ? (
-                <AmountDisplay raw={maxBuyAmount} decimals={decimals} />
-              ) : (
-                "—"
-              )}
-            </dd>
-            <dt>prizesDistributed</dt>
-            <dd>
-              {prizesDistributedR?.status === "success" ? String(prizesDistributedR.result) : "—"}
-            </dd>
-          </dl>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Charm redemption curve (implied average)</h2>
-        <p className="muted">
-          Implied average accepted asset per one launched token vs total charm weight in the sale
-          (clears at sale end). The dot is today&apos;s pool; dashed line is your charm weight. This is
-          not the per-tx charm price floor — see <strong>Min buy curve</strong> and <strong>Buy</strong>{" "}
-          below.
-        </p>
-        {coreTcData && totalRaised?.status === "success" && totalTokensForSaleR?.status === "success" && (
-          <CharmRedemptionCurve
-            totalRaised={totalRaised.result as bigint}
-            totalTokensForSale={totalTokensForSaleR.result as bigint}
-            acceptedDecimals={decimals}
-            launchedDecimals={launchedDec}
-            userCharmWeight={
-              charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined
+              )
             }
-            saleStarted={saleStart?.status === "success" && (saleStart.result as bigint) > 0n}
+            meta="Human-readable reserve spend floor"
           />
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Your participation</h2>
-        {!isConnected && <p className="placeholder">Connect a wallet to see your onchain stats.</p>}
-        {isConnected && address && (
-          <>
-            <dl className="kv">
-              <dt>charmWeight</dt>
-              <dd>
-                {charmWeightR?.status === "success" ? (
-                  <AmountDisplay raw={charmWeightR.result as bigint} decimals={18} />
-                ) : (
-                  "—"
-                )}
-              </dd>
-              <dt>buyCount</dt>
-              <dd>
-                {buyCountR?.status === "success"
-                  ? formatLocaleInteger(buyCountR.result as bigint)
-                  : "—"}
-              </dd>
-              <dt>totalEffectiveTimerSecAdded</dt>
-              <dd>
-                {timerAddedR?.status === "success"
-                  ? `${formatLocaleInteger(timerAddedR.result as bigint)} s`
-                  : "—"}
-              </dd>
-              <dt>battlePoints (WarBow Ladder)</dt>
-              <dd>
-                {battlePtsR?.status === "success"
-                  ? formatLocaleInteger(battlePtsR.result as bigint)
-                  : "—"}
-              </dd>
-              <dt>activeDefendedStreak</dt>
-              <dd>
-                {activeStreakR?.status === "success"
-                  ? formatLocaleInteger(activeStreakR.result as bigint)
-                  : "—"}
-              </dd>
-              <dt>bestDefendedStreak</dt>
-              <dd>
-                {bestStreakR?.status === "success"
-                  ? formatLocaleInteger(bestStreakR.result as bigint)
-                  : "—"}
-              </dd>
-              <dt>warbowGuardUntil</dt>
-              <dd>
-                {warbowGuardUntilR?.status === "success" ? (
-                  guardedActive ? (
-                    <UnixTimestampDisplay raw={guardUntilSec} />
-                  ) : (
-                    "not active"
-                  )
-                ) : (
-                  "—"
-                )}
-              </dd>
-              <dt>revenge (pending stealer / deadline)</dt>
-              <dd className="mono">
-                {pendingRevengeStealer &&
-                pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
-                  ? `${pendingRevengeStealer.slice(0, 10)}… · ${
-                      revengeDeadlineSec > 0n
-                        ? `deadline ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
-                        : "—"
-                    }`
-                  : "—"}
-              </dd>
-              <dt>charmsRedeemed</dt>
-              <dd>
-                {charmsRedeemedR?.status === "success"
-                  ? charmsRedeemedR.result
-                    ? "true"
-                    : "false"
-                  : "—"}
-              </dd>
-              <dt>expected tokens from charms (if ended)</dt>
-              <dd>
-                {expectedTokenFromCharms !== undefined ? (
+          <StatCard
+            label={saleEnded ? "Expected redemption" : "Your charm weight"}
+            value={
+              saleEnded ? (
+                expectedTokenFromCharms !== undefined ? (
                   <AmountDisplay raw={expectedTokenFromCharms} decimals={18} />
                 ) : (
                   "—"
-                )}
-              </dd>
-            </dl>
-            {indexerBaseUrl() && buyerStats && (
-              <p className="muted">
-                Indexer: charm weight {formatCompactFromRaw(buyerStats.indexed_charm_weight, 18)} · buys{" "}
-                {formatLocaleInteger(buyerStats.indexed_buy_count)}
-              </p>
-            )}
-            {indexerMismatch && <p className="error-text">{indexerMismatch}</p>}
-            {claimHint && <p className="muted">{claimHint}</p>}
-            {distributeHint && ended?.status === "success" && ended.result && (
-              <p className="muted">{distributeHint}</p>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Sale parameters (immutable)</h2>
-        {coreTcData && (
-          <dl className="kv">
-            <dt>charm envelope ref WAD (exponential scaling)</dt>
-            <dd>
-              {initialMinBuyR?.status === "success" ? (
-                <AmountDisplay raw={initialMinBuyR.result as bigint} decimals={18} />
+                )
+              ) : charmWeightR?.status === "success" ? (
+                <AmountDisplay raw={charmWeightR.result as bigint} decimals={18} />
               ) : (
                 "—"
-              )}
-            </dd>
-            <dt>growthRateWad</dt>
-            <dd className="mono">
-              {growthRateWadR?.status === "success"
-                ? formatCompactFromRaw(growthRateWadR.result as bigint, 18)
-                : "—"}
-            </dd>
-            <dt>timerExtensionSec</dt>
-            <dd>
-              {timerExtensionSecR?.status === "success"
-                ? formatLocaleInteger(timerExtensionSecR.result as bigint)
-                : "—"}
-            </dd>
-            <dt>initialTimerSec</dt>
-            <dd>
-              {initialTimerSecR?.status === "success"
-                ? formatLocaleInteger(initialTimerSecR.result as bigint)
-                : "—"}
-            </dd>
-            <dt>timerCapSec</dt>
-            <dd>
-              {timerCapSecR?.status === "success"
-                ? formatLocaleInteger(timerCapSecR.result as bigint)
-                : "—"}
-            </dd>
-            <dt>totalTokensForSale</dt>
-            <dd>
-              {totalTokensForSaleR?.status === "success" ? (
-                <AmountDisplay raw={totalTokensForSaleR.result as bigint} decimals={18} />
+              )
+            }
+            meta={saleEnded ? "Projected launched-token claim" : "Onchain charm weight for your wallet"}
+          />
+          <StatCard
+            label="Podium pool"
+            value={
+              podiumPoolBal !== undefined ? (
+                <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} />
               ) : (
                 "—"
-              )}
-            </dd>
-            <dt>feeRouter</dt>
-            <dd className="mono">
-              {feeRouterR?.status === "success" ? String(feeRouterR.result) : "—"}
-            </dd>
-            <dt>podiumPool</dt>
-            <dd className="mono">
-              {podiumPoolR?.status === "success" ? String(podiumPoolR.result) : "—"}
-            </dd>
-            <dt>totalCharmWeight</dt>
-            <dd className="mono">
-              {totalCharmWeightR?.status === "success"
-                ? formatCompactFromRaw(rawToBigIntForFormat(totalCharmWeightR.result as bigint), 18)
-                : "—"}
-            </dd>
-          </dl>
-        )}
-      </div>
+              )
+            }
+            meta="Reserve pool for the three fixed podium categories"
+          />
+          <StatCard
+            label={saleActive ? "Battle Points" : "Total raised"}
+            value={
+              saleActive ? (
+                battlePtsR?.status === "success" ? (
+                  formatLocaleInteger(battlePtsR.result as bigint)
+                ) : (
+                  "—"
+                )
+              ) : totalRaised?.status === "success" ? (
+                <AmountDisplay raw={totalRaised.result as bigint} decimals={decimals} />
+              ) : (
+                "—"
+              )
+            }
+            meta={saleActive ? "Your live WarBow PvP score" : "Authoritative sale total from contract reads"}
+          />
+        </div>
+        {isPending && <StatusMessage variant="loading">Loading contract reads...</StatusMessage>}
+        {isError && <StatusMessage variant="error">Could not read contract (check RPC / network).</StatusMessage>}
+        {indexerMismatch && <StatusMessage variant="error">{indexerMismatch}</StatusMessage>}
+        {claimHint && <StatusMessage variant="muted">{claimHint}</StatusMessage>}
+        {saleEnded && distributeHint && <StatusMessage variant="muted">{distributeHint}</StatusMessage>}
+      </PageSection>
 
-      <div className="data-panel">
-        <h2>Min gross spend curve (illustrative)</h2>
-        <p className="muted">
-          Minimum reserve spend for a buy (0.99 CHARM tier × linear price) vs time since sale start. The
-          CHARM band scales with the <strong>exponential daily envelope</strong>; per-CHARM price follows the
-          pluggable linear schedule. <strong>Authoritative values:</strong>{" "}
-          <code>currentMinBuyAmount()</code> and <code>currentPricePerCharmWad()</code>.
-        </p>
-        {minSpendCurvePoints.length > 1 && (
-          <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min gross spend curve">
-            {(() => {
-              const vals = minSpendCurvePoints.map((p) => Number(p.minSpend));
-              const vmin = Math.min(...vals);
-              const vmax = Math.max(...vals);
-              const span = Math.max(vmax - vmin, 1);
-              return (
-                <polyline
-                  fill="none"
-                  stroke="var(--line)"
-                  strokeWidth="3"
-                  points={minSpendCurvePoints
-                    .map((p, i) => {
-                      const x = (i / (minSpendCurvePoints.length - 1)) * 380 + 10;
-                      const y = 110 - ((Number(p.minSpend) - vmin) / span) * 100;
-                      return `${x},${y}`;
-                    })
-                    .join(" ")}
+      <div className="split-layout">
+        <PageSection
+          title="Buy charms"
+          badgeLabel={saleActive ? "Primary action" : "Buy window"}
+          badgeTone={saleActive ? "live" : "warning"}
+          spotlight
+          cutout={{
+            src: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
+            width: 196,
+            height: 196,
+            className: "panel-cutout panel-cutout--mid-right cutout-decoration--sway",
+          }}
+          lede="Preview the emotional payoff before you sign: spend, charm weight, timer pressure, and how the move can affect the live race."
+        >
+          {!isConnected && <StatusMessage variant="placeholder">Connect a wallet to preview and buy charms.</StatusMessage>}
+          {isConnected && isPending && <StatusMessage variant="loading">Loading contract...</StatusMessage>}
+          {isConnected && !saleActive && !isPending && (
+            <StatusMessage variant="placeholder">
+              {saleEnded
+                ? "The round is over. Buying is closed, so the surface pivots to redemption and prize settlement."
+                : "The sale has not started yet. When it opens, this panel becomes the primary action surface."}
+            </StatusMessage>
+          )}
+          {isConnected && saleActive && (
+            <>
+              <div className="stats-grid">
+                <StatCard
+                  label="Projected spend"
+                  value={
+                    estimatedSpend !== undefined ? (
+                      <AmountDisplay raw={estimatedSpend} decimals={decimals} />
+                    ) : (
+                      "—"
+                    )
+                  }
+                  meta="Gross reserve spend for the selected charm count"
                 />
-              );
-            })()}
-          </svg>
-        )}
-        {minSpendCurvePoints.length <= 1 && <p className="muted">Curve appears after sale has started.</p>}
-      </div>
-
-      <div className="data-panel data-panel--spotlight">
-        <CutoutDecoration
-          className="panel-cutout panel-cutout--mid-right cutout-decoration--sway"
-          src="/art/cutouts/cutout-bunnyleprechaungirl-head.png"
-          width={196}
-          height={196}
-        />
-        <h2>Buy charms (wallet)</h2>
-        <p>
-          Approves the accepted asset for <strong>TimeCurve</strong>, then calls{" "}
-          <code>buy(charmWad)</code> or <code>buy(charmWad, codeHash)</code> where{" "}
-          <code>charmWad</code> is whole charms × 1e18 (UI uses 1–10 only; onchain band is 0.99–10 CHARM scaled
-          by the exponential envelope). Gross spend = <code>charmWad × price / 1e18</code> with linear
-          per-CHARM pricing. Referral bonuses are extra CHARM weight (10% each side). Use a funded wallet on
-          the configured chain.
-        </p>
-        {!isConnected && <p className="placeholder">Connect a wallet to buy.</p>}
-        {isConnected && isPending && (
-          <div className="loading-state">
-            <img
-              src="/art/loading-mascot.png"
-              alt=""
-              width={96}
-              height={96}
-              decoding="async"
-            />
-            <p>Loading contract…</p>
-          </div>
-        )}
-        {isConnected && !saleActive && !isPending && (
-          <p className="placeholder">Sale is not active (not started or already ended).</p>
-        )}
-        {isConnected && saleActive && (
-          <>
-            <label className="form-label">
-              Charms (1–10, whole units; onchain CHARM = n × 1e18)
-              <input
-                type="range"
-                className="form-input"
-                min={1}
-                max={10}
-                step={1}
-                value={charmCount}
-                onChange={(e) => setCharmCount(Number(e.target.value))}
-              />
-              <span className="muted">
-                {" "}
-                {charmCount} charm{charmCount === 1 ? "" : "s"}
-                {estimatedSpend !== undefined && (
-                  <>
-                    {" "}
-                    → ~<AmountDisplay raw={estimatedSpend} decimals={decimals} /> spend
-                  </>
-                )}
-              </span>
-            </label>
-            {referralRegistryOn && pendingRef && (
+                <StatCard
+                  label="Charm weight"
+                  value={`${charmCount} charm${charmCount === 1 ? "" : "s"}`}
+                  meta={
+                    referralRegistryOn && pendingRef && useReferral
+                      ? `Referral active: ${normalizeReferralCode(pendingRef)}`
+                      : "Whole charms only in this UI"
+                  }
+                />
+                <StatCard
+                  label="Timer impact now"
+                  value={
+                    timerExtensionPreview !== undefined ? `+${formatLocaleInteger(timerExtensionPreview)} s` : "—"
+                  }
+                  meta={
+                    timerCapSec !== undefined
+                      ? `Countdown cap ${formatLocaleInteger(timerCapSec)} s`
+                      : "Adds time until the cap is reached"
+                  }
+                />
+                <StatCard
+                  label="PvP pressure"
+                  value={warbowRank ? `Rank #${warbowRank}` : "WarBow live"}
+                  meta="Buys can earn BP, plant a flag, and pressure last-buy or time-booster races"
+                />
+              </div>
               <label className="form-label">
+                Charms (1-10 whole units)
                 <input
-                  type="checkbox"
-                  checked={useReferral}
-                  onChange={(e) => setUseReferral(e.target.checked)}
-                />{" "}
-                Apply referral <code>{normalizeReferralCode(pendingRef)}</code> (from{" "}
-                <code>?ref=</code>)
+                  type="range"
+                  className="form-input"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={charmCount}
+                  onChange={(e) => setCharmCount(Number(e.target.value))}
+                />
+                <span className="muted">
+                  {charmCount} charm{charmCount === 1 ? "" : "s"} selected
+                </span>
               </label>
-            )}
-            {referralRegistryOn && !pendingRef && (
-              <p className="muted">Open a referral link with ?ref=CODE to enable referral CHARM bonuses.</p>
-            )}
-            <p>
-              <motion.button
-                type="button"
-                className="btn-primary btn-primary--priority"
-                disabled={isWriting}
-                onClick={handleBuy}
-                {...primaryButtonMotion}
-              >
-                {isWriting ? "Confirm in wallet…" : "Approve (if needed) & buy"}
-              </motion.button>
-            </p>
-            {gasBuy !== undefined && (
-              <p className="muted">Est. gas (buy): ~{formatLocaleInteger(gasBuy)} units</p>
-            )}
-          </>
-        )}
-        {buyErr && <p className="error-text">{buyErr}</p>}
+              {referralRegistryOn && pendingRef && (
+                <label className="form-label">
+                  <input
+                    type="checkbox"
+                    checked={useReferral}
+                    onChange={(e) => setUseReferral(e.target.checked)}
+                  />{" "}
+                  Apply referral <code>{normalizeReferralCode(pendingRef)}</code> from the current <code>?ref=</code>{" "}
+                  link
+                </label>
+              )}
+              {referralRegistryOn && !pendingRef && (
+                <StatusMessage variant="muted">
+                  Open a referral link with <code>?ref=CODE</code> to enable the 10% each-side CHARM bonus.
+                </StatusMessage>
+              )}
+              <p>
+                <motion.button
+                  type="button"
+                  className="btn-primary btn-primary--priority"
+                  disabled={isWriting}
+                  onClick={handleBuy}
+                  {...primaryButtonMotion}
+                >
+                  {isWriting ? "Confirm in wallet..." : "Approve (if needed) and buy"}
+                </motion.button>
+              </p>
+              {gasBuy !== undefined && (
+                <StatusMessage variant="muted">
+                  Estimated gas for buy: ~{formatLocaleInteger(gasBuy)} units
+                </StatusMessage>
+              )}
+            </>
+          )}
+          {buyErr && <StatusMessage variant="error">{buyErr}</StatusMessage>}
+        </PageSection>
+
+        <PageSection
+          title={saleEnded ? "After sale actions" : "Competition snapshot"}
+          badgeLabel={saleEnded ? "Redeem and settle" : "What you are fighting for"}
+          badgeTone={saleEnded ? "warning" : "live"}
+          spotlight
+          cutout={{
+            src: "/art/cutouts/mascot-leprechaun-with-bag-cutout.png",
+            width: 228,
+            height: 228,
+            className: "panel-cutout panel-cutout--lower-right cutout-decoration--float",
+          }}
+          lede={
+            saleEnded
+              ? "When the timer expires, finalize the sale, redeem charms for launched tokens, and distribute the reserve podium pool."
+              : "TimeCurve stays readable by putting the current competitive stakes next to the primary action surface."
+          }
+        >
+          {saleEnded ? (
+            <>
+              <div className="timecurve-action-row">
+                <motion.button
+                  type="button"
+                  className="btn-secondary btn-secondary--critical"
+                  disabled={isWriting}
+                  onClick={() => runVoid("endSale")}
+                  {...secondaryButtonMotion}
+                >
+                  End sale
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className="btn-secondary btn-secondary--priority"
+                  disabled={isWriting}
+                  onClick={() => runVoid("redeemCharms")}
+                  {...secondaryButtonMotion}
+                >
+                  Redeem charms
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className="btn-secondary btn-secondary--priority"
+                  disabled={isWriting}
+                  onClick={() => runVoid("distributePrizes")}
+                  {...secondaryButtonMotion}
+                >
+                  Distribute prizes
+                </motion.button>
+              </div>
+              {(gasClaim !== undefined || gasDistribute !== undefined) && (
+                <StatusMessage variant="muted">
+                  {gasClaim !== undefined && <>Estimated gas for redeem: ~{formatLocaleInteger(gasClaim)} units</>}
+                  {gasClaim !== undefined && gasDistribute !== undefined && <> · </>}
+                  {gasDistribute !== undefined && (
+                    <>Estimated gas for prize distribution: ~{formatLocaleInteger(gasDistribute)} units</>
+                  )}
+                </StatusMessage>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="stats-grid">
+                <StatCard
+                  label="Contract top rank"
+                  value={warbowTopRows[0]?.value ?? "—"}
+                  meta={warbowTopRows[0]?.label ?? "Waiting for contract snapshot"}
+                />
+                <StatCard
+                  label="Your WarBow rank"
+                  value={warbowRank ? `#${warbowRank}` : "Unranked"}
+                  meta={warbowRank ? "From latest indexed leaderboard" : "Make a move to enter the race"}
+                />
+                <StatCard
+                  label="Podium pool"
+                  value={
+                    podiumPoolBal !== undefined ? (
+                      <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} />
+                    ) : (
+                      "—"
+                    )
+                  }
+                  meta="Reserve payout pool shared by the three fixed podium categories"
+                />
+                <StatCard
+                  label="Your best defended streak"
+                  value={
+                    bestStreakR?.status === "success"
+                      ? formatLocaleInteger(bestStreakR.result as bigint)
+                      : "—"
+                  }
+                  meta="Peak under-15-minute defended streak"
+                />
+              </div>
+              <RankingList rows={warbowTopRows} emptyText="Waiting for WarBow contract snapshot." />
+            </>
+          )}
+        </PageSection>
       </div>
 
-      <div className="data-panel data-panel--warbow">
-        <h2>WarBow Ladder (PvP)</h2>
-        <p className="muted">
-          Steals require the victim to have <strong>≥ 2×</strong> your Battle Points. Each victim can be stolen
-          from <strong>{warbowMaxSteals}</strong> times per <strong>UTC day</strong> unless the attacker pays an
-          extra <AmountDisplay raw={warbowBypassBurnWad} decimals={decimals} /> burn. Guard reduces incoming steal
-          to <strong>1%</strong> for <strong>6h</strong>. Revenge: after someone steals from you, burn{" "}
-          <AmountDisplay raw={warbowRevengeBurnWad} decimals={decimals} /> within the onchain window to hit{" "}
-          <strong>10%</strong> of <em>that</em> stealer&apos;s BP once. Flag: after your buy, wait{" "}
-          {formatLocaleInteger(warbowFlagSilenceSec)}s with no other buyer, then claim{" "}
-          <strong>+{formatLocaleInteger(warbowFlagClaimBp)}</strong> BP; if another buy lands after silence elapses
-          before you claim, you can take a <strong>2×</strong> BP penalty (see docs).
-        </p>
+      <PageSection
+        title="WarBow Ladder (PvP)"
+        badgeLabel={saleActive ? "Live PvP" : "PvP rules"}
+        badgeTone={saleActive ? "live" : "info"}
+        spotlight
+        lede="WarBow is adversarial: steals require a 2x BP gap, guard cuts incoming steals to 1%, revenge is single-use within the onchain window, and flag claims only resolve after silence."
+      >
+        <div className="status-strip">
+          <span className="status-pill status-pill--info">
+            Steal cap: {formatLocaleInteger(warbowMaxSteals)} per victim per UTC day
+          </span>
+          <span className="status-pill status-pill--warning">
+            Bypass burn <AmountDisplay raw={warbowBypassBurnWad} decimals={decimals} />
+          </span>
+          <span className="status-pill status-pill--info">
+            Guard burn <AmountDisplay raw={warbowGuardBurnWad} decimals={decimals} />
+          </span>
+        </div>
+        <details className="podium-block accordion-panel">
+          <summary>
+            <strong>Rules and eligibility</strong>
+          </summary>
+          <div className="accordion-panel__content">
+            <StatusMessage variant="muted">
+              Steals require the victim to have at least 2x your Battle Points. Each victim can be stolen from{" "}
+              {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass burn. Guard
+              lasts 6h and reduces the next incoming steal to 1%. Revenge lets the victim hit the pending stealer
+              once within the configured window. After a buy, silence for {formatLocaleInteger(warbowFlagSilenceSec)}s
+              lets the buyer claim +{formatLocaleInteger(warbowFlagClaimBp)} BP.
+            </StatusMessage>
+          </div>
+        </details>
         {isConnected && saleActive && (
           <>
             <label className="form-label">
@@ -1464,18 +1589,17 @@ export function TimeCurvePage() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="0x…"
+                placeholder="0x..."
                 value={stealVictimInput}
                 onChange={(e) => setStealVictimInput(e.target.value)}
                 spellCheck={false}
               />
             </label>
             {stealVictim && victimStealsToday !== undefined && (
-              <p className="muted">
-                Victim steals received today (UTC day):{" "}
-                {formatLocaleInteger(BigInt(victimStealsToday as bigint | number))} /{" "}
-                {warbowMaxSteals}
-              </p>
+              <StatusMessage variant="muted">
+                Victim steals received today:{" "}
+                {formatLocaleInteger(BigInt(victimStealsToday as bigint | number))} / {warbowMaxSteals}
+              </StatusMessage>
             )}
             <label className="form-label">
               <input
@@ -1483,8 +1607,7 @@ export function TimeCurvePage() {
                 checked={stealBypass}
                 onChange={(e) => setStealBypass(e.target.checked)}
               />{" "}
-              Pay bypass burn (+ <AmountDisplay raw={warbowBypassBurnWad} decimals={decimals} />) if victim hit
-              daily cap
+              Pay the bypass burn if the victim already hit the UTC-day steal cap
             </label>
             <div className="timecurve-action-row">
               <motion.button
@@ -1494,7 +1617,7 @@ export function TimeCurvePage() {
                 onClick={() => void runWarBowSteal()}
                 {...secondaryButtonMotion}
               >
-                warbowSteal
+                Attempt steal
               </motion.button>
               <motion.button
                 type="button"
@@ -1503,7 +1626,7 @@ export function TimeCurvePage() {
                 onClick={() => void runWarBowGuard()}
                 {...secondaryButtonMotion}
               >
-                warbowActivateGuard
+                Activate guard
               </motion.button>
               <motion.button
                 type="button"
@@ -1512,7 +1635,7 @@ export function TimeCurvePage() {
                 onClick={() => void runWarBowClaimFlag()}
                 {...secondaryButtonMotion}
               >
-                claimWarBowFlag
+                Claim flag
               </motion.button>
               <motion.button
                 type="button"
@@ -1521,262 +1644,172 @@ export function TimeCurvePage() {
                 onClick={() => void runWarBowRevenge()}
                 {...secondaryButtonMotion}
               >
-                warbowRevenge
+                Trigger revenge
               </motion.button>
             </div>
             {!canClaimWarBowFlag && iHoldPlantFlag && saleActive && (
-              <p className="muted">
-                Flag planted: silence ends at{" "}
-                <UnixTimestampDisplay raw={flagSilenceEndSec} /> (chain time).
-              </p>
+              <StatusMessage variant="muted">
+                Flag planted. Silence ends at <UnixTimestampDisplay raw={flagSilenceEndSec} />.
+              </StatusMessage>
             )}
           </>
         )}
-        <h3>Battle Points top 3 (contract snapshot)</h3>
-        {warbowLadderPodiumR?.status === "success" ? (
-          <ol className="podium-list">
-            {(() => {
-              const t = warbowLadderPodiumR.result as readonly [
-                readonly `0x${string}`[],
-                readonly bigint[],
-              ];
-              const [ws, vs] = t;
-              return [0, 1, 2].map((j) => (
-                <li key={j}>
-                  <span className="mono">{ws[j]?.slice(0, 10) ?? "0x"}…</span> —{" "}
-                  {vs[j] !== undefined ? formatLocaleInteger(vs[j]) : "—"} BP
-                </li>
-              ));
-            })()}
-          </ol>
-        ) : (
-          <p className="muted">—</p>
-        )}
-        <h3>Indexer leaderboard (latest buy BP per wallet)</h3>
-        {warbowLb && warbowLb.length > 0 ? (
-          <ol className="podium-list">
-            {warbowLb.map((r) => (
-              <li key={r.buyer}>
-                <span className="mono">{r.buyer.slice(0, 10)}…</span> —{" "}
-                {formatLocaleInteger(BigInt(r.battle_points_after))} BP
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="muted">Set indexer URL or wait for indexed buys.</p>
-        )}
-        <h3>Battle feed (indexer)</h3>
-        {warbowFeed && warbowFeed.length > 0 ? (
-          <ul className="event-list">
-            {warbowFeed.map((f) => (
-              <li key={`${f.tx_hash}-${f.kind}-${f.log_index}`}>
-                <strong>{f.kind}</strong> — block {formatLocaleInteger(f.block_number)} —{" "}
-                <TxHash hash={f.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="muted">No rows (or indexer unavailable).</p>
-        )}
-      </div>
-
-      <div className="data-panel data-panel--spotlight">
-        <CutoutDecoration
-          className="panel-cutout panel-cutout--lower-right cutout-decoration--float"
-          src="/art/cutouts/mascot-leprechaun-with-bag-cutout.png"
-          width={228}
-          height={228}
-        />
-        <h2>After sale</h2>
-        <p>
-          When the timer has expired: call <code>endSale</code> to finalize the sale, then{" "}
-          <code>redeemCharms</code> to convert your charm weight into launched tokens, then{" "}
-          <code>distributePrizes</code> to pay podium winners from the podium pool (reserve asset). Anyone may
-          submit
-          these transactions where the contract allows.
-        </p>
-        <div className="timecurve-action-row">
-          <motion.button
-            type="button"
-            className="btn-secondary btn-secondary--critical"
-            disabled={isWriting}
-            onClick={() => runVoid("endSale")}
-            {...secondaryButtonMotion}
-          >
-            endSale (timer expired)
-          </motion.button>
-          <motion.button
-            type="button"
-            className="btn-secondary btn-secondary--priority"
-            disabled={isWriting}
-            onClick={() => runVoid("redeemCharms")}
-            {...secondaryButtonMotion}
-          >
-            redeemCharms
-          </motion.button>
-          <motion.button
-            type="button"
-            className="btn-secondary btn-secondary--priority"
-            disabled={isWriting}
-            onClick={() => runVoid("distributePrizes")}
-            {...secondaryButtonMotion}
-          >
-            distributePrizes
-          </motion.button>
+        <div className="split-layout">
+          <div className="podium-block">
+            <h3>Contract top 3</h3>
+            <RankingList rows={warbowTopRows} emptyText="Waiting for WarBow contract snapshot." />
+          </div>
+          <div className="podium-block">
+            <h3>Indexer leaderboard</h3>
+            <RankingList rows={warbowLeaderboardRows} emptyText="Set the indexer URL or wait for indexed buys." />
+          </div>
         </div>
-        {(gasClaim !== undefined || gasDistribute !== undefined) && (
-          <p className="muted">
-            {gasClaim !== undefined && <>Est. gas (claim): ~{formatLocaleInteger(gasClaim)} units</>}
-            {gasClaim !== undefined && gasDistribute !== undefined && <> · </>}
-            {gasDistribute !== undefined && (
-              <>Est. gas (distribute): ~{formatLocaleInteger(gasDistribute)} units</>
-            )}
-          </p>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Reserve routing (per buy)</h2>
-        <p className="muted">
-          Each buy routes the <strong>full gross</strong> amount in the accepted reserve asset through{" "}
-          <code>FeeRouter</code>. Referral rewards are <strong>CHARM weight</strong> (not reserve transfers).
-          Canonical shares: DOUB locked-liquidity (SIR / Kumbaya) 25% · CL8Y buy-and-burn 35% · podium pool 20%
-          · team / reserved sink 0% · Rabbit Treasury 20%.
-        </p>
-        <ul className="event-list">
-          {(
-            [
-              ["DOUB LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
-              ["CL8Y buy-and-burn", RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn],
-              ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
-              ["Team / reserved (launch default 0%)", RESERVE_FEE_ROUTING_BPS.team],
-              ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],
-            ] as const
-          ).map(([label, bps], i) => {
-            const row = sinkReads?.[i];
-            const w =
-              row?.status === "success" ? Number((row.result as readonly [unknown, number])[1]) : null;
-            return (
-              <li key={label}>
-                <strong>{label}</strong> — policy {formatBpsAsPercent(bps)}
-                {w !== null ? ` · onchain ${formatBpsAsPercent(w)}` : ""}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      <div className="data-panel">
-        <h2>Clearing &amp; liquidity anchors (live projection)</h2>
-        <p className="muted">
-          <strong>Final reserve per DOUB</strong> (projection): reserve raised per wei of launched token
-          allocated to the sale — <code>totalRaised × 1e18 / totalTokensForSale</code>.{" "}
-          <strong>Launch liquidity anchor</strong> = that value × 1.2 (locked LP target for SIR / Kumbaya).{" "}
-          <strong>Kumbaya v3 band lower</strong> = launch anchor × 0.8 (one-sided range to ∞ is configured
-          offchain; DOUB depth depends on pool targets — excess genesis DOUB may be burned per launch policy).
-        </p>
-        {liquidityAnchors ? (
-          <dl>
-            <dt>Projected final reserve per 1 DOUB (WAD)</dt>
-            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.clearing, 18)}</dd>
-            <dt>Launch liquidity anchor (×1.2, WAD)</dt>
-            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.launch, 18)}</dd>
-            <dt>Kumbaya lower bound (0.8× launch, WAD)</dt>
-            <dd className="mono">{formatCompactFromRaw(liquidityAnchors.kLo, 18)}</dd>
-          </dl>
-        ) : (
-          <p className="muted">Waiting for sale totals…</p>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Podium categories (how it works)</h2>
-        <ul className="event-list">
-          {PODIUM_LABELS.map((title, i) => (
-            <li key={title}>
-              <strong>{title}</strong>
-              <div className="muted">{PODIUM_HELP[i]}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="data-panel">
-        <h2>Podium pool (live)</h2>
-        <p className="muted">
-          Balance in the accepted reserve asset held by <code>podiumPool</code>. Projected payouts use the
-          onchain split: 50% / 25% / 25% across the three reserve categories; within each category placements pay
-          4∶2∶1 (1st is twice 2nd; 2nd twice 3rd). Integer rounding applies onchain.
-        </p>
-        <p>
-          <strong>Current pool balance:</strong>{" "}
-          {podiumPoolBal !== undefined ? (
-            <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} />
+        <div className="podium-block">
+          <h3>Battle feed</h3>
+          {warbowFeed && warbowFeed.length > 0 ? (
+            <ul className="feed-grid">
+              {warbowFeed.slice(0, 8).map((item) => (
+                <FeedCard
+                  key={`${item.tx_hash}-${item.kind}-${item.log_index}`}
+                  title={
+                    <>
+                      <strong>{item.kind}</strong>
+                    </>
+                  }
+                  meta={
+                    <>
+                      block {formatLocaleInteger(item.block_number)} · tx <TxHash hash={item.tx_hash} />
+                    </>
+                  }
+                />
+              ))}
+            </ul>
           ) : (
-            "—"
+            <StatusMessage variant="muted">No WarBow feed rows yet.</StatusMessage>
           )}
-        </p>
+        </div>
+      </PageSection>
+
+      <PageSection
+        title="Podiums and prizes"
+        badgeLabel="Three reserve categories"
+        badgeTone="warning"
+        lede="The reserve podium pool is fixed to three categories only: last buy, time booster, and defended streak. WarBow Battle Points are a separate PvP ladder."
+      >
         <div className="podium-preview">
           {podiumPayoutPreview.map((row, idx) => (
             <div key={idx} className="podium-block">
               <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
               <p className="muted">{PODIUM_HELP[idx]}</p>
-              <ol className="podium-list">
-                {(["1st", "2nd", "3rd"] as const).map((lab, j) => (
-                  <li key={lab}>
-                    {lab}: <AmountDisplay raw={row.places[j]} decimals={decimals} />
-                  </li>
-                ))}
-              </ol>
+              <RankingList
+                rows={(["1st", "2nd", "3rd"] as const).map((lab, placeIndex) => ({
+                  key: `preview-${idx}-${lab}`,
+                  rank: placeIndex + 1,
+                  label: lab,
+                  value: <AmountDisplay raw={row.places[placeIndex]} decimals={decimals} />,
+                  meta: placeIndex === 0 ? "Largest reserve slice in category" : "Reserve payout preview",
+                }))}
+                emptyText="Waiting for podium pool balance."
+              />
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="data-panel">
-        <h2>Podiums (onchain)</h2>
-        {podiumReads.isLoading && <p>Loading podiums…</p>}
-        {podiumReads.data?.map((row, i) => (
-          <div key={i} className="podium-block">
-            <h3>{PODIUM_LABELS[i] ?? `Category ${i}`}</h3>
-            <p className="muted">{PODIUM_HELP[i]}</p>
-            <ol className="podium-list">
-              {row.winners.map((w, j) => (
-                <li key={j}>
-                  <span className="mono">{w.slice(0, 10)}…</span> —{" "}
-                  {row.values[j] !== undefined ? formatPodiumLeaderboardValue(i, row.values[j]) : "—"}
-                </li>
-              ))}
-            </ol>
+        <details className="podium-block accordion-panel">
+          <summary>
+            <strong>Current winners and category rules</strong>
+          </summary>
+          <div className="accordion-panel__content">
+            <div className="split-layout">
+              <div>
+                <h3>How categories work</h3>
+                <ul className="accent-list">
+                  {PODIUM_LABELS.map((title, index) => (
+                    <li key={title}>
+                      <strong>{title}</strong>
+                      <div className="muted">{PODIUM_HELP[index]}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3>Onchain podiums</h3>
+                {podiumReads.isLoading && <StatusMessage variant="loading">Loading podiums...</StatusMessage>}
+                {!podiumReads.isLoading &&
+                  podiumReads.data?.map((row, index) => (
+                    <div key={index} className="podium-block">
+                      <h3>{PODIUM_LABELS[index] ?? `Category ${index}`}</h3>
+                      <RankingList
+                        rows={row.winners.map((winner, placeIndex) => ({
+                          key: `podium-${index}-${winner}-${placeIndex}`,
+                          rank: placeIndex + 1,
+                          label: <span className="mono">{shortAddress(winner)}</span>,
+                          value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? 0n),
+                          meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
+                          highlight: sameAddress(winner, address),
+                        }))}
+                        emptyText="No onchain winners yet."
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
+        </details>
+      </PageSection>
 
-      <div className="data-panel">
-        <h2>Recent buys (indexer)</h2>
-        {indexerNote && <p className="placeholder">{indexerNote}</p>}
-        {buys && buys.length === 0 && !indexerNote && <p>No buys indexed yet.</p>}
+      <PageSection
+        title="Live battle feed"
+        badgeLabel="Indexer mirror"
+        badgeTone="info"
+        lede="Recent buys now read like game events instead of flat rows, while slower-moving settlement mirrors stay collapsed below."
+      >
+        {indexerNote && <StatusMessage variant="placeholder">{indexerNote}</StatusMessage>}
+        {!buys && !indexerNote && <StatusMessage variant="loading">Loading recent buys...</StatusMessage>}
+        {buys && buys.length === 0 && !indexerNote && (
+          <StatusMessage variant="muted">No buys indexed yet.</StatusMessage>
+        )}
         {buys && buys.length > 0 && (
-          <ul className="event-list">
-            {buys.map((b) => (
-              <li key={`${b.tx_hash}-${b.log_index}`}>
-                <span className="mono">{b.buyer.slice(0, 10)}…</span> — amount{" "}
-                <AmountDisplay raw={b.amount} decimals={decimals} />
-                {b.actual_seconds_added !== undefined && (
-                  <>
-                    {" "}
-                    — +{formatLocaleInteger(BigInt(b.actual_seconds_added))} s on timer
-                  </>
-                )}
-                {b.timer_hard_reset ? " — timer hard-reset (15m snap)" : ""}
-                {b.battle_points_after !== undefined
-                  ? ` — BP ${formatLocaleInteger(BigInt(b.battle_points_after))}`
-                  : ""}
-                {b.bp_ambush_bonus !== undefined && BigInt(b.bp_ambush_bonus) > 0n ? " — ambush" : ""} — block{" "}
-                {formatLocaleInteger(b.block_number)} — tx{" "}
-                <TxHash hash={b.tx_hash} />
-              </li>
-            ))}
+          <ul className="feed-grid">
+            {buys.map((buy) => {
+              const tags: string[] = [];
+              if (buy.actual_seconds_added !== undefined) {
+                tags.push(`+${formatLocaleInteger(BigInt(buy.actual_seconds_added))}s`);
+              }
+              if (buy.timer_hard_reset) {
+                tags.push("reset");
+              }
+              if (buy.flag_planted) {
+                tags.push("flag");
+              }
+              if (buy.bp_ambush_bonus !== undefined && BigInt(buy.bp_ambush_bonus) > 0n) {
+                tags.push("ambush");
+              }
+              if (buy.bp_clutch_bonus !== undefined && BigInt(buy.bp_clutch_bonus) > 0n) {
+                tags.push("clutch");
+              }
+              return (
+                <FeedCard
+                  key={`${buy.tx_hash}-${buy.log_index}`}
+                  title={
+                    <>
+                      <strong>{sameAddress(buy.buyer, address) ? "You bought" : `${shortAddress(buy.buyer)} bought`}</strong>
+                      <AmountDisplay raw={buy.amount} decimals={decimals} />
+                    </>
+                  }
+                  meta={
+                    <>
+                      charms {formatCompactFromRaw(buy.charm_wad, 18)} ·
+                      {" "}
+                      {buy.battle_points_after !== undefined
+                        ? `BP ${formatLocaleInteger(BigInt(buy.battle_points_after))}`
+                        : "BP n/a"}
+                      {" "}· block {formatLocaleInteger(buy.block_number)} · tx <TxHash hash={buy.tx_hash} />
+                    </>
+                  }
+                  tags={tags}
+                />
+              );
+            })}
           </ul>
         )}
         {buysNextOffset !== null && (
@@ -1787,96 +1820,289 @@ export function TimeCurvePage() {
               disabled={loadingMoreBuys}
               onClick={() => void handleLoadMoreBuys()}
             >
-              {loadingMoreBuys ? "Loading…" : "Load more"}
+              {loadingMoreBuys ? "Loading..." : "Load more events"}
             </button>
           </p>
         )}
-      </div>
+        <details className="podium-block accordion-panel">
+          <summary>
+            <strong>Settlement mirrors and referral rows</strong>
+          </summary>
+          <div className="accordion-panel__content">
+            <div className="split-layout">
+              <div className="podium-block">
+                <h3>Charm redemptions</h3>
+                {claimsNote && <StatusMessage variant="placeholder">{claimsNote}</StatusMessage>}
+                {claims && claims.length > 0 ? (
+                  <ul className="event-list">
+                    {claims.map((claim) => (
+                      <li key={`${claim.tx_hash}-${claim.log_index}`}>
+                        <span className="mono">{shortAddress(claim.buyer)}</span> redeemed{" "}
+                        <AmountDisplay raw={claim.token_amount} decimals={18} /> · tx{" "}
+                        <TxHash hash={claim.tx_hash} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  !claimsNote && <StatusMessage variant="muted">No charm redemptions indexed yet.</StatusMessage>
+                )}
+              </div>
+              <div className="podium-block">
+                <h3>Prize batch runs</h3>
+                {prizeDist && prizeDist.length > 0 ? (
+                  <ul className="event-list">
+                    {prizeDist.map((item) => (
+                      <li key={`${item.tx_hash}-${item.log_index}`}>
+                        PrizesDistributed · block {formatLocaleInteger(item.block_number)} · tx{" "}
+                        <TxHash hash={item.tx_hash} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <StatusMessage variant="muted">No prize batch runs indexed yet.</StatusMessage>
+                )}
+              </div>
+              <div className="podium-block">
+                <h3>Podium payouts</h3>
+                {prizePayouts && prizePayouts.length > 0 ? (
+                  <ul className="event-list">
+                    {prizePayouts.map((item) => (
+                      <li key={`${item.tx_hash}-${item.log_index}`}>
+                        <span className="mono">{shortAddress(item.winner)}</span> · category {item.category} · place{" "}
+                        {item.placement} · <AmountDisplay raw={BigInt(item.amount)} decimals={decimals} /> · tx{" "}
+                        <TxHash hash={item.tx_hash} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <StatusMessage variant="muted">No podium payout rows indexed yet.</StatusMessage>
+                )}
+              </div>
+              <div className="podium-block">
+                <h3>Referral buys</h3>
+                {!address && <StatusMessage variant="placeholder">Connect a wallet to see your referral rows.</StatusMessage>}
+                {address && refApplied && refApplied.length > 0 ? (
+                  <ul className="event-list">
+                    {refApplied.map((item) => (
+                      <li key={`${item.tx_hash}-${item.log_index}`}>
+                        buyer <span className="mono">{shortAddress(item.buyer)}</span> · referrer CHARM{" "}
+                        <AmountDisplay raw={BigInt(item.referrer_amount)} decimals={18} /> · tx{" "}
+                        <TxHash hash={item.tx_hash} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  address && <StatusMessage variant="muted">No referral rows indexed for this wallet.</StatusMessage>
+                )}
+              </div>
+            </div>
+          </div>
+        </details>
+      </PageSection>
 
-      <div className="data-panel">
-        <h2>Charm redemptions (indexer)</h2>
-        {claimsNote && <p className="placeholder">{claimsNote}</p>}
-        {claims && claims.length === 0 && !claimsNote && <p>No charm redemptions indexed yet.</p>}
-        {claims && claims.length > 0 && (
-          <ul className="event-list">
-            {claims.map((c) => (
-              <li key={`${c.tx_hash}-${c.log_index}`}>
-                <span className="mono">{c.buyer.slice(0, 10)}…</span> — tokens{" "}
-                <AmountDisplay raw={c.token_amount} decimals={18} /> — block{" "}
-                {formatLocaleInteger(c.block_number)} — tx{" "}
-                <TxHash hash={c.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Podium batch runs (indexer)</h2>
-        {prizeDist && prizeDist.length === 0 && <p>No prize batch runs indexed yet.</p>}
-        {prizeDist && prizeDist.length > 0 && (
-          <ul className="event-list">
-            {prizeDist.map((p) => (
-              <li key={`${p.tx_hash}-${p.log_index}`}>
-                PrizesDistributed — block {formatLocaleInteger(p.block_number)} — tx{" "}
-                <TxHash hash={p.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Podium payouts (indexer)</h2>
-        {prizePayouts && prizePayouts.length === 0 && <p>No PodiumPaid rows indexed yet.</p>}
-        {prizePayouts && prizePayouts.length > 0 && (
-          <ul className="event-list">
-            {prizePayouts.map((p) => (
-              <li key={`${p.tx_hash}-${p.log_index}`}>
-                winner <span className="mono">{p.winner.slice(0, 10)}…</span> — cat {p.category} place{" "}
-                {p.placement} — <AmountDisplay raw={BigInt(p.amount)} decimals={decimals} /> — tx{" "}
-                <TxHash hash={p.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="data-panel">
-        <h2>Referral buys (indexer, your wallet as referrer)</h2>
-        {!address && <p className="placeholder">Connect a wallet.</p>}
-        {address && refApplied && refApplied.length === 0 && <p>No rows indexed.</p>}
-        {address && refApplied && refApplied.length > 0 && (
-          <ul className="event-list">
-            {refApplied.map((r) => (
-              <li key={`${r.tx_hash}-${r.log_index}`}>
-                buyer <span className="mono">{r.buyer.slice(0, 10)}…</span> — referrer CHARM added{" "}
-                <AmountDisplay raw={BigInt(r.referrer_amount)} decimals={18} /> — block{" "}
-                {formatLocaleInteger(r.block_number)}{" "}
-                — tx <TxHash hash={r.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <details className="data-panel accordion-panel">
+        <summary>
+          <div className="section-heading__copy">
+            <PageBadge label="Protocol detail" tone="info" />
+            <h2>Raw contract and operator context</h2>
+            <div className="section-heading__lede">
+              Player-facing buy, timer, prizes, and PvP surfaces now come first. Open this for raw onchain mirrors,
+              immutable parameters, and launch-routing context.
+            </div>
+          </div>
+        </summary>
+        <div className="accordion-panel__content">
+          <div className="split-layout">
+            <div className="podium-block">
+              <h3>Onchain snapshot</h3>
+              {coreTcData && (
+                <dl className="kv">
+                  <dt>saleStart</dt>
+                  <dd>{saleStart?.status === "success" ? <UnixTimestampDisplay raw={saleStart.result as bigint} /> : "—"}</dd>
+                  <dt>deadline</dt>
+                  <dd>{deadline?.status === "success" ? <UnixTimestampDisplay raw={deadline.result as bigint} /> : "—"}</dd>
+                  <dt>time remaining</dt>
+                  <dd>{remaining !== undefined ? `${formatLocaleInteger(remaining)}s` : "—"}</dd>
+                  <dt>totalRaised</dt>
+                  <dd>{totalRaised?.status === "success" ? <AmountDisplay raw={totalRaised.result as bigint} decimals={decimals} /> : "—"}</dd>
+                  <dt>ended</dt>
+                  <dd>{ended?.status === "success" ? String(ended.result) : "—"}</dd>
+                  <dt>max buy</dt>
+                  <dd>{maxBuyAmount !== undefined ? <AmountDisplay raw={maxBuyAmount} decimals={decimals} /> : "—"}</dd>
+                  <dt>prizesDistributed</dt>
+                  <dd>{prizesDistributedR?.status === "success" ? String(prizesDistributedR.result) : "—"}</dd>
+                </dl>
+              )}
+            </div>
+            <div className="podium-block">
+              <h3>Your participation</h3>
+              {!isConnected && <StatusMessage variant="placeholder">Connect a wallet to see your deeper onchain stats.</StatusMessage>}
+              {isConnected && address && (
+                <>
+                  <dl className="kv">
+                    <dt>charmWeight</dt>
+                    <dd>{charmWeightR?.status === "success" ? <AmountDisplay raw={charmWeightR.result as bigint} decimals={18} /> : "—"}</dd>
+                    <dt>buyCount</dt>
+                    <dd>{buyCountR?.status === "success" ? formatLocaleInteger(buyCountR.result as bigint) : "—"}</dd>
+                    <dt>timer added</dt>
+                    <dd>{timerAddedR?.status === "success" ? `${formatLocaleInteger(timerAddedR.result as bigint)} s` : "—"}</dd>
+                    <dt>battlePoints</dt>
+                    <dd>{battlePtsR?.status === "success" ? formatLocaleInteger(battlePtsR.result as bigint) : "—"}</dd>
+                    <dt>active streak</dt>
+                    <dd>{activeStreakR?.status === "success" ? formatLocaleInteger(activeStreakR.result as bigint) : "—"}</dd>
+                    <dt>best streak</dt>
+                    <dd>{bestStreakR?.status === "success" ? formatLocaleInteger(bestStreakR.result as bigint) : "—"}</dd>
+                    <dt>revenge</dt>
+                    <dd className="mono">
+                      {pendingRevengeStealer &&
+                      pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
+                        ? `${shortAddress(pendingRevengeStealer)} · ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
+                        : "—"}
+                    </dd>
+                  </dl>
+                  {indexerBaseUrl() && buyerStats && (
+                    <StatusMessage variant="muted">
+                      Indexer mirror: charm weight {formatCompactFromRaw(buyerStats.indexed_charm_weight, 18)} · buys{" "}
+                      {formatLocaleInteger(buyerStats.indexed_buy_count)}
+                    </StatusMessage>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="podium-block">
+              <h3>Immutable sale parameters</h3>
+              {coreTcData && (
+                <dl className="kv">
+                  <dt>envelope ref WAD</dt>
+                  <dd>{initialMinBuyR?.status === "success" ? <AmountDisplay raw={initialMinBuyR.result as bigint} decimals={18} /> : "—"}</dd>
+                  <dt>growthRateWad</dt>
+                  <dd className="mono">{growthRateWadR?.status === "success" ? formatCompactFromRaw(growthRateWadR.result as bigint, 18) : "—"}</dd>
+                  <dt>timerExtensionSec</dt>
+                  <dd>{timerExtensionSecR?.status === "success" ? formatLocaleInteger(timerExtensionSecR.result as bigint) : "—"}</dd>
+                  <dt>initialTimerSec</dt>
+                  <dd>{initialTimerSecR?.status === "success" ? formatLocaleInteger(initialTimerSecR.result as bigint) : "—"}</dd>
+                  <dt>timerCapSec</dt>
+                  <dd>{timerCapSecR?.status === "success" ? formatLocaleInteger(timerCapSecR.result as bigint) : "—"}</dd>
+                  <dt>totalTokensForSale</dt>
+                  <dd>{totalTokensForSaleR?.status === "success" ? <AmountDisplay raw={totalTokensForSaleR.result as bigint} decimals={18} /> : "—"}</dd>
+                </dl>
+              )}
+            </div>
+            <div className="podium-block">
+              <h3>Reserve routing and launch anchors</h3>
+              <ul className="event-list">
+                {(
+                  [
+                    ["DOUB LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
+                    ["CL8Y buy-and-burn", RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn],
+                    ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
+                    ["Team / reserved", RESERVE_FEE_ROUTING_BPS.team],
+                    ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],
+                  ] as const
+                ).map(([label, bps], index) => {
+                  const row = sinkReads?.[index];
+                  const onchain =
+                    row?.status === "success" ? Number((row.result as readonly [unknown, number])[1]) : null;
+                  return (
+                    <li key={label}>
+                      <strong>{label}</strong> · policy {formatBpsAsPercent(bps)}
+                      {onchain !== null ? ` · onchain ${formatBpsAsPercent(onchain)}` : ""}
+                    </li>
+                  );
+                })}
+              </ul>
+              {liquidityAnchors ? (
+                <dl className="kv" style={{ marginTop: "0.85rem" }}>
+                  <dt>Projected reserve / DOUB</dt>
+                  <dd className="mono">{formatCompactFromRaw(liquidityAnchors.clearing, 18)}</dd>
+                  <dt>Launch anchor</dt>
+                  <dd className="mono">{formatCompactFromRaw(liquidityAnchors.launch, 18)}</dd>
+                  <dt>Kumbaya lower band</dt>
+                  <dd className="mono">{formatCompactFromRaw(liquidityAnchors.kLo, 18)}</dd>
+                </dl>
+              ) : (
+                <StatusMessage variant="muted">Waiting for sale totals to project liquidity anchors.</StatusMessage>
+              )}
+            </div>
+          </div>
+          <div className="split-layout">
+            <div className="podium-block">
+              <h3>Charm redemption curve</h3>
+              {coreTcData && totalRaised?.status === "success" && totalTokensForSaleR?.status === "success" && (
+                <CharmRedemptionCurve
+                  totalRaised={totalRaised.result as bigint}
+                  totalTokensForSale={totalTokensForSaleR.result as bigint}
+                  acceptedDecimals={decimals}
+                  launchedDecimals={launchedDec}
+                  userCharmWeight={charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined}
+                  saleStarted={saleStart?.status === "success" && (saleStart.result as bigint) > 0n}
+                />
+              )}
+            </div>
+            <div className="podium-block">
+              <h3>Min gross spend curve</h3>
+              {minSpendCurvePoints.length > 1 ? (
+                <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min gross spend curve">
+                  {(() => {
+                    const vals = minSpendCurvePoints.map((point) => Number(point.minSpend));
+                    const vmin = Math.min(...vals);
+                    const vmax = Math.max(...vals);
+                    const span = Math.max(vmax - vmin, 1);
+                    return (
+                      <polyline
+                        fill="none"
+                        stroke="var(--line)"
+                        strokeWidth="3"
+                        points={minSpendCurvePoints
+                          .map((point, index) => {
+                            const x = (index / (minSpendCurvePoints.length - 1)) * 380 + 10;
+                            const y = 110 - ((Number(point.minSpend) - vmin) / span) * 100;
+                            return `${x},${y}`;
+                          })
+                          .join(" ")}
+                      />
+                    );
+                  })()}
+                </svg>
+              ) : (
+                <StatusMessage variant="muted">Curve appears after the sale has started.</StatusMessage>
+              )}
+            </div>
+          </div>
+        </div>
+      </details>
     </section>
   );
 }
 
 function usePodiumReads(tc: `0x${string}` | undefined) {
-  const cats = [0, 1, 2] as const;
   const contracts = tc
-    ? cats.map((c) => ({
-        address: tc,
-        abi: timeCurveReadAbi,
-        functionName: "podium" as const,
-        args: [c],
-      }))
+    ? ([
+        {
+          address: tc,
+          abi: timeCurveReadAbi,
+          functionName: "podium" as const,
+          args: [0],
+        },
+        {
+          address: tc,
+          abi: timeCurveReadAbi,
+          functionName: "podium" as const,
+          args: [1],
+        },
+        {
+          address: tc,
+          abi: timeCurveReadAbi,
+          functionName: "podium" as const,
+          args: [2],
+        },
+      ] as const)
     : [];
-  const { data, isPending } = useReadContracts({
-    contracts: contracts as any,
+  const { data: rawData, isPending } = useReadContracts({
+    contracts: contracts as readonly unknown[],
     query: { enabled: Boolean(tc) },
   });
+  const data = rawData as readonly ContractReadRow[] | undefined;
 
   const rows =
     data?.map((r) => {
