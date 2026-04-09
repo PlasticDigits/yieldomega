@@ -39,10 +39,10 @@ class TestTimeCurveModel(unittest.TestCase):
         self.assertGreater(b, a)
         self.assertGreater(c, b)
 
-    def test_daily_growth_25_percent(self) -> None:
-        p = _sample_params(daily_growth_frac=0.25, min_buy_0=100.0)
+    def test_daily_growth_20_percent(self) -> None:
+        p = _sample_params(daily_growth_frac=0.20, min_buy_0=100.0)
         one_day = min_buy_at(86400.0, p)
-        self.assertAlmostEqual(one_day, 125.0, places=6)
+        self.assertAlmostEqual(one_day, 120.0, places=6)
 
     def test_next_sale_end_cap(self) -> None:
         p = _sample_params(
@@ -79,11 +79,11 @@ class TestTimeCurveModel(unittest.TestCase):
         self.assertEqual(p.extension_sec, 120.0)
         self.assertEqual(p.initial_timer_sec, 86400.0)
         self.assertEqual(p.timer_cap_from_now_sec, 96 * 3600.0)
-        self.assertAlmostEqual(p.daily_growth_frac, 0.25)
+        self.assertAlmostEqual(p.daily_growth_frac, 0.20)
 
     def test_hybrid_early_leg_linear(self) -> None:
         p = TimeCurveParams(
-            daily_growth_frac=0.25,
+            daily_growth_frac=0.20,
             min_buy_0=1.0,
             purchase_cap_mult=10.0,
             extension_sec=120.0,
@@ -92,8 +92,8 @@ class TestTimeCurveModel(unittest.TestCase):
             hybrid_linear_days=4.0,
             hybrid_tail_daily_frac=0.40,
         )
-        self.assertAlmostEqual(min_buy_at(2 * 86400.0, p), 1.5)
-        self.assertAlmostEqual(min_buy_at(4 * 86400.0, p), 2.0)
+        self.assertAlmostEqual(min_buy_at(2 * 86400.0, p), 1.4)
+        self.assertAlmostEqual(min_buy_at(4 * 86400.0, p), 1.8)
 
     def test_extend_deadline_or_reset_below_13m(self) -> None:
         p = _sample_params(

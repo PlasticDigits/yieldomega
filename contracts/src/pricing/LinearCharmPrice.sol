@@ -5,7 +5,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ICharmPrice} from "../interfaces/ICharmPrice.sol";
 
 /// @title LinearCharmPrice — price = base + (dailyIncrement × elapsed / 1 day)
-/// @notice Default product schedule: e.g. $1.0 + $0.10 per day in asset wei (18-decimals).
+/// @notice Default DOUB schedule: e.g. **$1.0** per 1e18 CHARM at start, **+$0.10** per **elapsed sale day** per 1e18 CHARM (linear in **time**, not in how many charms are bought).
 contract LinearCharmPrice is ICharmPrice {
     uint256 internal constant SECONDS_PER_DAY = 86_400;
 

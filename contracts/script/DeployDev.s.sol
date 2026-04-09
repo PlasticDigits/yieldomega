@@ -116,8 +116,8 @@ contract DeployDev is Script {
             podiumPool,
             address(referralRegistry),
             ICharmPrice(address(charmPrice)),
-            1e18, // charm envelope reference WAD (25%/day scaling of 0.99–10 CHARM band)
-            223_143_551_314_209_700, // growthRateWad (ln(1.25))
+            1e18, // charm envelope reference WAD (20%/day scaling of 0.99–10 CHARM band)
+            182_321_556_793_954_592, // growthRateWad (ln(1.2))
             120, // timerExtensionSec (2 min per buy)
             86_400, // initialTimerSec (24h first deadline)
             4 * 86_400, // timerCapSec (max 96h remaining from any buy)

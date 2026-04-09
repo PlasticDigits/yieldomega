@@ -19,7 +19,7 @@ import {MockReserveCl8y, MockLaunchToken} from "../script/DeployDev.s.sol";
 contract DevStackIntegrationTest is Test {
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
-    uint256 internal constant GROWTH_WAD = 223_143_551_314_209_700;
+    uint256 internal constant GROWTH_WAD = 182_321_556_793_954_592;
 
     MockReserveCl8y reserveAsset;
     Doubloon doub;
