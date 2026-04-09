@@ -35,15 +35,19 @@ test.describe("Anvil TimeCurve RPC reads", () => {
       page.getByText("Could not read contract (check RPC / network)."),
     ).toHaveCount(0);
 
-    await expect(
-      page.getByRole("heading", { name: "Onchain (contract)" }),
-    ).toBeVisible();
+    const protocolDetail = page.locator("summary").filter({
+      hasText: "Raw contract and operator context",
+    });
+    await expect(protocolDetail).toBeVisible();
+    await protocolDetail.click();
+
+    await expect(page.getByRole("heading", { name: "Onchain snapshot" })).toBeVisible();
 
     await expect(page.locator('dt:text-is("ended") + dd')).toHaveText(
       /^(true|false)$/,
     );
     await expect(
-      page.locator('dt:text-is("currentMinBuyAmount") + dd'),
+      page.locator('dt:text-is("time remaining") + dd'),
     ).not.toHaveText("—");
   });
 });

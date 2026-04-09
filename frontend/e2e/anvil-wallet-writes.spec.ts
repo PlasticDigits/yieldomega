@@ -31,16 +31,21 @@ test.describe("Anvil wallet writes", () => {
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: 120_000,
     });
-    await connectMockIfPlaceholderVisible(page, "Connect a wallet to buy.");
-    await expect(page.getByText("Connect a wallet to buy.")).not.toBeVisible({
+    await connectMockIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
+    await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
       timeout: 60_000,
     });
 
-    const buyPanel = page.locator(".data-panel").filter({ hasText: "Buy (wallet)" });
+    const buyPanel = page.locator(".data-panel").filter({ hasText: "Buy charms" });
     await expect(buyPanel.getByRole("button", { name: /buy/i })).toBeVisible({
       timeout: 60_000,
     });
-    await buyPanel.getByRole("textbox").fill("1");
+    await buyPanel.locator('input[type="range"]').evaluate((input) => {
+      const el = input as HTMLInputElement;
+      el.value = "1";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
     await buyPanel.getByRole("button", { name: /buy/i }).click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: 120_000,
