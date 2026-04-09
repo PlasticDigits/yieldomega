@@ -25,7 +25,7 @@ contract MockPlain is ERC20 {
 
 /// @dev Sad-path tests for non-standard ERC-20 behavior (see docs/onchain/security-and-threat-model.md).
 contract NonStandardERC20Test is Test {
-    uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700;
+    uint256 internal constant GROWTH_RATE = 182_321_556_793_954_592;
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 

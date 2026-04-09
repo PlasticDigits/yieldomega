@@ -19,7 +19,7 @@ contract MockERC20 is ERC20 {
 
 /// @dev Referral CHARM + full gross routed to FeeRouter (see docs/product/referrals.md).
 contract TimeCurveReferralTest is Test {
-    uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700;
+    uint256 internal constant GROWTH_RATE = 182_321_556_793_954_592;
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 

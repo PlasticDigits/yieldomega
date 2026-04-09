@@ -22,7 +22,7 @@ WARBOW_AMBUSH_BONUS_BP = 200
 class TimeCurveParams:
     """Numeric policy bundle for sweep / Monte Carlo."""
 
-    # Daily multiplicative growth (e.g. 0.25 = 25% per day); interpolated per-second onchain.
+    # Daily multiplicative growth (e.g. 0.20 = 20% per day); interpolated per-second onchain.
     daily_growth_frac: float
     # Starting minimum buy (USDm or wei-scaled float).
     min_buy_0: float
@@ -186,7 +186,7 @@ def clamp_spend(
 
 def canonical_timecurve_params(
     *,
-    daily_growth_frac: float = 0.25,
+    daily_growth_frac: float = 0.20,
     min_buy_0: float = 1.0,
     purchase_cap_mult: float = 10.0,
     extension_sec: float = 120.0,
@@ -197,7 +197,7 @@ def canonical_timecurve_params(
 ) -> TimeCurveParams:
     """
     Canonical deployment targets (docs + `DeployDev.s.sol`): 24h initial, 96h timer cap,
-    120s extension per buy, 25% daily min-buy growth (exponential onchain), 10× cap unless overridden.
+    120s extension per buy, 20% daily envelope growth (exponential onchain), 10× cap unless overridden.
     """
     return TimeCurveParams(
         daily_growth_frac=daily_growth_frac,

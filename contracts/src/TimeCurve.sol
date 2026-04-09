@@ -76,7 +76,9 @@ contract TimeCurve is ReentrancyGuard {
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     uint256 internal constant WAD = 1e18;
+    /// @dev 0.99e18 — on-chain floor vs 1.0 CHARM in UX so envelope drift during wallet signing does not revert min buys.
     uint256 internal constant CHARM_MIN_BASE_WAD = 99e16;
+    /// @dev 10e18 — max CHARM per buy is 10× the nominal 1 CHARM unit at the same envelope scale.
     uint256 internal constant CHARM_MAX_BASE_WAD = 10e18;
 
     IERC20 public immutable acceptedAsset;

@@ -361,15 +361,15 @@ def alternative_min_buy_formulas(t_sec: float, min0: float) -> dict[str, float]:
     (not deployed in v1 contracts).
     """
     days = t_sec / 86400.0
-    exp_daily = min0 * math.exp(math.log(1.25) * days)
-    linear = min0 * (1.0 + 0.25 * days)
-    sqrt_curve = min0 * (1.0 + 0.25 * math.sqrt(max(0.0, days)))
+    exp_daily = min0 * math.exp(math.log(1.20) * days)
+    linear = min0 * (1.0 + 0.20 * days)
+    sqrt_curve = min0 * (1.0 + 0.20 * math.sqrt(max(0.0, days)))
     p_h = hybrid_exploration_params()
     hybrid = min0 * min_buy_at(t_sec, p_h) / p_h.min_buy_0
     return {
-        "exp_25pct_per_day_onchain": exp_daily,
-        "linear_25pct_per_day": linear,
-        "sqrt_scaled_25pct": sqrt_curve,
+        "exp_20pct_per_day_onchain": exp_daily,
+        "linear_20pct_per_day": linear,
+        "sqrt_scaled_20pct": sqrt_curve,
         "hybrid_linear_plus_tail_sim": hybrid,
     }
 
