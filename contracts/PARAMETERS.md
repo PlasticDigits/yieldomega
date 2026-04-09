@@ -16,7 +16,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 |-----------|-----------------|----------------|--------|
 | Accepted asset | Testnet **CL8Y** (ERC-20) | **Standard ERC-20 only** (no fee-on-transfer / rebasing for TimeCurve `buy` accounting). Single asset for v1; resolve address from official artifacts at deploy | **TODO** — address |
 | Initial minimum buy | 1 CL8Y (`1e18` in asset decimals) | > 0 | Default |
-| Daily growth fraction | 25 % (`0.25`) → `growthRateWad = ln(1.25) ≈ 223_143_551_314_209_700` | Must be > 0; governance-set | Default |
+| Daily growth fraction | 20 % (`0.20`) → `growthRateWad = ln(1.2) ≈ 182_321_556_793_954_592` | Must be > 0; governance-set | Default |
 | Purchase cap multiple | 10× current min buy | Must be ≥ 2 | Default |
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
 | Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |

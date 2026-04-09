@@ -19,7 +19,7 @@ contract MockERC20 is ERC20 {
 
 contract TimeCurveTest is Test {
     uint256 internal constant WAD = 1e18;
-    uint256 internal constant GROWTH_RATE = 223_143_551_314_209_700; // ln(1.25) WAD
+    uint256 internal constant GROWTH_RATE = 182_321_556_793_954_592; // ln(1.2) WAD
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
 
@@ -339,8 +339,8 @@ contract TimeCurveTest is Test {
         vm.warp(block.timestamp + ONE_DAY);
         uint256 mb1 = tc.currentMinBuyAmount();
         assertGt(mb1, mb0);
-        // Envelope scales ~25%/day; min spend = minCharm × flat price (1:1 in test).
-        assertApproxEqRel(mb1, (mb0 * 125) / 100, 1e14);
+        // Envelope scales ~20%/day; min spend = minCharm × flat price (1:1 in test).
+        assertApproxEqRel(mb1, (mb0 * 120) / 100, 1e14);
     }
 
     // ── Prize podiums ──────────────────────────────────────────────────
@@ -1158,14 +1158,14 @@ contract TimeCurveTest is Test {
         assertLe(diff, maxC, "10*minCharm ~ 0.99*maxCharm after floor division");
     }
 
-    /// @dev CHARM bounds scale ~25%/day with canonical `growthRateWad` (exponential envelope).
-    function test_charmBounds_scale_approx_25_percent_per_day() public {
+    /// @dev CHARM bounds scale ~20%/day with canonical `growthRateWad` (exponential envelope).
+    function test_charmBounds_scale_approx_20_percent_per_day() public {
         tc.startSale();
         (uint256 min0, uint256 max0) = tc.currentCharmBoundsWad();
         vm.warp(block.timestamp + ONE_DAY);
         (uint256 min1, uint256 max1) = tc.currentCharmBoundsWad();
-        assertApproxEqRel(min1, (min0 * 125) / 100, 1e14);
-        assertApproxEqRel(max1, (max0 * 125) / 100, 1e14);
+        assertApproxEqRel(min1, (min0 * 120) / 100, 1e14);
+        assertApproxEqRel(max1, (max0 * 120) / 100, 1e14);
     }
 
     /// @dev Gross spend equals `charmWad * priceWad / WAD` for arbitrary valid CHARM in band (fuzz).
