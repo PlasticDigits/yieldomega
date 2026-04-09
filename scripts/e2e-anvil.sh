@@ -9,6 +9,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${ANVIL_PORT:-8545}"
 RPC="http://127.0.0.1:${PORT}"
 DEPLOY_LOG="$(mktemp)"
+# shellcheck source=scripts/lib/anvil_deploy_dev.sh
+source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+
 trap 'rm -f "${DEPLOY_LOG}"; kill "${ANVIL_PID:-0}" 2>/dev/null || true' EXIT
 
 if ! command -v anvil >/dev/null || ! command -v forge >/dev/null || ! command -v cast >/dev/null; then
@@ -36,29 +39,7 @@ if ! cast block-number --rpc-url "${RPC}" >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Building contracts and deploying DeployDev..."
-cd "${ROOT}/contracts"
-# Use a dedicated artifact dir so this script works even if default `out/` is not writable (e.g. root-owned).
-export FOUNDRY_OUT="${ROOT}/contracts/out-e2e-anvil"
-mkdir -p "${FOUNDRY_OUT}"
-forge build
-forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" -vv 2>&1 | tee "${DEPLOY_LOG}"
-
-extract_addr() {
-  local label="$1"
-  grep "${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
-}
-
-TC=$(extract_addr "TimeCurve")
-RT=$(extract_addr "RabbitTreasury")
-NFT=$(extract_addr "LeprechaunNFT")
-
-if [ -z "${TC}" ] || [ -z "${RT}" ] || [ -z "${NFT}" ]; then
-  echo "Could not parse deploy addresses from log. Expected TimeCurve, RabbitTreasury, LeprechaunNFT lines." >&2
-  exit 1
-fi
-
-echo "Addresses: TimeCurve=${TC} RabbitTreasury=${RT} LeprechaunNFT=${NFT}"
+yieldomega_anvil_deploy_dev
 
 export VITE_CHAIN_ID=31337
 export VITE_RPC_URL="${RPC}"

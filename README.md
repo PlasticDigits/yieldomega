@@ -33,6 +33,7 @@ What this ecosystem explicitly does **not** optimize for:
 - **`docs/`** — architecture, product specs, and process; entry point [`docs/README.md`](docs/README.md). This is the reference for trust boundaries and behavior; implementation in the package directories should follow it.
 - **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests; roadmap alignment in [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md) and [`docs/agent-phases.md`](docs/agent-phases.md).
 - **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
+- **`bots/`** — optional Python clients for local/public RPC testing ([`bots/README.md`](bots/README.md)); first package: TimeCurve ([`bots/timecurve/README.md`](bots/timecurve/README.md)).
 - **Agent skills:** **Contributor** (code): [`.cursor/skills/README.md`](.cursor/skills/README.md), guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). **Play** (TimeCurve, Rabbit Treasury, Leprechauns): [`skills/README.md`](skills/README.md).
 - **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.
 
