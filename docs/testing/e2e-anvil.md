@@ -80,6 +80,7 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 
 ## Related
 
+- [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — same `DeployDev` deploy as this flow; writes `bots/timecurve/.env.local` for the `timecurve-bot` CLI ([`bots/timecurve/README.md`](../../bots/timecurve/README.md)).
 - [Anvil same-block drill](anvil-same-block-drill.md) — ordering tests with `anvil_mine`, not Playwright.
 - [operations/stage2-run-log.md](../operations/stage2-run-log.md) — full-stack smoke checklist.
 

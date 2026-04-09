@@ -1,0 +1,112 @@
+[
+  {
+    "inputs": [],
+    "name": "acceptedAsset",
+    "outputs": [{"internalType": "contract IERC20", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {"inputs": [], "name": "saleStart", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+  {"inputs": [], "name": "deadline", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+  {"inputs": [], "name": "ended", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
+  {"inputs": [], "name": "totalRaised", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+  {"inputs": [], "name": "totalCharmWeight", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+  {
+    "inputs": [],
+    "name": "currentCharmBoundsWad",
+    "outputs": [
+      {"internalType": "uint256", "name": "minCharmWad", "type": "uint256"},
+      {"internalType": "uint256", "name": "maxCharmWad", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "currentPricePerCharmWad",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint8", "name": "category", "type": "uint8"}],
+    "name": "podium",
+    "outputs": [
+      {"internalType": "address[3]", "name": "winners", "type": "address[3]"},
+      {"internalType": "uint256[3]", "name": "values", "type": "uint256[3]"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "warbowLadderPodium",
+    "outputs": [
+      {"internalType": "address[3]", "name": "winners", "type": "address[3]"},
+      {"internalType": "uint256[3]", "name": "values", "type": "uint256[3]"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "name": "battlePoints",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "name": "activeDefendedStreak",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "name": "bestDefendedStreak",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "warbowPendingFlagOwner",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "warbowPendingFlagPlantAt",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "charmWad", "type": "uint256"}],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {"inputs": [], "name": "claimWarBowFlag", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
+  {
+    "inputs": [
+      {"internalType": "address", "name": "victim", "type": "address"},
+      {"internalType": "bool", "name": "payBypassBurn", "type": "bool"}
+    ],
+    "name": "warbowSteal",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "stealer", "type": "address"}],
+    "name": "warbowRevenge",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {"inputs": [], "name": "warbowActivateGuard", "outputs": [], "stateMutability": "nonpayable", "type": "function"}
+]

@@ -110,6 +110,25 @@ jobs:
       - name: Unit tests
         run: PYTHONPATH=. python3 -m unittest discover -s tests -v
 
+  bots-timecurve-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bots/timecurve
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and pytest
+        run: |
+          pip install -e ".[dev]"
+          pytest tests -v
+
   playwright-e2e:
     runs-on: ubuntu-latest
     defaults:

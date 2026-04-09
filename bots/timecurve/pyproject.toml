@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "timecurve-bot"
+version = "0.1.0"
+description = "Yieldomega TimeCurve client bot — Anvil-first local testing and public RPC reads"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+dependencies = [
+  "web3>=6.15.0,<8",
+  "typer>=0.12.3,<0.20",
+  "python-dotenv>=1.0.1,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+]
+
+[project.scripts]
+timecurve-bot = "timecurve_bot.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["timecurve_bot*"]
+
+[tool.setuptools.package-data]
+timecurve_bot = ["abis/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

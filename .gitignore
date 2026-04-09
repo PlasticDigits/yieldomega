@@ -82,8 +82,10 @@ out/
 
 # Python simulations
 simulations/.venv/
+bots/timecurve/.venv/
 scripts/replicate-art/.venv/
 simulations/output/
 __pycache__/
+*.egg-info/
 *.py[cod]
 *$py.class
