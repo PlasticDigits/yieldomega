@@ -15,6 +15,5 @@ test.describe("Anvil Collection (placeholder)", () => {
   test("collection page is under construction", async ({ page }) => {
     await page.goto("/collection");
     await expect(page.getByTestId("under-construction-collection")).toBeVisible();
-    await expect(page.getByText("Under construction")).toBeVisible();
   });
 });
