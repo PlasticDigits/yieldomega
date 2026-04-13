@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { sameAddress, shortAddress } from "./addressFormat";
+import { sameAddress, shortAddress, type WalletFormatShort } from "./addressFormat";
 import type { BuyItem, WarbowBattleFeedItem } from "./indexerApi";
 
 export type TimerPreviewNarrative = {
@@ -55,11 +55,16 @@ function parseBigInt(value: unknown): bigint | null {
   return null;
 }
 
-function perspectiveLabel(actor: string | undefined, viewer: string | undefined, selfText: string): string {
+function perspectiveLabel(
+  actor: string | undefined,
+  viewer: string | undefined,
+  selfText: string,
+  formatShort: WalletFormatShort,
+): string {
   if (sameAddress(actor, viewer)) {
     return selfText;
   }
-  return shortAddress(actor, "Unknown player");
+  return formatShort(actor, "Unknown player");
 }
 
 export function describeTimerPreview(
@@ -103,8 +108,12 @@ export function describeTimerPreview(
   };
 }
 
-export function buildBuyFeedNarrative(buy: BuyItem, viewer: string | undefined): FeedNarrative {
-  const buyer = perspectiveLabel(buy.buyer, viewer, "You");
+export function buildBuyFeedNarrative(
+  buy: BuyItem,
+  viewer: string | undefined,
+  formatShort: WalletFormatShort = shortAddress,
+): FeedNarrative {
+  const buyer = perspectiveLabel(buy.buyer, viewer, "You", formatShort);
   const actualSecondsAdded = parseBigInt(buy.actual_seconds_added) ?? 0n;
   const battlePointsAfter = parseBigInt(buy.battle_points_after);
   const streakBreakBonus = parseBigInt(buy.bp_streak_break_bonus) ?? 0n;
@@ -164,7 +173,11 @@ export function buildBuyFeedNarrative(buy: BuyItem, viewer: string | undefined):
   };
 }
 
-export function buildBuyHistoryPoints(buys: BuyItem[] | null | undefined, limit = 6): BuyHistoryPoint[] {
+export function buildBuyHistoryPoints(
+  buys: BuyItem[] | null | undefined,
+  limit = 6,
+  formatShort: WalletFormatShort = shortAddress,
+): BuyHistoryPoint[] {
   if (!buys || buys.length === 0) {
     return [];
   }
@@ -180,7 +193,7 @@ export function buildBuyHistoryPoints(buys: BuyItem[] | null | undefined, limit 
     const width = maxSeconds > 0n ? Number((secondsAdded * 100n) / maxSeconds) : 0;
     return {
       key: `${buy.tx_hash}-${buy.log_index}-${index}`,
-      buyer: shortAddress(buy.buyer, "Unknown player"),
+      buyer: formatShort(buy.buyer, "Unknown player"),
       width,
       secondsAdded,
       totalRaisedAfter,
@@ -206,19 +219,22 @@ export function buildBuyBattlePointBreakdown(buy: BuyItem): BattlePointBreakdown
   return rows.filter((row) => row.value !== 0n);
 }
 
-export function describeStealPreflight(params: {
-  connected: boolean;
-  saleActive: boolean;
-  saleEnded: boolean;
-  viewer: string | undefined;
-  victim: string | undefined;
-  viewerBattlePoints: bigint | undefined;
-  victimBattlePoints: bigint | undefined;
-  victimStealsToday: bigint | undefined;
-  maxStealsPerDay: bigint;
-  bypassSelected: boolean;
-  guardActive: boolean;
-}): WarbowPreflightNarrative {
+export function describeStealPreflight(
+  params: {
+    connected: boolean;
+    saleActive: boolean;
+    saleEnded: boolean;
+    viewer: string | undefined;
+    victim: string | undefined;
+    viewerBattlePoints: bigint | undefined;
+    victimBattlePoints: bigint | undefined;
+    victimStealsToday: bigint | undefined;
+    maxStealsPerDay: bigint;
+    bypassSelected: boolean;
+    guardActive: boolean;
+  },
+  formatShort: WalletFormatShort = shortAddress,
+): WarbowPreflightNarrative {
   const {
     connected,
     saleActive,
@@ -274,28 +290,29 @@ export function describeStealPreflight(params: {
     return {
       tone: "error",
       title: "2x rule not met",
-      detail: `${shortAddress(victim, "Victim")} has ${victimBattlePoints} BP vs your ${viewerBattlePoints} BP, so the steal would revert right now.`,
+      detail: `${formatShort(victim, "Victim")} has ${victimBattlePoints} BP vs your ${viewerBattlePoints} BP, so the steal would revert right now.`,
     };
   }
   if (victimStealsToday !== undefined && victimStealsToday >= maxStealsPerDay && !bypassSelected) {
     return {
       tone: "warning",
       title: "Daily cap reached",
-      detail: `${shortAddress(victim, "Victim")} already hit ${maxStealsPerDay} steals today. Enable bypass if you still want to burn for the hit.`,
+      detail: `${formatShort(victim, "Victim")} already hit ${maxStealsPerDay} steals today. Enable bypass if you still want to burn for the hit.`,
     };
   }
   return {
     tone: guardActive ? "warning" : "success",
     title: "Steal looks eligible",
     detail: guardActive
-      ? `${shortAddress(victim, "Victim")} passes the 2x rule. Your own guard is already live, so decide whether to keep defending or convert that safety into pressure.`
-      : `${shortAddress(victim, "Victim")} passes the 2x rule${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals today` : ""}.`,
+      ? `${formatShort(victim, "Victim")} passes the 2x rule. Your own guard is already live, so decide whether to keep defending or convert that safety into pressure.`
+      : `${formatShort(victim, "Victim")} passes the 2x rule${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals today` : ""}.`,
   };
 }
 
 export function buildWarbowFeedNarrative(
   item: WarbowBattleFeedItem,
   viewer: string | undefined,
+  formatShort: WalletFormatShort = shortAddress,
 ): FeedNarrative {
   const detail = (item.detail ?? {}) as Record<string, unknown>;
   const attacker = detail.attacker as string | undefined;
@@ -327,7 +344,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "WarBow steal",
-        headline: `${perspectiveLabel(attacker, viewer, "You")} stole from ${perspectiveLabel(victim, viewer, "you")}`,
+        headline: `${perspectiveLabel(attacker, viewer, "You", formatShort)} stole from ${perspectiveLabel(victim, viewer, "you", formatShort)}`,
         detail:
           amountBp !== null
             ? `Momentum changed hands for ${amountBp} BP${attackerBpAfter !== null && victimBpAfter !== null ? `, moving the ladder to ${attackerBpAfter} vs ${victimBpAfter}.` : "."}`
@@ -340,7 +357,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "WarBow revenge",
-        headline: `${perspectiveLabel(avenger, viewer, "You")} struck back at ${perspectiveLabel(stealer, viewer, "you")}`,
+        headline: `${perspectiveLabel(avenger, viewer, "You", formatShort)} struck back at ${perspectiveLabel(stealer, viewer, "you", formatShort)}`,
         detail: amountBp !== null ? `Revenge reclaimed ${amountBp} BP.` : "A revenge window was converted into a counter-hit.",
         tags,
       };
@@ -350,7 +367,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "WarBow defense",
-        headline: `${perspectiveLabel(player, viewer, "You")} activated guard`,
+        headline: `${perspectiveLabel(player, viewer, "You", formatShort)} activated guard`,
         detail:
           guardUntilTs !== null
             ? `Incoming steals are softened while guard is live until ${new Date(Number(guardUntilTs) * 1000).toLocaleTimeString()}.`
@@ -363,7 +380,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "Flag claimed",
-        headline: `${perspectiveLabel(player, viewer, "You")} held silence and claimed the flag`,
+        headline: `${perspectiveLabel(player, viewer, "You", formatShort)} held silence and claimed the flag`,
         detail:
           bonusBp !== null
             ? `The quiet window paid out ${bonusBp} BP${playerBpAfter !== null ? `, pushing the holder to ${playerBpAfter} BP.` : "."}`
@@ -376,10 +393,11 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "Flag denied",
-        headline: `${perspectiveLabel(formerHolder, viewer, "You")} lost a flag to ${perspectiveLabel(
+        headline: `${perspectiveLabel(formerHolder, viewer, "You", formatShort)} lost a flag to ${perspectiveLabel(
           interrupter,
           viewer,
-          shortAddress(interrupter, "Unknown player"),
+          "you",
+          formatShort,
         )}`,
         detail: penaltyBp !== null ? `The interruption cost ${penaltyBp} BP.` : "A late interrupt erased a claimable flag.",
         tags,
@@ -390,7 +408,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "Defended streak",
-        headline: `${perspectiveLabel(detail.wallet as string | undefined, viewer, "You")} kept the streak alive`,
+        headline: `${perspectiveLabel(detail.wallet as string | undefined, viewer, "You", formatShort)} kept the streak alive`,
         detail:
           activeStreak !== null
             ? `The under-15-minute defense chain reached ${activeStreak}.`
@@ -403,7 +421,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "Streak break",
-        headline: `${perspectiveLabel(interrupter, viewer, "You")} snapped ${perspectiveLabel(formerHolder, viewer, "your")} streak`,
+        headline: `${perspectiveLabel(interrupter, viewer, "You", formatShort)} snapped ${perspectiveLabel(formerHolder, viewer, "your", formatShort)} streak`,
         detail:
           brokenLength !== null
             ? `A defended streak of ${brokenLength} was ended.`
@@ -413,7 +431,7 @@ export function buildWarbowFeedNarrative(
     case "defended_streak_window_cleared":
       return {
         eyebrow: "Window cleared",
-        headline: `${perspectiveLabel(detail.cleared_wallet as string | undefined, viewer, "You")} lost the under-15-minute window`,
+        headline: `${perspectiveLabel(detail.cleared_wallet as string | undefined, viewer, "You", formatShort)} lost the under-15-minute window`,
         detail: "The timer climbed high enough that the current streak phase reset.",
         tags,
       };
@@ -423,7 +441,7 @@ export function buildWarbowFeedNarrative(
       }
       return {
         eyebrow: "WarBow burn",
-        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You")} paid the PvP burn`,
+        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You", formatShort)} paid the PvP burn`,
         detail: "WarBow actions keep their risk visible by burning CL8Y onchain.",
         tags,
       };

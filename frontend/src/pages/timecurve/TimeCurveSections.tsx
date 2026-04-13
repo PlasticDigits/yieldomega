@@ -18,7 +18,7 @@ import type {
   WarbowPreflightNarrative,
 } from "@/lib/timeCurveUx";
 import { RESERVE_FEE_ROUTING_BPS } from "@/lib/timeCurvePodiumMath";
-import { shortAddress } from "@/lib/addressFormat";
+import type { WalletFormatShort } from "@/lib/addressFormat";
 import type {
   BuyItem,
   CharmRedemptionItem,
@@ -408,8 +408,10 @@ export function PodiumsSection(props: {
   podiumRows: { winners: [`0x${string}`, `0x${string}`, `0x${string}`]; values: readonly [bigint, bigint, bigint] }[];
   address: string | undefined;
   formatPodiumLeaderboardValue: (categoryIndex: number, raw: bigint) => string;
+  formatWallet: WalletFormatShort;
 }) {
-  const { podiumPayoutPreview, decimals, podiumLoading, podiumRows, address, formatPodiumLeaderboardValue } = props;
+  const { podiumPayoutPreview, decimals, podiumLoading, podiumRows, address, formatPodiumLeaderboardValue, formatWallet } =
+    props;
   return (
     <PageSection
       title="Podiums and prizes"
@@ -463,7 +465,11 @@ export function PodiumsSection(props: {
                       rows={row.winners.map((winner, placeIndex) => ({
                         key: `podium-${index}-${winner}-${placeIndex}`,
                         rank: placeIndex + 1,
-                        label: <span className="mono">{shortAddress(winner)}</span>,
+                        label: (
+                          <span className="mono" title={winner}>
+                            {formatWallet(winner, "—")}
+                          </span>
+                        ),
                         value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? 0n),
                         meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
                         highlight: Boolean(address && winner.toLowerCase() === address.toLowerCase()),
@@ -495,6 +501,7 @@ export function BattleFeedSection(props: {
   prizeDist: PrizeDistributionItem[] | null;
   prizePayouts: PrizePayoutItem[] | null;
   refApplied: ReferralAppliedItem[] | null;
+  formatWallet: WalletFormatShort;
 }) {
   const {
     indexerNote,
@@ -511,6 +518,7 @@ export function BattleFeedSection(props: {
     prizeDist,
     prizePayouts,
     refApplied,
+    formatWallet,
   } = props;
 
   return (
@@ -584,7 +592,10 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {claims.map((claim) => (
                     <li key={`${claim.tx_hash}-${claim.log_index}`}>
-                      <span className="mono">{shortAddress(claim.buyer)}</span> redeemed{" "}
+                      <span className="mono" title={claim.buyer}>
+                        {formatWallet(claim.buyer, "—")}
+                      </span>{" "}
+                      redeemed{" "}
                       <AmountDisplay raw={claim.token_amount} decimals={18} /> · tx <TxHash hash={claim.tx_hash} />
                     </li>
                   ))}
@@ -613,7 +624,10 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {prizePayouts.map((item) => (
                     <li key={`${item.tx_hash}-${item.log_index}`}>
-                      <span className="mono">{shortAddress(item.winner)}</span> · category {item.category} · place{" "}
+                      <span className="mono" title={item.winner}>
+                        {formatWallet(item.winner, "—")}
+                      </span>{" "}
+                      · category {item.category} · place{" "}
                       {item.placement} · <AmountDisplay raw={BigInt(item.amount)} decimals={decimals} /> · tx{" "}
                       <TxHash hash={item.tx_hash} />
                     </li>
@@ -630,7 +644,11 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {refApplied.map((item) => (
                     <li key={`${item.tx_hash}-${item.log_index}`}>
-                      buyer <span className="mono">{shortAddress(item.buyer)}</span> · referrer CHARM{" "}
+                      buyer{" "}
+                      <span className="mono" title={item.buyer}>
+                        {formatWallet(item.buyer, "—")}
+                      </span>{" "}
+                      · referrer CHARM{" "}
                       <AmountDisplay raw={BigInt(item.referrer_amount)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
                     </li>
                   ))}
@@ -683,6 +701,7 @@ export function RawDataAccordion(props: {
   minSpendCurvePoints: { minSpend: bigint }[];
   decimals: number;
   launchedDec: number;
+  formatWallet: WalletFormatShort;
 }) {
   const {
     coreTcData,
@@ -714,6 +733,7 @@ export function RawDataAccordion(props: {
     minSpendCurvePoints,
     decimals,
     launchedDec,
+    formatWallet,
   } = props;
 
   return (
@@ -770,9 +790,17 @@ export function RawDataAccordion(props: {
                   <dt>best streak</dt>
                   <dd>{bestStreakResult?.status === "success" ? formatLocaleInteger(bestStreakResult.result as bigint) : "—"}</dd>
                   <dt>revenge</dt>
-                  <dd className="mono">
+                  <dd
+                    className="mono"
+                    title={
+                      pendingRevengeStealer &&
+                      pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
+                        ? pendingRevengeStealer
+                        : undefined
+                    }
+                  >
                     {pendingRevengeStealer && pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
-                      ? `${shortAddress(pendingRevengeStealer)} · ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
+                      ? `${formatWallet(pendingRevengeStealer, "—")} · ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
                       : "—"}
                   </dd>
                 </dl>
