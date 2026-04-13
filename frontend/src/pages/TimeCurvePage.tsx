@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
@@ -12,7 +12,7 @@ import {
   useWriteContract,
 } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
-import { sameAddress, shortAddress } from "@/lib/addressFormat";
+import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
@@ -62,6 +62,8 @@ import {
   projectedReservePerDoubWad,
 } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
+import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
+import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
 import {
   fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
@@ -80,6 +82,17 @@ import {
   type WarbowBattleFeedItem,
   type WarbowLeaderboardItem,
 } from "@/lib/indexerApi";
+
+function walletMono(addr: string | undefined, formatWallet: (a: string | undefined, fb: string) => string) {
+  if (!addr) {
+    return <span className="mono">—</span>;
+  }
+  return (
+    <span className="mono" title={addr}>
+      {formatWallet(addr, "—")}
+    </span>
+  );
+}
 
 function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): string {
   if (categoryIndex === 1) {
@@ -669,6 +682,50 @@ export function TimeCurvePage() {
       : saleStartPending
         ? "info"
         : "warning";
+
+  const warbowPodiumWalletList = useMemo((): readonly `0x${string}`[] | undefined => {
+    if (warbowLadderPodiumR?.status !== "success") {
+      return undefined;
+    }
+    const [wallets] = warbowLadderPodiumR.result as readonly [readonly `0x${string}`[], readonly bigint[]];
+    return wallets;
+  }, [warbowLadderPodiumR]);
+
+  const dotMegaAddressList = useMemo(
+    () =>
+      collectTimecurveWalletAddressesForDotMega({
+        connected: address,
+        stealVictim,
+        stealVictimInput,
+        warbowLb,
+        buys,
+        claims,
+        prizePayouts,
+        refApplied,
+        warbowFeed,
+        podiumRows: podiumReads.data ?? [],
+        warbowPodiumWallets: warbowPodiumWalletList,
+        pendingRevengeStealer,
+      }),
+    [
+      address,
+      stealVictim,
+      stealVictimInput,
+      warbowLb,
+      buys,
+      claims,
+      prizePayouts,
+      refApplied,
+      warbowFeed,
+      podiumReads.data,
+      warbowPodiumWalletList,
+      pendingRevengeStealer,
+    ],
+  );
+
+  const dotMegaNameByAddress = useDotMegaNameMap(dotMegaAddressList);
+  const formatWallet = useMemo(() => walletDisplayFromMap(dotMegaNameByAddress), [dotMegaNameByAddress]);
+
   const warbowRank =
     address && warbowLb
       ? warbowLb.findIndex((row) => sameAddress(row.buyer, address)) + 1 || null
@@ -683,7 +740,7 @@ export function TimeCurvePage() {
           return [0, 1, 2].map((index) => ({
             key: `warbow-contract-${index}`,
             rank: index + 1,
-            label: <span className="mono">{shortAddress(wallets[index])}</span>,
+            label: walletMono(wallets[index], formatWallet),
             meta: sameAddress(wallets[index], address) ? "Connected wallet" : "Contract snapshot",
             value: `${values[index] !== undefined ? formatLocaleInteger(values[index]) : "—"} BP`,
             highlight: sameAddress(wallets[index], address),
@@ -693,7 +750,7 @@ export function TimeCurvePage() {
   const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
     key: `warbow-indexer-${row.buyer}`,
     rank: index + 1,
-    label: <span className="mono">{shortAddress(row.buyer)}</span>,
+    label: walletMono(row.buyer, formatWallet),
     meta: sameAddress(row.buyer, address)
       ? "Connected wallet"
       : `block ${formatLocaleInteger(row.block_number)}`,
@@ -949,19 +1006,22 @@ export function TimeCurvePage() {
     victimBattlePoints !== undefined ? BigInt(victimBattlePoints as bigint | number) : undefined;
   const stealPreflight = useMemo(
     () =>
-      describeStealPreflight({
-        connected: isConnected,
-        saleActive,
-        saleEnded,
-        viewer: address,
-        victim: stealVictim,
-        viewerBattlePoints,
-        victimBattlePoints: victimBattlePointsBigInt,
-        victimStealsToday: victimStealsTodayBigInt,
-        maxStealsPerDay: BigInt(warbowMaxSteals),
-        bypassSelected: stealBypass,
-        guardActive: guardedActive,
-      }),
+      describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          saleEnded,
+          viewer: address,
+          victim: stealVictim,
+          viewerBattlePoints,
+          victimBattlePoints: victimBattlePointsBigInt,
+          victimStealsToday: victimStealsTodayBigInt,
+          maxStealsPerDay: BigInt(warbowMaxSteals),
+          bypassSelected: stealBypass,
+          guardActive: guardedActive,
+        },
+        formatWallet,
+      ),
     [
       isConnected,
       saleActive,
@@ -974,6 +1034,7 @@ export function TimeCurvePage() {
       warbowMaxSteals,
       stealBypass,
       guardedActive,
+      formatWallet,
     ],
   );
 
@@ -1020,28 +1081,40 @@ export function TimeCurvePage() {
       key: string;
       label: string;
       help: string;
-      leader: string;
+      leader: ReactNode;
       value: string;
       highlight: boolean;
     }[] = rows.map((row, index) => ({
       key: `podium-spotlight-${index}`,
       label: PODIUM_LABELS[index] ?? `Category ${index + 1}`,
       help: PODIUM_HELP[index] ?? "Current onchain race.",
-      leader: shortAddress(row.winners[0]),
+      leader: (
+        <span className="mono" title={row.winners[0]}>
+          {formatWallet(row.winners[0], "—")}
+        </span>
+      ),
       value: formatPodiumLeaderboardValue(index, row.values[0] ?? 0n),
       highlight: sameAddress(row.winners[0], address),
     }));
     const warbowLeader = warbowTopRows[0];
+    const warbowLeaderDisplay: ReactNode =
+      warbowLeader !== undefined && typeof warbowLeader.label !== "string"
+        ? warbowLeader.label
+        : (
+            <span className="mono" title={warbowLb?.[0]?.buyer}>
+              {formatWallet(warbowLb?.[0]?.buyer, "—")}
+            </span>
+          );
     cards.push({
       key: "warbow-spotlight",
       label: "WarBow Ladder",
       help: "Battle Points PvP status surface, separate from reserve prizes.",
-      leader: typeof warbowLeader?.label === "string" ? warbowLeader.label : shortAddress(warbowLb?.[0]?.buyer),
+      leader: warbowLeaderDisplay,
       value: typeof warbowLeader?.value === "string" ? warbowLeader.value : "—",
       highlight: warbowLeader?.highlight ?? false,
     });
     return cards;
-  }, [podiumReads.data, warbowTopRows, warbowLb, address]);
+  }, [podiumReads.data, warbowTopRows, warbowLb, address, formatWallet]);
 
   const warbowMomentumBars = useMemo(() => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -1051,14 +1124,25 @@ export function TimeCurvePage() {
     const max = values.reduce((acc, value) => (value > acc ? value : acc), 0n);
     return [0, 1, 2].map((index) => ({
       key: `warbow-bar-${index}`,
-      label: shortAddress(wallets[index]),
+      wallet: wallets[index],
+      label: formatWallet(wallets[index], "—"),
       value: values[index] ?? 0n,
       width: max > 0n ? Number(((values[index] ?? 0n) * 100n) / max) : 0,
       highlight: sameAddress(wallets[index], address),
     }));
-  }, [warbowLadderPodiumR, address]);
+  }, [warbowLadderPodiumR, address, formatWallet]);
 
-  const buyHistoryPoints = useMemo(() => buildBuyHistoryPoints(buys, 6), [buys]);
+  const buyHistoryPoints = useMemo(() => buildBuyHistoryPoints(buys, 6, formatWallet), [buys, formatWallet]);
+
+  const buildBuyNarrativeForFeed = useCallback(
+    (buy: BuyItem, viewer: string | undefined) => buildBuyFeedNarrative(buy, viewer, formatWallet),
+    [formatWallet],
+  );
+  const buildWarbowNarrativeForFeed = useCallback(
+    (item: WarbowBattleFeedItem, viewer: string | undefined) => buildWarbowFeedNarrative(item, viewer, formatWallet),
+    [formatWallet],
+  );
+
   const latestBuyBpBreakdown = useMemo(
     () => (buys && buys.length > 0 ? buildBuyBattlePointBreakdown(buys[0]) : []),
     [buys],
@@ -1826,7 +1910,9 @@ export function TimeCurvePage() {
                         .join(" ")}
                     >
                       <div className="momentum-strip__meta">
-                        <span>{bar.label}</span>
+                        <span className="mono" title={bar.wallet}>
+                          {bar.label}
+                        </span>
                         <strong>{formatLocaleInteger(bar.value)} BP</strong>
                       </div>
                       <div className="momentum-strip__track">
@@ -1898,7 +1984,7 @@ export function TimeCurvePage() {
         warbowLeaderboardRows={warbowLeaderboardRows}
         warbowFeed={warbowFeed}
         address={address}
-        buildWarbowNarrative={buildWarbowFeedNarrative}
+        buildWarbowNarrative={buildWarbowNarrativeForFeed}
         stealBypass={stealBypass}
         setStealBypass={setStealBypass}
         runWarBowSteal={runWarBowSteal}
@@ -1928,6 +2014,7 @@ export function TimeCurvePage() {
         podiumRows={podiumReads.data ?? []}
         address={address}
         formatPodiumLeaderboardValue={formatPodiumLeaderboardValue}
+        formatWallet={formatWallet}
       />
 
       <BattleFeedSection
@@ -1938,8 +2025,9 @@ export function TimeCurvePage() {
         buysNextOffset={buysNextOffset}
         loadingMoreBuys={loadingMoreBuys}
         handleLoadMoreBuys={handleLoadMoreBuys}
-        buildBuyNarrative={buildBuyFeedNarrative}
+        buildBuyNarrative={buildBuyNarrativeForFeed}
         buildBuyBattlePointBreakdown={buildBuyBattlePointBreakdown}
+        formatWallet={formatWallet}
         claimsNote={claimsNote}
         claims={claims}
         prizeDist={prizeDist}
@@ -1977,6 +2065,7 @@ export function TimeCurvePage() {
         minSpendCurvePoints={minSpendCurvePoints}
         decimals={decimals}
         launchedDec={launchedDec}
+        formatWallet={formatWallet}
       />
     </section>
   );
