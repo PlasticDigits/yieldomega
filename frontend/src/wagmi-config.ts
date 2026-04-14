@@ -1,5 +1,6 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { createConfig, http, mock } from "wagmi";
+import { injected } from "wagmi/connectors";
 import { configuredChain, referenceChains } from "@/lib/chain";
 
 // SPDX-License-Identifier: AGPL-3.0-only
@@ -20,8 +21,8 @@ const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
 const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
 if (!projectId && !useE2EMockWallet) {
-  console.warn(
-    "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty; WalletConnect may not work. See .env.example.",
+  console.info(
+    "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty — using injected wallets only (no WalletConnect / Reown). Set the env var for mobile WalletConnect.",
   );
 }
 
@@ -53,10 +54,17 @@ export const wagmiConfig = useE2EMockWallet
       transports,
       ssr: false,
     })
-  : getDefaultConfig({
-      appName: "YieldOmega",
-      projectId: projectId || "00000000000000000000000000000000",
-      chains,
-      transports,
-      ssr: false,
-    });
+  : projectId
+    ? getDefaultConfig({
+        appName: "YieldOmega",
+        projectId,
+        chains,
+        transports,
+        ssr: false,
+      })
+    : createConfig({
+        chains,
+        connectors: [injected()],
+        transports,
+        ssr: false,
+      });

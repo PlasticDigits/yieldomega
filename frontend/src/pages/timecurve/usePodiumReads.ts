@@ -11,7 +11,8 @@ type ContractReadRow = {
 
 export type PodiumReadRow = {
   winners: [`0x${string}`, `0x${string}`, `0x${string}`];
-  values: readonly [bigint, bigint, bigint];
+  /** Base-10 onchain podium scores as strings (React props JSON-safe). */
+  values: readonly [string, string, string];
 };
 
 export function usePodiumReads(tc: `0x${string}` | undefined) {
@@ -46,7 +47,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   const rows: PodiumReadRow[] =
     data?.map((r) => {
       if (r.status !== "success") {
-        return { winners: ["0x0", "0x0", "0x0"] as const, values: [0n, 0n, 0n] as const };
+        return { winners: ["0x0", "0x0", "0x0"] as const, values: ["0", "0", "0"] as const };
       }
       const result = r.result as readonly [readonly `0x${string}`[], readonly (bigint | string)[]];
       const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
@@ -54,9 +55,9 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
       return {
         winners: [winners[0], winners[1], winners[2]],
         values: [
-          rawToBigIntForFormat(values[0]),
-          rawToBigIntForFormat(values[1]),
-          rawToBigIntForFormat(values[2]),
+          rawToBigIntForFormat(values[0]).toString(),
+          rawToBigIntForFormat(values[1]).toString(),
+          rawToBigIntForFormat(values[2]).toString(),
         ] as const,
       };
     }) ?? [];

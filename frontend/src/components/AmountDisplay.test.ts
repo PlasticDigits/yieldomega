@@ -15,7 +15,7 @@ function assertPhrasingSafeUnderP(markup: string) {
 describe("AmountDisplay (DOM nesting / SSR)", () => {
   it("renders only phrasing content — safe inside <p> (issue #9)", () => {
     const html = renderToStaticMarkup(
-      createElement("p", null, createElement(AmountDisplay, { raw: 1953145177291660455n, decimals: 18 })),
+      createElement("p", null, createElement(AmountDisplay, { raw: "1953145177291660455", decimals: 18 })),
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");
@@ -28,7 +28,7 @@ describe("AmountDisplay (DOM nesting / SSR)", () => {
 describe("UnixTimestampDisplay (DOM nesting / SSR)", () => {
   it("matches AmountDisplay phrasing model for shared layout", () => {
     const html = renderToStaticMarkup(
-      createElement("p", null, createElement(UnixTimestampDisplay, { raw: 1700000000n })),
+      createElement("p", null, createElement(UnixTimestampDisplay, { raw: "1700000000" })),
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");

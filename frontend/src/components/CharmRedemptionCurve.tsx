@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { formatUnits } from "viem";
+import { parseBigIntString } from "@/lib/formatAmount";
 
 type CharmRedemptionCurveProps = {
-  totalRaised: bigint;
-  totalTokensForSale: bigint;
+  /** Base-10 smallest units (string keeps React dev/profiler JSON-safe). */
+  totalRaised: string;
+  totalTokensForSale: string;
   acceptedDecimals: number;
   launchedDecimals: number;
-  userCharmWeight?: bigint;
+  userCharmWeight?: string;
   saleStarted: boolean;
 };
 
@@ -41,13 +43,18 @@ function ratioAlong(raised: bigint, xMax: bigint): number {
  * For fixed token supply, price scales linearly with total raised.
  */
 export function CharmRedemptionCurve({
-  totalRaised,
-  totalTokensForSale,
+  totalRaised: totalRaisedStr,
+  totalTokensForSale: totalTokensForSaleStr,
   acceptedDecimals,
   launchedDecimals,
-  userCharmWeight,
+  userCharmWeight: userCharmWeightStr,
   saleStarted,
 }: CharmRedemptionCurveProps) {
+  const totalRaised = parseBigIntString(totalRaisedStr);
+  const totalTokensForSale = parseBigIntString(totalTokensForSaleStr);
+  const userCharmWeight =
+    userCharmWeightStr !== undefined ? parseBigIntString(userCharmWeightStr) : undefined;
+
   const W = 400;
   const H = 160;
   const padL = 36;
