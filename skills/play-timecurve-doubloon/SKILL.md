@@ -22,6 +22,8 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 
 Authoritative rules: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium + timer + defended streak). **Do not** describe legacy ideas (fourth “activity” slice, most-buys / biggest-buy / cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
 
+**How this relates to “podiums” and WarBow:** The **fee-routed prize pool** (`PodiumPool`) funds **exactly three** prize **categories** (last buy, time booster, defended streak). Each category pays **1st / 2nd / 3rd** in **reserve** (not DOUB). **WarBow Ladder** (Battle Points) is a **separate** PvP score: the contract tracks a **top-3 BP** snapshot (`warbowLadderPodium`) for status/UX, but **WarBow does not take a fourth slice** of `PodiumPool` — see [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md) and primitives. Do not describe WarBow as a fourth reserve-funded podium category.
+
 Plain language for participants:
 
 - **Last buy:** compete to be the last person to buy before the sale ends.
@@ -30,7 +32,13 @@ Plain language for participants:
 
 **WarBow Ladder / Battle Points** are **PvP scoring** (steal, guard, revenge, flag, buy-based BP bonuses) **separate** from these three reserve slices. For WarBow rules and eligibility, use **[`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md)** and onchain `battlePoints` / `warbowLadderPodium`.
 
-Reserve podium split from **`PodiumPool`** after the sale is documented as **50% / 25% / 25%** (last buy · time booster · defended streak) — verify `distributePrizes` on the deployment.
+**Allocations (documented defaults; verify deployment):**
+
+- **Into `PodiumPool` from each buy:** **20%** of the **gross** routed fee (launch default **five** `FeeRouter` sinks — see [fee routing](../../docs/onchain/fee-routing-and-governance.md)).
+- **Across the three categories** (shares of that podium pool): **50%** last buy · **25%** time booster · **25%** defended streak.
+- **Within each category** (1st : 2nd : 3rd): weights **4∶2∶1** (documented in primitives and fee routing).
+
+Reserve podium split from **`PodiumPool`** after the sale follows **`distributePrizes`** on the deployment — verify onchain.
 
 When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history.
 
