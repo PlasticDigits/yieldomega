@@ -14,6 +14,7 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 ## Core ideas
 
 - **CHARM min/max band** (exponential envelope, canonical **~20%/day** unless deployment differs) rises over time, separately from **per-CHARM price** (default linear-in-time DOUB module); each buy has **min/max** CHARM bounds; **timer** extends on buys up to a **cap**; **`initialTimerSec`** may be shorter than the cap so early activity can still grow remaining time (see deployed parameters).
+- **Timer defaults (documented in [`docs/product/primitives.md`](../../docs/product/primitives.md); verify deployment):** per-buy extension **`timerExtensionSec`** canonical **120s**; **remaining-time cap** **`timerCapSec`** canonical **96 hours**; **pre-first-buy countdown** **`initialTimerSec`** canonical **24 hours**; **hard reset** when remaining before buy is **strictly below 13 minutes** → deadline moves toward **15 minutes** remaining (still subject to cap). See also [`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md) for WarBow-specific timer/BP detail.
 - **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**, separate from DOUB redemption.
 - **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **25%** locked DOUB LP · **35%** CL8Y buy-and-burn · **20%** podium pool · **0%** team/reserved · **20%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
 
@@ -69,7 +70,7 @@ Resolve truth in this order; **indexers must not override** onchain state for **
 
 - Do not treat the **indexer** or **frontend** as authoritative for balances or winners.
 - Do not promise returns or “win” strategies; encourage **testnet** practice.
-- Do not equate **actions permitted under deployed contracts and published rules** with **lawful** in a **legal** sense—**jurisdiction and ToS** are separate (see [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) Safety).
+- Do not equate **actions permitted under deployed contracts and published rules** with **lawful** in a **legal** sense—**jurisdiction and ToS** are separate (see [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md) Safety).
 
 ## Related play skills
 
