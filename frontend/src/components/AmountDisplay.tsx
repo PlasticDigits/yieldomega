@@ -13,15 +13,16 @@ import { formatAmountTriple, parseBigIntString } from "@/lib/formatAmount";
 
 export type AmountDisplayProps = {
   /**
-   * Amount in the token’s smallest units (wei). Used only for conversion; **not** rendered.
+   * Amount in the token’s smallest units (wei), base-10 string. Used only for conversion; **not** rendered.
+   * (String avoids React dev/profiler `JSON.stringify` on props, which rejects `bigint`.)
    */
-  raw: bigint | string;
+  raw: string;
   /** ERC-20 `decimals()` (or 18 for WAD fixed-point). */
   decimals: number;
 };
 
 export function AmountDisplay({ raw, decimals }: AmountDisplayProps) {
-  const n = typeof raw === "string" ? parseBigIntString(raw) : raw;
+  const n = parseBigIntString(raw);
   const t = formatAmountTriple(n, decimals);
   return (
     <AmountTripleStack

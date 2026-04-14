@@ -12,16 +12,17 @@ import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { formatUnixSec, formatUnixSecIsoUtc } from "@/lib/formatAmount";
 
 export type UnixTimestampDisplayProps = {
-  /** Unix time in seconds. Used only for conversion; **not** rendered. */
-  raw: bigint;
+  /** Unix time in seconds (base-10 string). Used only for conversion; **not** rendered. */
+  raw: string;
 };
 
 export function UnixTimestampDisplay({ raw }: UnixTimestampDisplayProps) {
+  const sec = BigInt(raw);
   return (
     <AmountTripleStack
       rows={[
-        { label: "local", value: formatUnixSec(raw) },
-        { label: "utc", value: formatUnixSecIsoUtc(raw), monoValue: true },
+        { label: "local", value: formatUnixSec(sec) },
+        { label: "utc", value: formatUnixSecIsoUtc(sec), monoValue: true },
       ]}
     />
   );

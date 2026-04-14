@@ -20,8 +20,9 @@ export type BuyHistoryPoint = {
   key: string;
   buyer: string;
   width: number;
-  secondsAdded: bigint;
-  totalRaisedAfter: bigint;
+  /** Base-10 string — avoids BigInt in React props (dev profiler JSON). */
+  secondsAdded: string;
+  totalRaisedAfter: string;
   hardReset: boolean;
   meta: string;
 };
@@ -195,8 +196,8 @@ export function buildBuyHistoryPoints(
       key: `${buy.tx_hash}-${buy.log_index}-${index}`,
       buyer: formatShort(buy.buyer, "Unknown player"),
       width,
-      secondsAdded,
-      totalRaisedAfter,
+      secondsAdded: secondsAdded.toString(),
+      totalRaisedAfter: totalRaisedAfter.toString(),
       hardReset: buy.timer_hard_reset === true,
       meta: buy.timer_hard_reset
         ? "Hard reset back toward safety"
