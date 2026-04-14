@@ -29,8 +29,16 @@ Cursor **skills** are typically small markdown instruction files (for example un
 
 Agents (and humans driving them) who want to **use** onchain games and treasuries—TimeCurve, Rabbit Treasury / DOUB, Leprechaun collections—need guidance that is **not** the same as contributor guardrails. Those play skills live at the repository root: [../../skills/README.md](../../skills/README.md).
 
+| Play skill | Use when |
+|------------|----------|
+| [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing before other play skills. |
+| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **three** reserve podiums, DOUB / fee sinks. |
+| [../../skills/play-timecurve-warbow/SKILL.md](../../skills/play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag. |
+| [../../skills/play-rabbit-treasury/SKILL.md](../../skills/play-rabbit-treasury/SKILL.md) | Burrow deposits, epochs, withdraws, reserve-linked behavior. |
+| [../../skills/collect-leprechaun-sets/SKILL.md](../../skills/collect-leprechaun-sets/SKILL.md) | Leprechaun sets, traits, and collecting onchain. |
+
 - **Why:** Forking and patching code is optional; **understanding onchain rules** is the usual path for participants. Play skills focus on authoritative contracts, wallet hygiene, and **support informed participation by users and agents who want clear rules, portability, and actions permitted under deployed contracts and published rules.** **Agent role:** Agents should help users understand options, constraints, and consequences so they can choose whether to participate (see [../../skills/README.md](../../skills/README.md)).
-- **How to use:** Point your agent at [Phase 20 — Play the ecosystem (agents helping users participate)](../agent-phases.md#phase-20) in [../agent-phases.md](../agent-phases.md), then read the indexed play `SKILL.md` files under `skills/`.
+- **How to use:** Point your agent at [Phase 20 — Play the ecosystem (agents helping users participate)](../agent-phases.md#phase-20) in [../agent-phases.md](../agent-phases.md), then read the indexed play `SKILL.md` files under `skills/` (table above).
 - **Onchain metadata** (traits, agent flags) still applies to *what* can be done in games; play skills explain *how* to interpret rules responsibly.
 
 ## Prompting discipline

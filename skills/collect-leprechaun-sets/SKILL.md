@@ -74,5 +74,6 @@ Core ideas (unchanged): onchain metadata should be complete enough to reason abo
 
 - [`play-timecurve-doubloon/SKILL.md`](../play-timecurve-doubloon/SKILL.md)
 - [`play-rabbit-treasury/SKILL.md`](../play-rabbit-treasury/SKILL.md)
+- [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md)
 
 Broader product context: [`docs/product/vision.md`](../../docs/product/vision.md).

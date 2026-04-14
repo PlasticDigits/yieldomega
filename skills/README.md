@@ -6,7 +6,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 
 **Terminology:** **Actions permitted under deployed contracts and published rules** = mechanics in code and docs, not **law** / **lawful** in a **legal** sense (jurisdiction, sanctions, securities, tax, platform ToS)—see [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) Safety.
 
-**Entry point:** [Phase 20 in `docs/agent-phases.md`](../docs/agent-phases.md#phase-20).
+**Entry point:** [Phase 20 in `docs/agent-phases.md`](../docs/agent-phases.md#phase-20). **Contributor** agents editing the codebase use [Phase 18](../docs/agent-phases.md#phase-18) and [`.cursor/skills/`](../.cursor/skills/README.md) — see [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) for how play vs contributor skills fit together.
 
 ## Index
 
@@ -26,6 +26,8 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Leprechaun NFTs](../docs/product/leprechaun-nfts.md)
 - [Fee routing and governance](../docs/onchain/fee-routing-and-governance.md)
 - [Glossary](../docs/glossary.md)
+- [Architecture overview](../docs/architecture/overview.md) — onchain truth vs indexer/frontend roles
+- [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) — hub for onchain metadata, contributor skills, and this index
 
 ## Using these in Cursor
 
