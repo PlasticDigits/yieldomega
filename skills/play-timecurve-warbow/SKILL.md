@@ -7,7 +7,7 @@ description: WarBow Ladder PvP on TimeCurve — Battle Points, steals, guard, re
 
 ## Scope
 
-You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **Battle Points (BP)** on a separate ladder from the **three reserve podium** categories (last buy, time booster, defended streak). Read [`docs/product/primitives.md`](../../docs/product/primitives.md) (WarBow + timer sections) and verify **live** `TimeCurve` on the target chain.
+You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **Battle Points (BP)** — a **PvP score** that can go up or down (buys, steals, flag claim, penalties) — tracked **separately** from the **three reserve-funded podium categories** (last buy, time booster, defended streak). BP **does not** receive a slice of the **`PodiumPool`**; the contract still exposes **`warbowLadderPodium()`** (top-3 BP snapshot for UX). Read [`docs/product/primitives.md`](../../docs/product/primitives.md) (WarBow + timer sections) and verify **live** `TimeCurve` on the target chain.
 
 **Agent role:** Explain options, costs (including CL8Y burns), windows, and tie-breaks so the user can choose whether to act.
 
@@ -23,9 +23,9 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 - **Timer:** Each qualifying buy either **extends** the sale end by the configured extension **or**, if **remaining time before the buy** is **strictly below 13 minutes**, performs a **hard reset** so remaining snaps toward **15 minutes** (still capped by the global timer cap). See onchain `TimeMath.extendDeadlineOrResetBelowThreshold`.
 - **BP from buys:** Base, hard-reset bonus, **clutch** (remaining before buy **&lt; 30s**), **streak-break**, **ambush** (hard reset plus streak-break in same tx)—see **Documented defaults**; verify `WARBOW_*` on deployment.
 - **Defended streak (prize category + WarBow context):** Under **15 minutes** remaining, streak logic and **best** streak for the podium are onchain; WarBow uses **active** streak of the **last buyer under the window** for break/ambush calculations (see primitives).
-- **Steal:** Burns CL8Y; drains a **floor** fraction of the victim’s BP; **2× rule** vs the stealer’s BP; **per-victim UTC-day** cap unless a larger CL8Y bypass is paid; sets **revenge** state for the victim.
-- **Revenge:** Within the onchain window, burn CL8Y to take BP back from the pending stealer (see contract).
-- **Guard:** Burn CL8Y for a timed guard that reduces steal drain rate (see `WARBOW_STEAL_DRAIN_*_BPS`).
+- **Steal:** Burns **1e18** CL8Y (`WARBOW_STEAL_BURN_WAD`); moves **10%** of victim BP to attacker by default, **1%** if victim is **guarded** (`warbowGuardUntil`); **2× rule:** victim BP **≥ 2×** attacker BP. **Per-victim UTC-day** cap: **3** normal steals; **4th+** same day needs **50e18** CL8Y bypass burn unless documented otherwise — verify constants. Sets **revenge** state (**24h** window for victim vs last stealer).
+- **Revenge:** Victim burns **1e18** CL8Y; takes **10%** of stealer BP once; clears pending slot (see contract).
+- **Guard:** Burn **10e18** CL8Y; extends guard until **`max(existing, now + 6 hours)`**, reducing steal drain to the **1%** branch while active (see `WARBOW_STEAL_DRAIN_*_BPS`).
 - **Flag:** On each qualifying buy you may **plant** a pending flag (`warbowPendingFlagOwner` / `warbowPendingFlagPlantAt`). After **`WARBOW_FLAG_SILENCE_SEC` (300s)** with **no other buyer** in between, you may **`claimWarBowFlag`** for **`WARBOW_FLAG_CLAIM_BP` (1000)** BP. If **another buyer purchases before you claim**, the pending flag is **cleared**. The **2× flag-claim BP penalty** applies **only** if that intervening buy occurs **at or after** `plantAt + 300s` (claim was already possible); if the interrupt happens **earlier**, you lose the claim **without** that penalty. An interrupt **during** the silence window clears the flag **without** the 2× penalty (see [`docs/product/primitives.md`](../../docs/product/primitives.md)).
 
 ### Documented defaults (verify `TimeCurve` bytecode)
@@ -38,13 +38,15 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 | Streak-break | **`priorActiveStreak × 100`** | Breaks another wallet’s **active** defended streak under the 15m window |
 | Ambush (same tx) | **200** | Hard reset **and** streak-break bonus &gt; 0 |
 
+Steals, revenges, guard, and non-buy flag claims **move BP**; ladder ordering is by **total BP** (higher first); see tie-break below.
+
 ## UTC day boundary for steals
 
 Steal limits keyed to **`block.timestamp / 86400`** (UTC day index). When advising “how many steals left,” use the user’s chain’s latest block timestamp and onchain `stealsReceivedOnDay(victim, dayId)`.
 
-## Tie-break (WarBow podium)
+## Tie-break (WarBow ladder top-3)
 
-If two addresses have equal BP on the WarBow ladder podium, **lower `uint160(address)` ranks higher** (onchain ordering).
+Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladder snapshot, **lower `uint160(address)` ranks higher** (deterministic onchain ordering; see [`docs/product/primitives.md`](../../docs/product/primitives.md)).
 
 ## What you must not do
 
