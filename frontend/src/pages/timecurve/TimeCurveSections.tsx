@@ -10,6 +10,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import type { SerializableContractRead } from "@/lib/serializeContractRead";
 import { formatBpsAsPercent, formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
 import type {
   BattlePointBreakdownRow,
@@ -37,13 +38,13 @@ export function WhatMattersSection(props: {
   saleActive: boolean;
   saleEnded: boolean;
   whatMattersNowCards: { label: string; value: ReactNode; meta: ReactNode }[];
-  minBuy: { status: "success" | "failure"; result?: unknown } | undefined;
+  minBuy: SerializableContractRead | undefined;
   decimals: number;
-  expectedTokenFromCharms: bigint | undefined;
-  charmWeightResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  podiumPoolBal: bigint | undefined;
-  battlePointsResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  totalRaisedResult: { status: "success" | "failure"; result?: unknown } | undefined;
+  expectedTokenFromCharms: string | undefined;
+  charmWeightResult: SerializableContractRead | undefined;
+  podiumPoolBal: string | undefined;
+  battlePointsResult: SerializableContractRead | undefined;
+  totalRaisedResult: SerializableContractRead | undefined;
   isPending: boolean;
   isError: boolean;
   indexerMismatch: string | null;
@@ -84,7 +85,11 @@ export function WhatMattersSection(props: {
         <StatCard
           label={saleActive ? "Current min buy" : "Minimum buy"}
           value={
-            minBuy?.status === "success" ? <AmountDisplay raw={minBuy.result as bigint} decimals={decimals} /> : "—"
+            minBuy?.status === "success" && minBuy.result !== undefined ? (
+              <AmountDisplay raw={minBuy.result} decimals={decimals} />
+            ) : (
+              "—"
+            )
           }
           meta="Human-readable reserve spend floor"
         />
@@ -97,8 +102,8 @@ export function WhatMattersSection(props: {
               ) : (
                 "—"
               )
-            ) : charmWeightResult?.status === "success" ? (
-              <AmountDisplay raw={charmWeightResult.result as bigint} decimals={18} />
+            ) : charmWeightResult?.status === "success" && charmWeightResult.result !== undefined ? (
+              <AmountDisplay raw={charmWeightResult.result} decimals={18} />
             ) : (
               "—"
             )
@@ -114,13 +119,13 @@ export function WhatMattersSection(props: {
           label={saleActive ? "Battle Points" : "Total raised"}
           value={
             saleActive ? (
-              battlePointsResult?.status === "success" ? (
-                formatLocaleInteger(battlePointsResult.result as bigint)
+              battlePointsResult?.status === "success" && battlePointsResult.result !== undefined ? (
+                formatLocaleInteger(BigInt(battlePointsResult.result))
               ) : (
                 "—"
               )
-            ) : totalRaisedResult?.status === "success" ? (
-              <AmountDisplay raw={totalRaisedResult.result as bigint} decimals={decimals} />
+            ) : totalRaisedResult?.status === "success" && totalRaisedResult.result !== undefined ? (
+              <AmountDisplay raw={totalRaisedResult.result} decimals={decimals} />
             ) : (
               "—"
             )
@@ -140,16 +145,16 @@ export function WhatMattersSection(props: {
 export function WarbowSection(props: {
   saleActive: boolean;
   warbowMaxSteals: number;
-  warbowBypassBurnWad: bigint;
-  warbowGuardBurnWad: bigint;
+  warbowBypassBurnWad: string;
+  warbowGuardBurnWad: string;
   warbowActionHint: string;
-  warbowFlagSilenceSec: bigint;
-  warbowFlagClaimBp: bigint;
+  warbowFlagSilenceSec: string;
+  warbowFlagClaimBp: string;
   isConnected: boolean;
   stealVictimInput: string;
   setStealVictimInput: (value: string) => void;
   stealVictim?: string;
-  victimStealsTodayBigInt: bigint | undefined;
+  victimStealsToday: string | undefined;
   warbowTopRows: RankingRow[];
   warbowLeaderboardRows: RankingRow[];
   warbowFeed: WarbowBattleFeedItem[] | null;
@@ -164,17 +169,17 @@ export function WarbowSection(props: {
   isWriting: boolean;
   canClaimWarBowFlag: boolean;
   iHoldPlantFlag: boolean;
-  flagSilenceEndSec: bigint;
+  flagSilenceEndSec: string;
   hasRevengeOpen: boolean;
   secondaryButtonMotion: MotionProps;
   stealPreflight: WarbowPreflightNarrative;
   warbowPreflightIssue: string | null;
-  viewerBattlePoints: bigint | undefined;
-  victimBattlePointsBigInt: bigint | undefined;
-  gasWarbowSteal: bigint | undefined;
-  gasWarbowGuard: bigint | undefined;
-  gasWarbowFlag: bigint | undefined;
-  gasWarbowRevenge: bigint | undefined;
+  viewerBattlePoints: string | undefined;
+  victimBattlePoints: string | undefined;
+  gasWarbowSteal: string | undefined;
+  gasWarbowGuard: string | undefined;
+  gasWarbowFlag: string | undefined;
+  gasWarbowRevenge: string | undefined;
 }) {
   const {
     saleActive,
@@ -188,7 +193,7 @@ export function WarbowSection(props: {
     stealVictimInput,
     setStealVictimInput,
     stealVictim,
-    victimStealsTodayBigInt,
+    victimStealsToday,
     warbowTopRows,
     warbowLeaderboardRows,
     warbowFeed,
@@ -209,7 +214,7 @@ export function WarbowSection(props: {
     stealPreflight,
     warbowPreflightIssue,
     viewerBattlePoints,
-    victimBattlePointsBigInt,
+    victimBattlePoints,
     gasWarbowSteal,
     gasWarbowGuard,
     gasWarbowFlag,
@@ -245,8 +250,8 @@ export function WarbowSection(props: {
             Steals require the victim to have at least 2x your Battle Points. Each victim can be stolen from{" "}
             {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass burn. Guard lasts
             6h and reduces the next incoming steal to 1%. Revenge lets the victim hit the pending stealer once within
-            the configured window. After a buy, silence for {formatLocaleInteger(warbowFlagSilenceSec)}s lets the buyer
-            claim +{formatLocaleInteger(warbowFlagClaimBp)} BP.
+            the configured window. After a buy, silence for {formatLocaleInteger(BigInt(warbowFlagSilenceSec))}s lets the buyer
+            claim +{formatLocaleInteger(BigInt(warbowFlagClaimBp))} BP.
           </StatusMessage>
         </div>
       </details>
@@ -263,9 +268,9 @@ export function WarbowSection(props: {
               spellCheck={false}
             />
           </label>
-          {stealVictim && victimStealsTodayBigInt !== undefined && (
+          {stealVictim && victimStealsToday !== undefined && (
             <StatusMessage variant="muted">
-              Victim steals received today: {formatLocaleInteger(victimStealsTodayBigInt)} /{" "}
+              Victim steals received today: {formatLocaleInteger(BigInt(victimStealsToday))} /{" "}
               {formatLocaleInteger(BigInt(warbowMaxSteals))}
             </StatusMessage>
           )}
@@ -274,26 +279,26 @@ export function WarbowSection(props: {
               <div className="stats-grid">
                 <StatCard
                   label="Your BP"
-                  value={viewerBattlePoints !== undefined ? formatLocaleInteger(viewerBattlePoints) : "—"}
+                  value={viewerBattlePoints !== undefined ? formatLocaleInteger(BigInt(viewerBattlePoints)) : "—"}
                   meta="Live contract read"
                 />
                 <StatCard
                   label="Victim BP"
-                  value={victimBattlePointsBigInt !== undefined ? formatLocaleInteger(victimBattlePointsBigInt) : "—"}
+                  value={victimBattlePoints !== undefined ? formatLocaleInteger(BigInt(victimBattlePoints)) : "—"}
                   meta="Must be at least 2x your BP"
                 />
                 <StatCard
                   label="Steal pressure today"
                   value={
-                    victimStealsTodayBigInt !== undefined
-                      ? `${formatLocaleInteger(victimStealsTodayBigInt)} / ${formatLocaleInteger(BigInt(warbowMaxSteals))}`
+                    victimStealsToday !== undefined
+                      ? `${formatLocaleInteger(BigInt(victimStealsToday))} / ${formatLocaleInteger(BigInt(warbowMaxSteals))}`
                       : "—"
                   }
                   meta="Per-victim UTC-day cap"
                 />
                 <StatCard
                   label="Steal gas"
-                  value={gasWarbowSteal !== undefined ? `~${formatLocaleInteger(gasWarbowSteal)}` : "Pending"}
+                  value={gasWarbowSteal !== undefined ? `~${formatLocaleInteger(BigInt(gasWarbowSteal))}` : "Pending"}
                   meta="Best-effort simulation + gas estimate"
                 />
               </div>
@@ -346,11 +351,11 @@ export function WarbowSection(props: {
           </div>
           {(gasWarbowGuard !== undefined || gasWarbowFlag !== undefined || gasWarbowRevenge !== undefined) && (
             <StatusMessage variant="muted">
-              {gasWarbowGuard !== undefined && <>Guard gas ~{formatLocaleInteger(gasWarbowGuard)}</>}
+              {gasWarbowGuard !== undefined && <>Guard gas ~{formatLocaleInteger(BigInt(gasWarbowGuard))}</>}
               {gasWarbowGuard !== undefined && (gasWarbowFlag !== undefined || gasWarbowRevenge !== undefined) && <> · </>}
-              {gasWarbowFlag !== undefined && <>Flag gas ~{formatLocaleInteger(gasWarbowFlag)}</>}
+              {gasWarbowFlag !== undefined && <>Flag gas ~{formatLocaleInteger(BigInt(gasWarbowFlag))}</>}
               {gasWarbowFlag !== undefined && gasWarbowRevenge !== undefined && <> · </>}
-              {gasWarbowRevenge !== undefined && <>Revenge gas ~{formatLocaleInteger(gasWarbowRevenge)}</>}
+              {gasWarbowRevenge !== undefined && <>Revenge gas ~{formatLocaleInteger(BigInt(gasWarbowRevenge))}</>}
             </StatusMessage>
           )}
           {!canClaimWarBowFlag && iHoldPlantFlag && saleActive && (
@@ -402,12 +407,12 @@ export function WarbowSection(props: {
 }
 
 export function PodiumsSection(props: {
-  podiumPayoutPreview: { places: readonly [bigint, bigint, bigint] }[];
+  podiumPayoutPreview: { places: readonly [string, string, string] }[];
   decimals: number;
   podiumLoading: boolean;
-  podiumRows: { winners: [`0x${string}`, `0x${string}`, `0x${string}`]; values: readonly [bigint, bigint, bigint] }[];
+  podiumRows: { winners: [`0x${string}`, `0x${string}`, `0x${string}`]; values: readonly [string, string, string] }[];
   address: string | undefined;
-  formatPodiumLeaderboardValue: (categoryIndex: number, raw: bigint) => string;
+  formatPodiumLeaderboardValue: (categoryIndex: number, raw: string) => string;
   formatWallet: WalletFormatShort;
 }) {
   const { podiumPayoutPreview, decimals, podiumLoading, podiumRows, address, formatPodiumLeaderboardValue, formatWallet } =
@@ -470,7 +475,7 @@ export function PodiumsSection(props: {
                             {formatWallet(winner, "—")}
                           </span>
                         ),
-                        value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? 0n),
+                        value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? "0"),
                         meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
                         highlight: Boolean(address && winner.toLowerCase() === address.toLowerCase()),
                       }))}
@@ -596,7 +601,7 @@ export function BattleFeedSection(props: {
                         {formatWallet(claim.buyer, "—")}
                       </span>{" "}
                       redeemed{" "}
-                      <AmountDisplay raw={claim.token_amount} decimals={18} /> · tx <TxHash hash={claim.tx_hash} />
+                      <AmountDisplay raw={String(claim.token_amount)} decimals={18} /> · tx <TxHash hash={claim.tx_hash} />
                     </li>
                   ))}
                 </ul>
@@ -628,7 +633,7 @@ export function BattleFeedSection(props: {
                         {formatWallet(item.winner, "—")}
                       </span>{" "}
                       · category {item.category} · place{" "}
-                      {item.placement} · <AmountDisplay raw={BigInt(item.amount)} decimals={decimals} /> · tx{" "}
+                      {item.placement} · <AmountDisplay raw={String(item.amount)} decimals={decimals} /> · tx{" "}
                       <TxHash hash={item.tx_hash} />
                     </li>
                   ))}
@@ -649,7 +654,7 @@ export function BattleFeedSection(props: {
                         {formatWallet(item.buyer, "—")}
                       </span>{" "}
                       · referrer CHARM{" "}
-                      <AmountDisplay raw={BigInt(item.referrer_amount)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
+                      <AmountDisplay raw={String(item.referrer_amount)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
                     </li>
                   ))}
                 </ul>
@@ -665,46 +670,46 @@ export function BattleFeedSection(props: {
 }
 
 export function RawDataAccordion(props: {
-  coreTcData: readonly unknown[] | undefined;
-  saleStart: { status: "success" | "failure"; result?: unknown } | undefined;
-  deadline: { status: "success" | "failure"; result?: unknown } | undefined;
+  hasCoreContractReads: boolean;
+  saleStart: SerializableContractRead | undefined;
+  deadline: SerializableContractRead | undefined;
   remaining: number | undefined;
-  totalRaised: { status: "success" | "failure"; result?: unknown } | undefined;
-  ended: { status: "success" | "failure"; result?: unknown } | undefined;
-  maxBuyAmount: bigint | undefined;
-  prizesDistributedResult: { status: "success" | "failure"; result?: unknown } | undefined;
+  totalRaised: SerializableContractRead | undefined;
+  ended: SerializableContractRead | undefined;
+  maxBuyAmount: string | undefined;
+  prizesDistributedResult: SerializableContractRead | undefined;
   isConnected: boolean;
-  charmWeightResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  buyCountResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  timerAddedResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  battlePointsResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  activeStreakResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  bestStreakResult: { status: "success" | "failure"; result?: unknown } | undefined;
+  charmWeightResult: SerializableContractRead | undefined;
+  buyCountResult: SerializableContractRead | undefined;
+  timerAddedResult: SerializableContractRead | undefined;
+  battlePointsResult: SerializableContractRead | undefined;
+  activeStreakResult: SerializableContractRead | undefined;
+  bestStreakResult: SerializableContractRead | undefined;
   pendingRevengeStealer: string | undefined;
-  revengeDeadlineSec: bigint;
+  revengeDeadlineSec: string;
   buyerStats: TimecurveBuyerStats | null;
-  initialMinBuyResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  growthRateWadResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  timerExtensionSecResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  initialTimerSecResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  timerCapSecResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  totalTokensForSaleResult: { status: "success" | "failure"; result?: unknown } | undefined;
-  sinkReads: readonly { status: "success" | "failure"; result?: unknown }[] | undefined;
+  initialMinBuyResult: SerializableContractRead | undefined;
+  growthRateWadResult: SerializableContractRead | undefined;
+  timerExtensionSecResult: SerializableContractRead | undefined;
+  initialTimerSecResult: SerializableContractRead | undefined;
+  timerCapSecResult: SerializableContractRead | undefined;
+  totalTokensForSaleResult: SerializableContractRead | undefined;
+  sinkReads: readonly SerializableContractRead[] | undefined;
   liquidityAnchors:
     | {
-        clearing: bigint;
-        launch: bigint;
-        kLo: bigint;
+        clearing: string;
+        launch: string;
+        kLo: string;
       }
     | null
     | undefined;
-  minSpendCurvePoints: { minSpend: bigint }[];
+  minSpendCurvePoints: { minSpend: string }[];
   decimals: number;
   launchedDec: number;
   formatWallet: WalletFormatShort;
 }) {
   const {
-    coreTcData,
+    hasCoreContractReads: coreTcData,
     saleStart,
     deadline,
     remaining,
@@ -755,19 +760,41 @@ export function RawDataAccordion(props: {
             {coreTcData && (
               <dl className="kv">
                 <dt>saleStart</dt>
-                <dd>{saleStart?.status === "success" ? <UnixTimestampDisplay raw={saleStart.result as bigint} /> : "—"}</dd>
+                <dd>
+                  {saleStart?.status === "success" && saleStart.result !== undefined ? (
+                    <UnixTimestampDisplay raw={saleStart.result} />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
                 <dt>deadline</dt>
-                <dd>{deadline?.status === "success" ? <UnixTimestampDisplay raw={deadline.result as bigint} /> : "—"}</dd>
+                <dd>
+                  {deadline?.status === "success" && deadline.result !== undefined ? (
+                    <UnixTimestampDisplay raw={deadline.result} />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
                 <dt>time remaining</dt>
                 <dd>{remaining !== undefined ? `${formatLocaleInteger(remaining)}s` : "—"}</dd>
                 <dt>totalRaised</dt>
-                <dd>{totalRaised?.status === "success" ? <AmountDisplay raw={totalRaised.result as bigint} decimals={decimals} /> : "—"}</dd>
+                <dd>
+                  {totalRaised?.status === "success" && totalRaised.result !== undefined ? (
+                    <AmountDisplay raw={totalRaised.result} decimals={decimals} />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
                 <dt>ended</dt>
-                <dd>{ended?.status === "success" ? String(ended.result) : "—"}</dd>
+                <dd>{ended?.status === "success" && ended.result !== undefined ? ended.result : "—"}</dd>
                 <dt>max buy</dt>
                 <dd>{maxBuyAmount !== undefined ? <AmountDisplay raw={maxBuyAmount} decimals={decimals} /> : "—"}</dd>
                 <dt>prizesDistributed</dt>
-                <dd>{prizesDistributedResult?.status === "success" ? String(prizesDistributedResult.result) : "—"}</dd>
+                <dd>
+                  {prizesDistributedResult?.status === "success" && prizesDistributedResult.result !== undefined
+                    ? prizesDistributedResult.result
+                    : "—"}
+                </dd>
               </dl>
             )}
           </div>
@@ -778,17 +805,43 @@ export function RawDataAccordion(props: {
               <>
                 <dl className="kv">
                   <dt>charmWeight</dt>
-                  <dd>{charmWeightResult?.status === "success" ? <AmountDisplay raw={charmWeightResult.result as bigint} decimals={18} /> : "—"}</dd>
+                  <dd>
+                    {charmWeightResult?.status === "success" && charmWeightResult.result !== undefined ? (
+                      <AmountDisplay raw={charmWeightResult.result} decimals={18} />
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
                   <dt>buyCount</dt>
-                  <dd>{buyCountResult?.status === "success" ? formatLocaleInteger(buyCountResult.result as bigint) : "—"}</dd>
+                  <dd>
+                    {buyCountResult?.status === "success" && buyCountResult.result !== undefined
+                      ? formatLocaleInteger(BigInt(buyCountResult.result))
+                      : "—"}
+                  </dd>
                   <dt>timer added</dt>
-                  <dd>{timerAddedResult?.status === "success" ? `${formatLocaleInteger(timerAddedResult.result as bigint)} s` : "—"}</dd>
+                  <dd>
+                    {timerAddedResult?.status === "success" && timerAddedResult.result !== undefined
+                      ? `${formatLocaleInteger(BigInt(timerAddedResult.result))} s`
+                      : "—"}
+                  </dd>
                   <dt>battlePoints</dt>
-                  <dd>{battlePointsResult?.status === "success" ? formatLocaleInteger(battlePointsResult.result as bigint) : "—"}</dd>
+                  <dd>
+                    {battlePointsResult?.status === "success" && battlePointsResult.result !== undefined
+                      ? formatLocaleInteger(BigInt(battlePointsResult.result))
+                      : "—"}
+                  </dd>
                   <dt>active streak</dt>
-                  <dd>{activeStreakResult?.status === "success" ? formatLocaleInteger(activeStreakResult.result as bigint) : "—"}</dd>
+                  <dd>
+                    {activeStreakResult?.status === "success" && activeStreakResult.result !== undefined
+                      ? formatLocaleInteger(BigInt(activeStreakResult.result))
+                      : "—"}
+                  </dd>
                   <dt>best streak</dt>
-                  <dd>{bestStreakResult?.status === "success" ? formatLocaleInteger(bestStreakResult.result as bigint) : "—"}</dd>
+                  <dd>
+                    {bestStreakResult?.status === "success" && bestStreakResult.result !== undefined
+                      ? formatLocaleInteger(BigInt(bestStreakResult.result))
+                      : "—"}
+                  </dd>
                   <dt>revenge</dt>
                   <dd
                     className="mono"
@@ -800,7 +853,7 @@ export function RawDataAccordion(props: {
                     }
                   >
                     {pendingRevengeStealer && pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
-                      ? `${formatWallet(pendingRevengeStealer, "—")} · ${formatUnixSecIsoUtc(revengeDeadlineSec)}`
+                      ? `${formatWallet(pendingRevengeStealer, "—")} · ${formatUnixSecIsoUtc(BigInt(revengeDeadlineSec))}`
                       : "—"}
                   </dd>
                 </dl>
@@ -818,17 +871,45 @@ export function RawDataAccordion(props: {
             {coreTcData && (
               <dl className="kv">
                 <dt>envelope ref WAD</dt>
-                <dd>{initialMinBuyResult?.status === "success" ? <AmountDisplay raw={initialMinBuyResult.result as bigint} decimals={18} /> : "—"}</dd>
+                <dd>
+                  {initialMinBuyResult?.status === "success" && initialMinBuyResult.result !== undefined ? (
+                    <AmountDisplay raw={initialMinBuyResult.result} decimals={18} />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
                 <dt>growthRateWad</dt>
-                <dd className="mono">{growthRateWadResult?.status === "success" ? formatCompactFromRaw(growthRateWadResult.result as bigint, 18) : "—"}</dd>
+                <dd className="mono">
+                  {growthRateWadResult?.status === "success" && growthRateWadResult.result !== undefined
+                    ? formatCompactFromRaw(growthRateWadResult.result, 18)
+                    : "—"}
+                </dd>
                 <dt>timerExtensionSec</dt>
-                <dd>{timerExtensionSecResult?.status === "success" ? formatLocaleInteger(timerExtensionSecResult.result as bigint) : "—"}</dd>
+                <dd>
+                  {timerExtensionSecResult?.status === "success" && timerExtensionSecResult.result !== undefined
+                    ? formatLocaleInteger(BigInt(timerExtensionSecResult.result))
+                    : "—"}
+                </dd>
                 <dt>initialTimerSec</dt>
-                <dd>{initialTimerSecResult?.status === "success" ? formatLocaleInteger(initialTimerSecResult.result as bigint) : "—"}</dd>
+                <dd>
+                  {initialTimerSecResult?.status === "success" && initialTimerSecResult.result !== undefined
+                    ? formatLocaleInteger(BigInt(initialTimerSecResult.result))
+                    : "—"}
+                </dd>
                 <dt>timerCapSec</dt>
-                <dd>{timerCapSecResult?.status === "success" ? formatLocaleInteger(timerCapSecResult.result as bigint) : "—"}</dd>
+                <dd>
+                  {timerCapSecResult?.status === "success" && timerCapSecResult.result !== undefined
+                    ? formatLocaleInteger(BigInt(timerCapSecResult.result))
+                    : "—"}
+                </dd>
                 <dt>totalTokensForSale</dt>
-                <dd>{totalTokensForSaleResult?.status === "success" ? <AmountDisplay raw={totalTokensForSaleResult.result as bigint} decimals={18} /> : "—"}</dd>
+                <dd>
+                  {totalTokensForSaleResult?.status === "success" && totalTokensForSaleResult.result !== undefined ? (
+                    <AmountDisplay raw={totalTokensForSaleResult.result} decimals={18} />
+                  ) : (
+                    "—"
+                  )}
+                </dd>
               </dl>
             )}
           </div>
@@ -845,7 +926,10 @@ export function RawDataAccordion(props: {
                 ] as const
               ).map(([label, bps], index) => {
                 const row = sinkReads?.[index];
-                const onchain = row?.status === "success" ? Number((row.result as readonly [unknown, number])[1]) : null;
+                const onchain =
+                  row?.status === "success" && row.result
+                    ? Number((JSON.parse(row.result) as readonly [unknown, number])[1])
+                    : null;
                 return (
                   <li key={label}>
                     <strong>{label}</strong> · policy {formatBpsAsPercent(bps)}
@@ -871,14 +955,22 @@ export function RawDataAccordion(props: {
         <div className="split-layout">
           <div className="podium-block">
             <h3>Charm redemption curve</h3>
-            {coreTcData && totalRaised?.status === "success" && totalTokensForSaleResult?.status === "success" && (
+            {coreTcData &&
+              totalRaised?.status === "success" &&
+              totalRaised.result !== undefined &&
+              totalTokensForSaleResult?.status === "success" &&
+              totalTokensForSaleResult.result !== undefined && (
               <CharmRedemptionCurve
-                totalRaised={totalRaised.result as bigint}
-                totalTokensForSale={totalTokensForSaleResult.result as bigint}
+                totalRaised={totalRaised.result}
+                totalTokensForSale={totalTokensForSaleResult.result}
                 acceptedDecimals={decimals}
                 launchedDecimals={launchedDec}
-                userCharmWeight={charmWeightResult?.status === "success" ? (charmWeightResult.result as bigint) : undefined}
-                saleStarted={saleStart?.status === "success" && (saleStart.result as bigint) > 0n}
+                userCharmWeight={charmWeightResult?.status === "success" ? charmWeightResult.result : undefined}
+                saleStarted={
+                  saleStart?.status === "success" &&
+                  saleStart.result !== undefined &&
+                  BigInt(saleStart.result) > 0n
+                }
               />
             )}
           </div>
@@ -925,7 +1017,8 @@ export function StandingsVisuals(props: {
   if (buyHistoryPoints.length === 0) {
     return null;
   }
-  const maxRaised = buyHistoryPoints[buyHistoryPoints.length - 1]?.totalRaisedAfter ?? 0n;
+  const maxRaisedStr = buyHistoryPoints[buyHistoryPoints.length - 1]?.totalRaisedAfter ?? "0";
+  const maxRaised = BigInt(maxRaisedStr);
 
   return (
     <div className="race-history-grid">
@@ -941,7 +1034,9 @@ export function StandingsVisuals(props: {
                 style={{ width: `${Math.max(point.width, 10)}%` }}
               />
               <div className="timeline-strip__meta">
-                <strong>{point.hardReset ? "Hard reset" : `+${formatLocaleInteger(point.secondsAdded)}s`}</strong>
+                <strong>
+                  {point.hardReset ? "Hard reset" : `+${formatLocaleInteger(BigInt(point.secondsAdded))}s`}
+                </strong>
                 <span>{point.buyer}</span>
               </div>
             </div>
@@ -952,7 +1047,8 @@ export function StandingsVisuals(props: {
         <h3>Raise climb</h3>
         <div className="timeline-strip" aria-label="Recent raise progress history">
           {buyHistoryPoints.map((point) => {
-            const raiseWidth = maxRaised > 0n ? Number((point.totalRaisedAfter * 100n) / maxRaised) : 0;
+            const raisedAfter = BigInt(point.totalRaisedAfter);
+            const raiseWidth = maxRaised > 0n ? Number((raisedAfter * 100n) / maxRaised) : 0;
             return (
               <div key={`${point.key}-raised`} className="timeline-strip__item">
                 <div className="timeline-strip__bar timeline-strip__bar--raised" style={{ width: `${Math.max(raiseWidth, 10)}%` }} />

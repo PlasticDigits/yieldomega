@@ -6,6 +6,7 @@ import { isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
+  useBlock,
   useChainId,
   useReadContract,
   useReadContracts,
@@ -33,6 +34,10 @@ import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { simulateWriteContract } from "@/lib/simulateContractWrite";
+import {
+  serializeContractRead,
+  type SerializableContractRead,
+} from "@/lib/serializeContractRead";
 import { sampleMinSpendCurve, WAD } from "@/lib/timeCurveMath";
 import {
   buildBuyBattlePointBreakdown,
@@ -94,11 +99,12 @@ function walletMono(addr: string | undefined, formatWallet: (a: string | undefin
   );
 }
 
-function formatPodiumLeaderboardValue(categoryIndex: number, raw: bigint): string {
+function formatPodiumLeaderboardValue(categoryIndex: number, raw: string): string {
+  const bi = BigInt(raw);
   if (categoryIndex === 1) {
-    return `${formatLocaleInteger(raw)} s`;
+    return `${formatLocaleInteger(bi)} s`;
   }
-  return formatLocaleInteger(raw);
+  return formatLocaleInteger(bi);
 }
 
 type ContractReadRow = {
@@ -141,6 +147,12 @@ export function TimeCurvePage() {
   const [warbowPreflightIssue, setWarbowPreflightIssue] = useState<string | null>(null);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
+  const { data: latestBlock } = useBlock({ watch: true });
+  const blockTimestampSec =
+    latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
+  /** Prefer chain head time so deadline math matches `block.timestamp` (Anvil warps vs wall clock). */
+  const ledgerSec = blockTimestampSec ?? now;
+
   const primaryButtonMotion = prefersReducedMotion
     ? {}
     : {
@@ -360,7 +372,7 @@ export function TimeCurvePage() {
       ? (stealVictimInput.trim() as `0x${string}`)
       : undefined;
 
-  const utcDayId = BigInt(Math.floor(now / 86_400));
+  const utcDayId = BigInt(Math.floor(ledgerSec / 86_400));
 
   const { data: victimStealsToday } = useReadContract({
     address: tc,
@@ -516,7 +528,11 @@ export function TimeCurvePage() {
     }
     const launch = launchLiquidityAnchorWad(clearing);
     const kLo = kumbayaBandLowerWad(launch);
-    return { clearing, launch, kLo };
+    return {
+      clearing: clearing.toString(),
+      launch: launch.toString(),
+      kLo: kLo.toString(),
+    };
   }, [totalRaised, totalTokensForSaleR]);
 
   const podiumPayoutPreview = useMemo(() => {
@@ -524,7 +540,7 @@ export function TimeCurvePage() {
     const slices = podiumCategorySlices(bal);
     return slices.map((slice, cat) => {
       const [a, b, c] = podiumPlacementShares(slice);
-      return { cat, slice, places: [a, b, c] as const };
+      return { cat, slice, places: [a.toString(), b.toString(), c.toString()] as const };
     });
   }, [podiumPoolBal]);
 
@@ -577,7 +593,7 @@ export function TimeCurvePage() {
     saleActive &&
     iHoldPlantFlag &&
     flagPlantAtSec > 0n &&
-    BigInt(now) >= flagSilenceEndSec;
+    BigInt(ledgerSec) >= flagSilenceEndSec;
 
   const pendingRevengeStealer =
     revengeStealerR?.status === "success"
@@ -589,17 +605,17 @@ export function TimeCurvePage() {
     Boolean(
       pendingRevengeStealer &&
         pendingRevengeStealer !== "0x0000000000000000000000000000000000000000" &&
-        BigInt(now) < revengeDeadlineSec,
+        BigInt(ledgerSec) < revengeDeadlineSec,
     );
 
   const guardUntilSec =
     warbowGuardUntilR?.status === "success" ? BigInt(warbowGuardUntilR.result as bigint) : 0n;
-  const guardedActive = BigInt(now) < guardUntilSec;
+  const guardedActive = BigInt(ledgerSec) < guardUntilSec;
 
   const deadlineSec =
     deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
   const remaining =
-    deadlineSec !== undefined ? Math.max(0, deadlineSec - now) : undefined;
+    deadlineSec !== undefined ? Math.max(0, deadlineSec - ledgerSec) : undefined;
 
   const maxBuyAmount =
     maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
@@ -618,7 +634,7 @@ export function TimeCurvePage() {
     if (start <= 0) {
       return [];
     }
-    const elapsed = BigInt(Math.max(0, now - start));
+    const elapsed = BigInt(Math.max(0, ledgerSec - start));
     if (elapsed === 0n) {
       return [];
     }
@@ -630,7 +646,7 @@ export function TimeCurvePage() {
       elapsed,
       40,
     );
-  }, [initialMinBuyR, growthRateWadR, saleStart, now, basePriceWadR, dailyIncWadR]);
+  }, [initialMinBuyR, growthRateWadR, saleStart, ledgerSec, basePriceWadR, dailyIncWadR]);
 
   const charmWadSelected = useMemo(() => BigInt(charmCount) * WAD, [charmCount]);
 
@@ -667,7 +683,14 @@ export function TimeCurvePage() {
       : undefined;
   const saleEnded = ended?.status === "success" && ended.result === true;
   const saleStartPending =
-    saleStart?.status === "success" && BigInt(now) < (saleStart.result as bigint);
+    saleStart?.status === "success" && BigInt(ledgerSec) < (saleStart.result as bigint);
+  const timerExpiredAwaitingEnd =
+    !saleActive &&
+    !saleEnded &&
+    saleStart?.status === "success" &&
+    (saleStart.result as bigint) > 0n &&
+    deadlineSec !== undefined &&
+    ledgerSec >= deadlineSec;
   const stateBadgeLabel = saleActive
     ? "Sale live"
     : saleEnded
@@ -868,7 +891,7 @@ export function TimeCurvePage() {
           label: "Your claim",
           value:
             expectedTokenFromCharms !== undefined ? (
-              <AmountDisplay raw={expectedTokenFromCharms} decimals={18} />
+              <AmountDisplay raw={expectedTokenFromCharms.toString()} decimals={18} />
             ) : (
               "—"
             ),
@@ -877,7 +900,11 @@ export function TimeCurvePage() {
         {
           label: "Podium pool",
           value:
-            podiumPoolBal !== undefined ? <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} /> : "—",
+            podiumPoolBal !== undefined ? (
+              <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
+            ) : (
+              "—"
+            ),
           meta: distributeHint,
         },
       ];
@@ -1589,7 +1616,7 @@ export function TimeCurvePage() {
       <div className={`timer-hero ${timerUrgencyClass(remaining)}`}>
         <div className="status-strip">
           <span className={`status-pill status-pill--${saleActive ? "success" : saleEnded ? "warning" : "info"}`}>
-            {saleActive ? "Live round" : saleEnded ? "Timer expired" : "Pre-start"}
+            {saleActive ? "Live round" : saleEnded ? "Sale ended" : timerExpiredAwaitingEnd ? "Timer expired" : "Pre-start"}
           </span>
           {saleActive && (
             <span
@@ -1602,12 +1629,12 @@ export function TimeCurvePage() {
           )}
           {guardedActive && (
             <span className="status-pill status-pill--info">
-              Guard until <UnixTimestampDisplay raw={guardUntilSec} />
+              Guard until <UnixTimestampDisplay raw={guardUntilSec.toString()} />
             </span>
           )}
           {hasRevengeOpen && (
             <span className="status-pill status-pill--warning">
-              Revenge window until <UnixTimestampDisplay raw={revengeDeadlineSec} />
+              Revenge window until <UnixTimestampDisplay raw={revengeDeadlineSec.toString()} />
             </span>
           )}
           {canClaimWarBowFlag && <span className="status-pill status-pill--warning">Claim your WarBow flag now</span>}
@@ -1687,7 +1714,7 @@ export function TimeCurvePage() {
                   label="Projected spend"
                   value={
                     estimatedSpend !== undefined ? (
-                      <AmountDisplay raw={estimatedSpend} decimals={decimals} />
+                      <AmountDisplay raw={estimatedSpend.toString()} decimals={decimals} />
                     ) : (
                       "—"
                     )
@@ -1879,7 +1906,7 @@ export function TimeCurvePage() {
                   label="Podium pool"
                   value={
                     podiumPoolBal !== undefined ? (
-                      <AmountDisplay raw={podiumPoolBal as bigint} decimals={decimals} />
+                      <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
                     ) : (
                       "—"
                     )
@@ -1953,13 +1980,13 @@ export function TimeCurvePage() {
         saleActive={saleActive}
         saleEnded={saleEnded}
         whatMattersNowCards={whatMattersNowCards}
-        minBuy={minBuy}
+        minBuy={serializeContractRead(minBuy)}
         decimals={decimals}
-        expectedTokenFromCharms={expectedTokenFromCharms}
-        charmWeightResult={charmWeightR}
-        podiumPoolBal={podiumPoolBal as bigint | undefined}
-        battlePointsResult={battlePtsR}
-        totalRaisedResult={totalRaised}
+        expectedTokenFromCharms={expectedTokenFromCharms?.toString()}
+        charmWeightResult={serializeContractRead(charmWeightR)}
+        podiumPoolBal={typeof podiumPoolBal === "bigint" ? podiumPoolBal.toString() : undefined}
+        battlePointsResult={serializeContractRead(battlePtsR)}
+        totalRaisedResult={serializeContractRead(totalRaised)}
         isPending={isPending}
         isError={isError}
         indexerMismatch={indexerMismatch}
@@ -1970,16 +1997,16 @@ export function TimeCurvePage() {
       <WarbowSection
         saleActive={saleActive}
         warbowMaxSteals={warbowMaxSteals}
-        warbowBypassBurnWad={warbowBypassBurnWad}
-        warbowGuardBurnWad={warbowGuardBurnWad}
+        warbowBypassBurnWad={warbowBypassBurnWad.toString()}
+        warbowGuardBurnWad={warbowGuardBurnWad.toString()}
         warbowActionHint={warbowActionHint}
-        warbowFlagSilenceSec={warbowFlagSilenceSec}
-        warbowFlagClaimBp={warbowFlagClaimBp}
+        warbowFlagSilenceSec={warbowFlagSilenceSec.toString()}
+        warbowFlagClaimBp={warbowFlagClaimBp.toString()}
         isConnected={isConnected}
         stealVictimInput={stealVictimInput}
         setStealVictimInput={setStealVictimInput}
         stealVictim={stealVictim}
-        victimStealsTodayBigInt={victimStealsTodayBigInt}
+        victimStealsToday={victimStealsTodayBigInt?.toString()}
         warbowTopRows={warbowTopRows}
         warbowLeaderboardRows={warbowLeaderboardRows}
         warbowFeed={warbowFeed}
@@ -1994,17 +2021,17 @@ export function TimeCurvePage() {
         isWriting={isWriting}
         canClaimWarBowFlag={canClaimWarBowFlag}
         iHoldPlantFlag={iHoldPlantFlag}
-        flagSilenceEndSec={flagSilenceEndSec}
+        flagSilenceEndSec={flagSilenceEndSec.toString()}
         hasRevengeOpen={hasRevengeOpen}
         secondaryButtonMotion={secondaryButtonMotion as Record<string, unknown>}
         stealPreflight={stealPreflight}
         warbowPreflightIssue={warbowPreflightIssue}
-        viewerBattlePoints={viewerBattlePoints}
-        victimBattlePointsBigInt={victimBattlePointsBigInt}
-        gasWarbowSteal={gasWarbowSteal}
-        gasWarbowGuard={gasWarbowGuard}
-        gasWarbowFlag={gasWarbowFlag}
-        gasWarbowRevenge={gasWarbowRevenge}
+        viewerBattlePoints={viewerBattlePoints?.toString()}
+        victimBattlePoints={victimBattlePointsBigInt?.toString()}
+        gasWarbowSteal={gasWarbowSteal?.toString()}
+        gasWarbowGuard={gasWarbowGuard?.toString()}
+        gasWarbowFlag={gasWarbowFlag?.toString()}
+        gasWarbowRevenge={gasWarbowRevenge?.toString()}
       />
 
       <PodiumsSection
@@ -2036,33 +2063,33 @@ export function TimeCurvePage() {
       />
 
       <RawDataAccordion
-        coreTcData={coreTcData}
-        saleStart={saleStart}
-        deadline={deadline}
+        hasCoreContractReads={Boolean(coreTcData && coreTcData.length > 0)}
+        saleStart={serializeContractRead(saleStart)}
+        deadline={serializeContractRead(deadline)}
         remaining={remaining}
-        totalRaised={totalRaised}
-        ended={ended}
-        maxBuyAmount={maxBuyAmount}
-        prizesDistributedResult={prizesDistributedR}
+        totalRaised={serializeContractRead(totalRaised)}
+        ended={serializeContractRead(ended)}
+        maxBuyAmount={maxBuyAmount?.toString()}
+        prizesDistributedResult={serializeContractRead(prizesDistributedR)}
         isConnected={isConnected}
-        charmWeightResult={charmWeightR}
-        buyCountResult={buyCountR}
-        timerAddedResult={timerAddedR}
-        battlePointsResult={battlePtsR}
-        activeStreakResult={activeStreakR}
-        bestStreakResult={bestStreakR}
+        charmWeightResult={serializeContractRead(charmWeightR)}
+        buyCountResult={serializeContractRead(buyCountR)}
+        timerAddedResult={serializeContractRead(timerAddedR)}
+        battlePointsResult={serializeContractRead(battlePtsR)}
+        activeStreakResult={serializeContractRead(activeStreakR)}
+        bestStreakResult={serializeContractRead(bestStreakR)}
         pendingRevengeStealer={pendingRevengeStealer}
-        revengeDeadlineSec={revengeDeadlineSec}
+        revengeDeadlineSec={revengeDeadlineSec.toString()}
         buyerStats={indexerBaseUrl() ? buyerStats : null}
-        initialMinBuyResult={initialMinBuyR}
-        growthRateWadResult={growthRateWadR}
-        timerExtensionSecResult={timerExtensionSecR}
-        initialTimerSecResult={initialTimerSecR}
-        timerCapSecResult={timerCapSecR}
-        totalTokensForSaleResult={totalTokensForSaleR}
-        sinkReads={sinkReads}
+        initialMinBuyResult={serializeContractRead(initialMinBuyR)}
+        growthRateWadResult={serializeContractRead(growthRateWadR)}
+        timerExtensionSecResult={serializeContractRead(timerExtensionSecR)}
+        initialTimerSecResult={serializeContractRead(initialTimerSecR)}
+        timerCapSecResult={serializeContractRead(timerCapSecR)}
+        totalTokensForSaleResult={serializeContractRead(totalTokensForSaleR)}
+        sinkReads={sinkReads?.map((r) => serializeContractRead(r) as SerializableContractRead)}
         liquidityAnchors={liquidityAnchors}
-        minSpendCurvePoints={minSpendCurvePoints}
+        minSpendCurvePoints={minSpendCurvePoints.map((p) => ({ minSpend: p.minSpend.toString() }))}
         decimals={decimals}
         launchedDec={launchedDec}
         formatWallet={formatWallet}
