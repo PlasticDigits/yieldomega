@@ -5,12 +5,14 @@ description: Apply Yieldomega repository guardrails for agent work. Use when edi
 
 # Yieldomega guardrails
 
+**Scope:** These steps apply when **editing this repository** (contracts, indexer, frontend, docs). For **participant-facing** help—interpreting TimeCurve, Rabbit Treasury, or Leprechaun for a human **without** changing code—use root [`skills/README.md`](../../../skills/README.md) and [`docs/agent-phases.md`](../../../docs/agent-phases.md) **Phase 20**, as described in [`docs/agents/metadata-and-skills.md`](../../../docs/agents/metadata-and-skills.md).
+
 Before making substantive changes in this repository:
 
 1. Read `docs/agent-phases.md`, then read the doc for the matching phase before implementing.
 2. Respect `LICENSE` and `docs/licensing.md`: default new project code to AGPL-3.0, preserve license headers, and do not change licensing unless the maintainer asks.
 3. Keep game rules, fund flows, and authoritative state onchain. `indexer/` and `frontend/` are derived read-model and UX layers, not sources of truth.
-4. Follow `docs/testing/strategy.md` before claiming completion: run the relevant tests when possible, or clearly state what could not be run.
+4. Follow `docs/testing/strategy.md` before claiming completion: run the relevant tests when possible, or clearly state what could not be run. For contract or business-logic changes, cross-check the spec ↔ test map in `docs/testing/invariants-and-business-logic.md` when touching covered areas.
 5. For **TimeCurve** prizes, treat **`docs/product/primitives.md`** as the source of truth for the **three fixed v1 podium categories** (last buy, time booster, defended streak). **WarBow Ladder / Battle Points** are PvP scoring separate from prize slices. Do not reintroduce or assume **legacy** category sets (e.g. most-buys, biggest-buy, cumulative-CHARM podiums, opening/closing-window tracks, or a fourth “activity leader” prize).
 
 Prefer small, reviewable diffs and avoid unrelated refactors.

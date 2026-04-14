@@ -21,12 +21,22 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 ## Core rules (participant-facing)
 
 - **Timer:** Each qualifying buy either **extends** the sale end by the configured extension **or**, if **remaining time before the buy** is **strictly below 13 minutes**, performs a **hard reset** so remaining snaps toward **15 minutes** (still capped by the global timer cap). See onchain `TimeMath.extendDeadlineOrResetBelowThreshold`.
-- **BP from buys (summary):** Base BP per buy (`WARBOW_BASE_BUY_BP`), extra BP on hard reset (`WARBOW_TIMER_RESET_BONUS_BP`), **clutch** if remaining before buy is **strictly below 30 seconds**, **streak-break** BP when you end another wallet’s **active** defended streak under the **15-minute** window, plus **ambush** BP when that break coincides with a **hard reset**. Exact numbers are onchain constants.
+- **BP from buys:** Base, hard-reset bonus, **clutch** (remaining before buy **&lt; 30s**), **streak-break**, **ambush** (hard reset plus streak-break in same tx)—see **Documented defaults**; verify `WARBOW_*` on deployment.
 - **Defended streak (prize category + WarBow context):** Under **15 minutes** remaining, streak logic and **best** streak for the podium are onchain; WarBow uses **active** streak of the **last buyer under the window** for break/ambush calculations (see primitives).
 - **Steal:** Burns CL8Y; drains a **floor** fraction of the victim’s BP; **2× rule** vs the stealer’s BP; **per-victim UTC-day** cap unless a larger CL8Y bypass is paid; sets **revenge** state for the victim.
 - **Revenge:** Within the onchain window, burn CL8Y to take BP back from the pending stealer (see contract).
 - **Guard:** Burn CL8Y for a timed guard that reduces steal drain rate (see `WARBOW_STEAL_DRAIN_*_BPS`).
-- **Flag:** After your buy, a **silence** window must pass with **no other buyer**; then you may claim **flag BP**. If another buyer purchases **after** silence elapses before you claim, the pending flag can be **invalidated** and a **penalty** applied to your BP per onchain rules. An interrupt **during** silence clears the flag **without** that penalty.
+- **Flag:** On each qualifying buy you may **plant** a pending flag (`warbowPendingFlagOwner` / `warbowPendingFlagPlantAt`). After **`WARBOW_FLAG_SILENCE_SEC` (300s)** with **no other buyer** in between, you may **`claimWarBowFlag`** for **`WARBOW_FLAG_CLAIM_BP` (1000)** BP. If **another buyer purchases before you claim**, the pending flag is **cleared**. The **2× flag-claim BP penalty** applies **only** if that intervening buy occurs **at or after** `plantAt + 300s` (claim was already possible); if the interrupt happens **earlier**, you lose the claim **without** that penalty. An interrupt **during** the silence window clears the flag **without** the 2× penalty (see [`docs/product/primitives.md`](../../docs/product/primitives.md)).
+
+### Documented defaults (verify `TimeCurve` bytecode)
+
+| BP component | Default (BP) | Notes |
+|--------------|-------------|--------|
+| Base qualifying buy | **250** | `WARBOW_BASE_BUY_BP` |
+| Timer hard-reset bonus | **500** | When `timerHardReset` (remaining was &lt; 13m before buy) |
+| Clutch timing | **150** | Remaining before buy **&lt; 30s** |
+| Streak-break | **`priorActiveStreak × 100`** | Breaks another wallet’s **active** defended streak under the 15m window |
+| Ambush (same tx) | **200** | Hard reset **and** streak-break bonus &gt; 0 |
 
 ## UTC day boundary for steals
 

@@ -14,6 +14,8 @@ You are helping a **participant** use **Rabbit Treasury**: reserve asset deposit
 ## Core ideas
 
 - **Reserve-linked internal accounting** — Understand sustainability as **honest**: repricing when reserve health weakens; avoid promising “risk-free” or opaque yield ([`docs/product/vision.md`](../../docs/product/vision.md)).
+- **Two backing buckets** — **Redeemable backing** vs **protocol-owned backing** (non-redeemable exit for normal DOUB holders); **total backing** matters for coverage math. See [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) § Reserve buckets.
+- **Protocol revenue (`receiveFee`)** — Documented deploy defaults target about **25% burn / 75%** to protocol-owned backing (tunable toward **20–40% / 60–80%**); **verify** live parameters.
 - **Epochs** — Operations depend on **open epochs** and **finalization** rules; read events (`Burrow*` and related) per rabbit-treasury doc for indexer-visible metrics.
 - **Fees** — Rabbit Treasury may receive a **share** of ecosystem fees per fee routing; verify live configuration.
 
@@ -54,7 +56,7 @@ Resolve truth in this order; **indexers must not override** onchain state for **
 
 - Do not invent offchain “true balances” if they conflict with the contract.
 - Do not give personalized financial advice.
-- Do not equate **actions permitted under deployed contracts and published rules** with **lawful** in a **legal** sense—see [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) Safety.
+- Do not equate **actions permitted under deployed contracts and published rules** with **lawful** in a **legal** sense—see [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md) Safety.
 
 ## Related play skills
 
