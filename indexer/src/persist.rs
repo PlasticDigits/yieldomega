@@ -79,6 +79,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy (
                     block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp,
                     buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
                     new_deadline, total_raised_after, buy_index,
                     actual_seconds_added, timer_hard_reset, battle_points_after,
@@ -86,9 +87,9 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
                     bp_ambush_bonus, bp_flag_penalty, flag_planted,
                     buyer_total_effective_timer_sec,
                     buyer_active_defended_streak, buyer_best_defended_streak
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric,
-                    $14::numeric, $15, $16::numeric, $17::numeric, $18::numeric, $19::numeric, $20::numeric, $21::numeric, $22::numeric, $23,
-                    $24::numeric, $25::numeric, $26::numeric)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric, $14::numeric,
+                    $15::numeric, $16, $17::numeric, $18::numeric, $19::numeric, $20::numeric, $21::numeric, $22::numeric, $23::numeric, $24,
+                    $25::numeric, $26::numeric, $27::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
@@ -96,6 +97,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&tx_h)
             .bind(log_i)
             .bind(&contract)
+            .bind(block_ts)
             .bind(addr_hex(*buyer))
             .bind(u256_dec(*amount))
             .bind("0")

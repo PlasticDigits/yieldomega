@@ -33,6 +33,140 @@ export type BattlePointBreakdownRow = {
   value: bigint;
 };
 
+/** Single highest-priority line for compact “live buy” tiles (hero strip). */
+export type BuyHighlight = {
+  label: string;
+  sub?: string;
+};
+
+/**
+ * Pick the most salient stat for a buy row. Higher list = higher priority.
+ * Indexer fields are optional on older rows; fall through until something matches.
+ */
+export function pickBuyHighlightStat(buy: BuyItem): BuyHighlight {
+  const flagPenalty = parseBigInt(buy.bp_flag_penalty) ?? 0n;
+  const streakBreak = parseBigInt(buy.bp_streak_break_bonus) ?? 0n;
+  const ambush = parseBigInt(buy.bp_ambush_bonus) ?? 0n;
+  const clutch = parseBigInt(buy.bp_clutch_bonus) ?? 0n;
+  const resetBp = parseBigInt(buy.bp_timer_reset_bonus) ?? 0n;
+  const activeStreak = parseBigInt(buy.buyer_active_defended_streak) ?? 0n;
+  const bestStreak = parseBigInt(buy.buyer_best_defended_streak) ?? 0n;
+  const bpAfter = parseBigInt(buy.battle_points_after);
+  const seconds = parseBigInt(buy.actual_seconds_added) ?? 0n;
+
+  if (flagPenalty > 0n) {
+    return { label: "Flag penalty — BP hit", sub: `−${flagPenalty.toString()} BP` };
+  }
+  if (buy.timer_hard_reset) {
+    return {
+      label: "Timer hard reset",
+      sub: seconds > 0n ? `+${seconds.toString()}s on the clock` : undefined,
+    };
+  }
+  if (streakBreak > 0n) {
+    return { label: "Broke a defended streak", sub: `+${streakBreak.toString()} BP` };
+  }
+  if (ambush > 0n) {
+    return { label: "Ambush bonus", sub: `+${ambush.toString()} BP` };
+  }
+  if (clutch > 0n) {
+    return { label: "Clutch timing", sub: `+${clutch.toString()} BP` };
+  }
+  if (resetBp > 0n) {
+    return { label: "Timer reset bonus", sub: `+${resetBp.toString()} BP` };
+  }
+  if (activeStreak >= 2n) {
+    return {
+      label: "Defended streak",
+      sub: `${activeStreak.toString()} active · best ${bestStreak.toString()}`,
+    };
+  }
+  if (buy.flag_planted) {
+    return { label: "Flag planted", sub: "WarBow flag live" };
+  }
+  if (bpAfter !== null && bpAfter > 0n) {
+    return { label: "WarBow ladder", sub: `${bpAfter.toString()} BP total` };
+  }
+  if (seconds > 0n) {
+    return { label: "Extended timer", sub: `+${seconds.toString()}s` };
+  }
+  return { label: "Buy indexed", sub: "On-chain" };
+}
+
+export type BuyImpactTone = "danger" | "warning" | "success" | "info" | "neutral";
+
+export type BuyImpactTick = {
+  id: string;
+  label: string;
+  sub?: string;
+  tone: BuyImpactTone;
+};
+
+/** Up to `max` salient WarBow / timer impacts for compact rows (color-coded chips). */
+export function listBuyImpactTicks(buy: BuyItem, max = 5): BuyImpactTick[] {
+  const out: BuyImpactTick[] = [];
+  const push = (t: BuyImpactTick) => {
+    if (out.length < max) {
+      out.push(t);
+    }
+  };
+
+  const flagPenalty = parseBigInt(buy.bp_flag_penalty) ?? 0n;
+  const streakBreak = parseBigInt(buy.bp_streak_break_bonus) ?? 0n;
+  const ambush = parseBigInt(buy.bp_ambush_bonus) ?? 0n;
+  const clutch = parseBigInt(buy.bp_clutch_bonus) ?? 0n;
+  const resetBp = parseBigInt(buy.bp_timer_reset_bonus) ?? 0n;
+  const activeStreak = parseBigInt(buy.buyer_active_defended_streak) ?? 0n;
+  const bpAfter = parseBigInt(buy.battle_points_after);
+  const seconds = parseBigInt(buy.actual_seconds_added) ?? 0n;
+
+  if (flagPenalty > 0n) {
+    push({ id: "flag", label: "Flag −BP", sub: flagPenalty.toString(), tone: "danger" });
+  }
+  if (buy.timer_hard_reset) {
+    push({
+      id: "hreset",
+      label: "Hard reset",
+      sub: seconds > 0n ? `+${seconds.toString()}s` : undefined,
+      tone: "warning",
+    });
+  }
+  if (streakBreak > 0n) {
+    push({ id: "sbreak", label: "Streak break", sub: `+${streakBreak.toString()} BP`, tone: "success" });
+  }
+  if (ambush > 0n) {
+    push({ id: "ambush", label: "Ambush", sub: `+${ambush.toString()} BP`, tone: "success" });
+  }
+  if (clutch > 0n) {
+    push({ id: "clutch", label: "Clutch", sub: `+${clutch.toString()} BP`, tone: "success" });
+  }
+  if (resetBp > 0n) {
+    push({ id: "tbp", label: "Timer BP", sub: `+${resetBp.toString()} BP`, tone: "warning" });
+  }
+  if (activeStreak >= 2n) {
+    push({
+      id: "def",
+      label: "Defend",
+      sub: `${activeStreak.toString()}×`,
+      tone: "info",
+    });
+  }
+  if (buy.flag_planted) {
+    push({ id: "fplant", label: "Flag", sub: "On", tone: "info" });
+  }
+  if (bpAfter !== null && bpAfter > 0n) {
+    push({ id: "wb", label: "WarBow", sub: `${bpAfter.toString()} BP`, tone: "info" });
+  }
+  if (seconds > 0n && !buy.timer_hard_reset) {
+    push({ id: "tadd", label: "+Clock", sub: `+${seconds.toString()}s`, tone: "neutral" });
+  }
+
+  if (out.length === 0) {
+    push({ id: "buy", label: "Buy", sub: "—", tone: "neutral" });
+  }
+  return out.slice(0, max);
+}
+
 export type WarbowPreflightNarrative = {
   tone: "muted" | "success" | "warning" | "error";
   title: string;
@@ -218,6 +352,54 @@ export function buildBuyBattlePointBreakdown(buy: BuyItem): BattlePointBreakdown
     { key: "penalty", label: "Flag penalty", value: parseBigInt(buy.bp_flag_penalty) ?? 0n },
   ];
   return rows.filter((row) => row.value !== 0n);
+}
+
+export type BuyDetailRow = {
+  label: string;
+  value: string;
+};
+
+/** Flat key/value rows for a full buy-detail panel (indexer-derived fields). */
+export function formatBuyDetailRows(buy: BuyItem): BuyDetailRow[] {
+  const nz = (v: unknown): string => {
+    if (v === undefined || v === null) {
+      return "—";
+    }
+    if (typeof v === "boolean") {
+      return v ? "yes" : "no";
+    }
+    const s = String(v).trim();
+    return s.length > 0 ? s : "—";
+  };
+
+  return [
+    { label: "Block", value: nz(buy.block_number) },
+    { label: "Block hash", value: nz(buy.block_hash) },
+    { label: "TimeCurve contract", value: nz(buy.contract_address) },
+    { label: "Transaction", value: nz(buy.tx_hash) },
+    { label: "Log index", value: String(buy.log_index) },
+    { label: "Block time (unix sec)", value: nz(buy.block_timestamp) },
+    { label: "Buyer", value: nz(buy.buyer) },
+    { label: "Spend amount (raw)", value: nz(buy.amount) },
+    { label: "CHARM (wad)", value: nz(buy.charm_wad) },
+    { label: "Price per CHARM (wad)", value: nz(buy.price_per_charm_wad) },
+    { label: "New deadline (unix sec)", value: nz(buy.new_deadline) },
+    { label: "Total raised after (raw)", value: nz(buy.total_raised_after) },
+    { label: "Buy index", value: nz(buy.buy_index) },
+    { label: "Seconds added (effective)", value: nz(buy.actual_seconds_added) },
+    { label: "Timer hard reset", value: nz(buy.timer_hard_reset) },
+    { label: "Battle points after", value: nz(buy.battle_points_after) },
+    { label: "BP — base buy", value: nz(buy.bp_base_buy) },
+    { label: "BP — timer reset", value: nz(buy.bp_timer_reset_bonus) },
+    { label: "BP — clutch", value: nz(buy.bp_clutch_bonus) },
+    { label: "BP — streak break", value: nz(buy.bp_streak_break_bonus) },
+    { label: "BP — ambush", value: nz(buy.bp_ambush_bonus) },
+    { label: "BP — flag penalty", value: nz(buy.bp_flag_penalty) },
+    { label: "Flag planted", value: nz(buy.flag_planted) },
+    { label: "Buyer effective timer (sec indexed)", value: nz(buy.buyer_total_effective_timer_sec) },
+    { label: "Buyer active defended streak", value: nz(buy.buyer_active_defended_streak) },
+    { label: "Buyer best defended streak", value: nz(buy.buyer_best_defended_streak) },
+  ];
 }
 
 export function describeStealPreflight(

@@ -76,6 +76,97 @@ export function linearPriceWad(basePriceWad: bigint, dailyIncrementWad: bigint, 
   return basePriceWad + (dailyIncrementWad * elapsed) / SECONDS_PER_DAY;
 }
 
+/**
+ * Same exponent as `TimeMath.currentMinBuy` but with fractional elapsed seconds (live UI).
+ * `growthRateWad * elapsed / SECONDS_PER_DAY` with microsecond granularity.
+ */
+export function growthExponentWadFromElapsedFloat(growthRateWad: bigint, elapsedSec: number): bigint {
+  if (elapsedSec <= 0) return 0n;
+  const us = BigInt(Math.round(elapsedSec * 1_000_000));
+  return (growthRateWad * us) / (86400n * 1_000_000n);
+}
+
+/** `TimeMath.currentMinBuy` with fractional elapsed (centisecond-friendly live display). */
+export function currentMinBuyAtFloat(
+  initialMinBuy: bigint,
+  growthRateWad: bigint,
+  elapsedSec: number,
+): bigint {
+  if (elapsedSec <= 0) return initialMinBuy;
+  const exponentWad = growthExponentWadFromElapsedFloat(growthRateWad, elapsedSec);
+  const factorFloat = Math.exp(Number(exponentWad) / Number(WAD));
+  if (!Number.isFinite(factorFloat) || factorFloat <= 0) {
+    return initialMinBuy;
+  }
+  const factorWad = BigInt(Math.round(factorFloat * Number(WAD)));
+  return (initialMinBuy * factorWad) / WAD;
+}
+
+/** `LinearCharmPrice.priceWad` with fractional elapsed. */
+export function linearPriceWadFloat(
+  basePriceWad: bigint,
+  dailyIncrementWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const us = BigInt(Math.round(Math.max(0, elapsedSec) * 1_000_000));
+  return basePriceWad + (dailyIncrementWad * us) / (86400n * 1_000_000n);
+}
+
+export function minCharmWadAtFloat(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const scale = currentMinBuyAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
+  return (CHARM_MIN_BASE_WAD * scale) / charmEnvelopeRefWad;
+}
+
+export function maxCharmWadAtFloat(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const scale = currentMinBuyAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
+  return (CHARM_MAX_BASE_WAD * scale) / charmEnvelopeRefWad;
+}
+
+export function minGrossSpendAtFloat(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  basePriceWad: bigint,
+  dailyIncrementWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const c = minCharmWadAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
+  const p = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedSec);
+  return (c * p) / WAD;
+}
+
+/** Maximum gross reserve spend at elapsed (max CHARM × linear price). */
+export function maxGrossSpendAt(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  basePriceWad: bigint,
+  dailyIncrementWad: bigint,
+  elapsed: bigint,
+): bigint {
+  const c = maxCharmWadAt(charmEnvelopeRefWad, growthRateWad, elapsed);
+  const p = linearPriceWad(basePriceWad, dailyIncrementWad, elapsed);
+  return (c * p) / WAD;
+}
+
+export function maxGrossSpendAtFloat(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  basePriceWad: bigint,
+  dailyIncrementWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const c = maxCharmWadAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
+  const p = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedSec);
+  return (c * p) / WAD;
+}
+
 /** Minimum gross asset for a buy at `elapsed` (min CHARM × linear price). */
 export function minGrossSpendAt(
   charmEnvelopeRefWad: bigint,
