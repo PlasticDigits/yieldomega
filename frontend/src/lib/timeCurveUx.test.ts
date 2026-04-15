@@ -7,6 +7,9 @@ import {
   buildWarbowFeedNarrative,
   describeStealPreflight,
   describeTimerPreview,
+  formatBuyDetailRows,
+  pickBuyHighlightStat,
+  listBuyImpactTicks,
 } from "./timeCurveUx";
 
 describe("describeTimerPreview", () => {
@@ -24,6 +27,50 @@ describe("describeTimerPreview", () => {
       label: "Room to set up a move",
       detail: "A standard buy currently adds about 120s to the clock.",
     });
+  });
+});
+
+describe("pickBuyHighlightStat", () => {
+  const baseBuy = {
+    block_number: "1",
+    tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    log_index: 0,
+    buyer: "0x1111111111111111111111111111111111111111",
+    amount: "1",
+    charm_wad: "1",
+    price_per_charm_wad: "1",
+    new_deadline: "1",
+    total_raised_after: "1",
+    buy_index: "1",
+  };
+
+  it("prefers flag penalty over other signals", () => {
+    const h = pickBuyHighlightStat({
+      ...baseBuy,
+      bp_flag_penalty: "2000",
+      timer_hard_reset: true,
+      bp_streak_break_bonus: "500",
+    });
+    expect(h.label).toContain("Flag penalty");
+  });
+
+  it("surfaces timer hard reset when no higher-priority row", () => {
+    const h = pickBuyHighlightStat({
+      ...baseBuy,
+      timer_hard_reset: true,
+      actual_seconds_added: "300",
+    });
+    expect(h.label).toContain("Timer hard reset");
+    expect(h.sub).toContain("300");
+  });
+
+  it("falls back to WarBow BP total", () => {
+    const h = pickBuyHighlightStat({
+      ...baseBuy,
+      battle_points_after: "500",
+    });
+    expect(h.label).toContain("WarBow");
+    expect(h.sub).toContain("500");
   });
 });
 
@@ -83,6 +130,54 @@ describe("buildWarbowFeedNarrative", () => {
     expect(narrative.eyebrow).toBe("WarBow steal");
     expect(narrative.detail).toBe("Momentum changed hands for 250 BP.");
     expect(narrative.tags).toContain("cap bypass");
+  });
+});
+
+describe("listBuyImpactTicks", () => {
+  it("returns up to five distinct impact chips in priority order", () => {
+    const ticks = listBuyImpactTicks(
+      {
+        block_number: "1",
+        tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        log_index: 0,
+        buyer: "0x1111111111111111111111111111111111111111",
+        amount: "1",
+        charm_wad: "1",
+        price_per_charm_wad: "1",
+        new_deadline: "1",
+        total_raised_after: "1",
+        buy_index: "1",
+        bp_flag_penalty: "10",
+        bp_ambush_bonus: "5",
+        bp_clutch_bonus: "3",
+        battle_points_after: "100",
+        actual_seconds_added: "30",
+      },
+      5,
+    );
+    expect(ticks.length).toBeLessThanOrEqual(5);
+    expect(ticks[0]?.tone).toBe("danger");
+    expect(ticks.some((t) => t.id === "ambush")).toBe(true);
+  });
+});
+
+describe("formatBuyDetailRows", () => {
+  it("lists core indexer fields for a buy row", () => {
+    const rows = formatBuyDetailRows({
+      block_number: "1",
+      tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      log_index: 0,
+      buyer: "0x1234567890abcdef1234567890abcdef12345678",
+      amount: "10",
+      charm_wad: "10",
+      price_per_charm_wad: "1",
+      new_deadline: "1",
+      total_raised_after: "10",
+      buy_index: "0",
+    });
+    expect(rows.some((r) => r.label === "Buyer" && r.value.includes("0x1234"))).toBe(true);
+    expect(rows.some((r) => r.label === "Transaction")).toBe(true);
+    expect(rows.length).toBeGreaterThan(12);
   });
 });
 

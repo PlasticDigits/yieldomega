@@ -47,6 +47,10 @@ import {
   describeStealPreflight,
   describeTimerPreview,
 } from "@/lib/timeCurveUx";
+import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
+import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
+import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
+import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
 import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
 import { PODIUM_HELP, PODIUM_LABELS } from "@/pages/timecurve/podiumCopy";
 import {
@@ -69,6 +73,7 @@ import {
 import { wagmiConfig } from "@/wagmi-config";
 import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
+import type { EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
 import {
   fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
@@ -123,7 +128,8 @@ export function TimeCurvePage() {
   const [claimsNote, setClaimsNote] = useState<string | null>(null);
   const [charmCount, setCharmCount] = useState(5);
   const [buyErr, setBuyErr] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [displayTick, setDisplayTick] = useState(0);
+  const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
@@ -135,6 +141,8 @@ export function TimeCurvePage() {
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
   const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
   const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
+  const [buyListModalOpen, setBuyListModalOpen] = useState(false);
+  const [detailBuy, setDetailBuy] = useState<BuyItem | null>(null);
   const [buyerStats, setBuyerStats] = useState<TimecurveBuyerStats | null>(null);
   const [gasBuy, setGasBuy] = useState<bigint | undefined>(undefined);
   const [gasBuyIssue, setGasBuyIssue] = useState<string | null>(null);
@@ -150,8 +158,32 @@ export function TimeCurvePage() {
   const { data: latestBlock } = useBlock({ watch: true });
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
-  /** Prefer chain head time so deadline math matches `block.timestamp` (Anvil warps vs wall clock). */
-  const ledgerSec = blockTimestampSec ?? now;
+
+  /** Re-sync wall clock when a new head block arrives so we interpolate from fresh `block.timestamp`. */
+  useEffect(() => {
+    if (latestBlock?.timestamp !== undefined) {
+      setBlockSyncWallMs(Date.now());
+    }
+  }, [latestBlock?.number, latestBlock?.timestamp]);
+
+  /**
+   * Smooth “chain time” for UX: last block timestamp plus wall-clock elapsed since that block was observed.
+   * Without this, `block.timestamp` is flat between blocks (Anvil) and the hero countdown appears frozen.
+   */
+  const effectiveLedgerSec = useMemo(() => {
+    void displayTick;
+    if (blockTimestampSec !== undefined) {
+      return blockTimestampSec + (Date.now() - blockSyncWallMs) / 1000;
+    }
+    return Date.now() / 1000;
+  }, [blockTimestampSec, blockSyncWallMs, displayTick]);
+
+  const ledgerSecInt = Math.floor(effectiveLedgerSec);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setDisplayTick((n) => n + 1), 10);
+    return () => window.clearInterval(id);
+  }, []);
 
   const primaryButtonMotion = prefersReducedMotion
     ? {}
@@ -171,19 +203,20 @@ export function TimeCurvePage() {
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
-    void (async () => {
+    let requestSeq = 0;
+    const loadBuys = async () => {
+      const id = ++requestSeq;
       const data = await fetchTimecurveBuys(25, 0);
-      if (cancelled) {
+      if (cancelled || id !== requestSeq) {
         return;
       }
       if (!data) {
-        setIndexerNote("Set VITE_INDEXER_URL to load recent buys from the indexer.");
+        setIndexerNote(
+          indexerBaseUrl()
+            ? "Could not load buys from the indexer (offline, CORS, or HTTP error). Check the indexer is running."
+            : "Set VITE_INDEXER_URL to load recent buys from the indexer.",
+        );
         setBuys([]);
         setBuysNextOffset(null);
         return;
@@ -191,11 +224,61 @@ export function TimeCurvePage() {
       setBuys(data.items);
       setBuysNextOffset(data.next_offset);
       setIndexerNote(null);
-    })();
+    };
+    void loadBuys();
+    const pollMs = indexerBaseUrl() ? 3000 : 0;
+    const intervalId =
+      pollMs > 0
+        ? window.setInterval(() => {
+            void loadBuys();
+          }, pollMs)
+        : undefined;
     return () => {
       cancelled = true;
+      requestSeq += 1;
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
     };
   }, []);
+
+  const selectBuy = useCallback((buy: BuyItem) => {
+    setDetailBuy(buy);
+  }, []);
+
+  const openBuyListModal = useCallback(() => {
+    setBuyListModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!buyListModalOpen && !detailBuy) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") {
+        return;
+      }
+      e.preventDefault();
+      if (detailBuy) {
+        setDetailBuy(null);
+      } else {
+        setBuyListModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [buyListModalOpen, detailBuy]);
+
+  useEffect(() => {
+    if (!buyListModalOpen && !detailBuy) {
+      return;
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [buyListModalOpen, detailBuy]);
 
   useEffect(() => {
     let cancelled = false;
@@ -372,7 +455,7 @@ export function TimeCurvePage() {
       ? (stealVictimInput.trim() as `0x${string}`)
       : undefined;
 
-  const utcDayId = BigInt(Math.floor(ledgerSec / 86_400));
+  const utcDayId = BigInt(Math.floor(ledgerSecInt / 86_400));
 
   const { data: victimStealsToday } = useReadContract({
     address: tc,
@@ -593,7 +676,7 @@ export function TimeCurvePage() {
     saleActive &&
     iHoldPlantFlag &&
     flagPlantAtSec > 0n &&
-    BigInt(ledgerSec) >= flagSilenceEndSec;
+    BigInt(ledgerSecInt) >= flagSilenceEndSec;
 
   const pendingRevengeStealer =
     revengeStealerR?.status === "success"
@@ -605,17 +688,17 @@ export function TimeCurvePage() {
     Boolean(
       pendingRevengeStealer &&
         pendingRevengeStealer !== "0x0000000000000000000000000000000000000000" &&
-        BigInt(ledgerSec) < revengeDeadlineSec,
+        BigInt(ledgerSecInt) < revengeDeadlineSec,
     );
 
   const guardUntilSec =
     warbowGuardUntilR?.status === "success" ? BigInt(warbowGuardUntilR.result as bigint) : 0n;
-  const guardedActive = BigInt(ledgerSec) < guardUntilSec;
+  const guardedActive = BigInt(ledgerSecInt) < guardUntilSec;
 
   const deadlineSec =
     deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
   const remaining =
-    deadlineSec !== undefined ? Math.max(0, deadlineSec - ledgerSec) : undefined;
+    deadlineSec !== undefined ? Math.max(0, deadlineSec - effectiveLedgerSec) : undefined;
 
   const maxBuyAmount =
     maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
@@ -634,7 +717,7 @@ export function TimeCurvePage() {
     if (start <= 0) {
       return [];
     }
-    const elapsed = BigInt(Math.max(0, ledgerSec - start));
+    const elapsed = BigInt(Math.max(0, ledgerSecInt - start));
     if (elapsed === 0n) {
       return [];
     }
@@ -646,7 +729,30 @@ export function TimeCurvePage() {
       elapsed,
       40,
     );
-  }, [initialMinBuyR, growthRateWadR, saleStart, ledgerSec, basePriceWadR, dailyIncWadR]);
+  }, [initialMinBuyR, growthRateWadR, saleStart, ledgerSecInt, basePriceWadR, dailyIncWadR]);
+
+  const buyEnvelopeParams = useMemo((): EnvelopeCurveParams | null => {
+    if (
+      initialMinBuyR?.status !== "success" ||
+      growthRateWadR?.status !== "success" ||
+      saleStart?.status !== "success" ||
+      basePriceWadR?.status !== "success" ||
+      dailyIncWadR?.status !== "success"
+    ) {
+      return null;
+    }
+    const start = Number(saleStart.result as bigint);
+    if (start <= 0) {
+      return null;
+    }
+    return {
+      saleStartSec: start,
+      charmEnvelopeRefWad: initialMinBuyR.result as bigint,
+      growthRateWad: growthRateWadR.result as bigint,
+      basePriceWad: basePriceWadR.result as bigint,
+      dailyIncrementWad: dailyIncWadR.result as bigint,
+    };
+  }, [initialMinBuyR, growthRateWadR, saleStart, basePriceWadR, dailyIncWadR]);
 
   const charmWadSelected = useMemo(() => BigInt(charmCount) * WAD, [charmCount]);
 
@@ -673,24 +779,16 @@ export function TimeCurvePage() {
           ),
         )
       : undefined;
-  const timerFillPercent =
-    remaining !== undefined && timerCapSec
-      ? Math.max(0, Math.min(100, (remaining / Math.max(timerCapSec, 1)) * 100))
-      : undefined;
-  const timerPreviewPercent =
-    timerExtensionPreview !== undefined && timerCapSec
-      ? Math.max(0, Math.min(100, (timerExtensionPreview / Math.max(timerCapSec, 1)) * 100))
-      : undefined;
   const saleEnded = ended?.status === "success" && ended.result === true;
   const saleStartPending =
-    saleStart?.status === "success" && BigInt(ledgerSec) < (saleStart.result as bigint);
+    saleStart?.status === "success" && BigInt(ledgerSecInt) < (saleStart.result as bigint);
   const timerExpiredAwaitingEnd =
     !saleActive &&
     !saleEnded &&
     saleStart?.status === "success" &&
     (saleStart.result as bigint) > 0n &&
     deadlineSec !== undefined &&
-    ledgerSec >= deadlineSec;
+    effectiveLedgerSec >= deadlineSec;
   const stateBadgeLabel = saleActive
     ? "Sale live"
     : saleEnded
@@ -753,23 +851,23 @@ export function TimeCurvePage() {
     address && warbowLb
       ? warbowLb.findIndex((row) => sameAddress(row.buyer, address)) + 1 || null
       : null;
-  const warbowTopRows: RankingRow[] =
-    warbowLadderPodiumR?.status === "success"
-      ? (() => {
-          const [wallets, values] = warbowLadderPodiumR.result as readonly [
-            readonly `0x${string}`[],
-            readonly bigint[],
-          ];
-          return [0, 1, 2].map((index) => ({
-            key: `warbow-contract-${index}`,
-            rank: index + 1,
-            label: walletMono(wallets[index], formatWallet),
-            meta: sameAddress(wallets[index], address) ? "Connected wallet" : "Contract snapshot",
-            value: `${values[index] !== undefined ? formatLocaleInteger(values[index]) : "—"} BP`,
-            highlight: sameAddress(wallets[index], address),
-          }));
-        })()
-      : [];
+  const warbowTopRows: RankingRow[] = useMemo(() => {
+    if (warbowLadderPodiumR?.status !== "success") {
+      return [];
+    }
+    const [wallets, values] = warbowLadderPodiumR.result as readonly [
+      readonly `0x${string}`[],
+      readonly bigint[],
+    ];
+    return [0, 1, 2].map((index) => ({
+      key: `warbow-contract-${index}`,
+      rank: index + 1,
+      label: walletMono(wallets[index], formatWallet),
+      meta: sameAddress(wallets[index], address) ? "Connected wallet" : "Contract snapshot",
+      value: `${values[index] !== undefined ? formatLocaleInteger(values[index]) : "—"} BP`,
+      highlight: sameAddress(wallets[index], address),
+    }));
+  }, [warbowLadderPodiumR, formatWallet, address]);
   const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
     key: `warbow-indexer-${row.buyer}`,
     rank: index + 1,
@@ -1614,12 +1712,20 @@ export function TimeCurvePage() {
       </PageHero>
 
       <div className={`timer-hero ${timerUrgencyClass(remaining)}`}>
+        <TimerHeroParticles
+          saleActive={saleActive}
+          remainingSec={remaining}
+          timerTone={timerNarrative.tone}
+          buys={buys}
+        />
+        <div className="timer-hero__inner">
         <div className="status-strip">
           <span className={`status-pill status-pill--${saleActive ? "success" : saleEnded ? "warning" : "info"}`}>
             {saleActive ? "Live round" : saleEnded ? "Sale ended" : timerExpiredAwaitingEnd ? "Timer expired" : "Pre-start"}
           </span>
           {saleActive && (
             <span
+              data-timer-tone={timerNarrative.tone}
               className={`status-pill status-pill--${
                 timerNarrative.tone === "critical" ? "danger" : timerNarrative.tone === "warning" ? "warning" : "success"
               }`}
@@ -1639,44 +1745,52 @@ export function TimeCurvePage() {
           )}
           {canClaimWarBowFlag && <span className="status-pill status-pill--warning">Claim your WarBow flag now</span>}
         </div>
-        <div className="timer-hero__label">
-          {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
-        </div>
-        <div className="timer-hero__countdown">
-          {remaining !== undefined ? formatCountdown(remaining) : "—"}
-        </div>
-        {remaining !== undefined && remaining > 0 && (
-          <div className="timer-hero__subtext">
-            {formatLocaleInteger(remaining)}s left · deadline{" "}
-            {deadlineSec ? new Date(deadlineSec * 1000).toLocaleString() : "—"}
+        <div className="timer-hero__split">
+          <TimerHeroLiveBuys
+            buys={buys}
+            indexerNote={indexerNote}
+            formatWallet={formatWallet}
+            nowUnixSec={Math.floor(effectiveLedgerSec)}
+            envelopeParams={buyEnvelopeParams}
+            onSelectBuy={indexerBaseUrl() && indexerNote === null ? selectBuy : undefined}
+            onMore={indexerBaseUrl() && indexerNote === null ? openBuyListModal : undefined}
+          />
+          <div className="timer-hero__clock-stack">
+            <div className="timer-hero__label">
+              {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
+            </div>
+            <div className="timer-hero__countdown">
+              {remaining !== undefined ? formatCountdown(remaining) : "—"}
+            </div>
+            {remaining !== undefined && remaining > 0 && (
+              <div className="timer-hero__subtext">
+                {formatLocaleInteger(Math.floor(remaining))}s left · deadline{" "}
+                {deadlineSec ? new Date(deadlineSec * 1000).toLocaleString() : "—"}
+              </div>
+            )}
+            {saleActive && <div className="timer-hero__narrative">{timerNarrative.detail}</div>}
           </div>
-        )}
-        {saleActive && <div className="timer-hero__narrative">{timerNarrative.detail}</div>}
+        </div>
+        </div>
       </div>
       {saleActive &&
-        timerFillPercent !== undefined &&
-        timerPreviewPercent !== undefined &&
-        timerExtensionPreview !== undefined && (
-          <div className="progress-meter" aria-label="Timer pressure preview">
-            <div className="progress-meter__track">
-              <div className="progress-meter__current" style={{ width: `${timerFillPercent}%` }} />
-              <div
-                className="progress-meter__preview"
-                style={{
-                  left: `${timerFillPercent}%`,
-                  width: `${Math.max(0, Math.min(timerPreviewPercent, 100 - timerFillPercent))}%`,
-                }}
-              />
-            </div>
-            <div className="progress-meter__labels">
-              <span>Current timer fill</span>
-              <span>
-                {remaining !== undefined && remaining < 780
-                  ? "Next buy can hard-reset the clock toward 15 minutes"
-                  : `Next buy can add up to +${formatLocaleInteger(timerExtensionPreview)}s`}
-              </span>
-            </div>
-          </div>
+        deadlineSec !== undefined &&
+        saleStart?.status === "success" &&
+        initialMinBuyR?.status === "success" &&
+        growthRateWadR?.status === "success" &&
+        basePriceWadR?.status === "success" &&
+        dailyIncWadR?.status === "success" && (
+          <TimeCurveLiveCharts
+            saleActive={saleActive}
+            saleStartSec={Number(saleStart.result as bigint)}
+            deadlineSec={deadlineSec}
+            nowSec={effectiveLedgerSec}
+            initialMinBuy={initialMinBuyR.result as bigint}
+            growthRateWad={growthRateWadR.result as bigint}
+            basePriceWad={basePriceWadR.result as bigint}
+            dailyIncrementWad={dailyIncWadR.result as bigint}
+            decimals={decimals}
+          />
         )}
 
       <div className="split-layout split-layout--hero">
@@ -2060,6 +2174,24 @@ export function TimeCurvePage() {
         prizeDist={prizeDist}
         prizePayouts={prizePayouts}
         refApplied={refApplied}
+      />
+
+      <TimecurveBuyModals
+        listOpen={buyListModalOpen}
+        onCloseList={() => setBuyListModalOpen(false)}
+        detailBuy={detailBuy}
+        onCloseDetail={() => setDetailBuy(null)}
+        onSelectBuy={selectBuy}
+        buys={buys}
+        buysLoading={buys === null && indexerNote === null}
+        buysNextOffset={buysNextOffset}
+        loadingMoreBuys={loadingMoreBuys}
+        onLoadMoreBuys={handleLoadMoreBuys}
+        address={address}
+        formatWallet={formatWallet}
+        decimals={decimals}
+        nowUnixSec={Math.floor(effectiveLedgerSec)}
+        envelopeParams={buyEnvelopeParams}
       />
 
       <RawDataAccordion

@@ -11,8 +11,13 @@ export function rabbitDepositsApiPath(user: string | undefined, limit: number): 
 
 export type BuyItem = {
   block_number: string;
+  /** Present when the indexer serves the extended buy row (v2+). */
+  block_hash?: string;
+  contract_address?: string;
   tx_hash: string;
   log_index: number;
+  /** Unix seconds when the RPC log included block time; omitted on legacy rows. */
+  block_timestamp?: string | null;
   buyer: string;
   amount: string;
   charm_wad: string;
