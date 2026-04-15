@@ -74,7 +74,15 @@ export function WhatMattersSection(props: {
       title="What matters now"
       badgeLabel={saleActive ? "Player view" : saleEnded ? "Settlement view" : "Live setup"}
       badgeTone={saleActive ? "live" : saleEnded ? "warning" : "info"}
-      lede="The top of TimeCurve now tells you what to chase, what your move changes, and why the room is exciting even before you optimize."
+      spotlight
+      className="timecurve-panel timecurve-panel--summary"
+      cutout={{
+        src: "/art/cutouts/loading-mascot-circle.png",
+        width: 164,
+        height: 164,
+        className: "panel-cutout panel-cutout--summary-left cutout-decoration--float",
+      }}
+      lede="Start here for the room read: what matters most right now, what your wallet already has at stake, and which chase is still alive."
     >
       <div className="priority-grid">
         {whatMattersNowCards.map((card) => (
@@ -227,7 +235,7 @@ export function WarbowSection(props: {
       badgeLabel={saleActive ? "Live PvP" : "PvP rules"}
       badgeTone={saleActive ? "live" : "info"}
       spotlight
-      lede="WarBow is the loudest status layer in TimeCurve: steal when you are behind, guard when you are a target, revenge when someone hits you, and claim the flag when silence turns into spotlight."
+      lede="WarBow is the PvP pressure layer: steal when you are behind, guard when you are exposed, revenge once, and claim the flag when the room goes quiet."
     >
       <div className="status-strip">
         <span className="status-pill status-pill--info">
@@ -422,7 +430,7 @@ export function PodiumsSection(props: {
       title="Podiums and prizes"
       badgeLabel="Reserve prize podiums"
       badgeTone="warning"
-      lede="Reserve prizes only pay three categories: Last Buy, Time Booster, and Defended Streak. WarBow stays separate as the PvP status ladder, so the page shows both without mixing their rules."
+      lede="Reserve prizes only pay three tracks: Last Buy, Time Booster, and Defended Streak. WarBow remains a separate PvP status ladder."
     >
       <div className="podium-preview">
         {podiumPayoutPreview.map((row, idx) => (
@@ -531,19 +539,28 @@ export function BattleFeedSection(props: {
       title="Live battle feed"
       badgeLabel="Indexer mirror"
       badgeTone="info"
-      lede="Recent buys should feel like moments: who changed the room, how the timer moved, what status shifted, and why spectators should care."
+      spotlight
+      className="timecurve-panel timecurve-panel--feed"
+      cutout={{
+        src: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
+        width: 256,
+        height: 256,
+        className: "panel-cutout panel-cutout--mid-right",
+      }}
+      lede="Follow the latest momentum swings, timer saves, and standout plays as they land."
     >
       {indexerNote && <StatusMessage variant="placeholder">{indexerNote}</StatusMessage>}
       {!buys && !indexerNote && <StatusMessage variant="loading">Loading recent buys...</StatusMessage>}
       {buys && buys.length === 0 && !indexerNote && <StatusMessage variant="muted">No buys indexed yet.</StatusMessage>}
       {buys && buys.length > 0 && (
-        <ul className="feed-grid">
+        <ul className="feed-grid feed-grid--battle">
           {buys.map((buy) => {
             const narrative = buildBuyNarrative(buy, address);
             const bpBreakdown = buildBuyBattlePointBreakdown(buy);
             return (
               <FeedCard
                 key={`${buy.tx_hash}-${buy.log_index}`}
+                className="feed-card--battle"
                 eyebrow={narrative.eyebrow}
                 title={
                   <>
