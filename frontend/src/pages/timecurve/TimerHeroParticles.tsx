@@ -5,12 +5,15 @@ import { useReducedMotion } from "motion/react";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
+import { buySpendEnvelopeFillRatio, type EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import { buySizeColor } from "@/pages/timecurve/buySizeColor";
 
 type TimerTone = "calm" | "warning" | "critical";
 
 const GOLD = ["#fde68a", "#f5c842", "#fffef5"];
 const GREEN_GOLD = ["#1fb86a", "#5ee89a", "#fde68a", "#ffffff"];
-const HEAT = ["#f97316", "#fde68a", "#ef4444", "#fca5a5"];
+/** Clutch window (`timerTone === "critical"`): confetti + sparks read as red, not orange/gold. */
+const CLUTCH_RED = ["#dc2626", "#ef4444", "#b91c1c", "#f87171", "#991b1b", "#fecaca"];
 
 function parseSecondsAdded(raw: string | undefined): bigint | null {
   if (raw === undefined || raw.trim() === "") {
@@ -28,15 +31,41 @@ type Props = {
   remainingSec: number | undefined;
   timerTone: TimerTone;
   buys: BuyItem[] | null;
+  envelopeParams: EnvelopeCurveParams | null;
 };
 
-export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }: Props) {
+export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys, envelopeParams }: Props) {
   const prefersReducedMotion = useReducedMotion();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const apiRef = useRef<ReturnType<typeof confetti.create> | null>(null);
+  const timerToneRef = useRef(timerTone);
+  timerToneRef.current = timerTone;
   const prevRemainingRef = useRef<number | undefined>(undefined);
   const prevTopBuyKeyRef = useRef<string | null>(null);
   const lastBurstMsRef = useRef(0);
+
+  const burstPalette = useCallback(() => {
+    return timerToneRef.current === "critical" ? CLUTCH_RED : GREEN_GOLD;
+  }, []);
+
+  const accentPalette = useCallback(() => {
+    return timerToneRef.current === "critical" ? CLUTCH_RED : GOLD;
+  }, []);
+
+  const buyPalette = useCallback(
+    (buy: BuyItem | null | undefined) => {
+      if (!buy || envelopeParams === null) {
+        return burstPalette();
+      }
+      const ratio = buySpendEnvelopeFillRatio(buy, envelopeParams);
+      if (ratio === null) {
+        return burstPalette();
+      }
+      const base = buySizeColor(ratio);
+      return [base, "#ffffff", "#fffef5", timerToneRef.current === "critical" ? "#fecaca" : "#d1fae5"];
+    },
+    [envelopeParams, burstPalette],
+  );
 
   const fire = useCallback((opts: confetti.Options) => {
     apiRef.current?.({ disableForReducedMotion: true, ...opts });
@@ -88,7 +117,7 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           startVelocity: 38,
           ticks: 320,
           scalar: 1.05,
-          colors: GREEN_GOLD,
+          colors: burstPalette(),
           origin: { x: 0.5, y: 0.42 },
         });
         fire({
@@ -96,18 +125,18 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           angle: 60,
           spread: 55,
           origin: { x: 0, y: 0.65 },
-          colors: GOLD,
+          colors: accentPalette(),
         });
         fire({
           particleCount: 60,
           angle: 120,
           spread: 55,
           origin: { x: 1, y: 0.65 },
-          colors: GOLD,
+          colors: accentPalette(),
         });
       });
     }
-  }, [remainingSec, saleActive, burst, fire]);
+  }, [remainingSec, saleActive, burst, fire, burstPalette, accentPalette]);
 
   /** New indexed buy: hard reset vs small timer add (+2s style) */
   useEffect(() => {
@@ -131,7 +160,7 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           particleCount: 140,
           spread: 80,
           ticks: 300,
-          colors: GREEN_GOLD,
+          colors: buyPalette(top),
           origin: { x: 0.5, y: 0.38 },
         });
       });
@@ -151,7 +180,7 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           startVelocity: 22,
           ticks: 180,
           scalar: 0.75,
-          colors: GOLD,
+          colors: buyPalette(top),
           origin: { x: 0.18, y: 0.55 },
         });
       });
@@ -164,14 +193,14 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           particleCount: 55,
           spread: 64,
           ticks: 220,
-          colors: GREEN_GOLD,
+          colors: buyPalette(top),
           origin: { x: 0.22, y: 0.52 },
         });
       });
     }
-  }, [buys, saleActive, burst, fire]);
+  }, [buys, saleActive, burst, fire, buyPalette]);
 
-  /** Ambient sparks while “Race is heating up” / clutch — stronger near 0 */
+  /** Ambient sparks: gold in warning; red palette in clutch (`critical`) */
   useEffect(() => {
     if (prefersReducedMotion || !saleActive) {
       return;
@@ -189,7 +218,7 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys }
           startVelocity: 32,
           ticks: 120,
           gravity: 0.65,
-          colors: HEAT,
+          colors: CLUTCH_RED,
           origin: { x, y: 0.08 + Math.random() * 0.06 },
         });
       } else {

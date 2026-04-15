@@ -11,14 +11,27 @@ export function IndexerStatusBar() {
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
     const base = indexerBaseUrl();
     if (!base) {
       setTone("warning");
       setLine("Indexer: set VITE_INDEXER_URL");
       return;
     }
-    void (async () => {
-      const s = await fetchIndexerStatus();
+
+    const refreshStatus = async () => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
+      let s: Record<string, unknown> | null = null;
+      try {
+        s = await fetchIndexerStatus();
+      } catch {
+        s = null;
+      } finally {
+        inFlight = false;
+      }
       if (cancelled) {
         return;
       }
@@ -32,10 +45,17 @@ export function IndexerStatusBar() {
       const block =
         typeof blockRaw === "number" || typeof blockRaw === "string" ? formatLocaleInteger(blockRaw) : "?";
       setTone("success");
-      setLine(`Indexer v${ver} · max block ${block}`);
-    })();
+      setLine(`Indexer v${ver} · latest indexed block ${block} · live`);
+    };
+
+    void refreshStatus();
+    const intervalId = window.setInterval(() => {
+      void refreshStatus();
+    }, 3000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, []);
 

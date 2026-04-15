@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import random
+import time
+
 from timecurve_bot.actions import account_from_config, approve_if_needed, buy, print_dry
 from timecurve_bot.config import BotConfig
 from timecurve_bot.rpc import anvil_increase_time, ensure_anvil_cheat_allowed
-from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds
+from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec
 from web3 import Web3
 from web3.contract import Contract
 
@@ -21,34 +24,48 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract, *, steps: int =
         return
     acct = account_from_config(cfg.private_key)
 
-    print(f"defender: {steps} qualifying buys under {_WINDOW}s remaining (min CHARM each step)")
+    mean = loop_mean_sec("YIELDOMEGA_DEFENDER_MEAN_SEC", "90")
+    print(
+        f"defender: loop cycles of {steps} qualifying buys under {_WINDOW}s remaining "
+        f"(min CHARM each step); mean inter-cycle={mean}s"
+    )
 
     if not send:
-        print_dry("defender", f"would warp timer + buy from {acct.address} x{steps}")
+        print_dry("defender", f"would warp timer + loop buys from {acct.address} x{steps} per cycle")
         return
 
     approve_if_needed(w3, asset, acct, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
 
-    for i in range(steps):
-        latest = w3.eth.get_block("latest")
-        now = int(latest["timestamp"])
-        dl = int(tc.functions.deadline().call())
+    while True:
         if bool(tc.functions.ended().call()):
-            print("Sale ended; stop defender loop.")
+            print("defender: sale ended; stopping.")
             return
-        rem = dl - now
-        if rem >= _WINDOW:
-            jump = rem - 600
-            print(f"step {i + 1}: warp +{jump}s (remaining {rem}s -> ~600s)")
-            anvil_increase_time(w3, max(1, jump))
-        lo, _hi = charm_bounds(tc)
-        charm = lo
-        need = asset_amount_for_charm(tc, charm)
-        bal = int(asset.functions.balanceOf(acct.address).call())
-        if bal < need:
-            print(f"Insufficient CL8Y balance {bal} < {need}; mint from deployer or fund account.")
-            return
-        buy(w3, tc, acct, charm, gas_multiplier=cfg.gas_multiplier, send=True)
-        streak = int(tc.functions.activeDefendedStreak(acct.address).call())
-        best = int(tc.functions.bestDefendedStreak(acct.address).call())
-        print(f"  after buy: activeDefendedStreak={streak} bestDefendedStreak={best}")
+        for i in range(steps):
+            latest = w3.eth.get_block("latest")
+            now = int(latest["timestamp"])
+            dl = int(tc.functions.deadline().call())
+            if bool(tc.functions.ended().call()):
+                print("defender: sale ended; stopping.")
+                return
+            rem = dl - now
+            if rem >= _WINDOW:
+                jump = rem - 600
+                print(f"step {i + 1}: warp +{jump}s (remaining {rem}s -> ~600s)")
+                anvil_increase_time(w3, max(1, jump))
+            lo, _hi = charm_bounds(tc)
+            charm = charm_for_buy(tc, lo)
+            need = asset_amount_for_charm(tc, charm)
+            bal = int(asset.functions.balanceOf(acct.address).call())
+            if bal < need:
+                print(f"Insufficient CL8Y balance {bal} < {need}; mint from deployer or fund account.")
+                return
+            try:
+                buy(w3, tc, acct, charm, gas_multiplier=cfg.gas_multiplier, send=True)
+            except Exception as e:
+                print(f"defender: buy failed ({e!s}); restarting cycle")
+                break
+            streak = int(tc.functions.activeDefendedStreak(acct.address).call())
+            best = int(tc.functions.bestDefendedStreak(acct.address).call())
+            print(f"  after buy: activeDefendedStreak={streak} bestDefendedStreak={best}")
+        delay = random.expovariate(1.0 / mean)
+        time.sleep(delay)

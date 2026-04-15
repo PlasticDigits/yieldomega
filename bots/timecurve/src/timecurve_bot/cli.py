@@ -14,7 +14,7 @@ from timecurve_bot.config import BotConfig, load_config
 from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
 from timecurve_bot.rpc import assert_chain_id, make_web3
 from timecurve_bot.state import fetch_sale_snapshot, format_snapshot_human
-from timecurve_bot.strategies import defender, fun, pvp, seed_local, shark
+from timecurve_bot.strategies import defender, fun, pvp, rando, seed_local, shark
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -82,7 +82,7 @@ def cmd_inspect(ctx: typer.Context) -> None:
 
 @app.command("fun")
 def cmd_fun(ctx: typer.Context) -> None:
-    """Single conservative buy at current min CHARM (dry-run unless --send)."""
+    """Loop conservative buys at current min CHARM (dry-run unless --send)."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
     fun.run(w3, cfg, tc, asset)
@@ -97,7 +97,7 @@ def cmd_shark(
         help="With Anvil cheat: warp timer toward <13m remaining before max buy.",
     ),
 ) -> None:
-    """Aggressive max-CHARM buy; optional timer warp for hard-reset branch (local)."""
+    """Loop max-CHARM buys; optional timer warp each iteration for hard-reset branch (local)."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
     shark.run(w3, cfg, tc, asset, warp_reset=warp_reset)
@@ -105,7 +105,7 @@ def cmd_shark(
 
 @app.command("pvp")
 def cmd_pvp(ctx: typer.Context) -> None:
-    """Victim buys for BP; attacker warbowSteal (needs YIELDOMEGA_PVP_VICTIM_PRIVATE_KEY or Anvil key #1)."""
+    """Loop victim buys + attacker warbowSteal (needs YIELDOMEGA_PVP_VICTIM_PRIVATE_KEY or Anvil key #1)."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
     pvp.run(w3, cfg, tc, asset)
@@ -116,7 +116,7 @@ def cmd_defender(
     ctx: typer.Context,
     steps: int = typer.Option(3, "--steps", help="Number of qualifying buys (1–20)."),
 ) -> None:
-    """Repeated under-window buys to grow defended streak (Anvil time warp)."""
+    """Loop cycles of under-window buys to grow defended streak (Anvil time warp)."""
     if steps < 1 or steps > 20:
         typer.echo("steps must be between 1 and 20", err=True)
         raise typer.Exit(2)
@@ -127,7 +127,7 @@ def cmd_defender(
 
 @app.command("seed-local")
 def cmd_seed_local(ctx: typer.Context) -> None:
-    """Deterministic multi-wallet scenario for local UI / indexer (requires --send --allow-anvil-cheat)."""
+    """Deterministic scenario once, then min-CHARM loop (requires --send --allow-anvil-cheat)."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
     seed_local.run(w3, cfg, tc, asset)
@@ -137,6 +137,28 @@ def cmd_seed_local(ctx: typer.Context) -> None:
 def cmd_scenario(ctx: typer.Context) -> None:
     """Alias for seed-local."""
     cmd_seed_local(ctx)
+
+
+@app.command("rando")
+def cmd_rando(ctx: typer.Context) -> None:
+    """Loop: Poisson inter-arrival times, uniform random CHARM in [min,max] (needs --send)."""
+    cfg: BotConfig = ctx.obj
+    w3, tc, asset = _connect(cfg)
+    rando.run(w3, cfg, tc, asset)
+
+
+@app.command("swarm")
+def cmd_swarm(
+    skip_mint: bool = typer.Option(
+        False,
+        "--skip-mint",
+        help="Do not mint mock reserve (already funded wallets).",
+    ),
+) -> None:
+    """Spawn 3× each strategy + 3 rando (Anvil 31337); mints CL8Y then backgrounds processes."""
+    from timecurve_bot import swarm_runner
+
+    swarm_runner.run_swarm(skip_mint=skip_mint)
 
 
 def main() -> None:

@@ -70,14 +70,16 @@ export function FeedCard({
   title,
   meta,
   tags = [],
+  className,
 }: {
   eyebrow?: ReactNode;
   title: ReactNode;
   meta?: ReactNode;
   tags?: string[];
+  className?: string;
 }) {
   return (
-    <li className="feed-card">
+    <li className={["feed-card", className].filter(Boolean).join(" ")}>
       {eyebrow && <div className="feed-card__eyebrow">{eyebrow}</div>}
       <div className="feed-card__title">{title}</div>
       {meta && <div className="feed-card__meta">{meta}</div>}

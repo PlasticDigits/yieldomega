@@ -142,6 +142,36 @@ export function minGrossSpendAtFloat(
   return (c * p) / WAD;
 }
 
+/**
+ * Gross min from `minGrossSpendAt*` uses the on-chain minimum CHARM weight `CHARM_MIN_BASE_WAD` (0.99e18)
+ * as a revert buffer. **UI / charts** use nominal min spend = on-chain min × WAD ÷ `CHARM_MIN_BASE_WAD` so the
+ * band reads as **1 : 10** (min : max) in CL8Y. Call sites that compare to **tx amounts** should keep contract mins.
+ */
+export function displayMinGrossSpendWad(contractMinGrossWad: bigint): bigint {
+  if (contractMinGrossWad <= 0n) {
+    return 0n;
+  }
+  return (contractMinGrossWad * WAD) / CHARM_MIN_BASE_WAD;
+}
+
+/** Contract `minGrossSpendAtFloat`, then {@link displayMinGrossSpendWad} for user-facing gross min CL8Y. */
+export function displayMinGrossSpendAtFloat(
+  charmEnvelopeRefWad: bigint,
+  growthRateWad: bigint,
+  basePriceWad: bigint,
+  dailyIncrementWad: bigint,
+  elapsedSec: number,
+): bigint {
+  const m = minGrossSpendAtFloat(
+    charmEnvelopeRefWad,
+    growthRateWad,
+    basePriceWad,
+    dailyIncrementWad,
+    elapsedSec,
+  );
+  return displayMinGrossSpendWad(m);
+}
+
 /** Maximum gross reserve spend at elapsed (max CHARM × linear price). */
 export function maxGrossSpendAt(
   charmEnvelopeRefWad: bigint,
@@ -193,12 +223,14 @@ export function sampleMinSpendCurve(
     return [
       {
         elapsed: 0n,
-        minSpend: minGrossSpendAt(
-          charmEnvelopeRefWad,
-          growthRateWad,
-          basePriceWad,
-          dailyIncrementWad,
-          0n,
+        minSpend: displayMinGrossSpendWad(
+          minGrossSpendAt(
+            charmEnvelopeRefWad,
+            growthRateWad,
+            basePriceWad,
+            dailyIncrementWad,
+            0n,
+          ),
         ),
       },
     ];
@@ -208,12 +240,14 @@ export function sampleMinSpendCurve(
     const elapsed = (elapsedMax * BigInt(i)) / BigInt(points - 1);
     out.push({
       elapsed,
-      minSpend: minGrossSpendAt(
-        charmEnvelopeRefWad,
-        growthRateWad,
-        basePriceWad,
-        dailyIncrementWad,
-        elapsed,
+      minSpend: displayMinGrossSpendWad(
+        minGrossSpendAt(
+          charmEnvelopeRefWad,
+          growthRateWad,
+          basePriceWad,
+          dailyIncrementWad,
+          elapsed,
+        ),
       ),
     });
   }

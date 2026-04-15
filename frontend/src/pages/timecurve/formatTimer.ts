@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/** HH:MM:SS plus centiseconds so the hero can tick at ~10ms without waiting for whole seconds. */
+/**
+ * When remaining is at or near the onchain timer cap (e.g. hard reset to ~15 minutes), snap to the
+ * exact cap in seconds so the hero shows an even `…:MM:00` without fractional jitter.
+ */
+export function snapRemainingAtCap(snap: number, timerCapSec: number | undefined): number {
+  if (timerCapSec !== undefined && snap >= timerCapSec - 1) {
+    return timerCapSec;
+  }
+  return snap;
+}
+
+/** Whole seconds only — `HH:MM:SS` (no sub-second digits). */
 export function formatCountdown(totalSec: number): string {
-  const clamped = Math.max(0, totalSec);
-  const h = Math.floor(clamped / 3600);
-  const m = Math.floor((clamped % 3600) / 60);
-  const s = Math.floor(clamped % 60);
-  const cs = Math.min(99, Math.floor((clamped % 1) * 100));
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+  const totalWhole = Math.floor(Math.max(0, totalSec));
+  const h = Math.floor(totalWhole / 3600);
+  const m = Math.floor((totalWhole % 3600) / 60);
+  const s = totalWhole % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export function timerUrgencyClass(sec: number | undefined): string {

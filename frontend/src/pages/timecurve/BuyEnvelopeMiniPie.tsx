@@ -1,61 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { buySizeColor } from "@/pages/timecurve/buySizeColor";
+
 type Props = {
-  /** 0 = min envelope, 1 = max; null = unknown (no block time). */
+  /** 0.1 = displayed minimum envelope, 1 = max; null = unknown (no block time). */
   ratio: number | null;
+  amountRaw: string;
   title?: string;
 };
 
-const R = 13;
-const C = 2 * Math.PI * R;
+export function BuyEnvelopeMiniMeter({ ratio, amountRaw, title }: Props) {
+  const t = ratio === null ? null : Math.max(0, Math.min(1, ratio));
+  const amountLabel = `${formatCompactFromRaw(amountRaw, 18, { sigfigs: 3 })} CL8Y`;
+  const meterTitle =
+    title ??
+    (t === null
+      ? `Spent ${amountLabel}; band fill needs indexer block time on this buy`
+      : `Spent ${amountLabel}; ~${Math.round(t * 100)}% of max gross band at that block`);
 
-function fillColor(ratio: number): string {
-  const t = Math.max(0, Math.min(1, ratio));
-  const h = 205 - t * 155;
-  const s = 62 + t * 28;
-  const l = 42 + t * 18;
-  return `hsl(${h} ${s}% ${l}%)`;
-}
-
-export function BuyEnvelopeMiniPie({ ratio, title }: Props) {
-  if (ratio === null) {
-    return (
-      <div
-        className="buy-env-pie buy-env-pie--unknown"
-        title={title ?? "Min/max band needs block time on this row"}
-        aria-hidden
-      />
-    );
-  }
-  const t = Math.max(0, Math.min(1, ratio));
-  const dash = t * C;
-  const col = fillColor(t);
   return (
-    <span
-      className="buy-env-pie-wrap"
-      title={title ?? `Spend ~${Math.round(t * 100)}% from min toward max gross at buy`}
-    >
-      <svg className="buy-env-pie" width="36" height="36" viewBox="0 0 36 36" aria-hidden>
-      <circle
-        cx="18"
-        cy="18"
-        r={R}
-        fill="none"
-        stroke="rgba(255,255,255,0.18)"
-        strokeWidth="4"
-      />
-      <circle
-        cx="18"
-        cy="18"
-        r={R}
-        fill="none"
-        stroke={col}
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${C}`}
-        transform="rotate(-90 18 18)"
-      />
-      </svg>
+    <span className="buy-env-meter-wrap" title={meterTitle}>
+      <span
+        className={`buy-env-meter-track${t === null ? " buy-env-meter-track--unknown" : ""}`}
+        aria-hidden
+      >
+        {t !== null ? (
+          <span
+            className="buy-env-meter-fill"
+            style={{
+              width: `${Math.max(6, t * 100)}%`,
+              backgroundColor: buySizeColor(t),
+            }}
+          />
+        ) : null}
+      </span>
+      <span className="buy-env-meter-label">{amountLabel}</span>
     </span>
   );
 }

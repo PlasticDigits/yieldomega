@@ -6,6 +6,11 @@
 # Set SKIP_ANVIL_RICH_STATE=1 to skip `contracts/script/anvil_rich_state.sh` (keeps TimeCurve sale **live**
 # for bot/UI demos; indexer still indexes normal buys). Default runs rich state (sale ends, prizes, etc.).
 #
+# Bot swarm (3× fun/shark/pvp/defender/seed-local + 3× rando): mints CL8Y, anvil_setBalance ETH, env-based --send:
+#   When SKIP_ANVIL_RICH_STATE=1, START_BOT_SWARM defaults to 1 (set START_BOT_SWARM=0 to skip).
+#   When rich state runs (sale ended), START_BOT_SWARM defaults to 0.
+#   Requires Python deps: `cd bots/timecurve && pip install -e .`
+#
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # Usage from repo root:
 #   bash scripts/start-local-anvil-stack.sh
@@ -27,6 +32,12 @@ RPC_URL="${RPC_URL:-http://127.0.0.1:${ANVIL_PORT}}"
 PG_HOST_PORT="${PG_HOST_PORT:-5433}"
 INDEXER_PORT="${INDEXER_PORT:-3100}"
 DOCKER_PG="${DOCKER_PG:-yieldomega-pg}"
+
+if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
+  START_BOT_SWARM="${START_BOT_SWARM:-1}"
+else
+  START_BOT_SWARM="${START_BOT_SWARM:-0}"
+fi
 
 export FOUNDRY_OUT="${FOUNDRY_OUT:-${CONTRACTS}/out-local-dev}"
 mkdir -p "${FOUNDRY_OUT}"
@@ -92,8 +103,15 @@ docker exec "${DOCKER_PG}" pg_isready -U yieldomega -d yieldomega_indexer >/dev/
 echo "=== Anvil (${RPC_URL}) ==="
 if ss -tlnp 2>/dev/null | grep -qE ":${ANVIL_PORT}\\s"; then
   echo "Port ${ANVIL_PORT} already in use — reusing existing RPC (ensure it is Anvil chain 31337)."
+  if [[ "${START_BOT_SWARM}" == "1" ]]; then
+    echo "Warning: START_BOT_SWARM=1 needs Anvil with at least 30 dev accounts; existing node may have only 10."
+  fi
 else
-  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
+  ANVIL_EXTRA=()
+  if [[ "${START_BOT_SWARM}" == "1" ]]; then
+    ANVIL_EXTRA=(--accounts 30)
+  fi
+  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
   echo $! > /tmp/yieldomega_anvil_stack.pid
   for _ in $(seq 1 30); do
     cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1 && break
@@ -200,3 +218,17 @@ echo "  Open http://127.0.0.1:5173"
 echo ""
 echo "Smoke (indexer):"
 echo "  curl -s http://127.0.0.1:${INDEXER_PORT}/v1/timecurve/buys?limit=5 | jq ."
+
+if [[ "${START_BOT_SWARM}" == "1" ]]; then
+  echo ""
+  echo "=== Bot swarm (START_BOT_SWARM=1) ==="
+  chmod +x "${ROOT}/scripts/sync-bot-env-from-frontend.sh" 2>/dev/null || true
+  bash "${ROOT}/scripts/sync-bot-env-from-frontend.sh"
+  BOT_PY="python3"
+  if [[ -x "${ROOT}/bots/timecurve/.venv/bin/python" ]]; then
+    BOT_PY="${ROOT}/bots/timecurve/.venv/bin/python"
+  fi
+  ( cd "${ROOT}" && PYTHONPATH="${ROOT}/bots/timecurve/src" "${BOT_PY}" -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()" ) \
+    || die "Bot swarm failed (install: cd bots/timecurve && pip install -e .)"
+  echo "  Logs: /tmp/yieldomega_swarm_*.log   PIDs: /tmp/yieldomega_bot_swarm.pids"
+fi

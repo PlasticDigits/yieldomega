@@ -40,6 +40,14 @@ def anvil_mine(w3: Web3, blocks: int = 1) -> None:
         w3.provider.make_request("anvil_mine", [])  # type: ignore[union-attr]
 
 
+def anvil_set_balance(w3: Web3, address: str, balance_wei: int) -> None:
+    """Foundry Anvil: set native ETH balance (local dev only)."""
+    w3.provider.make_request(  # type: ignore[union-attr]
+        "anvil_setBalance",
+        [Web3.to_checksum_address(address), hex(int(balance_wei))],
+    )
+
+
 def ensure_anvil_cheat_allowed(cfg: BotConfig, w3: Web3) -> None:
     if not cfg.allow_anvil_cheat:
         raise ValueError("This action needs --allow-anvil-cheat (local Anvil only; never on public RPC).")

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { formatUnits } from "viem";
-import { useMemo } from "react";
+import { useMemo, type SVGProps } from "react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ReferenceDot,
@@ -15,13 +14,16 @@ import {
   YAxis,
 } from "recharts";
 import {
+  displayMinGrossSpendAtFloat,
   linearPriceWadFloat,
   maxGrossSpendAtFloat,
-  minGrossSpendAtFloat,
 } from "@/lib/timeCurveMath";
 import { elapsedChartAxisMaxSeconds, formatElapsedHms } from "@/pages/timecurve/timeCurveSaleWindow";
 
 const CHART_SAMPLES = 72;
+
+/** CL8Y/CHARM sale price is always ≥ 1 in product; chart axis matches so the band isn’t wasted below 1. */
+const PRICE_CHART_Y_MIN = 1;
 
 type Point = {
   /** Seconds since sale start (x-axis). */
@@ -33,6 +35,25 @@ type Point = {
 
 function toHuman(raw: bigint, decimals: number): number {
   return Number.parseFloat(formatUnits(raw, decimals));
+}
+
+/** Pulsing “now” marker for ReferenceDot (`shape`). */
+function LiveSpotDot(props: SVGProps<SVGCircleElement>): React.ReactElement {
+  const { cx, cy, r, fill, stroke, strokeWidth } = props;
+  if (cx == null || cy == null) {
+    return <g />;
+  }
+  return (
+    <circle
+      className="timecurve-live-charts__spot-dot"
+      cx={cx}
+      cy={cy}
+      r={r}
+      fill={fill}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+    />
+  );
 }
 
 type Props = {
@@ -67,7 +88,7 @@ export function TimeCurveLiveCharts({
   const axisMaxElapsed = useMemo(() => elapsedChartAxisMaxSeconds(elapsedLive), [elapsedLive]);
 
   const livePrice = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedLive);
-  const liveMinGross = minGrossSpendAtFloat(
+  const liveMinGross = displayMinGrossSpendAtFloat(
     initialMinBuy,
     growthRateWad,
     basePriceWad,
@@ -83,7 +104,7 @@ export function TimeCurveLiveCharts({
   );
 
   const startPrice = linearPriceWadFloat(basePriceWad, dailyIncrementWad, 0);
-  const startMinGross = minGrossSpendAtFloat(
+  const startMinGross = displayMinGrossSpendAtFloat(
     initialMinBuy,
     growthRateWad,
     basePriceWad,
@@ -98,26 +119,60 @@ export function TimeCurveLiveCharts({
     0,
   );
 
+  const priceHumanLive = toHuman(livePrice, 18);
+  const minHumanLive = toHuman(liveMinGross, decimals);
+  const maxHumanLive = toHuman(liveMaxGross, decimals);
+  const startPriceHuman = toHuman(startPrice, 18);
+  const startMinHuman = toHuman(startMinGross, decimals);
+  const startMaxHuman = toHuman(startMaxGross, decimals);
+
+  /** Elapsed time at the chart’s right edge — same formulas as contracts, evaluated through the full plotted window. */
+  const chartEndElapsed = axisMaxElapsed;
+
+  const endPriceWadForDomain = linearPriceWadFloat(basePriceWad, dailyIncrementWad, chartEndElapsed);
+  const endMinGrossForDomain = displayMinGrossSpendAtFloat(
+    initialMinBuy,
+    growthRateWad,
+    basePriceWad,
+    dailyIncrementWad,
+    chartEndElapsed,
+  );
+  const endMaxGrossForDomain = maxGrossSpendAtFloat(
+    initialMinBuy,
+    growthRateWad,
+    basePriceWad,
+    dailyIncrementWad,
+    chartEndElapsed,
+  );
+
+  const priceYAxisMax = toHuman(endPriceWadForDomain, 18);
+  const endMinHuman = toHuman(endMinGrossForDomain, decimals);
+  const endMaxHuman = toHuman(endMaxGrossForDomain, decimals);
+  const boundsYAxisMax = Math.max(endMinHuman, endMaxHuman);
+  /** Upper bound: value at chart end; include start refs if they sit above (e.g. decreasing price). */
+  const priceYUpper = Math.max(priceYAxisMax, startPriceHuman);
+  const priceChartYMax = Math.max(priceYUpper, PRICE_CHART_Y_MIN + 1e-9);
+  const boundsYUpper = Math.max(boundsYAxisMax, startMinHuman, startMaxHuman, minHumanLive, maxHumanLive);
+
   const chartData = useMemo((): Point[] => {
     const span = Math.max(1e-9, axisMaxElapsed);
     const out: Point[] = [];
     for (let i = 0; i < CHART_SAMPLES; i += 1) {
       const elapsedSinceLaunch = (span * i) / (CHART_SAMPLES - 1);
-      const elapsedForCurve = Math.min(elapsedSinceLaunch, saleDurationSec);
-      const p = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedForCurve);
-      const mn = minGrossSpendAtFloat(
+      const p = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedSinceLaunch);
+      const mn = displayMinGrossSpendAtFloat(
         initialMinBuy,
         growthRateWad,
         basePriceWad,
         dailyIncrementWad,
-        elapsedForCurve,
+        elapsedSinceLaunch,
       );
       const mx = maxGrossSpendAtFloat(
         initialMinBuy,
         growthRateWad,
         basePriceWad,
         dailyIncrementWad,
-        elapsedForCurve,
+        elapsedSinceLaunch,
       );
       out.push({
         elapsedSinceLaunch,
@@ -129,20 +184,12 @@ export function TimeCurveLiveCharts({
     return out;
   }, [
     axisMaxElapsed,
-    saleDurationSec,
     initialMinBuy,
     growthRateWad,
     basePriceWad,
     dailyIncrementWad,
     decimals,
   ]);
-
-  const priceHumanLive = toHuman(livePrice, 18);
-  const minHumanLive = toHuman(liveMinGross, decimals);
-  const maxHumanLive = toHuman(liveMaxGross, decimals);
-  const startPriceHuman = toHuman(startPrice, 18);
-  const startMinHuman = toHuman(startMinGross, decimals);
-  const startMaxHuman = toHuman(startMaxGross, decimals);
 
   if (!saleActive) {
     return null;
@@ -152,10 +199,8 @@ export function TimeCurveLiveCharts({
     <div className="timecurve-live-charts" aria-label="Live price and spend curves">
       <div className="timecurve-live-charts__intro">
         <p>
-          Curves use the same sale math as the contracts (linear price per charm, exponential envelope for min/max
-          CHARM). The horizontal axis is <strong>time since launch</strong> (HH:MM:SS from 0). The window runs from
-          0 to <strong>3×</strong> your current elapsed time so <strong>now</strong> sits at one-third of the span.
-          After the deadline, the marker sits at the sale end.
+          These curves use the same formulas as the contracts. The view stays anchored to sale time, and the live marker
+          follows the current on-chain moment.
         </p>
       </div>
 
@@ -165,10 +210,10 @@ export function TimeCurveLiveCharts({
         </h3>
         <div className="timecurve-live-charts__live-row mono" aria-live="off">
           <span>
-            Live: <strong>{priceHumanLive.toFixed(4)}</strong> CL8Y / CHARM
+            Live: <strong>{priceHumanLive.toFixed(3)}</strong> CL8Y / CHARM
           </span>
           <span className="timecurve-live-charts__muted">
-            at sale start: {startPriceHuman.toFixed(4)} CL8Y / CHARM
+            start: {startPriceHuman.toFixed(3)} CL8Y / CHARM
           </span>
         </div>
         <div className="timecurve-live-charts__plot">
@@ -184,19 +229,18 @@ export function TimeCurveLiveCharts({
                 label={{ value: "Since launch", position: "insideBottom", offset: -4, fill: "var(--text-muted)", fontSize: 11 }}
               />
               <YAxis
-                domain={["auto", "auto"]}
+                domain={[PRICE_CHART_Y_MIN, priceChartYMax]}
                 tickFormatter={(v) => (Number.isFinite(Number(v)) ? Number(v).toFixed(3) : "—")}
                 stroke="var(--line)"
                 width={56}
               />
               <Tooltip
                 formatter={(value) => [
-                  `${Number.isFinite(Number(value)) ? Number(value).toFixed(6) : "—"} CL8Y/CHARM`,
+                  `${Number.isFinite(Number(value)) ? Number(value).toFixed(4) : "—"} CL8Y/CHARM`,
                   "Price",
                 ]}
                 labelFormatter={(elapsed) => `+${formatElapsedHms(Number(elapsed))} since launch`}
               />
-              <Legend />
               <ReferenceLine
                 y={startPriceHuman}
                 stroke="var(--arcade-green-700)"
@@ -226,6 +270,7 @@ export function TimeCurveLiveCharts({
                 fill="var(--arcade-gold-400)"
                 stroke="var(--line)"
                 strokeWidth={2}
+                shape={LiveSpotDot as never}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -236,13 +281,17 @@ export function TimeCurveLiveCharts({
         <h3 id="tc-live-bounds-heading" className="timecurve-live-charts__title">
           Min / max gross spend (CL8Y, exponential envelope × linear price)
         </h3>
+        <p className="timecurve-live-charts__bounds-note timecurve-live-charts__muted">
+          The shown minimum is nominal. On-chain min uses a 0.99 CHARM buffer, so the display stays aligned to the
+          expected 1:10 min:max band.
+        </p>
         <div className="timecurve-live-charts__live-row mono" aria-live="off">
           <span>
-            Live min: <strong>{minHumanLive.toFixed(4)}</strong> CL8Y · Live max:{" "}
-            <strong>{maxHumanLive.toFixed(4)}</strong> CL8Y
+            Live min: <strong>{minHumanLive.toFixed(3)}</strong> CL8Y · Live max:{" "}
+            <strong>{maxHumanLive.toFixed(3)}</strong> CL8Y
           </span>
           <span className="timecurve-live-charts__muted">
-            at sale start: min {startMinHuman.toFixed(4)} · max {startMaxHuman.toFixed(4)} CL8Y
+            start: min {startMinHuman.toFixed(3)} · max {startMaxHuman.toFixed(3)} CL8Y
           </span>
         </div>
         <div className="timecurve-live-charts__plot">
@@ -258,19 +307,18 @@ export function TimeCurveLiveCharts({
                 label={{ value: "Since launch", position: "insideBottom", offset: -4, fill: "var(--text-muted)", fontSize: 11 }}
               />
               <YAxis
-                domain={["auto", "auto"]}
+                domain={[0, boundsYUpper]}
                 tickFormatter={(v) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2) : "—")}
                 stroke="var(--line)"
                 width={56}
               />
               <Tooltip
                 formatter={(value, name) => [
-                  `${Number.isFinite(Number(value)) ? Number(value).toFixed(6) : "—"} CL8Y`,
+                  `${Number.isFinite(Number(value)) ? Number(value).toFixed(4) : "—"} CL8Y`,
                   String(name),
                 ]}
                 labelFormatter={(elapsed) => `+${formatElapsedHms(Number(elapsed))} since launch`}
               />
-              <Legend />
               <ReferenceLine
                 y={startMinHuman}
                 stroke="var(--arcade-green-700)"
@@ -315,6 +363,7 @@ export function TimeCurveLiveCharts({
                 fill="var(--arcade-green-500)"
                 stroke="var(--line)"
                 strokeWidth={2}
+                shape={LiveSpotDot as never}
               />
               <ReferenceDot
                 x={elapsedLive}
@@ -323,6 +372,7 @@ export function TimeCurveLiveCharts({
                 fill="var(--arcade-gold-600)"
                 stroke="var(--line)"
                 strokeWidth={2}
+                shape={LiveSpotDot as never}
               />
             </LineChart>
           </ResponsiveContainer>

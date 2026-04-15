@@ -214,6 +214,16 @@ export function describeTimerPreview(
     };
   }
 
+  /** When remaining is already at `timerCapSec`, `extendDeadline` cannot add the full +120s (on-chain `actualSecondsAdded` is 0). */
+  if (timerExtensionPreview === 0 && remainingSec > 300) {
+    return {
+      tone: "calm",
+      label: "Timer at max window",
+      detail:
+        "The countdown is already at the maximum remaining time allowed by the contract (timer cap). Buys still matter for podiums and WarBow, but the deadline cannot extend past this cap—so you will not see a +120s jump until remaining drops below the cap.",
+    };
+  }
+
   if (remainingSec <= 300) {
     return {
       tone: "critical",
@@ -293,17 +303,17 @@ export function buildBuyFeedNarrative(
 
   let headline = `${buyer} hit the curve`;
   if (buy.timer_hard_reset) {
-    headline = `${buyer} yanked the timer back from the brink`;
+    headline = `${buyer} pulled the timer back into safer ground`;
   } else if (streakBreakBonus > 0n) {
-    headline = `${buyer} broke a defended streak`;
+    headline = `${buyer} cracked a defended streak`;
   } else if (clutchBonus > 0n) {
-    headline = `${buyer} landed a clutch buy`;
+    headline = `${buyer} landed a clutch save`;
   }
 
   return {
-    eyebrow: "Buy event",
+    eyebrow: "Momentum shift",
     headline,
-    detail: impactParts.length > 0 ? impactParts.join(" · ") : "Fresh buy indexed from chain.",
+    detail: impactParts.length > 0 ? impactParts.join(" · ") : "Fresh buy mirrored from chain.",
     tags,
   };
 }

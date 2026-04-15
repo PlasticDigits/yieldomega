@@ -56,9 +56,10 @@ test("live buys strip, More list modal, and buy detail modal stack", async ({ pa
   await expect(page.getByRole("button", { name: "More" })).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "More" }).click();
-  await expect(page.getByRole("dialog", { name: "All indexed buys" })).toBeVisible();
+  const listDialog = page.getByRole("dialog", { name: "All indexed buys" });
+  await expect(listDialog).toBeVisible();
 
-  await page.locator(".live-buy-row__hit").first().click();
+  await listDialog.locator(".live-buy-row__hit").first().click();
   const detail = page.getByRole("dialog", { name: "Buy details" });
   await expect(detail).toBeVisible();
   await expect(detail.getByText("Buy event", { exact: true })).toBeVisible();
@@ -66,10 +67,10 @@ test("live buys strip, More list modal, and buy detail modal stack", async ({ pa
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", { name: "Buy details" })).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "All indexed buys" })).toBeVisible();
+  await expect(listDialog).toBeVisible();
 
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "All indexed buys" })).toBeHidden();
+  await expect(listDialog).toBeHidden();
 });
 
 test("side strip opens buy detail without opening list first", async ({ page }) => {

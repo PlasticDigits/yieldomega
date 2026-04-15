@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 
 from eth_account import Account
@@ -19,6 +20,13 @@ def _tx_template(w3: Web3, account: LocalAccount) -> dict:
     }
 
 
+def _gas_limit(estimated: int, gas_multiplier: float) -> int:
+    """Avoid 'gas required exceeds allowance' when estimate is tight vs execution (e.g. heavy mint)."""
+    raw = os.getenv("YIELDOMEGA_GAS_BUFFER", "100000").strip()
+    buf = max(0, int(raw))
+    return max(int(estimated * gas_multiplier), int(estimated) + buf)
+
+
 def _build_and_send(
     w3: Web3,
     account: LocalAccount,
@@ -30,7 +38,7 @@ def _build_and_send(
     if not send:
         return None
     gas = w3.eth.estimate_gas(tx)
-    tx["gas"] = int(gas * gas_multiplier)
+    tx["gas"] = _gas_limit(gas, gas_multiplier)
     b = w3.eth.get_block("latest")
     base = b.get("baseFeePerGas")
     if base is not None:

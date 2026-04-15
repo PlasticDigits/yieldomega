@@ -6,12 +6,26 @@ import {
   visibleSaleTimeWindow,
 } from "./timeCurveSaleWindow";
 
+const DAY = 86400;
+const TWENTY_MIN = 20 * 60;
+
 describe("elapsedChartAxisMaxSeconds", () => {
-  it("uses 3× elapsed with a 1s floor so now is at one-third of the axis", () => {
-    expect(elapsedChartAxisMaxSeconds(0)).toBe(1);
-    expect(elapsedChartAxisMaxSeconds(100)).toBe(300);
-    const max = elapsedChartAxisMaxSeconds(90);
-    expect(90 / max).toBeCloseTo(1 / 3, 6);
+  it("is max(24h, 3× elapsed), floored to a multiple of 20 minutes", () => {
+    expect(elapsedChartAxisMaxSeconds(0)).toBe(DAY);
+    expect(elapsedChartAxisMaxSeconds(100)).toBe(DAY);
+    const elapsed = 30_000;
+    expect(elapsedChartAxisMaxSeconds(elapsed)).toBe(elapsed * 3);
+    const bumped = 30_001;
+    const rawMax = Math.max(DAY, bumped * 3);
+    expect(elapsedChartAxisMaxSeconds(bumped)).toBe(
+      Math.floor(rawMax / TWENTY_MIN) * TWENTY_MIN,
+    );
+  });
+
+  it("places now at one-third when 3× elapsed exceeds 24h", () => {
+    const elapsed = 30_000;
+    const max = elapsedChartAxisMaxSeconds(elapsed);
+    expect(elapsed / max).toBeCloseTo(1 / 3, 6);
   });
 });
 

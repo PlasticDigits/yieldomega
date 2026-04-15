@@ -5,7 +5,8 @@ import { buySpendEnvelopeFillRatio, formatBuyAge, type EnvelopeCurveParams } fro
 import { listBuyImpactTicks } from "@/lib/timeCurveUx";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import { explorerTxUrl } from "@/lib/explorer";
-import { BuyEnvelopeMiniPie } from "@/pages/timecurve/BuyEnvelopeMiniPie";
+import { WalletBlockie } from "@/components/WalletBlockie";
+import { BuyEnvelopeMiniMeter } from "@/pages/timecurve/BuyEnvelopeMiniPie";
 
 type Props = {
   buy: BuyItem;
@@ -32,15 +33,21 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
   const who = formatWallet(buy.buyer, "—");
   const txUrl = explorerTxUrl(buy.tx_hash);
   const interactive = onSelectBuy !== undefined;
+  const blockieSize = variant === "modal" ? 40 : 36;
   const pieTitle =
     ratio === null
-      ? "Band fill needs indexer block time on this buy"
-      : `Spend ~${Math.round(ratio * 100)}% from min toward max gross at that block`;
+      ? "Spent amount shown, but band fill needs indexer block time on this buy"
+      : `Spend ~${Math.round(ratio * 100)}% of max gross band at that block`;
 
   const body = (
     <>
-      <div className="live-buy-row__pie">
-        <BuyEnvelopeMiniPie ratio={ratio} title={pieTitle} />
+      <div className="live-buy-row__identity">
+        <WalletBlockie address={buy.buyer} size={blockieSize} className="live-buy-row__blockie" title={buy.buyer} />
+        {variant === "hero" && (
+          <div className="live-buy-row__meter">
+            <BuyEnvelopeMiniMeter ratio={ratio} amountRaw={buy.amount} title={pieTitle} />
+          </div>
+        )}
       </div>
       <div className="live-buy-row__body">
         <div className="live-buy-row__head">
@@ -49,11 +56,11 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
           </span>
           {age !== null ? (
             <span className="live-buy-row__age">{age}</span>
-          ) : (
+          ) : variant === "hero" ? (
             <span className="live-buy-row__age live-buy-row__age--muted" title="Indexer block time missing">
               —
             </span>
-          )}
+          ) : null}
         </div>
         <ul className="live-buy-row__ticks" aria-label="Buy impacts">
           {ticks.map((t) => (
@@ -89,12 +96,14 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
             aria-label={`View transaction ${buy.tx_hash.slice(0, 10)}… on explorer`}
             onClick={(e) => e.stopPropagation()}
           >
-            tx
+            {variant === "modal" ? "view tx" : "tx"}
           </a>
         ) : (
-          <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
-            ·
-          </span>
+          variant === "hero" ? (
+            <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
+              ·
+            </span>
+          ) : null
         )}
       </div>
     );
@@ -105,12 +114,14 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
       <div className="live-buy-row__hit live-buy-row__hit--static">{body}</div>
       {txUrl ? (
         <a className="live-buy-row__tx" href={txUrl} target="_blank" rel="noreferrer noopener">
-          tx
+          {variant === "modal" ? "view tx" : "tx"}
         </a>
       ) : (
-        <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
-          ·
-        </span>
+        variant === "hero" ? (
+          <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
+            ·
+          </span>
+        ) : null
       )}
     </div>
   );

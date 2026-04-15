@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useId, useMemo } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, type UIEvent } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { Modal } from "@/components/ui/Modal";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
@@ -65,6 +65,7 @@ export function TimecurveBuyModals({
 }: Props) {
   const listTitleId = useId();
   const detailTitleId = useId();
+  const listRef = useRef<HTMLUListElement | null>(null);
 
   const narrative = useMemo(
     () => (detailBuy ? buildBuyFeedNarrative(detailBuy, address, formatWallet) : null),
@@ -82,6 +83,36 @@ export function TimecurveBuyModals({
 
   const txUrl = detailBuy ? explorerTxUrl(detailBuy.tx_hash) : undefined;
 
+  const maybeLoadMore = useCallback(() => {
+    if (loadingMoreBuys || buysNextOffset === null) {
+      return;
+    }
+    onLoadMoreBuys();
+  }, [loadingMoreBuys, buysNextOffset, onLoadMoreBuys]);
+
+  useEffect(() => {
+    if (!listOpen || buys === null || buys.length === 0 || loadingMoreBuys || buysNextOffset === null) {
+      return;
+    }
+    const el = listRef.current;
+    if (!el) {
+      return;
+    }
+    if (el.scrollHeight <= el.clientHeight + 24) {
+      maybeLoadMore();
+    }
+  }, [listOpen, buys, loadingMoreBuys, buysNextOffset, maybeLoadMore]);
+
+  const handleListScroll = useCallback(
+    (e: UIEvent<HTMLUListElement>) => {
+      const el = e.currentTarget;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 96) {
+        maybeLoadMore();
+      }
+    },
+    [maybeLoadMore],
+  );
+
   return (
     <>
       <Modal open={listOpen} title="All indexed buys" titleId={listTitleId} onClose={onCloseList} layer="list">
@@ -90,8 +121,12 @@ export function TimecurveBuyModals({
           <p className="modal-bc-placeholder">No buys indexed yet.</p>
         )}
         {!buysLoading && buys !== null && buys.length > 0 && (
-          <>
-            <ul className="modal-bc-list" aria-label="Indexed buys">
+          <div className="modal-bc-shell">
+            <p className="modal-bc-intro">
+              Scan the latest momentum swings, timer saves, and flag pressure. Select a row for the full indexed
+              breakdown.
+            </p>
+            <ul className="modal-bc-list" aria-label="Indexed buys" ref={listRef} onScroll={handleListScroll}>
               {buys.map((buy) => (
                 <li key={`${buy.tx_hash}-${buy.log_index}`} className="modal-bc-li">
                   <LiveBuyRow
@@ -105,19 +140,12 @@ export function TimecurveBuyModals({
                 </li>
               ))}
             </ul>
-            {buysNextOffset !== null && (
-              <div className="modal-bc-more">
-                <button
-                  type="button"
-                  className="modal-bc-more__btn"
-                  onClick={onLoadMoreBuys}
-                  disabled={loadingMoreBuys}
-                >
-                  {loadingMoreBuys ? "Loading…" : "Load more"}
-                </button>
+            {(loadingMoreBuys || buysNextOffset !== null) && (
+              <div className="modal-bc-more" aria-live="polite">
+                {loadingMoreBuys ? "Loading more…" : "Scroll for more"}
               </div>
             )}
-          </>
+          </div>
         )}
       </Modal>
 
