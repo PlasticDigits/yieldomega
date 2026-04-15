@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
 import type { EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
 import { LiveBuyRow } from "@/pages/timecurve/LiveBuyRow";
@@ -27,6 +27,19 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
   onSelectBuy,
   onMore,
 }: Props) {
+  const [liveNowUnixSec, setLiveNowUnixSec] = useState(nowUnixSec);
+
+  useEffect(() => {
+    setLiveNowUnixSec(nowUnixSec);
+  }, [nowUnixSec]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setLiveNowUnixSec((prev) => prev + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const rows = buys?.slice(0, 5) ?? [];
 
   return (
@@ -56,7 +69,7 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
                 buy={buy}
                 formatWallet={formatWallet}
                 onSelectBuy={onSelectBuy}
-                nowUnixSec={nowUnixSec}
+                nowUnixSec={liveNowUnixSec}
                 envelopeParams={envelopeParams}
                 variant="hero"
               />

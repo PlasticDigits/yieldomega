@@ -73,13 +73,17 @@ Deploy logic is **shared** with Playwright Anvil E2E via [`scripts/lib/anvil_dep
 | Command | Description |
 |---------|-------------|
 | `inspect` | Sale phase, timer, CHARM bounds/price, reserve podiums, WarBow top-3, flag line |
-| `fun` | One conservative buy at current **min** CHARM |
-| `shark` | **Max** CHARM buy; with `--warp-reset` (default on), Anvil time warp into `<13m` remaining to hit hard-reset branch |
-| `pvp` | Victim wallet buys for BP; attacker `warbowSteal` (mints dev CL8Y to fund wallets on local mock reserve) |
-| `defender` | Repeated under-15m buys + streak reads (`--steps N`) |
-| `seed-local` / `scenario` | Deterministic multi-wallet sequence for UI/indexer dev |
+| `fun` | **Loop** conservative **min** CHARM buys (`YIELDOMEGA_FUN_MEAN_SEC`, default 45s mean inter-arrival) |
+| `shark` | **Loop** **max** CHARM buys; with `--warp-reset` (default on), Anvil time warp each iteration into `<13m` remaining (`YIELDOMEGA_SHARK_MEAN_SEC`, default 60s) |
+| `pvp` | **Loop** victim buys + attacker `warbowSteal` (`YIELDOMEGA_PVP_MEAN_SEC`, default 120s between cycles) |
+| `defender` | **Loop** cycles of under-15m buys + streak reads (`--steps N` per cycle; `YIELDOMEGA_DEFENDER_MEAN_SEC`, default 90s between cycles) |
+| `seed-local` / `scenario` | Deterministic multi-wallet sequence **once** (slot **0** or no slot), then **loop** min-CHARM buys rotating A0→A1→A2 (`YIELDOMEGA_SEED_LOCAL_MEAN_SEC`, default 45s). **Swarm slots 1–2** skip the deterministic block (only mint + loop) so parallel runs do not fight over the WarBow flag. |
+| `rando` | **Poisson process** inter-arrival times (`YIELDOMEGA_RANDO_MEAN_SEC`, default 45s); each buy picks **uniform** random CHARM in current onchain **[min, max]** |
+| `swarm` | Spawns **3×** each of `fun`, `shark`, `pvp`, `defender`, `seed-local` plus **3×** `rando` (Anvil **31337** only). Mints mock CL8Y to all swarm wallets, **`anvil_setBalance` 10k ETH** each for gas, then starts bots with **`YIELDOMEGA_SEND_TX` / `YIELDOMEGA_DRY_RUN` / `YIELDOMEGA_ALLOW_ANVIL_CHEAT`** (no `--send` CLI flags — avoids Typer subprocess quirks). Usually started by [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) when `SKIP_ANVIL_RICH_STATE=1` |
 
 Global options: `--send`, `--allow-anvil-cheat`, `--env-file PATH`.
+
+**Local stack:** With `SKIP_ANVIL_RICH_STATE=1`, `scripts/start-local-anvil-stack.sh` defaults `START_BOT_SWARM=1` (set `START_BOT_SWARM=0` to skip). It runs `anvil --accounts 30`, syncs bot env, then runs the swarm. Install the package first: `cd bots/timecurve && pip install -e .` (or use `bots/timecurve/.venv`).
 
 ## Implementation note
 

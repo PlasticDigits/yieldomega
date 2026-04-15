@@ -2,6 +2,11 @@
 
 import { parseAbi } from "viem";
 
+/** Minimal fragment for `useWatchContractEvent` — refetch deadline right after buys. */
+export const timeCurveBuyEventAbi = parseAbi([
+  "event Buy(address indexed buyer, uint256 charmWad, uint256 amount, uint256 pricePerCharmWad, uint256 newDeadline, uint256 totalRaisedAfter, uint256 buyIndex, uint256 actualSecondsAdded, bool timerHardReset, uint256 battlePointsAfter, uint256 bpBaseBuy, uint256 bpTimerResetBonus, uint256 bpClutchBonus, uint256 bpStreakBreakBonus, uint256 bpAmbushBonus, uint256 bpFlagPenalty, bool flagPlanted, uint256 buyerTotalEffectiveTimerSecAdded, uint256 buyerActiveDefendedStreak, uint256 buyerBestDefendedStreak)",
+]);
+
 export const timeCurveReadAbi = parseAbi([
   "function saleStart() view returns (uint256)",
   "function deadline() view returns (uint256)",

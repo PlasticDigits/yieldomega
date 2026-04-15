@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { BuyItem } from "@/lib/indexerApi";
-import { maxGrossSpendAtFloat, minGrossSpendAtFloat } from "@/lib/timeCurveMath";
+import { displayMinGrossSpendAtFloat, maxGrossSpendAtFloat } from "@/lib/timeCurveMath";
 
 export type EnvelopeCurveParams = {
   saleStartSec: number;
@@ -12,8 +12,9 @@ export type EnvelopeCurveParams = {
 };
 
 /**
- * Where `amount` sat between min and max gross spend for the envelope at the buy block time
- * (0 = at min band, 1 = at max band). Requires indexer `block_timestamp` on the buy row.
+ * Where `amount` sat as a share of the legal max gross spend at the buy block time.
+ * Legal buys therefore map to roughly 0.1..1.0 because the displayed min:max band is 1:10.
+ * Requires indexer `block_timestamp` on the buy row.
  */
 export function buySpendEnvelopeFillRatio(buy: BuyItem, env: EnvelopeCurveParams): number | null {
   const ts = buy.block_timestamp?.trim();
@@ -27,7 +28,7 @@ export function buySpendEnvelopeFillRatio(buy: BuyItem, env: EnvelopeCurveParams
   } catch {
     return null;
   }
-  const minSpend = minGrossSpendAtFloat(
+  const minSpend = displayMinGrossSpendAtFloat(
     env.charmEnvelopeRefWad,
     env.growthRateWad,
     env.basePriceWad,
@@ -42,19 +43,18 @@ export function buySpendEnvelopeFillRatio(buy: BuyItem, env: EnvelopeCurveParams
     elapsedSec,
   );
   const amount = BigInt(buy.amount);
-  if (maxSpend <= minSpend) {
+  if (maxSpend <= 0n || maxSpend <= minSpend) {
     return null;
   }
-  const num = amount - minSpend;
-  const denom = maxSpend - minSpend;
-  if (num <= 0n) {
-    return 0;
+  const minRatio = Number((minSpend * 10_000n) / maxSpend) / 10_000;
+  if (amount <= minSpend) {
+    return Math.max(0, Math.min(1, minRatio));
   }
-  if (num >= denom) {
+  if (amount >= maxSpend) {
     return 1;
   }
-  const scaled = Number((num * 10_000n) / denom) / 10_000;
-  return Math.max(0, Math.min(1, scaled));
+  const scaled = Number((amount * 10_000n) / maxSpend) / 10_000;
+  return Math.max(minRatio, Math.min(1, scaled));
 }
 
 /** Human-readable age from unix block time vs “now” (wall or ledger). */

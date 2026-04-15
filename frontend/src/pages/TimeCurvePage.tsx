@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { isAddress, maxUint256 } from "viem";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { formatUnits, isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
@@ -10,6 +10,7 @@ import {
   useChainId,
   useReadContract,
   useReadContracts,
+  useWatchContractEvent,
   useWriteContract,
 } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
@@ -20,13 +21,14 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import {
   erc20Abi,
   feeRouterReadAbi,
   linearCharmPriceReadAbi,
+  timeCurveBuyEventAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
 } from "@/lib/abis";
@@ -48,10 +50,11 @@ import {
   describeTimerPreview,
 } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
+import { SmoothHeroCountdown } from "@/pages/timecurve/SmoothHeroCountdown";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
-import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
+import { snapRemainingAtCap, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
 import { PODIUM_HELP, PODIUM_LABELS } from "@/pages/timecurve/podiumCopy";
 import {
   BattleFeedSection,
@@ -73,7 +76,8 @@ import {
 import { wagmiConfig } from "@/wagmi-config";
 import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
-import type { EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import { buySpendEnvelopeFillRatio, type EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import { buySizeColor } from "@/pages/timecurve/buySizeColor";
 import {
   fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
@@ -92,6 +96,34 @@ import {
   type WarbowBattleFeedItem,
   type WarbowLeaderboardItem,
 } from "@/lib/indexerApi";
+
+/** Placeholder: USD per 1 CL8Y for total-raise display until a real price is wired. */
+const CL8Y_USD_PRICE_PLACEHOLDER = 1;
+
+function compareBuysNewestFirst(a: BuyItem, b: BuyItem): number {
+  try {
+    const blockA = BigInt(a.block_number);
+    const blockB = BigInt(b.block_number);
+    if (blockA !== blockB) {
+      return blockA > blockB ? -1 : 1;
+    }
+  } catch {
+    const blockA = Number(a.block_number);
+    const blockB = Number(b.block_number);
+    if (Number.isFinite(blockA) && Number.isFinite(blockB) && blockA !== blockB) {
+      return blockB - blockA;
+    }
+  }
+  return b.log_index - a.log_index;
+}
+
+function mergeBuysNewestFirst(incoming: BuyItem[], existing: BuyItem[] | null | undefined): BuyItem[] {
+  const merged = new Map<string, BuyItem>();
+  for (const buy of [...incoming, ...(existing ?? [])]) {
+    merged.set(`${buy.tx_hash}-${buy.log_index}`, buy);
+  }
+  return Array.from(merged.values()).sort(compareBuysNewestFirst);
+}
 
 function walletMono(addr: string | undefined, formatWallet: (a: string | undefined, fb: string) => string) {
   if (!addr) {
@@ -112,10 +144,32 @@ function formatPodiumLeaderboardValue(categoryIndex: number, raw: string): strin
   return formatLocaleInteger(bi);
 }
 
+function describeBurstBand(ratio: number | null): string {
+  if (ratio === null) {
+    return "Size color waiting for indexed block time";
+  }
+  if (ratio <= 0.12) {
+    return "Blue = near min band";
+  }
+  if (ratio <= 0.25) {
+    return "Green = lighter buy";
+  }
+  if (ratio <= 0.5) {
+    return "Yellow = mid-band buy";
+  }
+  if (ratio <= 0.75) {
+    return "Orange = heavier buy";
+  }
+  return "Red = near max band";
+}
+
 type ContractReadRow = {
   status: "success" | "failure";
   result?: unknown;
 };
+
+/** If smooth countdown drifts this far from `deadline - block.timestamp`, resync to chain (stale reads). */
+const CHAIN_TIMER_RESYNC_DRIFT_SEC = 45;
 
 export function TimeCurvePage() {
   const prefersReducedMotion = useReducedMotion();
@@ -129,6 +183,17 @@ export function TimeCurvePage() {
   const [charmCount, setCharmCount] = useState(5);
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [displayTick, setDisplayTick] = useState(0);
+  /**
+   * Smooth countdown: decay locally from an anchor. Re-anchor when `deadline` changes (buys), not on
+   * every new block — otherwise seconds/ms jerk. At cap, snap to exact `timerCapSec` for an even display.
+   */
+  const [smoothTimerAnchor, setSmoothTimerAnchor] = useState<{
+    r: number;
+    atMs: number;
+  } | null>(null);
+  const prevDeadlineForTimerRef = useRef<number | undefined>(undefined);
+  /** Tracks whether `timerCapSec` has been applied to the anchor (wagmi may resolve it after deadline/block). */
+  const prevTimerCapForAnchorRef = useRef<number | undefined>(undefined);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
@@ -141,6 +206,7 @@ export function TimeCurvePage() {
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
   const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
   const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
+  const [hasExpandedBuyPages, setHasExpandedBuyPages] = useState(false);
   const [buyListModalOpen, setBuyListModalOpen] = useState(false);
   const [detailBuy, setDetailBuy] = useState<BuyItem | null>(null);
   const [buyerStats, setBuyerStats] = useState<TimecurveBuyerStats | null>(null);
@@ -159,6 +225,13 @@ export function TimeCurvePage() {
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
 
+  /**
+   * Chain time for **timer remaining** and onchain-consistent checks (flags, streaks).
+   * Must match `block.timestamp` — do **not** add wall-clock drift here.
+   */
+  const blockChainSec =
+    blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;
+
   /** Re-sync wall clock when a new head block arrives so we interpolate from fresh `block.timestamp`. */
   useEffect(() => {
     if (latestBlock?.timestamp !== undefined) {
@@ -167,8 +240,10 @@ export function TimeCurvePage() {
   }, [latestBlock?.number, latestBlock?.timestamp]);
 
   /**
-   * Smooth “chain time” for UX: last block timestamp plus wall-clock elapsed since that block was observed.
-   * Without this, `block.timestamp` is flat between blocks (Anvil) and the hero countdown appears frozen.
+   * Smooth chain time: last `block.timestamp` plus wall elapsed since that block was observed.
+   * Used for "now" display (e.g. Unix timestamps). Keep this tick coarse (100ms): a 10ms tick was
+   * starving `requestAnimationFrame` for the hero countdown (pause/skip ms). The hero uses
+   * `SmoothHeroCountdown` + `smoothTimerAnchor` instead.
    */
   const effectiveLedgerSec = useMemo(() => {
     void displayTick;
@@ -178,10 +253,10 @@ export function TimeCurvePage() {
     return Date.now() / 1000;
   }, [blockTimestampSec, blockSyncWallMs, displayTick]);
 
-  const ledgerSecInt = Math.floor(effectiveLedgerSec);
+  const ledgerSecInt = Math.floor(blockChainSec);
 
   useEffect(() => {
-    const id = window.setInterval(() => setDisplayTick((n) => n + 1), 10);
+    const id = window.setInterval(() => setDisplayTick((n) => n + 1), 100);
     return () => window.clearInterval(id);
   }, []);
 
@@ -221,8 +296,10 @@ export function TimeCurvePage() {
         setBuysNextOffset(null);
         return;
       }
-      setBuys(data.items);
-      setBuysNextOffset(data.next_offset);
+      setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
+      if (!hasExpandedBuyPages) {
+        setBuysNextOffset(data.next_offset);
+      }
       setIndexerNote(null);
     };
     void loadBuys();
@@ -240,7 +317,7 @@ export function TimeCurvePage() {
         window.clearInterval(intervalId);
       }
     };
-  }, []);
+  }, [hasExpandedBuyPages]);
 
   const selectBuy = useCallback((buy: BuyItem) => {
     setDetailBuy(buy);
@@ -388,7 +465,10 @@ export function TimeCurvePage() {
     refetch: refetchCoreTc,
   } = useReadContracts({
     contracts: coreTcContracts as readonly unknown[],
-    query: { enabled: Boolean(tc) },
+    query: {
+      enabled: Boolean(tc),
+      refetchInterval: 1000,
+    },
   });
   const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -425,6 +505,22 @@ export function TimeCurvePage() {
     void refetchCoreTc();
     void refetchWarbowPolicy();
   }, [refetchCoreTc, refetchWarbowPolicy]);
+
+  useEffect(() => {
+    if (tc && latestBlock?.number !== undefined) {
+      void refetchCoreTc();
+    }
+  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCoreTc]);
+
+  useWatchContractEvent({
+    address: tc,
+    abi: timeCurveBuyEventAbi,
+    eventName: "Buy",
+    enabled: Boolean(tc),
+    onLogs: () => {
+      void refetchCoreTc();
+    },
+  });
 
   const userSaleContracts =
     tc && address
@@ -697,8 +793,65 @@ export function TimeCurvePage() {
 
   const deadlineSec =
     deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
-  const remaining =
-    deadlineSec !== undefined ? Math.max(0, deadlineSec - effectiveLedgerSec) : undefined;
+  const timerCapSec =
+    timerCapSecR?.status === "success" ? Number(timerCapSecR.result as bigint) : undefined;
+
+  /**
+   * On-chain remaining at a snapshot is `max(0, deadline - block.timestamp)` — same rule as
+   * `TimeCurve._buy` (`block.timestamp < deadline`). Authoritative values: `deadline()` on the
+   * contract and `block.timestamp` of the block you pair with that read (ideally the latest head).
+   *
+   * The UI anchors that snapshot and decays with wall time for smooth seconds. We do not re-anchor
+   * every block, but if the chain snapshot and the smooth clock disagree by more than a few tens of
+   * seconds (stale wagmi cache, deadline/block from different rounds, SPA state), we resync to chain.
+   */
+  useEffect(() => {
+    if (deadlineSec === undefined) {
+      setSmoothTimerAnchor(null);
+      prevDeadlineForTimerRef.current = undefined;
+      prevTimerCapForAnchorRef.current = undefined;
+      return;
+    }
+    if (blockTimestampSec === undefined) {
+      setSmoothTimerAnchor(null);
+      prevDeadlineForTimerRef.current = deadlineSec;
+      return;
+    }
+
+    const snap = Math.max(0, deadlineSec - blockTimestampSec);
+    const chainRemaining = snapRemainingAtCap(snap, timerCapSec);
+    const deadlineChanged = prevDeadlineForTimerRef.current !== deadlineSec;
+    prevDeadlineForTimerRef.current = deadlineSec;
+
+    const timerCapJustResolved =
+      timerCapSec !== undefined &&
+      prevTimerCapForAnchorRef.current === undefined &&
+      !deadlineChanged;
+    if (timerCapSec !== undefined) {
+      prevTimerCapForAnchorRef.current = timerCapSec;
+    }
+
+    if (deadlineChanged || timerCapJustResolved) {
+      setSmoothTimerAnchor({ r: chainRemaining, atMs: Date.now() });
+      return;
+    }
+
+    setSmoothTimerAnchor((prev) => {
+      if (prev === null) {
+        return { r: chainRemaining, atMs: Date.now() };
+      }
+      const smoothNow = Math.max(0, prev.r - (Date.now() - prev.atMs) / 1000);
+      if (Math.abs(smoothNow - chainRemaining) > CHAIN_TIMER_RESYNC_DRIFT_SEC) {
+        return { r: chainRemaining, atMs: Date.now() };
+      }
+      return prev;
+    });
+  }, [deadlineSec, blockTimestampSec, timerCapSec]);
+
+  const remaining = useMemo(() => {
+    if (!smoothTimerAnchor) return undefined;
+    return Math.max(0, smoothTimerAnchor.r - (Date.now() - smoothTimerAnchor.atMs) / 1000);
+  }, [smoothTimerAnchor, displayTick]);
 
   const maxBuyAmount =
     maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
@@ -764,8 +917,6 @@ export function TimeCurvePage() {
     return (charmWadSelected * p) / WAD;
   }, [charmWadSelected, pricePerCharmR]);
 
-  const timerCapSec =
-    timerCapSecR?.status === "success" ? Number(timerCapSecR.result as bigint) : undefined;
   const timerExtensionPreview =
     saleActive &&
     remaining !== undefined &&
@@ -788,7 +939,7 @@ export function TimeCurvePage() {
     saleStart?.status === "success" &&
     (saleStart.result as bigint) > 0n &&
     deadlineSec !== undefined &&
-    effectiveLedgerSec >= deadlineSec;
+    blockChainSec >= deadlineSec;
   const stateBadgeLabel = saleActive
     ? "Sale live"
     : saleEnded
@@ -959,6 +1110,46 @@ export function TimeCurvePage() {
     () => describeTimerPreview(remaining, timerExtensionPreview),
     [remaining, timerExtensionPreview],
   );
+
+  const totalRaiseDisplay = useMemo(() => {
+    if (totalRaised?.status !== "success") {
+      return { cl8y: "—" as const, usd: "—" as const };
+    }
+    const raw = totalRaised.result as bigint;
+    const human = Number(formatUnits(raw, decimals));
+    if (!Number.isFinite(human)) {
+      return { cl8y: "—" as const, usd: "—" as const };
+    }
+    const cl8y = human.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    const usd = (human * CL8Y_USD_PRICE_PLACEHOLDER).toLocaleString(undefined, {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 2,
+    });
+    return { cl8y, usd };
+  }, [totalRaised, decimals]);
+
+  const confettiGuide = useMemo(() => {
+    const latestBuy = buys?.[0];
+    if (!latestBuy) {
+      return null;
+    }
+    const ratio = buyEnvelopeParams ? buySpendEnvelopeFillRatio(latestBuy, buyEnvelopeParams) : null;
+    const amountLabel = `${formatCompactFromRaw(latestBuy.amount, decimals, { sigfigs: 3 })} CL8Y`;
+    const color = ratio === null ? (timerNarrative.tone === "critical" ? "#ef4444" : "#fde68a") : buySizeColor(ratio);
+    const eventDetail =
+      latestBuy.timer_hard_reset === true
+        ? "hard reset burst"
+        : latestBuy.actual_seconds_added?.trim()
+          ? `+${latestBuy.actual_seconds_added.trim()}s burst`
+          : "new buy burst";
+    return {
+      color,
+      bandLabel: describeBurstBand(ratio),
+      latestLabel: `${amountLabel} · ${eventDetail}`,
+      help: "Confetti color tracks buy size from blue min-band buys to red near-max buys.",
+    };
+  }, [buys, buyEnvelopeParams, decimals, timerNarrative.tone]);
 
   const warbowPlacementGap = useMemo(() => {
     if (
@@ -1452,7 +1643,8 @@ export function TimeCurvePage() {
     if (!data) {
       return;
     }
-    setBuys((prev) => (prev ? [...prev, ...data.items] : data.items));
+    setHasExpandedBuyPages(true);
+    setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
     setBuysNextOffset(data.next_offset);
   }
 
@@ -1688,9 +1880,8 @@ export function TimeCurvePage() {
         badgeTone={stateBadgeTone}
         lede={
           <>
-            Buy for more than price exposure: each move can extend the clock, steal the spotlight, climb a prize podium,
-            or set up a <strong>WarBow Ladder</strong> rivalry. After the timer expires, the page pivots to redemption
-            and prize settlement.
+            Every buy can move the clock, the three reserve podiums, and the <strong>WarBow Ladder</strong>. When the
+            timer dies, the page flips from chase mode into redemption and settlement.
           </>
         }
         mascot={{
@@ -1717,35 +1908,36 @@ export function TimeCurvePage() {
           remainingSec={remaining}
           timerTone={timerNarrative.tone}
           buys={buys}
+          envelopeParams={buyEnvelopeParams}
         />
         <div className="timer-hero__inner">
-        <div className="status-strip">
-          <span className={`status-pill status-pill--${saleActive ? "success" : saleEnded ? "warning" : "info"}`}>
-            {saleActive ? "Live round" : saleEnded ? "Sale ended" : timerExpiredAwaitingEnd ? "Timer expired" : "Pre-start"}
-          </span>
-          {saleActive && (
-            <span
-              data-timer-tone={timerNarrative.tone}
-              className={`status-pill status-pill--${
-                timerNarrative.tone === "critical" ? "danger" : timerNarrative.tone === "warning" ? "warning" : "success"
-              }`}
-            >
-              {timerNarrative.label}
+          <div className="status-strip" aria-label="Timer and live pressure">
+            <span className={`status-pill status-pill--${saleActive ? "success" : saleEnded ? "warning" : "info"}`}>
+              {saleActive ? "Live round" : saleEnded ? "Sale ended" : timerExpiredAwaitingEnd ? "Timer expired" : "Pre-start"}
             </span>
-          )}
-          {guardedActive && (
-            <span className="status-pill status-pill--info">
-              Guard until <UnixTimestampDisplay raw={guardUntilSec.toString()} />
-            </span>
-          )}
-          {hasRevengeOpen && (
-            <span className="status-pill status-pill--warning">
-              Revenge window until <UnixTimestampDisplay raw={revengeDeadlineSec.toString()} />
-            </span>
-          )}
-          {canClaimWarBowFlag && <span className="status-pill status-pill--warning">Claim your WarBow flag now</span>}
-        </div>
-        <div className="timer-hero__split">
+            {saleActive && (
+              <span
+                data-timer-tone={timerNarrative.tone}
+                className={`status-pill status-pill--${
+                  timerNarrative.tone === "critical" ? "danger" : timerNarrative.tone === "warning" ? "warning" : "success"
+                }`}
+              >
+                {timerNarrative.label}
+              </span>
+            )}
+            {guardedActive && (
+              <span className="status-pill status-pill--info">
+                Guard until <UnixTimestampDisplay raw={guardUntilSec.toString()} />
+              </span>
+            )}
+            {hasRevengeOpen && (
+              <span className="status-pill status-pill--warning">
+                Revenge window until <UnixTimestampDisplay raw={revengeDeadlineSec.toString()} />
+              </span>
+            )}
+            {canClaimWarBowFlag && <span className="status-pill status-pill--warning">Flag claim ready</span>}
+          </div>
+          <div className="timer-hero__split">
           <TimerHeroLiveBuys
             buys={buys}
             indexerNote={indexerNote}
@@ -1759,39 +1951,61 @@ export function TimeCurvePage() {
             <div className="timer-hero__label">
               {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
             </div>
-            <div className="timer-hero__countdown">
-              {remaining !== undefined ? formatCountdown(remaining) : "—"}
-            </div>
+            <SmoothHeroCountdown anchor={smoothTimerAnchor} className="timer-hero__countdown" />
             {remaining !== undefined && remaining > 0 && (
               <div className="timer-hero__subtext">
                 {formatLocaleInteger(Math.floor(remaining))}s left · deadline{" "}
                 {deadlineSec ? new Date(deadlineSec * 1000).toLocaleString() : "—"}
               </div>
             )}
-            {saleActive && <div className="timer-hero__narrative">{timerNarrative.detail}</div>}
+            {saleActive && (
+              <>
+                <div className="timer-hero__narrative">{timerNarrative.detail}</div>
+                {confettiGuide !== null && (
+                  <div className="timer-hero__burst-guide" aria-label="Confetti guide">
+                    <div className="timer-hero__burst-title">Confetti guide</div>
+                    <div className="timer-hero__burst-row">
+                      <span
+                        className="timer-hero__burst-swatch"
+                        aria-hidden
+                        style={{ backgroundColor: confettiGuide.color }}
+                      />
+                      <span className="timer-hero__burst-latest">{confettiGuide.latestLabel}</span>
+                    </div>
+                    <div className="timer-hero__burst-band">{confettiGuide.bandLabel}</div>
+                    <div className="timer-hero__burst-help">{confettiGuide.help}</div>
+                  </div>
+                )}
+                <div className="timer-hero__raise-lines" aria-label="Total raised in CL8Y">
+                  <div className="timer-hero__total-raise">
+                    TOTAL RAISE: {totalRaiseDisplay.cl8y} CL8Y
+                  </div>
+                  <div className="timer-hero__total-usd">TOTAL USD: {totalRaiseDisplay.usd}</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
         </div>
       </div>
-      {saleActive &&
-        deadlineSec !== undefined &&
-        saleStart?.status === "success" &&
-        initialMinBuyR?.status === "success" &&
-        growthRateWadR?.status === "success" &&
-        basePriceWadR?.status === "success" &&
-        dailyIncWadR?.status === "success" && (
-          <TimeCurveLiveCharts
-            saleActive={saleActive}
-            saleStartSec={Number(saleStart.result as bigint)}
-            deadlineSec={deadlineSec}
-            nowSec={effectiveLedgerSec}
-            initialMinBuy={initialMinBuyR.result as bigint}
-            growthRateWad={growthRateWadR.result as bigint}
-            basePriceWad={basePriceWadR.result as bigint}
-            dailyIncrementWad={dailyIncWadR.result as bigint}
-            decimals={decimals}
-          />
-        )}
+
+      <WhatMattersSection
+        saleActive={saleActive}
+        saleEnded={saleEnded}
+        whatMattersNowCards={whatMattersNowCards}
+        minBuy={serializeContractRead(minBuy)}
+        decimals={decimals}
+        expectedTokenFromCharms={expectedTokenFromCharms?.toString()}
+        charmWeightResult={serializeContractRead(charmWeightR)}
+        podiumPoolBal={typeof podiumPoolBal === "bigint" ? podiumPoolBal.toString() : undefined}
+        battlePointsResult={serializeContractRead(battlePtsR)}
+        totalRaisedResult={serializeContractRead(totalRaised)}
+        isPending={isPending}
+        isError={isError}
+        indexerMismatch={indexerMismatch}
+        claimHint={claimHint ?? null}
+        distributeHint={distributeHint}
+      />
 
       <div className="split-layout split-layout--hero">
         <PageSection
@@ -1799,13 +2013,14 @@ export function TimeCurvePage() {
           badgeLabel={saleActive ? "Primary action" : "Buy window"}
           badgeTone={saleActive ? "live" : "warning"}
           spotlight
+          className="timecurve-panel timecurve-panel--action"
           cutout={{
             src: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
             width: 196,
             height: 196,
             className: "panel-cutout panel-cutout--mid-right cutout-decoration--sway",
           }}
-          lede="Preview the emotional payoff before you sign: spend, charm weight, timer pressure, and how the move can affect the live race."
+          lede="Use this surface to preview spend, charm weight, timer impact, and the kind of move you are about to make."
         >
           {!isConnected && <StatusMessage variant="placeholder">Connect a wallet to preview and buy charms.</StatusMessage>}
           {isConnected && isPending && <StatusMessage variant="loading">Loading contract...</StatusMessage>}
@@ -1847,14 +2062,20 @@ export function TimeCurvePage() {
                 <StatCard
                   label="Timer swing"
                   value={
-                    timerExtensionPreview !== undefined ? `+${formatLocaleInteger(timerExtensionPreview)} s` : "—"
+                    timerExtensionPreview !== undefined
+                      ? timerExtensionPreview === 0 && remaining !== undefined && remaining >= 300
+                        ? "At cap (+0 s)"
+                        : `+${formatLocaleInteger(timerExtensionPreview)} s`
+                      : "—"
                   }
                   meta={
                     remaining !== undefined && remaining < 780
                       ? "You are in the hard-reset band, so this buy can yank the clock back toward 15 minutes."
-                      : timerCapSec !== undefined
-                        ? `Countdown cap ${formatLocaleInteger(timerCapSec)} s`
-                        : "Adds time until the cap is reached"
+                      : timerExtensionPreview === 0 && remaining !== undefined && remaining >= 300
+                        ? "Remaining time is at the max window; buys cannot add more seconds until the clock falls below the cap."
+                        : timerCapSec !== undefined
+                          ? `Countdown cap ${formatLocaleInteger(timerCapSec)} s · +120 s per buy below cap`
+                          : "Adds time until the cap is reached"
                   }
                 />
                 <StatCard
@@ -1935,10 +2156,11 @@ export function TimeCurvePage() {
         </PageSection>
 
         <PageSection
-          title={saleEnded ? "After sale actions" : "Prize chase and standings"}
-          badgeLabel={saleEnded ? "Redeem and settle" : "Status surface"}
+          title={saleEnded ? "After sale actions" : "Standings and prize chase"}
+          badgeLabel={saleEnded ? "Redeem and settle" : "Competitive surface"}
           badgeTone={saleEnded ? "warning" : "live"}
           spotlight
+          className="timecurve-panel timecurve-panel--status"
           cutout={{
             src: "/art/cutouts/mascot-leprechaun-with-bag-cutout.png",
             width: 228,
@@ -1947,8 +2169,8 @@ export function TimeCurvePage() {
           }}
           lede={
             saleEnded
-              ? "When the timer expires, finalize the sale, redeem charms for launched tokens, and distribute the reserve podium pool."
-              : "TimeCurve stays readable by putting the current competitive stakes next to the primary action surface."
+              ? "When the timer expires, use this panel to end the round, redeem charms, and settle the reserve podium pool."
+              : "Scan the live ladder, podium leaders, and momentum before you choose whether to buy, defend, or press PvP."
           }
         >
           {saleEnded ? (
@@ -1994,17 +2216,6 @@ export function TimeCurvePage() {
             </>
           ) : (
             <>
-              <div className="status-strip">
-                <span className={`status-pill status-pill--${timerNarrative.tone === "critical" ? "danger" : timerNarrative.tone === "warning" ? "warning" : "success"}`}>
-                  {timerNarrative.label}
-                </span>
-                {warbowPlacementGap !== null && (
-                  <span className="status-pill status-pill--info">
-                    {formatLocaleInteger(warbowPlacementGap)} BP to visible placement
-                  </span>
-                )}
-                {guardedActive && <span className="status-pill status-pill--info">Your guard is live</span>}
-              </div>
               <div className="stats-grid">
                 <StatCard
                   label="WarBow leader"
@@ -2090,23 +2301,25 @@ export function TimeCurvePage() {
         </PageSection>
       </div>
 
-      <WhatMattersSection
-        saleActive={saleActive}
-        saleEnded={saleEnded}
-        whatMattersNowCards={whatMattersNowCards}
-        minBuy={serializeContractRead(minBuy)}
-        decimals={decimals}
-        expectedTokenFromCharms={expectedTokenFromCharms?.toString()}
-        charmWeightResult={serializeContractRead(charmWeightR)}
-        podiumPoolBal={typeof podiumPoolBal === "bigint" ? podiumPoolBal.toString() : undefined}
-        battlePointsResult={serializeContractRead(battlePtsR)}
-        totalRaisedResult={serializeContractRead(totalRaised)}
-        isPending={isPending}
-        isError={isError}
-        indexerMismatch={indexerMismatch}
-        claimHint={claimHint ?? null}
-        distributeHint={distributeHint}
-      />
+      {saleActive &&
+        deadlineSec !== undefined &&
+        saleStart?.status === "success" &&
+        initialMinBuyR?.status === "success" &&
+        growthRateWadR?.status === "success" &&
+        basePriceWadR?.status === "success" &&
+        dailyIncWadR?.status === "success" && (
+          <TimeCurveLiveCharts
+            saleActive={saleActive}
+            saleStartSec={Number(saleStart.result as bigint)}
+            deadlineSec={deadlineSec}
+            nowSec={effectiveLedgerSec}
+            initialMinBuy={initialMinBuyR.result as bigint}
+            growthRateWad={growthRateWadR.result as bigint}
+            basePriceWad={basePriceWadR.result as bigint}
+            dailyIncrementWad={dailyIncWadR.result as bigint}
+            decimals={decimals}
+          />
+        )}
 
       <WarbowSection
         saleActive={saleActive}

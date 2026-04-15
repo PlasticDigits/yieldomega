@@ -28,6 +28,12 @@ describe("describeTimerPreview", () => {
       detail: "A standard buy currently adds about 120s to the clock.",
     });
   });
+
+  it("explains when remaining is at timer cap (no +120s until below cap)", () => {
+    const r = describeTimerPreview(350_000, 0);
+    expect(r.label).toBe("Timer at max window");
+    expect(r.detail).toContain("maximum remaining time");
+  });
 });
 
 describe("pickBuyHighlightStat", () => {
@@ -101,7 +107,8 @@ describe("buildBuyFeedNarrative", () => {
       undefined,
     );
 
-    expect(narrative.headline).toContain("yanked the timer back from the brink");
+    expect(narrative.eyebrow).toBe("Momentum shift");
+    expect(narrative.headline).toContain("pulled the timer back into safer ground");
     expect(narrative.detail).toContain("added 900s");
     expect(narrative.tags).toContain("hard reset");
     expect(narrative.tags).toContain("ambush");

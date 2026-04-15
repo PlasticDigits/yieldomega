@@ -15,6 +15,14 @@ fi
 # shellcheck source=/dev/null
 source "$REPO_ROOT/scripts/qa/qa-host.env"
 
+if [[ -f /tmp/yieldomega_bot_swarm.pids ]]; then
+  while read -r _pid; do
+    [[ -n "${_pid}" ]] || continue
+    kill "${_pid}" 2>/dev/null || true
+  done < /tmp/yieldomega_bot_swarm.pids
+  rm -f /tmp/yieldomega_bot_swarm.pids
+fi
+
 if [[ -f /tmp/yieldomega_indexer_stack.pid ]]; then
   kill "$(cat /tmp/yieldomega_indexer_stack.pid)" 2>/dev/null || true
   rm -f /tmp/yieldomega_indexer_stack.pid

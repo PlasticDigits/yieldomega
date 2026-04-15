@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+/** Minimum right edge of the live chart (seconds since launch). */
+const MIN_LIVE_CHART_AXIS_SECONDS = 24 * 3600;
+
+const TWENTY_MINUTES_SEC = 20 * 60;
+
 /**
  * Right edge of the live chart x-axis in **seconds since sale launch**:
- * `max(1, elapsedLive × 3)` so the current moment sits at **one third** of the span.
+ * `max(24h, elapsedLive × 3)`, then **rounded down** to a multiple of 20 minutes (still at least 24h).
  */
 export function elapsedChartAxisMaxSeconds(elapsedLiveSinceLaunchSec: number): number {
   const e = Math.max(0, elapsedLiveSinceLaunchSec);
-  return Math.max(1, e * 3);
+  const raw = Math.max(MIN_LIVE_CHART_AXIS_SECONDS, e * 3);
+  const roundedDown =
+    Math.floor(raw / TWENTY_MINUTES_SEC) * TWENTY_MINUTES_SEC;
+  return Math.max(MIN_LIVE_CHART_AXIS_SECONDS, roundedDown);
 }
 
 /** Formats elapsed seconds as HH:MM:SS (time since launch on chart axis). */

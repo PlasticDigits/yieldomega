@@ -36,6 +36,8 @@ fi
 source "$REPO_ROOT/scripts/qa/qa-host.env"
 
 export QA_USE_FIXED_INDEXER_PORT=1
+# QA host: do not background 18 bot processes on the server by default.
+export START_BOT_SWARM=0
 export RPC_URL
 export ANVIL_PORT
 export PG_HOST_PORT
