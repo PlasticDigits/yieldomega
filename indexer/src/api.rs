@@ -137,8 +137,12 @@ async fn status(State(state): State<AppState>) -> Response {
 #[derive(Serialize)]
 struct BuyRow {
     block_number: String,
+    block_hash: String,
+    contract_address: String,
     tx_hash: String,
     log_index: i32,
+    /// Unix seconds when the RPC log included `blockTimestamp`; null if unknown or legacy row.
+    block_timestamp: Option<String>,
     buyer: String,
     amount: String,
     charm_wad: String,
@@ -166,7 +170,9 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
     let off = p.offset.max(0);
 
     let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index, buyer,
+        r#"SELECT block_number, block_hash, contract_address,
+                  block_timestamp::text AS block_timestamp,
+                  tx_hash, log_index, buyer,
                   amount::text AS amount,
                   COALESCE(charm_wad, amount)::text AS charm_wad,
                   COALESCE(price_per_charm_wad, current_min_buy, 0)::text AS price_per_charm_wad,
@@ -210,8 +216,11 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
         .filter_map(|r| {
             Some(BuyRow {
                 block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
+                block_hash: r.try_get("block_hash").ok()?,
+                contract_address: r.try_get("contract_address").ok()?,
                 tx_hash: r.try_get("tx_hash").ok()?,
                 log_index: r.try_get("log_index").ok()?,
+                block_timestamp: r.try_get("block_timestamp").ok()?,
                 buyer: r.try_get("buyer").ok()?,
                 amount: r.try_get("amount").ok()?,
                 charm_wad: r.try_get("charm_wad").ok()?,

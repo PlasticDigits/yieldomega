@@ -776,7 +776,9 @@ export function RawDataAccordion(props: {
                   )}
                 </dd>
                 <dt>time remaining</dt>
-                <dd>{remaining !== undefined ? `${formatLocaleInteger(remaining)}s` : "—"}</dd>
+                <dd>
+                  {remaining !== undefined ? `${formatLocaleInteger(Math.floor(remaining))}s` : "—"}
+                </dd>
                 <dt>totalRaised</dt>
                 <dd>
                   {totalRaised?.status === "success" && totalRaised.result !== undefined ? (

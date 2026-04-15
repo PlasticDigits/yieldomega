@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+/**
+ * Playwright config for TimeCurve UI tests that need `VITE_INDEXER_URL` at dev-server
+ * compile time (see e2e/timecurve-live-buys-modals.spec.ts).
+ */
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: /timecurve-live-buys-modals\.spec\.ts/,
+  testMatch: "timecurve-live-buys-modals.spec.ts",
   fullyParallel: true,
+  workers: 5,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // Request up to 20 workers in CI; Playwright uses at most the number of tests.
-  workers: process.env.CI ? 5 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: "http://127.0.0.1:4174",
     trace: "on-first-retry",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run preview -- --host 127.0.0.1 --port 4173",
-    url: "http://127.0.0.1:4173",
+    command:
+      "VITE_INDEXER_URL=http://127.0.0.1:54321 npm run dev -- --host 127.0.0.1 --port 4174 --strictPort",
+    url: "http://127.0.0.1:4174",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

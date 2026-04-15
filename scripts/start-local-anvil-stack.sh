@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# One-shot: Postgres (Docker) → Anvil → DeployDev → anvil_rich_state → registry JSON →
+# One-shot: Postgres (Docker) → Anvil → DeployDev → (optional) anvil_rich_state → registry JSON →
 # reset indexer DB → indexer → frontend/.env.local (chain 31337 + contract addresses incl. FeeRouter, PodiumPool, ReferralRegistry + indexer URL).
+#
+# Set SKIP_ANVIL_RICH_STATE=1 to skip `contracts/script/anvil_rich_state.sh` (keeps TimeCurve sale **live**
+# for bot/UI demos; indexer still indexes normal buys). Default runs rich state (sale ends, prizes, etc.).
 #
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # Usage from repo root:
@@ -104,8 +107,12 @@ cd "${CONTRACTS}"
 env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC_URL}" >/dev/null
 [[ -f "${RUN_JSON}" ]] || die "Missing ${RUN_JSON}"
 
-echo "=== Simulate (rich state) ==="
-bash "${CONTRACTS}/script/anvil_rich_state.sh"
+if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
+  echo "=== Simulate (rich state) === SKIPPED (SKIP_ANVIL_RICH_STATE=1)"
+else
+  echo "=== Simulate (rich state) ==="
+  bash "${CONTRACTS}/script/anvil_rich_state.sh"
+fi
 
 echo "=== Write ${REGISTRY_OUT} ==="
 TC="$(jq -r '.transactions[] | select(.contractName=="TimeCurve") | .contractAddress' "${RUN_JSON}" | head -1)"
@@ -187,6 +194,7 @@ echo "  Registry:   ${REGISTRY_OUT}"
 echo "  Frontend:   ${FRONTEND}/.env.local"
 echo ""
 echo "Next:"
+echo "  bash scripts/sync-bot-env-from-frontend.sh   # bots/timecurve/.env.local (no redeploy)"
 echo "  cd frontend && npm run dev"
 echo "  Open http://127.0.0.1:5173"
 echo ""
