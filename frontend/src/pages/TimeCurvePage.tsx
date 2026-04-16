@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatUnits, isAddress, maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
@@ -50,11 +50,10 @@ import {
   describeTimerPreview,
 } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
-import { SmoothHeroCountdown } from "@/pages/timecurve/SmoothHeroCountdown";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
-import { snapRemainingAtCap, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
+import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
 import { PODIUM_HELP, PODIUM_LABELS } from "@/pages/timecurve/podiumCopy";
 import {
   BattleFeedSection,
@@ -78,6 +77,7 @@ import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
 import { buySpendEnvelopeFillRatio, type EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
 import { buySizeColor } from "@/pages/timecurve/buySizeColor";
+import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
@@ -168,9 +168,6 @@ type ContractReadRow = {
   result?: unknown;
 };
 
-/** If smooth countdown drifts this far from `deadline - block.timestamp`, resync to chain (stale reads). */
-const CHAIN_TIMER_RESYNC_DRIFT_SEC = 45;
-
 export function TimeCurvePage() {
   const prefersReducedMotion = useReducedMotion();
   const { address, isConnected } = useAccount();
@@ -183,17 +180,6 @@ export function TimeCurvePage() {
   const [charmCount, setCharmCount] = useState(5);
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [displayTick, setDisplayTick] = useState(0);
-  /**
-   * Smooth countdown: decay locally from an anchor. Re-anchor when `deadline` changes (buys), not on
-   * every new block — otherwise seconds/ms jerk. At cap, snap to exact `timerCapSec` for an even display.
-   */
-  const [smoothTimerAnchor, setSmoothTimerAnchor] = useState<{
-    r: number;
-    atMs: number;
-  } | null>(null);
-  const prevDeadlineForTimerRef = useRef<number | undefined>(undefined);
-  /** Tracks whether `timerCapSec` has been applied to the anchor (wagmi may resolve it after deadline/block). */
-  const prevTimerCapForAnchorRef = useRef<number | undefined>(undefined);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
@@ -205,6 +191,8 @@ export function TimeCurvePage() {
   const [prizeDist, setPrizeDist] = useState<PrizeDistributionItem[] | null>(null);
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
   const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
+  /** Total rows in idx_timecurve_buy (from indexer API); null if unknown or fetch failed. */
+  const [buysTotal, setBuysTotal] = useState<number | null>(null);
   const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
   const [hasExpandedBuyPages, setHasExpandedBuyPages] = useState(false);
   const [buyListModalOpen, setBuyListModalOpen] = useState(false);
@@ -226,7 +214,7 @@ export function TimeCurvePage() {
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
 
   /**
-   * Chain time for **timer remaining** and onchain-consistent checks (flags, streaks).
+   * Chain time for the countdown **(seconds)** and onchain-consistent checks (flags, streaks).
    * Must match `block.timestamp` — do **not** add wall-clock drift here.
    */
   const blockChainSec =
@@ -241,9 +229,7 @@ export function TimeCurvePage() {
 
   /**
    * Smooth chain time: last `block.timestamp` plus wall elapsed since that block was observed.
-   * Used for "now" display (e.g. Unix timestamps). Keep this tick coarse (100ms): a 10ms tick was
-   * starving `requestAnimationFrame` for the hero countdown (pause/skip ms). The hero uses
-   * `SmoothHeroCountdown` + `smoothTimerAnchor` instead.
+   * Used for "now" display (e.g. Unix timestamps). Keep this tick coarse (100ms).
    */
   const effectiveLedgerSec = useMemo(() => {
     void displayTick;
@@ -254,6 +240,13 @@ export function TimeCurvePage() {
   }, [blockTimestampSec, blockSyncWallMs, displayTick]);
 
   const ledgerSecInt = Math.floor(blockChainSec);
+
+  const {
+    heroTimer,
+    secondsRemaining,
+    isBusy: heroTimerBusy,
+    refresh: loadHeroTimer,
+  } = useTimecurveHeroTimer(tc);
 
   useEffect(() => {
     const id = window.setInterval(() => setDisplayTick((n) => n + 1), 100);
@@ -294,12 +287,14 @@ export function TimeCurvePage() {
         );
         setBuys([]);
         setBuysNextOffset(null);
+        setBuysTotal(null);
         return;
       }
       setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
       if (!hasExpandedBuyPages) {
         setBuysNextOffset(data.next_offset);
       }
+      setBuysTotal(typeof data.total === "number" ? data.total : null);
       setIndexerNote(null);
     };
     void loadBuys();
@@ -519,6 +514,7 @@ export function TimeCurvePage() {
     enabled: Boolean(tc),
     onLogs: () => {
       void refetchCoreTc();
+      void loadHeroTimer();
     },
   });
 
@@ -796,63 +792,6 @@ export function TimeCurvePage() {
   const timerCapSec =
     timerCapSecR?.status === "success" ? Number(timerCapSecR.result as bigint) : undefined;
 
-  /**
-   * On-chain remaining at a snapshot is `max(0, deadline - block.timestamp)` — same rule as
-   * `TimeCurve._buy` (`block.timestamp < deadline`). Authoritative values: `deadline()` on the
-   * contract and `block.timestamp` of the block you pair with that read (ideally the latest head).
-   *
-   * The UI anchors that snapshot and decays with wall time for smooth seconds. We do not re-anchor
-   * every block, but if the chain snapshot and the smooth clock disagree by more than a few tens of
-   * seconds (stale wagmi cache, deadline/block from different rounds, SPA state), we resync to chain.
-   */
-  useEffect(() => {
-    if (deadlineSec === undefined) {
-      setSmoothTimerAnchor(null);
-      prevDeadlineForTimerRef.current = undefined;
-      prevTimerCapForAnchorRef.current = undefined;
-      return;
-    }
-    if (blockTimestampSec === undefined) {
-      setSmoothTimerAnchor(null);
-      prevDeadlineForTimerRef.current = deadlineSec;
-      return;
-    }
-
-    const snap = Math.max(0, deadlineSec - blockTimestampSec);
-    const chainRemaining = snapRemainingAtCap(snap, timerCapSec);
-    const deadlineChanged = prevDeadlineForTimerRef.current !== deadlineSec;
-    prevDeadlineForTimerRef.current = deadlineSec;
-
-    const timerCapJustResolved =
-      timerCapSec !== undefined &&
-      prevTimerCapForAnchorRef.current === undefined &&
-      !deadlineChanged;
-    if (timerCapSec !== undefined) {
-      prevTimerCapForAnchorRef.current = timerCapSec;
-    }
-
-    if (deadlineChanged || timerCapJustResolved) {
-      setSmoothTimerAnchor({ r: chainRemaining, atMs: Date.now() });
-      return;
-    }
-
-    setSmoothTimerAnchor((prev) => {
-      if (prev === null) {
-        return { r: chainRemaining, atMs: Date.now() };
-      }
-      const smoothNow = Math.max(0, prev.r - (Date.now() - prev.atMs) / 1000);
-      if (Math.abs(smoothNow - chainRemaining) > CHAIN_TIMER_RESYNC_DRIFT_SEC) {
-        return { r: chainRemaining, atMs: Date.now() };
-      }
-      return prev;
-    });
-  }, [deadlineSec, blockTimestampSec, timerCapSec]);
-
-  const remaining = useMemo(() => {
-    if (!smoothTimerAnchor) return undefined;
-    return Math.max(0, smoothTimerAnchor.r - (Date.now() - smoothTimerAnchor.atMs) / 1000);
-  }, [smoothTimerAnchor, displayTick]);
-
   const maxBuyAmount =
     maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
 
@@ -919,14 +858,14 @@ export function TimeCurvePage() {
 
   const timerExtensionPreview =
     saleActive &&
-    remaining !== undefined &&
+    secondsRemaining !== undefined &&
     timerExtensionSecR?.status === "success" &&
     timerCapSec !== undefined
       ? Math.max(
           0,
           Math.min(
             Number(timerExtensionSecR.result as bigint),
-            Math.max(0, timerCapSec - remaining),
+            Math.max(0, timerCapSec - secondsRemaining),
           ),
         )
       : undefined;
@@ -1107,8 +1046,8 @@ export function TimeCurvePage() {
   }, [ended, prizesDistributedR]);
 
   const timerNarrative = useMemo(
-    () => describeTimerPreview(remaining, timerExtensionPreview),
-    [remaining, timerExtensionPreview],
+    () => describeTimerPreview(secondsRemaining, timerExtensionPreview),
+    [secondsRemaining, timerExtensionPreview],
   );
 
   const totalRaiseDisplay = useMemo(() => {
@@ -1207,7 +1146,7 @@ export function TimeCurvePage() {
             ? "Claim your flag"
             : hasRevengeOpen
               ? "Take revenge"
-              : remaining !== undefined && remaining < 780
+              : secondsRemaining !== undefined && secondsRemaining < 780
                 ? "Clutch reset window"
                 : "Make the next move",
         meta:
@@ -1215,7 +1154,7 @@ export function TimeCurvePage() {
             ? "Silence has held long enough. Claiming now locks in a visible WarBow moment."
             : hasRevengeOpen
               ? "You have a live revenge window. Hit back before it expires."
-              : remaining !== undefined && remaining < 780
+              : secondsRemaining !== undefined && secondsRemaining < 780
                 ? "Buys now can hard-reset the timer toward 15 minutes and swing the room."
                 : "A buy can move timer, podiums, and WarBow status in one shot.",
       },
@@ -1241,9 +1180,9 @@ export function TimeCurvePage() {
       },
       {
         label: "Why watch",
-        value: remaining !== undefined && remaining < 780 ? "Every buy is a swing" : "Lurkers can still enjoy the race",
+        value: secondsRemaining !== undefined && secondsRemaining < 780 ? "Every buy is a swing" : "Lurkers can still enjoy the race",
         meta:
-          remaining !== undefined && remaining < 780
+          secondsRemaining !== undefined && secondsRemaining < 780
             ? "Under 13 minutes, resets, streak breaks, and clutch buys become the whole show."
             : "Podiums, streaks, guards, and revenge make the page readable even before you buy.",
       },
@@ -1257,7 +1196,7 @@ export function TimeCurvePage() {
     distributeHint,
     canClaimWarBowFlag,
     hasRevengeOpen,
-    remaining,
+    secondsRemaining,
     timerNarrative,
     warbowPlacementGap,
     warbowRank,
@@ -1269,7 +1208,7 @@ export function TimeCurvePage() {
     }
     const items: string[] = [];
     items.push(timerNarrative.detail);
-    if (remaining !== undefined && remaining < 780) {
+    if (secondsRemaining !== undefined && secondsRemaining < 780) {
       items.push("You are inside the hard-reset band, so this buy can drag the timer back toward 15 minutes.");
     }
     if (referralRegistryOn && pendingRef && useReferral) {
@@ -1284,7 +1223,7 @@ export function TimeCurvePage() {
   }, [
     saleEnded,
     timerNarrative,
-    remaining,
+    secondsRemaining,
     referralRegistryOn,
     pendingRef,
     useReferral,
@@ -1646,6 +1585,9 @@ export function TimeCurvePage() {
     setHasExpandedBuyPages(true);
     setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
     setBuysNextOffset(data.next_offset);
+    if (typeof data.total === "number") {
+      setBuysTotal(data.total);
+    }
   }
 
   const handleBuy = useCallback(async () => {
@@ -1902,10 +1844,10 @@ export function TimeCurvePage() {
         </div>
       </PageHero>
 
-      <div className={`timer-hero ${timerUrgencyClass(remaining)}`}>
+      <div className={`timer-hero ${timerUrgencyClass(secondsRemaining)}`}>
         <TimerHeroParticles
           saleActive={saleActive}
-          remainingSec={remaining}
+          remainingSec={secondsRemaining}
           timerTone={timerNarrative.tone}
           buys={buys}
           envelopeParams={buyEnvelopeParams}
@@ -1940,6 +1882,7 @@ export function TimeCurvePage() {
           <div className="timer-hero__split">
           <TimerHeroLiveBuys
             buys={buys}
+            indexedTotal={buysTotal}
             indexerNote={indexerNote}
             formatWallet={formatWallet}
             nowUnixSec={Math.floor(effectiveLedgerSec)}
@@ -1951,11 +1894,81 @@ export function TimeCurvePage() {
             <div className="timer-hero__label">
               {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
             </div>
-            <SmoothHeroCountdown anchor={smoothTimerAnchor} className="timer-hero__countdown" />
-            {remaining !== undefined && remaining > 0 && (
-              <div className="timer-hero__subtext">
-                {formatLocaleInteger(Math.floor(remaining))}s left · deadline{" "}
-                {deadlineSec ? new Date(deadlineSec * 1000).toLocaleString() : "—"}
+            <div className="timer-hero__countdown" aria-live="polite">
+              {secondsRemaining !== undefined ? formatCountdown(secondsRemaining) : "—"}
+            </div>
+            {saleActive && tc && (
+              <div
+                className="timer-hero__subtext timer-hero__subtext--deadline-read"
+                aria-busy={heroTimerBusy}
+              >
+                {heroTimer ? (
+                  <>
+                    <div className="timer-hero__deadline-read-stack">
+                      <span className="timer-hero__deadline-read-meta">
+                        On-chain{" "}
+                        <code className="timer-hero__deadline-fn">deadline()</code>:{" "}
+                        <time
+                          dateTime={new Date(heroTimer.deadlineSec * 1000).toISOString()}
+                          title={`Unix seconds: ${heroTimer.deadlineSec}`}
+                        >
+                          {new Date(heroTimer.deadlineSec * 1000).toLocaleString()}
+                        </time>
+                        <span className="timer-hero__deadline-read-sep" aria-hidden>
+                          {" "}
+                          ·{" "}
+                        </span>
+                        <span className="timer-hero__deadline-block">
+                          read at block {heroTimer.readBlockNumber.toString()}
+                        </span>
+                      </span>
+                      <span className="timer-hero__deadline-block-ts">
+                        Head <code className="timer-hero__deadline-fn">block.timestamp</code>:{" "}
+                        <time
+                          dateTime={new Date(heroTimer.blockTimestampSec * 1000).toISOString()}
+                          title={`Unix seconds: ${heroTimer.blockTimestampSec}`}
+                        >
+                          {new Date(heroTimer.blockTimestampSec * 1000).toLocaleString()}
+                        </time>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="timer-hero__deadline-refresh"
+                      onClick={() => void loadHeroTimer()}
+                      disabled={heroTimerBusy}
+                      aria-label="Refresh on-chain deadline read"
+                      title="Refresh on-chain deadline read"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                        className={
+                          heroTimerBusy && !prefersReducedMotion
+                            ? "timer-hero__deadline-refresh-icon--spin"
+                            : undefined
+                        }
+                      >
+                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                        <path d="M21 3v5h-5" />
+                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                        <path d="M8 16H3v5" />
+                      </svg>
+                    </button>
+                  </>
+                ) : (
+                  <span className="timer-hero__deadline-read-placeholder">
+                    Loading on-chain deadline…
+                  </span>
+                )}
               </div>
             )}
             {saleActive && (
@@ -2063,15 +2076,15 @@ export function TimeCurvePage() {
                   label="Timer swing"
                   value={
                     timerExtensionPreview !== undefined
-                      ? timerExtensionPreview === 0 && remaining !== undefined && remaining >= 300
+                      ? timerExtensionPreview === 0 && secondsRemaining !== undefined && secondsRemaining >= 300
                         ? "At cap (+0 s)"
                         : `+${formatLocaleInteger(timerExtensionPreview)} s`
                       : "—"
                   }
                   meta={
-                    remaining !== undefined && remaining < 780
+                    secondsRemaining !== undefined && secondsRemaining < 780
                       ? "You are in the hard-reset band, so this buy can yank the clock back toward 15 minutes."
-                      : timerExtensionPreview === 0 && remaining !== undefined && remaining >= 300
+                      : timerExtensionPreview === 0 && secondsRemaining !== undefined && secondsRemaining >= 300
                         ? "Remaining time is at the max window; buys cannot add more seconds until the clock falls below the cap."
                         : timerCapSec !== undefined
                           ? `Countdown cap ${formatLocaleInteger(timerCapSec)} s · +120 s per buy below cap`
@@ -2085,7 +2098,7 @@ export function TimeCurvePage() {
                 />
                 <StatCard
                   label="What this can chase"
-                  value={remaining !== undefined && remaining < 780 ? "Reset + defend + steal" : "Timer + podium + ladder"}
+                  value={secondsRemaining !== undefined && secondsRemaining < 780 ? "Reset + defend + steal" : "Timer + podium + ladder"}
                   meta="Every buy affects more than ROI: last-buy pressure, time-booster race, streak defense, and WarBow status."
                 />
               </div>
@@ -2396,6 +2409,7 @@ export function TimeCurvePage() {
         onCloseDetail={() => setDetailBuy(null)}
         onSelectBuy={selectBuy}
         buys={buys}
+        indexedTotal={buysTotal}
         buysLoading={buys === null && indexerNote === null}
         buysNextOffset={buysNextOffset}
         loadingMoreBuys={loadingMoreBuys}
@@ -2411,7 +2425,7 @@ export function TimeCurvePage() {
         hasCoreContractReads={Boolean(coreTcData && coreTcData.length > 0)}
         saleStart={serializeContractRead(saleStart)}
         deadline={serializeContractRead(deadline)}
-        remaining={remaining}
+        secondsRemaining={secondsRemaining}
         totalRaised={serializeContractRead(totalRaised)}
         ended={serializeContractRead(ended)}
         maxBuyAmount={maxBuyAmount?.toString()}

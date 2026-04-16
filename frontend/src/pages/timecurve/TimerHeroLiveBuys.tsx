@@ -8,6 +8,8 @@ import type { WalletFormatShort } from "@/lib/addressFormat";
 
 type Props = {
   buys: BuyItem[] | null;
+  /** Total buys in the indexer (all pages); shown next to the strip title. */
+  indexedTotal: number | null;
   indexerNote: string | null;
   formatWallet: WalletFormatShort;
   /** Wall or ledger “now” for relative buy age. */
@@ -20,6 +22,7 @@ type Props = {
 
 export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
   buys,
+  indexedTotal,
   indexerNote,
   formatWallet,
   nowUnixSec,
@@ -45,7 +48,9 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
   return (
     <aside className="timer-hero__live" aria-label="Latest buys from indexer">
       <div className="timer-hero__live-head">
-        <div className="timer-hero__live-title">Live buys</div>
+        <div className="timer-hero__live-title">
+          Live buys{indexedTotal !== null ? ` (${indexedTotal})` : ""}
+        </div>
         {onMore !== undefined && (
           <button type="button" className="timer-hero__live-more" onClick={onMore}>
             More

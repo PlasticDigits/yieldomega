@@ -47,7 +47,7 @@ test.describe("Anvil TimeCurve RPC reads", () => {
       /^(true|false)$/,
     );
     await expect(
-      page.locator('dt:text-is("time remaining") + dd'),
+      page.locator('dt:text-is("seconds remaining") + dd'),
     ).not.toHaveText("—");
   });
 });

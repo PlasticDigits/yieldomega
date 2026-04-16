@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Deterministic local scenario: multi-wallet buys, hard-reset band, flag claim — for UI / indexer dev."""
+"""Deterministic local scenario: multi-wallet buys; optional flag claim (on-chain time only)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ from timecurve_bot.actions import (
     print_dry,
 )
 from timecurve_bot.config import BotConfig
-from timecurve_bot.rpc import anvil_increase_time, ensure_anvil_cheat_allowed
 from timecurve_bot.strategies.common import APPROVE_LARGE, charm_bounds, charm_for_buy, loop_mean_sec
 from web3 import Web3
 from web3.contract import Contract
@@ -45,25 +44,24 @@ def _deterministic_buys_and_flag(
     a1: LocalAccount,
     a2: LocalAccount,
 ) -> None:
-    """Staggered buys, reset-band max buy, optional flag plant + claim (claim best-effort)."""
-    # Staggered buys (re-read CHARM bounds after each time warp — envelope scales with elapsed sale time).
+    """Staggered buys and optional reset-band / flag paths without Anvil time RPC."""
     lo, hi = charm_bounds(tc)
     buy(w3, tc, a0, charm_for_buy(tc, lo), gas_multiplier=cfg.gas_multiplier, send=True)
     print("  A0 min buy")
-    anvil_increase_time(w3, 90)
     lo, hi = charm_bounds(tc)
     buy(w3, tc, a1, charm_for_buy(tc, lo), gas_multiplier=cfg.gas_multiplier, send=True)
-    print("  A1 min buy (after +90s)")
+    print("  A1 min buy")
 
     latest = w3.eth.get_block("latest")
     now = int(latest["timestamp"])
     dl = int(tc.functions.deadline().call())
     rem = dl - now
     if rem > 780:
-        anvil_increase_time(w3, rem - 600)
-    lo, hi = charm_bounds(tc)
-    buy(w3, tc, a0, charm_for_buy(tc, hi), gas_multiplier=cfg.gas_multiplier, send=True)
-    print("  A0 max buy in reset band (timerHardReset onchain if branch hit)")
+        print("  seed-local: skip max buy in <13m reset band (remaining >780s; no dev time warp)")
+    else:
+        lo, hi = charm_bounds(tc)
+        buy(w3, tc, a0, charm_for_buy(tc, hi), gas_multiplier=cfg.gas_multiplier, send=True)
+        print("  A0 max buy in reset band (timerHardReset onchain if branch hit)")
 
     lo, hi = charm_bounds(tc)
     buy(w3, tc, a2, charm_for_buy(tc, lo), gas_multiplier=cfg.gas_multiplier, send=True)
@@ -72,7 +70,7 @@ def _deterministic_buys_and_flag(
     lo, hi = charm_bounds(tc)
     buy(w3, tc, a1, charm_for_buy(tc, lo), gas_multiplier=cfg.gas_multiplier, send=True)
     print("  A1 buy (flag plant)")
-    anvil_increase_time(w3, 301)
+    print("  seed-local: claimWarBowFlag without +301s warp — may fail until silence window passes on-chain")
     try:
         claim_flag(w3, tc, a1, gas_multiplier=cfg.gas_multiplier, send=True)
         print("  A1 claimWarBowFlag (+BP onchain if silence held)")
@@ -101,24 +99,20 @@ def _accounts(cfg: BotConfig):
 
 
 def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
-    ensure_anvil_cheat_allowed(cfg, w3)
     raw_slot = os.getenv("YIELDOMEGA_SEED_LOCAL_SLOT", "").strip()
-    if raw_slot != "":
-        send = cfg.can_submit_transactions() and cfg.allow_anvil_cheat
-    else:
-        send = cfg.can_submit_transactions()
+    send = cfg.can_submit_transactions()
 
     a0, a1, a2 = _accounts(cfg)
 
     print(
-        "seed-local: mint CL8Y -> A1,A2; staggered buys; hard-reset buy; C buy; flag silence+claim\n"
+        "seed-local: mint CL8Y -> A1,A2; staggered buys; optional flag claim\n"
         f"  A0={a0.address}\n  A1={a1.address}\n  A2={a2.address}"
     )
 
     if not send:
         print_dry(
             "seed-local",
-            "set YIELDOMEGA_SEND_TX=1, YIELDOMEGA_DRY_RUN=0, YIELDOMEGA_ALLOW_ANVIL_CHEAT=1, and keys (or CLI --send --allow-anvil-cheat)",
+            "set YIELDOMEGA_SEND_TX=1, YIELDOMEGA_DRY_RUN=0, and keys (or CLI --send)",
         )
         return
 

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Spawn 3× fun/shark/pvp/defender/seed-local + 3× rando; mint mock reserve to swarm wallets (Anvil only)."""
+"""Spawn 3× fun/shark/pvp/defender/seed-local + 3× rando; optional one-shot Anvil ETH + mock CL8Y (gated)."""
 
 from __future__ import annotations
 
@@ -11,11 +11,10 @@ from pathlib import Path
 
 from web3 import Web3
 
-from timecurve_bot.actions import account_from_config, mint_mock_reserve
 from timecurve_bot.anvil_accounts import address_at, private_key_hex
-from timecurve_bot.config import load_config
+from timecurve_bot.config import BotConfig, load_config
 from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
-from timecurve_bot.rpc import anvil_set_balance, assert_chain_id, make_web3
+from timecurve_bot.rpc import anvil_dev_bootstrap_funding_if_enabled, assert_chain_id, make_web3
 from timecurve_bot.swarm_layout import (
     ALL_FUNDED_INDICES,
     DEFENDER_INDICES,
@@ -40,40 +39,21 @@ _AIRDROP_ETH_WEI = 10_000 * 10**18
 _SPAWN_STAGGER_SEC = 0.08
 
 
-def _repo_root() -> Path:
-    return _REPO_ROOT
-
-
-def _mint_to_indices(w3: Web3, deployer_pk: str, asset, indices: tuple[int, ...]) -> None:
-    deployer = account_from_config(deployer_pk)
-    for i in indices:
-        addr = Web3.to_checksum_address(address_at(i))
-        mint_mock_reserve(
-            w3,
-            asset,
-            deployer,
-            addr,
-            _MINT_WEI,
-            gas_multiplier=1.2,
-            send=True,
-        )
-    print(f"swarm: minted {_MINT_WEI} wei mock reserve to {len(indices)} addresses.")
-
-
-def _fund_eth_to_indices(w3: Web3, indices: tuple[int, ...]) -> None:
-    for i in indices:
-        addr = Web3.to_checksum_address(address_at(i))
-        anvil_set_balance(w3, addr, _AIRDROP_ETH_WEI)
-    eth = _AIRDROP_ETH_WEI // 10**18
-    print(f"swarm: anvil_setBalance {eth} ETH for {len(indices)} swarm addresses (gas).")
-
-
-def run_swarm(*, skip_mint: bool = False) -> None:
+def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
     """Start background bot processes; writes /tmp/yieldomega_bot_swarm.pids."""
     if _PID_FILE.exists():
         print("swarm: warning: existing PID file — remove stale processes or delete", _PID_FILE, file=sys.stderr)
 
-    cfg = load_config(env_file=None, send=True, allow_anvil_cheat=True)
+    if cfg is None:
+        cfg = load_config(env_file=None, send=True, allow_anvil_funding=False)
+    if not cfg.allow_anvil_funding:
+        print(
+            "swarm: set YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 (or run: timecurve-bot --allow-anvil-funding swarm) "
+            "for one-shot Anvil native ETH + mock reserve bootstrap.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
     if cfg.chain_id != 31337:
         print("swarm: refusing — only chain 31337 (Anvil) is supported.", file=sys.stderr)
         raise SystemExit(2)
@@ -84,20 +64,32 @@ def run_swarm(*, skip_mint: bool = False) -> None:
     aa = cfg.accepted_asset_address or tc.functions.acceptedAsset().call()
     asset = mock_reserve_contract(w3, Web3.to_checksum_address(aa))
 
+    recipients = [Web3.to_checksum_address(address_at(i)) for i in ALL_FUNDED_INDICES]
     funder = private_key_hex(0)
+
+    print("swarm: one-shot Anvil dev funding (anvil_setBalance" + ("" if skip_mint else " + mock mint") + ")")
+    anvil_dev_bootstrap_funding_if_enabled(
+        cfg,
+        w3,
+        deployer_pk=funder,
+        asset=asset,
+        recipient_addresses=recipients,
+        mint_wei=_MINT_WEI,
+        eth_wei_per_address=_AIRDROP_ETH_WEI,
+        gas_multiplier=cfg.gas_multiplier,
+        skip_mint=skip_mint,
+    )
+    eth = _AIRDROP_ETH_WEI // 10**18
+    print(f"swarm: anvil_setBalance {eth} ETH for {len(recipients)} swarm addresses (gas).")
     if not skip_mint:
-        print("swarm: minting excess mock reserve to swarm indices", ALL_FUNDED_INDICES[0], "..", ALL_FUNDED_INDICES[-1])
-        _mint_to_indices(w3, funder, asset, ALL_FUNDED_INDICES)
-    print("swarm: topping up native ETH on swarm wallets (anvil_setBalance)")
-    _fund_eth_to_indices(w3, ALL_FUNDED_INDICES)
+        print(f"swarm: minted {_MINT_WEI} wei mock reserve to {len(recipients)} addresses.")
 
     env_base = os.environ.copy()
     env_base["PYTHONPATH"] = str(_BOT_SRC)
     env_base["PYTHONUNBUFFERED"] = "1"
-    # Rely on env for tx + cheats (avoids Typer global-option parsing issues in subprocesses).
+    # Rely on env for tx (avoids Typer global-option parsing issues in subprocesses).
     env_base["YIELDOMEGA_SEND_TX"] = "1"
     env_base["YIELDOMEGA_DRY_RUN"] = "0"
-    env_base["YIELDOMEGA_ALLOW_ANVIL_CHEAT"] = "1"
 
     py = sys.executable
 

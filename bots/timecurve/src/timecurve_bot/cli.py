@@ -30,10 +30,10 @@ def _main(
         "--send",
         help="Submit transactions (requires YIELDOMEGA_PRIVATE_KEY). Overrides default dry-run.",
     ),
-    allow_anvil_cheat: bool = typer.Option(
+    allow_anvil_funding: bool = typer.Option(
         False,
-        "--allow-anvil-cheat",
-        help="Allow anvil_increaseTime / anvil_mine (YIELDOMEGA_CHAIN_ID must be 31337). Never on public RPC.",
+        "--allow-anvil-funding",
+        help="Allow one-shot Anvil (31337) native ETH + mock reserve via JSON-RPC. Never on mainnet.",
     ),
     env_file: Optional[Path] = typer.Option(
         None,
@@ -44,7 +44,7 @@ def _main(
     ),
 ) -> None:
     try:
-        cfg = load_config(env_file=env_file, send=send, allow_anvil_cheat=allow_anvil_cheat)
+        cfg = load_config(env_file=env_file, send=send, allow_anvil_funding=allow_anvil_funding)
     except ValueError as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(code=2) from e
@@ -77,7 +77,7 @@ def cmd_inspect(ctx: typer.Context) -> None:
         typer.echo(f"RabbitTreasury (env): {cfg.rabbit_treasury_address}")
     if cfg.leprechaun_nft_address:
         typer.echo(f"LeprechaunNFT (env): {cfg.leprechaun_nft_address}")
-    typer.echo(f"send_transactions={cfg.send_transactions}  allow_anvil_cheat={cfg.allow_anvil_cheat}")
+    typer.echo(f"send_transactions={cfg.send_transactions}  allow_anvil_funding={cfg.allow_anvil_funding}")
 
 
 @app.command("fun")
@@ -89,18 +89,11 @@ def cmd_fun(ctx: typer.Context) -> None:
 
 
 @app.command("shark")
-def cmd_shark(
-    ctx: typer.Context,
-    warp_reset: bool = typer.Option(
-        True,
-        "--warp-reset/--no-warp-reset",
-        help="With Anvil cheat: warp timer toward <13m remaining before max buy.",
-    ),
-) -> None:
-    """Loop max-CHARM buys; optional timer warp each iteration for hard-reset branch (local)."""
+def cmd_shark(ctx: typer.Context) -> None:
+    """Loop max-CHARM buys."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
-    shark.run(w3, cfg, tc, asset, warp_reset=warp_reset)
+    shark.run(w3, cfg, tc, asset)
 
 
 @app.command("pvp")
@@ -116,7 +109,7 @@ def cmd_defender(
     ctx: typer.Context,
     steps: int = typer.Option(3, "--steps", help="Number of qualifying buys (1–20)."),
 ) -> None:
-    """Loop cycles of under-window buys to grow defended streak (Anvil time warp)."""
+    """Loop cycles of under-window buys to grow defended streak."""
     if steps < 1 or steps > 20:
         typer.echo("steps must be between 1 and 20", err=True)
         raise typer.Exit(2)
@@ -127,7 +120,7 @@ def cmd_defender(
 
 @app.command("seed-local")
 def cmd_seed_local(ctx: typer.Context) -> None:
-    """Deterministic scenario once, then min-CHARM loop (requires --send --allow-anvil-cheat)."""
+    """Deterministic scenario once, then min-CHARM loop (requires --send for txs)."""
     cfg: BotConfig = ctx.obj
     w3, tc, asset = _connect(cfg)
     seed_local.run(w3, cfg, tc, asset)
@@ -149,16 +142,18 @@ def cmd_rando(ctx: typer.Context) -> None:
 
 @app.command("swarm")
 def cmd_swarm(
+    ctx: typer.Context,
     skip_mint: bool = typer.Option(
         False,
         "--skip-mint",
         help="Do not mint mock reserve (already funded wallets).",
     ),
 ) -> None:
-    """Spawn 3× each strategy + 3 rando (Anvil 31337); mints CL8Y then backgrounds processes."""
+    """Spawn 3× each strategy + 3 rando (Anvil 31337); one-shot ETH + CL8Y when --allow-anvil-funding."""
+    cfg: BotConfig = ctx.obj
     from timecurve_bot import swarm_runner
 
-    swarm_runner.run_swarm(skip_mint=skip_mint)
+    swarm_runner.run_swarm(skip_mint=skip_mint, cfg=cfg)
 
 
 def main() -> None:
