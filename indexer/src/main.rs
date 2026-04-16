@@ -2,10 +2,14 @@
 
 //! Binary entrypoint — see `lib.rs` for modules.
 
+use std::sync::Arc;
+
+use alloy_primitives::Address;
 use eyre::Result;
+use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use yieldomega_indexer::{api, config, db, ingestion};
+use yieldomega_indexer::{api, chain_timer, config, db, ingestion};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -30,7 +34,31 @@ async fn main() -> Result<()> {
         }
     });
 
-    let state = api::AppState { pool };
+    let chain_timer_cache: Arc<RwLock<Option<chain_timer::ChainTimerSnapshot>>> =
+        Arc::new(RwLock::new(None));
+
+    if let Some(addr) = config.address_registry.as_ref().and_then(|r| {
+        let s = r.contracts.timecurve.trim();
+        if s.is_empty() {
+            return None;
+        }
+        s.parse::<Address>().ok()
+    }) {
+        let rpc = config.rpc_url.clone();
+        let cache = chain_timer_cache.clone();
+        tokio::spawn(async move {
+            chain_timer::run_poll_loop(rpc, addr, cache).await;
+        });
+    } else {
+        tracing::warn!(
+            "ADDRESS_REGISTRY missing TimeCurve — /v1/timecurve/chain-timer will return 503"
+        );
+    }
+
+    let state = api::AppState {
+        pool,
+        chain_timer: chain_timer_cache,
+    };
     let app = api::router(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());

@@ -44,6 +44,7 @@ test.beforeEach(async ({ page }) => {
         limit: 25,
         offset: 0,
         next_offset: null,
+        total: 1,
       }),
     });
   });
@@ -56,7 +57,7 @@ test("live buys strip, More list modal, and buy detail modal stack", async ({ pa
   await expect(page.getByRole("button", { name: "More" })).toBeVisible({ timeout: 15_000 });
 
   await page.getByRole("button", { name: "More" }).click();
-  const listDialog = page.getByRole("dialog", { name: "All indexed buys" });
+  const listDialog = page.getByRole("dialog", { name: /All indexed buys/ });
   await expect(listDialog).toBeVisible();
 
   await listDialog.locator(".live-buy-row__hit").first().click();

@@ -38,7 +38,8 @@ class BotConfig:
     charm_wad_fun: int
     charm_wad_shark: int
     send_transactions: bool
-    allow_anvil_cheat: bool
+    # When true, rpc.anvil_dev_bootstrap_funding_if_enabled may use Anvil JSON-RPC (31337 only).
+    allow_anvil_funding: bool
 
     def can_submit_transactions(self) -> bool:
         return bool(self.private_key) and self.send_transactions
@@ -76,7 +77,7 @@ def load_config(
     *,
     env_file: Optional[Path] = None,
     send: bool = False,
-    allow_anvil_cheat: bool = False,
+    allow_anvil_funding: bool = False,
 ) -> BotConfig:
     load_dotenv_files(env_file)
 
@@ -129,7 +130,7 @@ def load_config(
     else:
         send_tx = bool(pk) and env_send and not dry
 
-    allow_cheat = allow_anvil_cheat or _truthy(os.getenv("YIELDOMEGA_ALLOW_ANVIL_CHEAT"))
+    allow_funding = allow_anvil_funding or _truthy(os.getenv("YIELDOMEGA_ALLOW_ANVIL_FUNDING"))
 
     return BotConfig(
         rpc_url=rpc.rstrip("/"),
@@ -145,5 +146,5 @@ def load_config(
         charm_wad_fun=charm_fun,
         charm_wad_shark=charm_shark,
         send_transactions=send_tx,
-        allow_anvil_cheat=allow_cheat,
+        allow_anvil_funding=allow_funding,
     )

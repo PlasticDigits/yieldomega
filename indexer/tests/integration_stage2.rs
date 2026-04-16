@@ -13,6 +13,8 @@
 //! The same test finishes with HTTP API checks on the shared pool.
 
 use alloy_primitives::{address, Address, B256, U256};
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -20,6 +22,7 @@ use axum::{
 use http_body_util::BodyExt;
 use serde_json::Value;
 use sqlx::Row;
+use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::db::connect_and_migrate;
@@ -75,7 +78,10 @@ async fn response_json(response: axum::response::Response) -> Value {
 }
 
 async fn api_http_smoke(pool: &sqlx::PgPool) {
-    let app = router(AppState { pool: pool.clone() });
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+    });
 
     let res = app
         .clone()
@@ -88,6 +94,18 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/chain-timer")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
 
     let res = app
         .clone()
@@ -277,6 +295,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         items.iter().any(|row| row["block_number"] == "42"),
         "expected seeded row in items: {items:?}"
     );
+    assert_eq!(j["total"], serde_json::json!(1));
 
     let res = app
         .oneshot(

@@ -103,8 +103,36 @@ export type PaginatedItems<T> = {
   next_offset: number | null;
 };
 
+/** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
+export type TimecurveBuysPage = PaginatedItems<BuyItem> & { total?: number };
+
 export async function fetchTimecurveBuys(limit = 20, offset = 0) {
-  return getJson<PaginatedItems<BuyItem>>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
+  return getJson<TimecurveBuysPage>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
+}
+
+/** Indexer-polled head snapshot for hero timer (schema ≥ 1.7.0). */
+export type TimecurveChainTimer = {
+  deadline_sec: string;
+  block_timestamp_sec: string;
+  timer_cap_sec: string;
+  read_block_number: string;
+  polled_at_ms: number;
+};
+
+/**
+ * Latest `deadline` / `timerCapSec` / head `block.timestamp` from indexer RPC poll (~1s).
+ * Returns null if indexer is unset, unreachable, or chain-timer is not configured (503).
+ */
+export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | null> {
+  const base = indexerBaseUrl();
+  if (!base) {
+    return null;
+  }
+  const res = await fetch(`${base}/v1/timecurve/chain-timer`);
+  if (!res.ok) {
+    return null;
+  }
+  return res.json() as Promise<TimecurveChainTimer>;
 }
 
 export type WarbowLeaderboardItem = {

@@ -2,6 +2,8 @@
 
 //! HTTP API (axum): paginated reads for frontend and agents.
 
+use std::sync::Arc;
+
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -12,13 +14,18 @@ use axum::{
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{PgPool, Row};
+use tokio::sync::RwLock;
+
+use crate::chain_timer::ChainTimerSnapshot;
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.5.0";
+const SCHEMA_VERSION: &str = "1.7.0";
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    /// Filled by background RPC poll when `ADDRESS_REGISTRY` includes TimeCurve.
+    pub chain_timer: Arc<RwLock<Option<ChainTimerSnapshot>>>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -43,6 +50,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
+        .route("/v1/timecurve/chain-timer", get(timecurve_chain_timer))
         .route("/v1/timecurve/buys", get(timecurve_buys))
         .route(
             "/v1/timecurve/warbow/battle-feed",
@@ -99,6 +107,28 @@ fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap 
 
 async fn healthz() -> impl IntoResponse {
     (StatusCode::OK, "ok")
+}
+
+async fn timecurve_chain_timer(State(state): State<AppState>) -> Response {
+    let guard = state.chain_timer.read().await;
+    match &*guard {
+        Some(j) => {
+            let mut res = Json(j).into_response();
+            *res.headers_mut() = with_schema_version(res.headers().clone());
+            res
+        }
+        None => {
+            let mut res = (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "error": "chain timer not configured (set ADDRESS_REGISTRY with TimeCurve)"
+                })),
+            )
+                .into_response();
+            *res.headers_mut() = with_schema_version(res.headers().clone());
+            res
+        }
+    }
 }
 
 async fn status(State(state): State<AppState>) -> Response {
@@ -168,6 +198,20 @@ struct BuyRow {
 async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
+
+    let total: i64 = match sqlx::query_scalar::<_, i64>("SELECT COUNT(*)::bigint FROM idx_timecurve_buy")
+        .fetch_one(&state.pool)
+        .await
+    {
+        Ok(n) => n,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
 
     let rows = sqlx::query(
         r#"SELECT block_number, block_hash, contract_address,
@@ -256,6 +300,7 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
+        "total": total,
     });
 
     let mut res = Json(body).into_response();

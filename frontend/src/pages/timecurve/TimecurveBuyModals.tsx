@@ -35,6 +35,8 @@ type Props = {
   onCloseDetail: () => void;
   onSelectBuy: (buy: BuyItem) => void;
   buys: BuyItem[] | null;
+  /** Total indexed buy rows (all pages); paired with `buys.length` for “showing: x/total”. */
+  indexedTotal: number | null;
   buysLoading: boolean;
   buysNextOffset: number | null;
   loadingMoreBuys: boolean;
@@ -53,6 +55,7 @@ export function TimecurveBuyModals({
   onCloseDetail,
   onSelectBuy,
   buys,
+  indexedTotal,
   buysLoading,
   buysNextOffset,
   loadingMoreBuys,
@@ -66,6 +69,12 @@ export function TimecurveBuyModals({
   const listTitleId = useId();
   const detailTitleId = useId();
   const listRef = useRef<HTMLUListElement | null>(null);
+
+  const listModalTitle = useMemo(() => {
+    const loaded = buys?.length ?? 0;
+    const totalPart = indexedTotal !== null ? String(indexedTotal) : "…";
+    return `All indexed buys · showing: ${loaded}/${totalPart}`;
+  }, [buys, indexedTotal]);
 
   const narrative = useMemo(
     () => (detailBuy ? buildBuyFeedNarrative(detailBuy, address, formatWallet) : null),
@@ -115,7 +124,7 @@ export function TimecurveBuyModals({
 
   return (
     <>
-      <Modal open={listOpen} title="All indexed buys" titleId={listTitleId} onClose={onCloseList} layer="list">
+      <Modal open={listOpen} title={listModalTitle} titleId={listTitleId} onClose={onCloseList} layer="list">
         {buysLoading && <p className="modal-bc-placeholder">Loading buys from the indexer…</p>}
         {!buysLoading && buys !== null && buys.length === 0 && (
           <p className="modal-bc-placeholder">No buys indexed yet.</p>
