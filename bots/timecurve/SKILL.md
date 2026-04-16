@@ -31,7 +31,7 @@ Use this skill when editing or running the **`timecurve-bot`** package.
 - Required: `YIELDOMEGA_RPC_URL` (or `RPC_URL`), `YIELDOMEGA_CHAIN_ID`, `YIELDOMEGA_TIMECURVE_ADDRESS`.
 - Optional: treasury/NFT/accepted-asset overrides, `YIELDOMEGA_ADDRESS_FILE` for registry JSON.
 - **Sending txs:** CLI `--send` **or** `YIELDOMEGA_SEND_TX=1` with `YIELDOMEGA_DRY_RUN=0`, plus `YIELDOMEGA_PRIVATE_KEY`.
-- **Anvil time warp:** `--allow-anvil-cheat` or `YIELDOMEGA_ALLOW_ANVIL_CHEAT=1` only when `YIELDOMEGA_CHAIN_ID=31337`.
+- **Anvil dev funding:** `--allow-anvil-funding` or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` only for **`swarm`** one-shot ETH + mock CL8Y on `YIELDOMEGA_CHAIN_ID=31337`. Default false (mainnet-safe).
 
 ## Local Anvil workflow
 

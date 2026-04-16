@@ -690,7 +690,7 @@ export function RawDataAccordion(props: {
   hasCoreContractReads: boolean;
   saleStart: SerializableContractRead | undefined;
   deadline: SerializableContractRead | undefined;
-  remaining: number | undefined;
+  secondsRemaining: number | undefined;
   totalRaised: SerializableContractRead | undefined;
   ended: SerializableContractRead | undefined;
   maxBuyAmount: string | undefined;
@@ -729,7 +729,7 @@ export function RawDataAccordion(props: {
     hasCoreContractReads: coreTcData,
     saleStart,
     deadline,
-    remaining,
+    secondsRemaining,
     totalRaised,
     ended,
     maxBuyAmount,
@@ -792,9 +792,11 @@ export function RawDataAccordion(props: {
                     "—"
                   )}
                 </dd>
-                <dt>time remaining</dt>
+                <dt>seconds remaining</dt>
                 <dd>
-                  {remaining !== undefined ? `${formatLocaleInteger(Math.floor(remaining))}s` : "—"}
+                  {secondsRemaining !== undefined
+                    ? `${formatLocaleInteger(Math.floor(secondsRemaining))}s`
+                    : "—"}
                 </dd>
                 <dt>totalRaised</dt>
                 <dd>

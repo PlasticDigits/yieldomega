@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Grow defended-streak stats: repeated buys under 15m remaining (uses Anvil time warp locally)."""
+"""Grow defended-streak stats: repeated buys under 15m remaining (on-chain time only)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import time
 
 from timecurve_bot.actions import account_from_config, approve_if_needed, buy, print_dry
 from timecurve_bot.config import BotConfig
-from timecurve_bot.rpc import anvil_increase_time, ensure_anvil_cheat_allowed
 from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec
 from web3 import Web3
 from web3.contract import Contract
@@ -17,7 +16,6 @@ _WINDOW = 900
 
 
 def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract, *, steps: int = 3) -> None:
-    ensure_anvil_cheat_allowed(cfg, w3)
     send = cfg.can_submit_transactions()
     if not cfg.private_key:
         print_dry("defender", "set YIELDOMEGA_PRIVATE_KEY and --send")
@@ -31,7 +29,7 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract, *, steps: int =
     )
 
     if not send:
-        print_dry("defender", f"would warp timer + loop buys from {acct.address} x{steps} per cycle")
+        print_dry("defender", f"would loop buys from {acct.address} x{steps} per cycle")
         return
 
     approve_if_needed(w3, asset, acct, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
@@ -40,18 +38,28 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract, *, steps: int =
         if bool(tc.functions.ended().call()):
             print("defender: sale ended; stopping.")
             return
+        latest = w3.eth.get_block("latest")
+        now = int(latest["timestamp"])
+        dl = int(tc.functions.deadline().call())
+        rem = dl - now
+        if rem >= _WINDOW:
+            print(
+                f"defender: remaining {rem}s >= {_WINDOW}s; waiting for on-chain time to enter "
+                f"<{_WINDOW}s window (no dev RPC time warp)"
+            )
+            time.sleep(15)
+            continue
         for i in range(steps):
-            latest = w3.eth.get_block("latest")
-            now = int(latest["timestamp"])
-            dl = int(tc.functions.deadline().call())
             if bool(tc.functions.ended().call()):
                 print("defender: sale ended; stopping.")
                 return
+            latest = w3.eth.get_block("latest")
+            now = int(latest["timestamp"])
+            dl = int(tc.functions.deadline().call())
             rem = dl - now
             if rem >= _WINDOW:
-                jump = rem - 600
-                print(f"step {i + 1}: warp +{jump}s (remaining {rem}s -> ~600s)")
-                anvil_increase_time(w3, max(1, jump))
+                print(f"defender: step {i + 1}: remaining {rem}s — need <{_WINDOW}s; retrying outer cycle")
+                break
             lo, _hi = charm_bounds(tc)
             charm = charm_for_buy(tc, lo)
             need = asset_amount_for_charm(tc, charm)
