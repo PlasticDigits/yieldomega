@@ -12,6 +12,7 @@ from pathlib import Path
 from web3 import Web3
 
 from timecurve_bot.anvil_accounts import address_at, private_key_hex
+from timecurve_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
 from timecurve_bot.config import BotConfig, load_config
 from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
 from timecurve_bot.rpc import anvil_dev_bootstrap_funding_if_enabled, assert_chain_id, make_web3
@@ -65,6 +66,10 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
     asset = mock_reserve_contract(w3, Web3.to_checksum_address(aa))
 
     recipients = [Web3.to_checksum_address(address_at(i)) for i in ALL_FUNDED_INDICES]
+    extras = extra_funded_addresses_from_environ()
+    recipients, n_extra = merge_funded_recipients(recipients, extras)
+    if n_extra:
+        print(f"swarm: {n_extra} extra funded address(es) from YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES")
     funder = private_key_hex(0)
 
     print("swarm: one-shot Anvil dev funding (anvil_setBalance" + ("" if skip_mint else " + mock mint") + ")")
