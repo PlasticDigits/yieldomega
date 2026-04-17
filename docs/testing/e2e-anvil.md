@@ -80,7 +80,7 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 
 ## Related
 
-- [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — same `DeployDev` deploy as this flow; writes `bots/timecurve/.env.local` for the `timecurve-bot` CLI ([`bots/timecurve/README.md`](../../bots/timecurve/README.md)).
+- [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — same `DeployDev` deploy as this flow; writes `bots/timecurve/.env.local` for the `timecurve-bot` CLI ([`bots/timecurve/README.md`](../../bots/timecurve/README.md)). For manual QA on the same Anvil stack, add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`** (comma-separated `0x` addresses only) so `timecurve-bot swarm` one-shot funding includes your browser wallet alongside bot keys.
 - [Anvil same-block drill](anvil-same-block-drill.md) — ordering tests with `anvil_mine`, not Playwright.
 - [operations/stage2-run-log.md](../operations/stage2-run-log.md) — full-stack smoke checklist.
 
