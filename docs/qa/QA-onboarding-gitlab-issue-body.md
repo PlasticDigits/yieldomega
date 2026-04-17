@@ -208,33 +208,6 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ---
 
-#### D. Indexer
-
-- [ ] **D1** — Migrations applied; API responds on `/v1/timecurve/*` routes used by frontend.
-- [ ] **D2** — Buy and WarBow events decode; no reliance on guessed ambush/streak fields — use `Buy` event fields.
-
----
-
-#### E. Automation gates (before release candidate)
-
-Run per [`docs/testing/strategy.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/testing/strategy.md):
-
-- [ ] **E1** — Contracts: `cd contracts && forge test` — all green.
-- [ ] **E2** — Indexer: `cd indexer && cargo test --lib` (and clippy if required by CI).
-- [ ] **E3** — Frontend unit: `cd frontend && npm run test` / `vitest` per project scripts.
-- [ ] **E4** — Anvil E2E (optional): `bash scripts/e2e-anvil.sh` (Foundry + Playwright).
-
----
-
-#### F. Production-oriented (release checklist, condensed)
-
-- [ ] **F1** — Addresses finalized in [`contracts/PARAMETERS.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/contracts/PARAMETERS.md).
-- [ ] **F2** — Governance roles verified (admin, params, pauser) per deployment runbook.
-- [ ] **F3** — **FeeRouter** weights and destinations match [fee-routing doc](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/onchain/fee-routing-and-governance.md).
-- [ ] **F4** — Operations: documented deploy path; rollback/pause contacts; monitor timer, indexer lag, first-buy fee routing.
-
----
-
 #### References
 
 - [`docs/testing/e2e-anvil.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/testing/e2e-anvil.md) — `VITE_*` table, Playwright
