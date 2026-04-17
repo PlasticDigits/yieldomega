@@ -37,6 +37,8 @@ Copy [`.env.example`](.env.example) to `.env` or `.env.local` (gitignored) and s
 
 **Anvil-only dev funding** (one-shot `anvil_setBalance` + mock reserve `mint`): require **`--allow-anvil-funding`** (or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`) **and** `YIELDOMEGA_CHAIN_ID=31337`. Used by the **`swarm`** command only. **Default false** — mainnet runs must leave this off.
 
+**QA / human wallet on Anvil:** set **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`** to one or more comma-separated **`0x` addresses** (no private keys) in `.env.local`. Swarm funding then includes those addresses alongside the fixed swarm HD wallets (same ETH + mock CL8Y mint). Use the same address in your browser wallet for manual UI testing.
+
 ## Brand-new user: local Anvil → bot
 
 From repository root (Foundry `anvil`, `forge`, `cast` on `PATH`):
@@ -79,7 +81,7 @@ Deploy logic is **shared** with Playwright Anvil E2E via [`scripts/lib/anvil_dep
 | `defender` | **Loop** cycles of under-15m buys + streak reads (`--steps N` per cycle; `YIELDOMEGA_DEFENDER_MEAN_SEC`, default 90s between cycles) |
 | `seed-local` / `scenario` | Deterministic multi-wallet sequence **once** (slot **0** or no slot), then **loop** min-CHARM buys rotating A0→A1→A2 (`YIELDOMEGA_SEED_LOCAL_MEAN_SEC`, default 45s). **Swarm slots 1–2** skip the deterministic block (only mint + loop) so parallel runs do not fight over the WarBow flag. |
 | `rando` | **Poisson process** inter-arrival times (`YIELDOMEGA_RANDO_MEAN_SEC`, default 45s); each buy picks **uniform** random CHARM in current onchain **[min, max]** |
-| `swarm` | Spawns **3×** each of `fun`, `shark`, `pvp`, `defender`, `seed-local` plus **3×** `rando` (Anvil **31337** only). Requires **`--allow-anvil-funding`** (or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`) for a **one-shot** mock CL8Y mint + **`anvil_setBalance` 10k ETH** per swarm wallet, then starts bots with **`YIELDOMEGA_SEND_TX` / `YIELDOMEGA_DRY_RUN`** (no `--send` in subprocess env — avoids Typer quirks). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) sets `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` when `SKIP_ANVIL_RICH_STATE=1` runs the swarm. |
+| `swarm` | Spawns **3×** each of `fun`, `shark`, `pvp`, `defender`, `seed-local` plus **3×** `rando` (Anvil **31337** only). Requires **`--allow-anvil-funding`** (or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`) for a **one-shot** mock CL8Y mint + **`anvil_setBalance` 10k ETH** per swarm wallet (plus any **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`**), then starts bots with **`YIELDOMEGA_SEND_TX` / `YIELDOMEGA_DRY_RUN`** (no `--send` in subprocess env — avoids Typer quirks). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) sets `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` when `SKIP_ANVIL_RICH_STATE=1` runs the swarm. |
 
 Global options: `--send`, `--allow-anvil-funding`, `--env-file PATH`.
 
