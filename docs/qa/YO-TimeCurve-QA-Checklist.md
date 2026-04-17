@@ -92,5 +92,5 @@ Run per [`docs/testing/strategy.md`](../testing/strategy.md):
 ## References
 
 - [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — `VITE_*` table, Playwright
-- [`bots/timecurve/README.md`](../../bots/timecurve/README.md) — swarm, env vars |
-- [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) — stack env toggles |
+- [`bots/timecurve/README.md`](../../bots/timecurve/README.md) — swarm, env vars
+- [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) — stack env toggles
