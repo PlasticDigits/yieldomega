@@ -48,7 +48,7 @@ contract TimeCurveReferralTest is Test {
         router = new FeeRouter(
             address(this),
             [sink0, sink1, address(podiumPool), sink3, sink4],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
 
         linearPrice = new LinearCharmPrice(1e18, 0);

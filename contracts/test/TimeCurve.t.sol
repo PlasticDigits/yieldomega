@@ -35,9 +35,9 @@ contract TimeCurveTest is Test {
     address carol = makeAddr("carol");
     address dave = makeAddr("dave");
 
-    // FeeRouter sinks: LP 25% · CL8Y 35% · podium 20% · team 0% · Rabbit 20% (bps)
+    // FeeRouter sinks: LP 30% · CL8Y burn 40% · podium 20% · team 0% · Rabbit 10% (+ remainder) (bps)
     address sinkLp = makeAddr("sinkLp");
-    address sinkCl8y = makeAddr("sinkCl8y");
+    address sinkBurn = makeAddr("sinkBurn");
     address sinkTeam = makeAddr("sinkTeam");
     address sinkRabbit = makeAddr("sinkRabbit");
 
@@ -49,8 +49,8 @@ contract TimeCurveTest is Test {
 
         router = new FeeRouter(
             address(this),
-            [sinkLp, sinkCl8y, address(podiumPool), sinkTeam, sinkRabbit],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [sinkLp, sinkBurn, address(podiumPool), sinkTeam, sinkRabbit],
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
 
         linearPrice = new LinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
@@ -402,6 +402,9 @@ contract TimeCurveTest is Test {
         assertEq(values[1], 2 * base);
         assertEq(winners[2], carol);
         assertEq(values[2], base);
+        (address[3] memory wCat, uint256[3] memory vCat) = tc.podium(tc.CAT_WARBOW());
+        assertEq(wCat[0], winners[0]);
+        assertEq(vCat[0], values[0]);
     }
 
     function test_time_booster_tracks_effective_seconds_not_nominal_when_clipped() public {
@@ -646,7 +649,7 @@ contract TimeCurveTest is Test {
         assertEq(v[2], 1);
     }
 
-    /// @dev Last-buy 1st place receives reserve from `distributePrizes` (three-category settlement).
+    /// @dev Last-buy 1st place receives reserve from `distributePrizes` (four-category settlement).
     function test_last_buy_distribute_prizes_pays_first_place() public {
         tc.startSale();
         _fundAndApprove(alice, 5e18);
@@ -823,9 +826,9 @@ contract TimeCurveTest is Test {
         assertEq(v[1], 1);
     }
 
-    // ── Three-category round settlement (integration) ─────────────────
+    // ── Four-category round settlement (integration) ────────────────────
 
-    function test_round_settlement_three_categories_podium_payouts_smoke() public {
+    function test_round_settlement_four_categories_podium_payouts_smoke() public {
         TimeCurve t = _newTimeCurveShortTimer(800);
         t.startSale();
         vm.warp(t.saleStart() + 100);
@@ -881,11 +884,11 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(10e18);
 
-        assertEq(reserve.balanceOf(sinkLp), 2.5e18);
-        assertEq(reserve.balanceOf(sinkCl8y), 3.5e18);
+        assertEq(reserve.balanceOf(sinkLp), 3e18);
+        assertEq(reserve.balanceOf(sinkBurn), 4e18);
         assertEq(reserve.balanceOf(address(podiumPool)), 2e18);
         assertEq(reserve.balanceOf(sinkTeam), 0);
-        assertEq(reserve.balanceOf(sinkRabbit), 2e18);
+        assertEq(reserve.balanceOf(sinkRabbit), 1e18);
     }
 
     /// @dev Curve timing parameters are constructor immutables — no mid-sale governance drift (threat #3).

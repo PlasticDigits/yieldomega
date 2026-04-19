@@ -3,6 +3,7 @@
 import { useReadContracts } from "wagmi";
 import { timeCurveReadAbi } from "@/lib/abis";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 
 type ContractReadRow = {
   status: "success" | "failure";
@@ -17,26 +18,12 @@ export type PodiumReadRow = {
 
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const contracts = tc
-    ? ([
-        {
-          address: tc,
-          abi: timeCurveReadAbi,
-          functionName: "podium" as const,
-          args: [0],
-        },
-        {
-          address: tc,
-          abi: timeCurveReadAbi,
-          functionName: "podium" as const,
-          args: [1],
-        },
-        {
-          address: tc,
-          abi: timeCurveReadAbi,
-          functionName: "podium" as const,
-          args: [2],
-        },
-      ] as const)
+    ? (PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
+        address: tc,
+        abi: timeCurveReadAbi,
+        functionName: "podium" as const,
+        args: [category],
+      })) as const)
     : [];
   const { data: rawData, isPending } = useReadContracts({
     contracts: contracts as readonly unknown[],

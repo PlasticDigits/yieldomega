@@ -3,9 +3,8 @@ pragma solidity ^0.8.24;
 
 import {FeeSink} from "./FeeSink.sol";
 
-/// @notice Receives 15 % of TimeCurve fees for CL8Y buy-and-burn.
-///         Withdrawal executes the buy-and-burn (offchain orchestration or
-///         future onchain automation).
+/// @notice Optional **legacy** sink for CL8Y held pending offchain automation.
+///         Canonical TimeCurve routing sends the burn slice to `0x…dEaD` (sale asset is already CL8Y).
 contract CL8YProtocolTreasury is FeeSink {
     constructor(address admin) FeeSink(admin) {}
 }

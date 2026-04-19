@@ -16,26 +16,25 @@ You are helping a **participant** use **TimeCurve** (token launch / sale primiti
 - **CHARM min/max band** (exponential envelope, canonical **~20%/day** unless deployment differs) rises over time, separately from **per-CHARM price** (default linear-in-time DOUB module); each buy has **min/max** CHARM bounds; **timer** extends on buys up to a **cap**; **`initialTimerSec`** may be shorter than the cap so early activity can still grow remaining time (see deployed parameters).
 - **Timer defaults (documented in [`docs/product/primitives.md`](../../docs/product/primitives.md); verify deployment):** per-buy extension **`timerExtensionSec`** canonical **120s**; **remaining-time cap** **`timerCapSec`** canonical **96 hours**; **pre-first-buy countdown** **`initialTimerSec`** canonical **24 hours**; **hard reset** when remaining before buy is **strictly below 13 minutes** → deadline moves toward **15 minutes** remaining (still subject to cap). See also [`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md) for WarBow-specific timer/BP detail.
 - **CHARM weight** (including referral bonuses) sets **pro-rata DOUB** after the sale via `redeemCharms` (**denominator `totalCharmWeight`**). **Podium** payouts are **reserve-asset** from **`PodiumPool`** after `endSale` via **`distributePrizes`**, separate from DOUB redemption.
-- **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **25%** locked DOUB LP · **35%** CL8Y buy-and-burn · **20%** podium pool · **0%** team/reserved · **20%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
+- **Fees:** full **gross** reserve per buy routes through **`FeeRouter`** (five sink slots: **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool · **0%** team/reserved · **10%** Rabbit Treasury at documented launch default) per [fee routing](../../docs/onchain/fee-routing-and-governance.md)—**verify** live `FeeRouter` on the target chain.
 
-### TimeCurve reserve podium (onchain v1 — **three** categories)
+### TimeCurve reserve podium (onchain v1 — **four** categories)
 
-Authoritative rules: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium + timer + defended streak). **Do not** describe legacy ideas (fourth “activity” slice, most-buys / biggest-buy / cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
+Authoritative rules: [`docs/product/primitives.md`](../../docs/product/primitives.md) (podium + timer + defended streak + WarBow). **Do not** describe legacy ideas (most-buys / biggest-buy / cumulative-CHARM podiums, or opening/closing-window categories); they are **not** in v1.
 
-**How this relates to “podiums” and WarBow:** The **fee-routed prize pool** (`PodiumPool`) funds **exactly three** prize **categories** (last buy, time booster, defended streak). Each category pays **1st / 2nd / 3rd** in **reserve** (not DOUB). **WarBow Ladder** (Battle Points) is a **separate** PvP score: the contract tracks a **top-3 BP** snapshot (`warbowLadderPodium`) for status/UX, but **WarBow does not take a fourth slice** of `PodiumPool` — see [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md) and primitives. Do not describe WarBow as a fourth reserve-funded podium category.
+**How this relates to “podiums” and WarBow:** The **fee-routed prize pool** (`PodiumPool`) funds **four** prize **categories**: **last buy**, **WarBow** (top-3 Battle Points — `warbowLadderPodium` / `podium(CAT_WARBOW)`), **defended streak**, **time booster**. Each category pays **1st / 2nd / 3rd** in **reserve** (not DOUB). For WarBow **PvP** rules (steal, guard, etc.), use **[`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md)** and onchain `battlePoints`.
 
 Plain language for participants:
 
 - **Last buy:** compete to be the last person to buy before the sale ends.
+- **WarBow:** top Battle Points wallets when **`distributePrizes`** runs (PvP actions move BP during the sale).
 - **Time booster:** most **actual** seconds added to the sale end across your buys (after cap clipping), tracked onchain.
 - **Defended streak:** how many times the **same** wallet extends the timer while remaining time **before** the buy is **strictly under 15 minutes**; another buyer under that window **breaks** the active streak (**`bestDefendedStreak`** is what the podium uses).
-
-**WarBow Ladder / Battle Points** are **PvP scoring** (steal, guard, revenge, flag, buy-based BP bonuses) **separate** from these three reserve slices. For WarBow rules and eligibility, use **[`play-timecurve-warbow/SKILL.md`](../play-timecurve-warbow/SKILL.md)** and onchain `battlePoints` / `warbowLadderPodium`.
 
 **Allocations (documented defaults; verify deployment):**
 
 - **Into `PodiumPool` from each buy:** **20%** of the **gross** routed fee (launch default **five** `FeeRouter` sinks — see [fee routing](../../docs/onchain/fee-routing-and-governance.md)).
-- **Across the three categories** (shares of that podium pool): **50%** last buy · **25%** time booster · **25%** defended streak.
+- **Across the four categories** (shares of that podium pool): **40%** last buy · **25%** WarBow · **20%** defended streak · **15%** time booster (i.e. **8%** · **5%** · **4%** · **3%** of gross raise).
 - **Within each category** (1st : 2nd : 3rd): weights **4∶2∶1** (documented in primitives and fee routing).
 
 Reserve podium split from **`PodiumPool`** after the sale follows **`distributePrizes`** on the deployment — verify onchain.

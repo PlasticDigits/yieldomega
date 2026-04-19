@@ -118,7 +118,7 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 
 - Verify the category tracks the final buyer correctly — `test_last_buyers_podium`, `test_last_buy_three_most_recent_rank_values`
 - Verify leaderboard / ranking logic — `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall`, `test_last_buy_three_most_recent_rank_values`
-- Verify podium resolution — `test_last_buy_distribute_prizes_pays_first_place`, `test_round_settlement_three_categories_podium_payouts_smoke`
+- Verify podium resolution — `test_last_buy_distribute_prizes_pays_first_place`, `test_round_settlement_four_categories_podium_payouts_smoke`
 
 **Time booster** — *Tracks the most actual time added to the timer.*
 
@@ -127,7 +127,7 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 - Resets in / near the under-15-minute zone use actual timer increase — `test_time_booster_under_15m_window_uses_actual_seconds_added`
 - Leaderboard ordering — `test_time_booster_leaderboard_orders_by_total_effective_seconds`
 
-**WarBow Ladder (Battle Points)** — *PvP scoring separate from reserve podium; steals use standalone txs.*
+**WarBow Ladder (Battle Points)** — *PvP scoring; top-3 also receives the WarBow reserve slice in `distributePrizes`; steals use standalone txs.*
 
 - Base BP flat per buy — `test_warbow_base_bp_flat_per_buy_independent_of_charm_wad`
 - BP top-3 snapshot ordering — `test_warbow_ladder_podium_orders_by_battle_points`
@@ -147,8 +147,8 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 
 **Integration / regression**
 
-- Three-category settlement — `test_round_settlement_three_categories_podium_payouts_smoke`
-- Podium ranking + payout resolution — `test_round_settlement_three_categories_podium_payouts_smoke`, `test_last_buy_distribute_prizes_pays_first_place`, `test_distributePrizes_reduces_vault_and_sets_flag`
+- Four-category settlement — `test_round_settlement_four_categories_podium_payouts_smoke`
+- Podium ranking + payout resolution — `test_round_settlement_four_categories_podium_payouts_smoke`, `test_last_buy_distribute_prizes_pays_first_place`, `test_distributePrizes_reduces_vault_and_sets_flag`
 - Indexer / API: `Buy` event fields and `idx_timecurve_buy` migration — [`indexer/tests/integration_stage2.rs`](../../indexer/tests/integration_stage2.rs), [`decoder` roundtrip_buy](../../indexer/src/decoder.rs)
 - Core round flow unchanged — existing sale lifecycle, `endSale`, `redeemCharms`, fee routing tests in `TimeCurve.t.sol` / `TimeCurveReferral.t.sol` / `TimeCurveInvariant.t.sol`
 

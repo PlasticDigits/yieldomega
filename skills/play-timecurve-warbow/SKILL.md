@@ -7,7 +7,7 @@ description: WarBow Ladder PvP on TimeCurve — Battle Points, steals, guard, re
 
 ## Scope
 
-You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **Battle Points (BP)** — a **PvP score** that can go up or down (buys, steals, flag claim, penalties) — tracked **separately** from the **three reserve-funded podium categories** (last buy, time booster, defended streak). BP **does not** receive a slice of the **`PodiumPool`**; the contract still exposes **`warbowLadderPodium()`** (top-3 BP snapshot for UX). Read [`docs/product/primitives.md`](../../docs/product/primitives.md) (WarBow + timer sections) and verify **live** `TimeCurve` on the target chain.
+You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **Battle Points (BP)** — a **PvP score** that can go up or down (buys, steals, flag claim, penalties). The **top-3 BP** snapshot (**`warbowLadderPodium()`**, same as **`podium(CAT_WARBOW)`**) is one of **four** reserve-funded podium categories paid from **`PodiumPool`** after `endSale`. Read [`docs/product/primitives.md`](../../docs/product/primitives.md) (WarBow + timer sections) and verify **live** `TimeCurve` on the target chain.
 
 **Agent role:** Explain options, costs (including CL8Y burns), windows, and tie-breaks so the user can choose whether to act.
 
