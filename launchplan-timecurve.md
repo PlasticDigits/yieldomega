@@ -86,7 +86,7 @@ This section fixes **how many DOUB are minted at launch** and **where they go**,
 | Destination | DOUB (whole tokens) | Purpose |
 |-------------|---------------------|---------|
 | **TimeCurve sale** | **200_000_000** | `TimeCurve.totalTokensForSale`; `redeemCharms` pro-rata after `endSale`. |
-| **Presale** | **21_500_000** | **30%** unlocked immediately · **70%** linear vest over **6 months** — implement via vesting contract or agreed ops process; document addresses at deploy. |
+| **Presale** | **21_500_000** | **30%** at `startVesting` · **70%** linear (default **180 days** in [`DoubPresaleVesting`](contracts/src/vesting/DoubPresaleVesting.sol), configurable duration) — fund contract, then owner `startVesting()`; document beneficiary addresses at deploy. |
 | **V3 liquidity seed** | **28_500_000** | **DOUB/CL8Y** pool seeding aligned with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol) / Kumbaya strategy. |
 
 **Checksum:** 200 + 21.5 + 28.5 = **250M** whole tokens.
