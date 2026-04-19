@@ -7,11 +7,11 @@ import {FeeMath} from "../src/libraries/FeeMath.sol";
 contract FeeMathTest is Test {
     function test_validateWeights_canonical_split() public pure {
         uint16[] memory w = new uint16[](5);
-        w[0] = 2500; // DOUB LP
-        w[1] = 3500; // CL8Y buy-and-burn
+        w[0] = 3000; // DOUB/CL8Y LP
+        w[1] = 4000; // CL8Y burned (sale proceeds)
         w[2] = 2000; // Podium pool
         w[3] = 0; // Team (unused in launch default)
-        w[4] = 2000; // Rabbit Treasury
+        w[4] = 1000; // Rabbit Treasury
         FeeMath.validateWeights(w);
     }
 
@@ -37,7 +37,7 @@ contract FeeMathTest is Test {
     }
 
     function test_bpsShare_basic() public pure {
-        assertEq(FeeMath.bpsShare(10_000, 3500), 3500);
+        assertEq(FeeMath.bpsShare(10_000, 4000), 4000);
     }
 
     function test_bpsShare_rounding_down() public pure {
@@ -48,11 +48,11 @@ contract FeeMathTest is Test {
     /// @dev Invariant: sum of all shares ≤ total (no over-allocation from rounding).
     function test_bpsShare_no_overallocation_fuzz(uint128 amount) public pure {
         uint256 a = uint256(amount);
-        uint256 s1 = FeeMath.bpsShare(a, 2500);
-        uint256 s2 = FeeMath.bpsShare(a, 3500);
+        uint256 s1 = FeeMath.bpsShare(a, 3000);
+        uint256 s2 = FeeMath.bpsShare(a, 4000);
         uint256 s3 = FeeMath.bpsShare(a, 2000);
         uint256 s4 = FeeMath.bpsShare(a, 0);
-        uint256 s5 = FeeMath.bpsShare(a, 2000);
+        uint256 s5 = FeeMath.bpsShare(a, 1000);
         assertLe(s1 + s2 + s3 + s4 + s5, a, "shares must not exceed total");
     }
 }

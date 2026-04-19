@@ -98,7 +98,7 @@ Details: [`bots/timecurve/README.md`](https://gitlab.com/PlasticDigits/yieldomeg
 
 ## 4. External spec note
 
-The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Verification-Spec.md) incorrectly described four reserve podium categories including WarBow. **Canonical:** three reserve podium categories; WarBow is PvP BP — see the checklist section below (“Delta vs ecosystem-qa”) and [`docs/product/primitives.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/product/primitives.md).
+The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Verification-Spec.md) mixed WarBow with older category sets. **Canonical:** **four** reserve podium categories (**last buy**, **WarBow**, **defended streak**, **time booster**) — see the checklist section below (“Delta vs ecosystem-qa”) and [`docs/product/primitives.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/product/primitives.md).
 
 ---
 
@@ -166,9 +166,9 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 
 The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Verification-Spec.md) and [YO-TimeCurve-Release-Checklist.md v1.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Release-Checklist.md) are **partly outdated** for:
 
-1. **Podium categories:** There are **three** reserve podium categories in `TimeCurve` (**last buy**, **time booster**, **defended streak**). **WarBow** is **Battle Points / PvP** and **not** a fourth reserve prize slice. The **WarBow Ladder** top-3 is display-only (`warbowLadderPodium()`), not paid from `PodiumPool`.
-2. **`distributePrizes`:** Splits the **accepted asset balance** held by **`PodiumPool`** at call time: **50% / 25% / 25%** across those three categories (see `TimeCurve.distributePrizes()`), with **4∶2∶1** within each category. This is **not** the same as **buy-time** `FeeRouter` routing (see fee-routing doc).
-3. **Buy-time fee routing** (canonical launch default): **25%** DOUB locked LP · **35%** CL8Y burn · **20%** podium pool · **0%** team · **20%** Rabbit Treasury — **10 000 bps** total. Do not conflate these percentages with **podium internal** splits.
+1. **Podium categories:** There are **four** reserve podium categories in `TimeCurve` (**last buy**, **WarBow** / top BP, **defended streak**, **time booster**). **`warbowLadderPodium()`** matches **`podium(CAT_WARBOW)`** and is **paid** from `PodiumPool` after `endSale`.
+2. **`distributePrizes`:** Splits the **accepted asset balance** held by **`PodiumPool`** at call time: **40% / 25% / 20% / 15%** across those categories (see `TimeCurve.distributePrizes()`), with **4∶2∶1** within each category. This is **not** the same as **buy-time** `FeeRouter` routing (see fee-routing doc).
+3. **Buy-time fee routing** (canonical launch default): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool · **0%** team · **10%** Rabbit Treasury — **10 000 bps** total. Do not conflate these percentages with **podium internal** splits.
 
 ---
 
@@ -190,8 +190,8 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 #### B. TimeCurve behavior (contract-aligned)
 
 - [ ] **B1** — Sale lifecycle: buys extend timer; hard reset when remaining &lt; 13 min — match `TIMER_RESET_*` in `TimeCurve.sol`.
-- [ ] **B2** — Three podium categories only; **WarBow** BP separate from reserve prizes — see [primitives.md](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/product/primitives.md).
-- [ ] **B3** — `distributePrizes`: 50/25/25 of **podium pool** balance — not FeeRouter percentages.
+- [ ] **B2** — Four podium categories — **WarBow** is reserve-funded; see [primitives.md](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/product/primitives.md).
+- [ ] **B3** — `distributePrizes`: **40/25/20/15** of **podium pool** balance — not FeeRouter top-level percentages.
 - [ ] **B4** — `redeemCharms` after `endSale` — pro-rata DOUB per charm weight.
 - [ ] **B5** — WarBow: steal, revenge, guard, flag — gated by `!ended` where applicable — confirm post-end behavior in `TimeCurve.sol` for deployment.
 
@@ -201,7 +201,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 - [ ] **C1** — Timer countdown and urgency styling.
 - [ ] **C2** — CHARM bounds and price display consistent with contract reads.
-- [ ] **C3** — Podium / leaderboard panels for **three** reserve categories.
+- [ ] **C3** — Podium / leaderboard panels for **four** reserve categories.
 - [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired).
 - [ ] **C5** — Fee sink display matches deployment **FeeRouter**; cross-check `FeeRouter` on chain if labels drift.
 - [ ] **C6** — Redeem path after sale end (when stack uses ended state).

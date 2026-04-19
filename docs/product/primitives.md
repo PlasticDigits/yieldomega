@@ -2,7 +2,7 @@
 
 ## Intent
 
-TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players earn **charm weight** from each buy (accepted-asset spend) and redeem it for launched tokens after the sale; they also compete for **reserve-asset podium** placements (three categories) and, separately, for **WarBow Ladder** — an adversarial **Battle Points (BP)** score used for status and PvP mechanics. WarBow is **not** a fourth podium prize slice.
+TimeCurve is a **token launch primitive** that blends ideas from bonding curves, penny auctions, and timer-extension games, biased toward **skill and timing** rather than pure chance. Players earn **charm weight** from each buy (accepted-asset spend) and redeem it for launched tokens after the sale; they also compete for **reserve-asset podium** placements (**four** categories: last buy, WarBow, defended streak, time booster). **WarBow Ladder** is tracked in **Battle Points (BP)** for PvP mechanics; the **top-3 BP snapshot** is also the **WarBow** reserve prize category funded from the podium pool after `endSale`.
 
 ## Core mechanics (requirements)
 
@@ -27,27 +27,29 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 - The sale **ends** when the **timer reaches zero** without further extension past the end boundary.
 - After end, **no further buys** are accepted; **redemption** of charms for **DOUB** and **podium** payouts follow rules defined onchain. WarBow **actions** that require an open sale (`!ended`) are blocked after end; **revenge** may still be callable if the contract allows post-end (verify deployment); guard/steal/flag flows in v1 are gated to active sale phase in `TimeCurve`.
 
-### Reserve podium categories (exactly three)
+### Reserve podium categories (exactly four)
 
-The **podium pool** pays **reserve asset** to **1st / 2nd / 3rd** per category after `endSale` via **`distributePrizes`**. Category **shares of the podium pool** are fixed in **`TimeCurve`** bytecode:
+The **podium pool** pays **reserve asset** to **1st / 2nd / 3rd** per category after `endSale` via **`distributePrizes`**. Category **shares of the podium pool** are fixed in **`TimeCurve`** bytecode (equivalent **shares of gross raise** while the podium sink is **20%** of each buy):
 
-| Category | Share of **podium pool** | Definition (onchain) |
-|----------|--------------------------|------------------------|
-| **Last buy** | **50%** | **Last qualifying buyers before expiry** — podium slots are the last three buyers in order (final buyer is 1st). |
-| **Time booster** | **25%** | **Most effective time added** — cumulative `newDeadline − oldDeadline` per buy (capped behavior reflected in `actualSecondsAdded`; no credit beyond the cap). Podium: top 3 by `totalEffectiveTimerSecAdded`. |
-| **Defended streak** | **25%** (remainder after integer split on other slices) | **Best** `bestDefendedStreak` for a wallet under the under-15m reset rules below. |
+| Category | Share of **podium pool** | Share of **gross raise** (per buy) | Definition (onchain) |
+|----------|--------------------------|-------------------------------------|------------------------|
+| **Last buy** | **40%** | **8%** | **Last qualifying buyers before expiry** — podium slots are the last three buyers in order (final buyer is 1st). |
+| **WarBow** | **25%** | **5%** | **Top-3 Battle Points** — same leaderboard as `warbowLadderPodium()` / `podium(CAT_WARBOW)`. |
+| **Defended streak** | **20%** | **4%** | **Best** `bestDefendedStreak` for a wallet under the under-15m reset rules below. |
+| **Time booster** | **15%** (remainder after integer split on other slices) | **3%** | **Most effective time added** — cumulative `newDeadline − oldDeadline` per buy (capped behavior reflected in `actualSecondsAdded`; no credit beyond the cap). Podium: top 3 by `totalEffectiveTimerSecAdded`. |
 
 Within each category, **1st : 2nd : 3rd** payouts use weights **4∶2∶1**. **DOUB** is for **`redeemCharms`** only, not podium payouts.
 
 **Plain language:**
 
 - **Last buy:** last movers before the timer dies.
-- **Time booster:** most net seconds actually added to the deadline across the sale.
+- **WarBow:** top Battle Points wallets when prizes distribute (PvP actions move BP before `endSale`).
 - **Defended streak:** peak count of under-threshold timer resets by the same wallet (see below).
+- **Time booster:** most net seconds actually added to the deadline across the sale.
 
-### WarBow Ladder (Battle Points — PvP, not reserve prizes)
+### WarBow Ladder (Battle Points — PvP and reserve slice)
 
-WarBow is **adversarial PvP scoring** in **Battle Points**. It encourages **upward pressure** (e.g. steals require the victim to have **≥ 2×** the attacker’s BP). BP **does not** allocate the reserve podium pool; the contract still tracks a **top-3 BP snapshot** via `warbowLadderPodium()` for UX. **Tie-break:** higher BP ranks above; if BP equal, **lower `uint160(address)`** ranks above (deterministic).
+WarBow is **adversarial PvP scoring** in **Battle Points**. It encourages **upward pressure** (e.g. steals require the victim to have **≥ 2×** the attacker’s BP). The **top-3 BP snapshot** (`warbowLadderPodium()`, mirrored by `podium(CAT_WARBOW)`) receives the **WarBow** slice of the podium pool in **`distributePrizes`**. **Tie-break:** higher BP ranks above; if BP equal, **lower `uint160(address)`** ranks above (deterministic).
 
 #### BP from buys (defaults in `TimeCurve`)
 

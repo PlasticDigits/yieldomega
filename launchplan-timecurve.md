@@ -2,7 +2,7 @@
 
 **Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only).
 
-**Authoritative policy elsewhere:** Runtime fee **weights** (30 / 20 / 35 / 15) and governance intent are in [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md). Parameter checklist: [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md). Stage 2 smoke criteria: [`docs/testing/strategy.md`](docs/testing/strategy.md) and [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md).
+**Authoritative policy elsewhere:** Runtime fee **weights** (**30%** LP · **40%** CL8Y burned · **20%** podium · **0%** team · **10%** Rabbit) and governance intent are in [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md). Parameter checklist: [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md). Stage 2 smoke criteria: [`docs/testing/strategy.md`](docs/testing/strategy.md) and [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md).
 
 ---
 
@@ -71,34 +71,31 @@ From [`simulations/README.md`](simulations/README.md):
 
 ---
 
-## 4. DOUB supply: genesis allocation (canonical proposal)
+## 4. DOUB supply: genesis allocation (canonical — 250M)
 
-This section fixes **how many DOUB are minted at launch** and **where they go**, separate from **per-buy fee routing** (Section 5). Numbers are a **starting proposal** for CL8Y / ops sign-off; change only via governance and doc updates.
+This section fixes **how many DOUB are minted at launch** and **where they go**, separate from **per-buy fee routing** (Section 5). Numbers are for CL8Y / ops sign-off; change only via governance and doc updates.
 
 ### 4.1 Total supply
 
-| Constant | Proposed value | Notes |
-|----------|----------------|-------|
-| **DOUB max supply (genesis mint)** | **1_000_000_000 DOUB** (1e9 × 1e18 wei) | Round; easy to reason in bps. If you prefer 21M or 10B, scale the table proportionally. |
+| Constant | Value | Notes |
+|----------|-------|-------|
+| **DOUB genesis mint (policy)** | **250_000_000 DOUB** | `totalTokensForSale` on TimeCurve is **200M** of this; remainder is presale + V3 LP per below. |
 
-### 4.2 Four-way genesis split (matches your buckets)
+### 4.2 Allocation
 
-All percentages are **of total genesis mint**.
+| Destination | DOUB (whole tokens) | Purpose |
+|-------------|---------------------|---------|
+| **TimeCurve sale** | **200_000_000** | `TimeCurve.totalTokensForSale`; `redeemCharms` pro-rata after `endSale`. |
+| **Presale** | **21_500_000** | **30%** unlocked immediately · **70%** linear vest over **6 months** — implement via vesting contract or agreed ops process; document addresses at deploy. |
+| **V3 liquidity seed** | **28_500_000** | **DOUB/CL8Y** pool seeding aligned with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol) / Kumbaya strategy. |
 
-| Destination | Share | DOUB (whole tokens, 18-decimal ERC-20) | Purpose |
-|-------------|-------|------------------------------------------|---------|
-| **A — TimeCurve sale** | **45%** | **450_000_000** | Locked in `TimeCurve` as `totalTokensForSale`; redeemed via `redeemCharms` pro-rata to charm weight after `endSale`. |
-| **B — Rabbit Treasury (Burrow)** | **15%** | **150_000_000** | **Treasury-controlled DOUB** for Burrow incentives, bootstrap liquidity with **CL8Y** reserves, or slow-release programs — **not** the same as player DOUB minted 1:1 on deposit (that remains `RabbitTreasury` mint rules). Exact use is ops/governance. |
-| **C — Kumbaya v3 LP (DOUB / CL8Y)** | **25%** | **250_000_000** | Seed **Uniswap v3** (or MegaETH-native concentrated liquidity) **DOUB/CL8Y** pool + **ongoing LP incentive compatibility** with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol). Pair with matching **CL8Y** from treasury or raise proceeds per pool strategy. |
-| **D — Sir (perps-style DEX)** | **15%** | **150_000_000** | Insurance fund, liquidity / maker incentives, and bootstrap for the **Sir** derivatives venue — **off-chain or future contracts** until that product ships; hold in **multisig / vesting** so it cannot be confused with TimeCurve or Burrow balances. |
-
-**Checksum:** 45 + 15 + 25 + 15 = **100%**.
+**Checksum:** 200 + 21.5 + 28.5 = **250M** whole tokens.
 
 ### 4.3 Wiring constraints
 
-- **A** must equal `TimeCurve.totalTokensForSale` at deploy (or the sale cap is wrong).
-- **B / C / D** are minted to named addresses (treasury, LP manager, Sir multisig) in the same tx tree as supply cap establishment, with **events** and **indexer** visibility.
-- If **B** is 0 by policy (all Burrow DOUB only from deposits), shift **15%** to **C** or **D** and document.
+- TimeCurve **`totalTokensForSale`** must equal **200M** (in wei) at deploy when following this table.
+- Presale and LP buckets need explicit recipient contracts or multisigs with **events** and **indexer** visibility.
+- **Sir** / other product lines are **not** in this 250M table; fund separately if needed.
 
 ---
 
@@ -107,9 +104,9 @@ All percentages are **of total genesis mint**.
 | Mechanism | What moves | Canonical split |
 |-----------|------------|-----------------|
 | **Genesis mint** | One-time DOUB allocation | Section 4 |
-| **TimeCurve buys** | **Accepted asset** (**CL8Y**) into `FeeRouter`, then to sinks | **25%** DoubLPIncentives · **35%** CL8YProtocolTreasury · **20%** PodiumPool · **0%** Team (`EcosystemTreasury` in dev) · **20%** RabbitTreasury — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
+| **TimeCurve buys** | **Accepted asset** (**CL8Y**) into `FeeRouter`, then to sinks | **30%** DoubLPIncentives · **40%** burned (`0x…dEaD` or governance burn sink) · **20%** PodiumPool · **0%** Team (`EcosystemTreasury` in dev) · **10%** RabbitTreasury — [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) |
 
-**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (**CL8Y** at launch). **Referral** incentives are **CHARM weight**; the **full gross** still routes through the fee router. **DOUB locked liquidity** targets SIR / Kumbaya seeding (see fee doc for **1.2×** launch anchor and **0.8×–∞** Kumbaya band). **`TimeCurve.distributePrizes`** pays the **podium pool** in reserve across **four** onchain categories only — **last buy**, **time booster**, **activity leader**, **defended streak** ([`docs/product/primitives.md`](docs/product/primitives.md)). **DOUB** is for **`redeemCharms`** (genesis / sale allocation), not podium payouts. Genesis DOUB not needed for LP may be **burned** or reallocated per governance — document any change next to [Section 4](launchplan-timecurve.md#4-doub-supply-genesis-allocation-canonical-proposal).
+**Note:** `FeeRouter.distributeFees` splits **whatever ERC-20** TimeCurve sends (**CL8Y** at launch). The sale is already in CL8Y — the **40%** slice is **burned**, not marketed as a separate “buy-and-burn” step. **Referral** incentives are **CHARM weight**; the **full gross** still routes through the fee router. **DOUB/CL8Y LP** targets SIR / Kumbaya seeding (see fee doc for **1.2×** launch anchor and **0.8×–∞** Kumbaya band). **`TimeCurve.distributePrizes`** pays the **podium pool** in reserve across **four** categories — **last buy**, **WarBow**, **defended streak**, **time booster** ([`docs/product/primitives.md`](docs/product/primitives.md)). **DOUB** is for **`redeemCharms`** (sale allocation), not podium payouts.
 
 ---
 

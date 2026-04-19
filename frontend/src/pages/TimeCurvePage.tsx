@@ -136,10 +136,14 @@ function walletMono(addr: string | undefined, formatWallet: (a: string | undefin
   );
 }
 
+/** `categoryIndex` follows {@link PODIUM_LABELS} order: 0 Last Buy, 1 WarBow, 2 Defended, 3 Time Booster. */
 function formatPodiumLeaderboardValue(categoryIndex: number, raw: string): string {
   const bi = BigInt(raw);
-  if (categoryIndex === 1) {
+  if (categoryIndex === 3) {
     return `${formatLocaleInteger(bi)} s`;
+  }
+  if (categoryIndex === 1) {
+    return `${formatLocaleInteger(bi)} BP`;
   }
   return formatLocaleInteger(bi);
 }
@@ -1332,14 +1336,7 @@ export function TimeCurvePage() {
 
   const podiumSpotlights = useMemo(() => {
     const rows = podiumReads.data ?? [];
-    const cards: {
-      key: string;
-      label: string;
-      help: string;
-      leader: ReactNode;
-      value: string;
-      highlight: boolean;
-    }[] = rows.map((row, index) => ({
+    return rows.map((row, index) => ({
       key: `podium-spotlight-${index}`,
       label: PODIUM_LABELS[index] ?? `Category ${index + 1}`,
       help: PODIUM_HELP[index] ?? "Current onchain race.",
@@ -1348,28 +1345,10 @@ export function TimeCurvePage() {
           {formatWallet(row.winners[0], "—")}
         </span>
       ),
-      value: formatPodiumLeaderboardValue(index, row.values[0] ?? 0n),
+      value: formatPodiumLeaderboardValue(index, row.values[0] ?? "0"),
       highlight: sameAddress(row.winners[0], address),
     }));
-    const warbowLeader = warbowTopRows[0];
-    const warbowLeaderDisplay: ReactNode =
-      warbowLeader !== undefined && typeof warbowLeader.label !== "string"
-        ? warbowLeader.label
-        : (
-            <span className="mono" title={warbowLb?.[0]?.buyer}>
-              {formatWallet(warbowLb?.[0]?.buyer, "—")}
-            </span>
-          );
-    cards.push({
-      key: "warbow-spotlight",
-      label: "WarBow Ladder",
-      help: "Battle Points PvP status surface, separate from reserve prizes.",
-      leader: warbowLeaderDisplay,
-      value: typeof warbowLeader?.value === "string" ? warbowLeader.value : "—",
-      highlight: warbowLeader?.highlight ?? false,
-    });
-    return cards;
-  }, [podiumReads.data, warbowTopRows, warbowLb, address, formatWallet]);
+  }, [podiumReads.data, address, formatWallet]);
 
   const warbowMomentumBars = useMemo(() => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -1822,7 +1801,7 @@ export function TimeCurvePage() {
         badgeTone={stateBadgeTone}
         lede={
           <>
-            Every buy can move the clock, the three reserve podiums, and the <strong>WarBow Ladder</strong>. When the
+            Every buy can move the clock, the four reserve podiums (including <strong>WarBow</strong> placement), and Battle Points. When the
             timer dies, the page flips from chase mode into redemption and settlement.
           </>
         }
@@ -2249,7 +2228,7 @@ export function TimeCurvePage() {
                       "—"
                     )
                   }
-                  meta="Reserve payout pool shared by the three fixed podium categories"
+                  meta="Reserve payout pool shared by four onchain podium categories"
                 />
                 <StatCard
                   label="Your best defended streak"
@@ -2295,7 +2274,7 @@ export function TimeCurvePage() {
                     className={[
                       "spotlight-card",
                       card.highlight ? "spotlight-card--you" : "",
-                      card.label === "WarBow Ladder" ? "spotlight-card--warbow" : "",
+                      card.label === "WarBow" ? "spotlight-card--warbow" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}

@@ -80,7 +80,7 @@ export type TimecurveDotMegaSourceInput = {
   prizePayouts: PrizePayoutItem[] | null;
   refApplied: ReferralAppliedItem[] | null;
   warbowFeed: WarbowBattleFeedItem[] | null;
-  /** Each row: three onchain winner addresses for a podium category. */
+  /** Each row: three onchain winner addresses per podium category (four categories). */
   podiumRows: readonly { winners: readonly [string, string, string] }[];
   /** Top-3 WarBow ladder wallets from `warbowLadderPodium` when available. */
   warbowPodiumWallets: readonly string[] | undefined;

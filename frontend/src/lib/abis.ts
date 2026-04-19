@@ -41,6 +41,7 @@ export const timeCurveReadAbi = parseAbi([
   "function CAT_LAST_BUYERS() view returns (uint8)",
   "function CAT_TIME_BOOSTER() view returns (uint8)",
   "function CAT_DEFENDED_STREAK() view returns (uint8)",
+  "function CAT_WARBOW() view returns (uint8)",
   "function DEFENDED_STREAK_WINDOW_SEC() view returns (uint256)",
   "function prizesDistributed() view returns (bool)",
   "function warbowLadderPodium() view returns (address[3] winners, uint256[3] values)",

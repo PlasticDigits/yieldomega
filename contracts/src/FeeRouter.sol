@@ -9,7 +9,7 @@ import {FeeMath} from "./libraries/FeeMath.sol";
 /// @notice Routes fees from TimeCurve (and future primitives) to canonical sinks.
 /// @dev Weights are in basis points and must sum to 10 000.
 ///      Post-update invariants per docs/onchain/fee-routing-and-governance.md.
-///      Sink order (TimeCurve launch default): DOUB LP · CL8Y buy-and-burn · podium pool · team (may be 0 bps) · Rabbit Treasury.
+///      Sink order (TimeCurve launch default): DOUB/CL8Y LP · **CL8Y burned** (sale asset burn sink) · podium pool · team (may be 0 bps) · Rabbit Treasury.
 ///      The **last** sink receives rounding remainder from `distributeFees`.
 contract FeeRouter is AccessControlEnumerable {
     using SafeERC20 for IERC20;

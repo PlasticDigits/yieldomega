@@ -32,7 +32,7 @@ Agents (and humans driving them) who want to **use** onchain games and treasurie
 | Play skill | Use when |
 |------------|----------|
 | [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing before other play skills. |
-| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **three** reserve podiums, DOUB / fee sinks. |
+| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** reserve podiums, DOUB / fee sinks. |
 | [../../skills/play-timecurve-warbow/SKILL.md](../../skills/play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag. |
 | [../../skills/play-rabbit-treasury/SKILL.md](../../skills/play-rabbit-treasury/SKILL.md) | Burrow deposits, epochs, withdraws, reserve-linked behavior. |
 | [../../skills/collect-leprechaun-sets/SKILL.md](../../skills/collect-leprechaun-sets/SKILL.md) | Leprechaun sets, traits, and collecting onchain. |

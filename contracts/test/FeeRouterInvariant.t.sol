@@ -57,7 +57,7 @@ contract FeeRouterInvariantTest is Test {
         router = new FeeRouter(
             address(this),
             sinks,
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         handler = new FeeRouterHandler(token, router);
         targetContract(address(handler));

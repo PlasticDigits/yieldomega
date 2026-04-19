@@ -9,10 +9,14 @@ from typing import List, Tuple
 from web3 import Web3
 from web3.contract import Contract
 
-# Reserve podium categories (match contract / docs/product/primitives.md)
+# Contract category indices (see TimeCurve.sol)
 CAT_LAST_BUY = 0
 CAT_TIME_BOOSTER = 1
 CAT_DEFENDED_STREAK = 2
+CAT_WARBOW = 3
+
+# UX order: Last Buy, WarBow, Defended Streak, Time Booster
+PODIUM_DISPLAY_ORDER: Tuple[int, ...] = (CAT_LAST_BUY, CAT_WARBOW, CAT_DEFENDED_STREAK, CAT_TIME_BOOSTER)
 
 
 @dataclass(frozen=True)
@@ -41,12 +45,13 @@ class SaleSnapshot:
     warbow_values: Tuple[int, int, int]
     flag_owner: str
     flag_plant_at: int
-    podiums: Tuple[PodiumRow, PodiumRow, PodiumRow]
+    podiums: Tuple[PodiumRow, PodiumRow, PodiumRow, PodiumRow]
 
 
 def _podium_label(cat: int) -> str:
     return {
         CAT_LAST_BUY: "last_buy",
+        CAT_WARBOW: "warbow",
         CAT_TIME_BOOSTER: "time_booster",
         CAT_DEFENDED_STREAK: "defended_streak",
     }.get(cat, f"cat_{cat}")
@@ -68,7 +73,7 @@ def fetch_sale_snapshot(w3: Web3, tc: Contract, chain_id: int) -> SaleSnapshot:
     price = int(tc.functions.currentPricePerCharmWad().call())
 
     podiums: List[PodiumRow] = []
-    for c in (CAT_LAST_BUY, CAT_TIME_BOOSTER, CAT_DEFENDED_STREAK):
+    for c in PODIUM_DISPLAY_ORDER:
         w, v = tc.functions.podium(c).call()
         podiums.append(
             PodiumRow(
@@ -100,7 +105,7 @@ def fetch_sale_snapshot(w3: Web3, tc: Contract, chain_id: int) -> SaleSnapshot:
         warbow_values=tuple(int(x) for x in wv),
         flag_owner=str(fo),
         flag_plant_at=fp,
-        podiums=(podiums[0], podiums[1], podiums[2]),
+        podiums=(podiums[0], podiums[1], podiums[2], podiums[3]),
     )
 
 
@@ -112,13 +117,13 @@ def format_snapshot_human(s: SaleSnapshot, *, rpc_url: str, timecurve: str) -> s
         f"Sale: started={s.sale_start} ended={s.ended} deadline={s.deadline} remaining_sec={s.remaining_sec}",
         f"Raised (raw): {s.total_raised}  totalCharmWeight: {s.total_charm_weight}",
         f"CHARM bounds (wad): min={s.min_charm_wad} max={s.max_charm_wad}  pricePerCharmWad={s.price_per_charm_wad}",
-        "Reserve podiums (onchain; reserve prizes — not WarBow BP):",
+        "Reserve podiums (onchain; CL8Y after distributePrizes):",
     ]
     for p in s.podiums:
         lines.append(
             f"  [{p.category_label}] " + ", ".join(f"{w}:{v}" for w, v in zip(p.winners, p.values))
         )
-    lines.append("WarBow ladder top-3 (Battle Points — display only):")
+    lines.append("WarBow ladder (same top-3 as warbow podium category):")
     lines.append("  " + ", ".join(f"{w}:{v}" for w, v in zip(s.warbow_winners, s.warbow_values)))
     lines.append(f"Flag pending owner={s.flag_owner} plant_at={s.flag_plant_at}")
     return "\n".join(lines)

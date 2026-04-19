@@ -10,7 +10,7 @@ Use this skill when editing or running the **`timecurve-bot`** package.
 ## Authority and scope
 
 - **Contracts are authoritative.** The bot reads onchain state via `web3.py` and may submit **normal** contract calls (`buy`, WarBow, etc.). It does **not** re-implement TimeCurve rules, podiums, or BP logic as a parallel simulator.
-- Product semantics (three reserve podiums vs WarBow ladder, timer hard-reset band) are documented in `docs/product/primitives.md`. Keep bot interpretations **thin** — prefer `eth_call` over inferred rules.
+- Product semantics (four reserve podium categories including WarBow; timer hard-reset band) are documented in `docs/product/primitives.md`. Keep bot interpretations **thin** — prefer `eth_call` over inferred rules.
 - This tree is **contributor tooling**, not a “play” skill. Play-oriented agent guidance lives under root `skills/` and Phase 20 in `docs/agent-phases.md`.
 
 ## Repository guardrails

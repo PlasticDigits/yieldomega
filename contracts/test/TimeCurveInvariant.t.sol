@@ -83,7 +83,7 @@ contract TimeCurveInvariantTest is Test {
         router = new FeeRouter(
             address(this),
             [s0, s1, address(podiumPool), s3, s4],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         linearPrice = new LinearCharmPrice(1e18, 0);
         tc = new TimeCurve(

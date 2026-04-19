@@ -121,7 +121,7 @@ export function WhatMattersSection(props: {
         <StatCard
           label="Podium pool"
           value={podiumPoolBal !== undefined ? <AmountDisplay raw={podiumPoolBal} decimals={decimals} /> : "—"}
-          meta="Reserve pool for the three fixed prize categories"
+          meta="Reserve pool for the four onchain prize categories"
         />
         <StatCard
           label={saleActive ? "Battle Points" : "Total raised"}
@@ -430,7 +430,7 @@ export function PodiumsSection(props: {
       title="Podiums and prizes"
       badgeLabel="Reserve prize podiums"
       badgeTone="warning"
-      lede="Reserve prizes only pay three tracks: Last Buy, Time Booster, and Defended Streak. WarBow remains a separate PvP status ladder."
+      lede="Four reserve tracks: Last Buy, WarBow (top Battle Points), Defended Streak, and Time Booster. Each pays 1st / 2nd / 3rd in CL8Y from the podium pool."
     >
       <div className="podium-preview">
         {podiumPayoutPreview.map((row, idx) => (
@@ -939,8 +939,8 @@ export function RawDataAccordion(props: {
             <ul className="event-list">
               {(
                 [
-                  ["DOUB LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
-                  ["CL8Y buy-and-burn", RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn],
+                  ["DOUB/CL8Y LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
+                  ["CL8Y burned (sale proceeds)", RESERVE_FEE_ROUTING_BPS.cl8yBurned],
                   ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
                   ["Team / reserved", RESERVE_FEE_ROUTING_BPS.team],
                   ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],

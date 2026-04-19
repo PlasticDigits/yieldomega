@@ -15,10 +15,10 @@ import {
   type FeeRouterSinksUpdateItem,
 } from "@/lib/indexerApi";
 
-/** Matches `FeeRouter` sink order: DOUB LP · CL8Y · podium · team · Rabbit. */
+/** Matches `FeeRouter` sink order: DOUB/CL8Y LP · CL8Y burned · podium · team · Rabbit. */
 const FEE_SINK_LABELS = [
-  "DOUB LP (locked)",
-  "CL8Y buy-and-burn",
+  "DOUB/CL8Y LP (locked)",
+  "CL8Y burned (sale proceeds)",
   "Podium pool",
   "Team / reserved (0% default)",
   "Rabbit Treasury",

@@ -115,8 +115,8 @@ need human decisions before mainnet.
 | `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
 | `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
 | `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
-| `CL8YProtocolTreasury` | CL8Y buy-and-burn sink (**35%** launch default) |
-| `DoubLPIncentives` | DOUB liquidity sink (**25%** launch default) — LP mechanics TODO |
+| `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
+| `DoubLPIncentives` | DOUB / CL8Y liquidity sink (**30%** launch default) — LP mechanics TODO |
 | `EcosystemTreasury` | Team / ecosystem sink address (**0%** weight at launch; still wired in `DeployDev`) |
 | `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting |
 | `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |

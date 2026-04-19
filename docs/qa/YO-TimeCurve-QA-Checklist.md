@@ -9,9 +9,9 @@
 
 The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Verification-Spec.md) and [YO-TimeCurve-Release-Checklist.md v1.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Release-Checklist.md) are **partly outdated** for:
 
-1. **Podium categories:** There are **three** reserve podium categories in `TimeCurve` (**last buy**, **time booster**, **defended streak**). **WarBow** is **Battle Points / PvP** and **not** a fourth reserve prize slice. The **WarBow Ladder** top-3 is display-only (`warbowLadderPodium()`), not paid from `PodiumPool`.
-2. **`distributePrizes`:** Splits the **accepted asset balance** held by **`PodiumPool`** at call time: **50% / 25% / 25%** across those three categories (see `TimeCurve.distributePrizes()`), with **4∶2∶1** within each category. This is **not** the same as **buy-time** `FeeRouter` routing (see fee-routing doc).
-3. **Buy-time fee routing** (canonical launch default): **25%** DOUB locked LP · **35%** CL8Y burn · **20%** podium pool · **0%** team · **20%** Rabbit Treasury — **10 000 bps** total. Do not conflate these percentages with **podium internal** splits.
+1. **Podium categories:** There are **four** reserve podium categories in `TimeCurve` (**last buy**, **WarBow** / top Battle Points, **defended streak**, **time booster**). **`warbowLadderPodium()`** matches **`podium(CAT_WARBOW)`**; that leaderboard is **paid** from the podium pool after `endSale`.
+2. **`distributePrizes`:** Splits the **accepted asset balance** held by **`PodiumPool`** at call time: **40% / 25% / 20% / 15%** across those categories (see `TimeCurve.distributePrizes()`), i.e. **8% / 5% / 4% / 3%** of **gross raise** while the podium `FeeRouter` slice is **20%**. **4∶2∶1** within each category. This is **not** the same as **buy-time** `FeeRouter` routing (see fee-routing doc).
+3. **Buy-time fee routing** (canonical launch default): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool · **0%** team · **10%** Rabbit Treasury — **10 000 bps** total. Do not conflate these percentages with **podium internal** splits.
 
 ---
 
@@ -33,8 +33,8 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 ## B. TimeCurve behavior (contract-aligned)
 
 - [ ] **B1** — Sale lifecycle: buys extend timer; hard reset when remaining &lt; 13 min — match `TIMER_RESET_*` in `TimeCurve.sol`.
-- [ ] **B2** — Three podium categories only; **WarBow** BP separate from reserve prizes — see [primitives.md](../product/primitives.md).
-- [ ] **B3** — `distributePrizes`: 50/25/25 of **podium pool** balance — not FeeRouter percentages.
+- [ ] **B2** — Four podium categories — **WarBow** is reserve-funded from `PodiumPool`; see [primitives.md](../product/primitives.md).
+- [ ] **B3** — `distributePrizes`: **40/25/20/15** of **podium pool** balance — not FeeRouter top-level percentages.
 - [ ] **B4** — `redeemCharms` after `endSale` — pro-rata DOUB per charm weight.
 - [ ] **B5** — WarBow: steal, revenge, guard, flag — gated by `!ended` where applicable — confirm post-end behavior in `TimeCurve.sol` for deployment.
 
@@ -44,7 +44,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 - [ ] **C1** — Timer countdown and urgency styling.
 - [ ] **C2** — CHARM bounds and price display consistent with contract reads.
-- [ ] **C3** — Podium / leaderboard panels for **three** reserve categories.
+- [ ] **C3** — Podium / leaderboard panels for **four** reserve categories.
 - [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired).
 - [ ] **C5** — Fee sink display matches deployment **FeeRouter**; cross-check `FeeRouter` on chain if labels drift.
 - [ ] **C6** — Redeem path after sale end (when stack uses ended state).
@@ -53,6 +53,5 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ## References
 
-- [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — `VITE_*` table, Playwright
+- [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — Playwright + Anvil
 - [`bots/timecurve/README.md`](../../bots/timecurve/README.md) — swarm, env vars
-- [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) — stack env toggles
