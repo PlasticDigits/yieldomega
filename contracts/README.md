@@ -113,6 +113,7 @@ need human decisions before mainnet.
 | `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing |
 | `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
 | `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
+| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration |
 | `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
 | `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
 | `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |

@@ -32,6 +32,7 @@ contracts/out/
 contracts/out-local-dev/
 contracts/out-user/
 contracts/out-e2e-anvil/
+contracts/out-vesting/
 contracts/broadcast/
 contracts/node_modules/
 contracts/**/cache/
