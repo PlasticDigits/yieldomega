@@ -63,7 +63,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Bucket | Amount (whole DOUB) | Notes |
 |--------|---------------------|--------|
 | TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy |
-| Presale | **21.5M** | **30%** immediate · **70%** linear vest **6 months** — implement via vesting contract or ops process; document actual addresses at deploy |
+| Presale | **21.5M** | **30%** at vesting start · **70%** linear over **180 days** — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; document beneficiary addresses at deploy |
 | V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
 
 ## Rabbit Treasury (Burrow)
