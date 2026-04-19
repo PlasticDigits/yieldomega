@@ -6,7 +6,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
-import {CL8YProtocolTreasury} from "../src/sinks/CL8YProtocolTreasury.sol";
 import {DoubLPIncentives} from "../src/sinks/DoubLPIncentives.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
@@ -20,11 +19,11 @@ contract DevStackIntegrationTest is Test {
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
     uint256 internal constant GROWTH_WAD = 182_321_556_793_954_592;
+    address internal constant SALE_CL8Y_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     MockReserveCl8y reserveAsset;
     Doubloon doub;
     PodiumPool podiumPool;
-    CL8YProtocolTreasury cl8yTreasury;
     DoubLPIncentives doubLP;
     EcosystemTreasury ecoTreasury;
     RabbitTreasury rt;
@@ -40,7 +39,6 @@ contract DevStackIntegrationTest is Test {
         doub = new Doubloon(address(this));
 
         podiumPool = new PodiumPool(address(this));
-        cl8yTreasury = new CL8YProtocolTreasury(address(this));
         doubLP = new DoubLPIncentives(address(this));
         ecoTreasury = new EcosystemTreasury(address(this));
 
@@ -70,12 +68,12 @@ contract DevStackIntegrationTest is Test {
             address(this),
             [
                 address(doubLP),
-                address(cl8yTreasury),
+                SALE_CL8Y_BURN_SINK,
                 address(podiumPool),
                 address(ecoTreasury),
                 address(rt)
             ],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
 

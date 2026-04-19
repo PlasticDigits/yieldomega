@@ -17,7 +17,7 @@ contract FeeRouterTest is Test {
     FeeRouter router;
 
     address sink0 = makeAddr("doub_lp");
-    address sink1 = makeAddr("cl8y");
+    address sink1 = makeAddr("cl8y_burn");
     address sink2 = makeAddr("podium_pool");
     address sink3 = makeAddr("team");
     address sink4 = makeAddr("rabbit_treasury");
@@ -27,18 +27,18 @@ contract FeeRouterTest is Test {
         router = new FeeRouter(
             address(this),
             [sink0, sink1, sink2, sink3, sink4],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
     }
 
     function test_distributeFees_canonical_split() public {
         token.mint(address(router), 10_000);
         router.distributeFees(token, 10_000);
-        assertEq(token.balanceOf(sink0), 2500);
-        assertEq(token.balanceOf(sink1), 3500);
+        assertEq(token.balanceOf(sink0), 3000);
+        assertEq(token.balanceOf(sink1), 4000);
         assertEq(token.balanceOf(sink2), 2000);
         assertEq(token.balanceOf(sink3), 0);
-        assertEq(token.balanceOf(sink4), 2000);
+        assertEq(token.balanceOf(sink4), 1000);
     }
 
     function test_distributeFees_remainder_to_last_sink() public {
@@ -93,7 +93,7 @@ contract FeeRouterTest is Test {
         vm.expectRevert();
         router.updateSinks(
             [sink0, sink1, sink2, sink3, sink4],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
     }
 
@@ -101,7 +101,7 @@ contract FeeRouterTest is Test {
         vm.expectRevert("FeeRouter: zero address");
         router.updateSinks(
             [address(0), sink1, sink2, sink3, sink4],
-            [uint16(2500), uint16(3500), uint16(2000), uint16(0), uint16(2000)]
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
     }
 

@@ -7,7 +7,7 @@ describe("timeCurvePodiumMath", () => {
   it("fee bps sum to 10_000", () => {
     const s =
       RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity +
-      RESERVE_FEE_ROUTING_BPS.cl8yBuyAndBurn +
+      RESERVE_FEE_ROUTING_BPS.cl8yBurned +
       RESERVE_FEE_ROUTING_BPS.podiumPool +
       RESERVE_FEE_ROUTING_BPS.team +
       RESERVE_FEE_ROUTING_BPS.rabbitTreasury;
@@ -18,11 +18,12 @@ describe("timeCurvePodiumMath", () => {
     expect(podiumPlacementShares(7n)).toEqual([4n, 2n, 1n]);
   });
 
-  it("category slices partition pool", () => {
-    const [a, b, c] = podiumCategorySlices(100n);
-    expect(a + b + c).toBe(100n);
-    expect(a).toBe(50n);
-    expect(b).toBe(25n);
-    expect(c).toBe(25n);
+  it("category slices partition pool (Last, WarBow, Defended, Time order)", () => {
+    const [last, war, def, time] = podiumCategorySlices(100n);
+    expect(last + war + def + time).toBe(100n);
+    expect(last).toBe(40n);
+    expect(war).toBe(25n);
+    expect(def).toBe(20n);
+    expect(time).toBe(15n);
   });
 });

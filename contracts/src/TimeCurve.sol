@@ -13,9 +13,9 @@ import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
 
 /// @title TimeCurve — token launch primitive + WarBow Ladder (PvP Battle Points)
 /// @notice CHARM bounds × linear price; timer uses +2m extension, or **hard reset toward 15m remaining** when under 13m left
-///         (see `TIMER_RESET_BELOW_REMAINING_SEC` / `TIMER_RESET_TO_REMAINING_SEC`). Prize podiums (**3 only**): last buy,
-///         time booster, defended streak. **WarBow Ladder** is onchain **Battle Points** (not a reserve prize slice) with
-///         steals, guard, revenge, flag claim — see `docs/product/primitives.md`.
+///         (see `TIMER_RESET_BELOW_REMAINING_SEC` / `TIMER_RESET_TO_REMAINING_SEC`). **Four** reserve podium categories:
+///         last buy, WarBow (top Battle Points), defended streak, time booster — see `docs/product/primitives.md`.
+///         WarBow steals, guard, revenge, and flag claim use separate burn mechanics — same contract.
 contract TimeCurve is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -27,11 +27,13 @@ contract TimeCurve is ReentrancyGuard {
         Guard
     }
 
-    // ── Prize podium categories (reserve payouts; exactly three) ─────────
+    // ── Prize podium categories (reserve payouts; four) ─────────────────
     uint8 public constant CAT_LAST_BUYERS = 0;
     uint8 public constant CAT_TIME_BOOSTER = 1;
     uint8 public constant CAT_DEFENDED_STREAK = 2;
-    uint8 public constant NUM_PODIUM_CATEGORIES = 3;
+    /// @notice Top **Battle Points** snapshot; paid from the WarBow slice of the podium pool (same leaderboard as `warbowLadderPodium()`).
+    uint8 public constant CAT_WARBOW = 3;
+    uint8 public constant NUM_PODIUM_CATEGORIES = 4;
 
     /// @notice Defended streak counts only when remaining time **before** buy is **strictly below** this (15 minutes).
     uint256 public constant DEFENDED_STREAK_WINDOW_SEC = 900;
@@ -107,7 +109,7 @@ contract TimeCurve is ReentrancyGuard {
     mapping(address => bool) public charmsRedeemed;
 
     mapping(address => uint256) public totalEffectiveTimerSecAdded;
-    /// @notice **WarBow Ladder** score (Battle Points); not a reserve prize category.
+    /// @notice **WarBow Ladder** score (Battle Points); top-3 funded from the WarBow podium slice after `endSale`.
     mapping(address => uint256) public battlePoints;
     mapping(address => uint256) public bestDefendedStreak;
     mapping(address => uint256) public activeDefendedStreak;
@@ -128,8 +130,9 @@ contract TimeCurve is ReentrancyGuard {
         uint256[3] values;
     }
 
-    Podium[NUM_PODIUM_CATEGORIES] internal _podiums;
-    /// @dev Top-3 **Battle Points** for UX / indexers (no reserve slice).
+    /// @dev Last buy (0), time booster (1), defended streak (2). WarBow uses `_warbowPodium` only.
+    Podium[3] internal _podiums;
+    /// @dev Top-3 **Battle Points** — reserve-funded via `CAT_WARBOW` slice in `distributePrizes`.
     Podium internal _warbowPodium;
 
     address[3] internal _lastBuyers;
@@ -568,7 +571,8 @@ contract TimeCurve is ReentrancyGuard {
         emit CharmsRedeemed(msg.sender, tokenOut);
     }
 
-    /// @notice **50%** last buy · **25%** time booster · **25%** defended streak (integer split; last slice takes remainder).
+    /// @notice **40%** last buy · **25%** WarBow · **20%** defended streak · **15%** time booster
+    ///         (integer split of podium pool; last slice takes remainder — matches 8/5/4/3% of gross raise vs 20% pool).
     function distributePrizes() external {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
@@ -578,15 +582,17 @@ contract TimeCurve is ReentrancyGuard {
             return;
         }
 
-        uint256 sLast = (prizePool * 50) / 100;
-        uint256 sTime = (prizePool * 25) / 100;
-        uint256 sDef = prizePool - sLast - sTime;
+        uint256 sLast = (prizePool * 40) / 100;
+        uint256 sWar = (prizePool * 25) / 100;
+        uint256 sDef = (prizePool * 20) / 100;
+        uint256 sTime = prizePool - sLast - sWar - sDef;
 
         prizesDistributed = true;
 
-        _payPodiumCategory(CAT_LAST_BUYERS, sLast);
-        _payPodiumCategory(CAT_TIME_BOOSTER, sTime);
-        _payPodiumCategory(CAT_DEFENDED_STREAK, sDef);
+        _payPodiumFrom(_podiums[CAT_LAST_BUYERS], sLast, CAT_LAST_BUYERS);
+        _payPodiumFrom(_warbowPodium, sWar, CAT_WARBOW);
+        _payPodiumFrom(_podiums[CAT_DEFENDED_STREAK], sDef, CAT_DEFENDED_STREAK);
+        _payPodiumFrom(_podiums[CAT_TIME_BOOSTER], sTime, CAT_TIME_BOOSTER);
 
         emit PrizesDistributed();
     }
@@ -601,10 +607,9 @@ contract TimeCurve is ReentrancyGuard {
         third = slice - first - second;
     }
 
-    function _payPodiumCategory(uint8 category, uint256 slice) internal {
+    function _payPodiumFrom(Podium storage p, uint256 slice, uint8 category) internal {
         if (slice == 0) return;
         (uint256 sh0, uint256 sh1, uint256 sh2) = _podiumSharesFromSlice(slice);
-        Podium storage p = _podiums[category];
         if (p.winners[0] != address(0) && sh0 > 0) {
             podiumPool.payPodiumPayout(acceptedAsset, p.winners[0], sh0, category, 0);
         }
@@ -642,12 +647,12 @@ contract TimeCurve is ReentrancyGuard {
 
     function podium(uint8 category) external view returns (address[3] memory winners, uint256[3] memory values) {
         require(category < NUM_PODIUM_CATEGORIES, "TimeCurve: bad category");
-        Podium storage p = _podiums[category];
+        Podium storage p = category == CAT_WARBOW ? _warbowPodium : _podiums[category];
         winners = p.winners;
         values = p.values;
     }
 
-    /// @notice Top-3 **Battle Points** (WarBow Ladder display — not paid from podium pool).
+    /// @notice Top-3 **Battle Points** (same storage as `podium(CAT_WARBOW)`).
     function warbowLadderPodium() external view returns (address[3] memory winners, uint256[3] memory values) {
         winners = _warbowPodium.winners;
         values = _warbowPodium.values;

@@ -21,7 +21,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
 | Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |
 | Maximum remaining timer | 345 600 seconds (96 h) | Ceiling on remaining time after each buy (`now + cap`); must be ≥ extension and ≥ initial | Default (dev deploy) |
-| Reserve podium categories | **3** fixed in `TimeCurve` | **Last buy** · **Time booster** · **Defended streak** — see [primitives](../docs/product/primitives.md); **WarBow** BP is separate | Canonical |
+| Reserve podium categories | **4** fixed in `TimeCurve` | **Last buy** · **WarBow** (top BP) · **Defended streak** · **Time booster** — see [primitives](../docs/product/primitives.md) | Canonical |
 | WarBow base BP per buy | **250** | `WARBOW_BASE_BUY_BP` | Fixed |
 | WarBow timer-reset bonus BP | **500** | `WARBOW_TIMER_RESET_BONUS_BP` (when remaining &lt; 13m before buy) | Fixed |
 | WarBow clutch bonus BP | **150** | `WARBOW_CLUTCH_BONUS_BP` (remaining &lt; 30s before buy) | Fixed |
@@ -33,7 +33,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | WarBow guard burn / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
-| Total tokens for sale | **TODO** — depends on launched token supply | > 0 | **TODO** |
+| Total tokens for sale | **Production target:** **200M DOUB** on TimeCurve (`totalTokensForSale`); dev mocks may use smaller values | > 0 | **TODO** — confirm at deploy |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
@@ -50,13 +50,21 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 | Sink | Testnet default (bps) | Bounds |
 |------|-----------------------|--------|
-| DOUB locked liquidity (SIR / Kumbaya) — `DoubLPIncentives` | 2 500 | ≥ 0 |
-| CL8Y buy-and-burn — `CL8YProtocolTreasury` | 3 500 | ≥ 0 |
+| DOUB / CL8Y locked liquidity — `DoubLPIncentives` | 3 000 | ≥ 0 |
+| CL8Y burned — burn sink (`0x…dEaD` in `DeployDev`) | 4 000 | ≥ 0 |
 | Podium pool — `PodiumPool` | 2 000 | ≥ 0 |
 | Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
-| Rabbit Treasury | 2 000 | ≥ 0 |
+| Rabbit Treasury | 1 000 | ≥ 0 |
 
-**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: three categories — **last buy** 50% · **time booster** 25% · **defended streak** 25% of pool; placements **4∶2∶1** per category.
+**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: **last buy** 40% · **WarBow** 25% · **defended streak** 20% · **time booster** 15% of pool (**8%** · **5%** · **4%** · **3%** of gross raise); placements **4∶2∶1** per category.
+
+## DOUB genesis allocation (policy — 250M total)
+
+| Bucket | Amount (whole DOUB) | Notes |
+|--------|---------------------|--------|
+| TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy |
+| Presale | **21.5M** | **30%** immediate · **70%** linear vest **6 months** — implement via vesting contract or ops process; document actual addresses at deploy |
+| V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
 
 ## Rabbit Treasury (Burrow)
 
