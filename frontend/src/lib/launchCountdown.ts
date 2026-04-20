@@ -38,12 +38,15 @@ export function useLaunchCountdown(launchSec: number): LaunchCountdownState {
   );
 
   useEffect(() => {
-    setSecondsRemaining(secondsRemainingUntil(launchSec, Math.floor(Date.now() / 1000)));
-    if (secondsRemainingUntil(launchSec, Math.floor(Date.now() / 1000)) <= 0) {
-      return;
-    }
+    const readRemaining = () =>
+      secondsRemainingUntil(launchSec, Math.floor(Date.now() / 1000));
+
+    let next = readRemaining();
+    setSecondsRemaining(next);
+    if (next <= 0) return;
+
     const id = window.setInterval(() => {
-      const next = secondsRemainingUntil(launchSec, Math.floor(Date.now() / 1000));
+      next = readRemaining();
       setSecondsRemaining(next);
       if (next <= 0) window.clearInterval(id);
     }, 1000);
