@@ -10,6 +10,19 @@ type Props = {
 
 const SPARK_COUNT = 14;
 
+const LAUNCH_LINKS = [
+  { label: "Telegram", href: "https://t.me/yieldomega" },
+  { label: "X.com", href: "https://x.com/yieldomega" },
+  {
+    label: "Docs",
+    href: "https://github.com/PlasticDigits/yieldomega/tree/main/docs",
+  },
+  {
+    label: "Agent Skills",
+    href: "https://github.com/PlasticDigits/yieldomega/blob/main/skills/README.md",
+  },
+] as const;
+
 function formatLaunchCountdown(totalSec: number): { days: number; clock: string } {
   const safe = Math.max(0, Math.floor(totalSec));
   const days = Math.floor(safe / 86400);
@@ -93,6 +106,26 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
         <p className="launch-countdown__supporting">
           TimeCurve goes live the moment this hits zero.
         </p>
+
+        <nav
+          className="launch-countdown__links"
+          aria-label="YieldOmega community and documentation"
+        >
+          <ul className="launch-countdown__links-list">
+            {LAUNCH_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <a
+                  className="launch-countdown__link"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         <img
           className="launch-countdown__hat-coin hat-coin-hero"

@@ -3801,6 +3801,73 @@ code {
   text-shadow: 1px 2px 0 rgba(11, 31, 20, 0.45);
 }
 
+.launch-countdown__links {
+  width: 100%;
+  max-width: 36rem;
+}
+
+.launch-countdown__links-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem 0.65rem;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.launch-countdown__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45em 0.85em;
+  border: 3px solid var(--line);
+  border-radius: 0.75rem;
+  background: linear-gradient(155deg, var(--arcade-gold-400) 0%, var(--arcade-gold-600) 100%);
+  box-shadow: 4px 4px 0 var(--line);
+  font-family: "Fredoka", system-ui, sans-serif;
+  font-size: clamp(0.78rem, 1.35vw, 0.92rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+  text-decoration: none;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.35);
+  transition:
+    transform 0.12s var(--motion-bounce),
+    box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+.launch-countdown__link:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--line);
+  filter: brightness(1.04);
+}
+
+.launch-countdown__link:focus-visible {
+  outline: 3px solid var(--arcade-sky);
+  outline-offset: 3px;
+}
+
+.launch-countdown__link:active {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-countdown__link {
+    transition: none;
+  }
+
+  .launch-countdown__link:hover {
+    transform: none;
+  }
+
+  .launch-countdown__link:active {
+    transform: none;
+  }
+}
+
 .launch-countdown__hat-coin {
   width: clamp(56px, 7vw, 88px);
   height: auto;
