@@ -166,9 +166,18 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 
 The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Verification-Spec.md) and [YO-TimeCurve-Release-Checklist.md v1.0](https://gitlab.com/PlasticDigits/cl8y-ecosystem-qa/-/blob/main/specs/YO-TimeCurve-Release-Checklist.md) are **partly outdated** for:
 
-1. **Podium categories:** There are **four** reserve podium categories in `TimeCurve` (**last buy**, **WarBow** / top BP, **defended streak**, **time booster**). **`warbowLadderPodium()`** matches **`podium(CAT_WARBOW)`** and is **paid** from `PodiumPool` after `endSale`.
-2. **`distributePrizes`:** Splits the **accepted asset balance** held by **`PodiumPool`** at call time: **40% / 25% / 20% / 15%** across those categories (see `TimeCurve.distributePrizes()`), with **4∶2∶1** within each category. This is **not** the same as **buy-time** `FeeRouter` routing (see fee-routing doc).
-3. **Buy-time fee routing** (canonical launch default): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool · **0%** team · **10%** Rabbit Treasury — **10 000 bps** total. Do not conflate these percentages with **podium internal** splits.
+1. **Podium categories (exactly four, reserve-funded):** Canonical v1 tracks match [`docs/product/primitives.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/product/primitives.md) — **last buy**, **WarBow** (top-3 Battle Points / `warbowLadderPodium()` ≡ `podium(CAT_WARBOW)`), **defended streak** (best under-window streak), **time booster** (most effective deadline seconds added). **`distributePrizes`** pays these from **`PodiumPool`** in the **accepted reserve asset (CL8Y at launch)** after `endSale`. **DOUB** is **only** for **`redeemCharms`** (pro-rata by charm weight), **not** podium payouts. Legacy ecosystem-qa category sets (e.g. opening/closing-window podiums) are **removed**.
+
+   | Category | Share of **podium pool** | Share of **gross raise** (podium slice = **20%** of each buy) |
+   |----------|--------------------------|----------------------------------------------------------------|
+   | Last buy | **40%** | **8%** |
+   | WarBow (top BP) | **25%** | **5%** |
+   | Defended streak | **20%** | **4%** |
+   | Time booster | **15%** | **3%** |
+
+2. **`distributePrizes` internals:** At call time, splits the **accepted asset** balance held by **`PodiumPool`** **40% / 25% / 20% / 15%** across the four rows above (see `TimeCurve.distributePrizes()`). Equivalently **8% / 5% / 4% / 3%** of **gross raise** while the podium **`FeeRouter`** sink remains **20%**. **Within** each category, **1st : 2nd : 3rd** uses **4∶2∶1**. This layer is **not** the same as **buy-time** `FeeRouter` top-level routing ([`docs/onchain/fee-routing-and-governance.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/onchain/fee-routing-and-governance.md)).
+
+3. **Buy-time fee routing** (canonical launch default, **full gross** per buy through `FeeRouter`): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool (**reserve** prizes; **podium-internal** splits in the table above) · **0%** team · **10%** Rabbit Treasury — **10 000 bps** (**3000 / 4000 / 2000 / 0 / 1000**). Do not conflate these **top-level** percentages with **podium-internal** **40/25/20/15** or placement **4∶2∶1**.
 
 ---
 
