@@ -18,12 +18,12 @@ export type PodiumReadRow = {
 
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const contracts = tc
-    ? (PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
+    ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
         address: tc,
         abi: timeCurveReadAbi,
         functionName: "podium" as const,
         args: [category],
-      })) as const)
+      }))
     : [];
   const { data: rawData, isPending } = useReadContracts({
     contracts: contracts as readonly unknown[],
