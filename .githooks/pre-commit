@@ -1,5 +1,6 @@
 #!/bin/sh
-# Run Gitleaks on staged changes before commit. Install: https://github.com/gitleaks/gitleaks
+# Gitleaks on staged changes; TypeScript check when frontend is staged.
+# Install hooks: git config core.hooksPath .githooks
 set -eu
 
 if ! command -v gitleaks >/dev/null 2>&1; then
@@ -8,4 +9,10 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
-exec gitleaks protect --staged --verbose --config .gitleaks.toml
+gitleaks protect --staged --verbose --config .gitleaks.toml
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm: not found in PATH (required for frontend typecheck)" >&2
+  exit 1
+fi
+(cd frontend && npm run typecheck)
