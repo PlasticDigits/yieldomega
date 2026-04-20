@@ -296,6 +296,13 @@ JOBS: list[tuple[str, str, Resolution, OutputFmt, str]] = [
         "png",
         "App icon: single glossy gold coin with green leprechaun hat emblem matching token-logo (yellow D buckle), tiny rainbow sparkle accents, bold centered composition, readable at small size, no letters besides the stylized D on the buckle, no watermark",
     ),
+    (
+        "opengraph",
+        "16:9",
+        "2K",
+        "jpg",
+        "Social link preview / Open Graph card for messaging apps and X: wide 16:9 landscape, bold readable composition safe for center crops. Bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
+    ),
 ]
 
 
