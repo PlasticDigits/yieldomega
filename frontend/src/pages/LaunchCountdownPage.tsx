@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
 
@@ -8,7 +8,7 @@ type Props = {
   secondsRemaining: number;
 };
 
-const SPARK_COUNT = 14;
+const SPARK_COUNT = 10;
 
 const LAUNCH_LINKS = [
   { label: "Telegram", href: "https://t.me/yieldomega" },
@@ -55,7 +55,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
           <span
             key={i}
             className="timer-hero__fx-spark"
-            style={{ ["--fx-i" as string]: i } as React.CSSProperties}
+            style={{ ["--fx-i" as string]: i } as CSSProperties}
           />
         ))}
       </div>
