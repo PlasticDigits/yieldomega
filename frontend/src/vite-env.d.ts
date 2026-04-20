@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 interface ImportMetaEnv {
+  /** Optional public site origin for absolute Open Graph / Twitter URLs (no trailing slash), e.g. https://app.example.com */
+  readonly VITE_SITE_URL?: string;
   readonly VITE_WALLETCONNECT_PROJECT_ID: string;
   readonly VITE_CHAIN_ID: string;
   readonly VITE_RPC_URL: string;
