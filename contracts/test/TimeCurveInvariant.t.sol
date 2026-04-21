@@ -36,6 +36,7 @@ contract TimeCurveHandler is Test {
 
     function buyBounded(uint256 seed) external {
         if (tc.saleStart() == 0 || tc.ended()) return;
+        if (block.timestamp < tc.nextBuyAllowedAt(alice)) return;
         (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
         if (maxC < minC || minC == 0) return;
         uint256 c = bound(seed, minC, maxC);
@@ -53,7 +54,7 @@ contract TimeCurveHandler is Test {
 
     function tickTime(uint256 dt) external {
         if (tc.saleStart() == 0 || tc.ended()) return;
-        dt = bound(dt, 1, 120);
+        dt = bound(dt, 1, 500);
         vm.warp(block.timestamp + dt);
     }
 }
@@ -98,7 +99,8 @@ contract TimeCurveInvariantTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            300
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         launched.mint(address(tc), 1_000_000e18);

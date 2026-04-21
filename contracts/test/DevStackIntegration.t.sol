@@ -93,7 +93,8 @@ contract DevStackIntegrationTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            300
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));

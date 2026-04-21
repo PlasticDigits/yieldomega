@@ -96,6 +96,8 @@ contract TimeCurve is ReentrancyGuard {
     uint256 public immutable initialTimerSec;
     uint256 public immutable timerCapSec;
     uint256 public immutable totalTokensForSale;
+    /// @notice Minimum seconds between successful `buy` calls from the same wallet (`block.timestamp` basis).
+    uint256 public immutable buyCooldownSec;
 
     uint256 public saleStart;
     uint256 public deadline;
@@ -107,6 +109,8 @@ contract TimeCurve is ReentrancyGuard {
     mapping(address => uint256) public charmWeight;
     mapping(address => uint256) public buyCount;
     mapping(address => bool) public charmsRedeemed;
+    /// @notice Unix epoch seconds when `buyer` may `buy` again; `0` means never bought (always eligible).
+    mapping(address => uint256) public nextBuyAllowedAt;
 
     mapping(address => uint256) public totalEffectiveTimerSecAdded;
     /// @notice **WarBow Ladder** score (Battle Points); top-3 funded from the WarBow podium slice after `endSale`.
@@ -218,7 +222,8 @@ contract TimeCurve is ReentrancyGuard {
         uint256 _timerExtensionSec,
         uint256 _initialTimerSec,
         uint256 _timerCapSec,
-        uint256 _totalTokensForSale
+        uint256 _totalTokensForSale,
+        uint256 _buyCooldownSec
     ) {
         require(address(_acceptedAsset) != address(0), "TimeCurve: zero asset");
         require(address(_launchedToken) != address(0), "TimeCurve: zero launched token");
@@ -231,6 +236,7 @@ contract TimeCurve is ReentrancyGuard {
         require(_timerCapSec >= _timerExtensionSec, "TimeCurve: cap < extension");
         require(_timerCapSec >= _initialTimerSec, "TimeCurve: cap < initial timer");
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
+        require(_buyCooldownSec > 0, "TimeCurve: zero buy cooldown");
         acceptedAsset = _acceptedAsset;
         launchedToken = _launchedToken;
         feeRouter = _feeRouter;
@@ -242,6 +248,7 @@ contract TimeCurve is ReentrancyGuard {
         initialTimerSec = _initialTimerSec;
         timerCapSec = _timerCapSec;
         totalTokensForSale = _totalTokensForSale;
+        buyCooldownSec = _buyCooldownSec;
         referralRegistry = IReferralRegistry(_referralRegistry);
     }
 
@@ -274,6 +281,7 @@ contract TimeCurve is ReentrancyGuard {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
         require(block.timestamp < deadline, "TimeCurve: timer expired");
+        require(block.timestamp >= nextBuyAllowedAt[msg.sender], "TimeCurve: buy cooldown");
 
         uint256 elapsed = block.timestamp - saleStart;
         (uint256 minCharm, uint256 maxCharm) = _charmBounds(elapsed);
@@ -402,6 +410,8 @@ contract TimeCurve is ReentrancyGuard {
             activeDefendedStreak[msg.sender],
             bestDefendedStreak[msg.sender]
         );
+
+        nextBuyAllowedAt[msg.sender] = block.timestamp + buyCooldownSec;
     }
 
     /// @notice After **your** buy, wait `WARBOW_FLAG_SILENCE_SEC` with **no other buyer**; then claim **+WARBOW_FLAG_CLAIM_BP**.
