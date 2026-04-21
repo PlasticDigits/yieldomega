@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-.PHONY: help start-qa qa-start qa-tunnel-help stop-qa status
+.PHONY: help start-qa qa-start qa-tunnel-help stop-qa status check-frontend-env
 
 help:
 	@echo "Yieldomega QA / local stack"
@@ -8,7 +8,12 @@ help:
 	@echo "  make qa-tunnel-help - Reprint SSH tunnel + laptop steps (after start-qa)"
 	@echo "  make stop-qa        - Stop Anvil, indexer, Postgres container"
 	@echo "  make status         - Check Postgres, Anvil, indexer (and optional Vite)"
+	@echo "  make check-frontend-env - Verify frontend/.env.local (merged with .env) has VITE_* for TimeCurve + fee router"
 	@echo "  See scripts/qa/README.md"
+
+check-frontend-env:
+	@chmod +x scripts/check-frontend-vite-env.sh
+	./scripts/check-frontend-vite-env.sh
 
 start-qa:
 	@chmod +x scripts/qa/start-qa.sh scripts/qa/stop-qa.sh scripts/qa/print-qa-tunnel-instructions.sh scripts/qa/write-frontend-env-local.sh scripts/start-local-anvil-stack.sh
