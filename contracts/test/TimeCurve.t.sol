@@ -19,6 +19,8 @@ contract MockERC20 is ERC20 {
 
 contract TimeCurveTest is Test {
     uint256 internal constant WAD = 1e18;
+    /// @dev Short cooldown keeps tests fast; dedicated tests use 300s for production-like pacing.
+    uint256 internal constant TEST_BUY_COOLDOWN_SEC = 1;
     uint256 internal constant GROWTH_RATE = 182_321_556_793_954_592; // ln(1.2) WAD
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
@@ -66,7 +68,8 @@ contract TimeCurveTest is Test {
             120, // timerExtensionSec (2 min; canonical deploy)
             ONE_DAY, // initialTimerSec (24h)
             FOUR_DAYS, // timerCapSec (max 96h remaining)
-            1_000_000e18 // totalTokensForSale
+            1_000_000e18, // totalTokensForSale
+            TEST_BUY_COOLDOWN_SEC
         );
 
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
@@ -87,6 +90,12 @@ contract TimeCurveTest is Test {
         reserve.approve(address(target), amount);
     }
 
+    /// @dev `vm.warp(ts + 1)` can be a no-op if already at `ts`; use onchain `nextBuyAllowedAt` for reliable pacing.
+    function _warpPastBuyCooldown(TimeCurve target, address user) internal {
+        uint256 until = target.nextBuyAllowedAt(user);
+        vm.warp(until);
+    }
+
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
     function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
         require(initialTimerSec >= 120, "test: initial timer");
@@ -102,7 +111,8 @@ contract TimeCurveTest is Test {
             120,
             initialTimerSec,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
         launchedToken.mint(address(t), 1_000_000e18);
@@ -136,7 +146,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcUnder));
         launchedToken.mint(address(tcUnder), 1_000_000e18 - 1);
@@ -221,13 +232,19 @@ contract TimeCurveTest is Test {
     function test_timer_cap_fuzz(uint16 numBuys) public {
         uint256 n = uint256(numBuys) % 20 + 1;
         tc.startSale();
+        uint256 ts = block.timestamp;
         for (uint256 i; i < n; ++i) {
-            vm.warp(block.timestamp + 10);
+            unchecked {
+                ts += 10;
+            }
+            vm.warp(ts);
             (uint256 minCharm,) = tc.currentCharmBoundsWad();
             uint256 spend = tc.currentMinBuyAmount();
             _fundAndApprove(alice, spend);
             vm.prank(alice);
             tc.buy(minCharm);
+            ts = tc.nextBuyAllowedAt(alice);
+            vm.warp(ts);
             assertLe(tc.deadline(), block.timestamp + FOUR_DAYS, "deadline exceeds cap");
         }
     }
@@ -247,7 +264,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             fourDay,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcWide));
         launchedToken.mint(address(tcWide), 1_000_000e18);
@@ -275,7 +293,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             ONE_DAY - 1,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -380,11 +399,13 @@ contract TimeCurveTest is Test {
             _fundAndApprove(alice, 2e18);
             vm.prank(alice);
             tc.buy(1e18);
+            _warpPastBuyCooldown(tc, alice);
         }
         for (uint256 i; i < 2; ++i) {
             _fundAndApprove(bob, 2e18);
             vm.prank(bob);
             tc.buy(1e18);
+            _warpPastBuyCooldown(tc, bob);
         }
         _fundAndApprove(carol, 2e18);
         vm.prank(carol);
@@ -421,7 +442,8 @@ contract TimeCurveTest is Test {
             120,
             cap,
             cap,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcClip));
         launchedToken.mint(address(tcClip), 1_000_000e18);
@@ -452,7 +474,8 @@ contract TimeCurveTest is Test {
             120,
             cap,
             cap,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcCap));
         launchedToken.mint(address(tcCap), 1_000_000e18);
@@ -584,6 +607,7 @@ contract TimeCurveTest is Test {
         _fundAndApprove(alice, 4e18);
         vm.prank(alice);
         tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
 
@@ -715,9 +739,11 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(1e18);
         vm.warp(block.timestamp + 10);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
         vm.warp(block.timestamp + 10);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
 
@@ -744,6 +770,7 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(minC);
         assertEq(tc.battlePoints(alice), b);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(maxC);
         assertEq(tc.battlePoints(alice), 2 * b);
@@ -836,6 +863,7 @@ contract TimeCurveTest is Test {
         _fundAndApproveCurve(alice, 80e18, t);
         vm.prank(alice);
         t.buy(1e18);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
 
@@ -853,12 +881,15 @@ contract TimeCurveTest is Test {
         t.buy(1e18);
 
         vm.warp(block.timestamp + 30);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
         vm.warp(block.timestamp + 30);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
         vm.warp(block.timestamp + 30);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
 
@@ -970,7 +1001,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -988,7 +1020,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -1006,7 +1039,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -1024,7 +1058,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -1042,7 +1077,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
     }
 
@@ -1060,7 +1096,8 @@ contract TimeCurveTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1
+            1,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcSmall));
         launchedToken.mint(address(tcSmall), 1);
@@ -1069,6 +1106,7 @@ contract TimeCurveTest is Test {
         _fundAndApproveCurve(bob, 10e18, tcSmall);
         vm.prank(alice);
         tcSmall.buy(1e18);
+        _warpPastBuyCooldown(tcSmall, alice);
         vm.prank(bob);
         tcSmall.buy(1e18);
         vm.warp(tcSmall.deadline() + 1);
@@ -1200,7 +1238,8 @@ contract TimeCurveTest is Test {
             120,
             10 * ONE_DAY,
             10 * ONE_DAY,
-            1_000_000e18
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcLin));
         launchedToken.mint(address(tcLin), 1_000_000e18);
@@ -1219,6 +1258,115 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tcLin.buy(1e18);
         assertEq(tcLin.totalRaised(), spend);
+    }
+
+    function test_constructor_zero_buy_cooldown_reverts() public {
+        vm.expectRevert("TimeCurve: zero buy cooldown");
+        new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            0
+        );
+    }
+
+    function test_buy_cooldown_same_wallet_blocks_rapid_repeat() public {
+        TimeCurve tcd = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            300
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
+        launchedToken.mint(address(tcd), 1_000_000e18);
+        tcd.startSale();
+        _fundAndApproveCurve(alice, 5e18, tcd);
+        vm.prank(alice);
+        tcd.buy(1e18);
+        _fundAndApproveCurve(alice, 5e18, tcd);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: buy cooldown");
+        tcd.buy(1e18);
+    }
+
+    function test_buy_cooldown_boundary_elapses() public {
+        TimeCurve tcd = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            300
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
+        launchedToken.mint(address(tcd), 1_000_000e18);
+        tcd.startSale();
+        _fundAndApproveCurve(alice, 5e18, tcd);
+        vm.prank(alice);
+        tcd.buy(1e18);
+        uint256 tNext = tcd.nextBuyAllowedAt(alice);
+        vm.warp(tNext - 1);
+        _fundAndApproveCurve(alice, 5e18, tcd);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: buy cooldown");
+        tcd.buy(1e18);
+        vm.warp(tNext);
+        vm.prank(alice);
+        tcd.buy(1e18);
+    }
+
+    function test_buy_cooldown_independent_wallets() public {
+        TimeCurve tcd = new TimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            300
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
+        launchedToken.mint(address(tcd), 1_000_000e18);
+        tcd.startSale();
+        _fundAndApproveCurve(alice, 5e18, tcd);
+        _fundAndApproveCurve(bob, 5e18, tcd);
+        vm.prank(alice);
+        tcd.buy(1e18);
+        vm.prank(bob);
+        tcd.buy(1e18);
+        assertEq(tcd.buyCount(alice), 1);
+        assertEq(tcd.buyCount(bob), 1);
     }
 }
 
