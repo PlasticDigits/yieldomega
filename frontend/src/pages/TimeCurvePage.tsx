@@ -1789,6 +1789,20 @@ export function TimeCurvePage() {
             className: "cutout-decoration--sway",
           }}
         />
+        <div className={`timer-hero ${timerUrgencyClass(secondsRemaining)}`}>
+          <div className="timer-hero__inner">
+            <div className="timer-hero__split">
+              <TimerHeroLiveBuys
+                buys={null}
+                indexedTotal={null}
+                indexerNote="Set VITE_TIMECURVE_ADDRESS to load recent buys from the indexer."
+                formatWallet={formatWallet}
+                nowUnixSec={Math.floor(effectiveLedgerSec)}
+                envelopeParams={null}
+              />
+            </div>
+          </div>
+        </div>
       </section>
     );
   }

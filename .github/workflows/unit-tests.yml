@@ -136,6 +136,10 @@ jobs:
         working-directory: frontend
     env:
       CI: "true"
+      # Production build inlines these at compile time. UI smoke expects the full TimeCurve surface (not the config-only stub); no RPC is required for this job.
+      VITE_CHAIN_ID: "31337"
+      VITE_RPC_URL: "http://127.0.0.1:8545"
+      VITE_TIMECURVE_ADDRESS: "0x0000000000000000000000000000000000000001"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
