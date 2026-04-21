@@ -48,6 +48,8 @@ Open the printed URL (typically `http://127.0.0.1:5173`).
 
 **Vite env:** Build-time `VITE_*` variables are documented in [`docs/testing/e2e-anvil.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/testing/e2e-anvil.md) (table). The stack script already writes `frontend/.env.local`.
 
+After the stack (or after `scripts/qa/write-frontend-env-local.sh` on a QA laptop), run **`make check-frontend-env`** from repo root to confirm `VITE_TIMECURVE_ADDRESS`, `VITE_FEE_ROUTER_ADDRESS`, and related deploy vars are non-empty. If you started **`npm run dev`** before `frontend/.env.local` existed, **restart** the dev server so Vite reloads `VITE_*`.
+
 ---
 
 ## 2. Bot env + QA wallet “airdrop” (Anvil only)
@@ -114,11 +116,12 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 - [ ] `bash scripts/start-local-anvil-stack.sh` completes without fatal errors.
 - [ ] Postgres container is running; Anvil responds on the expected RPC port (default `8545`).
 - [ ] Contracts deployed; `frontend/.env.local` exists with `VITE_CHAIN_ID=31337` and contract addresses.
+- [ ] `frontend/.env.local` includes non-empty **`VITE_TIMECURVE_ADDRESS`** and **`VITE_FEE_ROUTER_ADDRESS`** (or `make check-frontend-env` passes).
 - [ ] Indexer process is listening (note printed `INDEXER_PORT`, often `3100`).
 
 ### Frontend
 
-- [ ] `cd frontend && npm ci && npm run dev` succeeds.
+- [ ] `cd frontend && npm ci && npm run dev` succeeds (restart dev server if it was started before `frontend/.env.local` was written).
 - [ ] App opens in the browser (e.g. `http://127.0.0.1:5173`).
 - [ ] Wallet / network pointed at local Anvil (`http://127.0.0.1:8545`, chain `31337`).
 - [ ] **TimeCurve** page loads without a hard error (blank screen or unhandled exception).
@@ -186,8 +189,9 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 **Prerequisites:** Docker, Foundry (`anvil`, `forge`, `cast`), `jq`, `curl`, Node/npm, Python 3.11+.
 
 - [ ] **A1** — From repo root: `bash scripts/start-local-anvil-stack.sh` — Postgres, Anvil, deploy, indexer, `frontend/.env.local` written.
+- [ ] **A1a** — From repo root: `make check-frontend-env` — validates merged `frontend/.env` + `frontend/.env.local` (TimeCurve + FeeRouter + related `VITE_*`).
 - [ ] **A2** — Optional: `SKIP_ANVIL_RICH_STATE=1` for live sale + default swarm (see script header) — sale stays active for bots/UI; `START_BOT_SWARM=0` to skip bots.
-- [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port).
+- [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port). Restart Vite if you opened dev **before** `frontend/.env.local` was created.
 - [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — `bots/timecurve/.env.local` aligned with `VITE_*`.
 - [ ] **A5** — `cd bots/timecurve && pip install -e ".[dev]"` (or use `.venv`) — `timecurve-bot` available.
 - [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to `bots/timecurve/.env.local` (**addresses only**); re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + mock CL8Y mint as swarm bots (Anvil **31337** + `--allow-anvil-funding` only).
@@ -220,5 +224,6 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 #### References
 
 - [`docs/testing/e2e-anvil.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/testing/e2e-anvil.md) — `VITE_*` table, Playwright
+- [`scripts/check-frontend-vite-env.sh`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/scripts/check-frontend-vite-env.sh) — verify required `VITE_*` before `npm run dev`
 - [`bots/timecurve/README.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/bots/timecurve/README.md) — swarm, env vars
 - [`scripts/start-local-anvil-stack.sh`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/scripts/start-local-anvil-stack.sh) — stack env toggles

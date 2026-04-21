@@ -33,16 +33,22 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 Vite inlines `VITE_*` at **build** time. For Anvil:
 
-| Variable | Example |
-|----------|---------|
+| Variable | Example / notes |
+|----------|-----------------|
 | `VITE_CHAIN_ID` | `31337` (Anvil default) |
 | `VITE_RPC_URL` | `http://127.0.0.1:8545` (or your port) |
-| `VITE_TIMECURVE_ADDRESS` | From `forge script` deploy output |
+| `VITE_TIMECURVE_ADDRESS` | From `forge script` deploy output (required for TimeCurve page reads) |
 | `VITE_RABBIT_TREASURY_ADDRESS` | Same |
 | `VITE_LEPRECHAUN_NFT_ADDRESS` | Same |
+| `VITE_FEE_ROUTER_ADDRESS` | Same — required for **fee sink / FeeRouter** UI (`FeeTransparency`) |
+| `VITE_REFERRAL_REGISTRY_ADDRESS` | Same — referral flows that read the registry |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
 
-Optional: `VITE_INDEXER_URL` — set only if you want to manually verify indexer-backed panels (e.g. recent mints on Collection); the automated Anvil Playwright specs do **not** assert indexer responses.
+**Full-stack manual QA (TimeCurve + indexer panels + fee sinks):** set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack.
+
+For **minimal** Anvil Playwright only, `VITE_INDEXER_URL` can be omitted; the automated Anvil specs do **not** assert indexer responses.
+
+**Sanity check:** from repo root, `make check-frontend-env` (or `bash scripts/check-frontend-vite-env.sh`) verifies that merged `frontend/.env` + `frontend/.env.local` contain non-empty `VITE_TIMECURVE_ADDRESS`, `VITE_FEE_ROUTER_ADDRESS`, sibling deploy addresses, `VITE_RPC_URL`, and `VITE_CHAIN_ID`. Restart `npm run dev` after creating or changing `.env.local` so Vite reloads inlined vars.
 
 Deterministic example addresses from a previous deploy (regenerate if deploy order changes): [`contracts/deployments/stage2-anvil-registry.json`](../../contracts/deployments/stage2-anvil-registry.json).
 

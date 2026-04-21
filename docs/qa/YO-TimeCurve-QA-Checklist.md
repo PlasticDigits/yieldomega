@@ -29,8 +29,9 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 **Prerequisites:** Docker, Foundry (`anvil`, `forge`, `cast`), `jq`, `curl`, Node/npm, Python 3.11+.
 
 - [ ] **A1** — From repo root: `bash scripts/start-local-anvil-stack.sh` — Postgres, Anvil, deploy, indexer, `frontend/.env.local` written.
+- [ ] **A1a** — From repo root: `make check-frontend-env` — validates merged `frontend/.env` + `frontend/.env.local` (`VITE_TIMECURVE_ADDRESS`, `VITE_FEE_ROUTER_ADDRESS`, siblings, RPC, chain id).
 - [ ] **A2** — Optional: `SKIP_ANVIL_RICH_STATE=1` for live sale + default swarm (see script header) — sale stays active for bots/UI; `START_BOT_SWARM=0` to skip bots.
-- [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port).
+- [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port). Restart Vite if dev was started before `frontend/.env.local` existed.
 - [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — `bots/timecurve/.env.local` aligned with `VITE_*`.
 - [ ] **A5** — `cd bots/timecurve && pip install -e ".[dev]"` (or use `.venv`) — `timecurve-bot` available.
 - [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to `bots/timecurve/.env.local` (**addresses only**); re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + mock CL8Y mint as swarm bots (Anvil **31337** + `--allow-anvil-funding` only).
@@ -62,5 +63,6 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ## References
 
-- [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — Playwright + Anvil
+- [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — `VITE_*` contract + Playwright
+- [`scripts/check-frontend-vite-env.sh`](../../scripts/check-frontend-vite-env.sh) — `make check-frontend-env`
 - [`bots/timecurve/README.md`](../../bots/timecurve/README.md) — swarm, env vars
