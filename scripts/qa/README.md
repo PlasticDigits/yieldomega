@@ -39,9 +39,10 @@ After `make start-qa` succeeds on the server:
 1. **SSH forwards** — run the `ssh -4 -N ...` block from **`make qa-tunnel-help`** (or the end of `start-qa`). Keep that terminal open.
 2. **`scp`** — `.deploy/local.env` from the server into your clone:  
    `scp user@host:/path/to/yieldomega/.deploy/local.env .deploy/local.env`
-3. **Frontend env** — `./scripts/qa/write-frontend-env-local.sh`  
-   (URLs-only without addresses: `./scripts/qa/write-frontend-env-local.sh --urls-only`)
-4. **Vite** — `cd frontend && npm ci && npm run dev` — open the URL Vite prints. **Do not** tunnel the Vite port; run the dev server only on the laptop.
+3. **Frontend env** — `./scripts/qa/write-frontend-env-local.sh` after copying `.deploy/local.env`.  
+   **`--urls-only`** is only for checking tunnel wiring: it **clears all contract addresses**, so the TimeCurve page and fee-router panel will show “config needed” until you run again **without** `--urls-only` (with a real `local.env`). Prefer the default mode for normal QA.
+4. **Vite** — `cd frontend && npm ci && npm run dev` — open the URL Vite prints. **Do not** tunnel the Vite port; run the dev server only on the laptop. If the stack or `write-frontend-env-local.sh` ran **after** you started Vite, **restart** the dev server so `VITE_*` reloads.
+5. **Optional:** `make check-frontend-env` — confirms `frontend/.env.local` has the deploy addresses (merged with `frontend/.env`).
 
 Reprint tunnel steps anytime: **`make qa-tunnel-help`** (on server or laptop clone).
 
