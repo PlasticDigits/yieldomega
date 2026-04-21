@@ -13,6 +13,7 @@ This document lists **classes of risk** for a MegaETH-native, fully onchain game
 ## TimeCurve-specific
 
 - **MEV and ordering** — Last-buyer and timer races are sensitive to **transaction ordering**. Design should assume **same-slot competition**; tie-break rules must be **deterministic** ([../product/primitives.md](../product/primitives.md)).
+- **Per-wallet buy pacing** — **`buyCooldownSec`** limits how often the **same** address can successfully buy; it does **not** change same-block ordering rules for distinct wallets.
 - **Griefing** — Small buys that extend timers could be used to delay endings; mitigations may include **minimum extension contribution**, **fee burn**, or **decay** (design choices).
 - **Parameter changes mid-sale** — Governance updates during an active sale can cause disputes; prefer **timelocks**, **sale-bound locks**, or **two-step** updates.
 

@@ -13,6 +13,20 @@
   {"inputs": [], "name": "totalCharmWeight", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
   {
     "inputs": [],
+    "name": "buyCooldownSec",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "name": "nextBuyAllowedAt",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "currentCharmBoundsWad",
     "outputs": [
       {"internalType": "uint256", "name": "minCharmWad", "type": "uint256"},

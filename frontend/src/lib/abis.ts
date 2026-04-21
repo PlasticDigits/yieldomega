@@ -29,6 +29,8 @@ export const timeCurveReadAbi = parseAbi([
   "function feeRouter() view returns (address)",
   "function podiumPool() view returns (address)",
   "function totalCharmWeight() view returns (uint256)",
+  "function buyCooldownSec() view returns (uint256)",
+  "function nextBuyAllowedAt(address) view returns (uint256)",
   "function podium(uint8 category) view returns (address[3] winners, uint256[3] values)",
   "function charmWeight(address user) view returns (uint256)",
   "function buyCount(address user) view returns (uint256)",
