@@ -67,7 +67,8 @@ contract NonStandardERC20Test is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            1
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);

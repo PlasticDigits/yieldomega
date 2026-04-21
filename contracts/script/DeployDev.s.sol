@@ -121,7 +121,8 @@ contract DeployDev is Script {
             120, // timerExtensionSec (2 min per buy)
             86_400, // initialTimerSec (24h first deadline)
             4 * 86_400, // timerCapSec (max 96h remaining from any buy)
-            1_000_000e18 // totalTokensForSale
+            1_000_000e18, // totalTokensForSale
+            300 // buyCooldownSec (5 minutes; per-wallet pacing)
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));

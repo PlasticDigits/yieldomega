@@ -64,7 +64,8 @@ contract TimeCurveReferralTest is Test {
             120,
             ONE_DAY,
             FOUR_DAYS,
-            1_000_000e18
+            1_000_000e18,
+            300
         );
 
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
