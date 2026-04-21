@@ -10,11 +10,15 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 - **CHARM quantity** for each buy is chosen in **WAD** (1e18 base units = one whole CHARM in UX). Onchain, the allowed band is **0.99–10 CHARM** at envelope factor 1 (UX may show **1–10**; the **0.99** on-chain floor tolerates envelope drift while a transaction is signed), **scaled by the same exponential daily curve** as the envelope reference (`TimeMath`, canonical **~20% per day** on that reference). So the **min and max CHARM** per transaction **grow exponentially** with elapsed sale time; **max** is **10×** the nominal **1 CHARM** unit at the same scale.
 - **Per-CHARM price** (accepted asset per 1e18 CHARM) is **decoupled** from that envelope: it comes from a **pluggable pricing module** (`ICharmPrice`). The default implementation is **linear in elapsed sale time** (not in how many charms are bought in one tx): `price = basePrice + dailyIncrement × elapsed / 1 day` (for example **$1.00** start and **+$0.10** per elapsed day per 1e18 CHARM in 18-decimal asset units).
-- **Gross spend** for a buy: `amount = charmWad × priceWad / 1e18` (fixed-point; rounding matches onchain `mulDiv`). The UI may restrict to **whole charms 1–10** to stay inside the onchain band and avoid edge reverts.
+- **Gross spend** for a buy: `amount = charmWad × priceWad / 1e18` (fixed-point; rounding matches onchain `mulDiv`). The UI should size **CL8Y spend** against **`currentMinBuyAmount` / `currentMaxBuyAmount`**, the live **CHARM band**, and wallet **balance**, then map to **`charmWad`** (floor) so the transaction stays inside the onchain band.
 
 ### Buy and charm redemption semantics
 
 - A buy specifies **`charmWad`** within the current **scaled** `[0.99e18, 10e18]` band (before scaling: base constants; scaled by envelope ÷ reference). The contract pulls **`amount`** in the accepted asset from the buyer and routes the **full gross** through `FeeRouter`. **CHARM weight** accrues in **CHARM WAD units** (plus referral bonuses as CHARM, not reserve transfers). After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalCharmWeight` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
+
+#### Per-wallet buy cooldown (pacing)
+
+- **`buyCooldownSec`** is an **immutable** constructor parameter (production default **300** seconds = **5 minutes**; must be **&gt; 0**). After each **successful** buy, the contract sets **`nextBuyAllowedAt[msg.sender] = block.timestamp + buyCooldownSec`** (Unix **seconds**, same base as **`block.timestamp`**). Before **`_buy`**, the contract requires **`block.timestamp >= nextBuyAllowedAt[msg.sender]`**; otherwise it reverts with **`"TimeCurve: buy cooldown"`**. For an address that has never bought, **`nextBuyAllowedAt`** is **0**, which is always **≤** `block.timestamp`, so the first buy is allowed. Cooldowns are **per wallet** and **independent** across buyers.
 
 ### Timer extension and hard reset
 

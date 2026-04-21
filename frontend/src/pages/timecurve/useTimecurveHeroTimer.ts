@@ -37,6 +37,11 @@ function conservativeSkewWallMinusChainSec(fetchedAtSec: number, blockTimestampS
 export type UseTimecurveHeroTimerResult = {
   heroTimer: HeroTimerState | null;
   secondsRemaining: number | undefined;
+  /**
+   * Same `wallClockSec - skewWallMinusChain` used for the primary hero countdown (not necessarily integer).
+   * Use for wallet buy cooldown so it stays consistent with `secondsRemaining`.
+   */
+  chainNowSec: number | undefined;
   isBusy: boolean;
   refresh: () => void;
 };
@@ -49,6 +54,7 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
   const [heroTimer, setHeroTimer] = useState<HeroTimerState | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState<number | undefined>(undefined);
+  const [chainNowSec, setChainNowSec] = useState<number | undefined>(undefined);
   const [currentWallclockSec, setCurrentWallclockSec] = useState(Math.floor(Date.now() / 1000));
 
   const skewWallMinusChainRef = useRef<number | null>(null);
@@ -99,28 +105,16 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
   }, [timeCurveAddress, loadSnapshot]);
 
   useEffect(() => {
-    console.log("RUNNING");
-    console.log(
-      "deadline:",
-      heroTimer?.deadlineSec,
-      "blockTimestamp:",
-      heroTimer?.blockTimestampSec,
-      "fetchedAt:",
-      heroTimer?.fetchedAtSec,
-      "currentWallclock:",
-      currentWallclockSec,
-      "skewWallMinusChain:",
-      skewWallMinusChainRef.current,
-    );
-
     if (!heroTimer) {
       setSecondsRemaining(undefined);
+      setChainNowSec(undefined);
       return;
     }
 
     const skew = skewWallMinusChainRef.current;
     if (skew == null || !Number.isFinite(skew)) {
       setSecondsRemaining(undefined);
+      setChainNowSec(undefined);
       return;
     }
 
@@ -128,15 +122,16 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
       return;
     }
 
-    const chainNowSec = currentWallclockSec - skew;
-    const next = Math.max(0, Math.floor(heroTimer.deadlineSec - chainNowSec));
-    console.log("secondsRemaining:", next);
+    const chainNow = currentWallclockSec - skew;
+    setChainNowSec(chainNow);
+    const next = Math.max(0, Math.floor(heroTimer.deadlineSec - chainNow));
     setSecondsRemaining(next);
   }, [heroTimer, currentWallclockSec]);
 
   return {
     heroTimer,
     secondsRemaining,
+    chainNowSec,
     isBusy,
     refresh,
   };
