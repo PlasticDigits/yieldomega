@@ -2941,6 +2941,26 @@ code {
   line-height: 1;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
+
+.timer-hero__wallet-cooldown {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  color: #c8e6d0;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.timecurve-cl8y-buy-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.timecurve-cl8y-buy-controls__balance {
+  font-size: 0.9rem;
+}
+
 .timer-hero__subtext {
   font-size: 0.75rem;
   color: #8cbf9a;

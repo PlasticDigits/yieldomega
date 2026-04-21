@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatUnits, isAddress, maxUint256 } from "viem";
+import { formatUnits, isAddress, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
@@ -40,7 +40,8 @@ import {
   serializeContractRead,
   type SerializableContractRead,
 } from "@/lib/serializeContractRead";
-import { sampleMinSpendCurve, WAD } from "@/lib/timeCurveMath";
+import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
 import {
   buildBuyBattlePointBreakdown,
   buildBuyFeedNarrative,
@@ -117,6 +118,12 @@ function compareBuysNewestFirst(a: BuyItem, b: BuyItem): number {
   return b.log_index - a.log_index;
 }
 
+function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
+  if (x < lo) return lo;
+  if (x > hi) return hi;
+  return x;
+}
+
 function mergeBuysNewestFirst(incoming: BuyItem[], existing: BuyItem[] | null | undefined): BuyItem[] {
   const merged = new Map<string, BuyItem>();
   for (const buy of [...incoming, ...(existing ?? [])]) {
@@ -181,7 +188,9 @@ export function TimeCurvePage() {
   const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
   const [indexerNote, setIndexerNote] = useState<string | null>(null);
   const [claimsNote, setClaimsNote] = useState<string | null>(null);
-  const [charmCount, setCharmCount] = useState(5);
+  /** Gross CL8Y spend (wei) chosen in the buy panel; slider + input stay in sync. */
+  const [spendWei, setSpendWei] = useState(0n);
+  const [spendInputStr, setSpendInputStr] = useState("");
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [displayTick, setDisplayTick] = useState(0);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
@@ -248,6 +257,7 @@ export function TimeCurvePage() {
   const {
     heroTimer,
     secondsRemaining,
+    chainNowSec: heroChainNowSec,
     isBusy: heroTimerBusy,
     refresh: loadHeroTimer,
   } = useTimecurveHeroTimer(tc);
@@ -455,6 +465,7 @@ export function TimeCurvePage() {
         { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
         { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
         { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
       ]
     : [];
   const {
@@ -511,17 +522,6 @@ export function TimeCurvePage() {
     }
   }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCoreTc]);
 
-  useWatchContractEvent({
-    address: tc,
-    abi: timeCurveBuyEventAbi,
-    eventName: "Buy",
-    enabled: Boolean(tc),
-    onLogs: () => {
-      void refetchCoreTc();
-      void loadHeroTimer();
-    },
-  });
-
   const userSaleContracts =
     tc && address
       ? [
@@ -535,6 +535,7 @@ export function TimeCurvePage() {
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowGuardUntil", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeStealer", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeExpiry", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt", args: [address] },
         ]
       : [];
   const {
@@ -545,6 +546,18 @@ export function TimeCurvePage() {
     query: { enabled: Boolean(tc && address) },
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
+
+  useWatchContractEvent({
+    address: tc,
+    abi: timeCurveBuyEventAbi,
+    eventName: "Buy",
+    enabled: Boolean(tc),
+    onLogs: () => {
+      void refetchCoreTc();
+      void refetchUserSale();
+      void loadHeroTimer();
+    },
+  });
 
   const stealVictim =
     stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
@@ -591,6 +604,7 @@ export function TimeCurvePage() {
     feeRouterR,
     podiumPoolR,
     totalCharmWeightR,
+    buyCooldownSecR,
   ] = coreTcData ?? [];
 
   const [
@@ -619,6 +633,7 @@ export function TimeCurvePage() {
     warbowGuardUntilR,
     revengeStealerR,
     revengeExpiryR,
+    nextBuyAllowedAtR,
   ] = userSaleData ?? [];
 
   const warbowStealBurnWad =
@@ -693,6 +708,14 @@ export function TimeCurvePage() {
     functionName: "balanceOf",
     args: podiumPoolAddr ? [podiumPoolAddr] : undefined,
     query: { enabled: Boolean(tokenAddr && podiumPoolAddr) },
+  });
+
+  const { data: walletCl8yBal } = useReadContract({
+    address: tokenAddr,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: tokenAddr && address ? [address] : undefined,
+    query: { enabled: Boolean(tokenAddr && address && isConnected) },
   });
 
   const liquidityAnchors = useMemo(() => {
@@ -850,15 +873,124 @@ export function TimeCurvePage() {
     };
   }, [initialMinBuyR, growthRateWadR, saleStart, basePriceWadR, dailyIncWadR]);
 
-  const charmWadSelected = useMemo(() => BigInt(charmCount) * WAD, [charmCount]);
-
-  const estimatedSpend = useMemo(() => {
-    if (pricePerCharmR?.status !== "success") {
-      return undefined;
+  const cl8ySpendBounds = useMemo(() => {
+    if (minBuy?.status !== "success" || maxBuy?.status !== "success") {
+      return null;
     }
-    const p = pricePerCharmR.result as bigint;
-    return (charmWadSelected * p) / WAD;
-  }, [charmWadSelected, pricePerCharmR]);
+    let minS = minBuy.result as bigint;
+    let maxS = maxBuy.result as bigint;
+    if (walletCl8yBal !== undefined) {
+      const b = BigInt(walletCl8yBal as bigint);
+      if (b < maxS) {
+        maxS = b;
+      }
+    }
+    if (minS > maxS) {
+      return null;
+    }
+    return { minS, maxS };
+  }, [minBuy, maxBuy, walletCl8yBal]);
+
+  useEffect(() => {
+    if (!cl8ySpendBounds) {
+      return;
+    }
+    const { minS, maxS } = cl8ySpendBounds;
+    setSpendWei((prev) => {
+      if (prev === 0n || prev < minS || prev > maxS) {
+        return clampBigint(minS + (maxS - minS) / 2n, minS, maxS);
+      }
+      return clampBigint(prev, minS, maxS);
+    });
+  }, [cl8ySpendBounds]);
+
+  useEffect(() => {
+    if (!cl8ySpendBounds) {
+      return;
+    }
+    const { minS, maxS } = cl8ySpendBounds;
+    const c = clampBigint(spendWei, minS, maxS);
+    setSpendInputStr(formatUnits(c, decimals));
+  }, [cl8ySpendBounds, spendWei, decimals]);
+
+  const buySizing = useMemo(() => {
+    if (
+      !cl8ySpendBounds ||
+      pricePerCharmR?.status !== "success" ||
+      charmBoundsR?.status !== "success"
+    ) {
+      return null;
+    }
+    const price = pricePerCharmR.result as bigint;
+    const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
+    const { minS, maxS } = cl8ySpendBounds;
+    const sw = clampBigint(spendWei, minS, maxS);
+    try {
+      return finalizeCharmSpendForBuy(sw, price, minC, maxC);
+    } catch {
+      return null;
+    }
+  }, [cl8ySpendBounds, pricePerCharmR, charmBoundsR, spendWei]);
+
+  const charmWadSelected = buySizing?.charmWad;
+  const estimatedSpend = buySizing?.spendWei;
+
+  const spendSliderPermille = useMemo(() => {
+    if (!cl8ySpendBounds) {
+      return 0;
+    }
+    const { minS, maxS } = cl8ySpendBounds;
+    const span = maxS - minS;
+    if (span <= 0n) {
+      return 0;
+    }
+    const sw = clampBigint(spendWei, minS, maxS);
+    return Number(((sw - minS) * 10000n) / span);
+  }, [cl8ySpendBounds, spendWei]);
+
+  const onCl8ySpendSlider = useCallback(
+    (permille: number) => {
+      if (!cl8ySpendBounds) {
+        return;
+      }
+      const { minS, maxS } = cl8ySpendBounds;
+      const p = clampBigint(BigInt(Math.round(permille)), 0n, 10000n);
+      const spend = minS + ((maxS - minS) * p) / 10000n;
+      setSpendWei(spend);
+      setSpendInputStr(formatUnits(spend, decimals));
+    },
+    [cl8ySpendBounds, decimals],
+  );
+
+  const onCl8ySpendInputBlur = useCallback(() => {
+    if (!cl8ySpendBounds) {
+      return;
+    }
+    const { minS, maxS } = cl8ySpendBounds;
+    try {
+      const raw = spendInputStr.trim() === "" ? "0" : spendInputStr.trim();
+      const p = parseUnits(raw, decimals);
+      const c = clampBigint(p, minS, maxS);
+      setSpendWei(c);
+      setSpendInputStr(formatUnits(c, decimals));
+    } catch {
+      setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+    }
+  }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
+
+  const chainNowForCooldown =
+    heroChainNowSec !== undefined ? heroChainNowSec : Math.floor(blockChainSec);
+
+  const walletCooldownRemainingSec = useMemo(() => {
+    if (!saleActive || !isConnected || nextBuyAllowedAtR?.status !== "success") {
+      return 0;
+    }
+    const nextAllowed = BigInt(nextBuyAllowedAtR.result as bigint);
+    if (nextAllowed <= 0n) {
+      return 0;
+    }
+    return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
+  }, [saleActive, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
 
   const timerExtensionPreview =
     saleActive &&
@@ -1248,14 +1380,25 @@ export function TimeCurvePage() {
     if (gasBuyIssue) {
       return gasBuyIssue;
     }
-    if (charmBoundsR?.status === "success") {
+    if (walletCooldownRemainingSec > 0) {
+      return `Wallet buy cooldown: ${formatCountdown(walletCooldownRemainingSec)} left (onchain pacing; timer uses the same wall-vs-chain skew as the hero countdown).`;
+    }
+    if (charmBoundsR?.status === "success" && charmWadSelected !== undefined) {
       const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
       if (charmWadSelected < minC || charmWadSelected > maxC) {
         return "This selection drifted outside the live onchain CHARM band. Refresh or choose another size.";
       }
     }
     return "Pre-sign preview looks healthy. Wallet confirmation is still the final source of truth.";
-  }, [isConnected, saleEnded, saleActive, gasBuyIssue, charmBoundsR, charmWadSelected]);
+  }, [
+    isConnected,
+    saleEnded,
+    saleActive,
+    gasBuyIssue,
+    charmBoundsR,
+    charmWadSelected,
+    walletCooldownRemainingSec,
+  ]);
 
   const viewerBattlePoints =
     battlePtsR?.status === "success" ? (battlePtsR.result as bigint) : undefined;
@@ -1388,8 +1531,8 @@ export function TimeCurvePage() {
       setGasBuyIssue(null);
       return;
     }
-    const cw = BigInt(charmCount) * WAD;
-    if (cw <= 0n) {
+    const cw = charmWadSelected;
+    if (cw === undefined || cw <= 0n) {
       setGasBuy(undefined);
       setGasBuyIssue(null);
       return;
@@ -1428,7 +1571,7 @@ export function TimeCurvePage() {
     address,
     tc,
     saleActive,
-    charmCount,
+    charmWadSelected,
     useReferral,
     referralRegistryOn,
     pendingRef,
@@ -1575,7 +1718,15 @@ export function TimeCurvePage() {
       setBuyErr("Connect a wallet and ensure contract reads succeeded.");
       return;
     }
-    const cw = BigInt(charmCount) * WAD;
+    if (walletCooldownRemainingSec > 0) {
+      setBuyErr("TimeCurve: buy cooldown");
+      return;
+    }
+    const cw = charmWadSelected;
+    if (cw === undefined || cw <= 0n) {
+      setBuyErr("Choose a CL8Y amount inside the live min–max band (and your balance).");
+      return;
+    }
     if (charmBoundsR?.status !== "success") {
       setBuyErr("Waiting for onchain CHARM bounds.");
       return;
@@ -1583,7 +1734,7 @@ export function TimeCurvePage() {
     const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
     if (cw < minC || cw > maxC) {
       setBuyErr(
-        "Selected charm count is outside the onchain band for this moment (envelope moved). Refresh reads or pick another size.",
+        "Selected size is outside the onchain CHARM band for this moment (envelope moved). Refresh reads or adjust CL8Y.",
       );
       return;
     }
@@ -1641,7 +1792,7 @@ export function TimeCurvePage() {
     address,
     tc,
     tokenAddr,
-    charmCount,
+    charmWadSelected,
     charmBoundsR,
     estimatedSpend,
     useReferral,
@@ -1649,6 +1800,7 @@ export function TimeCurvePage() {
     pendingRef,
     writeContractAsync,
     refetchAll,
+    walletCooldownRemainingSec,
   ]);
 
   async function ensureTcAllowance(need: bigint) {
@@ -1890,6 +2042,17 @@ export function TimeCurvePage() {
             <div className="timer-hero__countdown" aria-live="polite">
               {secondsRemaining !== undefined ? formatCountdown(secondsRemaining) : "—"}
             </div>
+            {saleActive && isConnected && walletCooldownRemainingSec > 0 && (
+              <div className="timer-hero__wallet-cooldown" aria-live="polite">
+                Wallet buy cooldown: <strong>{formatCountdown(walletCooldownRemainingSec)}</strong>
+                {buyCooldownSecR?.status === "success" ? (
+                  <span className="muted">
+                    {" "}
+                    ({formatLocaleInteger(Number(buyCooldownSecR.result as bigint))}s onchain window)
+                  </span>
+                ) : null}
+              </div>
+            )}
             {saleActive && tc && (
               <div
                 className="timer-hero__subtext timer-hero__subtext--deadline-read"
@@ -2054,15 +2217,21 @@ export function TimeCurvePage() {
                       "—"
                     )
                   }
-                  meta="Gross reserve spend for the selected charm count"
+                  meta="Gross CL8Y spend after live CHARM band clamp"
                 />
                 <StatCard
                   label="Charm weight"
-                  value={`${charmCount} charm${charmCount === 1 ? "" : "s"}`}
+                  value={
+                    charmWadSelected !== undefined ? (
+                      <AmountDisplay raw={charmWadSelected.toString()} decimals={18} />
+                    ) : (
+                      "—"
+                    )
+                  }
                   meta={
                     referralRegistryOn && pendingRef && useReferral
                       ? `Referral active: ${normalizeReferralCode(pendingRef)}`
-                      : "Whole charms only in this UI"
+                      : "Onchain CHARM amount (18-dec WAD)"
                   }
                 />
                 <StatCard
@@ -2108,21 +2277,49 @@ export function TimeCurvePage() {
                   </div>
                 </div>
               )}
-              <label className="form-label">
-                Charms (1-10 whole units)
-                <input
-                  type="range"
-                  className="form-input"
-                  min={1}
-                  max={10}
-                  step={1}
-                  value={charmCount}
-                  onChange={(e) => setCharmCount(Number(e.target.value))}
-                />
-                <span className="muted">
-                  {charmCount} charm{charmCount === 1 ? "" : "s"} selected
-                </span>
-              </label>
+              <div className="timecurve-cl8y-buy-controls">
+                <div className="timecurve-cl8y-buy-controls__balance muted">
+                  Your CL8Y balance:{" "}
+                  {walletCl8yBal !== undefined ? (
+                    <AmountDisplay raw={BigInt(walletCl8yBal as bigint).toString()} decimals={decimals} />
+                  ) : (
+                    "—"
+                  )}
+                </div>
+                {cl8ySpendBounds ? (
+                  <label className="form-label">
+                    CL8Y spend (live min–max band, capped by balance)
+                    <input
+                      type="range"
+                      className="form-input"
+                      min={0}
+                      max={10000}
+                      step={1}
+                      value={spendSliderPermille}
+                      onChange={(e) => onCl8ySpendSlider(Number(e.target.value))}
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="form-input"
+                      autoComplete="off"
+                      value={spendInputStr}
+                      onChange={(e) => setSpendInputStr(e.target.value)}
+                      onBlur={onCl8ySpendInputBlur}
+                      aria-label="CL8Y spend amount"
+                    />
+                    <span className="muted">
+                      Allowed band{" "}
+                      <AmountDisplay raw={cl8ySpendBounds.minS.toString()} decimals={decimals} /> —{" "}
+                      <AmountDisplay raw={cl8ySpendBounds.maxS.toString()} decimals={decimals} />
+                    </span>
+                  </label>
+                ) : (
+                  <StatusMessage variant="muted">
+                    Waiting for onchain min/max spend reads and wallet CL8Y balance…
+                  </StatusMessage>
+                )}
+              </div>
               {referralRegistryOn && pendingRef && (
                 <label className="form-label">
                   <input
@@ -2143,11 +2340,21 @@ export function TimeCurvePage() {
                 <motion.button
                   type="button"
                   className="btn-primary btn-primary--priority"
-                  disabled={isWriting}
+                  disabled={
+                    isWriting ||
+                    walletCooldownRemainingSec > 0 ||
+                    charmWadSelected === undefined ||
+                    charmWadSelected <= 0n ||
+                    !cl8ySpendBounds
+                  }
                   onClick={handleBuy}
                   {...primaryButtonMotion}
                 >
-                  {isWriting ? "Confirm in wallet..." : "Approve (if needed) and buy"}
+                  {isWriting
+                    ? "Confirm in wallet..."
+                    : walletCooldownRemainingSec > 0
+                      ? `Buy on cooldown (${formatCountdown(walletCooldownRemainingSec)})`
+                      : "Approve (if needed) and buy"}
                 </motion.button>
               </p>
               {gasBuy !== undefined && (

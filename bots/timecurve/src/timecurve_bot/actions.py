@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any, Optional
 
 from eth_account import Account
@@ -54,6 +55,22 @@ def _build_and_send(
     return rc["transactionHash"].hex()
 
 
+def _wait_until_buy_allowed(w3: Web3, tc: Contract, account: LocalAccount) -> None:
+    """Sleep until `block.timestamp >= nextBuyAllowedAt(sender)` so swarm buys do not spam reverts."""
+    allowed_at = int(tc.functions.nextBuyAllowedAt(account.address).call())
+    if allowed_at <= 0:
+        return
+    while True:
+        head_ts = int(w3.eth.get_block("latest")["timestamp"])
+        if head_ts >= allowed_at:
+            return
+        delay = min(15.0, max(0.5, float(allowed_at - head_ts)))
+        time.sleep(delay)
+        allowed_at = int(tc.functions.nextBuyAllowedAt(account.address).call())
+        if allowed_at <= 0:
+            return
+
+
 def approve_if_needed(
     w3: Web3,
     asset: Contract,
@@ -81,6 +98,7 @@ def buy(
     gas_multiplier: float,
     send: bool,
 ) -> Optional[str]:
+    _wait_until_buy_allowed(w3, tc, account)
     fn = tc.functions.buy(charm_wad)
     tx = fn.build_transaction(_tx_template(w3, account))
     return _build_and_send(w3, account, tx, gas_multiplier, send, f"buy({charm_wad})")
