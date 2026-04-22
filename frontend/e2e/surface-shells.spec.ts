@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from "@playwright/test";
+import { detectLaunchState } from "./launchState";
 
 test("placeholder and third-party routes use the shared branded shell", async ({ page }) => {
+  const state = await detectLaunchState(page);
+  test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
+
   await page.goto("/rabbit-treasury");
   await expect(page.getByRole("heading", { name: "Rabbit Treasury", level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "Open TimeCurve" })).toBeVisible();

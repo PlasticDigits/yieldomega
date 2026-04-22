@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   derivePhase,
   phaseBadge,
+  phaseFlags,
   phaseNarrative,
   type DerivePhaseInput,
+  type SaleSessionPhase,
 } from "./timeCurveSimplePhase";
 
 const BASE: DerivePhaseInput = {
@@ -46,6 +48,40 @@ describe("derivePhase (TimeCurve simple view state machine)", () => {
 
   it("'saleActive' when deadlineSec is unknown but sale started", () => {
     expect(derivePhase({ ...BASE, deadlineSec: undefined })).toBe("saleActive");
+  });
+});
+
+describe("phaseFlags (Arena ↔ Simple invariant — issue #40 follow-up)", () => {
+  const PHASES: readonly SaleSessionPhase[] = [
+    "loading",
+    "saleStartPending",
+    "saleActive",
+    "saleExpiredAwaitingEnd",
+    "saleEnded",
+  ];
+
+  it("returns at most one true flag per phase (mutually exclusive)", () => {
+    for (const phase of PHASES) {
+      const flags = phaseFlags(phase);
+      const trueCount = Object.values(flags).filter(Boolean).length;
+      expect(trueCount, `phase=${phase}`).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("loading collapses every flag to false (no UX branch can render)", () => {
+    expect(phaseFlags("loading")).toEqual({
+      saleActive: false,
+      saleEnded: false,
+      saleStartPending: false,
+      timerExpiredAwaitingEnd: false,
+    });
+  });
+
+  it("each non-loading phase lights exactly one flag (Arena UX branches stay total)", () => {
+    expect(phaseFlags("saleStartPending").saleStartPending).toBe(true);
+    expect(phaseFlags("saleActive").saleActive).toBe(true);
+    expect(phaseFlags("saleExpiredAwaitingEnd").timerExpiredAwaitingEnd).toBe(true);
+    expect(phaseFlags("saleEnded").saleEnded).toBe(true);
   });
 });
 

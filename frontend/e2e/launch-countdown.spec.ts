@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from "@playwright/test";
+import { detectLaunchState } from "./launchState";
 
 /**
  * The launch gate is decided at build time via `VITE_LAUNCH_TIMESTAMP` (Vite inlines `import.meta.env`).
@@ -10,20 +11,6 @@ import { expect, test } from "@playwright/test";
  * - Build with `VITE_LAUNCH_TIMESTAMP` in the future: every route locks behind the countdown screen.
  * - Build with `VITE_LAUNCH_TIMESTAMP` in the past: root renders TimeCurve, `/home` renders HomePage.
  */
-
-async function detectLaunchState(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  const countdown = page.getByTestId("launch-countdown");
-  if (await countdown.isVisible().catch(() => false)) return "countdown" as const;
-
-  const heading = await page
-    .getByRole("heading", { level: 1 })
-    .first()
-    .textContent()
-    .catch(() => null);
-  if (heading && /timecurve/i.test(heading)) return "post-launch" as const;
-  return "no-env" as const;
-}
 
 test("countdown gate locks every route when VITE_LAUNCH_TIMESTAMP is in the future", async ({ page }) => {
   const state = await detectLaunchState(page);
