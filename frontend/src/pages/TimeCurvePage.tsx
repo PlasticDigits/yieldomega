@@ -23,7 +23,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { formatLocaleInteger } from "@/lib/formatAmount";
+import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import {
   erc20Abi,
@@ -690,6 +690,15 @@ export function TimeCurvePage() {
   const referralRegistryOn =
     refRegAddr?.status === "success" &&
     (refRegAddr.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
+
+  const { data: referralEachBps } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "REFERRAL_EACH_BPS",
+    query: { enabled: Boolean(tc) },
+  });
+  const referralEachSideLabel =
+    referralEachBps !== undefined ? formatBpsAsPercent(Number(referralEachBps)) : "5.00%";
 
   const feeRouterAddr =
     feeRouterR?.status === "success" ? (feeRouterR.result as `0x${string}`) : undefined;
@@ -1364,7 +1373,9 @@ export function TimeCurvePage() {
       items.push("You are inside the hard-reset band, so this buy can drag the timer back toward 15 minutes.");
     }
     if (referralRegistryOn && pendingRef && useReferral) {
-      items.push(`Referral ${normalizeReferralCode(pendingRef)} gives both sides a 10% CHARM bonus if the buy lands.`);
+      items.push(
+        `Referral ${normalizeReferralCode(pendingRef)} gives both sides a ${referralEachSideLabel} CHARM weight bonus (buyer + referrer) if the buy lands.`,
+      );
     }
     if (warbowPlacementGap !== null) {
       items.push(`You are ${formatLocaleInteger(warbowPlacementGap)} BP from visible WarBow placement.`);
@@ -1379,6 +1390,7 @@ export function TimeCurvePage() {
     referralRegistryOn,
     pendingRef,
     useReferral,
+    referralEachSideLabel,
     warbowPlacementGap,
     warbowRank,
   ]);
@@ -2352,7 +2364,8 @@ export function TimeCurvePage() {
               )}
               {referralRegistryOn && !pendingRef && (
                 <StatusMessage variant="muted">
-                  Open a referral link with <code>?ref=CODE</code> to enable the 10% each-side CHARM bonus.
+                  Open a referral link with <code>?ref=CODE</code> to enable the {referralEachSideLabel} per-side
+                  CHARM weight bonus.
                 </StatusMessage>
               )}
               <p>
