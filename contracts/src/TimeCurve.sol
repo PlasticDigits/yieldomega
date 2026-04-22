@@ -73,7 +73,7 @@ contract TimeCurve is ReentrancyGuard {
     uint256 public constant SECONDS_PER_DAY = 86_400;
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
-    uint16 public constant REFERRAL_EACH_BPS = 1000;
+    uint16 public constant REFERRAL_EACH_BPS = 500; // 5% each to referrer + buyer (CHARM weight)
 
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 

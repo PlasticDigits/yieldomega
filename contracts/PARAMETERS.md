@@ -38,7 +38,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
-| Referral CHARM | `10%` referrer + `10%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | Fixed in `TimeCurve` bps constants | Default |
+| Referral CHARM | `5%` referrer + `5%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | `REFERRAL_EACH_BPS` (500) in `TimeCurve` | Default |
 
 ## Referral registry
 

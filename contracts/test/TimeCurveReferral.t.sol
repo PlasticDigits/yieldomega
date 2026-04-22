@@ -90,7 +90,7 @@ contract TimeCurveReferralTest is Test {
         tc.buy(charmWad, codeHash);
         vm.stopPrank();
 
-        uint256 refEach = (charmWad * 1000) / 10_000;
+        uint256 refEach = (charmWad * uint256(tc.REFERRAL_EACH_BPS())) / 10_000;
         assertEq(reserve.balanceOf(bob), bobBefore - amount, "bob pays full gross, no reserve rebate");
         assertEq(tc.charmWeight(bob), charmWad + refEach, "referee CHARM = base + bonus");
         assertEq(tc.charmWeight(alice), refEach, "referrer CHARM");
