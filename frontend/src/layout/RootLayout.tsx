@@ -2,6 +2,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useChainId, useChains } from "wagmi";
+import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
@@ -23,6 +24,7 @@ export function RootLayout() {
 
   return (
     <div className="app-shell">
+      <ReferralPathSync />
       <header className="app-header">
         <div className="app-header__brand">
           <NavLink to="/" className="brand-link">

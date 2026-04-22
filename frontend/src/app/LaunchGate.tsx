@@ -17,14 +17,13 @@ function lazyPage(
 }
 
 const HomePage = lazyPage(() => import("@/pages/HomePage"), "HomePage");
-const TimeCurvePage = lazyPage(() => import("@/pages/TimeCurvePage"), "TimeCurvePage");
 const TimeCurveSimplePage = lazyPage(
   () => import("@/pages/TimeCurveSimplePage"),
   "TimeCurveSimplePage",
 );
-const TimeCurveProtocolPage = lazyPage(
-  () => import("@/pages/TimeCurveProtocolPage"),
-  "TimeCurveProtocolPage",
+const TimeCurveBranchPage = lazyPage(
+  () => import("@/pages/TimeCurveBranchPage"),
+  "TimeCurveBranchPage",
 );
 const RabbitTreasuryPage = lazyPage(
   () => import("@/pages/RabbitTreasuryPage"),
@@ -52,9 +51,8 @@ const SECONDARY_ROUTES: Surface[] = [
  * → Simple handoff feels gentle.
  */
 const TIMECURVE_ROUTES: Surface[] = [
+  { path: "timecurve/:timecurveSegment", element: <TimeCurveBranchPage /> },
   { path: "timecurve", element: <TimeCurveSimplePage /> },
-  { path: "timecurve/arena", element: <TimeCurvePage /> },
-  { path: "timecurve/protocol", element: <TimeCurveProtocolPage /> },
 ];
 
 const ROUTES_NO_ENV: Surface[] = [

@@ -84,6 +84,7 @@ export const timeCurveWriteAbi = parseAbi([
 
 export const referralRegistryReadAbi = parseAbi([
   "function cl8yToken() view returns (address)",
+  "function ownerCode(address owner) view returns (bytes32)",
   "function hashCode(string code) view returns (bytes32)",
   "function ownerOfCode(bytes32 codeHash) view returns (address)",
   "function registrationBurnAmount() view returns (uint256)",
