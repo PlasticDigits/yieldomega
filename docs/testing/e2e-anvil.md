@@ -43,6 +43,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_FEE_ROUTER_ADDRESS` | Same — required for **fee sink / FeeRouter** UI (`FeeTransparency`) |
 | `VITE_REFERRAL_REGISTRY_ADDRESS` | Same — referral flows that read the registry |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
+| `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Set by `scripts/e2e-anvil.sh` after `DeployKumbayaAnvilFixtures` (issue #41); see [local-swap-testing.md](local-swap-testing.md). |
 
 **Full-stack manual QA (TimeCurve + indexer panels + fee sinks):** set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack.
 

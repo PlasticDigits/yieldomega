@@ -26,7 +26,10 @@ test.describe("Anvil wallet writes", () => {
     "Set ANVIL_E2E=1 and build with scripts/e2e-anvil.sh (includes VITE_E2E_MOCK_WALLET=1).",
   );
 
-  test("TimeCurve approve and buy", async ({ page }) => {
+  // Same Anvil chain + account; avoid parallel buys racing nonces / sale state.
+  test.describe.configure({ mode: "serial" });
+
+  test("TimeCurve approve and buy (CL8Y)", async ({ page }) => {
     await page.goto("/timecurve");
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: 120_000,
@@ -36,7 +39,7 @@ test.describe("Anvil wallet writes", () => {
       timeout: 60_000,
     });
 
-    const buyPanel = page.locator(".data-panel").filter({ hasText: "Buy charms" });
+    const buyPanel = page.locator(".data-panel").filter({ hasText: /Buy CHARM/i });
     await expect(buyPanel.getByRole("button", { name: /buy/i })).toBeVisible({
       timeout: 60_000,
     });
@@ -52,4 +55,28 @@ test.describe("Anvil wallet writes", () => {
     });
   });
 
+  test("TimeCurve ETH route: quote, swap, and buy", async ({ page }) => {
+    await page.goto("/timecurve");
+    await expect(page.getByText("Loading contract reads…")).toBeHidden({
+      timeout: 120_000,
+    });
+    await connectMockIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
+    await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
+      timeout: 60_000,
+    });
+
+    const buyPanel = page.locator(".data-panel").filter({ hasText: /Buy CHARM/i });
+    await buyPanel.locator('input[name="timecurve-pay-with"][value="eth"]').click();
+    await expect(buyPanel.getByText("Quote: spend")).toBeVisible({ timeout: 120_000 });
+    await buyPanel.locator('input[type="range"]').evaluate((input) => {
+      const el = input as HTMLInputElement;
+      el.value = "1";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await buyPanel.getByRole("button", { name: /buy/i }).click();
+    await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
+      timeout: 180_000,
+    });
+  });
 });
