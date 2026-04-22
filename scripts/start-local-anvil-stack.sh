@@ -204,6 +204,19 @@ VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 VITE_INDEXER_URL=http://127.0.0.1:${INDEXER_PORT}
 EOF
 
+# Optional: schedule the LaunchCountdownPage → TimeCurveSimplePage handoff (issue #40).
+# Set LAUNCH_OFFSET_SEC=N to make the launch fire N seconds from "now". Use small
+# values (e.g. 60–120) to watch the countdown gate flip on the local frontend.
+if [[ -n "${LAUNCH_OFFSET_SEC:-}" ]]; then
+  if ! [[ "${LAUNCH_OFFSET_SEC}" =~ ^-?[0-9]+$ ]]; then
+    die "LAUNCH_OFFSET_SEC must be an integer (got: '${LAUNCH_OFFSET_SEC}')."
+  fi
+  NOW_SEC="$(date +%s)"
+  LAUNCH_TS=$((NOW_SEC + LAUNCH_OFFSET_SEC))
+  echo "VITE_LAUNCH_TIMESTAMP=${LAUNCH_TS}" >> "${FRONTEND}/.env.local"
+  echo "  LaunchCountdownPage will hand off in ${LAUNCH_OFFSET_SEC}s (VITE_LAUNCH_TIMESTAMP=${LAUNCH_TS})."
+fi
+
 echo ""
 echo "Stack is up."
 echo "  RPC:        ${RPC_URL}"

@@ -26,6 +26,7 @@ export const timeCurveReadAbi = parseAbi([
   "function initialTimerSec() view returns (uint256)",
   "function timerCapSec() view returns (uint256)",
   "function totalTokensForSale() view returns (uint256)",
+  "function launchedToken() view returns (address)",
   "function feeRouter() view returns (address)",
   "function podiumPool() view returns (address)",
   "function totalCharmWeight() view returns (uint256)",

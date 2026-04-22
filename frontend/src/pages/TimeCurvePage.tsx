@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatUnits, isAddress, maxUint256, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
@@ -51,6 +52,7 @@ import {
   describeTimerPreview,
 } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
+import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
@@ -877,7 +879,7 @@ export function TimeCurvePage() {
     if (minBuy?.status !== "success" || maxBuy?.status !== "success") {
       return null;
     }
-    let minS = minBuy.result as bigint;
+    const minS = minBuy.result as bigint;
     let maxS = maxBuy.result as bigint;
     if (walletCl8yBal !== undefined) {
       const b = BigInt(walletCl8yBal as bigint);
@@ -1924,8 +1926,9 @@ export function TimeCurvePage() {
   if (!tc) {
     return (
       <section className="page page--timecurve">
+        <TimeCurveSubnav active="arena" />
         <PageHero
-          title="TimeCurve"
+          title="TimeCurve · Arena"
           badgeLabel="Config needed"
           badgeTone="warning"
           lede={
@@ -1961,14 +1964,16 @@ export function TimeCurvePage() {
 
   return (
     <section className="page page--timecurve">
+      <TimeCurveSubnav active="arena" />
       <PageHero
-        title="TimeCurve"
+        title="TimeCurve · Arena"
         badgeLabel={stateBadgeLabel}
         badgeTone={stateBadgeTone}
         lede={
           <>
-            Every buy can move the clock, the four reserve podiums (including <strong>WarBow</strong> placement), and Battle Points. When the
-            timer dies, the page flips from chase mode into redemption and settlement.
+            Advanced PvP surface — <strong>WarBow</strong> steals, defended streaks, the four
+            reserve podiums, and the live battle feed. New here? Start on{" "}
+            <Link to="/timecurve">Simple</Link> first.
           </>
         }
         mascot={{
