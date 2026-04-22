@@ -1,0 +1,8 @@
+{
+  "_comment": "Example registry after DeployKumbayaAnvilFixtures on Anvil — replace 0x… with forge log output; not committed as canonical.",
+  "chainId": 31337,
+  "AnvilWETH9": "0x0000000000000000000000000000000000000001",
+  "AnvilMockUSDM": "0x0000000000000000000000000000000000000002",
+  "AnvilKumbayaRouter": "0x0000000000000000000000000000000000000003",
+  "note": "VITE_KUMBAYA_QUOTER equals AnvilKumbayaRouter for the fixture."
+}

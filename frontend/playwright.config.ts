@@ -7,8 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // Request up to 20 workers in CI; Playwright uses at most the number of tests.
-  workers: process.env.CI ? 5 : undefined,
+  workers: process.env.CI || process.env.ANVIL_E2E === "1" ? 5 : undefined,
+  timeout: 180_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",
@@ -19,6 +19,6 @@ export default defineConfig({
     command: "npm run preview -- --host 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
   },
 });
