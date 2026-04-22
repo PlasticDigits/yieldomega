@@ -54,10 +54,13 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 - [ ] **C1** — Timer countdown and urgency styling.
 - [ ] **C2** — CHARM bounds and price display consistent with contract reads.
-- [ ] **C3** — Podium / leaderboard panels for **four** reserve categories.
-- [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired).
+- [ ] **C3** — Podium / leaderboard panels for **four** reserve categories — verify on **`/timecurve/arena`**.
+- [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired) — verify on **`/timecurve/arena`**.
 - [ ] **C5** — Fee sink display matches deployment **FeeRouter**; cross-check `FeeRouter` on chain if labels drift.
 - [ ] **C6** — Redeem path after sale end (when stack uses ended state).
+- [ ] **C7** — `/timecurve` lands on the **Simple** view: state badge + hero countdown + single buy card + ticker + "Want more?" tiles are visible **above the fold**, while WarBow / podiums / battle feed / raw accordion are **not** visible (they live on Arena / Protocol). Mobile (390×844) layout collapses cleanly. See [`docs/frontend/timecurve-views.md`](../frontend/timecurve-views.md).
+- [ ] **C8** — Sub-nav (`TimeCurveSubnav`) routes correctly between `/timecurve` (Simple), `/timecurve/arena` (PvP / podiums / battle feed), and `/timecurve/protocol` (raw `TimeCurve` / `LinearCharmPrice` / `FeeRouter` reads). The active tab gets `aria-current="page"`. Direct deep links to each route render the right page on a hard refresh.
+- [ ] **C9** — Launch-countdown handoff: relaunch the stack with `LAUNCH_OFFSET_SEC=90 bash scripts/start-local-anvil-stack.sh START_BOT_SWARM=1`, restart Vite, and confirm `LaunchCountdownPage` renders during the offset window and **flips into `TimeCurveSimplePage`** (not the dense Arena view) when the countdown hits zero. Buy CTA becomes interactive immediately after the flip.
 
 ---
 

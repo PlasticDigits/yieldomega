@@ -18,6 +18,14 @@ function lazyPage(
 
 const HomePage = lazyPage(() => import("@/pages/HomePage"), "HomePage");
 const TimeCurvePage = lazyPage(() => import("@/pages/TimeCurvePage"), "TimeCurvePage");
+const TimeCurveSimplePage = lazyPage(
+  () => import("@/pages/TimeCurveSimplePage"),
+  "TimeCurveSimplePage",
+);
+const TimeCurveProtocolPage = lazyPage(
+  () => import("@/pages/TimeCurveProtocolPage"),
+  "TimeCurveProtocolPage",
+);
 const RabbitTreasuryPage = lazyPage(
   () => import("@/pages/RabbitTreasuryPage"),
   "RabbitTreasuryPage",
@@ -37,16 +45,28 @@ const SECONDARY_ROUTES: Surface[] = [
   { path: "sir", element: <SirPage /> },
 ];
 
+/**
+ * `/timecurve` lands on the simple, first-run view (issue #40). Advanced PvP
+ * lives at `/timecurve/arena`; raw onchain reads at `/timecurve/protocol`.
+ * The post-launch index also lands on the simple view so the LaunchCountdown
+ * → Simple handoff feels gentle.
+ */
+const TIMECURVE_ROUTES: Surface[] = [
+  { path: "timecurve", element: <TimeCurveSimplePage /> },
+  { path: "timecurve/arena", element: <TimeCurvePage /> },
+  { path: "timecurve/protocol", element: <TimeCurveProtocolPage /> },
+];
+
 const ROUTES_NO_ENV: Surface[] = [
   { path: undefined, element: <HomePage /> },
-  { path: "timecurve", element: <TimeCurvePage /> },
+  ...TIMECURVE_ROUTES,
   ...SECONDARY_ROUTES,
 ];
 
 const ROUTES_POST_LAUNCH: Surface[] = [
-  { path: undefined, element: <TimeCurvePage /> },
+  { path: undefined, element: <TimeCurveSimplePage /> },
   { path: "home", element: <HomePage /> },
-  { path: "timecurve", element: <TimeCurvePage /> },
+  ...TIMECURVE_ROUTES,
   ...SECONDARY_ROUTES,
 ];
 

@@ -8,7 +8,20 @@
 
 ## Pages (illustrative)
 
-- **TimeCurve** — live timer, min buy curve, buy flow, **three** reserve **podium** leaderboards, and **WarBow Ladder** (Battle Points + PvP actions: steal, guard, revenge, flag claim). Use **indexer** for history / battle feed and **RPC** for authoritative live views (`battlePoints`, `warbowPendingFlagOwner`, `warbowGuardUntil`, revenge pointers, steals-per-day reads).
+- **TimeCurve** — three-route surface sharing one sub-nav (`<TimeCurveSubnav />`):
+  - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown, single
+    focal **buy CHARM** card, last-3 activity ticker, and "Want more?" tiles into
+    Arena / Protocol. Renders through `TimeCurveSimplePage` + `useTimeCurveSaleSession`
+    so the buy/redeem path stays a single source of truth.
+  - **`/timecurve/arena`** — existing dense PvP surface (WarBow Ladder, four reserve
+    podiums, full battle feed, raw data accordion) for power users. **No game-rule
+    changes vs the previous `/timecurve`.**
+  - **`/timecurve/protocol`** — read-only operator view of `TimeCurve`,
+    `LinearCharmPrice`, and `FeeRouter` reads (sale state, immutable parameters,
+    sink configuration). No write surface.
+  - See [`docs/frontend/timecurve-views.md`](./timecurve-views.md) for the
+    layout contract, single-source-of-truth invariants, and the
+    LaunchCountdown → Simple handoff.
 - **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
 - **Collection** — Leprechaun NFT gallery, set progress, trait filters for humans and agents.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
