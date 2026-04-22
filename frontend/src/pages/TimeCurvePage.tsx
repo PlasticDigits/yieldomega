@@ -53,6 +53,11 @@ import {
 } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import {
+  derivePhase,
+  phaseFlags,
+  type SaleSessionPhase,
+} from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
@@ -777,12 +782,30 @@ export function TimeCurvePage() {
 
   const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
 
-  const saleActive =
-    !isPending &&
-    saleStart?.status === "success" &&
-    (saleStart.result as bigint) > 0n &&
-    ended?.status === "success" &&
-    ended.result === false;
+  const arenaSaleStartSec =
+    saleStart?.status === "success" ? Number(saleStart.result as bigint) : undefined;
+  const arenaEnded =
+    ended?.status === "success" ? (ended.result as boolean) : undefined;
+  const arenaDeadlineSec =
+    deadline?.status === "success" ? Number(deadline.result as bigint) : undefined;
+  const arenaPhase: SaleSessionPhase = useMemo(
+    () =>
+      derivePhase({
+        hasCoreData: Boolean(coreTcData && coreTcData.length > 0),
+        ended: arenaEnded,
+        saleStartSec: arenaSaleStartSec,
+        deadlineSec: arenaDeadlineSec,
+        ledgerSecInt,
+      }),
+    [coreTcData, arenaEnded, arenaSaleStartSec, arenaDeadlineSec, ledgerSecInt],
+  );
+
+  // Mutually-exclusive flags derived from `arenaPhase` — the Arena view shares
+  // the Simple view's state machine so both pages cannot disagree about which
+  // UX branch is live (issue #40 invariant; see
+  // `docs/frontend/timecurve-views.md`).
+  const arenaFlags = useMemo(() => phaseFlags(arenaPhase), [arenaPhase]);
+  const saleActive = arenaFlags.saleActive;
 
   const flagOwnerAddr =
     warbowFlagOwnerR?.status === "success"
@@ -1007,16 +1030,7 @@ export function TimeCurvePage() {
           ),
         )
       : undefined;
-  const saleEnded = ended?.status === "success" && ended.result === true;
-  const saleStartPending =
-    saleStart?.status === "success" && BigInt(ledgerSecInt) < (saleStart.result as bigint);
-  const timerExpiredAwaitingEnd =
-    !saleActive &&
-    !saleEnded &&
-    saleStart?.status === "success" &&
-    (saleStart.result as bigint) > 0n &&
-    deadlineSec !== undefined &&
-    blockChainSec >= deadlineSec;
+  const { saleEnded, saleStartPending, timerExpiredAwaitingEnd } = arenaFlags;
   const stateBadgeLabel = saleActive
     ? "Sale live"
     : saleEnded
