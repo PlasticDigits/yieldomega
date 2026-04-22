@@ -16,6 +16,14 @@ interface ImportMetaEnv {
   readonly VITE_E2E_MOCK_WALLET: string;
   /** Optional: third-party Kumbaya DEX (e.g. pool page on external AMM). */
   readonly VITE_KUMBAYA_DEX_URL?: string;
+  /** Kumbaya v3–compatible router (issue #41); required for ETH/USDM entry on this chain. */
+  readonly VITE_KUMBAYA_SWAP_ROUTER?: string;
+  /** Same contract as router on Anvil fixture, or protocol QuoterV2 on prod. */
+  readonly VITE_KUMBAYA_QUOTER?: string;
+  readonly VITE_KUMBAYA_WETH?: string;
+  readonly VITE_KUMBAYA_USDM?: string;
+  readonly VITE_KUMBAYA_FEE_CL8Y_WETH?: string;
+  readonly VITE_KUMBAYA_FEE_USDM_WETH?: string;
   /** Optional: third-party Sir levs DEX. */
   readonly VITE_SIR_DEX_URL?: string;
 }

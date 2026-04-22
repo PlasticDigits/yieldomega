@@ -18,10 +18,11 @@ test.describe("Anvil TimeCurve RPC reads", () => {
     "Set ANVIL_E2E=1 and build with VITE_* from an Anvil deploy (bash scripts/e2e-anvil.sh).",
   );
 
-  test("TimeCurve page shows onchain panel without read errors", async ({
+  test("Arena TimeCurve page shows onchain panel without read errors", async ({
     page,
   }) => {
-    await page.goto("/timecurve");
+    // Protocol accordion with onchain snapshot lives on Arena; `/timecurve` is the simple buy view.
+    await page.goto("/timecurve/arena");
 
     await expect(
       page.getByText("Set VITE_TIMECURVE_ADDRESS", { exact: false }),
@@ -46,8 +47,9 @@ test.describe("Anvil TimeCurve RPC reads", () => {
     await expect(page.locator('dt:text-is("ended") + dd')).toHaveText(
       /^(true|false)$/,
     );
-    await expect(
-      page.locator('dt:text-is("seconds remaining") + dd'),
-    ).not.toHaveText("—");
+    // `seconds remaining` in the Arena snapshot is driven by the indexer timer; Anvil E2E has no indexer.
+    await expect(page.locator('dt:text-is("deadline") + dd')).not.toHaveText("—", {
+      timeout: 60_000,
+    });
   });
 });

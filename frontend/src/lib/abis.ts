@@ -120,6 +120,28 @@ export const erc20Abi = parseAbi([
   "function decimals() view returns (uint8)",
 ]);
 
+/** WETH9-style wrap / unwrap (issue #41). */
+export const weth9Abi = parseAbi([
+  "function deposit() payable",
+  "function withdraw(uint256 wad)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+]);
+
+/**
+ * Anvil fixture + Uniswap V3 QuoterV2-style interface (`quoteExactOutput`).
+ * Returns: amountIn, sqrtPriceAfterList, initializedTicksCrossedList, gasEstimate
+ */
+export const kumbayaQuoterV2Abi = parseAbi([
+  "function quoteExactOutput(bytes path, uint256 amountOut) view returns (uint256 amountIn, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)",
+]);
+
+/** SwapRouter-compatible `exactOutput` (issue #41). */
+export const kumbayaSwapRouterAbi = parseAbi([
+  "function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) returns (uint256 amountIn)",
+]);
+
 export const leprechaunReadAbi = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
   "function totalSupply() view returns (uint256)",

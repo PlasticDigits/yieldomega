@@ -8,7 +8,8 @@
 #   - DEPLOY_LOG — path to a writable file (forge script output is teed here)
 #
 # After success, sets shell variables:
-#   TC, RT, NFT — checksummed-style hex addresses for TimeCurve, RabbitTreasury, LeprechaunNFT
+#   TC, RT, NFT — TimeCurve, RabbitTreasury, LeprechaunNFT
+#   KUMBAYA_WETH, KUMBAYA_USDM, KUMBAYA_ROUTER — issue #41 Anvil DEX fixtures (same address for router+quoter)
 #
 # Exits non-zero if forge fails or addresses cannot be parsed.
 
@@ -39,4 +40,25 @@ yieldomega_anvil_deploy_dev() {
   fi
 
   echo "Addresses: TimeCurve=${TC} RabbitTreasury=${RT} LeprechaunNFT=${NFT}"
+
+  echo "Deploying Kumbaya Anvil fixtures (issue #41)..."
+  KUMBAYA_LOG=$(mktemp)
+  forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
+    --rpc-url "${RPC}" --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
+
+  _yieldomega_extract_k() {
+    local label="$1"
+    grep "${label}" "${KUMBAYA_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
+  }
+
+  KUMBAYA_WETH=$(_yieldomega_extract_k "AnvilWETH9:")
+  KUMBAYA_USDM=$(_yieldomega_extract_k "AnvilMockUSDM:")
+  KUMBAYA_ROUTER=$(_yieldomega_extract_k "AnvilKumbayaRouter")
+  rm -f "${KUMBAYA_LOG}"
+
+  if [ -z "${KUMBAYA_WETH}" ] || [ -z "${KUMBAYA_USDM}" ] || [ -z "${KUMBAYA_ROUTER}" ]; then
+    echo "Could not parse Kumbaya fixture addresses from deploy log." >&2
+    return 1
+  fi
+  echo "Kumbaya fixtures: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER}"
 }

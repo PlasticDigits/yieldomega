@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { motion, useReducedMotion } from "motion/react";
 import { Link } from "react-router-dom";
+import { useBalance } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { TxHash } from "@/components/TxHash";
 import { PageBadge } from "@/components/ui/PageBadge";
@@ -157,12 +158,25 @@ export function TimeCurveSimplePage() {
       </div>
     );
 
+  const nonCl8yBlocked =
+    session.payWith !== "cl8y" &&
+    (session.kumbayaRoutingBlocker !== null ||
+      session.swapQuoteFailed ||
+      session.quotedPayInWei === undefined ||
+      session.swapQuoteLoading);
+
   const buyDisabled =
     session.phase !== "saleActive" ||
     session.isWriting ||
     !session.walletConnected ||
     session.walletCooldownRemainingSec > 0 ||
-    session.charmWadSelected === undefined;
+    session.charmWadSelected === undefined ||
+    nonCl8yBlocked;
+
+  const { data: nativeBal } = useBalance({
+    address: session.walletAddress,
+    query: { enabled: Boolean(session.walletAddress && session.payWith === "eth") },
+  });
 
   const buyButtonMotion = prefersReducedMotion
     ? {}
@@ -275,7 +289,7 @@ export function TimeCurveSimplePage() {
         lede={
           session.phase === "saleEnded"
             ? "The sale is over. Hit Redeem CHARM to mint your DOUB share onchain."
-            : "One CL8Y → one CHARM weight. Pick a CL8Y amount, hit Buy CHARM, and we will approve CL8Y first if needed."
+            : "Pick how you pay (CL8Y, ETH, or USDM). The sale always settles in CL8Y; ETH and USDM route through Kumbaya v3–compatible pools first."
         }
       >
         {!session.walletConnected && session.phase !== "loading" && (
@@ -287,6 +301,74 @@ export function TimeCurveSimplePage() {
 
         {session.phase === "saleActive" && session.walletConnected && (
           <>
+            <div className="timecurve-simple__paywith muted" role="group" aria-label="Pay with">
+              <span className="timecurve-simple__paywith-label">Pay with</span>
+              {(
+                [
+                  ["cl8y", "CL8Y"],
+                  ["eth", "ETH"],
+                  ["usdm", "USDM"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="timecurve-simple__paywith-option">
+                  <input
+                    type="radio"
+                    name="timecurve-pay-with"
+                    value={key}
+                    checked={session.payWith === key}
+                    onChange={() => session.setPayWith(key)}
+                  />{" "}
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="muted timecurve-simple__kumbaya-note">
+              ETH and USDM use a third-party DEX route (Kumbaya). Quotes come from the onchain
+              quoter; your wallet signs wrap/approve/swap then the usual TimeCurve buy.
+            </p>
+            {session.kumbayaRoutingBlocker && session.payWith !== "cl8y" && (
+              <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
+            )}
+            {session.payWith !== "cl8y" && session.swapQuoteLoading && (
+              <StatusMessage variant="muted">Fetching DEX quote…</StatusMessage>
+            )}
+            {session.payWith !== "cl8y" && session.swapQuoteFailed && (
+              <StatusMessage variant="error">
+                Could not quote this route (no liquidity or misconfigured pools for this chain).
+              </StatusMessage>
+            )}
+            {session.payWith !== "cl8y" && session.quotedPayInWei !== undefined && (
+              <p className="muted">
+                Quote: spend up to ≈{" "}
+                <AmountDisplay
+                  raw={String(session.quotedPayInWei)}
+                  decimals={session.payTokenDecimals}
+                />{" "}
+                {session.payWith === "eth" ? "WETH" : "USDM"} before slippage cap (
+                {(session.slippageBps / 100).toFixed(2)}% extra headroom).
+              </p>
+            )}
+            {session.payWith === "eth" && nativeBal && (
+              <p className="muted">
+                Native ETH balance:{" "}
+                <AmountDisplay raw={String(nativeBal.value)} decimals={nativeBal.decimals} />{" "}
+                {nativeBal.symbol}
+              </p>
+            )}
+            <div className="timecurve-simple__slippage muted">
+              <label>
+                Slippage (basis points, max 500){" "}
+                <input
+                  type="number"
+                  className="form-input timecurve-simple__slippage-input"
+                  min={0}
+                  max={500}
+                  step={10}
+                  value={session.slippageBps}
+                  onChange={(e) => session.setSlippageBps(Number(e.target.value))}
+                />
+              </label>
+            </div>
             <div className="timecurve-simple__balance-row">
               <PageBadge label="Wallet balance" tone="info" />
               <span>
@@ -310,8 +392,9 @@ export function TimeCurveSimplePage() {
               {session.isWriting ? "Submitting…" : "Buy CHARM"}
             </motion.button>
             <p className="muted timecurve-simple__cta-hint">
-              Approves CL8Y if needed, then submits the buy. The contract clamps your size into the
-              live <code>min – max</code> CHARM band.
+              {session.payWith === "cl8y"
+                ? "Approves CL8Y if needed, then submits the buy. The contract clamps your size into the live min–max CHARM band."
+                : "Submits a fixed CL8Y-out swap on the router (wrap + approve for ETH), then approves CL8Y for TimeCurve and buys. Several transactions in one flow."}
             </p>
             {cooldownLine && <StatusMessage variant="muted">{cooldownLine}</StatusMessage>}
             {session.referralRegistryOn && session.pendingReferralCode && (
