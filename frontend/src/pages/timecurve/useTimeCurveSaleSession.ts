@@ -14,11 +14,21 @@ import {
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   erc20Abi,
+  kumbayaQuoterV2Abi,
+  kumbayaSwapRouterAbi,
   timeCurveBuyEventAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
+  weth9Abi,
 } from "@/lib/abis";
-import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
+import { hashReferralCode } from "@/lib/referralCode";
+import {
+  type KumbayaEnv,
+  type PayWithAsset,
+  resolveKumbayaRouting,
+  routingForPayAsset,
+} from "@/lib/kumbayaRoutes";
+import { swapDeadlineUnixSec, swapMaxInputFromQuoted } from "@/lib/timeCurveKumbayaSwap";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
@@ -100,7 +110,16 @@ export type UseTimeCurveSaleSession = {
   isWriting: boolean;
   buyError: string | null;
   clearBuyError: () => void;
-  /** Submits approve (if needed) + `buy(charmWad)` — the same path used by Arena. */
+  payWith: PayWithAsset;
+  setPayWith: (p: PayWithAsset) => void;
+  slippageBps: number;
+  setSlippageBps: (n: number) => void;
+  kumbayaRoutingBlocker: string | null;
+  quotedPayInWei: bigint | undefined;
+  payTokenDecimals: number;
+  swapQuoteLoading: boolean;
+  swapQuoteFailed: boolean;
+  /** Submits optional Kumbaya `exactOutput` + approve + `buy(charmWad)` — same onchain buy as Arena. */
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
   submitRedeem: () => Promise<void>;
@@ -120,6 +139,8 @@ export function useTimeCurveSaleSession(
   const [useReferral, setUseReferral] = useState(true);
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
+  const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
+  const [slippageBps, setSlippageBps] = useState(100);
 
   useEffect(() => {
     setPendingReferralCode(getPendingReferralCode());
@@ -289,13 +310,13 @@ export function useTimeCurveSaleSession(
     }
     const minS = minBuyR.result as bigint;
     let maxS = maxBuyR.result as bigint;
-    if (walletBalanceWei !== undefined) {
+    if (payWith === "cl8y" && walletBalanceWei !== undefined) {
       const b = BigInt(walletBalanceWei);
       if (b < maxS) maxS = b;
     }
     if (minS > maxS) return null;
     return { minS, maxS };
-  }, [minBuyR, maxBuyR, walletBalanceWei]);
+  }, [minBuyR, maxBuyR, walletBalanceWei, payWith]);
 
   useEffect(() => {
     if (!cl8ySpendBounds) return;
@@ -336,6 +357,61 @@ export function useTimeCurveSaleSession(
 
   const charmWadSelected = buySizing?.charmWad;
   const estimatedSpendWei = buySizing?.spendWei;
+
+  const kumbayaResolved = useMemo(
+    () => resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv),
+    [chainId],
+  );
+
+  const swapRoute = useMemo(() => {
+    if (payWith === "cl8y" || !acceptedAsset || !kumbayaResolved.ok) return null;
+    return routingForPayAsset(payWith, acceptedAsset, kumbayaResolved.config);
+  }, [payWith, acceptedAsset, kumbayaResolved]);
+
+  const kumbayaRoutingBlocker =
+    payWith !== "cl8y" && !kumbayaResolved.ok
+      ? kumbayaResolved.message
+      : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
+        ? swapRoute.message
+        : null;
+
+  const quoteEnabled =
+    payWith !== "cl8y" &&
+    phase === "saleActive" &&
+    estimatedSpendWei !== undefined &&
+    estimatedSpendWei > 0n &&
+    swapRoute !== null &&
+    swapRoute.ok &&
+    kumbayaResolved.ok;
+
+  const {
+    data: quoteTuple,
+    isPending: quotePending,
+    isError: quoteIsError,
+  } = useReadContract({
+    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
+    abi: kumbayaQuoterV2Abi,
+    functionName: "quoteExactOutput",
+    args:
+      quoteEnabled && swapRoute?.ok
+        ? [swapRoute.path, estimatedSpendWei!]
+        : undefined,
+    query: { enabled: quoteEnabled },
+  });
+
+  const quotedPayInWei =
+    quoteTuple !== undefined ? (quoteTuple as readonly [bigint, ...unknown[]])[0] : undefined;
+
+  const payTokenInAddr =
+    payWith !== "cl8y" && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
+
+  const { data: payTokDec } = useReadContract({
+    address: payTokenInAddr,
+    abi: erc20Abi,
+    functionName: "decimals",
+    query: { enabled: Boolean(payTokenInAddr && payWith !== "cl8y") },
+  });
+  const payTokenDecimals = payTokDec !== undefined ? Number(payTokDec) : 18;
 
   const spendSliderPermille = useMemo(() => {
     if (!cl8ySpendBounds) return 0;
@@ -454,6 +530,85 @@ export function useTimeCurveSaleSession(
     }
 
     try {
+      if (payWith !== "cl8y") {
+        const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
+        if (!k.ok) {
+          setBuyError(k.message);
+          return;
+        }
+        const route = routingForPayAsset(payWith, acceptedAsset, k.config);
+        if (!route.ok) {
+          setBuyError(route.message);
+          return;
+        }
+        const quote = await readContract(wagmiConfig, {
+          address: k.config.quoter,
+          abi: kumbayaQuoterV2Abi,
+          functionName: "quoteExactOutput",
+          args: [route.path, amount],
+        });
+        const qIn = (quote as readonly [bigint, ...unknown[]])[0];
+        const maxIn = swapMaxInputFromQuoted(qIn, slippageBps);
+        const deadline = swapDeadlineUnixSec(600);
+
+        if (payWith === "eth") {
+          const wrapHash = await writeContractAsync({
+            address: k.config.weth,
+            abi: weth9Abi,
+            functionName: "deposit",
+            value: maxIn,
+          });
+          await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
+          const wAllow = await readContract(wagmiConfig, {
+            address: k.config.weth,
+            abi: weth9Abi,
+            functionName: "allowance",
+            args: [address, k.config.swapRouter],
+          });
+          if (wAllow < maxIn) {
+            const wAp = await writeContractAsync({
+              address: k.config.weth,
+              abi: weth9Abi,
+              functionName: "approve",
+              args: [k.config.swapRouter, maxUint256],
+            });
+            await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+          }
+        } else if (payWith === "usdm") {
+          const uAllow = await readContract(wagmiConfig, {
+            address: route.tokenIn,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [address, k.config.swapRouter],
+          });
+          if (uAllow < maxIn) {
+            const uAp = await writeContractAsync({
+              address: route.tokenIn,
+              abi: erc20Abi,
+              functionName: "approve",
+              args: [k.config.swapRouter, maxUint256],
+            });
+            await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
+          }
+        }
+
+        const swapHash = await writeContractAsync({
+          address: k.config.swapRouter,
+          abi: kumbayaSwapRouterAbi,
+          functionName: "exactOutput",
+          args: [
+            {
+              path: route.path,
+              recipient: address,
+              deadline,
+              amountOut: amount,
+              amountInMaximum: maxIn,
+            },
+          ],
+        });
+        await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
+      }
+
       const allow = await readContract(wagmiConfig, {
         address: acceptedAsset,
         abi: erc20Abi,
@@ -498,6 +653,9 @@ export function useTimeCurveSaleSession(
     pendingReferralCode,
     writeContractAsync,
     refetchAll,
+    payWith,
+    slippageBps,
+    chainId,
   ]);
 
   const submitRedeem = useCallback(async () => {
@@ -520,9 +678,6 @@ export function useTimeCurveSaleSession(
   }, [address, tc, writeContractAsync, refetchAll]);
 
   const ready = Boolean(coreData && coreData.length > 0 && !isPending);
-
-  void chainId;
-  void normalizeReferralCode;
 
   return {
     ready,
@@ -568,6 +723,15 @@ export function useTimeCurveSaleSession(
     isWriting,
     buyError,
     clearBuyError: () => setBuyError(null),
+    payWith,
+    setPayWith,
+    slippageBps,
+    setSlippageBps,
+    kumbayaRoutingBlocker,
+    quotedPayInWei,
+    payTokenDecimals,
+    swapQuoteLoading: quotePending,
+    swapQuoteFailed: quoteIsError,
     submitBuy,
     submitRedeem,
     refresh: refetchAll,
