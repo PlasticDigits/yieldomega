@@ -79,3 +79,29 @@ export function phaseNarrative(phase: SaleSessionPhase): string {
       return "Loading sale state…";
   }
 }
+
+/**
+ * Mutually-exclusive boolean view of `SaleSessionPhase`.
+ *
+ * Used by the **Arena** view (`TimeCurvePage.tsx`) so the legacy boolean-driven
+ * UX branches (`saleActive` / `saleEnded` / `saleStartPending` /
+ * `timerExpiredAwaitingEnd`) stay derived from the same state machine as the
+ * Simple view. **Invariant:** at most one of these four flags is `true`; if
+ * the phase is `loading`, all four are `false` (the page should render its
+ * loading state instead).
+ */
+export type PhaseFlags = {
+  saleActive: boolean;
+  saleEnded: boolean;
+  saleStartPending: boolean;
+  timerExpiredAwaitingEnd: boolean;
+};
+
+export function phaseFlags(phase: SaleSessionPhase): PhaseFlags {
+  return {
+    saleActive: phase === "saleActive",
+    saleEnded: phase === "saleEnded",
+    saleStartPending: phase === "saleStartPending",
+    timerExpiredAwaitingEnd: phase === "saleExpiredAwaitingEnd",
+  };
+}

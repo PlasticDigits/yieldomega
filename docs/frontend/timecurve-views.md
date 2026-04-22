@@ -64,11 +64,11 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
 3. **One phase machine.** Sale phase derivation (`saleStartPending`,
    `saleActive`, `saleExpiredAwaitingEnd`, `saleEnded`) lives in
    [`timeCurveSimplePhase.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts)
-   as a pure function. `TimeCurveSimplePage` and the simple-session hook both
-   route through `derivePhase()` so the badge, narrative, and buy gating stay
-   in lock-step. The legacy `TimeCurvePage` keeps its inline phase view for
-   now (it owns more state); both views must agree on the user-visible state
-   when looking at the same chain head.
+   as a pure function. `TimeCurveSimplePage` and `useTimeCurveSaleSession` route
+   through `derivePhase()` for badge, narrative, and buy gating. The Arena view
+   (`TimeCurvePage`) computes the same phase from the same inputs, then maps it
+   to its legacy booleans with `phaseFlags()` so timer / buy / end-sale branches
+   cannot disagree with the Simple view at the same chain head.
 4. **No new tokens, no new fee paths.** The Protocol view only displays
    what the contracts already expose. It never decodes JSON sink blobs or
    re-derives fee splits — it shows raw `bps` / addresses straight from

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test, type Page } from "@playwright/test";
+import { detectLaunchState } from "./launchState";
 
 /**
  * Issue #40: `/timecurve` is the simple, first-run path. Arena (PvP) and
@@ -10,15 +11,12 @@ import { expect, test, type Page } from "@playwright/test";
  * behind the countdown — the post-launch view is what we are asserting.
  */
 async function ensurePostLaunch(page: Page) {
-  await page.goto("/timecurve");
-  const countdownVisible = await page
-    .getByTestId("launch-countdown")
-    .isVisible()
-    .catch(() => false);
+  const state = await detectLaunchState(page);
   test.skip(
-    countdownVisible,
+    state === "countdown",
     "Build is locked behind LaunchCountdownPage; rebuild with a past or unset VITE_LAUNCH_TIMESTAMP to exercise the simple view.",
   );
+  await page.goto("/timecurve");
 }
 
 test("timecurve simple view shows the first-run path (timer + buy CHARM)", async ({ page }) => {
