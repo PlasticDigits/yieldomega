@@ -20,6 +20,15 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 | Uniqueness | **One code per address**; each code **at most one owner** |
 | Onchain identity | `bytes32 codeHash = keccak256(bytes(normalizedCode))` |
 
+## Client link capture (frontend)
+
+- **Search:** `?ref={code}` — when present, must normalize to a valid code (3–16, `a-z0-9` after lowercasing) or it is ignored.
+- **Path (under TimeCurve):** `/timecurve/{code}` when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists).
+- **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/timecurve/{code}` instead.
+- **Precedence:** If both a valid `?ref=` and a path-based code are present, **`?ref=` wins** (query overrides path).
+- **Storage:** the web client persists a pending code in `localStorage` and `sessionStorage` under a stable key; users can clear it. This is **not** the source of truth for ownership — the chain is.
+- The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled.
+
 ## Attribution (TimeCurve buys)
 
 - The buyer calls **`buy(charmWad, codeHash)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** (no referral split).

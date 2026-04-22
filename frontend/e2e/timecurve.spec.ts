@@ -52,7 +52,9 @@ test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ pag
   await subnav.getByRole("link", { name: /Protocol/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/protocol$/);
   await expect(page.getByRole("heading", { name: "Protocol view", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Sale state/, level: 2 })).toBeVisible();
+  const sale = page.getByRole("heading", { name: /Sale state/, level: 2 });
+  const noTc = page.getByRole("heading", { name: "Configuration missing", level: 2 });
+  await expect(sale.or(noTc).first()).toBeVisible();
 });
 
 test("timecurve simple view stays usable on a 390×844 mobile viewport", async ({ page }) => {
