@@ -91,6 +91,7 @@ jobs:
       - name: Install and test
         run: |
           npm ci
+          npm run typecheck
           npm test
 
   simulations-test:
