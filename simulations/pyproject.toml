@@ -16,10 +16,11 @@ charts = ["matplotlib>=3.8", "numpy>=2"]
 [project.scripts]
 burrow-sim = "bounded_formulas.cli:main"
 timecurve-sim = "timecurve_sim.__main__:main"
+doub-calibration = "doub_sale_calibration.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["bounded_formulas*", "timecurve_sim*"]
+include = ["bounded_formulas*", "timecurve_sim*", "doub_sale_calibration*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
