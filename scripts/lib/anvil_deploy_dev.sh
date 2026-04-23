@@ -41,7 +41,7 @@ yieldomega_anvil_deploy_dev() {
 
   echo "Addresses: TimeCurve=${TC} RabbitTreasury=${RT} LeprechaunNFT=${NFT}"
 
-  echo "Deploying Kumbaya Anvil fixtures (issue #41)..."
+  echo "Deploying Kumbaya Anvil fixtures (issue #41; see docs/integrations/kumbaya.md issue #46)..."
   KUMBAYA_LOG=$(mktemp)
   forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
     --rpc-url "${RPC}" --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
