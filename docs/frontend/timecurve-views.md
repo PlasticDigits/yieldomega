@@ -61,20 +61,48 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
    write through `useWriteContract`. Approval handling, allowance checks, and
    referral plumbing live in one place per page surface but route to the
    same contract entrypoint with the same argument shape.
-3. **One phase machine.** Sale phase derivation (`saleStartPending`,
-   `saleActive`, `saleExpiredAwaitingEnd`, `saleEnded`) lives in
+3. **One phase machine + one clock for phase and hero timer.** Sale phase
+   derivation (`saleStartPending`, `saleActive`, `saleExpiredAwaitingEnd`,
+   `saleEnded`) lives in
    [`timeCurveSimplePhase.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts)
    as a pure function. `TimeCurveSimplePage` and `useTimeCurveSaleSession` route
    through `derivePhase()` for badge, narrative, and buy gating. The Arena view
-   (`TimeCurvePage`) computes the same phase from the same inputs, then maps it
-   to its legacy booleans with `phaseFlags()` so timer / buy / end-sale branches
-   cannot disagree with the Simple view at the same chain head.
+   (`TimeCurvePage`) maps the same phase to its legacy booleans with
+   `phaseFlags()`. The **“chain now”** fed into `derivePhase()` (and the
+   simple-view pre-start window) is **`ledgerSecIntForPhase()`**: it **prefers**
+   `useTimecurveHeroTimer`’s `chainNowSec` (indexer `/v1/timecurve/chain-timer`,
+   wall–chain skew) when that snapshot exists, and **falls back** to
+   `latestBlock` / wall time otherwise, so the phase strip cannot call the sale
+   “pre-start” while the hero countdown is clearly in the live round — see
+   [Chain time and sale phase (issue #48)](#chain-time-and-sale-phase-issue-48)
+   and [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48).
 4. **No new tokens, no new fee paths.** The Protocol view only displays
    what the contracts already expose. It never decodes JSON sink blobs or
    re-derives fee splits — it shows raw `bps` / addresses straight from
    `FeeRouter` and the routed top-level sinks. Human formatting uses
    `formatBpsAsPercent` / `formatCompactFromRaw` per
    [`design.md`](./design.md).
+
+## Chain time and sale phase (issue #48)
+
+**What must not happen:** the **hero deadline countdown** (and urgency styling
+driven from it) shows a **live** round, while the **state badge** or **Buy CHARM
+CTA** still read **pre-start** or **“Loading sale state…”** because two code
+paths used two different ideas of “chain now.”
+
+**Fix (merged with [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)):** [`ledgerSecIntForPhase()`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts) prefers
+`useTimecurveHeroTimer`’s `chainNowSec` when the indexer has delivered
+`/v1/timecurve/chain-timer`; `useTimeCurveSaleSession` and `TimeCurvePage` pass
+the result into `derivePhase` and the simple-view pre-start window. On-chain
+**authority** is unchanged: reads still use `TimeCurve.saleStart`, `deadline`,
+`ended`, etc. This layer only picks a consistent **“now”** for comparing those
+**timestamps** when the browser’s `latestBlock` can **lag** the same chain
+the indexer (and bots) are using — common on local Anvil and multi-rail
+setups.
+
+**Spec ↔ test:** [invariants and business — TimeCurve frontend: sale phase and hero timer](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) ·
+[`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
+(`ledgerSecIntForPhase`, `derivePhase`).
 
 ## `TimeCurveSimplePage` layout contract
 
@@ -159,7 +187,8 @@ can watch it flip into the simple view live.
 
 - **Pure logic:**
   [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
-  covers `derivePhase`, `phaseBadge`, and `phaseNarrative` for all five
+  covers `derivePhase`, `ledgerSecIntForPhase` (hero vs block clock — [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)),
+  `phaseBadge`, and `phaseNarrative` for all five
   phases (`loading` → `saleStartPending` → `saleActive` →
   `saleExpiredAwaitingEnd` → `saleEnded`).
 - **Sub-nav:**
@@ -202,5 +231,7 @@ npm run test:e2e -- --workers=5
 - Edited: `frontend/vite.config.ts` (vitest now picks up `*.test.tsx`)
 
 ---
+
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)

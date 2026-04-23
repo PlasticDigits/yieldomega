@@ -62,6 +62,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **Indexer** | Decode canonical logs, idempotent persist, chain pointer + reorg rollback of indexed rows. | [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md), [indexer/src/persist.rs](../../indexer/src/persist.rs) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
 | **Kumbaya routing (TimeCurve entry)** | Optional **ETH** / **stable** spend swaps to **CL8Y** via v3 **`exactOutput`** then **`TimeCurve.buy`**; **fail closed** if `chainId` or router config is missing; MegaETH defaults track [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit). | [integrations/kumbaya.md](../integrations/kumbaya.md), [kumbayaRoutes.ts](../../frontend/src/lib/kumbayaRoutes.ts) |
+| **TimeCurve (frontend) — sale phase** | `derivePhase` uses **`ledgerSecIntForPhase`**: same preferred **“chain now”** as the **hero timer** (indexer `/v1/timecurve/chain-timer` + skew) when a snapshot exists; else **`latestBlock` / wall** fallback. Keeps **phase / Buy gating** aligned with the **deadline countdown** when wallet RPC lags; **onchain** `saleStart` / `deadline` / `ended` are still the authority for values. | [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) ([issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)), [timeCurveSimplePhase.ts](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts) |
 | **Dev stack** | Same wiring as [DeployDev.s.sol](../../contracts/script/DeployDev.s.sol): epoch open + sale start; deposit + buy with correct ERC20 approvals. | [DevStackIntegration.t.sol](../../contracts/test/DevStackIntegration.t.sol) |
 | **Local stack bot swarm (tooling)** | [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) may spawn the Python bot swarm when `START_BOT_SWARM=1`. That path must be able to **`import web3`** (same deps as [`timecurve-bot`](../../bots/timecurve/README.md)). This is **QA tooling**, not onchain authority. On **PEP 668** hosts, a bare `pip install` without a venv can fail silently until swarm start; the script preflights and the README documents venv + `--user --break-system-packages` fallback ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). | Manual: README install + stack script; [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) |
 
@@ -75,6 +76,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 - **Indexer:** Log decoding must match Solidity event layouts; persistence must survive duplicate delivery (`ON CONFLICT`); on reorg, rows strictly after the common ancestor block are removed and the chain pointer is reset ([REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md)).
 - **Frontend helpers:** User-supplied addresses and indexer base URLs are normalized so RPC and HTTP clients see stable values.
 - **Kumbaya routing:** See [integrations/kumbaya.md](../integrations/kumbaya.md) for environment runbooks and the **fail closed / path encoding / integrator parity** invariants. Unit coverage: [`kumbayaRoutes.test.ts`](../../frontend/src/lib/kumbayaRoutes.test.ts).
+- **TimeCurve sale phase (UI):** Off-chain only **interprets** onchain `saleStart` / `deadline` / `ended` and must not split “now” between the **hero timer** and **`derivePhase`** when the **indexer** provides `chain-timer` — see [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) and [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48).
 
 ---
 
@@ -291,6 +293,11 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 | Indexer URL normalization | `strips trailing slash and empty` |
 | Chain id / RPC defaults | `chain.test.ts`: finite positive id, bad env falls back, default RPC |
 | Rabbit deposits API path | `indexerApi.test.ts`: `encodeURIComponent` on `user` query |
+| TimeCurve `ledgerSecIntForPhase` + `derivePhase` | Prefers hero `chainNowSec` over block time when set; state machine for Simple + Arena | [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts) (issue [#48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48), [view doc](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)) |
+
+### TimeCurve frontend: sale phase and hero timer
+
+Narrative for [timecurve-views — Single source of truth](../frontend/timecurve-views.md#single-source-of-truth-invariants): the **state badge**, **phase narrative**, and **pre-start window** on Simple, plus **Arena** `phaseFlags`, must not disagree with the **indexer-anchored hero countdown** because `wagmi`’s `latestBlock` timestamp lags. **Unit tests** above cover the pure `ledgerSecIntForPhase` + `derivePhase` helpers; **E2E** does not start Anvil in CI (see [strategy — Stage 1](strategy.md#stage-1--unit-tests)).
 
 ### Python simulations (Stage 1 scope)
 
