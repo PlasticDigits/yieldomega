@@ -1,5 +1,5 @@
 #!/bin/sh
-# Gitleaks on staged changes; TypeScript check when frontend is staged.
+# Gitleaks on staged changes; TypeScript check when paths under frontend/ are staged.
 # Install hooks: git config core.hooksPath .githooks
 set -eu
 
@@ -11,8 +11,14 @@ fi
 
 gitleaks protect --staged --verbose --config .gitleaks.toml
 
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm: not found in PATH (required for frontend typecheck)" >&2
-  exit 1
+if git diff --cached --name-only | grep -qE '^frontend/'; then
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "npm: not found in PATH (required for frontend typecheck)" >&2
+    exit 1
+  fi
+  if [ ! -f frontend/node_modules/.bin/tsc ]; then
+    echo "frontend typecheck: no local tsc (install deps first). Run: cd frontend && npm ci" >&2
+    exit 1
+  fi
+  (cd frontend && npm run typecheck)
 fi
-(cd frontend && npm run typecheck)
