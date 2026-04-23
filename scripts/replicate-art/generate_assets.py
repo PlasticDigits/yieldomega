@@ -33,6 +33,9 @@ Replicate limits Prefer: wait to 1-60 seconds; use --wait-seconds in that range 
 Polling is capped by REPLICATE_MAX_GENERATION_SECONDS (default 600); overdue runs are canceled.
 
 Slow image generation still completes via the client polling loop until that cap.
+
+When the catalog asks for background=transparent, the Replicate model is called with opaque output
+plus a flat #FF00FF chroma screen in the prompt; magenta is removed locally so PNGs still get alpha.
 """
 
 from __future__ import annotations
@@ -70,7 +73,7 @@ no realism, no painterly texture, no muted palette, no gritty rendering, no phot
 
 REFERENCE_INSTRUCTIONS = """
 Reference images are supplied as input_images in this exact order:
-(1) style.png — preserve its core character design language and worldbuilding: bunny leprechaun girl mascot, red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
+(1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
 (2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green leprechaun hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel. For any coins, tokens, badges, or currency icons, keep them closely aligned to this emblem design language and finish.
 (3) some jobs may include an extra character/logo reference image — when present, preserve that character's recognizable silhouette, face shape, and key identity markers while translating it fully into the same Yieldomega blocky arcade cartoon universe.
 
@@ -113,6 +116,51 @@ def effective_output_format(output_format: str, background: str) -> str:
     return output_format
 
 
+# Replicate openai/gpt-image-2 may reject background="transparent" (invalid_value). Use a flat
+# chroma screen in the prompt + opaque API mode, then strip the key color in postprocess.
+CHROMA_KEY_RGB = (255, 0, 255)
+CHROMA_KEY_TOLERANCE = 52
+
+
+def api_background_for_replicate(catalog_background: BackgroundMode) -> str:
+    if catalog_background == "transparent":
+        return "opaque"
+    return catalog_background
+
+
+def augment_prompt_chroma_backdrop(built_prompt: str) -> str:
+    return (
+        built_prompt
+        + "\n\nChroma backdrop requirement:\n"
+        "Place all subjects on a perfectly flat, uniform magenta (#FF00FF) backdrop only—no gradients, "
+        "no floor plane, no horizon, no scenery. Do not use #FF00FF on characters, clothing, coins, props, "
+        "or rainbow bands that blend into the backdrop."
+    )
+
+
+def postprocess_chroma_to_transparent(data: bytes) -> bytes:
+    """Turn flat chroma (#FF00FF) from the model into alpha; output PNG bytes."""
+    try:
+        import io
+
+        from PIL import Image
+    except ImportError:
+        return data
+    im = Image.open(io.BytesIO(data)).convert("RGBA")
+    kr, kg, kb = CHROMA_KEY_RGB
+    tol = CHROMA_KEY_TOLERANCE
+    keyed = [
+        (0, 0, 0, 0)
+        if abs(r - kr) <= tol and abs(g - kg) <= tol and abs(b - kb) <= tol
+        else (r, g, b, a)
+        for (r, g, b, a) in im.getdata()
+    ]
+    im.putdata(keyed)
+    buf = io.BytesIO()
+    im.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
 def build_prompt(subject: str) -> str:
     return (
         f"{STYLE_GUIDE}\n\n"
@@ -133,6 +181,15 @@ def _is_capacity_like_error(exc: BaseException) -> bool:
     if isinstance(exc, TimeoutError):
         return False
     text = f"{type(exc).__name__}: {exc!s}".lower()
+    if any(
+        n in text
+        for n in (
+            "invalid_value",
+            "image_generation_user_error",
+            "transparent background is not supported",
+        )
+    ):
+        return False
     needles = (
         "429",
         "503",
@@ -156,6 +213,10 @@ def _is_capacity_like_error(exc: BaseException) -> bool:
         "timeout",
         "timed out",
         "eof",
+        # OpenAI / proxy flakes (Replicate surfaces these as ModelError)
+        "server_error",
+        "server had an error",
+        "failed to generate",
     )
     return any(n in text for n in needles)
 
@@ -197,35 +258,35 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "jpeg",
         "opaque",
-        "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Bunny leprechaun girl and red-bearded leprechaun mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
+        "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Adult yet playful bunny leprechaun girl and red-bearded leprechaun mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
     ),
     (
         "hero-home",
         "3:2",
         "jpeg",
         "opaque",
-        "Homepage hero banner: bunny leprechaun girl mascot centered, smiling and playful, white rabbit ears, green fantasy dress, red-bearded leprechauns with green hats on both sides carrying bags of glossy hat-coins, rainbow arc, sparkles, voxel hills, treasure field, high energy landing page art, leave clear negative space for UI overlays at top",
+        "Homepage hero banner: adult yet playful bunny leprechaun girl mascot centered, smiling and playful, white rabbit ears, green fantasy dress, red-bearded leprechauns with green hats on both sides carrying bags of glossy hat-coins, rainbow arc, sparkles, voxel hills, treasure field, high energy landing page art, leave clear negative space for UI overlays at top",
     ),
     (
         "hero-home-wide",
         "3:2",
         "jpeg",
         "opaque",
-        "Extra wide feeling website hero: bunny leprechaun girl mascot in foreground, two red-bearded leprechauns flanking her, flying hat-coins, chunky cube landscape, bright sky, rainbow, strong horizontal composition with breathing room on left and right for nav and CTAs",
+        "Extra wide feeling website hero: adult yet playful bunny leprechaun girl mascot in foreground, two red-bearded leprechauns flanking the mascot, flying hat-coins, chunky cube landscape, bright sky, rainbow, strong horizontal composition with breathing room on left and right for nav and CTAs",
     ),
     (
         "mascot-bunny-leprechaun-full",
         "2:3",
         "png",
         "transparent",
-        "Full body bunny leprechaun girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, alpha background, character cutout quality for UI compositing, centered, no text",
+        "Full body adult yet playful bunny leprechaun girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, alpha background, character cutout quality for UI compositing, centered, no text",
     ),
     (
         "mascot-bunny-leprechaun-wave",
         "2:3",
         "png",
         "transparent",
-        "Full body bunny leprechaun girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, alpha background, character cutout quality, centered, no text",
+        "Full body adult yet playful bunny leprechaun girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, alpha background, character cutout quality, centered, no text",
     ),
     (
         "mascot-redbeard-leprechaun",
@@ -274,7 +335,7 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "jpeg",
         "opaque",
-        "Leprechaun collection feature art: lineup of bunny leprechaun girl and red-bearded leprechauns like a collectible character roster, rainbow sparkles, display card composition, no text",
+        "Leprechaun collection feature art: lineup of adult yet playful bunny leprechaun girl and red-bearded leprechauns like a collectible character roster, rainbow sparkles, display card composition, no text",
     ),
     (
         "referrals-card",
@@ -316,7 +377,7 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "1:1",
         "png",
         "transparent",
-        "Bunny leprechaun girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text, transparent background",
+        "Adult yet playful bunny leprechaun girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text, transparent background",
     ),
     (
         "app-icon",
@@ -330,7 +391,7 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "jpeg",
         "opaque",
-        "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
+        "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Adult yet playful bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
     ),
 ]
 
@@ -378,8 +439,12 @@ def run_job(
     dry_run: bool,
     no_refs: bool,
 ) -> Path | None:
+    catalog_bg = background
     prompt = build_prompt(subject)
-    out_fmt = effective_output_format(output_format, background)
+    if catalog_bg == "transparent":
+        prompt = augment_prompt_chroma_backdrop(prompt)
+    api_bg = api_background_for_replicate(catalog_bg)
+    out_fmt = effective_output_format(output_format, catalog_bg)
     if out_fmt != output_format:
         print(
             f"[{name}] Note: transparent background requires PNG; using output_format=png "
@@ -393,7 +458,7 @@ def run_job(
         "prompt": prompt,
         "aspect_ratio": aspect_ratio,
         "quality": quality,
-        "background": background,
+        "background": api_bg,
         "moderation": moderation,
         "output_format": out_fmt,
         "number_of_images": 1,
@@ -406,7 +471,8 @@ def run_job(
     if dry_run:
         print(f"[dry-run] would write {out_path}")
         print(
-            f"  model={MODEL} aspect_ratio={aspect_ratio} quality={quality} background={background} "
+            f"  model={MODEL} aspect_ratio={aspect_ratio} quality={quality} background={api_bg} "
+            f"(catalog={catalog_bg}) "
             f"moderation={moderation} output_format={out_fmt} output_compression={output_compression} "
             f"prefer_wait={prefer_wait}s (max {REPLICATE_PREFER_WAIT_MAX}s; polling handles longer runs)"
         )
@@ -473,6 +539,8 @@ def run_job(
         raise RuntimeError(f"No output from {MODEL} for {name}")
 
     data = _read_output_bytes(output)
+    if catalog_bg == "transparent":
+        data = postprocess_chroma_to_transparent(data)
     out_dir.mkdir(parents=True, exist_ok=True)
     with open(out_path, "wb") as f:
         f.write(data)

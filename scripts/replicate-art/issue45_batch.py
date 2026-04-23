@@ -44,8 +44,8 @@ import replicate_bounded_run as _bounded  # noqa: E402
 ResizeMode = Literal["scene_wide", "scene_mid", "portrait_768_1024", "cutout", "icon_256", "none"]
 
 BUNNY_MOOD = (
-    "Mature adult woman bunny-leprechaun mascot, confident playful body language and stylish fantasy arcade "
-    "costume; tasteful pin-up-adjacent cartoon energy like a premium mobile game host—fully clothed, "
+    "Adult yet playful bunny-leprechaun woman mascot (clearly grown-up, non-minor), confident body language and "
+    "stylish fantasy arcade costume; tasteful cartoon energy like a premium mobile game host—fully clothed, "
     "non-explicit, no nudity."
 )
 
@@ -131,8 +131,12 @@ def run_batch_job(
 ) -> Path:
     import replicate
 
+    catalog_bg = job.background
     prompt = ga.build_prompt(job.subject)
-    out_fmt = ga.effective_output_format(job.output_format, job.background)
+    if catalog_bg == "transparent":
+        prompt = ga.augment_prompt_chroma_backdrop(prompt)
+    api_bg = ga.api_background_for_replicate(catalog_bg)
+    out_fmt = ga.effective_output_format(job.output_format, catalog_bg)
     ext = ga.format_to_ext(out_fmt)
     stem = job.filename.rsplit(".", 1)[0]
     final_name = f"{stem}.{ext}"
@@ -142,7 +146,7 @@ def run_batch_job(
         "prompt": prompt,
         "aspect_ratio": job.aspect_ratio,
         "quality": "high",
-        "background": job.background,
+        "background": api_bg,
         "moderation": "low",
         "output_format": out_fmt,
         "number_of_images": 1,
@@ -203,6 +207,8 @@ def run_batch_job(
         raise RuntimeError(f"No output for {stem}")
 
     raw = _read_output_bytes(output)
+    if catalog_bg == "transparent":
+        raw = ga.postprocess_chroma_to_transparent(raw)
     if Image is not None and job.resize != "none":
         raw = _resize_bytes(raw, job.resize, "png" if out_fmt == "png" else "jpeg")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -225,7 +231,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_wide",
             "Home hub wide landscape hero for desktop: arcade green-and-gold palette, hard-shadow panel language, "
-            "bunny leprechaun girl + red-bearded leprechauns, hat-coins, voxel hills, rainbow, strong horizontal "
+            "adult yet playful bunny leprechaun girl mascot + red-bearded leprechauns, hat-coins, voxel hills, rainbow, strong horizontal "
             "composition with negative space for nav and CTAs, energetic fair-launch story mood.",
         )
     )
@@ -252,7 +258,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_wide",
             "TimeCurve Simple dedicated scene: calm fair-launch story, oversized friendly countdown dial, soft "
-            "sparkle trails, voxel hills, bunny leprechaun girl as welcoming guide, less aggressive than Arena—"
+            "sparkle trails, voxel hills, adult yet playful bunny leprechaun girl as welcoming guide, less aggressive than Arena—"
             "trust and clarity mood.",
         )
     )
@@ -356,8 +362,13 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_wide",
-            "Launch countdown key art: locked composition for LaunchCountdownPage, central countdown hero, "
-            "mascots cheering, fireworks sparkles, voxel hills, bold center-weighted for crops.",
+            "Wide landscape pre-launch / launch hero for social link previews (no typography in the art). Foreground: "
+            "adult yet playful bunny leprechaun girl and red-bearded leprechauns cheering along a balcony or stage lip, confetti and "
+            "small fireworks, voxel hills and rainbow in the distance. **Center: one huge magical timer hoop**—thick "
+            "glowing emerald-and-gold ring segments only, **hollow open center like a donut**, no clock face, **no "
+            "digits of any kind, no Arabic numerals, no Roman numerals, no tick marks that resemble numbers**, no "
+            "letters, no watermarks. If you need a focal glyph, use a plain hat-coin silhouette instead of numbers. "
+            "Hat-coin sparkles drift upward. Keep the hero cluster in the middle third for crops.",
         )
     )
     j.append(
@@ -369,8 +380,10 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Light error illustration: bunny leprechaun girl shrugging beside a sleepy tortoise-indexer mascot, "
-            "broken sparkle cable, friendly apology mood—not alarming.",
+            "Empty state / error panel illustration: adult yet playful bunny leprechaun girl with a sympathetic shrug beside a **sleepy "
+            "tortoise wearing a tiny server-tech visor**; a snapped glowing “data” ribbon cable on the ground; soft "
+            "dusty sparkles (not smoke). Mood: “we’ll be back soon,” pastel-friendly, not scary—no error codes, no "
+            "stack traces, no text.",
         )
     )
     j.append(
@@ -382,19 +395,45 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Wrong network illustration: mascots at a mismatched portal gate, confused leprechaun holding two "
-            "different glowing chain orbs (abstract), humorous gentle correction mood.",
+            "Wrong-network empty state: two mascots stopped at a **split fairy-tale gate**—left pillar glows emerald, "
+            "right pillar glows violet; each holds a **plain glowing orb** (no chain names, no logos, no text). "
+            "Expressions: comically confused but friendly. Light comedy, simple background, no UI mockups.",
         )
     )
 
     # --- §2 Cutouts ---
     for pose_slug, pose_desc in [
-        ("wave", f"Full body wave toward viewer, welcoming host energy. {BUNNY_MOOD}"),
-        ("jump", f"Full body mid-jump arc, energetic victory hop. {BUNNY_MOOD}"),
-        ("thinking", f"Full body thoughtful pose, hand on chin, clever scheme expression. {BUNNY_MOOD}"),
-        ("podium-win", f"Full body on winner podium step, trophy hat-coin held high. {BUNNY_MOOD}"),
-        ("guarding", f"Full body defensive guard stance protecting a pile of hat-coins, WarBow personality. {BUNNY_MOOD}"),
-        ("sneak-steal", f"Full body sneaky tiptoe steal pose with grin, playful rogue energy for Arena copy. {BUNNY_MOOD}"),
+        (
+            "wave",
+            f"Full-length adult yet playful bunny leprechaun girl facing the viewer, one arm raised in a big welcoming wave, feet "
+            f"planted, slight hip tilt, hosting-a-game-show energy. {BUNNY_MOOD}",
+        ),
+        (
+            "jump",
+            f"Full-length adult yet playful bunny leprechaun girl frozen mid-jump: knees bent, arms up, ears streaming back, huge "
+            f"cheerful grin—celebration hop, not fighting. {BUNNY_MOOD}",
+        ),
+        (
+            "thinking",
+            f"Full-length adult yet playful bunny leprechaun girl standing, one gloved hand on chin, other hand on hip, eyes glancing "
+            f"up—plotting the next play, playful not worried. {BUNNY_MOOD}",
+        ),
+        (
+            "podium-win",
+            f"Full-length adult yet playful bunny leprechaun girl on the **center step** of a three-step winners’ podium, both arms "
+            f"high, hoisting a **single oversized hat-coin trophy**; confetti ribbons, no readable text on banners. "
+            f"{BUNNY_MOOD}",
+        ),
+        (
+            "guarding",
+            f"Full-length adult yet playful bunny leprechaun girl in a low defensive stance in front of a **small pile of hat-coins**, "
+            f"arms out like blocking a steal, determined smirk—Arena guard fantasy, not violence. {BUNNY_MOOD}",
+        ),
+        (
+            "sneak-steal",
+            f"Full-length adult yet playful bunny leprechaun girl tiptoeing with one hat-coin already tucked under one arm, other hand "
+            f"reaching for a second coin, exaggerated sneaky grin—cartoon heist, non-threatening. {BUNNY_MOOD}",
+        ),
     ]:
         j.append(
             BatchJob(
@@ -405,20 +444,24 @@ def jobs() -> list[BatchJob]:
                 "transparent",
                 "png",
                 "cutout",
-                f"Bunny leprechaun girl mascot cutout, alpha background, consistent lighting, bold line weight. {pose_desc}",
+                f"Full-body **adult yet playful bunny leprechaun girl** cutout only: {pose_desc} "
+                f"Transparent alpha, soft cel shading, **no ground shadow patch**, no background props except what the "
+                f"pose requires (e.g. podium), bold outline consistent with brand refs.",
             )
         )
     j.append(
         BatchJob(
             "issue45-cutout-leprechaun-bag-bunny-pair.png",
             "2) Cutouts & characters",
-            "Leprechaun w/ bag vs bunny-leprechaun-girl style pairing reference",
+            "Leprechaun w/ bag vs adult yet playful bunny leprechaun mascot style pairing reference",
             "2:3",
             "transparent",
             "png",
             "cutout",
-            "Pair cutout for style parity: red-bearded leprechaun with coin bag standing beside bunny leprechaun girl, "
-            "matched line weight, matched drop shadow style, same scale for header use—transparent background.",
+            "Duo cutout sheet: **red-bearded leprechaun** with full green hat and **heavy coin sack** standing shoulder-to-shoulder "
+            "with **adult yet playful bunny leprechaun girl** (same lineup height). Same stroke width, same highlight color recipe, same "
+            "neutral rim-light direction—designed so both can be dropped into headers side-by-side. Transparent alpha, "
+            "no floor, no text.",
         )
     )
     j.append(
@@ -430,8 +473,9 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "cutout",
-            "Concept board: four blank silhouette mannequins in different hat silhouettes only—style alignment demo "
-            "for future traits, no copied NFT art, chunky outlines.",
+            "Style-guide concept only: **four empty mannequin busts in a row**, each wearing a **different abstract hat "
+            "silhouette** (tall, wide-brim, horned curve, etc.)—placeholders for future traits. Flat neutral poses, no "
+            "faces, no NFT-specific art, no logos, chunky outlines on transparent background.",
         )
     )
     j.append(
@@ -443,22 +487,24 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Tiny leprechaun peeking from behind a gold coin stack, subtle footer decoration, minimal detail noise.",
+            "Micro mascot accent: **one mini red-bearded leprechaun** peeking over the rim of **two stacked hat-coins** "
+            "only—big eyes, minimal body, lots of empty transparent margin so it can sit in a slim footer bar. No text.",
         )
     )
 
     # --- §3 Icons (raster drafts; trace to SVG in production) ---
     def icon_subject(label: str, glyph: str) -> str:
         return (
-            f"Single UI icon glyph centered on transparent background: {label}. {glyph} "
-            "Bold chunky arcade silhouette, readable at 32px, thick outlines, no text, no extra icons."
+            f"App icon tile, one symbol only: **{label}**. Intended look: {glyph}. "
+            "Single centered graphic, thick arcade outline, high-contrast fills, transparent background. "
+            "**No letters, digits, words, ticker symbols, or watermarks**—shape-language only. No extra mini-icons."
         )
 
     for sym, subj in [
-        ("token-cl8y", "CL8Y token badge: stylized clover-eight motif abstract, green-gold"),
-        ("token-doub", "DOUB token badge: doubled coin motif, green-gold"),
-        ("token-charm", "CHARM token badge: heart-charm loop motif, pink-green-gold accent"),
-        ("token-usdm", "USDm stable context coin: muted slate-green ring with small peg motif, calm"),
+        ("token-cl8y", "abstract clover made of two interlocking rings, emerald + gold"),
+        ("token-doub", "two slightly offset gold coins fused with a green center gem—implies “double” without text"),
+        ("token-charm", "heart loop tied with a tiny ribbon bow, pink accent on green-gold metal"),
+        ("token-usdm", "calm slate-green ring coin with a **small horizontal peg bar** silhouette—no USD letters"),
     ]:
         j.append(
             BatchJob(
@@ -474,14 +520,14 @@ def jobs() -> list[BatchJob]:
         )
 
     for sym, subj in [
-        ("status-live", "pulsing play-dot with soft aura, LIVE badge"),
-        ("status-ended", "checkered finish flag with coin, ENDED"),
-        ("status-prelanch", "sleeping moon over coin, PRE-LAUNCH"),
-        ("status-cooldown", "chunky clock with frozen gear, cooldown"),
-        ("status-net-ok", "shield with green check, network healthy"),
-        ("status-net-warn", "triangle alert with chain link crack, network warning"),
-        ("status-indexer-ok", "rabbit with green pulse bars, indexer ok"),
-        ("status-indexer-bad", "rabbit with dim bars and snail, indexer degraded"),
+        ("status-live", "bright green disc with two soft outward pulse rings—implies “on air” without words"),
+        ("status-ended", "waving checkered flag merged into a gold coin edge—implies “finished” without words"),
+        ("status-prelanch", "crescent moon resting on a short stack of two coins—implies “not started yet”"),
+        ("status-cooldown", "frozen sand-glass shape locked by a small gear—implies “wait” **without clock numerals**"),
+        ("status-net-ok", "shield shape with a bold green heart of check geometry—implies healthy connection"),
+        ("status-net-warn", "equilateral warning triangle with a **broken chain link** as negative space"),
+        ("status-indexer-ok", "cartoon rabbit silhouette beside three rising green bars—implies sync OK"),
+        ("status-indexer-bad", "same rabbit silhouette slumped beside dim gray bars and a tiny snail—implies slow indexer"),
     ]:
         j.append(
             BatchJob(
@@ -497,10 +543,10 @@ def jobs() -> list[BatchJob]:
         )
 
     for sym, subj in [
-        ("warbow-guard", "raised shield blocking spark, GUARD"),
-        ("warbow-steal", "swift swipe arc with grabbed coin, STEAL"),
-        ("warbow-revenge", "boomerang coin coming back, REVENGE"),
-        ("warbow-flag", "tiny flag on pole with coin emblem, FLAG"),
+        ("warbow-guard", "chunky shield catching a pink impact spark—defensive action, no captions"),
+        ("warbow-steal", "motion streak with a gloved hand snatching one hat-coin—quick swipe, no captions"),
+        ("warbow-revenge", "hat-coin flying back along a curved boomerang arc—payback beat, no captions"),
+        ("warbow-flag", "small victory pennant on a pole topped with a mini hat-coin—claim action, no captions"),
     ]:
         j.append(
             BatchJob(
@@ -516,9 +562,9 @@ def jobs() -> list[BatchJob]:
         )
 
     for sym, subj in [
-        ("nav-simple", "calm sun-over-hill, Simple mode"),
-        ("nav-arena", "crossed swords made of coins, Arena mode"),
-        ("nav-protocol", "gears with shield, Protocol mode"),
+        ("nav-simple", "rising sun behind a soft green hill—calm default route"),
+        ("nav-arena", "two crossed swords with coin-shaped pommels—competitive route"),
+        ("nav-protocol", "interlocking gears behind a small shield crest—technical route"),
     ]:
         j.append(
             BatchJob(
@@ -542,8 +588,8 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Single reference tile showing two thick chart lines—teal vs amber—with hatch patterns for accessibility, "
-            "no axes text, icon sheet style.",
+            "Square swatch with **two thick zig-zag lines** crossing—teal line with diagonal hatching, amber line with "
+            "dot hatching—color-blind–friendly pair demo. No axis labels, no numbers, transparent outside the swatch.",
         )
     )
 
@@ -557,8 +603,9 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Large arrow-pointer made of glossy gold with green outline, game UI style, transparent—design intent "
-            "for .cur export with hotspot top-left.",
+            "Single **gold arrow cursor** with emerald outline and a tiny hat-coin sparkle at the crook—classic pointer "
+            "silhouette, large and readable. Transparent; design for hotspot at **tip of arrowhead (top-left when "
+            "exported)**.",
         )
     )
     j.append(
@@ -570,7 +617,8 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Cursor alternative: not prank—clear crimson-gold warning ring pointer, chunky, transparent background.",
+            "Alternate pointer: **circular crimson warning halo** around a shortened gold arrow—reads “caution” for "
+            "risky actions, still arcade-friendly. Transparent, no skulls, no joke shapes.",
         )
     )
     j.append(
@@ -582,7 +630,8 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Chunky gloved grab hand for slider, green gold, open palm to closed—static single pose open grab.",
+            "Chunky **white-gloved grab hand** half-closed around an invisible cylinder—thumb and three fingers visible, "
+            "green sleeve cuff with gold trim. One static pose for “dragging a slider knob.” Transparent.",
         )
     )
 
@@ -596,7 +645,9 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_wide",
-            "Wide OG share art: bold center cluster, mascots, hat-coins, voxel hills—safe for messaging crop.",
+            "3:2 link-preview hero: adult yet playful bunny leprechaun girl **center-left**, two leprechauns **center-right**, flying "
+            "hat-coins, rainbow arc, voxel hills. **No logos spelled out, no digits, no UI**. Extra sky top and grass "
+            "bottom so Telegram/X crops stay safe.",
         )
     )
     j.append(
@@ -608,7 +659,9 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Square 1:1 social avatar/preview: bunny leprechaun girl portrait bust with hat-coin, vibrant background.",
+            "1:1 bust portrait of adult yet playful bunny leprechaun girl from ribs up: big smile, rabbit ears, green dress collar, "
+            "**one hat-coin held near shoulder**; soft bokeh of rainbow sparkles behind—reads at small avatar size. "
+            "No text.",
         )
     )
     j.append(
@@ -620,7 +673,9 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Single centered hat-coin emblem suitable for favicon trace—bold simple shapes, transparent.",
+            "High-contrast **hat-coin only**: green hat, yellow band, bold **D-shaped buckle silhouette** (stylized "
+            "letter shape, not typography), thick black rim—fills most of the square, transparent outside the coin. "
+            "Designed to survive 32×32 downscale.",
         )
     )
     j.append(
@@ -632,8 +687,9 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "portrait_768_1024",
-            "Soft vertical page chrome when wallet modal imagined open: blurred-stylized arcade panels behind, "
-            "non-distracting, vertical mobile proportion.",
+            "Tall mobile wallpaper strip: **soft vertical gradient** of arcade green into deep teal, with faint "
+            "repeating panel seams and scattered tiny hat-coin sparkles—background only, **center area kept calmer** "
+            "for a modal overlay. No wallet logos, no text.",
         )
     )
 
@@ -647,8 +703,8 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Motion concept still: soft whoosh ribbon between two panels, coin sparkle trail, subtle not flashy—"
-            "for documentation of max-duration VFX.",
+            "VFX storyboard still: **two rounded UI panels** sliding past each other with a **swoosh of gold ribbon "
+            "and coin glitter** between them—suggests page change in under ~300ms. No characters, no HUD text.",
         )
     )
     j.append(
@@ -660,8 +716,9 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Split flap board showing abstract segments, no numbers, chunky—concept for countdown tick without seizure "
-            "risk colors.",
+            "Abstract **split-flap board** with eight blank rectangular flaps (all same muted cream color)—**no "
+            "numbers, letters, or icons printed on flaps**; a few flaps slightly ajar to imply motion. Concept art for "
+            "a gentle tick animation; transparent background.",
         )
     )
     j.append(
@@ -673,7 +730,8 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Victory podium still: confetti burst, medal hat-coins, separated from trading UI context—celebration panel.",
+            "Post-game celebration panel: **three-step podium** center, giant **hat-coin medals** on ribbons bursting "
+            "upward, confetti cones and star sparkles—no characters required, no score numbers, no text banners.",
         )
     )
 
