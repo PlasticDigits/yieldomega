@@ -52,7 +52,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ## C. Frontend (TimeCurve page)
 
-- [ ] **C1** — Timer countdown and urgency styling.
+- [ ] **C1** — Timer countdown and urgency styling; with **`VITE_INDEXER_URL`**, phase badge + Buy gating must **not** show pre-start / “Loading sale state…” while the hero shows a **live** round (same chain clock: `ledgerSecIntForPhase` + hero timer — [timecurve-views — issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48), [docs/frontend/timecurve-views.md](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)).
 - [ ] **C2** — CHARM bounds and price display consistent with contract reads.
 - [ ] **C3** — Podium / leaderboard panels for **four** reserve categories — verify on **`/timecurve/arena`**.
 - [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired) — verify on **`/timecurve/arena`**.
@@ -63,11 +63,13 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 - [ ] **C9** — Launch-countdown handoff: relaunch the stack with `LAUNCH_OFFSET_SEC=90 bash scripts/start-local-anvil-stack.sh START_BOT_SWARM=1`, restart Vite, and confirm `LaunchCountdownPage` renders during the offset window and **flips into `TimeCurveSimplePage`** (not the dense Arena view) when the countdown hits zero. Buy CTA becomes interactive immediately after the flip.
 - [ ] **C10** — **Bot swarm + Simple ticker (issue #40, Acceptance B5):** `START_BOT_SWARM=1 bash scripts/start-local-anvil-stack.sh` (optionally `SKIP_ANVIL_RICH_STATE=1` for a faster loop). With indexer up and `VITE_INDEXER_URL` pointing at it, open `/timecurve` on the Simple view. Confirm **Recent buys** lists the last few buys (buyer short address, CL8Y amount, `+Ns` timer extension or **hard reset**, tx link). No console errors. When your wallet is on cooldown after a buy, the buy card should still show spend preview / disabled CTA consistent with `nextBuyAllowedAt` (Arena uses the same reads).
 - [ ] **C11** — **First-time “I want DOUB” heuristic (issue #40, Recommendations §6):** As a disconnected visitor, read top-to-bottom once: you should see **TimeCurve sale** → **Time left** (what the timer means in foot copy) → **Recent buys** (social proof) → **Buy CHARM** with “Connect a wallet…” → **Want more?** linking Arena / Protocol. You should *not* need WarBow or podiums to understand “buy CHARM now, redeem DOUB later.” After connecting, the primary action should remain **Buy CHARM** with an explicit ≈CHARM preview before submit.
+- [ ] **C12** — **Phase vs RPC (issue #48):** On local stack with indexer + optional `SKIP_ANVIL_RICH_STATE=1` + bot swarm, open `/timecurve` and `/timecurve/arena` during an **active** sale. The **state badge** (Simple) and Arena sale strip must agree with a **live** round when `saleStart` is in the past and the sale is not ended — not *Pre-launch* / *COMING SOON* while the **hero** countdown is clearly counting down a live timer. If something mismatches, confirm wallet RPC and `VITE_INDEXER_URL` target the same chain; see [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48).
 
 ---
 
 ## References
 
+- [`docs/frontend/timecurve-views.md`](../frontend/timecurve-views.md) — three-view split, sale-phase + hero clock (issue #48)
 - [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — `VITE_*` contract + Playwright
 - [`scripts/check-frontend-vite-env.sh`](../../scripts/check-frontend-vite-env.sh) — `make check-frontend-env`
 - [`bots/timecurve/README.md`](../../bots/timecurve/README.md) — swarm, env vars
