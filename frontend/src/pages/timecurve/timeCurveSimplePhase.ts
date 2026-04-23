@@ -31,6 +31,24 @@ export type DerivePhaseInput = {
   ledgerSecInt: number;
 };
 
+/**
+ * Picks the chain "now" for {@link derivePhase} and pre-start windows.
+ * Prefer the TimeCurve **hero timer** (indexer-anchored + wall skew) so phase
+ * matches the deadline countdown. `wagmi` `latestBlock` can lag a different
+ * JSON-RPC (local Anvil, multi-agent stacks) and falsely report
+ * pre-start while the sale is live (issue #48).
+ */
+export function ledgerSecIntForPhase(input: {
+  /** From `useBlock` / `block.timestamp` (or fallbacks) — same as today when no hero snapshot. */
+  blockLedgerSecInt: number;
+  /** `chainNowSec` from `useTimecurveHeroTimer` when the indexer has delivered a timer snapshot. */
+  heroChainNowSec: number | undefined;
+}): number {
+  return input.heroChainNowSec !== undefined
+    ? Math.floor(input.heroChainNowSec)
+    : input.blockLedgerSecInt;
+}
+
 export function derivePhase(input: DerivePhaseInput): SaleSessionPhase {
   const { hasCoreData, ended, saleStartSec, deadlineSec, ledgerSecInt } = input;
   if (!hasCoreData) return "loading";
