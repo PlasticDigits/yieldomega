@@ -54,7 +54,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 | Area | Intent (short) | Product / onchain spec |
 |------|----------------|-------------------------|
-| **TimeCurve** | Sale lifecycle: **exponential CHARM band** (0.99–10 CHARM × envelope), **linear per-CHARM price** (`ICharmPrice`), timer extension with cap, fees to router, sale end, CHARM-weighted redemption, prize podiums. **DOUB cap table / FDV anchor** ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)): [`PARAMETERS.md`](../../contracts/PARAMETERS.md), [`doub_sale_calibration`](../../simulations/doub_sale_calibration/). | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol), [LinearCharmPrice.sol](../../contracts/src/pricing/LinearCharmPrice.sol) |
+| **TimeCurve** | Sale lifecycle: **exponential CHARM band** (0.99–10 CHARM × envelope), **linear per-CHARM price** (`ICharmPrice`), timer extension with cap, fees to router, sale end, CHARM-weighted redemption, prize podiums. | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol), [LinearCharmPrice.sol](../../contracts/src/pricing/LinearCharmPrice.sol) |
 | **Rabbit Treasury (Burrow)** | Deposits → **redeemable** backing + DOUB mint; `receiveFee` → burn + **protocol-owned** backing (no DOUB mint); withdraw from redeemable only (pro-rata, health efficiency, fees → protocol); epoch repricing via **total** backing + BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
 | **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **DOUB presale vesting** | Immutable `EnumerableSet` of beneficiaries + allocations; constructor enforces `sum(amounts) == requiredTotal`; **30%** vested at `vestingStart`, **70%** linear over `vestingDuration`; `startVesting` once when `token.balanceOf(this) >= totalAllocated`. | [DoubPresaleVesting.sol](../../contracts/src/vesting/DoubPresaleVesting.sol), [PARAMETERS.md](../../contracts/PARAMETERS.md) |
@@ -77,44 +77,6 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 - **Frontend helpers:** User-supplied addresses and indexer base URLs are normalized so RPC and HTTP clients see stable values.
 - **Kumbaya routing:** See [integrations/kumbaya.md](../integrations/kumbaya.md) for environment runbooks and the **fail closed / path encoding / integrator parity** invariants. Unit coverage: [`kumbayaRoutes.test.ts`](../../frontend/src/lib/kumbayaRoutes.test.ts).
 - **TimeCurve sale phase (UI):** Off-chain only **interprets** onchain `saleStart` / `deadline` / `ended` and must not split “now” between the **hero timer** and **`derivePhase`** when the **indexer** provides `chain-timer` — see [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) and [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48).
-- **DOUB FDV anchor + sale calibration ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)):** **Fully diluted** launch reference **P** uses **genesis 250M** as the denominator: **$500k FDV = P × 250M** (see [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md), [`docs/product/primitives.md`](../product/primitives.md), [`launchplan-timecurve.md`](../../launchplan-timecurve.md)). **v1** remains **fixed `totalTokensForSale`** + **`redeemCharms` pro-rata**; **`LinearCharmPrice`** math is unchanged; **referral** stays **5% + 5% `charmWad`** as **`charmWeight`** ([`docs/product/referrals.md`](../product/referrals.md)). Offchain calibration: [`simulations/doub_sale_calibration`](../../simulations/doub_sale_calibration/), [`docs/simulations/README.md`](../simulations/README.md).
-
----
-
-<a id="doub-genesis-fdv-anchor-and-sale-economics-gitlab-53"></a>
-
-## DOUB genesis, FDV anchor, and sale economics (GitLab #53)
-
-Single-issue hub: [gitlab.com/PlasticDigits/yieldomega/-/issues/53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53).
-
-### Planning invariants (documentation — must stay cross-linked)
-
-| Invariant | Meaning | Where |
-|-----------|---------|--------|
-| **FDV denominator** | **P × 250M = $500k** when using **all** genesis DOUB for the FDV story | [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md), [`launchplan-timecurve.md`](../../launchplan-timecurve.md) |
-| **Sale bucket** | **200M** `totalTokensForSale` matches cap table; **~$400k** notional at **P** | Same + [`docs/product/primitives.md`](../product/primitives.md) |
-| **Referral rule** | **500 + 500 BPS** of **`charmWad`** → extra **`charmWeight`**; **no** CL8Y carve-out | [`TimeCurve.sol`](../../contracts/src/TimeCurve.sol), [`docs/product/referrals.md`](../product/referrals.md) |
-| **Fee gross** | **100%** of buy still **`FeeRouter.distributeFees`** | [`docs/onchain/fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md) |
-| **Mintable *k* (future)** | Target **k** = DOUB per **gross CL8Y** is **planning only** until bytecode/deploy changes | [`simulations/doub_sale_calibration`](../../simulations/doub_sale_calibration/) |
-
-### v1 contract audit snapshot (no sale-funding change in this milestone)
-
-| Artifact | Required change for **v1** | Notes |
-|----------|---------------------------|--------|
-| `TimeCurve.sol` | **None** | `totalTokensForSale` immutable; `startSale` requires `launchedToken.balanceOf(this) >= totalTokensForSale`; `redeemCharms` pro-rata |
-| `LinearCharmPrice.sol` | **None** | Price path independent of how sale DOUB is funded |
-| `Doubloon` / vesting / LP sinks | **None** for docs-only alignment | Supply story must stay consistent with [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md) |
-| `FeeRouter` | **None** | Splits unchanged unless governance explicitly changes them |
-| Indexer / frontend | **None** for semantics | Display copy may cite FDV anchor |
-
-### Automated checks
-
-```bash
-cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
-# includes simulations/tests/test_doub_sale_calibration.py
-```
-
-Optional charts: `cd simulations && pip install -e '.[charts]' && PYTHONPATH=. python3 -m doub_sale_calibration --out-dir /tmp/doub-cal-charts`
 
 ---
 

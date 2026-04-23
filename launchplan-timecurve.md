@@ -75,8 +75,6 @@ From [`simulations/README.md`](simulations/README.md):
 
 This section fixes **how many DOUB are minted at launch** and **where they go**, separate from **per-buy fee routing** (Section 5). Numbers are for CL8Y / ops sign-off; change only via governance and doc updates.
 
-**FDV anchor ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)):** **Fully diluted** valuation at the launch reference price uses **all 250M** genesis DOUB: **$500k FDV = P × 250M** ⇒ **P ≈ $0.002 / DOUB**. The **200M** sale bucket is **~$400k** of that story at the same mark; presale + LP seed account for the remainder at the **same reference** unless docs explicitly adopt a different convention (e.g. circulating-only quotes). **Calibration / charts:** [`docs/simulations/README.md`](docs/simulations/README.md), [`simulations/doub_sale_calibration`](simulations/doub_sale_calibration/).
-
 ### 4.1 Total supply
 
 | Constant | Value | Notes |
@@ -87,7 +85,7 @@ This section fixes **how many DOUB are minted at launch** and **where they go**,
 
 | Destination | DOUB (whole tokens) | Purpose |
 |-------------|---------------------|---------|
-| **TimeCurve sale** | **200_000_000** | `TimeCurve.totalTokensForSale`; **v1** `redeemCharms` pro-rata after `endSale` (pre-funded DOUB). A future **mintable** sale may use fixed **k** DOUB per gross CL8Y — plan with `doub_sale_calibration` ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)). |
+| **TimeCurve sale** | **200_000_000** | `TimeCurve.totalTokensForSale`; `redeemCharms` pro-rata after `endSale`. |
 | **Presale** | **21_500_000** | **30%** at `startVesting` · **70%** linear (default **180 days** in [`DoubPresaleVesting`](contracts/src/vesting/DoubPresaleVesting.sol), configurable duration) — fund contract, then owner `startVesting()`; document beneficiary addresses at deploy. |
 | **V3 liquidity seed** | **28_500_000** | **DOUB/CL8Y** pool seeding aligned with [`DoubLPIncentives`](contracts/src/sinks/DoubLPIncentives.sol) / Kumbaya strategy. |
 

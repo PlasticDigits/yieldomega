@@ -30,14 +30,6 @@ PYTHONPATH=. python3 -m timecurve_sim.raise_milestone_report --seeds 48 --dt-sec
 
 **Raise milestones + 30-day curves** (`raise_milestone_sim`): per-seed time series for sim **days 1–30** (calendar days in simulation time): **daily spend** and **cumulative raise** at end of each day. Aggregates **min / max / mean** across seeds and includes **10 sample runs** (first seeds) for the dashed lines. JSON includes **days to reach** each reserve-asset milestone (axis labels may still say “USDm” historically) and **sale duration** distribution.
 
-**DOUB sale calibration** (`doub_sale_calibration`, [GitLab #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)): FDV anchor (**$500k @ 250M** fully diluted), target **k** (DOUB per gross CL8Y) for a **mintable** sale plan, `LinearCharmPrice` sample paths, referral denominator sensitivity (**5% + 5%** CHARM weight canonical). Docs hub: [`docs/simulations/README.md`](../docs/simulations/README.md).
-
-```bash
-PYTHONPATH=. python3 -m doub_sale_calibration --total-raise-cl8y 1000000
-pip install -e '.[charts]'   # optional
-PYTHONPATH=. python3 -m doub_sale_calibration --total-raise-cl8y 1000000 --out-dir output/doub_cal
-```
-
 Requires **matplotlib** and **numpy** for PNG charts (or pass a `.svg` path for a pure-Python SVG). Example:
 
 ```bash
