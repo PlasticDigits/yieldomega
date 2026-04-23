@@ -4,7 +4,9 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockDoub is ERC20 {
     constructor() ERC20("Doubloon", "DOUB") {}
@@ -26,7 +28,13 @@ contract DoubPresaleVestingTest is Test {
         internal
         returns (DoubPresaleVesting v)
     {
-        v = new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, requiredTotal, DURATION);
+        v = UUPSDeployLib.deployDoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, requiredTotal, DURATION);
+    }
+
+    function _expectVestingInitRevert(bytes memory initData, bytes memory expectedRevert) internal {
+        DoubPresaleVesting impl = new DoubPresaleVesting();
+        vm.expectRevert(expectedRevert);
+        new ERC1967Proxy(address(impl), initData);
     }
 
     function setUp() public {
@@ -40,8 +48,10 @@ contract DoubPresaleVestingTest is Test {
         uint256[] memory amts = new uint256[](2);
         amts[0] = 100e18;
         amts[1] = 50e18;
-        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__TotalMismatch.selector, 150e18, 200e18));
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 200e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 200e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__TotalMismatch.selector, 150e18, 200e18)
+        );
     }
 
     function test_constructor_reverts_duplicateBeneficiary() public {
@@ -51,8 +61,10 @@ contract DoubPresaleVestingTest is Test {
         uint256[] memory amts = new uint256[](2);
         amts[0] = 50e18;
         amts[1] = 50e18;
-        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__DuplicateBeneficiary.selector, alice));
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 100e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 100e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__DuplicateBeneficiary.selector, alice)
+        );
     }
 
     function test_constructor_reverts_zeroBeneficiary() public {
@@ -60,8 +72,10 @@ contract DoubPresaleVestingTest is Test {
         ben[0] = address(0);
         uint256[] memory amts = new uint256[](1);
         amts[0] = 1e18;
-        vm.expectRevert(DoubPresaleVesting.DoubVesting__ZeroBeneficiary.selector);
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 1e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 1e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__ZeroBeneficiary.selector)
+        );
     }
 
     function test_constructor_reverts_zeroAllocation() public {
@@ -69,8 +83,10 @@ contract DoubPresaleVestingTest is Test {
         ben[0] = alice;
         uint256[] memory amts = new uint256[](1);
         amts[0] = 0;
-        vm.expectRevert(DoubPresaleVesting.DoubVesting__ZeroAllocation.selector);
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 1e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 1e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__ZeroAllocation.selector)
+        );
     }
 
     function test_constructor_reverts_lengthMismatch() public {
@@ -79,8 +95,10 @@ contract DoubPresaleVestingTest is Test {
         uint256[] memory amts = new uint256[](2);
         amts[0] = 1e18;
         amts[1] = 1e18;
-        vm.expectRevert(DoubPresaleVesting.DoubVesting__ArrayLengthMismatch.selector);
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 2e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 2e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__ArrayLengthMismatch.selector)
+        );
     }
 
     function test_constructor_reverts_zeroDuration() public {
@@ -88,8 +106,10 @@ contract DoubPresaleVestingTest is Test {
         ben[0] = alice;
         uint256[] memory amts = new uint256[](1);
         amts[0] = 1e18;
-        vm.expectRevert(DoubPresaleVesting.DoubVesting__ZeroDuration.selector);
-        new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, 1e18, 0);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(doub)), owner, ben, amts, 1e18, 0)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__ZeroDuration.selector)
+        );
     }
 
     function test_constructor_reverts_zeroToken() public {
@@ -97,8 +117,10 @@ contract DoubPresaleVestingTest is Test {
         ben[0] = alice;
         uint256[] memory amts = new uint256[](1);
         amts[0] = 1e18;
-        vm.expectRevert(DoubPresaleVesting.DoubVesting__ZeroToken.selector);
-        new DoubPresaleVesting(IERC20(address(0)), owner, ben, amts, 1e18, DURATION);
+        _expectVestingInitRevert(
+            abi.encodeCall(DoubPresaleVesting.initialize, (IERC20(address(0)), owner, ben, amts, 1e18, DURATION)),
+            abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__ZeroToken.selector)
+        );
     }
 
     function test_startVesting_underfunded_reverts() public {
@@ -355,7 +377,7 @@ contract DoubPresaleVestingTest is Test {
         uint256[] memory amts = new uint256[](2);
         amts[0] = 10_000_000e18;
         amts[1] = 11_500_000e18;
-        DoubPresaleVesting v = new DoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, presale, DURATION);
+        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, presale, DURATION);
         assertEq(v.totalAllocated(), presale);
         doub.mint(address(v), presale);
         vm.prank(owner);

@@ -3,7 +3,9 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
@@ -42,17 +44,17 @@ contract TimeCurveReferralTest is Test {
     function setUp() public {
         reserve = new MockERC20("CL8Y", "CL8Y");
         launchedToken = new MockERC20("LaunchToken", "LT");
-        podiumPool = new PodiumPool(address(this));
-        reg = new ReferralRegistry(reserve, 1e18);
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
+        reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, address(this));
 
-        router = new FeeRouter(
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             [sink0, sink1, address(podiumPool), sink3, sink4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
 
-        linearPrice = new LinearCharmPrice(1e18, 0);
-        tc = new TimeCurve(
+        linearPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
+        tc = UUPSDeployLib.deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -65,7 +67,8 @@ contract TimeCurveReferralTest is Test {
             ONE_DAY,
             FOUR_DAYS,
             1_000_000e18,
-            300
+            300,
+            address(this)
         );
 
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));

@@ -6,6 +6,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {EcosystemTreasury} from "../src/sinks/EcosystemTreasury.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockToken is ERC20 {
     constructor() ERC20("MockToken", "MT") {}
@@ -24,8 +25,8 @@ contract FeeSinksTest is Test {
 
     function setUp() public {
         token = new MockToken();
-        sink = new EcosystemTreasury(address(this));
-        podiumPool = new PodiumPool(address(this));
+        sink = UUPSDeployLib.deployEcosystemTreasury(address(this));
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
     }
 
     function test_feeSink_withdraw_happy_path() public {

@@ -5,8 +5,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title DoubPresaleVesting — DOUB presale allocations with cliff + linear vesting
 /// @notice Immutable beneficiary set and per-address allocations fixed at deploy. The owner starts vesting once;
@@ -19,7 +21,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///   `mulDiv` (no further cliff on the linear tranche).
 ///
 /// ## Invariants
-/// - **Allocation totals:** `sum(amounts) == requiredTotalAllocation` (constructor); otherwise revert.
+/// - **Allocation totals:** `sum(amounts) == requiredTotalAllocation` (`initialize`); otherwise revert.
 /// - **Unique beneficiaries:** each `beneficiaries[i]` is unique and non-zero; duplicates revert.
 /// - **Non-zero schedule:** `vestingDuration > 0`; `requiredTotalAllocation > 0`; every `amounts[i] > 0`.
 /// - **Enumerable set:** the contract holds an `EnumerableSet.AddressSet` mirroring beneficiaries for O(1) membership and O(n) enumeration.
@@ -30,15 +32,17 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// ## Rounding
 /// Cliff uses `mulDiv(allocation, 3000, 10000)`. Linear tranche uses `allocation - cliff` as cap so `cliff + linearCap == allocation`.
 /// Per-second vesting rounds down; dust remains until the end timestamp where the full linear tranche is released.
-contract DoubPresaleVesting is Ownable, ReentrancyGuard {
+///
+/// Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
+contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    IERC20 public immutable token;
-    /// @notice Sum of all beneficiary allocations (equals `requiredTotalAllocation` from constructor).
-    uint256 public immutable totalAllocated;
+    IERC20 public token;
+    /// @notice Sum of all beneficiary allocations (equals `requiredTotalAllocation` from initializer).
+    uint256 public totalAllocated;
     /// @notice Linear vesting duration after `vestingStart` (seconds). Canonical presale: **180 days**.
-    uint256 public immutable vestingDuration;
+    uint256 public vestingDuration;
 
     uint256 internal constant CLIFF_BPS = 3000; // 30%
 
@@ -65,25 +69,31 @@ contract DoubPresaleVesting is Ownable, ReentrancyGuard {
     error DoubVesting__Underfunded(uint256 balance, uint256 needed);
     error DoubVesting__NothingToClaim();
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @param doubToken DOUB (or test ERC20) held by this contract when vesting starts.
     /// @param initialOwner Admin that may call `startVesting` exactly once.
     /// @param beneficiaries Unique addresses; order is not preserved in enumeration (set semantics).
     /// @param amounts Per-beneficiary DOUB allocations (wei); must sum to `requiredTotalAllocation`.
     /// @param requiredTotalAllocation Must equal `sum(amounts)`; use e.g. **21_500_000e18** for canonical presale bucket.
     /// @param vestingDurationSec Linear window for the 70% tranche (e.g. **180 days** in seconds).
-    constructor(
+    function initialize(
         IERC20 doubToken,
         address initialOwner,
         address[] memory beneficiaries,
         uint256[] memory amounts,
         uint256 requiredTotalAllocation,
         uint256 vestingDurationSec
-    ) Ownable(initialOwner) {
+    ) external initializer {
         if (address(doubToken) == address(0)) revert DoubVesting__ZeroToken();
         if (beneficiaries.length != amounts.length) revert DoubVesting__ArrayLengthMismatch();
         if (vestingDurationSec == 0) revert DoubVesting__ZeroDuration();
         if (requiredTotalAllocation == 0) revert DoubVesting__ZeroTotal();
 
+        __Ownable_init(initialOwner);
         token = doubToken;
         vestingDuration = vestingDurationSec;
 
@@ -102,6 +112,8 @@ contract DoubPresaleVesting is Ownable, ReentrancyGuard {
         if (sum != requiredTotalAllocation) revert DoubVesting__TotalMismatch(sum, requiredTotalAllocation);
         totalAllocated = sum;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice Number of beneficiaries (size of the enumerable set).
     function beneficiaryCount() external view returns (uint256) {
@@ -168,4 +180,6 @@ contract DoubPresaleVesting is Ownable, ReentrancyGuard {
         token.safeTransfer(msg.sender, amount);
         emit Claimed(msg.sender, amount);
     }
+
+    uint256[50] private __gap;
 }

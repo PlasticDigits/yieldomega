@@ -3,8 +3,10 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {BurrowMath} from "./libraries/BurrowMath.sol";
 import {Doubloon} from "./tokens/Doubloon.sol";
@@ -18,7 +20,8 @@ import {Doubloon} from "./tokens/Doubloon.sol";
 /// @dev **reasonCode** on `BurrowReserveBalanceUpdated`: 1 deposit, 2 withdraw (user payout from vault),
 ///      3 fee (protocol revenue; `delta` is net change to vault after burn to sink). Withdrawal fees are
 ///      logged via `BurrowWithdrawalFeeAccrued` (redeemable → protocol bucket, no change to total balance).
-contract RabbitTreasury is AccessControlEnumerable, Pausable {
+/// @dev Production: UUPS proxy; **proxy address** is canonical for Burrow integrations (GitLab #54).
+contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     uint256 internal constant WAD = 1e18;
@@ -32,11 +35,11 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER");
 
     // ── Assets ─────────────────────────────────────────────────────────
-    IERC20 public immutable reserveAsset;
-    Doubloon public immutable doub;
+    IERC20 public reserveAsset;
+    Doubloon public doub;
 
     /// @notice Tokens sent here are treated as burned for accounting (not redeemable).
-    address public immutable burnSink;
+    address public burnSink;
 
     // ── BurrowMath parameters ──────────────────────────────────────────
     uint256 public cMaxWad;
@@ -149,7 +152,12 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
     /// @notice Last epoch in which `msg.sender` completed a withdrawal (for cooldown).
     mapping(address => uint256) public lastWithdrawEpochId;
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         IERC20 _reserveAsset,
         Doubloon _doub,
         uint256 _epochDuration,
@@ -168,13 +176,17 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         uint256 _redemptionCooldownEpochs,
         address _burnSink,
         address admin
-    ) {
+    ) external initializer {
         require(address(_reserveAsset) != address(0), "RT: zero reserve");
         require(address(_doub) != address(0), "RT: zero doub");
         require(_epochDuration > 0, "RT: zero epoch");
         require(_protocolRevenueBurnShareWad < WAD, "RT: burn share >= 100%");
         require(_withdrawFeeWad < WAD, "RT: withdraw fee >= 100%");
         require(_minRedemptionEfficiencyWad > 0 && _minRedemptionEfficiencyWad <= WAD, "RT: min eff");
+
+        __AccessControlEnumerable_init();
+        __AccessControl_init();
+        __Pausable_init();
 
         reserveAsset = _reserveAsset;
         doub = _doub;
@@ -201,6 +213,8 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         _grantRole(PARAMS_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
     }
+
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// @notice Total reserve tokens held in accounting (must match `reserveAsset.balanceOf(this)` after ops).
     function totalReserves() external view returns (uint256) {
@@ -475,4 +489,6 @@ contract RabbitTreasury is AccessControlEnumerable, Pausable {
         emit ParamsUpdated(msg.sender, "redemptionCooldownEpochs", redemptionCooldownEpochs, val);
         redemptionCooldownEpochs = val;
     }
+
+    uint256[50] private __gap;
 }

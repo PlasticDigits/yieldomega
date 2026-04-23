@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockTokenInv is ERC20 {
     constructor() ERC20("MockToken", "MT") {}
@@ -54,7 +55,7 @@ contract FeeRouterInvariantTest is Test {
     function setUp() public {
         token = new MockTokenInv();
         address[5] memory sinks = [s0, s1, s2, s3, s4];
-        router = new FeeRouter(
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             sinks,
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]

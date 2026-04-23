@@ -3,7 +3,9 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {FeeMath} from "./libraries/FeeMath.sol";
 
 /// @notice Routes fees from TimeCurve (and future primitives) to canonical sinks.
@@ -11,7 +13,8 @@ import {FeeMath} from "./libraries/FeeMath.sol";
 ///      Post-update invariants per docs/onchain/fee-routing-and-governance.md.
 ///      Sink order (TimeCurve launch default): DOUB/CL8Y LP · **CL8Y burned** (sale asset burn sink) · podium pool · team (may be 0 bps) · Rabbit Treasury.
 ///      The **last** sink receives rounding remainder from `distributeFees`.
-contract FeeRouter is AccessControlEnumerable {
+///      Production deployments use a UUPS proxy; **proxy address** is canonical for integrators (GitLab #54).
+contract FeeRouter is Initializable, AccessControlEnumerableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
@@ -34,11 +37,23 @@ contract FeeRouter is AccessControlEnumerable {
     );
     event FeesDistributed(address indexed token, uint256 amount, uint256[5] shares);
 
-    constructor(address admin, address[5] memory destinations, uint16[5] memory weights) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address admin, address[5] memory destinations, uint16[5] memory weights)
+        external
+        initializer
+    {
+        __AccessControlEnumerable_init();
+        __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNOR_ROLE, admin);
         _setSinks(destinations, weights);
     }
+
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// @notice Distribute `amount` of `token` held by this contract to all sinks.
     ///         Last sink receives any rounding remainder to prevent dust loss.
@@ -91,4 +106,6 @@ contract FeeRouter is AccessControlEnumerable {
             sinks[i] = Sink(destinations[i], weights[i]);
         }
     }
+
+    uint256[50] private __gap;
 }
