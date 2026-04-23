@@ -1,6 +1,6 @@
 ---
 name: yieldomega-guardrails
-description: Apply Yieldomega repository guardrails for agent work. Use when editing code or docs in this repo so agents read the phase guide, keep authoritative logic onchain, preserve AGPL-3.0 expectations, and align testing with docs/testing/strategy.md.
+description: Apply Yieldomega repository guardrails for agent work. Use when editing code or docs in this repo so agents read the phase guide, keep authoritative logic onchain, preserve AGPL-3.0 expectations, align testing with docs/testing/strategy.md, and keep TimeCurve sale phase consistent with the indexer-anchored hero timer (see docs/frontend/timecurve-views.md, issue 48).
 ---
 
 # Yieldomega guardrails
@@ -16,5 +16,6 @@ Before making substantive changes in this repository:
 5. **Local Anvil stack + bot swarm:** If you touch [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) or `bots/timecurve/`, keep Python install docs aligned: venv is preferred; **PEP 668** fallback lives in [`bots/timecurve/README.md`](../../bots/timecurve/README.md) and is summarized in the **Local stack bot swarm** row of [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md) ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)).
 6. For **TimeCurve** prizes, treat **`docs/product/primitives.md`** as the source of truth for the **four fixed v1 podium categories** (last buy, WarBow / top Battle Points, defended streak, time booster). Do not reintroduce or assume **legacy** category sets (e.g. most-buys, biggest-buy, cumulative-CHARM podiums, opening/closing-window tracks, or a removed “activity leader” prize).
 7. For **Kumbaya** routing, `VITE_KUMBAYA_*` env, or multi-asset TimeCurve entry, read **`docs/integrations/kumbaya.md`** ([GitLab #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46)): [Kumbaya-xyz/integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) address parity, **fail closed** behavior, and localnet vs MegaETH runbooks.
+8. **TimeCurve (frontend) sale phase:** do not drive **`derivePhase` / pre-start UX** from **`latestBlock` alone** when the app already has **`useTimecurveHeroTimer`**. Follow **`ledgerSecIntForPhase`** in [`timeCurveSimplePhase.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts) and the invariants in [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) (cross-linked from [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer), [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)). If you add a new “is the sale live?” branch, it must use the same preferred clock or document why not.
 
 Prefer small, reviewable diffs and avoid unrelated refactors.
