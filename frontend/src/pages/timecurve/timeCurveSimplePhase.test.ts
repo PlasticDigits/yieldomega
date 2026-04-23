@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   derivePhase,
+  ledgerSecIntForPhase,
   phaseBadge,
   phaseFlags,
   phaseNarrative,
@@ -17,6 +18,26 @@ const BASE: DerivePhaseInput = {
   deadlineSec: 2000,
   ledgerSecInt: 1500,
 };
+
+describe("ledgerSecIntForPhase (issue #48 — align phase with hero timer)", () => {
+  it("prefers indexer-anchored hero time over wallet block time", () => {
+    expect(
+      ledgerSecIntForPhase({ blockLedgerSecInt: 100, heroChainNowSec: 5000 }),
+    ).toBe(5000);
+  });
+
+  it("floors fractional hero time", () => {
+    expect(
+      ledgerSecIntForPhase({ blockLedgerSecInt: 100, heroChainNowSec: 5000.9 }),
+    ).toBe(5000);
+  });
+
+  it("falls back to block-based time when the hero snapshot is absent", () => {
+    expect(
+      ledgerSecIntForPhase({ blockLedgerSecInt: 200, heroChainNowSec: undefined }),
+    ).toBe(200);
+  });
+});
 
 describe("derivePhase (TimeCurve simple view state machine)", () => {
   it("returns 'loading' until any core read lands", () => {
