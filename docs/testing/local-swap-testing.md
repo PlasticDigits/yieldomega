@@ -2,6 +2,8 @@
 
 This note covers **multi-asset TimeCurve entry** (CL8Y, ETH, USDM) using the **Anvil fixture router** deployed next to `DeployDev`, and how **`VITE_KUMBAYA_*`** overrides work for local and testnet builds.
 
+**Canonical integration doc (issue #46):** [integrations/kumbaya.md](../integrations/kumbaya.md) — upstream [integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit), **MegaETH** address parity, runbooks, and invariants.
+
 ## What gets deployed
 
 1. **`DeployDev.s.sol`** — core game contracts (TimeCurve, mock CL8Y, etc.).
@@ -44,5 +46,7 @@ Example shape for documenting Anvil output (regenerate after deploy): `contracts
 
 ## Related
 
+- [integrations/kumbaya.md](../integrations/kumbaya.md) — testnet/mainnet vs integrator-kit, USDm naming
 - [e2e-anvil.md](e2e-anvil.md) — Playwright + Anvil matrix
 - GitLab issue #41 — product scope and acceptance criteria
+- GitLab issue #46 — documentation and deployment alignment

@@ -14,6 +14,7 @@ interface ITimeCurveAsset {
 }
 
 /// @notice Deploy WETH, USDM, and AnvilKumbayaRouter with seeded reserves for issue #41 E2E.
+///         MegaETH / integrator alignment and runbooks: `docs/integrations/kumbaya.md` (issue #46).
 /// @dev Run after DeployDev. Usage:
 ///      forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures
 ///        --broadcast --rpc-url <RPC> --sig run(address) <TimeCurve>
