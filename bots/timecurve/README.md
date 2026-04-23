@@ -14,6 +14,21 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
+### PEP 668 (externally managed Python)
+
+Ubuntu 22.04+, Debian 12+, and other distributions may mark the system Python as **externally managed** ([PEP 668](https://peps.python.org/pep-0668/)). On those hosts, `pip install` **without a venv** often fails with *externally-managed-environment* — which surfaces later as `ModuleNotFoundError: No module named 'web3'` when [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) runs the bot swarm.
+
+**Preferred:** keep using a **virtualenv** (commands above).
+
+**Bare QA / CI host (no venv):** install into the user site with an explicit override — only when you accept that policy on that machine:
+
+```bash
+cd bots/timecurve
+pip install -e ".[dev]" --user --break-system-packages
+```
+
+See also [`SKILL.md`](SKILL.md) for IDE agent guidance on this package.
+
 The console script is **`timecurve-bot`** (or `python -m timecurve_bot.cli` from `src` on `PYTHONPATH`).
 
 ## Configuration
@@ -85,7 +100,7 @@ Deploy logic is **shared** with Playwright Anvil E2E via [`scripts/lib/anvil_dep
 
 Global options: `--send`, `--allow-anvil-funding`, `--env-file PATH`.
 
-**Local stack:** With `SKIP_ANVIL_RICH_STATE=1`, `scripts/start-local-anvil-stack.sh` defaults `START_BOT_SWARM=1` (set `START_BOT_SWARM=0` to skip). It runs `anvil --accounts 30`, syncs bot env, then runs the swarm. Install the package first: `cd bots/timecurve && pip install -e .` (or use `bots/timecurve/.venv`).
+**Local stack:** With `SKIP_ANVIL_RICH_STATE=1`, `scripts/start-local-anvil-stack.sh` defaults `START_BOT_SWARM=1` (set `START_BOT_SWARM=0` to skip). It runs `anvil --accounts 30`, syncs bot env, then runs the swarm. Install deps first (venv + `pip install -e ".[dev]"`, or PEP 668 fallback above). The script **preflights** `import web3` and prints the same install hints if deps are missing.
 
 ## Implementation note
 
