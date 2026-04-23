@@ -39,6 +39,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
 | Referral CHARM | `5%` referrer + `5%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | `REFERRAL_EACH_BPS` (500) in `TimeCurve` | Default |
+| Redemption density (no referral) | **DOUB per CHARM** falls as `totalCharmWeight` grows; **implied CL8Y per DOUB** (`totalRaised / totalTokensForSale`) rises each buy; **excluding referral**, **CL8Y value of DOUB per CHARM** is **non-decreasing** | [`docs/product/primitives.md`](../docs/product/primitives.md#timecurve-redemption-cl8y-density-no-referral) | Canonical |
 
 ## Referral registry
 

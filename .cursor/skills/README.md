@@ -9,3 +9,5 @@ Context: [Phase 18 — Agents: metadata and Cursor skills](../../docs/agent-phas
 Start with `yieldomega-guardrails/SKILL.md`, then follow `docs/agent-phases.md` for the task-specific phase prompt.
 
 **Kumbaya (DEX routing for TimeCurve):** [`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md) — cross-linked from the guardrails skill (item 7) and [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md).
+
+**TimeCurve redemption economics (no referral):** guardrails item 9 and [`docs/product/primitives.md` — CL8Y value of DOUB per CHARM](../../docs/product/primitives.md#timecurve-redemption-cl8y-density-no-referral).
