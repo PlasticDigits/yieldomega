@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  fetchIndexerStatus,
   rabbitDepositsApiPath,
   referralAppliedApiPath,
   referralRegistrationsApiPath,
@@ -76,5 +77,79 @@ describe("referralAppliedApiPath", () => {
     expect(referralAppliedApiPath(malicious, 20)).toBe(
       `/v1/referrals/applied?limit=20&referrer=${encodeURIComponent(malicious)}`,
     );
+  });
+});
+
+describe("fetchIndexerStatus", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("returns /v1/status JSON when that route is healthy", async () => {
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
+      const u = String(input);
+      if (u.includes("/v1/status")) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ schema_version: "1.7.0", max_indexed_block: 99 }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("not used", { status: 500 }));
+    });
+
+    const s = await fetchIndexerStatus();
+    expect(s).toEqual({ schema_version: "1.7.0", max_indexed_block: 99 });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to fees-distributed when /v1/status is not OK", async () => {
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
+      const u = String(input);
+      if (u.includes("/v1/status")) {
+        return Promise.resolve(new Response("", { status: 404 }));
+      }
+      if (u.includes("/v1/fee-router/fees-distributed")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [{ block_number: "12" }],
+              limit: 1,
+              offset: 0,
+              next_offset: null,
+            }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+                "x-schema-version": "1.7.0",
+              },
+            },
+          ),
+        );
+      }
+      return Promise.resolve(new Response("", { status: 500 }));
+    });
+
+    const s = await fetchIndexerStatus();
+    expect(s).toMatchObject({
+      schema_version: "1.7.0",
+      max_indexed_block: "12",
+    });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns null when both status and fallback fail", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
+
+    await expect(fetchIndexerStatus()).resolves.toBeNull();
   });
 });
