@@ -15,6 +15,7 @@ import {MockERC20AlwaysRevert} from "./mocks/MockERC20AlwaysRevert.sol";
 import {MockERC20BlockedSink} from "./mocks/MockERC20BlockedSink.sol";
 import {MockERC20Rebasing} from "./mocks/MockERC20Rebasing.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockPlain is ERC20 {
     constructor() ERC20("P", "P") {}
@@ -48,14 +49,14 @@ contract NonStandardERC20Test is Test {
     function test_feeOnTransfer_timeCurve_buyReverts_distributeExpectsFullAmount() public {
         MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
         MockPlain lt = new MockPlain();
-        PodiumPool pv = new PodiumPool(address(this));
-        FeeRouter r = new FeeRouter(
+        PodiumPool pv = UUPSDeployLib.deployPodiumPool(address(this));
+        FeeRouter r = UUPSDeployLib.deployFeeRouter(
             address(this),
             [s0, s1, address(pv), s3, s4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
-        LinearCharmPrice cp = new LinearCharmPrice(1e18, 0);
-        TimeCurve tc = new TimeCurve(
+        LinearCharmPrice cp = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
+        TimeCurve tc = UUPSDeployLib.deployTimeCurve(
             IERC20(address(ft)),
             IERC20(address(lt)),
             r,
@@ -68,7 +69,8 @@ contract NonStandardERC20Test is Test {
             ONE_DAY,
             FOUR_DAYS,
             1_000_000e18,
-            1
+            1,
+            address(this)
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);
@@ -86,7 +88,7 @@ contract NonStandardERC20Test is Test {
 
     function test_alwaysRevert_feeRouter_distributeReverts() public {
         MockERC20AlwaysRevert t = new MockERC20AlwaysRevert();
-        FeeRouter r = new FeeRouter(
+        FeeRouter r = UUPSDeployLib.deployFeeRouter(
             address(this),
             [s0, s1, s2, s3, s4],
             [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
@@ -99,7 +101,7 @@ contract NonStandardERC20Test is Test {
     function test_blockedSink_feeRouter_distributeReverts() public {
         address sinkA = makeAddr("sinkA");
         MockERC20BlockedSink t = new MockERC20BlockedSink(sinkA);
-        FeeRouter r = new FeeRouter(
+        FeeRouter r = UUPSDeployLib.deployFeeRouter(
             address(this),
             [sinkA, s1, s2, s3, s4],
             [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
@@ -112,7 +114,7 @@ contract NonStandardERC20Test is Test {
     function test_alwaysRevert_rabbitTreasury_depositReverts() public {
         MockERC20AlwaysRevert usdm = new MockERC20AlwaysRevert();
         Doubloon d = new Doubloon(address(this));
-        RabbitTreasury rt = new RabbitTreasury(
+        RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
             IERC20(address(usdm)),
             d,
             ONE_DAY,
@@ -147,7 +149,7 @@ contract NonStandardERC20Test is Test {
     function test_rebasing_treasury_balanceCanDesyncFromTotalReserves() public {
         MockERC20Rebasing usdm = new MockERC20Rebasing();
         Doubloon d = new Doubloon(address(this));
-        RabbitTreasury rt = new RabbitTreasury(
+        RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
             IERC20(address(usdm)),
             d,
             ONE_DAY,

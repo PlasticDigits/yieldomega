@@ -9,6 +9,7 @@ import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
+import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 
 contract DrillUSDM is ERC20 {
     constructor() ERC20("DrillUSDM", "DUSDM") {}
@@ -38,16 +39,16 @@ contract AnvilSameBlockDrill is Script {
         DrillLT lt = new DrillLT();
         address s0 = address(0x100);
         address s1 = address(0x101);
-        PodiumPool pv = new PodiumPool(deployer);
+        PodiumPool pv = UUPSDeployLib.deployPodiumPool(deployer);
         address s3 = address(0x103);
         address s4 = address(0x104);
-        FeeRouter router = new FeeRouter(
+        FeeRouter router = UUPSDeployLib.deployFeeRouter(
             deployer,
             [s0, s1, address(pv), s3, s4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
-        LinearCharmPrice cp = new LinearCharmPrice(1e18, 0);
-        TimeCurve tc = new TimeCurve(
+        LinearCharmPrice cp = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, deployer);
+        TimeCurve tc = UUPSDeployLib.deployTimeCurve(
             IERC20(address(usdm)),
             IERC20(address(lt)),
             router,
@@ -60,7 +61,8 @@ contract AnvilSameBlockDrill is Script {
             ONE_DAY,
             FOUR_DAYS,
             1_000_000e18,
-            300
+            300,
+            deployer
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);

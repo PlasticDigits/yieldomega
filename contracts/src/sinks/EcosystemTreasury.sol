@@ -6,5 +6,7 @@ import {FeeSink} from "./FeeSink.sol";
 /// @notice CL8Y-governed pool for grants, new games, consumer goods, and tools.
 ///         Not a direct TimeCurve fee sink — funded via governance allocations.
 contract EcosystemTreasury is FeeSink {
-    constructor(address admin) FeeSink(admin) {}
+    function initialize(address admin) external initializer {
+        __FeeSink_init(admin);
+    }
 }
