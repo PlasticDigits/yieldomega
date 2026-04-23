@@ -30,7 +30,9 @@ Reference images that false-trigger Replicate moderation (see logs) can be exclu
   scripts/replicate-art/replicate_flagged_inputs.json — use flagged_inputs.py add/remove.
 
 Replicate limits Prefer: wait to 1-60 seconds; use --wait-seconds in that range (default 60).
-Slow image generation (e.g. several minutes) still completes via the client polling loop.
+Polling is capped by REPLICATE_MAX_GENERATION_SECONDS (default 600); overdue runs are canceled.
+
+Slow image generation still completes via the client polling loop until that cap.
 """
 
 from __future__ import annotations
@@ -54,6 +56,7 @@ except ImportError:
     load_dotenv = None  # type: ignore[misc, assignment]
 
 import flagged_inputs as _flagged_inputs
+import replicate_bounded_run as _bounded
 
 # --- Shared style (applies to every image) ------------------------------------
 
@@ -127,6 +130,8 @@ def build_prompt(subject: str) -> str:
 
 def _is_capacity_like_error(exc: BaseException) -> bool:
     """Heuristic: retry on rate limits, overload, capacity, and transient network faults."""
+    if isinstance(exc, TimeoutError):
+        return False
     text = f"{type(exc).__name__}: {exc!s}".lower()
     needles = (
         "429",
@@ -438,12 +443,24 @@ def run_job(
             handles = [open(p, "rb") for p in ref_paths]
             try:
                 inp["input_images"] = handles
-                return client.run(MODEL, input=inp, wait=prefer_wait)
+                return _bounded.run_model_bounded(
+                    client,
+                    MODEL,
+                    inp,
+                    prefer_wait=prefer_wait,
+                    job_label=name,
+                )
             finally:
                 for handle in handles:
                     handle.close()
         inp["input_images"] = []
-        return client.run(MODEL, input=inp, wait=prefer_wait)
+        return _bounded.run_model_bounded(
+            client,
+            MODEL,
+            inp,
+            prefer_wait=prefer_wait,
+            job_label=name,
+        )
 
     output = run_with_retries(
         call_model,
