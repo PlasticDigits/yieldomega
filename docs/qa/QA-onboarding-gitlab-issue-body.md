@@ -129,7 +129,7 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 ### Bots, swarm, and QA wallet
 
 - [ ] `bash scripts/sync-bot-env-from-frontend.sh` run so `bots/timecurve/.env.local` matches frontend RPC and addresses.
-- [ ] `cd bots/timecurve && pip install -e ".[dev]"` (or `.venv`) succeeds; `timecurve-bot --help` works.
+- [ ] `bots/timecurve` deps installed (venv + `pip install -e ".[dev]"`, or PEP 668 fallback in [`bots/timecurve/README.md`](../../bots/timecurve/README.md)); `timecurve-bot --help` and `import web3` succeed.
 - [ ] `YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES` set in `bots/timecurve/.env.local` to the **same** address(es) you use in the browser (**0x only**, no private keys in shared files).
 - [ ] Swarm has run with Anvil funding: either the stack started it (`SKIP_ANVIL_RICH_STATE=1` path) **or** you ran `timecurve-bot --allow-anvil-funding swarm` manually **or** you intentionally skipped swarm (`START_BOT_SWARM=0`) and documented why.
 - [ ] After funding: QA wallet shows sufficient **native ETH** on Anvil for gas (same dev top-up as swarm bots).
@@ -186,14 +186,14 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 #### A. Local full stack (Anvil + indexer + frontend + bots)
 
-**Prerequisites:** Docker, Foundry (`anvil`, `forge`, `cast`), `jq`, `curl`, Node/npm, Python 3.11+.
+**Prerequisites:** Docker, Foundry (`anvil`, `forge`, `cast`), `jq`, `curl`, Node/npm, Python 3.11+. On **PEP 668** hosts, install `bots/timecurve` per that package README before swarm.
 
 - [ ] **A1** — From repo root: `bash scripts/start-local-anvil-stack.sh` — Postgres, Anvil, deploy, indexer, `frontend/.env.local` written.
 - [ ] **A1a** — From repo root: `make check-frontend-env` — validates merged `frontend/.env` + `frontend/.env.local` (TimeCurve + FeeRouter + related `VITE_*`).
 - [ ] **A2** — Optional: `SKIP_ANVIL_RICH_STATE=1` for live sale + default swarm (see script header) — sale stays active for bots/UI; `START_BOT_SWARM=0` to skip bots.
 - [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port). Restart Vite if you opened dev **before** `frontend/.env.local` was created.
 - [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — `bots/timecurve/.env.local` aligned with `VITE_*`.
-- [ ] **A5** — `cd bots/timecurve && pip install -e ".[dev]"` (or use `.venv`) — `timecurve-bot` available.
+- [ ] **A5** — `cd bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (or PEP 668 fallback in that README) — `timecurve-bot` / `import web3` works.
 - [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to `bots/timecurve/.env.local` (**addresses only**); re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + mock CL8Y mint as swarm bots (Anvil **31337** + `--allow-anvil-funding` only).
 - [ ] **A7** — Connect browser wallet with the **same** account as A6 — can submit buys / WarBow txs from UI.
 - [ ] **A8** — Smoke indexer: `curl -s http://127.0.0.1:<INDEXER_PORT>/v1/timecurve/buys?limit=5` — JSON rows after activity.
