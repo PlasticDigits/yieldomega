@@ -7,6 +7,9 @@ Options: --dry-run  --skip-existing  --start-from N  --sleep SEC (default 28)
 
 Reference PNGs that Replicate false-flags (NSFW / channel-dimension warnings) are listed in
 replicate_flagged_inputs.json and omitted from input_images (see flagged_inputs.py).
+
+Each generation is capped by REPLICATE_MAX_GENERATION_SECONDS (default 600); overdue predictions
+are canceled. See replicate_bounded_run.py.
 """
 
 from __future__ import annotations
@@ -36,6 +39,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import generate_assets as ga  # noqa: E402
 import flagged_inputs as _flagged_inputs  # noqa: E402
+import replicate_bounded_run as _bounded  # noqa: E402
 
 ResizeMode = Literal["scene_wide", "scene_mid", "portrait_768_1024", "cutout", "icon_256", "none"]
 
@@ -170,13 +174,24 @@ def run_batch_job(
             handles = [open(p, "rb") for p in ref_paths]
             try:
                 inp["input_images"] = handles
-                # Prefer short initial server wait; finish via client poll (avoids long-held HTTP disconnects).
-                return client.run(ga.MODEL, input=inp, wait=1)
+                return _bounded.run_model_bounded(
+                    client,
+                    ga.MODEL,
+                    inp,
+                    prefer_wait=1,
+                    job_label=stem,
+                )
             finally:
                 for h in handles:
                     h.close()
         inp["input_images"] = []
-        return client.run(ga.MODEL, input=inp, wait=1)
+        return _bounded.run_model_bounded(
+            client,
+            ga.MODEL,
+            inp,
+            prefer_wait=1,
+            job_label=stem,
+        )
 
     output = ga.run_with_retries(
         call_model,
