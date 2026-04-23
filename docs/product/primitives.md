@@ -16,6 +16,14 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 - A buy specifies **`charmWad`** within the current **scaled** `[0.99e18, 10e18]` band (before scaling: base constants; scaled by envelope ÷ reference). The contract pulls **`amount`** in the accepted asset from the buyer and routes the **full gross** through `FeeRouter`. **CHARM weight** accrues in **CHARM WAD units** (plus referral bonuses as CHARM, not reserve transfers). After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalCharmWeight` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
 
+<a id="timecurve-redemption-cl8y-density-no-referral"></a>
+
+#### Redemption economics: DOUB per CHARM vs CL8Y value of DOUB (no referral path)
+
+- **DOUB per CHARM (pro-rata):** As the sale runs, **`totalCharmWeight`** grows with each buy while **`totalTokensForSale`** stays fixed, so **DOUB redeemable per unit of `charmWeight`** **decreases** over time (larger denominator). This is **intended**.
+- **CL8Y value of DOUB:** The **implied CL8Y per 1e18 DOUB** from cumulative sale gross is **`totalRaised / totalTokensForSale`** (same basis as the onchain ratio behind `totalRaised` and the fixed sale bucket). Each successful buy increases **`totalRaised`**, so this **implied CL8Y per DOUB only increases** (stepwise) during the sale.
+- **Invariant — excluding referral rewards:** When **`charmWeight` accrues only from raw `charmWad`** (no referral split), the **CL8Y value of the DOUB per CHARM** — the redemption-relevant combination of **(implied CL8Y per DOUB)** and **(DOUB per unit `charmWeight`)** — **must only stay the same or increase** throughout the sale. **Referral** adds **`charmWeight` without CL8Y** and is **out of scope** for this invariant (see [`referrals.md`](referrals.md)).
+
 #### Per-wallet buy cooldown (pacing)
 
 - **`buyCooldownSec`** is an **immutable** constructor parameter (production default **300** seconds = **5 minutes**; must be **&gt; 0**). After each **successful** buy, the contract sets **`nextBuyAllowedAt[msg.sender] = block.timestamp + buyCooldownSec`** (Unix **seconds**, same base as **`block.timestamp`**). Before **`_buy`**, the contract requires **`block.timestamp >= nextBuyAllowedAt[msg.sender]`**; otherwise it reverts with **`"TimeCurve: buy cooldown"`**. For an address that has never bought, **`nextBuyAllowedAt`** is **0**, which is always **≤** `block.timestamp`, so the first buy is allowed. Cooldowns are **per wallet** and **independent** across buyers.
