@@ -36,10 +36,12 @@ Use this skill when editing or running the **`timecurve-bot`** package.
 ## Local Anvil workflow
 
 1. From repo root: `bash scripts/anvil-export-bot-env.sh` (starts Anvil, runs shared `DeployDev` via `scripts/lib/anvil_deploy_dev.sh`, writes `bots/timecurve/.env.local`).
-2. `cd bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`
+2. `cd bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` — on **PEP 668** hosts without a venv, use the `--user --break-system-packages` fallback documented in [`README.md`](README.md).
 3. `set -a && source .env.local && set +a`
 4. `.venv/bin/timecurve-bot inspect` (reads only).
 5. For scripted activity: `timecurve-bot --send --allow-anvil-cheat seed-local`.
+
+**Full stack:** [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) preflights `import web3` before the optional bot swarm; see README **PEP 668** if that step fails ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)).
 
 ## Public RPC
 

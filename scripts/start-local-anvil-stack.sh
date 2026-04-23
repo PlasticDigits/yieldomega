@@ -9,7 +9,7 @@
 # Bot swarm (3× fun/shark/pvp/defender/seed-local + 3× rando): one-shot CL8Y + ETH via YIELDOMEGA_ALLOW_ANVIL_FUNDING=1:
 #   When SKIP_ANVIL_RICH_STATE=1, START_BOT_SWARM defaults to 1 (set START_BOT_SWARM=0 to skip).
 #   When rich state runs (sale ended), START_BOT_SWARM defaults to 0.
-#   Requires Python deps: `cd bots/timecurve && pip install -e .`
+#   Requires Python deps (import web3): venv install in bots/timecurve/README.md, or PEP 668 fallback there.
 #
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # Usage from repo root:
@@ -45,6 +45,24 @@ export RPC_URL
 
 die() {
   echo "$@" >&2
+  exit 1
+}
+
+# Bot swarm imports web3 via bots/timecurve; fail fast with copy-paste fixes (PEP 668 / missing venv).
+ensure_timecurve_bot_deps() {
+  local py="$1"
+  if "${py}" -c "import web3" >/dev/null 2>&1; then
+    return 0
+  fi
+  echo "Bot swarm: Python cannot import 'web3' (install timecurve-bot deps first)." >&2
+  echo "" >&2
+  echo "  Recommended (venv):" >&2
+  echo "    cd ${ROOT}/bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e \".[dev]\"" >&2
+  echo "" >&2
+  echo "  PEP 668 / bare QA host (user site):" >&2
+  echo "    cd ${ROOT}/bots/timecurve && pip install -e \".[dev]\" --user --break-system-packages" >&2
+  echo "" >&2
+  echo "Then re-run this script, or set START_BOT_SWARM=0 to skip the swarm. See bots/timecurve/README.md (PEP 668)." >&2
   exit 1
 }
 
@@ -242,7 +260,8 @@ if [[ "${START_BOT_SWARM}" == "1" ]]; then
   if [[ -x "${ROOT}/bots/timecurve/.venv/bin/python" ]]; then
     BOT_PY="${ROOT}/bots/timecurve/.venv/bin/python"
   fi
+  ensure_timecurve_bot_deps "${BOT_PY}"
   ( cd "${ROOT}" && export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 && PYTHONPATH="${ROOT}/bots/timecurve/src" "${BOT_PY}" -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()" ) \
-    || die "Bot swarm failed (install: cd bots/timecurve && pip install -e .)"
+    || die "Bot swarm failed (unexpected error after deps check; see /tmp/yieldomega_swarm_*.log)."
   echo "  Logs: /tmp/yieldomega_swarm_*.log   PIDs: /tmp/yieldomega_bot_swarm.pids"
 fi
