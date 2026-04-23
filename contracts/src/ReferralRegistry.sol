@@ -3,30 +3,45 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 
 /// @title ReferralRegistry — short codes registered by burning CL8Y
 /// @notice See docs/product/referrals.md for code rules and economics.
-contract ReferralRegistry is IReferralRegistry {
+///         Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
+contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable, IReferralRegistry {
     using SafeERC20 for IERC20;
 
     /// @dev Irreversible burn sink (not EOA-controlled).
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    IERC20 public immutable cl8yToken;
-    uint256 public immutable registrationBurnAmount;
+    IERC20 public cl8yToken;
+    uint256 public registrationBurnAmount;
 
     mapping(bytes32 codeHash => address owner) public codeOwner;
     mapping(address owner => bytes32 codeHash) public ownerCode;
 
     event ReferralCodeRegistered(address indexed owner, bytes32 indexed codeHash, string normalizedCode);
 
-    constructor(IERC20 _cl8yToken, uint256 _registrationBurnAmount) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(IERC20 _cl8yToken, uint256 _registrationBurnAmount, address initialOwner)
+        external
+        initializer
+    {
         require(address(_cl8yToken) != address(0), "ReferralRegistry: zero CL8Y");
         require(_registrationBurnAmount > 0, "ReferralRegistry: zero burn");
+        __Ownable_init(initialOwner);
         cl8yToken = _cl8yToken;
         registrationBurnAmount = _registrationBurnAmount;
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @notice Hash used by `TimeCurve.buy(charmWad, codeHash)`; same as `keccak256(bytes(normalized))`.
     function hashCode(string calldata code) external pure returns (bytes32) {
@@ -75,4 +90,6 @@ contract ReferralRegistry is IReferralRegistry {
             );
         }
     }
+
+    uint256[50] private __gap;
 }

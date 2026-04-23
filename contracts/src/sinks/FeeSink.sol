@@ -3,22 +3,32 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-/// @notice Base contract for fee sink deployments — receives tokens from FeeRouter,
-///         allows governed withdrawal. Each concrete sink is a separate deployment
-///         per docs/onchain/treasury-contracts.md.
-abstract contract FeeSink is AccessControlEnumerable {
+/// @notice Base for upgradeable fee sink deployments — receives tokens from FeeRouter,
+///         allows governed withdrawal. Canonical envs use UUPS proxies per GitLab #54.
+abstract contract FeeSink is Initializable, AccessControlEnumerableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
 
     event Withdrawn(address indexed token, address indexed to, uint256 amount, address indexed actor);
 
-    constructor(address admin) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function __FeeSink_init(address admin) internal onlyInitializing {
+        __AccessControlEnumerable_init();
+        __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(WITHDRAWER_ROLE, admin);
     }
+
+    function _authorizeUpgrade(address) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// @notice Withdraw tokens held by this sink. Governed by WITHDRAWER_ROLE.
     function withdraw(IERC20 token, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
@@ -26,4 +36,6 @@ abstract contract FeeSink is AccessControlEnumerable {
         token.safeTransfer(to, amount);
         emit Withdrawn(address(token), to, amount, msg.sender);
     }
+
+    uint256[50] private __gap;
 }

@@ -11,6 +11,7 @@ import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockTokTC is ERC20 {
     constructor() ERC20("CL8Y", "CL8Y") {}
@@ -80,14 +81,14 @@ contract TimeCurveInvariantTest is Test {
     function setUp() public {
         usdm = new MockTokTC();
         launched = new MockTokTC();
-        podiumPool = new PodiumPool(address(this));
-        router = new FeeRouter(
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             [s0, s1, address(podiumPool), s3, s4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
-        linearPrice = new LinearCharmPrice(1e18, 0);
-        tc = new TimeCurve(
+        linearPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
+        tc = UUPSDeployLib.deployTimeCurve(
             IERC20(address(usdm)),
             IERC20(address(launched)),
             router,
@@ -100,7 +101,8 @@ contract TimeCurveInvariantTest is Test {
             ONE_DAY,
             FOUR_DAYS,
             1_000_000e18,
-            300
+            300,
+            address(this)
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         launched.mint(address(tc), 1_000_000e18);

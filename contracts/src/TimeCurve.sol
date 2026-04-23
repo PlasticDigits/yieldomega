@@ -3,7 +3,10 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TimeMath} from "./libraries/TimeMath.sol";
 import {FeeRouter} from "./FeeRouter.sol";
@@ -16,7 +19,8 @@ import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
 ///         (see `TIMER_RESET_BELOW_REMAINING_SEC` / `TIMER_RESET_TO_REMAINING_SEC`). **Four** reserve podium categories:
 ///         last buy, WarBow (top Battle Points), defended streak, time booster — see `docs/product/primitives.md`.
 ///         WarBow steals, guard, revenge, and flag claim use separate burn mechanics — same contract.
-contract TimeCurve is ReentrancyGuard {
+/// @dev Production: UUPS proxy; **proxy address** is canonical for sale + WarBow state (GitLab #54).
+contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     /// @notice Reason codes for `WarBowCl8yBurned` (stable numeric values for indexers).
@@ -83,21 +87,21 @@ contract TimeCurve is ReentrancyGuard {
     /// @dev 10e18 — max CHARM per buy is 10× the nominal 1 CHARM unit at the same envelope scale.
     uint256 internal constant CHARM_MAX_BASE_WAD = 10e18;
 
-    IERC20 public immutable acceptedAsset;
-    IERC20 public immutable launchedToken;
-    FeeRouter public immutable feeRouter;
-    PodiumPool public immutable podiumPool;
-    IReferralRegistry public immutable referralRegistry;
-    ICharmPrice public immutable charmPrice;
+    IERC20 public acceptedAsset;
+    IERC20 public launchedToken;
+    FeeRouter public feeRouter;
+    PodiumPool public podiumPool;
+    IReferralRegistry public referralRegistry;
+    ICharmPrice public charmPrice;
 
-    uint256 public immutable initialMinBuy;
-    uint256 public immutable growthRateWad;
-    uint256 public immutable timerExtensionSec;
-    uint256 public immutable initialTimerSec;
-    uint256 public immutable timerCapSec;
-    uint256 public immutable totalTokensForSale;
+    uint256 public initialMinBuy;
+    uint256 public growthRateWad;
+    uint256 public timerExtensionSec;
+    uint256 public initialTimerSec;
+    uint256 public timerCapSec;
+    uint256 public totalTokensForSale;
     /// @notice Minimum seconds between successful `buy` calls from the same wallet (`block.timestamp` basis).
-    uint256 public immutable buyCooldownSec;
+    uint256 public buyCooldownSec;
 
     uint256 public saleStart;
     uint256 public deadline;
@@ -210,7 +214,12 @@ contract TimeCurve is ReentrancyGuard {
     );
     event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         IERC20 _acceptedAsset,
         IERC20 _launchedToken,
         FeeRouter _feeRouter,
@@ -223,8 +232,9 @@ contract TimeCurve is ReentrancyGuard {
         uint256 _initialTimerSec,
         uint256 _timerCapSec,
         uint256 _totalTokensForSale,
-        uint256 _buyCooldownSec
-    ) {
+        uint256 _buyCooldownSec,
+        address upgradeAdmin
+    ) external initializer {
         require(address(_acceptedAsset) != address(0), "TimeCurve: zero asset");
         require(address(_launchedToken) != address(0), "TimeCurve: zero launched token");
         require(address(_feeRouter) != address(0), "TimeCurve: zero router");
@@ -237,6 +247,7 @@ contract TimeCurve is ReentrancyGuard {
         require(_timerCapSec >= _initialTimerSec, "TimeCurve: cap < initial timer");
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
         require(_buyCooldownSec > 0, "TimeCurve: zero buy cooldown");
+        __Ownable_init(upgradeAdmin);
         acceptedAsset = _acceptedAsset;
         launchedToken = _launchedToken;
         feeRouter = _feeRouter;
@@ -251,6 +262,8 @@ contract TimeCurve is ReentrancyGuard {
         buyCooldownSec = _buyCooldownSec;
         referralRegistry = IReferralRegistry(_referralRegistry);
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function startSale() external {
         require(saleStart == 0, "TimeCurve: already started");
@@ -771,4 +784,6 @@ contract TimeCurve is ReentrancyGuard {
         if (p.values[a] < p.values[b]) return false;
         return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
+
+    uint256[50] private __gap;
 }

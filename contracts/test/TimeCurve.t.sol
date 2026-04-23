@@ -6,11 +6,13 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
@@ -43,20 +45,63 @@ contract TimeCurveTest is Test {
     address sinkTeam = makeAddr("sinkTeam");
     address sinkRabbit = makeAddr("sinkRabbit");
 
+    function _deployLinearCharmPrice(uint256 baseWad, uint256 dailyWad) internal returns (LinearCharmPrice) {
+        return UUPSDeployLib.deployLinearCharmPrice(baseWad, dailyWad, address(this));
+    }
+
+    function _deployTimeCurve(
+        IERC20 _acceptedAsset,
+        IERC20 _launchedToken,
+        FeeRouter _feeRouter,
+        PodiumPool _podiumPool,
+        address _referralRegistry,
+        ICharmPrice _charmPrice,
+        uint256 _charmEnvelopeRefWad,
+        uint256 _growthRateWad,
+        uint256 _timerExtensionSec,
+        uint256 _initialTimerSec,
+        uint256 _timerCapSec,
+        uint256 _totalTokensForSale,
+        uint256 _buyCooldownSec
+    ) internal returns (TimeCurve) {
+        return UUPSDeployLib.deployTimeCurve(
+            _acceptedAsset,
+            _launchedToken,
+            _feeRouter,
+            _podiumPool,
+            _referralRegistry,
+            _charmPrice,
+            _charmEnvelopeRefWad,
+            _growthRateWad,
+            _timerExtensionSec,
+            _initialTimerSec,
+            _timerCapSec,
+            _totalTokensForSale,
+            _buyCooldownSec,
+            address(this)
+        );
+    }
+
+    function _expectTimeCurveInitRevert(bytes memory initData, string memory reason) internal {
+        TimeCurve impl = new TimeCurve();
+        vm.expectRevert(abi.encodeWithSignature("Error(string)", reason));
+        new ERC1967Proxy(address(impl), initData);
+    }
+
     function setUp() public {
         reserve = new MockERC20("CL8Y", "CL8Y");
         launchedToken = new MockERC20("LaunchToken", "LT");
 
-        podiumPool = new PodiumPool(address(this));
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
 
-        router = new FeeRouter(
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             [sinkLp, sinkBurn, address(podiumPool), sinkTeam, sinkRabbit],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
 
-        linearPrice = new LinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
-        tc = new TimeCurve(
+        linearPrice = _deployLinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
+        tc = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -99,7 +144,7 @@ contract TimeCurveTest is Test {
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
     function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
         require(initialTimerSec >= 120, "test: initial timer");
-        TimeCurve t = new TimeCurve(
+        TimeCurve t = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -134,7 +179,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_startSale_insufficient_launched_tokens_reverts() public {
-        TimeCurve tcUnder = new TimeCurve(
+        TimeCurve tcUnder = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -252,7 +297,7 @@ contract TimeCurveTest is Test {
     /// @dev Initial sale window can be shorter than the per-buy remaining-time ceiling (e.g. 24h vs 96h).
     function test_timer_initial_can_be_lower_than_cap() public {
         uint256 fourDay = 4 * ONE_DAY;
-        TimeCurve tcWide = new TimeCurve(
+        TimeCurve tcWide = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -280,21 +325,27 @@ contract TimeCurveTest is Test {
     }
 
     function test_constructor_cap_below_initial_timer_reverts() public {
-        vm.expectRevert("TimeCurve: cap < initial timer");
-        new TimeCurve(
-            reserve,
-            launchedToken,
-            router,
-            podiumPool,
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            ONE_DAY - 1,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    ONE_DAY - 1,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: cap < initial timer"
         );
     }
 
@@ -430,7 +481,7 @@ contract TimeCurveTest is Test {
 
     function test_time_booster_tracks_effective_seconds_not_nominal_when_clipped() public {
         uint256 cap = 200;
-        TimeCurve tcClip = new TimeCurve(
+        TimeCurve tcClip = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -462,7 +513,7 @@ contract TimeCurveTest is Test {
 
     function test_time_booster_zero_when_already_at_cap() public {
         uint256 cap = 200;
-        TimeCurve tcCap = new TimeCurve(
+        TimeCurve tcCap = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -1011,103 +1062,133 @@ contract TimeCurveTest is Test {
     // ── Constructor validation ─────────────────────────────────────────
 
     function test_constructor_zero_launchedToken_reverts() public {
-        vm.expectRevert("TimeCurve: zero launched token");
-        new TimeCurve(
-            reserve,
-            IERC20(address(0)),
-            router,
-            podiumPool,
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    IERC20(address(0)),
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero launched token"
         );
     }
 
     function test_constructor_zero_podiumPool_reverts() public {
-        vm.expectRevert("TimeCurve: zero podium pool");
-        new TimeCurve(
-            reserve,
-            launchedToken,
-            router,
-            PodiumPool(address(0)),
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    router,
+                    PodiumPool(address(0)),
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero podium pool"
         );
     }
 
     function test_constructor_zero_acceptedAsset_reverts() public {
-        vm.expectRevert("TimeCurve: zero asset");
-        new TimeCurve(
-            IERC20(address(0)),
-            launchedToken,
-            router,
-            podiumPool,
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    IERC20(address(0)),
+                    launchedToken,
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero asset"
         );
     }
 
     function test_constructor_zero_feeRouter_reverts() public {
-        vm.expectRevert("TimeCurve: zero router");
-        new TimeCurve(
-            reserve,
-            launchedToken,
-            FeeRouter(address(0)),
-            podiumPool,
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    FeeRouter(address(0)),
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero router"
         );
     }
 
     function test_constructor_zero_charmPrice_reverts() public {
-        vm.expectRevert("TimeCurve: zero charm price");
-        new TimeCurve(
-            reserve,
-            launchedToken,
-            router,
-            podiumPool,
-            address(0),
-            ICharmPrice(address(0)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            TEST_BUY_COOLDOWN_SEC
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(0)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero charm price"
         );
     }
 
     /// @dev Integer division can round claim to 0 when `totalTokensForSale` is tiny vs `totalRaised`.
     function test_redeemCharms_nothing_to_redeem_reverts() public {
-        TimeCurve tcSmall = new TimeCurve(
+        TimeCurve tcSmall = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -1248,8 +1329,8 @@ contract TimeCurveTest is Test {
 
     /// @dev Linear `ICharmPrice` schedule: +daily per second step; envelope flat (`growthRateWad = 0`).
     function test_linear_price_per_charm_independent_of_envelope() public {
-        LinearCharmPrice lp = new LinearCharmPrice(1e18, 1e17);
-        TimeCurve tcLin = new TimeCurve(
+        LinearCharmPrice lp = _deployLinearCharmPrice(1e18, 1e17);
+        TimeCurve tcLin = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -1284,26 +1365,32 @@ contract TimeCurveTest is Test {
     }
 
     function test_constructor_zero_buy_cooldown_reverts() public {
-        vm.expectRevert("TimeCurve: zero buy cooldown");
-        new TimeCurve(
-            reserve,
-            launchedToken,
-            router,
-            podiumPool,
-            address(0),
-            ICharmPrice(address(linearPrice)),
-            1e18,
-            GROWTH_RATE,
-            120,
-            ONE_DAY,
-            FOUR_DAYS,
-            1_000_000e18,
-            0
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    ONE_DAY,
+                    FOUR_DAYS,
+                    1_000_000e18,
+                    0,
+                    address(this)
+                )
+            ),
+            "TimeCurve: zero buy cooldown"
         );
     }
 
     function test_buy_cooldown_same_wallet_blocks_rapid_repeat() public {
-        TimeCurve tcd = new TimeCurve(
+        TimeCurve tcd = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -1331,7 +1418,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_cooldown_boundary_elapses() public {
-        TimeCurve tcd = new TimeCurve(
+        TimeCurve tcd = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
@@ -1364,7 +1451,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_cooldown_independent_wallets() public {
-        TimeCurve tcd = new TimeCurve(
+        TimeCurve tcd = _deployTimeCurve(
             reserve,
             launchedToken,
             router,
