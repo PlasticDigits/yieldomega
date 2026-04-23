@@ -182,8 +182,50 @@ export async function fetchRabbitDeposits(user: string | undefined, limit = 20) 
   return getJson<{ items: DepositItem[] }>(rabbitDepositsApiPath(user, limit));
 }
 
+/** Response header for indexer API schema; present on v1 JSON routes. */
+const INDEXER_SCHEMA_HEADER = "x-schema-version";
+
+/**
+ * `GET /v1/status` (best — includes DB pointer and max block).
+ * If that is unset or not OK, falls back to the same v1 read the footer uses
+ * (`/v1/fee-router/fees-distributed`, limit 1). That avoids a misleading
+ * "unreachable" banner when only `/v1/status` is blocked (e.g. some privacy
+ * filters match the path) or fails while the rest of the indexer is healthy.
+ */
 export async function fetchIndexerStatus() {
-  return getJson<Record<string, unknown>>("/v1/status");
+  const direct = await getJson<Record<string, unknown>>("/v1/status");
+  if (direct) {
+    return direct;
+  }
+
+  const base = indexerBaseUrl();
+  if (!base) {
+    return null;
+  }
+  let res: Response;
+  try {
+    res = await fetch(
+      `${base}/v1/fee-router/fees-distributed?limit=1&offset=0`,
+    );
+  } catch {
+    return null;
+  }
+  if (!res.ok) {
+    return null;
+  }
+  const ver = (res.headers.get(INDEXER_SCHEMA_HEADER) ?? "").trim() || "?";
+  type FeesBody = { items?: Array<{ block_number: string }> };
+  let data: FeesBody;
+  try {
+    data = (await res.json()) as FeesBody;
+  } catch {
+    return null;
+  }
+  const block0 = data.items?.[0]?.block_number;
+  return {
+    schema_version: ver,
+    max_indexed_block: block0 !== undefined ? block0 : null,
+  } as Record<string, unknown>;
 }
 
 export async function fetchLeprechaunMints(limit = 20) {
