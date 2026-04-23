@@ -7,5 +7,7 @@ import {FeeSink} from "./FeeSink.sol";
 ///         (not generic farm incentives). Pairing and ticks follow launch policy (1.2× clearing anchor;
 ///         Kumbaya 0.8×–∞ band) — see `docs/onchain/fee-routing-and-governance.md` and `launchplan-timecurve.md`.
 contract DoubLPIncentives is FeeSink {
-    constructor(address admin) FeeSink(admin) {}
+    function initialize(address admin) external initializer {
+        __FeeSink_init(admin);
+    }
 }

@@ -15,8 +15,11 @@ import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
+import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 
 /// @notice Deploy all core contracts to a dev/local environment.
+///         Core game + routing contracts deploy as **UUPS ERC1967 proxies**; logged addresses are **proxy** addresses.
+///         Tokens (`Doubloon`), NFTs (`LeprechaunNFT`), and dev mocks stay direct deployments (GitLab #54).
 ///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC>
 ///         Outputs addresses to console; copy into deployments/dev-addresses.example.json.
 ///         See docs/operations/deployment-stages.md and docs/operations/deployment-checklist.md.
@@ -46,17 +49,17 @@ contract DeployDev is Script {
         Doubloon doub = new Doubloon(deployer);
         console.log("Doubloon:", address(doub));
 
-        // ── Fee sinks ──────────────────────────────────────────────────
-        PodiumPool podiumPool = new PodiumPool(deployer);
-        DoubLPIncentives doubLP = new DoubLPIncentives(deployer);
-        EcosystemTreasury ecoTreasury = new EcosystemTreasury(deployer);
+        // ── Fee sinks (UUPS proxies) ────────────────────────────────────
+        PodiumPool podiumPool = UUPSDeployLib.deployPodiumPool(deployer);
+        DoubLPIncentives doubLP = UUPSDeployLib.deployDoubLPIncentives(deployer);
+        EcosystemTreasury ecoTreasury = UUPSDeployLib.deployEcosystemTreasury(deployer);
         console.log("PodiumPool:", address(podiumPool));
         console.log("Sale CL8Y burn sink:", SALE_CL8Y_BURN_SINK);
         console.log("DoubLPIncentives:", address(doubLP));
         console.log("EcosystemTreasury:", address(ecoTreasury));
 
-        // ── Rabbit Treasury ────────────────────────────────────────────
-        RabbitTreasury rt = new RabbitTreasury(
+        // ── Rabbit Treasury (UUPS proxy) ───────────────────────────────
+        RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
             ERC20(reserveAsset),
             doub,
             86_400,                             // epochDuration
@@ -79,8 +82,8 @@ contract DeployDev is Script {
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
         console.log("RabbitTreasury:", address(rt));
 
-        // ── Fee Router ─────────────────────────────────────────────────
-        FeeRouter router = new FeeRouter(
+        // ── Fee Router (UUPS proxy) ────────────────────────────────────
+        FeeRouter router = UUPSDeployLib.deployFeeRouter(
             deployer,
             [
                 address(doubLP),
@@ -94,8 +97,9 @@ contract DeployDev is Script {
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
         console.log("FeeRouter:", address(router));
 
-        // ── Referral registry (CL8Y burns for codes — same token as reserve when using dev mock) ──
-        ReferralRegistry referralRegistry = new ReferralRegistry(IERC20(reserveAsset), 1e18);
+        // ── Referral registry (UUPS proxy) ────────────────────────────
+        ReferralRegistry referralRegistry =
+            UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), 1e18, deployer);
         console.log("ReferralRegistry:", address(referralRegistry));
 
         // ── TimeCurve (dev placeholder — needs launched token) ─────────
@@ -104,12 +108,13 @@ contract DeployDev is Script {
         lt.mint(deployer, 1_000_000e18);
         console.log("MockLaunchToken (dev):", address(lt));
 
-        LinearCharmPrice charmPrice = new LinearCharmPrice(
+        LinearCharmPrice charmPrice = UUPSDeployLib.deployLinearCharmPrice(
             1e18, // base: 1.0 asset per 1e18 CHARM at sale start (18-dec asset)
-            1e17 // +0.10 per day (linear)
+            1e17, // +0.10 per day (linear)
+            deployer
         );
         console.log("LinearCharmPrice:", address(charmPrice));
-        TimeCurve tc = new TimeCurve(
+        TimeCurve tc = UUPSDeployLib.deployTimeCurve(
             ERC20(reserveAsset),
             lt,
             router,
@@ -122,7 +127,8 @@ contract DeployDev is Script {
             86_400, // initialTimerSec (24h first deadline)
             4 * 86_400, // timerCapSec (max 96h remaining from any buy)
             1_000_000e18, // totalTokensForSale
-            300 // buyCooldownSec (5 minutes; per-wallet pacing)
+            300, // buyCooldownSec (5 minutes; per-wallet pacing)
+            deployer
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
