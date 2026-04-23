@@ -2,8 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract ReferralRegistryTest is Test {
     MockCL8Y internal cl8y;
@@ -14,7 +16,7 @@ contract ReferralRegistryTest is Test {
 
     function setUp() public {
         cl8y = new MockCL8Y();
-        reg = new ReferralRegistry(cl8y, 1e18);
+        reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(cl8y)), 1e18, address(this));
         cl8y.mint(alice, 100e18);
         cl8y.mint(bob, 100e18);
     }
