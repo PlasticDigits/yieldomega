@@ -4,7 +4,7 @@
 
 Let users **register a short referral code** by paying a **fixed CL8Y burn**, then share links so **new buyers** can be attributed onchain. Rewards are enforced in **`TimeCurve`** on qualifying buys—**not** by the indexer or local browser storage.
 
-See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross** buy is routed through `FeeRouter`; referral incentives are **CHARM weight**, documented below).
+See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross** buy is routed through `FeeRouter`; referral incentives are **CHARM weight**, documented below). **Planning / calibration:** referral scenarios in [`simulations/doub_sale_calibration`](../../simulations/doub_sale_calibration/) are **sensitivity on top of** this canonical **5% + 5%** rule ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)).
 
 ## CL8Y token
 

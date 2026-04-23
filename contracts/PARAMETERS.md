@@ -34,7 +34,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | WarBow guard burn / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
-| Total tokens for sale | **Production target:** **200M DOUB** on TimeCurve (`totalTokensForSale`); dev mocks may use smaller values | > 0 | **TODO** — confirm at deploy |
+| Total tokens for sale | **Production target:** **200M DOUB** on TimeCurve (`totalTokensForSale`); dev mocks may use smaller values. **Planning:** a future **mintable** sale may fix **k** = DOUB minted per **gross CL8Y** (deploy decision); calibrate with [`simulations/doub_sale_calibration`](../simulations/doub_sale_calibration/) ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)). | > 0 | **TODO** — confirm at deploy |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |
 | Tie-break rule | Transaction-index ordering (earlier tx wins ties) | Deterministic onchain | Default |
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
@@ -61,11 +61,17 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 ## DOUB genesis allocation (policy — 250M total)
 
+**Launch valuation anchor (product, [issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53)):** **Fully diluted** launch mark **P** satisfies **P × 250M DOUB = $500k FDV** ⇒ **P ≈ $0.002 per DOUB** when using **all 250M** genesis tokens as the FDV denominator (same reference price across sale, presale, and LP seed buckets unless a different convention is explicitly adopted). This is a **documentation / planning** anchor for agents and deploy checklists, not an onchain oracle.
+
 | Bucket | Amount (whole DOUB) | Notes |
 |--------|---------------------|--------|
-| TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy |
+| TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy (**v1:** pre-funded balance + `redeemCharms` pro-rata). **Notional** at the FDV anchor: **200M × P ≈ $400k** of the **$500k** FDV story. |
 | Presale | **21.5M** | **30%** at vesting start · **70%** linear over **180 days** — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; document beneficiary addresses at deploy |
 | V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
+
+**Referral economics (canonical onchain):** **`REFERRAL_EACH_BPS` = 500** — **5%** of buyer **`charmWad`** to referrer **plus 5%** to buyer as **extra `charmWeight`**; **100% gross CL8Y** still routes through **`FeeRouter`**. Calibration “adoption %” scenarios are **sensitivity on top of** this rule, not a replacement ([`docs/product/referrals.md`](../docs/product/referrals.md)).
+
+**Tooling:** [`python3 -m doub_sale_calibration`](../simulations/doub_sale_calibration/__main__.py) — tables + optional charts; see [`docs/simulations/README.md`](../docs/simulations/README.md).
 
 ## Rabbit Treasury (Burrow)
 
