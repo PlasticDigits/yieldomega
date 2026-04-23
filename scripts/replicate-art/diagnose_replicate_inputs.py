@@ -50,6 +50,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import generate_assets as ga  # noqa: E402
+import replicate_bounded_run as bounded  # noqa: E402
 
 MODEL_OWNER, MODEL_NAME = ga.MODEL.split("/", 1)
 
@@ -68,14 +69,6 @@ def _client():
             pool=300.0,
         )
     )
-
-
-def _poll(pred) -> None:
-    import time as t
-
-    while pred.status not in ("succeeded", "failed", "canceled"):
-        t.sleep(2.0)
-        pred.reload()
 
 
 def _log_tail(logs: str | None, n: int = 40) -> str:
@@ -145,7 +138,12 @@ def run_case(
             input=inp,
             wait=prefer_wait,
         )
-    _poll(pred)
+    bounded.wait_prediction_bounded(
+        pred,
+        client,
+        max_seconds=bounded.max_generation_seconds(),
+        job_label=label,
+    )
 
     print(f"id: {pred.id}", file=sys.stderr)
     print(f"status: {pred.status}", file=sys.stderr)
