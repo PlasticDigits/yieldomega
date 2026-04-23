@@ -13,6 +13,7 @@ import {TimeCurve} from "../src/TimeCurve.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {MockReserveCl8y, MockLaunchToken} from "../script/DeployDev.s.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 /// @notice Mirrors `DeployDev` wiring: after deploy, epoch + sale are live; deposit + buy succeed.
 contract DevStackIntegrationTest is Test {
@@ -38,11 +39,11 @@ contract DevStackIntegrationTest is Test {
         reserveAsset = new MockReserveCl8y();
         doub = new Doubloon(address(this));
 
-        podiumPool = new PodiumPool(address(this));
-        doubLP = new DoubLPIncentives(address(this));
-        ecoTreasury = new EcosystemTreasury(address(this));
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
+        doubLP = UUPSDeployLib.deployDoubLPIncentives(address(this));
+        ecoTreasury = UUPSDeployLib.deployEcosystemTreasury(address(this));
 
-        rt = new RabbitTreasury(
+        rt = UUPSDeployLib.deployRabbitTreasury(
             ERC20(address(reserveAsset)),
             doub,
             ONE_DAY,
@@ -64,7 +65,7 @@ contract DevStackIntegrationTest is Test {
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
 
-        router = new FeeRouter(
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             [
                 address(doubLP),
@@ -80,8 +81,8 @@ contract DevStackIntegrationTest is Test {
         lt = new MockLaunchToken();
         lt.mint(address(this), 1_000_000e18);
 
-        charmPrice = new LinearCharmPrice(1e18, 1e17); // $1 + $0.10/day (18-dec asset)
-        tc = new TimeCurve(
+        charmPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 1e17, address(this)); // $1 + $0.10/day (18-dec asset)
+        tc = UUPSDeployLib.deployTimeCurve(
             ERC20(address(reserveAsset)),
             lt,
             router,
@@ -94,7 +95,8 @@ contract DevStackIntegrationTest is Test {
             ONE_DAY,
             FOUR_DAYS,
             1_000_000e18,
-            300
+            300,
+            address(this)
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));

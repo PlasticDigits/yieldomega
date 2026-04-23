@@ -8,6 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {BurrowMath} from "../src/libraries/BurrowMath.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockReserveCl8y is ERC20 {
     constructor() ERC20("CL8Y", "CL8Y") {}
@@ -43,7 +44,7 @@ contract RabbitTreasuryTest is Test {
     function setUp() public {
         reserve = new MockReserveCl8y();
         doub = new Doubloon(address(this));
-        rt = new RabbitTreasury(
+        rt = UUPSDeployLib.deployRabbitTreasury(
             reserve,
             doub,
             ONE_DAY,
@@ -456,7 +457,7 @@ contract RabbitTreasuryTest is Test {
 
     function test_burn_share_zero_sends_all_to_protocol_bucket() public {
         Doubloon d0 = new Doubloon(address(this));
-        RabbitTreasury rt0 = new RabbitTreasury(
+        RabbitTreasury rt0 = UUPSDeployLib.deployRabbitTreasury(
             reserve,
             d0,
             ONE_DAY,

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockToken is ERC20 {
     constructor() ERC20("MockToken", "MT") {}
@@ -24,7 +25,7 @@ contract FeeRouterTest is Test {
 
     function setUp() public {
         token = new MockToken();
-        router = new FeeRouter(
+        router = UUPSDeployLib.deployFeeRouter(
             address(this),
             [sink0, sink1, sink2, sink3, sink4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]

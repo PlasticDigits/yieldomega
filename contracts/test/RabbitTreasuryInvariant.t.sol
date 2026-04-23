@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockReserveCl8yInv is ERC20 {
     constructor() ERC20("CL8Y", "CL8Y") {}
@@ -108,7 +109,7 @@ contract RabbitTreasuryInvariantTest is Test {
     function setUp() public {
         reserve = new MockReserveCl8yInv();
         doub = new Doubloon(address(this));
-        rt = new RabbitTreasury(
+        rt = UUPSDeployLib.deployRabbitTreasury(
             reserve,
             doub,
             ONE_DAY,
