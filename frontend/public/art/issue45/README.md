@@ -7,7 +7,7 @@
 
 Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 
-**Generation settings:** **openai/gpt-image-2**, `quality=high`, `moderation=low`, `number_of_images=1`, reference `../style.png` + `../token-logo.png` (+ `../sir-card.png` for Sir strip). Post-process: longest side capped (**≤1920**, typically **≤1536** for wide scenes; cutouts **≤1024**; icons **≤256**; portrait mobile fits **768×1024** box without upscaling). Transparent catalog jobs used flat **#FF00FF** chroma + local keying per `scripts/replicate-art/generate_assets.py`.
+**Generation settings:** **openai/gpt-image-2**, `quality=high`, `moderation=low`, `number_of_images=1`, reference `../style.png` + `../token-logo.png` (+ `../../sir.png` for Sir strip per `generate_assets.DEFAULT_SIR_CARD_REF`). Post-process: longest side capped (**≤1920**, typically **≤1536** for wide scenes; cutouts **≤1024**; icons **≤256**; portrait mobile fits **768×1024** box without upscaling). Transparent catalog jobs used flat **#FF00FF** chroma + local keying per `scripts/replicate-art/generate_assets.py`.
 
 ## 1) Scenes & wide compositions
 
