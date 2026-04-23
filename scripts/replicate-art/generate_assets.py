@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-only
 """
-Generate Yieldomega art assets via Replicate (google/nano-banana-pro).
+Generate Yieldomega art assets via Replicate (openai/gpt-image-2).
 
 Reference images (recommended for consistent style):
   <repo>/frontend/public/art/style.png       — full-scene style anchor
@@ -24,6 +24,10 @@ Usage:
   python generate_assets.py
   python generate_assets.py --dry-run
   python generate_assets.py --only hero-home --exact
+  python generate_assets.py --background opaque   # override catalog (auto|transparent|opaque)
+
+Reference images that false-trigger Replicate moderation (see logs) can be excluded via
+  scripts/replicate-art/replicate_flagged_inputs.json — use flagged_inputs.py add/remove.
 
 Replicate limits Prefer: wait to 1-60 seconds; use --wait-seconds in that range (default 60).
 Slow image generation (e.g. several minutes) still completes via the client polling loop.
@@ -49,6 +53,8 @@ try:
 except ImportError:
     load_dotenv = None  # type: ignore[misc, assignment]
 
+import flagged_inputs as _flagged_inputs
+
 # --- Shared style (applies to every image) ------------------------------------
 
 STYLE_GUIDE = """
@@ -60,7 +66,7 @@ no realism, no painterly texture, no muted palette, no gritty rendering, no phot
 """.strip()
 
 REFERENCE_INSTRUCTIONS = """
-Reference images are supplied as image_input in this exact order:
+Reference images are supplied as input_images in this exact order:
 (1) style.png — preserve its core character design language and worldbuilding: bunny leprechaun girl mascot, red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
 (2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green leprechaun hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel. For any coins, tokens, badges, or currency icons, keep them closely aligned to this emblem design language and finish.
 (3) some jobs may include an extra character/logo reference image — when present, preserve that character's recognizable silhouette, face shape, and key identity markers while translating it fully into the same Yieldomega blocky arcade cartoon universe.
@@ -68,7 +74,7 @@ Reference images are supplied as image_input in this exact order:
 Important balance: keep the characters, costume language, palette, token motif, and overall aesthetic clearly consistent with the references, but do not make a direct edit or near-duplicate of the reference image. Change the composition, camera angle, staging, pose, layout, and scene arrangement while keeping the same brand identity. Do not render readable text, letters beyond the stylized D buckle motif on token emblems, watermarks, or UI chrome in the output image.
 """.strip()
 
-MODEL = "google/nano-banana-pro"
+MODEL = "openai/gpt-image-2"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO_ROOT / "frontend" / "public" / "art"
@@ -80,12 +86,28 @@ DEFAULT_SIR_CARD_REF = REPO_ROOT / "frontend" / "public" / "sir.png"
 # still complete: the Python client polls prediction.reload() until a terminal state.
 REPLICATE_PREFER_WAIT_MAX = 60
 
-Resolution = str  # "1K" | "2K" | "4K"
-OutputFmt = str  # "jpg" | "png"
+# gpt-image-2 output_format enum: png | jpeg | webp
+OutputFmt = str
+BackgroundMode = str  # "auto" | "transparent" | "opaque"
 
 
 def clamp_prefer_wait(seconds: int) -> int:
     return max(1, min(REPLICATE_PREFER_WAIT_MAX, seconds))
+
+
+def format_to_ext(output_format: str) -> str:
+    if output_format == "jpeg":
+        return "jpg"
+    if output_format == "webp":
+        return "webp"
+    return "png"
+
+
+def effective_output_format(output_format: str, background: str) -> str:
+    """JPEG cannot carry alpha; force PNG when the API is asked for a transparent background."""
+    if background == "transparent" and output_format == "jpeg":
+        return "png"
+    return output_format
 
 
 def build_prompt(subject: str) -> str:
@@ -161,147 +183,149 @@ def run_with_retries(
     raise last
 
 
-# Jobs: name, aspect_ratio (nano-banana enum), resolution ("1K"|"2K"|"4K"), output_format ("jpg"|"png"), subject
-JOBS: list[tuple[str, str, Resolution, OutputFmt, str]] = [
+# Jobs: name, aspect_ratio (gpt-image-2: 1:1 | 3:2 | 2:3), output_format (png|jpeg|webp),
+#       background (auto|transparent|opaque), subject.
+# Former 16:9 heroes use 3:2 (widest ratio supported by the model).
+JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
     (
         "timecurve-doubloon-launch",
-        "16:9",
-        "2K",
-        "jpg",
+        "3:2",
+        "jpeg",
+        "opaque",
         "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Bunny leprechaun girl and red-bearded leprechaun mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
     ),
     (
         "hero-home",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Homepage hero banner: bunny leprechaun girl mascot centered, smiling and playful, white rabbit ears, green fantasy dress, red-bearded leprechauns with green hats on both sides carrying bags of glossy hat-coins, rainbow arc, sparkles, voxel hills, treasure field, high energy landing page art, leave clear negative space for UI overlays at top",
     ),
     (
         "hero-home-wide",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Extra wide feeling website hero: bunny leprechaun girl mascot in foreground, two red-bearded leprechauns flanking her, flying hat-coins, chunky cube landscape, bright sky, rainbow, strong horizontal composition with breathing room on left and right for nav and CTAs",
     ),
     (
         "mascot-bunny-leprechaun-full",
         "2:3",
-        "2K",
-        "jpg",
-        "Full body bunny leprechaun girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, simple clean backdrop, character design quality, centered, no text",
+        "png",
+        "transparent",
+        "Full body bunny leprechaun girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, alpha background, character cutout quality for UI compositing, centered, no text",
     ),
     (
         "mascot-bunny-leprechaun-wave",
         "2:3",
-        "2K",
-        "jpg",
-        "Full body bunny leprechaun girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, simple clean backdrop, centered, no text",
+        "png",
+        "transparent",
+        "Full body bunny leprechaun girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, alpha background, character cutout quality, centered, no text",
     ),
     (
         "mascot-redbeard-leprechaun",
         "2:3",
-        "2K",
-        "jpg",
-        "Full body red-bearded leprechaun mascot, big green hat, cheerful grin, carrying a sack of glossy hat-coins, chunky cartoon proportions, simple clean backdrop, centered, no text",
+        "png",
+        "transparent",
+        "Full body red-bearded leprechaun mascot, big green hat, cheerful grin, carrying a sack of glossy hat-coins, chunky cartoon proportions, alpha background, character cutout quality, centered, no text",
     ),
     (
         "mascot-redbeard-leprechaun-cheer",
         "2:3",
-        "2K",
-        "jpg",
-        "Full body red-bearded leprechaun mascot cheering with one hand up and one bag of coins, arcade fantasy merchant vibe, simple clean backdrop, centered, no text",
+        "png",
+        "transparent",
+        "Full body red-bearded leprechaun mascot cheering with one hand up and one bag of coins, arcade fantasy merchant vibe, alpha background, character cutout quality, centered, no text",
     ),
     (
         "hat-coin-front",
         "1:1",
-        "1K",
         "png",
-        "Single gold collectible coin, front facing, use token-logo hat+D emblem in the center, glossy embossed highlights, UI icon quality, centered, no extra coins, no text",
+        "transparent",
+        "Single gold collectible coin, front facing, use token-logo hat+D emblem in the center, glossy embossed highlights, UI icon quality, centered, no extra coins, no text, transparent background behind the coin",
     ),
     (
         "hat-coin-stack",
         "1:1",
-        "1K",
         "png",
-        "Small stack of glossy gold hat-tokens, front three quarter view, token-logo emblem visible on top coin, game reward icon, centered composition, no text",
+        "transparent",
+        "Small stack of glossy gold hat-tokens, front three quarter view, token-logo emblem visible on top coin, game reward icon, centered composition, no text, transparent background",
     ),
     (
         "hat-coin-rain",
         "1:1",
-        "1K",
         "png",
-        "Cluster of floating glossy hat-token coins raining downward, dynamic arcade reward burst, token-logo style emblems, centered composition, no text",
+        "transparent",
+        "Cluster of floating glossy hat-token coins raining downward, dynamic arcade reward burst, token-logo style emblems, centered composition, no text, transparent background",
     ),
     (
         "rabbit-treasury-card",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Rabbit Treasury feature illustration: cute white rabbit mascot near treasure vault, green and gold coin piles, chunky cube cliffs, cheerful premium treasure room mood, clean marketing card composition, no text",
     ),
     (
         "collection-card",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Leprechaun collection feature art: lineup of bunny leprechaun girl and red-bearded leprechauns like a collectible character roster, rainbow sparkles, display card composition, no text",
     ),
     (
         "referrals-card",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Referrals feature art: mascots passing glowing hat-coins between each other like combo bonus rewards, friendly teamwork energy, cube background, clean marketing card, no text",
     ),
     (
         "kumbaya-card",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Liquidity pool feature art: glossy green and gold streams flowing into a magical pool or cauldron, hat-coins orbiting, playful fantasy finance, stylized not realistic, no text",
     ),
     (
         "sir-card",
         "3:2",
-        "2K",
         "png",
+        "opaque",
         "Trading arena feature art: SIRDoub gorilla mascot behind the counter as the main merchant, using the supplied gorilla logo reference translated into the same bright Yieldomega blocky arcade cartoon style, with a black top hat with gold band (not a green leprechaun hat) and fantasy marketkeeper presentation, plus a smaller red-bearded leprechaun customer at the counter, green gold banners, hat-coin trophies, bold readable shapes, fantasy not gritty, no text",
     ),
     (
         "bg-voxel-hills",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Environment background only, no characters: bright voxel cube hills, blue sky, soft blocky clouds, rainbow fragments, gentle treasure glow, usable as a website section background, simple layered scenery, no text",
     ),
     (
         "bg-coins-and-stars",
         "3:2",
-        "2K",
-        "jpg",
+        "jpeg",
+        "opaque",
         "Decorative background only, no characters: flying hat-coins, sparkles, stars, soft cube shapes, bright emerald and gold palette, suitable behind UI cards, uncluttered, no text",
     ),
     (
         "loading-mascot",
         "1:1",
-        "1K",
         "png",
-        "Bunny leprechaun girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text",
+        "transparent",
+        "Bunny leprechaun girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text, transparent background",
     ),
     (
         "app-icon",
         "1:1",
-        "1K",
         "png",
-        "App icon: single glossy gold coin with green leprechaun hat emblem matching token-logo (yellow D buckle), tiny rainbow sparkle accents, bold centered composition, readable at small size, no letters besides the stylized D on the buckle, no watermark",
+        "transparent",
+        "App icon: single glossy gold coin with green leprechaun hat emblem matching token-logo (yellow D buckle), tiny rainbow sparkle accents, bold centered composition, readable at small size, no letters besides the stylized D on the buckle, no watermark, transparent background outside the round icon",
     ),
     (
         "opengraph",
-        "16:9",
-        "2K",
-        "jpg",
-        "Social link preview / Open Graph card for messaging apps and X: wide 16:9 landscape, bold readable composition safe for center crops. Bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
+        "3:2",
+        "jpeg",
+        "opaque",
+        "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
     ),
 ]
 
@@ -328,20 +352,21 @@ def ref_paths_for_job(name: str, style_ref: Path, token_ref: Path) -> list[Path]
     refs = [style_ref, token_ref]
     if name == "sir-card" and DEFAULT_SIR_CARD_REF.is_file():
         refs.append(DEFAULT_SIR_CARD_REF)
-    return refs
+    return _flagged_inputs.filter_reference_paths(refs, REPO_ROOT, job_label=name)
 
 
 def run_job(
     name: str,
     aspect_ratio: str,
-    resolution: Resolution,
     output_format: OutputFmt,
+    background: BackgroundMode,
     subject: str,
     out_dir: Path,
     style_ref: Path,
     token_ref: Path,
-    safety_filter_level: str,
-    allow_fallback_model: bool,
+    quality: str,
+    moderation: str,
+    output_compression: int,
     prefer_wait: int,
     retry_max: int,
     retry_delay_sec: float,
@@ -349,17 +374,26 @@ def run_job(
     no_refs: bool,
 ) -> Path | None:
     prompt = build_prompt(subject)
-    ext = "jpg" if output_format == "jpg" else "png"
+    out_fmt = effective_output_format(output_format, background)
+    if out_fmt != output_format:
+        print(
+            f"[{name}] Note: transparent background requires PNG; using output_format=png "
+            f"(catalog had {output_format}).",
+            file=sys.stderr,
+        )
+    ext = format_to_ext(out_fmt)
     out_path = out_dir / f"{name}.{ext}"
 
     inp: dict = {
         "prompt": prompt,
         "aspect_ratio": aspect_ratio,
-        "resolution": resolution,
-        "output_format": output_format,
-        "safety_filter_level": safety_filter_level,
-        "allow_fallback_model": allow_fallback_model,
-        "image_input": [],
+        "quality": quality,
+        "background": background,
+        "moderation": moderation,
+        "output_format": out_fmt,
+        "number_of_images": 1,
+        "output_compression": output_compression,
+        "input_images": [],
     }
 
     ref_paths = ref_paths_for_job(name, style_ref, token_ref)
@@ -367,15 +401,14 @@ def run_job(
     if dry_run:
         print(f"[dry-run] would write {out_path}")
         print(
-            f"  model={MODEL} aspect_ratio={aspect_ratio} resolution={resolution} "
-            f"output_format={output_format} safety_filter_level={safety_filter_level} "
-            f"allow_fallback_model={allow_fallback_model} prefer_wait={prefer_wait}s "
-            f"(max {REPLICATE_PREFER_WAIT_MAX}s; polling handles longer runs)"
+            f"  model={MODEL} aspect_ratio={aspect_ratio} quality={quality} background={background} "
+            f"moderation={moderation} output_format={out_fmt} output_compression={output_compression} "
+            f"prefer_wait={prefer_wait}s (max {REPLICATE_PREFER_WAIT_MAX}s; polling handles longer runs)"
         )
         if not no_refs:
-            print("  image_input: " + " , ".join(str(p) for p in ref_paths))
+            print("  input_images: " + " , ".join(str(p) for p in ref_paths))
         else:
-            print("  image_input: (none, --no-ref-images)")
+            print("  input_images: (none, --no-ref-images)")
         return None
 
     import replicate
@@ -400,16 +433,16 @@ def run_job(
             if missing:
                 raise FileNotFoundError(
                     "Reference images missing. Expected:\n  "
-                    + "\n  ".join(str(p) for p in ref_paths)
+                    + "\n  ".join(str(p) for p in missing)
                 )
             handles = [open(p, "rb") for p in ref_paths]
             try:
-                inp["image_input"] = handles
+                inp["input_images"] = handles
                 return client.run(MODEL, input=inp, wait=prefer_wait)
             finally:
                 for handle in handles:
                     handle.close()
-        inp["image_input"] = []
+        inp["input_images"] = []
         return client.run(MODEL, input=inp, wait=prefer_wait)
 
     output = run_with_retries(
@@ -431,7 +464,7 @@ def run_job(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate art via Replicate Nano Banana Pro")
+    parser = argparse.ArgumentParser(description="Generate art via Replicate openai/gpt-image-2")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -451,15 +484,32 @@ def main() -> int:
         help="Hat + D token logo reference (PNG)",
     )
     parser.add_argument(
-        "--safety-filter-level",
-        choices=("block_low_and_above", "block_medium_and_above", "block_only_high"),
-        default="block_only_high",
-        help="safety_filter_level (default: block_only_high)",
+        "--quality",
+        choices=("low", "medium", "high", "auto"),
+        default="auto",
+        help="gpt-image-2 quality (default: auto)",
     )
     parser.add_argument(
-        "--no-fallback-model",
-        action="store_true",
-        help="Set allow_fallback_model=false (default: true to help when Nano Banana Pro is at capacity)",
+        "--moderation",
+        choices=("auto", "low"),
+        default="auto",
+        help="gpt-image-2 moderation level (default: auto)",
+    )
+    parser.add_argument(
+        "--background",
+        choices=("auto", "transparent", "opaque"),
+        default=None,
+        help=(
+            "Override background for every job (auto | transparent | opaque). "
+            "Default: use per-job value from the catalog."
+        ),
+    )
+    parser.add_argument(
+        "--output-compression",
+        type=int,
+        default=90,
+        metavar="PCT",
+        help="Output compression 0-100 for lossy formats (default: 90)",
     )
     parser.add_argument(
         "--wait-seconds",
@@ -508,6 +558,8 @@ def main() -> int:
         help="Skip a job if the output file already exists",
     )
     args = parser.parse_args()
+    if not 0 <= args.output_compression <= 100:
+        parser.error("--output-compression must be between 0 and 100")
     requested_wait = args.wait_seconds
     args.wait_seconds = clamp_prefer_wait(args.wait_seconds)
     if requested_wait != args.wait_seconds:
@@ -535,7 +587,6 @@ def main() -> int:
     only = args.only.strip().lower()
     style_ref = args.style_ref
     token_ref = args.token_ref
-    allow_fallback = not args.no_fallback_model
 
     def name_matches(job_name: str) -> bool:
         if not only:
@@ -547,10 +598,12 @@ def main() -> int:
 
     ran = 0
     skipped = 0
-    for name, aspect_ratio, resolution, output_format, subject in JOBS:
+    for name, aspect_ratio, output_format, job_background, subject in JOBS:
         if not name_matches(name):
             continue
-        ext = "jpg" if output_format == "jpg" else "png"
+        background = args.background if args.background is not None else job_background
+        out_fmt = effective_output_format(output_format, background)
+        ext = format_to_ext(out_fmt)
         candidate = out_dir / f"{name}.{ext}"
         if args.skip_existing and candidate.is_file():
             print(f"Skip existing: {candidate}")
@@ -559,14 +612,15 @@ def main() -> int:
         run_job(
             name,
             aspect_ratio,
-            resolution,
             output_format,
+            background,
             subject,
             out_dir,
             style_ref,
             token_ref,
-            args.safety_filter_level,
-            allow_fallback,
+            args.quality,
+            args.moderation,
+            args.output_compression,
             args.wait_seconds,
             args.retry_max,
             args.retry_delay,
