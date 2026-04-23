@@ -1,7 +1,7 @@
 # YieldOmega — TimeCurve QA checklist (local + release-oriented)
 
 > **Scope:** Manual and semi-automated verification for TimeCurve, aligned with this repository.  
-> **Canonical mechanics:** [`docs/product/primitives.md`](../product/primitives.md), [`contracts/src/TimeCurve.sol`](../../contracts/src/TimeCurve.sol), [`docs/onchain/fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md), [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md).
+> **Canonical mechanics:** [`docs/product/primitives.md`](../product/primitives.md), [`contracts/src/TimeCurve.sol`](../../contracts/src/TimeCurve.sol), [`docs/onchain/fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md), [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md). **DOUB genesis / FDV anchor / calibration:** [GitLab #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53), [`docs/simulations/README.md`](../simulations/README.md), [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#doub-genesis-fdv-anchor-and-sale-economics-gitlab-53).
 
 ---
 
@@ -69,6 +69,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ## References
 
+- [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#doub-genesis-fdv-anchor-and-sale-economics-gitlab-53) — DOUB FDV + sale economics checklist (issue #53)
 - [`docs/frontend/timecurve-views.md`](../frontend/timecurve-views.md) — three-view split, sale-phase + hero clock (issue #48)
 - [`docs/testing/e2e-anvil.md`](../testing/e2e-anvil.md) — `VITE_*` contract + Playwright
 - [`scripts/check-frontend-vite-env.sh`](../../scripts/check-frontend-vite-env.sh) — `make check-frontend-env`
