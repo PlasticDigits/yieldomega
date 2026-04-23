@@ -480,7 +480,7 @@ contract TimeCurve is ReentrancyGuard {
 
     /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
     function warbowRevenge(address stealer) external nonReentrant {
-        require(saleStart > 0, "TimeCurve: not started");
+        require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(stealer != address(0), "TimeCurve: zero stealer");
         require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
         require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
