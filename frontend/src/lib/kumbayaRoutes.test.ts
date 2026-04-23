@@ -56,6 +56,26 @@ describe("resolveKumbayaRouting", () => {
       expect(r.config.usdmWethFee).toBe(3000);
     }
   });
+
+  it("resolves MegaETH mainnet (4326) from integrator-kit defaults without env", () => {
+    const r = resolveKumbayaRouting(4326, {});
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.config.weth).toBe("0x4200000000000000000000000000000000000006");
+    expect(r.config.swapRouter).toBe("0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e");
+    expect(r.config.quoter).toBe("0x1F1a8dC7E138C34b503Ca080962aC10B75384a27");
+    expect(r.config.usdm).toBe("0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7");
+  });
+
+  it("resolves MegaETH testnet (6343) router + quoter without env; stable via env only", () => {
+    const r = resolveKumbayaRouting(6343, {});
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.config.weth).toBe("0x4200000000000000000000000000000000000006");
+    expect(r.config.swapRouter).toBe("0x8268DC930BA98759E916DEd4c9F367A844814023");
+    expect(r.config.quoter).toBe("0xfb230b93803F90238cB03f254452bA3a3b0Ec38d");
+    expect(r.config.usdm).toBe("0x0000000000000000000000000000000000000000");
+  });
 });
 
 describe("buildV3PathExactOutput", () => {
@@ -97,6 +117,23 @@ describe("routingForPayAsset", () => {
     const r = routingForPayAsset("usdm", CL8Y, { ...cfg, usdm: "0x0000000000000000000000000000000000000000" });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe("missing_usdm");
+  });
+
+  it("USDM works on mainnet defaults", () => {
+    const r = resolveKumbayaRouting(4326, {});
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const pay = routingForPayAsset("usdm", CL8Y, r.config);
+    expect(pay.ok).toBe(true);
+  });
+
+  it("USDM mode on 6343 without VITE_KUMBAYA_USDM fails closed", () => {
+    const r = resolveKumbayaRouting(6343, {});
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const pay = routingForPayAsset("usdm", CL8Y, r.config);
+    expect(pay.ok).toBe(false);
+    if (!pay.ok) expect(pay.reason).toBe("missing_usdm");
   });
 });
 

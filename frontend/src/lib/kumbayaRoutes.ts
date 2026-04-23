@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+//
+// Kumbaya (MegaETH v3) routing for TimeCurve multi-asset entry. Deployment runbooks
+// and upstream address parity: docs/integrations/kumbaya.md (GitLab #46).
 
 import type { HexAddress } from "@/lib/addresses";
 import { parseHexAddress } from "@/lib/addresses";
@@ -49,9 +52,11 @@ function parseFee(key: string, env: KumbayaEnv, fallback: number): number {
 }
 
 /**
- * Hardcoded defaults per chain. Addresses are intentionally empty for unknown
- * networks until protocol publishes Kumbaya deployments — use `VITE_KUMBAYA_*`
- * overrides (Anvil, testnet). Fee tiers match common Uniswap v3 defaults.
+ * Hardcoded defaults per chain. Unknown `chainId` → unsupported.
+ * MegaETH rows mirror [Kumbaya-xyz/integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit)
+ * `addresses/megaETH-*.json` (SwapRouter02, QuoterV2, WETH9). Mainnet **USDm** from
+ * [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) (`megaeth.json`).
+ * Anvil: only fee tiers; addresses from `VITE_KUMBAYA_*` after fixture deploy.
  */
 const CHAIN_DEFAULTS: Partial<
   Record<
@@ -62,8 +67,23 @@ const CHAIN_DEFAULTS: Partial<
 > = {
   // Anvil: addresses come from deploy + VITE_*; fee tiers only here.
   31337: { cl8yWethFee: 3000, usdmWethFee: 3000 },
-  /** Default dev id from `resolveChainRpcConfig` when unset — env must supply router addresses. */
-  6343: { cl8yWethFee: 3000, usdmWethFee: 3000 },
+  /** MegaETH testnet — integrator-kit `megaETH-testnet.json`. No default USDm on token list; set `VITE_KUMBAYA_USDM` when stable pools exist. */
+  6343: {
+    cl8yWethFee: 3000,
+    usdmWethFee: 3000,
+    weth: "0x4200000000000000000000000000000000000006",
+    swapRouter: "0x8268DC930BA98759E916DEd4c9F367A844814023",
+    quoter: "0xfb230b93803F90238cB03f254452bA3a3b0Ec38d",
+  },
+  /** MegaETH mainnet — integrator-kit `megaETH-mainnet.json`; USDm (MegaUSD) per default-token-list. */
+  4326: {
+    cl8yWethFee: 3000,
+    usdmWethFee: 3000,
+    weth: "0x4200000000000000000000000000000000000006",
+    swapRouter: "0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e",
+    quoter: "0x1F1a8dC7E138C34b503Ca080962aC10B75384a27",
+    usdm: "0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7",
+  },
 };
 
 function envAddr(env: KumbayaEnv, key: string): HexAddress | undefined {

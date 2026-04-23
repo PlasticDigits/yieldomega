@@ -61,6 +61,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
 | **Indexer** | Decode canonical logs, idempotent persist, chain pointer + reorg rollback of indexed rows. | [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md), [indexer/src/persist.rs](../../indexer/src/persist.rs) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
+| **Kumbaya routing (TimeCurve entry)** | Optional **ETH** / **stable** spend swaps to **CL8Y** via v3 **`exactOutput`** then **`TimeCurve.buy`**; **fail closed** if `chainId` or router config is missing; MegaETH defaults track [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit). | [integrations/kumbaya.md](../integrations/kumbaya.md), [kumbayaRoutes.ts](../../frontend/src/lib/kumbayaRoutes.ts) |
 | **Dev stack** | Same wiring as [DeployDev.s.sol](../../contracts/script/DeployDev.s.sol): epoch open + sale start; deposit + buy with correct ERC20 approvals. | [DevStackIntegration.t.sol](../../contracts/test/DevStackIntegration.t.sol) |
 | **Local stack bot swarm (tooling)** | [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) may spawn the Python bot swarm when `START_BOT_SWARM=1`. That path must be able to **`import web3`** (same deps as [`timecurve-bot`](../../bots/timecurve/README.md)). This is **QA tooling**, not onchain authority. On **PEP 668** hosts, a bare `pip install` without a venv can fail silently until swarm start; the script preflights and the README documents venv + `--user --break-system-packages` fallback ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). | Manual: README install + stack script; [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) |
 
@@ -73,10 +74,25 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 - **LeprechaunNFT:** Series are created with a max supply; only the minter role can mint; trait structs are stored onchain for indexer/UI derivation.
 - **Indexer:** Log decoding must match Solidity event layouts; persistence must survive duplicate delivery (`ON CONFLICT`); on reorg, rows strictly after the common ancestor block are removed and the chain pointer is reset ([REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md)).
 - **Frontend helpers:** User-supplied addresses and indexer base URLs are normalized so RPC and HTTP clients see stable values.
+- **Kumbaya routing:** See [integrations/kumbaya.md](../integrations/kumbaya.md) for environment runbooks and the **fail closed / path encoding / integrator parity** invariants. Unit coverage: [`kumbayaRoutes.test.ts`](../../frontend/src/lib/kumbayaRoutes.test.ts).
 
 ---
 
 ## Invariants and where they are tested
+
+### Kumbaya routing (`kumbayaRoutes`)
+
+| Invariant | Meaning | Tests |
+|-----------|---------|--------|
+| Unknown chain | No routing without a `CHAIN_DEFAULTS` entry | `resolveKumbayaRouting`: fails on chain `1` |
+| Missing router on Anvil | `31337` without `VITE_*` addresses → `missing_router` | `resolveKumbayaRouting` |
+| MegaETH defaults | `4326` / `6343` resolve **SwapRouter02**, **QuoterV2**, **WETH9** without env | `resolveKumbayaRouting` (integrator-kit parity) |
+| Mainnet USDm | `4326` includes **USDm** token for stable pay mode | `resolveKumbayaRouting` + `routingForPayAsset` |
+| Testnet stable | `6343` leaves stable to **`VITE_KUMBAYA_USDM`** when no default pool token | `routingForPayAsset` `usdm` + zero `usdm` |
+| Path packing | `exactOutput` path bytes length / hop count | `buildV3PathExactOutput` |
+| Slippage floor | `minOutFromSlippage` BPS clamp | `minOutFromSlippage` |
+
+---
 
 ### TimeMath (library)
 
