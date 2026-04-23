@@ -60,7 +60,7 @@ This repository uses **[Gitleaks](https://github.com/gitleaks/gitleaks)** so key
 git config core.hooksPath .githooks
 ```
 
-Pre-commit runs `gitleaks protect --staged` using [`.gitleaks.toml`](.gitleaks.toml). Allowlist only **verified** false positives there.
+Pre-commit runs `gitleaks protect --staged` using [`.gitleaks.toml`](.gitleaks.toml). Allowlist only **verified** false positives there. If you stage changes under `frontend/`, the hook also runs `npm run typecheck` after `cd frontend && npm ci` (local `tsc` must exist in `frontend/node_modules`).
 
 ## Git ignore
 
