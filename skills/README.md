@@ -21,7 +21,8 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 ## Authoritative docs (always cross-check)
 
 - [Product vision](../docs/product/vision.md)
-- [TimeCurve primitives](../docs/product/primitives.md)
+- [TimeCurve primitives](../docs/product/primitives.md) — includes **DOUB genesis / FDV anchor** ([issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53))
+- [Contract parameters (cap table)](../contracts/PARAMETERS.md) · [Simulations / calibration](../docs/simulations/README.md)
 - [Rabbit Treasury](../docs/product/rabbit-treasury.md)
 - [Leprechaun NFTs](../docs/product/leprechaun-nfts.md)
 - [Fee routing and governance](../docs/onchain/fee-routing-and-governance.md)

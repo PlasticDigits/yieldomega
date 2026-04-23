@@ -16,6 +16,14 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 
 - A buy specifies **`charmWad`** within the current **scaled** `[0.99e18, 10e18]` band (before scaling: base constants; scaled by envelope ÷ reference). The contract pulls **`amount`** in the accepted asset from the buyer and routes the **full gross** through `FeeRouter`. **CHARM weight** accrues in **CHARM WAD units** (plus referral bonuses as CHARM, not reserve transfers). After `endSale`, **`redeemCharms`** transfers launched tokens pro-rata: `totalTokensForSale * charmWeight / totalCharmWeight` (integer division; dust may remain). **Token decimals** follow the launched ERC20. Documentation and events must stay **legible** for agents (no silent rounding offchain).
 
+#### DOUB genesis valuation and sale economics (planning — [issue #53](https://gitlab.com/PlasticDigits/yieldomega/-/issues/53))
+
+- **Cap table:** **250M** total genesis DOUB — **200M** sale (`totalTokensForSale`), **21.5M** presale, **28.5M** V3 LP seed — see [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md).
+- **FDV anchor (fully diluted):** **$500k = P × 250M** ⇒ reference **P ≈ $0.002 per DOUB** for the **full** genesis supply unless a different quoting convention is explicitly documented.
+- **v1 onchain sale:** **`totalTokensForSale`** is a **fixed** DOUB balance pre-positioned on `TimeCurve`; **`redeemCharms`** is **pro-rata** on **`totalCharmWeight`**. **FeeRouter** still receives **100%** of gross CL8Y per buy.
+- **Target mintable model (spec / tooling, not yet required in v1 bytecode):** fix **k** = DOUB minted per **gross CL8Y** from modeled raise and CHARM/price path; calibrate with [`simulations/doub_sale_calibration`](../../simulations/doub_sale_calibration/) and [`docs/simulations/README.md`](../simulations/README.md).
+- **Referrals:** canonical **5% + 5%** of **`charmWad`** as extra **`charmWeight`** to referrer and buyer ([`referrals.md`](referrals.md)); scenario “adoption %” is **sensitivity**, not a substitute rule.
+
 #### Per-wallet buy cooldown (pacing)
 
 - **`buyCooldownSec`** is an **immutable** constructor parameter (production default **300** seconds = **5 minutes**; must be **&gt; 0**). After each **successful** buy, the contract sets **`nextBuyAllowedAt[msg.sender] = block.timestamp + buyCooldownSec`** (Unix **seconds**, same base as **`block.timestamp`**). Before **`_buy`**, the contract requires **`block.timestamp >= nextBuyAllowedAt[msg.sender]`**; otherwise it reverts with **`"TimeCurve: buy cooldown"`**. For an address that has never bought, **`nextBuyAllowedAt`** is **0**, which is always **≤** `block.timestamp`, so the first buy is allowed. Cooldowns are **per wallet** and **independent** across buyers.
