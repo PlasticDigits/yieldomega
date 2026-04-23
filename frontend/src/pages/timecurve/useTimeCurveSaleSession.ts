@@ -35,6 +35,7 @@ import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   derivePhase,
+  ledgerSecIntForPhase,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
 import { wagmiConfig } from "@/wagmi-config";
@@ -206,7 +207,7 @@ export function useTimeCurveSaleSession(
 
   const {
     secondsRemaining: saleCountdownSec,
-    chainNowSec,
+    chainNowSec: heroChainNowSec,
     refresh: refreshHeroTimer,
   } = useTimecurveHeroTimer(tc);
 
@@ -287,6 +288,15 @@ export function useTimeCurveSaleSession(
     deadlineR?.status === "success" ? Number(deadlineR.result as bigint) : undefined;
   const ended = endedR?.status === "success" ? (endedR.result as boolean) : undefined;
 
+  const phaseLedgerSecInt = useMemo(
+    () =>
+      ledgerSecIntForPhase({
+        blockLedgerSecInt: ledgerSecInt,
+        heroChainNowSec: heroChainNowSec,
+      }),
+    [ledgerSecInt, heroChainNowSec],
+  );
+
   const phase: SaleSessionPhase = useMemo(
     () =>
       derivePhase({
@@ -294,14 +304,14 @@ export function useTimeCurveSaleSession(
         ended,
         saleStartSec,
         deadlineSec,
-        ledgerSecInt,
+        ledgerSecInt: phaseLedgerSecInt,
       }),
-    [coreData, ended, saleStartSec, deadlineSec, ledgerSecInt],
+    [coreData, ended, saleStartSec, deadlineSec, phaseLedgerSecInt],
   );
 
   const preStartCountdownSec =
-    saleStartSec !== undefined && saleStartSec > ledgerSecInt
-      ? Math.max(0, saleStartSec - ledgerSecInt)
+    saleStartSec !== undefined && saleStartSec > phaseLedgerSecInt
+      ? Math.max(0, saleStartSec - phaseLedgerSecInt)
       : undefined;
 
   const cl8ySpendBounds = useMemo(() => {
@@ -453,7 +463,7 @@ export function useTimeCurveSaleSession(
   }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
 
   const chainNowForCooldown =
-    chainNowSec !== undefined ? chainNowSec : ledgerSecInt;
+    heroChainNowSec !== undefined ? heroChainNowSec : ledgerSecInt;
   const walletCooldownRemainingSec = useMemo(() => {
     if (
       phase !== "saleActive" ||
@@ -703,7 +713,7 @@ export function useTimeCurveSaleSession(
     estimatedSpendWei,
     preStartCountdownSec,
     saleCountdownSec,
-    chainNowSec,
+    chainNowSec: heroChainNowSec,
     walletCooldownRemainingSec,
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,
