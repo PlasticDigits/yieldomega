@@ -55,6 +55,7 @@ import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import {
   derivePhase,
+  ledgerSecIntForPhase,
   phaseFlags,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -268,6 +269,15 @@ export function TimeCurvePage() {
     isBusy: heroTimerBusy,
     refresh: loadHeroTimer,
   } = useTimecurveHeroTimer(tc);
+
+  const phaseLedgerSecInt = useMemo(
+    () =>
+      ledgerSecIntForPhase({
+        blockLedgerSecInt: ledgerSecInt,
+        heroChainNowSec: heroChainNowSec,
+      }),
+    [ledgerSecInt, heroChainNowSec],
+  );
 
   useEffect(() => {
     const id = window.setInterval(() => setDisplayTick((n) => n + 1), 100);
@@ -804,9 +814,9 @@ export function TimeCurvePage() {
         ended: arenaEnded,
         saleStartSec: arenaSaleStartSec,
         deadlineSec: arenaDeadlineSec,
-        ledgerSecInt,
+        ledgerSecInt: phaseLedgerSecInt,
       }),
-    [coreTcData, arenaEnded, arenaSaleStartSec, arenaDeadlineSec, ledgerSecInt],
+    [coreTcData, arenaEnded, arenaSaleStartSec, arenaDeadlineSec, phaseLedgerSecInt],
   );
 
   // Mutually-exclusive flags derived from `arenaPhase` — the Arena view shares
