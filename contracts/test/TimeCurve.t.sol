@@ -550,6 +550,29 @@ contract TimeCurveTest is Test {
         );
     }
 
+    /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).
+    function test_warbow_revenge_reverts_after_end_sale() public {
+        TimeCurve t = _newTimeCurveShortTimer(500);
+        t.startSale();
+        vm.warp(t.saleStart() + 10);
+        _fundAndApproveCurve(alice, 2e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+
+        _fundAndApproveCurve(bob, t.WARBOW_STEAL_BURN_WAD(), t);
+        vm.prank(bob);
+        t.warbowSteal(alice, false);
+
+        vm.warp(t.deadline() + 1);
+        t.endSale();
+        assertTrue(t.ended());
+
+        _fundAndApproveCurve(alice, 2e18 + t.WARBOW_REVENGE_BURN_WAD(), t);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: bad phase");
+        t.warbowRevenge(bob);
+    }
+
     function test_warbow_guard_emits_cl8y_burned() public {
         tc.startSale();
         _fundAndApprove(alice, 100e18);
