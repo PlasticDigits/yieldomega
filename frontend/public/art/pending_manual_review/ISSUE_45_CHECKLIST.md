@@ -30,7 +30,7 @@ Generation settings: **openai/gpt-image-2**, `quality=high`, `moderation=low`, `
 - [ ] **Mascot pose: podium win** — [`issue45-cutout-bunny-podium-win.png`](./issue45-cutout-bunny-podium-win.png)
 - [ ] **Mascot pose: guarding** — [`issue45-cutout-bunny-guarding.png`](./issue45-cutout-bunny-guarding.png)
 - [ ] **Mascot pose: sneak steal** — [`issue45-cutout-bunny-sneak-steal.png`](./issue45-cutout-bunny-sneak-steal.png)
-- [ ] **Leprechaun w/ bag vs bunny-leprechaun-girl style pairing reference** — [`issue45-cutout-leprechaun-bag-bunny-pair.png`](./issue45-cutout-leprechaun-bag-bunny-pair.png)
+- [ ] **Leprechaun w/ bag vs adult yet playful bunny leprechaun mascot style pairing reference** — [`issue45-cutout-leprechaun-bag-bunny-pair.png`](./issue45-cutout-leprechaun-bag-bunny-pair.png)
 - [ ] **Trait-adjacent silos (style alignment concept)** — [`issue45-cutout-trait-silos-concept.png`](./issue45-cutout-trait-silos-concept.png)
 - [ ] **Footer / micro-decoration (indexer / fee hint)** — [`issue45-cutout-footer-micro.png`](./issue45-cutout-footer-micro.png)
 
