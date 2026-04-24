@@ -188,6 +188,16 @@ Cross-page navigation to Arena / Protocol lives **only** in the persistent
 not duplicate those links inline. UX rationale: the subnav is already on
 screen, an in-page tile row added vertical scroll for no new information.
 
+The global app footer (`IndexerStatusBar` + `Canonical fee sinks` panel)
+rendered by `RootLayout` is also **hidden on `/timecurve` only**. It stays
+visible on Home, `/timecurve/arena`, `/timecurve/protocol`, and every other
+route — the operator / power-user surfaces benefit from the indexer health
+pill and the live fee-sink table, but on the Simple first-run path those
+panels swamp the page with secondary information that distracts from the
+single primary action. The `showFooter` toggle in
+[`RootLayout.tsx`](../../frontend/src/layout/RootLayout.tsx) is keyed on
+`location.pathname === "/timecurve"`.
+
 Below-the-fold sections (WarBow ladder, podiums, full battle feed,
 `RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and
 `Protocol` respectively. The simple page keeps its DOM small so it stays
