@@ -2,7 +2,10 @@
 
 import { useMemo, type CSSProperties } from "react";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
-import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
+import {
+  formatLaunchCountdown,
+  timerUrgencyClass,
+} from "@/pages/timecurve/formatTimer";
 
 type Props = {
   secondsRemaining: number;
@@ -22,13 +25,6 @@ const LAUNCH_LINKS = [
     href: "https://github.com/PlasticDigits/yieldomega/blob/main/skills/README.md",
   },
 ] as const;
-
-function formatLaunchCountdown(totalSec: number): { days: number; clock: string } {
-  const safe = Math.max(0, Math.floor(totalSec));
-  const days = Math.floor(safe / 86400);
-  const remainder = safe - days * 86400;
-  return { days, clock: formatCountdown(remainder) };
-}
 
 export function LaunchCountdownPage({ secondsRemaining }: Props) {
   const { days, clock } = useMemo(

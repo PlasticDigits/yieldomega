@@ -9,6 +9,27 @@ export function formatCountdown(totalSec: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Split a duration into a whole-day count + `HH:MM:SS` for the remainder.
+ *
+ * Used by long-form countdown UIs (the standalone launch-countdown page and
+ * the `/timecurve` simple timer hero) so that 24h+ durations don't render as
+ * an awkward `48:13:07` — the days segment becomes its own bordered chip,
+ * and the clock always stays in `HH:MM:SS < 24h` form.
+ *
+ * Returns `{ days: 0, clock: "HH:MM:SS" }` for sub-day durations so callers
+ * can simply gate the days chip on `days > 0`.
+ */
+export function formatLaunchCountdown(totalSec: number): {
+  days: number;
+  clock: string;
+} {
+  const safe = Math.max(0, Math.floor(totalSec));
+  const days = Math.floor(safe / 86400);
+  const remainder = safe - days * 86400;
+  return { days, clock: formatCountdown(remainder) };
+}
+
 export function timerUrgencyClass(sec: number | undefined): string {
   if (sec === undefined) return "";
   const floorSec = Math.floor(sec);
