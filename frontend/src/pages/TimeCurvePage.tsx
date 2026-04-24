@@ -522,7 +522,7 @@ export function TimeCurvePage() {
     refetch: refetchWarbowPolicy,
   } = useReadContracts({
     contracts: warbowContracts as readonly unknown[],
-    query: { enabled: Boolean(tc) },
+    query: { enabled: Boolean(tc), refetchInterval: 1000 },
   });
   const warbowPolicyData = warbowPolicyDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -536,8 +536,9 @@ export function TimeCurvePage() {
   useEffect(() => {
     if (tc && latestBlock?.number !== undefined) {
       void refetchCoreTc();
+      void refetchWarbowPolicy();
     }
-  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCoreTc]);
+  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCoreTc, refetchWarbowPolicy]);
 
   const userSaleContracts =
     tc && address
@@ -2584,6 +2585,13 @@ export function TimeCurvePage() {
         warbowActionHint={warbowActionHint}
         warbowFlagSilenceSec={warbowFlagSilenceSec.toString()}
         warbowFlagClaimBp={warbowFlagClaimBp.toString()}
+        warbowPendingFlagReadsReady={
+          warbowFlagOwnerR?.status === "success" && warbowFlagPlantR?.status === "success"
+        }
+        warbowPendingFlagOwner={flagOwnerAddr}
+        warbowPendingFlagPlantAtSec={flagPlantAtSec}
+        ledgerSecInt={ledgerSecInt}
+        formatWallet={formatWallet}
         isConnected={isConnected}
         stealVictimInput={stealVictimInput}
         setStealVictimInput={setStealVictimInput}

@@ -104,6 +104,18 @@ setups.
 [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
 (`ledgerSecIntForPhase`, `derivePhase`).
 
+## WarBow pending flag UI (issue #51)
+
+**Problem:** The **`Buy`** event’s **`flagPlanted`** field is **`true` on every successful buy** in current **`TimeCurve`** bytecode, so indexer buy rows **all** carry `flag_planted: true`. Using that alone for per-buy “flag planted” copy made **every buyer** look like they uniquely planted a flag.
+
+**Rules for the Arena UI:**
+
+1. **Pending holder + silence** — Shown from **`warbowPendingFlagOwner`** / **`warbowPendingFlagPlantAt`** (wagmi), with seconds-until-silence-ends derived from the same **ledger “now”** as the hero timer / phase logic, **not** from the buy indexer.
+2. **Per-buy highlights / feed tags** — Do **not** up-rank **`flag_planted`** from indexer rows; optional buy-detail rows may still show the raw log field with a **doc note** that it is not holder state.
+3. **Won vs destroyed** — **`WarBowFlagClaimed`** and **`WarBowFlagPenalized`** appear in the **rivalry feed** (`buildWarbowFeedNarrative`: **Flag won**, **Flag destroyed**).
+
+**Spec ↔ test:** [invariants — WarBow pending flag](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [primitives — plant / claim flag](../product/primitives.md) · [`timeCurveUx.ts`](../../frontend/src/lib/timeCurveUx.ts) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51).
+
 ## `TimeCurveSimplePage` layout contract
 
 Above-the-fold focal column (top → bottom):
@@ -232,6 +244,6 @@ npm run test:e2e -- --workers=5
 
 ---
 
-**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)
