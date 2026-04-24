@@ -43,6 +43,14 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
       className={`launch-countdown ${urgency}`.trim()}
       data-testid="launch-countdown"
     >
+      <img
+        className="launch-countdown__scene"
+        src="/art/scenes/launch-countdown.jpg"
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        fetchPriority="high"
+      />
       <div
         className={
           isCritical
@@ -69,7 +77,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
       />
       <CutoutDecoration
         className="launch-countdown__cutout launch-countdown__cutout--right cutout-decoration--bounce"
-        src="/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png"
+        src="/art/cutouts/bunny-jump.png"
         width={260}
         height={260}
         loading="eager"
