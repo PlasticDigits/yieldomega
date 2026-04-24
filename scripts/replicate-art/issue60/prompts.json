@@ -1,0 +1,32 @@
+{
+  "issue": 60,
+  "issue_url": "https://gitlab.com/PlasticDigits/yieldomega/-/issues/60",
+  "model": "openai/gpt-image-2",
+  "jobs": [
+    {
+      "filename": "issue60-cursor-link-pointer.png",
+      "deliver_to": "frontend/public/art/cursors/link-pointer.png",
+      "subject": "UI cursor only: a small soft-green **arrow + subtle underline** motif, thick black outline, arcade toy finish\u2014clearly a link pointer, **not** the loud gold primary-CTA hand, no characters, no text, transparent."
+    },
+    {
+      "filename": "issue60-cursor-loading.png",
+      "deliver_to": "frontend/public/art/cursors/loading.png",
+      "subject": "UI cursor only: a tiny **hourglass or progress ring** in green and gold, chunky outlines\u2014implies waiting, no characters, no digits, transparent background, readable at 24px."
+    },
+    {
+      "filename": "issue60-cursor-cancel.png",
+      "deliver_to": "frontend/public/art/cursors/cancel.png",
+      "subject": "UI cursor only: a **round back-out / dismiss** badge with a bold X or curved return arrow, thick outlines, friendly arcade style\u2014distinct from a disabled shield, no text, transparent, 24px readable."
+    },
+    {
+      "filename": "issue60-cursor-copy.png",
+      "deliver_to": "frontend/public/art/cursors/copy.png",
+      "subject": "UI cursor only: **two stacked document sheets** with a tiny corner fold\u2014classic copy affordance, chunky arcade outlines, green/gold, no letters, transparent, 24px."
+    },
+    {
+      "filename": "issue60-cursor-help.png",
+      "deliver_to": "frontend/public/art/cursors/help.png",
+      "subject": "UI cursor only: a small **question mark** inside a glossy coin-badge frame matching token-logo buckle language, thick outline, transparent, 24px, no other text."
+    }
+  ]
+}

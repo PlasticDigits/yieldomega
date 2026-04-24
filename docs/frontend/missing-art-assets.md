@@ -21,6 +21,7 @@ When you add a **new** gap:
 
 ## Lower priority / nice-to-have
 
+- **Cursor polish** — [issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) ships the expanded pack + wiring; optional Replicate refresh via `scripts/replicate-art/issue60_batch.py` when `REPLICATE_API_TOKEN` is set.
 - **Route transition motion sprite** — `motion/route-transition-fade.webp`
   could replace the current still `motion/route-transition.jpg` if/when we
   add an animated transition; respect `prefers-reduced-motion` per
