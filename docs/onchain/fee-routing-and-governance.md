@@ -6,6 +6,7 @@
 
 - Every primitive **generates fees**; routing should **fund productive treasuries** and prizes while keeping rules **onchain and legible**.
 - **Governance over ecosystem expansion** should sit **primarily with CL8Y**, not a separate TimeCurve-token DAO ([../product/vision.md](../product/vision.md)).
+- **Pause and final signoff (inventory):** Gating **user-facing** DOUB/CL8Y money movement (claims, redemption, optional buy routing) is a **separate** design from fee-split governance — see [operations/pause-and-final-signoff.md](../operations/pause-and-final-signoff.md) ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)). Partial pauses at **router vs sink** have **bypass** tradeoffs; product must pick **pause `buy`**, **pause sinks**, or **global TimeCurve** pause before implementation.
 
 Implementation detail for **where** fees land onchain (treasury contracts, routers) lives in [treasury-contracts.md](treasury-contracts.md). **Who** may change routing parameters is in [Governance actors](#governance-actors). **Checks** that should hold after updates are in [Post-update invariants](#post-update-invariants).
 
