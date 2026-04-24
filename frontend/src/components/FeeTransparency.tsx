@@ -15,6 +15,13 @@ import {
   type FeeRouterSinksUpdateItem,
 } from "@/lib/indexerApi";
 
+/** Optional pictograms for `FeeRouter` sink rows (issue #57). */
+const FEE_SINK_ICON: Partial<Record<number, string>> = {
+  1: "/art/icons/fee-burn.png",
+  2: "/art/icons/fee-referral.png",
+  4: "/art/icons/fee-treasury.png",
+};
+
 /** Matches `FeeRouter` sink order: DOUB/CL8Y LP · CL8Y burned · podium · team · Rabbit. */
 const FEE_SINK_LABELS = [
   "DOUB/CL8Y LP (locked)",
@@ -101,6 +108,16 @@ export function FeeTransparency() {
           const [dest, bps] = row.result as readonly [`0x${string}`, number];
           return (
             <li key={i}>
+              {FEE_SINK_ICON[i] !== undefined ?
+                <img
+                  className="fee-sink-list__icon"
+                  src={FEE_SINK_ICON[i]}
+                  alt=""
+                  width={20}
+                  height={20}
+                  decoding="async"
+                />
+              : null}
               <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)} →{" "}
               <span className="mono">{dest}</span>
             </li>

@@ -192,6 +192,15 @@ body {
   min-height: 100vh;
   background: transparent;
   color: var(--text-main);
+  /* Issue #57 default idle cursor (falls back to OS pointer on mobile / blocked image cursors). */
+  cursor: url("/art/cursors/default-pointer.png") 4 4, auto;
+}
+
+input[type="text"],
+input[type="search"],
+input[type="number"],
+textarea {
+  cursor: url("/art/cursors/text-caret.png") 8 12, text;
 }
 
 #root {
@@ -702,6 +711,7 @@ body {
 .ui-badge--external {
   background: linear-gradient(180deg, #bfe9ff, var(--arcade-sky));
   color: var(--text-main);
+  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
 }
 
 .ui-badge--warning {
@@ -1753,6 +1763,15 @@ body {
   padding-left: 1.1rem;
 }
 
+.fee-sink-list__icon {
+  display: inline-block;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-right: 0.35rem;
+  vertical-align: -0.2em;
+  object-fit: contain;
+}
+
 .placeholder {
   margin: 0 0 1rem;
   max-width: 52rem;
@@ -2109,7 +2128,7 @@ body {
 
 .btn-primary:disabled {
   opacity: 0.65;
-  cursor: not-allowed;
+  cursor: url("/art/cursors/disabled.png") 4 4, not-allowed;
 }
 
 .btn-primary:active:not(:disabled) {
@@ -2627,6 +2646,23 @@ code {
   font-size: 0.8rem;
   line-height: 1.45;
   color: #d6f5df;
+}
+
+.timer-hero__live-placeholder--with-mascot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.timer-hero__live-placeholder--with-mascot p {
+  margin: 0;
+}
+
+.timer-hero__indexer-mascot {
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 0 rgba(11, 31, 20, 0.35));
 }
 
 .timer-hero__live-list {
@@ -5270,6 +5306,11 @@ input[type="range"] {
 }
 input[type="range"]:active {
   cursor: url("/art/cursors/slider-grab.png") 8 8, grabbing;
+}
+
+/* Outbound links that leave the dapp (issue #57). Pair with `rel` + target on anchors. */
+.cursor-external-link {
+  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
