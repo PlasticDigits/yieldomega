@@ -124,7 +124,7 @@ export type UseTimeCurveSaleSession = {
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
   submitRedeem: () => Promise<void>;
-  /** Issue #55: sale-time `buy` / `FeeRouter` path (default true in `initialize`). */
+  /** Issue #55: `buy` → FeeRouter + WarBow CL8Y actions; same flag (default true in `initialize`). */
   buyFeeRoutingEnabled: boolean | undefined;
   /** Issue #55: post-end `redeemCharms` (default false until owner signoff). */
   charmRedemptionEnabled: boolean | undefined;
@@ -522,7 +522,7 @@ export function useTimeCurveSaleSession(
     }
     if (buyFeeRoutingEnabled === false) {
       setBuyError(
-        "TimeCurve: buy fee routing is disabled (awaiting operator / governance go-live).",
+        "TimeCurve: sale interactions are disabled — buys and WarBow CL8Y actions are paused (awaiting operator / governance).",
       );
       return;
     }

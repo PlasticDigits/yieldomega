@@ -429,13 +429,23 @@ contract TimeCurveTest is Test {
         tc.distributePrizes();
     }
 
-    function test_buy_reverts_while_buy_fee_routing_disabled() public {
+    function test_buy_reverts_when_sale_interactions_disabled() public {
         tc.startSale();
         tc.setBuyFeeRoutingEnabled(false);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: buy fee routing disabled");
+        vm.expectRevert("TimeCurve: sale interactions disabled");
         tc.buy(1e18);
+    }
+
+    /// @dev WarBow CL8Y burns share `buyFeeRoutingEnabled` with `buy` (issue #55).
+    function test_warbow_cl8y_burns_revert_when_sale_interactions_disabled() public {
+        tc.startSale();
+        _fundAndApprove(alice, 100e18);
+        tc.setBuyFeeRoutingEnabled(false);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale interactions disabled");
+        tc.warbowActivateGuard();
     }
 
     // ── Min buy growth ─────────────────────────────────────────────────

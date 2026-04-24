@@ -9,20 +9,20 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | System | User-facing action | Onchain control | Default after `initialize` |
 |--------|----------------------|-----------------|-----------------------------|
 | **DOUB presale vesting** | `claim()` | `setClaimsEnabled(bool)` (`onlyOwner`) | `claimsEnabled == false` |
-| **TimeCurve** | `buy` → CL8Y → `FeeRouter` | `setBuyFeeRoutingEnabled(bool)` | `true` (live sale) |
-| **TimeCurve** | `redeemCharms()` (DOUB sale pool) | `setCharmRedemptionEnabled(bool)` | `false` |
-| **TimeCurve** | `distributePrizes()` (podium pool → winners) | `setReservePodiumPayoutsEnabled(bool)` | `false` when pool balance would be paid |
+| **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
+| **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
+| **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (manual review before allocation) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
 
 **`distributePrizes` empty pool:** if `PodiumPool` balance is zero, the function returns without setting `prizesDistributed` (unchanged griefing / retry behavior). The reserve-payout gate applies only when `prizePool > 0`.
 
-**WarBow** (steal / guard / revenge / flag): not gated by these flags in v1; they are separate CL8Y burns. Extend in a follow-up if product requires a full “sale pause”.
+**`claimWarBowFlag`:** does **not** spend CL8Y — **not** gated by `buyFeeRoutingEnabled` (only BP / silence rules apply).
 
 ## Suggested go-live order (example)
 
 1. Complete testing and deploy **with gates in safe defaults** (`charmRedemptionEnabled` and `reservePodiumPayoutsEnabled` off; presale `claimsEnabled` off).
 2. **Presale:** fund vesting, `startVesting` if the schedule should run, then **`setClaimsEnabled(true)`** when legal/ops are ready for DOUB claims.
-3. **TimeCurve (post timer):** `endSale()` as today; then **`setCharmRedemptionEnabled(true)`** for DOUB allocation claims and/or **`setReservePodiumPayoutsEnabled(true)`** for CL8Y podium — order may differ by checklist (redeem vs podium are separate).
-4. **Emergency halt of sale buys:** `setBuyFeeRoutingEnabled(false)` stops the fee-routing `buy` path; default public **WarBow** burns are unchanged in v1.
+3. **TimeCurve (post timer):** `endSale()` as today; then **`setCharmRedemptionEnabled(true)`** for DOUB sale allocation to buyers and/or **`setReservePodiumPayoutsEnabled(true)`** for **CL8Y reserve** podium payouts — order may differ by checklist (redeem vs CL8Y allocation are separate signoffs).
+4. **Emergency halt of live sale:** `setBuyFeeRoutingEnabled(false)` stops **`buy` → `FeeRouter`** and **WarBow CL8Y** actions (`steal` / `revenge` / `guard`) in one switch (`TimeCurve: sale interactions disabled`). Flag claims (`claimWarBowFlag`) are unchanged.
 
 ## Upgrade notes (UUPS)
 
