@@ -74,7 +74,12 @@ test.describe("Anvil wallet writes", () => {
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await buyPanel.getByRole("button", { name: /buy/i }).click();
+    // After slider moves, Kumbaya quote refetches; CTA shows "Refreshing quote…"
+    // until the new quoter read settles (issue #56).
+    await expect(buyPanel.getByRole("button", { name: /^Buy CHARM$/i })).toBeEnabled({
+      timeout: 120_000,
+    });
+    await buyPanel.getByRole("button", { name: /^Buy CHARM$/i }).click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: 180_000,
     });

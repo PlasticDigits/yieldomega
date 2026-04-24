@@ -132,6 +132,12 @@ export type UseTimeCurveSaleSession = {
   kumbayaRoutingBlocker: string | null;
   quotedPayInWei: bigint | undefined;
   payTokenDecimals: number;
+  /**
+   * True while the Kumbaya quoter read is in flight for the current slider
+   * target (`isPending` **or** `isFetching`). Background refetches set
+   * `isFetching` without `isPending`; treating both as loading prevents a
+   * stale quoted amount with an enabled Buy CTA ([issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56)).
+   */
   swapQuoteLoading: boolean;
   swapQuoteFailed: boolean;
   /** Submits optional Kumbaya `exactOutput` + approve + `buy(charmWad)` — same onchain buy as Arena. */
@@ -423,6 +429,7 @@ export function useTimeCurveSaleSession(
   const {
     data: quoteTuple,
     isPending: quotePending,
+    isFetching: quoteFetching,
     isError: quoteIsError,
   } = useReadContract({
     address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
@@ -807,7 +814,7 @@ export function useTimeCurveSaleSession(
     kumbayaRoutingBlocker,
     quotedPayInWei,
     payTokenDecimals,
-    swapQuoteLoading: quotePending,
+    swapQuoteLoading: quoteEnabled && (quotePending || quoteFetching),
     swapQuoteFailed: quoteIsError,
     submitBuy,
     submitRedeem,
