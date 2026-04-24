@@ -15,6 +15,7 @@ import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 
 /**
  * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
@@ -178,6 +179,25 @@ export function TimeCurveProtocolPage() {
     return "—";
   };
 
+  // Mirror the Simple/Arena hero badge so the three TimeCurve views share a
+  // single visual language for sale phase. We use wall-clock seconds because
+  // the Protocol view is intentionally indexer-free (every value is a direct
+  // RPC view-call); a few seconds of skew vs the chain block timestamp is
+  // acceptable for a status pictogram.
+  const saleStartRow = get(0);
+  const deadlineRow = get(1);
+  const endedRow = get(2);
+  const protocolPhase = derivePhase({
+    hasCoreData: reading.length > 0,
+    ended: endedRow?.status === "success" ? (endedRow.result as boolean) : undefined,
+    saleStartSec:
+      saleStartRow?.status === "success" ? Number(saleStartRow.result as bigint) : undefined,
+    deadlineSec:
+      deadlineRow?.status === "success" ? Number(deadlineRow.result as bigint) : undefined,
+    ledgerSecInt: Math.floor(Date.now() / 1000),
+  });
+  const protocolPhaseBadge = phaseBadge(protocolPhase);
+
   return (
     <div className="page timecurve-protocol-page">
       <TimeCurveSubnav active="protocol" />
@@ -185,8 +205,9 @@ export function TimeCurveProtocolPage() {
       <PageHero
         title="Protocol view"
         lede="Raw, authoritative onchain reads for TimeCurve. Use this surface to verify what the simple and arena views show."
-        badgeLabel="Protocol"
-        badgeTone="info"
+        badgeLabel={protocolPhaseBadge.label}
+        badgeTone={protocolPhaseBadge.tone}
+        badgeIconSrc={protocolPhaseBadge.iconSrc}
         coinSrc="/art/icons/token-cl8y.png"
         coinAlt="CL8Y reserve token glyph"
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
