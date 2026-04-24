@@ -2082,7 +2082,9 @@ body {
   border-radius: 999px;
   background: linear-gradient(180deg, #1a5c3a, var(--arcade-green-900));
   color: #fff;
-  cursor: pointer;
+  /* Issue #45 custom cursor; falls back to native pointer on browsers
+   * that drop image cursors (e.g. mobile, restricted contexts). */
+  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
   box-shadow: 6px 6px 0 var(--line);
   text-shadow: 0 1px 0 var(--line);
   text-decoration: none;
@@ -2127,7 +2129,7 @@ body {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff, var(--bg-cream));
   color: var(--text-main);
-  cursor: pointer;
+  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
   box-shadow: 4px 4px 0 var(--line);
   transition:
     transform 140ms ease,
@@ -2153,6 +2155,8 @@ body {
 .btn-secondary--critical:not(:disabled) {
   background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
   animation: priority-bounce 3.35s var(--motion-bounce) infinite;
+  /* PvP / WarBow danger surface — issue #45 danger cursor on hover. */
+  cursor: url("/art/cursors/danger-pvp.png") 6 2, crosshair;
 }
 
 .timecurve-action-row {
@@ -4271,5 +4275,159 @@ code {
   }
   .timecurve-simple__ticker-row {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =============================================================
+ * Issue #45 art integrations
+ * Pictogram icons + scene backplates promoted from
+ * `frontend/public/art/issue45/` into purpose-named folders
+ * (see frontend/public/art/README.md). Decorative only —
+ * the textual labels remain the source of truth for a11y.
+ * ============================================================= */
+
+/* Status pictogram inside .ui-badge */
+.ui-badge {
+  --ui-badge-icon-size: 1rem;
+}
+.ui-badge--with-icon {
+  padding-left: 0.55rem;
+}
+.ui-badge__icon {
+  width: var(--ui-badge-icon-size);
+  height: var(--ui-badge-icon-size);
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+
+/* Indexer status row — small status pictogram next to the line */
+.indexer-status {
+  gap: 0.5rem;
+}
+.indexer-status__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+
+/* TimeCurve sub-nav pictograms (issue #45 nav-*.png) */
+.timecurve-subnav__link {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+}
+.timecurve-subnav__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+.timecurve-subnav__label {
+  flex: 1 1 auto;
+}
+.timecurve-subnav__hint {
+  flex-basis: 100%;
+  margin-left: 2.05rem;
+}
+
+/* Scene backplate inside .arcade-banner (PageHero). The text overlay
+ * (`.arcade-banner__text`) gets a subtle white scrim so the lede stays
+ * readable against busy art (issue #45 scenes are vivid by design). */
+.arcade-banner {
+  overflow: hidden;
+}
+.arcade-banner--with-scene {
+  background:
+    var(--panel-gloss),
+    linear-gradient(135deg, rgba(255, 229, 102, 0.55), rgba(31, 184, 106, 0.4));
+}
+.arcade-banner__scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+  filter: saturate(1.05);
+}
+.arcade-banner--with-scene > :not(.arcade-banner__scene) {
+  position: relative;
+  z-index: 1;
+}
+.arcade-banner--with-scene .arcade-banner__text {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.78),
+    rgba(255, 255, 255, 0.62)
+  );
+  border: 2px solid rgba(11, 31, 20, 0.18);
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+}
+
+/* Home hero <picture> wrapper keeps the existing .home-hero__art layout */
+.home-hero__picture {
+  display: contents;
+}
+
+/* LaunchCountdown full-page scene backdrop. The base
+ * `.launch-countdown` rule is `position: fixed; inset: 0; z-index: 1000`
+ * with `isolation: isolate`, so we ONLY style the scene `<img>`. We pin it
+ * behind the existing `.launch-countdown__sparks` (z-index 0) and the
+ * `.launch-countdown__inner` (z-index 2) by giving it a negative z-index
+ * inside the isolation context. Multiply blend with the existing radial
+ * gradient keeps the green / gold launch palette dominant. */
+.launch-countdown__scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+  z-index: -1;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* Custom cursors from issue #45 — applied via utility class so any
+ * interactive element can opt in. The bitmap is 32px so we keep
+ * size/hot-spot consistent. Browsers reject cursors >128px. */
+.cursor-primary-cta {
+  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
+}
+.cursor-danger-pvp {
+  cursor: url("/art/cursors/danger-pvp.png") 6 2, crosshair;
+}
+.cursor-slider-grab {
+  cursor: url("/art/cursors/slider-grab.png") 8 8, grab;
+}
+.cursor-slider-grab:active {
+  cursor: url("/art/cursors/slider-grab.png") 8 8, grabbing;
+}
+
+/* Apply slider-grab cursor to all native range sliders so the
+ * TimeCurve buy slider on Simple/Arena gets the issue #45 hand. */
+input[type="range"] {
+  cursor: url("/art/cursors/slider-grab.png") 8 8, grab;
+}
+input[type="range"]:active {
+  cursor: url("/art/cursors/slider-grab.png") 8 8, grabbing;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcade-banner__scene,
+  .launch-countdown__scene {
+    transition: none;
   }
 }

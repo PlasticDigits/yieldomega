@@ -8,7 +8,7 @@ export function SirPage() {
     <ThirdPartyDexPage
       title="Sir"
       slug="sir"
-      heroImage="/art/sir-card.png"
+      heroImage="/art/scenes/sir-strip.jpg"
       venueDescription="DOUB levs / derivatives (per venue listing)"
       externalUrl={sirDexUrl()}
       linkLabel="Open Sir DEX"

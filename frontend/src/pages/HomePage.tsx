@@ -25,14 +25,21 @@ export function HomePage() {
   return (
     <section className="page page--home">
       <div className="home-hero">
-        <img
-          className="home-hero__art"
-          src="/art/hero-home-wide.jpg"
-          alt="YieldOmega blocky arcade fantasy heroes, rainbow, and hat-token coins"
-          width={1600}
-          height={900}
-          decoding="async"
-        />
+        <picture className="home-hero__picture">
+          <source
+            media="(max-width: 720px)"
+            srcSet="/art/scenes/home-hero-mobile.jpg"
+          />
+          <img
+            className="home-hero__art"
+            src="/art/scenes/home-hero-desktop.jpg"
+            alt="YieldOmega blocky arcade fantasy heroes, rainbow, and hat-token coins"
+            width={1600}
+            height={900}
+            decoding="async"
+            fetchPriority="high"
+          />
+        </picture>
         <CutoutDecoration
           className="home-hero__cutout home-hero__cutout--peek cutout-decoration--hoverable cutout-decoration--bob"
           src="/art/cutouts/cutout-bunnyleprechaungirl-head.png"

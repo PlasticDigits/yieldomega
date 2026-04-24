@@ -29,11 +29,17 @@ describe("TimeCurveSubnav (issue #40 progressive disclosure)", () => {
 
   it("marks the active tab via aria-current on the matching link", () => {
     const simple = renderSubnav("simple", "/timecurve");
-    expect(simple).toMatch(/aria-current="page"[^>]*>\s*<span class="timecurve-subnav__label">Simple</);
+    expect(simple).toMatch(
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Simple</,
+    );
     const arena = renderSubnav("arena", "/timecurve/arena");
-    expect(arena).toMatch(/aria-current="page"[^>]*>\s*<span class="timecurve-subnav__label">Arena</);
+    expect(arena).toMatch(
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Arena</,
+    );
     const protocol = renderSubnav("protocol", "/timecurve/protocol");
-    expect(protocol).toMatch(/aria-current="page"[^>]*>\s*<span class="timecurve-subnav__label">Protocol</);
+    expect(protocol).toMatch(
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Protocol</,
+    );
   });
 
   it("keeps `Simple` href as the bare /timecurve so Home → /timecurve does not 404", () => {
@@ -41,5 +47,12 @@ describe("TimeCurveSubnav (issue #40 progressive disclosure)", () => {
     expect(html).toContain('href="/timecurve"');
     expect(html).toContain('href="/timecurve/arena"');
     expect(html).toContain('href="/timecurve/protocol"');
+  });
+
+  it("renders the issue #45 sub-nav pictogram for each tab (purpose-folder paths)", () => {
+    const html = renderSubnav("simple", "/timecurve");
+    expect(html).toContain('src="/art/icons/nav-simple.png"');
+    expect(html).toContain('src="/art/icons/nav-arena.png"');
+    expect(html).toContain('src="/art/icons/nav-protocol.png"');
   });
 });
