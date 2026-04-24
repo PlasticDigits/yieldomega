@@ -121,6 +121,9 @@ contract TimeCurveTest is Test {
 
         // Fund launched token pool
         launchedToken.mint(address(tc), 1_000_000e18);
+
+        tc.setCharmRedemptionEnabled(true);
+        tc.setReservePodiumPayoutsEnabled(true);
     }
 
     function _fundAndApprove(address user, uint256 amount) internal {
@@ -399,6 +402,40 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         vm.expectRevert("TimeCurve: already redeemed");
         tc.redeemCharms();
+    }
+
+    function test_redeemCharms_reverts_while_charm_redemption_disabled() public {
+        tc.startSale();
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        tc.setCharmRedemptionEnabled(false);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: charm redemptions disabled");
+        tc.redeemCharms();
+    }
+
+    function test_distributePrizes_reverts_while_reserve_podium_payouts_disabled() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        tc.setReservePodiumPayoutsEnabled(false);
+        vm.expectRevert("TimeCurve: reserve podium payouts disabled");
+        tc.distributePrizes();
+    }
+
+    function test_buy_reverts_while_buy_fee_routing_disabled() public {
+        tc.startSale();
+        tc.setBuyFeeRoutingEnabled(false);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: buy fee routing disabled");
+        tc.buy(1e18);
     }
 
     // ── Min buy growth ─────────────────────────────────────────────────
@@ -969,6 +1006,8 @@ contract TimeCurveTest is Test {
 
         vm.warp(t.deadline() + 1);
         t.endSale();
+        t.setCharmRedemptionEnabled(true);
+        t.setReservePodiumPayoutsEnabled(true);
 
         uint256 poolBefore = reserve.balanceOf(address(podiumPool));
         assertGt(poolBefore, 0);
@@ -1215,6 +1254,7 @@ contract TimeCurveTest is Test {
         tcSmall.buy(1e18);
         vm.warp(tcSmall.deadline() + 1);
         tcSmall.endSale();
+        tcSmall.setCharmRedemptionEnabled(true);
         vm.prank(alice);
         vm.expectRevert("TimeCurve: nothing to redeem");
         tcSmall.redeemCharms();

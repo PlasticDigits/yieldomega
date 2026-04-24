@@ -171,7 +171,8 @@ export function TimeCurveSimplePage() {
     !session.walletConnected ||
     session.walletCooldownRemainingSec > 0 ||
     session.charmWadSelected === undefined ||
-    nonCl8yBlocked;
+    nonCl8yBlocked ||
+    session.buyFeeRoutingEnabled === false;
 
   const { data: nativeBal } = useBalance({
     address: session.walletAddress,
@@ -213,16 +214,7 @@ export function TimeCurveSimplePage() {
         lede={HERO_LEDE}
         badgeLabel={phaseInfo.label}
         badgeTone={phaseInfo.tone}
-        badgeIconSrc={phaseInfo.iconSrc}
-        coinSrc="/art/icons/token-doub.png"
-        coinAlt="DOUB token glyph"
-        sceneSrc="/art/scenes/timecurve-simple.jpg"
-        mascot={{
-          src: "/art/cutouts/leprechaun-bag-bunny-pair.png",
-          width: 220,
-          height: 220,
-          className: "cutout-decoration--sway",
-        }}
+        coinSrc="/art/token-logo.png"
       >
         {headerContent}
       </PageHero>
@@ -245,7 +237,10 @@ export function TimeCurveSimplePage() {
           <div className="timecurve-simple__timer-foot muted">
             {session.phase === "saleActive" &&
               "Each buy adds time to the timer; very large clutch buys can hard-reset it."}
-            {session.phase === "saleEnded" && "Holders of CHARM can claim their DOUB share."}
+            {session.phase === "saleEnded" &&
+              (session.charmRedemptionEnabled === false
+                ? "Redemptions await onchain go-live (operator / governance signoff)."
+                : "Holders of CHARM can claim their DOUB share.")}
             {session.phase === "saleStartPending" && "Stay on this page — it will switch to Live automatically."}
           </div>
         </div>
@@ -297,7 +292,9 @@ export function TimeCurveSimplePage() {
         badgeTone={session.phase === "saleActive" ? "live" : "info"}
         lede={
           session.phase === "saleEnded"
-            ? "The sale is over. Hit Redeem CHARM to mint your DOUB share onchain."
+            ? session.charmRedemptionEnabled === false
+              ? "The sale is over. DOUB allocation redemptions are gated onchain until the owner enables them (see issue #55)."
+              : "The sale is over. Hit Redeem CHARM to mint your DOUB share onchain."
             : "Pick how you pay (CL8Y, ETH, or USDM). The sale always settles in CL8Y; ETH and USDM route through Kumbaya v3–compatible pools first."
         }
       >
@@ -391,6 +388,11 @@ export function TimeCurveSimplePage() {
             <div className="timecurve-simple__minmax-row">{minMaxPill}</div>
             {slider}
             {charmPreview}
+            {session.buyFeeRoutingEnabled === false && (
+              <StatusMessage variant="muted">
+                Buys that route CL8Y through the fee sinks are paused onchain until operators re-enable them.
+              </StatusMessage>
+            )}
             <motion.button
               type="button"
               className="btn-primary timecurve-simple__cta"
@@ -458,6 +460,11 @@ export function TimeCurveSimplePage() {
                 )}
               </span>
             </div>
+            {session.charmRedemptionEnabled === false && (
+              <StatusMessage variant="muted">
+                The contract has not enabled redeemCharms yet — this is expected before final go-live (issue #55).
+              </StatusMessage>
+            )}
             <motion.button
               type="button"
               className="btn-primary timecurve-simple__cta"
@@ -465,7 +472,8 @@ export function TimeCurveSimplePage() {
                 session.isWriting ||
                 session.charmsRedeemed === true ||
                 session.charmWeightWad === undefined ||
-                session.charmWeightWad === 0n
+                session.charmWeightWad === 0n ||
+                session.charmRedemptionEnabled === false
               }
               onClick={() => void session.submitRedeem()}
               {...buyButtonMotion}

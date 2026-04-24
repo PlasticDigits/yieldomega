@@ -25,10 +25,10 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Rabbit Treasury](../docs/product/rabbit-treasury.md)
 - [Leprechaun NFTs](../docs/product/leprechaun-nfts.md)
 - [Fee routing and governance](../docs/onchain/fee-routing-and-governance.md)
+- [Final signoff and value movement (onchain gates)](../docs/operations/final-signoff-and-value-movement.md) ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55))
 - [Glossary](../docs/glossary.md)
 - [Architecture overview](../docs/architecture/overview.md) — onchain truth vs indexer/frontend roles
 - [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) — hub for onchain metadata, contributor skills, and this index
-- [Operations — pause and final signoff](../docs/operations/pause-and-final-signoff.md) — design inventory for gating user-facing **DOUB** and **CL8Y** distribution ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)); when helping participants, still prefer **chain reads** over this doc
 
 ## Using these in Cursor
 

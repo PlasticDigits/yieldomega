@@ -137,6 +137,9 @@ contract DeployDev is Script {
         // Burrow deposits require an open epoch; TimeCurve buys require a started sale.
         rt.openFirstEpoch();
         tc.startSale();
+        // Dev convenience: allow post-end flows in local Anvil drills (issue #55 gates default off in `initialize`).
+        tc.setCharmRedemptionEnabled(true);
+        tc.setReservePodiumPayoutsEnabled(true);
 
         // ── Leprechaun NFT ─────────────────────────────────────────────
         LeprechaunNFT nft = new LeprechaunNFT("Leprechaun", "LEPR", "", deployer);
