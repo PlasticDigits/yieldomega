@@ -72,7 +72,7 @@ function RouteFallback() {
   return (
     <div className="loading-state" aria-live="polite">
       <img
-        src="/art/loading-mascot.png"
+        src="/art/icons/loading-mascot-ring.png"
         alt=""
         width={96}
         height={96}

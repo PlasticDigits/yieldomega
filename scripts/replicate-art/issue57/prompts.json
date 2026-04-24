@@ -1,0 +1,123 @@
+{
+  "issue": 57,
+  "issue_url": "https://gitlab.com/PlasticDigits/yieldomega/-/issues/57",
+  "model": "openai/gpt-image-2",
+  "generation_defaults": {
+    "quality": "high",
+    "moderation": "low",
+    "number_of_images": 1,
+    "reference_images": [
+      "frontend/public/art/style.png",
+      "frontend/public/art/token-logo.png"
+    ],
+    "driver": "scripts/replicate-art/issue57_batch.py"
+  },
+  "jobs": [
+    {
+      "id": "issue57-cursor-default-pointer",
+      "filename": "issue57-cursor-default-pointer.png",
+      "deliver_to": "frontend/public/art/cursors/default-pointer.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "cursor_24x24_hot_4_4",
+      "checklist": "Default arcade pointer (24\u00d724)",
+      "subject": "UI cursor sprite only: a chunky bright-green arcade arrow pointer with thick black outline and glossy highlight, same toy-game finish as the brand\u2014simple arrow shape like a mouse pointer, no characters, no text, centered with generous transparent margin, designed to read clearly at 24px."
+    },
+    {
+      "id": "issue57-cursor-text-caret",
+      "filename": "issue57-cursor-text-caret.png",
+      "deliver_to": "frontend/public/art/cursors/text-caret.png",
+      "aspect_ratio": "2:3",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "portrait_768_1024",
+      "post_deliver": "cursor_16x24_hot_8_12",
+      "checklist": "Text caret (16\u00d724)",
+      "subject": "UI text-caret sprite only: vertical I-beam text caret in chunky arcade style\u2014bright green stem with gold cap nibs and thick black outline, glossy toy finish, no characters, no text labels, tall narrow composition for a 16\u00d724 cursor, transparent background."
+    },
+    {
+      "id": "issue57-cursor-disabled",
+      "filename": "issue57-cursor-disabled.png",
+      "deliver_to": "frontend/public/art/cursors/disabled.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "cursor_24x24_hot_4_4",
+      "checklist": "Disabled / no-entry (24\u00d724)",
+      "subject": "UI cursor sprite only: a small round leprechaun shield badge with a bold red diagonal NO bar and thick black outline\u2014friendly arcade 'not allowed' icon, glossy toy finish, no readable words, centered, transparent background, readable at 24px."
+    },
+    {
+      "id": "issue57-cursor-external-link",
+      "filename": "issue57-cursor-external-link.png",
+      "deliver_to": "frontend/public/art/cursors/external-link.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "cursor_24x24_hot_4_2",
+      "checklist": "External-link cursor (24\u00d724)",
+      "subject": "UI cursor sprite only: a tiny square-with-arrow-out icon in sky-blue and gold with thick black outline\u2014classic 'opens external' affordance, chunky arcade toy style, no characters, no letters, centered, transparent background, readable at 24px."
+    },
+    {
+      "id": "issue57-icon-fee-burn",
+      "filename": "issue57-icon-fee-burn.png",
+      "deliver_to": "frontend/public/art/icons/fee-burn.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "icon_128",
+      "checklist": "Fee sink \u2014 burn",
+      "subject": "Single flat UI icon: stylized flame consuming a glossy hat-coin (token-logo emblem style), thick black outline, arcade sticker look, centered, transparent background, no text."
+    },
+    {
+      "id": "issue57-icon-fee-treasury",
+      "filename": "issue57-icon-fee-treasury.png",
+      "deliver_to": "frontend/public/art/icons/fee-treasury.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "icon_128",
+      "checklist": "Fee sink \u2014 treasury",
+      "subject": "Single flat UI icon: cute treasure chest overflowing with hat-coins, chunky arcade outlines, green and gold palette, centered, transparent background, no text."
+    },
+    {
+      "id": "issue57-icon-fee-referral",
+      "filename": "issue57-icon-fee-referral.png",
+      "deliver_to": "frontend/public/art/icons/fee-referral.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "icon_256",
+      "post_deliver": "icon_128",
+      "checklist": "Fee sink \u2014 referral / share",
+      "subject": "Single flat UI icon: two mascots high-fiving while a glowing hat-coin bounces between them\u2014referral teamwork motif, thick outlines, cheerful arcade style, centered, transparent background, no text."
+    },
+    {
+      "id": "issue57-cutout-indexer-down-mascot",
+      "filename": "issue57-cutout-indexer-down-mascot.png",
+      "deliver_to": "frontend/public/art/cutouts/indexer-down-mascot.png",
+      "aspect_ratio": "1:1",
+      "background": "transparent",
+      "output_format": "png",
+      "resize": "cutout",
+      "post_deliver": "none",
+      "checklist": "Indexer-down sad leprechaun",
+      "subject": "Character cutout: a sympathetic red-bearded leprechaun mascot looking a little sad and shrugging\u2014gentle 'service hiccup' mood, holding a tilted empty coin bag, chunky arcade outlines, adult character, fully clothed, transparent chroma-friendly backdrop for keying, no text, no UI chrome."
+    }
+  ],
+  "derivatives_imagemagick": [
+    "Copy social/og-wide.jpg \u2192 art/opengraph.jpg",
+    "Copy social/og-square.jpg \u2192 art/opengraph-square.jpg",
+    "Copy icons/status-prelanch.png \u2192 icons/status-prelaunch.png (canonical name)",
+    "Resize token-*.png \u2192 token-*-24.png (24\u00d724)",
+    "Resize warbow-*.png \u2192 warbow-*-20.png (20\u00d720)",
+    "Crop scenes/error-wrong-network.jpg \u2192 scenes/error-wrong-network-portrait.jpg (portrait 900\u00d71600 cover)",
+    "Resize scenes/referrals-network.jpg \u2192 scenes/referrals-hero.jpg (1600\u00d7900 cover)",
+    "Resize cutouts/loading-mascot-circle.png \u2192 icons/loading-mascot-ring.png (256\u00d7256 center sample)"
+  ]
+}

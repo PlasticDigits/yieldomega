@@ -100,7 +100,8 @@ lock-step. Asset slots that are referenced by component code but not yet
 filled live in [`missing-art-assets.md`](./missing-art-assets.md) so
 [`scripts/replicate-art/`](../../scripts/replicate-art/) can complete the
 pack via the same generation pipeline used for
-[issue #45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45).
+[issue #45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45) and follow-ups such as
+[issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57) (`issue57_batch.py`).
 
 The textual label in any badge / icon component remains the **a11y source
 of truth**; pictograms are decorative (`alt=""` + `aria-hidden`).
