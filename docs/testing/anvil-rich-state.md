@@ -8,6 +8,8 @@ This flow drives **TimeCurve**, **RabbitTreasury**, and **LeprechaunNFT** throug
 - `jq` (optional but recommended for loading addresses from broadcast JSON)
 - [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) already broadcast to the same Anvil RPC
 
+**UUPS / broadcast JSON:** After GitLab #54, core contracts deploy behind **ERC1967Proxy**. Foundry’s `run-latest.json` lists the **implementation** `CREATE` as `contractName` `TimeCurve` / `RabbitTreasury` — **not** the address you should call. Prefer **`anvil_rich_state.sh`** defaults (fixed in #61), `scripts/lib/broadcast_proxy_addresses.sh`, or the **console.log** lines from `DeployDev` / `start-local-anvil-stack.sh` — see [invariants — DeployDev broadcast JSON](invariants-and-business-logic.md) ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
+
 ## One-shot script (recommended)
 
 From the repo root (or adjust paths):
