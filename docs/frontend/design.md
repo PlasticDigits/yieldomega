@@ -9,8 +9,11 @@
 ## Pages (illustrative)
 
 - **TimeCurve** — three-route surface sharing one sub-nav (`<TimeCurveSubnav />`):
-  - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown, single
-    focal **buy CHARM** card with a live rate board (current per-CHARM CL8Y price
+  - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown
+    rendered through the shared `TimeCurveTimerHero` (scene-art backplate,
+    days chip + tabular digits, urgency-aware glow + pulse — same design
+    family as `LaunchCountdownPage`), and a single focal **buy CHARM** card
+    with a live rate board (current per-CHARM CL8Y price
     + at-launch DOUB↔CL8Y chain), and last-3 activity ticker. Cross-page navigation
     to Arena / Protocol lives only in the persistent `TimeCurveSubnav` at the top
     of the route. Renders through `TimeCurveSimplePage` + `useTimeCurveSaleSession`
