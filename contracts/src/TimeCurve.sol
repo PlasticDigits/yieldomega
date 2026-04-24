@@ -214,6 +214,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     );
     event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
 
+    /// @notice Gating for sale-time `buy` (CL8Y inflow + `FeeRouter`); default true in `initialize`. See `docs/operations/final-signoff-and-value-movement.md` (issue #55).
+    event BuyFeeRoutingEnabled(bool enabled);
+    /// @notice Gating for post-end `redeemCharms` (DOUB sale allocation to buyers).
+    event CharmRedemptionEnabled(bool enabled);
+    /// @notice Gating for post-end `distributePrizes` (CL8Y reserve to podium winners from `PodiumPool`).
+    event ReservePodiumPayoutsEnabled(bool enabled);
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -248,6 +255,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
         require(_buyCooldownSec > 0, "TimeCurve: zero buy cooldown");
         __Ownable_init(upgradeAdmin);
+        buyFeeRoutingEnabled = true;
+        charmRedemptionEnabled = false;
+        reservePodiumPayoutsEnabled = false;
         acceptedAsset = _acceptedAsset;
         launchedToken = _launchedToken;
         feeRouter = _feeRouter;
@@ -264,6 +274,21 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    function setBuyFeeRoutingEnabled(bool enabled) external onlyOwner {
+        buyFeeRoutingEnabled = enabled;
+        emit BuyFeeRoutingEnabled(enabled);
+    }
+
+    function setCharmRedemptionEnabled(bool enabled) external onlyOwner {
+        charmRedemptionEnabled = enabled;
+        emit CharmRedemptionEnabled(enabled);
+    }
+
+    function setReservePodiumPayoutsEnabled(bool enabled) external onlyOwner {
+        reservePodiumPayoutsEnabled = enabled;
+        emit ReservePodiumPayoutsEnabled(enabled);
+    }
 
     function startSale() external {
         require(saleStart == 0, "TimeCurve: already started");
@@ -293,6 +318,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _buy(uint256 charmWad, bytes32 codeHash) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
+        require(buyFeeRoutingEnabled, "TimeCurve: buy fee routing disabled");
         require(block.timestamp < deadline, "TimeCurve: timer expired");
         require(block.timestamp >= nextBuyAllowedAt[msg.sender], "TimeCurve: buy cooldown");
 
@@ -583,6 +609,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     function redeemCharms() external nonReentrant {
         require(ended, "TimeCurve: not ended");
+        require(charmRedemptionEnabled, "TimeCurve: charm redemptions disabled");
         require(charmWeight[msg.sender] > 0, "TimeCurve: no charm weight");
         require(!charmsRedeemed[msg.sender], "TimeCurve: already redeemed");
         require(totalCharmWeight > 0, "TimeCurve: zero charm supply");
@@ -604,6 +631,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         if (prizePool == 0) {
             return;
         }
+        require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");
 
         uint256 sLast = (prizePool * 40) / 100;
         uint256 sWar = (prizePool * 25) / 100;
@@ -785,5 +813,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
 
-    uint256[50] private __gap;
+    /// @notice If false, `buy` reverts (no CL8Y fee routing). Default: true in `initialize`.
+    bool public buyFeeRoutingEnabled;
+    /// @notice If false, `redeemCharms` reverts. Default: false until owner signoff.
+    bool public charmRedemptionEnabled;
+    /// @notice If false, `distributePrizes` reverts when the podium pool balance is non-zero. Default: false until owner signoff.
+    bool public reservePodiumPayoutsEnabled;
+
+    uint256[49] private __gap;
 }

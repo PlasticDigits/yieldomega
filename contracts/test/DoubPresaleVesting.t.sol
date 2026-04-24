@@ -170,6 +170,8 @@ contract DoubPresaleVestingTest is Test {
         doub.mint(address(v), 100e18);
         vm.prank(owner);
         v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
         vm.prank(bob);
         vm.expectRevert(DoubPresaleVesting.DoubVesting__NotBeneficiary.selector);
         v.claim();
@@ -232,6 +234,8 @@ contract DoubPresaleVestingTest is Test {
         doub.mint(address(v), total);
         vm.prank(owner);
         v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
 
         vm.prank(alice);
         v.claim();
@@ -283,6 +287,8 @@ contract DoubPresaleVestingTest is Test {
         doub.mint(address(v), 100e18);
         vm.prank(owner);
         v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
         vm.prank(alice);
         v.claim();
         vm.prank(alice);
@@ -345,6 +351,8 @@ contract DoubPresaleVestingTest is Test {
         doub.mint(address(v), tot);
         vm.prank(owner);
         v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
 
         uint256 w = bound(warpSeed, 0, DURATION * 3);
         vm.warp(block.timestamp + w);
@@ -366,6 +374,20 @@ contract DoubPresaleVestingTest is Test {
         }
         uint256 sumClaimed = v.claimedOf(alice) + v.claimedOf(bob) + v.claimedOf(carol);
         assertEq(doub.balanceOf(address(v)) + sumClaimed, tot);
+    }
+
+    function test_claim_reverts_while_claims_disabled_after_start() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(alice);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__ClaimsNotEnabled.selector);
+        v.claim();
     }
 
     /// @dev Canonical presale total from docs: 21_500_000 DOUB split across arbitrary many wallets.

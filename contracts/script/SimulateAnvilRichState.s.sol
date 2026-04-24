@@ -12,6 +12,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface ITimeCurve {
     function buy(uint256 charmWad) external;
     function endSale() external;
+    function setCharmRedemptionEnabled(bool enabled) external;
+    function setReservePodiumPayoutsEnabled(bool enabled) external;
     function redeemCharms() external;
     function distributePrizes() external;
     function deadline() external view returns (uint256);
@@ -137,6 +139,8 @@ contract SimulateAnvilRichStatePart2 is Script {
 
         vm.startBroadcast(PK_DEPLOYER);
         ITimeCurve(tc).endSale();
+        ITimeCurve(tc).setCharmRedemptionEnabled(true);
+        ITimeCurve(tc).setReservePodiumPayoutsEnabled(true);
         vm.stopBroadcast();
 
         _claim(PK_A, tc);

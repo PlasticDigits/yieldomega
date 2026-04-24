@@ -124,6 +124,12 @@ export type UseTimeCurveSaleSession = {
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
   submitRedeem: () => Promise<void>;
+  /** Issue #55: sale-time `buy` / `FeeRouter` path (default true in `initialize`). */
+  buyFeeRoutingEnabled: boolean | undefined;
+  /** Issue #55: post-end `redeemCharms` (default false until owner signoff). */
+  charmRedemptionEnabled: boolean | undefined;
+  /** Issue #55: post-end `distributePrizes` with non-zero pool (default false). */
+  reservePodiumPayoutsEnabled: boolean | undefined;
   refresh: () => void;
 };
 
@@ -165,6 +171,9 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
       ]
     : [];
 
@@ -238,6 +247,9 @@ export function useTimeCurveSaleSession(
     totalTokensForSaleR,
     buyCooldownSecR,
     launchedTokenR,
+    buyFeeRoutingEnabledR,
+    charmRedemptionEnabledR,
+    reservePodiumPayoutsEnabledR,
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR] = userData ?? [];
@@ -497,10 +509,21 @@ export function useTimeCurveSaleSession(
 
   void buyCooldownSecR;
 
+  const buyFeeRoutingEnabled =
+    buyFeeRoutingEnabledR?.status === "success"
+      ? (buyFeeRoutingEnabledR.result as boolean)
+      : undefined;
+
   const submitBuy = useCallback(async () => {
     setBuyError(null);
     if (!address || !tc || !acceptedAsset) {
       setBuyError("Connect a wallet and wait for contract reads.");
+      return;
+    }
+    if (buyFeeRoutingEnabled === false) {
+      setBuyError(
+        "TimeCurve: buy fee routing is disabled (awaiting operator / governance go-live).",
+      );
       return;
     }
     if (walletCooldownRemainingSec > 0) {
@@ -666,12 +689,19 @@ export function useTimeCurveSaleSession(
     payWith,
     slippageBps,
     chainId,
+    buyFeeRoutingEnabled,
   ]);
 
   const submitRedeem = useCallback(async () => {
     setBuyError(null);
     if (!address || !tc) {
       setBuyError("Connect a wallet to redeem.");
+      return;
+    }
+    if (charmRedemptionEnabledR?.status === "success" && !charmRedemptionEnabledR.result) {
+      setBuyError(
+        "TimeCurve: CHARM redemptions are not enabled yet (awaiting final signoff onchain).",
+      );
       return;
     }
     try {
@@ -685,7 +715,7 @@ export function useTimeCurveSaleSession(
     } catch (e) {
       setBuyError(friendlyRevertFromUnknown(e));
     }
-  }, [address, tc, writeContractAsync, refetchAll]);
+  }, [address, tc, writeContractAsync, refetchAll, charmRedemptionEnabledR]);
 
   const ready = Boolean(coreData && coreData.length > 0 && !isPending);
 
@@ -744,6 +774,15 @@ export function useTimeCurveSaleSession(
     swapQuoteFailed: quoteIsError,
     submitBuy,
     submitRedeem,
+    buyFeeRoutingEnabled,
+    charmRedemptionEnabled:
+      charmRedemptionEnabledR?.status === "success"
+        ? (charmRedemptionEnabledR.result as boolean)
+        : undefined,
+    reservePodiumPayoutsEnabled:
+      reservePodiumPayoutsEnabledR?.status === "success"
+        ? (reservePodiumPayoutsEnabledR.result as boolean)
+        : undefined,
     refresh: refetchAll,
   };
 }

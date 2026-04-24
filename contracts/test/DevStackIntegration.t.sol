@@ -103,6 +103,8 @@ contract DevStackIntegrationTest is Test {
 
         rt.openFirstEpoch();
         tc.startSale();
+        tc.setCharmRedemptionEnabled(true);
+        tc.setReservePodiumPayoutsEnabled(true);
     }
 
     function test_devStack_epochAndSaleActive() public view {
