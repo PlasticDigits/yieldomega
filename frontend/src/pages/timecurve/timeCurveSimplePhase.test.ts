@@ -116,7 +116,7 @@ describe("phaseBadge / phaseNarrative copy contract (issue #40 A1/A2/A4)", () =>
   });
 
   it("phaseBadge labels do not leak protocol jargon to first-run users", () => {
-    expect(phaseBadge("saleActive").label).toBe("Live sale");
+    expect(phaseBadge("saleActive").label).toBe("Sale live");
     expect(phaseBadge("saleStartPending").label).toBe("Pre-launch");
     expect(phaseBadge("saleEnded").label).toBe("Sale ended");
   });

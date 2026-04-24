@@ -140,8 +140,12 @@ cast block-number --rpc-url "${RPC_URL}" >/dev/null || die "No RPC at ${RPC_URL}
 
 echo "=== Deploy (DeployDev) ==="
 cd "${CONTRACTS}"
-env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC_URL}" >/dev/null
-[[ -f "${RUN_JSON}" ]] || die "Missing ${RUN_JSON}"
+# --optimizer-runs 1 keeps TimeCurve under the 24 KiB EIP-170 limit for local Anvil
+# deploys (default 200 can exceed the cap with via_ir on some compiler stacks).
+DEPLOY_LOG="/tmp/yieldomega_deploy_dev.log"
+env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev \
+  --broadcast --rpc-url "${RPC_URL}" --optimizer-runs 1 -vv > "${DEPLOY_LOG}" 2>&1
+[[ -f "${RUN_JSON}" ]] || { tail -n 60 "${DEPLOY_LOG}" >&2; die "Missing ${RUN_JSON} (see ${DEPLOY_LOG})"; }
 
 if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
   echo "=== Simulate (rich state) === SKIPPED (SKIP_ANVIL_RICH_STATE=1)"
@@ -151,12 +155,23 @@ else
 fi
 
 echo "=== Write ${REGISTRY_OUT} ==="
-TC="$(jq -r '.transactions[] | select(.contractName=="TimeCurve") | .contractAddress' "${RUN_JSON}" | head -1)"
-RT="$(jq -r '.transactions[] | select(.contractName=="RabbitTreasury") | .contractAddress' "${RUN_JSON}" | head -1)"
-NFT="$(jq -r '.transactions[] | select(.contractName=="LeprechaunNFT") | .contractAddress' "${RUN_JSON}" | head -1)"
-FR="$(jq -r '.transactions[] | select(.contractName=="FeeRouter") | .contractAddress' "${RUN_JSON}" | head -1)"
-PP="$(jq -r '.transactions[] | select(.contractName=="PodiumPool") | .contractAddress' "${RUN_JSON}" | head -1)"
-RR="$(jq -r '.transactions[] | select(.contractName=="ReferralRegistry") | .contractAddress' "${RUN_JSON}" | head -1)"
+# Most contracts (TimeCurve, RabbitTreasury, FeeRouter, ReferralRegistry,
+# PodiumPool, …) live behind ERC1967 proxies. The broadcast JSON's `contractName`
+# labels the impl, not the proxy, so we grep the `console.log` lines emitted by
+# `DeployDev.s.sol` instead (same approach as `scripts/lib/anvil_deploy_dev.sh`).
+extract_addr_from_log() {
+  local label="$1"
+  grep -E "^[[:space:]]*${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
+}
+TC="$(extract_addr_from_log "TimeCurve")"
+RT="$(extract_addr_from_log "RabbitTreasury")"
+FR="$(extract_addr_from_log "FeeRouter")"
+RR="$(extract_addr_from_log "ReferralRegistry")"
+PP="$(extract_addr_from_log "PodiumPool")"
+NFT="$(extract_addr_from_log "LeprechaunNFT")"
+for var_name in TC RT FR RR PP NFT; do
+  [[ -n "${!var_name}" ]] || die "Could not parse ${var_name} from ${DEPLOY_LOG}."
+done
 MIN_HEX="$(jq -r '[.receipts[] | .blockNumber] | min' "${RUN_JSON}")"
 DEPLOY_BLOCK="$(cast to-dec "${MIN_HEX}")"
 
