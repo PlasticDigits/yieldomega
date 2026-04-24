@@ -65,14 +65,31 @@ export type PhaseBadge = {
   label: string;
   /** Badge tone matches the dapp-wide `PageBadgeTone` palette. */
   tone: "live" | "soon" | "warning" | "info";
+  /**
+   * Pictogram path under [`frontend/public/art/icons/`](../../../public/art/icons/)
+   * (issue #45). Decorative; the textual `label` remains the source of truth
+   * for assistive tech. **Note:** the source filename
+   * `status-prelanch.png` keeps the issue #45 typo on purpose so the asset
+   * path matches the generation manifest. The CSS class `ui-badge--soon`
+   * carries the human-meaningful tone.
+   */
+  iconSrc: string;
 };
 
 const BADGE: Record<SaleSessionPhase, PhaseBadge> = {
-  loading: { label: "Loading", tone: "info" },
-  saleStartPending: { label: "Pre-launch", tone: "soon" },
-  saleActive: { label: "Live sale", tone: "live" },
-  saleExpiredAwaitingEnd: { label: "Timer expired", tone: "warning" },
-  saleEnded: { label: "Sale ended", tone: "warning" },
+  loading: { label: "Loading", tone: "info", iconSrc: "/art/icons/status-cooldown.png" },
+  saleStartPending: {
+    label: "Pre-launch",
+    tone: "soon",
+    iconSrc: "/art/icons/status-prelanch.png",
+  },
+  saleActive: { label: "Live sale", tone: "live", iconSrc: "/art/icons/status-live.png" },
+  saleExpiredAwaitingEnd: {
+    label: "Timer expired",
+    tone: "warning",
+    iconSrc: "/art/icons/status-cooldown.png",
+  },
+  saleEnded: { label: "Sale ended", tone: "warning", iconSrc: "/art/icons/status-ended.png" },
 };
 
 export function phaseBadge(phase: SaleSessionPhase): PhaseBadge {
