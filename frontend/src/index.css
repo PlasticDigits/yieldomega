@@ -4056,6 +4056,10 @@ code {
 .timecurve-simple__timer-panel.data-panel {
   position: relative;
   isolation: isolate;
+  /* `.data-panel--spotlight` reserves a wide right rail (for cutouts on the
+     right). The timer mascot is bottom-left, so that extra `padding-right`
+     only shoves the heading + clock left of centre. Use symmetric insets. */
+  padding: 1.1rem 1.15rem;
   border: 4px solid var(--arcade-gold-600);
   border-radius: 1.5rem;
   background:
@@ -4264,7 +4268,23 @@ code {
 }
 
 .timecurve-simple__timer-panel .section-heading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 0.7rem;
   gap: 0.5rem 0.85rem;
+}
+
+/* Stack badge + title + lede as one centred column (default section-heading
+   is left-biased via `space-between` + grid copy, which felt off on a
+   "stage" panel). */
+.timecurve-simple__timer-panel .section-heading__copy {
+  justify-items: center;
+  text-align: center;
+  max-width: 28rem;
+  margin: 0 auto;
 }
 
 /* Inner timer hero: now that the OUTER panel is the stage, the inner
@@ -4377,6 +4397,7 @@ code {
 .timecurve-simple__timer-hero-foot {
   margin: 0;
   max-width: 32rem;
+  text-align: center;
   font-size: clamp(0.78rem, 1.4vw, 0.9rem);
   line-height: 1.45;
   color: #d6f5df;
