@@ -1,4 +1,12 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import {
+  baseAccount,
+  metaMaskWallet,
+  rainbowWallet,
+  safeWallet,
+  safepalWallet,
+  walletConnectWallet,
+} from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http, mock } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { configuredChain, referenceChains } from "@/lib/chain";
@@ -37,6 +45,21 @@ const transports = Object.fromEntries(
   chains.map((c) => [c.id, transportFor(c)] as const),
 ) as Record<(typeof chains)[number]["id"], ReturnType<typeof http>>;
 
+/** RainbowKit default “Popular” list omits SafePal; include it so extension + mobile WC flows match [issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58). */
+const rainbowKitWalletGroups = [
+  {
+    groupName: "Popular",
+    wallets: [
+      safeWallet,
+      rainbowWallet,
+      baseAccount,
+      metaMaskWallet,
+      safepalWallet,
+      walletConnectWallet,
+    ],
+  },
+];
+
 /**
  * Playwright Anvil E2E only: wagmi `mock` connector forwards JSON-RPC to the chain URL (see
  * `@wagmi/core` mock connector). MegaETH behavior still differs; do not ship production builds
@@ -61,10 +84,13 @@ export const wagmiConfig = useE2EMockWallet
         chains,
         transports,
         ssr: false,
+        multiInjectedProviderDiscovery: true,
+        wallets: rainbowKitWalletGroups,
       })
     : createConfig({
         chains,
         connectors: [injected()],
         transports,
         ssr: false,
+        multiInjectedProviderDiscovery: true,
       });
