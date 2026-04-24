@@ -58,6 +58,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **Rabbit Treasury (Burrow)** | Deposits → **redeemable** backing + DOUB mint; `receiveFee` → burn + **protocol-owned** backing (no DOUB mint); withdraw from redeemable only (pro-rata, health efficiency, fees → protocol); epoch repricing via **total** backing + BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
 | **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **DOUB presale vesting** | Immutable `EnumerableSet` of beneficiaries + allocations; constructor enforces `sum(amounts) == requiredTotal`; **30%** vested at `vestingStart`, **70%** linear over `vestingDuration`; `startVesting` once when `token.balanceOf(this) >= totalAllocated`. | [DoubPresaleVesting.sol](../../contracts/src/vesting/DoubPresaleVesting.sol), [PARAMETERS.md](../../contracts/PARAMETERS.md) |
+| **Pause and final signoff (design / future onchain)** | **Design inventory** ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)): gate **user-facing** DOUB (`claim`, `redeemCharms`) and CL8Y **prize/ routing** per policy **before** implementation; invariants G1–G5 when code lands. | [operations/pause-and-final-signoff.md](../operations/pause-and-final-signoff.md) |
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
 | **Indexer** | Decode canonical logs, idempotent persist, chain pointer + reorg rollback of indexed rows. | [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md), [indexer/src/persist.rs](../../indexer/src/persist.rs) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
@@ -77,6 +78,24 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 - **Frontend helpers:** User-supplied addresses and indexer base URLs are normalized so RPC and HTTP clients see stable values.
 - **Kumbaya routing:** See [integrations/kumbaya.md](../integrations/kumbaya.md) for environment runbooks and the **fail closed / path encoding / integrator parity** invariants. Unit coverage: [`kumbayaRoutes.test.ts`](../../frontend/src/lib/kumbayaRoutes.test.ts).
 - **TimeCurve sale phase (UI):** Off-chain only **interprets** onchain `saleStart` / `deadline` / `ended` and must not split “now” between the **hero timer** and **`derivePhase`** when the **indexer** provides `chain-timer` — see [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) and [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48).
+
+---
+
+<a id="pause-and-final-signoff-design-gitlab-55"></a>
+
+## Pause and final signoff (design) — [GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)
+
+**Scope:** This section documents **design-time** rules and the **future** test map for **onchain/operational** gates to **user-facing DOUB claims** and **CL8Y distribution** (see [operations/pause-and-final-signoff.md](../operations/pause-and-final-signoff.md)). It does **not** assert current Solidity behavior until follow-up implementation merges.
+
+| Invariant | Meaning | Tests (when implemented) |
+|-----------|---------|-------------------------|
+| **G1 (explicit gate)** | Gated external does not complete user token transfer without signoff state | `DoubPresaleVesting.t.sol`, `TimeCurve.t.sol` — revert paths; optional fork smoke |
+| **G2 (no shadow user pull)** | Pausing `claim` / `redeemCharms` / `distributePrizes` does not leave an alternate in-repo user pull of the same funds | Combinations + `FeeRouter` review if partial pause |
+| **G3 (observability)** | Read paths / events allow **not started** vs **awaiting signoff** vs **live** | Indexer round-trip tests if new events/fields; frontend unit tests for copy gating |
+| **G4 (Burrow scope)** | `RabbitTreasury` `Pausable` is **separate** from TimeCurve/vesting distribution gates unless runbook states otherwise | Existing Rabbit tests + ops doc |
+| **G5 (fee bypass)** | Partial sink pause does not admit unintended CL8Y routing | `FeeRouter` / sink tests; threat model note |
+
+**Agent cross-links:** [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [skills/play-timecurve-doubloon](../../skills/play-timecurve-doubloon/SKILL.md)
 
 ---
 

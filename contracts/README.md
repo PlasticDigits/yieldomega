@@ -98,8 +98,9 @@ Addresses are printed to console — copy them into
 [`deployments/dev-addresses.example.json`](./deployments/dev-addresses.example.json).
 ABIs live in `out/` after `forge build`. Registry templates and **ABI hash export** for consumers: [`deployments/README.md`](./deployments/README.md). See
 [`docs/operations/deployment-stages.md`](../docs/operations/deployment-stages.md),
-[`docs/operations/deployment-checklist.md`](../docs/operations/deployment-checklist.md), and
-[`docs/operations/stage3-mainnet-operator-runbook.md`](../docs/operations/stage3-mainnet-operator-runbook.md).
+[`docs/operations/deployment-checklist.md`](../docs/operations/deployment-checklist.md),
+[`docs/operations/stage3-mainnet-operator-runbook.md`](../docs/operations/stage3-mainnet-operator-runbook.md), and
+[`docs/operations/pause-and-final-signoff.md`](../docs/operations/pause-and-final-signoff.md) (design inventory for gating user-facing DOUB/CL8Y — [GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 
 ## Parameters
 
@@ -110,10 +111,10 @@ need human decisions before mainnet.
 
 | Contract | Purpose |
 |----------|---------|
-| `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing |
+| `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing (future: optional pause/latch for `buy` / `redeemCharms` / `distributePrizes` per [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
 | `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
 | `Doubloon` | DOUB ERC-20 — mint/burn controlled by `RabbitTreasury` |
-| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration |
+| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration (future: optional gate on `claim` — [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
 | `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
 | `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
 | `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
