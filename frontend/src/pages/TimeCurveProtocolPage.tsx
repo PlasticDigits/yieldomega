@@ -187,7 +187,9 @@ export function TimeCurveProtocolPage() {
         lede="Raw, authoritative onchain reads for TimeCurve. Use this surface to verify what the simple and arena views show."
         badgeLabel="Protocol"
         badgeTone="info"
-        coinSrc="/art/token-logo.png"
+        coinSrc="/art/icons/token-cl8y.png"
+        coinAlt="CL8Y reserve token glyph"
+        sceneSrc="/art/scenes/timecurve-protocol.jpg"
       />
 
       <PageSection

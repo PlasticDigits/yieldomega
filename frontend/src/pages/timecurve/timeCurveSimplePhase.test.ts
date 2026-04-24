@@ -121,6 +121,18 @@ describe("phaseBadge / phaseNarrative copy contract (issue #40 A1/A2/A4)", () =>
     expect(phaseBadge("saleEnded").label).toBe("Sale ended");
   });
 
+  it("phaseBadge iconSrc points at the issue #45 status pictograms (purpose folder)", () => {
+    expect(phaseBadge("saleActive").iconSrc).toBe("/art/icons/status-live.png");
+    expect(phaseBadge("saleEnded").iconSrc).toBe("/art/icons/status-ended.png");
+    expect(phaseBadge("saleStartPending").iconSrc).toMatch(
+      /^\/art\/icons\/status-prelan?ch\.png$/,
+    );
+    expect(phaseBadge("saleExpiredAwaitingEnd").iconSrc).toBe(
+      "/art/icons/status-cooldown.png",
+    );
+    expect(phaseBadge("loading").iconSrc).toBe("/art/icons/status-cooldown.png");
+  });
+
   it("narratives are short and explain CL8Y → CHARM clearly when active", () => {
     expect(phaseNarrative("saleActive")).toMatch(/timer/i);
     expect(phaseNarrative("saleActive")).toMatch(/buys?/i);
