@@ -97,6 +97,16 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 ---
 
+<a id="timecurve-simple-kumbaya-quote-refresh-issue-56"></a>
+
+### TimeCurve Simple — Kumbaya quote refresh (issue #56)
+
+When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disabled** and show **Refreshing quote…** while the Kumbaya **`quoteExactOutput`** read is **in flight** for the current slider-derived CL8Y amount, including TanStack Query **background refetches** (`isFetching` without `isPending`). **`swapQuoteLoading`** in [`useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) gates both the CTA label and `nonCl8yBlocked` on [`TimeCurveSimplePage`](../../frontend/src/pages/TimeCurveSimplePage.tsx).
+
+**Why:** Prevents signing against a stale on-screen quote after rapid slider changes; aligns with Anvil wallet-write E2E stability ([issue #52](https://gitlab.com/PlasticDigits/yieldomega/-/issues/52)). **Doc:** [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56).
+
+---
+
 ### TimeMath (library)
 
 | Invariant | Meaning | Tests |

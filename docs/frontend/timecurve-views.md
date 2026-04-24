@@ -114,6 +114,19 @@ setups.
 
 **Spec ↔ test:** [invariants — WarBow pending flag](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [primitives — plant / claim flag](../product/primitives.md) · [`timeCurveUx.ts`](../../frontend/src/lib/timeCurveUx.ts) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51).
 
+<a id="buy-quote-refresh-kumbaya-issue-56"></a>
+
+## Buy quote refresh (Kumbaya, issue #56)
+
+When **Pay with** is **ETH** or **USDM**, [`useTimeCurveSaleSession`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) reads the Kumbaya **`quoteExactOutput`** for the **current** CL8Y `amountOut` implied by the slider. TanStack Query v5 sets **`isFetching`** on **background refetches** even when **`isPending`** is false (cached row from the previous amount), so the hook treats **`isPending || isFetching`** while the quote query is enabled as **quote in flight**.
+
+**UI invariants**
+
+1. **Primary CTA** on [`TimeCurveSimplePage`](../../frontend/src/pages/TimeCurveSimplePage.tsx) shows **Refreshing quote…** and stays **disabled** until the quoter read settles for the current target — same window as `swapQuoteLoading` driving `nonCl8yBlocked`.
+2. **`submitBuy`** still performs a fresh `readContract` quote immediately before building the swap tx; the CTA gate prevents rapid slider + click against a **visually** stale line item while RPC catches up (follow-up to the Anvil E2E race in [issue #52](https://gitlab.com/PlasticDigits/yieldomega/-/issues/52)).
+
+**Spec ↔ test:** [invariants — Kumbaya quote refresh](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [integrations/kumbaya.md](../integrations/kumbaya.md) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56).
+
 ## `TimeCurveSimplePage` layout contract
 
 Page leads with **action**: the sale hub sits at the very top, the
@@ -168,7 +181,9 @@ narrow):
      `useBlock({ watch: true })` so they update on every new block / buy.
    - Inline min–max pill, slider + numeric input, two-line preview
      (**"You add ≈ X CHARM"** + **"Worth at launch ≈ Y CL8Y"**, hidden when
-     the wallet holds no CHARM yet), single CTA labeled **Buy CHARM**.
+     the wallet holds no CHARM yet), single CTA labeled **Buy CHARM** (or
+     **Refreshing quote…** when a Kumbaya quoter read is in flight for ETH/USDM
+     pay mode — [Buy quote refresh](#buy-quote-refresh-kumbaya-issue-56)).
    - Pay-with (CL8Y/ETH/USDM), slippage, wallet balance, and referral
      controls live behind a collapsed `<details>` "Advanced" disclosure so
      first-run buyers see the rate board + slider + CTA + launch projection
@@ -324,6 +339,6 @@ npm run test:e2e -- --workers=5
 
 ---
 
-**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)

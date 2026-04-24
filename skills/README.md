@@ -29,6 +29,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Glossary](../docs/glossary.md)
 - [Architecture overview](../docs/architecture/overview.md) — onchain truth vs indexer/frontend roles
 - [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) — hub for onchain metadata, contributor skills, and this index
+- [TimeCurve frontend (Simple / Arena / Protocol)](../docs/frontend/timecurve-views.md) — three-view contract; [Kumbaya quote refresh on the Buy CTA](../docs/frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) ([issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56))
 
 **Local Anvil / tooling (contributors):** If you wire scripts or bots to `DeployDev` addresses, use the **ERC1967 proxy** for UUPS cores (`TimeCurve`, `RabbitTreasury`, …), not the implementation row in `run-latest.json` — see [`docs/testing/anvil-rich-state.md`](../docs/testing/anvil-rich-state.md) and [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md) ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 

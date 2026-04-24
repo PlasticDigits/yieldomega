@@ -562,7 +562,11 @@ export function TimeCurveSimplePage() {
                   decoding="async"
                 />
                 <span className="timecurve-simple__cta-label">
-                  {session.isWriting ? "Submitting…" : "Buy CHARM"}
+                  {session.isWriting
+                    ? "Submitting…"
+                    : session.payWith !== "cl8y" && session.swapQuoteLoading
+                      ? "Refreshing quote…"
+                      : "Buy CHARM"}
                 </span>
               </motion.button>
               {cooldownLine && <StatusMessage variant="muted">{cooldownLine}</StatusMessage>}
