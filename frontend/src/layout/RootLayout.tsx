@@ -22,6 +22,16 @@ export function RootLayout() {
   const chainName = chains.find((c) => c.id === chainId)?.name ?? `chain ${chainId}`;
   const gov = governanceUrl();
 
+  // The TimeCurve **Simple** view is a deliberately minimal first-run surface
+  // (timer + buy CTA + recent buys + nothing else). The global footer's
+  // indexer status pill + canonical-fee-sink table are valuable on operator
+  // / power-user surfaces (home, Arena, Protocol, etc.) but they swamp the
+  // Simple page with secondary information that distracts from the single
+  // primary action. We hide the footer **only** on `/timecurve` (exact);
+  // `/timecurve/arena` and `/timecurve/protocol` keep it. See
+  // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
+  const showFooter = location.pathname !== "/timecurve";
+
   return (
     <div className="app-shell">
       <ReferralPathSync />
@@ -176,20 +186,22 @@ export function RootLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
-      <footer className="app-footer">
-        <div className="app-footer__row">
-          <IndexerStatusBar />
-          {gov && (
-            <a href={gov} target="_blank" rel="noreferrer" className="footer-link-pill">
-              Governance / CL8Y
-            </a>
-          )}
-        </div>
-        <div className="data-panel data-panel--footer">
-          <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
-          <FeeTransparency />
-        </div>
-      </footer>
+      {showFooter && (
+        <footer className="app-footer">
+          <div className="app-footer__row">
+            <IndexerStatusBar />
+            {gov && (
+              <a href={gov} target="_blank" rel="noreferrer" className="footer-link-pill">
+                Governance / CL8Y
+              </a>
+            )}
+          </div>
+          <div className="data-panel data-panel--footer">
+            <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
+            <FeeTransparency />
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
