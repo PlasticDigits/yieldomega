@@ -13,7 +13,7 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 
 ## Truth order
 
-1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, `warbowPendingRevengeStealer`, `warbowPendingRevengeExpiry`, `warbowGuardUntil`, `stealsReceivedOnDay`, constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
+1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, `warbowPendingRevengeStealer`, `warbowPendingRevengeExpiry`, `warbowGuardUntil`, `stealsReceivedOnDay`, **`buyFeeRoutingEnabled`** (issue #55: if **false**, **steal / revenge / guard** revert before CL8Y moves; **not** `claimWarBowFlag`), constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
 2. **Events** — `Buy` (BP line items, `hardReset`, streak fields; **`flagPlanted` is `true` on every successful buy in current bytecode** — it is **not** “only this buyer holds the flag”), `WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, `WarBowFlagClaimed`, `WarBowFlagPenalized`, `WarBowCl8yBurned`, defended-streak events.
 3. **Product docs** — [`docs/product/primitives.md`](../../docs/product/primitives.md).
 4. **Indexer / frontend** — discovery and history; **do not** override chain for eligibility or balances.

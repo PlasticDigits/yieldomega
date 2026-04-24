@@ -390,7 +390,8 @@ export function TimeCurveSimplePage() {
             {charmPreview}
             {session.buyFeeRoutingEnabled === false && (
               <StatusMessage variant="muted">
-                Buys that route CL8Y through the fee sinks are paused onchain until operators re-enable them.
+                Sale interactions are paused onchain: buys, WarBow steal/revenge/guard (CL8Y), until operators
+                re-enable the same flag.
               </StatusMessage>
             )}
             <motion.button
