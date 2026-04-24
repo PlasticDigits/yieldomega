@@ -43,8 +43,6 @@ flowchart LR
   Simple --- Subnav
   Arena --- Subnav
   Proto --- Subnav
-  Simple -- "Want more? → Arena" --> Arena
-  Simple -- "Want more? → Protocol" --> Proto
 ```
 
 ## Single source of truth invariants
@@ -184,10 +182,11 @@ Below the hub:
 5. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.
-6. **"Want more?" tiles** linking to `/timecurve/arena` and
-   `/timecurve/protocol`, each with a small live stat hint (e.g. WarBow leader
-   BP, deadline unix) so the secondary surfaces are discoverable without
-   recreating their content.
+
+Cross-page navigation to Arena / Protocol lives **only** in the persistent
+`TimeCurveSubnav` at the top of every TimeCurve route — the simple view does
+not duplicate those links inline. UX rationale: the subnav is already on
+screen, an in-page tile row added vertical scroll for no new information.
 
 Below-the-fold sections (WarBow ladder, podiums, full battle feed,
 `RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and
@@ -285,8 +284,7 @@ npm run test:e2e -- --workers=5
 - New: `frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts`
 - Edited: `frontend/src/pages/TimeCurvePage.tsx` (sub-nav + Arena framing only)
 - Edited: `frontend/src/app/LaunchGate.tsx` (three routes + simple as default)
-- Edited: `frontend/src/index.css` (`timecurve-simple-*`, `timecurve-subnav*`,
-  `timecurve-explore-card*` styles)
+- Edited: `frontend/src/index.css` (`timecurve-simple-*`, `timecurve-subnav*` styles)
 - Edited: `scripts/start-local-anvil-stack.sh` (`LAUNCH_OFFSET_SEC`)
 - Edited: `frontend/.env.example` (`VITE_LAUNCH_TIMESTAMP` guidance)
 - Edited: `frontend/e2e/timecurve.spec.ts`

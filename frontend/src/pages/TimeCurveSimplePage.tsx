@@ -14,7 +14,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses } from "@/lib/addresses";
-import { fetchTimecurveBuys, fetchTimecurveWarbowLeaderboard, type BuyItem } from "@/lib/indexerApi";
+import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { shortAddress } from "@/lib/addressFormat";
@@ -92,8 +92,6 @@ export function TimeCurveSimplePage() {
   const heroNarrative = phaseNarrative(session.phase);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
-  const [warbowLeaderBp, setWarbowLeaderBp] = useState<string | null>(null);
-  const [warbowLeaderAddr, setWarbowLeaderAddr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,15 +99,6 @@ export function TimeCurveSimplePage() {
       try {
         const buys = await fetchTimecurveBuys(3, 0);
         if (!cancelled && buys) setRecentBuys(buys.items);
-      } catch {
-        /* ignore */
-      }
-      try {
-        const leader = await fetchTimecurveWarbowLeaderboard(1, 0);
-        if (!cancelled && leader && leader.items[0]) {
-          setWarbowLeaderBp(leader.items[0].battle_points_after);
-          setWarbowLeaderAddr(leader.items[0].buyer);
-        }
       } catch {
         /* ignore */
       }
@@ -714,54 +703,6 @@ export function TimeCurveSimplePage() {
         )}
       </PageSection>
 
-      <PageSection
-        title="Want more?"
-        className="timecurve-simple__explore"
-        lede="The simple view stays light. Hop to Arena for PvP and podiums, or to Protocol for raw onchain reads."
-      >
-        <div className="timecurve-explore-grid">
-          <Link to="/timecurve/arena" className="timecurve-explore-card">
-            <PageBadge label="Arena" tone="warning" />
-            <h3>WarBow PvP &amp; podiums</h3>
-            <p className="muted">
-              Steal Battle Points, plant the silence flag, defend a streak, and chase the four
-              reserve podiums.
-            </p>
-            <div className="timecurve-explore-card__stat">
-              {warbowLeaderBp !== null ? (
-                <>
-                  <strong>BP leader · {formatLocaleInteger(BigInt(warbowLeaderBp))}</strong>
-                  {warbowLeaderAddr && (
-                    <span className="mono"> · {shortAddress(warbowLeaderAddr)}</span>
-                  )}
-                </>
-              ) : (
-                <span className="muted">Live BP leader will appear here once a buy lands.</span>
-              )}
-            </div>
-            <span className="timecurve-explore-card__cta">Open Arena →</span>
-          </Link>
-          <Link to="/timecurve/protocol" className="timecurve-explore-card">
-            <PageBadge label="Protocol" tone="info" />
-            <h3>Raw onchain reads</h3>
-            <p className="muted">
-              Inspect immutable parameters, fee routing, and the underlying contract reads driving
-              this page.
-            </p>
-            <div className="timecurve-explore-card__stat">
-              {session.deadlineSec !== undefined ? (
-                <>
-                  <strong>Deadline</strong>{" "}
-                  <span className="mono">unix {session.deadlineSec}</span>
-                </>
-              ) : (
-                <span className="muted">Loading deadline…</span>
-              )}
-            </div>
-            <span className="timecurve-explore-card__cta">Open Protocol →</span>
-          </Link>
-        </div>
-      </PageSection>
     </div>
   );
 }

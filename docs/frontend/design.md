@@ -10,8 +10,10 @@
 
 - **TimeCurve** — three-route surface sharing one sub-nav (`<TimeCurveSubnav />`):
   - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown, single
-    focal **buy CHARM** card, last-3 activity ticker, and "Want more?" tiles into
-    Arena / Protocol. Renders through `TimeCurveSimplePage` + `useTimeCurveSaleSession`
+    focal **buy CHARM** card with a live rate board (current per-CHARM CL8Y price
+    + at-launch DOUB↔CL8Y chain), and last-3 activity ticker. Cross-page navigation
+    to Arena / Protocol lives only in the persistent `TimeCurveSubnav` at the top
+    of the route. Renders through `TimeCurveSimplePage` + `useTimeCurveSaleSession`
     so the buy/redeem path stays a single source of truth.
   - **`/timecurve/arena`** — existing dense PvP surface (WarBow Ladder, four reserve
     podiums, full battle feed, raw data accordion) for power users. **No game-rule
