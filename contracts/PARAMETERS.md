@@ -90,6 +90,15 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | `redemptionCooldownEpochs` | `0` (off) | ≥ 0 | `PARAMS_ROLE` |
 | `burnSink` | `address(0)` → `DEFAULT_BURN_SINK` (`0x…dEaD`) | Immutable at deploy | Constructor |
 
+## Pause and final signoff (DOUB / CL8Y user movement)
+
+**Design and operator order** — not yet encoded as a single onchain “role” row: [docs/operations/pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md) ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)). When implementation lands, add concrete **mainnet** addresses / timelock IDs for each gate (presale `claim`, TimeCurve `redeemCharms` / `buy` / `distributePrizes`, optional `FeeRouter` subset) in this file and the deployment registry.
+
+| Gate (conceptual) | Status |
+|--------------------|--------|
+| Final signoff before user `DoubPresaleVesting.claim` | **Design** — see ops doc |
+| Final signoff before `TimeCurve.redeemCharms` / `distributePrizes` (and buy routing if product requires) | **Design** — see ops doc |
+
 ## Governance addresses
 
 | Role | Testnet default | Status |
