@@ -124,9 +124,7 @@ describe("phaseBadge / phaseNarrative copy contract (issue #40 A1/A2/A4)", () =>
   it("phaseBadge iconSrc points at the issue #45 status pictograms (purpose folder)", () => {
     expect(phaseBadge("saleActive").iconSrc).toBe("/art/icons/status-live.png");
     expect(phaseBadge("saleEnded").iconSrc).toBe("/art/icons/status-ended.png");
-    expect(phaseBadge("saleStartPending").iconSrc).toMatch(
-      /^\/art\/icons\/status-prelan?ch\.png$/,
-    );
+    expect(phaseBadge("saleStartPending").iconSrc).toBe("/art/icons/status-prelaunch.png");
     expect(phaseBadge("saleExpiredAwaitingEnd").iconSrc).toBe(
       "/art/icons/status-cooldown.png",
     );

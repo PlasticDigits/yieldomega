@@ -58,7 +58,17 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
         )}
       </div>
       {indexerNote !== null && indexerNote !== "" && (
-        <p className="timer-hero__live-placeholder">{indexerNote}</p>
+        <div className="timer-hero__live-placeholder timer-hero__live-placeholder--with-mascot">
+          <img
+            className="timer-hero__indexer-mascot"
+            src="/art/cutouts/indexer-down-mascot.png"
+            alt=""
+            width={72}
+            height={72}
+            decoding="async"
+          />
+          <p>{indexerNote}</p>
+        </div>
       )}
       {indexerNote === null && buys === null && (
         <p className="timer-hero__live-placeholder">Loading recent buys…</p>
