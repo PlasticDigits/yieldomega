@@ -69,6 +69,37 @@
 - Break down **Battle Points** sources from **`Buy`** fields: base, timer-reset bonus, clutch (`< 30s` remaining), streak-break, ambush; plus flag claim / penalty events.
 - Show **eligibility and revert reasons** before users sign (read contract state + simulate where possible).
 
+## Art assets and theming
+
+The "arcade" palette in `frontend/src/index.css` (greens, golds, hard
+shadows, panel gloss) is supported by a curated raster pack under
+[`frontend/public/art/`](../../frontend/public/art/README.md). Assets are
+organized into **purpose-named subfolders** so each consumer maps to one
+shape constraint:
+
+- `cutouts/` — transparent PNG mascot poses (hero, podium, banner cutouts).
+- `scenes/` — wide JPG backplates for `PageHero` (`sceneSrc` prop) and the
+  `LaunchCountdown` scene backdrop.
+- `icons/` — 256px square PNG pictograms used inside `PageBadge` (status,
+  phase), `IndexerStatusBar`, `TimeCurveSubnav`, and the WarBow legend.
+- `cursors/` — 32px PNG bitmap cursors wired through `index.css`
+  (`.btn-primary`, `.btn-secondary--critical`, `input[type="range"]`).
+- `social/` — OG / Twitter / favicon source rasters consumed by
+  `frontend/index.html` and `frontend/vite.config.ts`.
+- `motion/` — reference frames for animation experiments (must respect
+  `prefers-reduced-motion`).
+
+When a component references a new asset, **list the consumer in
+`frontend/public/art/README.md`** so renames or regenerations stay in
+lock-step. Asset slots that are referenced by component code but not yet
+filled live in [`missing-art-assets.md`](./missing-art-assets.md) so
+[`scripts/replicate-art/`](../../scripts/replicate-art/) can complete the
+pack via the same generation pipeline used for
+[issue #45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45).
+
+The textual label in any badge / icon component remains the **a11y source
+of truth**; pictograms are decorative (`alt=""` + `aria-hidden`).
+
 ## Security posture
 
 - **No private keys** in the client.
