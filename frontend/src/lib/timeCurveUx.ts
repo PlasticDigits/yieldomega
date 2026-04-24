@@ -81,9 +81,6 @@ export function pickBuyHighlightStat(buy: BuyItem): BuyHighlight {
       sub: `${activeStreak.toString()} active · best ${bestStreak.toString()}`,
     };
   }
-  if (buy.flag_planted) {
-    return { label: "Flag planted", sub: "WarBow flag live" };
-  }
   if (bpAfter !== null && bpAfter > 0n) {
     return { label: "WarBow ladder", sub: `${bpAfter.toString()} BP total` };
   }
@@ -150,9 +147,6 @@ export function listBuyImpactTicks(buy: BuyItem, max = 5): BuyImpactTick[] {
       sub: `${activeStreak.toString()}×`,
       tone: "info",
     });
-  }
-  if (buy.flag_planted) {
-    push({ id: "fplant", label: "Flag", sub: "On", tone: "info" });
   }
   if (bpAfter !== null && bpAfter > 0n) {
     push({ id: "wb", label: "WarBow", sub: `${bpAfter.toString()} BP`, tone: "info" });
@@ -273,9 +267,6 @@ export function buildBuyFeedNarrative(
   }
   if (buy.timer_hard_reset) {
     tags.push("hard reset");
-  }
-  if (buy.flag_planted) {
-    tags.push("flag planted");
   }
   if (clutchBonus > 0n) {
     tags.push("clutch");
@@ -405,7 +396,10 @@ export function formatBuyDetailRows(buy: BuyItem): BuyDetailRow[] {
     { label: "BP — streak break", value: nz(buy.bp_streak_break_bonus) },
     { label: "BP — ambush", value: nz(buy.bp_ambush_bonus) },
     { label: "BP — flag penalty", value: nz(buy.bp_flag_penalty) },
-    { label: "Flag planted", value: nz(buy.flag_planted) },
+    {
+      label: "Buy.flagPlanted (always true in current bytecode; see docs)",
+      value: nz(buy.flag_planted),
+    },
     { label: "Buyer effective timer (sec indexed)", value: nz(buy.buyer_total_effective_timer_sec) },
     { label: "Buyer active defended streak", value: nz(buy.buyer_active_defended_streak) },
     { label: "Buyer best defended streak", value: nz(buy.buyer_best_defended_streak) },
@@ -572,7 +566,7 @@ export function buildWarbowFeedNarrative(
         tags.push(`+${bonusBp} BP`);
       }
       return {
-        eyebrow: "Flag claimed",
+        eyebrow: "Flag won",
         headline: `${perspectiveLabel(player, viewer, "You", formatShort)} held silence and claimed the flag`,
         detail:
           bonusBp !== null
@@ -584,8 +578,9 @@ export function buildWarbowFeedNarrative(
       if (penaltyBp !== null) {
         tags.push(`-${penaltyBp} BP`);
       }
+      tags.push("pending cleared");
       return {
-        eyebrow: "Flag denied",
+        eyebrow: "Flag destroyed",
         headline: `${perspectiveLabel(formerHolder, viewer, "You", formatShort)} lost a flag to ${perspectiveLabel(
           interrupter,
           viewer,

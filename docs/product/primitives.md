@@ -101,7 +101,7 @@ Dedicated **`WarBowDefendedStreak*`** events (if enabled in bytecode) describe c
 
 #### Plant flag / claim flag
 
-- On each **buy**, the buyer becomes **`warbowPendingFlagOwner`** at **`warbowPendingFlagPlantAt = block.timestamp`** (`Buy` includes `flagPlanted` when a new plant occurs after clears).
+- On each **buy**, the buyer becomes **`warbowPendingFlagOwner`** at **`warbowPendingFlagPlantAt = block.timestamp`**. The **`Buy`** event’s **`flagPlanted`** field is currently emitted as **`true` on every successful buy** (it does **not** mean “this log line uniquely planted after a clear”); indexers mirror that literally. **Who may claim** is **only** from **`warbowPendingFlagOwner` / `warbowPendingFlagPlantAt`** onchain ([GitLab #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)).
 - **`claimWarBowFlag`:** after **`WARBOW_FLAG_SILENCE_SEC` (300s)** with **no other buyer** in between, holder may claim **`WARBOW_FLAG_CLAIM_BP` (1000)** BP.
 - **Invalidation:** if **another** buyer purchases **before** claim, pending flag is cleared. **Penalty `2 × WARBOW_FLAG_CLAIM_BP`** applies **only** if that intervening buy occurs **at or after** `plantAt + 300s` (claim was already possible); otherwise the holder loses the claim opportunity **without** the 2× BP penalty.
 

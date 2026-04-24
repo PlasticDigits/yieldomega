@@ -78,6 +78,16 @@ describe("pickBuyHighlightStat", () => {
     expect(h.label).toContain("WarBow");
     expect(h.sub).toContain("500");
   });
+
+  it("does not treat indexer flag_planted as a buy highlight (ABI is always true today)", () => {
+    const h = pickBuyHighlightStat({
+      ...baseBuy,
+      flag_planted: true,
+      battle_points_after: "50",
+    });
+    expect(h.label).not.toContain("Flag");
+    expect(h.label).toContain("WarBow");
+  });
 });
 
 describe("buildBuyFeedNarrative", () => {
@@ -112,6 +122,7 @@ describe("buildBuyFeedNarrative", () => {
     expect(narrative.detail).toContain("added 900s");
     expect(narrative.tags).toContain("hard reset");
     expect(narrative.tags).toContain("ambush");
+    expect(narrative.tags).not.toContain("flag planted");
   });
 });
 
@@ -183,6 +194,7 @@ describe("formatBuyDetailRows", () => {
       buy_index: "0",
     });
     expect(rows.some((r) => r.label === "Buyer" && r.value.includes("0x1234"))).toBe(true);
+    expect(rows.some((r) => r.label.includes("Buy.flagPlanted"))).toBe(true);
     expect(rows.some((r) => r.label === "Transaction")).toBe(true);
     expect(rows.length).toBeGreaterThan(12);
   });
