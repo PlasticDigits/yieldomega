@@ -28,6 +28,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// - **Funding:** `startVesting` requires `token.balanceOf(this) >= totalAllocated` so claims cannot exceed funded DOUB.
 /// - **Claim bound:** cumulative claims per address never exceed `allocation[address]`; vested never exceeds allocation at any time.
 /// - **Single start:** `startVesting` succeeds at most once.
+/// - **Claims gate:** `claim` is blocked until `claimsEnabled` is set `true` by the owner (final signoff / operational go-live) — `docs/operations/final-signoff-and-value-movement.md` ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 ///
 /// ## Rounding
 /// Cliff uses `mulDiv(allocation, 3000, 10000)`. Linear tranche uses `allocation - cliff` as cap so `cliff + linearCap == allocation`.
@@ -52,8 +53,12 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
 
     uint256 public vestingStart;
 
+    /// @notice When `false`, `claim` reverts even if `vestingStart` is set and the beneficiary has a balance (see issue #55).
+    bool public claimsEnabled;
+
     event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
     event Claimed(address indexed beneficiary, uint256 amount);
+    event ClaimsEnabled(bool enabled);
 
     error DoubVesting__ZeroToken();
     error DoubVesting__ArrayLengthMismatch();
@@ -68,6 +73,7 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     error DoubVesting__NotStarted();
     error DoubVesting__Underfunded(uint256 balance, uint256 needed);
     error DoubVesting__NothingToClaim();
+    error DoubVesting__ClaimsNotEnabled();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -114,6 +120,12 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /// @notice Turn user `claim` on after operational / governance final signoff (independent of `vestingStart`).
+    function setClaimsEnabled(bool enabled) external onlyOwner {
+        claimsEnabled = enabled;
+        emit ClaimsEnabled(enabled);
+    }
 
     /// @notice Number of beneficiaries (size of the enumerable set).
     function beneficiaryCount() external view returns (uint256) {
@@ -171,6 +183,7 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     /// @notice Claim all currently claimable DOUB for the caller.
     function claim() external nonReentrant {
         if (vestingStart == 0) revert DoubVesting__NotStarted();
+        if (!claimsEnabled) revert DoubVesting__ClaimsNotEnabled();
         if (!_beneficiarySet.contains(msg.sender)) revert DoubVesting__NotBeneficiary();
 
         uint256 amount = claimableAt(msg.sender, block.timestamp);
@@ -181,5 +194,5 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
         emit Claimed(msg.sender, amount);
     }
 
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

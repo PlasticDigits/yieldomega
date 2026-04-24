@@ -40,6 +40,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
 | Referral CHARM | `5%` referrer + `5%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | `REFERRAL_EACH_BPS` (500) in `TimeCurve` | Default |
 | Redemption density (no referral) | **DOUB per CHARM** falls as `totalCharmWeight` grows; **implied CL8Y per DOUB** (`totalRaised / totalTokensForSale`) rises each buy; **excluding referral**, **CL8Y value of DOUB per CHARM** is **non-decreasing** | [`docs/product/primitives.md`](../docs/product/primitives.md#timecurve-redemption-cl8y-density-no-referral) | Canonical |
+| **Value movement gates (issue #55)** | `buyFeeRoutingEnabled` default **true**; `charmRedemptionEnabled` / `reservePodiumPayoutsEnabled` default **false** (owner setters) | [final-signoff runbook](../docs/operations/final-signoff-and-value-movement.md), [`TimeCurve.sol`](src/TimeCurve.sol) | Operator checklist at mainnet |
 
 ## Referral registry
 
@@ -65,7 +66,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Bucket | Amount (whole DOUB) | Notes |
 |--------|---------------------|--------|
 | TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy |
-| Presale | **21.5M** | **30%** at vesting start · **70%** linear over **180 days** — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; document beneficiary addresses at deploy |
+| Presale | **21.5M** | **30%** at vesting start · **70%** linear over **180 days** — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; **`setClaimsEnabled(true)`** when operational signoff allows DOUB claims ([issue #55](../docs/operations/final-signoff-and-value-movement.md)); document beneficiary addresses at deploy |
 | V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
 
 ## Rabbit Treasury (Burrow)
@@ -89,15 +90,6 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | `minRedemptionEfficiencyWad` | `5e17` (50% floor when redemption health is 0) | `(0, 1e18]` | `PARAMS_ROLE` |
 | `redemptionCooldownEpochs` | `0` (off) | ≥ 0 | `PARAMS_ROLE` |
 | `burnSink` | `address(0)` → `DEFAULT_BURN_SINK` (`0x…dEaD`) | Immutable at deploy | Constructor |
-
-## Pause and final signoff (DOUB / CL8Y user movement)
-
-**Design and operator order** — not yet encoded as a single onchain “role” row: [docs/operations/pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md) ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)). When implementation lands, add concrete **mainnet** addresses / timelock IDs for each gate (presale `claim`, TimeCurve `redeemCharms` / `buy` / `distributePrizes`, optional `FeeRouter` subset) in this file and the deployment registry.
-
-| Gate (conceptual) | Status |
-|--------------------|--------|
-| Final signoff before user `DoubPresaleVesting.claim` | **Design** — see ops doc |
-| Final signoff before `TimeCurve.redeemCharms` / `distributePrizes` (and buy routing if product requires) | **Design** — see ops doc |
 
 ## Governance addresses
 
