@@ -38,7 +38,12 @@ export function RootLayout() {
             />
             YieldOmega
           </NavLink>
-          <PageBadge label="TimeCurve live" tone="live" className="app-header__status" />
+          <PageBadge
+            label="TimeCurve live"
+            tone="live"
+            className="app-header__status"
+            iconSrc="/art/icons/status-live.png"
+          />
           <CutoutDecoration
             className="app-header__mascot cutout-decoration--sway"
             src="/art/cutouts/loading-mascot-circle.png"

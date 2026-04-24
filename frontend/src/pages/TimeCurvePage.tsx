@@ -1064,6 +1064,13 @@ export function TimeCurvePage() {
       : saleStartPending
         ? "info"
         : "warning";
+  const stateBadgeIconSrc = saleActive
+    ? "/art/icons/status-live.png"
+    : saleEnded
+      ? "/art/icons/status-ended.png"
+      : saleStartPending
+        ? "/art/icons/status-prelanch.png"
+        : "/art/icons/status-cooldown.png";
 
   const warbowPodiumWalletList = useMemo((): readonly `0x${string}`[] | undefined => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -2005,6 +2012,10 @@ export function TimeCurvePage() {
         title="TimeCurve · Arena"
         badgeLabel={stateBadgeLabel}
         badgeTone={stateBadgeTone}
+        badgeIconSrc={stateBadgeIconSrc}
+        coinSrc="/art/icons/token-doub.png"
+        coinAlt="DOUB token glyph"
+        sceneSrc="/art/scenes/timecurve-arena.jpg"
         lede={
           <>
             Advanced PvP surface — <strong>WarBow</strong> steals, defended streaks, the four
@@ -2013,7 +2024,7 @@ export function TimeCurvePage() {
           </>
         }
         mascot={{
-          src: "/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png",
+          src: "/art/cutouts/bunny-podium-win.png",
           width: 220,
           height: 220,
           className: "cutout-decoration--float",

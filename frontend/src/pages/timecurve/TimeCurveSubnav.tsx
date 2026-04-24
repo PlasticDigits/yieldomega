@@ -19,6 +19,8 @@ const TABS: ReadonlyArray<{
   key: TimeCurveSubnavTab;
   label: string;
   hint: string;
+  /** Sub-nav pictogram from issue #45. See `frontend/public/art/icons/`. */
+  iconSrc: string;
 }> = [
   {
     to: "/timecurve",
@@ -26,18 +28,21 @@ const TABS: ReadonlyArray<{
     key: "simple",
     label: "Simple",
     hint: "Time left + buy CHARM",
+    iconSrc: "/art/icons/nav-simple.png",
   },
   {
     to: "/timecurve/arena",
     key: "arena",
     label: "Arena",
     hint: "WarBow PvP, podiums, battle feed",
+    iconSrc: "/art/icons/nav-arena.png",
   },
   {
     to: "/timecurve/protocol",
     key: "protocol",
     label: "Protocol",
     hint: "Raw onchain reads + fee routing",
+    iconSrc: "/art/icons/nav-protocol.png",
   },
 ];
 
@@ -60,6 +65,16 @@ export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
               aria-current={tab.key === active ? "page" : undefined}
               title={tab.hint}
             >
+              <img
+                className="timecurve-subnav__icon"
+                src={tab.iconSrc}
+                alt=""
+                width={28}
+                height={28}
+                loading="lazy"
+                decoding="async"
+                aria-hidden="true"
+              />
               <span className="timecurve-subnav__label">{tab.label}</span>
               <span className="timecurve-subnav__hint">{tab.hint}</span>
             </NavLink>
