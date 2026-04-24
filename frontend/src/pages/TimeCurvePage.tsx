@@ -56,6 +56,7 @@ import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import {
   derivePhase,
   ledgerSecIntForPhase,
+  phaseBadge,
   phaseFlags,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -1050,28 +1051,10 @@ export function TimeCurvePage() {
           ),
         )
       : undefined;
-  const { saleEnded, saleStartPending, timerExpiredAwaitingEnd } = arenaFlags;
-  const stateBadgeLabel = saleActive
-    ? "Sale live"
-    : saleEnded
-      ? "After sale"
-      : saleStartPending
-        ? "Starts soon"
-        : "Waiting on chain";
-  const stateBadgeTone = saleActive
-    ? "live"
-    : saleEnded
-      ? "warning"
-      : saleStartPending
-        ? "info"
-        : "warning";
-  const stateBadgeIconSrc = saleActive
-    ? "/art/icons/status-live.png"
-    : saleEnded
-      ? "/art/icons/status-ended.png"
-      : saleStartPending
-        ? "/art/icons/status-prelanch.png"
-        : "/art/icons/status-cooldown.png";
+  const { saleEnded, timerExpiredAwaitingEnd } = arenaFlags;
+  // Single source of truth for the sale-phase badge: shared with the Simple
+  // and Protocol views so wording / tones / icons never drift between pages.
+  const arenaPhaseBadge = phaseBadge(arenaPhase);
 
   const warbowPodiumWalletList = useMemo((): readonly `0x${string}`[] | undefined => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -2011,9 +1994,9 @@ export function TimeCurvePage() {
       <TimeCurveSubnav active="arena" />
       <PageHero
         title="TimeCurve · Arena"
-        badgeLabel={stateBadgeLabel}
-        badgeTone={stateBadgeTone}
-        badgeIconSrc={stateBadgeIconSrc}
+        badgeLabel={arenaPhaseBadge.label}
+        badgeTone={arenaPhaseBadge.tone}
+        badgeIconSrc={arenaPhaseBadge.iconSrc}
         coinSrc="/art/icons/token-doub.png"
         coinAlt="DOUB token glyph"
         sceneSrc="/art/scenes/timecurve-arena.jpg"

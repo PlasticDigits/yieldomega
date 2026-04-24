@@ -83,7 +83,7 @@ const BADGE: Record<SaleSessionPhase, PhaseBadge> = {
     tone: "soon",
     iconSrc: "/art/icons/status-prelanch.png",
   },
-  saleActive: { label: "Live sale", tone: "live", iconSrc: "/art/icons/status-live.png" },
+  saleActive: { label: "Sale live", tone: "live", iconSrc: "/art/icons/status-live.png" },
   saleExpiredAwaitingEnd: {
     label: "Timer expired",
     tone: "warning",
