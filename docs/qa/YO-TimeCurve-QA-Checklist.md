@@ -47,6 +47,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 - [ ] **B3** — `distributePrizes`: **40/25/20/15** of **podium pool** balance — not FeeRouter top-level percentages.
 - [ ] **B4** — `redeemCharms` after `endSale` — pro-rata DOUB per charm weight.
 - [ ] **B5** — WarBow: steal, revenge, guard, flag — gated by `!ended` where applicable — confirm post-end behavior in `TimeCurve.sol` for deployment.
+- [ ] **B6** — **Pause / final signoff (design, [#55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)):** When onchain gates exist for `claim` / `redeemCharms` / `distributePrizes` (or `buy`), confirm UI and copy match **not started** vs **awaiting signoff** vs **live** from **chain reads**; cross-check [`docs/operations/pause-and-final-signoff.md`](../operations/pause-and-final-signoff.md) and [`PARAMETERS.md`](../../contracts/PARAMETERS.md) for the deployment’s intended order of operations.
 
 ---
 
