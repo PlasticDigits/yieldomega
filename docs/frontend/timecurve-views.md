@@ -129,11 +129,33 @@ in `frontend/src/index.css`.
 Above-the-fold **sale hub** (two columns on wide containers, one column on
 narrow):
 
-1. **Timer panel** (left of the hub): hero countdown (reuses
-   `useTimecurveHeroTimer` so wall ↔ chain skew matches the Arena view) plus
-   a one-sentence narrative driven by `phaseNarrative()` and a phase-aware
-   foot line (e.g. "Every buy adds 2 minutes; clutch buys hard-reset the
-   clock.").
+1. **Timer panel** (left of the hub): hero countdown rendered through the
+   shared
+   [`TimeCurveTimerHero`](../../frontend/src/pages/timecurve/TimeCurveTimerHero.tsx)
+   component, which mirrors the standalone
+   [`LaunchCountdownPage`](../../frontend/src/pages/LaunchCountdownPage.tsx)
+   design pattern so both timers read as siblings:
+   - **Backplate scene art** (`/art/scenes/timecurve-simple.jpg`) at low
+     opacity behind the digits, sitting on a deep green gradient with a
+     bottom-glow stage.
+   - **Animated rising sparks** that switch from yellow → red and slow → fast
+     when the timer enters the `timer-hero--critical` urgency window
+     (`timerUrgencyClass`, ≤ 5 minutes remaining). Animation is suppressed
+     under `prefers-reduced-motion: reduce`.
+   - **Days chip + tabular digits**: long durations split into a bordered
+     gold `Nd` chip + `HH:MM:SS` clock via the shared `formatLaunchCountdown`
+     helper (so 24h+ never renders as a confusing `48:13:07`); both digit
+     tracks use `font-variant-numeric: tabular-nums` so per-second updates
+     don't reflow the line.
+   - **Urgency-aware glow + pulse** on the digits: gold text-shadow under
+     `timer-hero--warning` (≤ 1h), red glow plus a subtle scale-pulse under
+     `timer-hero--critical` (≤ 5m).
+   The timer panel still uses `useTimecurveHeroTimer` for the underlying
+   wall ↔ chain skew so Simple and Arena countdowns stay in lock-step. The
+   panel header (driven by `PageSection`) carries the one-sentence
+   narrative from `phaseNarrative()`, and a phase-aware foot line (e.g.
+   "Every buy adds 2 minutes; clutch buys hard-reset the clock.") sits
+   beneath the digits inside the hero.
 2. **Buy panel** (right of the hub):
    - **Live rate board** at the top — the **single most-important number on
      the page** is "1 CHARM costs right now" rendered with fixed 6-decimal

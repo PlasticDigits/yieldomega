@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageBadge } from "@/components/ui/PageBadge";
@@ -22,9 +23,10 @@ import {
   doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
 } from "@/lib/timeCurvePodiumMath";
-import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
+import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 
 /**
@@ -79,15 +81,11 @@ export function TimeCurveSimplePage() {
     session.phase === "saleActive" || session.phase === "saleExpiredAwaitingEnd"
       ? session.saleCountdownSec
       : session.preStartCountdownSec;
-  const heroUrgency = timerUrgencyClass(heroSecondsRemaining);
-  const heroLabel =
-    session.phase === "saleStartPending"
-      ? "Until sale opens"
-      : session.phase === "saleEnded"
-        ? "Sale closed"
-        : session.phase === "saleExpiredAwaitingEnd"
-          ? "Timer expired"
-          : "Time remaining";
+  // Timer-panel badge label: reuse the sale-phase label so the badge adds
+  // information instead of repeating "Time remaining" alongside the
+  // section H2 "Time left" (Iteration 3 dedupe). The phase tone (live /
+  // soon / warning) stays driven by `phaseInfo.tone`.
+  const heroLabel = phaseInfo.label;
 
   const heroNarrative = phaseNarrative(session.phase);
 
@@ -142,6 +140,43 @@ export function TimeCurveSimplePage() {
       }),
     [session.totalTokensForSaleWad, session.totalCharmWeightWad],
   );
+
+  // Price-tick pulse: bump a key whenever the live per-CHARM price changes
+  // so the rate row re-renders and the CSS animation re-runs. This keeps
+  // the "ticks up every block" message visceral instead of just textual.
+  // We avoid setTimeout / explicit animation lifecycle management by
+  // letting React's `key` prop drive the re-mount.
+  const priceTickKeyRef = useRef(0);
+  const priceTickPrevRef = useRef<bigint | undefined>(undefined);
+  if (
+    session.pricePerCharmWad !== undefined &&
+    priceTickPrevRef.current !== session.pricePerCharmWad
+  ) {
+    priceTickPrevRef.current = session.pricePerCharmWad;
+    priceTickKeyRef.current += 1;
+  }
+  const priceTickKey = priceTickKeyRef.current;
+
+  // "Just extended" chip on the timer panel — the most recent buy that
+  // actually moved the clock (any extension ≥ 1s, including hard resets).
+  // Sourced from the already-fetched `recentBuys` so this is free; only
+  // renders when the sale is active and the indexer has at least one buy.
+  const lastExtension = useMemo(() => {
+    if (!recentBuys || recentBuys.length === 0) return null;
+    for (const b of recentBuys) {
+      const reset = Boolean(b.timer_hard_reset);
+      let secs = 0;
+      try {
+        secs = b.actual_seconds_added ? Number(BigInt(b.actual_seconds_added)) : 0;
+      } catch {
+        secs = 0;
+      }
+      if (reset || secs > 0) {
+        return { buyer: b.buyer, reset, secs };
+      }
+    }
+    return null;
+  }, [recentBuys]);
 
   const slider = session.cl8ySpendBounds ? (
     <div className="timecurve-simple__slider-row">
@@ -295,9 +330,28 @@ export function TimeCurveSimplePage() {
       aria-live="polite"
     >
       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--now">
-        <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
+        <span className="timecurve-simple__rate-label-row">
+          {/* CHARM coin glyph + ↑ tick badge make "what you're buying"
+              and "the price ticks up every block" instantly readable
+              before the user parses any text. Decorative; the textual
+              label remains the source of truth for assistive tech. */}
+          <img
+            className="timecurve-simple__rate-glyph"
+            src="/art/icons/token-charm.png"
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            width={24}
+            height={24}
+          />
+          <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
+          <span className="timecurve-simple__rate-tick" aria-hidden="true">
+            ↑
+          </span>
+        </span>
         <strong
-          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero"
+          key={priceTickKey}
+          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
           data-testid="timecurve-simple-rate-now"
         >
           {session.pricePerCharmWad !== undefined ? formatPriceFixed6(session.pricePerCharmWad) : "—"}
@@ -309,20 +363,35 @@ export function TimeCurveSimplePage() {
       </div>
       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
         <span className="timecurve-simple__rate-label">1 CHARM at launch</span>
-        <strong
-          className="timecurve-simple__rate-value"
-          data-testid="timecurve-simple-rate-launch"
-        >
-          {doubPerCharmAtLaunch !== undefined
-            ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
-            : "—"}
-          <span className="timecurve-simple__rate-unit"> DOUB</span>
-          <span className="timecurve-simple__rate-equals"> = </span>
-          {launchCl8yPerCharmWei !== undefined
-            ? formatPriceFixed6(launchCl8yPerCharmWei)
-            : "—"}
-          <span className="timecurve-simple__rate-unit"> CL8Y</span>
-        </strong>
+        {/* Stack the DOUB and CL8Y values into two compact rate-pair tiles
+            so the equation never wraps mid-number. Iteration 3 fix: the
+            single-line "X DOUB = Y CL8Y" was wrapping awkwardly on
+            mid-width panels; tiling reads cleaner and keeps both numbers
+            equally readable. */}
+        <div className="timecurve-simple__rate-pair">
+          <span
+            className="timecurve-simple__rate-pair-tile"
+            data-testid="timecurve-simple-rate-launch"
+          >
+            <span className="timecurve-simple__rate-pair-value">
+              {doubPerCharmAtLaunch !== undefined
+                ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
+                : "—"}
+            </span>
+            <span className="timecurve-simple__rate-pair-unit">DOUB</span>
+          </span>
+          <span className="timecurve-simple__rate-pair-equals" aria-hidden="true">
+            =
+          </span>
+          <span className="timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--cl8y">
+            <span className="timecurve-simple__rate-pair-value">
+              {launchCl8yPerCharmWei !== undefined
+                ? formatPriceFixed6(launchCl8yPerCharmWei)
+                : "—"}
+            </span>
+            <span className="timecurve-simple__rate-pair-unit">CL8Y</span>
+          </span>
+        </div>
         <span className="timecurve-simple__rate-foot muted">
           1.2× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
         </span>
@@ -348,24 +417,66 @@ export function TimeCurveSimplePage() {
           badgeTone={phaseInfo.tone}
           lede={heroNarrative}
         >
-          <div className={`timer-hero ${heroUrgency}`} aria-live="polite">
-            <div
-              className="timer-hero__value timecurve-simple__timer-value"
-              data-testid="timecurve-simple-timer"
+          <TimeCurveTimerHero
+            secondsRemaining={heroSecondsRemaining}
+            foot={
+              <>
+                {session.phase === "saleActive" &&
+                  "Every buy adds 2 minutes; clutch buys hard-reset the clock."}
+                {session.phase === "saleEnded" &&
+                  (session.charmRedemptionEnabled === false
+                    ? "Redemptions await onchain go-live (operator / governance signoff)."
+                    : "Holders of CHARM can claim their DOUB share.")}
+                {session.phase === "saleStartPending" &&
+                  "Stay on this page — it switches to Live automatically."}
+                {session.phase === "saleExpiredAwaitingEnd" &&
+                  "Anyone can call endSale() now — see the Arena view."}
+              </>
+            }
+          />
+          {/* Calm "fair-launch" sidekick. The art README (`frontend/public/art/
+              README.md`) earmarks this cutout for the Simple-view timer panel
+              specifically — it grounds the dark arcade stage in the Yieldomega
+              cast without competing with the digits (anchored bottom-left,
+              clipped by the panel's own `overflow: hidden`). */}
+          <CutoutDecoration
+            className="panel-cutout panel-cutout--pair-mascot cutout-decoration--bob"
+            src="/art/cutouts/leprechaun-bag-bunny-pair.png"
+            width={260}
+            height={260}
+          />
+          {/* Live "just extended" chip — anchored to the bottom-right of
+              the dark stage so the most recent buy that bumped the clock
+              feels alive without crowding the digits. Only renders when
+              the sale is active and the indexer has a qualifying buy. */}
+          {session.phase === "saleActive" && lastExtension && (
+            <span
+              className={
+                lastExtension.reset
+                  ? "timecurve-simple__last-extension timecurve-simple__last-extension--reset"
+                  : "timecurve-simple__last-extension"
+              }
+              aria-live="polite"
+              data-testid="timecurve-simple-last-extension"
             >
-              {heroSecondsRemaining !== undefined ? formatCountdown(heroSecondsRemaining) : "—"}
-            </div>
-            <div className="timecurve-simple__timer-foot muted">
-              {session.phase === "saleActive" && "Every buy adds 2 minutes; clutch buys hard-reset the clock."}
-              {session.phase === "saleEnded" &&
-                (session.charmRedemptionEnabled === false
-                  ? "Redemptions await onchain go-live (operator / governance signoff)."
-                  : "Holders of CHARM can claim their DOUB share.")}
-              {session.phase === "saleStartPending" && "Stay on this page — it switches to Live automatically."}
-              {session.phase === "saleExpiredAwaitingEnd" &&
-                "Anyone can call endSale() now — see the Arena view."}
-            </div>
-          </div>
+              <span className="timecurve-simple__last-extension-dot" aria-hidden="true" />
+              {lastExtension.reset ? (
+                <>
+                  Hard reset by{" "}
+                  <span className="timecurve-simple__last-extension-addr">
+                    {shortAddress(lastExtension.buyer)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  Just +{lastExtension.secs}s by{" "}
+                  <span className="timecurve-simple__last-extension-addr">
+                    {shortAddress(lastExtension.buyer)}
+                  </span>
+                </>
+              )}
+            </span>
+          )}
         </PageSection>
 
         <PageSection
@@ -379,24 +490,43 @@ export function TimeCurveSimplePage() {
                 ? "Settlement"
                 : "Coming soon"
           }
-          badgeTone={session.phase === "saleActive" ? "live" : "info"}
+          badgeTone={
+            // Iteration 3: gold "warning" tone for the live sale matches the
+            // honey vending-machine panel chrome (the green "live" tone
+            // clashed with the gold gradient). Semantics survive: UX-wise
+            // the badge still flags "this is the most actionable thing on
+            // the page".
+            session.phase === "saleActive" ? "warning" : "info"
+          }
           lede={
             session.phase === "saleEnded"
               ? session.charmRedemptionEnabled === false
                 ? "The sale is over. DOUB allocation redemptions are gated onchain until the owner enables them (issue #55)."
                 : "The sale is over. Redeem CHARM to mint your DOUB share onchain."
               : session.phase === "saleActive"
-                ? "Spend CL8Y now — every block waited makes CHARM cost more."
+                ? "Buy now or pay more later — every block, CHARM costs more CL8Y."
                 : "The sale will open here when the timer hits zero."
           }
         >
+          {/* "Vending machine" sidekick — anchors the gold buy panel to
+              the Yieldomega cast and visually echoes "this is where you
+              spend coins". The bob loop is suppressed for users with
+              `prefers-reduced-motion` via the shared rule below. */}
+          <CutoutDecoration
+            className="panel-cutout panel-cutout--coin-stack"
+            src="/art/hat-coin-stack.png"
+            width={180}
+            height={180}
+          />
           {/* Live rate board: current price (big, ticks every block) +
               at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.2× anchor). */}
           {session.phase === "saleActive" && rateBoard}
 
           {!session.walletConnected && session.phase !== "loading" && (
             <div className="timecurve-simple__connect">
-              <p>Connect a wallet to buy CHARM and lock in your share of the DOUB launch.</p>
+              <p className="timecurve-simple__connect-pitch">
+                Connect a wallet to mint CHARM and lock in your DOUB launch share.
+              </p>
               <WalletConnectButton />
             </div>
           )}
@@ -413,12 +543,27 @@ export function TimeCurveSimplePage() {
               )}
               <motion.button
                 type="button"
-                className="btn-primary timecurve-simple__cta"
+                className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
                 disabled={buyDisabled}
                 onClick={() => void session.submitBuy()}
                 {...buyButtonMotion}
               >
-                {session.isWriting ? "Submitting…" : "Buy CHARM"}
+                {/* Inline CHARM coin glyph turns the CTA into a clear "do
+                    the thing with the coin" arcade lever — newbies don't
+                    need to read the label to know which button mints
+                    CHARM. Decorative; label remains the source of truth. */}
+                <img
+                  className="timecurve-simple__cta-glyph"
+                  src="/art/icons/token-charm.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={28}
+                  height={28}
+                  decoding="async"
+                />
+                <span className="timecurve-simple__cta-label">
+                  {session.isWriting ? "Submitting…" : "Buy CHARM"}
+                </span>
               </motion.button>
               {cooldownLine && <StatusMessage variant="muted">{cooldownLine}</StatusMessage>}
               {session.buyError && (
