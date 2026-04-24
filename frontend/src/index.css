@@ -4400,58 +4400,6 @@ code {
 
 /* ---- "Want more?" explore tiles ---- */
 
-.timecurve-simple__explore {
-  margin-bottom: 1.5rem;
-}
-
-.timecurve-explore-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1rem;
-}
-
-.timecurve-explore-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.1rem 1.2rem;
-  border: 3px solid var(--line);
-  border-radius: 1rem;
-  background: #fff;
-  box-shadow: 5px 5px 0 var(--line);
-  text-decoration: none;
-  color: var(--text-main);
-  transition: transform 120ms ease;
-}
-
-.timecurve-explore-card:hover {
-  transform: translate(-2px, -2px);
-}
-
-.timecurve-explore-card h3 {
-  margin: 0;
-  font-size: 1.2rem;
-}
-
-.timecurve-explore-card__stat {
-  margin-top: 0.4rem;
-  padding: 0.4rem 0.55rem;
-  border-top: 2px dashed var(--line);
-  font-size: 0.95rem;
-}
-
-.timecurve-explore-card__cta {
-  margin-top: auto;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .timecurve-explore-card:hover {
-    transform: none;
-  }
-}
-
 @media (max-width: 980px) {
   .timecurve-simple__hub {
     grid-template-columns: 1fr;
