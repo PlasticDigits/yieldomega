@@ -30,6 +30,8 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Architecture overview](../docs/architecture/overview.md) — onchain truth vs indexer/frontend roles
 - [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) — hub for onchain metadata, contributor skills, and this index
 
+**Local Anvil / tooling (contributors):** If you wire scripts or bots to `DeployDev` addresses, use the **ERC1967 proxy** for UUPS cores (`TimeCurve`, `RabbitTreasury`, …), not the implementation row in `run-latest.json` — see [`docs/testing/anvil-rich-state.md`](../docs/testing/anvil-rich-state.md) and [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md) ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
+
 ## Using these in Cursor
 
 Copy or symlink a play `SKILL.md` into `.cursor/skills/` if you want the IDE to auto-suggest it, or `@`-reference paths under `skills/` in chat. Play skills are **rooted here** so they stay visible to agents who never open `.cursor/`.
