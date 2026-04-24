@@ -97,6 +97,10 @@ This section fixes **how many DOUB are minted at launch** and **where they go**,
 - Presale and LP buckets need explicit recipient contracts or multisigs with **events** and **indexer** visibility.
 - **Sir** / other product lines are **not** in this 250M table; fund separately if needed.
 
+### 4.4 Final signoff before user-facing DOUB / CL8Y movement
+
+Genesis wiring (Section 4) is not the same as **operational go-live** for **claims, redemption, and prize payouts**: see [`docs/operations/pause-and-final-signoff.md`](docs/operations/pause-and-final-signoff.md) ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)) for gated surfaces (`DoubPresaleVesting.claim`, `TimeCurve.redeemCharms`, `distributePrizes`, optional `buy` / fee routing) and a suggested mainnet order of operations. Update that doc + [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md) when onchain flags or timelock IDs are fixed.
+
 ---
 
 ## 5. Fee routing vs genesis (do not conflate)
@@ -135,5 +139,6 @@ Routes **`/rabbit-treasury`**, **`/collection`**, **`/referrals`** use the **Und
 | [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md) | Deploy parameters |
 | [`docs/testing/strategy.md`](docs/testing/strategy.md) | Stages 1–3 |
 | [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md) | Recorded smoke |
+| [`docs/operations/pause-and-final-signoff.md`](docs/operations/pause-and-final-signoff.md) | Pause/signoff before DOUB claims and CL8Y distribution (design inventory, [#55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)) |
 
 **Agent phase:** align with [`docs/agent-phases.md`](docs/agent-phases.md) and contributor guardrails in [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md).

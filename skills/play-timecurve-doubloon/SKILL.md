@@ -51,7 +51,7 @@ When helping someone interpret standings, prefer **contract reads** (`podium(cat
 
 When answering, make outputs explicit:
 
-- **Sale state** — `ended`, `deadline`, `saleStart`, **`currentMinBuyAmount`**, and any **pause** flags from **chain reads** (not memory).
+- **Sale state** — `ended`, `deadline`, `saleStart`, **`currentMinBuyAmount`**, and any **pause** / **distribution** flags from **chain reads** (not memory). **Presale** `claim` and **TimeCurve** `redeemCharms` / `distributePrizes` may have **separate** go-live controls when deployed; see **pause / final signoff** design inventory: [`docs/operations/pause-and-final-signoff.md`](../../docs/operations/pause-and-final-signoff.md) ([GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)) — do not promise timing until the target deployment’s onchain state matches.
 - **Timer / charm context** — Remaining time, caps, charm weight mechanics as **published** in primitives + **deployment**; cite **which** contract fields you used.
 - **Fee routing snapshot** — Sinks and weights **per verified** `FeeRouter` / deployment for this chain, cross-checked with [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md).
 - **Risks (disclosure)** — Deadline pressure, MEV, oracle/indexer lag, referral rules in [`docs/product/referrals.md`](../../docs/product/referrals.md)—as **information**, not pressure.
