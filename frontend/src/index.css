@@ -291,6 +291,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-shadow: 1px 2px 0 var(--line);
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
@@ -340,6 +341,7 @@ textarea {
   color: var(--text-main);
   text-decoration: none;
   font-weight: 700;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
@@ -412,7 +414,7 @@ textarea {
   font-weight: 800;
   letter-spacing: 0.01em;
   background: #fff;
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
@@ -1231,7 +1233,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   list-style: none;
 }
 
@@ -1583,6 +1585,7 @@ textarea {
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.7);
   box-shadow: 4px 4px 0 var(--line);
+  cursor: url("/art/cursors/loading.png") 12 12, wait;
 }
 
 .loading-state img {
@@ -1687,6 +1690,11 @@ textarea {
 .app-footer a {
   color: var(--arcade-green-800);
   font-weight: 700;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+}
+
+.app-footer a[target="_blank"] {
+  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
 }
 
 .footer-link-pill {
@@ -1799,6 +1807,7 @@ textarea {
 .card-list a {
   font-weight: 700;
   color: var(--arcade-green-800);
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
 }
 
 .card-list a:hover {
@@ -2148,7 +2157,7 @@ textarea {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff, var(--bg-cream));
   color: var(--text-main);
-  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   box-shadow: 4px 4px 0 var(--line);
   transition:
     transform 140ms ease,
@@ -2633,7 +2642,7 @@ code {
   border: 2px solid rgba(255, 255, 255, 0.35);
   background: rgba(0, 0, 0, 0.25);
   color: #fde68a;
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   font-family: inherit;
 }
 
@@ -2710,7 +2719,7 @@ code {
   padding: 0;
   margin: 0;
   color: inherit;
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   text-align: left;
   font: inherit;
 }
@@ -3019,6 +3028,10 @@ code {
   text-align: center;
 }
 
+.timer-hero__subtext--deadline-read[aria-busy="true"] {
+  cursor: url("/art/cursors/loading.png") 12 12, wait;
+}
+
 .timer-hero__deadline-read-stack {
   flex: 1 1 12rem;
   min-width: 0;
@@ -3077,7 +3090,7 @@ code {
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.2);
   color: #a8d5b8;
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   line-height: 0;
   transition:
     background 0.15s ease,
@@ -3306,7 +3319,7 @@ code {
   width: 2rem;
   height: 2rem;
   border-radius: 0.4rem;
-  cursor: pointer;
+  cursor: url("/art/cursors/cancel.png") 12 12, pointer;
   font-weight: 800;
 }
 
@@ -3390,12 +3403,12 @@ code {
   border-radius: 0.45rem;
   border: 2px solid var(--line);
   background: var(--bg-yellow);
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
 }
 
 .modal-bc-more__btn:disabled {
   opacity: 0.55;
-  cursor: wait;
+  cursor: url("/art/cursors/loading.png") 12 12, wait;
 }
 
 .modal-bc-list .live-buy-row--modal {
@@ -4983,7 +4996,7 @@ code {
 }
 
 .timecurve-simple__advanced-summary {
-  cursor: pointer;
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
   font-weight: 700;
   font-size: 0.9rem;
   letter-spacing: 0.04em;
@@ -5313,9 +5326,36 @@ input[type="range"]:active {
   cursor: url("/art/cursors/external-link.png") 4 2, pointer;
 }
 
+/* Issue #60 — additional cursor roles (see GitLab #60 + art/README § cursors). */
+.cursor-link {
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+}
+.cursor-loading {
+  cursor: url("/art/cursors/loading.png") 12 12, wait;
+}
+.cursor-cancel {
+  cursor: url("/art/cursors/cancel.png") 12 12, pointer;
+}
+.cursor-copy {
+  cursor: url("/art/cursors/copy.png") 8 8, copy;
+}
+.cursor-help {
+  cursor: url("/art/cursors/help.png") 12 12, help;
+}
+
+/* RainbowKit modal / account chrome — keep same affordances as in-app links. */
+[data-rk] button:not(:disabled):not([aria-disabled="true"]),
+[data-rk] [role="button"]:not([aria-disabled="true"]):not([data-disabled]) {
+  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .arcade-banner__scene,
   .launch-countdown__scene {
     transition: none;
+  }
+
+  .loading-state img {
+    animation: none;
   }
 }
