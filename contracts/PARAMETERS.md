@@ -40,7 +40,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Referral registry | `ReferralRegistry` address (or `0` to disable) | Optional; see [product/referrals.md](../docs/product/referrals.md) | **TODO** — address |
 | Referral CHARM | `5%` referrer + `5%` referee as **`charmWeight`**; **100%** gross to `FeeRouter` | `REFERRAL_EACH_BPS` (500) in `TimeCurve` | Default |
 | Redemption density (no referral) | **DOUB per CHARM** falls as `totalCharmWeight` grows; **implied CL8Y per DOUB** (`totalRaised / totalTokensForSale`) rises each buy; **excluding referral**, **CL8Y value of DOUB per CHARM** is **non-decreasing** | [`docs/product/primitives.md`](../docs/product/primitives.md#timecurve-redemption-cl8y-density-no-referral) | Canonical |
-| **Value movement gates (issue #55)** | `buyFeeRoutingEnabled` default **true**; `charmRedemptionEnabled` / `reservePodiumPayoutsEnabled` default **false** (owner setters) | [final-signoff runbook](../docs/operations/final-signoff-and-value-movement.md), [`TimeCurve.sol`](src/TimeCurve.sol) | Operator checklist at mainnet |
+| **Value movement gates (issue #55)** | `buyFeeRoutingEnabled` default **true** (gates `buy` + WarBow CL8Y: steal / revenge / guard); `charmRedemptionEnabled` / `reservePodiumPayoutsEnabled` default **false** (owner setters) | [final-signoff runbook](../docs/operations/final-signoff-and-value-movement.md), [`TimeCurve.sol`](src/TimeCurve.sol) | Operator checklist at mainnet |
 
 ## Referral registry
 

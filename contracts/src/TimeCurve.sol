@@ -214,7 +214,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     );
     event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
 
-    /// @notice Gating for sale-time `buy` (CL8Y inflow + `FeeRouter`); default true in `initialize`. See `docs/operations/final-signoff-and-value-movement.md` (issue #55).
+    /// @notice Sale-time CL8Y from users: `buy` → `FeeRouter` and WarBow burn paths (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default true in `initialize`. See `docs/operations/final-signoff-and-value-movement.md` (issue #55).
     event BuyFeeRoutingEnabled(bool enabled);
     /// @notice Gating for post-end `redeemCharms` (DOUB sale allocation to buyers).
     event CharmRedemptionEnabled(bool enabled);
@@ -290,6 +290,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit ReservePodiumPayoutsEnabled(enabled);
     }
 
+    /// @dev `buyFeeRoutingEnabled` — blocks `_buy` and WarBow CL8Y pulls (not `claimWarBowFlag`, which burns no CL8Y).
+    function _requireSaleInteractionsEnabled() internal view {
+        require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
+    }
+
     function startSale() external {
         require(saleStart == 0, "TimeCurve: already started");
         require(
@@ -318,7 +323,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _buy(uint256 charmWad, bytes32 codeHash) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
-        require(buyFeeRoutingEnabled, "TimeCurve: buy fee routing disabled");
+        _requireSaleInteractionsEnabled();
         require(block.timestamp < deadline, "TimeCurve: timer expired");
         require(block.timestamp >= nextBuyAllowedAt[msg.sender], "TimeCurve: buy cooldown");
 
@@ -470,6 +475,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @param payBypassBurn If victim already hit **3** steals today, pass `true` and pay **+50 CL8Y** to proceed.
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        _requireSaleInteractionsEnabled();
         require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
@@ -520,6 +526,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        _requireSaleInteractionsEnabled();
         require(stealer != address(0), "TimeCurve: zero stealer");
         require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
         require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
@@ -544,6 +551,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Burn **10 CL8Y**; for **6h** incoming steals use **1%** instead of **10%**.
     function warbowActivateGuard() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        _requireSaleInteractionsEnabled();
         acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
@@ -813,7 +821,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
 
-    /// @notice If false, `buy` reverts (no CL8Y fee routing). Default: true in `initialize`.
+    /// @notice If false, reverts `buy` and WarBow CL8Y actions (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y burn.)
     bool public buyFeeRoutingEnabled;
     /// @notice If false, `redeemCharms` reverts. Default: false until owner signoff.
     bool public charmRedemptionEnabled;
