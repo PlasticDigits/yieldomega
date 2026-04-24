@@ -68,7 +68,7 @@ export function ThirdPartyDexPage({
             href={externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary"
+            className="btn-primary cursor-external-link"
           >
             {linkLabel}
           </a>

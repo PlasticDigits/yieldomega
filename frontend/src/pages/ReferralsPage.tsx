@@ -36,6 +36,7 @@ export function ReferralsPage() {
         badgeLabel="TimeCurve"
         badgeTone="live"
         coinSrc="/art/hat-coin-stack.png"
+        sceneSrc="/art/scenes/referrals-hero.jpg"
         lede="Short codes, CL8Y registration burn, and TimeCurve buy bonuses — authority stays on ReferralRegistry + TimeCurve; this client captures links and shows read-only on-chain parameters."
         mascot={{
           src: CUT.secondary,
