@@ -67,11 +67,11 @@ export type PhaseBadge = {
   tone: "live" | "soon" | "warning" | "info";
   /**
    * Pictogram path under [`frontend/public/art/icons/`](../../../public/art/icons/)
-   * (issue #45). Decorative; the textual `label` remains the source of truth
-   * for assistive tech. **Note:** the source filename
-   * `status-prelanch.png` keeps the issue #45 typo on purpose so the asset
-   * path matches the generation manifest. The CSS class `ui-badge--soon`
-   * carries the human-meaningful tone.
+   * (issue #45 + #57). Decorative; the textual `label` remains the source of truth
+   * for assistive tech. Pre-launch uses the corrected `status-prelaunch.png`
+   * filename ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57));
+   * `status-prelanch.png` remains in-tree as a duplicate of the same raster for
+   * historic manifests.
    */
   iconSrc: string;
 };
@@ -81,7 +81,7 @@ const BADGE: Record<SaleSessionPhase, PhaseBadge> = {
   saleStartPending: {
     label: "Pre-launch",
     tone: "soon",
-    iconSrc: "/art/icons/status-prelanch.png",
+    iconSrc: "/art/icons/status-prelaunch.png",
   },
   saleActive: { label: "Sale live", tone: "live", iconSrc: "/art/icons/status-live.png" },
   saleExpiredAwaitingEnd: {

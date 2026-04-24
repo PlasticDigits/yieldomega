@@ -14,6 +14,8 @@ const OG = {
   siteName: "YieldOmega",
   locale: "en_US",
   imagePath: "/art/opengraph.jpg",
+  /** Square JPEG (issue #57) — Twitter/X `summary` card while Open Graph keeps the wide hero. */
+  twitterSquareImagePath: "/art/opengraph-square.jpg",
   imageAlt:
     "YieldOmega artwork: bunny leprechaun mascots, glossy hat-coins, rainbow, and voxel hills in arcade cartoon style",
   imageType: "image/jpeg",
@@ -57,8 +59,11 @@ function injectSocialMeta(mode: string) {
   const origin = siteOriginFromEnv(mode);
   const publicDir = fileURLToPath(new URL("./public", import.meta.url));
   const imageAbsPath = path.join(publicDir, "art", "opengraph.jpg");
+  const twitterSquareAbsPath = path.join(publicDir, "art", "opengraph-square.jpg");
   const dims = jpegDimensions(imageAbsPath);
+  const twitterDims = jpegDimensions(twitterSquareAbsPath);
   const imageUrl = origin ? `${origin}${OG.imagePath}` : OG.imagePath;
+  const twitterImageUrl = origin ? `${origin}${OG.twitterSquareImagePath}` : OG.twitterSquareImagePath;
   const pageUrl = origin ? `${origin}/` : "/";
   const t = escAttr(OG.title);
   const d = escAttr(OG.description);
@@ -76,6 +81,13 @@ function injectSocialMeta(mode: string) {
       `\n    <meta property="og:image:width" content="${String(dims.width)}" />\n    <meta property="og:image:height" content="${String(dims.height)}" />`
     : "";
 
+  const twWh =
+    twitterDims ?
+      `\n    <meta name="twitter:image:width" content="${String(twitterDims.width)}" />\n    <meta name="twitter:image:height" content="${String(twitterDims.height)}" />`
+    : "";
+
+  const twitterImg = escAttr(twitterImageUrl);
+
   return {
     name: "yieldomega-social-meta",
     transformIndexHtml(html: string) {
@@ -91,11 +103,11 @@ function injectSocialMeta(mode: string) {
     <meta property="og:image:url" content="${img}" />${secureImageTag}
     <meta property="og:image:type" content="${OG.imageType}" />${wh}
     <meta property="og:image:alt" content="${alt}" />
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${t}" />
     <meta name="twitter:description" content="${d}" />
-    <meta name="twitter:image" content="${img}" />
-    <meta name="twitter:image:alt" content="${alt}" />`;
+    <meta name="twitter:image" content="${twitterImg}" />
+    <meta name="twitter:image:alt" content="${alt}" />${twWh}`;
 
       return html.replace("<!-- %SOCIAL_META% -->", block);
     },

@@ -16,7 +16,7 @@ export function StatusMessage({ variant = "muted", children, className }: Props)
     return (
       <div className={classes}>
         <img
-          src="/art/loading-mascot.png"
+          src="/art/icons/loading-mascot-ring.png"
           alt=""
           width={96}
           height={96}
