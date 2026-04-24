@@ -28,7 +28,10 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
   await expect(
     page.getByRole("heading", { name: /(Buy CHARM|Redeem CHARM|Coming soon)/, level: 2 }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Want more?", level: 2 })).toBeVisible();
+  // Cross-page navigation to Arena / Protocol lives in the `TimeCurveSubnav`
+  // at the top of the route — the redundant in-page "Want more?" tiles were
+  // removed (UX feedback: the subnav is sufficient).
+  await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
 });
 
 test("timecurve simple view does NOT show the dense PvP / podiums sections above the fold", async ({ page }) => {
