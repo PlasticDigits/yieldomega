@@ -4041,15 +4041,35 @@ code {
   color: #c8e6d0;
 }
 
-.timecurve-simple__activity {
-  margin-top: 1rem;
+/* Sale hub: timer + buy panels share the spotlight row above the fold so
+   the single primary action is always one glance away from its trigger.
+   Layout responds to the hub's *own* width (not viewport) via container
+   queries — this makes the page work cleanly inside narrower side panes,
+   inspector overlays, or embedded contexts where viewport-keyed media
+   queries would not fire. */
+.timecurve-simple__hub {
+  container-type: inline-size;
+  container-name: timecurveHub;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 1rem;
+  align-items: stretch;
 }
 
-.timecurve-simple__activity-title {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
-  margin-bottom: 0.4rem;
+@container timecurveHub (max-width: 880px) {
+  .timecurve-simple__hub {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timecurve-simple__hub > .data-panel {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timecurve-simple__activity-panel {
+  margin-top: 0;
 }
 
 .timecurve-simple__activity-list {
@@ -4157,11 +4177,10 @@ code {
   color: var(--text-main);
 }
 
-.timecurve-simple__preview {
+.timecurve-simple__buy-preview {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.55rem;
+  flex-direction: column;
+  gap: 0.35rem;
   padding: 0.85rem 1.1rem;
   border-radius: 0.85rem;
   background: linear-gradient(180deg, var(--arcade-gold-200, #fde68a), #fff8df);
@@ -4170,26 +4189,190 @@ code {
   margin-bottom: 0.75rem;
 }
 
-.timecurve-simple__preview--loading {
+.timecurve-simple__buy-preview--loading {
   background: rgba(245, 245, 240, 0.85);
+  padding: 0.85rem 1.1rem;
 }
 
-.timecurve-simple__preview-label {
-  font-size: 0.95rem;
+.timecurve-simple__buy-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.timecurve-simple__buy-preview-row--launch {
+  border-top: 2px dashed rgba(60, 40, 0, 0.25);
+  padding-top: 0.4rem;
+}
+
+.timecurve-simple__buy-preview-label {
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.timecurve-simple__preview-value {
-  font-size: clamp(1.6rem, 3.6vw, 2.25rem);
+.timecurve-simple__buy-preview-value {
+  font-size: clamp(1.4rem, 3vw, 2rem);
   font-weight: 900;
   font-family: monospace;
 }
 
-.timecurve-simple__preview-unit {
-  font-size: 1rem;
+.timecurve-simple__buy-preview-unit {
+  font-size: 0.95rem;
   font-weight: 700;
+}
+
+/* Live rate board: top of the buy panel. The "current price" row is the
+   single most-important number on the page (ticks every block), so it gets
+   hero-sized type and a bold gold field; the "at launch" row underneath
+   shows the full chain `1 CHARM = N DOUB = M CL8Y` so users can see where
+   the launch CL8Y projection on the stake panel comes from. */
+.timecurve-simple__rate-board {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1.15rem 1.1rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, var(--arcade-gold-100, #fff4c4), #fff8df 60%, #fff);
+  border: 3px solid var(--line);
+  box-shadow: 6px 6px 0 var(--line);
+  margin-bottom: 1rem;
+}
+
+.timecurve-simple__rate-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.timecurve-simple__rate-row--launch {
+  border-top: 2px dashed rgba(60, 40, 0, 0.3);
+  padding-top: 0.55rem;
+}
+
+.timecurve-simple__rate-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(60, 40, 0, 0.78);
+}
+
+.timecurve-simple__rate-value {
+  font-family: monospace;
+  font-weight: 900;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  line-height: 1.1;
+  color: var(--ink, #111);
+}
+
+.timecurve-simple__rate-value--hero {
+  font-size: clamp(1.85rem, 4.2vw, 2.85rem);
+  letter-spacing: -0.01em;
+}
+
+.timecurve-simple__rate-unit {
+  font-size: 0.7em;
+  margin-left: 0.18em;
+  font-weight: 800;
+  color: rgba(60, 40, 0, 0.85);
+}
+
+.timecurve-simple__rate-equals {
+  font-size: 0.7em;
+  margin: 0 0.25em;
+  color: rgba(60, 40, 0, 0.65);
+}
+
+.timecurve-simple__rate-foot {
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+/* Advanced disclosure: pay-with, slippage, referral. Hidden by default to
+   keep the buy panel laser-focused on the slider + CTA + launch projection. */
+.timecurve-simple__advanced {
+  margin-top: 0.85rem;
+  border: 2px dashed var(--line);
+  border-radius: 0.85rem;
+  padding: 0.45rem 0.8rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.timecurve-simple__advanced-summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+  list-style: revert;
+}
+
+.timecurve-simple__advanced[open] .timecurve-simple__advanced-summary {
+  margin-bottom: 0.6rem;
+}
+
+.timecurve-simple__advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+/* "Your stake at launch" panel — two big-number tiles backed by the
+   `participantLaunchValueCl8yWei` invariant (1.2× per-CHARM clearing price). */
+.timecurve-simple__stake-panel {
+  margin-bottom: 0.5rem;
+}
+
+.timecurve-simple__stake-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.85rem;
+  margin: 0.4rem 0 0.6rem;
+}
+
+.timecurve-simple__stake-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.95rem 1.1rem;
+  border: 3px solid var(--line);
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.timecurve-simple__stake-tile--launch {
+  background: linear-gradient(180deg, #f1fbe9 0%, #fffbe5 100%);
+}
+
+.timecurve-simple__stake-tile-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #4a5a4a);
+}
+
+.timecurve-simple__stake-tile-value {
+  font-size: clamp(1.85rem, 4vw, 2.6rem);
+  font-weight: 900;
+  font-family: monospace;
+  line-height: 1;
+}
+
+.timecurve-simple__stake-tile-unit {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.timecurve-simple__stake-foot {
+  margin: 0;
+  font-size: 0.85rem;
 }
 
 .timecurve-simple__cta {
@@ -4269,12 +4452,21 @@ code {
   }
 }
 
+@media (max-width: 980px) {
+  .timecurve-simple__hub {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .timecurve-simple__slider-row {
     grid-template-columns: 1fr;
   }
   .timecurve-simple__ticker-row {
     grid-template-columns: 1fr 1fr;
+  }
+  .timecurve-simple__stake-grid {
+    grid-template-columns: 1fr;
   }
 }
 

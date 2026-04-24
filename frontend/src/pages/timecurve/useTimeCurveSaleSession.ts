@@ -38,6 +38,7 @@ import {
   ledgerSecIntForPhase,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
+import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
 
@@ -99,11 +100,24 @@ export type UseTimeCurveSaleSession = {
   walletCooldownRemainingSec: number;
   totalRaisedWei: bigint | undefined;
   totalCharmWeightWad: bigint | undefined;
+  /** Sale's `totalTokensForSale` (DOUB-WAD). Constant across the sale; used by the rate board to compute `1 CHARM → DOUB at launch`. */
+  totalTokensForSaleWad: bigint | undefined;
   /** Connected wallet's onchain CHARM weight. */
   charmWeightWad: bigint | undefined;
   charmsRedeemed: boolean | undefined;
   /** Projected launched-token redemption from current charm weight (post-end only). */
   expectedTokenFromCharms: bigint | undefined;
+  /**
+   * Projected CL8Y value of the connected wallet's CHARM at launch — uses the
+   * canonical **1.2× per-CHARM clearing price** anchor enforced by
+   * `DoubLPIncentives` (see [`launch-anchor invariant`](../../../docs/testing/invariants-and-business-logic.md)).
+   * Live and non-decreasing through the sale; `undefined` when reads are
+   * pending; `0n` when the wallet holds no CHARM (so UI can render a clean
+   * zero rather than "—").
+   */
+  launchCl8yValueWei: bigint | undefined;
+  /** Live per-CHARM price in CL8Y wei — exposed so the UX can show "1 CHARM ≈ X CL8Y at launch". */
+  pricePerCharmWad: bigint | undefined;
   referralRegistryOn: boolean;
   pendingReferralCode: string | null;
   useReferral: boolean;
@@ -501,6 +515,23 @@ export function useTimeCurveSaleSession(
     return (tts * us) / tcw;
   }, [phase, totalCharmWeightR, totalTokensForSaleR, charmWeightR]);
 
+  const pricePerCharmWad =
+    pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
+
+  // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.2× × per-CHARM
+  // price). Recompute reactively against the live `currentPricePerCharmWad` so the
+  // value rises through the sale (UX prop: "what your CHARM is worth in CL8Y at
+  // launch — only goes up").
+  const launchCl8yValueWei = useMemo(
+    () =>
+      participantLaunchValueCl8yWei({
+        charmWeightWad:
+          charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined,
+        pricePerCharmWad,
+      }),
+    [charmWeightR, pricePerCharmWad],
+  );
+
   const refetchAll = useCallback(() => {
     void refetchCore();
     void refetchUser();
@@ -751,11 +782,17 @@ export function useTimeCurveSaleSession(
       totalCharmWeightR?.status === "success"
         ? (totalCharmWeightR.result as bigint)
         : undefined,
+    totalTokensForSaleWad:
+      totalTokensForSaleR?.status === "success"
+        ? (totalTokensForSaleR.result as bigint)
+        : undefined,
     charmWeightWad:
       charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined,
     charmsRedeemed:
       charmsRedeemedR?.status === "success" ? (charmsRedeemedR.result as boolean) : undefined,
     expectedTokenFromCharms,
+    launchCl8yValueWei,
+    pricePerCharmWad,
     referralRegistryOn,
     pendingReferralCode,
     useReferral,

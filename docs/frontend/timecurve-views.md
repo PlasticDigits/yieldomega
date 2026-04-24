@@ -118,23 +118,73 @@ setups.
 
 ## `TimeCurveSimplePage` layout contract
 
-Above-the-fold focal column (top → bottom):
+Page leads with **action**: the sale hub sits at the very top, the
+`PageHero` (title + lede + chain-time deadline) follows below as a context
+strip. This intentionally inverts the usual hero-on-top pattern so first-run
+visitors see the timer + buy CTA before they read marketing copy. The hub
+itself is a CSS-container-query grid (`container-type: inline-size`) — it
+collapses to a single column when its rendered width drops below ~880 px,
+which works inside narrow viewports, side panes, and embedded contexts where
+viewport-keyed media queries would not fire. See `.timecurve-simple__hub`
+in `frontend/src/index.css`.
 
-1. **`PageHero`** with `stateBadge` (`Pre-launch` / `Live` / `Ended`) and a
-   single short lede: "Spend CL8Y → get CHARM. CHARM redeems for DOUB after
-   the timer dies."
-2. **Hero countdown** (reuses `useTimecurveHeroTimer` so wall ↔ chain skew
-   matches the Arena view) plus a one-sentence narrative driven by
-   `phaseNarrative()`.
-3. **Buy card** (primary CTA): wallet balance pill, inline min–max range,
-   slider + numeric input, prominent **"You will get ≈ X CHARM"** preview,
-   single CTA labeled **Buy CHARM** (sub-text: "Approves CL8Y if needed,
-   then submits the buy"). Cooldown / disconnect / referral state appear
-   _below_ the CTA as compact secondary status, not as blockers.
-4. **Activity ticker** — last 3 buys (wallet · amount · `+Xs` extension or
+Above-the-fold **sale hub** (two columns on wide containers, one column on
+narrow):
+
+1. **Timer panel** (left of the hub): hero countdown (reuses
+   `useTimecurveHeroTimer` so wall ↔ chain skew matches the Arena view) plus
+   a one-sentence narrative driven by `phaseNarrative()` and a phase-aware
+   foot line (e.g. "Every buy adds 2 minutes; clutch buys hard-reset the
+   clock.").
+2. **Buy panel** (right of the hub):
+   - **Live rate board** at the top — the **single most-important number on
+     the page** is "1 CHARM costs right now" rendered with fixed 6-decimal
+     precision (`formatPriceFixed6` on `pricePerCharmWad`) so per-block ticks
+     of ~1e-5 CL8Y are visibly obvious. Underneath, the at-launch chain
+     "1 CHARM = N DOUB = M CL8Y" gives participants the full math: DOUB
+     comes from `doubPerCharmAtLaunchWad(totalTokensForSale, totalCharmWeight)`
+     and CL8Y from `participantLaunchValueCl8yWei` (the canonical 1.2×
+     anchor). Both refresh via the hook's wagmi `refetchInterval: 1000` and
+     `useBlock({ watch: true })` so they update on every new block / buy.
+   - Inline min–max pill, slider + numeric input, two-line preview
+     (**"You add ≈ X CHARM"** + **"Worth at launch ≈ Y CL8Y"**, hidden when
+     the wallet holds no CHARM yet), single CTA labeled **Buy CHARM**.
+   - Pay-with (CL8Y/ETH/USDM), slippage, wallet balance, and referral
+     controls live behind a collapsed `<details>` "Advanced" disclosure so
+     first-run buyers see the rate board + slider + CTA + launch projection
+     only. Cooldown / error state appear _below_ the CTA as compact
+     secondary status.
+   - When no wallet is connected, the panel renders a "Connect a wallet to
+     buy CHARM…" prompt with the **shared** `<WalletConnectButton />`
+     (`frontend/src/components/WalletConnectButton.tsx`) — same
+     `wallet-action wallet-action--connect wallet-action--priority` style as
+     the header so the connect CTA is visually consistent across the app.
+
+Below the hub:
+
+3. **`PageHero`** with `stateBadge` (`Pre-launch` / `Sale live` /
+   `Sale ended`), the action-led lede ("Buy CHARM with CL8Y to lock in your
+   share of the DOUB launch. Your CHARM only grows in CL8Y value as the sale
+   heats up — the timer is the only thing in your way."), and chain-time
+   deadline. The hero owns the sale-phase badge so the visual status
+   indicator is shared with Arena / Protocol via `phaseBadge()`.
+4. **"Your stake at launch" panel** (only when wallet connected and a sale is
+   active or ended): two big-number tiles — your CHARM count and the
+   projected **CL8Y at launch** computed from
+   [`participantLaunchValueCl8yWei`](../../frontend/src/lib/timeCurvePodiumMath.ts)
+   (the **launch-anchor invariant**: `1.2 × per-CHARM clearing price`,
+   enforced by `DoubLPIncentives` and pinned by the
+   [`launch-anchor invariant`](../testing/invariants-and-business-logic.md)
+   test in `timeCurvePodiumMath.test.ts`). The **personal DOUB count is
+   intentionally hidden** — DOUB-per-CHARM dilutes as `totalCharmWeight`
+   grows, but the CL8Y-at-launch projection only ever stays the same or
+   rises. (DOUB is shown as a *rate* on the buy panel's rate board, never as
+   a per-wallet holdings projection.) UX guarantee: if a participant only
+   watches one number, this is the right one.
+5. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.
-5. **"Want more?" tiles** linking to `/timecurve/arena` and
+6. **"Want more?" tiles** linking to `/timecurve/arena` and
    `/timecurve/protocol`, each with a small live stat hint (e.g. WarBow leader
    BP, deadline unix) so the secondary surfaces are discoverable without
    recreating their content.

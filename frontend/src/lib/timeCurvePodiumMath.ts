@@ -51,3 +51,63 @@ export function launchLiquidityAnchorWad(clearingWad: bigint): bigint {
 export function kumbayaBandLowerWad(launchAnchorWad: bigint): bigint {
   return (launchAnchorWad * 8n) / 10n;
 }
+
+/**
+ * Live **DOUB per 1 CHARM at launch** — `totalTokensForSale / totalCharmWeight`
+ * scaled to WAD. This is a **redemption rate**, not a holdings projection, and
+ * it **decreases** as `totalCharmWeight` grows (more CHARM minted ⇒ each CHARM
+ * redeems for less DOUB). Used by the Simple page rate board so participants
+ * can see the full math chain `1 CHARM → X DOUB → Y CL8Y at launch` and trust
+ * the 1.2× anchor (see {@link participantLaunchValueCl8yWei}).
+ *
+ * Returns `undefined` when reads are pending or no CHARM has been minted yet
+ * (denominator zero) so callers can render "—".
+ */
+export function doubPerCharmAtLaunchWad(input: {
+  totalTokensForSaleWad: bigint | undefined;
+  totalCharmWeightWad: bigint | undefined;
+}): bigint | undefined {
+  const { totalTokensForSaleWad, totalCharmWeightWad } = input;
+  if (totalTokensForSaleWad === undefined || totalCharmWeightWad === undefined) return undefined;
+  if (totalCharmWeightWad === 0n) return undefined;
+  const WAD = 10n ** 18n;
+  return (totalTokensForSaleWad * WAD) / totalCharmWeightWad;
+}
+
+/**
+ * **Launch-anchor invariant (canonical)** — what 1 unit of CHARM is projected
+ * to be worth in CL8Y *at launch*.
+ *
+ * The DOUB/CL8Y locked-liquidity sink (`DoubLPIncentives`) seeds liquidity at
+ * **1.2× the per-CHARM clearing price**, so every CHARM held during the sale
+ * is projected to redeem for `1.2 × pricePerCharmWad` CL8Y wei when the LP is
+ * paired post-sale. See:
+ *   • [`contracts/src/sinks/DoubLPIncentives.sol`](../../../contracts/src/sinks/DoubLPIncentives.sol)
+ *   • [`docs/onchain/fee-routing-and-governance.md`](../../../docs/onchain/fee-routing-and-governance.md)
+ *   • [`docs/testing/invariants-and-business-logic.md`](../../../docs/testing/invariants-and-business-logic.md)
+ *
+ * Spec example (PARAMETERS / user brief): final per-CHARM price = 2 CL8Y,
+ * 1 CHARM redeems for 100 DOUB → those 100 DOUB are worth `2 × 1.2 = 2.4`
+ * CL8Y at launch. The DOUB count is intentionally absent from the formula
+ * because DOUB-per-CHARM dilutes as `totalCharmWeight` grows; the CL8Y value
+ * only depends on the per-CHARM price (which is monotone non-decreasing for
+ * `LinearCharmPrice`), so the projection only ever stays the same or rises.
+ *
+ * Returns `undefined` when an input is missing so callers can render "—"
+ * without leaking a bogus `0` to the UI.
+ */
+export function participantLaunchValueCl8yWei(input: {
+  charmWeightWad: bigint | undefined;
+  pricePerCharmWad: bigint | undefined;
+}): bigint | undefined {
+  const { charmWeightWad, pricePerCharmWad } = input;
+  if (charmWeightWad === undefined || pricePerCharmWad === undefined) {
+    return undefined;
+  }
+  if (charmWeightWad === 0n || pricePerCharmWad === 0n) {
+    return 0n;
+  }
+  // Multiply first, divide last to avoid pre-truncation in WAD math.
+  const WAD = 10n ** 18n;
+  return (charmWeightWad * pricePerCharmWad * 12n) / (10n * WAD);
+}
