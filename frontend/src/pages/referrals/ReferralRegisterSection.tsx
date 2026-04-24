@@ -260,7 +260,12 @@ export function ReferralRegisterSection({ className }: Props) {
                 <code className="code-inline" style={{ flex: "1 1 220px" }}>
                   {url}
                 </code>
-                <button type="button" className="btn-ghost" onClick={() => copy(label, url)} disabled={!origin}>
+                <button
+                  type="button"
+                  className="btn-ghost cursor-copy"
+                  onClick={() => copy(label, url)}
+                  disabled={!origin}
+                >
                   {copied === label ? "Copied" : "Copy"}
                 </button>
               </div>

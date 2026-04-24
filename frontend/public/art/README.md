@@ -10,7 +10,7 @@ The layout was reorganized as part of [`docs/agent-phases.md` Phase 13 — Front
 
 - **Path stability:** treat `/art/<purpose>/<name>.<ext>` as a public ABI for the frontend. If you rename, run `rg "/art/" frontend/` and update every consumer plus this README.
 - **AGPL artwork:** new generated drops default to AGPL-3.0 alongside the rest of the repo (see [`LICENSE`](../../../LICENSE) and [`docs/licensing.md`](../../../docs/licensing.md)). Reference inputs that originate from upstream packs keep their upstream license — check `scripts/replicate-art/` history.
-- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), and [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57) gap fill). Issue #45 drops used `pending_manual_review/` for QA; issue #57 promotes straight into purpose folders (with `pending_manual_review/issue57-gen/` scratch, gitignored).
+- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), and [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
 - **`/art/` in code:** all current consumers live in `frontend/src/`, `frontend/index.html`, and `frontend/vite.config.ts`. Search with `rg "/art/" frontend/`.
 
 ---
@@ -111,7 +111,12 @@ Custom mouse pointers that are wired through CSS (`cursor: url('/art/cursors/<na
 | `default-pointer.png` | (4, 4) | `body` idle cursor in [`index.css`](../../src/index.css) | `auto` |
 | `text-caret.png`    | (8, 12) | Text-ish controls: `input[type=text|search|number]`, `textarea` in [`index.css`](../../src/index.css) | `text` |
 | `disabled.png`      | (4, 4) | `.btn-primary:disabled` in [`index.css`](../../src/index.css) | `not-allowed` |
-| `external-link.png` | (4, 2) | `.ui-badge--external`, `.cursor-external-link` in [`index.css`](../../src/index.css); [`ThirdPartyDexPage.tsx`](../../src/components/ThirdPartyDexPage.tsx) | `pointer` |
+| `external-link.png` | (4, 2) | `.ui-badge--external`, `.cursor-external-link` in [`index.css`](../../src/index.css); [`ThirdPartyDexPage.tsx`](../../src/components/ThirdPartyDexPage.tsx); outbound [`TxHash.tsx`](../../src/components/TxHash.tsx) | `pointer` |
+| `link-pointer.png`  | ~(6, 4) | Nav, brand, secondary buttons, wallet chrome, accordions, live-buy rows, etc. in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `pointer` |
+| `loading.png`       | (12, 12) | `.loading-state`, `.modal-bc-more__btn:disabled`, `[aria-busy="true"]` deadline read in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `wait` |
+| `cancel.png`        | (12, 12) | `.modal-panel__close` in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `pointer` |
+| `copy.png`          | ~(8, 8) | `.cursor-copy` (e.g. [`ReferralRegisterSection.tsx`](../../src/pages/referrals/ReferralRegisterSection.tsx)) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `copy` |
+| `help.png`          | (12, 12) | `.cursor-help` utility in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `help` |
 
 ### `social/`
 
@@ -174,7 +179,7 @@ Some assets are still at the top level either because they are **shared by many 
 
 ## How to add a new asset
 
-1. Generate the image via `scripts/replicate-art/issue45_batch.py` or `scripts/replicate-art/issue57_batch.py` (same Replicate stack; see `issue57/prompts.json`).
+1. Generate the image via `scripts/replicate-art/issue45_batch.py`, `issue57_batch.py`, or `issue60_batch.py` (same Replicate stack; see `issue57/prompts.json`, `issue60/prompts.json`).
 2. Drop the raw image into [`pending_manual_review/`](./pending_manual_review/) (gitignored).
 3. Promote into the matching **purpose** folder above (move with `git mv`, do **not** copy: history must follow).
 4. Update **this README** (the table for that folder + the consumer column).
@@ -188,7 +193,7 @@ Some assets are still at the top level either because they are **shared by many 
 - **Issue #44 — Design pass:** [gitlab.com/PlasticDigits/yieldomega/-/issues/44](https://gitlab.com/PlasticDigits/yieldomega/-/issues/44)
 - **Issue #45 — Asset backlog:** [gitlab.com/PlasticDigits/yieldomega/-/issues/45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45)
 - **Issue #45 catalog (historic):** [`issue45/README.md`](./issue45/README.md)
-- **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py)
+- **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py), [`scripts/replicate-art/issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py)
 - **Frontend design doc:** [`docs/frontend/design.md`](../../../docs/frontend/design.md)
 - **TimeCurve view contract:** [`docs/frontend/timecurve-views.md`](../../../docs/frontend/timecurve-views.md)
 - **Missing assets brief:** [`docs/frontend/missing-art-assets.md`](../../../docs/frontend/missing-art-assets.md)
