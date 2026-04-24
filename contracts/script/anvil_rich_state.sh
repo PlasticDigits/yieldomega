@@ -21,6 +21,9 @@ RPC="${RPC_URL:-http://127.0.0.1:8545}"
 export FOUNDRY_OUT="${FOUNDRY_OUT:-${CONTRACTS_ROOT}/out-local-dev}"
 mkdir -p "${FOUNDRY_OUT}"
 
+# shellcheck source=../../scripts/lib/broadcast_proxy_addresses.sh
+source "${ROOT}/scripts/lib/broadcast_proxy_addresses.sh"
+
 # Default Anvil account #0 (matches DeployDev broadcast signer)
 PK_DEPLOYER="${PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
 
@@ -29,9 +32,21 @@ load_addresses_from_broadcast() {
   if [[ ! -f "$RUN" ]] || ! command -v jq >/dev/null 2>&1; then
     return 0
   fi
-  TIMECURVE_ADDRESS="${TIMECURVE_ADDRESS:-$(jq -r '.transactions[] | select(.contractName=="TimeCurve") | .contractAddress' "$RUN" | head -1)}"
-  RABBIT_TREASURY_ADDRESS="${RABBIT_TREASURY_ADDRESS:-$(jq -r '.transactions[] | select(.contractName=="RabbitTreasury") | .contractAddress' "$RUN" | head -1)}"
-  LEPRECHAUN_NFT_ADDRESS="${LEPRECHAUN_NFT_ADDRESS:-$(jq -r '.transactions[] | select(.contractName=="LeprechaunNFT") | .contractAddress' "$RUN" | head -1)}"
+  # UUPS: broadcast `contractName` "TimeCurve" / "RabbitTreasury" is the **implementation**;
+  # canonical addresses are ERC1967Proxy rows (see scripts/lib/broadcast_proxy_addresses.sh, GitLab #61).
+  if [[ -z "${TIMECURVE_ADDRESS:-}" ]]; then
+    TIMECURVE_ADDRESS="$(broadcast_erc1967_proxy_address "$RUN" TimeCurve)" || return 1
+  fi
+  if [[ -z "${RABBIT_TREASURY_ADDRESS:-}" ]]; then
+    RABBIT_TREASURY_ADDRESS="$(broadcast_erc1967_proxy_address "$RUN" RabbitTreasury)" || return 1
+  fi
+  if [[ -z "${LEPRECHAUN_NFT_ADDRESS:-}" ]]; then
+    LEPRECHAUN_NFT_ADDRESS="$(broadcast_direct_create_address "$RUN" LeprechaunNFT)"
+    if [[ -z "${LEPRECHAUN_NFT_ADDRESS}" || "${LEPRECHAUN_NFT_ADDRESS}" == "null" ]]; then
+      echo "load_addresses_from_broadcast: missing LeprechaunNFT in ${RUN}" >&2
+      return 1
+    fi
+  fi
 }
 
 # Reserve token must match TimeCurve.acceptedAsset (same as RabbitTreasury reserve).

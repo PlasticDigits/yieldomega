@@ -30,6 +30,7 @@ Use this skill when editing or running the **`timecurve-bot`** package.
 
 - Required: `YIELDOMEGA_RPC_URL` (or `RPC_URL`), `YIELDOMEGA_CHAIN_ID`, `YIELDOMEGA_TIMECURVE_ADDRESS`.
 - Optional: treasury/NFT/accepted-asset overrides, `YIELDOMEGA_ADDRESS_FILE` for registry JSON.
+- **`YIELDOMEGA_TIMECURVE_ADDRESS`** must be the **ERC1967 proxy** from `DeployDev`, not the implementation address from a naive `jq` on `run-latest.json` (`contractName=="TimeCurve"` is the impl row — see [`scripts/lib/broadcast_proxy_addresses.sh`](../../scripts/lib/broadcast_proxy_addresses.sh), [GitLab #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 - **Sending txs:** CLI `--send` **or** `YIELDOMEGA_SEND_TX=1` with `YIELDOMEGA_DRY_RUN=0`, plus `YIELDOMEGA_PRIVATE_KEY`.
 - **Anvil dev funding:** `--allow-anvil-funding` or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` only for **`swarm`** one-shot ETH + mock CL8Y on `YIELDOMEGA_CHAIN_ID=31337`. Default false (mainnet-safe).
 

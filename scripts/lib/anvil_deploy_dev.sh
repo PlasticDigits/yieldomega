@@ -27,7 +27,8 @@ yieldomega_anvil_deploy_dev() {
 
   _yieldomega_extract_addr() {
     local label="$1"
-    grep "${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
+    # Anchor like start-local-anvil-stack.sh so verbose forge output cannot pick a stale/wrong line.
+    grep -E "^[[:space:]]*${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
   }
 
   TC=$(_yieldomega_extract_addr "TimeCurve")
