@@ -7,7 +7,7 @@ export function CollectionPage() {
     <UnderConstruction
       title="Leprechaun collection"
       slug="collection"
-      imageSrc="/art/collection-card.jpg"
+      imageSrc="/art/scenes/collection-gallery.jpg"
     >
       Onchain traits, metadata, and indexer-backed mint history — coming after the launch milestone.
     </UnderConstruction>

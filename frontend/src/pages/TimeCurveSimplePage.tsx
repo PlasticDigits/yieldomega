@@ -213,7 +213,16 @@ export function TimeCurveSimplePage() {
         lede={HERO_LEDE}
         badgeLabel={phaseInfo.label}
         badgeTone={phaseInfo.tone}
-        coinSrc="/art/token-logo.png"
+        badgeIconSrc={phaseInfo.iconSrc}
+        coinSrc="/art/icons/token-doub.png"
+        coinAlt="DOUB token glyph"
+        sceneSrc="/art/scenes/timecurve-simple.jpg"
+        mascot={{
+          src: "/art/cutouts/leprechaun-bag-bunny-pair.png",
+          width: 220,
+          height: 220,
+          className: "cutout-decoration--sway",
+        }}
       >
         {headerContent}
       </PageHero>
