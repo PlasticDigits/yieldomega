@@ -295,10 +295,17 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 | Chain id / RPC defaults | `chain.test.ts`: finite positive id, bad env falls back, default RPC |
 | Rabbit deposits API path | `indexerApi.test.ts`: `encodeURIComponent` on `user` query |
 | TimeCurve `ledgerSecIntForPhase` + `derivePhase` | Prefers hero `chainNowSec` over block time when set; state machine for Simple + Arena | [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts) (issue [#48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48), [view doc](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)) |
+| WarBow pending flag UX + `Buy.flagPlanted` | Per-buy highlights and feed tags do **not** treat indexer `flag_planted` as “this buyer holds the slot”; holder + silence countdown come from **`warbowPendingFlag*`** reads; rivalry feed labels **Flag won** / **Flag destroyed** for claim / penalize events | [`timeCurveUx.test.ts`](../../frontend/src/lib/timeCurveUx.test.ts) (issue [#51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51), [view doc](../frontend/timecurve-views.md#warbow-pending-flag-ui-issue-51)) |
 
 ### TimeCurve frontend: sale phase and hero timer
 
 Narrative for [timecurve-views — Single source of truth](../frontend/timecurve-views.md#single-source-of-truth-invariants): the **state badge**, **phase narrative**, and **pre-start window** on Simple, plus **Arena** `phaseFlags`, must not disagree with the **indexer-anchored hero countdown** because `wagmi`’s `latestBlock` timestamp lags. **Unit tests** above cover the pure `ledgerSecIntForPhase` + `derivePhase` helpers; **E2E** does not start Anvil in CI (see [strategy — Stage 1](strategy.md#stage-1--unit-tests)).
+
+### TimeCurve frontend: WarBow pending flag and Buy.flagPlanted (issue #51)
+
+**Invariant:** Indexed **`Buy.flagPlanted`** mirrors the **log field**, which current **`TimeCurve` emits as `true` on every successful buy**. Only one address may hold the **pending** flag at a time (**`warbowPendingFlagOwner`** / **`warbowPendingFlagPlantAt`**). The Arena UI must not imply every buy row “planted a unique flag” from that boolean alone; **silence remaining** and **claim window** use the same **ledger clock** as the rest of the page (hero timer / block), not the buy indexer. **Flag won** (**`WarBowFlagClaimed`**) and **flag destroyed** / penalized (**`WarBowFlagPenalized`**) appear in the **rivalry feed** via indexer battle-feed rows.
+
+**Spec ↔ test:** [product primitives — plant / claim flag](../product/primitives.md#plant-flag--claim-flag) · [`timeCurveUx.test.ts`](../../frontend/src/lib/timeCurveUx.test.ts) · [timecurve-views — WarBow pending flag UI](../frontend/timecurve-views.md#warbow-pending-flag-ui-issue-51).
 
 ### Python simulations (Stage 1 scope)
 

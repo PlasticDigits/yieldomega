@@ -34,6 +34,75 @@ import { FeedCard, RankingList, type RankingRow, StatCard } from "./timecurveUi"
 
 type MotionProps = Record<string, unknown>;
 
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
+
+function WarbowPendingFlagChainPanel(props: {
+  readsReady: boolean;
+  saleActive: boolean;
+  owner: `0x${string}` | undefined;
+  plantAtSec: bigint;
+  silenceSec: bigint;
+  ledgerSecInt: number;
+  viewer: string | undefined;
+  formatWallet: WalletFormatShort;
+}) {
+  const { readsReady, saleActive, owner, plantAtSec, silenceSec, ledgerSecInt, viewer, formatWallet } = props;
+
+  if (!readsReady || owner === undefined) {
+    return <StatusMessage variant="loading">Loading pending WarBow flag from chain…</StatusMessage>;
+  }
+
+  const hasPending = owner !== ZERO_ADDR && plantAtSec > 0n;
+  const silenceEnd = plantAtSec + silenceSec;
+  const now = BigInt(ledgerSecInt);
+  const inSilence = hasPending && now < silenceEnd;
+  const remainingSec = inSilence ? Number(silenceEnd - now) : 0;
+  const viewerHolds =
+    Boolean(viewer && owner && viewer.toLowerCase() === owner.toLowerCase());
+
+  return (
+    <div className="podium-block">
+      <h3>Pending WarBow flag (chain)</h3>
+      <p className="muted">
+        One global slot: <code>warbowPendingFlagOwner</code> / <code>warbowPendingFlagPlantAt</code>. Claims and
+        interrupts also appear as <strong>Flag won</strong> / <strong>Flag destroyed</strong> rows in the rivalry feed
+        below.
+      </p>
+      {!saleActive && (
+        <StatusMessage variant="muted">Sale is not live — flag claims are closed even if a slot still reads non-zero.</StatusMessage>
+      )}
+      {!hasPending && (
+        <StatusMessage variant="muted">
+          <strong>No pending flag.</strong> The next successful buy assigns the pending slot to that buyer (any prior
+          holder was cleared).
+        </StatusMessage>
+      )}
+      {hasPending && inSilence && (
+        <StatusMessage variant="muted">
+          <strong>Silence window active.</strong> Holder {formatWallet(owner, "—")} — about{" "}
+          <strong>{formatLocaleInteger(remainingSec)}</strong>s remaining until the holder may claim (ends{" "}
+          <UnixTimestampDisplay raw={silenceEnd.toString()} />
+          ). Countdown uses the Arena ledger clock (not the buy indexer).
+          {viewerHolds ? " You hold this slot." : " Another address holds the slot."}
+        </StatusMessage>
+      )}
+      {hasPending && !inSilence && saleActive && (
+        <StatusMessage variant="muted">
+          <strong>Claim window open.</strong> {formatWallet(owner, "—")} may call <code>claimWarBowFlag</code> for the
+          silence bonus, or another buy will clear the slot
+          {viewerHolds ? " (you can use Claim flag above)." : "."}
+        </StatusMessage>
+      )}
+      {hasPending && !inSilence && !saleActive && (
+        <StatusMessage variant="muted">
+          Silence ended at <UnixTimestampDisplay raw={silenceEnd.toString()} />, but the sale is not active — treat
+          onchain reads as authoritative.
+        </StatusMessage>
+      )}
+    </div>
+  );
+}
+
 export function WhatMattersSection(props: {
   saleActive: boolean;
   saleEnded: boolean;
@@ -158,6 +227,11 @@ export function WarbowSection(props: {
   warbowActionHint: string;
   warbowFlagSilenceSec: string;
   warbowFlagClaimBp: string;
+  warbowPendingFlagReadsReady: boolean;
+  warbowPendingFlagOwner: `0x${string}` | undefined;
+  warbowPendingFlagPlantAtSec: bigint;
+  ledgerSecInt: number;
+  formatWallet: WalletFormatShort;
   isConnected: boolean;
   stealVictimInput: string;
   setStealVictimInput: (value: string) => void;
@@ -197,6 +271,11 @@ export function WarbowSection(props: {
     warbowActionHint,
     warbowFlagSilenceSec,
     warbowFlagClaimBp,
+    warbowPendingFlagReadsReady,
+    warbowPendingFlagOwner,
+    warbowPendingFlagPlantAtSec,
+    ledgerSecInt,
+    formatWallet,
     isConnected,
     stealVictimInput,
     setStealVictimInput,
@@ -263,6 +342,16 @@ export function WarbowSection(props: {
           </StatusMessage>
         </div>
       </details>
+      <WarbowPendingFlagChainPanel
+        readsReady={warbowPendingFlagReadsReady}
+        saleActive={saleActive}
+        owner={warbowPendingFlagOwner}
+        plantAtSec={warbowPendingFlagPlantAtSec}
+        silenceSec={BigInt(warbowFlagSilenceSec)}
+        ledgerSecInt={ledgerSecInt}
+        viewer={address}
+        formatWallet={formatWallet}
+      />
       {isConnected && saleActive && (
         <>
           <label className="form-label">

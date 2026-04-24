@@ -35,6 +35,7 @@ export type BuyItem = {
   bp_streak_break_bonus?: string;
   bp_ambush_bonus?: string;
   bp_flag_penalty?: string;
+  /** Mirrors `Buy.flagPlanted` in logs; current `TimeCurve` emits `true` on every buy — use chain `warbowPendingFlag*` for holder state ([issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)). */
   flag_planted?: boolean;
   buyer_total_effective_timer_sec?: string;
   buyer_active_defended_streak?: string;
