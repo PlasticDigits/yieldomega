@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useState } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
-import type { EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { LiveBuyRow } from "@/pages/timecurve/LiveBuyRow";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 
@@ -15,7 +15,7 @@ type Props = {
   /** Wall or ledger “now” for relative buy age. */
   nowUnixSec: number;
   /** When set, mini pie shows min–max spend band fill at buy time (needs `block_timestamp` on rows). */
-  envelopeParams: EnvelopeCurveParams | null;
+  envelopeParams: EnvelopeCurveParamsWire | null;
   onSelectBuy?: (buy: BuyItem) => void;
   onMore?: () => void;
 };

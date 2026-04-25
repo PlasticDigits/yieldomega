@@ -5,7 +5,7 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { Modal } from "@/components/ui/Modal";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import type { BuyItem } from "@/lib/indexerApi";
-import type { EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { explorerTxUrl } from "@/lib/explorer";
 import {
   buildBuyBattlePointBreakdown,
@@ -45,7 +45,7 @@ type Props = {
   formatWallet: WalletFormatShort;
   decimals: number;
   nowUnixSec: number;
-  envelopeParams: EnvelopeCurveParams | null;
+  envelopeParams: EnvelopeCurveParamsWire | null;
 };
 
 export function TimecurveBuyModals({

@@ -1,0 +1,84 @@
+{
+  "model": "openai/gpt-image-2",
+  "output": "frontend/public/art/cursors",
+  "size": "32x32",
+  "jobs": [
+    {
+      "filename": "pointer.png",
+      "css_name": "pointer",
+      "fallback": "pointer",
+      "hotspot": [
+        10,
+        2
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/pointer.gif",
+      "subject": "CSS pointer cursor: a simple white-gloved pointing hand with a green cuff and tiny gold trim, Yieldomega arcade-cartoon style. One hand only, index finger clearly indicates a clickable target, transparent background, thick dark outline, readable at 32px."
+    },
+    {
+      "filename": "context-menu.png",
+      "css_name": "context-menu",
+      "fallback": "context-menu",
+      "hotspot": [
+        6,
+        5
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/context-menu.png",
+      "subject": "CSS context-menu cursor: a tiny green-gold arrow pointer with a small stacked menu card beside it. Extremely simple, readable at 32px, thick dark outline, transparent background, no text."
+    },
+    {
+      "filename": "help.png",
+      "css_name": "help",
+      "fallback": "help",
+      "hotspot": [
+        16,
+        16
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/help.gif",
+      "subject": "CSS help cursor: a small glossy question-mark badge with Yieldomega green and gold arcade styling. One symbol only, thick outline, transparent background, no other text."
+    },
+    {
+      "filename": "progress.png",
+      "css_name": "progress",
+      "fallback": "progress",
+      "hotspot": [
+        6,
+        5
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/progress.gif",
+      "subject": "CSS progress cursor: a small default arrow plus a tiny green-gold progress ring. It must read as 'working but still interactive', extremely simple, transparent background, no text."
+    },
+    {
+      "filename": "text.png",
+      "css_name": "text",
+      "fallback": "text",
+      "hotspot": [
+        16,
+        16
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/text.gif",
+      "subject": "CSS text cursor: a tall I-beam text caret with chunky arcade outline, green stem, small gold caps. Very narrow, transparent background, no letters."
+    },
+    {
+      "filename": "not-allowed.png",
+      "css_name": "not-allowed",
+      "fallback": "not-allowed",
+      "hotspot": [
+        16,
+        16
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/not-allowed.gif",
+      "subject": "CSS not-allowed cursor: a friendly no-entry badge in Yieldomega green and gold with a red diagonal bar. Readable at 32px, transparent background, no words."
+    },
+    {
+      "filename": "grabbing.png",
+      "css_name": "grabbing",
+      "fallback": "grabbing",
+      "hotspot": [
+        16,
+        16
+      ],
+      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/grabbing.gif",
+      "subject": "CSS grabbing cursor: a chunky closed white-gloved hand with green cuff and gold trim, clearly gripping. Extremely simple and legible at 32px, transparent background."
+    }
+  ]
+}
