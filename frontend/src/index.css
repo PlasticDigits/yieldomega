@@ -2776,7 +2776,7 @@ code {
 }
 
 .timecurve-arena-buy-panel__checkout-head span,
-.timecurve-arena-buy-panel__strategy-head h3 {
+.timecurve-arena-buy-panel__effects-title {
   display: block;
   margin: 0;
   font-size: 0.72rem;
@@ -2794,42 +2794,153 @@ code {
   color: var(--arcade-green-900);
 }
 
-.timecurve-arena-buy-panel__strategy {
-  display: grid;
-  gap: 0.8rem;
-  margin-top: 1rem;
-  padding: 0.85rem;
-  border: 2px dashed rgba(11, 31, 20, 0.28);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.58);
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input {
+  appearance: none;
+  width: 100%;
+  max-width: none;
+  height: 1.15rem;
+  padding: 0;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--arcade-gold-500), var(--arcade-gold-300)) 0 / var(--arena-buy-slider-fill, 50%) 100% no-repeat,
+    linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
+  box-shadow:
+    4px 4px 0 var(--line),
+    inset 0 2px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.22);
+  cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 
-.timecurve-arena-buy-panel__strategy-head {
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input:active {
+  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+}
+
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-webkit-slider-runnable-track {
+  height: 1.15rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-webkit-slider-thumb {
+  appearance: none;
+  width: 2rem;
+  height: 2rem;
+  margin-top: -0.6rem;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #fff8d6 0%, var(--arcade-gold-300) 34%, var(--arcade-gold-600) 100%);
+  box-shadow:
+    3px 3px 0 var(--line),
+    inset 0 -3px 0 rgba(148, 93, 0, 0.28);
+}
+
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-track {
+  height: 1.15rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
+}
+
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-progress {
+  height: 1.15rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--arcade-gold-500), var(--arcade-gold-300));
+}
+
+.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-thumb {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 3px solid var(--line);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #fff8d6 0%, var(--arcade-gold-300) 34%, var(--arcade-gold-600) 100%);
+  box-shadow:
+    3px 3px 0 var(--line),
+    inset 0 -3px 0 rgba(148, 93, 0, 0.28);
+}
+
+.timecurve-arena-buy-panel__future-option {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.55rem;
+  padding: 0.48rem 0.65rem;
+  border: 2px dashed rgba(11, 31, 20, 0.24);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--text-muted);
+  font-size: 0.78rem;
 }
 
-.timecurve-arena-buy-panel__strategy-head img {
-  width: 1.35rem;
-  height: 1.35rem;
+.timecurve-arena-buy-panel__future-option label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 800;
+  color: var(--arcade-green-900);
+}
+
+.timecurve-arena-buy-panel__future-option span {
+  line-height: 1.25;
+  text-align: right;
+}
+
+.timecurve-arena-buy-panel__advanced {
+  border: 2px dashed rgba(11, 31, 20, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.timecurve-arena-buy-panel__advanced summary {
+  cursor: url("/art/cursors/default.png") 4 4, pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--arcade-green-900);
+}
+
+.timecurve-arena-buy-panel__effects {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.62rem 0.68rem;
+  border: 2px solid rgba(11, 31, 20, 0.18);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.timecurve-arena-buy-panel__effects-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timecurve-arena-buy-panel__effects-title img {
+  width: 1.1rem;
+  height: 1.1rem;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-.timecurve-arena-buy-panel__strategy-head p {
-  margin: 0.12rem 0 0;
-  color: var(--text-muted);
-  font-size: 0.86rem;
-  line-height: 1.35;
-}
-
-.timecurve-arena-buy-panel__strategy .timecurve-action-highlights {
+.timecurve-arena-buy-panel__effects ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
   margin: 0;
+  padding: 0;
 }
 
-.timecurve-arena-buy-panel__strategy .stats-grid {
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+.timecurve-arena-buy-panel__effects li {
+  margin: 0;
+  padding: 0.26rem 0.48rem;
+  border: 2px solid rgba(11, 31, 20, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 248, 220, 0.8);
+  color: var(--arcade-green-900);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 @media (max-width: 720px) {
@@ -2840,6 +2951,15 @@ code {
   .timecurve-arena-buy-panel__conversion {
     width: 100%;
     justify-content: center;
+  }
+
+  .timecurve-arena-buy-panel__future-option {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .timecurve-arena-buy-panel__future-option span {
+    text-align: left;
   }
 }
 
