@@ -12,6 +12,35 @@ export type EnvelopeCurveParams = {
 };
 
 /**
+ * JSON-serializable envelope params for React props (React 19 dev may stringify props; `bigint` throws).
+ * Parse with {@link envelopeCurveParamsFromWire} before math.
+ */
+export type EnvelopeCurveParamsWire = {
+  saleStartSec: number;
+  charmEnvelopeRefWad: string;
+  growthRateWad: string;
+  basePriceWad: string;
+  dailyIncrementWad: string;
+};
+
+export function envelopeCurveParamsFromWire(w: EnvelopeCurveParamsWire | null): EnvelopeCurveParams | null {
+  if (!w) {
+    return null;
+  }
+  try {
+    return {
+      saleStartSec: w.saleStartSec,
+      charmEnvelopeRefWad: BigInt(w.charmEnvelopeRefWad),
+      growthRateWad: BigInt(w.growthRateWad),
+      basePriceWad: BigInt(w.basePriceWad),
+      dailyIncrementWad: BigInt(w.dailyIncrementWad),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Where `amount` sat as a share of the legal max gross spend at the buy block time.
  * Legal buys therefore map to roughly 0.1..1.0 because the displayed min:max band is 1:10.
  * Requires indexer `block_timestamp` on the buy row.

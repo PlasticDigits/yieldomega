@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useMemo } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
-import { buySpendEnvelopeFillRatio, formatBuyAge, type EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import {
+  buySpendEnvelopeFillRatio,
+  envelopeCurveParamsFromWire,
+  formatBuyAge,
+  type EnvelopeCurveParamsWire,
+} from "@/lib/timeCurveBuyDisplay";
 import { listBuyImpactTicks } from "@/lib/timeCurveUx";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import { explorerTxUrl } from "@/lib/explorer";
@@ -13,7 +19,7 @@ type Props = {
   formatWallet: WalletFormatShort;
   onSelectBuy?: (buy: BuyItem) => void;
   nowUnixSec: number;
-  envelopeParams: EnvelopeCurveParams | null;
+  envelopeParams: EnvelopeCurveParamsWire | null;
   /** `hero` = timer strip; `modal` = all-buys list */
   variant: "hero" | "modal";
 };
@@ -29,7 +35,8 @@ const toneClass: Record<string, string> = {
 export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelopeParams, variant }: Props) {
   const ticks = listBuyImpactTicks(buy, 5);
   const age = formatBuyAge(buy.block_timestamp, nowUnixSec);
-  const ratio = envelopeParams ? buySpendEnvelopeFillRatio(buy, envelopeParams) : null;
+  const envParsed = useMemo(() => envelopeCurveParamsFromWire(envelopeParams), [envelopeParams]);
+  const ratio = envParsed ? buySpendEnvelopeFillRatio(buy, envParsed) : null;
   const who = formatWallet(buy.buyer, "—");
   const txUrl = explorerTxUrl(buy.tx_hash);
   const interactive = onSelectBuy !== undefined;

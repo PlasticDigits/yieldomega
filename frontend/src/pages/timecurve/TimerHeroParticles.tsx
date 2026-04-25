@@ -3,9 +3,14 @@
 import confetti from "canvas-confetti";
 import { useReducedMotion } from "motion/react";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
-import { buySpendEnvelopeFillRatio, type EnvelopeCurveParams } from "@/lib/timeCurveBuyDisplay";
+import {
+  buySpendEnvelopeFillRatio,
+  envelopeCurveParamsFromWire,
+  type EnvelopeCurveParams,
+  type EnvelopeCurveParamsWire,
+} from "@/lib/timeCurveBuyDisplay";
 import { buySizeColor } from "@/pages/timecurve/buySizeColor";
 
 type TimerTone = "calm" | "warning" | "critical";
@@ -31,10 +36,14 @@ type Props = {
   remainingSec: number | undefined;
   timerTone: TimerTone;
   buys: BuyItem[] | null;
-  envelopeParams: EnvelopeCurveParams | null;
+  envelopeParams: EnvelopeCurveParamsWire | null;
 };
 
 export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys, envelopeParams }: Props) {
+  const envelopeParamsParsed: EnvelopeCurveParams | null = useMemo(
+    () => envelopeCurveParamsFromWire(envelopeParams),
+    [envelopeParams],
+  );
   const prefersReducedMotion = useReducedMotion();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const apiRef = useRef<ReturnType<typeof confetti.create> | null>(null);
@@ -54,17 +63,17 @@ export function TimerHeroParticles({ saleActive, remainingSec, timerTone, buys, 
 
   const buyPalette = useCallback(
     (buy: BuyItem | null | undefined) => {
-      if (!buy || envelopeParams === null) {
+      if (!buy || envelopeParamsParsed === null) {
         return burstPalette();
       }
-      const ratio = buySpendEnvelopeFillRatio(buy, envelopeParams);
+      const ratio = buySpendEnvelopeFillRatio(buy, envelopeParamsParsed);
       if (ratio === null) {
         return burstPalette();
       }
       const base = buySizeColor(ratio);
       return [base, "#ffffff", "#fffef5", timerToneRef.current === "critical" ? "#fecaca" : "#d1fae5"];
     },
-    [envelopeParams, burstPalette],
+    [envelopeParamsParsed, burstPalette],
   );
 
   const fire = useCallback((opts: confetti.Options) => {

@@ -61,10 +61,11 @@ type Props = {
   saleStartSec: number;
   deadlineSec: number;
   nowSec: number;
-  initialMinBuy: bigint;
-  growthRateWad: bigint;
-  basePriceWad: bigint;
-  dailyIncrementWad: bigint;
+  /** Base-10 integer strings — avoids `BigInt` in React props (React 19 dev `JSON.stringify` on props). */
+  initialMinBuy: string;
+  growthRateWad: string;
+  basePriceWad: string;
+  dailyIncrementWad: string;
   decimals: number;
 };
 
@@ -79,6 +80,24 @@ export function TimeCurveLiveCharts({
   dailyIncrementWad,
   decimals,
 }: Props) {
+  const parsedWad = useMemo(() => {
+    try {
+      return {
+        initialMinBuy: BigInt(initialMinBuy),
+        growthRateWad: BigInt(growthRateWad),
+        basePriceWad: BigInt(basePriceWad),
+        dailyIncrementWad: BigInt(dailyIncrementWad),
+      };
+    } catch {
+      return null;
+    }
+  }, [initialMinBuy, growthRateWad, basePriceWad, dailyIncrementWad]);
+
+  const ib = parsedWad?.initialMinBuy ?? 0n;
+  const gr = parsedWad?.growthRateWad ?? 0n;
+  const bp = parsedWad?.basePriceWad ?? 0n;
+  const di = parsedWad?.dailyIncrementWad ?? 0n;
+
   /** Sale-relative time for math (matches on-chain elapsed, capped at sale end). */
   const saleDurationSec = Math.max(0, deadlineSec - saleStartSec);
   const chartNowSec = Math.min(Math.max(nowSec, saleStartSec), deadlineSec);
@@ -87,37 +106,13 @@ export function TimeCurveLiveCharts({
 
   const axisMaxElapsed = useMemo(() => elapsedChartAxisMaxSeconds(elapsedLive), [elapsedLive]);
 
-  const livePrice = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedLive);
-  const liveMinGross = displayMinGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    elapsedLive,
-  );
-  const liveMaxGross = maxGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    elapsedLive,
-  );
+  const livePrice = linearPriceWadFloat(bp, di, elapsedLive);
+  const liveMinGross = displayMinGrossSpendAtFloat(ib, gr, bp, di, elapsedLive);
+  const liveMaxGross = maxGrossSpendAtFloat(ib, gr, bp, di, elapsedLive);
 
-  const startPrice = linearPriceWadFloat(basePriceWad, dailyIncrementWad, 0);
-  const startMinGross = displayMinGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    0,
-  );
-  const startMaxGross = maxGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    0,
-  );
+  const startPrice = linearPriceWadFloat(bp, di, 0);
+  const startMinGross = displayMinGrossSpendAtFloat(ib, gr, bp, di, 0);
+  const startMaxGross = maxGrossSpendAtFloat(ib, gr, bp, di, 0);
 
   const priceHumanLive = toHuman(livePrice, 18);
   const minHumanLive = toHuman(liveMinGross, decimals);
@@ -129,21 +124,9 @@ export function TimeCurveLiveCharts({
   /** Elapsed time at the chart’s right edge — same formulas as contracts, evaluated through the full plotted window. */
   const chartEndElapsed = axisMaxElapsed;
 
-  const endPriceWadForDomain = linearPriceWadFloat(basePriceWad, dailyIncrementWad, chartEndElapsed);
-  const endMinGrossForDomain = displayMinGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    chartEndElapsed,
-  );
-  const endMaxGrossForDomain = maxGrossSpendAtFloat(
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    chartEndElapsed,
-  );
+  const endPriceWadForDomain = linearPriceWadFloat(bp, di, chartEndElapsed);
+  const endMinGrossForDomain = displayMinGrossSpendAtFloat(ib, gr, bp, di, chartEndElapsed);
+  const endMaxGrossForDomain = maxGrossSpendAtFloat(ib, gr, bp, di, chartEndElapsed);
 
   const priceYAxisMax = toHuman(endPriceWadForDomain, 18);
   const endMinHuman = toHuman(endMinGrossForDomain, decimals);
@@ -159,21 +142,9 @@ export function TimeCurveLiveCharts({
     const out: Point[] = [];
     for (let i = 0; i < CHART_SAMPLES; i += 1) {
       const elapsedSinceLaunch = (span * i) / (CHART_SAMPLES - 1);
-      const p = linearPriceWadFloat(basePriceWad, dailyIncrementWad, elapsedSinceLaunch);
-      const mn = displayMinGrossSpendAtFloat(
-        initialMinBuy,
-        growthRateWad,
-        basePriceWad,
-        dailyIncrementWad,
-        elapsedSinceLaunch,
-      );
-      const mx = maxGrossSpendAtFloat(
-        initialMinBuy,
-        growthRateWad,
-        basePriceWad,
-        dailyIncrementWad,
-        elapsedSinceLaunch,
-      );
+      const p = linearPriceWadFloat(bp, di, elapsedSinceLaunch);
+      const mn = displayMinGrossSpendAtFloat(ib, gr, bp, di, elapsedSinceLaunch);
+      const mx = maxGrossSpendAtFloat(ib, gr, bp, di, elapsedSinceLaunch);
       out.push({
         elapsedSinceLaunch,
         priceHuman: toHuman(p, 18),
@@ -182,16 +153,9 @@ export function TimeCurveLiveCharts({
       });
     }
     return out;
-  }, [
-    axisMaxElapsed,
-    initialMinBuy,
-    growthRateWad,
-    basePriceWad,
-    dailyIncrementWad,
-    decimals,
-  ]);
+  }, [axisMaxElapsed, ib, gr, bp, di, decimals]);
 
-  if (!saleActive) {
+  if (!saleActive || !parsedWad) {
     return null;
   }
 

@@ -27,8 +27,9 @@ function TimeCurveRouteFallback() {
 }
 
 /**
- * One `timecurve/:segment` route so `arena` / `protocol` are not shadowed by a
- * generic param segment (issue #43). Any other segment renders the simple sale view.
+ * `timecurve/:segment` for referral-style slugs and any path not covered by
+ * static `timecurve`, `timecurve/arena`, or `timecurve/protocol` in `LaunchGate`.
+ * Unknown segments render the simple sale view (issue #43).
  */
 export function TimeCurveBranchPage() {
   const { timecurveSegment } = useParams<{ timecurveSegment: string }>();
