@@ -55,15 +55,29 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
   const [isBusy, setIsBusy] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState<number | undefined>(undefined);
   const [chainNowSec, setChainNowSec] = useState<number | undefined>(undefined);
-  const [currentWallclockSec, setCurrentWallclockSec] = useState(Math.floor(Date.now() / 1000));
 
   const skewWallMinusChainRef = useRef<number | null>(null);
+  const heroTimerRef = useRef<HeroTimerState | null>(null);
+  heroTimerRef.current = heroTimer;
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentWallclockSec(Math.floor(Date.now() / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
+  /** Recompute from latest indexer snapshot + wall clock (never rely on a separate "tick" state that can desync). */
+  const recomputeCountdown = useCallback(() => {
+    const ht = heroTimerRef.current;
+    if (!ht || !Number.isFinite(ht.deadlineSec)) {
+      setSecondsRemaining(undefined);
+      setChainNowSec(undefined);
+      return;
+    }
+    const skew = skewWallMinusChainRef.current;
+    if (skew == null || !Number.isFinite(skew)) {
+      setSecondsRemaining(undefined);
+      setChainNowSec(undefined);
+      return;
+    }
+    const wallSec = Math.floor(Date.now() / 1000);
+    const chainNow = wallSec - skew;
+    setChainNowSec(chainNow);
+    setSecondsRemaining(Math.max(0, Math.floor(ht.deadlineSec - chainNow)));
   }, []);
 
   const loadSnapshot = useCallback(
@@ -105,28 +119,18 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
   }, [timeCurveAddress, loadSnapshot]);
 
   useEffect(() => {
-    if (!heroTimer) {
+    recomputeCountdown();
+  }, [heroTimer, recomputeCountdown]);
+
+  useEffect(() => {
+    if (!timeCurveAddress) {
       setSecondsRemaining(undefined);
       setChainNowSec(undefined);
       return;
     }
-
-    const skew = skewWallMinusChainRef.current;
-    if (skew == null || !Number.isFinite(skew)) {
-      setSecondsRemaining(undefined);
-      setChainNowSec(undefined);
-      return;
-    }
-
-    if (!Number.isFinite(heroTimer.deadlineSec)) {
-      return;
-    }
-
-    const chainNow = currentWallclockSec - skew;
-    setChainNowSec(chainNow);
-    const next = Math.max(0, Math.floor(heroTimer.deadlineSec - chainNow));
-    setSecondsRemaining(next);
-  }, [heroTimer, currentWallclockSec]);
+    const id = window.setInterval(recomputeCountdown, 1000);
+    return () => window.clearInterval(id);
+  }, [timeCurveAddress, recomputeCountdown]);
 
   return {
     heroTimer,

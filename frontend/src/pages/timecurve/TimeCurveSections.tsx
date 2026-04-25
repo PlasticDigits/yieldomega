@@ -40,16 +40,27 @@ function WarbowPendingFlagChainPanel(props: {
   readsReady: boolean;
   saleActive: boolean;
   owner: `0x${string}` | undefined;
-  plantAtSec: bigint;
-  silenceSec: bigint;
+  /** Base-10 seconds (string avoids `BigInt` in React props for dev serialization). */
+  plantAtSec: string;
+  silenceSec: string;
   ledgerSecInt: number;
   viewer: string | undefined;
   formatWallet: WalletFormatShort;
 }) {
-  const { readsReady, saleActive, owner, plantAtSec, silenceSec, ledgerSecInt, viewer, formatWallet } = props;
+  const { readsReady, saleActive, owner, plantAtSec: plantAtSecStr, silenceSec: silenceSecStr, ledgerSecInt, viewer, formatWallet } =
+    props;
 
   if (!readsReady || owner === undefined) {
     return <StatusMessage variant="loading">Loading pending WarBow flag from chain…</StatusMessage>;
+  }
+
+  let plantAtSec: bigint;
+  let silenceSec: bigint;
+  try {
+    plantAtSec = BigInt(plantAtSecStr);
+    silenceSec = BigInt(silenceSecStr);
+  } catch {
+    return <StatusMessage variant="error">Invalid flag timing reads from chain.</StatusMessage>;
   }
 
   const hasPending = owner !== ZERO_ADDR && plantAtSec > 0n;
@@ -229,7 +240,7 @@ export function WarbowSection(props: {
   warbowFlagClaimBp: string;
   warbowPendingFlagReadsReady: boolean;
   warbowPendingFlagOwner: `0x${string}` | undefined;
-  warbowPendingFlagPlantAtSec: bigint;
+  warbowPendingFlagPlantAtSec: string;
   ledgerSecInt: number;
   formatWallet: WalletFormatShort;
   isConnected: boolean;
@@ -347,7 +358,7 @@ export function WarbowSection(props: {
         saleActive={saleActive}
         owner={warbowPendingFlagOwner}
         plantAtSec={warbowPendingFlagPlantAtSec}
-        silenceSec={BigInt(warbowFlagSilenceSec)}
+        silenceSec={warbowFlagSilenceSec}
         ledgerSecInt={ledgerSecInt}
         viewer={address}
         formatWallet={formatWallet}

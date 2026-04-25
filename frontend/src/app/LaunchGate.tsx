@@ -25,6 +25,11 @@ const TimeCurveBranchPage = lazyPage(
   () => import("@/pages/TimeCurveBranchPage"),
   "TimeCurveBranchPage",
 );
+const TimeCurvePage = lazyPage(() => import("@/pages/TimeCurvePage"), "TimeCurvePage");
+const TimeCurveProtocolPage = lazyPage(
+  () => import("@/pages/TimeCurveProtocolPage"),
+  "TimeCurveProtocolPage",
+);
 const RabbitTreasuryPage = lazyPage(
   () => import("@/pages/RabbitTreasuryPage"),
   "RabbitTreasuryPage",
@@ -51,8 +56,12 @@ const SECONDARY_ROUTES: Surface[] = [
  * → Simple handoff feels gentle.
  */
 const TIMECURVE_ROUTES: Surface[] = [
-  { path: "timecurve/:timecurveSegment", element: <TimeCurveBranchPage /> },
+  // Explicit arena/protocol before `timecurve/:segment` so `/timecurve` and
+  // `/timecurve/arena` never compete ambiguously with a param-only match (fixes dead subnav).
+  { path: "timecurve/arena", element: <TimeCurvePage /> },
+  { path: "timecurve/protocol", element: <TimeCurveProtocolPage /> },
   { path: "timecurve", element: <TimeCurveSimplePage /> },
+  { path: "timecurve/:timecurveSegment", element: <TimeCurveBranchPage /> },
 ];
 
 const ROUTES_NO_ENV: Surface[] = [

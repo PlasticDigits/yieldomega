@@ -10,7 +10,7 @@ The layout was reorganized as part of [`docs/agent-phases.md` Phase 13 — Front
 
 - **Path stability:** treat `/art/<purpose>/<name>.<ext>` as a public ABI for the frontend. If you rename, run `rg "/art/" frontend/` and update every consumer plus this README.
 - **AGPL artwork:** new generated drops default to AGPL-3.0 alongside the rest of the repo (see [`LICENSE`](../../../LICENSE) and [`docs/licensing.md`](../../../docs/licensing.md)). Reference inputs that originate from upstream packs keep their upstream license — check `scripts/replicate-art/` history.
-- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), and [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
+- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack), and [`cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py) (CSS cursor-name pack with MDN reference inputs). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
 - **`/art/` in code:** all current consumers live in `frontend/src/`, `frontend/index.html`, and `frontend/vite.config.ts`. Search with `rg "/art/" frontend/`.
 
 ---
@@ -101,22 +101,20 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 
 ### `cursors/`
 
-Custom mouse pointers that are wired through CSS (`cursor: url('/art/cursors/<name>.png') <hotspot-x> <hotspot-y>, <fallback>;`). Hotspots are documented per asset to avoid sub-pixel drift between cursor frames.
+Custom mouse pointers wired through CSS (`cursor: url('/art/cursors/<name>.png') <hotspot-x> <hotspot-y>, <fallback>;`). This folder intentionally contains only the canonical cursor names below; do not add legacy aliases or experimental variants here.
 
 | Slug                | Hotspot       | Used in                                                    | Fallback when blocked / on mobile |
 |---------------------|---------------|------------------------------------------------------------|-----------------------------------|
-| `primary-cta.png`   | top-left (0, 0) | `.btn-primary--priority` in [`index.css`](../../src/index.css) (HomePage CTA, TimeCurve Buy CHARM) | `pointer` |
-| `danger-pvp.png`    | center (16, 16) | WarBow steal/flag controls in [`index.css`](../../src/index.css) (`.timecurve-warbow-card--danger`) | `pointer` (no prank cursors on irreversible actions) |
-| `slider-grab.png`   | center (16, 16) | TimeCurve Simple slider thumb (`.timecurve-simple__slider`) — desktop only via `@media (hover: hover)` | `grab` / `grabbing` |
-| `default-pointer.png` | (4, 4) | `body` idle cursor in [`index.css`](../../src/index.css) | `auto` |
-| `text-caret.png`    | (8, 12) | Text-ish controls: `input[type=text|search|number]`, `textarea` in [`index.css`](../../src/index.css) | `text` |
-| `disabled.png`      | (4, 4) | `.btn-primary:disabled` in [`index.css`](../../src/index.css) | `not-allowed` |
-| `external-link.png` | (4, 2) | `.ui-badge--external`, `.cursor-external-link` in [`index.css`](../../src/index.css); [`ThirdPartyDexPage.tsx`](../../src/components/ThirdPartyDexPage.tsx); outbound [`TxHash.tsx`](../../src/components/TxHash.tsx) | `pointer` |
-| `link-pointer.png`  | ~(6, 4) | Nav, brand, secondary buttons, wallet chrome, accordions, live-buy rows, etc. in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `pointer` |
-| `loading.png`       | (12, 12) | `.loading-state`, `.modal-bc-more__btn:disabled`, `[aria-busy="true"]` deadline read in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `wait` |
-| `cancel.png`        | (12, 12) | `.modal-panel__close` in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `pointer` |
-| `copy.png`          | ~(8, 8) | `.cursor-copy` (e.g. [`ReferralRegisterSection.tsx`](../../src/pages/referrals/ReferralRegisterSection.tsx)) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `copy` |
-| `help.png`          | (12, 12) | `.cursor-help` utility in [`index.css`](../../src/index.css) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60)) | `help` |
+| `default.png`       | (4, 4) | Idle/default cursor and `.cursor-default` in [`index.css`](../../src/index.css) | `auto` |
+| `pointer.png`       | (10, 2) | Links, buttons, primary CTA, external/cancel/copy utilities, and generic clickable states in [`index.css`](../../src/index.css) | `pointer` |
+| `grab.png`          | center (16, 16) | `input[type=range]`, `.cursor-grab`, legacy `.cursor-slider-grab` utility in [`index.css`](../../src/index.css) | `grab` |
+| `grabbing.png`      | center (16, 16) | Active range sliders, `.cursor-grabbing`, active grab utilities in [`index.css`](../../src/index.css) | `grabbing` |
+| `wait.png`          | center (16, 16) | Blocking wait states: `.loading-state`, `.cursor-wait` in [`index.css`](../../src/index.css) | `wait` |
+| `context-menu.png`  | (6, 5) | `.cursor-context-menu` utility in [`index.css`](../../src/index.css) | `context-menu` |
+| `help.png`          | center (16, 16) | `.cursor-help` utility in [`index.css`](../../src/index.css) | `help` |
+| `progress.png`      | (6, 5) | `[aria-busy=true]`, deadline refresh text, `.cursor-progress`, `.cursor-loading` in [`index.css`](../../src/index.css) | `progress` |
+| `text.png`          | center (16, 16) | Text controls and `.cursor-text` in [`index.css`](../../src/index.css) | `text` |
+| `not-allowed.png`   | center (16, 16) | Disabled controls and `.cursor-not-allowed` in [`index.css`](../../src/index.css) | `not-allowed` |
 
 ### `social/`
 
@@ -193,7 +191,7 @@ Some assets are still at the top level either because they are **shared by many 
 - **Issue #44 — Design pass:** [gitlab.com/PlasticDigits/yieldomega/-/issues/44](https://gitlab.com/PlasticDigits/yieldomega/-/issues/44)
 - **Issue #45 — Asset backlog:** [gitlab.com/PlasticDigits/yieldomega/-/issues/45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45)
 - **Issue #45 catalog (historic):** [`issue45/README.md`](./issue45/README.md)
-- **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py), [`scripts/replicate-art/issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py)
+- **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py), [`scripts/replicate-art/issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py), [`scripts/replicate-art/cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py)
 - **Frontend design doc:** [`docs/frontend/design.md`](../../../docs/frontend/design.md)
 - **TimeCurve view contract:** [`docs/frontend/timecurve-views.md`](../../../docs/frontend/timecurve-views.md)
 - **Missing assets brief:** [`docs/frontend/missing-art-assets.md`](../../../docs/frontend/missing-art-assets.md)

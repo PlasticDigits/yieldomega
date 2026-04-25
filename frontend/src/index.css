@@ -192,15 +192,33 @@ body {
   min-height: 100vh;
   background: transparent;
   color: var(--text-main);
-  /* Issue #57 default idle cursor (falls back to OS pointer on mobile / blocked image cursors). */
-  cursor: url("/art/cursors/default-pointer.png") 4 4, auto;
+  /* Custom bitmap cursors are kept <=32px so browsers accept them reliably. */
+  cursor: url("/art/cursors/default.png") 4 4, auto;
 }
 
 input[type="text"],
 input[type="search"],
 input[type="number"],
 textarea {
-  cursor: url("/art/cursors/text-caret.png") 8 12, text;
+  cursor: url("/art/cursors/text.png") 16 16, text;
+}
+
+a[href],
+button:not(:disabled):not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]):not([data-disabled]),
+summary {
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+[data-disabled],
+.is-disabled {
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+}
+
+[aria-busy="true"] {
+  cursor: url("/art/cursors/progress.png") 6 5, progress;
 }
 
 #root {
@@ -291,7 +309,7 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-shadow: 1px 2px 0 var(--line);
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease,
@@ -341,7 +359,7 @@ textarea {
   color: var(--text-main);
   text-decoration: none;
   font-weight: 700;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
@@ -414,7 +432,7 @@ textarea {
   font-weight: 800;
   letter-spacing: 0.01em;
   background: #fff;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
@@ -713,7 +731,7 @@ textarea {
 .ui-badge--external {
   background: linear-gradient(180deg, #bfe9ff, var(--arcade-sky));
   color: var(--text-main);
-  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 .ui-badge--warning {
@@ -1233,7 +1251,7 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   list-style: none;
 }
 
@@ -1585,7 +1603,7 @@ textarea {
   border-radius: 1rem;
   background: rgba(255, 255, 255, 0.7);
   box-shadow: 4px 4px 0 var(--line);
-  cursor: url("/art/cursors/loading.png") 12 12, wait;
+  cursor: url("/art/cursors/wait.png") 16 16, wait;
 }
 
 .loading-state img {
@@ -1690,11 +1708,11 @@ textarea {
 .app-footer a {
   color: var(--arcade-green-800);
   font-weight: 700;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 .app-footer a[target="_blank"] {
-  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 .footer-link-pill {
@@ -1807,7 +1825,7 @@ textarea {
 .card-list a {
   font-weight: 700;
   color: var(--arcade-green-800);
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 .card-list a:hover {
@@ -2110,9 +2128,7 @@ textarea {
   border-radius: 999px;
   background: linear-gradient(180deg, #1a5c3a, var(--arcade-green-900));
   color: #fff;
-  /* Issue #45 custom cursor; falls back to native pointer on browsers
-   * that drop image cursors (e.g. mobile, restricted contexts). */
-  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   box-shadow: 6px 6px 0 var(--line);
   text-shadow: 0 1px 0 var(--line);
   text-decoration: none;
@@ -2137,7 +2153,7 @@ textarea {
 
 .btn-primary:disabled {
   opacity: 0.65;
-  cursor: url("/art/cursors/disabled.png") 4 4, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
 }
 
 .btn-primary:active:not(:disabled) {
@@ -2157,7 +2173,7 @@ textarea {
   border-radius: 999px;
   background: linear-gradient(180deg, #fff, var(--bg-cream));
   color: var(--text-main);
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   box-shadow: 4px 4px 0 var(--line);
   transition:
     transform 140ms ease,
@@ -2184,7 +2200,7 @@ textarea {
   background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
   animation: priority-bounce 3.35s var(--motion-bounce) infinite;
   /* PvP / WarBow danger surface — issue #45 danger cursor on hover. */
-  cursor: url("/art/cursors/danger-pvp.png") 6 2, crosshair;
+  cursor: url("/art/cursors/pointer.png") 10 2, crosshair;
 }
 
 .timecurve-action-row {
@@ -2602,6 +2618,247 @@ code {
   text-align: left;
 }
 
+/* Arena: Simple-style buy (left) · timer + live feed + CTA (right rail) */
+.timer-hero__split--arena-hub {
+  grid-template-columns: minmax(14rem, 1.1fr) minmax(12rem, 0.9fr);
+  align-items: stretch;
+}
+
+.timer-hero__arena-buy {
+  min-width: 0;
+}
+
+.timer-hero__arena-buy .timecurve-panel--action {
+  margin-bottom: 0;
+}
+
+.timecurve-arena-buy-panel.data-panel {
+  isolation: isolate;
+  overflow: hidden;
+  padding-right: clamp(1.1rem, 4vw, 2rem);
+  border: 4px solid var(--arcade-gold-600);
+  border-radius: 1.5rem;
+  background:
+    var(--panel-gloss),
+    radial-gradient(circle at 88% 4%, rgba(255, 229, 102, 0.55), transparent 24%),
+    radial-gradient(circle at 6% 8%, rgba(58, 227, 157, 0.22), transparent 24%),
+    linear-gradient(180deg, #fff7d8 0%, #ffe8a8 48%, #fffaf0 100%);
+  box-shadow:
+    6px 6px 0 var(--arcade-gold-600),
+    var(--shadow-soft),
+    inset 0 0 24px rgba(212, 160, 18, 0.08);
+}
+
+.timecurve-arena-buy-panel.data-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    linear-gradient(90deg, rgba(255, 247, 216, 0.86), rgba(255, 247, 216, 0.72) 46%, rgba(255, 247, 216, 0.3)),
+    url("/art/scenes/timecurve-arena.jpg");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.timecurve-arena-buy-panel.data-panel::after {
+  display: none;
+}
+
+.timecurve-arena-buy-panel > :not(.panel-cutout) {
+  position: relative;
+  z-index: 2;
+}
+
+.timecurve-arena-buy-panel .section-heading h2 {
+  color: var(--arcade-green-900);
+  text-shadow: 2px 3px 0 rgba(255, 255, 255, 0.62);
+}
+
+.panel-cutout--arena-buy-mascot {
+  z-index: 1;
+  right: -1.15rem;
+  bottom: -0.85rem;
+  width: clamp(6.5rem, 15vw, 9.25rem);
+  height: auto;
+  opacity: 0.95;
+  filter: drop-shadow(4px 6px 0 rgba(35, 24, 8, 0.2));
+}
+
+.timecurve-arena-buy-panel__conversion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 0.8rem;
+  padding: 0.42rem 0.65rem;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #123a22, #0b2416);
+  box-shadow: 4px 4px 0 var(--line);
+  color: #fff7d6;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timecurve-arena-buy-panel__conversion-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.timecurve-arena-buy-panel__conversion-token img {
+  width: 1.55rem;
+  height: 1.55rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5));
+}
+
+.timecurve-arena-buy-panel__conversion-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: var(--arcade-gold-400);
+  color: var(--arcade-green-900);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.16);
+}
+
+.timer-hero__arena-buy .timecurve-simple__rate-board {
+  border-width: 4px;
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(255, 255, 255, 0.76), transparent 34%),
+    linear-gradient(180deg, #ffefae 0%, #fff7d8 58%, #ffffff 100%);
+  box-shadow:
+    6px 6px 0 var(--line),
+    inset 0 -3px 0 rgba(212, 160, 18, 0.12);
+}
+
+.timer-hero__arena-buy .timecurve-simple__rate-value--hero {
+  font-size: clamp(2.05rem, 5vw, 3.25rem);
+}
+
+.timecurve-arena-buy-panel__checkout {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.9rem 0 1rem;
+  padding: 0.9rem;
+  border: 3px solid var(--line);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(58, 227, 157, 0.18), transparent 30%),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.timecurve-arena-buy-panel__checkout-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 2px dashed rgba(11, 31, 20, 0.22);
+}
+
+.timecurve-arena-buy-panel__checkout-head img {
+  width: 1.65rem;
+  height: 1.65rem;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+
+.timecurve-arena-buy-panel__checkout-head span,
+.timecurve-arena-buy-panel__strategy-head h3 {
+  display: block;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(11, 31, 20, 0.68);
+}
+
+.timecurve-arena-buy-panel__checkout-head strong {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  color: var(--arcade-green-900);
+}
+
+.timecurve-arena-buy-panel__strategy {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 2px dashed rgba(11, 31, 20, 0.28);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.timecurve-arena-buy-panel__strategy-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.timecurve-arena-buy-panel__strategy-head img {
+  width: 1.35rem;
+  height: 1.35rem;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+
+.timecurve-arena-buy-panel__strategy-head p {
+  margin: 0.12rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.timecurve-arena-buy-panel__strategy .timecurve-action-highlights {
+  margin: 0;
+}
+
+.timecurve-arena-buy-panel__strategy .stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+}
+
+@media (max-width: 720px) {
+  .panel-cutout--arena-buy-mascot {
+    display: none;
+  }
+
+  .timecurve-arena-buy-panel__conversion {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.timer-hero__arena-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.timer-hero__buy-now {
+  text-align: center;
+}
+
+.timer-hero__buy-now .status-message {
+  text-align: left;
+}
+
 .timer-hero__clock-stack {
   text-align: center;
   min-width: 0;
@@ -2642,7 +2899,7 @@ code {
   border: 2px solid rgba(255, 255, 255, 0.35);
   background: rgba(0, 0, 0, 0.25);
   color: #fde68a;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   font-family: inherit;
 }
 
@@ -2719,7 +2976,7 @@ code {
   padding: 0;
   margin: 0;
   color: inherit;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   text-align: left;
   font: inherit;
 }
@@ -2974,6 +3231,10 @@ code {
   .timer-hero__split {
     grid-template-columns: 1fr;
   }
+
+  .timer-hero__split--arena-hub {
+    grid-template-columns: 1fr;
+  }
 }
 .timer-hero__label {
   font-size: 0.875rem;
@@ -3029,7 +3290,7 @@ code {
 }
 
 .timer-hero__subtext--deadline-read[aria-busy="true"] {
-  cursor: url("/art/cursors/loading.png") 12 12, wait;
+  cursor: url("/art/cursors/progress.png") 6 5, progress;
 }
 
 .timer-hero__deadline-read-stack {
@@ -3090,7 +3351,7 @@ code {
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.2);
   color: #a8d5b8;
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   line-height: 0;
   transition:
     background 0.15s ease,
@@ -3319,7 +3580,7 @@ code {
   width: 2rem;
   height: 2rem;
   border-radius: 0.4rem;
-  cursor: url("/art/cursors/cancel.png") 12 12, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   font-weight: 800;
 }
 
@@ -3403,12 +3664,12 @@ code {
   border-radius: 0.45rem;
   border: 2px solid var(--line);
   background: var(--bg-yellow);
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 .modal-bc-more__btn:disabled {
   opacity: 0.55;
-  cursor: url("/art/cursors/loading.png") 12 12, wait;
+  cursor: url("/art/cursors/wait.png") 16 16, wait;
 }
 
 .modal-bc-list .live-buy-row--modal {
@@ -4996,7 +5257,7 @@ code {
 }
 
 .timecurve-simple__advanced-summary {
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   font-weight: 700;
   font-size: 0.9rem;
   letter-spacing: 0.04em;
@@ -5296,57 +5557,75 @@ code {
   mix-blend-mode: multiply;
 }
 
-/* Custom cursors from issue #45 — applied via utility class so any
- * interactive element can opt in. The bitmap is 32px so we keep
- * size/hot-spot consistent. Browsers reject cursors >128px. */
+/* Custom cursor utilities. Production cursor PNGs are normalized to 32px with transparent backgrounds. */
+.cursor-default {
+  cursor: url("/art/cursors/default.png") 4 4, auto;
+}
 .cursor-primary-cta {
-  cursor: url("/art/cursors/primary-cta.png") 4 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 .cursor-danger-pvp {
-  cursor: url("/art/cursors/danger-pvp.png") 6 2, crosshair;
+  cursor: url("/art/cursors/pointer.png") 10 2, crosshair;
 }
+.cursor-grab,
 .cursor-slider-grab {
-  cursor: url("/art/cursors/slider-grab.png") 8 8, grab;
+  cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
+.cursor-grabbing,
+.cursor-grab:active,
 .cursor-slider-grab:active {
-  cursor: url("/art/cursors/slider-grab.png") 8 8, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
 }
 
-/* Apply slider-grab cursor to all native range sliders so the
- * TimeCurve buy slider on Simple/Arena gets the issue #45 hand. */
+/* Apply grab cursors to native range sliders used by buy controls. */
 input[type="range"] {
-  cursor: url("/art/cursors/slider-grab.png") 8 8, grab;
+  cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 input[type="range"]:active {
-  cursor: url("/art/cursors/slider-grab.png") 8 8, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
 }
 
 /* Outbound links that leave the dapp (issue #57). Pair with `rel` + target on anchors. */
 .cursor-external-link {
-  cursor: url("/art/cursors/external-link.png") 4 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 /* Issue #60 — additional cursor roles (see GitLab #60 + art/README § cursors). */
 .cursor-link {
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 .cursor-loading {
-  cursor: url("/art/cursors/loading.png") 12 12, wait;
+  cursor: url("/art/cursors/progress.png") 6 5, progress;
+}
+.cursor-wait {
+  cursor: url("/art/cursors/wait.png") 16 16, wait;
+}
+.cursor-progress {
+  cursor: url("/art/cursors/progress.png") 6 5, progress;
+}
+.cursor-text {
+  cursor: url("/art/cursors/text.png") 16 16, text;
+}
+.cursor-not-allowed {
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+}
+.cursor-context-menu {
+  cursor: url("/art/cursors/context-menu.png") 6 5, context-menu;
 }
 .cursor-cancel {
-  cursor: url("/art/cursors/cancel.png") 12 12, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 .cursor-copy {
-  cursor: url("/art/cursors/copy.png") 8 8, copy;
+  cursor: url("/art/cursors/pointer.png") 10 2, copy;
 }
 .cursor-help {
-  cursor: url("/art/cursors/help.png") 12 12, help;
+  cursor: url("/art/cursors/help.png") 16 16, help;
 }
 
 /* RainbowKit modal / account chrome — keep same affordances as in-app links. */
 [data-rk] button:not(:disabled):not([aria-disabled="true"]),
 [data-rk] [role="button"]:not([aria-disabled="true"]):not([data-disabled]) {
-  cursor: url("/art/cursors/link-pointer.png") 6 4, pointer;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
