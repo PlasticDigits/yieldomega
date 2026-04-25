@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type CSSProperties } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { formatUnits } from "viem";
@@ -15,10 +15,6 @@ import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
-import {
-  doubPerCharmAtLaunchWad,
-  participantLaunchValueCl8yWei,
-} from "@/lib/timeCurvePodiumMath";
 import {
   serializeContractRead,
   type SerializableContractRead,
@@ -43,74 +39,43 @@ import { normalizeReferralCode } from "@/lib/referralCode";
 import { formatPodiumLeaderboardValue } from "./arenaPageHelpers";
 import { useTimeCurveArenaModel } from "./useTimeCurveArenaModel";
 
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
 export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
   const {
     activeStreakR, address, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyCooldownSecR,
-    buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen, buyPanelHighlights,
+    buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen,
     buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag, charmWadSelected,
     charmWeightR, cl8ySpendBounds, claimHint, claims, claimsNote, confettiGuide, coreTcData,
     dailyIncWadR, deadline, deadlineSec, decimals, detailBuy, distributeHint, effectiveLedgerSec,
     ended, estimatedSpend, expectedTokenFromCharms, flagOwnerAddr, flagPlantAtSec,
-    flagSilenceEndSec, formatWallet, gasBuy, gasBuyIssue, gasClaim, gasDistribute, gasWarbowFlag,
+    flagSilenceEndSec, formatWallet, gasBuyIssue, gasClaim, gasDistribute, gasWarbowFlag,
     gasWarbowGuard, gasWarbowRevenge, gasWarbowSteal, growthRateWadR, guardUntilSec, guardedActive,
     handleBuy, handleLoadMoreBuys, hasRevengeOpen, heroTimer, heroTimerBusy, iHoldPlantFlag,
     indexerMismatch, indexerNote, initialMinBuyR, initialTimerSecR, isConnected, isError, isPending,
-    isWriting, latestBuyBpBreakdown, launchedDec, ledgerSecInt, liquidityAnchors, loadHeroTimer,
+    isWriting, launchedDec, ledgerSecInt, liquidityAnchors, loadHeroTimer,
     loadingMoreBuys, maxBuyAmount, minBuy, minSpendCurvePoints, onCl8ySpendInputBlur,
     onCl8ySpendSlider, openBuyListModal, pendingRef, pendingRevengeStealer, pricePerCharmR, podiumPayoutPreview,
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
-    prizeDist, prizePayouts, prizesDistributedR, refApplied, referralEachSideLabel,
+    prizeDist, prizePayouts, prizesDistributedR, refApplied,
     referralRegistryOn, revengeDeadlineSec, runVoid, runWarBowClaimFlag, runWarBowGuard,
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
     secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
     spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, tc,
-    timerAddedR, timerCapSec, timerCapSecR, timerExpiredAwaitingEnd, timerExtensionPreview,
-    timerExtensionSecR, timerNarrative, totalCharmWeightR, totalRaiseDisplay, totalRaised, totalTokensForSaleR,
+    timerAddedR, timerCapSecR, timerExpiredAwaitingEnd, timerExtensionPreview,
+    timerExtensionSecR, timerNarrative, totalRaiseDisplay, totalRaised, totalTokensForSaleR,
     useReferral, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCl8yBal, walletCooldownRemainingSec,
     warbowActionHint, warbowBypassBurnWad, warbowFeed, warbowFlagClaimBp, warbowFlagOwnerR,
-    warbowFlagPlantR, warbowFlagSilenceSec, warbowGuardBurnWad, warbowLeaderboardRows, warbowRevengeBurnWad,
-    warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowStealBurnWad, warbowTopRows,
+    warbowFlagPlantR, warbowFlagSilenceSec, warbowGuardBurnWad, warbowLeaderboardRows,
+    warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowTopRows,
     whatMattersNowCards
   } = props;
 
   const pricePerCharmWad =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
-  const totalTokensForSaleWad =
-    totalTokensForSaleR?.status === "success" ? (totalTokensForSaleR.result as bigint) : undefined;
-  const totalCharmWeightWadT =
-    totalCharmWeightR?.status === "success" ? (totalCharmWeightR.result as bigint) : undefined;
-  const launchCl8yPerCharmWei = useMemo(
-    () =>
-      pricePerCharmWad !== undefined
-        ? participantLaunchValueCl8yWei({ charmWeightWad: 10n ** 18n, pricePerCharmWad })
-        : undefined,
-    [pricePerCharmWad],
-  );
-  const doubPerCharmAtLaunch = useMemo(
-    () =>
-      totalTokensForSaleWad !== undefined &&
-      totalCharmWeightWadT !== undefined &&
-      totalCharmWeightWadT > 0n
-        ? doubPerCharmAtLaunchWad({
-            totalTokensForSaleWad,
-            totalCharmWeightWad: totalCharmWeightWadT,
-          })
-        : undefined,
-    [totalTokensForSaleWad, totalCharmWeightWadT],
-  );
-  const buyAddsCl8yAtLaunch = useMemo(
-    () =>
-      pricePerCharmWad !== undefined && charmWadSelected !== undefined
-        ? participantLaunchValueCl8yWei({
-            charmWeightWad: charmWadSelected,
-            pricePerCharmWad,
-          })
-        : undefined,
-    [charmWadSelected, pricePerCharmWad],
-  );
 
   function formatPriceFixed6(raw: bigint): string {
     const s = formatUnits(raw, 18);
@@ -125,6 +90,78 @@ export function TimeCurveArenaView() {
     priceTickKeyRef.current += 1;
   }
   const priceTickKey = priceTickKeyRef.current;
+
+  const buyProjectedEffects = useMemo(() => {
+    const items: string[] = [];
+    if (charmWadSelected !== undefined && charmWadSelected > 0n) {
+      items.push(`+${formatCompactFromRaw(charmWadSelected, 18, { sigfigs: 4 })} CHARM`);
+    }
+    if (estimatedSpend !== undefined && estimatedSpend > 0n) {
+      items.push(`${formatCompactFromRaw(estimatedSpend, decimals, { sigfigs: 4 })} CL8Y spend`);
+    }
+
+    if (secondsRemaining === undefined) {
+      items.push("Timer effect pending");
+    } else if (secondsRemaining < 780) {
+      items.push("Hard-reset timer toward 15m");
+    } else if (timerExtensionPreview !== undefined && timerExtensionPreview > 0) {
+      items.push(`+${formatLocaleInteger(timerExtensionPreview)}s timer`);
+    } else {
+      items.push("Timer at cap");
+    }
+
+    if (timerExtensionPreview !== undefined && timerExtensionPreview > 0) {
+      items.push(`+${formatLocaleInteger(timerExtensionPreview)}s time-booster credit`);
+    } else {
+      items.push("No time-booster credit");
+    }
+
+    const activeStreak =
+      activeStreakR?.status === "success" ? (activeStreakR.result as bigint) : undefined;
+    if (secondsRemaining !== undefined && secondsRemaining < 900) {
+      items.push(
+        activeStreak !== undefined && activeStreak > 0n
+          ? `Continue your streak (${formatLocaleInteger(activeStreak)} -> ${formatLocaleInteger(activeStreak + 1n)})`
+          : "Start or break defended streak",
+      );
+    } else {
+      items.push("No defended-streak change");
+    }
+
+    const hasPendingFlag =
+      flagOwnerAddr !== undefined &&
+      flagOwnerAddr.toLowerCase() !== ZERO_ADDR &&
+      flagPlantAtSec > 0n;
+    if (hasPendingFlag && iHoldPlantFlag) {
+      items.push("Refresh your pending flag");
+    } else if (hasPendingFlag && flagOwnerAddr !== undefined) {
+      items.push(`Replace ${formatWallet(flagOwnerAddr, "rival")}'s flag`);
+    } else {
+      items.push("Plant pending flag");
+    }
+
+    if (secondsRemaining !== undefined && secondsRemaining < 30) {
+      items.push("+250 BP + reset/clutch bonuses");
+    } else if (secondsRemaining !== undefined && secondsRemaining < 780) {
+      items.push("+250 BP + reset bonus");
+    } else {
+      items.push("+250 BP base");
+    }
+    items.push("Become latest buyer");
+
+    return items;
+  }, [
+    activeStreakR,
+    charmWadSelected,
+    decimals,
+    estimatedSpend,
+    flagOwnerAddr,
+    flagPlantAtSec,
+    formatWallet,
+    iHoldPlantFlag,
+    secondsRemaining,
+    timerExtensionPreview,
+  ]);
 
   if (!tc) {
     return (
@@ -288,31 +325,6 @@ export function TimeCurveArenaView() {
                           Ticks up every block — waiting costs CL8Y.
                         </span>
                       </div>
-                      <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
-                        <span className="timecurve-simple__rate-label">1 CHARM at launch</span>
-                        <div className="timecurve-simple__rate-pair">
-                          <span className="timecurve-simple__rate-pair-tile">
-                            <span className="timecurve-simple__rate-pair-value">
-                              {doubPerCharmAtLaunch !== undefined
-                                ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
-                                : "—"}
-                            </span>
-                            <span className="timecurve-simple__rate-pair-unit">DOUB</span>
-                          </span>
-                          <span className="timecurve-simple__rate-pair-equals" aria-hidden="true">
-                            =
-                          </span>
-                          <span className="timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--cl8y">
-                            <span className="timecurve-simple__rate-pair-value">
-                              {launchCl8yPerCharmWei !== undefined ? formatPriceFixed6(launchCl8yPerCharmWei) : "—"}
-                            </span>
-                            <span className="timecurve-simple__rate-pair-unit">CL8Y</span>
-                          </span>
-                        </div>
-                        <span className="timecurve-simple__rate-foot muted">
-                          1.2× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
-                        </span>
-                      </div>
                     </div>
                     <div className="timecurve-arena-buy-panel__checkout">
                       <div className="timecurve-arena-buy-panel__checkout-head">
@@ -322,429 +334,160 @@ export function TimeCurveArenaView() {
                           <strong>Mint CHARM before the next tick gets pricier.</strong>
                         </div>
                       </div>
-                    {!isConnected && (
-                      <div className="timecurve-simple__connect">
-                        <p className="timecurve-simple__connect-pitch">
-                          Connect a wallet to preview spend, mint CHARM, and run WarBow moves (steal, guard, revenge, flag)
-                          from this hub — same contract reads as the Simple page, with the full Arena stack underneath.
-                        </p>
-                        <WalletConnectButton />
-                      </div>
-                    )}
-                    {cl8ySpendBounds ? (
-                      <div className="timecurve-simple__minmax-row">
-                        <span className="timecurve-simple__minmax">
-                          Live band&nbsp;
-                          <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>&nbsp;–&nbsp;
-                          <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
-                          &nbsp;CL8Y
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="timecurve-simple__minmax-row">
-                        <span className="timecurve-simple__minmax">Loading live min – max…</span>
-                      </div>
-                    )}
-                    <div className="timecurve-cl8y-buy-controls">
-                      <div className="timecurve-cl8y-buy-controls__balance muted">
-                        Your CL8Y balance:{" "}
-                        {isConnected ? (
-                          walletCl8yBal !== undefined ? (
-                            <AmountDisplay raw={BigInt(walletCl8yBal as bigint).toString()} decimals={decimals} />
+                      {!isConnected && (
+                        <div className="timecurve-simple__connect">
+                          <p className="timecurve-simple__connect-pitch">
+                            Connect a wallet to choose spend, preview CHARM, and sign the buy.
+                          </p>
+                          <WalletConnectButton />
+                        </div>
+                      )}
+                      {cl8ySpendBounds ? (
+                        <div className="timecurve-simple__minmax-row">
+                          <span className="timecurve-simple__minmax">
+                            Live band&nbsp;
+                            <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>&nbsp;–&nbsp;
+                            <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
+                            &nbsp;CL8Y
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="timecurve-simple__minmax-row">
+                          <span className="timecurve-simple__minmax">Loading live min – max…</span>
+                        </div>
+                      )}
+                      <div className="timecurve-cl8y-buy-controls">
+                        <div className="timecurve-cl8y-buy-controls__balance muted">
+                          Your CL8Y balance:{" "}
+                          {isConnected ? (
+                            walletCl8yBal !== undefined ? (
+                              <AmountDisplay raw={BigInt(walletCl8yBal as bigint).toString()} decimals={decimals} />
+                            ) : (
+                              "—"
+                            )
                           ) : (
-                            "—"
-                          )
+                            <span className="muted">Connect to read balance</span>
+                          )}
+                        </div>
+                        {cl8ySpendBounds ? (
+                          <label className="form-label">
+                            CL8Y spend
+                            <input
+                              type="range"
+                              className="form-input"
+                              min={0}
+                              max={10000}
+                              step={1}
+                              value={spendSliderPermille}
+                              onChange={(e) => onCl8ySpendSlider(Number(e.target.value))}
+                              style={{ "--arena-buy-slider-fill": `${spendSliderPermille / 100}%` } as CSSProperties}
+                            />
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className="form-input"
+                              autoComplete="off"
+                              value={spendInputStr}
+                              onChange={(e) => setSpendInputStr(e.target.value)}
+                              onBlur={onCl8ySpendInputBlur}
+                              aria-label="CL8Y spend amount"
+                            />
+                          </label>
                         ) : (
-                          <span className="muted">Connect to read balance</span>
+                          <StatusMessage variant="muted">
+                            Waiting for onchain min/max spend reads and wallet CL8Y balance…
+                          </StatusMessage>
                         )}
                       </div>
-                      {cl8ySpendBounds ? (
-                        <label className="form-label">
-                          CL8Y spend (live min–max band, capped by balance)
-                          <input
-                            type="range"
-                            className="form-input"
-                            min={0}
-                            max={10000}
-                            step={1}
-                            value={spendSliderPermille}
-                            onChange={(e) => onCl8ySpendSlider(Number(e.target.value))}
-                            disabled={!isConnected}
-                          />
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            className="form-input"
-                            autoComplete="off"
-                            value={spendInputStr}
-                            onChange={(e) => setSpendInputStr(e.target.value)}
-                            onBlur={onCl8ySpendInputBlur}
-                            aria-label="CL8Y spend amount"
-                            disabled={!isConnected}
-                          />
-                          <span className="muted">
-                            Allowed band{" "}
-                            <AmountDisplay raw={cl8ySpendBounds.minS.toString()} decimals={decimals} /> —{" "}
-                            <AmountDisplay raw={cl8ySpendBounds.maxS.toString()} decimals={decimals} />
-                          </span>
-                        </label>
+                      {charmWadSelected !== undefined ? (
+                        <div className="timecurve-simple__buy-preview" data-testid="timecurve-arena-buy-preview">
+                          <div className="timecurve-simple__buy-preview-row">
+                            <span className="timecurve-simple__buy-preview-label">You add</span>
+                            <strong className="timecurve-simple__buy-preview-value">
+                              {formatCompactFromRaw(charmWadSelected, 18, { sigfigs: 4 })}
+                            </strong>
+                            <span className="timecurve-simple__buy-preview-unit">CHARM</span>
+                          </div>
+                        </div>
                       ) : (
+                        <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
+                          Loading CHARM preview…
+                        </div>
+                      )}
+                      <div className="timecurve-arena-buy-panel__future-option" aria-disabled="true">
+                        <label>
+                          <input type="checkbox" disabled /> Plant WarBow flag
+                        </label>
+                        <span>Coming soon. Current buys still plant automatically.</span>
+                      </div>
+                      {referralRegistryOn && pendingRef && (
+                        <details className="timecurve-arena-buy-panel__advanced">
+                          <summary>Advanced buy options</summary>
+                          <label className="form-label">
+                            <input
+                              type="checkbox"
+                              checked={useReferral}
+                              onChange={(e) => setUseReferral(e.target.checked)}
+                              disabled={!isConnected}
+                            />{" "}
+                            Apply referral <code>{normalizeReferralCode(pendingRef)}</code> from <code>?ref=</code>
+                          </label>
+                        </details>
+                      )}
+                      <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
+                        <div className="timecurve-arena-buy-panel__effects-title">
+                          <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
+                          Projected effects
+                        </div>
+                        <ul>
+                          {buyProjectedEffects.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      {buyFeeRoutingEnabled === false && (
                         <StatusMessage variant="muted">
-                          Waiting for onchain min/max spend reads and wallet CL8Y balance…
+                          Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.
                         </StatusMessage>
                       )}
-                    </div>
-                    {charmWadSelected !== undefined ? (
-                      <div className="timecurve-simple__buy-preview" data-testid="timecurve-arena-buy-preview">
-                        <div className="timecurve-simple__buy-preview-row">
-                          <span className="timecurve-simple__buy-preview-label">You add</span>
-                          <strong className="timecurve-simple__buy-preview-value">
-                            {formatCompactFromRaw(charmWadSelected, 18, { sigfigs: 4 })}
-                          </strong>
-                          <span className="timecurve-simple__buy-preview-unit">CHARM</span>
-                        </div>
-                        {buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n && (
-                          <div className="timecurve-simple__buy-preview-row timecurve-simple__buy-preview-row--launch">
-                            <span className="timecurve-simple__buy-preview-label">Worth at launch ≈</span>
-                            <strong className="timecurve-simple__buy-preview-value">
-                              {formatCompactFromRaw(buyAddsCl8yAtLaunch, decimals, { sigfigs: 4 })}
-                            </strong>
-                            <span className="timecurve-simple__buy-preview-unit">CL8Y</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
-                        Loading CHARM preview…
-                      </div>
-                    )}
-                    {buyFeeRoutingEnabled === false && (
-                      <StatusMessage variant="muted">
-                        Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.
-                      </StatusMessage>
-                    )}
-                    {isConnected && (
-                      <>
-                        <motion.button
-                          type="button"
-                          className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
-                          disabled={
-                            isWriting ||
-                            walletCooldownRemainingSec > 0 ||
-                            charmWadSelected === undefined ||
-                            charmWadSelected <= 0n ||
-                            !cl8ySpendBounds ||
-                            buyFeeRoutingEnabled === false
-                          }
-                          onClick={() => void handleBuy()}
-                          {...primaryButtonMotion}
-                        >
-                          <img
-                            className="timecurve-simple__cta-glyph"
-                            src="/art/icons/token-charm.png"
-                            alt=""
-                            aria-hidden="true"
-                            width={28}
-                            height={28}
-                            decoding="async"
-                          />
-                          <span className="timecurve-simple__cta-label">
-                            {isWriting ? "Confirm in wallet…" : "Buy CHARM"}
-                          </span>
-                        </motion.button>
-                        {walletCooldownRemainingSec > 0 && (
-                          <StatusMessage variant="muted">
-                            Buy cooldown · {formatCountdown(walletCooldownRemainingSec)} left
-                          </StatusMessage>
-                        )}
-                        {gasBuy !== undefined && (
-                          <StatusMessage variant="muted">
-                            Estimated gas for buy: ~{formatLocaleInteger(gasBuy)} units
-                          </StatusMessage>
-                        )}
-                        <StatusMessage variant={gasBuyIssue ? "error" : "muted"}>{buyPanelRisk}</StatusMessage>
-                      </>
-                    )}
-                    </div>
-                    <div className="timecurve-arena-buy-panel__strategy" aria-label="Arena effects of this buy">
-                      <div className="timecurve-arena-buy-panel__strategy-head">
-                        <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
-                        <div>
-                          <h3>What this buy can move</h3>
-                          <p>Every CHARM mint is also timer pressure, podium positioning, and WarBow fuel.</p>
-                        </div>
-                      </div>
-                    <ul className="accent-list timecurve-action-highlights">
-                      {buyPanelHighlights.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                    <div className="stats-grid">
-                      <StatCard
-                        label="Projected spend"
-                        value={
-                          estimatedSpend !== undefined ? (
-                            <AmountDisplay raw={estimatedSpend.toString()} decimals={decimals} />
-                          ) : (
-                            "—"
-                          )
-                        }
-                        meta="Gross CL8Y spend after live CHARM band clamp"
-                      />
-                      <StatCard
-                        label="Charm weight"
-                        value={
-                          charmWadSelected !== undefined ? (
-                            <AmountDisplay raw={charmWadSelected.toString()} decimals={18} />
-                          ) : (
-                            "—"
-                          )
-                        }
-                        meta={
-                          referralRegistryOn && pendingRef && useReferral
-                            ? `Referral active: ${normalizeReferralCode(pendingRef)}`
-                            : "Onchain CHARM amount (18-dec WAD)"
-                        }
-                      />
-                      <StatCard
-                        label="Timer swing"
-                        value={
-                          timerExtensionPreview !== undefined
-                            ? timerExtensionPreview === 0 && secondsRemaining !== undefined && secondsRemaining >= 300
-                              ? "At cap (+0 s)"
-                              : `+${formatLocaleInteger(timerExtensionPreview)} s`
-                            : "—"
-                        }
-                        meta={
-                          secondsRemaining !== undefined && secondsRemaining < 780
-                            ? "You are in the hard-reset band, so this buy can yank the clock back toward 15 minutes."
-                            : timerExtensionPreview === 0 && secondsRemaining !== undefined && secondsRemaining >= 300
-                              ? "Remaining time is at the max window; buys cannot add more seconds until the clock falls below the cap."
-                              : timerCapSec !== undefined
-                                ? `Countdown cap ${formatLocaleInteger(timerCapSec)} s · +120 s per buy below cap`
-                                : "Adds time until the cap is reached"
-                        }
-                      />
-                      <StatCard
-                        label="Battle swing"
-                        value={warbowRank ? `Rank #${warbowRank}` : "Build BP"}
-                        meta="Qualifying buys feed WarBow status. Clutch timing, resets, and streak breaks can stack more."
-                      />
-                      <StatCard
-                        label="What this can chase"
-                        value={secondsRemaining !== undefined && secondsRemaining < 780 ? "Reset + defend + steal" : "Timer + podium + ladder"}
-                        meta="Every buy affects more than ROI: last-buy pressure, time-booster race, streak defense, and WarBow status."
-                      />
-                    </div>
-                    </div>
-                    {latestBuyBpBreakdown.length > 0 && (
-                      <div className="history-card">
-                        <h3>Latest indexed BP bonus stack</h3>
-                        <div className="bp-breakdown-list" aria-label="Latest indexed Battle Points breakdown">
-                          {latestBuyBpBreakdown.map((row) => (
-                            <div key={row.key} className="bp-breakdown-list__item">
-                              <span>{row.label}</span>
-                              <strong>{row.value > 0n ? `+${formatLocaleInteger(row.value)} BP` : formatLocaleInteger(row.value)}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {referralRegistryOn && pendingRef && (
-                      <label className="form-label">
-                        <input
-                          type="checkbox"
-                          checked={useReferral}
-                          onChange={(e) => setUseReferral(e.target.checked)}
-                          disabled={!isConnected}
-                        />{" "}
-                        Apply referral <code>{normalizeReferralCode(pendingRef)}</code> from the current <code>?ref=</code>{" "}
-                        link
-                      </label>
-                    )}
-                    {referralRegistryOn && !pendingRef && (
-                      <StatusMessage variant="muted">
-                        Open a referral link with <code>?ref=CODE</code> to enable the {referralEachSideLabel} per-side
-                        CHARM weight bonus.
-                      </StatusMessage>
-                    )}
-                    <div className="podium-block">
-                      <h3>WarBow — steals, guard, revenge, flag</h3>
-                      <p className="muted">
-                        Policy burns and caps are live reads. Steals need ≥2× your BP on the victim; guard is a 6h shield;
-                        revenge is a one-shot answer window; flag claims bank silence into BP.
-                      </p>
-                      <StatusMessage variant="muted">{warbowActionHint}</StatusMessage>
-                      <div className="stats-grid">
-                        <StatCard
-                          label="Steal burn"
-                          value={<AmountDisplay raw={warbowStealBurnWad.toString()} decimals={18} />}
-                          meta="Per attempt (plus optional bypass if capped out)"
-                        />
-                        <StatCard
-                          label="Guard burn"
-                          value={<AmountDisplay raw={warbowGuardBurnWad.toString()} decimals={18} />}
-                          meta="Activates temporary steal reduction"
-                        />
-                        <StatCard
-                          label="Revenge burn"
-                          value={<AmountDisplay raw={warbowRevengeBurnWad.toString()} decimals={18} />}
-                          meta="One clean swing at the pending stealer"
-                        />
-                        <StatCard
-                          label="Bypass / cap / flag"
-                          value={<AmountDisplay raw={warbowBypassBurnWad.toString()} decimals={18} />}
-                          meta={`Bypass when victim hits ${formatLocaleInteger(warbowMaxSteals)} steals/day · silence ${formatLocaleInteger(warbowFlagSilenceSec)}s · claim +${formatLocaleInteger(warbowFlagClaimBp)} BP`}
-                        />
-                      </div>
-                      <ul className="accent-list muted">
-                        {guardedActive && (
-                          <li>
-                            Guard active until <UnixTimestampDisplay raw={guardUntilSec.toString()} />.
-                          </li>
-                        )}
-                        {hasRevengeOpen && pendingRevengeStealer && (
-                          <li>
-                            Revenge open vs {formatWallet(pendingRevengeStealer, "—")} until{" "}
-                            <UnixTimestampDisplay raw={revengeDeadlineSec.toString()} />.
-                          </li>
-                        )}
-                        {canClaimWarBowFlag && <li>Flag is claimable now — silence cleared or you hold the pending slot.</li>}
-                        {isConnected && !canClaimWarBowFlag && iHoldPlantFlag && saleActive && (
-                          <li>
-                            Flag planted. Silence ends at <UnixTimestampDisplay raw={flagSilenceEndSec.toString()} />.
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                    {isConnected && (
-                      <>
-                        <label className="form-label">
-                          Steal victim address
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder="0x…"
-                            value={stealVictimInput}
-                            onChange={(e) => setStealVictimInput(e.target.value)}
-                            spellCheck={false}
-                          />
-                        </label>
-                        {stealVictim && victimStealsTodayBigInt !== undefined && (
-                          <StatusMessage variant="muted">
-                            Victim steals received today: {formatLocaleInteger(victimStealsTodayBigInt)} /{" "}
-                            {formatLocaleInteger(warbowMaxSteals)}
-                          </StatusMessage>
-                        )}
-                        {stealVictim && (
-                          <>
-                            <div className="stats-grid">
-                              <StatCard
-                                label="Your BP"
-                                value={
-                                  viewerBattlePoints !== undefined
-                                    ? formatLocaleInteger(viewerBattlePoints)
-                                    : "—"
-                                }
-                                meta="Live contract read"
-                              />
-                              <StatCard
-                                label="Victim BP"
-                                value={
-                                  victimBattlePointsBigInt !== undefined
-                                    ? formatLocaleInteger(victimBattlePointsBigInt)
-                                    : "—"
-                                }
-                                meta="Must be at least 2× your BP"
-                              />
-                              <StatCard
-                                label="Steal pressure today"
-                                value={
-                                  victimStealsTodayBigInt !== undefined
-                                    ? `${formatLocaleInteger(victimStealsTodayBigInt)} / ${formatLocaleInteger(warbowMaxSteals)}`
-                                    : "—"
-                                }
-                                meta="Per-victim UTC-day cap"
-                              />
-                              <StatCard
-                                label="Steal gas"
-                                value={gasWarbowSteal !== undefined ? `~${formatLocaleInteger(gasWarbowSteal)}` : "Pending"}
-                                meta="Simulation estimate"
-                              />
-                            </div>
-                            <StatusMessage variant={stealPreflight.tone === "error" ? "error" : "muted"}>
-                              <strong>{stealPreflight.title}</strong> · {warbowPreflightIssue ?? stealPreflight.detail}
-                            </StatusMessage>
-                          </>
-                        )}
-                        <label className="form-label">
-                          <input
-                            type="checkbox"
-                            checked={stealBypass}
-                            onChange={(e) => setStealBypass(e.target.checked)}
-                          />{" "}
-                          Pay the bypass burn if the victim already hit the UTC-day steal cap
-                        </label>
-                        <div className="timecurve-action-row">
+                      {isConnected && (
+                        <>
                           <motion.button
                             type="button"
-                            className="btn-secondary btn-secondary--critical"
+                            className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
                             disabled={
                               isWriting ||
-                              buyFeeRoutingEnabled === false ||
-                              stealPreflight.tone === "error"
+                              walletCooldownRemainingSec > 0 ||
+                              charmWadSelected === undefined ||
+                              charmWadSelected <= 0n ||
+                              !cl8ySpendBounds ||
+                              buyFeeRoutingEnabled === false
                             }
-                            onClick={() => void runWarBowSteal()}
-                            {...secondaryButtonMotion}
+                            onClick={() => void handleBuy()}
+                            {...primaryButtonMotion}
                           >
-                            Attempt steal
+                            <img
+                              className="timecurve-simple__cta-glyph"
+                              src="/art/icons/token-charm.png"
+                              alt=""
+                              aria-hidden="true"
+                              width={28}
+                              height={28}
+                              decoding="async"
+                            />
+                            <span className="timecurve-simple__cta-label">
+                              {isWriting ? "Confirm in wallet…" : "Buy CHARM"}
+                            </span>
                           </motion.button>
-                          <motion.button
-                            type="button"
-                            className="btn-secondary"
-                            disabled={isWriting || buyFeeRoutingEnabled === false}
-                            onClick={() => void runWarBowGuard()}
-                            {...secondaryButtonMotion}
-                          >
-                            Activate guard
-                          </motion.button>
-                          <motion.button
-                            type="button"
-                            className="btn-secondary"
-                            disabled={isWriting || buyFeeRoutingEnabled === false || !canClaimWarBowFlag}
-                            onClick={() => void runWarBowClaimFlag()}
-                            {...secondaryButtonMotion}
-                          >
-                            Claim flag
-                          </motion.button>
-                          <motion.button
-                            type="button"
-                            className="btn-secondary btn-secondary--priority"
-                            disabled={isWriting || buyFeeRoutingEnabled === false || !hasRevengeOpen}
-                            onClick={() => void runWarBowRevenge()}
-                            {...secondaryButtonMotion}
-                          >
-                            Trigger revenge
-                          </motion.button>
-                        </div>
-                        {(gasWarbowGuard !== undefined ||
-                          gasWarbowFlag !== undefined ||
-                          gasWarbowRevenge !== undefined) && (
-                          <StatusMessage variant="muted">
-                            {gasWarbowGuard !== undefined && <>Guard gas ~{formatLocaleInteger(gasWarbowGuard)}</>}
-                            {gasWarbowGuard !== undefined &&
-                              (gasWarbowFlag !== undefined || gasWarbowRevenge !== undefined) &&
-                              <> · </>}
-                            {gasWarbowFlag !== undefined && <>Flag gas ~{formatLocaleInteger(gasWarbowFlag)}</>}
-                            {gasWarbowFlag !== undefined && gasWarbowRevenge !== undefined && <> · </>}
-                            {gasWarbowRevenge !== undefined && <>Revenge gas ~{formatLocaleInteger(gasWarbowRevenge)}</>}
-                          </StatusMessage>
-                        )}
-                      </>
-                    )}
-                    <p className="muted">
-                      Leaderboards and the live rivalry feed stay in <strong>WarBow moves and rivalry</strong> below.
-                    </p>
+                          {walletCooldownRemainingSec > 0 && (
+                            <StatusMessage variant="muted">
+                              Buy cooldown · {formatCountdown(walletCooldownRemainingSec)} left
+                            </StatusMessage>
+                          )}
+                          <StatusMessage variant={gasBuyIssue ? "error" : "muted"}>{buyPanelRisk}</StatusMessage>
+                        </>
+                      )}
+                    </div>
                   </>
                 )}
                 {buyErr && <StatusMessage variant="error">{buyErr}</StatusMessage>}
