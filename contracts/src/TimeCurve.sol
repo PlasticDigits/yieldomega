@@ -220,6 +220,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event CharmRedemptionEnabled(bool enabled);
     /// @notice Gating for post-end `distributePrizes` (CL8Y reserve to podium winners from `PodiumPool`).
     event ReservePodiumPayoutsEnabled(bool enabled);
+    /// @notice `timeCurveBuyRouter` updated (single-tx Kumbaya → `buyFor` entry; GitLab #65).
+    event TimeCurveBuyRouterSet(address indexed router);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -290,6 +292,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit ReservePodiumPayoutsEnabled(enabled);
     }
 
+    /// @notice Set the companion router allowed to call `buyFor` (GitLab #65). Pass `address(0)` to disable.
+    function setTimeCurveBuyRouter(address router) external onlyOwner {
+        timeCurveBuyRouter = router;
+        emit TimeCurveBuyRouterSet(router);
+    }
+
     /// @dev `buyFeeRoutingEnabled` — blocks `_buy` and WarBow CL8Y pulls (not `claimWarBowFlag`, which burns no CL8Y).
     function _requireSaleInteractionsEnabled() internal view {
         require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
@@ -307,11 +315,27 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function buy(uint256 charmWad) external nonReentrant {
-        _buy(charmWad, bytes32(0));
+        _buy(msg.sender, msg.sender, charmWad, bytes32(0));
     }
 
     function buy(uint256 charmWad, bytes32 codeHash) external nonReentrant {
-        _buy(charmWad, codeHash);
+        _buy(msg.sender, msg.sender, charmWad, codeHash);
+    }
+
+    /// @notice Single-tx Kumbaya entry: **only** `timeCurveBuyRouter` may call; CL8Y is pulled from the router (`payer`), CHARM and WarBow credit go to `buyer`. See `TimeCurveBuyRouter` (GitLab #65).
+    function buyFor(address buyer, uint256 charmWad) external nonReentrant {
+        _buyForExternal(buyer, charmWad, bytes32(0));
+    }
+
+    /// @notice Same as `buyFor` with referral `codeHash` (registry rules unchanged).
+    function buyFor(address buyer, uint256 charmWad, bytes32 codeHash) external nonReentrant {
+        _buyForExternal(buyer, charmWad, codeHash);
+    }
+
+    function _buyForExternal(address buyer, uint256 charmWad, bytes32 codeHash) private {
+        require(msg.sender == timeCurveBuyRouter && timeCurveBuyRouter != address(0), "TimeCurve: not buy router");
+        require(buyer != address(0), "TimeCurve: zero buyer");
+        _buy(buyer, msg.sender, charmWad, codeHash);
     }
 
     function _charmBounds(uint256 elapsed) internal view returns (uint256 minCharmWad, uint256 maxCharmWad) {
@@ -320,12 +344,14 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, initialMinBuy);
     }
 
-    function _buy(uint256 charmWad, bytes32 codeHash) internal {
+    /// @param buyer Wallet credited for CHARM weight, WarBow, podiums, cooldown, and referrals.
+    /// @param payer Source of accepted-asset (`msg.sender` for normal `buy`; companion router for `buyFor`).
+    function _buy(address buyer, address payer, uint256 charmWad, bytes32 codeHash) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
         require(block.timestamp < deadline, "TimeCurve: timer expired");
-        require(block.timestamp >= nextBuyAllowedAt[msg.sender], "TimeCurve: buy cooldown");
+        require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeCurve: buy cooldown");
 
         uint256 elapsed = block.timestamp - saleStart;
         (uint256 minCharm, uint256 maxCharm) = _charmBounds(elapsed);
@@ -340,28 +366,28 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             require(address(referralRegistry) != address(0), "TimeCurve: referral disabled");
         }
 
-        acceptedAsset.safeTransferFrom(msg.sender, address(this), amount);
+        acceptedAsset.safeTransferFrom(payer, address(this), amount);
 
         if (codeHash != bytes32(0)) {
             address referrer = referralRegistry.ownerOfCode(codeHash);
             require(referrer != address(0), "TimeCurve: invalid referral");
-            require(referrer != msg.sender, "TimeCurve: self-referral");
+            require(referrer != buyer, "TimeCurve: self-referral");
             uint256 refEach = (charmWad * uint256(REFERRAL_EACH_BPS)) / 10_000;
             require(refEach > 0 && refEach * 2 <= charmWad, "TimeCurve: referral amount");
             charmWeight[referrer] += refEach;
-            charmWeight[msg.sender] += refEach;
+            charmWeight[buyer] += refEach;
             totalCharmWeight += refEach * 2;
-            emit ReferralApplied(msg.sender, referrer, codeHash, refEach, refEach, amount);
+            emit ReferralApplied(buyer, referrer, codeHash, refEach, refEach, amount);
         }
 
-        charmWeight[msg.sender] += charmWad;
+        charmWeight[buyer] += charmWad;
         totalCharmWeight += charmWad;
 
         acceptedAsset.safeTransfer(address(feeRouter), amount);
         feeRouter.distributeFees(acceptedAsset, amount);
 
         totalRaised += amount;
-        buyCount[msg.sender] += 1;
+        buyCount[buyer] += 1;
         _totalBuys += 1;
 
         uint256 deadlineBefore = deadline;
@@ -369,13 +395,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         // Flag: if another buyer snipes **after** the silence window (claim was available) before claim, penalize 2X.
         uint256 flagPenalty;
-        if (warbowPendingFlagOwner != address(0) && msg.sender != warbowPendingFlagOwner) {
+        if (warbowPendingFlagOwner != address(0) && buyer != warbowPendingFlagOwner) {
             if (block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC) {
                 uint256 pen = WARBOW_FLAG_CLAIM_BP * 2;
                 _subBattlePoints(warbowPendingFlagOwner, pen);
                 flagPenalty = pen;
                 emit WarBowFlagPenalized(
-                    warbowPendingFlagOwner, pen, msg.sender, battlePoints[warbowPendingFlagOwner]
+                    warbowPendingFlagOwner, pen, buyer, battlePoints[warbowPendingFlagOwner]
                 );
             }
             warbowPendingFlagOwner = address(0);
@@ -393,18 +419,18 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         deadline = newDl;
         uint256 actualSecondsAdded = newDl - deadlineBefore;
 
-        _trackLastBuyer(msg.sender);
+        _trackLastBuyer(buyer);
 
         if (actualSecondsAdded > 0) {
-            totalEffectiveTimerSecAdded[msg.sender] += actualSecondsAdded;
-            _updateTopThreeMonotonic(CAT_TIME_BOOSTER, msg.sender, totalEffectiveTimerSecAdded[msg.sender]);
+            totalEffectiveTimerSecAdded[buyer] += actualSecondsAdded;
+            _updateTopThreeMonotonic(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
         }
 
         uint256 bpStreakBreak;
         uint256 bpAmbush;
         if (
             remainingBeforeBuy < DEFENDED_STREAK_WINDOW_SEC && _dsLastUnderWindowBuyer != address(0)
-                && msg.sender != _dsLastUnderWindowBuyer
+                && buyer != _dsLastUnderWindowBuyer
         ) {
             uint256 len = activeDefendedStreak[_dsLastUnderWindowBuyer];
             if (len > 0) {
@@ -415,7 +441,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             }
         }
 
-        _processDefendedStreak(msg.sender, remainingBeforeBuy, actualSecondsAdded);
+        _processDefendedStreak(buyer, remainingBeforeBuy, actualSecondsAdded);
 
         uint256 bpBase = WARBOW_BASE_BUY_BP;
         uint256 bpReset;
@@ -427,13 +453,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             bpClutch = WARBOW_CLUTCH_BONUS_BP;
         }
 
-        _addBattlePoints(msg.sender, bpBase + bpReset + bpClutch + bpStreakBreak + bpAmbush);
+        _addBattlePoints(buyer, bpBase + bpReset + bpClutch + bpStreakBreak + bpAmbush);
 
-        warbowPendingFlagOwner = msg.sender;
+        warbowPendingFlagOwner = buyer;
         warbowPendingFlagPlantAt = block.timestamp;
 
         emit Buy(
-            msg.sender,
+            buyer,
             charmWad,
             amount,
             priceWad,
@@ -442,7 +468,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             _totalBuys,
             actualSecondsAdded,
             hardReset,
-            battlePoints[msg.sender],
+            battlePoints[buyer],
             bpBase,
             bpReset,
             bpClutch,
@@ -450,12 +476,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             bpAmbush,
             flagPenalty,
             true,
-            totalEffectiveTimerSecAdded[msg.sender],
-            activeDefendedStreak[msg.sender],
-            bestDefendedStreak[msg.sender]
+            totalEffectiveTimerSecAdded[buyer],
+            activeDefendedStreak[buyer],
+            bestDefendedStreak[buyer]
         );
 
-        nextBuyAllowedAt[msg.sender] = block.timestamp + buyCooldownSec;
+        nextBuyAllowedAt[buyer] = block.timestamp + buyCooldownSec;
     }
 
     /// @notice After **your** buy, wait `WARBOW_FLAG_SILENCE_SEC` with **no other buyer**; then claim **+WARBOW_FLAG_CLAIM_BP**.
@@ -828,5 +854,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice If false, `distributePrizes` reverts when the podium pool balance is non-zero. Default: false until owner signoff.
     bool public reservePodiumPayoutsEnabled;
 
-    uint256[49] private __gap;
+    /// @notice Trusted companion for `buyFor` (ETH/USDM → Kumbaya → CL8Y `buy` in one tx). Zero = disabled.
+    address public timeCurveBuyRouter;
+
+    uint256[48] private __gap;
 }

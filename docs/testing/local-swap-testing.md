@@ -7,7 +7,7 @@ This note covers **multi-asset TimeCurve entry** (CL8Y, ETH, USDM) using the **A
 ## What gets deployed
 
 1. **`DeployDev.s.sol`** — core game contracts (TimeCurve, mock CL8Y, etc.).
-2. **`DeployKumbayaAnvilFixtures.s.sol`** — `AnvilWETH9`, `AnvilMockUSDM`, and `AnvilKumbayaRouter` (combined **swap + quoter**). The router implements Uniswap-style **`exactOutput`** / **`quoteExactOutput`** with **v3 path encoding**; pool math is **constant-product** for local testing only, not production Uniswap v3.
+2. **`DeployKumbayaAnvilFixtures.s.sol`** — `AnvilWETH9`, `AnvilMockUSDM`, `AnvilKumbayaRouter` (combined **swap + quoter**), and **`TimeCurveBuyRouter`** (single-tx ETH/USDM → `exactOutput` → `TimeCurve.buyFor`; [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65)). The fixture router implements Uniswap-style **`exactOutput`** / **`quoteExactOutput`** with **v3 path encoding**; pool math is **constant-product** for local testing only, not production Uniswap v3. Multi-hop **`quoteExactOutput`** walks hops **from the CL8Y (output) end toward the spend token**, matching SwapRouter-style `exactOutput` (fixed alongside issue #65).
 
 `scripts/lib/anvil_deploy_dev.sh` runs both scripts and parses logged addresses.
 
