@@ -1,19 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-/**
- * Album 1 — first eight tracks only (GitLab #68 acceptance table).
- * Additional MP3s may exist under `public/music/album_1/` for future seasons;
- * the in-app player intentionally loops this ordered subset.
- */
+// Keep `blockie_hills.manifest.json` in sync with `public/music/albums/blockie_hills/manifest.json` (autodiscovery / tooling).
+import blockieHillsManifest from "./blockie_hills.manifest.json";
+
 export type AlbumTrack = { src: string; title: string };
 
-export const ALBUM_1_PLAYLIST: readonly AlbumTrack[] = [
-  { src: "/music/album_1/01-hills-dawn.mp3", title: "Hills at Dawn" },
-  { src: "/music/album_1/02-coin-path.mp3", title: "Coin Path" },
-  { src: "/music/album_1/03-rainbow-switchback.mp3", title: "Rainbow Switchback" },
-  { src: "/music/album_1/04-moss-and-brass.mp3", title: "Moss and Brass" },
-  { src: "/music/album_1/05-jig-generator.mp3", title: "Jig Generator" },
-  { src: "/music/album_1/06-starline-overworld.mp3", title: "Starline Overworld" },
-  { src: "/music/album_1/07-lucky-run.mp3", title: "Lucky Run" },
-  { src: "/music/album_1/08-kumbaya-campfire.mp3", title: "Kumbaya Campfire" },
-] as const;
+export type BlockieHillsManifestTrack = {
+  index: number;
+  file: string;
+  title: string;
+  durationSec: number;
+};
+
+export type BlockieHillsManifest = {
+  albumId: string;
+  albumTitle: string;
+  publicBasePath: string;
+  tracks: BlockieHillsManifestTrack[];
+};
+
+export function manifestToPlaylist(m: BlockieHillsManifest): readonly AlbumTrack[] {
+  const raw = m.publicBasePath.replace(/\/$/, "");
+  return m.tracks.map((t) => ({
+    src: `${raw}/${t.file}`,
+    title: t.title,
+  }));
+}
+
+/** Full **Blockie Hills** album (16 tracks); canonical metadata in `blockie_hills.manifest.json` (also under `public/music/albums/blockie_hills/`). */
+export const BLOCKIE_HILLS_PLAYLIST: readonly AlbumTrack[] = manifestToPlaylist(
+  blockieHillsManifest as BlockieHillsManifest,
+);

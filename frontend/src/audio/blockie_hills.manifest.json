@@ -1,0 +1,103 @@
+{
+  "albumId": "blockie_hills",
+  "albumTitle": "Blockie Hills",
+  "publicBasePath": "/music/albums/blockie_hills",
+  "tracks": [
+    {
+      "index": 1,
+      "file": "01-hills-dawn.mp3",
+      "title": "Hills at Dawn",
+      "durationSec": 106.452
+    },
+    {
+      "index": 2,
+      "file": "02-coin-path.mp3",
+      "title": "Coin Path",
+      "durationSec": 134.712
+    },
+    {
+      "index": 3,
+      "file": "03-rainbow-switchback.mp3",
+      "title": "Rainbow Switchback",
+      "durationSec": 96.516
+    },
+    {
+      "index": 4,
+      "file": "04-moss-and-brass.mp3",
+      "title": "Moss and Brass",
+      "durationSec": 216
+    },
+    {
+      "index": 5,
+      "file": "05-jig-generator.mp3",
+      "title": "Jig Generator",
+      "durationSec": 137.844
+    },
+    {
+      "index": 6,
+      "file": "06-starline-overworld.mp3",
+      "title": "Starline Overworld",
+      "durationSec": 159.408
+    },
+    {
+      "index": 7,
+      "file": "07-lucky-run.mp3",
+      "title": "Lucky Run",
+      "durationSec": 124.092
+    },
+    {
+      "index": 8,
+      "file": "08-kumbaya-campfire.mp3",
+      "title": "Kumbaya Campfire",
+      "durationSec": 203.94
+    },
+    {
+      "index": 9,
+      "file": "09-emerald-gate.mp3",
+      "title": "Emerald Gate",
+      "durationSec": 111.996
+    },
+    {
+      "index": 10,
+      "file": "10-rabbit-run.mp3",
+      "title": "Rabbit Run",
+      "durationSec": 95.4
+    },
+    {
+      "index": 11,
+      "file": "11-pot-of-pulse.mp3",
+      "title": "Pot of Pulse",
+      "durationSec": 130.824
+    },
+    {
+      "index": 12,
+      "file": "12-cloud-save-point.mp3",
+      "title": "Cloud Save Point",
+      "durationSec": 162.756
+    },
+    {
+      "index": 13,
+      "file": "13-arcade-scuffle.mp3",
+      "title": "Arcade Scuffle",
+      "durationSec": 126.612
+    },
+    {
+      "index": 14,
+      "file": "14-prism-shop.mp3",
+      "title": "Prism Shop",
+      "durationSec": 102.528
+    },
+    {
+      "index": 15,
+      "file": "15-double-rainbow-bridge.mp3",
+      "title": "Double Rainbow Bridge",
+      "durationSec": 155.988
+    },
+    {
+      "index": 16,
+      "file": "16-logging-off-lullaby.mp3",
+      "title": "Logging Off Lullaby",
+      "durationSec": 146.52
+    }
+  ]
+}
