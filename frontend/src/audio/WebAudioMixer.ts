@@ -2,6 +2,13 @@
 
 import { BLOCKIE_HILLS_PLAYLIST, type AlbumTrack } from "./albumPlaylist";
 import {
+  buildPlaybackSnapshot,
+  createMinIntervalGate,
+  loadAudioPlaybackState,
+  saveAudioPlaybackState,
+  AUDIO_PLAYBACK_PERIODIC_SAVE_MS,
+} from "./audioPlaybackState";
+import {
   bgmLinearGainFromPermille,
   sfxCurveGainFromPermille,
   type AudioPrefsV1,
@@ -38,6 +45,11 @@ export class WebAudioMixer {
 
   private trackIndex = 0;
 
+  /** Applied once after `loadedmetadata` for the current `src` (hydrate resume, or 0 after skip/end). */
+  private pendingSeekAfterMetadata: number | null = null;
+
+  private readonly periodicSaveGate = createMinIntervalGate(AUDIO_PLAYBACK_PERIODIC_SAVE_MS);
+
   private lastPeerBuySfxAt = 0;
 
   private lastTimerCalmAt = 0;
@@ -50,9 +62,18 @@ export class WebAudioMixer {
 
   private playlist: readonly AlbumTrack[];
 
+  private readonly onBgmTimeupdatePersist = (): void => {
+    if (!this.audioEl || this.audioEl.paused) return;
+    if (!this.periodicSaveGate(performance.now())) return;
+    this.flushPlaybackFromElement();
+  };
+
   constructor(initialPrefs: AudioPrefsV1, playlist: readonly AlbumTrack[] = BLOCKIE_HILLS_PLAYLIST) {
     this.prefs = { ...initialPrefs };
     this.playlist = playlist;
+    const h = loadAudioPlaybackState(this.playlist);
+    this.trackIndex = h.trackIndex;
+    this.pendingSeekAfterMetadata = h.positionSec > 0 ? h.positionSec : null;
   }
 
   setCallbacks(cb: {
@@ -61,6 +82,7 @@ export class WebAudioMixer {
   }) {
     this.onTrackChange = cb.onTrackChange ?? null;
     this.onPlayingChange = cb.onPlayingChange ?? null;
+    this.onTrackChange?.(this.getCurrentTrack(), this.trackIndex);
   }
 
   getAudioContextState(): AudioContextState | "uncreated" {
@@ -82,6 +104,55 @@ export class WebAudioMixer {
 
   getCurrentTrack(): AlbumTrack {
     return this.playlist[this.trackIndex] ?? this.playlist[0];
+  }
+
+  private waitForLoadedMetadata(el: HTMLAudioElement): Promise<void> {
+    if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      el.addEventListener("loadedmetadata", () => resolve(), { once: true });
+    });
+  }
+
+  private applyPendingSeekAfterMetadata(): void {
+    if (!this.audioEl || this.pendingSeekAfterMetadata === null) return;
+    const el = this.audioEl;
+    let t = this.pendingSeekAfterMetadata;
+    const dur = el.duration;
+    if (Number.isFinite(dur) && dur > 0) {
+      t = Math.min(Math.max(0, t), Math.max(0, dur - 0.01));
+    } else {
+      t = Math.max(0, t);
+    }
+    el.currentTime = t;
+    this.pendingSeekAfterMetadata = null;
+  }
+
+  private writePlaybackSnapshot(positionSec: number): void {
+    const snap = buildPlaybackSnapshot(this.playlist, this.trackIndex, positionSec);
+    if (snap) saveAudioPlaybackState(snap);
+  }
+
+  private persistBgmTrackStart(): void {
+    this.writePlaybackSnapshot(0);
+  }
+
+  private flushPlaybackFromElement(): void {
+    if (!this.audioEl) return;
+    this.writePlaybackSnapshot(this.audioEl.currentTime);
+  }
+
+  private attachBgmLifecycleHooks(): void {
+    if (typeof window === "undefined") return;
+    const flush = (): void => {
+      this.flushPlaybackFromElement();
+    };
+    window.addEventListener("pagehide", flush);
+    window.addEventListener("beforeunload", flush);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flush();
+    });
   }
 
   /** Must run from a user gesture before BGM / SFX are audible. */
@@ -107,10 +178,12 @@ export class WebAudioMixer {
       audioEl.crossOrigin = "anonymous";
       audioEl.preload = "auto";
       audioEl.addEventListener("ended", () => this.advanceAfterTrackEnded());
+      audioEl.addEventListener("timeupdate", this.onBgmTimeupdatePersist);
 
       this.mediaSource = ctx.createMediaElementSource(audioEl);
       this.mediaSource.connect(bgmGain);
       this.syncGainNodes();
+      this.attachBgmLifecycleHooks();
     }
     if (this.ctx.state === "suspended") {
       await this.ctx.resume();
@@ -142,6 +215,8 @@ export class WebAudioMixer {
     if (this.audioEl.src !== resolved) {
       this.audioEl.src = t.src;
     }
+    await this.waitForLoadedMetadata(this.audioEl);
+    this.applyPendingSeekAfterMetadata();
     try {
       await this.audioEl.play();
       this.onPlayingChange?.(true);
@@ -153,6 +228,7 @@ export class WebAudioMixer {
   pauseBgm() {
     this.audioEl?.pause();
     this.onPlayingChange?.(false);
+    this.flushPlaybackFromElement();
   }
 
   isBgmPlaying(): boolean {
@@ -162,11 +238,17 @@ export class WebAudioMixer {
   skipBgmNext() {
     const playing = this.isBgmPlaying();
     this.bumpTrackIndex();
+    this.persistBgmTrackStart();
     if (!this.audioEl) return;
-    this.audioEl.src = this.getCurrentTrack().src;
-    if (playing) {
-      void this.audioEl.play().catch(() => this.onPlayingChange?.(false));
-    }
+    this.pendingSeekAfterMetadata = 0;
+    const el = this.audioEl;
+    el.src = this.getCurrentTrack().src;
+    void this.waitForLoadedMetadata(el).then(() => {
+      this.applyPendingSeekAfterMetadata();
+      if (playing) {
+        void el.play().catch(() => this.onPlayingChange?.(false));
+      }
+    });
   }
 
   private bumpTrackIndex() {
@@ -180,9 +262,15 @@ export class WebAudioMixer {
   /** Natural end-of-track: always continue the album loop. */
   private advanceAfterTrackEnded() {
     this.bumpTrackIndex();
+    this.persistBgmTrackStart();
     if (!this.audioEl) return;
-    this.audioEl.src = this.getCurrentTrack().src;
-    void this.audioEl.play().catch(() => this.onPlayingChange?.(false));
+    this.pendingSeekAfterMetadata = 0;
+    const el = this.audioEl;
+    el.src = this.getCurrentTrack().src;
+    void this.waitForLoadedMetadata(el).then(() => {
+      this.applyPendingSeekAfterMetadata();
+      void el.play().catch(() => this.onPlayingChange?.(false));
+    });
   }
 
   async prefetchSfx(ids: readonly SfxId[]): Promise<void> {

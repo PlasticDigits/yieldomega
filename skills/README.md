@@ -18,6 +18,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 | [`play-rabbit-treasury/SKILL.md`](play-rabbit-treasury/SKILL.md) | Deposits, epochs, **Burrow**, withdraws, and reserve-linked behavior. |
 | [`collect-leprechaun-sets/SKILL.md`](collect-leprechaun-sets/SKILL.md) | Series, sets, traits, and collecting onchain. |
 | [`verify-yo-referrals-surface/SKILL.md`](verify-yo-referrals-surface/SKILL.md) | `/referrals` visual QA checklist (issue #64): shell, register, share links, `?ref=` — evidence + links to automated specs. |
+| [`verify-yo-album-bgm-resume/SKILL.md`](verify-yo-album-bgm-resume/SKILL.md) | Album 1 BGM **track + offset** resume across refresh / tabs (issue #71): dock hydrate, autoplay-blocked path, skip/end semantics, storage throttle. |
 
 ## Authoritative docs (always cross-check)
 
@@ -34,6 +35,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Kumbaya integration — optional single-tx ETH/USDM entry](../docs/integrations/kumbaya.md#issue-65-single-tx-router) via **`TimeCurveBuyRouter`** + **`buyFor`** onchain ([issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65)), **Simple + Arena** `buyViaKumbaya` when `timeCurveBuyRouter` is set ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)); indexer read-model for **`BuyViaKumbaya`** + enriched buys API ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)); contributor test map: [invariants — Kumbaya / single-tx / indexer](../docs/testing/invariants-and-business-logic.md)
 - [Referrals program + `/referrals` surface](../docs/product/referrals.md) — [issue #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) verification checklist; [invariants — Referrals page visual](../docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64)
 - [EVM wallet connection (WalletConnect project id, SafePal, injected discovery)](../docs/frontend/wallet-connection.md) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58))
+- [Album 1 BGM + SFX + **resume** (localStorage)](../docs/frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) ([issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68), [issue #71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71)); play checklist: [verify-yo-album-bgm-resume](verify-yo-album-bgm-resume/SKILL.md)
 
 **Local Anvil / tooling (contributors):** If you wire scripts or bots to `DeployDev` addresses, use the **ERC1967 proxy** for UUPS cores (`TimeCurve`, `RabbitTreasury`, …), not the implementation row in `run-latest.json` — see [`docs/testing/anvil-rich-state.md`](../docs/testing/anvil-rich-state.md) and [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md) ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 
