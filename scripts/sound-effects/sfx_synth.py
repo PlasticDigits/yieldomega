@@ -123,6 +123,28 @@ def highpass_1(x: np.ndarray, cutoff: float, sr: int) -> np.ndarray:
     return y
 
 
+def lowpass_1(x: np.ndarray, cutoff: float, sr: int) -> np.ndarray:
+    """One-pole low-pass — tames beeps, adds wool."""
+    a = 1.0 - np.exp(-TWO_PI * max(cutoff, 1.0) / sr)
+    y = np.zeros_like(x)
+    s = 0.0
+    for i in range(x.shape[0]):
+        s += a * (x[i] - s)
+        y[i] = s
+    return y
+
+
+def soft_tone(
+    t: np.ndarray, freqs: list[float], amps: list[float], rel_cents: list[float], decay: float
+) -> np.ndarray:
+    """A few detuned, decaying sines = less 'test tone' than a single sin."""
+    o = np.zeros_like(t, dtype=np.float64)
+    for f0, a0, c in zip(freqs, amps, rel_cents):
+        f = f0 * (1.0 + c / 1200.0)
+        o = o + a0 * np.exp(-t * decay) * np.sin(TWO_PI * f * t)
+    return o
+
+
 def normalizePeak(x: np.ndarray, target: float = 0.92) -> np.ndarray:
     p = float(np.max(np.abs(x)) + 1e-9)
     return (x / p) * target

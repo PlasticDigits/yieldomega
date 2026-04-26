@@ -2,7 +2,7 @@
 
 This document proposes **in-game and UI** sound for the frontend. It is aligned with **`frontend/public/music/album_1`** (hills, coin path, rainbows, moss and brass, jig energy, starline, lucky run, Kumbaya / campfire) and the onchain game loop (TimeCurve sale, **CHARM** / **DOUB**, **WarBow**, **reserve podiums**).
 
-**Implementation note:** a small **Python + NumPy** synth lives in [`scripts/sound-effects/`](../../scripts/sound-effects) (`sfx_synth.py`, `presets.py`, `generate.py`). Run `python generate.py --out ../../frontend/public/sound-effects` to render reference **`.wav`** files. Treat those as **stems**; production may replace them with foley or higher-fidelity design while keeping the same **emotional and spectral** direction.
+**Implementation note:** a small **Python + NumPy** synth lives in [`scripts/sound-effects/`](../../scripts/sound-effects) (`sfx_synth.py`, `presets.py`, `generate.py`). Run `python generate.py --out ../../frontend/public/sound-effects` to render reference **`.wav`** files. Treat those as **stems**; production may replace them with foley or higher-fidelity design while keeping the same **emotional and spectral** direction. The procedural presets **avoid “UI beeps”** (no solo high sines or glassy FM bells) in favor of **low-mid weight, detuned partials, and gentle low-passing** so they sit with the music rather than on top of it in a 2 kHz+ band.
 
 **Thematic through-line**
 
