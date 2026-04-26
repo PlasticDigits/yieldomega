@@ -2,7 +2,7 @@
 
 This document is the **in-repo source of truth** for how Yieldomega uses **Kumbaya** (Uniswap v3–compatible DEX on MegaETH) for **optional** TimeCurve entry with **ETH** or a **chain stable** while the sale still settles in **CL8Y**. It satisfies [GitLab issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) cross-linking and deployment expectations.
 
-**Related code:** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`frontend/src/pages/timecurve/useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts), [`contracts/script/DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh).
+**Related code:** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`frontend/src/pages/timecurve/useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts), [`contracts/script/DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`contracts/src/TimeCurveBuyRouter.sol`](../../contracts/src/TimeCurveBuyRouter.sol), [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh).
 
 **Contributor guardrails:** When changing routing or env contracts, follow [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) and [testing strategy](../testing/strategy.md).
 
@@ -34,6 +34,12 @@ This document is the **in-repo source of truth** for how Yieldomega uses **Kumba
 2. **CL8Y:** Direct `approve` + `TimeCurve.buy` — no DEX.
 3. **ETH / USDM:** Frontend resolves **Kumbaya router + quoter + path** → **`exactOutput`** swap into **CL8Y** (amount = gross spend for the chosen CHARM) → `approve` **CL8Y** → `TimeCurve.buy` (same onchain buy as direct CL8Y).
 
+<a id="issue-65-single-tx-router"></a>
+
+### Optional: single-transaction protocol entry ([issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65))
+
+The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.setTimeCurveBuyRouter`) performs **`exactOutput`** into **exactly** the TimeCurve gross CL8Y for `charmWad`, then calls **`TimeCurve.buyFor(msg.sender, …)`** so CHARM weight, WarBow, cooldown, and referrals accrue to the participant while CL8Y is pulled from the router. **`buyFor`** is **only** callable by the designated router address (zero disables). Pay modes: **`PAY_ETH`** (`msg.value` → WETH, path must end in WETH) and **`PAY_STABLE`** (`stableToken` pull + path must end in that token). The UI may keep the two-step flow; the router is for integrators and wallets that want **one signature**.
+
 **Hard limits (honest scope):**
 
 - Routing assumes **v3-style** `exactOutput` / `quoteExactOutput` and **packed paths** built in `kumbayaRoutes.ts`. **UniversalRouter** paths are **not** the same ABI surface as our local Anvil fixture; production uses **SwapRouter02 + QuoterV2** per integrator-kit.
@@ -51,6 +57,7 @@ This document is the **in-repo source of truth** for how Yieldomega uses **Kumba
 | **Path direction** | `buildV3PathExactOutput` encodes **tokenOut → … → tokenIn** (Uniswap `exactOutput` convention). |
 | **Integrator parity** | For MegaETH **4326** / **6343**, router and quoter addresses **match** [integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) unless overridden by env for a deliberate fork test. |
 | **Anvil ≠ prod math** | `AnvilKumbayaRouter` uses **constant-product** math for local testing only — see [local-swap-testing.md](../testing/local-swap-testing.md). |
+| **Single-tx gross CL8Y** | `TimeCurveBuyRouter` recomputes gross spend from **`currentPricePerCharmWad`** × `charmWad` (same as `TimeCurve`) and sets **`exactOutput` amountOut** to that value so the swap cannot under-fill the subsequent `buyFor`. |
 
 ---
 
@@ -82,4 +89,4 @@ This document is the **in-repo source of truth** for how Yieldomega uses **Kumba
 - [Local swap testing (issue #41)](../testing/local-swap-testing.md)
 - [E2E Anvil + Playwright](../testing/e2e-anvil.md)
 - [Business logic / test map — Kumbaya row](../testing/invariants-and-business-logic.md)
-- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment)
+- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment), [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) (`TimeCurveBuyRouter` + `buyFor`)

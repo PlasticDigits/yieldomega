@@ -106,9 +106,10 @@ contract AnvilKumbayaRouter {
         returns (uint256 amountIn, uint160[] memory, uint32[] memory, uint256 gasEstimate)
     {
         uint256 n = hopCount(path);
+        /// @dev Walk hops **from CL8Y/output end toward input** (hop 0 … n-1) so multi-hop `amountIn` matches `exactOutput`.
         uint256 amt = amountOut;
-        for (uint256 h = n; h > 0; h--) {
-            (address tokenOut, address tokenIn) = hopAddresses(path, h - 1);
+        for (uint256 hi = 0; hi < n; ++hi) {
+            (address tokenOut, address tokenIn) = hopAddresses(path, hi);
             uint256 rIn = uint256(reserveIn[tokenIn][tokenOut]);
             uint256 rOut = uint256(reserveOut[tokenIn][tokenOut]);
             if (rIn == 0 || rOut == 0) revert BadPath();
@@ -123,10 +124,9 @@ contract AnvilKumbayaRouter {
 
         uint256 curOut = params.amountOut;
         uint256[] memory needOut = new uint256[](n);
-        for (uint256 idx = n; idx > 0; idx--) {
-            uint256 h = idx - 1;
-            needOut[h] = curOut;
-            (address tokenOut, address tokenIn) = hopAddresses(params.path, h);
+        for (uint256 hi = 0; hi < n; ++hi) {
+            needOut[hi] = curOut;
+            (address tokenOut, address tokenIn) = hopAddresses(params.path, hi);
             uint256 rIn = uint256(reserveIn[tokenIn][tokenOut]);
             uint256 rOut = uint256(reserveOut[tokenIn][tokenOut]);
             if (rIn == 0 || rOut == 0) revert BadPath();
