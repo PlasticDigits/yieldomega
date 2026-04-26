@@ -473,6 +473,7 @@ def run_job(
     *,
     custom_prompt: str | None = None,
     ref_paths_override: list[Path] | None = None,
+    max_wall_seconds: float | None = None,
 ) -> Path | None:
     catalog_bg = background
     if custom_prompt is not None:
@@ -513,11 +514,12 @@ def run_job(
 
     if dry_run:
         print(f"[dry-run] would write {out_path}")
+        wall = f" max_wall_seconds={max_wall_seconds}" if max_wall_seconds is not None else ""
         print(
             f"  model={MODEL} aspect_ratio={aspect_ratio} quality={quality} background={api_bg} "
             f"(catalog={catalog_bg}) "
             f"moderation={moderation} output_format={out_fmt} output_compression={output_compression} "
-            f"prefer_wait={prefer_wait}s (max {REPLICATE_PREFER_WAIT_MAX}s; polling handles longer runs)"
+            f"prefer_wait={prefer_wait}s (max {REPLICATE_PREFER_WAIT_MAX}s; polling handles longer runs){wall}"
         )
         if not no_refs:
             print("  input_images: " + " , ".join(str(p) for p in ref_paths))
@@ -557,6 +559,7 @@ def run_job(
                     MODEL,
                     inp,
                     prefer_wait=prefer_wait,
+                    max_wall_seconds=max_wall_seconds,
                     job_label=name,
                 )
             finally:
@@ -568,6 +571,7 @@ def run_job(
             MODEL,
             inp,
             prefer_wait=prefer_wait,
+            max_wall_seconds=max_wall_seconds,
             job_label=name,
         )
 

@@ -18,6 +18,9 @@ Environment: REPLICATE_API_TOKEN (see `generate_assets.load_env()`).
 Outputs:
   - Default: `frontend/public/art/pending_manual_review/partner_regen/`
   - `--in-place`: writes `kumbaya-card.jpg` and `sir-card.png` under `public/art/` (backups in pending_manual_review)
+
+Each image: **one API attempt** (no client-side retries; failed runs are not re-submitted). Polls the same
+Replicate prediction until it finishes or **--max-seconds** (default **360**) elapses, then cancels and errors.
 """
 
 from __future__ import annotations
@@ -38,6 +41,9 @@ if __name__ == "__main__" and __package__ is None:  # pragma: no cover
 import generate_assets as ga  # noqa: E402
 
 DEFAULT_SLEEP_SEC = 22.0
+# Single attempt, hard deadline — avoids stacking $0.13+ charges on flaky connections.
+DEFAULT_RETRY_MAX = 1
+DEFAULT_MAX_WALL_SECONDS = 360.0
 
 
 def _backup(src: Path, backup_dir: Path) -> Path:
@@ -57,6 +63,8 @@ def _run_card(
     slug: str,
     out_dir: Path,
     dry_run: bool,
+    retry_max: int,
+    max_wall_seconds: float,
 ) -> None:
     if slug == "kumbaya":
         card = ga.DEFAULT_KUMBAYA_CARD_REF
@@ -103,12 +111,13 @@ def _run_card(
         "low",
         95,
         60,
-        8,
+        retry_max,
         20.0,
         dry_run,
         False,
         custom_prompt=prompt,
         ref_paths_override=[ga.DEFAULT_STYLE_REF, ga.DEFAULT_TOKEN_REF, card],
+        max_wall_seconds=max_wall_seconds,
     )
 
 
@@ -134,7 +143,26 @@ def main() -> int:
         default=None,
         help="Override output directory (default: pending manual review or in-place).",
     )
+    ap.add_argument(
+        "--max-seconds",
+        type=float,
+        default=DEFAULT_MAX_WALL_SECONDS,
+        metavar="SEC",
+        help=f"Max wall time per prediction; cancel and fail if not done (default {DEFAULT_MAX_WALL_SECONDS:.0f}).",
+    )
+    ap.add_argument(
+        "--retry-max",
+        type=int,
+        default=DEFAULT_RETRY_MAX,
+        help=f"Client-side API attempts per card (default {DEFAULT_RETRY_MAX}: no retries).",
+    )
     args = ap.parse_args()
+    if args.retry_max < 1:
+        print("--retry-max must be >= 1", file=sys.stderr)
+        return 1
+    if args.max_seconds < 60.0:
+        print("--max-seconds must be at least 60 (Replicate + model minimum).", file=sys.stderr)
+        return 1
 
     ga.load_env()
     token = os.environ.get("REPLICATE_API_TOKEN", "").strip()
@@ -175,7 +203,13 @@ def main() -> int:
 
     for i, slug in enumerate(slugs):
         print(f"=== {slug} card -> {out_dir} ===", file=sys.stderr)
-        _run_card(slug=slug, out_dir=out_dir, dry_run=args.dry_run)
+        _run_card(
+            slug=slug,
+            out_dir=out_dir,
+            dry_run=args.dry_run,
+            retry_max=args.retry_max,
+            max_wall_seconds=args.max_seconds,
+        )
         if i < len(slugs) - 1 and args.sleep > 0 and not args.dry_run:
             time.sleep(args.sleep)
     return 0
