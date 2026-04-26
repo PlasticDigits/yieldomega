@@ -85,6 +85,7 @@ out/
 simulations/.venv/
 bots/timecurve/.venv/
 scripts/replicate-art/.venv/
+scripts/sound-effects/.venv/
 # Manual art review drops (binaries/logs); checklist may be committed
 frontend/public/art/pending_manual_review/*
 !frontend/public/art/pending_manual_review/ISSUE_45_CHECKLIST.md
