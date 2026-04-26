@@ -4,6 +4,7 @@ import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import type { ReactNode } from "react";
 import { wagmiConfig } from "@/wagmi-config";
+import { AudioEngineProvider } from "@/audio/AudioEngineProvider";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -21,7 +22,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={arcadeWalletTheme}>{children}</RainbowKitProvider>
+        <RainbowKitProvider theme={arcadeWalletTheme}>
+          <AudioEngineProvider>{children}</AudioEngineProvider>
+        </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
