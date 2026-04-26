@@ -20,6 +20,9 @@ pub struct AddressRegistry {
 pub struct RegistryContracts {
     #[serde(rename = "TimeCurve", default)]
     pub timecurve: String,
+    /// Optional `TimeCurveBuyRouter` for `BuyViaKumbaya` logs (GitLab #67).
+    #[serde(rename = "TimeCurveBuyRouter", default)]
+    pub timecurve_buy_router: String,
     #[serde(rename = "RabbitTreasury", default)]
     pub rabbit_treasury: String,
     #[serde(rename = "LeprechaunNFT", default)]
@@ -38,6 +41,7 @@ impl AddressRegistry {
         let mut v = Vec::new();
         for s in [
             self.contracts.timecurve.trim(),
+            self.contracts.timecurve_buy_router.trim(),
             self.contracts.rabbit_treasury.trim(),
             self.contracts.leprechaun_nft.trim(),
             self.contracts.fee_router.trim(),
