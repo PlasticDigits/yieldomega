@@ -221,6 +221,40 @@ export function routingForPayAsset(
   return { ok: false, reason: "no_route", message: "Unsupported pay asset." };
 }
 
+/**
+ * Onchain `TimeCurve.timeCurveBuyRouter` is authoritative for **single-tx** Kumbaya entry
+ * ([`TimeCurveBuyRouter`](../../../contracts/src/TimeCurveBuyRouter.sol), [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)).
+ * Optional `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` must match the onchain address when set (fail closed).
+ */
+export type TimeCurveBuyRouterForSingleTxResult =
+  | { kind: "none" }
+  | { kind: "mismatch"; message: string }
+  | { kind: "ok"; router: HexAddress };
+
+export function resolveTimeCurveBuyRouterForKumbayaSingleTx(
+  onchain: HexAddress | undefined,
+  env: KumbayaEnv,
+): TimeCurveBuyRouterForSingleTxResult {
+  const fromEnv = envAddr(env, "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER");
+  if (isZeroAddr(onchain)) {
+    if (fromEnv && !isZeroAddr(fromEnv)) {
+      return {
+        kind: "mismatch",
+        message:
+          "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER is set but onchain timeCurveBuyRouter is zero — remove the env var or call setTimeCurveBuyRouter on TimeCurve.",
+      };
+    }
+    return { kind: "none" };
+  }
+  if (fromEnv && !isZeroAddr(fromEnv) && fromEnv.toLowerCase() !== onchain!.toLowerCase()) {
+    return {
+      kind: "mismatch",
+      message: "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER does not match onchain timeCurveBuyRouter.",
+    };
+  }
+  return { kind: "ok", router: onchain! };
+}
+
 /** Minimum CL8Y out after slippage (BPS). */
 export function minOutFromSlippage(amountOut: bigint, slippageBps: number): bigint {
   if (slippageBps < 0 || slippageBps > 10_000) {

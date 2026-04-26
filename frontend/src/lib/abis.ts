@@ -66,6 +66,7 @@ export const timeCurveReadAbi = parseAbi([
   "function SECONDS_PER_DAY() view returns (uint256)",
   "function WARBOW_REVENGE_WINDOW_SEC() view returns (uint256)",
   "function WARBOW_REVENGE_BURN_WAD() view returns (uint256)",
+  "function timeCurveBuyRouter() view returns (address)",
 ]);
 
 export const linearCharmPriceReadAbi = parseAbi([
@@ -75,7 +76,8 @@ export const linearCharmPriceReadAbi = parseAbi([
 
 export const timeCurveWriteAbi = parseAbi([
   "function buy(uint256 charmWad)",
-  "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buy(uint256 charmWad, bool plantWarBowFlag)",
+  "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
   "function claimWarBowFlag()",
   "function warbowSteal(address victim, bool payBypassBurn)",
   "function warbowRevenge(address stealer)",
@@ -144,6 +146,11 @@ export const kumbayaQuoterV2Abi = parseAbi([
 /** SwapRouter-compatible `exactOutput` (issue #41). */
 export const kumbayaSwapRouterAbi = parseAbi([
   "function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) returns (uint256 amountIn)",
+]);
+
+/** [`TimeCurveBuyRouter.buyViaKumbaya`](../../contracts/src/TimeCurveBuyRouter.sol) — single-tx ETH / stable → Kumbaya → `buyFor` (issue #65 / #66). */
+export const timeCurveBuyRouterAbi = parseAbi([
+  "function buyViaKumbaya(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag, uint8 payKind, uint256 swapDeadline, uint256 amountInMaximum, bytes path) payable",
 ]);
 
 export const leprechaunReadAbi = parseAbi([

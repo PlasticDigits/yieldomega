@@ -16,7 +16,7 @@ import {
 } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
-import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
@@ -39,6 +39,7 @@ import {
   type KumbayaEnv,
   type PayWithAsset,
   resolveKumbayaRouting,
+  resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import {
@@ -46,6 +47,7 @@ import {
   swapDeadlineUnixSec,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
+import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
@@ -133,6 +135,7 @@ export function useTimeCurveArenaModel() {
   const [displayTick, setDisplayTick] = useState(0);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
+  const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
   const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
@@ -414,6 +417,7 @@ export function useTimeCurveArenaModel() {
         { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
         { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
       ]
     : [];
   const {
@@ -555,6 +559,7 @@ export function useTimeCurveArenaModel() {
     podiumPoolR,
     totalCharmWeightR,
     buyCooldownSecR,
+    timeCurveBuyRouterR,
   ] = coreTcData ?? [];
 
   const [
@@ -922,17 +927,35 @@ export function useTimeCurveArenaModel() {
     [chainId],
   );
 
+  const onchainTimeCurveBuyRouter = useMemo((): HexAddress | undefined => {
+    if (timeCurveBuyRouterR?.status === "success") {
+      return timeCurveBuyRouterR.result as HexAddress;
+    }
+    return undefined;
+  }, [timeCurveBuyRouterR]);
+
+  const singleTxBuyRouterRes = useMemo(
+    () =>
+      resolveTimeCurveBuyRouterForKumbayaSingleTx(
+        onchainTimeCurveBuyRouter,
+        import.meta.env as unknown as KumbayaEnv,
+      ),
+    [onchainTimeCurveBuyRouter],
+  );
+
   const swapRoute = useMemo(() => {
     if (payWith === "cl8y" || !tokenAddr || !kumbayaResolved.ok) return null;
     return routingForPayAsset(payWith, tokenAddr, kumbayaResolved.config);
   }, [payWith, tokenAddr, kumbayaResolved]);
 
   const kumbayaRoutingBlocker =
-    payWith !== "cl8y" && !kumbayaResolved.ok
-      ? kumbayaResolved.message
-      : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
-        ? swapRoute.message
-        : null;
+    payWith !== "cl8y" && singleTxBuyRouterRes.kind === "mismatch"
+      ? singleTxBuyRouterRes.message
+      : payWith !== "cl8y" && !kumbayaResolved.ok
+        ? kumbayaResolved.message
+        : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
+          ? swapRoute.message
+          : null;
 
   const pricePerCharmForQuote =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
@@ -1781,7 +1804,11 @@ export function useTimeCurveArenaModel() {
             return;
           }
         }
-        const args = codeHash ? [cw, codeHash] : [cw];
+        const args = codeHash
+          ? ([cw, codeHash, plantWarBowFlag] as const)
+          : plantWarBowFlag
+            ? ([cw, plantWarBowFlag] as const)
+            : ([cw] as const);
         const g = await estimateGasUnits({
           address: tc,
           abi: timeCurveWriteAbi,
@@ -1808,6 +1835,7 @@ export function useTimeCurveArenaModel() {
     useReferral,
     referralRegistryOn,
     pendingRef,
+    plantWarBowFlag,
     chainId,
   ]);
 
@@ -2007,6 +2035,35 @@ export function useTimeCurveArenaModel() {
           setBuyErr(route.message);
           return;
         }
+        const singleRes = resolveTimeCurveBuyRouterForKumbayaSingleTx(
+          onchainTimeCurveBuyRouter,
+          import.meta.env as unknown as KumbayaEnv,
+        );
+        if (singleRes.kind === "mismatch") {
+          setBuyErr(singleRes.message);
+          return;
+        }
+        if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
+          await submitKumbayaSingleTxBuy({
+            wagmiConfig,
+            writeContractAsync: writeContractAsync as WalletWriteAsync,
+            userAddress: address,
+            timeCurveBuyRouter: singleRes.router,
+            payWith,
+            kConfig: k.config,
+            route,
+            cl8yOut: amount,
+            charmWad: cw,
+            codeHash,
+            plantWarBowFlag,
+          });
+          if (codeHash) {
+            clearPendingReferralCode();
+            setPendingRef(null);
+          }
+          refetchAll();
+          return;
+        }
         const quote = await readContract(wagmiConfig, {
           address: k.config.quoter,
           abi: kumbayaQuoterV2Abi,
@@ -2090,12 +2147,16 @@ export function useTimeCurveArenaModel() {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
-      const buyArgs = codeHash ? [cw, codeHash] : [cw];
+      const buyArgs = codeHash
+        ? ([cw, codeHash, plantWarBowFlag] as const)
+        : plantWarBowFlag
+          ? ([cw, plantWarBowFlag] as const)
+          : ([cw] as const);
       const buyHash = await writeContractAsync({
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
-        args: buyArgs as [bigint] | [bigint, `0x${string}`],
+        args: buyArgs,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
@@ -2122,6 +2183,8 @@ export function useTimeCurveArenaModel() {
     buyFeeRoutingEnabled,
     payWith,
     chainId,
+    onchainTimeCurveBuyRouter,
+    plantWarBowFlag,
   ]);
 
   async function ensureTcAllowance(need: bigint) {
@@ -2470,6 +2533,8 @@ export function useTimeCurveArenaModel() {
     setStealBypass,
     setStealVictimInput,
     setUseReferral,
+    plantWarBowFlag,
+    setPlantWarBowFlag,
     setWarbowFeed,
     setWarbowLb,
     setWarbowPreflightIssue,
