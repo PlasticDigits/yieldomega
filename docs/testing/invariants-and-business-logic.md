@@ -62,6 +62,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **Indexer** | Decode canonical logs, idempotent persist, chain pointer + reorg rollback of indexed rows. **`TimeCurveBuyRouter`** `BuyViaKumbaya` + `TimeCurve` `Buy` correlation for multi-asset entry metadata ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). | [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md), [indexer/src/persist.rs](../../indexer/src/persist.rs), [integrations/kumbaya.md](../integrations/kumbaya.md) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
 | **Frontend — wallet modal (SafePal / WalletConnect)** | With **`VITE_WALLETCONNECT_PROJECT_ID`**, RainbowKit lists **SafePal** (`safepalWallet`) plus default popular wallets; **EIP-6963** multi-injected discovery enabled. Without project id (non–E2E mock), **injected-only** (no WC QR). SafePal extension uses injected connector; mobile uses WC + SafePal deep link per RainbowKit. | [wallet-connection.md](../frontend/wallet-connection.md) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58)), [`wagmi-config.ts`](../../frontend/src/wagmi-config.ts) |
+| **Frontend — Album 1 BGM resume** | **localStorage** `yieldomega:audio:v1:playbackState`: stable **`trackId`**, index, **`positionSec`**, **`savedAt`**. **7-day** TTL clears offset only; **≥4s** throttle while playing; pause / skip / ended / tab-hide flush. **`AudioEngineProvider`** initial **`trackIndex`** matches hydrate so the dock title does not flash track 1. | [§ Album 1 BGM + SFX + resume](#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68), [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68), [issue #71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) |
 | **Kumbaya routing (TimeCurve entry)** | Optional **ETH** / **stable** spend: either v3 **`exactOutput`** then **`TimeCurve.buy`**, or when **`timeCurveBuyRouter` ≠ 0**, **`buyViaKumbaya`** (single-tx, [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) / [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)) — shared path + slippage in [`timeCurveKumbayaSingleTx.ts`](../../frontend/src/lib/timeCurveKumbayaSingleTx.ts). **Fail closed** if `chainId` or router config is missing, or **env / onchain** buy-router mismatch; MegaETH defaults track [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit). | [integrations/kumbaya.md](../integrations/kumbaya.md), [kumbayaRoutes.ts](../../frontend/src/lib/kumbayaRoutes.ts), [TimeCurveBuyRouter.sol](../../contracts/src/TimeCurveBuyRouter.sol) |
 | **Indexer — `buyFor` + `BuyViaKumbaya` ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67))** | Canonical **`TimeCurve` `Buy`** rows always use the event’s **`buyer`** (participant). **`BuyViaKumbaya`** is ingested only when **`TimeCurveBuyRouter`** is listed in **`ADDRESS_REGISTRY`**; persisted in **`idx_timecurve_buy_router_kumbaya`** and **left-joined** into **`GET /v1/timecurve/buys`** as optional **`entry_pay_asset`** (`eth` \| `stable`) and **`router_attested_gross_cl8y`**, keyed by **`tx_hash` + buyer + charm_wad**. **`pay_kind`**: `0` = ETH/WETH path, `1` = deployment stable (USDM/USDm). | [indexer/tests/integration_stage2.rs](../../indexer/tests/integration_stage2.rs), [decoder round-trip](../../indexer/src/decoder.rs) |
 | **TimeCurve (frontend) — sale phase** | `derivePhase` uses **`ledgerSecIntForPhase`**: same preferred **“chain now”** as the **hero timer** (indexer `/v1/timecurve/chain-timer` + skew) when a snapshot exists; else **`latestBlock` / wall** fallback. Keeps **phase / Buy gating** aligned with the **deadline countdown** when wallet RPC lags; **onchain** `saleStart` / `deadline` / `ended` are still the authority for values. | [timecurve-views — Chain time and sale phase](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48) ([issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48)), [timeCurveSimplePhase.ts](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts) |
@@ -136,6 +137,29 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 | R7 `?ref=` capture | `referrals-surface.spec.ts` + [`referral-path.spec.ts`](../../frontend/e2e/referral-path.spec.ts) | Path segment variant on `/timecurve/{code}`. |
 
 **Play skill (agents walking the checklist):** [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md) · GitLab [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64).
+
+---
+
+<a id="timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68"></a>
+
+### TimeCurve frontend — Album 1 BGM + SFX bus (issue #68) and BGM resume (issue #71)
+
+**Intent:** One **Web Audio** graph serves **Blockie Hills** BGM (streaming MP3) and decoded **SFX** buses. **#68** shipped autoplay attempt, gesture unlock, mix prefs in **`yieldomega:audio:v1:prefs`**, and TimeCurve / global UI wiring. **#71** adds **playback resume**: same key namespace, **`playbackState`** JSON, **track id** reconciliation if the manifest changes, **7-day** staleness (offset only), **≥4s** coalesced writes while playing, and synchronous flush on **pause**, **skip**, **natural `ended`**, **`visibilitychange` → hidden**, **`pagehide` / `beforeunload`**.
+
+| Invariant | Meaning | Automated / manual |
+|-----------|---------|-------------------|
+| Graph + buses | `WebAudioMixer`: `bgmGain` + `sfxGain` → `masterGain` → destination | Code review |
+| Autoplay + unlock | Matches #68: first pointer may unlock + start BGM | Manual Chromium / Firefox |
+| **Resume offset** | After **`loadedmetadata`**, apply saved **`currentTime`** before **`play()`** so autoplay-blocked sessions still resume on first gesture | Manual |
+| **Throttle** | No periodic **localStorage** writes faster than **`AUDIO_PLAYBACK_PERIODIC_SAVE_MS`** (~4s) during steady playback | Manual timer or unit gate (`createMinIntervalGate`) |
+| **Skip / end** | Next track always starts at **0:00** in storage and on element | Manual |
+| **Dock title** | Initial React **`trackIndex`** reads **`loadAudioPlaybackState`** in sync with **`WebAudioMixer`** hydrate | Manual refresh mid-album |
+
+**Unit tests:** [`audioPlaybackState.test.ts`](../../frontend/src/audio/audioPlaybackState.test.ts) (`normalizePlaybackState`, save/load, stale TTL, throttle gate), [`albumPlaylist.test.ts`](../../frontend/src/audio/albumPlaylist.test.ts) (`id` + `durationSec` on tracks).
+
+**Play skill (agents):** [`skills/verify-yo-album-bgm-resume/SKILL.md`](../../skills/verify-yo-album-bgm-resume/SKILL.md) · GitLab [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71).
+
+**Product / UX doc:** [sound-effects-recommendations §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · GitLab [#68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68).
 
 ---
 
