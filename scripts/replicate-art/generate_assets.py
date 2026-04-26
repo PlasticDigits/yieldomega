@@ -8,14 +8,17 @@ Reference images (recommended for consistent style):
   <repo>/frontend/public/art/token-logo.png — hat + D token emblem for coins/UI
 
 Authentication:
-  Set REPLICATE_API_TOKEN in the environment, or in a .env file:
-    - Repository root:  <repo>/.env
-    - This directory:     <repo>/scripts/replicate-art/.env
+  Set REPLICATE_API_TOKEN in the environment, or in a .env file (first match wins; later files
+  fill in keys that are still unset):
+    - Repository root:     <repo>/.env
+    - This directory:      <repo>/scripts/replicate-art/.env
+    - Frontend (optional): <repo>/frontend/.env
+    - Frontend local:      <repo>/frontend/.env.local
 
   Example .env line:
     REPLICATE_API_TOKEN=r8_xxxxxxxx
 
-  (.env is gitignored — never commit tokens.)
+  (.env* under repo are gitignored for secrets — never commit tokens.)
 
 Usage:
   cd scripts/replicate-art
@@ -86,7 +89,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO_ROOT / "frontend" / "public" / "art"
 DEFAULT_STYLE_REF = DEFAULT_OUT / "style.png"
 DEFAULT_TOKEN_REF = DEFAULT_OUT / "token-logo.png"
+# Legacy gorilla ref used by some catalog jobs; production Sir product card is `art/sir-card.png` below.
 DEFAULT_SIR_CARD_REF = REPO_ROOT / "frontend" / "public" / "sir.png"
+# Partner-approved production marketing cards (Kumbaya DEX + Sir venue); see partner_card_refresh.py
+DEFAULT_KUMBAYA_CARD_REF = REPO_ROOT / "frontend" / "public" / "art" / "kumbaya-card.jpg"
+DEFAULT_SIR_PRODUCTION_CARD_REF = REPO_ROOT / "frontend" / "public" / "art" / "sir-card.png"
 
 # Replicate only allows Prefer: wait between 1 and 60 seconds. Longer generations
 # still complete: the Python client polls prediction.reload() until a terminal state.
@@ -172,6 +179,29 @@ def build_prompt(subject: str) -> str:
         f"Generate a new composition with distinct staging, distinct character poses, and a distinct environment layout. "
         f"The result should feel like another official scene from the same campaign, not a repaint, direct edit, or near-duplicate of the reference images.\n\n"
         f"Subject and composition:\n{subject.strip()}\n\n"
+        f"Strictly avoid:\n{NEGATIVE_GUIDE}"
+    )
+
+
+def build_partner_card_refresh_prompt(*, which: str, subject_notes: str = "") -> str:
+    """Prompt for re-rendering partner-approved cards: same layout/characters, better pixels + DOUB emblem.
+
+    Reference order sent to the API: style.png, token-logo.png, then the current production card image.
+    """
+    return (
+        "Partner-approved third-party card refresh — same scene and character beats as the supplied card image; "
+        "higher quality re-render, not a redesign.\n\n"
+        "CRITICAL — keep the approved composition:\n"
+        "- The last reference in input_images is the current production card. Preserve the same character identities, "
+        "poses, expressions, and relationships; the same key props, horizon, and overall layout. "
+        "Do not add or remove characters, do not change the story moment, and do not move the camera to a new angle or crop.\n"
+        "- Minor cleanup (sharper edges, more consistent line weight, better coin embossing) is expected; large layout drift is not.\n\n"
+        "Brand and Doubloon (DOUB) mark:\n"
+        "- The first two references (style.png, then token-logo.png) are canonical for world tone and the coin emblem. "
+        "On every coin face, token, or shield plaque, use the same stylized D / hat-buckle design language as token-logo.png. "
+        "No misspelled wordmarks, no different letter shapes, and no extra readable text beyond the stylized D motif where a coin or badge should appear.\n\n"
+        f"Card / venue: {which}.\n"
+        f"{subject_notes.strip()}\n\n"
         f"Strictly avoid:\n{NEGATIVE_GUIDE}"
     )
 
@@ -401,6 +431,8 @@ def load_env() -> None:
     if load_dotenv:
         load_dotenv(REPO_ROOT / ".env")
         load_dotenv(art_dir / ".env")
+        load_dotenv(REPO_ROOT / "frontend" / ".env")
+        load_dotenv(REPO_ROOT / "frontend" / ".env.local")
 
 
 def _read_output_bytes(output: object) -> bytes:
@@ -438,9 +470,15 @@ def run_job(
     retry_delay_sec: float,
     dry_run: bool,
     no_refs: bool,
+    *,
+    custom_prompt: str | None = None,
+    ref_paths_override: list[Path] | None = None,
 ) -> Path | None:
     catalog_bg = background
-    prompt = build_prompt(subject)
+    if custom_prompt is not None:
+        prompt = custom_prompt
+    else:
+        prompt = build_prompt(subject)
     if catalog_bg == "transparent":
         prompt = augment_prompt_chroma_backdrop(prompt)
     api_bg = api_background_for_replicate(catalog_bg)
@@ -466,7 +504,12 @@ def run_job(
         "input_images": [],
     }
 
-    ref_paths = ref_paths_for_job(name, style_ref, token_ref)
+    if ref_paths_override is not None:
+        ref_paths = _flagged_inputs.filter_reference_paths(
+            [p.resolve() for p in ref_paths_override], REPO_ROOT, job_label=name
+        )
+    else:
+        ref_paths = ref_paths_for_job(name, style_ref, token_ref)
 
     if dry_run:
         print(f"[dry-run] would write {out_path}")
@@ -659,7 +702,7 @@ def main() -> int:
     if not args.dry_run and not token:
         print(
             "Error: REPLICATE_API_TOKEN is not set.\n"
-            "Add it to your environment or to .env at the repo root or scripts/replicate-art/.env\n"
+            "Add it to your environment or to .env (repo root, scripts/replicate-art/.env, or frontend/.env / .env.local)\n"
             "Example: export REPLICATE_API_TOKEN=r8_...",
             file=sys.stderr,
         )

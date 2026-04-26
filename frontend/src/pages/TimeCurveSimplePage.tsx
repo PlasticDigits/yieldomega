@@ -3,13 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Link } from "react-router-dom";
-import { useBalance } from "wagmi";
 import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
-import { PageBadge } from "@/components/ui/PageBadge";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -17,8 +15,16 @@ import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses } from "@/lib/addresses";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { shortAddress } from "@/lib/addressFormat";
+import {
+  CHARM_TOKEN_LOGO,
+  CL8Y_TOKEN_LOGO,
+  ETH_TOKEN_LOGO,
+  USDM_TOKEN_LOGO,
+} from "@/lib/tokenMedia";
 import {
   doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
@@ -68,8 +74,6 @@ function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean
   return "";
 }
 
-const WAD = 10n ** 18n;
-
 export function TimeCurveSimplePage() {
   const tc = addresses.timeCurve;
   const session = useTimeCurveSaleSession(tc);
@@ -116,14 +120,6 @@ export function TimeCurveSimplePage() {
   // the live DOUB-per-CHARM redemption rate ("1 CHARM = N DOUB at launch")
   // so the rate board can show the full chain. All three reuse the shared
   // helpers covered by `timeCurvePodiumMath.test.ts`.
-  const launchCl8yPerCharmWei = useMemo(
-    () =>
-      participantLaunchValueCl8yWei({
-        charmWeightWad: WAD,
-        pricePerCharmWad: session.pricePerCharmWad,
-      }),
-    [session.pricePerCharmWad],
-  );
   const buyAddsCl8yAtLaunch = useMemo(
     () =>
       participantLaunchValueCl8yWei({
@@ -178,8 +174,13 @@ export function TimeCurveSimplePage() {
     return null;
   }, [recentBuys]);
 
+  const paySpendSuffix =
+    session.payWith === "cl8y" ? "CL8Y" : session.payWith === "eth" ? "ETH" : "USDM";
+
   const slider = session.cl8ySpendBounds ? (
-    <div className="timecurve-simple__slider-row">
+    <div
+      className={`timecurve-simple__slider-row timecurve-simple__slider-row--pay-${session.payWith}`}
+    >
       <input
         type="range"
         min={0}
@@ -187,32 +188,85 @@ export function TimeCurveSimplePage() {
         step={1}
         value={session.spendSliderPermille}
         onChange={(e) => session.setSpendFromSliderPermille(Number(e.target.value))}
-        aria-label="CL8Y spend slider"
+        aria-label={`${paySpendSuffix} spend slider (targets CL8Y sale band)`}
         className="timecurve-simple__slider"
         disabled={session.phase !== "saleActive" || !session.walletConnected}
       />
       <div className="timecurve-simple__amount-input">
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Exact CL8Y spend"
-          className="form-input timecurve-simple__amount-field"
-          value={session.spendInputStr}
-          onChange={(e) => session.setSpendFromInput(e.target.value)}
-          onBlur={() => session.setSpendFromInputBlur()}
-          disabled={session.phase !== "saleActive" || !session.walletConnected}
-        />
-        <span className="timecurve-simple__amount-suffix">CL8Y</span>
+        {session.payWith === "cl8y" ? (
+          <>
+            <input
+              type="text"
+              inputMode="decimal"
+              aria-label="Exact CL8Y spend"
+              className="form-input timecurve-simple__amount-field"
+              value={session.spendInputStr}
+              onChange={(e) => session.setSpendFromInput(e.target.value)}
+              onBlur={() => session.setSpendFromInputBlur()}
+              disabled={session.phase !== "saleActive" || !session.walletConnected}
+            />
+            <span className="timecurve-simple__amount-suffix">{paySpendSuffix}</span>
+          </>
+        ) : (
+          <>
+            <span
+              className="form-input timecurve-simple__amount-field timecurve-simple__amount-field--quoted"
+              aria-label={`Quoted ${paySpendSuffix} spend for the selected CL8Y target`}
+            >
+              {session.swapQuoteLoading || session.quotedPayInWei === undefined ? (
+                "…"
+              ) : (
+                <AmountDisplay
+                  raw={String(session.quotedPayInWei)}
+                  decimals={session.payTokenDecimals}
+                />
+              )}
+            </span>
+            <span className="timecurve-simple__amount-suffix">{paySpendSuffix}</span>
+          </>
+        )}
       </div>
     </div>
   ) : null;
 
   const minMaxPill = session.cl8ySpendBounds ? (
     <span className="timecurve-simple__minmax">
-      Live band&nbsp;
-      <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>&nbsp;–&nbsp;
-      <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
-      &nbsp;CL8Y
+      {session.payWith === "cl8y" ? (
+        <>
+          Live band&nbsp;
+          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+          &nbsp;–&nbsp;
+          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+          &nbsp;CL8Y
+        </>
+      ) : session.bandBoundaryQuotesLoading ||
+        session.quotedBandMinPayInWei === undefined ||
+        session.quotedBandMaxPayInWei === undefined ? (
+        <>
+          Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
+          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+          &nbsp;–&nbsp;
+          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+        </>
+      ) : (
+        <>
+          Live band ≈&nbsp;
+          <strong>
+            {formatCompactFromRaw(session.quotedBandMinPayInWei, session.payTokenDecimals)}
+          </strong>
+          &nbsp;–&nbsp;
+          <strong>
+            {formatCompactFromRaw(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
+          </strong>
+          &nbsp;{paySpendSuffix}&nbsp;
+          <span className="muted">
+            (CL8Y&nbsp;
+            <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+            &nbsp;–&nbsp;
+            <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>)
+          </span>
+        </>
+      )}
     </span>
   ) : (
     <span className="timecurve-simple__minmax">Loading live min – max…</span>
@@ -260,11 +314,6 @@ export function TimeCurveSimplePage() {
     nonCl8yBlocked ||
     session.buyFeeRoutingEnabled === false;
 
-  const { data: nativeBal } = useBalance({
-    address: session.walletAddress,
-    query: { enabled: Boolean(session.walletAddress && session.payWith === "eth") },
-  });
-
   const buyButtonMotion = prefersReducedMotion
     ? {}
     : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
@@ -299,8 +348,8 @@ export function TimeCurveSimplePage() {
       session.phase === "saleExpiredAwaitingEnd");
 
   const launchHelperCopy =
-    launchCl8yPerCharmWei !== undefined
-      ? `1 CHARM ≈ ${formatCompactFromRaw(launchCl8yPerCharmWei, session.decimals, { sigfigs: 4 })} CL8Y at launch`
+    session.launchCl8yPerCharmWei !== undefined
+      ? `1 CHARM ≈ ${formatCompactFromRaw(session.launchCl8yPerCharmWei, session.decimals, { sigfigs: 4 })} CL8Y at launch`
       : "Loading launch projection…";
 
   // Rate board (top of buy panel) — the **single most-important number on
@@ -323,6 +372,119 @@ export function TimeCurveSimplePage() {
     const [intPart, fracPart = ""] = s.split(".");
     return `${intPart}.${(fracPart + "000000").slice(0, 6)}`;
   }
+
+  function formatEthRateHero(raw: bigint): string {
+    const s = formatUnits(raw, 18);
+    const [intPart, fracPart = ""] = s.split(".");
+    return `${intPart}.${(fracPart + "00000000").slice(0, 8)}`;
+  }
+
+  const rateNowDisplay = useMemo(() => {
+    if (session.pricePerCharmWad === undefined) {
+      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+    }
+    if (session.payWith === "cl8y") {
+      return {
+        text: formatPriceFixed6(session.pricePerCharmWad),
+        unit: " CL8Y" as const,
+        loading: false as const,
+      };
+    }
+    if (session.perCharmPayQuoteLoading) {
+      if (session.payWith === "eth") {
+        return { text: "…" as const, unit: " ETH" as const, loading: true as const };
+      }
+      return { text: "…" as const, unit: " USDM" as const, loading: true as const };
+    }
+    const quoted = session.quotedPerCharmPayInWei;
+    const raw =
+      quoted !== undefined
+        ? quoted
+        : fallbackPayTokenWeiForCl8y(session.pricePerCharmWad, session.payWith);
+    if (session.payWith === "eth") {
+      return {
+        text: formatEthRateHero(raw),
+        unit: " ETH" as const,
+        loading: false as const,
+      };
+    }
+    return {
+      text: formatPriceFixed6(raw),
+      unit: " USDM" as const,
+      loading: false as const,
+    };
+  }, [
+    session.pricePerCharmWad,
+    session.payWith,
+    session.perCharmPayQuoteLoading,
+    session.quotedPerCharmPayInWei,
+  ]);
+
+  const rateLaunchDisplay = useMemo(() => {
+    if (session.launchCl8yPerCharmWei === undefined) {
+      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+    }
+    if (session.payWith === "cl8y") {
+      return {
+        text: formatPriceFixed6(session.launchCl8yPerCharmWei),
+        unit: " CL8Y" as const,
+        loading: false as const,
+      };
+    }
+    if (session.launchPayQuoteLoading) {
+      if (session.payWith === "eth") {
+        return { text: "…" as const, unit: " ETH" as const, loading: true as const };
+      }
+      return { text: "…" as const, unit: " USDM" as const, loading: true as const };
+    }
+    const quoted = session.quotedLaunchPerCharmPayInWei;
+    const raw =
+      quoted !== undefined
+        ? quoted
+        : fallbackPayTokenWeiForCl8y(session.launchCl8yPerCharmWei, session.payWith);
+    if (session.payWith === "eth") {
+      return {
+        text: formatEthRateHero(raw),
+        unit: " ETH" as const,
+        loading: false as const,
+      };
+    }
+    return {
+      text: formatPriceFixed6(raw),
+      unit: " USDM" as const,
+      loading: false as const,
+    };
+  }, [
+    session.launchCl8yPerCharmWei,
+    session.payWith,
+    session.launchPayQuoteLoading,
+    session.quotedLaunchPerCharmPayInWei,
+  ]);
+
+  const rateBoardPayOptions = (
+    [
+      ["cl8y", "CL8Y", CL8Y_TOKEN_LOGO],
+      ["eth", "ETH", ETH_TOKEN_LOGO],
+      ["usdm", "USDM", USDM_TOKEN_LOGO],
+    ] as const
+  ).map(([key, label, logo]) => (
+    <button
+      key={key}
+      type="button"
+      className={
+        session.payWith === key
+          ? "timecurve-simple__rate-paywith-btn timecurve-simple__rate-paywith-btn--active"
+          : "timecurve-simple__rate-paywith-btn"
+      }
+      aria-pressed={session.payWith === key}
+      aria-label={`Show price in ${label}`}
+      onClick={() => session.setPayWith(key as PayWithAsset)}
+    >
+      <img src={logo} alt="" width={16} height={16} decoding="async" aria-hidden="true" />
+      {label}
+    </button>
+  ));
+
   const rateBoard = (
     <div
       className="timecurve-simple__rate-board"
@@ -337,7 +499,7 @@ export function TimeCurveSimplePage() {
               label remains the source of truth for assistive tech. */}
           <img
             className="timecurve-simple__rate-glyph"
-            src="/art/icons/token-charm.png"
+            src={CHARM_TOKEN_LOGO}
             alt=""
             aria-hidden="true"
             decoding="async"
@@ -349,16 +511,43 @@ export function TimeCurveSimplePage() {
             ↑
           </span>
         </span>
-        <strong
-          key={priceTickKey}
-          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
-          data-testid="timecurve-simple-rate-now"
-        >
-          {session.pricePerCharmWad !== undefined ? formatPriceFixed6(session.pricePerCharmWad) : "—"}
-          <span className="timecurve-simple__rate-unit"> CL8Y</span>
-        </strong>
+        <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
+          {rateBoardPayOptions}
+        </div>
+        <span className="timecurve-simple__rate-value-row">
+          {session.payWith !== "cl8y" && session.rateBoardKumbayaWarning && (
+            <span
+              className="timecurve-simple__kumbaya-route-warn"
+              title="kumbaya route failed"
+              aria-label="kumbaya route failed"
+            >
+              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+                <path
+                  d="M10 2.5 17.5 16H2.5L10 2.5Z"
+                  fill="#e6c200"
+                  stroke="#8a7200"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+                <path d="M10 7v4.2" stroke="#5c4a00" strokeWidth="1.4" strokeLinecap="round" />
+                <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
+              </svg>
+            </span>
+          )}
+          <strong
+            key={`${priceTickKey}-${session.payWith}-${rateNowDisplay.text}`}
+            className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
+            data-testid="timecurve-simple-rate-now"
+            aria-busy={rateNowDisplay.loading}
+          >
+            {rateNowDisplay.text}
+            <span className="timecurve-simple__rate-unit">{rateNowDisplay.unit}</span>
+          </strong>
+        </span>
         <span className="timecurve-simple__rate-foot muted">
-          Ticks up every block — waiting costs CL8Y.
+          {session.payWith === "cl8y"
+            ? "Ticks up every block — waiting costs CL8Y."
+            : "Underlying sale price is always CL8Y; ETH / USDM are Kumbaya routes into CL8Y."}
         </span>
       </div>
       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
@@ -383,13 +572,39 @@ export function TimeCurveSimplePage() {
           <span className="timecurve-simple__rate-pair-equals" aria-hidden="true">
             =
           </span>
-          <span className="timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--cl8y">
+          <span
+            className={`timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--launch-pay-${session.payWith}`}
+          >
+            {session.payWith !== "cl8y" && session.rateBoardKumbayaWarning && (
+              <span
+                className="timecurve-simple__kumbaya-route-warn"
+                title="kumbaya route failed"
+                aria-label="kumbaya route failed"
+              >
+                <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M10 2.5 17.5 16H2.5L10 2.5Z"
+                    fill="#e6c200"
+                    stroke="#8a7200"
+                    strokeWidth="1.2"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M10 7v4.2"
+                    stroke="#5c4a00"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
+                </svg>
+              </span>
+            )}
             <span className="timecurve-simple__rate-pair-value">
-              {launchCl8yPerCharmWei !== undefined
-                ? formatPriceFixed6(launchCl8yPerCharmWei)
-                : "—"}
+              {rateLaunchDisplay.text}
             </span>
-            <span className="timecurve-simple__rate-pair-unit">CL8Y</span>
+            <span className="timecurve-simple__rate-pair-unit">
+              {rateLaunchDisplay.unit.trim()}
+            </span>
           </span>
         </div>
         <span className="timecurve-simple__rate-foot muted">
@@ -534,6 +749,32 @@ export function TimeCurveSimplePage() {
           {session.phase === "saleActive" && session.walletConnected && (
             <>
               <div className="timecurve-simple__minmax-row">{minMaxPill}</div>
+              {session.payWith !== "cl8y" && session.kumbayaRoutingBlocker && (
+                <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
+              )}
+              {session.payWith !== "cl8y" &&
+                !session.kumbayaRoutingBlocker &&
+                session.swapQuoteFailed && (
+                  <StatusMessage variant="error">
+                    Could not quote this route (no liquidity or misconfigured pools for this chain).
+                  </StatusMessage>
+                )}
+              {session.payWith !== "cl8y" && !session.kumbayaRoutingBlocker && !session.swapQuoteFailed && (
+                <p className="muted">
+                  Kumbaya route uses a fixed <strong>3%</strong> max slippage cap on routed input.
+                </p>
+              )}
+              <p className="muted timecurve-simple__pay-balance">
+                Your {session.payWalletBalance.symbol} balance:{" "}
+                {session.payWalletBalance.raw !== undefined ? (
+                  <AmountDisplay
+                    raw={String(session.payWalletBalance.raw)}
+                    decimals={session.payWalletBalance.decimals}
+                  />
+                ) : (
+                  "—"
+                )}
+              </p>
               {slider}
               {buyPreview}
               {session.buyFeeRoutingEnabled === false && (
@@ -554,7 +795,7 @@ export function TimeCurveSimplePage() {
                     CHARM. Decorative; label remains the source of truth. */}
                 <img
                   className="timecurve-simple__cta-glyph"
-                  src="/art/icons/token-charm.png"
+                  src={CHARM_TOKEN_LOGO}
                   alt=""
                   aria-hidden="true"
                   width={28}
@@ -583,111 +824,18 @@ export function TimeCurveSimplePage() {
                 </StatusMessage>
               )}
 
-              {/* Advanced: pay-with, slippage, referral. Hidden by default
-                  so first-run buyers see the slider + CTA + launch value only.
-                  Returning power users open this once and stay open via
-                  browser autofill of `<details open>` state. */}
-              <details className="timecurve-simple__advanced">
-                <summary className="timecurve-simple__advanced-summary">
-                  Advanced (pay with ETH/USDM, slippage, referral)
-                </summary>
-                <div className="timecurve-simple__advanced-body">
-                  <div className="timecurve-simple__paywith muted" role="group" aria-label="Pay with">
-                    <span className="timecurve-simple__paywith-label">Pay with</span>
-                    {(
-                      [
-                        ["cl8y", "CL8Y"],
-                        ["eth", "ETH"],
-                        ["usdm", "USDM"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label key={key} className="timecurve-simple__paywith-option">
-                        <input
-                          type="radio"
-                          name="timecurve-pay-with"
-                          value={key}
-                          checked={session.payWith === key}
-                          onChange={() => session.setPayWith(key)}
-                        />{" "}
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-                  {session.payWith !== "cl8y" && (
-                    <p className="muted timecurve-simple__kumbaya-note">
-                      ETH and USDM route through Kumbaya v3 first; the sale always settles in CL8Y.
-                    </p>
-                  )}
-                  {session.kumbayaRoutingBlocker && session.payWith !== "cl8y" && (
-                    <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
-                  )}
-                  {session.payWith !== "cl8y" && session.swapQuoteLoading && (
-                    <StatusMessage variant="muted">Fetching DEX quote…</StatusMessage>
-                  )}
-                  {session.payWith !== "cl8y" && session.swapQuoteFailed && (
-                    <StatusMessage variant="error">
-                      Could not quote this route (no liquidity or misconfigured pools for this chain).
-                    </StatusMessage>
-                  )}
-                  {session.payWith !== "cl8y" && session.quotedPayInWei !== undefined && (
-                    <p className="muted">
-                      Quote: spend up to ≈{" "}
-                      <AmountDisplay
-                        raw={String(session.quotedPayInWei)}
-                        decimals={session.payTokenDecimals}
-                      />{" "}
-                      {session.payWith === "eth" ? "WETH" : "USDM"} before slippage cap (
-                      {(session.slippageBps / 100).toFixed(2)}% extra headroom).
-                    </p>
-                  )}
-                  {session.payWith === "eth" && nativeBal && (
-                    <p className="muted">
-                      Native ETH balance:{" "}
-                      <AmountDisplay raw={String(nativeBal.value)} decimals={nativeBal.decimals} />{" "}
-                      {nativeBal.symbol}
-                    </p>
-                  )}
-                  <div className="timecurve-simple__slippage muted">
-                    <label>
-                      Slippage (basis points, max 500){" "}
-                      <input
-                        type="number"
-                        className="form-input timecurve-simple__slippage-input"
-                        min={0}
-                        max={500}
-                        step={10}
-                        value={session.slippageBps}
-                        onChange={(e) => session.setSlippageBps(Number(e.target.value))}
-                      />
-                    </label>
-                  </div>
-                  <div className="timecurve-simple__balance-row">
-                    <PageBadge label="Wallet balance" tone="info" />
-                    <span>
-                      {session.walletBalanceWei !== undefined ? (
-                        <AmountDisplay
-                          raw={String(session.walletBalanceWei)}
-                          decimals={session.decimals}
-                        />
-                      ) : (
-                        "—"
-                      )}
-                    </span>
-                  </div>
-                  {session.referralRegistryOn && session.pendingReferralCode && (
-                    <div className="timecurve-simple__referral muted">
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={session.useReferral}
-                          onChange={(e) => session.setUseReferral(e.target.checked)}
-                        />{" "}
-                        Apply pending referral code <code>{session.pendingReferralCode}</code>
-                      </label>
-                    </div>
-                  )}
+              {session.referralRegistryOn && session.pendingReferralCode && (
+                <div className="timecurve-simple__referral muted">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={session.useReferral}
+                      onChange={(e) => session.setUseReferral(e.target.checked)}
+                    />{" "}
+                    Apply pending referral code <code>{session.pendingReferralCode}</code>
+                  </label>
                 </div>
-              </details>
+              )}
             </>
           )}
 

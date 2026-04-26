@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUnits, maxUint256, parseUnits } from "viem";
 import {
   useAccount,
+  useBalance,
   useBlock,
   useChainId,
   useReadContract,
@@ -28,10 +29,15 @@ import {
   resolveKumbayaRouting,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
-import { swapDeadlineUnixSec, swapMaxInputFromQuoted } from "@/lib/timeCurveKumbayaSwap";
+import {
+  KUMBAYA_SWAP_SLIPPAGE_BPS,
+  swapDeadlineUnixSec,
+  swapMaxInputFromQuoted,
+} from "@/lib/timeCurveKumbayaSwap";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   derivePhase,
@@ -41,6 +47,8 @@ import {
 import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
+
+const WAD_ONE_CHARM = 10n ** 18n;
 
 export type { SaleSessionPhase };
 
@@ -118,6 +126,18 @@ export type UseTimeCurveSaleSession = {
   launchCl8yValueWei: bigint | undefined;
   /** Live per-CHARM price in CL8Y wei — exposed so the UX can show "1 CHARM ≈ X CL8Y at launch". */
   pricePerCharmWad: bigint | undefined;
+  /**
+   * Projected CL8Y value of **one CHARM** at launch (1.2× clearing price anchor).
+   * Used by the rate board DOUB = ? tile chain and for Kumbaya `quoteExactOutput` into ETH/USDM.
+   */
+  launchCl8yPerCharmWei: bigint | undefined;
+  /**
+   * Kumbaya `quoteExactOutput` for **one CHARM at launch** (amount out = `launchCl8yPerCharmWei` CL8Y).
+   * Mirrors `quotedPerCharmPayInWei` but for the launch projection leg.
+   */
+  quotedLaunchPerCharmPayInWei: bigint | undefined;
+  /** True while the launch per-CHARM quoter read is in flight. */
+  launchPayQuoteLoading: boolean;
   referralRegistryOn: boolean;
   pendingReferralCode: string | null;
   useReferral: boolean;
@@ -127,8 +147,6 @@ export type UseTimeCurveSaleSession = {
   clearBuyError: () => void;
   payWith: PayWithAsset;
   setPayWith: (p: PayWithAsset) => void;
-  slippageBps: number;
-  setSlippageBps: (n: number) => void;
   kumbayaRoutingBlocker: string | null;
   quotedPayInWei: bigint | undefined;
   payTokenDecimals: number;
@@ -140,6 +158,25 @@ export type UseTimeCurveSaleSession = {
    */
   swapQuoteLoading: boolean;
   swapQuoteFailed: boolean;
+  /**
+   * Kumbaya `quoteExactOutput` for **one CHARM** (amount out = `pricePerCharmWad` CL8Y), for the rate board.
+   * Undefined while loading, on error, or when pay mode is CL8Y / routing unavailable.
+   */
+  quotedPerCharmPayInWei: bigint | undefined;
+  /** True while the per-CHARM quoter read is in flight (rate board may show a placeholder). */
+  perCharmPayQuoteLoading: boolean;
+  perCharmPayQuoteFailed: boolean;
+  /**
+   * When paying with ETH/USDM, true if the rate board is using static fallback rates or the per-CHARM quote failed.
+   * Drives the yellow “kumbaya route failed” affordance (display only; buy still uses live swap quotes).
+   */
+  rateBoardKumbayaWarning: boolean;
+  /** Kumbaya-quoted pay token for `cl8ySpendBounds.minS` / `maxS` (ETH/USDM band row). */
+  quotedBandMinPayInWei: bigint | undefined;
+  quotedBandMaxPayInWei: bigint | undefined;
+  bandBoundaryQuotesLoading: boolean;
+  /** Connected-wallet balance for the active pay asset (CL8Y / native ETH / USDM). */
+  payWalletBalance: { raw: bigint | undefined; decimals: number; symbol: string };
   /** Submits optional Kumbaya `exactOutput` + approve + `buy(charmWad)` — same onchain buy as Arena. */
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
@@ -167,7 +204,6 @@ export function useTimeCurveSaleSession(
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
-  const [slippageBps, setSlippageBps] = useState(100);
 
   useEffect(() => {
     setPendingReferralCode(getPendingReferralCode());
@@ -350,7 +386,7 @@ export function useTimeCurveSaleSession(
     if (minBuyR?.status !== "success" || maxBuyR?.status !== "success") {
       return null;
     }
-    const minS = minBuyR.result as bigint;
+    const minS = minCl8ySpendBroadcastHeadroom(minBuyR.result as bigint);
     let maxS = maxBuyR.result as bigint;
     if (payWith === "cl8y" && walletBalanceWei !== undefined) {
       const b = BigInt(walletBalanceWei);
@@ -417,6 +453,38 @@ export function useTimeCurveSaleSession(
         ? swapRoute.message
         : null;
 
+  const pricePerCharmForQuote =
+    pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
+
+  const launchCl8yPerCharmWei = useMemo(
+    () =>
+      pricePerCharmForQuote !== undefined
+        ? participantLaunchValueCl8yWei({
+            charmWeightWad: WAD_ONE_CHARM,
+            pricePerCharmWad: pricePerCharmForQuote,
+          })
+        : undefined,
+    [pricePerCharmForQuote],
+  );
+
+  const charmPriceQuoteEnabled =
+    payWith !== "cl8y" &&
+    phase === "saleActive" &&
+    pricePerCharmForQuote !== undefined &&
+    pricePerCharmForQuote > 0n &&
+    swapRoute !== null &&
+    swapRoute.ok &&
+    kumbayaResolved.ok;
+
+  const launchPayQuoteEnabled =
+    payWith !== "cl8y" &&
+    phase === "saleActive" &&
+    launchCl8yPerCharmWei !== undefined &&
+    launchCl8yPerCharmWei > 0n &&
+    swapRoute !== null &&
+    swapRoute.ok &&
+    kumbayaResolved.ok;
+
   const quoteEnabled =
     payWith !== "cl8y" &&
     phase === "saleActive" &&
@@ -442,8 +510,75 @@ export function useTimeCurveSaleSession(
     query: { enabled: quoteEnabled },
   });
 
+  const {
+    data: charmPriceQuoteTuple,
+    isPending: charmPriceQuotePending,
+    isFetching: charmPriceQuoteFetching,
+    isError: charmPriceQuoteIsError,
+  } = useReadContract({
+    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
+    abi: kumbayaQuoterV2Abi,
+    functionName: "quoteExactOutput",
+    args:
+      charmPriceQuoteEnabled && swapRoute?.ok
+        ? [swapRoute.path, pricePerCharmForQuote!]
+        : undefined,
+    query: { enabled: charmPriceQuoteEnabled },
+  });
+
+  const {
+    data: launchPayQuoteTuple,
+    isPending: launchPayQuotePending,
+    isFetching: launchPayQuoteFetching,
+    isError: launchPayQuoteIsError,
+  } = useReadContract({
+    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
+    abi: kumbayaQuoterV2Abi,
+    functionName: "quoteExactOutput",
+    args:
+      launchPayQuoteEnabled && swapRoute?.ok
+        ? [swapRoute.path, launchCl8yPerCharmWei!]
+        : undefined,
+    query: { enabled: launchPayQuoteEnabled },
+  });
+
   const quotedPayInWei =
     quoteTuple !== undefined ? (quoteTuple as readonly [bigint, ...unknown[]])[0] : undefined;
+
+  const quotedPerCharmPayInWei =
+    charmPriceQuoteTuple !== undefined
+      ? (charmPriceQuoteTuple as readonly [bigint, ...unknown[]])[0]
+      : undefined;
+
+  const quotedLaunchPerCharmPayInWei =
+    launchPayQuoteTuple !== undefined
+      ? (launchPayQuoteTuple as readonly [bigint, ...unknown[]])[0]
+      : undefined;
+
+  const perCharmPayQuoteLoading =
+    charmPriceQuoteEnabled && (charmPriceQuotePending || charmPriceQuoteFetching);
+  const perCharmPayQuoteFailed = charmPriceQuoteIsError;
+
+  const launchPayQuoteLoading =
+    launchPayQuoteEnabled && (launchPayQuotePending || launchPayQuoteFetching);
+
+  const rateBoardKumbayaWarning =
+    payWith !== "cl8y" &&
+    phase === "saleActive" &&
+    (kumbayaRoutingBlocker !== null ||
+      swapRoute?.ok === false ||
+      charmPriceQuoteIsError ||
+      launchPayQuoteIsError ||
+      (pricePerCharmForQuote !== undefined &&
+        pricePerCharmForQuote > 0n &&
+        !perCharmPayQuoteLoading &&
+        charmPriceQuoteEnabled &&
+        quotedPerCharmPayInWei === undefined) ||
+      (launchCl8yPerCharmWei !== undefined &&
+        launchCl8yPerCharmWei > 0n &&
+        !launchPayQuoteLoading &&
+        launchPayQuoteEnabled &&
+        quotedLaunchPerCharmPayInWei === undefined));
 
   const payTokenInAddr =
     payWith !== "cl8y" && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
@@ -455,6 +590,84 @@ export function useTimeCurveSaleSession(
     query: { enabled: Boolean(payTokenInAddr && payWith !== "cl8y") },
   });
   const payTokenDecimals = payTokDec !== undefined ? Number(payTokDec) : 18;
+
+  const bandQuoteEnabled =
+    payWith !== "cl8y" &&
+    phase === "saleActive" &&
+    cl8ySpendBounds !== null &&
+    swapRoute !== null &&
+    swapRoute.ok &&
+    kumbayaResolved.ok;
+
+  const {
+    data: bandMinTuple,
+    isPending: bandMinPending,
+    isFetching: bandMinFetching,
+  } = useReadContract({
+    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
+    abi: kumbayaQuoterV2Abi,
+    functionName: "quoteExactOutput",
+    args:
+      bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
+        ? [swapRoute.path, cl8ySpendBounds.minS]
+        : undefined,
+    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+  });
+
+  const {
+    data: bandMaxTuple,
+    isPending: bandMaxPending,
+    isFetching: bandMaxFetching,
+  } = useReadContract({
+    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
+    abi: kumbayaQuoterV2Abi,
+    functionName: "quoteExactOutput",
+    args:
+      bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
+        ? [swapRoute.path, cl8ySpendBounds.maxS]
+        : undefined,
+    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+  });
+
+  const quotedBandMinPayInWei =
+    bandMinTuple !== undefined ? (bandMinTuple as readonly [bigint, ...unknown[]])[0] : undefined;
+  const quotedBandMaxPayInWei =
+    bandMaxTuple !== undefined ? (bandMaxTuple as readonly [bigint, ...unknown[]])[0] : undefined;
+  const bandBoundaryQuotesLoading =
+    bandQuoteEnabled &&
+    (bandMinPending || bandMinFetching || bandMaxPending || bandMaxFetching);
+
+  const { data: nativeEthBal } = useBalance({
+    address: address as `0x${string}` | undefined,
+    query: { enabled: Boolean(isConnected && address && payWith === "eth") },
+  });
+
+  const { data: usdmWalletBal } = useReadContract({
+    address: payWith === "usdm" ? payTokenInAddr : undefined,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args:
+      payWith === "usdm" && payTokenInAddr && address ? [address] : undefined,
+    query: { enabled: Boolean(payWith === "usdm" && payTokenInAddr && address && isConnected) },
+  });
+
+  const payWalletBalance = useMemo(() => {
+    if (payWith === "cl8y") {
+      return { raw: walletBalanceWei, decimals, symbol: "CL8Y" };
+    }
+    if (payWith === "eth") {
+      return {
+        raw: nativeEthBal?.value !== undefined ? BigInt(nativeEthBal.value) : undefined,
+        decimals: nativeEthBal?.decimals ?? 18,
+        symbol: "ETH",
+      };
+    }
+    return {
+      raw: usdmWalletBal !== undefined ? (usdmWalletBal as bigint) : undefined,
+      decimals: payTokenDecimals,
+      symbol: "USDM",
+    };
+  }, [payWith, walletBalanceWei, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
 
   const spendSliderPermille = useMemo(() => {
     if (!cl8ySpendBounds) return 0;
@@ -619,7 +832,7 @@ export function useTimeCurveSaleSession(
           args: [route.path, amount],
         });
         const qIn = (quote as readonly [bigint, ...unknown[]])[0];
-        const maxIn = swapMaxInputFromQuoted(qIn, slippageBps);
+        const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
         const deadline = swapDeadlineUnixSec(600);
 
         if (payWith === "eth") {
@@ -725,7 +938,6 @@ export function useTimeCurveSaleSession(
     writeContractAsync,
     refetchAll,
     payWith,
-    slippageBps,
     chainId,
     buyFeeRoutingEnabled,
   ]);
@@ -800,6 +1012,7 @@ export function useTimeCurveSaleSession(
     expectedTokenFromCharms,
     launchCl8yValueWei,
     pricePerCharmWad,
+    launchCl8yPerCharmWei,
     referralRegistryOn,
     pendingReferralCode,
     useReferral,
@@ -809,13 +1022,21 @@ export function useTimeCurveSaleSession(
     clearBuyError: () => setBuyError(null),
     payWith,
     setPayWith,
-    slippageBps,
-    setSlippageBps,
     kumbayaRoutingBlocker,
     quotedPayInWei,
     payTokenDecimals,
     swapQuoteLoading: quoteEnabled && (quotePending || quoteFetching),
     swapQuoteFailed: quoteIsError,
+    quotedPerCharmPayInWei,
+    quotedLaunchPerCharmPayInWei,
+    perCharmPayQuoteLoading,
+    perCharmPayQuoteFailed,
+    launchPayQuoteLoading,
+    rateBoardKumbayaWarning,
+    quotedBandMinPayInWei,
+    quotedBandMaxPayInWei,
+    bandBoundaryQuotesLoading,
+    payWalletBalance,
     submitBuy,
     submitRedeem,
     buyFeeRoutingEnabled,

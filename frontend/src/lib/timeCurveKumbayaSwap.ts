@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+/** Fixed Kumbaya `exactOutput` headroom on max input (3%). Not user-configurable. */
+export const KUMBAYA_SWAP_SLIPPAGE_BPS = 300;
+
 /** Max input token to authorize for `exactOutput`, given quoter `amountIn` and slippage (BPS). */
 export function swapMaxInputFromQuoted(quotedIn: bigint, slippageBps: number): bigint {
   if (slippageBps < 0 || slippageBps > 10_000) {
