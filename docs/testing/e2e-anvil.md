@@ -29,6 +29,8 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts the placeholder **under construction** state during the TimeCurve launch milestone (not NFT reads).
 
+**Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): connected mock wallet registers a code, surfaces **Your share links**, and asserts **Copy** → clipboard for path + `?ref=` URLs. Complements CI-only [`referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts). See [invariants — Referrals page visual](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64).
+
 ## Environment contract (build time)
 
 Vite inlines `VITE_*` at **build** time. For Anvil:
