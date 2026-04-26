@@ -68,8 +68,9 @@ function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
  *
  * Invariants:
  * - Reads only public view functions on TimeCurve / accepted-asset ERC20.
- * - The buy handler calls the same `TimeCurve.buy(charmWad)` /
- *   `buy(charmWad, codeHash)` write paths used by the legacy/Arena page, so the
+ * - The buy handler calls the same `TimeCurve.buy` overloads as the Arena page
+ *   (`charmWad` only, `charmWad` + `plantWarBowFlag`, or referral + `plantWarBowFlag`;
+ *   [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)), so the
  *   contract remains the single source of truth for game rules.
  * - This hook never speaks to the indexer; the simple view stays usable when
  *   only RPC is available.
@@ -142,6 +143,9 @@ export type UseTimeCurveSaleSession = {
   pendingReferralCode: string | null;
   useReferral: boolean;
   setUseReferral: (next: boolean) => void;
+  /** Opt-in: this tx sets `warbowPendingFlag*` onchain ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
+  plantWarBowFlag: boolean;
+  setPlantWarBowFlag: (next: boolean) => void;
   isWriting: boolean;
   buyError: string | null;
   clearBuyError: () => void;
@@ -201,6 +205,7 @@ export function useTimeCurveSaleSession(
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
   const [useReferral, setUseReferral] = useState(true);
+  const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
@@ -908,12 +913,16 @@ export function useTimeCurveSaleSession(
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
-      const buyArgs = codeHash ? [cw, codeHash] : [cw];
+      const buyArgs = codeHash
+        ? ([cw, codeHash, plantWarBowFlag] as const)
+        : plantWarBowFlag
+          ? ([cw, plantWarBowFlag] as const)
+          : ([cw] as const);
       const buyHash = await writeContractAsync({
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
-        args: buyArgs as [bigint] | [bigint, `0x${string}`],
+        args: buyArgs,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
@@ -935,6 +944,7 @@ export function useTimeCurveSaleSession(
     useReferral,
     referralRegistryOn,
     pendingReferralCode,
+    plantWarBowFlag,
     writeContractAsync,
     refetchAll,
     payWith,
@@ -1017,6 +1027,8 @@ export function useTimeCurveSaleSession(
     pendingReferralCode,
     useReferral,
     setUseReferral,
+    plantWarBowFlag,
+    setPlantWarBowFlag,
     isWriting,
     buyError,
     clearBuyError: () => setBuyError(null),

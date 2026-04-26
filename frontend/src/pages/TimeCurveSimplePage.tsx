@@ -777,6 +777,23 @@ export function TimeCurveSimplePage() {
               </p>
               {slider}
               {buyPreview}
+              <div className="timecurve-simple__referral muted">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={session.plantWarBowFlag}
+                    onChange={(e) => session.setPlantWarBowFlag(e.target.checked)}
+                  />{" "}
+                  Plant WarBow flag (opt-in)
+                </label>
+                {session.plantWarBowFlag ? (
+                  <p className="muted" style={{ marginTop: "0.5rem" }}>
+                    This buy can put you in the global pending-flag slot. Another buyer after the silence window
+                    may trigger Battle Point penalties if you do not claim in time. Leave unchecked for a plain
+                    CHARM purchase.
+                  </p>
+                ) : null}
+              </div>
               {session.buyFeeRoutingEnabled === false && (
                 <StatusMessage variant="muted">
                   Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable.

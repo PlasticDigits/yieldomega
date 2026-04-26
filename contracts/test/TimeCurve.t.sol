@@ -233,7 +233,7 @@ contract TimeCurveTest is Test {
         tc.startSale();
         vm.prank(alice);
         vm.expectRevert(bytes("TimeCurve: not buy router"));
-        tc.buyFor(alice, 1e18);
+        tc.buyFor(alice, 1e18, false);
     }
 
     function test_buyFor_credits_buyer_when_called_by_router() public {
@@ -242,8 +242,41 @@ contract TimeCurveTest is Test {
         tc.setTimeCurveBuyRouter(companion);
         _fundAndApprove(companion, 5e18);
         vm.prank(companion);
-        tc.buyFor(alice, 1e18);
+        tc.buyFor(alice, 1e18, false);
         assertEq(tc.charmWeight(alice), 1e18);
+    }
+
+    /// @dev GitLab #63 — default `buy(charmWad)` does not touch WarBow pending slot.
+    function test_buy_plain_does_not_plant_warbow_flag() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        assertEq(tc.warbowPendingFlagOwner(), address(0));
+        assertEq(tc.warbowPendingFlagPlantAt(), 0);
+    }
+
+    function test_buy_with_plant_sets_pending_flag() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18, true);
+        assertEq(tc.warbowPendingFlagOwner(), alice);
+        assertGt(tc.warbowPendingFlagPlantAt(), 0);
+    }
+
+    /// @dev Same holder, plain follow-up buy must not reset silence clock (#63).
+    function test_holder_second_plain_buy_preserves_plant_at() public {
+        tc.startSale();
+        _fundAndApprove(alice, 10e18);
+        vm.startPrank(alice);
+        tc.buy(1e18, true);
+        uint256 plantAfterFirst = tc.warbowPendingFlagPlantAt();
+        vm.warp(block.timestamp + 60);
+        tc.buy(1e18);
+        vm.stopPrank();
+        assertEq(tc.warbowPendingFlagOwner(), alice);
+        assertEq(tc.warbowPendingFlagPlantAt(), plantAfterFirst);
     }
 
     function test_buy_below_minBuy_reverts() public {

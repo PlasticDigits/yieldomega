@@ -38,7 +38,7 @@ This document is the **in-repo source of truth** for how Yieldomega uses **Kumba
 
 ### Optional: single-transaction protocol entry ([issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65))
 
-The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.setTimeCurveBuyRouter`) performs **`exactOutput`** into **exactly** the TimeCurve gross CL8Y for `charmWad`, then calls **`TimeCurve.buyFor(msg.sender, …)`** so CHARM weight, WarBow, cooldown, and referrals accrue to the participant while CL8Y is pulled from the router. **`buyFor`** is **only** callable by the designated router address (zero disables). Pay modes: **`PAY_ETH`** (`msg.value` → WETH, path must end in WETH) and **`PAY_STABLE`** (`stableToken` pull + path must end in that token). The UI may keep the two-step flow; the router is for integrators and wallets that want **one signature**.
+The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.setTimeCurveBuyRouter`) performs **`exactOutput`** into **exactly** the TimeCurve gross CL8Y for `charmWad`, then calls **`TimeCurve.buyFor(msg.sender, charmWad, codeHash, plantWarBowFlag)`** so CHARM weight, WarBow, cooldown, and referrals accrue to the participant while CL8Y is pulled from the router. **`plantWarBowFlag`** is the same opt-in as direct **`buy`** ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). **`buyFor`** is **only** callable by the designated router address (zero disables). Pay modes: **`PAY_ETH`** (`msg.value` → WETH, path must end in WETH) and **`PAY_STABLE`** (`stableToken` pull + path must end in that token). The UI may keep the two-step flow; the router is for integrators and wallets that want **one signature**.
 
 **Hard limits (honest scope):**
 
