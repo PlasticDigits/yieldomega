@@ -12,6 +12,7 @@ The layout was reorganized as part of [`docs/agent-phases.md` Phase 13 — Front
 - **AGPL artwork:** new generated drops default to AGPL-3.0 alongside the rest of the repo (see [`LICENSE`](../../../LICENSE) and [`docs/licensing.md`](../../../docs/licensing.md)). Reference inputs that originate from upstream packs keep their upstream license — check `scripts/replicate-art/` history.
 - **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack), and [`cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py) (CSS cursor-name pack with MDN reference inputs). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
 - **`/art/` in code:** all current consumers live in `frontend/src/`, `frontend/index.html`, and `frontend/vite.config.ts`. Search with `rg "/art/" frontend/`.
+- **`/tokens/` in code:** canonical ticker + MegaETH mark URLs from [`tokenMedia.ts`](../../src/lib/tokenMedia.ts). Search with `rg "tokenMedia|/tokens/" frontend/src`.
 
 ---
 
@@ -60,12 +61,30 @@ Wide JPG scenes used as page hero backplates or feature art. **JPG only** — al
 | [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | [`CollectionPage.tsx`](../../src/pages/CollectionPage.tsx) | Gallery shelves backplate.                                                |
 | [`referrals-network.jpg`](./scenes/referrals-network.jpg) | _reference / alternate_ | Same motif as `referrals-hero.jpg`; not wired as the hero backplate.        |
 | [`referrals-hero.jpg`](./scenes/referrals-hero.jpg) | [`ReferralsPage.tsx`](../../src/pages/ReferralsPage.tsx) `PageHero` `sceneSrc` | 1600×900 hero backplate ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| [`kumbaya-strip.jpg`](./scenes/kumbaya-strip.jpg)    | [`KumbayaPage.tsx`](../../src/pages/KumbayaPage.tsx) | Branded scene strip for the embedded Kumbaya DEX.                          |
-| [`sir-strip.jpg`](./scenes/sir-strip.jpg)            | [`SirPage.tsx`](../../src/pages/SirPage.tsx)        | Branded scene strip for the embedded Sir leverage venue.                  |
 | [`launch-countdown.jpg`](./scenes/launch-countdown.jpg) | [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx) | Launch countdown key art.                                                 |
 | [`error-indexer-down.jpg`](./scenes/error-indexer-down.jpg) | [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) error variant (issue #44 wiring) | Empty/error illustration for indexer down.                |
 | [`error-wrong-network.jpg`](./scenes/error-wrong-network.jpg) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) chain pill warning state                  | Empty/error illustration for wrong-network warnings.       |
 | [`error-wrong-network-portrait.jpg`](./scenes/error-wrong-network-portrait.jpg) | _reserved_ (future full-screen wrong-network overlay) | Tall portrait crop from the landscape error art ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+
+**Third-party venue cards (art root, not under `scenes/`):** partner-approved key art for home CTAs and third-party DEX pages. Strips in `scenes/*-strip.jpg` are legacy; production uses:
+
+| File | Used by | Notes |
+|------|---------|-------|
+| [`kumbaya-card.jpg`](./kumbaya-card.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx) (`surfaceContent`), [`KumbayaPage.tsx`](../../src/pages/KumbayaPage.tsx) | Replaces `scenes/kumbaya-strip.jpg`. |
+| [`sir-card.png`](./sir-card.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx) (`surfaceContent`), [`SirPage.tsx`](../../src/pages/SirPage.tsx) | Replaces `scenes/sir-strip.jpg` (PNG). |
+
+### Canonical token marks (`frontend/public/tokens/`)
+
+On-chain ticker art for **CHARM**, **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a **MegaETH** ecosystem mark, lives **outside** `art/` so token SVG/PNG can evolve without overloading the issue #45 icon pack. Files are served as **`/tokens/<filename>`** (Vite `public/` root). TypeScript should import URL constants from **[`tokenMedia.ts`](../../src/lib/tokenMedia.ts)** rather than hard-coding strings. Short folder README: [`tokens/README.md`](../tokens/README.md).
+
+| File | Used by (via `tokenMedia.ts`) |
+|------|-------------------------------|
+| [`tokens/charm.png`](../tokens/charm.png) | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) (rate glyph, buy CTA), [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) |
+| [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`TimeCurveProtocolPage.tsx`](../../src/pages/TimeCurveProtocolPage.tsx) (`coinSrc`), TimeCurve Simple **Pay with**, Arena buy panel (28px and 24px) |
+| [`tokens/doub.png`](../tokens/doub.png) | [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) (`PageHero` `coinSrc`) |
+| [`tokens/eth.svg`](../tokens/eth.svg) | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) **Pay with** |
+| [`tokens/usdm.svg`](../tokens/usdm.svg) | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) **Pay with** |
+| [`tokens/mega.svg`](../tokens/mega.svg) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) — network pill when `chainId` is in `MEGAETH_CHAIN_IDS` (MegaETH mainnet / testnet; aligned with [`kumbayaRoutes.ts`](../../src/lib/kumbayaRoutes.ts) defaults) |
 
 ### `icons/`
 
@@ -73,10 +92,7 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 
 | Slug                              | Used by                                                                    | Notes                                                                |
 |-----------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------|
-| `token-cl8y.png`                  | [`PageBadge`](../../src/components/ui/PageBadge.tsx) `tone="info"` derivatives, Protocol view | Asset glyph for CL8Y reserve.                                |
-| `token-doub.png`                  | [`PageHero`](../../src/components/ui/PageHero.tsx) `coinSrc` (TimeCurve)   | DOUB token logo (replaces `/art/token-logo.png` on TimeCurve heroes). |
-| `token-charm.png`                 | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) preview | CHARM weight glyph.                                              |
-| `token-usdm.png`                  | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) USDM pay-with row | Optional USDM glyph for the pay-with picker.                |
+| `token-cl8y.png` / `token-doub.png` / `token-charm.png` / `token-usdm.png` | [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) resampling | **Legacy / pipeline rasters.** Product UI for these tickers uses **`/tokens/`** + [`tokenMedia.ts`](../../src/lib/tokenMedia.ts) (see **Canonical token marks** above). Do not add new `/art/icons/token-*.png` consumers for those glyphs. |
 | `status-live.png`                 | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `live`           | Phase badge (Sale live).                                            |
 | `status-ended.png`                | [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `info` (ended)   | Phase badge (Sale ended).                                          |
 | `status-prelaunch.png`            | [`phaseBadge`](../../src/pages/timecurve/timeCurveSimplePhase.ts) `saleStartPending` → [`PageBadge`](../../src/components/ui/PageBadge.tsx) tone `soon` | Pre-launch pictogram ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
@@ -95,7 +111,7 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 | `nav-protocol.png`                | [`TimeCurveSubnav.tsx`](../../src/pages/timecurve/TimeCurveSubnav.tsx)     | Sub-nav pictogram (Protocol).                                    |
 | `chart-accessibility.png`         | _staged_ for charts in Rabbit Treasury                                    | Color-blind safe pair swatch reference.                          |
 | `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`TimeCurveBranchPage.tsx`](../../src/pages/TimeCurveBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+| `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). TimeCurve Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. |
 | `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) | Fee sink pictograms beside canonical onchain sink labels ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ (inline WarBow rows) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 

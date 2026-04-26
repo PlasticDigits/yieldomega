@@ -11,6 +11,9 @@ type Props = {
   title: string;
   slug: string;
   heroImage: string;
+  /** Intrinsic pixel size of `heroImage` (layout hint / CLS). */
+  heroImageWidth?: number;
+  heroImageHeight?: number;
   /** Shown in the LP panel (e.g. spot pair vs derivatives venue). */
   venueDescription: string;
   externalUrl: string | undefined;
@@ -26,6 +29,8 @@ export function ThirdPartyDexPage({
   title,
   slug,
   heroImage,
+  heroImageWidth = 768,
+  heroImageHeight = 512,
   venueDescription,
   externalUrl,
   linkLabel,
@@ -78,7 +83,14 @@ export function ThirdPartyDexPage({
       </PageHero>
       <div className="split-layout">
         <div className="placeholder-figure placeholder-figure--wide">
-          <img src={heroImage} alt="" width={768} height={512} loading="lazy" decoding="async" />
+          <img
+            src={heroImage}
+            alt=""
+            width={heroImageWidth}
+            height={heroImageHeight}
+            loading="lazy"
+            decoding="async"
+          />
         </div>
         <PageSection
           title="Venue Snapshot"
