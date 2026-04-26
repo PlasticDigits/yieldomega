@@ -5,6 +5,7 @@ import {
   buildV3PathExactOutput,
   minOutFromSlippage,
   resolveKumbayaRouting,
+  resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
   type KumbayaChainConfigResolved,
 } from "./kumbayaRoutes";
@@ -14,6 +15,7 @@ const USDM = "0x1111111111111111111111111111111111111111" as const;
 const CL8Y = "0x2222222222222222222222222222222222222222" as const;
 const ROUTER = "0x3333333333333333333333333333333333333333" as const;
 const QUOTER = "0x4444444444444444444444444444444444444444" as const;
+const BUY_R = "0x5555555555555555555555555555555555555555" as const;
 
 function sampleConfig(over?: Partial<KumbayaChainConfigResolved>): KumbayaChainConfigResolved {
   return {
@@ -140,5 +142,36 @@ describe("routingForPayAsset", () => {
 describe("minOutFromSlippage", () => {
   it("applies BPS", () => {
     expect(minOutFromSlippage(10000n, 100)).toBe(9900n);
+  });
+});
+
+describe("resolveTimeCurveBuyRouterForKumbayaSingleTx (issue #66)", () => {
+  it("returns none when onchain is zero and env unset", () => {
+    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {});
+    expect(r).toEqual({ kind: "none" });
+  });
+
+  it("returns none when onchain is undefined and env unset", () => {
+    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(undefined, {});
+    expect(r).toEqual({ kind: "none" });
+  });
+
+  it("mismatch when onchain is zero but env is set", () => {
+    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {
+      VITE_KUMBAYA_TIMECURVE_BUY_ROUTER: BUY_R,
+    });
+    expect(r.kind).toBe("mismatch");
+  });
+
+  it("ok when onchain is set; env may be unset", () => {
+    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(BUY_R, {});
+    expect(r).toEqual({ kind: "ok", router: BUY_R });
+  });
+
+  it("mismatch when env and onchain differ (case-insensitive check)", () => {
+    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(BUY_R, {
+      VITE_KUMBAYA_TIMECURVE_BUY_ROUTER: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    });
+    expect(r.kind).toBe("mismatch");
   });
 });

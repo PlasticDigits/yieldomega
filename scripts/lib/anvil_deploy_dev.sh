@@ -10,6 +10,7 @@
 # After success, sets shell variables:
 #   TC, RT, NFT — TimeCurve, RabbitTreasury, LeprechaunNFT
 #   KUMBAYA_WETH, KUMBAYA_USDM, KUMBAYA_ROUTER — issue #41 Anvil DEX fixtures (same address for router+quoter)
+#   KUMBAYA_BUY_ROUTER — issue #65/66 TimeCurveBuyRouter (optional single-tx ETH/USDM; same deploy as Kumbaya fixtures)
 #
 # Exits non-zero if forge fails or addresses cannot be parsed.
 
@@ -55,11 +56,12 @@ yieldomega_anvil_deploy_dev() {
   KUMBAYA_WETH=$(_yieldomega_extract_k "AnvilWETH9:")
   KUMBAYA_USDM=$(_yieldomega_extract_k "AnvilMockUSDM:")
   KUMBAYA_ROUTER=$(_yieldomega_extract_k "AnvilKumbayaRouter")
+  KUMBAYA_BUY_ROUTER=$(_yieldomega_extract_k "TimeCurveBuyRouter (single-tx")
   rm -f "${KUMBAYA_LOG}"
 
   if [ -z "${KUMBAYA_WETH}" ] || [ -z "${KUMBAYA_USDM}" ] || [ -z "${KUMBAYA_ROUTER}" ]; then
     echo "Could not parse Kumbaya fixture addresses from deploy log." >&2
     return 1
   fi
-  echo "Kumbaya fixtures: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER}"
+  echo "Kumbaya fixtures: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER} TimeCurveBuyRouter=${KUMBAYA_BUY_ROUTER}"
 }
