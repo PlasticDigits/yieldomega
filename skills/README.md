@@ -17,6 +17,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 | [`play-timecurve-warbow/SKILL.md`](play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag, timer hard-reset band. |
 | [`play-rabbit-treasury/SKILL.md`](play-rabbit-treasury/SKILL.md) | Deposits, epochs, **Burrow**, withdraws, and reserve-linked behavior. |
 | [`collect-leprechaun-sets/SKILL.md`](collect-leprechaun-sets/SKILL.md) | Series, sets, traits, and collecting onchain. |
+| [`verify-yo-referrals-surface/SKILL.md`](verify-yo-referrals-surface/SKILL.md) | `/referrals` visual QA checklist (issue #64): shell, register, share links, `?ref=` — evidence + links to automated specs. |
 
 ## Authoritative docs (always cross-check)
 
@@ -31,6 +32,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 - [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) — hub for onchain metadata, contributor skills, and this index
 - [TimeCurve frontend (Simple / Arena / Protocol)](../docs/frontend/timecurve-views.md) — three-view contract; [Kumbaya quote refresh on the Buy CTA](../docs/frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) ([issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56))
 - [Kumbaya integration — optional single-tx ETH/USDM entry](../docs/integrations/kumbaya.md#issue-65-single-tx-router) via **`TimeCurveBuyRouter`** + **`buyFor`** onchain ([issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65)); contributor test map: [invariants — TimeCurve `buyFor` row](../docs/testing/invariants-and-business-logic.md)
+- [Referrals program + `/referrals` surface](../docs/product/referrals.md) — [issue #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) verification checklist; [invariants — Referrals page visual](../docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64)
 - [EVM wallet connection (WalletConnect project id, SafePal, injected discovery)](../docs/frontend/wallet-connection.md) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58))
 
 **Local Anvil / tooling (contributors):** If you wire scripts or bots to `DeployDev` addresses, use the **ERC1967 proxy** for UUPS cores (`TimeCurve`, `RabbitTreasury`, …), not the implementation row in `run-latest.json` — see [`docs/testing/anvil-rich-state.md`](../docs/testing/anvil-rich-state.md) and [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md) ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).

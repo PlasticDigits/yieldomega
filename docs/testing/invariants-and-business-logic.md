@@ -112,6 +112,28 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 ---
 
+<a id="referrals-page-visual-issue-64"></a>
+
+### Referrals `/referrals` visual surface and E2E (issue #64)
+
+**Intent:** The dedicated referrals surface ([`ReferralsPage.tsx`](../../frontend/src/pages/ReferralsPage.tsx) + [`ReferralRegisterSection.tsx`](../../frontend/src/pages/referrals/ReferralRegisterSection.tsx)) must stay usable for **link capture docs**, **registry reads** (from `VITE_REFERRAL_REGISTRY_ADDRESS` or `TimeCurve.referralRegistry()`), **wallet-gated register**, and **post-register share links** with copy-to-clipboard. **Authority** for codes and burns stays on **`ReferralRegistry`** + **`TimeCurve`** — see [product/referrals.md](../product/referrals.md).
+
+**Automated coverage (not a substitute for full visual QA):**
+
+| Checklist row | Playwright / unit | Notes |
+|---------------|-------------------|--------|
+| R1 Page renders (post-launch or no-env shell) | [`referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts) | Skips countdown-only builds via [`launchState.ts`](../../frontend/e2e/launchState.ts). |
+| R2 Empty / connected, unregistered | [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) | Anvil default account + DeployDev registry. |
+| R3 Empty / disconnected | Manual or non-mock smoke | CI UI job uses injected-only wallets; expect “Connect a wallet” when env has a resolvable registry. |
+| R4 Register flow | `anvil-referrals.spec.ts` | Approve + `registerCode` + `localStorage` write implied by share-link surfacing. |
+| R5 Post-register links | `anvil-referrals.spec.ts` | “Your share links” panel. |
+| R6 Copy / share | `anvil-referrals.spec.ts` | `clipboard-read` / `clipboard-write` permission grant. |
+| R7 `?ref=` capture | `referrals-surface.spec.ts` + [`referral-path.spec.ts`](../../frontend/e2e/referral-path.spec.ts) | Path segment variant on `/timecurve/{code}`. |
+
+**Play skill (agents walking the checklist):** [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md) · GitLab [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64).
+
+---
+
 ### TimeMath (library)
 
 | Invariant | Meaning | Tests |
@@ -151,6 +173,7 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 | Constructor sanity | Non-zero asset, router, `launchedToken`, `podiumPool`, **`ICharmPrice`** | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts`, `test_constructor_zero_charmPrice_reverts` |
 | Referral CHARM | Full gross to router; referee + referrer CHARM from `charmWad` | [`TimeCurveReferral.t.sol`](../../contracts/test/TimeCurveReferral.t.sol): `test_buy_with_referral_charms_and_full_gross_to_fee_router`, `test_buy_self_referral_reverts`, `test_buy_invalid_code_reverts` |
 | Referral path capture (read client) | `?ref=` and allowed path shapes normalize with `ReferralRegistry` rules; reserved app path segments are not treated as codes | [`referralPathCapture.test.ts`](../../frontend/src/lib/referralPathCapture.test.ts) |
+| **Referrals `/referrals` surface (issue #64)** | Branded shell + registry section invariants: either resolvable registry (reads + register UX) or explicit **unconfigured** messaging; pending `?ref=` / path capture stays consistent with [product/referrals.md](../product/referrals.md) | [§ Referrals page visual — issue #64](#referrals-page-visual-issue-64); [`referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts); [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) |
 | Stateful raised + CHARM (invariant fuzz) | Ghost **asset** volume matches `totalRaised`; ghost **CHARM** volume matches `totalCharmWeight` | [`TimeCurveInvariant.t.sol`](../../contracts/test/TimeCurveInvariant.t.sol): `invariant_timeCurve_totalRaisedMatchesGhostBuys`, `invariant_timeCurve_totalCharmWeightMatchesGhostBuys` |
 
 #### TimeCurve reserve podium + WarBow — required test coverage
