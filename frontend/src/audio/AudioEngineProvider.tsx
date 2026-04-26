@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { BLOCKIE_HILLS_PLAYLIST } from "./albumPlaylist";
+import { loadAudioPlaybackState } from "./audioPlaybackState";
 import { AudioEngineContext, type AudioEngineApi } from "./audioEngineContext";
 import { loadAudioPrefs, saveAudioPrefs, type AudioPrefsV1 } from "./audioPreferences";
 import { playGameSfx, registerGameAudioEngine } from "./playGameSfx";
@@ -35,7 +36,9 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<AudioPrefsV1>(() => loadAudioPrefs());
   const [unlocked, setUnlocked] = useState(false);
   const [bgmPlaying, setBgmPlaying] = useState(false);
-  const [trackIndex, setTrackIndex] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(() =>
+    typeof window !== "undefined" ? loadAudioPlaybackState(BLOCKIE_HILLS_PLAYLIST).trackIndex : 0,
+  );
   const mixerRef = useRef<WebAudioMixer | null>(null);
 
   if (!mixerRef.current) {

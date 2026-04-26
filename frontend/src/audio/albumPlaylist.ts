@@ -3,7 +3,14 @@
 // Keep `blockie_hills.manifest.json` in sync with `public/music/albums/blockie_hills/manifest.json` (autodiscovery / tooling).
 import blockieHillsManifest from "./blockie_hills.manifest.json";
 
-export type AlbumTrack = { src: string; title: string };
+export type AlbumTrack = {
+  src: string;
+  title: string;
+  /** Stable within manifest (`albumId` + `/` + file); used for BGM resume ([issue #71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71)). */
+  id: string;
+  /** From manifest; used to clamp persisted `positionSec` on hydrate. */
+  durationSec: number;
+};
 
 export type BlockieHillsManifestTrack = {
   index: number;
@@ -24,6 +31,8 @@ export function manifestToPlaylist(m: BlockieHillsManifest): readonly AlbumTrack
   return m.tracks.map((t) => ({
     src: `${raw}/${t.file}`,
     title: t.title,
+    id: `${m.albumId}/${t.file}`,
+    durationSec: t.durationSec,
   }));
 }
 
