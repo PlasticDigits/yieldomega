@@ -90,7 +90,7 @@ contract TimeCurveReferralTest is Test {
         vm.startPrank(bob);
         reserve.approve(address(tc), amount);
         uint256 bobBefore = reserve.balanceOf(bob);
-        tc.buy(charmWad, codeHash);
+        tc.buy(charmWad, codeHash, false);
         vm.stopPrank();
 
         uint256 refEach = (charmWad * uint256(tc.REFERRAL_EACH_BPS())) / 10_000;
@@ -109,7 +109,7 @@ contract TimeCurveReferralTest is Test {
         vm.startPrank(alice);
         reserve.approve(address(tc), 10e18);
         vm.expectRevert("TimeCurve: self-referral");
-        tc.buy(10e18, codeHash);
+        tc.buy(10e18, codeHash, false);
         vm.stopPrank();
     }
 
@@ -119,7 +119,7 @@ contract TimeCurveReferralTest is Test {
         vm.startPrank(bob);
         reserve.approve(address(tc), 10e18);
         vm.expectRevert("TimeCurve: invalid referral");
-        tc.buy(10e18, bad);
+        tc.buy(10e18, bad, false);
         vm.stopPrank();
     }
 }

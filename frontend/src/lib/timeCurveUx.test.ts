@@ -195,6 +195,7 @@ describe("formatBuyDetailRows", () => {
     });
     expect(rows.some((r) => r.label === "Buyer" && r.value.includes("0x1234"))).toBe(true);
     expect(rows.some((r) => r.label.includes("Buy.flagPlanted"))).toBe(true);
+    expect(rows.some((r) => r.label.includes("opted into WarBow flag plant"))).toBe(true);
     expect(rows.some((r) => r.label === "Transaction")).toBe(true);
     expect(rows.length).toBeGreaterThan(12);
   });

@@ -104,6 +104,27 @@
     "stateMutability": "nonpayable",
     "type": "function"
   },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "charmWad", "type": "uint256"},
+      {"internalType": "bool", "name": "plantWarBowFlag", "type": "bool"}
+    ],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "charmWad", "type": "uint256"},
+      {"internalType": "bytes32", "name": "codeHash", "type": "bytes32"},
+      {"internalType": "bool", "name": "plantWarBowFlag", "type": "bool"}
+    ],
+    "name": "buy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
   {"inputs": [], "name": "claimWarBowFlag", "outputs": [], "stateMutability": "nonpayable", "type": "function"},
   {
     "inputs": [
