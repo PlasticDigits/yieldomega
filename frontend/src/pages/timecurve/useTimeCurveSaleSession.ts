@@ -22,11 +22,13 @@ import {
   timeCurveWriteAbi,
   weth9Abi,
 } from "@/lib/abis";
+import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
 import {
   type KumbayaEnv,
   type PayWithAsset,
   resolveKumbayaRouting,
+  resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import {
@@ -69,8 +71,9 @@ function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
  * Invariants:
  * - Reads only public view functions on TimeCurve / accepted-asset ERC20.
  * - The buy handler calls the same `TimeCurve.buy(charmWad)` /
- *   `buy(charmWad, codeHash)` write paths used by the legacy/Arena page, so the
- *   contract remains the single source of truth for game rules.
+ *   `buy(charmWad, codeHash)` write paths used by the legacy/Arena page, or
+ *   **`TimeCurveBuyRouter.buyViaKumbaya`** when `timeCurveBuyRouter` is set and pay mode is
+ *   ETH/USDM (issue #66) — one tx replacing swap + `buy` while preserving sale semantics.
  * - This hook never speaks to the indexer; the simple view stays usable when
  *   only RPC is available.
  */
@@ -142,6 +145,9 @@ export type UseTimeCurveSaleSession = {
   pendingReferralCode: string | null;
   useReferral: boolean;
   setUseReferral: (next: boolean) => void;
+  /** Opt-in: this tx sets `warbowPendingFlag*` onchain ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
+  plantWarBowFlag: boolean;
+  setPlantWarBowFlag: (next: boolean) => void;
   isWriting: boolean;
   buyError: string | null;
   clearBuyError: () => void;
@@ -201,6 +207,7 @@ export function useTimeCurveSaleSession(
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
   const [useReferral, setUseReferral] = useState(true);
+  const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
@@ -230,6 +237,7 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
       ]
     : [];
 
@@ -306,6 +314,7 @@ export function useTimeCurveSaleSession(
     buyFeeRoutingEnabledR,
     charmRedemptionEnabledR,
     reservePodiumPayoutsEnabledR,
+    timeCurveBuyRouterR,
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR] = userData ?? [];
@@ -441,17 +450,35 @@ export function useTimeCurveSaleSession(
     [chainId],
   );
 
+  const onchainTimeCurveBuyRouter = useMemo((): HexAddress | undefined => {
+    if (timeCurveBuyRouterR?.status === "success") {
+      return timeCurveBuyRouterR.result as HexAddress;
+    }
+    return undefined;
+  }, [timeCurveBuyRouterR]);
+
+  const singleTxBuyRouterRes = useMemo(
+    () =>
+      resolveTimeCurveBuyRouterForKumbayaSingleTx(
+        onchainTimeCurveBuyRouter,
+        import.meta.env as unknown as KumbayaEnv,
+      ),
+    [onchainTimeCurveBuyRouter],
+  );
+
   const swapRoute = useMemo(() => {
     if (payWith === "cl8y" || !acceptedAsset || !kumbayaResolved.ok) return null;
     return routingForPayAsset(payWith, acceptedAsset, kumbayaResolved.config);
   }, [payWith, acceptedAsset, kumbayaResolved]);
 
   const kumbayaRoutingBlocker =
-    payWith !== "cl8y" && !kumbayaResolved.ok
-      ? kumbayaResolved.message
-      : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
-        ? swapRoute.message
-        : null;
+    payWith !== "cl8y" && singleTxBuyRouterRes.kind === "mismatch"
+      ? singleTxBuyRouterRes.message
+      : payWith !== "cl8y" && !kumbayaResolved.ok
+        ? kumbayaResolved.message
+        : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
+          ? swapRoute.message
+          : null;
 
   const pricePerCharmForQuote =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
@@ -825,6 +852,35 @@ export function useTimeCurveSaleSession(
           setBuyError(route.message);
           return;
         }
+        const singleRes = resolveTimeCurveBuyRouterForKumbayaSingleTx(
+          onchainTimeCurveBuyRouter,
+          import.meta.env as unknown as KumbayaEnv,
+        );
+        if (singleRes.kind === "mismatch") {
+          setBuyError(singleRes.message);
+          return;
+        }
+        if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
+          await submitKumbayaSingleTxBuy({
+            wagmiConfig,
+            writeContractAsync: writeContractAsync as WalletWriteAsync,
+            userAddress: address,
+            timeCurveBuyRouter: singleRes.router,
+            payWith,
+            kConfig: k.config,
+            route,
+            cl8yOut: amount,
+            charmWad: cw,
+            codeHash,
+            plantWarBowFlag,
+          });
+          if (codeHash) {
+            clearPendingReferralCode();
+            setPendingReferralCode(null);
+          }
+          refetchAll();
+          return;
+        }
         const quote = await readContract(wagmiConfig, {
           address: k.config.quoter,
           abi: kumbayaQuoterV2Abi,
@@ -908,12 +964,16 @@ export function useTimeCurveSaleSession(
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
-      const buyArgs = codeHash ? [cw, codeHash] : [cw];
+      const buyArgs = codeHash
+        ? ([cw, codeHash, plantWarBowFlag] as const)
+        : plantWarBowFlag
+          ? ([cw, plantWarBowFlag] as const)
+          : ([cw] as const);
       const buyHash = await writeContractAsync({
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
-        args: buyArgs as [bigint] | [bigint, `0x${string}`],
+        args: buyArgs,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
@@ -935,11 +995,13 @@ export function useTimeCurveSaleSession(
     useReferral,
     referralRegistryOn,
     pendingReferralCode,
+    plantWarBowFlag,
     writeContractAsync,
     refetchAll,
     payWith,
     chainId,
     buyFeeRoutingEnabled,
+    onchainTimeCurveBuyRouter,
   ]);
 
   const submitRedeem = useCallback(async () => {
@@ -1017,6 +1079,8 @@ export function useTimeCurveSaleSession(
     pendingReferralCode,
     useReferral,
     setUseReferral,
+    plantWarBowFlag,
+    setPlantWarBowFlag,
     isWriting,
     buyError,
     clearBuyError: () => setBuyError(null),
