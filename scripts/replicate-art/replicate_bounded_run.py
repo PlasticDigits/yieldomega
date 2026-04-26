@@ -76,6 +76,8 @@ def run_model_bounded(
     max_wall_seconds: float | None = None,
     job_label: str = "",
     use_file_output: bool = True,
+    log_monitor: bool = True,
+    poll_progress: bool = False,
 ) -> Any:
     """
     Create a model prediction, poll with a wall-clock cap, return file output like ``replicate.run``.
@@ -99,11 +101,14 @@ def run_model_bounded(
     )
     label = job_label or model_ref
     pid = getattr(prediction, "id", "?")
-    print(
-        f"[{label}] monitoring prediction {pid} (max {deadline:.0f}s) — https://replicate.com/p/{pid}",
-        file=sys.stderr,
+    if log_monitor:
+        print(
+            f"[{label}] monitoring prediction {pid} (max {deadline:.0f}s) — https://replicate.com/p/{pid}",
+            file=sys.stderr,
+        )
+    wait_prediction_bounded(
+        prediction, client, max_seconds=deadline, job_label=label, poll_progress=poll_progress
     )
-    wait_prediction_bounded(prediction, client, max_seconds=deadline, job_label=label)
 
     if prediction.status == "failed":
         raise ModelError(prediction)

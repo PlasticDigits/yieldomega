@@ -474,6 +474,8 @@ def run_job(
     custom_prompt: str | None = None,
     ref_paths_override: list[Path] | None = None,
     max_wall_seconds: float | None = None,
+    log_monitor: bool = False,
+    poll_progress: bool = False,
 ) -> Path | None:
     catalog_bg = background
     if custom_prompt is not None:
@@ -561,6 +563,8 @@ def run_job(
                     prefer_wait=prefer_wait,
                     max_wall_seconds=max_wall_seconds,
                     job_label=name,
+                    log_monitor=log_monitor,
+                    poll_progress=poll_progress,
                 )
             finally:
                 for handle in handles:
@@ -573,6 +577,8 @@ def run_job(
             prefer_wait=prefer_wait,
             max_wall_seconds=max_wall_seconds,
             job_label=name,
+            log_monitor=log_monitor,
+            poll_progress=poll_progress,
         )
 
     output = run_with_retries(
