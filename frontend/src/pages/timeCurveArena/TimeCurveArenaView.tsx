@@ -68,15 +68,15 @@ export function TimeCurveArenaView() {
     isWriting, kumbayaRoutingBlocker, launchCl8yPerCharmWei, launchPayQuoteLoading, launchedDec,
     ledgerSecInt, liquidityAnchors, loadHeroTimer,
     loadingMoreBuys, maxBuyAmount, minBuy, minSpendCurvePoints, nonCl8yBuyBlocked,
-    onCl8ySpendInputBlur, onCl8ySpendSlider, openBuyListModal, bandBoundaryQuotesLoading,
+    onCl8ySpendInputBlur, onCl8ySpendSlider,     openBuyListModal, bandBoundaryQuotesLoading,
     payTokenDecimals, payWalletBalance, payWith,
-    pendingRef, pendingRevengeStealer, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
+    pendingRef, plantWarBowFlag, pendingRevengeStealer, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
     prizeDist, prizePayouts, prizesDistributedR, quotedBandMaxPayInWei, quotedBandMinPayInWei,
     quotedLaunchPerCharmPayInWei, quotedPayInWei, quotedPerCharmPayInWei, refApplied,
     rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, runVoid, runWarBowClaimFlag, runWarBowGuard,
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
-    secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setSpendInputStr,
+    secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setPlantWarBowFlag, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
     spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, swapQuoteFailed,
     swapQuoteLoading, tc,
@@ -260,16 +260,20 @@ export function TimeCurveArenaView() {
       items.push("No defended-streak change");
     }
 
-    const hasPendingFlag =
-      flagOwnerAddr !== undefined &&
-      flagOwnerAddr.toLowerCase() !== ZERO_ADDR &&
-      flagPlantAtSec > 0n;
-    if (hasPendingFlag && iHoldPlantFlag) {
-      items.push("Refresh your pending flag");
-    } else if (hasPendingFlag && flagOwnerAddr !== undefined) {
-      items.push(`Replace ${formatWallet(flagOwnerAddr, "rival")}'s flag`);
+    if (plantWarBowFlag) {
+      const hasPendingFlag =
+        flagOwnerAddr !== undefined &&
+        flagOwnerAddr.toLowerCase() !== ZERO_ADDR &&
+        flagPlantAtSec > 0n;
+      if (hasPendingFlag && iHoldPlantFlag) {
+        items.push("Refresh your pending WarBow flag (resets silence timer)");
+      } else if (hasPendingFlag && flagOwnerAddr !== undefined) {
+        items.push(`Replace ${formatWallet(flagOwnerAddr, "rival")}'s pending flag`);
+      } else {
+        items.push("Plant pending WarBow flag");
+      }
     } else {
-      items.push("Plant pending flag");
+      items.push("No WarBow flag plant (plain CHARM buy)");
     }
 
     if (secondsRemaining !== undefined && secondsRemaining < 30) {
@@ -291,6 +295,7 @@ export function TimeCurveArenaView() {
     flagPlantAtSec,
     formatWallet,
     iHoldPlantFlag,
+    plantWarBowFlag,
     secondsRemaining,
     timerExtensionPreview,
   ]);
@@ -758,11 +763,26 @@ export function TimeCurveArenaView() {
                           </label>
                         </div>
                       )}
-                      <div className="timecurve-arena-buy-panel__future-option" aria-disabled="true">
+                      <div className="timecurve-arena-buy-panel__warbow-plant">
                         <label>
-                          <input type="checkbox" disabled /> Plant WarBow flag
+                          <input
+                            type="checkbox"
+                            checked={plantWarBowFlag}
+                            onChange={(e) => setPlantWarBowFlag(e.target.checked)}
+                            disabled={!isConnected}
+                          />{" "}
+                          Plant WarBow flag
                         </label>
-                        <span>Coming soon. Current buys still plant automatically.</span>
+                        {plantWarBowFlag ? (
+                          <p className="muted">
+                            Opt-in: this buy can set you as the global pending flag holder. After the silence
+                            window, another buyer may cost you Battle Points if you do not claim in time — see{" "}
+                            <Link to="/timecurve?view=protocol">protocol copy</Link> and{" "}
+                            <a href="https://gitlab.com/PlasticDigits/yieldomega/-/issues/63">issue #63</a>.
+                          </p>
+                        ) : (
+                          <p className="muted">Unchecked: CHARM buy without updating the WarBow pending flag slot.</p>
+                        )}
                       </div>
                       <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
                         <div className="timecurve-arena-buy-panel__effects-title">

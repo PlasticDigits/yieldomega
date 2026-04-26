@@ -135,6 +135,7 @@ contract TimeCurveBuyRouterTest is Test {
         buyRouter.buyViaKumbaya(
             charmWad,
             bytes32(0),
+            false,
             buyRouter.PAY_STABLE(),
             block.timestamp + 600,
             maxIn,
@@ -157,7 +158,7 @@ contract TimeCurveBuyRouterTest is Test {
         vm.deal(alice, maxIn);
         vm.startPrank(alice);
         buyRouter.buyViaKumbaya{value: maxIn}(
-            charmWad, bytes32(0), buyRouter.PAY_ETH(), block.timestamp + 600, maxIn, path
+            charmWad, bytes32(0), false, buyRouter.PAY_ETH(), block.timestamp + 600, maxIn, path
         );
         vm.stopPrank();
 
@@ -182,6 +183,6 @@ contract TimeCurveBuyRouterTest is Test {
             address(this)
         );
         vm.expectRevert(bytes("TimeCurve: not buy router"));
-        tc2.buyFor(alice, 1e18);
+        tc2.buyFor(alice, 1e18, false);
     }
 }

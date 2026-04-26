@@ -31,7 +31,7 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 ## Attribution (TimeCurve buys)
 
-- The buyer calls **`buy(charmWad, codeHash)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** (no referral split).
+- The buyer calls **`buy(charmWad, codeHash, plantWarBowFlag)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** / **`buy(charmWad, plantWarBowFlag)`** (no referral split). `plantWarBowFlag` is the WarBow opt-in from [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
 - **Referrer** is `ReferralRegistry.ownerOfCode(codeHash)`. If `codeHash` is non-zero but unregistered, the transaction **reverts**.
 - **Self-referral** (`referrer == buyer`) **reverts**.
 - **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer (the UI may cache a pending code for UX only).
@@ -59,7 +59,7 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 ## Related contracts
 
 - `ReferralRegistry` — code ownership and CL8Y burn.
-- `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash)` applies splits.
+- `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash, plantWarBowFlag)` applies splits.
 
 ## Automated checks (frontend)
 
