@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { ALBUM_1_PLAYLIST, type AlbumTrack } from "./albumPlaylist";
+import { BLOCKIE_HILLS_PLAYLIST, type AlbumTrack } from "./albumPlaylist";
 import {
   bgmLinearGainFromPermille,
   sfxCurveGainFromPermille,
@@ -48,8 +48,11 @@ export class WebAudioMixer {
 
   private onPlayingChange: ((playing: boolean) => void) | null = null;
 
-  constructor(initialPrefs: AudioPrefsV1) {
+  private playlist: readonly AlbumTrack[];
+
+  constructor(initialPrefs: AudioPrefsV1, playlist: readonly AlbumTrack[] = BLOCKIE_HILLS_PLAYLIST) {
     this.prefs = { ...initialPrefs };
+    this.playlist = playlist;
   }
 
   setCallbacks(cb: {
@@ -78,7 +81,7 @@ export class WebAudioMixer {
   }
 
   getCurrentTrack(): AlbumTrack {
-    return ALBUM_1_PLAYLIST[this.trackIndex] ?? ALBUM_1_PLAYLIST[0];
+    return this.playlist[this.trackIndex] ?? this.playlist[0];
   }
 
   /** Must run from a user gesture before BGM / SFX are audible. */
@@ -133,7 +136,7 @@ export class WebAudioMixer {
   /** Start or resume BGM from the current playlist index. */
   async playBgm(): Promise<void> {
     await this.unlock();
-    if (!this.audioEl) return;
+    if (!this.audioEl || this.playlist.length === 0) return;
     const t = this.getCurrentTrack();
     const resolved = new URL(t.src, window.location.href).href;
     if (this.audioEl.src !== resolved) {
@@ -167,7 +170,9 @@ export class WebAudioMixer {
   }
 
   private bumpTrackIndex() {
-    this.trackIndex = (this.trackIndex + 1) % ALBUM_1_PLAYLIST.length;
+    const n = this.playlist.length;
+    if (n === 0) return;
+    this.trackIndex = (this.trackIndex + 1) % n;
     const t = this.getCurrentTrack();
     this.onTrackChange?.(t, this.trackIndex);
   }

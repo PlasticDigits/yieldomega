@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAccount } from "wagmi";
-import { ALBUM_1_PLAYLIST } from "./albumPlaylist";
+import { BLOCKIE_HILLS_PLAYLIST } from "./albumPlaylist";
 import { AudioEngineContext, type AudioEngineApi } from "./audioEngineContext";
 import { loadAudioPrefs, saveAudioPrefs, type AudioPrefsV1 } from "./audioPreferences";
 import { playGameSfx, registerGameAudioEngine } from "./playGameSfx";
@@ -67,26 +67,50 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
 
   const unlockInFlight = useRef(false);
 
+  const prefetchCommonSfx = useCallback(() => {
+    return mixer.prefetchSfx([
+      "ui_button_click",
+      "charmed_confirm",
+      "coin_hit_shallow",
+      "kumbaya_whoosh",
+      "peer_buy_distant",
+      "timer_heartbeat_calm",
+      "timer_heartbeat_urgent",
+    ]);
+  }, [mixer]);
+
   const unlockFromGesture = useCallback(async () => {
     if (unlockedRef.current || unlockInFlight.current) return;
     unlockInFlight.current = true;
     try {
       await mixer.unlock();
-      await mixer.prefetchSfx([
-        "ui_button_click",
-        "charmed_confirm",
-        "coin_hit_shallow",
-        "kumbaya_whoosh",
-        "peer_buy_distant",
-        "timer_heartbeat_calm",
-        "timer_heartbeat_urgent",
-      ]);
+      await prefetchCommonSfx();
+      if (!mixer.isBgmPlaying()) {
+        await mixer.playBgm();
+      }
       unlockedRef.current = true;
       setUnlocked(true);
     } finally {
       unlockInFlight.current = false;
     }
-  }, [mixer]);
+  }, [mixer, prefetchCommonSfx]);
+
+  /** Try BGM on load; browsers usually block until a gesture — then {@link unlockFromGesture} starts BGM. */
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await mixer.playBgm();
+      if (cancelled) return;
+      if (mixer.isBgmPlaying() && !unlockedRef.current) {
+        unlockedRef.current = true;
+        setUnlocked(true);
+        void prefetchCommonSfx();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mixer, prefetchCommonSfx]);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -115,7 +139,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   }, [unlockFromGesture]);
 
   const api = useMemo<AudioEngineApi>(() => {
-    const currentTrack = ALBUM_1_PLAYLIST[trackIndex] ?? ALBUM_1_PLAYLIST[0];
+    const currentTrack = BLOCKIE_HILLS_PLAYLIST[trackIndex] ?? BLOCKIE_HILLS_PLAYLIST[0];
     return {
       unlocked,
       bgmPlaying,

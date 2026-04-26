@@ -1,6 +1,6 @@
 # Sound effects — recommendations (Yieldomega / TimeCurve)
 
-This document proposes **in-game and UI** sound for the frontend. It is aligned with **`frontend/public/music/album_1`** (hills, coin path, rainbows, moss and brass, jig energy, starline, lucky run, Kumbaya / campfire) and the onchain game loop (TimeCurve sale, **CHARM** / **DOUB**, **WarBow**, **reserve podiums**).
+This document proposes **in-game and UI** sound for the frontend. It is aligned with **`frontend/public/music/albums/blockie_hills`** (full **Blockie Hills** album: sixteen instrumental tracks; see `manifest.json` there) and the onchain game loop (TimeCurve sale, **CHARM** / **DOUB**, **WarBow**, **reserve podiums**).
 
 **Implementation note:** a small **Python + NumPy** synth lives in [`scripts/sound-effects/`](../../scripts/sound-effects) (`sfx_synth.py`, `presets.py`, `generate.py`). Run `python generate.py --out ../../frontend/public/sound-effects` to render reference **`.wav`** files. Treat those as **stems**; production may replace them with foley or higher-fidelity design while keeping the same **emotional and spectral** direction. The procedural presets **avoid “UI beeps”** (no solo high sines or glassy FM bells) in favor of **low-mid weight, detuned partials, and gentle low-passing** so they sit with the music rather than on top of it in a 2 kHz+ band.
 
@@ -141,8 +141,8 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 
 **Shipped behavior** (see [GitLab #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68), [invariants — frontend audio](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68)):
 
-- **Web Audio graph:** `master` gain → destination; **`bgmGain`** (sequential MP3 Album 1, tracks 1–8 only) and **`sfxGain`** (decoded `.wav` one-shots) are **independent** buses into `master`.
-- **Autoplay:** `AudioContext` + BGM `HTMLMediaElement` **never** start on page load. The first **pointer** interaction unlocks the context (and prefetches core SFX). **BGM playback** starts only when the user presses **Play** in the header player (or resumes after pause).
+- **Web Audio graph:** `master` gain → destination; **`bgmGain`** (sequential MP3 **Blockie Hills**, tracks **1–16** from `manifest.json`) and **`sfxGain`** (decoded `.wav` one-shots) are **independent** buses into `master`.
+- **Autoplay:** On load, the app **attempts** to start BGM (`playBgm` after implicit `AudioContext` setup). Many browsers **block** audio until a **user gesture**; in that case the **first pointer** interaction unlocks the context, prefetches core SFX, and **starts BGM** if it is not already playing. The floating **AlbumPlayerBar** play/pause control still toggles playback after unlock.
 - **Defaults:** BGM fader **25%** of full scale (`localStorage` key namespace `yieldomega:audio:v1:`); SFX use a gentle **square-law** curve from the SFX slider so mid values are not harsh.
 - **TimeCurve Simple:** `coin_hit_shallow` after the **`buy`** tx is **submitted**; `charmed_confirm` after **receipt**; `kumbaya_whoosh` when **pay mode** changes across CL8Y / ETH / USDM; **peer** head-of-feed buys (not self) fire **`peer_buy_distant`** with a **minimum gap**; timer **calm** / **urgent** heartbeats align with **≤13m** / **≤2m** remaining while the sale is active, suppressed when **`prefers-reduced-motion`** is set.
 - **Wallet:** `charmed_confirm` on **false → true** `isConnected` (no sound on cold load when already connected).
