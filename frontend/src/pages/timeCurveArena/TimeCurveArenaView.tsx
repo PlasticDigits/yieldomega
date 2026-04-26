@@ -32,6 +32,8 @@ import { doubPerCharmAtLaunchWad } from "@/lib/timeCurvePodiumMath";
 import { buildBuyBattlePointBreakdown } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import { useArenaHeroCountdownSecondSfx } from "@/pages/timeCurveArena/useArenaHeroCountdownSecondSfx";
+import { usePeerBuyHeadSfx } from "@/pages/timecurve/usePeerBuyHeadSfx";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
@@ -92,6 +94,18 @@ export function TimeCurveArenaView() {
 
   const pricePerCharmWad =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
+
+  usePeerBuyHeadSfx({
+    recentBuys: buys,
+    walletAddress: address,
+    reduceMotion: Boolean(prefersReducedMotion),
+  });
+
+  useArenaHeroCountdownSecondSfx({
+    saleActive,
+    secondsRemaining,
+    reduceMotion: Boolean(prefersReducedMotion),
+  });
 
   function formatPriceFixed6(raw: bigint): string {
     const s = formatUnits(raw, 18);
