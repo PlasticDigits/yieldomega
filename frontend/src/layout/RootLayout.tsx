@@ -9,6 +9,7 @@ import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { governanceUrl } from "@/lib/addresses";
 import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
+import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -37,6 +38,7 @@ export function RootLayout() {
     <div className="app-shell">
       <ReferralPathSync />
       <header className="app-header">
+        <div className="app-header__top">
         <div className="app-header__brand">
           <NavLink to="/" className="brand-link">
             <img
@@ -183,6 +185,8 @@ export function RootLayout() {
             }}
           </ConnectButton.Custom>
         </div>
+        </div>
+        <AlbumPlayerBar />
       </header>
       <main className="app-main">
         <AnimatePresence mode="wait" initial={false}>

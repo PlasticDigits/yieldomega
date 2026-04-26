@@ -268,9 +268,9 @@ button:disabled,
   position: relative;
   z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem 1.5rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
   margin: 1rem auto 0;
   width: min(72rem, calc(100% - 2rem));
   max-width: 100%;
@@ -283,6 +283,14 @@ button:disabled,
     linear-gradient(180deg, #fffef8 0%, var(--bg-cream) 100%);
   box-shadow: var(--shadow-hard), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   box-sizing: border-box;
+}
+
+.app-header__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  min-width: 0;
 }
 
 .app-header__brand {
@@ -345,6 +353,86 @@ button:disabled,
   flex-wrap: wrap;
   gap: 0.65rem;
   flex: 1 1 auto;
+}
+
+/* Album 1 BGM + mix bus (GitLab #68) */
+.album-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: 1rem;
+  border: 3px solid rgba(11, 31, 20, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+}
+
+.album-player__title {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-main);
+}
+
+.album-player__transport {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.album-player__btn {
+  padding: 0.25rem 0.55rem;
+  border: 2px solid var(--line);
+  border-radius: 0.55rem;
+  background: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.album-player__vol {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.album-player__vol-label {
+  width: 2rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.album-player__vol input[type="range"] {
+  width: 5.5rem;
+}
+
+.album-player__mutes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.album-player__pill {
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #f4f7f4;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.album-player__pill--active {
+  background: var(--arcade-gold-200);
 }
 
 .nav-link {
