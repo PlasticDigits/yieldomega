@@ -8,6 +8,8 @@ import {
     AnvilMockUSDM,
     AnvilKumbayaRouter
 } from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {TimeCurve} from "../src/TimeCurve.sol";
+import {TimeCurveBuyRouter} from "../src/TimeCurveBuyRouter.sol";
 
 interface ITimeCurveAsset {
     function acceptedAsset() external view returns (address);
@@ -50,11 +52,15 @@ contract DeployKumbayaAnvilFixtures is Script {
 
         router.setOwner(address(0));
 
+        TimeCurveBuyRouter buyRouter = new TimeCurveBuyRouter(TimeCurve(timeCurve), address(router), address(weth), address(usdm));
+        TimeCurve(timeCurve).setTimeCurveBuyRouter(address(buyRouter));
+
         vm.stopBroadcast();
 
         console.log("AnvilWETH9:", address(weth));
         console.log("AnvilMockUSDM:", address(usdm));
         console.log("AnvilKumbayaRouter (swap + quoter):", address(router));
+        console.log("TimeCurveBuyRouter (single-tx ETH/USDM buy):", address(buyRouter));
         console.log("Accepted CL8Y:", cl8y);
     }
 }

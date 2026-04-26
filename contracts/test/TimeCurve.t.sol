@@ -229,6 +229,23 @@ contract TimeCurveTest is Test {
         assertEq(tc.totalRaised(), 1e18);
     }
 
+    function test_buyFor_reverts_when_not_designated_router() public {
+        tc.startSale();
+        vm.prank(alice);
+        vm.expectRevert(bytes("TimeCurve: not buy router"));
+        tc.buyFor(alice, 1e18);
+    }
+
+    function test_buyFor_credits_buyer_when_called_by_router() public {
+        tc.startSale();
+        address companion = makeAddr("companionRouter");
+        tc.setTimeCurveBuyRouter(companion);
+        _fundAndApprove(companion, 5e18);
+        vm.prank(companion);
+        tc.buyFor(alice, 1e18);
+        assertEq(tc.charmWeight(alice), 1e18);
+    }
+
     function test_buy_below_minBuy_reverts() public {
         tc.startSale();
         _fundAndApprove(alice, 1e18);
