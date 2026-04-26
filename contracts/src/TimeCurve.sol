@@ -153,6 +153,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public warbowPendingFlagPlantAt;
 
     event SaleStarted(uint256 startTimestamp, uint256 initialDeadline, uint256 totalTokensForSale);
+    /// @notice `flagPlanted` is **true iff** this buy opted into `warbowPendingFlag*` ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)); indexer `flag_planted` mirrors it.
     event Buy(
         address indexed buyer,
         uint256 charmWad,
@@ -314,28 +315,35 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit SaleStarted(block.timestamp, deadline, totalTokensForSale);
     }
 
+    /// @notice Plain CHARM buy — does **not** plant/replace the WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function buy(uint256 charmWad) external nonReentrant {
-        _buy(msg.sender, msg.sender, charmWad, bytes32(0));
+        _buy(msg.sender, msg.sender, charmWad, bytes32(0), false);
     }
 
-    function buy(uint256 charmWad, bytes32 codeHash) external nonReentrant {
-        _buy(msg.sender, msg.sender, charmWad, codeHash);
+    /// @notice CHARM buy with explicit WarBow flag plant (`true` = opt into pending-flag risk / claim path).
+    function buy(uint256 charmWad, bool plantWarBowFlag) external nonReentrant {
+        _buy(msg.sender, msg.sender, charmWad, bytes32(0), plantWarBowFlag);
+    }
+
+    /// @notice Referral-aware buy; `plantWarBowFlag` controls whether this tx updates `warbowPendingFlag*` ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
+    function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) external nonReentrant {
+        _buy(msg.sender, msg.sender, charmWad, codeHash, plantWarBowFlag);
     }
 
     /// @notice Single-tx Kumbaya entry: **only** `timeCurveBuyRouter` may call; CL8Y is pulled from the router (`payer`), CHARM and WarBow credit go to `buyer`. See `TimeCurveBuyRouter` (GitLab #65).
-    function buyFor(address buyer, uint256 charmWad) external nonReentrant {
-        _buyForExternal(buyer, charmWad, bytes32(0));
+    function buyFor(address buyer, uint256 charmWad, bool plantWarBowFlag) external nonReentrant {
+        _buyForExternal(buyer, charmWad, bytes32(0), plantWarBowFlag);
     }
 
     /// @notice Same as `buyFor` with referral `codeHash` (registry rules unchanged).
-    function buyFor(address buyer, uint256 charmWad, bytes32 codeHash) external nonReentrant {
-        _buyForExternal(buyer, charmWad, codeHash);
+    function buyFor(address buyer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) external nonReentrant {
+        _buyForExternal(buyer, charmWad, codeHash, plantWarBowFlag);
     }
 
-    function _buyForExternal(address buyer, uint256 charmWad, bytes32 codeHash) private {
+    function _buyForExternal(address buyer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) private {
         require(msg.sender == timeCurveBuyRouter && timeCurveBuyRouter != address(0), "TimeCurve: not buy router");
         require(buyer != address(0), "TimeCurve: zero buyer");
-        _buy(buyer, msg.sender, charmWad, codeHash);
+        _buy(buyer, msg.sender, charmWad, codeHash, plantWarBowFlag);
     }
 
     function _charmBounds(uint256 elapsed) internal view returns (uint256 minCharmWad, uint256 maxCharmWad) {
@@ -346,7 +354,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     /// @param buyer Wallet credited for CHARM weight, WarBow, podiums, cooldown, and referrals.
     /// @param payer Source of accepted-asset (`msg.sender` for normal `buy`; companion router for `buyFor`).
-    function _buy(address buyer, address payer, uint256 charmWad, bytes32 codeHash) internal {
+    /// @param plantWarBowFlag If true, this tx sets `warbowPendingFlagOwner` / `warbowPendingFlagPlantAt` to `buyer` / `block.timestamp` (unless same holder opts out of timer reset — see body). If false, pending slot is unchanged when `buyer == warbowPendingFlagOwner` after interrupt handling ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
+    function _buy(address buyer, address payer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) internal {
         require(saleStart > 0, "TimeCurve: not started");
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
@@ -455,8 +464,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         _addBattlePoints(buyer, bpBase + bpReset + bpClutch + bpStreakBreak + bpAmbush);
 
-        warbowPendingFlagOwner = buyer;
-        warbowPendingFlagPlantAt = block.timestamp;
+        if (plantWarBowFlag) {
+            warbowPendingFlagOwner = buyer;
+            warbowPendingFlagPlantAt = block.timestamp;
+        }
 
         emit Buy(
             buyer,
@@ -475,7 +486,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             bpStreakBreak,
             bpAmbush,
             flagPenalty,
-            true,
+            plantWarBowFlag,
             totalEffectiveTimerSecAdded[buyer],
             activeDefendedStreak[buyer],
             bestDefendedStreak[buyer]

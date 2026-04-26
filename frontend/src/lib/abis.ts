@@ -75,7 +75,8 @@ export const linearCharmPriceReadAbi = parseAbi([
 
 export const timeCurveWriteAbi = parseAbi([
   "function buy(uint256 charmWad)",
-  "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buy(uint256 charmWad, bool plantWarBowFlag)",
+  "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
   "function claimWarBowFlag()",
   "function warbowSteal(address victim, bool payBypassBurn)",
   "function warbowRevenge(address stealer)",

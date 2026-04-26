@@ -43,7 +43,7 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    /// @notice Hash used by `TimeCurve.buy(charmWad, codeHash)`; same as `keccak256(bytes(normalized))`.
+    /// @notice Hash used by `TimeCurve.buy(charmWad, codeHash, plantWarBowFlag)`; same as `keccak256(bytes(normalized))`.
     function hashCode(string calldata code) external pure returns (bytes32) {
         return _hashNormalized(_normalizeToBytes(code));
     }

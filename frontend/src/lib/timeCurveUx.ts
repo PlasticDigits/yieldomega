@@ -397,7 +397,7 @@ export function formatBuyDetailRows(buy: BuyItem): BuyDetailRow[] {
     { label: "BP — ambush", value: nz(buy.bp_ambush_bonus) },
     { label: "BP — flag penalty", value: nz(buy.bp_flag_penalty) },
     {
-      label: "Buy.flagPlanted (always true in current bytecode; see docs)",
+      label: "Buy.flagPlanted (true iff this buy opted into WarBow flag plant; see docs)",
       value: nz(buy.flag_planted),
     },
     { label: "Buyer effective timer (sec indexed)", value: nz(buy.buyer_total_effective_timer_sec) },
