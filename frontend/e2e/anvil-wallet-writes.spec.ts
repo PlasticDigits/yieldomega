@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
 
 /**
  * Anvil Phase B: write txs via wagmi `mock` connector (`VITE_E2E_MOCK_WALLET=1`).
@@ -8,17 +7,7 @@ import type { Page } from "@playwright/test";
  * WalletConnect, and MegaETH (gas, signing, RPC). See docs/testing/e2e-anvil.md.
  */
 
-async function connectMockIfPlaceholderVisible(
-  page: Page,
-  placeholder: string,
-) {
-  const barrier = page.getByText(placeholder, { exact: true });
-  if (!(await barrier.isVisible().catch(() => false))) {
-    return;
-  }
-  await page.getByRole("button", { name: /connect/i }).first().click();
-  await page.getByRole("button", { name: /Mock Connector/i }).click();
-}
+import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
 test.describe("Anvil wallet writes", () => {
   test.skip(
@@ -34,7 +23,7 @@ test.describe("Anvil wallet writes", () => {
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: 120_000,
     });
-    await connectMockIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
+    await connectMockWalletIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
     await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
       timeout: 60_000,
     });
@@ -60,7 +49,7 @@ test.describe("Anvil wallet writes", () => {
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: 120_000,
     });
-    await connectMockIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
+    await connectMockWalletIfPlaceholderVisible(page, "Connect a wallet to preview and buy charms.");
     await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
       timeout: 60_000,
     });
