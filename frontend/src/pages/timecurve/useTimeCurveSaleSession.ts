@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, maxUint256, parseUnits } from "viem";
 import {
   useAccount,
@@ -47,6 +47,7 @@ import {
 import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
+import { playGameSfx } from "@/audio/playGameSfx";
 
 const WAD_ONE_CHARM = 10n ** 18n;
 
@@ -204,6 +205,18 @@ export function useTimeCurveSaleSession(
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
+  const prevPayWithRef = useRef<PayWithAsset | null>(null);
+
+  useEffect(() => {
+    const prev = prevPayWithRef.current;
+    prevPayWithRef.current = payWith;
+    if (prev === null) return;
+    if (prev === payWith) return;
+    if (prev !== "cl8y" || payWith !== "cl8y") {
+      const ethUsdm = prev !== "cl8y" && payWith !== "cl8y";
+      playGameSfx("kumbaya_whoosh", { gainMul: ethUsdm ? 0.52 : 0.72 });
+    }
+  }, [payWith]);
 
   useEffect(() => {
     setPendingReferralCode(getPendingReferralCode());
@@ -915,7 +928,9 @@ export function useTimeCurveSaleSession(
         functionName: "buy",
         args: buyArgs as [bigint] | [bigint, `0x${string}`],
       });
+      playGameSfx("coin_hit_shallow", { gainMul: 0.75 });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+      playGameSfx("charmed_confirm", { gainMul: 0.92 });
       if (codeHash) {
         clearPendingReferralCode();
         setPendingReferralCode(null);
@@ -961,6 +976,7 @@ export function useTimeCurveSaleSession(
         functionName: "redeemCharms",
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
+      playGameSfx("charmed_confirm", { gainMul: 0.9 });
       refetchAll();
     } catch (e) {
       setBuyError(friendlyRevertFromUnknown(e));
