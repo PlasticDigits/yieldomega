@@ -9,8 +9,8 @@ export function KumbayaPage() {
       title="Kumbaya"
       slug="kumbaya"
       heroImage="/art/kumbaya-card.jpg"
-      heroImageWidth={2752}
-      heroImageHeight={1536}
+      heroImageWidth={1536}
+      heroImageHeight={1024}
       venueDescription="DOUB / CL8Y (spot pool)"
       externalUrl={kumbayaDexUrl()}
       linkLabel="Open Kumbaya DEX"

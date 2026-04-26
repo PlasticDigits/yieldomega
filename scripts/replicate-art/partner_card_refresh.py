@@ -84,7 +84,9 @@ def _run_card(
         bg = "opaque"
         notes = (
             "Sir third-party venue card: keep the counter, merchant gorilla, leprechaun customer, bunting, "
-            "and trophy placement from the card reference. Same market scene — refined render only."
+            "and trophy placement from the card reference. Same market scene — refined render only.\n"
+            "Doubloon (DOUB) brand fix: replace any off-model coin or shield D with the exact hat+D emblem from token-logo — "
+            "green hat, yellow band, bold stylized D. The counter/green runner shield plaque and every visible coin must match that mark."
         )
     else:
         raise ValueError(slug)
@@ -118,6 +120,8 @@ def _run_card(
         custom_prompt=prompt,
         ref_paths_override=[ga.DEFAULT_STYLE_REF, ga.DEFAULT_TOKEN_REF, card],
         max_wall_seconds=max_wall_seconds,
+        log_monitor=True,
+        poll_progress=True,
     )
 
 
