@@ -136,6 +136,13 @@ mod contracts {
     }
 
     sol! {
+        /// Companion router observability (`TimeCurve.buyFor` entry — GitLab #65 / #67).
+        contract TimeCurveBuyRouterEvents {
+            event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossCl8y, uint8 payKind);
+        }
+    }
+
+    sol! {
         contract ReferralRegistryEvents {
             event ReferralCodeRegistered(address indexed owner, bytes32 indexed codeHash, string normalizedCode);
         }
@@ -221,8 +228,8 @@ mod contracts {
 
 use contracts::{
     FeeRouterEvents, LeprechaunEvents, PodiumPoolEvents, RabbitTreasuryEvents,
-    ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyV2Activity, TimeCurveEvents,
-    TimeCurveEventsLegacy,
+    ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents, TimeCurveBuyV2Activity,
+    TimeCurveEvents, TimeCurveEventsLegacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -266,6 +273,13 @@ pub enum DecodedEvent {
         buyer_total_effective_timer_sec: U256,
         buyer_active_defended_streak: U256,
         buyer_best_defended_streak: U256,
+    },
+    /// Emitted by `TimeCurveBuyRouter` after `TimeCurve.buyFor` in the same tx (GitLab #67).
+    TimeCurveBuyRouterBuyViaKumbaya {
+        buyer: Address,
+        charm_wad: U256,
+        gross_cl8y: U256,
+        pay_kind: u8,
     },
     TimeCurveSaleEnded {
         end_timestamp: U256,
@@ -688,6 +702,17 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == TimeCurveBuyRouterEvents::BuyViaKumbaya::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyRouterEvents::BuyViaKumbaya::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
+                buyer: e.buyer,
+                charm_wad: e.charmWad,
+                gross_cl8y: e.grossCl8y,
+                pay_kind: e.payKind,
+            };
+        }
+    }
     if topic0 == ReferralRegistryEvents::ReferralCodeRegistered::SIGNATURE_HASH {
         if let Ok(d) = ReferralRegistryEvents::ReferralCodeRegistered::decode_log(log, true) {
             let e = d.data;
@@ -888,6 +913,40 @@ mod tests {
                 assert_eq!(start_timestamp, U256::from(1u64));
                 assert_eq!(initial_deadline, U256::from(2u64));
                 assert_eq!(total_tokens_for_sale, U256::from(3u64));
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_buy_via_kumbaya() {
+        let buyer = Address::repeat_byte(0x77);
+        let charm_wad = U256::from(10u128.pow(18)) * U256::from(2u8);
+        let e = TimeCurveBuyRouterEvents::BuyViaKumbaya {
+            buyer,
+            charmWad: charm_wad,
+            grossCl8y: U256::from(5u64),
+            payKind: 1u8,
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0x55),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
+                buyer: b,
+                charm_wad,
+                gross_cl8y,
+                pay_kind,
+            } => {
+                assert_eq!(b, buyer);
+                assert_eq!(charm_wad, U256::from(10u128.pow(18)) * U256::from(2u8));
+                assert_eq!(gross_cl8y, U256::from(5u64));
+                assert_eq!(pay_kind, 1u8);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

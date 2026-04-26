@@ -122,6 +122,32 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
+            buyer,
+            charm_wad,
+            gross_cl8y,
+            pay_kind,
+        } => {
+            let pk = *pay_kind as i16;
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_kumbaya (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    buyer, charm_wad, gross_cl8y, pay_kind
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*buyer))
+            .bind(u256_dec(*charm_wad))
+            .bind(u256_dec(*gross_cl8y))
+            .bind(pk)
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveSaleEnded {
             end_timestamp,
             total_raised,

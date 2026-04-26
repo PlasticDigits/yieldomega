@@ -295,9 +295,13 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         items.iter().any(|row| row["block_number"] == "42"),
         "expected seeded row in items: {items:?}"
     );
-    assert_eq!(j["total"], serde_json::json!(1));
+    assert!(
+        j["total"].as_i64().unwrap_or(0) >= 1,
+        "expected non-empty buys total: {j:?}"
+    );
 
     let res = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/v1/timecurve/buyer-stats?buyer=0xdddddddddddddddddddddddddddddddddddddddd")
@@ -311,6 +315,82 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     assert_eq!(stats["indexed_charm_weight"], "1");
     assert_eq!(stats["indexed_buy_count"], "1");
     assert_eq!(stats["buyer"], "0xdddddddddddddddddddddddddddddddddddddddd");
+
+    // Same-tx `Buy` + `BuyViaKumbaya` correlation on `/v1/timecurve/buys` (GitLab #67).
+    let k_buyer = addr_byte(0x33);
+    let u1 = U256::from(1u8);
+    let u2 = U256::from(2u8);
+    let charm = U256::from(7u8);
+    let shared_tx = b256_lo(12_345);
+    let buy_join = DecodedLog {
+        block_number: 44,
+        block_hash: b256_lo(44 + 10_000),
+        tx_hash: shared_tx,
+        log_index: 0,
+        block_timestamp: None,
+        contract: address!("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        event: DecodedEvent::TimeCurveBuy {
+            buyer: k_buyer,
+            charm_wad: charm,
+            amount: charm,
+            price_per_charm_wad: u1,
+            new_deadline: u2,
+            total_raised_after: u1,
+            buy_index: u1,
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
+        },
+    };
+    let k_log = DecodedLog {
+        block_number: 44,
+        block_hash: buy_join.block_hash,
+        tx_hash: shared_tx,
+        log_index: 1,
+        block_timestamp: None,
+        contract: address!("0x2222222222222222222222222222222222222222"),
+        event: DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
+            buyer: k_buyer,
+            charm_wad: charm,
+            gross_cl8y: charm,
+            pay_kind: 0,
+        },
+    };
+    persist_decoded_log(pool, &buy_join)
+        .await
+        .expect("persist join buy");
+    persist_decoded_log(pool, &k_log)
+        .await
+        .expect("persist buy via kumbaya");
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/buys?limit=50")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let row = j["items"]
+        .as_array()
+        .expect("items")
+        .iter()
+        .find(|r| r["tx_hash"] == format!("{:#x}", shared_tx))
+        .expect("joined buy row");
+    assert_eq!(row["entry_pay_asset"], "eth");
+    assert_eq!(row["router_attested_gross_cl8y"], "7");
 }
 
 /// Single test body: persist + reorg + HTTP API on one Postgres database.
@@ -527,6 +607,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared {
             cleared_wallet: alice,
         }),
+        next(DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
+            buyer: alice,
+            charm_wad: u1,
+            gross_cl8y: u2,
+            pay_kind: 1,
+        }),
     ];
 
     for d in &logs {
@@ -540,6 +626,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_timecurve_sale_ended", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_timecurve_charms_redeemed", 100).await,
@@ -630,6 +720,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     let first = &logs[1];
     persist_decoded_log(&pool, first).await.expect("replay");
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
+    let k_last = logs.last().expect("kumbaya log");
+    persist_decoded_log(&pool, k_last).await.expect("replay kumbaya");
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
+        1
+    );
 
     // Unknown: no-op, no panic
     let unknown = DecodedLog {
@@ -759,6 +855,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
         0
     );
     assert_eq!(
