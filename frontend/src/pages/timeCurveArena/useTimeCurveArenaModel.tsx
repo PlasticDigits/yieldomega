@@ -133,6 +133,7 @@ export function useTimeCurveArenaModel() {
   const [displayTick, setDisplayTick] = useState(0);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
+  const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
   const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
@@ -1781,7 +1782,11 @@ export function useTimeCurveArenaModel() {
             return;
           }
         }
-        const args = codeHash ? [cw, codeHash] : [cw];
+        const args = codeHash
+          ? ([cw, codeHash, plantWarBowFlag] as const)
+          : plantWarBowFlag
+            ? ([cw, plantWarBowFlag] as const)
+            : ([cw] as const);
         const g = await estimateGasUnits({
           address: tc,
           abi: timeCurveWriteAbi,
@@ -1808,6 +1813,7 @@ export function useTimeCurveArenaModel() {
     useReferral,
     referralRegistryOn,
     pendingRef,
+    plantWarBowFlag,
     chainId,
   ]);
 
@@ -2090,12 +2096,16 @@ export function useTimeCurveArenaModel() {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
-      const buyArgs = codeHash ? [cw, codeHash] : [cw];
+      const buyArgs = codeHash
+        ? ([cw, codeHash, plantWarBowFlag] as const)
+        : plantWarBowFlag
+          ? ([cw, plantWarBowFlag] as const)
+          : ([cw] as const);
       const buyHash = await writeContractAsync({
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
-        args: buyArgs as [bigint] | [bigint, `0x${string}`],
+        args: buyArgs,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
@@ -2116,6 +2126,7 @@ export function useTimeCurveArenaModel() {
     useReferral,
     referralRegistryOn,
     pendingRef,
+    plantWarBowFlag,
     writeContractAsync,
     refetchAll,
     walletCooldownRemainingSec,
@@ -2393,6 +2404,7 @@ export function useTimeCurveArenaModel() {
     pendingRevengeStealer,
     perCharmPayQuoteLoading,
     phaseLedgerSecInt,
+    plantWarBowFlag,
     podiumPayoutPreview,
     quotedBandMaxPayInWei,
     quotedBandMinPayInWei,
@@ -2470,6 +2482,7 @@ export function useTimeCurveArenaModel() {
     setStealBypass,
     setStealVictimInput,
     setUseReferral,
+    setPlantWarBowFlag,
     setWarbowFeed,
     setWarbowLb,
     setWarbowPreflightIssue,

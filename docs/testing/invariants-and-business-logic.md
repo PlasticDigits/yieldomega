@@ -129,7 +129,7 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 | **Launch-anchor 1.2× rule** | **Product invariant (DOUB/CL8Y locked LP):** `DoubLPIncentives` seeds DOUB/CL8Y locked liquidity at **1.2× the per-CHARM clearing price**, so a participant's CHARM is projected to be worth **`charmWeightWad × pricePerCharmWad × 1.2 / 1e18`** CL8Y wei at launch. **Worked example:** if the final buyer pays `2 CL8Y` for `1 CHARM` and `1 CHARM` redeems for `100 DOUB`, those `100 DOUB` are worth **`2 × 1.2 = 2.4 CL8Y`** at launch — the DOUB count drops out because dilution and pricing are dual sides of the same anchor. The number is **non-decreasing** during the sale because the per-CHARM price (e.g. `LinearCharmPrice`) is non-decreasing in elapsed time, so participant-facing UX should **show CL8Y-at-launch and hide the DOUB count**. | Helpers: [`launchLiquidityAnchorWad`](../../frontend/src/lib/timeCurvePodiumMath.ts), [`participantLaunchValueCl8yWei`](../../frontend/src/lib/timeCurvePodiumMath.ts); tests: `frontend/src/lib/timeCurvePodiumMath.test.ts` (`launch-anchor invariant: launch price = final per-CHARM price × 1.2`); policy: [`docs/onchain/fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md), [`contracts/src/sinks/DoubLPIncentives.sol`](../../contracts/src/sinks/DoubLPIncentives.sol), [`launchplan-timecurve.md`](../../launchplan-timecurve.md) |
 | Sale start | `startSale` transitions once | [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol): `test_startSale`, `test_startSale_reverts_twice`, `test_startSale_insufficient_launched_tokens_reverts` |
 | Happy-path buy | Valid buy updates CHARM weight and `totalRaised` | `test_buy_basic` |
-| **`buyFor` / companion router (issue #65)** | Only **`timeCurveBuyRouter`** may call **`buyFor`**; CL8Y **`transferFrom(payer)`** with payer = router; CHARM weight, WarBow, cooldown, referrals use **`buyer`**. Immutable **`TimeCurveBuyRouter`**: recomputes gross CL8Y from TimeCurve views, validates packed path (CL8Y first, WETH or `stableToken` last), **`exactOutput`**, then **`buyFor`**. | [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) (`test_buyFor_*`); [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol) |
+| **`buyFor` / companion router (issue #65)** | Only **`timeCurveBuyRouter`** may call **`buyFor`**; CL8Y **`transferFrom(payer)`** with payer = router; CHARM weight, WarBow, cooldown, referrals use **`buyer`**. Immutable **`TimeCurveBuyRouter`**: recomputes gross CL8Y from TimeCurve views, validates packed path (CL8Y first, WETH or `stableToken` last), **`exactOutput`**, then **`buyFor(..., plantWarBowFlag)`** ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). | [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) (`test_buyFor_*`); [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol) |
 | Per-wallet buy cooldown | Second buy before `nextBuyAllowedAt` reverts **`"TimeCurve: buy cooldown"`**; boundary at `nextBuyAllowedAt` succeeds; wallets independent | [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol): cooldown / boundary / two-wallet tests; handler respects cooldown in [`TimeCurveInvariant.t.sol`](../../contracts/test/TimeCurveInvariant.t.sol) |
 | Min / max gross spend monotonic | `currentMinBuyAmount` / `currentMaxBuyAmount` increase with time (envelope × price) | `test_minBuy_grows_over_time` |
 | CHARM bounds ratio | `10 × minCharm` and `0.99 × maxCharm` match within **floor-division slack** (shared envelope factor) | `test_charmBounds_ratio_10_over_099_fuzz` |
@@ -318,6 +318,21 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 ### TimeCurve frontend: sale phase and hero timer
 
 Narrative for [timecurve-views — Single source of truth](../frontend/timecurve-views.md#single-source-of-truth-invariants): the **state badge**, **phase narrative**, and **pre-start window** on Simple, plus **Arena** `phaseFlags`, must not disagree with the **indexer-anchored hero countdown** because `wagmi`’s `latestBlock` timestamp lags. **Unit tests** above cover the pure `ledgerSecIntForPhase` + `derivePhase` helpers; **E2E** does not start Anvil in CI (see [strategy — Stage 1](strategy.md#stage-1--unit-tests)).
+
+<a id="timecurve-warbow-flag-plant-opt-in-issue-63"></a>
+
+### TimeCurve — WarBow flag plant opt-in (issue #63)
+
+| Invariant | Detail |
+|-----------|--------|
+| **Default plain buy** | **`buy(uint256 charmWad)`** does **not** set `warbowPendingFlagOwner` / `warbowPendingFlagPlantAt`. |
+| **Explicit plant** | **`buy(uint256,bool)`**, **`buy(uint256,bytes32,bool)`**, **`buyFor(...,bool)`**, **`TimeCurveBuyRouter.buyViaKumbaya(..., plantWarBowFlag, ...)`** forward **`plantWarBowFlag`** into **`_buy`**. |
+| **Same-holder plain buy** | If the buyer is already **`warbowPendingFlagOwner`**, a subsequent **plain** buy leaves **`warbowPendingFlagPlantAt`** unchanged (no silence reset). |
+| **Interrupt semantics** | If **`buyer != warbowPendingFlagOwner`** and a pending flag exists, the existing interrupt / **`WarBowFlagPenalized`** logic runs **before** applying the new plant choice (another wallet’s plain buy still clears or penalizes the prior holder per silence rules). |
+| **`Buy.flagPlanted`** | Event field **`true` iff** `plantWarBowFlag` for that tx; indexer **`flag_planted`** mirrors the log. |
+| **UI** | Simple + Arena buy panels expose **Plant WarBow flag** (default off) and risk copy; writes use the **`timeCurveWriteAbi`** overloads. |
+
+**Contracts:** [`TimeCurve.sol`](../../contracts/src/TimeCurve.sol) (`test_buy_plain_does_not_plant_warbow_flag`, `test_buy_with_plant_sets_pending_flag`, `test_holder_second_plain_buy_preserves_plant_at`), [`TimeCurveBuyRouter.sol`](../../contracts/src/TimeCurveBuyRouter.sol). **Docs:** [timecurve-views — WarBow pending flag](../frontend/timecurve-views.md#warbow-pending-flag-ui-issues-51-63) · [primitives — Plant flag / claim flag](../product/primitives.md#plant-flag--claim-flag) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
 
 ### Python simulations (Stage 1 scope)
 

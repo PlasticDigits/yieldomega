@@ -64,9 +64,11 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     uint8 public constant PAY_STABLE = 1;
 
     /// @notice `path` last token must be WETH for `PAY_ETH`, or `stableToken` for `PAY_STABLE`. First token must be TimeCurve accepted asset (CL8Y).
+    /// @param plantWarBowFlag Forwarded to `TimeCurve.buyFor` — opt-in WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function buyViaKumbaya(
         uint256 charmWad,
         bytes32 codeHash,
+        bool plantWarBowFlag,
         uint8 payKind,
         uint256 swapDeadline,
         uint256 amountInMaximum,
@@ -130,7 +132,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
         if (cl8yGain < grossCl8y) revert TimeCurveBuyRouter__BadSalePhase();
 
         cl8yTok.forceApprove(address(tc), grossCl8y);
-        tc.buyFor(msg.sender, charmWad, codeHash);
+        tc.buyFor(msg.sender, charmWad, codeHash, plantWarBowFlag);
         cl8yTok.forceApprove(address(tc), 0);
 
         uint256 dust = cl8yTok.balanceOf(address(this));
