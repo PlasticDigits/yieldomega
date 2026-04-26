@@ -34,6 +34,7 @@ import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePha
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
+import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 
 /**
  * Default `/timecurve` view — the **simple, first-run path** described in
@@ -94,6 +95,14 @@ export function TimeCurveSimplePage() {
   const heroNarrative = phaseNarrative(session.phase);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
+
+  useTimeCurveSimplePageSfx({
+    recentBuys,
+    walletAddress: session.walletAddress,
+    saleCountdownSec: session.saleCountdownSec,
+    phase: session.phase,
+    reduceMotion: Boolean(prefersReducedMotion),
+  });
 
   useEffect(() => {
     let cancelled = false;

@@ -134,3 +134,18 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 | `kumbaya_whoosh.wav` | **Route / swap** motion (§2) |
 
 **Agent phase (repo):** this file is product/UX; no onchain rules change. For TimeCurve view contracts and timers, see [timecurve-views.md](timecurve-views.md) and the phase guide in [agent-phases.md](../agent-phases.md).
+
+---
+
+## 8. In-app implementation (Album 1 + SFX bus, issue #68)
+
+**Shipped behavior** (see [GitLab #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68), [invariants — frontend audio](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68)):
+
+- **Web Audio graph:** `master` gain → destination; **`bgmGain`** (sequential MP3 Album 1, tracks 1–8 only) and **`sfxGain`** (decoded `.wav` one-shots) are **independent** buses into `master`.
+- **Autoplay:** `AudioContext` + BGM `HTMLMediaElement` **never** start on page load. The first **pointer** interaction unlocks the context (and prefetches core SFX). **BGM playback** starts only when the user presses **Play** in the header player (or resumes after pause).
+- **Defaults:** BGM fader **25%** of full scale (`localStorage` key namespace `yieldomega:audio:v1:`); SFX use a gentle **square-law** curve from the SFX slider so mid values are not harsh.
+- **TimeCurve Simple:** `coin_hit_shallow` after the **`buy`** tx is **submitted**; `charmed_confirm` after **receipt**; `kumbaya_whoosh` when **pay mode** changes across CL8Y / ETH / USDM; **peer** head-of-feed buys (not self) fire **`peer_buy_distant`** with a **minimum gap**; timer **calm** / **urgent** heartbeats align with **≤13m** / **≤2m** remaining while the sale is active, suppressed when **`prefers-reduced-motion`** is set.
+- **Wallet:** `charmed_confirm` on **false → true** `isConnected` (no sound on cold load when already connected).
+- **Global UI:** delegated **`ui_button_click`** on primary chrome (`button`, `[role="button"]`, main nav links); **disabled** buttons use a **softer** gain; **range inputs** are excluded (slider-drag silence per §1).
+
+**Code map:** `frontend/src/audio/` (`WebAudioMixer`, `AudioEngineProvider`, `AlbumPlayerBar`), `frontend/src/layout/RootLayout.tsx` (player chrome), `useTimeCurveSaleSession.ts` (buy/redeem + pay-mode SFX), `useTimeCurveSimplePageSfx.ts` (peer + timer).
