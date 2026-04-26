@@ -8,6 +8,7 @@ import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { governanceUrl } from "@/lib/addresses";
+import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -83,6 +84,17 @@ export function RootLayout() {
         </nav>
         <div className="app-header__wallet">
           <span className="chain-pill" title="Connected network">
+            {MEGAETH_CHAIN_IDS.has(chainId) ? (
+              <img
+                className="chain-pill__mega-mark"
+                src={MEGA_MARK}
+                alt=""
+                width={18}
+                height={18}
+                decoding="async"
+                aria-hidden="true"
+              />
+            ) : null}
             <span className="chain-pill__label">network</span>
             <span className="chain-pill__value">{chainName}</span>
           </span>

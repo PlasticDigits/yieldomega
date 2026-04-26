@@ -14,11 +14,21 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import {
   serializeContractRead,
   type SerializableContractRead,
 } from "@/lib/serializeContractRead";
+import {
+  CHARM_TOKEN_LOGO,
+  CL8Y_TOKEN_LOGO,
+  DOUB_TOKEN_LOGO,
+  ETH_TOKEN_LOGO,
+  USDM_TOKEN_LOGO,
+} from "@/lib/tokenMedia";
+import { doubPerCharmAtLaunchWad } from "@/lib/timeCurvePodiumMath";
 import { buildBuyBattlePointBreakdown } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
@@ -55,19 +65,25 @@ export function TimeCurveArenaView() {
     gasWarbowGuard, gasWarbowRevenge, gasWarbowSteal, growthRateWadR, guardUntilSec, guardedActive,
     handleBuy, handleLoadMoreBuys, hasRevengeOpen, heroTimer, heroTimerBusy, iHoldPlantFlag,
     indexerMismatch, indexerNote, initialMinBuyR, initialTimerSecR, isConnected, isError, isPending,
-    isWriting, launchedDec, ledgerSecInt, liquidityAnchors, loadHeroTimer,
-    loadingMoreBuys, maxBuyAmount, minBuy, minSpendCurvePoints, onCl8ySpendInputBlur,
-    onCl8ySpendSlider, openBuyListModal, pendingRef, pendingRevengeStealer, pricePerCharmR, podiumPayoutPreview,
+    isWriting, kumbayaRoutingBlocker, launchCl8yPerCharmWei, launchPayQuoteLoading, launchedDec,
+    ledgerSecInt, liquidityAnchors, loadHeroTimer,
+    loadingMoreBuys, maxBuyAmount, minBuy, minSpendCurvePoints, nonCl8yBuyBlocked,
+    onCl8ySpendInputBlur, onCl8ySpendSlider, openBuyListModal, bandBoundaryQuotesLoading,
+    payTokenDecimals, payWalletBalance, payWith,
+    pendingRef, pendingRevengeStealer, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
-    prizeDist, prizePayouts, prizesDistributedR, refApplied,
-    referralRegistryOn, revengeDeadlineSec, runVoid, runWarBowClaimFlag, runWarBowGuard,
+    prizeDist, prizePayouts, prizesDistributedR, quotedBandMaxPayInWei, quotedBandMinPayInWei,
+    quotedLaunchPerCharmPayInWei, quotedPayInWei, quotedPerCharmPayInWei, refApplied,
+    rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, runVoid, runWarBowClaimFlag, runWarBowGuard,
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
-    secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setSpendInputStr,
+    secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
-    spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, tc,
+    spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, swapQuoteFailed,
+    swapQuoteLoading, tc,
     timerAddedR, timerCapSecR, timerExpiredAwaitingEnd, timerExtensionPreview,
-    timerExtensionSecR, timerNarrative, totalRaiseDisplay, totalRaised, totalTokensForSaleR,
-    useReferral, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCl8yBal, walletCooldownRemainingSec,
+    timerExtensionSecR, timerNarrative, totalCharmWeightR, totalRaiseDisplay, totalRaised,
+    totalTokensForSaleR,
+    useReferral, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCooldownRemainingSec,
     warbowActionHint, warbowBypassBurnWad, warbowFeed, warbowFlagClaimBp, warbowFlagOwnerR,
     warbowFlagPlantR, warbowFlagSilenceSec, warbowGuardBurnWad, warbowLeaderboardRows,
     warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowTopRows,
@@ -82,6 +98,122 @@ export function TimeCurveArenaView() {
     const [intPart, fracPart = ""] = s.split(".");
     return `${intPart}.${(fracPart + "000000").slice(0, 6)}`;
   }
+
+  function formatEthRateHero(raw: bigint): string {
+    const s = formatUnits(raw, 18);
+    const [intPart, fracPart = ""] = s.split(".");
+    return `${intPart}.${(fracPart + "00000000").slice(0, 8)}`;
+  }
+
+  const rateNowDisplay = useMemo(() => {
+    if (pricePerCharmWad === undefined) {
+      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+    }
+    if (payWith === "cl8y") {
+      return {
+        text: formatPriceFixed6(pricePerCharmWad),
+        unit: " CL8Y" as const,
+        loading: false as const,
+      };
+    }
+    if (perCharmPayQuoteLoading) {
+      if (payWith === "eth") {
+        return { text: "…" as const, unit: " ETH" as const, loading: true as const };
+      }
+      return { text: "…" as const, unit: " USDM" as const, loading: true as const };
+    }
+    const quoted = quotedPerCharmPayInWei;
+    const raw =
+      quoted !== undefined ? quoted : fallbackPayTokenWeiForCl8y(pricePerCharmWad, payWith);
+    if (payWith === "eth") {
+      return {
+        text: formatEthRateHero(raw),
+        unit: " ETH" as const,
+        loading: false as const,
+      };
+    }
+    return {
+      text: formatPriceFixed6(raw),
+      unit: " USDM" as const,
+      loading: false as const,
+    };
+  }, [pricePerCharmWad, payWith, perCharmPayQuoteLoading, quotedPerCharmPayInWei]);
+
+  const totalTokensForSaleWad =
+    totalTokensForSaleR?.status === "success" ? (totalTokensForSaleR.result as bigint) : undefined;
+  const totalCharmWeightWad =
+    totalCharmWeightR?.status === "success" ? (totalCharmWeightR.result as bigint) : undefined;
+
+  const doubPerCharmAtLaunch = useMemo(
+    () =>
+      doubPerCharmAtLaunchWad({
+        totalTokensForSaleWad,
+        totalCharmWeightWad,
+      }),
+    [totalTokensForSaleWad, totalCharmWeightWad],
+  );
+
+  const rateLaunchDisplay = useMemo(() => {
+    if (launchCl8yPerCharmWei === undefined) {
+      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+    }
+    if (payWith === "cl8y") {
+      return {
+        text: formatPriceFixed6(launchCl8yPerCharmWei),
+        unit: " CL8Y" as const,
+        loading: false as const,
+      };
+    }
+    if (launchPayQuoteLoading) {
+      if (payWith === "eth") {
+        return { text: "…" as const, unit: " ETH" as const, loading: true as const };
+      }
+      return { text: "…" as const, unit: " USDM" as const, loading: true as const };
+    }
+    const quoted = quotedLaunchPerCharmPayInWei;
+    const raw =
+      quoted !== undefined ? quoted : fallbackPayTokenWeiForCl8y(launchCl8yPerCharmWei, payWith);
+    if (payWith === "eth") {
+      return {
+        text: formatEthRateHero(raw),
+        unit: " ETH" as const,
+        loading: false as const,
+      };
+    }
+    return {
+      text: formatPriceFixed6(raw),
+      unit: " USDM" as const,
+      loading: false as const,
+    };
+  }, [launchCl8yPerCharmWei, payWith, launchPayQuoteLoading, quotedLaunchPerCharmPayInWei]);
+
+  const rateBoardPayOptions = (
+    [
+      ["cl8y", "CL8Y", CL8Y_TOKEN_LOGO],
+      ["eth", "ETH", ETH_TOKEN_LOGO],
+      ["usdm", "USDM", USDM_TOKEN_LOGO],
+    ] as const
+  ).map(([key, label, logo]) => (
+    <button
+      key={key}
+      type="button"
+      className={
+        payWith === key
+          ? "timecurve-simple__rate-paywith-btn timecurve-simple__rate-paywith-btn--active"
+          : "timecurve-simple__rate-paywith-btn"
+      }
+      aria-pressed={payWith === key}
+      aria-label={`Show price in ${label}`}
+      onClick={() => setPayWith(key as PayWithAsset)}
+    >
+      <img src={logo} alt="" width={16} height={16} decoding="async" aria-hidden="true" />
+      {label}
+    </button>
+  ));
+
+  const paySpendSuffix = payWith === "cl8y" ? "CL8Y" : payWith === "eth" ? "ETH" : "USDM";
+  const paySpendLogo =
+    payWith === "cl8y" ? CL8Y_TOKEN_LOGO : payWith === "eth" ? ETH_TOKEN_LOGO : USDM_TOKEN_LOGO;
 
   const priceTickKeyRef = useRef(0);
   const priceTickPrevRef = useRef<bigint | undefined>(undefined);
@@ -287,22 +419,62 @@ export function TimeCurveArenaView() {
                       height={180}
                     />
                     <div className="timecurve-arena-buy-panel__conversion" aria-hidden="true">
-                      <span className="timecurve-arena-buy-panel__conversion-token">
-                        <img src="/art/icons/token-cl8y.png" alt="" width={28} height={28} decoding="async" />
-                        CL8Y
-                      </span>
-                      <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
-                      <span className="timecurve-arena-buy-panel__conversion-token">
-                        <img src="/art/icons/token-charm.png" alt="" width={28} height={28} decoding="async" />
-                        CHARM
-                      </span>
+                      {payWith === "cl8y" && (
+                        <>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CL8Y_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CL8Y
+                          </span>
+                          <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CHARM
+                          </span>
+                        </>
+                      )}
+                      {payWith === "eth" && (
+                        <>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={ETH_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            ETH
+                          </span>
+                          <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CL8Y_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CL8Y
+                          </span>
+                          <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CHARM
+                          </span>
+                        </>
+                      )}
+                      {payWith === "usdm" && (
+                        <>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={USDM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            USDM
+                          </span>
+                          <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CL8Y_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CL8Y
+                          </span>
+                          <span className="timecurve-arena-buy-panel__conversion-arrow">→</span>
+                          <span className="timecurve-arena-buy-panel__conversion-token">
+                            <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
+                            CHARM
+                          </span>
+                        </>
+                      )}
                     </div>
                     <div className="timecurve-simple__rate-board" aria-live="polite">
                       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--now">
                         <span className="timecurve-simple__rate-label-row">
                           <img
                             className="timecurve-simple__rate-glyph"
-                            src="/art/icons/token-charm.png"
+                            src={CHARM_TOKEN_LOGO}
                             alt=""
                             aria-hidden="true"
                             decoding="async"
@@ -314,23 +486,115 @@ export function TimeCurveArenaView() {
                             ↑
                           </span>
                         </span>
-                        <strong
-                          key={priceTickKey}
-                          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
-                        >
-                          {pricePerCharmWad !== undefined ? formatPriceFixed6(pricePerCharmWad) : "—"}
-                          <span className="timecurve-simple__rate-unit"> CL8Y</span>
-                        </strong>
+                        <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
+                          {rateBoardPayOptions}
+                        </div>
+                        <span className="timecurve-simple__rate-value-row">
+                          {payWith !== "cl8y" && rateBoardKumbayaWarning && (
+                            <span
+                              className="timecurve-simple__kumbaya-route-warn"
+                              title="kumbaya route failed"
+                              aria-label="kumbaya route failed"
+                            >
+                              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+                                <path
+                                  d="M10 2.5 17.5 16H2.5L10 2.5Z"
+                                  fill="#e6c200"
+                                  stroke="#8a7200"
+                                  strokeWidth="1.2"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M10 7v4.2"
+                                  stroke="#5c4a00"
+                                  strokeWidth="1.4"
+                                  strokeLinecap="round"
+                                />
+                                <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
+                              </svg>
+                            </span>
+                          )}
+                          <strong
+                            key={`${priceTickKey}-${payWith}-${rateNowDisplay.text}`}
+                            className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
+                            data-testid="timecurve-arena-rate-now"
+                            aria-busy={rateNowDisplay.loading}
+                          >
+                            {rateNowDisplay.text}
+                            <span className="timecurve-simple__rate-unit">{rateNowDisplay.unit}</span>
+                          </strong>
+                        </span>
                         <span className="timecurve-simple__rate-foot muted">
-                          Ticks up every block — waiting costs CL8Y.
+                          {payWith === "cl8y"
+                            ? "Ticks up every block — waiting costs CL8Y."
+                            : "Underlying sale price is always CL8Y; ETH / USDM are Kumbaya routes into CL8Y."}
+                        </span>
+                      </div>
+                      <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
+                        <span className="timecurve-simple__rate-label">1 CHARM at launch</span>
+                        <div className="timecurve-simple__rate-pair">
+                          <span className="timecurve-simple__rate-pair-tile">
+                            <span className="timecurve-simple__rate-pair-value">
+                              {doubPerCharmAtLaunch !== undefined
+                                ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
+                                : "—"}
+                            </span>
+                            <span className="timecurve-simple__rate-pair-unit">DOUB</span>
+                          </span>
+                          <span className="timecurve-simple__rate-pair-equals" aria-hidden="true">
+                            =
+                          </span>
+                          <span
+                            className={`timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--launch-pay-${payWith}`}
+                          >
+                            {payWith !== "cl8y" && rateBoardKumbayaWarning && (
+                              <span
+                                className="timecurve-simple__kumbaya-route-warn"
+                                title="kumbaya route failed"
+                                aria-label="kumbaya route failed"
+                              >
+                                <svg
+                                  viewBox="0 0 20 20"
+                                  width="16"
+                                  height="16"
+                                  aria-hidden="true"
+                                  focusable="false"
+                                >
+                                  <path
+                                    d="M10 2.5 17.5 16H2.5L10 2.5Z"
+                                    fill="#e6c200"
+                                    stroke="#8a7200"
+                                    strokeWidth="1.2"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M10 7v4.2"
+                                    stroke="#5c4a00"
+                                    strokeWidth="1.4"
+                                    strokeLinecap="round"
+                                  />
+                                  <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
+                                </svg>
+                              </span>
+                            )}
+                            <span className="timecurve-simple__rate-pair-value">
+                              {rateLaunchDisplay.text}
+                            </span>
+                            <span className="timecurve-simple__rate-pair-unit">
+                              {rateLaunchDisplay.unit.trim()}
+                            </span>
+                          </span>
+                        </div>
+                        <span className="timecurve-simple__rate-foot muted">
+                          1.2× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
                         </span>
                       </div>
                     </div>
                     <div className="timecurve-arena-buy-panel__checkout">
                       <div className="timecurve-arena-buy-panel__checkout-head">
-                        <img src="/art/icons/token-cl8y-24.png" alt="" width={24} height={24} decoding="async" />
+                        <img src={paySpendLogo} alt="" width={24} height={24} decoding="async" />
                         <div>
-                          <span>Set CL8Y spend</span>
+                          <span>Set {paySpendSuffix} spend</span>
                           <strong>Mint CHARM before the next tick gets pricier.</strong>
                         </div>
                       </div>
@@ -345,10 +609,42 @@ export function TimeCurveArenaView() {
                       {cl8ySpendBounds ? (
                         <div className="timecurve-simple__minmax-row">
                           <span className="timecurve-simple__minmax">
-                            Live band&nbsp;
-                            <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>&nbsp;–&nbsp;
-                            <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
-                            &nbsp;CL8Y
+                            {payWith === "cl8y" ? (
+                              <>
+                                Live band&nbsp;
+                                <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                &nbsp;–&nbsp;
+                                <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
+                                &nbsp;CL8Y
+                              </>
+                            ) : bandBoundaryQuotesLoading ||
+                              quotedBandMinPayInWei === undefined ||
+                              quotedBandMaxPayInWei === undefined ? (
+                              <>
+                                Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
+                                <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                &nbsp;–&nbsp;
+                                <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
+                              </>
+                            ) : (
+                              <>
+                                Live band ≈&nbsp;
+                                <strong>
+                                  {formatCompactFromRaw(quotedBandMinPayInWei, payTokenDecimals)}
+                                </strong>
+                                &nbsp;–&nbsp;
+                                <strong>
+                                  {formatCompactFromRaw(quotedBandMaxPayInWei, payTokenDecimals)}
+                                </strong>
+                                &nbsp;{paySpendSuffix}&nbsp;
+                                <span className="muted">
+                                  (CL8Y&nbsp;
+                                  <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                  &nbsp;–&nbsp;
+                                  <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>)
+                                </span>
+                              </>
+                            )}
                           </span>
                         </div>
                       ) : (
@@ -356,12 +652,28 @@ export function TimeCurveArenaView() {
                           <span className="timecurve-simple__minmax">Loading live min – max…</span>
                         </div>
                       )}
+                      {payWith !== "cl8y" && kumbayaRoutingBlocker && (
+                        <StatusMessage variant="error">{kumbayaRoutingBlocker}</StatusMessage>
+                      )}
+                      {payWith !== "cl8y" && !kumbayaRoutingBlocker && swapQuoteFailed && (
+                        <StatusMessage variant="error">
+                          Could not quote this route (no liquidity or misconfigured pools for this chain).
+                        </StatusMessage>
+                      )}
+                      {payWith !== "cl8y" && !kumbayaRoutingBlocker && !swapQuoteFailed && (
+                        <p className="muted">
+                          Kumbaya route uses a fixed <strong>3%</strong> max slippage cap on routed input.
+                        </p>
+                      )}
                       <div className="timecurve-cl8y-buy-controls">
                         <div className="timecurve-cl8y-buy-controls__balance muted">
-                          Your CL8Y balance:{" "}
+                          Your {payWalletBalance.symbol} balance:{" "}
                           {isConnected ? (
-                            walletCl8yBal !== undefined ? (
-                              <AmountDisplay raw={BigInt(walletCl8yBal as bigint).toString()} decimals={decimals} />
+                            payWalletBalance.raw !== undefined ? (
+                              <AmountDisplay
+                                raw={String(payWalletBalance.raw)}
+                                decimals={payWalletBalance.decimals}
+                              />
                             ) : (
                               "—"
                             )
@@ -370,8 +682,10 @@ export function TimeCurveArenaView() {
                           )}
                         </div>
                         {cl8ySpendBounds ? (
-                          <label className="form-label">
-                            CL8Y spend
+                          <label
+                            className={`form-label timecurve-cl8y-buy-controls__slider-label timecurve-cl8y-buy-controls__slider-label--pay-${payWith}`}
+                          >
+                            {paySpendSuffix} spend
                             <input
                               type="range"
                               className="form-input"
@@ -380,22 +694,39 @@ export function TimeCurveArenaView() {
                               step={1}
                               value={spendSliderPermille}
                               onChange={(e) => onCl8ySpendSlider(Number(e.target.value))}
+                              aria-label={`${paySpendSuffix} spend slider (targets CL8Y sale band)`}
                               style={{ "--arena-buy-slider-fill": `${spendSliderPermille / 100}%` } as CSSProperties}
                             />
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              className="form-input"
-                              autoComplete="off"
-                              value={spendInputStr}
-                              onChange={(e) => setSpendInputStr(e.target.value)}
-                              onBlur={onCl8ySpendInputBlur}
-                              aria-label="CL8Y spend amount"
-                            />
+                            {payWith === "cl8y" ? (
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                className="form-input"
+                                autoComplete="off"
+                                value={spendInputStr}
+                                onChange={(e) => setSpendInputStr(e.target.value)}
+                                onBlur={onCl8ySpendInputBlur}
+                                aria-label="CL8Y spend amount"
+                              />
+                            ) : (
+                              <span
+                                className="form-input timecurve-simple__amount-field--quoted"
+                                aria-label={`Quoted ${paySpendSuffix} spend for the selected CL8Y target`}
+                              >
+                                {swapQuoteLoading || quotedPayInWei === undefined ? (
+                                  "…"
+                                ) : (
+                                  <AmountDisplay
+                                    raw={String(quotedPayInWei)}
+                                    decimals={payTokenDecimals}
+                                  />
+                                )}
+                              </span>
+                            )}
                           </label>
                         ) : (
                           <StatusMessage variant="muted">
-                            Waiting for onchain min/max spend reads and wallet CL8Y balance…
+                            Waiting for onchain min/max spend reads…
                           </StatusMessage>
                         )}
                       </div>
@@ -414,26 +745,25 @@ export function TimeCurveArenaView() {
                           Loading CHARM preview…
                         </div>
                       )}
-                      <div className="timecurve-arena-buy-panel__future-option" aria-disabled="true">
-                        <label>
-                          <input type="checkbox" disabled /> Plant WarBow flag
-                        </label>
-                        <span>Coming soon. Current buys still plant automatically.</span>
-                      </div>
                       {referralRegistryOn && pendingRef && (
-                        <details className="timecurve-arena-buy-panel__advanced">
-                          <summary>Advanced buy options</summary>
-                          <label className="form-label">
+                        <div className="timecurve-simple__referral muted">
+                          <label>
                             <input
                               type="checkbox"
                               checked={useReferral}
                               onChange={(e) => setUseReferral(e.target.checked)}
                               disabled={!isConnected}
                             />{" "}
-                            Apply referral <code>{normalizeReferralCode(pendingRef)}</code> from <code>?ref=</code>
+                            Apply pending referral code <code>{normalizeReferralCode(pendingRef)}</code>
                           </label>
-                        </details>
+                        </div>
                       )}
+                      <div className="timecurve-arena-buy-panel__future-option" aria-disabled="true">
+                        <label>
+                          <input type="checkbox" disabled /> Plant WarBow flag
+                        </label>
+                        <span>Coming soon. Current buys still plant automatically.</span>
+                      </div>
                       <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
                         <div className="timecurve-arena-buy-panel__effects-title">
                           <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
@@ -461,6 +791,7 @@ export function TimeCurveArenaView() {
                               charmWadSelected === undefined ||
                               charmWadSelected <= 0n ||
                               !cl8ySpendBounds ||
+                              nonCl8yBuyBlocked ||
                               buyFeeRoutingEnabled === false
                             }
                             onClick={() => void handleBuy()}
@@ -468,7 +799,7 @@ export function TimeCurveArenaView() {
                           >
                             <img
                               className="timecurve-simple__cta-glyph"
-                              src="/art/icons/token-charm.png"
+                              src={CHARM_TOKEN_LOGO}
                               alt=""
                               aria-hidden="true"
                               width={28}
@@ -476,7 +807,11 @@ export function TimeCurveArenaView() {
                               decoding="async"
                             />
                             <span className="timecurve-simple__cta-label">
-                              {isWriting ? "Confirm in wallet…" : "Buy CHARM"}
+                              {isWriting
+                                ? "Confirm in wallet…"
+                                : payWith !== "cl8y" && swapQuoteLoading
+                                  ? "Refreshing quote…"
+                                  : "Buy CHARM"}
                             </span>
                           </motion.button>
                           {walletCooldownRemainingSec > 0 && (
@@ -484,7 +819,9 @@ export function TimeCurveArenaView() {
                               Buy cooldown · {formatCountdown(walletCooldownRemainingSec)} left
                             </StatusMessage>
                           )}
-                          <StatusMessage variant={gasBuyIssue ? "error" : "muted"}>{buyPanelRisk}</StatusMessage>
+                          <StatusMessage variant={gasBuyIssue || swapQuoteFailed ? "error" : "muted"}>
+                            {buyPanelRisk}
+                          </StatusMessage>
                         </>
                       )}
                     </div>
@@ -635,7 +972,7 @@ export function TimeCurveArenaView() {
 
       <div className="page-hero">
         <PageHeroArcadeBanner
-          coinSrc="/art/icons/token-doub.png"
+          coinSrc={DOUB_TOKEN_LOGO}
           coinAlt="DOUB token glyph"
           sceneSrc="/art/scenes/timecurve-arena.jpg"
           lede={

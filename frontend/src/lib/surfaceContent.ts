@@ -7,6 +7,9 @@ export type HomeSurfaceCard = {
   title: string;
   blurb: string;
   image: string;
+  /** Optional intrinsic size for the image (improves CLS; defaults match legacy 4:3 card slot). */
+  imageWidth?: number;
+  imageHeight?: number;
   imageAlt: string;
   badgeLabel: string;
   badgeTone: PageBadgeTone;
@@ -53,8 +56,10 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
     to: "/kumbaya",
     title: "Kumbaya",
     blurb: "YieldOmega-framed view into the third-party spot venue for DOUB / CL8Y liquidity.",
-    image: "/art/scenes/kumbaya-strip.jpg",
-    imageAlt: "Kumbaya scene strip for third-party spot DEX",
+    image: "/art/kumbaya-card.jpg",
+    imageWidth: 2752,
+    imageHeight: 1536,
+    imageAlt: "Kumbaya branded card art for the third-party spot DEX",
     badgeLabel: "External",
     badgeTone: "external",
   },
@@ -62,8 +67,10 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
     to: "/sir",
     title: "Sir",
     blurb: "YieldOmega-framed launchpad for the third-party leverage venue tied to DOUB markets.",
-    image: "/art/scenes/sir-strip.jpg",
-    imageAlt: "Sir scene strip for third-party leverage venue",
+    image: "/art/sir-card.png",
+    imageWidth: 2400,
+    imageHeight: 1792,
+    imageAlt: "Sir branded card art for the third-party leverage venue",
     badgeLabel: "External",
     badgeTone: "external",
   },

@@ -408,6 +408,11 @@ button:disabled,
   font-weight: 700;
 }
 
+.chain-pill__mega-mark {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
 .wallet-controls {
   display: flex;
   flex-wrap: wrap;
@@ -2689,6 +2694,7 @@ code {
 
 .timecurve-arena-buy-panel__conversion {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem;
   width: fit-content;
@@ -2826,14 +2832,14 @@ code {
   appearance: none;
   width: 2rem;
   height: 2rem;
-  margin-top: -0.6rem;
-  border: 3px solid var(--line);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, #fff8d6 0%, var(--arcade-gold-300) 34%, var(--arcade-gold-600) 100%);
-  box-shadow:
-    3px 3px 0 var(--line),
-    inset 0 -3px 0 rgba(148, 93, 0, 0.28);
+  /* Center thumb on 1.15rem-tall track: (track − thumb) / 2 */
+  margin-top: -0.425rem;
+  border: none;
+  border-radius: 0;
+  background: url("/art/icons/icon-slider-knob.png") center / 100% 100% no-repeat;
+  background-color: transparent;
+  box-shadow: none;
+  image-rendering: auto;
 }
 
 .timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-track {
@@ -2849,15 +2855,15 @@ code {
 }
 
 .timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-thumb {
-  width: 1.65rem;
-  height: 1.65rem;
-  border: 3px solid var(--line);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, #fff8d6 0%, var(--arcade-gold-300) 34%, var(--arcade-gold-600) 100%);
-  box-shadow:
-    3px 3px 0 var(--line),
-    inset 0 -3px 0 rgba(148, 93, 0, 0.28);
+  appearance: none;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0;
+  background: url("/art/icons/icon-slider-knob.png") center / 100% 100% no-repeat;
+  background-color: transparent;
+  box-shadow: none;
+  image-rendering: auto;
 }
 
 .timecurve-arena-buy-panel__future-option {
@@ -5064,6 +5070,44 @@ code {
   color: var(--text-main);
 }
 
+.timecurve-simple__pay-balance {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.92rem;
+}
+
+.timecurve-simple__amount-field--quoted {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.35rem;
+  font-family: monospace;
+  font-size: 1rem;
+  color: var(--ink, #111);
+}
+
+.timecurve-simple__slider-row--pay-cl8y .timecurve-simple__slider {
+  accent-color: var(--arcade-green-600, #15803d);
+}
+
+.timecurve-simple__slider-row--pay-eth .timecurve-simple__slider {
+  accent-color: #627eea;
+}
+
+.timecurve-simple__slider-row--pay-usdm .timecurve-simple__slider {
+  accent-color: #0d9488;
+}
+
+.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input {
+  accent-color: var(--arcade-green-600, #15803d);
+}
+
+.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input {
+  accent-color: #627eea;
+}
+
+.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input {
+  accent-color: #0d9488;
+}
+
 .timecurve-simple__buy-preview {
   display: flex;
   flex-direction: column;
@@ -5230,8 +5274,16 @@ code {
   background: rgba(255, 255, 255, 0.78);
 }
 
-.timecurve-simple__rate-pair-tile--cl8y {
+.timecurve-simple__rate-pair-tile--launch-pay-cl8y {
   background: linear-gradient(180deg, #f1fbe9 0%, #fffbe5 100%);
+}
+
+.timecurve-simple__rate-pair-tile--launch-pay-eth {
+  background: linear-gradient(180deg, #eef6ff 0%, #f5fbff 100%);
+}
+
+.timecurve-simple__rate-pair-tile--launch-pay-usdm {
+  background: linear-gradient(180deg, #f0f4ff 0%, #fff5f0 100%);
 }
 
 .timecurve-simple__rate-pair-value {
@@ -5257,8 +5309,8 @@ code {
 }
 
 /* CHARM glyph + ↑ tick indicator next to the live "1 CHARM costs right
-   now" label. The glyph is the issue #45 token icon (`token-charm.png`);
-   the arrow uses the existing coin-wobble keyframe to draw the eye to the
+   now" label. The glyph is `/tokens/charm.png` (canonical CHARM art).
+   The arrow uses the existing coin-wobble keyframe to draw the eye to the
    "ticks up every block" message under the label. */
 .timecurve-simple__rate-label-row {
   display: inline-flex;
@@ -5269,6 +5321,53 @@ code {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(60, 40, 0, 0.78);
+}
+
+/* Pay-asset toggle on the live rate row (CL8Y / ETH / USDM). */
+.timecurve-simple__rate-paywith {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0.2rem;
+}
+
+.timecurve-simple__rate-paywith-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.22rem 0.55rem;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(60, 40, 0, 0.85);
+  cursor: pointer;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.timecurve-simple__rate-paywith-btn:hover {
+  background: #fff;
+}
+
+.timecurve-simple__rate-paywith-btn--active {
+  background: linear-gradient(180deg, var(--arcade-green-200, #d8f5c8), #fff);
+  border-color: rgba(40, 90, 40, 0.55);
+}
+
+.timecurve-simple__rate-value-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.timecurve-simple__kumbaya-route-warn {
+  display: inline-flex;
+  flex-shrink: 0;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.12));
 }
 
 .timecurve-simple__rate-glyph {
@@ -5393,6 +5492,33 @@ code {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.timecurve-simple__paywith {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+}
+
+.timecurve-simple__paywith-label {
+  flex: 1 0 100%;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+}
+
+.timecurve-simple__paywith-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.timecurve-simple__paywith-icon {
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 /* "Your stake at launch" panel — two big-number tiles backed by the

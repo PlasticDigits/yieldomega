@@ -91,7 +91,13 @@ export function HomePage() {
           >
             <Link to={c.to} className="home-cta-card">
               <div className="home-cta-card__media">
-                <img src={c.image} alt={c.imageAlt} width={320} height={240} loading="lazy" />
+                <img
+                  src={c.image}
+                  alt={c.imageAlt}
+                  width={c.imageWidth ?? 320}
+                  height={c.imageHeight ?? 240}
+                  loading="lazy"
+                />
               </div>
               <PageBadge
                 label={c.badgeLabel}
