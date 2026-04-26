@@ -21,7 +21,7 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 Examples of tables or projections (names illustrative):
 
 - **timecurve_sales** — sale id, parameters snapshot, timer state transitions.
-- **timecurve_buys** — buyer, amount (spend), tokens minted or credited if emitted, block, tx index for ordering.
+- **timecurve_buys** — buyer, amount (spend), tokens minted or credited if emitted, block, tx index for ordering. **`TimeCurve.buy` and `TimeCurve.buyFor`** share the same canonical **`Buy`** log on the **TimeCurve** contract (indexed `buyer` is always the participant). When **`TimeCurveBuyRouter`** is in the address registry, **`BuyViaKumbaya`** logs are indexed in **`idx_timecurve_buy_router_kumbaya`** and joined into **`/v1/timecurve/buys`** as optional **`entry_pay_asset`** / **`router_attested_gross_cl8y`** ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67), [`kumbaya.md`](../integrations/kumbaya.md#issue-65-single-tx-router)).
 - **timecurve_prizes** — derived winner rows **verified against** onchain claims or explicit contract events.
 - **rabbit_deposits_withdrawals** — amounts, epochs, user, faction id.
 - **rabbit_health_epochs** — reserve snapshots and repricing factors **as emitted onchain**; canonical **`Burrow*`** event names and metric mapping live in [product/rabbit-treasury.md](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events).

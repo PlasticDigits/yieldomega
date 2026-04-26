@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::ChainTimerSnapshot;
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.7.0";
+const SCHEMA_VERSION: &str = "1.8.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -44,6 +44,15 @@ fn default_limit() -> i64 {
 
 fn clamp_limit(l: i64) -> i64 {
     l.clamp(1, 200)
+}
+
+/// Maps `TimeCurveBuyRouter` `PAY_ETH` / `PAY_STABLE` for API consumers (GitLab #67).
+fn kumbaya_entry_pay_asset(pay_kind: Option<i16>) -> Option<String> {
+    match pay_kind? {
+        0 => Some("eth".to_string()),
+        1 => Some("stable".to_string()),
+        _ => None,
+    }
 }
 
 pub fn router(state: AppState) -> Router {
@@ -193,6 +202,12 @@ struct BuyRow {
     buyer_total_effective_timer_sec: String,
     buyer_active_defended_streak: String,
     buyer_best_defended_streak: String,
+    /// Present when a same-tx `BuyViaKumbaya` row correlates (`eth` = WETH path, `stable` = deployment stable token).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    entry_pay_asset: Option<String>,
+    /// Gross CL8Y from the router attestation log (matches `amount` when paths align).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    router_attested_gross_cl8y: Option<String>,
 }
 
 async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
@@ -214,29 +229,40 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
     };
 
     let rows = sqlx::query(
-        r#"SELECT block_number, block_hash, contract_address,
-                  block_timestamp::text AS block_timestamp,
-                  tx_hash, log_index, buyer,
-                  amount::text AS amount,
-                  COALESCE(charm_wad, amount)::text AS charm_wad,
-                  COALESCE(price_per_charm_wad, current_min_buy, 0)::text AS price_per_charm_wad,
-                  new_deadline::text AS new_deadline, total_raised_after::text AS total_raised_after,
-                  buy_index::text AS buy_index,
-                  COALESCE(actual_seconds_added, 0)::text AS actual_seconds_added,
-                  COALESCE(timer_hard_reset, false) AS timer_hard_reset,
-                  COALESCE(battle_points_after, 0)::text AS battle_points_after,
-                  COALESCE(bp_base_buy, 0)::text AS bp_base_buy,
-                  COALESCE(bp_timer_reset_bonus, 0)::text AS bp_timer_reset_bonus,
-                  COALESCE(bp_clutch_bonus, 0)::text AS bp_clutch_bonus,
-                  COALESCE(bp_streak_break_bonus, 0)::text AS bp_streak_break_bonus,
-                  COALESCE(bp_ambush_bonus, 0)::text AS bp_ambush_bonus,
-                  COALESCE(bp_flag_penalty, 0)::text AS bp_flag_penalty,
-                  COALESCE(flag_planted, false) AS flag_planted,
-                  COALESCE(buyer_total_effective_timer_sec, 0)::text AS buyer_total_effective_timer_sec,
-                  COALESCE(buyer_active_defended_streak, 0)::text AS buyer_active_defended_streak,
-                  COALESCE(buyer_best_defended_streak, 0)::text AS buyer_best_defended_streak
-           FROM idx_timecurve_buy
-           ORDER BY block_number DESC, log_index ASC
+        r#"SELECT b.block_number, b.block_hash, b.contract_address,
+                  b.block_timestamp::text AS block_timestamp,
+                  b.tx_hash, b.log_index, b.buyer,
+                  b.amount::text AS amount,
+                  COALESCE(b.charm_wad, b.amount)::text AS charm_wad,
+                  COALESCE(b.price_per_charm_wad, b.current_min_buy, 0)::text AS price_per_charm_wad,
+                  b.new_deadline::text AS new_deadline, b.total_raised_after::text AS total_raised_after,
+                  b.buy_index::text AS buy_index,
+                  COALESCE(b.actual_seconds_added, 0)::text AS actual_seconds_added,
+                  COALESCE(b.timer_hard_reset, false) AS timer_hard_reset,
+                  COALESCE(b.battle_points_after, 0)::text AS battle_points_after,
+                  COALESCE(b.bp_base_buy, 0)::text AS bp_base_buy,
+                  COALESCE(b.bp_timer_reset_bonus, 0)::text AS bp_timer_reset_bonus,
+                  COALESCE(b.bp_clutch_bonus, 0)::text AS bp_clutch_bonus,
+                  COALESCE(b.bp_streak_break_bonus, 0)::text AS bp_streak_break_bonus,
+                  COALESCE(b.bp_ambush_bonus, 0)::text AS bp_ambush_bonus,
+                  COALESCE(b.bp_flag_penalty, 0)::text AS bp_flag_penalty,
+                  COALESCE(b.flag_planted, false) AS flag_planted,
+                  COALESCE(b.buyer_total_effective_timer_sec, 0)::text AS buyer_total_effective_timer_sec,
+                  COALESCE(b.buyer_active_defended_streak, 0)::text AS buyer_active_defended_streak,
+                  COALESCE(b.buyer_best_defended_streak, 0)::text AS buyer_best_defended_streak,
+                  k.pay_kind AS kumbaya_pay_kind_raw,
+                  k.gross_cl8y::text AS router_attested_gross_cl8y
+           FROM idx_timecurve_buy b
+           LEFT JOIN LATERAL (
+               SELECT kk.pay_kind, kk.gross_cl8y
+               FROM idx_timecurve_buy_router_kumbaya kk
+               WHERE kk.tx_hash = b.tx_hash
+                 AND lower(kk.buyer) = lower(b.buyer)
+                 AND kk.charm_wad = b.charm_wad
+               ORDER BY kk.log_index DESC
+               LIMIT 1
+           ) k ON true
+           ORDER BY b.block_number DESC, b.log_index ASC
            LIMIT $1 OFFSET $2"#,
     )
     .bind(lim)
@@ -285,6 +311,13 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                 buyer_total_effective_timer_sec: r.try_get("buyer_total_effective_timer_sec").ok()?,
                 buyer_active_defended_streak: r.try_get("buyer_active_defended_streak").ok()?,
                 buyer_best_defended_streak: r.try_get("buyer_best_defended_streak").ok()?,
+                entry_pay_asset: kumbaya_entry_pay_asset(
+                    r.try_get::<Option<i16>, _>("kumbaya_pay_kind_raw").ok().flatten(),
+                ),
+                router_attested_gross_cl8y: r
+                    .try_get::<Option<String>, _>("router_attested_gross_cl8y")
+                    .ok()
+                    .flatten(),
             })
         })
         .collect();
