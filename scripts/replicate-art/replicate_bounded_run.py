@@ -31,11 +31,25 @@ def wait_prediction_bounded(
     *,
     max_seconds: float,
     job_label: str,
+    poll_progress: bool = False,
 ) -> None:
     """Poll until terminal state or ``max_seconds``, then cancel and raise."""
     t0 = time.monotonic()
+    last_log = t0
     while prediction.status not in ("succeeded", "failed", "canceled"):
-        if time.monotonic() - t0 > max_seconds:
+        now = time.monotonic()
+        if (
+            poll_progress
+            and now - last_log >= 30.0
+            and now - t0 < max_seconds
+        ):
+            elapsed = now - t0
+            print(
+                f"[{job_label}] status={prediction.status!r} {elapsed:.0f}s / {max_seconds:.0f}s",
+                file=sys.stderr,
+            )
+            last_log = now
+        if now - t0 > max_seconds:
             try:
                 prediction.cancel()
             except Exception as exc:
@@ -83,7 +97,13 @@ def run_model_bounded(
         input=inp,
         wait=prefer_wait,
     )
-    wait_prediction_bounded(prediction, client, max_seconds=deadline, job_label=job_label or model_ref)
+    label = job_label or model_ref
+    pid = getattr(prediction, "id", "?")
+    print(
+        f"[{label}] monitoring prediction {pid} (max {deadline:.0f}s) — https://replicate.com/p/{pid}",
+        file=sys.stderr,
+    )
+    wait_prediction_bounded(prediction, client, max_seconds=deadline, job_label=label)
 
     if prediction.status == "failed":
         raise ModelError(prediction)
