@@ -377,12 +377,23 @@ label:has(input[type="radio"]:disabled) {
 
 /* Album 1 BGM + mix bus — fixed top-right bubble (GitLab #68) */
 .album-player-dock {
+  --album-dock-w: min(11.1rem, calc((100vw - 1.75rem) * 0.6));
   position: fixed;
   top: max(0.45rem, env(safe-area-inset-top, 0px));
   right: max(0.45rem, env(safe-area-inset-right, 0px));
   z-index: 35;
-  width: min(11.1rem, calc((100vw - 1.75rem) * 0.6));
+  box-sizing: border-box;
+  overflow: hidden;
+  width: var(--album-dock-w);
+  min-width: var(--album-dock-w);
+  max-width: var(--album-dock-w);
   pointer-events: none;
+}
+
+.album-player-dock > .album-player {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .album-player {
@@ -392,6 +403,7 @@ label:has(input[type="radio"]:disabled) {
   align-items: stretch;
   gap: 0.28rem;
   min-width: 0;
+  max-width: 100%;
   padding: 0.34rem 0.42rem 0.38rem;
   border-radius: 1.05rem;
   border: 2px solid var(--line);
@@ -427,11 +439,33 @@ label:has(input[type="radio"]:disabled) {
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
+  min-width: 0;
+}
+
+.album-player__ticker {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.album-player__ticker-inner {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 254, 248, 0.96);
+  text-shadow: 0 1px 0 rgba(11, 31, 20, 0.45);
+  will-change: transform;
 }
 
 .album-player__badge {
   display: inline-flex;
   align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.06rem 0.38rem;
   border-radius: 999px;
   border: 1px solid rgba(11, 31, 20, 0.35);
@@ -440,6 +474,8 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(255, 254, 248, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .album-player__head-actions {
