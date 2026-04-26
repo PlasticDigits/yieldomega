@@ -14,9 +14,121 @@ const GLYPH = {
 } as const;
 
 const ALBUM_DISPLAY_NAME = "Blockie Hills";
-const TICKER_PAUSE_MS = 1000;
-/** Horizontal scroll speed for the collapsed ticker (px/s). */
-const TICKER_SCROLL_SPEED = 42;
+/** Pause (ms) at the **start** of each cycle before scrolling (then again at end). */
+const TICKER_PAUSE_MS = 1500;
+/** Horizontal scroll speed for the collapsed ticker (px/s); lower = slower. */
+const TICKER_SCROLL_SPEED = 22 / 1.2;
+
+/**
+ * Text width minus ticker viewport. Prefer {@link measureEl} (fixed off-screen
+ * probe) — the visible inner node is often flex-clamped so its width matches
+ * the strip and overflow reads as 0.
+ */
+function measureTickerOverflowPx(
+  outer: HTMLElement,
+  measureEl: HTMLElement | null,
+  inner: HTMLElement,
+): number {
+  outer.scrollLeft = 0;
+  const viewport = outer.clientWidth;
+  if (viewport <= 0) return 0;
+
+  let contentW = measureEl?.offsetWidth ?? 0;
+  if (contentW <= viewport + 0.5) {
+    contentW = Math.max(contentW, inner.offsetWidth, inner.scrollWidth);
+    const br = inner.getBoundingClientRect().width;
+    if (Number.isFinite(br) && br > 0) {
+      contentW = Math.max(contentW, br);
+    }
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(inner);
+      const rw = range.getBoundingClientRect().width;
+      if (Number.isFinite(rw) && rw > 0) {
+        contentW = Math.max(contentW, rw);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return Math.max(0, Math.ceil(contentW - viewport));
+}
+
+function nativeTickerScrollRangePx(outer: HTMLElement): number {
+  return Math.max(0, Math.ceil(outer.scrollWidth - outer.clientWidth));
+}
+
+function animateScrollLeftLinear(
+  el: HTMLElement,
+  target: number,
+  durationMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  const startLeft = el.scrollLeft;
+  const delta = target - startLeft;
+  if (durationMs <= 0 || Math.abs(delta) < 0.5) {
+    el.scrollLeft = target;
+    return Promise.resolve();
+  }
+  const t0 = performance.now();
+  return new Promise((resolve) => {
+    const frame = (now: number) => {
+      if (signal.aborted) {
+        resolve();
+        return;
+      }
+      const u = Math.min(1, (now - t0) / durationMs);
+      el.scrollLeft = startLeft + delta * u;
+      if (u >= 1) {
+        el.scrollLeft = target;
+        resolve();
+        return;
+      }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+function animateTranslateInnerLinear(
+  el: HTMLElement,
+  shiftPx: number,
+  durationMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  if (shiftPx <= 0 || durationMs <= 0) {
+    el.style.transform = "";
+    return Promise.resolve();
+  }
+  const t0 = performance.now();
+  return new Promise((resolve) => {
+    const frame = (now: number) => {
+      if (signal.aborted) {
+        el.style.transform = "";
+        resolve();
+        return;
+      }
+      const u = Math.min(1, (now - t0) / durationMs);
+      el.style.transform = `translateX(${-shiftPx * u}px)`;
+      if (u >= 1) {
+        el.style.transform = `translateX(${-shiftPx}px)`;
+        resolve();
+        return;
+      }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+function doubleRaf(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -55,7 +167,7 @@ export function AlbumPlayerBar() {
 
   const tickerOuterRef = useRef<HTMLDivElement>(null);
   const tickerInnerRef = useRef<HTMLDivElement>(null);
-  const [tickerLayoutBump, setTickerLayoutBump] = useState(0);
+  const tickerMeasureRef = useRef<HTMLSpanElement>(null);
 
   const tickerText = buildTickerLine(a.unlocked, a.currentTrack.title);
 
@@ -65,21 +177,21 @@ export function AlbumPlayerBar() {
     const inner = tickerInnerRef.current;
     if (!outer || !inner) return;
     const apply = () => {
-      const delta = Math.max(0, inner.scrollWidth - outer.clientWidth);
+      const delta = measureTickerOverflowPx(outer, tickerMeasureRef.current, inner);
       inner.style.setProperty("--ticker-delta", `${delta}px`);
     };
     apply();
     void document.fonts?.ready?.then(() => {
       apply();
-      setTickerLayoutBump((n) => n + 1);
     });
-  }, [detailsOpen, tickerText, a.unlocked, a.currentTrack.title]);
+  }, [detailsOpen, tickerText]);
 
   useEffect(() => {
     if (detailsOpen) return;
 
     const inner = tickerInnerRef.current;
     const outer = tickerOuterRef.current;
+    const measureEl = tickerMeasureRef.current;
     if (!inner || !outer) return;
 
     const prefersReduced =
@@ -87,6 +199,7 @@ export function AlbumPlayerBar() {
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 
     if (prefersReduced) {
+      outer.scrollLeft = 0;
       inner.style.transform = "";
       return;
     }
@@ -95,10 +208,25 @@ export function AlbumPlayerBar() {
     const { signal } = ac;
 
     const runLoop = async () => {
+      await doubleRaf();
+      if (signal.aborted) return;
+
       while (!signal.aborted) {
-        const delta = Math.max(0, inner.scrollWidth - outer.clientWidth);
-        inner.style.transform = "translateX(0)";
-        if (delta <= 0) {
+        outer.scrollLeft = 0;
+        inner.style.transform = "";
+
+        let overflow = measureTickerOverflowPx(outer, measureEl, inner);
+        let scrollRange = nativeTickerScrollRangePx(outer);
+        if (overflow <= 0 && scrollRange <= 0) {
+          await doubleRaf();
+          overflow = measureTickerOverflowPx(outer, measureEl, inner);
+          scrollRange = nativeTickerScrollRangePx(outer);
+        }
+
+        const useScroll = scrollRange > 0;
+        const travel = useScroll ? scrollRange : overflow;
+
+        if (travel <= 0) {
           try {
             await sleep(400, signal);
           } catch {
@@ -114,21 +242,18 @@ export function AlbumPlayerBar() {
         }
         if (signal.aborted) return;
 
-        const scrollMs = Math.min(14_000, Math.max(900, (delta / TICKER_SCROLL_SPEED) * 1000));
-        const anim = inner.animate(
-          [
-            { transform: "translateX(0)" },
-            { transform: `translateX(${-delta}px)` },
-          ],
-          { duration: scrollMs, easing: "linear", fill: "forwards" },
-        );
-        try {
-          await anim.finished;
-        } catch {
-          anim.cancel();
-          return;
+        overflow = measureTickerOverflowPx(outer, measureEl, inner);
+        scrollRange = nativeTickerScrollRangePx(outer);
+        const useScroll2 = scrollRange > 0;
+        const travel2 = useScroll2 ? scrollRange : overflow;
+        if (travel2 <= 0) continue;
+
+        const scrollMs = Math.min(18_000, Math.max(1200, (travel2 / TICKER_SCROLL_SPEED) * 1000));
+        if (useScroll2) {
+          await animateScrollLeftLinear(outer, scrollRange, scrollMs, signal);
+        } else {
+          await animateTranslateInnerLinear(inner, overflow, scrollMs, signal);
         }
-        anim.cancel();
         if (signal.aborted) return;
 
         try {
@@ -136,33 +261,34 @@ export function AlbumPlayerBar() {
         } catch {
           return;
         }
-        inner.style.transform = "translateX(0)";
+        outer.scrollLeft = 0;
+        inner.style.transform = "";
       }
     };
 
-    let raf = 0;
-    raf = requestAnimationFrame(() => {
-      void runLoop();
-    });
+    /** Infinite loop until unmount / deps change (aborted). ResizeObserver only
+     * refreshes `--ticker-delta`; it must not restart this effect. */
+    void runLoop();
 
     let resizeDebounce: number | undefined;
-    const ro = new ResizeObserver(() => {
+    const scheduleMeasurementRefresh = () => {
       window.clearTimeout(resizeDebounce);
       resizeDebounce = window.setTimeout(() => {
-        setTickerLayoutBump((n) => n + 1);
+        const delta = measureTickerOverflowPx(outer, measureEl, inner);
+        inner.style.setProperty("--ticker-delta", `${delta}px`);
       }, 120);
-    });
+    };
+    const ro = new ResizeObserver(scheduleMeasurementRefresh);
     ro.observe(outer);
 
     return () => {
-      window.cancelAnimationFrame(raf);
       window.clearTimeout(resizeDebounce);
       ac.abort();
       ro.disconnect();
-      inner.getAnimations().forEach((x) => x.cancel());
+      outer.scrollLeft = 0;
       inner.style.transform = "";
     };
-  }, [detailsOpen, tickerText, a.unlocked, a.currentTrack.title, tickerLayoutBump]);
+  }, [detailsOpen, tickerText]);
 
   return (
     <aside
@@ -178,6 +304,7 @@ export function AlbumPlayerBar() {
             <div
               className="album-player__ticker"
               ref={tickerOuterRef}
+              dir="ltr"
               aria-label={tickerText}
               title={tickerText}
             >
@@ -272,6 +399,9 @@ export function AlbumPlayerBar() {
             />
           </label>
         </div>
+        <span ref={tickerMeasureRef} className="album-player__ticker-measure" aria-hidden>
+          {tickerText}
+        </span>
       </div>
     </aside>
   );

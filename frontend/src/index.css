@@ -375,13 +375,14 @@ label:has(input[type="radio"]:disabled) {
   flex: 1 1 auto;
 }
 
-/* Album 1 BGM + mix bus — fixed top-right bubble (GitLab #68) */
+/* Album 1 BGM + mix bus — fixed top-right bubble (GitLab #68).
+ * Above `.launch-countdown` (1000); below `.modal-overlay` (1100+) so dialogs stay on top. */
 .album-player-dock {
   --album-dock-w: min(11.1rem, calc((100vw - 1.75rem) * 0.6));
   position: fixed;
   top: max(0.45rem, env(safe-area-inset-top, 0px));
   right: max(0.45rem, env(safe-area-inset-right, 0px));
-  z-index: 35;
+  z-index: 1050;
   box-sizing: border-box;
   overflow: hidden;
   width: var(--album-dock-w);
@@ -397,6 +398,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .album-player {
+  position: relative;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -440,24 +442,49 @@ label:has(input[type="radio"]:disabled) {
   justify-content: space-between;
   gap: 0.35rem;
   min-width: 0;
+  /* Keep the ticker flex lane narrow so scrollWidth − clientWidth reflects overflow. */
+  overflow: hidden;
 }
 
+/* Horizontal marquee uses programmatic scrollLeft (scrollWidth − clientWidth). */
 .album-player__ticker {
   flex: 1 1 0;
   min-width: 0;
   width: 0;
-  overflow: hidden;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.album-player__ticker::-webkit-scrollbar {
+  display: none;
+}
+
+/* Off-DOM width probe: flex can clamp inner nodes so overflow math reads 0. */
+.album-player__ticker-measure {
+  position: fixed;
+  left: -12000px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .album-player__ticker-inner {
-  display: inline-block;
+  display: block;
+  width: max-content;
+  max-width: none;
   white-space: nowrap;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: rgba(255, 254, 248, 0.96);
   text-shadow: 0 1px 0 rgba(11, 31, 20, 0.45);
-  will-change: transform;
 }
 
 .album-player__badge {

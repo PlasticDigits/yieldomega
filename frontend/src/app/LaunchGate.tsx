@@ -2,6 +2,7 @@
 
 import { Suspense, lazy, type ComponentType, type ReactNode } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 import { RootLayout } from "@/layout/RootLayout";
 import { LaunchCountdownPage } from "@/pages/LaunchCountdownPage";
 import { launchTimestampSec, useLaunchCountdown } from "@/lib/launchCountdown";
@@ -120,7 +121,12 @@ function CountdownRoutes({ secondsRemaining }: { secondsRemaining: number }) {
       <Routes>
         <Route
           path="*"
-          element={<LaunchCountdownPage secondsRemaining={secondsRemaining} />}
+          element={
+            <>
+              <LaunchCountdownPage secondsRemaining={secondsRemaining} />
+              <AlbumPlayerBar />
+            </>
+          }
         />
       </Routes>
     </BrowserRouter>
