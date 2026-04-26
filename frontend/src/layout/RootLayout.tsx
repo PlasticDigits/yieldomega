@@ -186,8 +186,8 @@ export function RootLayout() {
           </ConnectButton.Custom>
         </div>
         </div>
-        <AlbumPlayerBar />
       </header>
+      <AlbumPlayerBar />
       <main className="app-main">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
