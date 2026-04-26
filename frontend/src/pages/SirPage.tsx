@@ -9,8 +9,8 @@ export function SirPage() {
       title="Sir"
       slug="sir"
       heroImage="/art/sir-card.png"
-      heroImageWidth={2400}
-      heroImageHeight={1792}
+      heroImageWidth={1536}
+      heroImageHeight={1024}
       venueDescription="DOUB levs / derivatives (per venue listing)"
       externalUrl={sirDexUrl()}
       linkLabel="Open Sir DEX"
