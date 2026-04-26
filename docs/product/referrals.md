@@ -61,6 +61,10 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 - `ReferralRegistry` — code ownership and CL8Y burn.
 - `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash)` applies splits.
 
+## Automated checks (frontend)
+
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md).
+
 ---
 
 **Agent phase:** product / implementation (referrals)
