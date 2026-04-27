@@ -39,6 +39,7 @@ import {
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
@@ -808,8 +809,7 @@ export function useTimeCurveSaleSession(
       setBuyError("TimeCurve: buy cooldown");
       return;
     }
-    const cw = charmWadSelected;
-    if (cw === undefined || cw <= 0n) {
+    if (charmWadSelected === undefined || charmWadSelected <= 0n) {
       setBuyError("Pick a CL8Y amount inside the live min–max band (and your balance).");
       return;
     }
@@ -817,18 +817,18 @@ export function useTimeCurveSaleSession(
       setBuyError("Waiting for onchain CHARM bounds.");
       return;
     }
-    const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
-    if (cw < minC || cw > maxC) {
-      setBuyError(
-        "Selected size moved outside the live onchain CHARM band. Refresh or pick another size.",
-      );
+    const freshSizing = await readFreshTimeCurveBuySizing({
+      wagmiConfig,
+      timeCurveAddress: tc,
+      spendWeiIntent: spendWei,
+      walletCl8yCapWei: payWith === "cl8y" ? walletBalanceWei : undefined,
+    });
+    if (!freshSizing.ok) {
+      setBuyError(freshSizing.message);
       return;
     }
-    const amount = estimatedSpendWei;
-    if (amount === undefined || amount <= 0n) {
-      setBuyError("Could not compute spend from onchain price; wait for contract reads.");
-      return;
-    }
+    const cw = freshSizing.charmWad;
+    const amount = freshSizing.spendWei;
 
     let codeHash: `0x${string}` | undefined;
     if (useReferral && referralRegistryOn && pendingReferralCode) {
@@ -982,7 +982,7 @@ export function useTimeCurveSaleSession(
       }
       refetchAll();
     } catch (e) {
-      setBuyError(friendlyRevertFromUnknown(e));
+      setBuyError(friendlyRevertFromUnknown(e, { buySubmit: true }));
     }
   }, [
     address,
@@ -991,7 +991,8 @@ export function useTimeCurveSaleSession(
     walletCooldownRemainingSec,
     charmWadSelected,
     charmBoundsR,
-    estimatedSpendWei,
+    spendWei,
+    walletBalanceWei,
     useReferral,
     referralRegistryOn,
     pendingReferralCode,

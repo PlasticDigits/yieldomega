@@ -49,6 +49,7 @@ import {
 } from "@/lib/timeCurveKumbayaSwap";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
 import {
@@ -2000,8 +2001,7 @@ export function useTimeCurveArenaModel() {
       setBuyErr("TimeCurve: buy cooldown");
       return;
     }
-    const cw = charmWadSelected;
-    if (cw === undefined || cw <= 0n) {
+    if (charmWadSelected === undefined || charmWadSelected <= 0n) {
       setBuyErr("Choose a CL8Y amount inside the live min–max band (and your balance).");
       return;
     }
@@ -2009,18 +2009,21 @@ export function useTimeCurveArenaModel() {
       setBuyErr("Waiting for onchain CHARM bounds.");
       return;
     }
-    const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
-    if (cw < minC || cw > maxC) {
-      setBuyErr(
-        "Selected size is outside the onchain CHARM band for this moment (envelope moved). Refresh reads or adjust CL8Y.",
-      );
+    const freshSizing = await readFreshTimeCurveBuySizing({
+      wagmiConfig,
+      timeCurveAddress: tc,
+      spendWeiIntent: spendWei,
+      walletCl8yCapWei:
+        payWith === "cl8y" && walletCl8yBal !== undefined
+          ? BigInt(walletCl8yBal as bigint)
+          : undefined,
+    });
+    if (!freshSizing.ok) {
+      setBuyErr(freshSizing.message);
       return;
     }
-    const amount = estimatedSpend;
-    if (amount === undefined || amount <= 0n) {
-      setBuyErr("Could not compute spend from onchain price; wait for contract reads.");
-      return;
-    }
+    const cw = freshSizing.charmWad;
+    const amount = freshSizing.spendWei;
 
     let codeHash: `0x${string}` | undefined;
     if (useReferral && referralRegistryOn && pendingRef) {
@@ -2176,7 +2179,7 @@ export function useTimeCurveArenaModel() {
       }
       refetchAll();
     } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
+      setBuyErr(friendlyRevertFromUnknown(e, { buySubmit: true }));
     }
   }, [
     address,
@@ -2184,7 +2187,9 @@ export function useTimeCurveArenaModel() {
     tokenAddr,
     charmWadSelected,
     charmBoundsR,
-    estimatedSpend,
+    spendWei,
+    walletCl8yBal,
+    payWith,
     useReferral,
     referralRegistryOn,
     pendingRef,
@@ -2192,7 +2197,6 @@ export function useTimeCurveArenaModel() {
     refetchAll,
     walletCooldownRemainingSec,
     buyFeeRoutingEnabled,
-    payWith,
     chainId,
     onchainTimeCurveBuyRouter,
     plantWarBowFlag,
