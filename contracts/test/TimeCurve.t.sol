@@ -287,6 +287,33 @@ contract TimeCurveTest is Test {
         assertEq(tc.warbowPendingFlagPlantAt(), plantAfterFirst);
     }
 
+    /// @dev GitLab #77 — router `buyFor(..., plant=false)` credits buyer only; no WarBow pending slot.
+    function test_buy_for_with_plant_false_does_not_plant() public {
+        tc.startSale();
+        address companion = makeAddr("companionRouter");
+        tc.setTimeCurveBuyRouter(companion);
+        _fundAndApprove(companion, 5e18);
+        vm.prank(companion);
+        tc.buyFor(alice, 1e18, false);
+        assertEq(tc.charmWeight(alice), 1e18);
+        assertEq(tc.charmWeight(companion), 0);
+        assertEq(tc.warbowPendingFlagOwner(), address(0));
+        assertEq(tc.warbowPendingFlagPlantAt(), 0);
+    }
+
+    /// @dev GitLab #77 — router `buyFor(..., plant=true)` plants for **buyer**, not `msg.sender` (router).
+    function test_buy_for_with_plant_true_plants() public {
+        tc.startSale();
+        address companion = makeAddr("companionRouter");
+        tc.setTimeCurveBuyRouter(companion);
+        _fundAndApprove(companion, 5e18);
+        vm.prank(companion);
+        tc.buyFor(alice, 1e18, true);
+        assertEq(tc.charmWeight(alice), 1e18);
+        assertEq(tc.warbowPendingFlagOwner(), alice);
+        assertGt(tc.warbowPendingFlagPlantAt(), 0);
+    }
+
     function test_buy_below_minBuy_reverts() public {
         tc.startSale();
         _fundAndApprove(alice, 1e18);

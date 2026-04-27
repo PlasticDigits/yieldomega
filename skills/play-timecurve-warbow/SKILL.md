@@ -14,7 +14,7 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 ## Truth order
 
 1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, `warbowPendingRevengeStealer`, `warbowPendingRevengeExpiry`, `warbowGuardUntil`, `stealsReceivedOnDay`, **`buyFeeRoutingEnabled`** (issue #55: if **false**, **steal / revenge / guard** revert before CL8Y moves; **not** `claimWarBowFlag`), constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
-2. **Events** — `Buy` (BP line items, `hardReset`, streak fields; **`flagPlanted` is `true` iff that buy opted into planting** the WarBow pending flag — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63); it is **not** alone proof of who **currently** holds the flag), `WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, `WarBowFlagClaimed`, `WarBowFlagPenalized`, `WarBowCl8yBurned`, defended-streak events.
+2. **Events** — `Buy` (BP line items, `hardReset`, streak fields; **`flagPlanted` is `true` iff that buy opted into planting** the WarBow pending flag — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63); regression tests for **referral** and **`buyFor` router** passthrough: [issue #77](https://gitlab.com/PlasticDigits/yieldomega/-/issues/77); it is **not** alone proof of who **currently** holds the flag), `WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, `WarBowFlagClaimed`, `WarBowFlagPenalized`, `WarBowCl8yBurned`, defended-streak events.
 3. **Product docs** — [`docs/product/primitives.md`](../../docs/product/primitives.md).
 4. **Indexer / frontend** — discovery and history; **do not** override chain for eligibility or balances.
 

@@ -122,4 +122,28 @@ contract TimeCurveReferralTest is Test {
         tc.buy(10e18, bad, false);
         vm.stopPrank();
     }
+
+    /// @dev GitLab #77 — `buy(charmWad, codeHash, false)` does not touch WarBow pending slot (#63 wiring).
+    function test_referral_buy_with_plant_false_does_not_plant() public {
+        bytes32 codeHash = reg.hashCode("ref1");
+        reserve.mint(bob, 10e18);
+        vm.startPrank(bob);
+        reserve.approve(address(tc), 10e18);
+        tc.buy(10e18, codeHash, false);
+        vm.stopPrank();
+        assertEq(tc.warbowPendingFlagOwner(), address(0));
+        assertEq(tc.warbowPendingFlagPlantAt(), 0);
+    }
+
+    /// @dev GitLab #77 — referral buy with `plant=true` sets pending flag to **referee** (`buyer`), not referrer.
+    function test_referral_buy_with_plant_true_plants() public {
+        bytes32 codeHash = reg.hashCode("ref1");
+        reserve.mint(bob, 10e18);
+        vm.startPrank(bob);
+        reserve.approve(address(tc), 10e18);
+        tc.buy(10e18, codeHash, true);
+        vm.stopPrank();
+        assertEq(tc.warbowPendingFlagOwner(), bob);
+        assertGt(tc.warbowPendingFlagPlantAt(), 0);
+    }
 }
