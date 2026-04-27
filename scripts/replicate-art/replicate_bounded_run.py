@@ -17,12 +17,75 @@ from typing import Any
 
 DEFAULT_MAX_GENERATION_SECONDS = 600.0
 
+# Replicate `predictions.create(..., wait=N)` keeps the HTTP response open for up to N
+# seconds. Many proxies / CDNs drop long idle reads; the Python client then raises
+# (e.g. RemoteProtocolError / "disconnected") *after* Replicate already accepted the job.
+# Callers that wrap create+poll in an outer "retry whole job" loop then duplicate predictions.
+# Short server wait + client-side reload polling matches Replicate's own guidance and
+# sniper_shark_cutouts.py (prefer_wait=1).
+_DEFAULT_CREATE_WAIT = 1
+
+
+def _create_wait_seconds(requested: int) -> int:
+    raw = os.environ.get("REPLICATE_CREATE_WAIT_SECONDS", "").strip()
+    if raw:
+        try:
+            cap = max(1, min(60, int(raw)))
+        except ValueError:
+            cap = _DEFAULT_CREATE_WAIT
+    else:
+        cap = _DEFAULT_CREATE_WAIT
+    # Never use a long-held create wait unless explicitly forced via env above.
+    return max(1, min(cap, max(1, int(requested))))
+
+
+def _is_transient_network_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__}: {exc!s}".lower()
+    return any(
+        n in text
+        for n in (
+            "remoteprotocolerror",
+            "disconnected",
+            "connection reset",
+            "connection aborted",
+            "broken pipe",
+            "eof",
+            "timed out",
+            "timeout",
+            "temporarily unavailable",
+            "502",
+            "503",
+            "504",
+        )
+    )
+
 
 def max_generation_seconds() -> float:
     raw = os.environ.get("REPLICATE_MAX_GENERATION_SECONDS", "").strip()
     if not raw:
         return DEFAULT_MAX_GENERATION_SECONDS
     return max(60.0, float(raw))
+
+
+def _reload_prediction_resilient(prediction: Any, *, job_label: str) -> None:
+    """``prediction.reload()`` with retries — same prediction id, no duplicate creates."""
+    net_errors = 0
+    while True:
+        try:
+            prediction.reload()
+            return
+        except Exception as exc:
+            if not _is_transient_network_error(exc) or net_errors >= 40:
+                raise
+            net_errors += 1
+            wait = min(8.0, 0.35 * net_errors + 0.15 * (net_errors**1.5))
+            print(
+                f"[{job_label}] reload flake ({exc!s}); same prediction "
+                f"https://replicate.com/p/{getattr(prediction, 'id', '?')} "
+                f"retry {net_errors}/40 in {wait:.1f}s…",
+                file=sys.stderr,
+            )
+            time.sleep(wait)
 
 
 def wait_prediction_bounded(
@@ -64,7 +127,7 @@ def wait_prediction_bounded(
                 f"https://replicate.com/p/{pid}"
             )
         time.sleep(client.poll_interval)
-        prediction.reload()
+        _reload_prediction_resilient(prediction, job_label=job_label)
 
 
 def run_model_bounded(
