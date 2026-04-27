@@ -83,6 +83,10 @@ MegaEVM uses a **multidimensional gas** model (for example **compute** vs **stor
 
 More context: [`../docs/contracts/foundry-and-megaeth.md`](../docs/contracts/foundry-and-megaeth.md).
 
+### Contract size and initcode (MegaETH vs Anvil)
+
+MegaEVM uses **512 KiB** max **deployed** bytecode and **536 KiB** max **initcode** (see [MegaETH contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)), **not** Ethereum’s **EIP-170** ~24 KiB runtime cap. **Nested-call gas** uses MegaEVM’s **98/100** forwarding rule ([Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md)). Default **Anvil** still follows EIP-170-style limits unless you raise `--code-size-limit`. After `forge build`, use `forge build --sizes` or inspect `out/<Name>.sol/<Name>.json` to confirm artifacts fit your **target chain**; see [foundry-and-megaeth.md](../docs/contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas) and [issue #72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72).
+
 ## Deploy (dev)
 
 Deploy all core contracts to a local or dev environment:
