@@ -10,7 +10,7 @@ The layout was reorganized as part of [`docs/agent-phases.md` Phase 13 — Front
 
 - **Path stability:** treat `/art/<purpose>/<name>.<ext>` as a public ABI for the frontend. If you rename, run `rg "/art/" frontend/` and update every consumer plus this README.
 - **AGPL artwork:** new generated drops default to AGPL-3.0 alongside the rest of the repo (see [`LICENSE`](../../../LICENSE) and [`docs/licensing.md`](../../../docs/licensing.md)). Reference inputs that originate from upstream packs keep their upstream license — check `scripts/replicate-art/` history.
-- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack), [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) (sniper-shark `cutouts/`), and [`cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py) (CSS cursor-name pack with MDN reference inputs). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
+- **Generation:** see [`scripts/replicate-art/`](../../../scripts/replicate-art/), [`issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py) (historic pack), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)), [`issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py) ([issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) cursor pack), [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) (sniper-shark `cutouts/`), [`cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py) (CSS cursor-name pack with MDN reference inputs), and [`posts_batch.py`](../../../scripts/replicate-art/posts_batch.py) (numbered **`posts/`** stills for social). Issue #45 drops used `pending_manual_review/` for QA; later batches promote into `cursors/` with optional `pending_manual_review/issue*-gen/` scratch (gitignored).
 - **`/art/` in code:** all current consumers live in `frontend/src/`, `frontend/index.html`, and `frontend/vite.config.ts`. Search with `rg "/art/" frontend/`.
 - **`/tokens/` in code:** canonical ticker + MegaETH mark URLs from [`tokenMedia.ts`](../../src/lib/tokenMedia.ts). Search with `rg "tokenMedia|/tokens/" frontend/src`.
 
@@ -133,6 +133,10 @@ Custom mouse pointers wired through CSS (`cursor: url('/art/cursors/<name>.png')
 | `progress.png`      | (6, 5) | `[aria-busy=true]`, deadline refresh text, `.cursor-progress`, `.cursor-loading` in [`index.css`](../../src/index.css) | `progress` |
 | `text.png`          | center (16, 16) | Text controls and `.cursor-text` in [`index.css`](../../src/index.css) | `text` |
 | `not-allowed.png`   | center (16, 16) | Disabled controls and `.cursor-not-allowed` in [`index.css`](../../src/index.css) | `not-allowed` |
+
+### `posts/`
+
+Numbered **social post** stills (`001.jpg` …) for X / Farcaster / Telegram — generated via [`posts_batch.py`](../../../scripts/replicate-art/posts_batch.py). Not wired into app routes by default; reference as `/art/posts/<id>.jpg`. See [`posts/README.md`](./posts/README.md) for **variety** expectations (infographic vs narrative) and how to run the script.
 
 ### `social/`
 
