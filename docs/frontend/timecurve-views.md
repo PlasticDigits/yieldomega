@@ -115,6 +115,34 @@ setups.
 
 **Spec ↔ test:** [invariants — WarBow flag plant opt-in](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [primitives — plant / claim flag](../product/primitives.md) · [`timeCurveUx.ts`](../../frontend/src/lib/timeCurveUx.ts) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
 
+<a id="arena-sniper-shark-cutout-issue-80"></a>
+
+## Arena sniper-shark cutout (issue #80)
+
+The sniper-shark pack is intentionally **not** a new global mascot. Arena uses a
+single `sniper-shark-peek-scope.png` decoration on the **Buy CHARM** panel,
+replacing the previous sneak-bunny cutout rather than adding another character
+to the card. The rationale is narrow: the Arena buy card is where timing,
+price pressure, and optional WarBow flag planting already create the "hunter /
+sniper" mood. Simple, global chrome, and neutral operator surfaces stay shark
+free.
+
+**UI invariants**
+
+1. **Sparse placement:** one shark asset on `/timecurve/arena`; no shark in the
+   header, root layout, Simple first-run sale path, or Protocol read-only page.
+2. **Decorative accessibility:** the placement uses `CutoutDecoration` with the
+   default empty `alt`, so it is `aria-hidden` and does not add screen-reader
+   noise.
+3. **Motion restraint:** the cutout uses the existing `peek-loop` animation,
+   which is suppressed by the global `prefers-reduced-motion` rule.
+4. **Asset accounting:** runtime consumers are listed in
+   [`frontend/public/art/README.md`](../../frontend/public/art/README.md), and
+   the remaining shark variants stay staged until a surface has a specific
+   narrative fit.
+
+**Spec ↔ test:** [invariants — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [visual QA skill](../../skills/verify-yo-sniper-shark-ui/SKILL.md).
+
 <a id="buy-quote-refresh-kumbaya-issue-56"></a>
 
 ## Buy quote refresh (Kumbaya, issue #56)
@@ -346,6 +374,6 @@ npm run test:e2e -- --workers=5
 
 ---
 
-**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68)
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)

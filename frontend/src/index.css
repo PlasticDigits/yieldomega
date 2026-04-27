@@ -3006,6 +3006,16 @@ code {
   filter: drop-shadow(4px 6px 0 rgba(35, 24, 8, 0.2));
 }
 
+.panel-cutout--arena-sniper-shark {
+  right: -0.75rem;
+  bottom: -0.55rem;
+  width: clamp(6rem, 13vw, 8.5rem);
+  opacity: 0.9;
+  filter:
+    drop-shadow(4px 6px 0 rgba(9, 30, 42, 0.26))
+    saturate(1.06);
+}
+
 .timecurve-arena-buy-panel__conversion {
   display: inline-flex;
   flex-wrap: wrap;
