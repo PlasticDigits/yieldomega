@@ -22,13 +22,14 @@ if ! command -v anvil >/dev/null || ! command -v cast >/dev/null || ! command -v
 fi
 
 echo "Starting anvil (manual mining) on port ${PORT}..."
-anvil --host 127.0.0.1 --no-mining --port "${PORT}" >/tmp/anvil_drill.log 2>&1 &
+anvil --host 127.0.0.1 --no-mining --port "${PORT}" --code-size-limit 524288 >/tmp/anvil_drill.log 2>&1 &
 ANVIL_PID=$!
 trap 'kill "${ANVIL_PID}" 2>/dev/null || true' EXIT
 sleep 1
 
 echo "Deploying drill stack..."
-OUT="$(forge script script/AnvilSameBlockDrill.s.sol:AnvilSameBlockDrill --rpc-url "${RPC}" --broadcast --private-key "${PK_DEPLOYER}" -vv 2>&1)"
+OUT="$(forge script script/AnvilSameBlockDrill.s.sol:AnvilSameBlockDrill --rpc-url "${RPC}" --broadcast \
+  --code-size-limit 524288 --private-key "${PK_DEPLOYER}" -vv 2>&1)"
 echo "${OUT}" | tail -20
 
 USDM=$(echo "${OUT}" | grep "DRILL_USDM" | awk '{print $2}' | head -1)
