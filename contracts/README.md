@@ -64,7 +64,7 @@ Official parameters and endpoints change over time; confirm on [MegaETH document
 
 ```bash
 # Fork testnet (e.g. for script debugging)
-forge script script/DeployDev.s.sol --fork-url megaeth_testnet
+forge script script/DeployDev.s.sol --fork-url megaeth_testnet --code-size-limit 524288
 
 # cast against testnet
 cast chain-id --rpc-url https://carrot.megaeth.com/rpc
@@ -85,14 +85,14 @@ More context: [`../docs/contracts/foundry-and-megaeth.md`](../docs/contracts/fou
 
 ### Contract size and initcode (MegaETH vs Anvil)
 
-MegaEVM uses **512 KiB** max **deployed** bytecode and **536 KiB** max **initcode** (see [MegaETH contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)), **not** Ethereum’s **EIP-170** ~24 KiB runtime cap. **Nested-call gas** uses MegaEVM’s **98/100** forwarding rule ([Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md)). A **stock** `anvil` process still uses EIP-170’s **0x6000** (~24 KiB) unless you set **`--code-size-limit 524288`** (decimal only; hex like **`0x80000`** is rejected by Anvil) for **512 KiB** (MegaEVM parity). The repo’s **`scripts/start-local-anvil-stack.sh`**, **`scripts/e2e-anvil.sh`**, and **`scripts/anvil-export-bot-env.sh`** pass **524288**. After `forge build`, use `forge build --sizes` or inspect `out/<Name>.sol/<Name>.json` to confirm artifacts fit your **target chain**; see [foundry-and-megaeth.md](../docs/contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas) and [issue #72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72).
+MegaEVM uses **512 KiB** max **deployed** bytecode and **536 KiB** max **initcode** (see [MegaETH contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)), **not** Ethereum’s **EIP-170** ~24 KiB runtime cap. **Nested-call gas** uses MegaEVM’s **98/100** forwarding rule ([Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md)). A **stock** `anvil` process still uses EIP-170’s **0x6000** (~24 KiB) unless you set **`--code-size-limit 524288`** (decimal only; hex like **`0x80000`** is rejected by Anvil) for **512 KiB** (MegaEVM parity). The repo’s **`scripts/start-local-anvil-stack.sh`**, **`scripts/e2e-anvil.sh`**, **`scripts/anvil-export-bot-env.sh`**, **`scripts/lib/anvil_deploy_dev.sh`**, **`contracts/script/anvil_rich_state.sh`**, and **`contracts/script/anvil_same_block_drill.sh`** pass **524288** on **Anvil** and on **`forge script`** where applicable (Forge simulates before `--broadcast` with its own EIP-170 check). After `forge build`, use `forge build --sizes` or inspect `out/<Name>.sol/<Name>.json` to confirm artifacts fit your **target chain**; see [foundry-and-megaeth.md](../docs/contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas) and [issue #72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72).
 
 ## Deploy (dev)
 
 Deploy all core contracts to a local or dev environment:
 
 ```bash
-forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC>
+forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288
 ```
 
 The script deploys mock tokens (**CL8Y** reserve + launched token) when neither `RESERVE_ASSET_ADDRESS` nor legacy `USDM_ADDRESS` is set.

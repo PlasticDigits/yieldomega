@@ -26,8 +26,8 @@ Optional: `ANVIL_PORT=8546 bash contracts/script/anvil_same_block_drill.sh` if p
 
 The script:
 
-1. Starts `anvil --host 127.0.0.1 --no-mining` in the background.
-2. Deploys a minimal TimeCurve stack via `forge script script/AnvilSameBlockDrill.s.sol`.
+1. Starts `anvil --host 127.0.0.1 --no-mining --code-size-limit 524288` in the background (MegaEVM-sized cap + Forge simulation; see [foundry-and-megaeth.md](../contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas)).
+2. Deploys a minimal TimeCurve stack via `forge script script/AnvilSameBlockDrill.s.sol` (with `--code-size-limit 524288`).
 3. Mints and approves two default Anvil accounts.
 4. Queues two `buy` transactions with `--async`, then mines one block.
 5. Prints recent logs for inspection.

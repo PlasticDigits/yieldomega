@@ -20,7 +20,7 @@ import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 /// @notice Deploy all core contracts to a dev/local environment.
 ///         Core game + routing contracts deploy as **UUPS ERC1967 proxies**; logged addresses are **proxy** addresses.
 ///         Tokens (`Doubloon`), NFTs (`LeprechaunNFT`), and dev mocks stay direct deployments (GitLab #54).
-///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC>
+///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288 (recommended on Anvil; Forge pre-broadcast sim enforces EIP-170 unless raised — see docs/contracts/foundry-and-megaeth.md).
 ///         Outputs addresses to console; copy into deployments/dev-addresses.example.json.
 ///         See docs/operations/deployment-stages.md and docs/operations/deployment-checklist.md.
 contract DeployDev is Script {

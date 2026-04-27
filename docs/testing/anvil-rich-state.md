@@ -4,7 +4,7 @@ This flow drives **TimeCurve**, **RabbitTreasury**, and **LeprechaunNFT** throug
 
 ## Prerequisites
 
-- Foundry (`anvil`, `forge`, `cast`) on `PATH`. For a **manual** `anvil` (not via [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)), use **`anvil --code-size-limit 524288`** (512 KiB = **0x80000**; the flag is **decimal**—`0x80000` errors) for MegaEVM parity; default Anvil is **EIP-170** **0x6000** (~24 KiB).
+- Foundry (`anvil`, `forge`, `cast`) on `PATH`. For a **manual** `anvil` (not via [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)), use **`anvil --code-size-limit 524288`** (512 KiB = **0x80000**; the flag is **decimal**—`0x80000` errors) for MegaEVM parity; default Anvil is **EIP-170** **0x6000** (~24 KiB). **`forge script --broadcast`** also simulates with EIP-170 unless you pass **`--code-size-limit 524288`** on the same command — copy [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) / [`anvil_rich_state.sh`](../../contracts/script/anvil_rich_state.sh).
 - `jq` (optional but recommended for loading addresses from broadcast JSON)
 - [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) already broadcast to the same Anvil RPC
 
@@ -17,7 +17,7 @@ From the repo root (or adjust paths):
 ```bash
 export RPC_URL=http://127.0.0.1:8545
 # Deploy stack first (unset RESERVE_ASSET_ADDRESS / USDM_ADDRESS unless you inject a real token address)
-cd contracts && env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "$RPC_URL"
+cd contracts && env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "$RPC_URL" --code-size-limit 524288
 bash contracts/script/anvil_rich_state.sh
 ```
 
@@ -41,9 +41,9 @@ export RABBIT_TREASURY_ADDRESS=0x...
 export LEPRECHAUN_NFT_ADDRESS=0x...
 
 cd contracts
-forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart1 --rpc-url "$RPC_URL" --broadcast --slow
+forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart1 --rpc-url "$RPC_URL" --broadcast --slow --code-size-limit 524288
 # Warp past deadline + mine (see anvil_rich_state.sh)
-forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2 --rpc-url "$RPC_URL" --broadcast --slow
+forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2 --rpc-url "$RPC_URL" --broadcast --slow --code-size-limit 524288
 ```
 
 ## Indexer verification (`curl`)

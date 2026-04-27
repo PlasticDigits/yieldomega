@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
 # Shared DeployDev.s.sol deploy + address extraction for Anvil workflows.
+# forge script simulates before --broadcast and enforces EIP-170 unless --code-size-limit
+# matches Anvil (524288 = 512 KiB MegaEVM-style); see start-local-anvil-stack.sh.
 #
 # Source this file from repo root context. Before calling yieldomega_anvil_deploy_dev:
 #   - ROOT   — absolute path to repository root
@@ -24,7 +26,8 @@ yieldomega_anvil_deploy_dev() {
   export FOUNDRY_OUT="${ROOT}/contracts/out-e2e-anvil"
   mkdir -p "${FOUNDRY_OUT}"
   forge build
-  forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" -vv 2>&1 | tee "${DEPLOY_LOG}"
+  forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" \
+    --code-size-limit 524288 -vv 2>&1 | tee "${DEPLOY_LOG}"
 
   _yieldomega_extract_addr() {
     local label="$1"
@@ -46,7 +49,7 @@ yieldomega_anvil_deploy_dev() {
   echo "Deploying Kumbaya Anvil fixtures (issue #41; see docs/integrations/kumbaya.md issue #46)..."
   KUMBAYA_LOG=$(mktemp)
   forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
-    --rpc-url "${RPC}" --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
+    --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
 
   _yieldomega_extract_k() {
     local label="$1"
