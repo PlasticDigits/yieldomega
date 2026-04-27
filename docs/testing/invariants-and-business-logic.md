@@ -115,7 +115,22 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 ### TimeCurve — single-tx Kumbaya `buyViaKumbaya` (issue #66)
 
-When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.timeCurveBuyRouter()`** is **non-zero**, the buy path calls **`TimeCurveBuyRouter.buyViaKumbaya`** (same **packed path** and **slippage** as the two-step flow); **`plantWarBowFlag`** matches the **`buy` / `buyFor`** opt-in ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). **Zero** onchain buy router → legacy **two-step** only. **CL8Y** direct **`buy`** does not use the buy router. **Anvil E2E:** `scripts/lib/anvil_deploy_dev.sh` logs **TimeCurveBuyRouter**; `scripts/e2e-anvil.sh` may set **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** for optional env/onchain parity checks. **Doc:** [kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66).
+When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.timeCurveBuyRouter()`** is **non-zero**, the buy path calls **`TimeCurveBuyRouter.buyViaKumbaya`** (same **packed path** and **slippage** as the two-step flow); **`plantWarBowFlag`** matches the **`buy` / `buyFor`** opt-in ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). **Zero** onchain buy router → legacy **two-step** only. **CL8Y** direct **`buy`** does not use the buy router. **Anvil E2E:** `scripts/lib/anvil_deploy_dev.sh` logs **TimeCurveBuyRouter**; `scripts/e2e-anvil.sh` may set **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** for optional env/onchain parity checks. **Live Anvil buy-router scope (#65) automated via fork test:** [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) — `scripts/verify-timecurve-buy-router-anvil.sh` + [`VerifyTimeCurveBuyRouterAnvil.t.sol`](../../contracts/test/VerifyTimeCurveBuyRouterAnvil.t.sol). **Doc:** [kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66).
+
+<a id="timecurvebuyrouter-anvil-verification-issue-78"></a>
+
+### TimeCurveBuyRouter — Anvil verification (issue #78)
+
+**Intent:** The [#65 / #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) **TimeCurveBuyRouter** path on Anvil (fixtures, `quoteExactOutput` vs `exactOutput`, `buyViaKumbaya`, `plantWarBowFlag` / WarBow, `setTimeCurveBuyRouter(0)` revert) is covered by a **one-command** script so the **scope checklist** is not deferred. **`start-local-anvil-stack.sh`** does **not** run **`DeployKumbayaAnvilFixtures`**; use **`e2e-anvil.sh`**, **`anvil_deploy_dev.sh`**, or **`YIELDOMEGA_DEPLOY_KUMBAYA=1 bash scripts/verify-timecurve-buy-router-anvil.sh`**.
+
+| Invariant | Check |
+|----------|--------|
+| **Preconditions** | Anvil **`--code-size-limit 524288`**; **TimeCurve** = **proxy**; sale **not** ended (use `SKIP_ANVIL_RICH_STATE=1` for default stack, or a fresh `DeployDev`). |
+| **Script** | `bash scripts/verify-timecurve-buy-router-anvil.sh` sets **`YIELDOMEGA_FORK_VERIFY=1`** and runs **`forge test`** for [`VerifyTimeCurveBuyRouterAnvil.t.sol`](../../contracts/test/VerifyTimeCurveBuyRouterAnvil.t.sol) against **`FORK_URL`**. With **`YIELDOMEGA_DEPLOY_KUMBAYA=1`**, broadcasts **`DeployKumbayaAnvilFixtures`** when **`timeCurveBuyRouter()`** is zero. |
+| **Buy event `flagPlanted`** | The fork test uses **`warbowPendingFlagOwner`** (same **opt-in** semantics as the **`Buy`** event, [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)) instead of log decoding. |
+| **CI / default `forge test`** | Without **`YIELDOMEGA_FORK_VERIFY`**, the test **no-ops** (passes) so `forge test` in CI is unchanged. |
+
+**Play skill (third-party agents):** [`skills/verify-yo-timecurve-buy-router-anvil/SKILL.md`](../../skills/verify-yo-timecurve-buy-router-anvil/SKILL.md) · [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78).
 
 ---
 

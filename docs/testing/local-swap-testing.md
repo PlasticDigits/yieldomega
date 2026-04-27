@@ -9,7 +9,7 @@ This note covers **multi-asset TimeCurve entry** (CL8Y, ETH, USDM) using the **A
 1. **`DeployDev.s.sol`** — core game contracts (TimeCurve, mock CL8Y, etc.).
 2. **`DeployKumbayaAnvilFixtures.s.sol`** — `AnvilWETH9`, `AnvilMockUSDM`, `AnvilKumbayaRouter` (combined **swap + quoter**), and **`TimeCurveBuyRouter`** (single-tx ETH/USDM → `exactOutput` → `TimeCurve.buyFor`; [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65)). The fixture router implements Uniswap-style **`exactOutput`** / **`quoteExactOutput`** with **v3 path encoding**; pool math is **constant-product** for local testing only, not production Uniswap v3. Multi-hop **`quoteExactOutput`** walks hops **from the CL8Y (output) end toward the spend token**, matching SwapRouter-style `exactOutput` (fixed alongside issue #65).
 
-`scripts/lib/anvil_deploy_dev.sh` runs both scripts and parses logged addresses.
+`scripts/lib/anvil_deploy_dev.sh` runs both scripts and parses logged addresses. **`start-local-anvil-stack.sh`** (full QA stack) runs **`DeployDev`** only; use **`e2e-anvil.sh`**, this deploy helper, or **`YIELDOMEGA_DEPLOY_KUMBAYA=1 bash scripts/verify-timecurve-buy-router-anvil.sh`** to register **`TimeCurveBuyRouter`** on that chain ([issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78), [kumbaya runbook](../integrations/kumbaya.md#localnet-anvil)).
 
 ## Frontend env (build-time)
 
