@@ -129,7 +129,9 @@ else
   if [[ "${START_BOT_SWARM}" == "1" ]]; then
     ANVIL_EXTRA=(--accounts 30)
   fi
-  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
+  # EIP-170 contract size (0x6000) — explicit MegaETH / mainnet parity (Anvil default, but
+  # `disable-code-size-limit` is common in ad-hoc test nodes).
+  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --code-size-limit 0x6000 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
   echo $! > /tmp/yieldomega_anvil_stack.pid
   for _ in $(seq 1 30); do
     cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1 && break
