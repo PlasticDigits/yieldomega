@@ -71,13 +71,15 @@ import generate_assets as ga  # noqa: E402
 DEFAULT_POSTS_DIR = ga.REPO_ROOT / "frontend" / "public" / "art" / "posts"
 
 REFERENCE_INSTRUCTIONS_INFOGRAPHIC = """
+CRITICAL — infographic typography: this job is a marketing chart/poster, not a silent key-art still. You MUST render clearly readable English words as chunky cartoon lettering (headlines, panel titles, chart callouts). An image with no on-picture text is wrong for this task. Keep labels short and scannable like a game HUD; no watermarks, no dense paragraphs, no fake fine print.
+
 Reference images are supplied as input_images in this exact order:
 (1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
 (2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green leprechaun hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel.
 
 Important balance: keep the characters, costume language, palette, token motif, and overall aesthetic clearly consistent with the references, but do not make a direct edit or near-duplicate of the reference image. Change the composition, camera angle, staging, pose, layout, and scene arrangement while keeping the same brand identity.
 
-Typography requirement (this infographic post): include readable type — at minimum one bold headline across the top, short section titles for panels or columns, micro-labels on chart elements or callouts (single words or 2–3 word phrases), and where useful small numeric ticks on axes (e.g. min/max). Use thick rounded arcade cartoon letterforms with high contrast fills and dark outlines; keep total copy tight and scannable like a game HUD poster; no watermarks, no dense paragraphs, no fake fine print.
+Typography checklist: at minimum one bold headline across the top, short section titles for panels or columns, micro-labels on chart elements or callouts (single words or 2–3 word phrases), and where useful small numeric ticks on axes (e.g. min/max). Use thick rounded arcade cartoon letterforms with high contrast fills and dark outlines.
 """.strip()
 
 
@@ -222,7 +224,7 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
             "Adult bunny-leprechaun girl and red-bearded leprechaun as small icons in corners, "
             "not the whole frame. Editorial layout, strong grid, high information density, "
             "flat vector-like planes with thick outlines. "
-            "Suggested type: big headline split vibe FAST IN / FAST OUT vs STAY TO WIN; "
+            "Required on-image type (spell out legibly): big headline FAST IN / FAST OUT vs STAY TO WIN; "
             "subheads SHORT CLOCK ZONE and STRUCTURAL EDGE; tiny axis labels TIME and EDGE."
         ),
         "infographic",
@@ -241,7 +243,7 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
             "Add empty podium plinths, a dull medal outline, and a dim tension wire on the "
             "left; on the right sparkles, a fuller podium, and a visible streak ribbon. "
             "Blockie hills as a thin lower band. Mascots tiny or absent. "
-            "Suggested type: headline EARLY EXITS; chart callouts NO STREAK, NO PODIUM, NO TENSION "
+            "Required on-image type (spell out legibly): headline EARLY EXITS; chart callouts NO STREAK, NO PODIUM, NO TENSION "
             "on the weak side vs CONVICTION PAYS on the strong side; small axis labels PLAYERS and TIME."
         ),
         "infographic",
@@ -296,7 +298,7 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
             "streak glow to podium. MegaETH suggested only as abstract emerald network nodes "
             "or gem lattice in the background — no logos or spelled chain names. "
             "Mascots appear as medium cutouts between columns. "
-            "Suggested type: banner TRUST THROUGH VISIBILITY; column titles VISIBLE ROLE, "
+            "Required on-image type (spell out legibly): banner TRUST THROUGH VISIBILITY; column titles VISIBLE ROLE, "
             "VISIBLE CLOCK, REASON TO STAY; micro-tags READABLE, ON-CHAIN, FAIR."
         ),
         "infographic",
