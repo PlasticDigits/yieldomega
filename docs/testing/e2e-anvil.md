@@ -19,7 +19,7 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 | Topic | Anvil / local | MegaETH |
 |-------|-----------------|---------|
-| **Contract code size** | [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts Anvil with **`--code-size-limit 0x80000`** (512 KiB, MegaEVM `MAX_CONTRACT_SIZE`); a **plain** `anvil` defaults to **EIP-170 0x6000** (~24 KiB) | [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits) — 512 KiB runtime, 536 KiB initcode |
+| **Contract code size** | [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts Anvil with **`--code-size-limit 524288`** (512 KiB = **0x80000**; Anvil’s parser is decimal-only, so hex is rejected). A **plain** `anvil` defaults to **EIP-170 0x6000** (~24 KiB) | [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits) — 512 KiB runtime, 536 KiB initcode |
 | Gas model | Classic EVM-style gas in Foundry | MegaEVM: compute + storage gas, different minima and limits |
 | `eth_estimateGas` / simulation | Matches Anvil, not MegaEVM | Use chain RPC for realistic limits |
 | Block time | Manual or instant mining; not ~1s streams | Fast blocks; indexer lag / reorg assumptions differ |

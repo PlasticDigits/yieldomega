@@ -52,8 +52,8 @@ if [ "${START_ANVIL}" -eq 1 ]; then
     echo "Need anvil on PATH, or use --no-anvil with a running node." >&2
     exit 1
   fi
-  echo "Starting anvil on ${RPC} (MegaEVM-sized code: --code-size-limit 0x80000)..."
-  anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 0x80000 >/tmp/yieldomega_anvil_bot_env.log 2>&1 &
+  echo "Starting anvil on ${RPC} (MegaEVM-sized code: --code-size-limit 524288 = 512 KiB)..."
+  anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 524288 >/tmp/yieldomega_anvil_bot_env.log 2>&1 &
   ANVIL_PID=$!
   echo "Anvil PID=${ANVIL_PID} (leave running for local bot / frontend; stop with: kill ${ANVIL_PID})"
   for _ in $(seq 1 60); do
