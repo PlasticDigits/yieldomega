@@ -347,9 +347,15 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _charmBounds(uint256 elapsed) internal view returns (uint256 minCharmWad, uint256 maxCharmWad) {
-        uint256 scale = TimeMath.currentMinBuy(initialMinBuy, growthRateWad, elapsed);
-        minCharmWad = Math.mulDiv(CHARM_MIN_BASE_WAD, scale, initialMinBuy);
-        maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, initialMinBuy);
+        uint256 ref = initialMinBuy;
+        // `initialMinBuy` is only set in `initialize` (required > 0). Default storage (e.g. calling the
+        // implementation, GitLab #61) leaves it zero and would panic in `mulDiv` (GitLab #73).
+        if (ref == 0) {
+            return (CHARM_MIN_BASE_WAD, CHARM_MAX_BASE_WAD);
+        }
+        uint256 scale = TimeMath.currentMinBuy(ref, growthRateWad, elapsed);
+        minCharmWad = Math.mulDiv(CHARM_MIN_BASE_WAD, scale, ref);
+        maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, ref);
     }
 
     /// @param buyer Wallet credited for CHARM weight, WarBow, podiums, cooldown, and referrals.

@@ -88,6 +88,14 @@ contract TimeCurveTest is Test {
         new ERC1967Proxy(address(impl), initData);
     }
 
+    /// @dev Uninitialized implementation has `initialMinBuy == 0`; `currentCharmBoundsWad` must not panic (GitLab #73).
+    function test_currentCharmBoundsWad_zero_initialMinBuy_returns_base_envelope() public {
+        TimeCurve impl = new TimeCurve();
+        (uint256 minC, uint256 maxC) = impl.currentCharmBoundsWad();
+        assertEq(minC, 99e16);
+        assertEq(maxC, 10e18);
+    }
+
     function setUp() public {
         reserve = new MockERC20("CL8Y", "CL8Y");
         launchedToken = new MockERC20("LaunchToken", "LT");
