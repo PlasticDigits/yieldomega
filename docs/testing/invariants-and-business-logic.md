@@ -115,6 +115,21 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 **Why:** Prevents signing against a stale on-screen quote after rapid slider changes; aligns with Anvil wallet-write E2E stability ([issue #52](https://gitlab.com/PlasticDigits/yieldomega/-/issues/52)). **Doc:** [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56).
 
+<a id="timecurve-buy-charm-submit-fresh-bounds-issue-82"></a>
+
+### TimeCurve buy — submit-time CHARM sizing (issue #82)
+
+**Intent:** Prevent **`buy` / `buyViaKumbaya`** reverts when **`charmWad`** was valid at quote time but **outside** `currentCharmBoundsWad` at inclusion time (fast chains, slider near **max CHARM**). Same root cause affects **CL8Y direct** and **Kumbaya** paths ([issue #74](https://gitlab.com/PlasticDigits/yieldomega/-/issues/74) ETH single-tx repro in #82 notes).
+
+| Invariant | Check |
+|-----------|--------|
+| Fresh RPC read at submit | [`readFreshTimeCurveBuySizing`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts) runs immediately before calldata for **Simple** [`useTimeCurveSaleSession`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) and **Arena** [`useTimeCurveArenaModel`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx). |
+| Slack under `maxCharmWad` | `CHARM_SUBMIT_UPPER_SLACK_BPS` (**50** → **99.5%** of live max) used as the CHARM clamp ceiling in [`reconcileFreshBuySizingFromReads`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts). |
+| Floored CHARM from spend | [`finalizeCharmSpendForBuy`](../../frontend/src/lib/timeCurveBuyAmount.ts) documents floor division; unit tests in [`timeCurveBuySubmitSizing.test.ts`](../../frontend/src/lib/timeCurveBuySubmitSizing.test.ts). |
+| Bare revert UX | [`friendlyRevertFromUnknown`](../../frontend/src/lib/revertMessage.ts) `buySubmit: true` maps generic execution failures to band-shift guidance. |
+
+**Doc:** [timecurve-views — Buy CHARM fresh bounds](../frontend/timecurve-views.md#buy-charm-submit-fresh-bounds-issue-82) · [kumbaya.md](../integrations/kumbaya.md#issue-65-single-tx-router) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · play checklist [`skills/verify-yo-timecurve-buy-charm-submit/SKILL.md`](../../skills/verify-yo-timecurve-buy-charm-submit/SKILL.md).
+
 <a id="timecurve-arena-sniper-shark-cutout-issue-80"></a>
 
 ### TimeCurve Arena — sniper-shark cutout (issue #80)

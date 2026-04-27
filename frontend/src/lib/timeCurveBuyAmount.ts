@@ -12,6 +12,7 @@ export function finalizeCharmSpendForBuy(
   if (pricePerCharmWad <= 0n) {
     throw new Error("pricePerCharmWad must be positive");
   }
+  /** Integer division **floors** CHARM from CL8Y spend (never rounds up past the band). */
   let cw = (spendWei * WAD) / pricePerCharmWad;
   if (cw < minCharmWad) cw = minCharmWad;
   if (cw > maxCharmWad) cw = maxCharmWad;
