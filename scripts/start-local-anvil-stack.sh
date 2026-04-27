@@ -129,8 +129,8 @@ else
   if [[ "${START_BOT_SWARM}" == "1" ]]; then
     ANVIL_EXTRA=(--accounts 30)
   fi
-  # MegaEVM 512 KiB max deployed code (0x80000) — Anvil must be raised; default is EIP-170 0x6000.
-  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --code-size-limit 0x80000 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
+  # MegaEVM 512 KiB max deployed code (524288 = 0x80000) — Anvil's --code-size-limit is decimal only.
+  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --code-size-limit 524288 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
   echo $! > /tmp/yieldomega_anvil_stack.pid
   for _ in $(seq 1 30); do
     cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1 && break

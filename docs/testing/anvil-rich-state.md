@@ -4,7 +4,7 @@ This flow drives **TimeCurve**, **RabbitTreasury**, and **LeprechaunNFT** throug
 
 ## Prerequisites
 
-- Foundry (`anvil`, `forge`, `cast`) on `PATH`. For a **manual** `anvil` (not via [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)), use **`anvil --code-size-limit 0x80000`** so deployed bytecode is capped at **512 KiB** (MegaEVM parity); default Anvil is **EIP-170** **0x6000** (~24 KiB).
+- Foundry (`anvil`, `forge`, `cast`) on `PATH`. For a **manual** `anvil` (not via [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)), use **`anvil --code-size-limit 524288`** (512 KiB = **0x80000**; the flag is **decimal**—`0x80000` errors) for MegaEVM parity; default Anvil is **EIP-170** **0x6000** (~24 KiB).
 - `jq` (optional but recommended for loading addresses from broadcast JSON)
 - [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) already broadcast to the same Anvil RPC
 
