@@ -143,9 +143,11 @@ echo "=== Deploy (DeployDev) ==="
 cd "${CONTRACTS}"
 # --optimizer-runs 1 keeps TimeCurve bytecode size stable for local / MegaEVM (512 KiB) deploys
 # (default 200 can bloat with via_ir on some compiler stacks).
+# --code-size-limit: Forge simulates locally before broadcast and enforces EIP-170 unless raised;
+# Anvil's --code-size-limit does not affect that dry-run path.
 DEPLOY_LOG="/tmp/yieldomega_deploy_dev.log"
 env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol:DeployDev \
-  --broadcast --rpc-url "${RPC_URL}" --optimizer-runs 1 -vv > "${DEPLOY_LOG}" 2>&1
+  --broadcast --rpc-url "${RPC_URL}" --optimizer-runs 1 --code-size-limit 524288 -vv > "${DEPLOY_LOG}" 2>&1
 [[ -f "${RUN_JSON}" ]] || { tail -n 60 "${DEPLOY_LOG}" >&2; die "Missing ${RUN_JSON} (see ${DEPLOY_LOG})"; }
 
 if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
