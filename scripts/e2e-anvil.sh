@@ -24,8 +24,8 @@ if [ ! -d "${ROOT}/frontend/node_modules" ]; then
   exit 1
 fi
 
-echo "Starting anvil on ${RPC}..."
-anvil --host 127.0.0.1 --port "${PORT}" >/tmp/yieldomega_anvil_e2e.log 2>&1 &
+echo "Starting anvil on ${RPC} (MegaEVM-sized code: --code-size-limit 0x80000)..."
+anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 0x80000 >/tmp/yieldomega_anvil_e2e.log 2>&1 &
 ANVIL_PID=$!
 
 for _ in $(seq 1 60); do
