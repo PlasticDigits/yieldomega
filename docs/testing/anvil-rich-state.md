@@ -30,6 +30,20 @@ The script:
 
 `RESERVE_ASSET_ADDRESS` (and legacy `USDM_ADDRESS`) for the Forge scripts are taken from **`TimeCurve.acceptedAsset()`** (not from broadcast JSON), so they stay correct when a fixed address was injected at deploy time.
 
+## Post-end gate walkthrough (issue #55 / [GitLab #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79))
+
+**Why a separate path:** the default one-shot (below) runs **`SimulateAnvilRichStatePart2`**, which calls `setCharmRedemptionEnabled(true)`, `setReservePodiumPayoutsEnabled(true)`, and completes redemptions and prize distribution. That is ideal for **indexer** and **E2E** but **precludes** the “gate off” revert checks on the same chain state. [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) also enables both post-end flags for Anvil convenience; the end-sale-only script resets them to `false` before `endSale()`.
+
+1. **Setup (reproducible):** from repo root, with Anvil and DeployDev (proxy addresses in env or `run-latest.json`):
+   ```bash
+   export RPC_URL=http://127.0.0.1:8545
+   ANVIL_RICH_END_SALE_ONLY=1 bash contracts/script/anvil_rich_state.sh
+   ```
+2. **Verify four rows (cast + revert strings / success):** [`scripts/verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh)
+3. **Authoritative spec:** [final-signoff and value movement](../operations/final-signoff-and-value-movement.md#post-end-gate-live-walkthrough-issues-55--gitlab-79) · invariants: [TimeCurve post-end gates — live Anvil](invariants-and-business-logic.md#timecurve-post-end-gates-live-anvil-gitlab-79) · play skill: [`skills/verify-yo-timecurve-post-end-gates/SKILL.md`](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md).
+
+**Manual fallback:** if the script fails, follow the same `cast` sequence in the script header; confirm `podiumPool` CL8Y balance is non-zero before expecting the `TimeCurve: reserve podium payouts disabled` revert.
+
 ## Manual Forge (two parts + shell warps)
 
 ```bash

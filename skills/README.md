@@ -19,9 +19,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 | [`collect-leprechaun-sets/SKILL.md`](collect-leprechaun-sets/SKILL.md) | Series, sets, traits, and collecting onchain. |
 | [`verify-yo-referrals-surface/SKILL.md`](verify-yo-referrals-surface/SKILL.md) | `/referrals` visual QA checklist (issue #64): shell, register, share links, `?ref=` — evidence + links to automated specs. |
 | [`verify-yo-timecurve-buy-router-anvil/SKILL.md`](verify-yo-timecurve-buy-router-anvil/SKILL.md) | `TimeCurveBuyRouter` on Anvil: fork verification script for issue #65 / #78 (fixtures, quote vs swap, `buyViaKumbaya`, re-disable). |
-| [`verify-yo-album-bgm-resume/SKILL.md`](verify-yo-album-bgm-resume/SKILL.md) | Album 1 BGM **track + offset** resume across refresh / tabs (issue #71): dock hydrate, autoplay-blocked path, skip/end semantics, storage throttle. |
-
-## Authoritative docs (always cross-check)
+| [`verify-yo-timecurve-post-end-gates/SKILL.md`](verify-yo-timecurve-post-end-gates/SKILL.md) | Post-end **#55** gates on Anvil: `redeemCharms` / `distributePrizes` with owner flags (GitLab #79) — `ANVIL_RICH_END_SALE_ONLY=1` + `verify-timecurve-post-end-gates-anvil.sh`. |
 
 - [Product vision](../docs/product/vision.md)
 - [TimeCurve primitives](../docs/product/primitives.md)

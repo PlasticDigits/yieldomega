@@ -13,6 +13,10 @@
 #   (legacy: USDM_ADDRESS is accepted as the same value)
 #   bash contracts/script/anvil_rich_state.sh
 #
+# Post-end #55 / #79 gate walkthrough (sale ended, **without** running full Part2 — no redemptions / prize payout yet):
+#   ANVIL_RICH_END_SALE_ONLY=1 bash contracts/script/anvil_rich_state.sh
+#   (runs Part1 → warp → `SimulateAnvilRichStatePart2EndSaleOnly` only; skips Rabbit `finalizeEpoch` loop)
+#
 # Or omit addresses if contracts/broadcast/DeployDev.s.sol/31337/run-latest.json exists (jq required).
 
 set -euo pipefail
@@ -125,6 +129,15 @@ forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart1 \
 
 echo "=== Warp past TimeCurve deadline ==="
 warp_past_timcurve_deadline "$TIMECURVE_ADDRESS"
+
+if [[ "${ANVIL_RICH_END_SALE_ONLY:-}" == "1" ]]; then
+  echo "=== SimulateAnvilRichState Part2 (end sale ONLY — for #55/#79 post-end gate QA) ==="
+  forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2EndSaleOnly \
+    --rpc-url "$RPC" --broadcast --slow --code-size-limit 524288 -vv
+  echo "ANVIL_RICH_END_SALE_ONLY: skipping Part2 full simulation + finalizeEpoch — run verify-timecurve-post-end-gates-anvil.sh, then re-deploy or re-run without this flag for indexer events."
+  echo "Done."
+  exit 0
+fi
 
 echo "=== SimulateAnvilRichState Part2 ==="
 forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2 \

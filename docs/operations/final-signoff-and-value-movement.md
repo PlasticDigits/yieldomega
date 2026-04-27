@@ -28,8 +28,11 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 
 New storage is **appended** before `__gap` in `TimeCurve` and `DoubPresaleVesting`. After upgrading an existing proxy, uninitialized booleans are **false**; explicitly set the flags and document the migration (or use a reinitializer in a future change if a batch migration is required).
 
-## References
+## Post-end gate live walkthrough (issues #55 / [GitLab #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79))
 
-- Tests: `contracts/test/TimeCurve.t.sol`, `contracts/test/DoubPresaleVesting.t.sol`
-- Invariants: [invariants-and-business-logic.md](../testing/invariants-and-business-logic.md) (issue #55 section)
-- Dev deploy: `contracts/script/DeployDev.s.sol` enables post-end gates for local convenience after `startSale`.
+Forge tests cover the revert strings; issue #79 tracks a **one-chain** `cast` walkthrough: `redeemCharms` with `charmRedemptionEnabled == false`, then owner enables + success; `distributePrizes` with `reservePodiumPayoutsEnabled == false` and **non-zero** podium pool, then owner enables + success.
+
+- **Setup:** `ANVIL_RICH_END_SALE_ONLY=1` with [`contracts/script/anvil_rich_state.sh`](../../contracts/script/anvil_rich_state.sh) runs `SimulateAnvilRichStatePart1` → warp past `deadline` → `SimulateAnvilRichStatePart2EndSaleOnly` (resets [DeployDev](../../contracts/script/DeployDev.s.sol)’s post-end flags to `false`, then `endSale()`). The default **full** rich script runs Part2, which flips those flags on and pays out — that path **cannot** re-run the “gate off” reverts on the same state.
+- **Verify:** [`scripts/verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh) (also indexed under [invariants — issue #79](../testing/invariants-and-business-logic.md#timecurve-post-end-gates-live-anvil-gitlab-79) and the play skill [`verify-yo-timecurve-post-end-gates/SKILL.md`](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md)).
+
+**Manual fallback** (if the script fails): ensure `TimeCurve.ended() == true`, `charmRedemptionEnabled == false`, `reservePodiumPayoutsEnabled == false`, `prizesDistributed == false`, and non-zero `acceptedAsset` balance of `podiumPool`; then repeat the same `cast send` / revert checks row-by-row as in the script.
