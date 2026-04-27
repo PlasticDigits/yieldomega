@@ -44,6 +44,32 @@ The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.
 
 **Submit-time `charmWad` + CL8Y amount ([issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)):** Kumbaya **3%** slippage applies to the **swap input** leg only. **`TimeCurve`** still enforces **`charmWad` ∈ `currentCharmBoundsWad`** at tx time. The UI **re-reads** bounds and price and re-sizes **`charmWad` / gross CL8Y** immediately before submit (shared [`readFreshTimeCurveBuySizing`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts)) — same requirement for single-tx **`buyViaKumbaya`** and CL8Y **`buy`**. See [timecurve-views — Buy CHARM fresh bounds](../frontend/timecurve-views.md#buy-charm-submit-fresh-bounds-issue-82).
 
+**Swap deadline vs `block.timestamp` ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)):** **`swapDeadline`** for **`exactOutput`** and **`buyViaKumbaya`** is **`latest` head `block.timestamp` + 600s** (via [`fetchSwapDeadlineUnixSec`](../../frontend/src/lib/timeCurveKumbayaSwap.ts)), not **`Date.now()`**, so Anvil **time warps** do not make the deadline **before** inclusion-time chain time. Helpers: [`swapDeadlineUnixSecFromChainTimestamp`](../../frontend/src/lib/timeCurveKumbayaSwap.ts). **Test map:** [invariants — issue #83](../testing/invariants-and-business-logic.md#timecurve-kumbaya-swap-deadline-chain-time-issue-83).
+
+<a id="qa-anvil-time-warp-and-swap-deadline-issue-83"></a>
+
+### QA: Anvil time warp and swap deadline (issue #83 — Option B)
+
+Some automation **advances chain time** with **`cast rpc anvil_increaseTime`** while the browser wall clock is unchanged. That is **correct for post-end / rich-state scripts** but historically broke Kumbaya **`Expired()`** when deadlines used wall time only — **Option A** (chain-aligned deadline in the app) is now the default fix; **Option B** remains useful for **ordering** tests and for **stacks that do not ship the new frontend**.
+
+**Where `anvil_increaseTime` is used in this repo**
+
+| Entrypoint | Calls `anvil_increaseTime`? | Notes |
+|------------|------------------------------|--------|
+| [`contracts/script/anvil_rich_state.sh`](../../contracts/script/anvil_rich_state.sh) | **Yes** — `warp_to_at_least` / past **`TimeCurve.deadline`** for Part2 and variants | Documented in [anvil-rich-state.md](../testing/anvil-rich-state.md). |
+| [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) | **Indirectly** when it runs **`anvil_rich_state.sh`** (default unless **`SKIP_ANVIL_RICH_STATE=1`**) | Set **`SKIP_ANVIL_RICH_STATE=1`** to keep a **live** sale and **unwarped** chain time for Kumbaya / indexer manual runs on the default stack. |
+| **`scripts/e2e-anvil.sh`**, **`scripts/lib/anvil_deploy_dev.sh`**, `verify-timecurve-buy-router-anvil.sh` | **No** rich-state warp in the normal path | Use for **Kumbaya router** scope without Part2 time jumps. |
+| **`ANVIL_RICH_END_SALE_ONLY=1 bash contracts/script/anvil_rich_state.sh`** (post-end gate setup) | **Yes** | Intended for **ended** sale scripts — not for in-sale **`buyViaKumbaya`** evidence on the same session. |
+
+**Option B — reset infra / ordering (no code path change)**
+
+1. **Fresh Anvil:** stop the node, start a new process (or `anvil_reset` if your tooling supports it), re-run **`DeployDev`** / **`anvil_deploy_dev.sh`** as needed — chain time returns near wall clock.
+2. **Skip rich state on the default stack:** `SKIP_ANVIL_RICH_STATE=1 bash scripts/start-local-anvil-stack.sh` (or equivalent) so **`anvil_rich_state.sh`** never runs — **TimeCurve** stays in a **live** sale window without shell warps.
+3. **Evidence before warp:** run **`buyViaKumbaya`** / indexer checks **before** any script that calls **`anvil_increaseTime`** in the same RPC session.
+4. **Split automation:** do not chain **`anvil_rich_state.sh`** ahead of browser Kumbaya flows that must succeed on the same chain state unless the frontend includes the **#83** deadline behavior.
+
+Cross-links: [issue #75](https://gitlab.com/PlasticDigits/yieldomega/-/issues/75) (indexer `entry_pay_asset`), [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) (submit-time sizing).
+
 **Hard limits (honest scope):**
 
 - Routing assumes **v3-style** `exactOutput` / `quoteExactOutput` and **packed paths** built in `kumbayaRoutes.ts`. **UniversalRouter** paths are **not** the same ABI surface as our local Anvil fixture; production uses **SwapRouter02 + QuoterV2** per integrator-kit.
@@ -63,6 +89,7 @@ The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.
 | **Anvil ≠ prod math** | `AnvilKumbayaRouter` uses **constant-product** math for local testing only — see [local-swap-testing.md](../testing/local-swap-testing.md). |
 | **Single-tx gross CL8Y** | `TimeCurveBuyRouter` recomputes gross spend from **`currentPricePerCharmWad`** × `charmWad` (same as `TimeCurve`) and sets **`exactOutput` amountOut** to that value so the swap cannot under-fill the subsequent `buyFor`. |
 | **Single-tx availability** | The UI uses **`timeCurveBuyRouter` onchain**; optional **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** (build-time) must **match** that address if set. Zero router → two-step Kumbaya + `buy` only. ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)) |
+| **Swap deadline** | **`swapDeadline`** follows **latest head `block.timestamp` + 600s** (not wall clock) so Anvil time warps do not trip **`Expired()`** on the swap leg ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)). |
 
 ---
 
@@ -95,4 +122,4 @@ The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.
 - [Local swap testing (issue #41)](../testing/local-swap-testing.md)
 - [E2E Anvil + Playwright](../testing/e2e-anvil.md)
 - [Business logic / test map — Kumbaya row](../testing/invariants-and-business-logic.md)
-- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment), [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) (`TimeCurveBuyRouter` + `buyFor`), [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) (Anvil `TimeCurveBuyRouter` verification script + fork test), [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67) (indexer: `BuyViaKumbaya` + `/v1/timecurve/buys` enrichment)
+- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment), [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) (`TimeCurveBuyRouter` + `buyFor`), [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) (Anvil `TimeCurveBuyRouter` verification script + fork test), [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67) (indexer: `BuyViaKumbaya` + `/v1/timecurve/buys` enrichment), [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83) (Kumbaya swap deadline aligned to chain time; QA warp / Option B table above)

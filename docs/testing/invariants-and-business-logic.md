@@ -137,6 +137,20 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 **Doc:** [timecurve-views — Buy CHARM fresh bounds](../frontend/timecurve-views.md#buy-charm-submit-fresh-bounds-issue-82) · [kumbaya.md](../integrations/kumbaya.md#issue-65-single-tx-router) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · play checklist [`skills/verify-yo-timecurve-buy-charm-submit/SKILL.md`](../../skills/verify-yo-timecurve-buy-charm-submit/SKILL.md).
 
+<a id="timecurve-kumbaya-swap-deadline-chain-time-issue-83"></a>
+
+### Kumbaya swap deadline vs chain time (issue #83)
+
+**Intent:** Kumbaya **`exactOutput`** / **`buyViaKumbaya`** pass a **`swapDeadline`** checked against **`block.timestamp`** on the router (e.g. `AnvilKumbayaRouter`). Encoding the deadline as **`Date.now() + buffer`** fails after **`cast rpc anvil_increaseTime`** (or full **`anvil_rich_state.sh`**) because **chain time can run far ahead of wall clock** → router **`Expired()`** while the app wiring is otherwise correct ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)).
+
+| Invariant | Check |
+|-----------|--------|
+| **Chain-aligned deadline** | [`fetchSwapDeadlineUnixSec`](../../frontend/src/lib/timeCurveKumbayaSwap.ts) uses **`getBlock({ blockTag: 'latest' })`** + default **600s** buffer; **two-step** swap uses the same fetch **immediately before** the swap write (after wrap/approve). **Single-tx** [`submitKumbayaSingleTxBuy`](../../frontend/src/lib/timeCurveKumbayaSingleTx.ts) fetches after any USDM **`approve`**. |
+| **Prod parity** | On live networks, head **`block.timestamp`** tracks real time; behavior matches the prior wall-clock rule in the common case. |
+| **Stacks using `anvil_increaseTime`** | Documented in [kumbaya.md — QA time warp](../integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83); see **Option B** there for workflows that must not warp before Kumbaya evidence. |
+
+**Doc:** [kumbaya.md — issue #83](../integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83) · [timecurve-views — swap deadline](../frontend/timecurve-views.md#kumbaya-swap-deadline-chain-time-issue-83) · [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83).
+
 <a id="timecurve-arena-sniper-shark-cutout-issue-80"></a>
 
 ### TimeCurve Arena — sniper-shark cutout (issue #80)
