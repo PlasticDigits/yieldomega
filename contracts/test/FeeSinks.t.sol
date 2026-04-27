@@ -72,4 +72,19 @@ contract FeeSinksTest is Test {
         vm.expectRevert();
         podiumPool.payPodiumPayout(IERC20(address(token)), winner, 1, 0, 0);
     }
+
+    /// @dev GitLab #70 — when `prizePusher` is wired, `DISTRIBUTOR_ROLE` alone is insufficient.
+    function test_podiumPool_payPodiumPayout_prize_pusher_wins_over_distributor_role() public {
+        address distributor = makeAddr("timecurve");
+        address rogue = makeAddr("rogue");
+        token.mint(address(podiumPool), 50);
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), rogue);
+        podiumPool.setPrizePusher(distributor);
+        vm.prank(rogue);
+        vm.expectRevert();
+        podiumPool.payPodiumPayout(IERC20(address(token)), winner, 50, 1, 1);
+        vm.prank(distributor);
+        podiumPool.payPodiumPayout(IERC20(address(token)), winner, 50, 1, 1);
+        assertEq(token.balanceOf(winner), 50);
+    }
 }
