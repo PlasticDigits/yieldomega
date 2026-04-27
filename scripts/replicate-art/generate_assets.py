@@ -32,7 +32,7 @@ Usage:
 Reference images that false-trigger Replicate moderation (see logs) can be excluded via
   scripts/replicate-art/replicate_flagged_inputs.json — use flagged_inputs.py add/remove.
 
-Replicate limits Prefer: wait to 1-60 seconds; use --wait-seconds in that range (default 60).
+Replicate limits Prefer: wait to 1-60 seconds; use --wait-seconds in that range (default 1).
 Polling is capped by REPLICATE_MAX_GENERATION_SECONDS (default 600); overdue runs are canceled.
 
 Slow image generation still completes via the client polling loop until that cap.
@@ -236,13 +236,12 @@ def _is_capacity_like_error(exc: BaseException) -> bool:
         "temporar",
         "high usage",
         "at capacity",
-        "remoteprotocolerror",
-        "disconnected",
+        # Do not treat idle HTTP / proxy drops on create() as retryable: Replicate may have
+        # already accepted the job; retrying duplicates predictions (see replicate_bounded_run.py).
         "connection reset",
         "connection aborted",
         "timeout",
         "timed out",
-        "eof",
         # OpenAI / proxy flakes (Replicate surfaces these as ModelError)
         "server_error",
         "server had an error",
@@ -652,11 +651,12 @@ def main() -> int:
     parser.add_argument(
         "--wait-seconds",
         type=int,
-        default=60,
+        default=1,
         metavar="SEC",
         help=(
             "Prefer: wait header for the create-prediction request (must be 1-60 per Replicate API). "
-            "Default 60. Total image time can be many minutes; the client polls until the prediction finishes."
+            "Default 1 — short server wait then client-side polling avoids proxy disconnects that "
+            "duplicate jobs when combined with retries. Total image time is not limited by this value."
         ),
     )
     parser.add_argument(

@@ -17,7 +17,8 @@ Environment (same secret stack as ``generate_assets.py`` / ``issue57_batch.py``)
   Example line::
     REPLICATE_API_TOKEN=r8_xxxxxxxx
 
-  Optional: REPLICATE_MAX_GENERATION_SECONDS (default 600) — see replicate_bounded_run.py.
+  Optional: REPLICATE_MAX_GENERATION_SECONDS (default 600) for other scripts; this batch defaults
+  to ``--max-generation-seconds 300`` (5 minute poll cap per image) unless overridden.
 
 Run::
 
@@ -46,7 +47,11 @@ change prompts or aspect ratios.
 
 **Recover outputs if the API succeeded but files were not written** (e.g. interrupted run)::
 
-  Pass comma-separated prediction ids in **post order** (001 first, 006 last)::
+  One post (no image model call; only metadata + download)::
+
+    .venv/bin/python posts_batch.py --pull-one 004,xykaha2bq9rmr0cxsvksjqf5w8
+
+  All six in **post order** (001 first, 006 last)::
 
     .venv/bin/python posts_batch.py --pull-replicate-predictions 'id001,id002,...,id006'
 """
@@ -205,6 +210,51 @@ def pull_replicate_predictions_to_posts(csv: str, out_dir: Path) -> int:
     return 0
 
 
+def pull_one_post_from_replicate(spec: str, out_dir: Path) -> int:
+    """Download a single succeeded prediction into ``{stem}.{jpg|png}`` (no model create)."""
+    raw = spec.strip()
+    if "," not in raw:
+        print(
+            "Error: --pull-one expects STEM,PREDICTION_ID (e.g. 004,xykaha2bq9rmr0cxsvksjqf5w8).",
+            file=sys.stderr,
+        )
+        return 1
+    stem, id_part = raw.split(",", 1)
+    stem = stem.strip()
+    id_part = id_part.strip()
+    valid_stems = {j[0] for j in POST_JOBS}
+    if stem not in valid_stems:
+        print(f"Error: unknown post stem {stem!r}; expected one of {sorted(valid_stems)}.", file=sys.stderr)
+        return 1
+
+    ga.load_env()
+    token = os.environ.get("REPLICATE_API_TOKEN", "").strip()
+    if not token:
+        print("REPLICATE_API_TOKEN is not set (needed to fetch prediction metadata).", file=sys.stderr)
+        return 2
+    os.environ["REPLICATE_API_TOKEN"] = token
+
+    import replicate
+
+    client = replicate.Client()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    pid = _parse_prediction_id(id_part)
+    pred = client.predictions.get(pid)
+    st = getattr(pred, "status", "")
+    if st != "succeeded":
+        print(f"Error: prediction {pid} status={st!r} (need succeeded).", file=sys.stderr)
+        return 1
+    url = _output_url(pred)
+    print(f"[{stem}] pull {pid} …", file=sys.stderr)
+    data = _download_url(url, job_label=stem)
+    ext = _bytes_image_ext(data)
+    out_path = out_dir / f"{stem}.{ext}"
+    out_path.write_bytes(data)
+    print(f"[ok] {out_path} ({len(data)} bytes)")
+    return 0
+
+
 # (stem, aspect_ratio, output_format, background, subject_fragment, post_kind)
 # post_kind: "infographic" → typography allowed; "story" → global no-text-in-image (build_prompt).
 POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
@@ -346,9 +396,29 @@ def main() -> int:
         help="gpt-image-2 moderation (default: low, aligned with other art batches)",
     )
     p.add_argument("--output-compression", type=int, default=90, metavar="PCT")
-    p.add_argument("--wait-seconds", type=int, default=60)
-    p.add_argument("--retry-max", type=int, default=8)
+    p.add_argument(
+        "--wait-seconds",
+        type=int,
+        default=1,
+        help=(
+            "Replicate Prefer: wait on create (1–60s). Default 1: return quickly and poll, "
+            "avoiding long-held HTTP that proxies drop (which used to trigger duplicate creates)."
+        ),
+    )
+    p.add_argument(
+        "--retry-max",
+        type=int,
+        default=1,
+        help="Outer create attempts per post (default 1 = no retry on failure).",
+    )
     p.add_argument("--retry-delay", type=float, default=20.0)
+    p.add_argument(
+        "--max-generation-seconds",
+        type=float,
+        default=300.0,
+        metavar="SEC",
+        help="Wall-clock cap for polling each prediction (default 300 = 5 minutes).",
+    )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--no-ref-images", action="store_true")
     p.add_argument("--only", type=str, default="", help="Substring match on stem (001…006)")
@@ -364,11 +434,25 @@ def main() -> int:
             "Use when generations succeeded on Replicate but the local batch did not finish writing files."
         ),
     )
+    p.add_argument(
+        "--pull-one",
+        metavar="STEM,ID",
+        default="",
+        help=(
+            "Download one succeeded prediction into that post slot, e.g. "
+            "004,xykaha2bq9rmr0cxsvksjqf5w8. No gpt-image-2 create call."
+        ),
+    )
     args = p.parse_args()
 
     args.wait_seconds = ga.clamp_prefer_wait(args.wait_seconds)
 
     out_dir = args.output_dir.resolve()
+    if args.pull_one.strip() and args.pull_replicate_predictions.strip():
+        print("Error: use either --pull-one or --pull-replicate-predictions, not both.", file=sys.stderr)
+        return 1
+    if args.pull_one.strip():
+        return pull_one_post_from_replicate(args.pull_one, out_dir)
     if args.pull_replicate_predictions.strip():
         return pull_replicate_predictions_to_posts(args.pull_replicate_predictions, out_dir)
 
@@ -428,6 +512,7 @@ def main() -> int:
             args.dry_run,
             args.no_ref_images,
             custom_prompt=custom_prompt,
+            max_wall_seconds=args.max_generation_seconds,
         )
         ran += 1
 
