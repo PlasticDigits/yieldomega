@@ -134,6 +134,22 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 ---
 
+<a id="timecurve-post-end-gates-live-anvil-gitlab-79"></a>
+
+### TimeCurve post-end gates — live Anvil (issue #79)
+
+**Intent:** [GitLab #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79) tracks a **deferred** live walkthrough for **#55** post-end gates (`redeemCharms`, `distributePrizes`) on an **ended** sale. Forge already covers the revert strings; this section ties **one-chain** `cast` evidence to a reproducible script.
+
+| Invariant | Check |
+|----------|--------|
+| **Preconditions** | `TimeCurve.ended == true`; `charmRedemptionEnabled` and `reservePodiumPayoutsEnabled` start **false** (after [DeployDev](../../contracts/script/DeployDev.s.sol)’s E2E convenience flags, the setup script [resets them](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79)); `prizesDistributed == false`; non-zero `acceptedAsset` balance of `podiumPool` (otherwise `distributePrizes` returns before the [reserve gate](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)). |
+| **Setup (preferred)** | `ANVIL_RICH_END_SALE_ONLY=1 bash contracts/script/anvil_rich_state.sh` — Part1 buys + shell warp + `SimulateAnvilRichStatePart2EndSaleOnly` only (see [anvil-rich-state.md](anvil-rich-state.md#post-end-gate-walkthrough-issue-55--79)). |
+| **Script** | `bash scripts/verify-timecurve-post-end-gates-anvil.sh` (rows: charm gate revert → owner on → redeem; reserve gate revert → owner on → `distributePrizes`). |
+
+**Play skill (third-party agents):** [`skills/verify-yo-timecurve-post-end-gates/SKILL.md`](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md).
+
+---
+
 <a id="referrals-page-visual-issue-64"></a>
 
 ### Referrals `/referrals` visual surface and E2E (issue #64)
@@ -210,7 +226,7 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 | Sale state machine | No buy before start / after end / after timer expiry | `test_buy_not_started_reverts`, `test_buy_after_end_reverts`, `test_buy_after_timer_expires_reverts` |
 | `endSale` gating | Not before start; not twice | `test_endSale_not_started_reverts`, `test_endSale_already_ended_reverts` |
 | End + redemption | Sale can end; user redeems once | `test_endSale_and_claim`, `test_redeemCharms_reverts_before_end`, `test_double_redeem_reverts` |
-| **Value-movement gates (issue #55)** | `buy` + WarBow CL8Y + `redeemCharms` + non-zero `distributePrizes` respect `onlyOwner` flags; dev stack enables post-end flags for E2E | `test_redeemCharms_reverts_while_charm_redemption_disabled`, `test_distributePrizes_reverts_while_reserve_podium_payouts_disabled`, `test_buy_reverts_when_sale_interactions_disabled`, `test_warbow_cl8y_burns_revert_when_sale_interactions_disabled`; [final-signoff runbook](../operations/final-signoff-and-value-movement.md) |
+| **Value-movement gates (issue #55)** | `buy` + WarBow CL8Y + `redeemCharms` + non-zero `distributePrizes` respect `onlyOwner` flags; [`DeployDev`](../../contracts/script/DeployDev.s.sol) enables post-end flags for local E2E; **post-end `cast` walkthrough** for disabled-gate reverts: [issue #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79), `ANVIL_RICH_END_SALE_ONLY=1` + [`verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh) | `test_redeemCharms_reverts_while_charm_redemption_disabled`, `test_distributePrizes_reverts_while_reserve_podium_payouts_disabled`, `test_buy_reverts_when_sale_interactions_disabled`, `test_warbow_cl8y_burns_revert_when_sale_interactions_disabled`; [final-signoff runbook](../operations/final-signoff-and-value-movement.md) |
 | Redemption rounding | Integer redeem can be zero (tiny sale supply vs raised) | `test_redeemCharms_nothing_to_redeem_reverts` |
 | Fees to router | Buy path pulls from buyer and routes via `FeeRouter` | `test_fees_routed_on_buy` |
 | Same-block call order | Last-buyer podium reflects sequential buy order (Foundry single-tx context; aligns with tx-index ordering) | `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall` |
