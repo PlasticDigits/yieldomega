@@ -2,7 +2,7 @@
 
 This document is the **in-repo source of truth** for how Yieldomega uses **Kumbaya** (Uniswap v3–compatible DEX on MegaETH) for **optional** TimeCurve entry with **ETH** or a **chain stable** while the sale still settles in **CL8Y**. It satisfies [GitLab issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) cross-linking and deployment expectations.
 
-**Related code:** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`frontend/src/pages/timecurve/useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts), [`contracts/script/DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`contracts/src/TimeCurveBuyRouter.sol`](../../contracts/src/TimeCurveBuyRouter.sol), [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh), [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) / [`indexer/src/persist.rs`](../../indexer/src/persist.rs) (`BuyViaKumbaya` + [`ADDRESS_REGISTRY` `TimeCurveBuyRouter`](../../indexer/src/config.rs) — [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)).
+**Related code:** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`frontend/src/pages/timecurve/useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts), [`contracts/script/DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`contracts/src/TimeCurveBuyRouter.sol`](../../contracts/src/TimeCurveBuyRouter.sol), [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh), [`scripts/verify-timecurve-buy-router-anvil.sh`](../../scripts/verify-timecurve-buy-router-anvil.sh) (issue #78 fork verification), [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) / [`indexer/src/persist.rs`](../../indexer/src/persist.rs) (`BuyViaKumbaya` + [`ADDRESS_REGISTRY` `TimeCurveBuyRouter`](../../indexer/src/config.rs) — [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)).
 
 **Contributor guardrails:** When changing routing or env contracts, follow [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) and [testing strategy](../testing/strategy.md).
 
@@ -68,9 +68,10 @@ The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.
 
 ### Localnet (Anvil)
 
-1. Run **`scripts/start-local-anvil-stack.sh`** or **`bash scripts/e2e-anvil.sh`** — deploys **`DeployKumbayaAnvilFixtures`** after `DeployDev` and exports **`VITE_KUMBAYA_*`** (see [`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh)).
-2. Verify: `cast call` router, run Playwright E2E per [e2e-anvil.md](../testing/e2e-anvil.md).
-3. **Mocked:** Fixture router is **not** Kumbaya production bytecode.
+1. **Kumbaya fixtures + buy router (non-default stack):** `bash scripts/e2e-anvil.sh` and `scripts/lib/anvil_deploy_dev.sh` both run **`DeployDev`** then **`DeployKumbayaAnvilFixtures`**, and export **`VITE_KUMBAYA_*`** (and optionally **`KUMBAYA_BUY_ROUTER`** / **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`**). The one-shot full stack script **`scripts/start-local-anvil-stack.sh`** runs **`DeployDev`** only (no Kumbaya deploy); on that stack, **`TimeCurve.timeCurveBuyRouter()`** stays **zero** until you run **`DeployKumbayaAnvilFixtures`** separately.
+2. **TimeCurveBuyRouter live checklist (issue #78):** with Anvil on **`RPC_URL`**, a **live** sale (`TimeCurve.ended() == false`), and **`YIELDOMEGA_TIMECURVE`** set to the **proxy** (or from `contracts/deployments/local-anvil-registry.json`), run `bash scripts/verify-timecurve-buy-router-anvil.sh`. Use `YIELDOMEGA_DEPLOY_KUMBAYA=1` the first time to broadcast fixtures. See [invariants — issue #78](../testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78) and [skills/verify-yo-timecurve-buy-router-anvil/SKILL.md](../../skills/verify-yo-timecurve-buy-router-anvil/SKILL.md).
+3. `cast call` the swap router, run Playwright E2E per [e2e-anvil.md](../testing/e2e-anvil.md).
+4. **Mocked:** Fixture router is **not** Kumbaya production bytecode.
 
 ### Testnet (MegaETH 6343)
 
@@ -92,4 +93,4 @@ The **`TimeCurveBuyRouter`** companion contract (immutable; wired by `TimeCurve.
 - [Local swap testing (issue #41)](../testing/local-swap-testing.md)
 - [E2E Anvil + Playwright](../testing/e2e-anvil.md)
 - [Business logic / test map — Kumbaya row](../testing/invariants-and-business-logic.md)
-- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment), [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) (`TimeCurveBuyRouter` + `buyFor`), [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67) (indexer: `BuyViaKumbaya` + `/v1/timecurve/buys` enrichment)
+- GitLab [issue #41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41) (initial routing), [issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) (docs + integrator alignment), [issue #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65) (`TimeCurveBuyRouter` + `buyFor`), [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) (Anvil `TimeCurveBuyRouter` verification script + fork test), [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67) (indexer: `BuyViaKumbaya` + `/v1/timecurve/buys` enrichment)
