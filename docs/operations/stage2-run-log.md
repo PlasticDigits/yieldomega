@@ -12,7 +12,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 ## 1. Contracts deployed
 
 - [x] **Command:**  
-  `cd contracts && forge script script/DeployDev.s.sol:DeployDev --rpc-url <RPC> --broadcast`
+  `cd contracts && forge script script/DeployDev.s.sol:DeployDev --rpc-url <RPC> --broadcast --code-size-limit 524288` (and Anvil with `--code-size-limit 524288`; see [foundry-and-megaeth.md](../contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas))
 - [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and `TimeCurve.startSale()` after deploy so **deposit** and **buy** work immediately.
 - [x] **Deterministic addresses** (same mnemonic / deploy order): see [contracts/deployments/stage2-anvil-registry.json](../../contracts/deployments/stage2-anvil-registry.json) for `TimeCurve`, `RabbitTreasury`, `LeprechaunNFT` (template for `ADDRESS_REGISTRY_PATH`).
 
@@ -101,11 +101,11 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 ```bash
 # Terminal A — Anvil (pick a free port)
-anvil --host 127.0.0.1 --port 18545
+anvil --host 127.0.0.1 --port 18545 --code-size-limit 524288
 
 # Deploy
 cd contracts && forge script script/DeployDev.s.sol:DeployDev \
-  --rpc-url http://127.0.0.1:18545 --broadcast
+  --rpc-url http://127.0.0.1:18545 --broadcast --code-size-limit 524288
 
 # Fresh DB + indexer (Terminal B) — adjust DATABASE_URL
 export DATABASE_URL=postgres://yieldomega:password@localhost:5434/yieldomega_stage2

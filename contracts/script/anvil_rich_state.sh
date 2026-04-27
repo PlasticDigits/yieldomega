@@ -6,6 +6,7 @@
 # Prerequisites: Foundry (forge, cast), jq optional for loading addresses from broadcast JSON.
 # Use an Anvil with MegaEVM-sized code limit (e.g. --code-size-limit 524288 = 512 KiB, 0x80000) — same as
 # scripts/start-local-anvil-stack.sh — so DeployDev + this script match MegaETH / mainnet semantics.
+# forge script invocations below use the same --code-size-limit (Forge simulates before --broadcast).
 # Usage (from repo root or contracts/):
 #   export RPC_URL=http://127.0.0.1:8545
 #   export RESERVE_ASSET_ADDRESS=0x... TIMECURVE_ADDRESS=0x... RABBIT_TREASURY_ADDRESS=0x... LEPRECHAUN_NFT_ADDRESS=0x...
@@ -120,14 +121,14 @@ export RESERVE_ASSET_ADDRESS USDM_ADDRESS TIMECURVE_ADDRESS RABBIT_TREASURY_ADDR
 echo "=== SimulateAnvilRichState Part1 ==="
 cd "${CONTRACTS_ROOT}"
 forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart1 \
-  --rpc-url "$RPC" --broadcast --slow -vv
+  --rpc-url "$RPC" --broadcast --slow --code-size-limit 524288 -vv
 
 echo "=== Warp past TimeCurve deadline ==="
 warp_past_timcurve_deadline "$TIMECURVE_ADDRESS"
 
 echo "=== SimulateAnvilRichState Part2 ==="
 forge script script/SimulateAnvilRichState.s.sol:SimulateAnvilRichStatePart2 \
-  --rpc-url "$RPC" --broadcast --slow -vv
+  --rpc-url "$RPC" --broadcast --slow --code-size-limit 524288 -vv
 
 echo "=== Finalize Rabbit epochs (3x) ==="
 finalize_epochs "$RABBIT_TREASURY_ADDRESS" 3

@@ -19,7 +19,7 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 | Topic | Anvil / local | MegaETH |
 |-------|-----------------|---------|
-| **Contract code size** | [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts Anvil with **`--code-size-limit 524288`** (512 KiB = **0x80000**; Anvil’s parser is decimal-only, so hex is rejected). A **plain** `anvil` defaults to **EIP-170 0x6000** (~24 KiB) | [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits) — 512 KiB runtime, 536 KiB initcode |
+| **Contract code size** | [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts Anvil with **`--code-size-limit 524288`** (512 KiB = **0x80000**; Anvil’s parser is decimal-only, so hex is rejected) and deploys with **`forge script … --code-size-limit 524288`** via [`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh) (Forge’s pre-broadcast simulation enforces EIP-170 separately). A **plain** `anvil` / **`forge script` without the flag** defaults to **EIP-170 0x6000** (~24 KiB) | [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits) — 512 KiB runtime, 536 KiB initcode |
 | Gas model | Classic EVM-style gas in Foundry | MegaEVM: compute + storage gas, different minima and limits |
 | `eth_estimateGas` / simulation | Matches Anvil, not MegaEVM | Use chain RPC for realistic limits |
 | Block time | Manual or instant mining; not ~1s streams | Fast blocks; indexer lag / reorg assumptions differ |
@@ -75,8 +75,8 @@ npm run test:e2e:anvil
 
 ## How to run (manual)
 
-1. Start Anvil: `anvil --host 127.0.0.1 --port 8545`
-2. Deploy: `cd contracts && forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url http://127.0.0.1:8545`
+1. Start Anvil: `anvil --host 127.0.0.1 --port 8545 --code-size-limit 524288`
+2. Deploy: `cd contracts && forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url http://127.0.0.1:8545 --code-size-limit 524288`
 3. Copy logged addresses into env (or export `VITE_*` in the shell).
 4. `cd frontend && npm ci && npm run build` with those variables set.
 5. `ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1 npm run test:e2e -- e2e/anvil-*.spec.ts` (or `bash scripts/e2e-anvil.sh`)
