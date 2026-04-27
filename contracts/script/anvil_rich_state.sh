@@ -4,6 +4,8 @@
 # (end sale, claims, prizes, NFTs, ParamsUpdated) → warp/mine per epoch → finalizeEpoch x3.
 #
 # Prerequisites: Foundry (forge, cast), jq optional for loading addresses from broadcast JSON.
+# Use an Anvil with EIP-170 code size enabled (e.g. --code-size-limit 0x6000) — same as
+# scripts/start-local-anvil-stack.sh — so DeployDev + this script match MegaETH / mainnet semantics.
 # Usage (from repo root or contracts/):
 #   export RPC_URL=http://127.0.0.1:8545
 #   export RESERVE_ASSET_ADDRESS=0x... TIMECURVE_ADDRESS=0x... RABBIT_TREASURY_ADDRESS=0x... LEPRECHAUN_NFT_ADDRESS=0x...
