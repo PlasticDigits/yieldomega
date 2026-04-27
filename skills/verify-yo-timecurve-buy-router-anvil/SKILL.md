@@ -5,7 +5,7 @@ description: Anvil fork verification for TimeCurveBuyRouter (GitLab #65 scope, G
 
 # Verify YO `TimeCurveBuyRouter` on Anvil (issues #65 / #78)
 
-Use this when you need a **one-shot PASS** (or a clear `require`) for the **TimeCurveBuyRouter** + **DeployKumbayaAnvilFixtures** checklist. Authoritative invariants: [invariants — issue #78](../../docs/testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78), [kumbaya localnet](../../docs/integrations/kumbaya.md#localnet-anvil).
+Use this when you need a **one-shot PASS** (or a clear `require`) for the **TimeCurveBuyRouter** + **DeployKumbayaAnvilFixtures** checklist. Authoritative invariants: [invariants — issue #78](../../docs/testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78), [kumbaya localnet](../../docs/integrations/kumbaya.md#localnet-anvil). **Browser / wallet flows** after **`anvil_increaseTime`**: swap deadlines follow chain time ([#83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)); this script does **not** replace manual UI checks — see [kumbaya — Option B](../../docs/integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83) if you must use an unwarped stack.
 
 ## Preconditions
 

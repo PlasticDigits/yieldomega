@@ -11,8 +11,8 @@ import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis"
 import type { HexAddress } from "@/lib/addresses";
 import type { KumbayaChainConfigResolved, RouteForPayOk } from "@/lib/kumbayaRoutes";
 import {
+  fetchSwapDeadlineUnixSec,
   KUMBAYA_SWAP_SLIPPAGE_BPS,
-  swapDeadlineUnixSec,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
 
@@ -78,7 +78,6 @@ export async function submitKumbayaSingleTxBuy(params: {
   });
   const qIn = (quote as readonly [bigint, ...unknown[]])[0];
   const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
-  const deadline = swapDeadlineUnixSec(600);
   const payKind = payWith === "eth" ? PAY_ETH : PAY_STABLE;
   const h = bytes32OrZero(codeHash);
 
@@ -100,6 +99,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     }
   }
 
+  const deadline = await fetchSwapDeadlineUnixSec(cfg, 600);
   const hash = await writeContractAsync({
     address: router,
     abi: timeCurveBuyRouterAbi,

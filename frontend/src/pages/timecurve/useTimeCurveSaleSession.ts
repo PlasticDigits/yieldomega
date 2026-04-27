@@ -32,8 +32,8 @@ import {
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import {
+  fetchSwapDeadlineUnixSec,
   KUMBAYA_SWAP_SLIPPAGE_BPS,
-  swapDeadlineUnixSec,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
@@ -889,7 +889,6 @@ export function useTimeCurveSaleSession(
         });
         const qIn = (quote as readonly [bigint, ...unknown[]])[0];
         const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
-        const deadline = swapDeadlineUnixSec(600);
 
         if (payWith === "eth") {
           const wrapHash = await writeContractAsync({
@@ -932,6 +931,7 @@ export function useTimeCurveSaleSession(
           }
         }
 
+        const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
         const swapHash = await writeContractAsync({
           address: k.config.swapRouter,
           abi: kumbayaSwapRouterAbi,

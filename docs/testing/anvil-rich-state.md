@@ -24,7 +24,7 @@ bash contracts/script/anvil_rich_state.sh
 The script:
 
 1. **`SimulateAnvilRichStatePart1`** — Transfers reserve (**CL8Y**) from the deployer to test accounts, **max-size** TimeCurve buys (avoids stale `minBuy` across broadcast txs), Rabbit deposits + one partial withdraw.
-2. **Warps time** past `TimeCurve.deadline` via `anvil_increaseTime` (required because `vm.warp` in `forge script --broadcast` is not replayed on Anvil).
+2. **Warps time** past `TimeCurve.deadline` via `anvil_increaseTime` (required because `vm.warp` in `forge script --broadcast` is not replayed on Anvil). **Kumbaya UX:** after a large warp, older frontends could hit router **`Expired()`** on wall-clock swap deadlines; the app aligns deadlines to **head `block.timestamp`** ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83), [kumbaya.md — Option B](../integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83)).
 3. **`SimulateAnvilRichStatePart2`** — `endSale`, `redeemCharms` ×4, `distributePrizes`, NFT `createSeries` ×2 + `mint` ×2, `setAlphaWad`.
 4. **Three `finalizeEpoch()`** calls on RabbitTreasury with warps to each `epochEnd` (86400s epochs per DeployDev).
 
