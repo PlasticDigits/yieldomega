@@ -11,7 +11,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | **DOUB presale vesting** | `claim()` | `setClaimsEnabled(bool)` (`onlyOwner`) | `claimsEnabled == false` |
 | **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
 | **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
-| **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (manual review before allocation) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
+| **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
 
 **`distributePrizes` empty pool:** if `PodiumPool` balance is zero, the function returns without setting `prizesDistributed` (unchanged griefing / retry behavior). The reserve-payout gate applies only when `prizePool > 0`.
 

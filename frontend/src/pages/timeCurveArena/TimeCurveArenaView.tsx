@@ -61,7 +61,8 @@ export function TimeCurveArenaView() {
     activeStreakR, address, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyCooldownSecR,
     buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen,
-    buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag, charmWadSelected,
+    buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag,
+    canDistributePrizesAsOwner, charmWadSelected,
     charmWeightR, cl8ySpendBounds, claimHint, claims, claimsNote, confettiGuide, coreTcData,
     dailyIncWadR, deadline, deadlineSec, decimals, detailBuy, distributeHint, effectiveLedgerSec,
     ended, estimatedSpend, expectedTokenFromCharms, flagOwnerAddr, flagPlantAtSec,
@@ -1099,7 +1100,7 @@ export function TimeCurveArenaView() {
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--priority"
-                  disabled={isWriting}
+                  disabled={isWriting || !canDistributePrizesAsOwner}
                   onClick={() => runVoid("distributePrizes")}
                   {...secondaryButtonMotion}
                 >

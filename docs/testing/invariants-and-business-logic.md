@@ -169,6 +169,8 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 **Play skill (third-party agents):** [`skills/verify-yo-timecurve-post-end-gates/SKILL.md`](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md).
 
+**CL8Y surplus (issue #70):** After `buyFor`, any **CL8Y** remaining on the router (exact-output dust / rounding, or accidental pre-seed on the router) is **`safeTransfer`’d to `cl8yProtocolTreasury`** — not refunded to the buyer. Constructor requires a **non-zero** treasury address. **`Cl8ySurplusToProtocol`** event. Tests: [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol) `test_buyViaKumbaya_preseed_cl8y_surplus_routes_to_protocol_treasury`. [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70) · [CL8Y flow audit](../onchain/cl8y-flow-audit.md).
+
 ---
 
 <a id="referrals-page-visual-issue-64"></a>
@@ -248,11 +250,13 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 | `endSale` gating | Not before start; not twice | `test_endSale_not_started_reverts`, `test_endSale_already_ended_reverts` |
 | End + redemption | Sale can end; user redeems once | `test_endSale_and_claim`, `test_redeemCharms_reverts_before_end`, `test_double_redeem_reverts` |
 | **Value-movement gates (issue #55)** | `buy` + WarBow CL8Y + `redeemCharms` + non-zero `distributePrizes` respect `onlyOwner` flags; [`DeployDev`](../../contracts/script/DeployDev.s.sol) enables post-end flags for local E2E; **post-end `cast` walkthrough** for disabled-gate reverts: [issue #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79), `ANVIL_RICH_END_SALE_ONLY=1` + [`verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh) | `test_redeemCharms_reverts_while_charm_redemption_disabled`, `test_distributePrizes_reverts_while_reserve_podium_payouts_disabled`, `test_buy_reverts_when_sale_interactions_disabled`, `test_warbow_cl8y_burns_revert_when_sale_interactions_disabled`; [final-signoff runbook](../operations/final-signoff-and-value-movement.md) |
+| **`distributePrizes` execution (issue #70)** | **`TimeCurve.distributePrizes`** is **`onlyOwner`** (manual review of the **execution** tx, not only `reservePodiumPayoutsEnabled`). Non-owner reverts. | `test_distributePrizes_reverts_for_non_owner` |
 | Redemption rounding | Integer redeem can be zero (tiny sale supply vs raised) | `test_redeemCharms_nothing_to_redeem_reverts` |
 | Fees to router | Buy path pulls from buyer and routes via `FeeRouter` | `test_fees_routed_on_buy` |
 | Same-block call order | Last-buyer podium reflects sequential buy order (Foundry single-tx context; aligns with tx-index ordering) | `test_sameBlock_buyOrder_lastBuyerReflectsSecondCall` |
 | Podium payout liveness | Empty **podium pool** does **not** set `prizesDistributed`; funded pool can pay later | `test_distributePrizes_empty_vault_is_retryable`, `test_distributePrizes_dust_pool_is_retryable` |
 | Podium payout happy path | Podium pool balance decreases after distribution; flag set | `test_distributePrizes_reduces_vault_and_sets_flag` |
+| **Podium push auth (issue #70)** | Production: **`PodiumPool.setPrizePusher(TimeCurve)`** once; then **`payPodiumPayout`** only accepts **`msg.sender == prizePusher`** (legacy **`DISTRIBUTOR_ROLE`** path when `prizePusher` unset — tests / migration). | [`FeeSinks.t.sol`](../../contracts/test/FeeSinks.t.sol): `test_podiumPool_payPodiumPayout_prize_pusher_wins_over_distributor_role` |
 | Constructor sanity | Non-zero asset, router, `launchedToken`, `podiumPool`, **`ICharmPrice`** | `test_constructor_zero_acceptedAsset_reverts`, `test_constructor_zero_feeRouter_reverts`, `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts`, `test_constructor_zero_charmPrice_reverts` |
 | Referral CHARM | Full gross to router; referee + referrer CHARM from `charmWad`; **`plantWarBowFlag` passthrough** on `buy(charmWad, codeHash, plant)` ([issue #77](https://gitlab.com/PlasticDigits/yieldomega/-/issues/77)) | [`TimeCurveReferral.t.sol`](../../contracts/test/TimeCurveReferral.t.sol): `test_buy_with_referral_charms_and_full_gross_to_fee_router`, `test_buy_self_referral_reverts`, `test_buy_invalid_code_reverts`, `test_referral_buy_with_plant_false_does_not_plant`, `test_referral_buy_with_plant_true_plants` |
 | Referral path capture (read client) | `?ref=` and allowed path shapes normalize with `ReferralRegistry` rules; reserved app path segments are not treated as codes | [`referralPathCapture.test.ts`](../../frontend/src/lib/referralPathCapture.test.ts) |
@@ -284,6 +288,10 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 - Timer hard reset + ambush stacking — `test_timer_hard_reset_below_13m_and_ambush_bonus`
 - Steal path — `test_warbow_steal_drains_ten_percent_and_burns_one_reserve`, `test_warbow_steal_revert_2x_rule`, `test_warbow_steal_burn_is_one_cl8y_wad`
 - Revenge — `test_warbow_revenge_once`
+
+<a id="timecurve-warbow-cl8y-burns-issue-70"></a>
+
+**WarBow CL8Y burns — user-driven, sink-exact (issue #70)** — *Approved policy exception: public **`warbowSteal` / `warbowRevenge` / `warbowActivateGuard`** pull CL8Y from the caller and forward **fixed WAD** amounts to **`0x…dEaD`** in the same transaction; **`claimWarBowFlag`** has no CL8Y leg.* Fuzz / regression: [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) (`testFuzz_warbow_guard_burn_exact_to_sink`, `testFuzz_warbow_steal_burn_exact_to_sink`, `testFuzz_warbow_revenge_burn_exact_to_sink`). Play skill: [`skills/play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md). [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70) · [CL8Y flow audit](../onchain/cl8y-flow-audit.md).
 
 **Defended streak** — *Tracks how many times the same wallet resets the timer while it is under 15 minutes. The streak ends and is recorded when a second player buys under 15 minutes.*
 
@@ -372,7 +380,7 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 | Invariant | Meaning | Tests |
 |-----------|---------|--------|
 | Sink withdraw | Only `WITHDRAWER_ROLE`; `to != address(0)` | `FeeSinks.t.sol`: `test_feeSink_withdraw_happy_path`, `test_feeSink_withdraw_unauthorized_reverts`, `test_feeSink_withdraw_zero_to_reverts` |
-| Podium payout | Only `DISTRIBUTOR_ROLE`; `winner != address(0)` | `test_podiumPool_payPodiumPayout_happy_path`, `test_podiumPool_payPodiumPayout_unauthorized_reverts`, `test_podiumPool_payPodiumPayout_zero_winner_reverts` |
+| Podium payout | **`prizePusher`** if set (production **TimeCurve**), else **`DISTRIBUTOR_ROLE`**; `winner != address(0)` | `test_podiumPool_payPodiumPayout_happy_path`, `test_podiumPool_payPodiumPayout_unauthorized_reverts`, `test_podiumPool_payPodiumPayout_zero_winner_reverts`, `test_podiumPool_payPodiumPayout_prize_pusher_wins_over_distributor_role` |
 
 ### LeprechaunNFT
 
@@ -456,7 +464,8 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | [FeeMath.t.sol](../../contracts/test/FeeMath.t.sol) | 6 | Weight validation, BPS shares |
 | [FeeRouter.t.sol](../../contracts/test/FeeRouter.t.sol) | 10 | Distribution, dust, **insufficient balance**, governance |
 | [FeeRouterInvariant.t.sol](../../contracts/test/FeeRouterInvariant.t.sol) | 2 | Foundry **invariant** handlers: router ledger + sink totals |
-| [FeeSinks.t.sol](../../contracts/test/FeeSinks.t.sol) | 6 | `FeeSink` withdraw access + zero `to`; `PodiumPool.payPodiumPayout` auth + zero winner |
+| [FeeSinks.t.sol](../../contracts/test/FeeSinks.t.sol) | 7 | `FeeSink` withdraw access + zero `to`; `PodiumPool.payPodiumPayout` auth + zero winner + **prizePusher** vs `DISTRIBUTOR_ROLE` ([issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) |
+| [TimeCurveWarBowCl8yBurns.t.sol](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) | 3 | Fuzz: WarBow CL8Y burn amounts match constants to burn sink ([issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) |
 | [NonStandardERC20.t.sol](../../contracts/test/NonStandardERC20.t.sol) | 5 | Fee-on-transfer, revert-all, blocked sink, rebasing stub vs treasury |
 | [LeprechaunNFT.t.sol](../../contracts/test/LeprechaunNFT.t.sol) | 8 | Series, mint, supply cap, URI |
 | [DevStackIntegration.t.sol](../../contracts/test/DevStackIntegration.t.sol) | 2 | Deploy script wiring + buy/deposit |

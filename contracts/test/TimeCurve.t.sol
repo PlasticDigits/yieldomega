@@ -514,6 +514,19 @@ contract TimeCurveTest is Test {
         tc.distributePrizes();
     }
 
+    /// @dev GitLab #70 — `distributePrizes` is `onlyOwner` (manual review of execution, not only the enable flag).
+    function test_distributePrizes_reverts_for_non_owner() public {
+        tc.startSale();
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        vm.prank(alice);
+        vm.expectRevert();
+        tc.distributePrizes();
+    }
+
     function test_buy_reverts_when_sale_interactions_disabled() public {
         tc.startSale();
         tc.setBuyFeeRoutingEnabled(false);

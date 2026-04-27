@@ -8,13 +8,18 @@ import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgrad
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 /// @notice Holds the TimeCurve **podium pool** slice of routed reserves until `TimeCurve.distributePrizes` runs.
-///         `DISTRIBUTOR_ROLE` is granted to TimeCurve so it can push payouts (in the accepted reserve asset).
+///         Payout pushes are **only** from the configured `prizePusher` (set once to `TimeCurve` after deploy).
+/// @dev `DISTRIBUTOR_ROLE` is retained for ABI compatibility; **`payPodiumPayout` uses `prizePusher` only** (GitLab #70).
 contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
+    /// @notice Canonical caller of `payPodiumPayout` (expected: `TimeCurve` proxy). Set once via `setPrizePusher`.
+    address public prizePusher;
+
     event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+    event PrizePusherSet(address indexed pusher);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -29,14 +34,29 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
 
     function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
-    /// @notice Transfer a podium payout to a winner. Only callable by TimeCurve (`DISTRIBUTOR_ROLE`).
+    /// @notice One-time wire of the canonical `TimeCurve` that may call `payPodiumPayout` (GitLab #70 production path).
+    /// @dev When `prizePusher` is **unset**, `payPodiumPayout` falls back to `DISTRIBUTOR_ROLE` (legacy tests / migration).
+    function setPrizePusher(address pusher) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(pusher != address(0), "PodiumPool: zero pusher");
+        require(prizePusher == address(0), "PodiumPool: pusher already set");
+        prizePusher = pusher;
+        emit PrizePusherSet(pusher);
+    }
+
+    /// @notice Transfer a podium payout to a winner.
+    /// @dev If `prizePusher` is set (production), **only** that address may call. Otherwise `DISTRIBUTOR_ROLE` (legacy).
     function payPodiumPayout(
         IERC20 token,
         address winner,
         uint256 amount,
         uint8 category,
         uint8 placement
-    ) external onlyRole(DISTRIBUTOR_ROLE) {
+    ) external {
+        if (prizePusher != address(0)) {
+            require(msg.sender == prizePusher, "PodiumPool: not prize pusher");
+        } else {
+            require(hasRole(DISTRIBUTOR_ROLE, msg.sender), "PodiumPool: not distributor");
+        }
         require(winner != address(0), "PodiumPool: zero winner");
         token.safeTransfer(winner, amount);
         emit PodiumPaid(winner, address(token), amount, category, placement);
