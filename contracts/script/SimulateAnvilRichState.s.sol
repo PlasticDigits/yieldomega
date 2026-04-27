@@ -18,6 +18,9 @@ interface ITimeCurve {
     function distributePrizes() external;
     function deadline() external view returns (uint256);
     function currentCharmBoundsWad() external view returns (uint256 minCharmWad, uint256 maxCharmWad);
+    function charmRedemptionEnabled() external view returns (bool);
+    function reservePodiumPayoutsEnabled() external view returns (bool);
+    function ended() external view returns (bool);
 }
 
 interface IRabbitTreasury {
@@ -200,5 +203,31 @@ contract SimulateAnvilRichStatePart2 is Script {
         vm.startBroadcast(pk);
         ITimeCurve(tc).redeemCharms();
         vm.stopBroadcast();
+    }
+}
+
+/// @dev Post-end only: `endSale()` with post-end gates set to **false** (see `SimulateAnvilRichStatePart2` for the full E2E path).
+///      `DeployDev` enables both flags for Anvil; this script resets them so #55 / #79 live gate checks match production defaults.
+///      Use after Part1 + warp (see `anvil_rich_state.sh` with `ANVIL_RICH_END_SALE_ONLY=1`).
+contract SimulateAnvilRichStatePart2EndSaleOnly is Script {
+    function run() external {
+        address tc = vm.envAddress("TIMECURVE_ADDRESS");
+        address deployer = vm.addr(PK_DEPLOYER);
+
+        console2.log("SimulateAnvilRichStatePart2EndSaleOnly");
+        console2.log("  TimeCurve", tc);
+        console2.log("  deployer", deployer);
+
+        // DeployDev sets both gates true for Anvil convenience; #79 walkthrough needs production-like defaults.
+        vm.startBroadcast(PK_DEPLOYER);
+        ITimeCurve(tc).setCharmRedemptionEnabled(false);
+        ITimeCurve(tc).setReservePodiumPayoutsEnabled(false);
+        ITimeCurve(tc).endSale();
+        vm.stopBroadcast();
+
+        require(ITimeCurve(tc).charmRedemptionEnabled() == false, "expected charmRedemptionEnabled false");
+        require(ITimeCurve(tc).reservePodiumPayoutsEnabled() == false, "expected reservePodiumPayoutsEnabled false");
+        require(ITimeCurve(tc).ended() == true, "expected sale ended");
+        console2.log("SimulateAnvilRichStatePart2EndSaleOnly: done (ended=true, post-end gates off).");
     }
 }
