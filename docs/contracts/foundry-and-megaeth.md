@@ -18,9 +18,23 @@ MegaEVM uses a **multidimensional gas** model (for example **compute gas** vs **
 - **Event-heavy** indexing is still preferred for transparency but log costs should be profiled under MegaETH RPC.
 - **Gas estimation** in local simulators may **diverge** from MegaETH; prefer **RPC-native estimation** for production transactions.
 
-## Contract size and initcode
+## MegaEVM bytecode limits and nested-call gas
 
-MegaEVM raises limits versus classic Ethereum (for example **larger max contract size** and **initcode**). This enables more monolithic deployments **technically**, but the project should still favor **clear modules** for audits and upgrade clarity ([../architecture/overview.md](../architecture/overview.md)).
+MegaEVM **does not** use Ethereum’s **EIP-170** runtime cap (**24,576 bytes**) for chain deployments. The authoritative limits are in the MegaETH spec ([Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)):
+
+| Limit | Bytes | KiB (1024-based) |
+| --- | ---: | ---: |
+| **Max deployed runtime bytecode** (`MAX_CONTRACT_SIZE`) | 524,288 | 512 |
+| **Additional initcode allowance** (`ADDITIONAL_INITCODE_SIZE`) | 24,576 | 24 |
+| **Max initcode** (`MAX_INITCODE_SIZE` = sum of the two) | 548,864 | 536 |
+
+Nodes **must** reject creations that exceed these bounds. **Ethereum L1** and **default Anvil** still enforce **EIP-170** on the runtime code of each created contract (~24 KiB); a deploy that succeeds on MegaETH can therefore **fail locally** unless Anvil is run with a raised `--code-size-limit` or the implementation is split/shrunk for L1-style tooling.
+
+**How to verify in this repo:** from `contracts/`, run `forge build` (or `FOUNDRY_PROFILE=ci forge build`), then either `forge build --sizes` or measure `out/<Contract>.sol/<Contract>.json` deployed bytecode length (hex `object` length ÷ 2, minus the `0x` byte). Re-check after any optimizer or compiler change.
+
+**Nested calls (gas forwarding):** MegaEVM applies a **98/100** forwarding cap to `CALL`, `DELEGATECALL`, `STATICCALL`, `CALLCODE`, `CREATE`, and `CREATE2` (replacing Ethereum’s **63/64** rule) so deep call stacks shed gas **more aggressively** under MegaETH’s high block-gas regime — see [Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md). Prefer **shallow** composer patterns and **RPC-native `eth_estimateGas`** on MegaETH when calibrating limits; do not assume L1-style depth budgets.
+
+This project should still favor **clear modules** for audits and upgrade clarity ([../architecture/overview.md](../architecture/overview.md)), even though MegaEVM allows much larger single-contract artifacts than EIP-170.
 
 ## Networks and workflow
 
