@@ -534,11 +534,11 @@ def run_job(
     client = (
         replicate.Client(
             timeout=httpx.Timeout(
-                60.0,
-                connect=30.0,
-                write=300.0,
-                read=300.0,
-                pool=120.0,
+                120.0,
+                connect=60.0,
+                write=600.0,
+                read=900.0,
+                pool=300.0,
             )
         )
         if httpx is not None
