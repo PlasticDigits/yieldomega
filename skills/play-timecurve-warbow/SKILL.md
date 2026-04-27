@@ -54,6 +54,11 @@ Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladd
 - Do not promise outcomes; disclose MEV, reorgs, and clock skew on “windows.”
 - Do not equate **onchain-permitted actions** with **lawful** in every jurisdiction — see [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md).
 
+## Contributor / audit cross-links (issue #70)
+
+- **CL8Y burn invariants (fuzz):** each successful **`warbowActivateGuard`**, **`warbowSteal`** (no bypass), and **`warbowRevenge`** moves the documented **fixed WAD** from the payer to the **burn sink** (`0x…dEaD`) in one tx — see [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) and [invariants — WarBow CL8Y burns](../../docs/testing/invariants-and-business-logic.md#timecurve-warbow-cl8y-burns-issue-70).
+- **Policy context:** [CL8Y flow audit](../../docs/onchain/cl8y-flow-audit.md) (approved **user-driven** exception for these burns).
+
 ## Related play skills
 
 - [`play-timecurve-doubloon/SKILL.md`](../play-timecurve-doubloon/SKILL.md) — sale, timer, CHARM, **three** reserve podiums, fee routing.

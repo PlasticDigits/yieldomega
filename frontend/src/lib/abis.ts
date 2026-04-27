@@ -67,6 +67,7 @@ export const timeCurveReadAbi = parseAbi([
   "function WARBOW_REVENGE_WINDOW_SEC() view returns (uint256)",
   "function WARBOW_REVENGE_BURN_WAD() view returns (uint256)",
   "function timeCurveBuyRouter() view returns (address)",
+  "function owner() view returns (address)",
 ]);
 
 export const linearCharmPriceReadAbi = parseAbi([
