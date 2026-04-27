@@ -50,8 +50,27 @@ export function friendlyRevertMessage(raw: string): string {
   return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
 }
 
+const BARE_BUY_CHARM_SHIFT_HINT =
+  "The CHARM amount band or onchain price moved between quote and submit. Try a slightly lower amount or wait one block and retry.";
+
+function looksLikeBareExecutionRevert(raw: string): boolean {
+  const s = raw.toLowerCase();
+  if (s.includes("user rejected") || s.includes("user denied")) return false;
+  if (s.includes("timecurve:")) return false;
+  return (
+    s.includes("execution reverted for an unknown reason") ||
+    s.includes("execution reverted with no data") ||
+    /^execution reverted\.?$/i.test(s.trim())
+  );
+}
+
+export type FriendlyRevertOpts = {
+  /** Use when catching from TimeCurve buy / `buyViaKumbaya` submit ([GitLab #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). */
+  buySubmit?: boolean;
+};
+
 /** Prefer viem `BaseError` fields (`shortMessage`, `details`) when present. */
-export function friendlyRevertFromUnknown(err: unknown): string {
+export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpts): string {
   let raw: string;
   if (err instanceof BaseError) {
     const details = "details" in err && typeof err.details === "string" ? err.details : "";
@@ -60,6 +79,9 @@ export function friendlyRevertFromUnknown(err: unknown): string {
     raw = err.message;
   } else {
     raw = String(err);
+  }
+  if (opts?.buySubmit && looksLikeBareExecutionRevert(raw)) {
+    return BARE_BUY_CHARM_SHIFT_HINT;
   }
   return friendlyRevertMessage(raw);
 }
