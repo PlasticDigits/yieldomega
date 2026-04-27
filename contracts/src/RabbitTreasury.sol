@@ -361,6 +361,8 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
 
     /// @notice Burn DOUB and withdraw reserve from **redeemable** backing only, with pro-rata cap,
     ///         health-aware efficiency, optional cooldown, and withdrawal fee to protocol bucket.
+    /// @dev TODO GitLab #70 — CL8Y outflow policy: `withdraw` is a public user redemption path; defer stricter owner/admin
+    ///      alignment with `docs/onchain/cl8y-flow-audit.md` until product signs off on Burrow exceptions.
     function withdraw(uint256 doubAmount, uint256 factionId) external whenNotPaused {
         require(currentEpochId > 0, "RT: no epoch");
         require(doubAmount > 0, "RT: zero amount");
@@ -399,6 +401,8 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
     }
 
     /// @notice Receive fee income from fee router: split burn / protocol bucket; no DOUB minted.
+    /// @dev TODO GitLab #70 — CL8Y outflow policy: burn leg + protocol bucket booking is role-gated, not owner-timed;
+    ///      defer explicit approved-exception docs vs `FeeRouter` routing until treasury audit follow-up.
     function receiveFee(uint256 amount) external onlyRole(FEE_ROUTER_ROLE) {
         require(amount > 0, "RT: zero fee");
         reserveAsset.safeTransferFrom(msg.sender, address(this), amount);
