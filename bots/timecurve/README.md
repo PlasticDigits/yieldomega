@@ -45,7 +45,7 @@ Copy [`.env.example`](.env.example) to `.env` or `.env.local` (gitignored) and s
 | `YIELDOMEGA_ACCEPTED_ASSET_ADDRESS` | Optional; else read from contract |
 | `YIELDOMEGA_ADDRESS_FILE` | Optional JSON registry (see `contracts/deployments/stage2-anvil-registry.json`) |
 
-**Transaction safety (default dry-run):**
+**UUPS `TimeCurve`:** `YIELDOMEGA_TIMECURVE_ADDRESS` must be the **`ERC1967Proxy`** from DeployDev / stack scripts, not the **implementation** row in `run-latest.json` ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)). **`currentCharmBoundsWad`** no longer **panics** on uninitialized `initialMinBuy` and returns the base **(0.99, 10) CHARM** envelope instead ([issue #73](https://gitlab.com/PlasticDigits/yieldomega/-/issues/73)); **buys and real bounds** still require the **proxy**.
 
 - No submissions unless you pass **`--send`** on the CLI **or** set `YIELDOMEGA_SEND_TX=1` **and** `YIELDOMEGA_DRY_RUN=0`, **and** set `YIELDOMEGA_PRIVATE_KEY`.
 - **`inspect`** never sends transactions.
