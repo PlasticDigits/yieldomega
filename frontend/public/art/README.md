@@ -45,7 +45,8 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 | [`trait-silos-concept.png`](./cutouts/trait-silos-concept.png) | _staged_ (Collection page reference)                                | Concept art for the future Collection trait silos.                                     |
 | [`footer-micro.png`](./cutouts/footer-micro.png)    | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) (footer fee panel) | Subtle micro-decoration for the fee transparency block.                              |
 | [`indexer-down-mascot.png`](./cutouts/indexer-down-mascot.png) | [`TimerHeroLiveBuys.tsx`](../../src/pages/timecurve/TimerHeroLiveBuys.tsx) | Soft illustration when recent buys cannot load from the indexer ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| [`sniper-shark-*.png`](./cutouts/) (eight files) | _not wired_ | Sniper-shark mascots: ghillie prone, tactical kneel, wetsuit + headset, diver harpoon, coin bandolier, spotter, victory medal, peek scope. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
+| [`sniper-shark-peek-scope.png`](./cutouts/sniper-shark-peek-scope.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena buy panel via [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx)) | Sparse issue #80 "predator in the pool" accent for the competitive buy surface; decorative (`alt=""`, `aria-hidden`) through `CutoutDecoration`. |
+| [`sniper-shark-*.png`](./cutouts/) (remaining seven files) | _staged_ | Sniper-shark mascots: ghillie prone, tactical kneel, wetsuit + headset, diver harpoon, coin bandolier, spotter, victory medal. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
 
 ### `scenes/`
 

@@ -52,6 +52,8 @@ import { formatPodiumLeaderboardValue } from "./arenaPageHelpers";
 import { useTimeCurveArenaModel } from "./useTimeCurveArenaModel";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+// Issue #80: the Arena buy panel is the sparse "predator in the pool" placement for sniper-shark art.
+const ARENA_SNIPER_SHARK_CUTOUT = "/art/cutouts/sniper-shark-peek-scope.png";
 
 export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
@@ -414,10 +416,10 @@ export function TimeCurveArenaView() {
                 spotlight
                 className="timecurve-panel timecurve-panel--action timecurve-arena-buy-panel"
                 cutout={{
-                  src: "/art/cutouts/bunny-sneak-steal.png",
+                  src: ARENA_SNIPER_SHARK_CUTOUT,
                   width: 196,
                   height: 196,
-                  className: "panel-cutout panel-cutout--arena-buy-mascot cutout-decoration--sway",
+                  className: "panel-cutout panel-cutout--arena-buy-mascot panel-cutout--arena-sniper-shark cutout-decoration--peek",
                 }}
                 lede="Buy now or pay more later — every block, CHARM costs more CL8Y."
               >

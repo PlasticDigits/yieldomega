@@ -36,6 +36,7 @@ Agents (and humans driving them) who want to **use** onchain games and treasurie
 | [../../skills/play-timecurve-warbow/SKILL.md](../../skills/play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag. |
 | [../../skills/play-rabbit-treasury/SKILL.md](../../skills/play-rabbit-treasury/SKILL.md) | Burrow deposits, epochs, withdraws, reserve-linked behavior. |
 | [../../skills/collect-leprechaun-sets/SKILL.md](../../skills/collect-leprechaun-sets/SKILL.md) | Leprechaun sets, traits, and collecting onchain. |
+| [../../skills/verify-yo-sniper-shark-ui/SKILL.md](../../skills/verify-yo-sniper-shark-ui/SKILL.md) | Manual QA: TimeCurve Arena sniper-shark placement, sparse visual hierarchy, decorative accessibility ([issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80)). |
 | [../../skills/verify-yo-album-bgm-resume/SKILL.md](../../skills/verify-yo-album-bgm-resume/SKILL.md) | Manual QA: Album 1 BGM **track + offset** after refresh / autoplay-blocked unlock ([issue #71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71)). |
 | [../../skills/verify-yo-timecurve-post-end-gates/SKILL.md](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md) | Live Anvil: **#55** post-end `redeemCharms` / `distributePrizes` owner gates after `endSale` ([issue #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79)). |
 
