@@ -7,7 +7,7 @@
 ## Primary documentation (verify periodically)
 
 - MegaEVM overview: [docs.megaeth.com/megaevm](https://docs.megaeth.com/megaevm)
-- **Contract / initcode size limits** (512 KiB runtime, 536 KiB initcode — not EIP-170’s 24 KiB): [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)
+- **Contract / initcode size limits** (512 KiB runtime, 536 KiB initcode — not Ethereum **EIP-170**’s **0x6000** / 24,576 byte runtime cap): [Contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)
 - **Nested-call gas forwarding** (98/100 rule vs Ethereum 63/64): [Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md)
 - Mainnet (RPC, chain ID, explorers): [docs.megaeth.com/frontier](https://docs.megaeth.com/frontier)
 - Testnet: [docs.megaeth.com/testnet](https://docs.megaeth.com/testnet)
