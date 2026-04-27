@@ -12,6 +12,7 @@
 #   Requires Python deps (import web3): venv install in bots/timecurve/README.md, or PEP 668 fallback there.
 #
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
+# DeployDev uses forge --code-size-limit 524288 (EIP-170 pre-broadcast sim + MegaEVM-sized TimeCurve).
 # Usage from repo root:
 #   bash scripts/start-local-anvil-stack.sh
 #
