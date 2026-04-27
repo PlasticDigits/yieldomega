@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { friendlyRevertMessage } from "./revertMessage";
+import { friendlyRevertFromUnknown, friendlyRevertMessage } from "./revertMessage";
 
 describe("friendlyRevertMessage", () => {
   it("maps live charm band errors to clearer buy copy", () => {
@@ -23,5 +23,20 @@ describe("friendlyRevertMessage", () => {
     expect(friendlyRevertMessage("TimeCurve: revenge expired")).toBe(
       "The revenge window already expired.",
     );
+  });
+});
+
+describe("friendlyRevertFromUnknown", () => {
+  it("uses buy-submit hint for bare execution reverted when buySubmit is set", () => {
+    const err = new Error("Execution reverted for an unknown reason.");
+    const msg = friendlyRevertFromUnknown(err, { buySubmit: true });
+    expect(msg).toContain("CHARM amount band");
+    expect(msg).toContain("quote and submit");
+  });
+
+  it("does not replace user rejection with buy-submit hint", () => {
+    const err = new Error("User rejected the request.");
+    const msg = friendlyRevertFromUnknown(err, { buySubmit: true });
+    expect(msg.toLowerCase()).toContain("rejected");
   });
 });
