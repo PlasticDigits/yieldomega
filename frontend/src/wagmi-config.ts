@@ -9,7 +9,7 @@ import {
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http, mock } from "wagmi";
 import { injected } from "wagmi/connectors";
-import { configuredChain, referenceChains } from "@/lib/chain";
+import { configuredChain } from "@/lib/chain";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -18,9 +18,10 @@ const ANVIL_DEFAULT_ACCOUNT =
   "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 
 const targetChain = configuredChain();
-const chains = [targetChain, ...referenceChains] as const;
+/** Single declared chain — avoids viem/wagmi default transports probing mainnet RPCs (issue #81). */
+const chains = [targetChain] as const;
 
-const chainId = Number.parseInt(import.meta.env.VITE_CHAIN_ID || "6343", 10);
+const chainId = Number.parseInt(import.meta.env.VITE_CHAIN_ID || "31337", 10);
 const initialChain =
   chains.find((c) => c.id === chainId) ?? targetChain;
 

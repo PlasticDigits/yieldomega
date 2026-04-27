@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { defineChain } from "viem";
-import { mainnet, sepolia } from "wagmi/chains";
 
-const DEFAULT_CHAIN_ID = 6343;
+/** Default when `VITE_CHAIN_ID` / `VITE_RPC_URL` are unset: local Anvil. */
+const DEFAULT_CHAIN_ID = 31_337;
 const DEFAULT_RPC_HTTP = "http://127.0.0.1:8545";
 
 /**
  * Resolve chain id and default RPC URL from env-like strings (unit-testable).
- * Invalid or non-positive chain ids fall back to `DEFAULT_CHAIN_ID`.
+ * Default chain id when unset or invalid is **31337** (local Anvil), consistent with `scripts/start-local-anvil-stack.sh`.
  */
 export function resolveChainRpcConfig(
   chainIdStr: string | undefined,
@@ -50,4 +50,3 @@ export function configuredChain() {
   });
 }
 
-export const referenceChains = [mainnet, sepolia] as const;

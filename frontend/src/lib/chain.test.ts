@@ -6,7 +6,7 @@ import { resolveChainRpcConfig } from "./chain";
 describe("resolveChainRpcConfig", () => {
   it("defaults when env-like strings are empty", () => {
     expect(resolveChainRpcConfig(undefined, undefined)).toEqual({
-      id: 6343,
+      id: 31337,
       defaultRpcHttp: "http://127.0.0.1:8545",
     });
   });
@@ -20,11 +20,11 @@ describe("resolveChainRpcConfig", () => {
 
   it("falls back on invalid chain id when RPC is not default Anvil", () => {
     expect(resolveChainRpcConfig("not-a-number", "http://x")).toEqual({
-      id: 6343,
+      id: 31337,
       defaultRpcHttp: "http://x",
     });
     expect(resolveChainRpcConfig("-1", undefined)).toEqual({
-      id: 6343,
+      id: 31337,
       defaultRpcHttp: "http://127.0.0.1:8545",
     });
   });
