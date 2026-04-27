@@ -668,7 +668,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     /// @notice **40%** last buy · **25%** WarBow · **20%** defended streak · **15%** time booster
     ///         (integer split of podium pool; last slice takes remainder — matches 8/5/4/3% of gross raise vs 20% pool).
-    function distributePrizes() external {
+    /// @dev GitLab #70: execution is **owner-only** so CL8Y podium outflows receive the same manual-review bar as the
+    ///      `reservePodiumPayoutsEnabled` gate (policy in `docs/onchain/cl8y-flow-audit.md`).
+    function distributePrizes() external onlyOwner {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
 

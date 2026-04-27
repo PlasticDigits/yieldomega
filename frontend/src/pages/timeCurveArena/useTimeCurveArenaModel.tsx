@@ -418,6 +418,7 @@ export function useTimeCurveArenaModel() {
         { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
       ]
     : [];
   const {
@@ -560,6 +561,7 @@ export function useTimeCurveArenaModel() {
     totalCharmWeightR,
     buyCooldownSecR,
     timeCurveBuyRouterR,
+    timeCurveOwnerR,
   ] = coreTcData ?? [];
 
   const [
@@ -576,6 +578,12 @@ export function useTimeCurveArenaModel() {
     warbowRevengeWindowR,
     warbowRevengeBurnR,
   ] = warbowPolicyData ?? [];
+
+  const timeCurveOwnerAddr =
+    timeCurveOwnerR?.status === "success" ? (timeCurveOwnerR.result as HexAddress) : undefined;
+  const canDistributePrizesAsOwner = Boolean(
+    address && timeCurveOwnerAddr && sameAddress(address, timeCurveOwnerAddr),
+  );
 
   const [
     charmWeightR,
@@ -1407,8 +1415,11 @@ export function useTimeCurveArenaModel() {
     if (prizesDistributedR?.status === "success" && prizesDistributedR.result) {
       return "Prizes already marked distributed.";
     }
+    if (address && timeCurveOwnerAddr && !sameAddress(address, timeCurveOwnerAddr)) {
+      return "Only the TimeCurve owner wallet can call distributePrizes onchain (issue #70).";
+    }
     return "May return without changing state if the podium pool balance is too small; retry after fees accrue.";
-  }, [ended, prizesDistributedR]);
+  }, [ended, prizesDistributedR, address, timeCurveOwnerAddr]);
 
   const timerNarrative = useMemo(
     () => describeTimerPreview(secondsRemaining, timerExtensionPreview),
@@ -1942,7 +1953,7 @@ export function useTimeCurveArenaModel() {
   }, [address, tc, ended, chainId]);
 
   useEffect(() => {
-    if (!address || !tc || ended?.status !== "success" || !ended.result) {
+    if (!address || !tc || ended?.status !== "success" || !ended.result || !canDistributePrizesAsOwner) {
       setGasDistribute(undefined);
       return;
     }
@@ -1953,7 +1964,7 @@ export function useTimeCurveArenaModel() {
       account: address,
       chainId,
     }).then(setGasDistribute);
-  }, [address, tc, ended, chainId]);
+  }, [address, tc, ended, canDistributePrizesAsOwner, chainId]);
 
   async function handleLoadMoreBuys() {
     if (buysNextOffset === null) {
@@ -2361,6 +2372,7 @@ export function useTimeCurveArenaModel() {
     buysNextOffset,
     buysTotal,
     canClaimWarBowFlag,
+    canDistributePrizesAsOwner,
     chainId,
     chainNowForCooldown,
     charmBoundsR,

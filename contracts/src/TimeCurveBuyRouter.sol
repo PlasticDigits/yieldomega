@@ -30,6 +30,7 @@ interface IKumbayaSwapRouter {
 /// @notice Pulls spend from `msg.sender`, swaps to **exact** TimeCurve gross CL8Y for `charmWad`, then `buyFor`.
 ///         Path must be v3 packed **tokenOut (CL8Y) → … → tokenIn (WETH or `stableToken`)** per `docs/integrations/kumbaya.md`.
 /// @dev Immutable companion: owner wires `TimeCurve.setTimeCurveBuyRouter(address(this))`. Trust model: same team as TimeCurve admin.
+///      Post-swap **CL8Y surplus** (exact-output dust / rounding) is sent to `cl8yProtocolTreasury`, not the buyer (GitLab #70).
 contract TimeCurveBuyRouter is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -38,6 +39,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     IWETH public immutable weth;
     /// @notice Set to Anvil USDM or MegaETH USDm; `address(0)` disables ERC20-stable entry (ETH-only).
     IERC20 public immutable stableToken;
+    /// @notice Receives any CL8Y remaining on this router after `buyFor` (swap dust); typically `CL8YProtocolTreasury` or ops sink.
+    address public immutable cl8yProtocolTreasury;
 
     uint256 internal constant WAD = 1e18;
 
@@ -48,15 +51,26 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     error TimeCurveBuyRouter__StableMode();
     error TimeCurveBuyRouter__StableNotConfigured();
     error TimeCurveBuyRouter__EthValue();
+    error TimeCurveBuyRouter__ZeroTreasury();
 
     event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossCl8y, uint8 payKind);
+    event Cl8ySurplusToProtocol(uint256 amount);
 
     /// @param stableToken_ Pass `address(0)` if only ETH (WETH) pay mode is allowed on this deployment.
-    constructor(TimeCurve timeCurve_, address kumbayaRouter_, address weth_, address stableToken_) {
+    /// @param cl8yProtocolTreasury_ Non-zero sink for CL8Y left on the router after `buyFor` (no buyer refund of CL8Y).
+    constructor(
+        TimeCurve timeCurve_,
+        address kumbayaRouter_,
+        address weth_,
+        address stableToken_,
+        address cl8yProtocolTreasury_
+    ) {
+        if (cl8yProtocolTreasury_ == address(0)) revert TimeCurveBuyRouter__ZeroTreasury();
         timeCurve = timeCurve_;
         kumbayaRouter = IKumbayaSwapRouter(kumbayaRouter_);
         weth = IWETH(weth_);
         stableToken = IERC20(stableToken_);
+        cl8yProtocolTreasury = cl8yProtocolTreasury_;
     }
 
     /// @dev `payKind`: **0** = ETH (`msg.value` wraps to WETH; path must end in WETH), **1** = `stableToken` (approve this router).
@@ -137,7 +151,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
 
         uint256 dust = cl8yTok.balanceOf(address(this));
         if (dust > 0) {
-            cl8yTok.safeTransfer(msg.sender, dust);
+            cl8yTok.safeTransfer(cl8yProtocolTreasury, dust);
+            emit Cl8ySurplusToProtocol(dust);
         }
 
         emit BuyViaKumbaya(msg.sender, charmWad, grossCl8y, payKind);

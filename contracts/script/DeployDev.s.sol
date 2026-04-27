@@ -131,7 +131,7 @@ contract DeployDev is Script {
             deployer
         );
         lt.transfer(address(tc), 1_000_000e18);
-        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
+        podiumPool.setPrizePusher(address(tc));
         console.log("TimeCurve:", address(tc));
 
         // Burrow deposits require an open epoch; TimeCurve buys require a started sale.

@@ -53,6 +53,7 @@ contract TimeCurveBuyRouterTest is Test {
     AnvilMockUSDM usdm;
     AnvilKumbayaRouter kumbaya;
     TimeCurveBuyRouter buyRouter;
+    address cl8yProtocolTreasury = makeAddr("cl8yProtocolTreasury");
 
     address alice = makeAddr("alice");
 
@@ -112,7 +113,7 @@ contract TimeCurveBuyRouterTest is Test {
         kumbaya.setPair(address(weth), address(reserve), 8000e18, 8_000_000e18);
         kumbaya.setOwner(address(0));
 
-        buyRouter = new TimeCurveBuyRouter(tc, address(kumbaya), address(weth), address(usdm));
+        buyRouter = new TimeCurveBuyRouter(tc, address(kumbaya), address(weth), address(usdm), cl8yProtocolTreasury);
         tc.setTimeCurveBuyRouter(address(buyRouter));
     }
 
@@ -145,6 +146,30 @@ contract TimeCurveBuyRouterTest is Test {
 
         assertEq(tc.charmWeight(alice), charmWad);
         assertGe(tc.totalRaised(), tc.currentPricePerCharmWad());
+    }
+
+    /// @dev GitLab #70 — any CL8Y dust on the router after `buyFor` credits `cl8yProtocolTreasury`, not the buyer.
+    function test_buyViaKumbaya_preseed_cl8y_surplus_routes_to_protocol_treasury() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = abi.encodePacked(address(reserve), uint24(3000), address(weth));
+
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        reserve.transfer(address(buyRouter), 1e15);
+        uint256 treBefore = reserve.balanceOf(cl8yProtocolTreasury);
+
+        vm.deal(alice, maxIn);
+        vm.startPrank(alice);
+        buyRouter.buyViaKumbaya{value: maxIn}(
+            charmWad, bytes32(0), false, buyRouter.PAY_ETH(), block.timestamp + 600, maxIn, path
+        );
+        vm.stopPrank();
+
+        assertEq(tc.charmWeight(alice), charmWad);
+        assertGe(reserve.balanceOf(cl8yProtocolTreasury), treBefore + 1e15);
+        assertEq(reserve.balanceOf(address(buyRouter)), 0);
     }
 
     function test_buyViaKumbaya_eth_creditsAlice() public {
