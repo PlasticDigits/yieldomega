@@ -49,7 +49,7 @@ export function ReferralsPage() {
         title="Links that count"
         badgeLabel="Client capture"
         badgeTone="info"
-        lede="Pending codes persist in localStorage and sessionStorage (not a secret, clearable in devtools). A valid `?ref=` in the query wins over a path when both are present."
+        lede="Pending referral codes use key yieldomega.ref.v1 in localStorage and sessionStorage; after you register, your share-link code is cached per wallet under yieldomega.myrefcode.v1. plus your lowercased wallet address (localStorage only). Neither store owns codes onchain — ReferralRegistry + TimeCurve do."
       >
         <ul className="accent-list">
           <li>
