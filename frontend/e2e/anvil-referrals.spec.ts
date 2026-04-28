@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6).
+ * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6; #86 copy confirmation).
  * Requires `bash scripts/e2e-anvil.sh` (sets `ANVIL_E2E=1`, `VITE_TIMECURVE_ADDRESS`, mock wallet).
  * R3 (disconnected) and R1 post-launch shell variants are covered in `referrals-surface.spec.ts` + manual QA.
  *
@@ -52,9 +52,12 @@ test.describe("Anvil referrals surface", () => {
     const sharePanel = page.locator(".data-panel--stack").filter({ hasText: "Your share links" });
     await expect(sharePanel.getByRole("button", { name: /^Copy$/ })).toHaveCount(2);
     await sharePanel.getByRole("button", { name: /^Copy$/ }).nth(0).click();
+    await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);
     const copiedPath = await page.evaluate(() => navigator.clipboard.readText());
     expect(copiedPath).toContain(`/timecurve/${code}`);
-    await expect(sharePanel.getByRole("button", { name: /^Copied$/ })).toHaveCount(1);
+    await expect(sharePanel.getByRole("button", { name: /^Copied!$/ })).toHaveCount(1);
+    await sharePanel.getByRole("button", { name: /^Copied!$/ }).click();
+    await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);
 
     await sharePanel.getByRole("button", { name: /^Copy$/ }).click();
     const copiedQuery = await page.evaluate(() => navigator.clipboard.readText());
