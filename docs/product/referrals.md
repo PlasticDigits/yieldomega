@@ -22,11 +22,21 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 ## Client link capture (frontend)
 
+<a id="referral-browser-storage-keys"></a>
+
 - **Search:** `?ref={code}` — when present, must normalize to a valid code (3–16, `a-z0-9` after lowercasing) or it is ignored.
 - **Path (under TimeCurve):** `/timecurve/{code}` when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists).
 - **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/timecurve/{code}` instead.
 - **Precedence:** If both a valid `?ref=` and a path-based code are present, **`?ref=` wins** (query overrides path).
-- **Storage:** the web client persists a pending code in `localStorage` and `sessionStorage` under a stable key; users can clear it. This is **not** the source of truth for ownership — the chain is.
+- **Browser storage (two keys; implementation in `frontend/src/lib/referralStorage.ts`):** neither store is authoritative for code ownership — the chain is. Users can clear entries in devtools.
+
+| Purpose | Storage | Key | JSON payload |
+|---------|---------|-----|----------------|
+| **Pending** referral (captured from `?ref=` or allowed path before a buy) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. |
+| **Registered “my code”** UX cache (plaintext for share links after a successful `registerCode`) | **`localStorage` only** | `yieldomega.myrefcode.v1.<walletLowercase>` | `{ "code": "<normalized>", "ts": <ms> }` — one key per connected wallet (hex address lowercased). |
+
+Spec / QA alignment: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85) (do not assume a single `yieldomega.ref.v1` row covers post-register “my code”; that row is **pending capture** only).
+
 - The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled.
 
 ## Attribution (TimeCurve buys)
@@ -63,7 +73,7 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 
 ## Automated checks (frontend)
 
-Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md).
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
 
 ---
 

@@ -2,6 +2,9 @@
 /**
  * `/referrals` UI smoke and `?ref=` capture (GitLab #64 checklist rows R1, R3, R7 for CI builds).
  * Rows R4–R6 (wallet writes + clipboard) run under Anvil — see `anvil-referrals.spec.ts` via `scripts/e2e-anvil.sh`.
+ *
+ * R7 asserts **pending** referral storage only: key `yieldomega.ref.v1` (JSON `{ code, ts }` in localStorage).
+ * Post-register “my code” uses a different key prefix — see `referralStorage.ts` / [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
  */
 import { expect, test } from "@playwright/test";
 import { detectLaunchState } from "./launchState";

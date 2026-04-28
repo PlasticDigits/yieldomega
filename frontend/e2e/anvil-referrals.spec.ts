@@ -3,6 +3,9 @@
  * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6).
  * Requires `bash scripts/e2e-anvil.sh` (sets `ANVIL_E2E=1`, `VITE_TIMECURVE_ADDRESS`, mock wallet).
  * R3 (disconnected) and R1 post-launch shell variants are covered in `referrals-surface.spec.ts` + manual QA.
+ *
+ * R4–R6: asserts share-link UI after `registerCode`; does **not** assert `localStorage` key
+ * `yieldomega.myrefcode.v1.*` directly (that cache backs the panel — see `referralStorage.ts`, GitLab #85).
  */
 import { expect, test } from "@playwright/test";
 
