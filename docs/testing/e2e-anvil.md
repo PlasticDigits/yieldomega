@@ -26,7 +26,7 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 | Wallet UX | wagmi **`mock`** connector (when `VITE_E2E_MOCK_WALLET=1`) forwards RPC; not a real browser wallet | WalletConnect, mobile wallets, network add flows |
 | Precompiles / fork height | Anvil default | Confirm against MegaETH docs for your target |
 
-**Phase B (wallet writes)** — [`frontend/e2e/anvil-wallet-writes.spec.ts`](../../frontend/e2e/anvil-wallet-writes.spec.ts): TimeCurve **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). The **ETH pay** case moves the spend slider then waits for the **Buy CHARM** button to be enabled again after the Kumbaya quoter settles (UI **Refreshing quote…** gate — [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56), [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56)). Rabbit Treasury **deposit** is not covered in Playwright while that page is an under-construction placeholder ([`launchplan-timecurve.md`](../../launchplan-timecurve.md)); use `cast` against devnet per the Stage 2 runbook. This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
+**Phase B (wallet writes)** — [`frontend/e2e/anvil-wallet-writes.spec.ts`](../../frontend/e2e/anvil-wallet-writes.spec.ts): TimeCurve **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). The **ETH pay** case selects **`data-testid="timecurve-simple-paywith-eth"`** (toggle buttons, not legacy radio inputs — [issue #87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87)), moves the spend slider, then waits for the **Buy CHARM** button to be enabled again after the Kumbaya quoter settles (UI **Refreshing quote…** gate — [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56), [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56)). Rabbit Treasury **deposit** is not covered in Playwright while that page is an under-construction placeholder ([`launchplan-timecurve.md`](../../launchplan-timecurve.md)); use `cast` against devnet per the Stage 2 runbook. This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
 
 **Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts the placeholder **under construction** state during the TimeCurve launch milestone (not NFT reads).
 
@@ -67,6 +67,18 @@ bash scripts/e2e-anvil.sh
 ```
 
 This starts Anvil, deploys with `DeployDev`, builds the frontend with the right `VITE_*` values, sets `ANVIL_E2E=1`, and runs Playwright against the Anvil-backed tests.
+
+### Anvil E2E concurrency ([GitLab #87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87))
+
+<a id="anvil-e2e-concurrency-gitlab-87"></a>
+
+`scripts/e2e-anvil.sh` uses **one** Anvil and **one** JSON-RPC account for the wagmi **mock** connector. The repo’s **`e2e/anvil-*.spec.ts`** files (TimeCurve, referrals, wallet writes) **mutate chain state** (buys, registrations, copy flows). **Playwright’s default multi-worker** schedule can run **different** spec **files** in parallel even when a file uses `test.describe.configure({ mode: "serial" })` — that setting only serializes **within** the file — which risks **nonce ordering**, **sale state**, and **referral** races unrelated to the code under test.
+
+When **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) sets **`workers: 1`** and **`fullyParallel: false`**. The default **CI** Playwright job (`npm run test:e2e` **without** `ANVIL_E2E`) is UI-only and may use **5** workers for speed.
+
+**TimeCurve pay-mode E2E:** The Simple and Arena UIs use **toggle buttons** for CL8Y / ETH / USDM, with stable hooks **`data-testid="timecurve-simple-paywith-{cl8y,eth,usdm}"`**. Anvil wallet-write specs (e.g. [anvil-wallet-writes.spec.ts](../../frontend/e2e/anvil-wallet-writes.spec.ts)) use those test ids — not legacy **`<input name="timecurve-pay-with">`**, which the UI no longer uses.
+
+**Maps:** [invariants — Anvil E2E Playwright](invariants-and-business-logic.md#anvil-e2e-playwright-concurrency-and-pay-mode-selectors-issue-87) · play checklist: [`skills/verify-yo-e2e-anvil/SKILL.md`](../../skills/verify-yo-e2e-anvil/SKILL.md).
 
 From `frontend/` you can also run:
 

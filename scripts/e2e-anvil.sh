@@ -58,6 +58,8 @@ export ANVIL_E2E=1
 
 cd "${ROOT}/frontend"
 npm run build
+# ANVIL_E2E=1 (exported above) → playwright.config uses workers:1; single Anvil + shared
+# mock account must not run cross-file wallet txs in parallel (gitlab #87).
 npx playwright test e2e/anvil-*.spec.ts
 
 echo "Done."
