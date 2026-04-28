@@ -16,9 +16,22 @@ import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
  */
 export const CHARM_SUBMIT_UPPER_SLACK_BPS = 50n;
 
+/**
+ * Headroom **above** onchain `minCharmWad` so a buy sized at the lower edge is
+ * less likely to revert when **min** rises between submit and inclusion (same
+ * multi-block drift window as the upper slack — [GitLab #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)).
+ * 50 bps → effective floor **100.5%** of the live min (integer division).
+ */
+export const CHARM_SUBMIT_LOWER_HEADROOM_BPS = 50n;
+
 export function effectiveMaxCharmWadForSubmit(maxCharmWad: bigint): bigint {
   if (maxCharmWad <= 0n) return 0n;
   return (maxCharmWad * (10000n - CHARM_SUBMIT_UPPER_SLACK_BPS)) / 10000n;
+}
+
+export function effectiveMinCharmWadForSubmit(minCharmWad: bigint): bigint {
+  if (minCharmWad <= 0n) return 0n;
+  return (minCharmWad * (10000n + CHARM_SUBMIT_LOWER_HEADROOM_BPS)) / 10000n;
 }
 
 function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
@@ -56,18 +69,19 @@ export function reconcileFreshBuySizingFromReads(input: {
   }
   const sw = clampBigint(spendWeiIntent, minSpendWei, maxSpendWei);
   const maxCharmEff = effectiveMaxCharmWadForSubmit(maxCharmWad);
-  if (maxCharmEff < minCharmWad) {
+  const minCharmEff = effectiveMinCharmWadForSubmit(minCharmWad);
+  if (maxCharmEff < minCharmEff) {
     return {
       ok: false,
       message:
-        "Live CHARM min–max band is too tight after a safety margin; wait a block or pick a smaller size.",
+        "Live CHARM min–max band is too tight after safety margins; wait a block or adjust the amount.",
     };
   }
   try {
     const { charmWad, spendWei } = finalizeCharmSpendForBuy(
       sw,
       pricePerCharmWad,
-      minCharmWad,
+      minCharmEff,
       maxCharmEff,
     );
     if (charmWad <= 0n || spendWei <= 0n) {

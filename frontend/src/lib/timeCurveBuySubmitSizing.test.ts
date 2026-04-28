@@ -2,8 +2,10 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CHARM_SUBMIT_LOWER_HEADROOM_BPS,
   CHARM_SUBMIT_UPPER_SLACK_BPS,
   effectiveMaxCharmWadForSubmit,
+  effectiveMinCharmWadForSubmit,
   reconcileFreshBuySizingFromReads,
 } from "@/lib/timeCurveBuySubmitSizing";
 import { WAD } from "@/lib/timeCurveMath";
@@ -14,6 +16,15 @@ describe("effectiveMaxCharmWadForSubmit", () => {
     const eff = effectiveMaxCharmWadForSubmit(max);
     expect(eff).toBe((max * (10000n - CHARM_SUBMIT_UPPER_SLACK_BPS)) / 10000n);
     expect(eff < max).toBe(true);
+  });
+});
+
+describe("effectiveMinCharmWadForSubmit", () => {
+  it("raises live min by 50 bps (100.5%) so lower-band drift is less likely at inclusion", () => {
+    const min = 1002n * (WAD / 1000n); // 1.002 CHARM
+    const eff = effectiveMinCharmWadForSubmit(min);
+    expect(eff).toBe((min * (10000n + CHARM_SUBMIT_LOWER_HEADROOM_BPS)) / 10000n);
+    expect(eff > min).toBe(true);
   });
 });
 
@@ -41,7 +52,7 @@ describe("reconcileFreshBuySizingFromReads", () => {
     }
   });
 
-  it("fails when slack max falls below min charm", () => {
+  it("fails when effective max falls below effective min after both margins", () => {
     const r = reconcileFreshBuySizingFromReads({
       spendWeiIntent: 5n * WAD,
       minSpendWei: 1n * WAD,
@@ -51,5 +62,28 @@ describe("reconcileFreshBuySizingFromReads", () => {
       maxCharmWad: 999n * WAD + 1n,
     });
     expect(r.ok).toBe(false);
+  });
+
+  it("bumps implied charm above raw min when spend targets the lower envelope edge", () => {
+    const price = WAD;
+    const minS = 1n * WAD;
+    const maxS = 100n * WAD;
+    const minC = 1n * WAD;
+    const maxC = 10n * WAD;
+    const minEff = effectiveMinCharmWadForSubmit(minC);
+    const r = reconcileFreshBuySizingFromReads({
+      spendWeiIntent: 1n * WAD,
+      minSpendWei: minS,
+      maxSpendWei: maxS,
+      pricePerCharmWad: price,
+      minCharmWad: minC,
+      maxCharmWad: maxC,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.charmWad).toBe(minEff);
+      expect(r.charmWad > minC).toBe(true);
+      expect(r.spendWei).toBe((r.charmWad * price) / WAD);
+    }
   });
 });

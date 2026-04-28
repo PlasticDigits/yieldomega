@@ -51,7 +51,7 @@ export function friendlyRevertMessage(raw: string): string {
 }
 
 const BARE_BUY_CHARM_SHIFT_HINT =
-  "The CHARM amount band or onchain price moved between quote and submit. Try a slightly lower amount or wait one block and retry.";
+  "The CHARM amount band or onchain price moved between quote and submit. Try nudging the CHARM amount slightly or wait one block and retry.";
 
 function looksLikeBareExecutionRevert(raw: string): boolean {
   const s = raw.toLowerCase();
