@@ -1,11 +1,11 @@
 ---
 name: verify-yo-timecurve-buy-router-anvil
-description: Anvil fork verification for TimeCurveBuyRouter (GitLab #65 scope, GitLab #78) — quote vs exactOutput, buyViaKumbaya, WarBow opt-in, re-disable — for agents producing PASS evidence on a local stack.
+description: Anvil fork verification for TimeCurveBuyRouter (GitLab #65 scope, GitLab #78) — quote vs exactOutput, buyViaKumbaya, WarBow opt-in, re-disable — for agents producing PASS evidence on a local stack. Registry + `VITE_*` merge after fixtures: GitLab #84.
 ---
 
 # Verify YO `TimeCurveBuyRouter` on Anvil (issues #65 / #78)
 
-Use this when you need a **one-shot PASS** (or a clear `require`) for the **TimeCurveBuyRouter** + **DeployKumbayaAnvilFixtures** checklist. Authoritative invariants: [invariants — issue #78](../../docs/testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78), [kumbaya localnet](../../docs/integrations/kumbaya.md#localnet-anvil). **Browser / wallet flows** after **`anvil_increaseTime`**: swap deadlines follow chain time ([#83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)); this script does **not** replace manual UI checks — see [kumbaya — Option B](../../docs/integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83) if you must use an unwarped stack.
+Use this when you need a **one-shot PASS** (or a clear `require`) for the **TimeCurveBuyRouter** + **DeployKumbayaAnvilFixtures** checklist. Authoritative invariants: [invariants — issue #78](../../docs/testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78) (includes **#84** registry row), [kumbaya localnet](../../docs/integrations/kumbaya.md#localnet-anvil). **Browser / wallet flows** after **`anvil_increaseTime`**: swap deadlines follow chain time ([#83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)); this script does **not** replace manual UI checks — see [kumbaya — Option B](../../docs/integrations/kumbaya.md#qa-anvil-time-warp-and-swap-deadline-issue-83) if you must use an unwarped stack.
 
 ## Preconditions
 
@@ -22,6 +22,9 @@ export RPC_URL=http://127.0.0.1:8545
 # YIELDOMEGA_TIMECURVE=0x...   # optional if local-anvil-registry has TimeCurve
 # YIELDOMEGA_DEPLOY_KUMBAYA=1  # only when buy router is zero
 bash scripts/verify-timecurve-buy-router-anvil.sh
+# Then: jq -r '.contracts.TimeCurveBuyRouter' contracts/deployments/local-anvil-registry.json
+#   must match cast call <TimeCurve> "timeCurveBuyRouter()(address)" (GitLab #84).
+# Restart the indexer if ADDRESS_REGISTRY_PATH pointed at the file before the merge.
 ```
 
 ## What the script checks

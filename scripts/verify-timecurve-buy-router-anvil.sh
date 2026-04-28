@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # GitLab #78 — one-shot verification of the #65 TimeCurveBuyRouter + DeployKumbayaAnvilFixtures scope checklist
 # (quote vs exactOutput, onchain buy router, USDM two-hop, buyViaKumbaya, WarBow flag opt-in, re-disable).
+# GitLab #84 — merges contracts.TimeCurveBuyRouter (+ optional Kumbaya VITE_*) into local-anvil-registry.json / frontend/.env.local.
 #
 # Preconditions:
 #   - Anvil on RPC (default http://127.0.0.1:8545) with chain 31337, --code-size-limit 524288
@@ -15,11 +16,13 @@
 #   bash scripts/verify-timecurve-buy-router-anvil.sh
 #   YIELDOMEGA_DEPLOY_KUMBAYA=1 bash ...   # if timeCurveBuyRouter is still 0, run DeployKumbayaAnvilFixtures
 #
-# See: docs/integrations/kumbaya.md, docs/testing/invariants-and-business-logic.md (issue #78),
+# See: docs/integrations/kumbaya.md, docs/testing/invariants-and-business-logic.md (issue #78 / #84),
 #      skills/verify-yo-timecurve-buy-router-anvil/SKILL.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
+source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
 CONTRACTS="${ROOT}/contracts"
 RPC_URL="${RPC_URL:-http://127.0.0.1:8545}"
 REGISTRY_DEFAULT="${CONTRACTS}/deployments/local-anvil-registry.json"
@@ -44,6 +47,11 @@ if ! cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1; then
   exit 1
 fi
 
+KUMBAYA_WETH=""
+KUMBAYA_USDM=""
+KUMBAYA_ROUTER=""
+KUMBAYA_BUY_ROUTER=""
+
 BR_HEX="$(tr -d '[:space:]' <<<"$(cast call "${TC}" "timeCurveBuyRouter()(address)" --rpc-url "${RPC_URL}")")"
 BR_ONCHAIN="$(cast to-checksum "${BR_HEX}" 2>/dev/null || echo "")"
 if [[ -z "${BR_ONCHAIN}" || "${BR_ONCHAIN}" == "0x0000000000000000000000000000000000000000" ]]; then
@@ -62,13 +70,38 @@ if [[ -z "${BR_ONCHAIN}" || "${BR_ONCHAIN}" == "0x000000000000000000000000000000
     forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
       --rpc-url "${RPC_URL}" --code-size-limit 524288 --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
   )
-  TCBR_ADDR="$(grep "TimeCurveBuyRouter (single-tx" "${KUMBAYA_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1)"
+  yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"
   rm -f "${KUMBAYA_LOG}"
-  if [[ -z "${TCBR_ADDR}" ]]; then
+  if [[ -z "${KUMBAYA_BUY_ROUTER}" ]]; then
     echo "Could not parse TimeCurveBuyRouter from forge log." >&2
     exit 1
   fi
-  echo "  Deployed/registered TimeCurveBuyRouter: ${TCBR_ADDR}"
+  echo "  Deployed/registered TimeCurveBuyRouter: ${KUMBAYA_BUY_ROUTER}"
+fi
+
+BR_HEX="$(tr -d '[:space:]' <<<"$(cast call "${TC}" "timeCurveBuyRouter()(address)" --rpc-url "${RPC_URL}")")"
+BR_ONCHAIN="$(cast to-checksum "${BR_HEX}" 2>/dev/null || echo "")"
+if [[ -z "${BR_ONCHAIN}" || "${BR_ONCHAIN}" == "0x0000000000000000000000000000000000000000" ]]; then
+  echo "TimeCurve.timeCurveBuyRouter is still zero after deploy/read." >&2
+  exit 1
+fi
+
+if [[ -f "${REGISTRY_DEFAULT}" ]]; then
+  yieldomega_registry_merge_timecurve_buy_router "${REGISTRY_DEFAULT}" "${BR_ONCHAIN}"
+  echo "Merged contracts.TimeCurveBuyRouter=${BR_ONCHAIN} into ${REGISTRY_DEFAULT} (GitLab #84). Restart the indexer to ingest BuyViaKumbaya."
+fi
+
+FRONTEND_ENV="${ROOT}/frontend/.env.local"
+if [[ -n "${KUMBAYA_WETH}" && -n "${KUMBAYA_USDM}" && -n "${KUMBAYA_ROUTER}" ]]; then
+  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND_ENV}" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${BR_ONCHAIN}"
+  if [[ -f "${FRONTEND_ENV}" ]]; then
+    echo "Merged Kumbaya VITE_* (incl. VITE_KUMBAYA_TIMECURVE_BUY_ROUTER) into ${FRONTEND_ENV} (GitLab #84)."
+  fi
+else
+  yieldomega_frontend_merge_vite_kumbaya_buy_router_only "${FRONTEND_ENV}" "${BR_ONCHAIN}"
+  if [[ -f "${FRONTEND_ENV}" ]]; then
+    echo "Merged VITE_KUMBAYA_TIMECURVE_BUY_ROUTER into ${FRONTEND_ENV} (GitLab #84)."
+  fi
 fi
 
 # Optional cast-only evidence lines (keeps original #78 checklist copy-pasteable)
