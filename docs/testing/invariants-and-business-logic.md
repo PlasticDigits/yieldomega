@@ -126,12 +126,13 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 ### TimeCurve buy — submit-time CHARM sizing (issue #82)
 
-**Intent:** Prevent **`buy` / `buyViaKumbaya`** reverts when **`charmWad`** was valid at quote time but **outside** `currentCharmBoundsWad` at inclusion time (fast chains, slider near **max CHARM**). Same root cause affects **CL8Y direct** and **Kumbaya** paths ([issue #74](https://gitlab.com/PlasticDigits/yieldomega/-/issues/74) ETH single-tx repro in #82 notes).
+**Intent:** Prevent **`buy` / `buyViaKumbaya`** reverts when **`charmWad`** was valid at quote time but **outside** `currentCharmBoundsWad` at inclusion time (fast chains, slider near **max** or **min CHARM**). Same root cause affects **CL8Y direct** and **Kumbaya** paths ([issue #74](https://gitlab.com/PlasticDigits/yieldomega/-/issues/74) ETH single-tx repro in #82 notes).
 
 | Invariant | Check |
 |-----------|--------|
 | Fresh RPC read at submit | [`readFreshTimeCurveBuySizing`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts) runs immediately before calldata for **Simple** [`useTimeCurveSaleSession`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) and **Arena** [`useTimeCurveArenaModel`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx). |
 | Slack under `maxCharmWad` | `CHARM_SUBMIT_UPPER_SLACK_BPS` (**50** → **99.5%** of live max) used as the CHARM clamp ceiling in [`reconcileFreshBuySizingFromReads`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts). |
+| Headroom above `minCharmWad` | `CHARM_SUBMIT_LOWER_HEADROOM_BPS` (**50** → **100.5%** of live min) used as the CHARM clamp floor in [`reconcileFreshBuySizingFromReads`](../../frontend/src/lib/timeCurveBuySubmitSizing.ts) ([issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). |
 | Floored CHARM from spend | [`finalizeCharmSpendForBuy`](../../frontend/src/lib/timeCurveBuyAmount.ts) documents floor division; unit tests in [`timeCurveBuySubmitSizing.test.ts`](../../frontend/src/lib/timeCurveBuySubmitSizing.test.ts). |
 | Bare revert UX | [`friendlyRevertFromUnknown`](../../frontend/src/lib/revertMessage.ts) `buySubmit: true` maps generic execution failures to band-shift guidance. |
 
