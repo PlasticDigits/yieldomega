@@ -214,6 +214,7 @@ export function TimeCurveArenaView() {
     <button
       key={key}
       type="button"
+      data-testid={`timecurve-simple-paywith-${key}`}
       className={
         payWith === key
           ? "timecurve-simple__rate-paywith-btn timecurve-simple__rate-paywith-btn--active"
