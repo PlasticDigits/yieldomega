@@ -1,6 +1,6 @@
 ---
 name: verify-yo-referrals-surface
-description: Walk the YO Referrals /referrals visual verification checklist (GitLab #64) for agents helping with QA evidence — shell, empty states, register flow, share links, ?ref= capture — aligned with docs/product/referrals.md and Playwright specs.
+description: Walk the YO Referrals /referrals visual verification checklist (GitLab #64) for agents helping with QA evidence — shell, empty states, register flow, share links, ?ref= capture — aligned with docs/product/referrals.md and Playwright specs. Browser storage keys for R4 vs R7: GitLab #85.
 ---
 
 # Verify YO Referrals `/referrals` surface (issue #64)
@@ -9,7 +9,7 @@ Use this skill when an agent or human needs to **produce evidence** (screenshots
 
 ## Authoritative docs (read first)
 
-- [`docs/product/referrals.md`](../../docs/product/referrals.md) — code rules, link capture, `REFERRAL_EACH_BPS` math, onchain authority.
+- [`docs/product/referrals.md`](../../docs/product/referrals.md) — code rules, link capture, **browser storage key table** (pending vs my-code — [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)), `REFERRAL_EACH_BPS` math, onchain authority.
 - [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64) — automated vs manual rows.
 - Contributor Anvil runbook: [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) (`bash scripts/e2e-anvil.sh`).
 
@@ -27,10 +27,10 @@ Use this skill when an agent or human needs to **produce evidence** (screenshots
 | **R1** | `/referrals` renders (hero, sections, `data-testid="referrals-surface"`) behind launch gate | Screenshot |
 | **R2** | Connected wallet, **not** yet registered: burn copy + input + CTA | Screenshot |
 | **R3** | Disconnected: wallet-gated placeholder | Screenshot |
-| **R4** | Approve (if needed) → `registerCode` → success → **localStorage** write for “my code” (see `referralStorage.ts`) | Tx hash(es) + screenshot |
+| **R4** | Approve (if needed) → `registerCode` → success → **`localStorage`** key **`yieldomega.myrefcode.v1.<walletLowercase>`** for “my code” (distinct from pending **`yieldomega.ref.v1`** — [`referralStorage.ts`](../../frontend/src/lib/referralStorage.ts), [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)) | Tx hash(es) + screenshot |
 | **R5** | Registered: code visible + copy-able **path** and **`?ref=`** URLs | Screenshot |
 | **R6** | Copy / share UX (desktop + mobile as applicable) | Screenshot or screen recording |
-| **R7** | Land with **`?ref=`** (and optionally `/timecurve/{code}`); pending capture in storage | Screenshot + storage inspector or Playwright trace |
+| **R7** | Land with **`?ref=`** (and optionally `/timecurve/{code}`); pending capture under **`yieldomega.ref.v1`** (local + session) | Screenshot + storage inspector or Playwright trace |
 
 ## Automated regression (contributors)
 
