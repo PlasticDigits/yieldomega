@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+/**
+ * Path-based referral capture: pending key `yieldomega.ref.v1` only (not `myrefcode` — GitLab #85).
+ */
 import { expect, test } from "@playwright/test";
 import { detectLaunchState } from "./launchState";
 
