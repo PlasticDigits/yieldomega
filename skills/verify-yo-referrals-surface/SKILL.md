@@ -29,7 +29,7 @@ Use this skill when an agent or human needs to **produce evidence** (screenshots
 | **R3** | Disconnected: wallet-gated placeholder | Screenshot |
 | **R4** | Approve (if needed) → `registerCode` → success → **`localStorage`** key **`yieldomega.myrefcode.v1.<walletLowercase>`** for “my code” (distinct from pending **`yieldomega.ref.v1`** — [`referralStorage.ts`](../../frontend/src/lib/referralStorage.ts), [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)) | Tx hash(es) + screenshot |
 | **R5** | Registered: code visible + copy-able **path** and **`?ref=`** URLs | Screenshot |
-| **R6** | Copy / share UX (desktop + mobile as applicable) | Screenshot or screen recording |
+| **R6** | Copy / share: after **Copy**, user sees **“Copied to clipboard!”** (green pill, ~2.6s, `aria-live`) **and** the row button shows **Copied!**; a **second click** while the button still shows **Copied!** should refresh the same confirmation (not silent). If clipboard is **unsupported or denied**, expect an **error** line (“Could not copy — select the link…”), not a no-op — [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86) | Screenshot or screen recording |
 | **R7** | Land with **`?ref=`** (and optionally `/timecurve/{code}`); pending capture under **`yieldomega.ref.v1`** (local + session) | Screenshot + storage inspector or Playwright trace |
 
 ## Automated regression (contributors)

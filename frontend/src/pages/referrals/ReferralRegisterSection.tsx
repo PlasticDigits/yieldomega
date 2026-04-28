@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { maxUint256 } from "viem";
@@ -17,6 +17,12 @@ import {
 } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
+import {
+  REFERRAL_COPY_BANNER_MS,
+  REFERRAL_COPY_ERROR_REJECTED,
+  REFERRAL_COPY_ERROR_UNSUPPORTED,
+  REFERRAL_COPY_SUCCESS_BANNER,
+} from "@/pages/referrals/referralShareCopyFeedback";
 
 function isNonZeroBytes32(v: `0x${string}` | bigint | undefined): v is `0x${string}` | bigint {
   if (v === undefined) {
@@ -37,6 +43,30 @@ export function ReferralRegisterSection({ className }: Props) {
   const [formErr, setFormErr] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyBanner, setCopyBanner] = useState<{ variant: "success" | "error"; text: string } | null>(
+    null,
+  );
+  const copyBannerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showCopyBanner = useCallback((variant: "success" | "error", text: string) => {
+    if (copyBannerTimeoutRef.current) {
+      clearTimeout(copyBannerTimeoutRef.current);
+      copyBannerTimeoutRef.current = null;
+    }
+    setCopyBanner({ variant, text });
+    copyBannerTimeoutRef.current = setTimeout(() => {
+      setCopyBanner(null);
+      copyBannerTimeoutRef.current = null;
+    }, REFERRAL_COPY_BANNER_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copyBannerTimeoutRef.current) {
+        clearTimeout(copyBannerTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const tc = addresses.timeCurve;
   const { data: regFromTimeCurve } = useReadContract({
@@ -126,14 +156,21 @@ export function ReferralRegisterSection({ className }: Props) {
   const copy = useCallback(
     (label: string, text: string) => {
       if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+        showCopyBanner("error", REFERRAL_COPY_ERROR_UNSUPPORTED);
         return;
       }
-      void navigator.clipboard.writeText(text).then(() => {
-        setCopied(label);
-        setTimeout(() => setCopied((c) => (c === label ? null : c)), 2000);
-      });
+      void navigator.clipboard.writeText(text).then(
+        () => {
+          setCopied(label);
+          setTimeout(() => setCopied((c) => (c === label ? null : c)), 2000);
+          showCopyBanner("success", REFERRAL_COPY_SUCCESS_BANNER);
+        },
+        () => {
+          showCopyBanner("error", REFERRAL_COPY_ERROR_REJECTED);
+        },
+      );
     },
-    [],
+    [showCopyBanner],
   );
 
   const onRegister = useCallback(async () => {
@@ -239,7 +276,23 @@ export function ReferralRegisterSection({ className }: Props) {
         {isConnected && hasRegistered && displayCode && referLinks && (
           <div className="data-panel data-panel--stack" style={{ marginTop: "1rem" }}>
             <h4 className="h-panel">Your share links</h4>
-            <p className="muted" style={{ marginTop: 0 }}>
+            <div aria-live="polite" aria-atomic="true" data-testid="referrals-copy-feedback-region">
+              {copyBanner?.variant === "success" ? (
+                <p
+                  role="status"
+                  data-testid="referrals-copy-feedback"
+                  className="status-pill status-pill--success"
+                  style={{ marginTop: "0.65rem", marginBottom: 0 }}
+                >
+                  {copyBanner.text}
+                </p>
+              ) : copyBanner?.variant === "error" ? (
+                <div data-testid="referrals-copy-feedback" style={{ marginTop: "0.65rem" }}>
+                  <StatusMessage variant="error">{copyBanner.text}</StatusMessage>
+                </div>
+              ) : null}
+            </div>
+            <p className="muted" style={{ marginTop: copyBanner ? "0.5rem" : 0 }}>
               These routes also store the code as a pending referral for new visitors.
             </p>
             {(
@@ -266,7 +319,7 @@ export function ReferralRegisterSection({ className }: Props) {
                   onClick={() => copy(label, url)}
                   disabled={!origin}
                 >
-                  {copied === label ? "Copied" : "Copy"}
+                  {copied === label ? "Copied!" : "Copy"}
                 </button>
               </div>
             ))}
