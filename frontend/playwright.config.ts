@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { defineConfig, devices } from "@playwright/test";
 
+const isAnvilE2E = process.env.ANVIL_E2E === "1";
+
 export default defineConfig({
   testDir: "./e2e",
   testIgnore: /timecurve-live-buys-modals\.spec\.ts/,
-  fullyParallel: true,
+  // Anvil: one chain + shared mock account — cross-file Playwright workers race
+  // nonces / sale / referral state (gitlab #87). CI UI smoke: parallel OK.
+  fullyParallel: !isAnvilE2E,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI || process.env.ANVIL_E2E === "1" ? 5 : undefined,
+  workers: isAnvilE2E ? 1 : process.env.CI ? 5 : undefined,
   timeout: 180_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
