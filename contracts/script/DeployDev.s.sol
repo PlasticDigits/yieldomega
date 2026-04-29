@@ -14,6 +14,7 @@ import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
+import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 import {DeployDevBuyCooldown} from "./DeployDevBuyCooldown.sol";
@@ -26,8 +27,13 @@ import {DeployDevBuyCooldown} from "./DeployDevBuyCooldown.sol";
 ///         Per-wallet TimeCurve buy cooldown: default **300** s; QA throughput on Anvil via **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`**
 ///         (defaults to **1** s) and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** — see [`DeployDevBuyCooldown.sol`](./DeployDevBuyCooldown.sol) ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)).
 ///         See docs/operations/deployment-stages.md and docs/operations/deployment-checklist.md.
+///         **`DoubPresaleVesting`** — local QA deploy with a **two-address** dev schedule (GitLab #92): Anvil
+///         default **#0** (deployer) and **#1**, **180-day** linear tranche, **`claimsEnabled`** turned on after
+///         `startVesting` so `/vesting` can exercise **`claim`** without extra owner txs.
 contract DeployDev is Script {
     uint256 internal constant WAD = 1e18;
+    /// @dev Anvil default account #1 — stable address for beneficiary exercises on local RPCs.
+    address internal constant DEV_VESTING_BENEFICIARY_1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     /// @dev Canonical burn sink for routed sale CL8Y (matches `TimeCurve` WarBow burns pattern).
     address internal constant SALE_CL8Y_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
@@ -145,6 +151,25 @@ contract DeployDev is Script {
         // Dev convenience: allow post-end flows in local Anvil drills (issue #55 gates default off in `initialize`).
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);
+
+        // ── DoubPresaleVesting (dev presale bucket stand-in — GitLab #92) ──
+        address[] memory vBen = new address[](2);
+        vBen[0] = deployer;
+        vBen[1] = DEV_VESTING_BENEFICIARY_1;
+        uint256[] memory vAmt = new uint256[](2);
+        vAmt[0] = 6_000e18;
+        vAmt[1] = 4_000e18;
+        uint256 vTotal = 10_000e18;
+        uint256 vDurationSec = 180 days;
+        DoubPresaleVesting presaleVesting = UUPSDeployLib.deployDoubPresaleVesting(
+            IERC20(address(doub)), deployer, vBen, vAmt, vTotal, vDurationSec
+        );
+        doub.grantRole(doub.MINTER_ROLE(), deployer);
+        doub.mint(address(presaleVesting), vTotal);
+        doub.revokeRole(doub.MINTER_ROLE(), deployer);
+        presaleVesting.setClaimsEnabled(true);
+        presaleVesting.startVesting();
+        console.log("DoubPresaleVesting:", address(presaleVesting));
 
         // ── Leprechaun NFT ─────────────────────────────────────────────
         LeprechaunNFT nft = new LeprechaunNFT("Leprechaun", "LEPR", "", deployer);

@@ -32,6 +32,8 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): connected mock wallet registers a code, surfaces **Your share links**, and asserts **Copy** → clipboard for path + `?ref=` URLs. Complements CI-only [`referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts). See [invariants — Referrals page visual](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64).
 
+**Presale vesting `/vesting` (issue #92)** — [`frontend/e2e/anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts): mock wallet (Anvil #0) asserts **`PresaleVestingPage`** beneficiary panel + enabled **Claim DOUB** after `DeployDev`. See [presale-vesting.md](../frontend/presale-vesting.md), [invariants — § #92](../testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92).
+
 ## Environment contract (build time)
 
 Vite inlines `VITE_*` at **build** time. For Anvil:
@@ -45,6 +47,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_LEPRECHAUN_NFT_ADDRESS` | Same |
 | `VITE_FEE_ROUTER_ADDRESS` | Same — required for **fee sink / FeeRouter** UI (`FeeTransparency`) |
 | `VITE_REFERRAL_REGISTRY_ADDRESS` | Same — referral flows that read the registry |
+| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | **`DoubPresaleVesting`** ERC-1967 **proxy** — hidden **`/vesting`** route (GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)); set by `DeployDev` log parse in [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) and [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh). |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Set by `scripts/e2e-anvil.sh` after `DeployKumbayaAnvilFixtures` (issue #41); see [local-swap-testing.md](local-swap-testing.md) and [integrations/kumbaya.md](../integrations/kumbaya.md) (issue #46, MegaETH vs Anvil). |
 | `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` | **Optional** copy of onchain `TimeCurve.timeCurveBuyRouter` (from **TimeCurveBuyRouter** in `DeployKumbayaAnvilFixtures`); set by `e2e-anvil.sh` when the address is parsed. Used only for **env vs onchain parity**; single-tx routing is driven by the onchain read ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)). |

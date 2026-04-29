@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_TIMECURVE_ADDRESS: string;
   readonly VITE_RABBIT_TREASURY_ADDRESS: string;
   readonly VITE_LEPRECHAUN_NFT_ADDRESS: string;
+  /** `DoubPresaleVesting` ERC-1967 proxy for `/vesting` (GitLab #92). */
+  readonly VITE_DOUB_PRESALE_VESTING_ADDRESS?: string;
   /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
   readonly VITE_E2E_MOCK_WALLET: string;
   /** Optional: third-party Kumbaya DEX (e.g. pool page on external AMM). */

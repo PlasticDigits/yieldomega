@@ -10,7 +10,7 @@
 #   - DEPLOY_LOG — path to a writable file (forge script output is teed here)
 #
 # After success, sets shell variables:
-#   TC, RT, NFT — TimeCurve, RabbitTreasury, LeprechaunNFT
+#   TC, RT, NFT, DPV — TimeCurve, RabbitTreasury, LeprechaunNFT, DoubPresaleVesting (GitLab #92)
 #   KUMBAYA_WETH, KUMBAYA_USDM, KUMBAYA_ROUTER — issue #41 Anvil DEX fixtures (same address for router+quoter)
 #   KUMBAYA_BUY_ROUTER — issue #65/66 TimeCurveBuyRouter (optional single-tx ETH/USDM; same deploy as Kumbaya fixtures)
 #
@@ -41,13 +41,14 @@ yieldomega_anvil_deploy_dev() {
   TC=$(_yieldomega_extract_addr "TimeCurve")
   RT=$(_yieldomega_extract_addr "RabbitTreasury")
   NFT=$(_yieldomega_extract_addr "LeprechaunNFT")
+  DPV=$(_yieldomega_extract_addr "DoubPresaleVesting")
 
-  if [ -z "${TC}" ] || [ -z "${RT}" ] || [ -z "${NFT}" ]; then
-    echo "Could not parse deploy addresses from log. Expected TimeCurve, RabbitTreasury, LeprechaunNFT lines." >&2
+  if [ -z "${TC}" ] || [ -z "${RT}" ] || [ -z "${NFT}" ] || [ -z "${DPV}" ]; then
+    echo "Could not parse deploy addresses from log. Expected TimeCurve, RabbitTreasury, LeprechaunNFT, DoubPresaleVesting lines." >&2
     return 1
   fi
 
-  echo "Addresses: TimeCurve=${TC} RabbitTreasury=${RT} LeprechaunNFT=${NFT}"
+  echo "Addresses: TimeCurve=${TC} RabbitTreasury=${RT} LeprechaunNFT=${NFT} PresaleVesting=${DPV}"
 
   echo "Deploying Kumbaya Anvil fixtures (issue #41; see docs/integrations/kumbaya.md issue #46)..."
   KUMBAYA_LOG=$(mktemp)

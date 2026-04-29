@@ -122,6 +122,8 @@ Genesis wiring (Section 4) is not the same as **operational go-live** for **clai
 
 **Third-party surfaces:** **`/kumbaya`** and **`/sir`** are **third-party DEXes**: disclaimer, **placeholder LP** readout (real values later), and an outbound link when **`VITE_KUMBAYA_DEX_URL`** / **`VITE_SIR_DEX_URL`** is set at build time ([`frontend/src/components/ThirdPartyDexPage.tsx`](frontend/src/components/ThirdPartyDexPage.tsx)). **`/`** and **`/timecurve`** carry the live TimeCurve launch UX.
 
+**Presale vesting (F-10 / GitLab #92):** **`/vesting`** surfaces **`DoubPresaleVesting`** reads + **`claim`** for presale beneficiaries. The route is **omitted from the global header nav** (direct URL / share only — [issue #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)). Local **`DeployDev`** deploys a dev vesting and stack scripts set **`VITE_DOUB_PRESALE_VESTING_ADDRESS`**. See [`docs/frontend/presale-vesting.md`](docs/frontend/presale-vesting.md).
+
 ---
 
 ## 7. Exit checklist (devnet E2E)
@@ -130,7 +132,7 @@ Genesis wiring (Section 4) is not the same as **operational go-live** for **clai
 - [ ] `totalTokensForSale` + genesis split match Section 4 (or updated signed table).
 - [ ] `forge test` + simulation sweep green.
 - [ ] Indexer smoke + optional frontend buy on devnet.
-- [ ] Non-TimeCurve routes: Rabbit / Collection **under construction**; **`/referrals` full surface** ([`docs/product/referrals.md`](docs/product/referrals.md), [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64), [#91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); Kumbaya / Sir show third-party LP placeholder + DEX links when configured.
+- [ ] Non-TimeCurve routes: Rabbit / Collection **under construction**; **`/referrals` full surface** ([`docs/product/referrals.md`](docs/product/referrals.md), [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64), [#91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); **`/vesting`** presale vesting (**`DoubPresaleVesting`**, hidden nav — [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)); Kumbaya / Sir show third-party LP placeholder + DEX links when configured.
 
 ---
 
