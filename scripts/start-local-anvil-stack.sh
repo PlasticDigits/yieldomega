@@ -4,6 +4,11 @@
 # DeployKumbayaAnvilFixtures + registry key TimeCurveBuyRouter + Kumbaya VITE_* in frontend/.env.local, GitLab #84) →
 # registry JSON → reset indexer DB → indexer → frontend/.env.local (chain 31337 + contract addresses incl. FeeRouter, PodiumPool, ReferralRegistry + indexer URL).
 #
+# Optional **short per-wallet buy cooldown** on TimeCurve for multi-buy QA ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)):
+#   YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-local-anvil-stack.sh
+#   # or: YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 …
+# See docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88 and skills/verify-yo-anvil-buy-cooldown/SKILL.md.
+#
 # Set SKIP_ANVIL_RICH_STATE=1 to skip `contracts/script/anvil_rich_state.sh` (keeps TimeCurve sale **live**
 # for bot/UI demos; indexer still indexes normal buys). Default runs rich state (sale ends, prizes, etc.).
 #
@@ -147,6 +152,9 @@ cast block-number --rpc-url "${RPC_URL}" >/dev/null || die "No RPC at ${RPC_URL}
 
 echo "=== Deploy (DeployDev) ==="
 cd "${CONTRACTS}"
+if [[ "${YIELDOMEGA_DEPLOY_NO_COOLDOWN:-0}" == "1" ]] || [[ -n "${YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC:-}" ]]; then
+  echo "TimeCurve buyCooldownSec override (GitLab #88): YIELDOMEGA_DEPLOY_NO_COOLDOWN=${YIELDOMEGA_DEPLOY_NO_COOLDOWN:-0} YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=${YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC:-<unset>}"
+fi
 # --optimizer-runs 1 keeps TimeCurve bytecode size stable for local / MegaEVM (512 KiB) deploys
 # (default 200 can bloat with via_ir on some compiler stacks).
 # --code-size-limit: Forge simulates locally before broadcast and enforces EIP-170 unless raised;

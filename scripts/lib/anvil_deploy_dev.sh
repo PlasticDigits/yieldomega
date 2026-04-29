@@ -14,6 +14,9 @@
 #   KUMBAYA_WETH, KUMBAYA_USDM, KUMBAYA_ROUTER — issue #41 Anvil DEX fixtures (same address for router+quoter)
 #   KUMBAYA_BUY_ROUTER — issue #65/66 TimeCurveBuyRouter (optional single-tx ETH/USDM; same deploy as Kumbaya fixtures)
 #
+# TimeCurve per-wallet buy cooldown on DeployDev: default 300s; optional YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 /
+# YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC (GitLab #88) — see docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88.
+#
 # Exits non-zero if forge fails or addresses cannot be parsed.
 
 yieldomega_anvil_deploy_dev() {

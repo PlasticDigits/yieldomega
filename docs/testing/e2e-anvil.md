@@ -49,8 +49,31 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Set by `scripts/e2e-anvil.sh` after `DeployKumbayaAnvilFixtures` (issue #41); see [local-swap-testing.md](local-swap-testing.md) and [integrations/kumbaya.md](../integrations/kumbaya.md) (issue #46, MegaETH vs Anvil). |
 | `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` | **Optional** copy of onchain `TimeCurve.timeCurveBuyRouter` (from **TimeCurveBuyRouter** in `DeployKumbayaAnvilFixtures`); set by `e2e-anvil.sh` when the address is parsed. Used only for **env vs onchain parity**; single-tx routing is driven by the onchain read ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)). |
 | `timeCurveBuyRouter` on Anvil (not `e2e-anvil.sh`) | For a stack that only ran **`DeployDev`**, `timeCurveBuyRouter` is **0** until **`DeployKumbayaAnvilFixtures`**; automated fork verification: **`bash scripts/verify-timecurve-buy-router-anvil.sh`** (issue #78) — [invariants](../testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78). |
+| **`DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))** | Default remains **300** s per wallet. For **multi-buy QA** on one wallet (checklists #38 / #39 / #82), set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** before **`forge script … DeployDev`** / **`start-local-anvil-stack.sh`** / **`e2e-anvil.sh`** so the initializer uses **1** s (or set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** explicitly, **&gt; 0**). Invariants: [§ DeployDev buy cooldown env](../testing/invariants-and-business-logic.md#deploydev-buy-cooldown-env-issue-88); play checklist: [`skills/verify-yo-anvil-buy-cooldown/SKILL.md`](../../skills/verify-yo-anvil-buy-cooldown/SKILL.md). |
 
-**Full-stack manual QA (TimeCurve + indexer panels + fee sinks):** set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack. With `START_BOT_SWARM=1` (default when `SKIP_ANVIL_RICH_STATE=1`), install **`bots/timecurve`** deps first; on **PEP 668** systems see [`bots/timecurve/README.md`](../../bots/timecurve/README.md) (PEP 668 section) — the stack script preflights `import web3` before spawning the swarm.
+<a id="anvil-deploydev-buy-cooldown-gitlab-88"></a>
+
+### Anvil `DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))
+
+**Problem:** default **`buyCooldownSec = 300`** makes consecutive buys from the same wallet impractical for manual QA.
+
+**Flags (process environment, read by [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) via [`DeployDevBuyCooldown.sol`](../../contracts/script/DeployDevBuyCooldown.sol)):**
+
+| Variable | Effect |
+|----------|--------|
+| *(unset)* | **`buyCooldownSec = 300`** (unchanged production-like dev default). |
+| **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** | Defaults **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** to **1** when that var is unset (still **&gt; 0** for `TimeCurve.initialize`). |
+| **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (numeric) | Explicit seconds (**must be &gt; 0**). When **`YIELDOMEGA_DEPLOY_NO_COOLDOWN` ≠ 1**, unset behavior defaults to **300**; when **`= 1`**, unset defaults to **1**. |
+
+**Examples:**
+
+```bash
+YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-local-anvil-stack.sh
+YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/e2e-anvil.sh
+```
+
+**Do not** set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** — `DeployDev` reverts before broadcast; **`TimeCurve`** also rejects zero cooldown at init.
+ set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack. With `START_BOT_SWARM=1` (default when `SKIP_ANVIL_RICH_STATE=1`), install **`bots/timecurve`** deps first; on **PEP 668** systems see [`bots/timecurve/README.md`](../../bots/timecurve/README.md) (PEP 668 section) — the stack script preflights `import web3` before spawning the swarm.
 
 For **minimal** Anvil Playwright only, `VITE_INDEXER_URL` can be omitted; the automated Anvil specs do **not** assert indexer responses.
 
@@ -89,7 +112,7 @@ npm run test:e2e:anvil
 ## How to run (manual)
 
 1. Start Anvil: `anvil --host 127.0.0.1 --port 8545 --code-size-limit 524288`
-2. Deploy: `cd contracts && forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url http://127.0.0.1:8545 --code-size-limit 524288`
+2. Deploy: `cd contracts && forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url http://127.0.0.1:8545 --code-size-limit 524288` (optional **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** for short per-wallet buy cooldown — [§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88))
 3. Copy logged addresses into env (or export `VITE_*` in the shell).
 4. `cd frontend && npm ci && npm run build` with those variables set.
 5. `ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1 npm run test:e2e -- e2e/anvil-*.spec.ts` (or `bash scripts/e2e-anvil.sh`)
