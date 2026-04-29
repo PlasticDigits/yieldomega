@@ -1,6 +1,6 @@
 ---
 name: verify-yo-referrals-surface
-description: Walk the YO Referrals /referrals visual verification checklist (GitLab #64) for agents helping with QA evidence — shell, empty states, register flow, share links, ?ref= capture — aligned with docs/product/referrals.md and Playwright specs. Browser storage keys for R4 vs R7: GitLab #85.
+description: Walk the YO Referrals /referrals visual verification checklist (GitLab #64) for agents helping with QA evidence — shell, empty states, register flow, share links, ?ref= capture — aligned with docs/product/referrals.md and Playwright specs. Browser storage keys for R4 vs R7: GitLab #85. Launch-plan F-11: /referrals is shipped (not UnderConstruction) — GitLab #91.
 ---
 
 # Verify YO Referrals `/referrals` surface (issue #64)
@@ -9,6 +9,7 @@ Use this skill when an agent or human needs to **produce evidence** (screenshots
 
 ## Authoritative docs (read first)
 
+- [`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend) — **`/referrals`** is **not** in the **`UnderConstruction`** set at TGE (**F-11** / [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); thin alias: [`YO-DOUB-Launch-UX-Flows.md`](../../YO-DOUB-Launch-UX-Flows.md).
 - [`docs/product/referrals.md`](../../docs/product/referrals.md) — code rules, link capture, **browser storage key table** (pending vs my-code — [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)), `REFERRAL_EACH_BPS` math, onchain authority.
 - [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64) — automated vs manual rows.
 - Contributor Anvil runbook: [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) (`bash scripts/e2e-anvil.sh`).
