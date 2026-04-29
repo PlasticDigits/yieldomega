@@ -5895,6 +5895,73 @@ code {
   letter-spacing: 0.04em;
 }
 
+.timecurve-simple__stake-panel.timecurve-simple__stake-panel--redeemed .section-heading__copy .ui-badge--info {
+  opacity: 0.82;
+}
+
+.timecurve-simple__stake-settled-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.timecurve-simple__stake-settled-check {
+  flex-shrink: 0;
+  display: block;
+  vertical-align: middle;
+}
+
+.timecurve-simple__stake-redeemed-note {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #4a5a4a);
+  font-size: 0.72rem;
+}
+
+.timecurve-simple__stake-tile--launch-redeemed {
+  opacity: 0.62;
+  background: linear-gradient(180deg, #eef3ea 0%, #f5f5f0 100%);
+  border-style: dashed;
+}
+
+.timecurve-simple__stake-tile-value--redeemed-struck {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.timecurve-simple__stake-redeemed-row {
+  margin: 0.55rem 0 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  border: 3px solid var(--arcade-green-400, #6bbf6b);
+  background: linear-gradient(180deg, #e9f8e6 0%, #f8fff5 100%);
+  box-shadow: 3px 3px 0 var(--line);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto;
+  align-items: baseline;
+  gap: 0.15rem 0.65rem;
+}
+
+.timecurve-simple__stake-redeemed-row .timecurve-simple__stake-tile-label {
+  grid-column: 1;
+}
+
+.timecurve-simple__stake-redeemed-value {
+  grid-column: 2;
+  font-size: clamp(1.45rem, 3.4vw, 2.1rem);
+  font-weight: 900;
+  font-family: monospace;
+  line-height: 1;
+  color: var(--text-main);
+}
+
+.timecurve-simple__stake-redeemed-row .timecurve-simple__stake-tile-unit {
+  grid-column: 3;
+}
+
 .timecurve-simple__stake-foot {
   margin: 0;
   font-size: 0.85rem;
