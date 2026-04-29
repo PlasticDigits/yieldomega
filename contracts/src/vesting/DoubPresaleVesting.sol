@@ -35,6 +35,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// Per-second vesting rounds down; dust remains until the end timestamp where the full linear tranche is released.
 ///
 /// Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
+/// **Frontend:** [`docs/frontend/presale-vesting.md`](../../../docs/frontend/presale-vesting.md) — hidden `/vesting` route (GitLab #92).
 contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;

@@ -25,6 +25,7 @@ export const addresses = {
   leprechaunNft: parseAddr("VITE_LEPRECHAUN_NFT_ADDRESS"),
   referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
   feeRouter: parseAddr("VITE_FEE_ROUTER_ADDRESS"),
+  doubPresaleVesting: parseAddr("VITE_DOUB_PRESALE_VESTING_ADDRESS"),
 };
 
 /** Optional public URL for CL8Y / governance (footer link). */
