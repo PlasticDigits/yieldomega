@@ -129,6 +129,20 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 **Why:** Prevents signing against a stale on-screen quote after rapid slider changes; aligns with Anvil wallet-write E2E stability ([issue #52](https://gitlab.com/PlasticDigits/yieldomega/-/issues/52)). **Doc:** [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56).
 
+<a id="timecurve-simple-stake-redeemed-issue-90"></a>
+
+### TimeCurve Simple — stake panel after `redeemCharms` (issue #90)
+
+After **`charmsRedeemed(address)`** is true, **`charmWeight`** still reflects the wallet’s historical allocation (**`redeemCharms`** does not zero weight — [`TimeCurve.sol`](../../contracts/src/TimeCurve.sol)), so the **Your stake at launch** panel must read as **settled**, not an unfilled claim:
+
+| Invariant | Check |
+|-----------|--------|
+| **Redeemed DOUB row** | Show **`totalTokensForSale × charmWeight ÷ totalCharmWeight`** (matches **`redeemCharms`** **`tokenOut`**); sourced from **`expectedTokenFromCharms`** in [`useTimeCurveSaleSession`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) when **`phase === 'saleEnded'`**. |
+| **CL8Y-at-launch tile** | **Dim + strikethrough** on the projection + **(redeemed)** on the label; **do not** replace CL8Y with DOUB-only “worth” copy (*issue #90 option B rejected*: mixed ETH/USDM/CL8Y pay rails keep anchoring semantics CL8Y-native for the historical projection). |
+| **Settled chrome** | Header **`actions`**: check pictogram + **`PageBadge`** label **Settled** (`tone="live"`) — [`TimeCurveStakeAtLaunchSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.tsx). |
+
+**Doc:** [timecurve-views — stake redeemed](../frontend/timecurve-views.md#timecurve-simple-stake-redeemed-issue-90) · [`TimeCurveStakeAtLaunchSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.test.tsx) · [issue #90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90) · play checklist [`skills/verify-yo-timecurve-stake-redeemed-ui/SKILL.md`](../../skills/verify-yo-timecurve-stake-redeemed-ui/SKILL.md).
+
 <a id="timecurve-buy-charm-submit-fresh-bounds-issue-82"></a>
 
 ### TimeCurve buy — submit-time CHARM sizing (issue #82)
