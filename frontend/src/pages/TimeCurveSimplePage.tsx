@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { Link } from "react-router-dom";
 import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
@@ -33,6 +32,7 @@ import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
+import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 
@@ -47,12 +47,12 @@ import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimpleP
  * The buy panel shows the full **rate chain** `1 CHARM = X DOUB = Y CL8Y at
  * launch` so participants can see where the CL8Y projection comes from, plus
  * the **current per-CHARM CL8Y price** big and featured (it ticks up every
- * block, so it's the most important number on the page). We **never display
- * the projected DOUB count for a wallet's holdings** — DOUB-per-CHARM dilutes
- * as `totalCharmWeight` grows, and showing a *personal* number that decreases
- * as new buyers arrive scares first-run users; the per-wallet stake panel
- * therefore only shows CHARM held + CL8Y-equivalent at launch (which is the
- * **non-decreasing** projection of the same allocation).
+ * block, so it's the most important number on the page). During the sale we
+ * **do not** surface wallet-level projected DOUB — DOUB-per-CHARM dilutes as
+ * `totalCharmWeight` grows. After `redeemCharms` ([issue #90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90)),
+ * the stake panel adds the **actual redeemed DOUB** (same ratio as the contract)
+ * and strikes through the CL8Y-at-launch tile — we **do not** replace that CL8Y
+ * line with DOUB alone because pay rails and anchoring stay in CL8Y terms.
  *
  * Contract: this page never owns game state. It uses
  * {@link useTimeCurveSaleSession}, which delegates writes to the same
@@ -931,62 +931,15 @@ export function TimeCurveSimplePage() {
         {headerContent}
       </PageHero>
 
-      {/* "Your stake at launch" — central UX answer to "what is my CHARM
-          worth?". Displays only the CHARM count and the canonical launch-anchor
-          projection (`participantLaunchValueCl8yWei`). The DOUB count is
-          intentionally hidden because DOUB-per-CHARM dilutes as
-          `totalCharmWeight` grows, while the CL8Y-equivalent at launch is the
-          non-decreasing, stress-free projection of the same allocation. */}
-      {stakePanelVisible && (
-        <PageSection
-          title="Your stake at launch"
-          className="timecurve-simple__stake-panel"
-          badgeLabel="1.2× launch anchor"
-          badgeTone="info"
-          lede={
-            <>
-              The DOUB/CL8Y locked liquidity seeds at <strong>1.2×</strong> the per-CHARM clearing
-              price, so your CHARM is projected in CL8Y here — a number that{" "}
-              <strong>only goes up</strong> as the sale heats up. Hidden on purpose: the DOUB count,
-              which dilutes as more CHARM mints.
-            </>
-          }
-        >
-          <div className="timecurve-simple__stake-grid">
-            <div className="timecurve-simple__stake-tile">
-              <span className="timecurve-simple__stake-tile-label">You hold</span>
-              <strong
-                className="timecurve-simple__stake-tile-value"
-                data-testid="timecurve-simple-stake-charm"
-              >
-                {session.charmWeightWad !== undefined
-                  ? formatCompactFromRaw(session.charmWeightWad, 18, { sigfigs: 4 })
-                  : "—"}
-              </strong>
-              <span className="timecurve-simple__stake-tile-unit">CHARM</span>
-            </div>
-            <div className="timecurve-simple__stake-tile timecurve-simple__stake-tile--launch">
-              <span className="timecurve-simple__stake-tile-label">Worth at launch ≈</span>
-              <strong
-                className="timecurve-simple__stake-tile-value"
-                data-testid="timecurve-simple-stake-cl8y-launch"
-              >
-                {session.launchCl8yValueWei !== undefined
-                  ? formatCompactFromRaw(session.launchCl8yValueWei, session.decimals, {
-                      sigfigs: 4,
-                    })
-                  : "—"}
-              </strong>
-              <span className="timecurve-simple__stake-tile-unit">CL8Y</span>
-            </div>
-          </div>
-          <p className="muted timecurve-simple__stake-foot">
-            {launchHelperCopy} · enforced by{" "}
-            <code>DoubLPIncentives</code>; see the{" "}
-            <Link to="/timecurve/protocol">Protocol view</Link> for raw onchain reads.
-          </p>
-        </PageSection>
-      )}
+      <TimeCurveStakeAtLaunchSection
+        visible={stakePanelVisible}
+        charmWeightWad={session.charmWeightWad}
+        launchCl8yValueWei={session.launchCl8yValueWei}
+        decimals={session.decimals}
+        charmsRedeemed={session.charmsRedeemed}
+        expectedTokenFromCharms={session.expectedTokenFromCharms}
+        launchHelperCopy={launchHelperCopy}
+      />
 
       {/* Recent buys — moved out of the timer panel and given its own slim
           section so the spotlight row stays focused on the timer + buy CTA. */}

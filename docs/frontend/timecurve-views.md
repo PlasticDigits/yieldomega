@@ -267,12 +267,14 @@ Below the hub:
    (the **launch-anchor invariant**: `1.2 × per-CHARM clearing price`,
    enforced by `DoubLPIncentives` and pinned by the
    [`launch-anchor invariant`](../testing/invariants-and-business-logic.md)
-   test in `timeCurvePodiumMath.test.ts`). The **personal DOUB count is
-   intentionally hidden** — DOUB-per-CHARM dilutes as `totalCharmWeight`
-   grows, but the CL8Y-at-launch projection only ever stays the same or
-   rises. (DOUB is shown as a *rate* on the buy panel's rate board, never as
-   a per-wallet holdings projection.) UX guarantee: if a participant only
-   watches one number, this is the right one.
+   test in `timeCurvePodiumMath.test.ts`). During the sale the **personal DOUB
+   count for wallet holdings** stays **hidden** — DOUB-per-CHARM dilutes as
+   `totalCharmWeight` grows, while CL8Y-at-launch only stays flat or rises.
+   After **`redeemCharms`** (`charmsRedeemed` true), the panel adds **Redeemed
+   DOUB**, **Settled** header chrome, and strikes through the CL8Y projection
+   ([§ Stake-at-launch after redeemCharms](#timecurve-simple-stake-redeemed-issue-90)).
+   (DOUB as a *rate* stays on the buy-panel rate board during the sale.) UX
+   guarantee: if a participant only watches one number during the sale, CL8Y-at-launch is the right stress-free projection.
 5. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.
@@ -296,6 +298,18 @@ Below-the-fold sections (WarBow ladder, podiums, full battle feed,
 `RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and
 `Protocol` respectively. The simple page keeps its DOM small so it stays
 fast on slow mobile connections.
+
+<a id="timecurve-simple-stake-redeemed-issue-90"></a>
+
+## Stake-at-launch after `redeemCharms` (issue #90)
+
+When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90)), the Simple panel [`TimeCurveStakeAtLaunchSection`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.tsx):
+
+1. Shows **Redeemed · X DOUB** using the same allocation ratio as **`redeemCharms`** (`expectedTokenFromCharms` in [`useTimeCurveSaleSession`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts)).
+2. **Dims + strikes through** the **Worth at launch ≈** CL8Y figure (historical projection), with **(redeemed)** on the label — **option B rejected**: do **not** replace that CL8Y line with DOUB-only “worth” (misleading across CL8Y / ETH / USDM entry rails).
+3. Adds **Settled** chrome (green check + badge) in the section header **`actions`** slot.
+
+**Spec ↔ test:** [invariants — stake panel redeemed](../testing/invariants-and-business-logic.md#timecurve-simple-stake-redeemed-issue-90) · [`TimeCurveStakeAtLaunchSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.test.tsx).
 
 ## `TimeCurveProtocolPage` layout
 
