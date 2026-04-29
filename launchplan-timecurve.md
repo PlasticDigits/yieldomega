@@ -1,6 +1,6 @@
 # TimeCurve — Doubloon (DOUB) launch plan
 
-**Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only).
+**Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with most **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only). **`/referrals`** is explicitly **not** under construction — it ships the full referrals UX at TGE ([§6](#6-under-construction-frontend), [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
 
 **Authoritative policy elsewhere:** Runtime fee **weights** (**30%** LP · **40%** CL8Y burned · **20%** podium · **0%** team · **10%** Rabbit) and governance intent are in [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md). Parameter checklist: [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md). Stage 2 smoke criteria: [`docs/testing/strategy.md`](docs/testing/strategy.md) and [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md).
 
@@ -12,7 +12,7 @@
 |-----------|------------|
 | **Contracts** | `TimeCurve.launchedToken` = **DOUB**; `totalTokensForSale` + DOUB pre-positioned on `TimeCurve`; `acceptedAsset` = **official devnet CL8Y**; `FeeRouter` + sinks wired per canonical bps; `RabbitTreasury` + `Doubloon` roles correct. |
 | **Indexer** | Ingests devnet from empty DB; smoke txs visible; lag acceptable per runbook. |
-| **Frontend** | **TimeCurve** path is the real launch UX. **Rabbit Treasury, NFT collection, and any “Kumbaya” / “Sir” pages** show **under construction** messaging (what the feature will be), not full flows — unless explicitly pulled into this milestone. |
+| **Frontend** | **TimeCurve** path is the real launch UX. **`/referrals`** ships the **full** referrals registration + share-link surface at TGE ([`docs/product/referrals.md`](docs/product/referrals.md), [GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)), not an **`UnderConstruction`** stub ([GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)). Other non–TimeCurve routes: **Rabbit Treasury**, **NFT collection**, and **“Kumbaya” / “Sir”** pages show **under construction** messaging (what the feature will be), not full flows — unless explicitly pulled into this milestone. |
 | **Simulations** | TimeCurve Monte Carlo + duration / raise studies run on a schedule (CI nightly or tagged releases) with saved JSON artifacts for regression comparison. |
 | **Fuzzing** | Foundry invariant / fuzz suites green for TimeCurve + treasury paths touched by launch (`forge test`). |
 
@@ -37,7 +37,7 @@
 
 1. Env: `VITE_*` for devnet chain id, RPC, contract addresses, indexer URL.
 2. **TimeCurve:** wallet connect, read sale state, buy, post-sale charm redemption when applicable.
-3. **Everything else:** single-purpose **“Under construction”** copy describing future **Rabbit Treasury**, **Leprechaun NFTs**, **Kumbaya v3 DOUB/CL8Y liquidity**, and **Sir** (perps-style DEX) — no fake trading UIs.
+3. **Non-TimeCurve placeholders (excluding referrals):** single-purpose **“Under construction”** copy describing future **Rabbit Treasury**, **Leprechaun NFTs** ( **`/collection`** ), **Kumbaya v3 DOUB/CL8Y liquidity**, and **Sir** (perps-style DEX) — no fake trading UIs. **`/referrals`** is **out of scope here** — it ships the real [`ReferralsPage`](frontend/src/pages/ReferralsPage.tsx) UX ([GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
 
 ### 2.4 Local E2E before devnet (sanity)
 
@@ -116,7 +116,11 @@ Genesis wiring (Section 4) is not the same as **operational go-live** for **clai
 
 ## 6. Under construction (frontend)
 
-Routes **`/rabbit-treasury`**, **`/collection`**, **`/referrals`** use the **Under construction** banner ([`frontend/src/pages/UnderConstruction.tsx`](frontend/src/pages/UnderConstruction.tsx)). **`/kumbaya`** and **`/sir`** are **third-party DEXes**: disclaimer, **placeholder LP** readout (real values later), and an outbound link when **`VITE_KUMBAYA_DEX_URL`** / **`VITE_SIR_DEX_URL`** is set at build time ([`frontend/src/components/ThirdPartyDexPage.tsx`](frontend/src/components/ThirdPartyDexPage.tsx)). **`/`** and **`/timecurve`** carry the live launch UX.
+**F-11 (launch UX flows):** At TGE, **`/rabbit-treasury`** and **`/collection`** use the **Under construction** banner ([`frontend/src/pages/UnderConstruction.tsx`](frontend/src/pages/UnderConstruction.tsx)). **`/referrals`** does **not** — it renders the full referrals product page ([`ReferralsPage`](frontend/src/pages/ReferralsPage.tsx), [`ReferralRegisterSection`](frontend/src/pages/referrals/ReferralRegisterSection.tsx)) with live registry reads, register + burn, and share links; this matches ongoing verification under [GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64). Spec/reality drift is resolved in [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91).
+
+**Thin alias:** [YO-DOUB-Launch-UX-Flows.md](YO-DOUB-Launch-UX-Flows.md) documents the same **F-11** row for readers searching the legacy filename.
+
+**Third-party surfaces:** **`/kumbaya`** and **`/sir`** are **third-party DEXes**: disclaimer, **placeholder LP** readout (real values later), and an outbound link when **`VITE_KUMBAYA_DEX_URL`** / **`VITE_SIR_DEX_URL`** is set at build time ([`frontend/src/components/ThirdPartyDexPage.tsx`](frontend/src/components/ThirdPartyDexPage.tsx)). **`/`** and **`/timecurve`** carry the live TimeCurve launch UX.
 
 ---
 
@@ -126,7 +130,7 @@ Routes **`/rabbit-treasury`**, **`/collection`**, **`/referrals`** use the **Und
 - [ ] `totalTokensForSale` + genesis split match Section 4 (or updated signed table).
 - [ ] `forge test` + simulation sweep green.
 - [ ] Indexer smoke + optional frontend buy on devnet.
-- [ ] Non-TimeCurve routes: Rabbit / Collection / Referrals under construction; Kumbaya / Sir show third-party LP placeholder + DEX links when configured.
+- [ ] Non-TimeCurve routes: Rabbit / Collection **under construction**; **`/referrals` full surface** ([`docs/product/referrals.md`](docs/product/referrals.md), [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64), [#91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); Kumbaya / Sir show third-party LP placeholder + DEX links when configured.
 
 ---
 
@@ -134,7 +138,9 @@ Routes **`/rabbit-treasury`**, **`/collection`**, **`/referrals`** use the **Und
 
 | Doc | Topic |
 |-----|--------|
+| [`YO-DOUB-Launch-UX-Flows.md`](YO-DOUB-Launch-UX-Flows.md) | **F-11** launch UX row (under construction vs **`/referrals`** shipped) — thin alias for legacy checklists; canonical: **§6** in this file ([GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)) |
 | [`docs/product/primitives.md`](docs/product/primitives.md) | TimeCurve mechanics |
+| [`docs/product/referrals.md`](docs/product/referrals.md) | Referrals mechanics + **`/referrals`** full surface ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)) |
 | [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md) | Fee sinks |
 | [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md) | Deploy parameters |
 | [`docs/testing/strategy.md`](docs/testing/strategy.md) | Stages 1–3 |
