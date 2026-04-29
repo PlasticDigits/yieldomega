@@ -19,7 +19,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Daily growth fraction | 20 % (`0.20`) → `growthRateWad = ln(1.2) ≈ 182_321_556_793_954_592` | Must be > 0; governance-set | Default |
 | Purchase cap multiple | 10× current min buy | Must be ≥ 2 | Default |
 | Timer extension per buy | 120 seconds (2 minutes) | Must be > 0 | Default |
-| Per-wallet buy cooldown | 300 seconds (5 minutes) | Immutable **`buyCooldownSec`**; **&gt; 0** required at deploy; rolling from last successful buy’s **`block.timestamp`** | Default (dev deploy) |
+| Per-wallet buy cooldown | 300 seconds (5 minutes) | Immutable **`buyCooldownSec`**; **&gt; 0** required at deploy; rolling from last successful buy’s **`block.timestamp`**. **Anvil QA only ([issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)):** [`DeployDev.s.sol`](script/DeployDev.s.sol) reads [`DeployDevBuyCooldown.sol`](script/DeployDevBuyCooldown.sol) — **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** (default **1** s) or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`**; default stack unchanged when unset. | Default (dev deploy) |
 | Initial sale countdown | 86 400 seconds (24 h) | First `deadline` is `start + initialTimerSec`; must be > 0; **≤** `timerCapSec` | Default |
 | Maximum remaining timer | 345 600 seconds (96 h) | Ceiling on remaining time after each buy (`now + cap`); must be ≥ extension and ≥ initial | Default (dev deploy) |
 | Reserve podium categories | **4** fixed in `TimeCurve` | **Last buy** · **WarBow** (top BP) · **Defended streak** · **Time booster** — see [primitives](../docs/product/primitives.md) | Canonical |

@@ -16,12 +16,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
+import {DeployDevBuyCooldown} from "./DeployDevBuyCooldown.sol";
 
 /// @notice Deploy all core contracts to a dev/local environment.
 ///         Core game + routing contracts deploy as **UUPS ERC1967 proxies**; logged addresses are **proxy** addresses.
 ///         Tokens (`Doubloon`), NFTs (`LeprechaunNFT`), and dev mocks stay direct deployments (GitLab #54).
 ///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288 (recommended on Anvil; Forge pre-broadcast sim enforces EIP-170 unless raised — see docs/contracts/foundry-and-megaeth.md).
 ///         Outputs addresses to console; copy into deployments/dev-addresses.example.json.
+///         Per-wallet TimeCurve buy cooldown: default **300** s; QA throughput on Anvil via **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`**
+///         (defaults to **1** s) and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** — see [`DeployDevBuyCooldown.sol`](./DeployDevBuyCooldown.sol) ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)).
 ///         See docs/operations/deployment-stages.md and docs/operations/deployment-checklist.md.
 contract DeployDev is Script {
     uint256 internal constant WAD = 1e18;
@@ -114,6 +117,8 @@ contract DeployDev is Script {
             deployer
         );
         console.log("LinearCharmPrice:", address(charmPrice));
+        uint256 buyCooldownSecDev = DeployDevBuyCooldown.readBuyCooldownSec(vm);
+        console.log("TimeCurve buyCooldownSec (dev deploy):", buyCooldownSecDev);
         TimeCurve tc = UUPSDeployLib.deployTimeCurve(
             ERC20(reserveAsset),
             lt,
@@ -127,7 +132,7 @@ contract DeployDev is Script {
             86_400, // initialTimerSec (24h first deadline)
             4 * 86_400, // timerCapSec (max 96h remaining from any buy)
             1_000_000e18, // totalTokensForSale
-            300, // buyCooldownSec (5 minutes; per-wallet pacing)
+            buyCooldownSecDev,
             deployer
         );
         lt.transfer(address(tc), 1_000_000e18);

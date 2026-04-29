@@ -18,6 +18,7 @@ description: Run and reason about Anvil-backed Playwright E2E (bash scripts/e2e-
 - [ ] From repo root: `bash scripts/e2e-anvil.sh` completes **green** (Foundry + `npm ci` in `frontend/` as needed).
 - [ ] If you only run Playwright manually: `cd frontend && ANVIL_E2E=1 VITE_E2E_MOCK_WALLET=1` after a matching build — confirm **one** worker in the list reporter or config.
 - [ ] **ETH route** test: after **`timecurve-simple-paywith-eth`**, expect **Quoted ETH spend** (aria-label) and a resolved quoted amount (not `…`) before moving the slider; then **Buy CHARM** enabled after quote refresh (see [timecurve-views — Buy quote refresh](../../docs/frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56), issue #56).
+- [ ] **Optional:** For **back-to-back buys** from the **same** mock wallet without real-time waits, deploy with **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** ([issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)) — see [e2e-anvil — buy cooldown](../../docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88) and [`skills/verify-yo-anvil-buy-cooldown/SKILL.md`](../verify-yo-anvil-buy-cooldown/SKILL.md).
 
 ## Doc map
 
