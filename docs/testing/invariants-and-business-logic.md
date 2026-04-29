@@ -439,6 +439,20 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 | Vested ≤ allocation (fuzz) | For all `t`, `vested ≤ allocation` | `test_fuzz_vested_lte_allocation` |
 | Token conservation (fuzz) | `balance(vesting) + sum(claimed) == totalAllocated` after claims | `test_fuzz_multi_claim_bounded` |
 
+<a id="presale-vesting-frontend-gitlab-92"></a>
+
+### Presale vesting frontend — `/vesting` (GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92))
+
+| Invariant | Meaning | Evidence |
+|-----------|---------|----------|
+| **Hidden route** | `/vesting` is **not** listed in `RootLayout` primary nav — participants open a **direct URL** only (issue comment: PlasticDigits). | [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx) |
+| **Proxy address** | `VITE_DOUB_PRESALE_VESTING_ADDRESS` must be the **ERC-1967 proxy**, not an implementation row from `run-latest.json` (same rule as other UUPS cores — [issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)). | [`addresses.ts`](../../frontend/src/lib/addresses.ts), [`frontend/.env.example`](../../frontend/.env.example) |
+| **`DeployDev` wiring** | Local `DeployDev` deploys a **dev-only** two-beneficiary vesting (Anvil **#0** + **#1**), **180-day** duration, mints DOUB to the contract, **`setClaimsEnabled(true)`**, **`startVesting()`**, logs **`DoubPresaleVesting:`** for stack scripts. **Production mainnet:** do **not** assume claims are enabled at deploy — follow [final signoff](../operations/final-signoff-and-value-movement.md). | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) |
+| **Schedule UX** | Page states **30% / 70%** cliff + linear, shows **vestingStart** and **vestingStart + vestingDuration** in **local timezone** and **UTC**, and surfaces **allocation / claimed / claimable** for the connected wallet. | [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx), [presale-vesting.md](../frontend/presale-vesting.md) |
+| **Claim** | `claim` CTA disabled when `claimable == 0`, `!claimsEnabled`, or wallet not a beneficiary; matches onchain `claim` revert order (`NotStarted` → `ClaimsNotEnabled` → `NotBeneficiary` — [issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)). | [`DoubPresaleVesting.sol`](../../contracts/src/vesting/DoubPresaleVesting.sol) |
+
+**Play checklist (3rd-party agents):** [`skills/verify-yo-presale-vesting/SKILL.md`](../../skills/verify-yo-presale-vesting/SKILL.md). **Anvil E2E:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh).
+
 ### FeeSink and PodiumPool
 
 | Invariant | Meaning | Tests |
@@ -493,6 +507,7 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 | Chain id / RPC defaults | `chain.test.ts`: finite positive id, bad env falls back, default RPC |
 | Rabbit deposits API path | `indexerApi.test.ts`: `encodeURIComponent` on `user` query |
 | TimeCurve `ledgerSecIntForPhase` + `derivePhase` | Prefers hero `chainNowSec` over block time when set; state machine for Simple + Arena | [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts) (issue [#48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48), [view doc](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)) |
+| Presale vesting display helpers | `formatDoubHuman` + `dualWallClockLines` for `/vesting` | [`presaleVestingFormat.test.ts`](../../frontend/src/pages/presaleVesting/presaleVestingFormat.test.ts) ([issue #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)) |
 
 ### TimeCurve frontend: sale phase and hero timer
 

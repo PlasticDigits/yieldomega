@@ -154,6 +154,21 @@ export const timeCurveBuyRouterAbi = parseAbi([
   "function buyViaKumbaya(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag, uint8 payKind, uint256 swapDeadline, uint256 amountInMaximum, bytes path) payable",
 ]);
 
+/** [`DoubPresaleVesting`](../../contracts/src/vesting/DoubPresaleVesting.sol) — presale DOUB cliff + linear vesting (GitLab #92). */
+export const doubPresaleVestingReadAbi = parseAbi([
+  "function token() view returns (address)",
+  "function totalAllocated() view returns (uint256)",
+  "function vestingDuration() view returns (uint256)",
+  "function vestingStart() view returns (uint256)",
+  "function claimsEnabled() view returns (bool)",
+  "function allocationOf(address) view returns (uint256)",
+  "function claimedOf(address) view returns (uint256)",
+  "function claimable(address) view returns (uint256)",
+  "function isBeneficiary(address) view returns (bool)",
+]);
+
+export const doubPresaleVestingWriteAbi = parseAbi(["function claim()"]);
+
 export const leprechaunReadAbi = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
   "function totalSupply() view returns (uint256)",
