@@ -446,7 +446,7 @@ export function TimeCurveArenaView() {
                             CL8Y
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-arrow">
-                            <ConversionArrow size={12} />
+                            <ConversionArrow size={20} />
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-token">
                             <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
@@ -461,14 +461,14 @@ export function TimeCurveArenaView() {
                             ETH
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-arrow">
-                            <ConversionArrow size={12} />
+                            <ConversionArrow size={20} />
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-token">
                             <img src={CL8Y_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
                             CL8Y
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-arrow">
-                            <ConversionArrow size={12} />
+                            <ConversionArrow size={20} />
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-token">
                             <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
@@ -483,14 +483,14 @@ export function TimeCurveArenaView() {
                             USDM
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-arrow">
-                            <ConversionArrow size={12} />
+                            <ConversionArrow size={20} />
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-token">
                             <img src={CL8Y_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
                             CL8Y
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-arrow">
-                            <ConversionArrow size={12} />
+                            <ConversionArrow size={20} />
                           </span>
                           <span className="timecurve-arena-buy-panel__conversion-token">
                             <img src={CHARM_TOKEN_LOGO} alt="" width={28} height={28} decoding="async" />
