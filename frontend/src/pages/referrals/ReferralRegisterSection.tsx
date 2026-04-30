@@ -11,6 +11,7 @@ import { erc20Abi, referralRegistryReadAbi, referralRegistryWriteAbi, timeCurveR
 import { addresses } from "@/lib/addresses";
 import { formatBpsAsPercent } from "@/lib/formatAmount";
 import { normalizeReferralCode } from "@/lib/referralCode";
+import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 import {
   getStoredMyReferralCodeForWallet,
   setStoredMyReferralCodeForWallet,
@@ -184,6 +185,12 @@ export function ReferralRegisterSection({ className }: Props) {
       normalized = normalizeReferralCode(codeInput);
     } catch (e) {
       setFormErr(e instanceof Error ? e.message : "Invalid referral code.");
+      return;
+    }
+    if (isReferralSlugReservedForRouting(normalized)) {
+      setFormErr(
+        "That code is reserved for app routes (for example arena, protocol, or a top-level path name) and cannot be registered.",
+      );
       return;
     }
     try {
