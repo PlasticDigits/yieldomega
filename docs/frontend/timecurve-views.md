@@ -150,6 +150,39 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 
 **Spec ↔ test:** [invariants — WarBow flag plant opt-in](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [primitives — plant / claim flag](../product/primitives.md) · [`timeCurveUx.ts`](../../frontend/src/lib/timeCurveUx.ts) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
 
+<a id="arena-warbow-hero-actions-issue-101"></a>
+
+## Arena WarBow hero actions (issue #101)
+
+`/timecurve/arena` keeps the detailed [`WarbowSection`](../../frontend/src/pages/timecurve/TimeCurveSections.tsx)
+below the fold, but the `PageHeroArcadeBanner` now exposes the live WarBow
+decision surface directly through
+[`WarbowHeroActions`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.tsx):
+
+1. **Wallet context first:** the hero action area shows connect / connected
+   state plus the viewer's live Battle Points before any PvP CTA.
+2. **Steal without typing:** suggested steal targets come from the contract
+   WarBow podium and indexed leaderboard, deduped by address and filtered
+   client-side for the 2× BP rule when the viewer BP read is available. Selecting
+   a row writes the same `stealVictimInput` used by the detailed section, so the
+   existing live contract reads (`battlePoints`, `stealsReceivedOnDay`) and
+   `describeStealPreflight` remain the final eligibility preview.
+3. **Guard + revenge are obvious:** guard is a visible hero CTA with burn and
+   active-until copy; revenge renders as a single action only when
+   `warbowPendingRevengeStealer` / `warbowPendingRevengeExpiry` say the slot is
+   open, including counterparty and deadline inline.
+4. **Write barriers stay shared:** the hero WarBow cluster is inside the same
+   `ChainMismatchWriteBarrier` pattern as the lower WarBow section, and the
+   submit functions still preflight `chainMismatchWriteMessage` plus
+   `buyFeeRoutingEnabled` before approval / writes.
+
+Indexer rows are a discovery aid only. If candidate rows are stale, the selected
+target still has to pass live onchain reads and wallet simulation. Empty
+candidate state is explicit and points users to the detailed section's manual
+address path.
+
+**Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
+
 <a id="arena-sniper-shark-cutout-issue-80"></a>
 
 ## Arena sniper-shark cutout (issue #80)
@@ -454,6 +487,6 @@ npm run test:e2e -- --workers=5
 
 ---
 
-**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Buy CHARM submit-time sizing (issue #82)](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [testing — Kumbaya swap deadline vs Anvil warp (issue #83)](../testing/invariants-and-business-logic.md#timecurve-kumbaya-swap-deadline-chain-time-issue-83) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [testing — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Buy CHARM submit-time sizing (issue #82)](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [testing — Kumbaya swap deadline vs Anvil warp (issue #83)](../testing/invariants-and-business-logic.md#timecurve-kumbaya-swap-deadline-chain-time-issue-83) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)

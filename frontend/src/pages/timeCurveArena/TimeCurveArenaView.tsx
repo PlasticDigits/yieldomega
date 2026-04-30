@@ -10,7 +10,6 @@ import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrie
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
-import { PageBadge } from "@/components/ui/PageBadge";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
 import { PageHeroArcadeBanner, PageHeroHeading } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
@@ -42,6 +41,7 @@ import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
 import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
+import { WarbowHeroActions } from "./WarbowHeroActions";
 import {
   BattleFeedSection,
   PodiumsSection,
@@ -96,7 +96,7 @@ export function TimeCurveArenaView() {
     useReferral, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCooldownRemainingSec,
     warbowActionHint, warbowBypassBurnWad, warbowFeed, warbowFlagClaimBp, warbowFlagOwnerR,
     warbowFlagPlantR, warbowFlagSilenceSec, warbowGuardBurnWad, warbowLeaderboardRows,
-    warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowTopRows,
+    warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowStealCandidates, warbowTopRows,
     whatMattersNowCards
   } = props;
 
@@ -1044,9 +1044,9 @@ export function TimeCurveArenaView() {
           sceneSrc="/art/scenes/timecurve-arena.jpg"
           lede={
             <>
-              Advanced PvP surface — <strong>WarBow</strong> steals, defended streaks, the four
-              reserve podiums, and the live battle feed. New here? Start on{" "}
-              <Link to="/timecurve">Simple</Link> first.
+              <strong>WarBow is the Arena.</strong> Steal when you are behind, guard before rivals drain you, and
+              answer a pending stealer before revenge expires. New here? Start on <Link to="/timecurve">Simple</Link>{" "}
+              for the calmer buy path.
             </>
           }
           mascot={{
@@ -1056,15 +1056,38 @@ export function TimeCurveArenaView() {
             className: "cutout-decoration--float",
           }}
         >
-          <div className="status-strip" aria-label="Current TimeCurve status">
-            <PageBadge
-              label={saleActive ? "Buy + defend + steal" : saleEnded ? "Redeem + settle" : "Waiting for start"}
-              tone={saleActive ? "live" : saleEnded ? "warning" : "info"}
+          <ChainMismatchWriteBarrier testId="timecurve-arena-hero-warbow-chain-write-gate">
+            <WarbowHeroActions
+              saleActive={saleActive}
+              saleEnded={saleEnded}
+              isConnected={isConnected}
+              address={address}
+              formatWallet={formatWallet}
+              viewerBattlePoints={viewerBattlePoints?.toString()}
+              stealCandidates={warbowStealCandidates}
+              stealVictim={stealVictim}
+              setStealVictimInput={setStealVictimInput}
+              victimStealsToday={victimStealsTodayBigInt?.toString()}
+              victimBattlePoints={victimBattlePointsBigInt?.toString()}
+              warbowMaxSteals={warbowMaxSteals}
+              stealBypass={stealBypass}
+              setStealBypass={setStealBypass}
+              stealPreflight={stealPreflight}
+              warbowPreflightIssue={warbowPreflightIssue}
+              runWarBowSteal={runWarBowSteal}
+              runWarBowGuard={runWarBowGuard}
+              runWarBowRevenge={runWarBowRevenge}
+              guardedActive={guardedActive}
+              guardUntilSec={guardUntilSec.toString()}
+              hasRevengeOpen={hasRevengeOpen}
+              pendingRevengeStealer={pendingRevengeStealer}
+              revengeDeadlineSec={revengeDeadlineSec.toString()}
+              warbowGuardBurnWad={warbowGuardBurnWad.toString()}
+              warbowBypassBurnWad={warbowBypassBurnWad.toString()}
+              buyFeeRoutingEnabled={buyFeeRoutingEnabled}
+              isWriting={isWriting}
             />
-            {guardedActive && <PageBadge label="Guard active" tone="info" />}
-            {hasRevengeOpen && <PageBadge label="Revenge open" tone="warning" />}
-            {canClaimWarBowFlag && <PageBadge label="Flag claim ready" tone="warning" />}
-          </div>
+          </ChainMismatchWriteBarrier>
         </PageHeroArcadeBanner>
       </div>
 
