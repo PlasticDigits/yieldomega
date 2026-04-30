@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
+import { useEffect, useMemo, useState } from "react";
+import { useAccount, useReadContract } from "wagmi";
+import { AmountDisplay } from "@/components/AmountDisplay";
+import { PageSection } from "@/components/ui/PageSection";
+import { StatusMessage } from "@/components/ui/StatusMessage";
+import { timeCurveReadAbi } from "@/lib/abis";
+import { addresses } from "@/lib/addresses";
+import { fetchReferralWalletCharmSummary, type ReferralWalletCharmSummary } from "@/lib/indexerApi";
+import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+
+const WAD = 10n ** 18n;
+
+export function ReferralProgramEarningsSection() {
+  const { address, isConnected } = useAccount();
+  const tc = addresses.timeCurve;
+  const [summary, setSummary] = useState<ReferralWalletCharmSummary | null | undefined>(undefined);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  const { data: pricePerCharmWad } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "currentPricePerCharmWad",
+    query: { enabled: Boolean(tc && isConnected && address), refetchInterval: 15_000 },
+  });
+
+  useEffect(() => {
+    if (!address) {
+      setSummary(undefined);
+      setLoadErr(null);
+      return;
+    }
+    let cancelled = false;
+    setSummary(undefined);
+    setLoadErr(null);
+    void fetchReferralWalletCharmSummary(address).then(
+      (r) => {
+        if (!cancelled) {
+          setSummary(r);
+          if (!r) {
+            setLoadErr("Indexer did not return a summary (check VITE_INDEXER_URL).");
+          }
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setSummary(null);
+          setLoadErr("Could not load referral summary from the indexer.");
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  const totals = useMemo(() => {
+    if (!summary) {
+      return null;
+    }
+    const refW = BigInt(summary.referrer_charm_wad);
+    const refeW = BigInt(summary.referee_charm_wad);
+    const totalCharm = refW + refeW;
+    const p = pricePerCharmWad !== undefined ? BigInt(pricePerCharmWad) : 0n;
+    const cl8yWei = p > 0n && totalCharm > 0n ? (totalCharm * p) / WAD : 0n;
+    return {
+      refW,
+      refeW,
+      totalCharm,
+      cl8yWei,
+      hasPrice: p > 0n,
+    };
+  }, [summary, pricePerCharmWad]);
+
+  return (
+    <PageSection
+      title="Referral program CHARM (indexed)"
+      badgeLabel="Indexer + TimeCurve"
+      badgeTone="info"
+      lede="Totals come from ReferralApplied rows only (referrerCharmAdded when others use your code; refereeCharmAdded when you buy with a code). They are a mirror — TimeCurve + wallet remain authoritative for weight and redemption."
+    >
+      {!isConnected || !address ? (
+        <StatusMessage variant="placeholder">
+          <strong>Connect a wallet</strong> to load indexed referral CHARM splits for your address.
+        </StatusMessage>
+      ) : loadErr ? (
+        <StatusMessage variant="error">{loadErr}</StatusMessage>
+      ) : summary === undefined ? (
+        <StatusMessage variant="muted">Loading referral totals…</StatusMessage>
+      ) : !summary || !totals ? (
+        <StatusMessage variant="muted">No summary data.</StatusMessage>
+      ) : (
+        <div className="data-panel data-panel--stack" data-testid="referrals-program-earnings">
+          <p className="data-panel__label">As referrer (others used your code)</p>
+          <p style={{ margin: 0 }}>
+            <strong>
+              <AmountDisplay raw={summary.referrer_charm_wad} decimals={18} />
+            </strong>{" "}
+            CHARM weight ·{" "}
+            <span className="muted">
+              {summary.referred_buy_count} indexed {Number(summary.referred_buy_count) === 1 ? "buy" : "buys"}
+            </span>
+          </p>
+          <p className="data-panel__label" style={{ marginTop: "1rem" }}>
+            As buyer (you used someone else&apos;s code)
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>
+              <AmountDisplay raw={summary.referee_charm_wad} decimals={18} />
+            </strong>{" "}
+            CHARM weight ·{" "}
+            <span className="muted">
+              {summary.referee_buy_count} indexed {Number(summary.referee_buy_count) === 1 ? "buy" : "buys"}
+            </span>
+          </p>
+          <p className="data-panel__label" style={{ marginTop: "1rem" }}>
+            Combined referral CHARM
+          </p>
+          <p style={{ margin: 0 }}>
+            <strong>
+              <AmountDisplay raw={totals.totalCharm.toString()} decimals={18} />
+            </strong>
+          </p>
+          {totals.totalCharm === 0n ? (
+            <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+              No indexed referral rows yet for this wallet — referral buys will appear after the indexer ingests
+              ReferralApplied logs.
+            </p>
+          ) : totals.hasPrice && totals.cl8yWei > 0n ? (
+            <>
+              <p className="data-panel__label" style={{ marginTop: "1rem" }}>
+                Notional CL8Y (illustrative)
+              </p>
+              <p className="muted" style={{ marginTop: 0 }}>
+                <strong>
+                  <AmountDisplay raw={totals.cl8yWei.toString()} decimals={18} />
+                </strong>{" "}
+                CL8Y at <strong>current</strong> <code className="code-inline">currentPricePerCharmWad</code> ×
+                combined referral CHARM — not historical spend per buy, not a wallet transfer, and not tax or legal
+                advice.
+              </p>
+              <p className="data-panel__label" style={{ marginTop: "1rem" }}>
+                Pay-asset hints (static fallback)
+              </p>
+              <p className="muted" style={{ marginTop: 0, marginBottom: 0 }}>
+                Same CL8Y notional mapped with the app&apos;s non-quoter fallback rates used elsewhere for labels:{" "}
+                <strong>
+                  <AmountDisplay raw={fallbackPayTokenWeiForCl8y(totals.cl8yWei, "usdm").toString()} decimals={18} />
+                </strong>{" "}
+                USDM-shaped units ·{" "}
+                <strong>
+                  <AmountDisplay raw={fallbackPayTokenWeiForCl8y(totals.cl8yWei, "eth").toString()} decimals={18} />
+                </strong>{" "}
+                ETH-shaped units — see repo <code className="code-inline">docs/product/referrals.md</code> (reward
+                math) and <code className="code-inline">frontend/src/lib/kumbayaDisplayFallback.ts</code>.
+              </p>
+            </>
+          ) : (
+            <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+              Set `VITE_TIMECURVE_ADDRESS` and ensure the sale view can read `currentPricePerCharmWad` to show CL8Y
+              notionals.
+            </p>
+          )}
+        </div>
+      )}
+    </PageSection>
+  );
+}

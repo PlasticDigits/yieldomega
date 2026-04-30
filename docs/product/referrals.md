@@ -71,9 +71,23 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 - `ReferralRegistry` — code ownership and CL8Y burn.
 - `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash, plantWarBowFlag)` applies splits.
 
+<a id="referrals-dashboard-issue-94"></a>
+
+## `/referrals` dashboard — leaderboards and earnings ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94))
+
+The frontend may surface **derived** referral metrics for UX. They must map to **measurable indexer fields** or **direct contract views** — never invented scores.
+
+| Surface | Authority | Indexer / RPC |
+|--------|-----------|---------------|
+| **Referrer leaderboard** | Sum of on-chain **`referrerCharmAdded`** per referrer, aggregated from **`ReferralApplied`** logs | `GET /v1/referrals/referrer-leaderboard?limit=&offset=` — ranks by **Σ `referrer_amount`** per `referrer`, with **`referred_buy_count`** = row count. |
+| **Wallet CHARM summary** | Same log fields, filtered by wallet | `GET /v1/referrals/wallet-charm-summary?wallet=0x…` — **`referrer_charm_wad`** = Σ `referrer_amount` where `referrer = wallet`; **`referee_charm_wad`** = Σ `referee_amount` where `buyer = wallet`; counts are indexed referral buy rows (not total sale CHARM weight). |
+| **CL8Y / pay-asset “notional” on `/referrals`** | Illustrative only | Uses live **`currentPricePerCharmWad`** × combined indexed referral CHARM for **spot CL8Y** at the current sale curve; **USDM** / **ETH** hints reuse the same **static fallback** multipliers as other pay-mode labels (`frontend/src/lib/kumbayaDisplayFallback.ts`), not live DEX quotes. |
+
+**Wagmi** currently exposes **one active address**; the “Connected wallet” panel documents that multi-account wallets still switch one address at a time.
+
 ## Automated checks (frontend)
 
-Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-charm-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](../../skills/verify-yo-referrals-surface/SKILL.md). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
 
 ---
 

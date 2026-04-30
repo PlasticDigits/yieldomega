@@ -192,6 +192,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/timecurve/prize-payouts?limit=2",
         "/v1/referrals/registrations?limit=2",
         "/v1/referrals/applied?limit=2",
+        "/v1/referrals/referrer-leaderboard?limit=2",
         "/v1/leprechauns/mints?limit=2",
         "/v1/fee-router/sinks-updates?limit=2",
         "/v1/fee-router/fees-distributed?limit=2",
@@ -208,6 +209,34 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         let j = response_json(res).await;
         assert!(j["items"].is_array(), "path {path}");
     }
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/wallet-charm-summary?wallet=0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/wallet-charm-summary?wallet=0xdddddddddddddddddddddddddddddddddddddddd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let wsum = response_json(res).await;
+    assert_eq!(wsum["wallet"], "0xdddddddddddddddddddddddddddddddddddddddd");
+    assert!(wsum["referrer_charm_wad"].is_string());
+    assert!(wsum["referee_charm_wad"].is_string());
 
     let res = app
         .clone()

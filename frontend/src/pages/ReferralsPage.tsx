@@ -4,6 +4,9 @@ import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
+import { ReferralConnectedWalletSection } from "@/pages/referrals/ReferralConnectedWalletSection";
+import { ReferralLeaderboardSection } from "@/pages/referrals/ReferralLeaderboardSection";
+import { ReferralProgramEarningsSection } from "@/pages/referrals/ReferralProgramEarningsSection";
 import { ReferralRegisterSection } from "@/pages/referrals/ReferralRegisterSection";
 
 const CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
@@ -45,6 +48,9 @@ export function ReferralsPage() {
           className: "cutout-decoration--peek",
         }}
       />
+      <ReferralConnectedWalletSection />
+      <ReferralProgramEarningsSection />
+      <ReferralLeaderboardSection />
       <PageSection
         title="Links that count"
         badgeLabel="Client capture"
