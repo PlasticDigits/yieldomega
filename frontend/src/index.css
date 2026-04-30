@@ -3899,6 +3899,19 @@ code {
   width: 3.4rem;
 }
 
+/* Podium winner row: explorer link wraps blockie + label without breaking flex layout */
+a.podium-address-explorer {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.podium-address-explorer:hover .address-inline__label {
+  text-decoration: underline;
+}
+
 /* Blockie + compact label — TimeCurve lists, referrals, FeeRouter sinks, etc. */
 .address-inline {
   display: inline-flex;
