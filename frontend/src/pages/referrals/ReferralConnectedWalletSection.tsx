@@ -19,11 +19,13 @@ function isNonZeroBytes32(v: `0x${string}` | bigint | undefined): boolean {
   return BigInt(v) !== 0n;
 }
 
+type Props = { className?: string };
+
 /**
  * Single **wagmi** connection today — one `address`. Multi-account wallets still
  * surface one active address at a time; switching accounts updates this panel.
  */
-export function ReferralConnectedWalletSection() {
+export function ReferralConnectedWalletSection({ className }: Props) {
   const { address, isConnected } = useAccount();
   const tc = addresses.timeCurve;
 
@@ -80,15 +82,22 @@ export function ReferralConnectedWalletSection() {
 
   return (
     <PageSection
+      className={className}
       title="Connected wallet"
       badgeLabel="ReferralRegistry"
       badgeTone="live"
-      lede="On-chain `ownerCode` is authoritative; plaintext share strings live in this browser only when you registered here (see storage keys in the section below)."
+      lede="The active wallet's ownerCode is read from ReferralRegistry. Plaintext is local UX only."
     >
       {!isConnected || !address ? (
-        <StatusMessage variant="placeholder">
-          <strong>Connect a wallet</strong> to see registration state for the active address.
-        </StatusMessage>
+        <div className="referrals-empty-state referrals-empty-state--wallet">
+          <span className="referrals-empty-state__icon" aria-hidden="true">
+            0x
+          </span>
+          <div>
+            <strong>Connect a wallet</strong>
+            <p>We will show whether the active address has a registered code and whether this browser knows the plaintext.</p>
+          </div>
+        </div>
       ) : !registry ? (
         <StatusMessage variant="placeholder">Referral registry is not configured for this build.</StatusMessage>
       ) : (

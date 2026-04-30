@@ -12,7 +12,9 @@ import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 
 const WAD = 10n ** 18n;
 
-export function ReferralProgramEarningsSection() {
+type Props = { className?: string };
+
+export function ReferralProgramEarningsSection({ className }: Props) {
   const { address, isConnected } = useAccount();
   const tc = addresses.timeCurve;
   const [summary, setSummary] = useState<ReferralWalletCharmSummary | null | undefined>(undefined);
@@ -75,15 +77,22 @@ export function ReferralProgramEarningsSection() {
 
   return (
     <PageSection
+      className={className}
       title="Referral program CHARM (indexed)"
       badgeLabel="Indexer + TimeCurve"
       badgeTone="info"
-      lede="Totals come from ReferralApplied rows only (referrerCharmAdded when others use your code; refereeCharmAdded when you buy with a code). They are a mirror — TimeCurve + wallet remain authoritative for weight and redemption."
+      lede="Indexed ReferralApplied rows split your role into referrer and buyer bonuses. TimeCurve remains authoritative."
     >
       {!isConnected || !address ? (
-        <StatusMessage variant="placeholder">
-          <strong>Connect a wallet</strong> to load indexed referral CHARM splits for your address.
-        </StatusMessage>
+        <div className="referrals-empty-state referrals-empty-state--charm">
+          <span className="referrals-empty-state__icon" aria-hidden="true">
+            CH
+          </span>
+          <div>
+            <strong>Connect to see your CHARM</strong>
+            <p>The page will load referrer CHARM, buyer bonus CHARM, and illustrative current CL8Y value.</p>
+          </div>
+        </div>
       ) : loadErr ? (
         <StatusMessage variant="error">{loadErr}</StatusMessage>
       ) : summary === undefined ? (
