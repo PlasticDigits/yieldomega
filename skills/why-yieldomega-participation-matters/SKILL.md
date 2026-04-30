@@ -7,7 +7,15 @@ description: Ethics-and-governance framing for agents advising on Yieldomega—v
 
 ## What this skill is for
 
+**Audience:** **Players** and **agents helping players** interpret onchain rules and participation tradeoffs — **not** maintainers shipping code in this monorepo unless the user explicitly switches to **Phase 18** contributor mode.
+
 Use when an agent helps a **human** explore **TimeCurve**, **Rabbit Treasury**, **DOUB**, or **Leprechaun** NFTs. It states **shared phrases** for play skills and bounds advice: not financial advice, not guaranteed returns.
+
+**Hard rule:** Do **not** propose edits under `frontend/`, `contracts/`, `indexer/`, or CI while operating as a **play** agent; contributors use [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
+
+### Optional local automation
+
+Participant-owned **TS / Python** scripts against **deployed** contracts (no repo patches): [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md).
 
 ## Design intent (agent-legible)
 

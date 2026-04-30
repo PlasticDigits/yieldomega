@@ -42,7 +42,7 @@ Use this skill when editing or running the **`timecurve-bot`** package.
 4. `.venv/bin/timecurve-bot inspect` (reads only).
 5. For scripted activity: `timecurve-bot --send --allow-anvil-cheat seed-local`.
 
-**Full stack:** [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) preflights `import web3` before the optional bot swarm; see README **PEP 668** if that step fails ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). With **`SKIP_ANVIL_RICH_STATE=1`**, the stack defaults **`START_BOT_SWARM=1`** and starts Anvil with interval mining plus optional notes on **`buyCooldownSec`** — [GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99), [`skills/verify-yo-bot-swarm-local-anvil/SKILL.md`](../../skills/verify-yo-bot-swarm-local-anvil/SKILL.md).
+**Full stack:** [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) preflights `import web3` before the optional bot swarm; see README **PEP 668** if that step fails ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). With **`SKIP_ANVIL_RICH_STATE=1`**, the stack defaults **`START_BOT_SWARM=1`** and starts Anvil with interval mining plus optional notes on **`buyCooldownSec`** — [GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99), [`../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99`](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99).
 
 ## Public RPC
 
