@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { MouseEvent } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { WalletBlockie } from "@/components/WalletBlockie";
 import { shortAddress, type WalletFormatShort } from "@/lib/addressFormat";
+import { explorerAddressUrl } from "@/lib/explorer";
 
 export type AddressInlineProps = {
   address: string | undefined;
@@ -13,11 +15,18 @@ export type AddressInlineProps = {
   size?: number;
   className?: string;
   labelClassName?: string;
+  /**
+   * When true (default), valid non-zero addresses link to the configured block explorer
+   * (`VITE_EXPLORER_BASE_URL`, default MegaETH Etherscan).
+   */
+  explorer?: boolean;
+  /** Use on parent click surfaces so explorer navigation does not bubble (e.g. live-buy row). */
+  onExplorerLinkClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
 };
 
 /**
  * Wallet / contract address with an ethereum-blockies identicon (same family
- * as MetaMask) plus a compact text label.
+ * as MetaMask) plus a compact text label and optional explorer link (GitLab #98).
  */
 export function AddressInline({
   address,
@@ -26,16 +35,49 @@ export function AddressInline({
   size = 20,
   className,
   labelClassName,
+  explorer = true,
+  onExplorerLinkClick,
 }: AddressInlineProps) {
   const raw = address?.trim();
   if (!raw || !isAddress(raw as `0x${string}`) || raw.toLowerCase() === zeroAddress.toLowerCase()) {
     return <span className={labelClassName ?? "mono"}>{fallback}</span>;
   }
   const label = formatWallet ? formatWallet(raw, fallback) : shortAddress(raw, fallback);
-  return (
-    <span className={["address-inline", className].filter(Boolean).join(" ")} title={raw}>
+  const href = explorer ? explorerAddressUrl(raw) : undefined;
+
+  const labelSpan = (
+    <span className={["mono", "address-inline__label", labelClassName].filter(Boolean).join(" ")}>{label}</span>
+  );
+
+  const cluster = (
+    <>
       <WalletBlockie address={raw} size={size} className="address-inline__blockie" title={raw} />
-      <span className={["mono", "address-inline__label", labelClassName].filter(Boolean).join(" ")}>{label}</span>
+      {labelSpan}
+    </>
+  );
+
+  const wrapClass = ["address-inline", className].filter(Boolean).join(" ");
+
+  if (href) {
+    return (
+      <span className={wrapClass}>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="address-inline__link cursor-external-link"
+          aria-label={`View address on block explorer (opens in new tab): ${raw}`}
+          onClick={onExplorerLinkClick}
+        >
+          {cluster}
+        </a>
+      </span>
+    );
+  }
+
+  return (
+    <span className={wrapClass} title={raw}>
+      {cluster}
     </span>
   );
 }

@@ -330,11 +330,13 @@ export function TimeCurveArenaView() {
           <div className="timer-hero__inner">
             <div className="timer-hero__split">
               <TimerHeroLiveBuys
-                buys={null}
-                indexedTotal={null}
-                indexerNote="Set VITE_TIMECURVE_ADDRESS to load recent buys from the indexer."
+                buys={buys}
+                indexedTotal={buysTotal}
+                indexerNote={indexerNote}
                 formatWallet={formatWallet}
-                envelopeParams={null}
+                envelopeParams={buyEnvelopeParams}
+                onSelectBuy={indexerBaseUrl() && indexerNote === null ? selectBuy : undefined}
+                onMore={indexerBaseUrl() && indexerNote === null ? openBuyListModal : undefined}
               />
             </div>
           </div>
@@ -355,6 +357,24 @@ export function TimeCurveArenaView() {
             }}
           />
         </div>
+
+        <TimecurveBuyModals
+          listOpen={buyListModalOpen}
+          onCloseList={() => setBuyListModalOpen(false)}
+          detailBuy={detailBuy}
+          onCloseDetail={() => setDetailBuy(null)}
+          onSelectBuy={selectBuy}
+          buys={buys}
+          indexedTotal={buysTotal}
+          buysLoading={buys === null && indexerNote === null}
+          buysNextOffset={buysNextOffset}
+          loadingMoreBuys={loadingMoreBuys}
+          onLoadMoreBuys={handleLoadMoreBuys}
+          address={address}
+          formatWallet={formatWallet}
+          decimals={decimals}
+          envelopeParams={buyEnvelopeParams}
+        />
       </section>
     );
   }
