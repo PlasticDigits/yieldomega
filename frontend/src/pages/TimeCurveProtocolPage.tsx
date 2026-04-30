@@ -2,6 +2,7 @@
 
 import { useReadContracts } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { AddressInline } from "@/components/AddressInline";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -175,7 +176,7 @@ export function TimeCurveProtocolPage() {
   const renderAddress = (i: number) => {
     const r = get(i);
     if (r?.status === "success" && r.result !== undefined) {
-      return <span className="mono">{String(r.result)}</span>;
+      return <AddressInline address={String(r.result)} size={18} />;
     }
     return "—";
   };
@@ -369,7 +370,7 @@ export function TimeCurveProtocolPage() {
               return (
                 <li key={label}>
                   <strong>{label}</strong> · weight {formatBpsAsPercent(Number(weightBps))} ·{" "}
-                  <span className="mono">{destination}</span>
+                  <AddressInline address={destination} size={16} />
                 </li>
               );
             })}

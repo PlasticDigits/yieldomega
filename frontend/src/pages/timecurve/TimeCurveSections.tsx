@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { AddressInline } from "@/components/AddressInline";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { TxHash } from "@/components/TxHash";
 import { PageBadge } from "@/components/ui/PageBadge";
@@ -90,7 +91,7 @@ function WarbowPendingFlagChainPanel(props: {
       )}
       {hasPending && inSilence && (
         <StatusMessage variant="muted">
-          <strong>Silence window active.</strong> Holder {formatWallet(owner, "—")} — about{" "}
+          <strong>Silence window active.</strong> Holder <AddressInline address={owner} formatWallet={formatWallet} size={16} /> — about{" "}
           <strong>{formatLocaleInteger(remainingSec)}</strong>s remaining until the holder may claim (ends{" "}
           <UnixTimestampDisplay raw={silenceEnd.toString()} />
           ). Countdown uses the Arena ledger clock (not the buy indexer).
@@ -99,7 +100,7 @@ function WarbowPendingFlagChainPanel(props: {
       )}
       {hasPending && !inSilence && saleActive && (
         <StatusMessage variant="muted">
-          <strong>Claim window open.</strong> {formatWallet(owner, "—")} may call <code>claimWarBowFlag</code> for the
+          <strong>Claim window open.</strong> <AddressInline address={owner} formatWallet={formatWallet} size={16} /> may call <code>claimWarBowFlag</code> for the
           silence bonus, or another buy will clear the slot
           {viewerHolds ? " (you can use Claim flag above)." : "."}
         </StatusMessage>
@@ -579,9 +580,7 @@ export function PodiumsSection(props: {
                         key: `podium-${index}-${winner}-${placeIndex}`,
                         rank: placeIndex + 1,
                         label: (
-                          <span className="mono" title={winner}>
-                            {formatWallet(winner, "—")}
-                          </span>
+                          <AddressInline address={winner} formatWallet={formatWallet} size={16} />
                         ),
                         value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? "0"),
                         meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
@@ -714,9 +713,7 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {claims.map((claim) => (
                     <li key={`${claim.tx_hash}-${claim.log_index}`}>
-                      <span className="mono" title={claim.buyer}>
-                        {formatWallet(claim.buyer, "—")}
-                      </span>{" "}
+                      <AddressInline address={claim.buyer} formatWallet={formatWallet} size={16} />{" "}
                       redeemed{" "}
                       <AmountDisplay raw={String(claim.token_amount)} decimals={18} /> · tx <TxHash hash={claim.tx_hash} />
                     </li>
@@ -746,9 +743,7 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {prizePayouts.map((item) => (
                     <li key={`${item.tx_hash}-${item.log_index}`}>
-                      <span className="mono" title={item.winner}>
-                        {formatWallet(item.winner, "—")}
-                      </span>{" "}
+                      <AddressInline address={item.winner} formatWallet={formatWallet} size={16} />{" "}
                       · category {item.category} · place{" "}
                       {item.placement} · <AmountDisplay raw={String(item.amount)} decimals={decimals} /> · tx{" "}
                       <TxHash hash={item.tx_hash} />
@@ -767,9 +762,7 @@ export function BattleFeedSection(props: {
                   {refApplied.map((item) => (
                     <li key={`${item.tx_hash}-${item.log_index}`}>
                       buyer{" "}
-                      <span className="mono" title={item.buyer}>
-                        {formatWallet(item.buyer, "—")}
-                      </span>{" "}
+                      <AddressInline address={item.buyer} formatWallet={formatWallet} size={16} />{" "}
                       · referrer CHARM{" "}
                       <AmountDisplay raw={String(item.referrer_amount)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
                     </li>
@@ -964,18 +957,19 @@ export function RawDataAccordion(props: {
                       : "—"}
                   </dd>
                   <dt>revenge</dt>
-                  <dd
-                    className="mono"
-                    title={
-                      pendingRevengeStealer &&
-                      pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
-                        ? pendingRevengeStealer
-                        : undefined
-                    }
-                  >
-                    {pendingRevengeStealer && pendingRevengeStealer !== "0x0000000000000000000000000000000000000000"
-                      ? `${formatWallet(pendingRevengeStealer, "—")} · ${formatUnixSecIsoUtc(BigInt(revengeDeadlineSec))}`
-                      : "—"}
+                  <dd>
+                    {pendingRevengeStealer && pendingRevengeStealer !== ZERO_ADDR ? (
+                      <>
+                        <AddressInline
+                          address={pendingRevengeStealer}
+                          formatWallet={formatWallet}
+                          size={16}
+                        />{" "}
+                        <span className="mono">· {formatUnixSecIsoUtc(BigInt(revengeDeadlineSec))}</span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </dd>
                 </dl>
                 {buyerStats && (

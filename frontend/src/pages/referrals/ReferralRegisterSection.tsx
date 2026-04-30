@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { maxUint256 } from "viem";
+import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { erc20Abi, referralRegistryReadAbi, referralRegistryWriteAbi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { formatBpsAsPercent } from "@/lib/formatAmount";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
@@ -18,6 +20,7 @@ import {
 } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { wagmiConfig } from "@/wagmi-config";
+import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import {
   REFERRAL_COPY_BANNER_MS,
   REFERRAL_COPY_ERROR_REJECTED,
@@ -39,6 +42,8 @@ type Props = { className?: string };
 
 export function ReferralRegisterSection({ className }: Props) {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { mismatch: chainMismatchForWrites } = useWalletTargetChainMismatch();
   const { writeContractAsync, isPending: isWritePending } = useWriteContract();
   const [codeInput, setCodeInput] = useState("");
   const [formErr, setFormErr] = useState<string | null>(null);
@@ -176,6 +181,11 @@ export function ReferralRegisterSection({ className }: Props) {
 
   const onRegister = useCallback(async () => {
     setFormErr(null);
+    const netErr = chainMismatchWriteMessage(chainId);
+    if (netErr) {
+      setFormErr(netErr);
+      return;
+    }
     if (!registry || !address || !cl8yToken || !burnWad) {
       setFormErr("Referral registry is not available on this build.");
       return;
@@ -223,7 +233,7 @@ export function ReferralRegisterSection({ className }: Props) {
     } catch (e) {
       setFormErr(friendlyRevertFromUnknown(e));
     }
-  }, [address, burnWad, cl8yToken, codeInput, refetchOwner, registry, writeContractAsync]);
+  }, [address, burnWad, chainId, cl8yToken, codeInput, refetchOwner, registry, writeContractAsync]);
 
   if (!registry) {
     return (
@@ -261,6 +271,7 @@ export function ReferralRegisterSection({ className }: Props) {
         </p>
       </PageSection>
 
+      <ChainMismatchWriteBarrier testId="referrals-register-chain-write-gate">
       <PageSection
         title="Register a code"
         badgeLabel="CL8Y burn"
@@ -363,7 +374,12 @@ export function ReferralRegisterSection({ className }: Props) {
                   autoComplete="off"
                 />
               </label>
-              <button type="button" className="btn-primary" onClick={onRegister} disabled={isWritePending || !codeInput.trim()}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={onRegister}
+                disabled={chainMismatchForWrites || isWritePending || !codeInput.trim()}
+              >
                 {isWritePending ? "Confirm in wallet…" : "Register & burn CL8Y"}
               </button>
             </div>
@@ -371,6 +387,7 @@ export function ReferralRegisterSection({ className }: Props) {
           </div>
         )}
       </PageSection>
+      </ChainMismatchWriteBarrier>
     </div>
   );
 }

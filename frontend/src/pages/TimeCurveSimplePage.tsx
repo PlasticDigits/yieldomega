@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatUnits } from "viem";
+import { useWatchContractEvent } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
+import { AddressInline } from "@/components/AddressInline";
+import { timeCurveBuyEventAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
@@ -18,7 +22,6 @@ import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
-import { shortAddress } from "@/lib/addressFormat";
 import {
   CHARM_TOKEN_LOGO,
   CL8Y_TOKEN_LOGO,
@@ -29,6 +32,17 @@ import {
   doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
 } from "@/lib/timeCurvePodiumMath";
+import {
+  displayMinGrossSpendAtFloat,
+  maxGrossSpendAtFloat,
+} from "@/lib/timeCurveMath";
+import {
+  envelopeCurveParamsFromWire,
+  formatBuyAge,
+  type EnvelopeCurveParams,
+} from "@/lib/timeCurveBuyDisplay";
+import { listBuyImpactTicks, type BuyImpactTick } from "@/lib/timeCurveUx";
+import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
@@ -73,10 +87,89 @@ function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean
   return "";
 }
 
+function parseTickerBigInt(value: string | undefined | null): bigint | null {
+  if (!value?.trim()) return null;
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
+}
+
+function buyBandPosition(
+  buy: BuyItem,
+  envelopeParams: EnvelopeCurveParams | null,
+  fallbackBounds: { minS: bigint; maxS: bigint } | null,
+): { percent: number; title: string } | null {
+  const amount = parseTickerBigInt(buy.amount);
+  if (amount === null) return null;
+
+  let minSpend: bigint | undefined;
+  let maxSpend: bigint | undefined;
+  if (envelopeParams && buy.block_timestamp?.trim()) {
+    try {
+      const elapsedSec = Math.max(
+        0,
+        Number(BigInt(buy.block_timestamp.trim())) - envelopeParams.saleStartSec,
+      );
+      minSpend = displayMinGrossSpendAtFloat(
+        envelopeParams.charmEnvelopeRefWad,
+        envelopeParams.growthRateWad,
+        envelopeParams.basePriceWad,
+        envelopeParams.dailyIncrementWad,
+        elapsedSec,
+      );
+      maxSpend = maxGrossSpendAtFloat(
+        envelopeParams.charmEnvelopeRefWad,
+        envelopeParams.growthRateWad,
+        envelopeParams.basePriceWad,
+        envelopeParams.dailyIncrementWad,
+        elapsedSec,
+      );
+    } catch {
+      minSpend = undefined;
+      maxSpend = undefined;
+    }
+  }
+
+  if ((minSpend === undefined || maxSpend === undefined) && fallbackBounds) {
+    minSpend = fallbackBounds.minS;
+    maxSpend = fallbackBounds.maxS;
+  }
+  if (minSpend === undefined || maxSpend === undefined || maxSpend <= minSpend) return null;
+  if (amount <= minSpend) {
+    return { percent: 0, title: "At the live minimum buy band" };
+  }
+  if (amount >= maxSpend) {
+    return { percent: 100, title: "At the live maximum buy band" };
+  }
+  const percent = Number(((amount - minSpend) * 10_000n) / (maxSpend - minSpend)) / 100;
+  return {
+    percent,
+    title: `${Math.round(percent)}% from the minimum to maximum CL8Y buy band`,
+  };
+}
+
+function tickerImpactTicks(buy: BuyItem): BuyImpactTick[] {
+  const ticks = listBuyImpactTicks(buy, 6);
+  const out: BuyImpactTick[] = [];
+  if (buy.flag_planted === true) {
+    out.push({ id: "flag-plant", label: "Flag planted", tone: "warning" });
+  }
+  out.push(...ticks);
+  const activeStreak = parseTickerBigInt(buy.buyer_active_defended_streak);
+  if (activeStreak !== null && activeStreak > 0n && !out.some((tick) => tick.id === "def")) {
+    out.push({ id: "streak", label: "Streak", sub: `${activeStreak.toString()}x`, tone: "info" });
+  }
+  return out.slice(0, 6);
+}
+
 export function TimeCurveSimplePage() {
   const tc = addresses.timeCurve;
   const session = useTimeCurveSaleSession(tc);
+  const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const prefersReducedMotion = useReducedMotion();
+  const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
 
   const phaseInfo = phaseBadge(session.phase);
 
@@ -96,6 +189,33 @@ export function TimeCurveSimplePage() {
   /** `null` until the first indexer buys poll finishes; then tracks the latest poll. */
   const [buyPollLastOk, setBuyPollLastOk] = useState<boolean | null>(null);
   const { isOffline } = useIndexerConnectivity();
+  const [tickerNowSec, setTickerNowSec] = useState(() => Math.floor(Date.now() / 1000));
+
+  useWatchContractEvent({
+    address: tc,
+    abi: timeCurveBuyEventAbi,
+    eventName: "Buy",
+    enabled: Boolean(tc && indexerBaseUrl()),
+    onLogs: () => {
+      setBuyFeedRefreshNonce((n) => n + 1);
+    },
+  });
+
+  useEffect(() => {
+    setTickerNowSec(Math.floor(session.chainNowSec ?? Date.now() / 1000));
+  }, [session.chainNowSec]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setTickerNowSec((prev) => prev + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const tickerEnvelopeParams = useMemo(
+    () => envelopeCurveParamsFromWire(session.buyEnvelopeParams),
+    [session.buyEnvelopeParams],
+  );
 
   useTimeCurveSimplePageSfx({
     recentBuys,
@@ -116,7 +236,7 @@ export function TimeCurveSimplePage() {
 
     const tick = async () => {
       try {
-        const buys = await fetchTimecurveBuys(3, 0);
+        const buys = await fetchTimecurveBuys(5, 0);
         if (cancelled) return;
         const ok = buys != null;
         reportIndexerFetchAttempt(ok);
@@ -143,7 +263,7 @@ export function TimeCurveSimplePage() {
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [buyFeedRefreshNonce]);
 
   // Launch-anchor invariant (DoubLPIncentives policy): 1 CHARM is projected
   // to be worth `1.2 × pricePerCharmWad` CL8Y at launch. We expose three
@@ -341,6 +461,7 @@ export function TimeCurveSimplePage() {
     session.phase !== "saleActive" ||
     session.isWriting ||
     !session.walletConnected ||
+    chainMismatch ||
     session.walletCooldownRemainingSec > 0 ||
     session.charmWadSelected === undefined ||
     nonCl8yBlocked ||
@@ -686,16 +807,20 @@ export function TimeCurveSimplePage() {
               {lastExtension.reset ? (
                 <>
                   Hard reset by{" "}
-                  <span className="timecurve-simple__last-extension-addr">
-                    {shortAddress(lastExtension.buyer)}
-                  </span>
+                  <AddressInline
+                    address={lastExtension.buyer}
+                    size={14}
+                    className="timecurve-simple__last-extension-addr"
+                  />
                 </>
               ) : (
                 <>
                   Just +{lastExtension.secs}s by{" "}
-                  <span className="timecurve-simple__last-extension-addr">
-                    {shortAddress(lastExtension.buyer)}
-                  </span>
+                  <AddressInline
+                    address={lastExtension.buyer}
+                    size={14}
+                    className="timecurve-simple__last-extension-addr"
+                  />
                 </>
               )}
             </span>
@@ -731,6 +856,7 @@ export function TimeCurveSimplePage() {
                 : "The sale will open here when the timer hits zero."
           }
         >
+          <ChainMismatchWriteBarrier testId="timecurve-simple-chain-write-gate">
           {/* "Vending machine" sidekick — anchors the gold buy panel to
               the Yieldomega cast and visually echoes "this is where you
               spend coins". The bob loop is suppressed for users with
@@ -876,6 +1002,7 @@ export function TimeCurveSimplePage() {
                 className="btn-primary timecurve-simple__cta"
                 disabled={
                   session.isWriting ||
+                  chainMismatch ||
                   session.charmsRedeemed === true ||
                   session.charmWeightWad === undefined ||
                   session.charmWeightWad === 0n ||
@@ -909,6 +1036,7 @@ export function TimeCurveSimplePage() {
               <code>endSale()</code>; the Arena view exposes a button.
             </StatusMessage>
           )}
+          </ChainMismatchWriteBarrier>
         </PageSection>
       </div>
 
@@ -946,29 +1074,77 @@ export function TimeCurveSimplePage() {
               </p>
             )}
             <ul className="timecurve-simple__activity-list">
-              {recentBuys.slice(0, 3).map((b) => (
-                <li
-                  key={`${b.tx_hash}-${b.log_index}`}
-                  className={`timecurve-simple__ticker-row ${buyEventTone(b.actual_seconds_added, b.timer_hard_reset)}`}
-                >
-                  <span className="mono" title={b.buyer}>
-                    {shortAddress(b.buyer)}
-                  </span>
-                  <span>
-                    <AmountDisplay raw={b.amount} decimals={session.decimals} />
-                  </span>
-                  <span>
-                    {b.timer_hard_reset
-                      ? "hard reset"
-                      : b.actual_seconds_added !== undefined
-                        ? `+${formatLocaleInteger(BigInt(b.actual_seconds_added))}s`
-                        : ""}
-                  </span>
-                  <span>
-                    tx <TxHash hash={b.tx_hash} />
-                  </span>
-                </li>
-              ))}
+              {recentBuys.slice(0, 5).map((b) => {
+                const band = buyBandPosition(b, tickerEnvelopeParams, session.cl8ySpendBounds);
+                const age = formatBuyAge(b.block_timestamp, tickerNowSec);
+                const ticks = tickerImpactTicks(b);
+                const bandPercent = band ? Math.round(band.percent) : null;
+                return (
+                  <li
+                    key={`${b.tx_hash}-${b.log_index}`}
+                    className={`timecurve-simple__ticker-row ${buyEventTone(b.actual_seconds_added, b.timer_hard_reset)}`}
+                  >
+                    <div className="timecurve-simple__ticker-main">
+                      <AddressInline
+                        address={b.buyer}
+                        size={22}
+                        className="timecurve-simple__ticker-buyer"
+                      />
+                      <span className="timecurve-simple__ticker-age">
+                        {age ?? `block ${formatLocaleInteger(b.block_number)}`}
+                      </span>
+                    </div>
+                    <div className="timecurve-simple__ticker-amounts">
+                      <span className="timecurve-simple__ticker-amount">
+                        <strong>{formatCompactFromRaw(b.amount, session.decimals, { sigfigs: 4 })}</strong>
+                        <span> CL8Y spent</span>
+                      </span>
+                      <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
+                        <strong>{formatCompactFromRaw(b.charm_wad, 18, { sigfigs: 4 })}</strong>
+                        <span> CHARM minted</span>
+                      </span>
+                    </div>
+                    <div
+                      className="timecurve-simple__ticker-band"
+                      title={band?.title ?? "Min/max band position unavailable for this indexed buy"}
+                    >
+                      <div className="timecurve-simple__ticker-band-head">
+                        <span>Min</span>
+                        <strong>{bandPercent !== null ? `${bandPercent}% of band` : "Band pending"}</strong>
+                        <span>Max</span>
+                      </div>
+                      <div className="timecurve-simple__ticker-band-track" aria-hidden="true">
+                        <span
+                          className={
+                            bandPercent !== null
+                              ? "timecurve-simple__ticker-band-fill"
+                              : "timecurve-simple__ticker-band-fill timecurve-simple__ticker-band-fill--unknown"
+                          }
+                          style={bandPercent !== null ? { width: `${Math.max(5, bandPercent)}%` } : undefined}
+                        />
+                      </div>
+                    </div>
+                    <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
+                      {ticks.map((tick) => (
+                        <li key={tick.id} className={`live-buy-tick live-buy-tick--${tick.tone}`}>
+                          <span className="live-buy-tick__label">{tick.label}</span>
+                          {tick.sub ? <span className="live-buy-tick__sub">{tick.sub}</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="timecurve-simple__ticker-meta">
+                      {b.battle_points_after ? (
+                        <span>{formatLocaleInteger(BigInt(b.battle_points_after))} BP</span>
+                      ) : (
+                        <span>WarBow BP pending</span>
+                      )}
+                      <span>
+                        tx <TxHash hash={b.tx_hash} />
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </>
         ) : buyPollLastOk === true && recentBuys && recentBuys.length === 0 && !isOffline ? (
