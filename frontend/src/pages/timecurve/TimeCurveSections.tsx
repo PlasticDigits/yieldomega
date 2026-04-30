@@ -11,6 +11,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
 import { formatBpsAsPercent, formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
 import type {
@@ -869,7 +870,7 @@ export function RawDataAccordion(props: {
             <h3>Onchain snapshot</h3>
             {coreTcData && (
               <dl className="kv">
-                <dt>saleStart</dt>
+                <dt>{humanizeKvLabel("saleStart")}</dt>
                 <dd>
                   {saleStart?.status === "success" && saleStart.result !== undefined ? (
                     <UnixTimestampDisplay raw={saleStart.result} />
@@ -877,7 +878,7 @@ export function RawDataAccordion(props: {
                     "—"
                   )}
                 </dd>
-                <dt>deadline</dt>
+                <dt>{humanizeKvLabel("deadline")}</dt>
                 <dd>
                   {deadline?.status === "success" && deadline.result !== undefined ? (
                     <UnixTimestampDisplay raw={deadline.result} />
@@ -891,7 +892,7 @@ export function RawDataAccordion(props: {
                     ? `${formatLocaleInteger(Math.floor(secondsRemaining))}s`
                     : "—"}
                 </dd>
-                <dt>totalRaised</dt>
+                <dt>{humanizeKvLabel("totalRaised")}</dt>
                 <dd>
                   {totalRaised?.status === "success" && totalRaised.result !== undefined ? (
                     <AmountDisplay raw={totalRaised.result} decimals={decimals} />
@@ -899,11 +900,11 @@ export function RawDataAccordion(props: {
                     "—"
                   )}
                 </dd>
-                <dt>ended</dt>
+                <dt>{humanizeKvLabel("ended")}</dt>
                 <dd>{ended?.status === "success" && ended.result !== undefined ? ended.result : "—"}</dd>
                 <dt>max buy</dt>
                 <dd>{maxBuyAmount !== undefined ? <AmountDisplay raw={maxBuyAmount} decimals={decimals} /> : "—"}</dd>
-                <dt>prizesDistributed</dt>
+                <dt>{humanizeKvLabel("prizesDistributed")}</dt>
                 <dd>
                   {prizesDistributedResult?.status === "success" && prizesDistributedResult.result !== undefined
                     ? prizesDistributedResult.result
@@ -918,7 +919,7 @@ export function RawDataAccordion(props: {
             {isConnected && (
               <>
                 <dl className="kv">
-                  <dt>charmWeight</dt>
+                  <dt>{humanizeKvLabel("charmWeight")}</dt>
                   <dd>
                     {charmWeightResult?.status === "success" && charmWeightResult.result !== undefined ? (
                       <AmountDisplay raw={charmWeightResult.result} decimals={18} />
@@ -926,7 +927,7 @@ export function RawDataAccordion(props: {
                       "—"
                     )}
                   </dd>
-                  <dt>buyCount</dt>
+                  <dt>{humanizeKvLabel("buyCount")}</dt>
                   <dd>
                     {buyCountResult?.status === "success" && buyCountResult.result !== undefined
                       ? formatLocaleInteger(BigInt(buyCountResult.result))
@@ -938,7 +939,7 @@ export function RawDataAccordion(props: {
                       ? `${formatLocaleInteger(BigInt(timerAddedResult.result))} s`
                       : "—"}
                   </dd>
-                  <dt>battlePoints</dt>
+                  <dt>{humanizeKvLabel("battlePoints")}</dt>
                   <dd>
                     {battlePointsResult?.status === "success" && battlePointsResult.result !== undefined
                       ? formatLocaleInteger(BigInt(battlePointsResult.result))
@@ -993,31 +994,31 @@ export function RawDataAccordion(props: {
                     "—"
                   )}
                 </dd>
-                <dt>growthRateWad</dt>
+                <dt>{humanizeKvLabel("growthRateWad")}</dt>
                 <dd className="mono">
                   {growthRateWadResult?.status === "success" && growthRateWadResult.result !== undefined
                     ? formatCompactFromRaw(growthRateWadResult.result, 18)
                     : "—"}
                 </dd>
-                <dt>timerExtensionSec</dt>
+                <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
                 <dd>
                   {timerExtensionSecResult?.status === "success" && timerExtensionSecResult.result !== undefined
                     ? formatLocaleInteger(BigInt(timerExtensionSecResult.result))
                     : "—"}
                 </dd>
-                <dt>initialTimerSec</dt>
+                <dt>{humanizeKvLabel("initialTimerSec")}</dt>
                 <dd>
                   {initialTimerSecResult?.status === "success" && initialTimerSecResult.result !== undefined
                     ? formatLocaleInteger(BigInt(initialTimerSecResult.result))
                     : "—"}
                 </dd>
-                <dt>timerCapSec</dt>
+                <dt>{humanizeKvLabel("timerCapSec")}</dt>
                 <dd>
                   {timerCapSecResult?.status === "success" && timerCapSecResult.result !== undefined
                     ? formatLocaleInteger(BigInt(timerCapSecResult.result))
                     : "—"}
                 </dd>
-                <dt>totalTokensForSale</dt>
+                <dt>{humanizeKvLabel("totalTokensForSale")}</dt>
                 <dd>
                   {totalTokensForSaleResult?.status === "success" && totalTokensForSaleResult.result !== undefined ? (
                     <AmountDisplay raw={totalTokensForSaleResult.result} decimals={18} />

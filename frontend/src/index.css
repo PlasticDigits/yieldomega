@@ -2148,13 +2148,20 @@ label:has(input[type="radio"]:disabled) {
   padding-left: 1.1rem;
 }
 
-.fee-sink-list__icon {
-  display: inline-block;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-right: 0.35rem;
-  vertical-align: -0.2em;
-  object-fit: contain;
+
+@media (max-width: 479px) {
+  .fee-sink-list > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.35rem;
+    row-gap: 0.25rem;
+  }
+
+  .fee-sink-list .mega-scanner-addr-link {
+    white-space: nowrap;
+    max-width: 100%;
+  }
 }
 
 .fee-sink-list__conversion-arrow {

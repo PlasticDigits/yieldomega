@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useState } from "react";
-import { AddressInline } from "@/components/AddressInline";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useReadContracts } from "wagmi";
+import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
 import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
@@ -122,7 +122,7 @@ export function FeeTransparency() {
               : null}
               <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)}{" "}
               <ConversionArrow size={12} className="fee-sink-list__conversion-arrow" />{" "}
-              <AddressInline address={dest} size={16} />
+              <MegaScannerAddressLink address={dest} />
             </li>
           );
         })}
@@ -136,7 +136,7 @@ export function FeeTransparency() {
             {sinksHistory.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
                 block {formatLocaleInteger(row.block_number)} — actor{" "}
-                <AddressInline address={row.actor} size={14} /> —{" "}
+                <MegaScannerAddressLink address={row.actor} /> —{" "}
                 new routing {formatSinksJsonForDisplay(row.new_sinks_json)} — tx{" "}
                 <TxHash hash={row.tx_hash} />
               </li>
@@ -154,7 +154,7 @@ export function FeeTransparency() {
             {feesDistributed.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
                 block {formatLocaleInteger(row.block_number)} — token{" "}
-                <AddressInline address={row.token} size={14} /> — amount{" "}
+                <MegaScannerAddressLink address={row.token} /> — amount{" "}
                 <span className="mono">
                   {formatCompactFromRaw(rawToBigIntForFormat(row.amount), 18)}
                 </span>{" "}
