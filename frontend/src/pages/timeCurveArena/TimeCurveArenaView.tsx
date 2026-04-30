@@ -334,7 +334,6 @@ export function TimeCurveArenaView() {
                 indexedTotal={null}
                 indexerNote="Set VITE_TIMECURVE_ADDRESS to load recent buys from the indexer."
                 formatWallet={formatWallet}
-                nowUnixSec={Math.floor(effectiveLedgerSec)}
                 envelopeParams={null}
               />
             </div>
@@ -1000,7 +999,6 @@ export function TimeCurveArenaView() {
                 indexedTotal={buysTotal}
                 indexerNote={indexerNote}
                 formatWallet={formatWallet}
-                nowUnixSec={Math.floor(effectiveLedgerSec)}
                 envelopeParams={buyEnvelopeParams}
                 onSelectBuy={indexerBaseUrl() && indexerNote === null ? selectBuy : undefined}
                 onMore={indexerBaseUrl() && indexerNote === null ? openBuyListModal : undefined}
@@ -1324,7 +1322,6 @@ export function TimeCurveArenaView() {
         address={address}
         formatWallet={formatWallet}
         decimals={decimals}
-        nowUnixSec={Math.floor(effectiveLedgerSec)}
         envelopeParams={buyEnvelopeParams}
       />
 
