@@ -16,7 +16,7 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, `warbowPendingRevengeStealer`, `warbowPendingRevengeExpiry`, `warbowGuardUntil`, `stealsReceivedOnDay`, **`buyFeeRoutingEnabled`** (issue #55: if **false**, **steal / revenge / guard** revert before CL8Y moves; **not** `claimWarBowFlag`), constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
 2. **Events** — `Buy` (BP line items, `hardReset`, streak fields; **`flagPlanted` is `true` iff that buy opted into planting** the WarBow pending flag — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63); regression tests for **referral** and **`buyFor` router** passthrough: [issue #77](https://gitlab.com/PlasticDigits/yieldomega/-/issues/77); it is **not** alone proof of who **currently** holds the flag), `WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, `WarBowFlagClaimed`, `WarBowFlagPenalized`, `WarBowCl8yBurned`, defended-streak events.
 3. **Product docs** — [`docs/product/primitives.md`](../../docs/product/primitives.md).
-4. **Indexer / frontend** — discovery and history; **do not** override chain for eligibility or balances.
+4. **Indexer / frontend** — discovery and history; **do not** override chain for eligibility or balances. The Arena hero's suggested steal targets (issue #101) are convenience rows from `warbowLadderPodium()` plus the indexed leaderboard; selecting one should still be verified against live `battlePoints` and `stealsReceivedOnDay`.
 
 ## Core rules (participant-facing)
 
@@ -58,6 +58,7 @@ Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladd
 
 - **CL8Y burn invariants (fuzz):** each successful **`warbowActivateGuard`**, **`warbowSteal`** (no bypass), and **`warbowRevenge`** moves the documented **fixed WAD** from the payer to the **burn sink** (`0x…dEaD`) in one tx — see [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) and [invariants — WarBow CL8Y burns](../../docs/testing/invariants-and-business-logic.md#timecurve-warbow-cl8y-burns-issue-70).
 - **Policy context:** [CL8Y flow audit](../../docs/onchain/cl8y-flow-audit.md) (approved **user-driven** exception for these burns).
+- **Arena hero UX:** steal / guard / revenge are surfaced in `PageHeroArcadeBanner`; target suggestions are discovery-only and preserve live onchain preflight — see [timecurve views #101](../../docs/frontend/timecurve-views.md#arena-warbow-hero-actions-issue-101) and [invariants #101](../../docs/testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101).
 
 ## Related play skills
 
