@@ -333,7 +333,7 @@ single primary action. The `showFooter` toggle in
 
 ### Global footer — fee sinks on narrow viewports ([issue #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93))
 
-[`FeeTransparency`](../../frontend/src/components/FeeTransparency.tsx) renders live `FeeRouter` sink destinations plus optional indexer history. **Addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx): **`https://mega.etherscan.io/address/...`** always (independent of `VITE_EXPLORER_BASE_URL`), **abbreviated** to **four** leading + **four** trailing glyphs at **≤479px** so rows do not clip in the footer panel. **`TimeCurveProtocolPage`** wired-contract and FeeRouter sink rows use the same component; KV `<dt>` labels use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) so `WARBOW_*`, `camelCase`, and similar identifiers read as spaced words (**Play:** [`skills/verify-yo-fee-sinks-mobile/SKILL.md`](../../skills/verify-yo-fee-sinks-mobile/SKILL.md)).
+[`FeeTransparency`](../../frontend/src/components/FeeTransparency.tsx) renders live `FeeRouter` sink destinations plus optional indexer history. **Addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx): outbound URLs match [`explorerAddressUrl`](../../frontend/src/lib/explorer.ts) — **`{base}/address/{addr}`** with **`base`** from **`VITE_EXPLORER_BASE_URL`** (default **`https://mega.etherscan.io`**, same as **tx** links), **abbreviated** to **four** leading + **four** trailing glyphs at **≤479px** so rows do not clip in the footer panel. **`TimeCurveProtocolPage`** wired-contract and FeeRouter sink rows use the same component; KV `<dt>` labels use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) so `WARBOW_*`, `camelCase`, and similar identifiers read as spaced words (**Play:** [`skills/verify-yo-fee-sinks-mobile/SKILL.md`](../../skills/verify-yo-fee-sinks-mobile/SKILL.md)). Participant identities elsewhere use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) ([GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)).
 
 Below-the-fold sections (WarBow ladder, podiums, full battle feed,
 `RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and
@@ -368,7 +368,7 @@ contract) and are formatted with the existing `AmountDisplay` /
 `UnixTimestampDisplay` / `formatBpsAsPercent` helpers. **KV `<dt>` labels**
 use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) for
 Solidity-style identifiers (**`WARBOW_*`**, **`camelCase`** getters, etc.).
-**Contract addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx) for the same **narrow-viewport** abbreviation + **mega.etherscan.io** link contract as the global fee sinks panel ([§ Global footer — fee sinks](#global-footer-fee-sinks-mobile-issue-93), [GitLab #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93)). There is no write
+**Contract addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx) for the same **narrow-viewport** abbreviation + **explorer base URL** (`VITE_EXPLORER_BASE_URL`, default MegaETH Etherscan) as tx links and [`AddressInline`](../../frontend/src/components/AddressInline.tsx) ([§ Global footer — fee sinks](#global-footer-fee-sinks-mobile-issue-93), [GitLab #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93), [GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)). There is no write
 surface.
 
 ## Sub-navigation contract

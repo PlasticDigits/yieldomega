@@ -51,7 +51,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("live buys strip, More list modal, and buy detail modal stack", async ({ page }) => {
-  await page.goto("/timecurve");
+  await page.goto("/timecurve/arena");
 
   await expect(page.getByLabel("Latest buys from indexer")).toBeVisible();
   await expect(page.getByRole("button", { name: "More" })).toBeVisible({ timeout: 15_000 });
@@ -63,7 +63,7 @@ test("live buys strip, More list modal, and buy detail modal stack", async ({ pa
   await listDialog.locator(".live-buy-row__hit").first().click();
   const detail = page.getByRole("dialog", { name: "Buy details" });
   await expect(detail).toBeVisible();
-  await expect(detail.getByText("Buy event", { exact: true })).toBeVisible();
+  await expect(detail.getByText("Momentum shift", { exact: true })).toBeVisible();
   await expect(detail.getByText("Indexer fields", { exact: true })).toBeVisible();
 
   await page.keyboard.press("Escape");
@@ -75,11 +75,11 @@ test("live buys strip, More list modal, and buy detail modal stack", async ({ pa
 });
 
 test("side strip opens buy detail without opening list first", async ({ page }) => {
-  await page.goto("/timecurve");
-  await expect(page.getByRole("button", { name: /View details for buy by/ })).toBeVisible({
+  await page.goto("/timecurve/arena");
+  await expect(page.getByRole("group", { name: /View details for buy by/ })).toBeVisible({
     timeout: 15_000,
   });
-  await page.getByRole("button", { name: /View details for buy by/ }).first().click();
+  await page.getByRole("group", { name: /View details for buy by/ }).first().click();
   await expect(page.getByRole("dialog", { name: "Buy details" })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "All indexed buys" })).toHaveCount(0);
 });

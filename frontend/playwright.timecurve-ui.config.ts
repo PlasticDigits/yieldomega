@@ -20,7 +20,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command:
-      "VITE_INDEXER_URL=http://127.0.0.1:54321 npm run dev -- --host 127.0.0.1 --port 4174 --strictPort",
+      "VITE_LAUNCH_TIMESTAMP= VITE_INDEXER_URL=http://127.0.0.1:54321 npm run dev -- --host 127.0.0.1 --port 4174 --strictPort",
     url: "http://127.0.0.1:4174",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
