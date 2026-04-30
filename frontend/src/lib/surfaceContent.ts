@@ -46,11 +46,11 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
   {
     to: "/referrals",
     title: "Referrals",
-    blurb: "Referral registration and tracked reward flow are designed, branded, and waiting for the next milestone.",
+    blurb: "Registration, share links, indexer-backed referrer stats, and illustrative CHARM / CL8Y readouts in the shared shell.",
     image: "/art/scenes/referrals-network.jpg",
     imageAlt: "Referral network threads scene",
-    badgeLabel: "In queue",
-    badgeTone: "soon",
+    badgeLabel: "Live",
+    badgeTone: "live",
   },
   {
     to: "/kumbaya",

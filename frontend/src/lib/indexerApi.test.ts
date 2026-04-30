@@ -5,7 +5,9 @@ import {
   fetchIndexerStatus,
   rabbitDepositsApiPath,
   referralAppliedApiPath,
+  referralReferrerLeaderboardApiPath,
   referralRegistrationsApiPath,
+  referralWalletCharmSummaryApiPath,
   timecurveBuyerStatsApiPath,
   timecurvePrizeDistributionsApiPath,
   timecurvePrizePayoutsApiPath,
@@ -76,6 +78,24 @@ describe("referralAppliedApiPath", () => {
     const malicious = "0xabc&limit=999";
     expect(referralAppliedApiPath(malicious, 20)).toBe(
       `/v1/referrals/applied?limit=20&referrer=${encodeURIComponent(malicious)}`,
+    );
+  });
+});
+
+describe("referralWalletCharmSummaryApiPath", () => {
+  it("encodes wallet", () => {
+    const w = "0xdddddddddddddddddddddddddddddddddddddddd";
+    expect(referralWalletCharmSummaryApiPath(w)).toBe(
+      `/v1/referrals/wallet-charm-summary?wallet=${encodeURIComponent(w)}`,
+    );
+  });
+});
+
+describe("referralReferrerLeaderboardApiPath", () => {
+  it("includes limit and offset", () => {
+    expect(referralReferrerLeaderboardApiPath(12)).toBe("/v1/referrals/referrer-leaderboard?limit=12&offset=0");
+    expect(referralReferrerLeaderboardApiPath(12, 24)).toBe(
+      "/v1/referrals/referrer-leaderboard?limit=12&offset=24",
     );
   });
 });

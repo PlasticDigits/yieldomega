@@ -15,6 +15,13 @@ from timecurve_bot.anvil_accounts import address_at, private_key_hex
 from timecurve_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
 from timecurve_bot.config import BotConfig, load_config
 from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
+from timecurve_bot.referral_bootstrap import (
+    ensure_swarm_referral_registered,
+    load_referral_registrar_account,
+    referral_registrar_index,
+    swarm_referrals_enabled,
+)
+from timecurve_bot.referral_code import normalize_referral_code
 from timecurve_bot.rpc import anvil_dev_bootstrap_funding_if_enabled, assert_chain_id, make_web3
 from timecurve_bot.swarm_layout import (
     ALL_FUNDED_INDICES,
@@ -70,6 +77,11 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
     recipients, n_extra = merge_funded_recipients(recipients, extras)
     if n_extra:
         print(f"swarm: {n_extra} extra funded address(es) from YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES")
+    if swarm_referrals_enabled():
+        reg_a = Web3.to_checksum_address(address_at(referral_registrar_index()))
+        if reg_a not in recipients:
+            recipients.append(reg_a)
+            print(f"swarm: funding referral registrar index {referral_registrar_index()} for code registration")
     funder = private_key_hex(0)
 
     print("swarm: one-shot Anvil dev funding (anvil_setBalance" + ("" if skip_mint else " + mock mint") + ")")
@@ -89,12 +101,34 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
     if not skip_mint:
         print(f"swarm: minted {_MINT_WEI} wei mock reserve to {len(recipients)} addresses.")
 
+    if swarm_referrals_enabled():
+        try:
+            reg_acc = load_referral_registrar_account()
+            ensure_swarm_referral_registered(
+                w3,
+                tc,
+                asset,
+                reg_acc,
+                gas_multiplier=cfg.gas_multiplier,
+                send=True,
+            )
+        except Exception as e:
+            print(f"swarm referrals: registration bootstrap failed ({e!s})", file=sys.stderr)
+
     env_base = os.environ.copy()
     env_base["PYTHONPATH"] = str(_BOT_SRC)
     env_base["PYTHONUNBUFFERED"] = "1"
     # Rely on env for tx (avoids Typer global-option parsing issues in subprocesses).
     env_base["YIELDOMEGA_SEND_TX"] = "1"
     env_base["YIELDOMEGA_DRY_RUN"] = "0"
+
+    if swarm_referrals_enabled():
+        try:
+            env_base["YIELDOMEGA_REFERRAL_CODE"] = normalize_referral_code(
+                (os.environ.get("YIELDOMEGA_SWARM_REFERRAL_CODE") or "swarmyo").strip()
+            )
+        except ValueError as e:
+            print(f"swarm referrals: invalid swarm referral code ({e!s}) — bots will buy without a code", file=sys.stderr)
 
     py = sys.executable
 

@@ -38,6 +38,7 @@ Decode **`BurrowEpochOpened`**, **`BurrowHealthEpochFinalized`**, **`BurrowEpoch
 
 - Paginate all list endpoints; include **cursor** or **block-height** watermarks.
 - Expose **schema version** header or field.
+- **Referrals (GitLab #94):** `GET /v1/referrals/referrer-leaderboard` and `GET /v1/referrals/wallet-charm-summary` aggregate **`idx_timecurve_referral_applied` only** — see [`docs/product/referrals.md`](../product/referrals.md#referrals-dashboard-issue-94) and the test map in [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-leaderboard-and-earnings-issue-94).
 - Do not return **actionable** balances without optional **client verification** hints (for example contract call template).
 
 ## Configuration

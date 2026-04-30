@@ -352,6 +352,41 @@ export async function fetchReferralApplied(referrer: string | undefined, limit =
   return getJson<{ items: ReferralAppliedItem[] }>(referralAppliedApiPath(referrer, limit));
 }
 
+/** `/v1/referrals/referrer-leaderboard` — aggregated indexed `ReferralApplied.referrerCharmAdded` per referrer ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)). */
+export function referralReferrerLeaderboardApiPath(limit: number, offset = 0): string {
+  return `/v1/referrals/referrer-leaderboard?limit=${limit}&offset=${offset}`;
+}
+
+export type ReferralReferrerLeaderboardItem = {
+  rank: number;
+  referrer: string;
+  total_referrer_charm_wad: string;
+  referred_buy_count: string;
+};
+
+export async function fetchReferralReferrerLeaderboard(limit = 25, offset = 0) {
+  return getJson<PaginatedItems<ReferralReferrerLeaderboardItem>>(
+    referralReferrerLeaderboardApiPath(limit, offset),
+  );
+}
+
+/** `/v1/referrals/wallet-charm-summary` — sums indexed `referrerCharmAdded` / `refereeCharmAdded` for one wallet. */
+export function referralWalletCharmSummaryApiPath(wallet: string): string {
+  return `/v1/referrals/wallet-charm-summary?wallet=${encodeURIComponent(wallet)}`;
+}
+
+export type ReferralWalletCharmSummary = {
+  wallet: string;
+  referrer_charm_wad: string;
+  referee_charm_wad: string;
+  referred_buy_count: string;
+  referee_buy_count: string;
+};
+
+export async function fetchReferralWalletCharmSummary(wallet: string) {
+  return getJson<ReferralWalletCharmSummary>(referralWalletCharmSummaryApiPath(wallet));
+}
+
 export type FeeRouterSinksUpdateItem = {
   block_number: string;
   tx_hash: string;
