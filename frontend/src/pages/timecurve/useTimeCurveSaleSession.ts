@@ -38,6 +38,7 @@ import {
 } from "@/lib/timeCurveKumbayaSwap";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -795,6 +796,11 @@ export function useTimeCurveSaleSession(
 
   const submitBuy = useCallback(async () => {
     setBuyError(null);
+    const netErr = chainMismatchWriteMessage(chainId);
+    if (netErr) {
+      setBuyError(netErr);
+      return;
+    }
     if (!address || !tc || !acceptedAsset) {
       setBuyError("Connect a wallet and wait for contract reads.");
       return;
@@ -1007,6 +1013,11 @@ export function useTimeCurveSaleSession(
 
   const submitRedeem = useCallback(async () => {
     setBuyError(null);
+    const netErr = chainMismatchWriteMessage(chainId);
+    if (netErr) {
+      setBuyError(netErr);
+      return;
+    }
     if (!address || !tc) {
       setBuyError("Connect a wallet to redeem.");
       return;
@@ -1028,7 +1039,7 @@ export function useTimeCurveSaleSession(
     } catch (e) {
       setBuyError(friendlyRevertFromUnknown(e));
     }
-  }, [address, tc, writeContractAsync, refetchAll, charmRedemptionEnabledR]);
+  }, [address, tc, chainId, writeContractAsync, refetchAll, charmRedemptionEnabledR]);
 
   const ready = Boolean(coreData && coreData.length > 0 && !isPending);
 

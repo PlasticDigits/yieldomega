@@ -34,6 +34,7 @@ import {
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { simulateWriteContract } from "@/lib/simulateContractWrite";
 import {
   type KumbayaEnv,
@@ -193,6 +194,13 @@ export function useTimeCurveArenaModel() {
     }
     return Date.now() / 1000;
   }, [blockTimestampSec, blockSyncWallMs, displayTick]);
+
+  const failIfWrongChainForWrites = useCallback((): boolean => {
+    const msg = chainMismatchWriteMessage(chainId);
+    if (!msg) return false;
+    setBuyErr(msg);
+    return true;
+  }, [chainId]);
 
   const ledgerSecInt = Math.floor(blockChainSec);
 
@@ -1987,6 +1995,7 @@ export function useTimeCurveArenaModel() {
 
   const handleBuy = useCallback(async () => {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (!address || !tc || !tokenAddr) {
       setBuyErr("Connect a wallet and ensure contract reads succeeded.");
       return;
@@ -2200,6 +2209,7 @@ export function useTimeCurveArenaModel() {
     chainId,
     onchainTimeCurveBuyRouter,
     plantWarBowFlag,
+    failIfWrongChainForWrites,
   ]);
 
   async function ensureTcAllowance(need: bigint) {
@@ -2225,6 +2235,7 @@ export function useTimeCurveArenaModel() {
 
   async function runWarBowClaimFlag() {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setBuyErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
@@ -2249,6 +2260,7 @@ export function useTimeCurveArenaModel() {
 
   async function runWarBowSteal() {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setBuyErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
@@ -2277,6 +2289,7 @@ export function useTimeCurveArenaModel() {
 
   async function runWarBowGuard() {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setBuyErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
@@ -2302,6 +2315,7 @@ export function useTimeCurveArenaModel() {
 
   async function runWarBowRevenge() {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setBuyErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
@@ -2328,6 +2342,7 @@ export function useTimeCurveArenaModel() {
 
   async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
     setBuyErr(null);
+    if (failIfWrongChainForWrites()) return;
     if (!tc) {
       return;
     }
