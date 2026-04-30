@@ -8,7 +8,7 @@ This filename is kept so **F-11** checkpoints in external QA specs and spreadshe
 
 **Nav:** Route is **hidden** from the primary header — participants use a **direct link** (see issue comment).
 
-**Docs:** [presale-vesting.md](docs/frontend/presale-vesting.md), [launchplan §6](launchplan-timecurve.md#6-under-construction-frontend), [invariants — #92](docs/testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92). **Play checklist:** [`skills/verify-yo-presale-vesting/SKILL.md`](skills/verify-yo-presale-vesting/SKILL.md).
+**Docs:** [presale-vesting.md](docs/frontend/presale-vesting.md), [launchplan §6](launchplan-timecurve.md#6-under-construction-frontend), [invariants — #92](docs/testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92). **Manual QA checklist:** [`docs/testing/manual-qa-checklists.md#manual-qa-issue-92`](docs/testing/manual-qa-checklists.md#manual-qa-issue-92).
 
 ---
 
@@ -22,6 +22,6 @@ This filename is kept so **F-11** checkpoints in external QA specs and spreadshe
 
 - [`docs/product/referrals.md`](docs/product/referrals.md)
 - [`docs/testing/invariants-and-business-logic.md`](docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64)
-- Third-party agent checklist: [`skills/verify-yo-referrals-surface/SKILL.md`](skills/verify-yo-referrals-surface/SKILL.md)
+- Third-party agent checklist: [`docs/testing/manual-qa-checklists.md#manual-qa-issue-64`](docs/testing/manual-qa-checklists.md#manual-qa-issue-64)
 
 **Agent phase:** Contributor alignment with [`docs/agent-phases.md`](docs/agent-phases.md).

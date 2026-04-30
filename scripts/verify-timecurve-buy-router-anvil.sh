@@ -17,7 +17,7 @@
 #   YIELDOMEGA_DEPLOY_KUMBAYA=1 bash ...   # if timeCurveBuyRouter is still 0, run DeployKumbayaAnvilFixtures
 #
 # See: docs/integrations/kumbaya.md, docs/testing/invariants-and-business-logic.md (issue #78 / #84),
-#      skills/verify-yo-timecurve-buy-router-anvil/SKILL.md
+#      ../docs/testing/manual-qa-checklists.md#manual-qa-issue-78
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

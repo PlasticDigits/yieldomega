@@ -90,7 +90,7 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
 
 **Targets:** `/timecurve` buy panel · `/timecurve/arena` buy hub, standings/post-end **`runVoid`** surface, **`WarbowSection`** · `/referrals` register · `/vesting` claim (not **`/protocol`**, **`/kumbaya`**, **`/sir`** navigational stubs).
 
-Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [play checklist](../../skills/verify-yo-chain-write-network/SKILL.md).
+Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-95).
 
 ## Chain time and sale phase (issue #48)
 
@@ -127,7 +127,7 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 
 **`/timecurve` (Simple)** hides the global footer ([`RootLayout`](../../frontend/src/layout/RootLayout.tsx)); the same **`IndexerStatusBar`** is rendered above **Recent buys**. **Recent buys** empty copy: **Waiting for the first buy of this round** only when the last buys poll **succeeded** with zero rows **and** connectivity is not offline; otherwise prefer **Cannot reach indexer · cached data may be stale** (and a stale hint above the list when cached rows exist).
 
-**Spec ↔ test:** [invariants — indexer offline UX](../testing/invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96) · [`indexerConnectivity.test.ts`](../../frontend/src/lib/indexerConnectivity.test.ts) · play checklist [`skills/verify-yo-indexer-offline-ux/SKILL.md`](../../skills/verify-yo-indexer-offline-ux/SKILL.md).
+**Spec ↔ test:** [invariants — indexer offline UX](../testing/invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96) · [`indexerConnectivity.test.ts`](../../frontend/src/lib/indexerConnectivity.test.ts) · play checklist [`../testing/manual-qa-checklists.md#manual-qa-issue-96`](../testing/manual-qa-checklists.md#manual-qa-issue-96).
 
 <a id="keyboard-focus-visible-issue-97"></a>
 
@@ -135,7 +135,7 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 
 **`/timecurve`** was the reported repro for **invisible Tab focus** ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97)): focus moved (`document.activeElement`) but **RainbowKit**’s **`[data-rk]`** reset applies **`outline: none`** with specificity that overrides unscoped **`button:focus-visible`**. **Fix:** global **`index.css`** mirrors the same **`:focus-visible`** selector list under **`[data-rk]`** and documents **`--yo-focus-ring`**.
 
-**Spec ↔ test:** [invariants — keyboard focus visible](../testing/invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97) · [wallet-connection.md](./wallet-connection.md) · [design — Accessibility](./design.md#accessibility-and-ux) · play checklist [`skills/verify-yo-focus-visible-a11y/SKILL.md`](../../skills/verify-yo-focus-visible-a11y/SKILL.md).
+**Spec ↔ test:** [invariants — keyboard focus visible](../testing/invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97) · [wallet-connection.md](./wallet-connection.md) · [design — Accessibility](./design.md#accessibility-and-ux) · play checklist [`../testing/manual-qa-checklists.md#manual-qa-issue-97`](../testing/manual-qa-checklists.md#manual-qa-issue-97).
 
 ## WarBow pending flag UI (issues #51, #63)
 
@@ -209,7 +209,7 @@ free.
    the remaining shark variants stay staged until a surface has a specific
    narrative fit.
 
-**Spec ↔ test:** [invariants — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [visual QA skill](../../skills/verify-yo-sniper-shark-ui/SKILL.md).
+**Spec ↔ test:** [invariants — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [visual QA skill](../testing/manual-qa-checklists.md#manual-qa-issue-80).
 
 <a id="buy-quote-refresh-kumbaya-issue-56"></a>
 
@@ -238,7 +238,7 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 4. **CHARM from CL8Y is floored:** [`finalizeCharmSpendForBuy`](../../frontend/src/lib/timeCurveBuyAmount.ts) uses integer division for CHARM wei (never rounds **up** past the band).
 5. **Bare revert copy:** buy submit catches pass `{ buySubmit: true }` into [`friendlyRevertFromUnknown`](../../frontend/src/lib/revertMessage.ts) so generic **“execution reverted for an unknown reason”** maps to guidance about the band moving ([issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). Rare residual failures at the edge may succeed on **retry** after one block or a small slider nudge.
 
-**Spec ↔ test:** [invariants — submit-time CHARM sizing](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [integrations/kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [play checklist](../../skills/verify-yo-timecurve-buy-charm-submit/SKILL.md) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82).
+**Spec ↔ test:** [invariants — submit-time CHARM sizing](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [integrations/kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-82) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82).
 
 <a id="kumbaya-swap-deadline-chain-time-issue-83"></a>
 
@@ -366,7 +366,7 @@ single primary action. The `showFooter` toggle in
 
 ### Global footer — fee sinks on narrow viewports ([issue #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93))
 
-[`FeeTransparency`](../../frontend/src/components/FeeTransparency.tsx) renders live `FeeRouter` sink destinations plus optional indexer history. **Addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx): outbound URLs match [`explorerAddressUrl`](../../frontend/src/lib/explorer.ts) — **`{base}/address/{addr}`** with **`base`** from **`VITE_EXPLORER_BASE_URL`** (default **`https://mega.etherscan.io`**, same as **tx** links), **abbreviated** to **four** leading + **four** trailing glyphs at **≤479px** so rows do not clip in the footer panel. **`TimeCurveProtocolPage`** wired-contract and FeeRouter sink rows use the same component; KV `<dt>` labels use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) so `WARBOW_*`, `camelCase`, and similar identifiers read as spaced words (**Play:** [`skills/verify-yo-fee-sinks-mobile/SKILL.md`](../../skills/verify-yo-fee-sinks-mobile/SKILL.md)). Participant identities elsewhere use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) ([GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)).
+[`FeeTransparency`](../../frontend/src/components/FeeTransparency.tsx) renders live `FeeRouter` sink destinations plus optional indexer history. **Addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx): outbound URLs match [`explorerAddressUrl`](../../frontend/src/lib/explorer.ts) — **`{base}/address/{addr}`** with **`base`** from **`VITE_EXPLORER_BASE_URL`** (default **`https://mega.etherscan.io`**, same as **tx** links), **abbreviated** to **four** leading + **four** trailing glyphs at **≤479px** so rows do not clip in the footer panel. **`TimeCurveProtocolPage`** wired-contract and FeeRouter sink rows use the same component; KV `<dt>` labels use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) so `WARBOW_*`, `camelCase`, and similar identifiers read as spaced words (**Manual QA:** [`../testing/manual-qa-checklists.md#manual-qa-issue-93`](../testing/manual-qa-checklists.md#manual-qa-issue-93)). Participant identities elsewhere use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) ([GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)).
 
 Below-the-fold sections (WarBow ladder, podiums, full battle feed,
 `RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and

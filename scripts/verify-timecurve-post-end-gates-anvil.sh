@@ -17,7 +17,7 @@
 #   bash scripts/verify-timecurve-post-end-gates-anvil.sh
 #
 # See: docs/operations/final-signoff-and-value-movement.md, docs/testing/invariants-and-business-logic.md (#79),
-#      skills/verify-yo-timecurve-post-end-gates/SKILL.md
+#      ../docs/testing/manual-qa-checklists.md#manual-qa-issue-79
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
