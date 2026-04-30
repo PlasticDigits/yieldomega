@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+  <!-- YieldOmega arcade conversion chevron (token A ? token B). Matches --arcade-green-900 / gold trim in index.css. -->
+  <path
+    d="M5 10h5V6l8 6-8 6v-4H5v-4z"
+    fill="#063d24"
+    stroke="#041208"
+    stroke-width="1.2"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M6.5 11h3.2V8.2L14.2 12 9.7 15.8V13H6.5v-2z"
+    fill="url(#ui-conversion-arrow-shine)"
+    opacity="0.88"
+  />
+  <defs>
+    <linearGradient id="ui-conversion-arrow-shine" x1="6" y1="7" x2="15" y2="13" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c842" stop-opacity="0.5" />
+      <stop offset="0.5" stop-color="#1a7a4a" stop-opacity="0.12" />
+      <stop offset="1" stop-color="#063d24" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+</svg>
