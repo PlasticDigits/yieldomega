@@ -7,9 +7,17 @@ description: Play Rabbit Treasury (Burrow)—deposits, epochs, DOUB, withdraws, 
 
 ## Scope
 
+**Audience:** **Players** and **agents assisting players** — **not** contributors unless the user explicitly seeks **Phase 18** / repo changes.
+
 You are helping a **participant** use **Rabbit Treasury**: reserve asset deposits, **epoch** timing, **DOUB** mint/burn mechanics, and withdrawals as specified onchain. Authoritative behavior is in [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) and deployed contracts—**not** in this skill file alone.
 
+**Hard rule:** Do **not** propose edits to `frontend/`, `contracts/`, `indexer/`, or CI; contributors follow [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
+
 **Agent role:** Agents should help users understand options, constraints, and consequences so they can choose whether to participate.
+
+### Optional local automation
+
+For **TypeScript / Python** scripts against **deployed** Rabbit Treasury contracts (reads, allowances, deposits/withdraws when permitted), see [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md) and product docs linked there.
 
 ## Core ideas
 

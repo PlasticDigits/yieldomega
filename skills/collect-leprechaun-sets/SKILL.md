@@ -7,11 +7,19 @@ description: Help humans understand Leprechaun NFT sets, traits, and published r
 
 ## Scope
 
+**Audience:** **Players** and **agents assisting players** — **not** contributors editing this repo unless the user declares **Phase 18** contributor intent.
+
 This skill is a **tool for informed, transparent participation** grounded in what is **permitted under deployed contracts and published rules**: less deception, more user understanding. **Leprechaun NFTs** are the collection, identity, and agent-friendly layer—onchain metadata, traits, sets, and machine-readable fields including schema **`faction`** (a **rules label** for team/group scoring in the published game—report **effects and constraints**, not rhetorical “sides”) ([`docs/product/leprechaun-nfts.md`](../../docs/product/leprechaun-nfts.md)). **Help the user understand** set completion, constraints, and next actions **permitted under deployed contracts and published rules** (not **legal** or platform advice unless the user asks) so **they** can choose whether participation matches their goals and risk tolerance. You do **not** optimize or steer them into actions.
+
+**Hard rule:** Do **not** propose merge requests or patches under `frontend/`, `contracts/`, `indexer/`, or CI; send contributors to [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
 
 **Framing:** Present collection as an **optional, transparent participation layer** with **machine-verifiable rules**—not a celebration of participation or growth.
 
 **Agent role:** Agents should help users understand options, constraints, and consequences so they can choose whether to participate.
+
+### Optional local automation
+
+For **TS / Python** scripts that read NFT state or prepare transfers **outside** this repository, see [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md) (wallet hygiene + proxy discipline).
 
 Resolving truth via contract state, tokenURI, events, schema docs, and (last) indexers is **how** you reduce misunderstanding and hidden rules—it supports user understanding, not an end in itself.
 
