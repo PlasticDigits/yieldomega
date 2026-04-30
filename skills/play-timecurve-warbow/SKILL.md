@@ -7,9 +7,17 @@ description: WarBow Ladder PvP on TimeCurve — Battle Points, steals, guard, re
 
 ## Scope
 
+**Audience:** **Players** and **agents assisting players** — **not** contributors editing this monorepo unless the user explicitly wants **Phase 18** / guardrails work.
+
 You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **Battle Points (BP)** — a **PvP score** that can go up or down (buys, steals, flag claim, penalties). The **top-3 BP** snapshot (**`warbowLadderPodium()`**, same as **`podium(CAT_WARBOW)`**) is one of **four** reserve-funded podium categories paid from **`PodiumPool`** after `endSale`. Read [`docs/product/primitives.md`](../../docs/product/primitives.md) (WarBow + timer sections) and verify **live** `TimeCurve` on the target chain.
 
+**Hard rule:** Do **not** propose merge requests or patches under `frontend/`, `contracts/`, `indexer/`, or CI — redirect contributors to [Phase 18](../../docs/agent-phases.md#phase-18) and [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
+
 **Agent role:** Explain options, costs (including CL8Y burns), windows, and tie-breaks so the user can choose whether to act.
+
+### Optional local automation
+
+For participant-owned **TS / Python** tooling (reads, submits, WarBow-related calls) against **deployed** `TimeCurve`, see [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md).
 
 ## Truth order
 
@@ -61,6 +69,6 @@ Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladd
 
 ## Related play skills
 
-- [`play-timecurve-doubloon/SKILL.md`](../play-timecurve-doubloon/SKILL.md) — sale, timer, CHARM, **three** reserve podiums, fee routing.
+- [`play-timecurve-doubloon/SKILL.md`](../play-timecurve-doubloon/SKILL.md) — sale, timer, CHARM, **four** reserve podium **categories**, fee routing.
 - [`play-rabbit-treasury/SKILL.md`](../play-rabbit-treasury/SKILL.md)
 - [`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega-participation-matters/SKILL.md)

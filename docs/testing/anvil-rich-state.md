@@ -40,7 +40,7 @@ The script:
    ANVIL_RICH_END_SALE_ONLY=1 bash contracts/script/anvil_rich_state.sh
    ```
 2. **Verify four rows (cast + revert strings / success):** [`scripts/verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh)
-3. **Authoritative spec:** [final-signoff and value movement](../operations/final-signoff-and-value-movement.md#post-end-gate-live-walkthrough-issues-55--gitlab-79) · invariants: [TimeCurve post-end gates — live Anvil](invariants-and-business-logic.md#timecurve-post-end-gates-live-anvil-gitlab-79) · play skill: [`skills/verify-yo-timecurve-post-end-gates/SKILL.md`](../../skills/verify-yo-timecurve-post-end-gates/SKILL.md).
+3. **Authoritative spec:** [final-signoff and value movement](../operations/final-signoff-and-value-movement.md#post-end-gate-live-walkthrough-issues-55--gitlab-79) · invariants: [TimeCurve post-end gates — live Anvil](invariants-and-business-logic.md#timecurve-post-end-gates-live-anvil-gitlab-79) · play skill: [`manual-qa-checklists.md#manual-qa-issue-79`](manual-qa-checklists.md#manual-qa-issue-79).
 
 **Manual fallback:** if the script fails, follow the same `cast` sequence in the script header; confirm `podiumPool` CL8Y balance is non-zero before expecting the `TimeCurve: reserve podium payouts disabled` revert.
 
