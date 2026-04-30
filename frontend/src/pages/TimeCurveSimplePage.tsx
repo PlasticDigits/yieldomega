@@ -309,7 +309,7 @@ export function TimeCurveSimplePage() {
   buysNextOffsetRef.current = buysNextOffset;
   buyPagesExpandedRef.current = buyPagesExpanded;
   const { isOffline } = useIndexerConnectivity();
-  const [tickerNowSec, setTickerNowSec] = useState(() => Math.floor(Date.now() / 1000));
+  const [tickerWallNowSec, setTickerWallNowSec] = useState(() => Math.floor(Date.now() / 1000));
 
   useWatchContractEvent({
     address: tc,
@@ -322,12 +322,8 @@ export function TimeCurveSimplePage() {
   });
 
   useEffect(() => {
-    setTickerNowSec(Math.floor(session.chainNowSec ?? Date.now() / 1000));
-  }, [session.chainNowSec]);
-
-  useEffect(() => {
     const id = window.setInterval(() => {
-      setTickerNowSec((prev) => prev + 1);
+      setTickerWallNowSec(Math.floor(Date.now() / 1000));
     }, 1000);
     return () => window.clearInterval(id);
   }, []);
@@ -1237,7 +1233,7 @@ export function TimeCurveSimplePage() {
                     session.cl8ySpendBounds,
                     session.decimals,
                   );
-                  const age = formatBuyAge(b.block_timestamp, tickerNowSec);
+                  const age = formatBuyAge(b.block_timestamp, tickerWallNowSec);
                   const ticks = tickerImpactTicks(b);
                   const theme = tickerCardTheme(b, band);
                   const bandFillPercent = band ? Math.round(band.fillPercent) : null;

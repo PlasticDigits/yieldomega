@@ -12,8 +12,6 @@ type Props = {
   indexedTotal: number | null;
   indexerNote: string | null;
   formatWallet: WalletFormatShort;
-  /** Wall or ledger “now” for relative buy age. */
-  nowUnixSec: number;
   /** When set, mini pie shows min–max spend band fill at buy time (needs `block_timestamp` on rows). */
   envelopeParams: EnvelopeCurveParamsWire | null;
   onSelectBuy?: (buy: BuyItem) => void;
@@ -25,20 +23,16 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
   indexedTotal,
   indexerNote,
   formatWallet,
-  nowUnixSec,
   envelopeParams,
   onSelectBuy,
   onMore,
 }: Props) {
-  const [liveNowUnixSec, setLiveNowUnixSec] = useState(nowUnixSec);
-
-  useEffect(() => {
-    setLiveNowUnixSec(nowUnixSec);
-  }, [nowUnixSec]);
+  /** Wall clock for “Xs ago” — matches Simple recent buys (chain-interpolated “now” understates age when head is stale). */
+  const [wallNowUnixSec, setWallNowUnixSec] = useState(() => Math.floor(Date.now() / 1000));
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setLiveNowUnixSec((prev) => prev + 1);
+      setWallNowUnixSec(Math.floor(Date.now() / 1000));
     }, 1000);
     return () => window.clearInterval(id);
   }, []);
@@ -84,7 +78,7 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
                 buy={buy}
                 formatWallet={formatWallet}
                 onSelectBuy={onSelectBuy}
-                nowUnixSec={liveNowUnixSec}
+                nowUnixSec={wallNowUnixSec}
                 envelopeParams={envelopeParams}
                 variant="hero"
               />

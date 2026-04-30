@@ -270,7 +270,7 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                ORDER BY kk.log_index DESC
                LIMIT 1
            ) k ON true
-           ORDER BY b.block_number DESC, b.log_index ASC
+           ORDER BY b.block_number DESC, b.log_index DESC
            LIMIT $1 OFFSET $2"#,
     )
     .bind(lim)
