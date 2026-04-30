@@ -29,6 +29,7 @@ description: Optional short TimeCurve per-wallet buy cooldown on local DeployDev
 ## Doc map
 
 - [docs/testing/e2e-anvil.md — DeployDev buy cooldown](../../docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88)
+- **Bot swarm demos:** Prefer short cooldown (**this skill**) alongside stack **[`--block-time`](../../docs/testing/e2e-anvil.md#bot-swarm-anvil-chain-time-gitlab-99)** defaults ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)) — [`skills/verify-yo-bot-swarm-local-anvil/SKILL.md`](../verify-yo-bot-swarm-local-anvil/SKILL.md).
 - [docs/testing/invariants-and-business-logic.md — DeployDev buy cooldown env](../../docs/testing/invariants-and-business-logic.md#deploydev-buy-cooldown-env-issue-88)
 - [docs/product/primitives.md — Per-wallet buy cooldown](../../docs/product/primitives.md)
 
