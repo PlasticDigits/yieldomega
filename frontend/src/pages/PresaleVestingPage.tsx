@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect } from "react";
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { addresses } from "@/lib/addresses";
 import { doubPresaleVestingReadAbi, doubPresaleVestingWriteAbi } from "@/lib/abis";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { dualWallClockLines, formatDoubHuman } from "@/pages/presaleVesting/presaleVestingFormat";
+import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 
 export function PresaleVestingPage() {
   const vesting = addresses.doubPresaleVesting;
   const { address: wallet } = useAccount();
+  const chainId = useChainId();
+  const { mismatch: chainMismatchForWrites } = useWalletTargetChainMismatch();
 
   const qCommon = { address: vesting, abi: doubPresaleVestingReadAbi, query: { enabled: !!vesting } } as const;
 
@@ -230,6 +235,7 @@ export function PresaleVestingPage() {
             This wallet is not in the vesting beneficiary set for this deployment.
           </StatusMessage>
         ) : (
+          <ChainMismatchWriteBarrier testId="presale-vesting-chain-write-gate">
           <div className="data-panel data-panel--stack" data-testid="presale-vesting-wallet-panel">
             {allocation !== undefined && allocation > 0n ? (
               <>
@@ -257,19 +263,22 @@ export function PresaleVestingPage() {
                 type="button"
                 className="btn-primary"
                 disabled={
+                  chainMismatchForWrites ||
                   !claimsEnabled ||
                   claimable === undefined ||
                   claimable === 0n ||
                   claimSubmitting ||
                   claimConfirming
                 }
-                onClick={() =>
+                onClick={() => {
+                  const netErr = chainMismatchWriteMessage(chainId);
+                  if (netErr) return;
                   writeContract({
                     address: vesting,
                     abi: doubPresaleVestingWriteAbi,
                     functionName: "claim",
-                  })
-                }
+                  });
+                }}
               >
                 {claimSubmitting || claimConfirming ? "Confirming…" : "Claim DOUB"}
               </button>
@@ -281,6 +290,7 @@ export function PresaleVestingPage() {
               <StatusMessage variant="muted">Nothing to claim right now.</StatusMessage>
             ) : null}
           </div>
+          </ChainMismatchWriteBarrier>
         )}
       </PageSection>
     </section>

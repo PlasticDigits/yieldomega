@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ReactElement } from "react";
+import { AddressInline } from "@/components/AddressInline";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 
 export function TimeCurveArenaWalletMono(props: {
@@ -8,12 +9,7 @@ export function TimeCurveArenaWalletMono(props: {
   formatWallet: WalletFormatShort;
 }): ReactElement {
   const { addr, formatWallet } = props;
-  if (!addr) {
-    return <span className="mono">—</span>;
-  }
   return (
-    <span className="mono" title={addr}>
-      {formatWallet(addr, "—")}
-    </span>
+    <AddressInline address={addr} formatWallet={formatWallet} fallback="—" size={18} />
   );
 }

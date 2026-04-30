@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
+import { AddressInline } from "@/components/AddressInline";
 import { referralRegistryReadAbi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { getStoredMyReferralCodeForWallet } from "@/lib/referralStorage";
@@ -103,9 +104,11 @@ export function ReferralConnectedWalletSection({ className }: Props) {
       ) : (
         <div className="data-panel data-panel--stack" data-testid="referrals-connected-wallet">
           <p className="data-panel__label">Active address</p>
-          <p className="mono" title={address}>
-            {truncateHexAddress(address, 8, 6)}
-          </p>
+          <AddressInline
+            address={address}
+            formatWallet={(addr, fb) => (addr ? truncateHexAddress(addr, 8, 6) : fb)}
+            size={22}
+          />
           <p className="data-panel__label" style={{ marginTop: "1rem" }}>
             Registration
           </p>

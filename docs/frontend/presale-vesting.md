@@ -20,9 +20,11 @@ Anvil Playwright: [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) exports t
 - **Clock:** **vestingStart** and **vestingStart + vestingDuration** are shown in the browser’s **local** timezone and in **UTC**.
 - **Wallet panel:** **allocation**, **claimed**, **claimable** via `allocationOf` / `claimedOf` / `claimable` (`claimable` uses chain `block.timestamp` on read).
 - **Claim CTA:** gated on `claimsEnabled` and non-zero `claimable` ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
+- **Wrong-chain guard:** **`useChainId()`** must equal [**`configuredTargetChainId()`**](../../frontend/src/lib/chain.ts) (`VITE_CHAIN_ID`; default **Anvil 31337**) before **`claim()`** prompts — overlay + EIP-3326 switch CTA ([issue #95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)).
 
 ## Cross-links
 
 - [Final signoff / `claimsEnabled`](../operations/final-signoff-and-value-movement.md)
 - [Invariant map — presale vesting frontend](../testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92)
 - Play checklist: [`skills/verify-yo-presale-vesting/SKILL.md`](../../skills/verify-yo-presale-vesting/SKILL.md)
+- Wrong-network write gate (#95): [`wallet-connection.md` § #95](wallet-connection.md#wrong-network-write-gating-issue-95); play checklist [`skills/verify-yo-chain-write-network/SKILL.md`](../../skills/verify-yo-chain-write-network/SKILL.md)
