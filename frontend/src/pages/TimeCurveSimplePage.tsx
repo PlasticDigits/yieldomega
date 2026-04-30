@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -28,6 +29,7 @@ import {
   doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
 } from "@/lib/timeCurvePodiumMath";
+import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
@@ -78,6 +80,7 @@ function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean
 export function TimeCurveSimplePage() {
   const tc = addresses.timeCurve;
   const session = useTimeCurveSaleSession(tc);
+  const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const prefersReducedMotion = useReducedMotion();
 
   const phaseInfo = phaseBadge(session.phase);
@@ -318,6 +321,7 @@ export function TimeCurveSimplePage() {
     session.phase !== "saleActive" ||
     session.isWriting ||
     !session.walletConnected ||
+    chainMismatch ||
     session.walletCooldownRemainingSec > 0 ||
     session.charmWadSelected === undefined ||
     nonCl8yBlocked ||
@@ -733,6 +737,7 @@ export function TimeCurveSimplePage() {
                 : "The sale will open here when the timer hits zero."
           }
         >
+          <ChainMismatchWriteBarrier testId="timecurve-simple-chain-write-gate">
           {/* "Vending machine" sidekick — anchors the gold buy panel to
               the Yieldomega cast and visually echoes "this is where you
               spend coins". The bob loop is suppressed for users with
@@ -878,6 +883,7 @@ export function TimeCurveSimplePage() {
                 className="btn-primary timecurve-simple__cta"
                 disabled={
                   session.isWriting ||
+                  chainMismatch ||
                   session.charmsRedeemed === true ||
                   session.charmWeightWad === undefined ||
                   session.charmWeightWad === 0n ||
@@ -911,6 +917,7 @@ export function TimeCurveSimplePage() {
               <code>endSale()</code>; the Arena view exposes a button.
             </StatusMessage>
           )}
+          </ChainMismatchWriteBarrier>
         </PageSection>
       </div>
 

@@ -738,6 +738,53 @@ label:has(input[type="radio"]:disabled) {
   visibility: hidden;
 }
 
+/** GitLab #95 — block write surfaces until wallet `chainId` matches `VITE_CHAIN_ID`-driven target. */
+.chain-write-gate {
+  position: relative;
+}
+
+.chain-write-gate__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(8, 14, 28, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.chain-write-gate__card {
+  max-width: 28rem;
+  padding: 1.25rem 1.35rem;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel, #0f1628);
+  box-shadow: 6px 6px 0 var(--line);
+}
+
+.chain-write-gate__title {
+  margin: 0 0 0.5rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.chain-write-gate__body {
+  margin: 0 0 1rem;
+  line-height: 1.45;
+}
+
+.chain-write-gate__switch {
+  width: 100%;
+}
+
+.chain-write-gate__hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .wallet-action {
   display: inline-flex;
   align-items: center;
