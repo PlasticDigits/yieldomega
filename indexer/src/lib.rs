@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod chain_timer;
+pub mod cors_config;
 pub mod config;
 pub mod db;
 pub mod decoder;

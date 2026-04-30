@@ -7,9 +7,10 @@ use std::sync::Arc;
 use alloy_primitives::Address;
 use eyre::Result;
 use tokio::sync::RwLock;
-use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use yieldomega_indexer::{api, chain_timer, config, db, ingestion};
+use yieldomega_indexer::{
+    api, chain_timer, config, cors_config, db, ingestion,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -60,7 +61,7 @@ async fn main() -> Result<()> {
         chain_timer: chain_timer_cache,
     };
     let app = api::router(state)
-        .layer(CorsLayer::permissive())
+        .layer(cors_config::cors_layer_for_runtime()?)
         .layer(TraceLayer::new_for_http());
     let listener = tokio::net::TcpListener::bind(config.listen_addr).await?;
     tracing::info!(addr = %config.listen_addr, "API listening");
