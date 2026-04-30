@@ -11,6 +11,30 @@ import { ReferralRegisterSection } from "@/pages/referrals/ReferralRegisterSecti
 
 const CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
+function ReferralOverviewStrip() {
+  return (
+    <div className="referrals-overview-grid" aria-label="Referral program overview">
+      <article className="referrals-overview-card">
+        <span className="referrals-overview-card__step">01</span>
+        <h2>Claim a code</h2>
+        <p>Burn CL8Y once through ReferralRegistry. The code owner stays on-chain; plaintext only helps sharing.</p>
+      </article>
+      <article className="referrals-overview-card referrals-overview-card--gold">
+        <span className="referrals-overview-card__step">02</span>
+        <h2>Share a live route</h2>
+        <p>
+          Use <code>/?ref=code</code> or <code>/timecurve/code</code>. Browser storage captures pending codes only.
+        </p>
+      </article>
+      <article className="referrals-overview-card referrals-overview-card--blue">
+        <span className="referrals-overview-card__step">03</span>
+        <h2>Track CHARM</h2>
+        <p>Referral bonuses are CHARM weight from TimeCurve events; the indexer only mirrors and ranks them.</p>
+      </article>
+    </div>
+  );
+}
+
 export function ReferralsPage() {
   return (
     <section className="page page--referrals" data-testid="referrals-surface">
@@ -48,14 +72,18 @@ export function ReferralsPage() {
           className: "cutout-decoration--peek",
         }}
       />
-      <ReferralConnectedWalletSection />
-      <ReferralProgramEarningsSection />
-      <ReferralLeaderboardSection />
+      <ReferralOverviewStrip />
+      <div className="referrals-dashboard-grid">
+        <ReferralConnectedWalletSection className="referrals-panel referrals-panel--wallet" />
+        <ReferralProgramEarningsSection className="referrals-panel referrals-panel--earnings" />
+      </div>
+      <ReferralLeaderboardSection className="referrals-panel referrals-panel--leaderboard" />
       <PageSection
+        className="referrals-panel referrals-panel--links"
         title="Links that count"
         badgeLabel="Client capture"
         badgeTone="info"
-        lede="Pending referral codes use key yieldomega.ref.v1 in localStorage and sessionStorage; after you register, your share-link code is cached per wallet under yieldomega.myrefcode.v1. plus your lowercased wallet address (localStorage only). Neither store owns codes onchain — ReferralRegistry + TimeCurve do."
+        lede="Pending referral codes use yieldomega.ref.v1 in localStorage + sessionStorage. Registered share-link plaintext is cached per wallet under yieldomega.myrefcode.v1.<wallet>. Neither store owns codes onchain."
       >
         <ul className="accent-list">
           <li>
@@ -73,6 +101,7 @@ export function ReferralsPage() {
         </p>
       </PageSection>
       <PageSection
+        className="referrals-panel referrals-panel--slug"
         title="Slug transfer"
         badgeLabel="Contract"
         badgeTone="soon"
