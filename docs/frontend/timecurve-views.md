@@ -118,6 +118,14 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 
 **Spec ↔ test:** [invariants — indexer offline UX](../testing/invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96) · [`indexerConnectivity.test.ts`](../../frontend/src/lib/indexerConnectivity.test.ts) · play checklist [`skills/verify-yo-indexer-offline-ux/SKILL.md`](../../skills/verify-yo-indexer-offline-ux/SKILL.md).
 
+<a id="keyboard-focus-visible-issue-97"></a>
+
+## Keyboard focus visible on TimeCurve (issue #97)
+
+**`/timecurve`** was the reported repro for **invisible Tab focus** ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97)): focus moved (`document.activeElement`) but **RainbowKit**’s **`[data-rk]`** reset applies **`outline: none`** with specificity that overrides unscoped **`button:focus-visible`**. **Fix:** global **`index.css`** mirrors the same **`:focus-visible`** selector list under **`[data-rk]`** and documents **`--yo-focus-ring`**.
+
+**Spec ↔ test:** [invariants — keyboard focus visible](../testing/invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97) · [wallet-connection.md](./wallet-connection.md) · [design — Accessibility](./design.md#accessibility-and-ux) · play checklist [`skills/verify-yo-focus-visible-a11y/SKILL.md`](../../skills/verify-yo-focus-visible-a11y/SKILL.md).
+
 ## WarBow pending flag UI (issues #51, #63)
 
 **Onchain + logs:** **`Buy.flagPlanted`** is **`true` iff** that transaction **opted in** to planting the WarBow pending flag (`plantWarBowFlag` on **`buy`** / **`buyFor`** / **`buyViaKumbaya`** — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). Indexer **`flag_planted`** mirrors the log. **Holder + silence** remain authoritative from **`warbowPendingFlagOwner`** / **`warbowPendingFlagPlantAt`** reads, not from “any recent buy row” ([issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)).

@@ -34,6 +34,8 @@
   --scrollbar-thumb-border: rgba(255, 230, 102, 0.55);
   /* Charts / SVG fallbacks */
   --accent: var(--arcade-gold-600);
+  /* WCAG 2.4.7 keyboard focus ring; override per host if needed (GitLab #97). */
+  --yo-focus-ring: var(--arcade-gold-600);
   --muted-line: #3d6b52;
   --border: rgba(11, 31, 20, 0.35);
   font-family: "Fredoka", "Sora", system-ui, sans-serif;
@@ -2583,12 +2585,32 @@ label:has(input[type="radio"]:disabled) {
   filter: drop-shadow(6px 7px 0 rgba(11, 31, 20, 0.45));
 }
 
+/* Keyboard focus visibility (WCAG 2.4.7). Use :focus-visible so mouse clicks
+ * do not show rings. RainbowKit ships `[data-rk] .iekbcc5 { outline: none }`
+ * (specificity 0,2,0), which overrides unscoped `button:focus-visible` (0,1,1);
+ * duplicate selectors under `[data-rk]` restore rings in the wallet modal
+ * and connect chrome (GitLab #97). */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid var(--arcade-gold-600);
+textarea:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid var(--yo-focus-ring);
+  outline-offset: 3px;
+}
+
+[data-rk] a:focus-visible,
+[data-rk] button:focus-visible,
+[data-rk] input:focus-visible,
+[data-rk] select:focus-visible,
+[data-rk] textarea:focus-visible,
+[data-rk] [role="button"]:focus-visible,
+[data-rk] summary:focus-visible,
+[data-rk] [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 3px solid var(--yo-focus-ring);
   outline-offset: 3px;
 }
 
