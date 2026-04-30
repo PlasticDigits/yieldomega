@@ -7,7 +7,7 @@
 # Optional **short per-wallet buy cooldown** on TimeCurve for multi-buy QA ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)):
 #   YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-local-anvil-stack.sh
 #   # or: YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 …
-# See docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88 and skills/verify-yo-anvil-buy-cooldown/SKILL.md.
+# See docs/testing/e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88 and docs/testing/manual-qa-checklists.md#manual-qa-issue-88.
 #
 # Set SKIP_ANVIL_RICH_STATE=1 to skip `contracts/script/anvil_rich_state.sh` (keeps TimeCurve sale **live**
 # for bot/UI demos; indexer still indexes normal buys). Default runs rich state (sale ends, prizes, etc.).
