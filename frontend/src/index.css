@@ -5940,12 +5940,116 @@ code {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: 0.42rem;
 }
 
 .timecurve-simple__ticker-effects .live-buy-tick {
+  --effect-bg: linear-gradient(180deg, #f8fff1, #dff8e8);
+  --effect-border: rgba(11, 31, 20, 0.78);
+  --effect-ink: #12331f;
+  --effect-glyph-bg: var(--ticker-accent);
+  --effect-glyph-ink: #fffdf4;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 1.9rem;
+  border: 2px solid var(--effect-border);
+  border-radius: 0.7rem;
+  background: var(--effect-bg);
+  color: var(--effect-ink);
+  box-shadow:
+    2px 2px 0 rgba(11, 31, 20, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick__glyph {
+  display: grid;
+  place-items: center;
+  min-width: 2.05rem;
+  padding: 0 0.28rem;
+  border-right: 2px solid rgba(11, 31, 20, 0.38);
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 255, 255, 0.38), transparent 42%),
+    var(--effect-glyph-bg);
+  color: var(--effect-glyph-ink);
+  font-size: 0.56rem;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(11, 31, 20, 0.32);
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.02rem;
+  padding: 0.22rem 0.48rem 0.22rem 0.42rem;
+  min-width: 0;
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick__label {
+  color: inherit;
   font-size: 0.66rem;
-  box-shadow: 1px 1px 0 rgba(11, 31, 20, 0.28);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick__sub {
+  color: color-mix(in srgb, var(--effect-ink) 78%, #ffffff);
+  font-size: 0.64rem;
+  line-height: 1.05;
+  font-weight: 950;
+  opacity: 1;
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick--danger,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-flag {
+  --effect-bg: linear-gradient(180deg, #ffe9ee, #ffd4df);
+  --effect-border: #9f1239;
+  --effect-ink: #5f0f26;
+  --effect-glyph-bg: linear-gradient(180deg, #fb7185, #be123c);
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick--warning,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-flag-plant,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-hreset,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-tbp {
+  --effect-bg: linear-gradient(180deg, #fff7cc, #ffe48b);
+  --effect-border: #b7791f;
+  --effect-ink: #593709;
+  --effect-glyph-bg: linear-gradient(180deg, #facc15, #d97706);
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick--success,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-sbreak,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-ambush,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-clutch {
+  --effect-bg: linear-gradient(180deg, #e9ffe9, #c8f5d0);
+  --effect-border: #15803d;
+  --effect-ink: #103d21;
+  --effect-glyph-bg: linear-gradient(180deg, #4ade80, #15803d);
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick--info,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-wb,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-def,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-streak {
+  --effect-bg: linear-gradient(180deg, #edf8ff, #cfe9ff);
+  --effect-border: #1d4ed8;
+  --effect-ink: #12306b;
+  --effect-glyph-bg: linear-gradient(180deg, #60a5fa, #1d4ed8);
+}
+
+.timecurve-simple__ticker-effects .live-buy-tick--neutral,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-tadd,
+.timecurve-simple__ticker-effects .live-buy-tick--effect-buy {
+  --effect-bg: linear-gradient(180deg, #f8fff1, #e0f5c8);
+  --effect-border: color-mix(in srgb, var(--ticker-accent) 70%, #12331f);
+  --effect-ink: #173820;
+  --effect-glyph-bg: linear-gradient(180deg, var(--ticker-accent), #0f6f3f);
 }
 
 .timecurve-simple__ticker-meta {
