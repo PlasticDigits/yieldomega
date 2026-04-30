@@ -119,8 +119,10 @@ import {
   type ContractReadRow,
 } from "./arenaPageHelpers";
 import { TimeCurveArenaWalletMono } from "./TimeCurveArenaWalletMono";
+import type { WarbowStealCandidate } from "./WarbowHeroActions";
 
 const WAD_ONE_CHARM = 10n ** 18n;
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
 
 export function useTimeCurveArenaModel() {
   const prefersReducedMotion = useReducedMotion();
@@ -622,6 +624,8 @@ export function useTimeCurveArenaModel() {
     revengeExpiryR,
     nextBuyAllowedAtR,
   ] = userSaleData ?? [];
+  const viewerBattlePoints =
+    battlePtsR?.status === "success" ? (battlePtsR.result as bigint) : undefined;
 
   const warbowStealBurnWad =
     warbowStealBurnR?.status === "success" ? (warbowStealBurnR.result as bigint) : 10n ** 18n;
@@ -1365,6 +1369,67 @@ export function useTimeCurveArenaModel() {
     value: `${formatLocaleInteger(BigInt(row.battle_points_after))} BP`,
     highlight: sameAddress(row.buyer, address),
   }));
+  const warbowStealCandidates: WarbowStealCandidate[] = useMemo(() => {
+    const candidates = new Map<string, WarbowStealCandidate>();
+    const viewerBp = viewerBattlePoints;
+
+    function canSuggest(addr: string | undefined, battlePoints: bigint): addr is `0x${string}` {
+      if (!addr || !isAddress(addr as `0x${string}`) || sameAddress(addr, ZERO_ADDR) || sameAddress(addr, address)) {
+        return false;
+      }
+      if (battlePoints <= 0n) {
+        return false;
+      }
+      return viewerBp === undefined || battlePoints >= viewerBp * 2n;
+    }
+
+    function addCandidate(candidate: WarbowStealCandidate) {
+      const key = candidate.address.toLowerCase();
+      const existing = candidates.get(key);
+      if (!existing || existing.source !== "contract") {
+        candidates.set(key, candidate);
+      }
+    }
+
+    if (warbowLadderPodiumR?.status === "success") {
+      const [wallets, values] = warbowLadderPodiumR.result as readonly [
+        readonly `0x${string}`[],
+        readonly bigint[],
+      ];
+      wallets.forEach((wallet, index) => {
+        const bp = values[index] ?? 0n;
+        if (canSuggest(wallet, bp)) {
+          addCandidate({
+            address: wallet,
+            battlePoints: bp.toString(),
+            rank: index + 1,
+            source: "contract",
+          });
+        }
+      });
+    }
+
+    (warbowLb ?? []).forEach((row, index) => {
+      const bp = BigInt(row.battle_points_after);
+      if (canSuggest(row.buyer, bp)) {
+        addCandidate({
+          address: row.buyer as `0x${string}`,
+          battlePoints: bp.toString(),
+          rank: index + 1,
+          source: "indexer",
+        });
+      }
+    });
+
+    return [...candidates.values()]
+      .sort((a, b) => {
+        const bpA = BigInt(a.battlePoints);
+        const bpB = BigInt(b.battlePoints);
+        if (bpA === bpB) return a.rank - b.rank;
+        return bpA > bpB ? -1 : 1;
+      })
+      .slice(0, 5);
+  }, [address, viewerBattlePoints, warbowLadderPodiumR, warbowLb]);
 
   const refetchAll = useCallback(() => {
     void refetch();
@@ -1685,8 +1750,6 @@ export function useTimeCurveArenaModel() {
     walletCooldownRemainingSec,
   ]);
 
-  const viewerBattlePoints =
-    battlePtsR?.status === "success" ? (battlePtsR.result as bigint) : undefined;
   const victimStealsTodayBigInt =
     victimStealsToday !== undefined ? BigInt(victimStealsToday as bigint | number) : undefined;
   const victimBattlePointsBigInt =
@@ -2647,6 +2710,7 @@ export function useTimeCurveArenaModel() {
     warbowPolicyPending,
     warbowPreflightIssue,
     warbowRank,
+    warbowStealCandidates,
     warbowRevengeBurnR,
     warbowRevengeBurnWad,
     warbowRevengeWindowR,
