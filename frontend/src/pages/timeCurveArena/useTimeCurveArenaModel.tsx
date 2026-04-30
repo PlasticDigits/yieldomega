@@ -107,6 +107,7 @@ import {
   type WarbowBattleFeedItem,
   type WarbowLeaderboardItem,
 } from "@/lib/indexerApi";
+import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import {
   CL8Y_USD_PRICE_PLACEHOLDER,
   clampBigint,
@@ -238,11 +239,17 @@ export function useTimeCurveArenaModel() {
   useEffect(() => {
     let cancelled = false;
     let requestSeq = 0;
+    let timeoutId = 0;
+
     const loadBuys = async () => {
       const id = ++requestSeq;
       const data = await fetchTimecurveBuys(25, 0);
       if (cancelled || id !== requestSeq) {
         return;
+      }
+      const ok = data != null;
+      if (indexerBaseUrl()) {
+        reportIndexerFetchAttempt(ok);
       }
       if (!data) {
         setIndexerNote(
@@ -262,20 +269,27 @@ export function useTimeCurveArenaModel() {
       setBuysTotal(typeof data.total === "number" ? data.total : null);
       setIndexerNote(null);
     };
-    void loadBuys();
-    const pollMs = indexerBaseUrl() ? 3000 : 0;
-    const intervalId =
-      pollMs > 0
-        ? window.setInterval(() => {
-            void loadBuys();
-          }, pollMs)
-        : undefined;
+
+    const scheduleLoop = () => {
+      timeoutId = window.setTimeout(async () => {
+        await loadBuys();
+        if (!cancelled && indexerBaseUrl()) {
+          scheduleLoop();
+        }
+      }, getIndexerBackoffPollMs(3000));
+    };
+
+    void (async () => {
+      await loadBuys();
+      if (!cancelled && indexerBaseUrl()) {
+        scheduleLoop();
+      }
+    })();
+
     return () => {
       cancelled = true;
       requestSeq += 1;
-      if (intervalId !== undefined) {
-        window.clearInterval(intervalId);
-      }
+      window.clearTimeout(timeoutId);
     };
   }, [hasExpandedBuyPages]);
 

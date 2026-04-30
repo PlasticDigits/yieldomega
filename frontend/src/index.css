@@ -2093,6 +2093,10 @@ label:has(input[type="radio"]:disabled) {
   background: linear-gradient(180deg, #c8f7db, #7fe3a5);
 }
 
+.indexer-status--error {
+  background: linear-gradient(180deg, #ffe8e0, #ffb28a);
+}
+
 .h-footer {
   margin: 0 0 0.5rem;
   font-size: 1rem;
@@ -5261,6 +5265,18 @@ code {
 
 .timecurve-simple__activity-panel {
   margin-top: 0;
+}
+
+.timecurve-simple__indexer-strip {
+  margin: 0.75rem 0 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.timecurve-simple__indexer-stale-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
 }
 
 .timecurve-simple__activity-list {
