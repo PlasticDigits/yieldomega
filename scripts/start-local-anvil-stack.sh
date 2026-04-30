@@ -17,6 +17,11 @@
 #   When rich state runs (sale ended), START_BOT_SWARM defaults to 0.
 #   Requires Python deps (import web3): venv install in bots/timecurve/README.md, or PEP 668 fallback there.
 #
+# Swarm + default 300s per-wallet buy cooldown + Anvil automine stalls chain time once every wallet sleeps (GitLab #99):
+#   recommend YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 and/or explicit YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC for dense buys.
+#   This script starts Anvil with --block-time when it spawns the swarm (interval mining advances block.timestamp during idle sleeps).
+#   Override seconds: YIELDOMEGA_ANVIL_BLOCK_TIME_SEC (default 12); set to 0 to omit --block-time (automine only).
+#
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # DeployDev uses forge --code-size-limit 524288 (EIP-170 pre-broadcast sim + MegaEVM-sized TimeCurve).
 # Usage from repo root:
@@ -53,6 +58,25 @@ fi
 export FOUNDRY_OUT="${FOUNDRY_OUT:-${CONTRACTS}/out-local-dev}"
 mkdir -p "${FOUNDRY_OUT}"
 export RPC_URL
+
+# True when DeployDev will use default 300s buyCooldownSec (both cooldown env knobs unset / no shortening path).
+_deploydev_buy_cooldown_is_default_long() {
+  [[ "${YIELDOMEGA_DEPLOY_NO_COOLDOWN:-0}" != "1" ]] && [[ -z "${YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC:-}" ]]
+}
+
+warn_swarm_buy_cooldown_if_needed() {
+  if [[ "${SKIP_ANVIL_RICH_STATE:-}" != "1" ]] || [[ "${START_BOT_SWARM}" != "1" ]]; then
+    return 0
+  fi
+  if ! _deploydev_buy_cooldown_is_default_long; then
+    return 0
+  fi
+  echo "" >&2
+  echo "Note (GitLab #99): SKIP_ANVIL_RICH_STATE=1 + START_BOT_SWARM=1 with default DeployDev buyCooldownSec=300." >&2
+  echo "  For continuous indexer demo traffic, prefer: YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 (and optionally YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=…)." >&2
+  echo "  Anvil is started with --block-time when this script launches it so sleeps still advance chain time." >&2
+  echo "" >&2
+}
 
 die() {
   echo "$@" >&2
@@ -134,11 +158,17 @@ if ss -tlnp 2>/dev/null | grep -qE ":${ANVIL_PORT}\\s"; then
   echo "Port ${ANVIL_PORT} already in use — reusing existing RPC (ensure it is Anvil chain 31337)."
   if [[ "${START_BOT_SWARM}" == "1" ]]; then
     echo "Warning: START_BOT_SWARM=1 needs Anvil with at least 30 dev accounts; existing node may have only 10."
+    echo "Warning: reusing RPC — this script cannot apply --block-time; chain time may freeze between txs (GitLab #99). Restart Anvil with swarm from this script or use interval mining manually."
   fi
 else
   ANVIL_EXTRA=()
   if [[ "${START_BOT_SWARM}" == "1" ]]; then
     ANVIL_EXTRA=(--accounts 30)
+    ANVIL_BT="${YIELDOMEGA_ANVIL_BLOCK_TIME_SEC:-12}"
+    if [[ "${ANVIL_BT}" != "0" ]]; then
+      ANVIL_EXTRA+=(--block-time "${ANVIL_BT}")
+      echo "Anvil interval mining: --block-time ${ANVIL_BT}s (GitLab #99; YIELDOMEGA_ANVIL_BLOCK_TIME_SEC=0 disables)."
+    fi
   fi
   # MegaEVM 512 KiB max deployed code (524288 = 0x80000) — Anvil's --code-size-limit is decimal only.
   anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --code-size-limit 524288 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
@@ -149,6 +179,8 @@ else
   done
 fi
 cast block-number --rpc-url "${RPC_URL}" >/dev/null || die "No RPC at ${RPC_URL}"
+
+warn_swarm_buy_cooldown_if_needed
 
 echo "=== Deploy (DeployDev) ==="
 cd "${CONTRACTS}"
@@ -277,11 +309,6 @@ VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}
 VITE_INDEXER_URL=http://127.0.0.1:${INDEXER_PORT}
 EOF
-
-if [[ -n "${KUMBAYA_WETH}" && -n "${KUMBAYA_USDM}" && -n "${KUMBAYA_ROUTER}" && -n "${KUMBAYA_BUY_ROUTER}" ]]; then
-  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND}/.env.local" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${KUMBAYA_BUY_ROUTER}"
-  echo "  Kumbaya VITE_* merged into ${FRONTEND}/.env.local (GitLab #84)."
-fi
 
 if [[ -n "${KUMBAYA_WETH}" && -n "${KUMBAYA_USDM}" && -n "${KUMBAYA_ROUTER}" && -n "${KUMBAYA_BUY_ROUTER}" ]]; then
   yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND}/.env.local" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${KUMBAYA_BUY_ROUTER}"
