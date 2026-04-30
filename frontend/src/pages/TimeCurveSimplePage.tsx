@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatUnits } from "viem";
 import { useWatchContractEvent } from "wagmi";
@@ -51,6 +51,10 @@ import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
+import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
+
+/** Indexer page size for Simple recent-buys poll (head) and scroll load-more chunks. */
+const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
 
 /**
  * Default `/timecurve` view — the **simple, first-run path** described in
@@ -291,8 +295,19 @@ export function TimeCurveSimplePage() {
   const heroNarrative = phaseNarrative(session.phase);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
+  /** After the user loads older pages, polls merge new head rows but leave this cursor frozen (Arena pattern). */
+  const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
+  const [buyPagesExpanded, setBuyPagesExpanded] = useState(false);
+  const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
   /** `null` until the first indexer buys poll finishes; then tracks the latest poll. */
   const [buyPollLastOk, setBuyPollLastOk] = useState<boolean | null>(null);
+  const activityScrollRef = useRef<HTMLDivElement>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const buysNextOffsetRef = useRef<number | null>(null);
+  const loadingMoreBuysRef = useRef(false);
+  const buyPagesExpandedRef = useRef(false);
+  buysNextOffsetRef.current = buysNextOffset;
+  buyPagesExpandedRef.current = buyPagesExpanded;
   const { isOffline } = useIndexerConnectivity();
   const [tickerNowSec, setTickerNowSec] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -334,6 +349,8 @@ export function TimeCurveSimplePage() {
     if (!indexerBaseUrl()) {
       setRecentBuys(null);
       setBuyPollLastOk(null);
+      setBuysNextOffset(null);
+      setBuyPagesExpanded(false);
       return;
     }
     let cancelled = false;
@@ -341,13 +358,17 @@ export function TimeCurveSimplePage() {
 
     const tick = async () => {
       try {
-        const buys = await fetchTimecurveBuys(5, 0);
+        const buys = await fetchTimecurveBuys(SIMPLE_RECENT_BUYS_PAGE_LIMIT, 0);
         if (cancelled) return;
         const ok = buys != null;
         reportIndexerFetchAttempt(ok);
         setBuyPollLastOk(ok);
         if (ok) {
-          setRecentBuys(buys.items);
+          setRecentBuys((prev) => mergeBuysNewestFirst(buys.items, prev));
+          setBuysNextOffset((cur) => {
+            if (buyPagesExpandedRef.current) return cur;
+            return buys.next_offset;
+          });
         }
       } catch {
         if (!cancelled) {
@@ -369,6 +390,38 @@ export function TimeCurveSimplePage() {
       window.clearTimeout(timeoutId);
     };
   }, [buyFeedRefreshNonce]);
+
+  const fetchOlderBuysPage = useCallback(async () => {
+    const offset = buysNextOffsetRef.current;
+    if (offset === null || loadingMoreBuysRef.current) return;
+    loadingMoreBuysRef.current = true;
+    setLoadingMoreBuys(true);
+    try {
+      const data = await fetchTimecurveBuys(SIMPLE_RECENT_BUYS_PAGE_LIMIT, offset);
+      if (!data) return;
+      setBuyPagesExpanded(true);
+      setRecentBuys((prev) => mergeBuysNewestFirst(data.items, prev ?? []));
+      setBuysNextOffset(data.next_offset);
+    } finally {
+      loadingMoreBuysRef.current = false;
+      setLoadingMoreBuys(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const root = activityScrollRef.current;
+    const target = loadMoreSentinelRef.current;
+    if (!root || !target || buysNextOffset === null) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        void fetchOlderBuysPage();
+      },
+      { root, rootMargin: "120px", threshold: 0 },
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [buysNextOffset, fetchOlderBuysPage, recentBuys?.length]);
 
   // Launch-anchor invariant (DoubLPIncentives policy): 1 CHARM is projected
   // to be worth `1.2 × pricePerCharmWad` CL8Y at launch. We expose three
@@ -1170,120 +1223,142 @@ export function TimeCurveSimplePage() {
                 Cannot reach indexer · cached data may be stale
               </p>
             )}
-            <ul className="timecurve-simple__activity-list">
-              {recentBuys.slice(0, 5).map((b) => {
-                const band = buyBandPosition(
-                  b,
-                  tickerEnvelopeParams,
-                  session.cl8ySpendBounds,
-                  session.decimals,
-                );
-                const age = formatBuyAge(b.block_timestamp, tickerNowSec);
-                const ticks = tickerImpactTicks(b);
-                const theme = tickerCardTheme(b, band);
-                const bandFillPercent = band ? Math.round(band.fillPercent) : null;
-                const tickerStyle = {
-                  "--ticker-accent": band?.accentColor ?? "#1fb86a",
-                  "--ticker-band-fill": band
-                    ? `${Math.max(8, Math.min(100, band.fillPercent))}%`
-                    : "100%",
-                } as CSSProperties;
-                return (
-                  <li
-                    key={`${b.tx_hash}-${b.log_index}`}
-                    className={[
-                      "timecurve-simple__ticker-row",
-                      buyEventTone(b.actual_seconds_added, b.timer_hard_reset),
-                      theme.className,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    style={tickerStyle}
-                  >
-                    <div className="timecurve-simple__ticker-art" aria-hidden="true">
-                      <img src={theme.artSrc} alt="" width={42} height={42} decoding="async" />
-                    </div>
-                    <div className="timecurve-simple__ticker-main">
-                      <span className="timecurve-simple__ticker-badge">{theme.badge}</span>
-                      <AddressInline
-                        address={b.buyer}
-                        size={22}
-                        className="timecurve-simple__ticker-buyer"
-                      />
-                      <span className="timecurve-simple__ticker-age">
-                        {age ?? `block ${formatLocaleInteger(b.block_number)}`}
-                      </span>
-                    </div>
-                    <div className="timecurve-simple__ticker-amounts">
-                      <span className="timecurve-simple__ticker-amount">
-                        <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                        <strong>{formatCompactFromRaw(b.amount, session.decimals, { sigfigs: 4 })}</strong>
-                        <span> CL8Y spent</span>
-                      </span>
-                      <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
-                        <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                        <strong>{formatCompactFromRaw(b.charm_wad, 18, { sigfigs: 4 })}</strong>
-                        <span> CHARM minted</span>
-                      </span>
-                    </div>
-                    <div
-                      className="timecurve-simple__ticker-band"
-                      title={band?.title ?? "Min/max band position unavailable for this indexed buy"}
+            <div
+              ref={activityScrollRef}
+              className="timecurve-simple__activity-scroll"
+              role="region"
+              aria-label="Recent buys; scroll for older activity"
+            >
+              <ul className="timecurve-simple__activity-list">
+                {recentBuys.map((b) => {
+                  const band = buyBandPosition(
+                    b,
+                    tickerEnvelopeParams,
+                    session.cl8ySpendBounds,
+                    session.decimals,
+                  );
+                  const age = formatBuyAge(b.block_timestamp, tickerNowSec);
+                  const ticks = tickerImpactTicks(b);
+                  const theme = tickerCardTheme(b, band);
+                  const bandFillPercent = band ? Math.round(band.fillPercent) : null;
+                  const tickerStyle = {
+                    "--ticker-accent": band?.accentColor ?? "#1fb86a",
+                    "--ticker-band-fill": band
+                      ? `${Math.max(8, Math.min(100, band.fillPercent))}%`
+                      : "100%",
+                  } as CSSProperties;
+                  return (
+                    <li
+                      key={`${b.tx_hash}-${b.log_index}`}
+                      className={[
+                        "timecurve-simple__ticker-row",
+                        buyEventTone(b.actual_seconds_added, b.timer_hard_reset),
+                        theme.className,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      style={tickerStyle}
                     >
-                      <div className="timecurve-simple__ticker-band-head">
-                        <span>{band ? `Min ${band.minLabel}` : "Min"}</span>
-                        <strong>{bandFillPercent !== null ? `${bandFillPercent}% of max` : "Band pending"}</strong>
-                        <span>{band ? `Max ${band.maxLabel}` : "Max"}</span>
+                      <div className="timecurve-simple__ticker-art" aria-hidden="true">
+                        <img src={theme.artSrc} alt="" width={42} height={42} decoding="async" />
                       </div>
-                      <div className="timecurve-simple__ticker-band-track" aria-hidden="true">
-                        <span className="timecurve-simple__ticker-band-min-marker" />
-                        <span
-                          className={
-                            bandFillPercent !== null
-                              ? "timecurve-simple__ticker-band-fill"
-                              : "timecurve-simple__ticker-band-fill timecurve-simple__ticker-band-fill--unknown"
-                          }
+                      <div className="timecurve-simple__ticker-main">
+                        <span className="timecurve-simple__ticker-badge">{theme.badge}</span>
+                        <AddressInline
+                          address={b.buyer}
+                          size={22}
+                          className="timecurve-simple__ticker-buyer"
                         />
+                        <span className="timecurve-simple__ticker-age">
+                          {age ?? `block ${formatLocaleInteger(b.block_number)}`}
+                        </span>
                       </div>
-                      <div className="timecurve-simple__ticker-band-foot">
-                        {band
-                          ? `${band.sizeLabel} · ${Math.round(band.positionPercent)}% through min-max`
-                          : "Waiting for band math"}
+                      <div className="timecurve-simple__ticker-amounts">
+                        <span className="timecurve-simple__ticker-amount">
+                          <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                          <strong>{formatCompactFromRaw(b.amount, session.decimals, { sigfigs: 4 })}</strong>
+                          <span> CL8Y spent</span>
+                        </span>
+                        <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
+                          <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                          <strong>{formatCompactFromRaw(b.charm_wad, 18, { sigfigs: 4 })}</strong>
+                          <span> CHARM minted</span>
+                        </span>
                       </div>
-                    </div>
-                    <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
-                      {ticks.map((tick) => {
-                        const effect = tickerEffectDisplay(tick);
-                        return (
-                          <li
-                            key={tick.id}
-                            className={`live-buy-tick live-buy-tick--${tick.tone} live-buy-tick--effect-${tick.id}`}
-                          >
-                            <span className="live-buy-tick__glyph" aria-hidden="true">
-                              {effect.glyph}
-                            </span>
-                            <span className="live-buy-tick__text">
-                              <span className="live-buy-tick__label">{effect.label}</span>
-                              {effect.sub ? <span className="live-buy-tick__sub">{effect.sub}</span> : null}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <div className="timecurve-simple__ticker-meta">
-                      {b.battle_points_after ? (
-                        <span>{formatLocaleInteger(BigInt(b.battle_points_after))} BP</span>
-                      ) : (
-                        <span>WarBow BP pending</span>
-                      )}
-                      <span>
-                        tx <TxHash hash={b.tx_hash} />
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      <div
+                        className="timecurve-simple__ticker-band"
+                        title={band?.title ?? "Min/max band position unavailable for this indexed buy"}
+                      >
+                        <div className="timecurve-simple__ticker-band-head">
+                          <span>{band ? `Min ${band.minLabel}` : "Min"}</span>
+                          <strong>{bandFillPercent !== null ? `${bandFillPercent}% of max` : "Band pending"}</strong>
+                          <span>{band ? `Max ${band.maxLabel}` : "Max"}</span>
+                        </div>
+                        <div className="timecurve-simple__ticker-band-track" aria-hidden="true">
+                          <span className="timecurve-simple__ticker-band-min-marker" />
+                          <span
+                            className={
+                              bandFillPercent !== null
+                                ? "timecurve-simple__ticker-band-fill"
+                                : "timecurve-simple__ticker-band-fill timecurve-simple__ticker-band-fill--unknown"
+                            }
+                          />
+                        </div>
+                        <div className="timecurve-simple__ticker-band-foot">
+                          {band
+                            ? `${band.sizeLabel} · ${Math.round(band.positionPercent)}% through min-max`
+                            : "Waiting for band math"}
+                        </div>
+                      </div>
+                      <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
+                        {ticks.map((tick) => {
+                          const effect = tickerEffectDisplay(tick);
+                          return (
+                            <li
+                              key={tick.id}
+                              className={`live-buy-tick live-buy-tick--${tick.tone} live-buy-tick--effect-${tick.id}`}
+                            >
+                              <span className="live-buy-tick__glyph" aria-hidden="true">
+                                {effect.glyph}
+                              </span>
+                              <span className="live-buy-tick__text">
+                                <span className="live-buy-tick__label">{effect.label}</span>
+                                {effect.sub ? <span className="live-buy-tick__sub">{effect.sub}</span> : null}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <div className="timecurve-simple__ticker-meta">
+                        {b.battle_points_after ? (
+                          <span>{formatLocaleInteger(BigInt(b.battle_points_after))} BP</span>
+                        ) : (
+                          <span>WarBow BP pending</span>
+                        )}
+                        <span>
+                          tx <TxHash hash={b.tx_hash} />
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {loadingMoreBuys ? (
+                <p className="muted timecurve-simple__activity-load-more" aria-live="polite">
+                  Loading older buys…
+                </p>
+              ) : null}
+              {buysNextOffset !== null ? (
+                <div
+                  ref={loadMoreSentinelRef}
+                  className="timecurve-simple__activity-load-sentinel"
+                  data-testid="timecurve-simple-buys-scroll-sentinel"
+                  aria-hidden="true"
+                />
+              ) : buyPagesExpanded ? (
+                <p className="muted timecurve-simple__activity-load-more">End of loaded history</p>
+              ) : null}
+            </div>
           </>
         ) : buyPollLastOk === true && recentBuys && recentBuys.length === 0 && !isOffline ? (
           <p className="muted">Waiting for the first buy of this round.</p>
