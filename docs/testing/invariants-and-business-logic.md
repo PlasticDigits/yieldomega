@@ -61,6 +61,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
 | **Indexer** | Decode canonical logs, idempotent persist, chain pointer + reorg rollback of indexed rows. **`TimeCurveBuyRouter`** `BuyViaKumbaya` + `TimeCurve` `Buy` correlation for multi-asset entry metadata ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). | [indexer/REORG_STRATEGY.md](../../indexer/REORG_STRATEGY.md), [indexer/src/persist.rs](../../indexer/src/persist.rs), [integrations/kumbaya.md](../integrations/kumbaya.md) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
+| **Frontend — indexer offline / backoff (#96)** | When `VITE_INDEXER_URL` is set, shared **`reportIndexerFetchAttempt`**: offline after **3** debounced failure seconds; **`IndexerStatusBar`** **Indexer offline · retrying**; pollers back off **30s → 60s → 120s**; Simple **Recent buys** empty copy distinguishes unreachable indexer vs zero rows. | [timecurve-views — issue #96](../frontend/timecurve-views.md#indexer-offline-ux-issue-96), [invariants — #96](#indexer-offline-ux-and-backoff-gitlab-96), [`indexerConnectivity.ts`](../../frontend/src/lib/indexerConnectivity.ts) |
 | **Frontend — wallet modal (SafePal / WalletConnect)** | With **`VITE_WALLETCONNECT_PROJECT_ID`**, RainbowKit lists **SafePal** (`safepalWallet`) plus default popular wallets; **EIP-6963** multi-injected discovery enabled. Without project id (non–E2E mock), **injected-only** (no WC QR). SafePal extension uses injected connector; mobile uses WC + SafePal deep link per RainbowKit. | [wallet-connection.md](../frontend/wallet-connection.md) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58)), [`wagmi-config.ts`](../../frontend/src/wagmi-config.ts) |
 | **Frontend — single-chain wagmi (#81)** | **`wagmi` `chains`** lists **only** [`configuredChain()`](../../frontend/src/lib/chain.ts) — **no** bundled **`mainnet` / `sepolia`**. Default env when unset: **`VITE_CHAIN_ID=31337`**, **`VITE_RPC_URL=http://127.0.0.1:8545`** (matches [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)). Prevents incidental requests to viem default RPCs (e.g. **`eth.merkle.io`**) during local QA. | [wallet-connection.md — chains](../frontend/wallet-connection.md), [§ Single-chain wagmi](#frontend-single-chain-wagmi-issue-81), [issue #81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) |
 | **Frontend — Album 1 BGM resume** | **localStorage** `yieldomega:audio:v1:playbackState`: stable **`trackId`**, index, **`positionSec`**, **`savedAt`**. **7-day** TTL clears offset only; **≥4s** throttle while playing; pause / skip / ended / tab-hide flush. **`AudioEngineProvider`** initial **`trackIndex`** matches hydrate so the dock title does not flash track 1. | [§ Album 1 BGM + SFX + resume](#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68), [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68), [issue #71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) |
@@ -128,6 +129,30 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disabled** and show **Refreshing quote…** while the Kumbaya **`quoteExactOutput`** read is **in flight** for the current slider-derived CL8Y amount, including TanStack Query **background refetches** (`isFetching` without `isPending`). **`swapQuoteLoading`** in [`useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) gates both the CTA label and `nonCl8yBlocked` on [`TimeCurveSimplePage`](../../frontend/src/pages/TimeCurveSimplePage.tsx).
 
 **Why:** Prevents signing against a stale on-screen quote after rapid slider changes; aligns with Anvil wallet-write E2E stability ([issue #52](https://gitlab.com/PlasticDigits/yieldomega/-/issues/52)). **Doc:** [timecurve-views — Buy quote refresh](../frontend/timecurve-views.md#buy-quote-refresh-kumbaya-issue-56) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56).
+
+<a id="indexer-offline-ux-and-backoff-gitlab-96"></a>
+
+### Indexer offline UX and poll backoff (issue #96)
+
+**Intent:** When the HTTP indexer (`VITE_INDEXER_URL`) fails during a session, participants see an explicit **offline / retrying** signal, indexer pollers **back off** (30s → 60s → 120s) after a short streak of failures, and **Recent buys** does not use the **“first buy of the round”** empty copy while the feed is unreachable ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
+
+| Invariant | Check |
+|-----------|--------|
+| **Shared failure streak** | [`reportIndexerFetchAttempt`](../../frontend/src/lib/indexerConnectivity.ts): **≤1 failure increment per wall-clock second**; **any** success resets streak to **0**. |
+| **Offline threshold** | **`failureStreak >= 3`** → user-visible **offline** (`useIndexerConnectivity` / `IndexerStatusBar` **Indexer offline · retrying**). |
+| **Adaptive intervals** | **`getIndexerBackoffPollMs(fastMs)`** returns **`fastMs`** when healthy; after threshold, **30s / 60s / 120s** capped tiers. |
+
+| Caller (representative) | Baseline `fastMs` |
+|------------------------|-------------------|
+| `IndexerConnectivityProvider` (`fetchIndexerStatus`) | **3000** |
+| `useTimecurveHeroTimer` (`fetchTimecurveChainTimer`) | **1000** |
+| `fetchTimecurveBuys` (Simple + Arena) | **5000** / **3000** |
+
+| Empty-state guard | **Waiting for the first buy…** only when the **last** buys poll succeeded with **zero** rows **and** offline streak is not active; unreachable / failed poll → **Cannot reach indexer · cached data may be stale** (and optional hint when cached rows still show). |
+
+**Automated:** [`indexerConnectivity.test.ts`](../../frontend/src/lib/indexerConnectivity.test.ts) (`indexerBackoffPollMsForStreak`, debounced failure counting).
+
+**Doc:** [timecurve-views — Indexer offline (issue #96)](../frontend/timecurve-views.md#indexer-offline-ux-issue-96) · play checklist [`skills/verify-yo-indexer-offline-ux/SKILL.md`](../../skills/verify-yo-indexer-offline-ux/SKILL.md).
 
 <a id="timecurve-simple-stake-redeemed-issue-90"></a>
 

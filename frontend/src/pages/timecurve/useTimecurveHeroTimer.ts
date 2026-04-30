@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchTimecurveChainTimer, type TimecurveChainTimer } from "@/lib/indexerApi";
+import { indexerBaseUrl } from "@/lib/addresses";
+import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
 export type HeroTimerState = {
   deadlineSec: number;
@@ -49,6 +51,8 @@ export type UseTimecurveHeroTimerResult = {
 /**
  * TimeCurve hero countdown from indexer `/v1/timecurve/chain-timer`.
  * Wall-vs-chain skew is fixed on first load and on `refresh()`; polls only update deadline / display fields so the skew does not drift tick-to-tick.
+ *
+ * Poll cadence backs off when the shared indexer health streak is open ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
  */
 export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefined): UseTimecurveHeroTimerResult {
   const [heroTimer, setHeroTimer] = useState<HeroTimerState | null>(null);
@@ -87,9 +91,14 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
       try {
         const fetchedAtSec = Math.floor(Date.now() / 1000);
         const data = await fetchTimecurveChainTimer();
-        if (!data) return;
-        const base = snapshotFromIndexerChainTimer(data);
-        if (!isFiniteHeroBase(base)) return;
+        const base = data ? snapshotFromIndexerChainTimer(data) : null;
+        const ok = Boolean(base && isFiniteHeroBase(base));
+        if (indexerBaseUrl()) {
+          reportIndexerFetchAttempt(ok);
+        }
+        if (!ok || !base) {
+          return;
+        }
 
         if (resetSkew || skewWallMinusChainRef.current === null) {
           skewWallMinusChainRef.current = conservativeSkewWallMinusChainSec(fetchedAtSec, base.blockTimestampSec);
@@ -97,7 +106,9 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
 
         setHeroTimer({ ...base, fetchedAtSec });
       } catch {
-        /* ignore */
+        if (indexerBaseUrl()) {
+          reportIndexerFetchAttempt(false);
+        }
       } finally {
         if (resetSkew) setIsBusy(false);
       }
@@ -113,9 +124,29 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
       skewWallMinusChainRef.current = null;
       return;
     }
-    void loadSnapshot(true);
-    const id = window.setInterval(() => void loadSnapshot(false), 1000);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    let timeoutId = 0;
+
+    const scheduleLoop = () => {
+      timeoutId = window.setTimeout(async () => {
+        await loadSnapshot(false);
+        if (!cancelled) {
+          scheduleLoop();
+        }
+      }, getIndexerBackoffPollMs(1000));
+    };
+
+    void (async () => {
+      await loadSnapshot(true);
+      if (!cancelled) {
+        scheduleLoop();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
   }, [timeCurveAddress, loadSnapshot]);
 
   useEffect(() => {

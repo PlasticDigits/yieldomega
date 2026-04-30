@@ -11,7 +11,10 @@ import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
-import { addresses } from "@/lib/addresses";
+import { IndexerStatusBar } from "@/components/IndexerStatusBar";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
+import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
@@ -95,6 +98,9 @@ export function TimeCurveSimplePage() {
   const heroNarrative = phaseNarrative(session.phase);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
+  /** `null` until the first indexer buys poll finishes; then tracks the latest poll. */
+  const [buyPollLastOk, setBuyPollLastOk] = useState<boolean | null>(null);
+  const { isOffline } = useIndexerConnectivity();
 
   useTimeCurveSimplePageSfx({
     recentBuys,
@@ -105,20 +111,42 @@ export function TimeCurveSimplePage() {
   });
 
   useEffect(() => {
+    if (!indexerBaseUrl()) {
+      setRecentBuys(null);
+      setBuyPollLastOk(null);
+      return;
+    }
     let cancelled = false;
-    async function tick() {
+    let timeoutId = 0;
+
+    const tick = async () => {
       try {
         const buys = await fetchTimecurveBuys(3, 0);
-        if (!cancelled && buys) setRecentBuys(buys.items);
+        if (cancelled) return;
+        const ok = buys != null;
+        reportIndexerFetchAttempt(ok);
+        setBuyPollLastOk(ok);
+        if (ok) {
+          setRecentBuys(buys.items);
+        }
       } catch {
-        /* ignore */
+        if (!cancelled) {
+          reportIndexerFetchAttempt(false);
+          setBuyPollLastOk(false);
+        }
       }
-    }
-    void tick();
-    const id = window.setInterval(() => void tick(), 5000);
+    };
+
+    const loop = async () => {
+      await tick();
+      if (cancelled) return;
+      timeoutId = window.setTimeout(loop, getIndexerBackoffPollMs(5000));
+    };
+
+    void loop();
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -941,6 +969,14 @@ export function TimeCurveSimplePage() {
         launchHelperCopy={launchHelperCopy}
       />
 
+      {/* Indexer health — `/timecurve` hides the global footer; mirror the
+          footer pill here so Simple still shows live vs offline ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)). */}
+      {indexerBaseUrl() ? (
+        <div className="timecurve-simple__indexer-strip">
+          <IndexerStatusBar />
+        </div>
+      ) : null}
+
       {/* Recent buys — moved out of the timer panel and given its own slim
           section so the spotlight row stays focused on the timer + buy CTA. */}
       <PageSection
@@ -950,33 +986,44 @@ export function TimeCurveSimplePage() {
         badgeTone="info"
       >
         {recentBuys && recentBuys.length > 0 ? (
-          <ul className="timecurve-simple__activity-list">
-            {recentBuys.slice(0, 3).map((b) => (
-              <li
-                key={`${b.tx_hash}-${b.log_index}`}
-                className={`timecurve-simple__ticker-row ${buyEventTone(b.actual_seconds_added, b.timer_hard_reset)}`}
-              >
-                <span className="mono" title={b.buyer}>
-                  {shortAddress(b.buyer)}
-                </span>
-                <span>
-                  <AmountDisplay raw={b.amount} decimals={session.decimals} />
-                </span>
-                <span>
-                  {b.timer_hard_reset
-                    ? "hard reset"
-                    : b.actual_seconds_added !== undefined
-                      ? `+${formatLocaleInteger(BigInt(b.actual_seconds_added))}s`
-                      : ""}
-                </span>
-                <span>
-                  tx <TxHash hash={b.tx_hash} />
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
+          <>
+            {(isOffline || buyPollLastOk === false) && (
+              <p className="muted timecurve-simple__indexer-stale-hint">
+                Cannot reach indexer · cached data may be stale
+              </p>
+            )}
+            <ul className="timecurve-simple__activity-list">
+              {recentBuys.slice(0, 3).map((b) => (
+                <li
+                  key={`${b.tx_hash}-${b.log_index}`}
+                  className={`timecurve-simple__ticker-row ${buyEventTone(b.actual_seconds_added, b.timer_hard_reset)}`}
+                >
+                  <span className="mono" title={b.buyer}>
+                    {shortAddress(b.buyer)}
+                  </span>
+                  <span>
+                    <AmountDisplay raw={b.amount} decimals={session.decimals} />
+                  </span>
+                  <span>
+                    {b.timer_hard_reset
+                      ? "hard reset"
+                      : b.actual_seconds_added !== undefined
+                        ? `+${formatLocaleInteger(BigInt(b.actual_seconds_added))}s`
+                        : ""}
+                  </span>
+                  <span>
+                    tx <TxHash hash={b.tx_hash} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : buyPollLastOk === true && recentBuys && recentBuys.length === 0 && !isOffline ? (
           <p className="muted">Waiting for the first buy of this round.</p>
+        ) : buyPollLastOk === false || isOffline ? (
+          <p className="muted">Cannot reach indexer · cached data may be stale</p>
+        ) : (
+          <p className="muted">Loading recent buys…</p>
         )}
       </PageSection>
 

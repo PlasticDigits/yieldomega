@@ -89,12 +89,16 @@ async function getJson<T>(path: string): Promise<T | null> {
   if (!base) {
     return null;
   }
-  const res = await fetch(`${base}${path}`);
-  if (!res.ok) {
-    console.warn("[indexer]", res.status, path);
+  try {
+    const res = await fetch(`${base}${path}`);
+    if (!res.ok) {
+      console.warn("[indexer]", res.status, path);
+      return null;
+    }
+    return res.json() as Promise<T>;
+  } catch {
     return null;
   }
-  return res.json() as Promise<T>;
 }
 
 export type PaginatedItems<T> = {
@@ -129,11 +133,15 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
   if (!base) {
     return null;
   }
-  const res = await fetch(`${base}/v1/timecurve/chain-timer`);
-  if (!res.ok) {
+  try {
+    const res = await fetch(`${base}/v1/timecurve/chain-timer`);
+    if (!res.ok) {
+      return null;
+    }
+    return res.json() as Promise<TimecurveChainTimer>;
+  } catch {
     return null;
   }
-  return res.json() as Promise<TimecurveChainTimer>;
 }
 
 export type WarbowLeaderboardItem = {

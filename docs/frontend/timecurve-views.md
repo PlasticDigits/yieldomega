@@ -102,6 +102,22 @@ setups.
 [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
 (`ledgerSecIntForPhase`, `derivePhase`).
 
+<a id="indexer-offline-ux-issue-96"></a>
+
+## Indexer offline signal, backoff, and Simple empty states (issue #96)
+
+When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-session, the UI must **not** look identical to “healthy indexer, zero rows” ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
+
+**Reachability + backoff**
+
+- **`reportIndexerFetchAttempt(ok)`** (in [`indexerConnectivity.ts`](../../frontend/src/lib/indexerConnectivity.ts)) aggregates outcomes from **`IndexerConnectivityProvider`** (`fetchIndexerStatus`), **`useTimecurveHeroTimer`** (`/v1/timecurve/chain-timer`), **`fetchTimecurveBuys`** on Simple and Arena, and any future poll that opts in. Failures increment the streak **at most once per wall-clock second** so parallel pollers do not triple-count the same outage.
+- After **three** such seconds with failures, **`isOffline`** becomes true: **`IndexerStatusBar`** shows **Indexer offline · retrying** (error-styled pill). Poll intervals back off **30s → 60s → 120s** (per fast baseline: 1s hero refresh, 3s status, 5s Simple buys) until the next **`true`** report resets the streak.
+- **`getJson`** / **`fetchTimecurveChainTimer`** swallow network errors and return **`null`** so pollers get a clean **`false`** outcome without unhandled rejections.
+
+**`/timecurve` (Simple)** hides the global footer ([`RootLayout`](../../frontend/src/layout/RootLayout.tsx)); the same **`IndexerStatusBar`** is rendered above **Recent buys**. **Recent buys** empty copy: **Waiting for the first buy of this round** only when the last buys poll **succeeded** with zero rows **and** connectivity is not offline; otherwise prefer **Cannot reach indexer · cached data may be stale** (and a stale hint above the list when cached rows exist).
+
+**Spec ↔ test:** [invariants — indexer offline UX](../testing/invariants-and-business-logic.md#indexer-offline-ux-and-backoff-gitlab-96) · [`indexerConnectivity.test.ts`](../../frontend/src/lib/indexerConnectivity.test.ts) · play checklist [`skills/verify-yo-indexer-offline-ux/SKILL.md`](../../skills/verify-yo-indexer-offline-ux/SKILL.md).
+
 ## WarBow pending flag UI (issues #51, #63)
 
 **Onchain + logs:** **`Buy.flagPlanted`** is **`true` iff** that transaction **opted in** to planting the WarBow pending flag (`plantWarBowFlag` on **`buy`** / **`buyFor`** / **`buyViaKumbaya`** — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). Indexer **`flag_planted`** mirrors the log. **Holder + silence** remain authoritative from **`warbowPendingFlagOwner`** / **`warbowPendingFlagPlantAt`** reads, not from “any recent buy row” ([issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51)).
