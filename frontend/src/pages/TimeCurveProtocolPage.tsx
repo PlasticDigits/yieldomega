@@ -14,7 +14,7 @@ import {
 import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
-import { CL8Y_TOKEN_LOGO } from "@/lib/tokenMedia";
+import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 
@@ -209,8 +209,8 @@ export function TimeCurveProtocolPage() {
         badgeLabel={protocolPhaseBadge.label}
         badgeTone={protocolPhaseBadge.tone}
         badgeIconSrc={protocolPhaseBadge.iconSrc}
-        coinSrc={CL8Y_TOKEN_LOGO}
-        coinAlt="CL8Y reserve token glyph"
+        coinSrc={DOUB_TOKEN_LOGO}
+        coinAlt="DOUB token glyph"
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
       />
 
