@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::ChainTimerSnapshot;
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.8.0";
+const SCHEMA_VERSION: &str = "1.9.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -93,6 +93,14 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
         .route("/v1/referrals/registrations", get(referral_registrations))
         .route("/v1/referrals/applied", get(referral_applied))
+        .route(
+            "/v1/referrals/referrer-leaderboard",
+            get(referral_referrer_leaderboard),
+        )
+        .route(
+            "/v1/referrals/wallet-charm-summary",
+            get(referral_wallet_charm_summary),
+        )
         .route(
             "/v1/fee-router/sinks-updates",
             get(fee_router_sinks_updates),
@@ -1532,6 +1540,139 @@ async fn referral_applied(
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+/// Aggregated **referrer-side** CHARM from indexed `ReferralApplied` rows (`referrerCharmAdded` sum per referrer).
+#[derive(Serialize)]
+struct ReferralReferrerLeaderboardRow {
+    rank: i64,
+    referrer: String,
+    total_referrer_charm_wad: String,
+    referred_buy_count: String,
+}
+
+async fn referral_referrer_leaderboard(
+    State(state): State<AppState>,
+    Query(p): Query<PageParams>,
+) -> Response {
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let rows = sqlx::query(
+        r#"SELECT referrer,
+                  COALESCE(SUM(referrer_amount), 0)::text AS total_referrer_charm_wad,
+                  COUNT(*)::text AS referred_buy_count
+             FROM idx_timecurve_referral_applied
+            GROUP BY referrer
+            ORDER BY SUM(referrer_amount) DESC NULLS LAST
+            LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<ReferralReferrerLeaderboardRow> = rows
+        .into_iter()
+        .enumerate()
+        .filter_map(|(i, r)| {
+            Some(ReferralReferrerLeaderboardRow {
+                rank: off + i as i64 + 1,
+                referrer: r.try_get("referrer").ok()?,
+                total_referrer_charm_wad: r.try_get("total_referrer_charm_wad").ok()?,
+                referred_buy_count: r.try_get("referred_buy_count").ok()?,
+            })
+        })
+        .collect();
+
+    let next_offset = if items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "items": items,
+        "limit": lim,
+        "offset": off,
+        "next_offset": next_offset,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ReferralWalletCharmSummaryQuery {
+    pub wallet: String,
+}
+
+async fn referral_wallet_charm_summary(
+    State(state): State<AppState>,
+    Query(q): Query<ReferralWalletCharmSummaryQuery>,
+) -> Response {
+    if !valid_0x_address20(&q.wallet) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "wallet must be a 0x-prefixed 20-byte address" })),
+        )
+            .into_response();
+    }
+    let w = q.wallet.to_lowercase();
+
+    let row = sqlx::query(
+        r#"SELECT
+              (SELECT COALESCE(SUM(referrer_amount), 0)::text
+                 FROM idx_timecurve_referral_applied
+                WHERE lower(referrer) = lower($1)) AS referrer_charm_wad,
+              (SELECT COALESCE(SUM(referee_amount), 0)::text
+                 FROM idx_timecurve_referral_applied
+                WHERE lower(buyer) = lower($1)) AS referee_charm_wad,
+              (SELECT COUNT(*)::text
+                 FROM idx_timecurve_referral_applied
+                WHERE lower(referrer) = lower($1)) AS referred_buy_count,
+              (SELECT COUNT(*)::text
+                 FROM idx_timecurve_referral_applied
+                WHERE lower(buyer) = lower($1)) AS referee_buy_count"#,
+    )
+    .bind(&w)
+    .fetch_one(&state.pool)
+    .await;
+
+    let row = match row {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let body = json!({
+        "wallet": w,
+        "referrer_charm_wad": row.try_get::<String, _>("referrer_charm_wad").unwrap_or_else(|_| "0".into()),
+        "referee_charm_wad": row.try_get::<String, _>("referee_charm_wad").unwrap_or_else(|_| "0".into()),
+        "referred_buy_count": row.try_get::<String, _>("referred_buy_count").unwrap_or_else(|_| "0".into()),
+        "referee_buy_count": row.try_get::<String, _>("referee_buy_count").unwrap_or_else(|_| "0".into()),
     });
 
     let mut res = Json(body).into_response();

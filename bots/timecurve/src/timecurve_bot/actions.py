@@ -12,6 +12,8 @@ from eth_account.signers.local import LocalAccount
 from web3 import Web3
 from web3.contract import Contract
 
+from timecurve_bot.referral_code import hash_referral_code, referral_code_from_env
+
 
 def _tx_template(w3: Web3, account: LocalAccount) -> dict:
     return {
@@ -97,9 +99,18 @@ def buy(
     *,
     gas_multiplier: float,
     send: bool,
+    referral_code: Optional[str] = None,
 ) -> Optional[str]:
     _wait_until_buy_allowed(w3, tc, account)
-    fn = tc.functions.buy(charm_wad)
+    code_src = referral_code if referral_code is not None else referral_code_from_env()
+    if code_src:
+        try:
+            h = hash_referral_code(code_src)
+        except ValueError as e:
+            raise ValueError(f"Invalid referral code for buy: {e}") from e
+        fn = tc.functions.buy(charm_wad, h, False)
+    else:
+        fn = tc.functions.buy(charm_wad)
     tx = fn.build_transaction(_tx_template(w3, account))
     return _build_and_send(w3, account, tx, gas_multiplier, send, f"buy({charm_wad})")
 

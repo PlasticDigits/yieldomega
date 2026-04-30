@@ -19,7 +19,7 @@ Use this skill when an agent or human needs to **produce evidence** (screenshots
 - Frontend built with **`VITE_LAUNCH_TIMESTAMP` in the past** if you need the **post-launch** route tree (`/` → TimeCurve Simple, `/home` → marketing home).
 - **`VITE_REFERRAL_REGISTRY_ADDRESS`** set **or** **`VITE_TIMECURVE_ADDRESS`** pointing at a TimeCurve whose **`referralRegistry()`** is non-zero.
 - Wallet with **gas + CL8Y** for `registerCode` when exercising R4.
-- **Out of scope** for this checklist per #64: leaderboard UI; on-chain reserved-word governance; Kumbaya buy CTA referral plumbing (separate signoff).
+- **Out of scope** for this checklist per #64: on-chain reserved-word governance; Kumbaya buy CTA referral plumbing (separate signoff). **Leaderboard + indexed earnings** are covered by [GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94) and [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#referrals-leaderboard-and-earnings-issue-94) (not duplicate rows here — verify indexer + `/referrals` panels when running a stack with referral buys).
 
 ## Rows R1–R7 (evidence checklist)
 
