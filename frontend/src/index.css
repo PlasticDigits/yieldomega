@@ -5722,6 +5722,26 @@ code {
   font-size: 0.85rem;
 }
 
+/* Scroll the ticker; older rows load when the sentinel nears the viewport (Simple lazy feed). */
+.timecurve-simple__activity-scroll {
+  max-height: min(58vh, 32rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  margin-right: -0.15rem;
+}
+
+.timecurve-simple__activity-load-more {
+  margin: 0.65rem 0 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.timecurve-simple__activity-load-sentinel {
+  height: 1px;
+  flex-shrink: 0;
+}
+
 .timecurve-simple__activity-list {
   list-style: none;
   margin: 0;
