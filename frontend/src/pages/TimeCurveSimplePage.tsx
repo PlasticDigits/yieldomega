@@ -7,10 +7,8 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
-import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
@@ -62,9 +60,6 @@ import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimpleP
  * `TimeCurve` ABI used by the Arena view, so the contract remains the single
  * source of truth (see `docs/frontend/timecurve-views.md`).
  */
-const HERO_LEDE =
-  "Buy CHARM with CL8Y to lock in your share of the DOUB launch. Your CHARM only grows in CL8Y value as the sale heats up — the timer is the only thing in your way.";
-
 function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean | undefined): string {
   if (hardReset) return "ticker-event--reset";
   if (!actualSecondsAdded) return "";
@@ -360,23 +355,6 @@ export function TimeCurveSimplePage() {
       ? `Buy cooldown · ${formatCountdown(session.walletCooldownRemainingSec)} left`
       : null;
 
-  const headerContent = (
-    <div className="timecurve-simple__hero-meta">
-      {session.deadlineSec !== undefined && session.phase !== "saleStartPending" && (
-        <span className="muted">
-          Deadline (chain time):{" "}
-          <UnixTimestampDisplay raw={String(session.deadlineSec)} />
-        </span>
-      )}
-      {session.saleStartSec !== undefined && session.phase === "saleStartPending" && (
-        <span className="muted">
-          Sale opens (chain time):{" "}
-          <UnixTimestampDisplay raw={String(session.saleStartSec)} />
-        </span>
-      )}
-    </div>
-  );
-
   const stakePanelVisible =
     session.walletConnected &&
     session.charmWeightWad !== undefined &&
@@ -652,11 +630,7 @@ export function TimeCurveSimplePage() {
     <div className="page timecurve-simple-page">
       <TimeCurveSubnav active="simple" />
 
-      {/* Sale hub — timer + primary buy action share the spotlight row above
-          the fold, so the single most valuable action is the first thing a
-          first-run user sees. The hero (title + lede + deadline) sits BELOW
-          the hub so the page leads with action and the hero acts as the
-          context strip explaining what the hub does. */}
+      {/* Sale hub — timer + primary buy action share the spotlight row above the fold. */}
       <div className="timecurve-simple__hub">
         <PageSection
           title="Time left"
@@ -937,23 +911,6 @@ export function TimeCurveSimplePage() {
           )}
         </PageSection>
       </div>
-
-      {/* Hero context strip — title, the action-led lede, and the chain-time
-          deadline. Sits BELOW the hub on purpose: the page leads with action
-          and uses the hero to explain what just happened above (UX feedback
-          from the original design where the hero pushed the buy button below
-          the fold). The hero still owns the sale-phase badge so the visual
-          status indicator is shared with Arena / Protocol. */}
-      <PageHero
-        title="TimeCurve sale"
-        lede={HERO_LEDE}
-        badgeLabel={phaseInfo.label}
-        badgeTone={phaseInfo.tone}
-        badgeIconSrc={phaseInfo.iconSrc}
-        coinSrc="/art/token-logo.png"
-      >
-        {headerContent}
-      </PageHero>
 
       <TimeCurveStakeAtLaunchSection
         visible={stakePanelVisible}
