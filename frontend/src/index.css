@@ -5149,13 +5149,6 @@ code {
   gap: 1rem;
 }
 
-.timecurve-simple__hero-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  font-size: 0.9rem;
-}
-
 /* =============================================================
  * TimeCurve Simple — sale hub spotlight panels (Iteration 1)
  *
