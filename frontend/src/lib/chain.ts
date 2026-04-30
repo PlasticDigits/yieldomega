@@ -33,6 +33,11 @@ export function resolveChainRpcConfig(
   return { id, defaultRpcHttp };
 }
 
+/** Target chain id from `VITE_CHAIN_ID` + `VITE_RPC_URL` (same semantics as {@link configuredChain}). */
+export function configuredTargetChainId(): number {
+  return resolveChainRpcConfig(import.meta.env.VITE_CHAIN_ID, import.meta.env.VITE_RPC_URL).id;
+}
+
 /** Target dev/test chain from `VITE_CHAIN_ID` + `VITE_RPC_URL` (MegaETH or local anvil). */
 export function configuredChain() {
   const { id, defaultRpcHttp } = resolveChainRpcConfig(

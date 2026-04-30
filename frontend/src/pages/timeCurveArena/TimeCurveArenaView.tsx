@@ -5,7 +5,10 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { AddressInline } from "@/components/AddressInline";
+import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
+import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
@@ -58,6 +61,7 @@ const ARENA_SNIPER_SHARK_CUTOUT = "/art/cutouts/sniper-shark-peek-scope.png";
 
 export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
+  const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const {
     activeStreakR, address, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyCooldownSecR,
@@ -404,6 +408,7 @@ export function TimeCurveArenaView() {
           </div>
           <div className="timer-hero__split timer-hero__split--arena-hub">
             <div className="timer-hero__arena-buy">
+              <ChainMismatchWriteBarrier testId="timecurve-arena-buy-chain-write-gate">
               <PageSection
                 title="Buy CHARM"
                 badgeLabel={saleActive ? "Primary action" : "Buy window"}
@@ -825,6 +830,7 @@ export function TimeCurveArenaView() {
                             className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
                             disabled={
                               isWriting ||
+                              chainMismatch ||
                               walletCooldownRemainingSec > 0 ||
                               charmWadSelected === undefined ||
                               charmWadSelected <= 0n ||
@@ -867,6 +873,7 @@ export function TimeCurveArenaView() {
                 )}
                 {buyErr && <StatusMessage variant="error">{buyErr}</StatusMessage>}
               </PageSection>
+              </ChainMismatchWriteBarrier>
             </div>
             <div className="timer-hero__arena-rail">
               <div className="timer-hero__clock-stack">
@@ -1059,6 +1066,7 @@ export function TimeCurveArenaView() {
 
       <div className="split-layout split-layout--hero">
 
+        <ChainMismatchWriteBarrier testId="timecurve-arena-standings-chain-write-gate">
         <PageSection
           title={saleEnded ? "After sale actions" : "Standings and prize chase"}
           badgeLabel={saleEnded ? "Redeem and settle" : "Competitive surface"}
@@ -1083,7 +1091,7 @@ export function TimeCurveArenaView() {
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--critical"
-                  disabled={isWriting}
+                  disabled={isWriting || chainMismatch}
                   onClick={() => runVoid("endSale")}
                   {...secondaryButtonMotion}
                 >
@@ -1092,7 +1100,7 @@ export function TimeCurveArenaView() {
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--priority"
-                  disabled={isWriting}
+                  disabled={isWriting || chainMismatch}
                   onClick={() => runVoid("redeemCharms")}
                   {...secondaryButtonMotion}
                 >
@@ -1101,7 +1109,7 @@ export function TimeCurveArenaView() {
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--priority"
-                  disabled={isWriting || !canDistributePrizesAsOwner}
+                  disabled={isWriting || chainMismatch || !canDistributePrizesAsOwner}
                   onClick={() => runVoid("distributePrizes")}
                   {...secondaryButtonMotion}
                 >
@@ -1166,9 +1174,7 @@ export function TimeCurveArenaView() {
                         .join(" ")}
                     >
                       <div className="momentum-strip__meta">
-                        <span className="mono" title={bar.wallet}>
-                          {bar.label}
-                        </span>
+                        <AddressInline address={bar.wallet} formatWallet={formatWallet} size={16} />
                         <strong>{formatLocaleInteger(bar.value)} BP</strong>
                       </div>
                       <div className="momentum-strip__track">
@@ -1203,6 +1209,7 @@ export function TimeCurveArenaView() {
             </>
           )}
         </PageSection>
+        </ChainMismatchWriteBarrier>
       </div>
 
       {saleActive &&
@@ -1225,6 +1232,7 @@ export function TimeCurveArenaView() {
           />
         )}
 
+      <ChainMismatchWriteBarrier testId="timecurve-arena-warbow-chain-write-gate">
       <WarbowSection
         saleActive={saleActive}
         warbowMaxSteals={warbowMaxSteals}
@@ -1271,6 +1279,7 @@ export function TimeCurveArenaView() {
         gasWarbowFlag={gasWarbowFlag?.toString()}
         gasWarbowRevenge={gasWarbowRevenge?.toString()}
       />
+      </ChainMismatchWriteBarrier>
 
       <PodiumsSection
         podiumPayoutPreview={podiumPayoutPreview}

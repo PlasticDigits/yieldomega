@@ -59,7 +59,8 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
    write through `useWriteContract`. Approval handling, allowance checks, and
    referral plumbing live in one place per page surface but route to the
    same contract entrypoint with the same argument shape.
-3. **One phase machine + one clock for phase and hero timer.** Sale phase
+3. **`chainId` matches build target before wallet writes.** When connected and **`useChainId()`** ≠ [`configuredTargetChainId()`](../../frontend/src/lib/chain.ts) (`VITE_CHAIN_ID` / `VITE_RPC_URL`; default **Anvil** **31337**), Simple + Arena gated panels show **`ChainMismatchWriteBarrier`** and submit paths **`chainMismatchWriteMessage`** gates — [**Wrong network write gating (#95)**](#wrong-network-write-gating-issue-95); [wallet-connection.md § #95](wallet-connection.md#wrong-network-write-gating-issue-95).
+4. **One phase machine + one clock for phase and hero timer.** Sale phase
    derivation (`saleStartPending`, `saleActive`, `saleExpiredAwaitingEnd`,
    `saleEnded`) lives in
    [`timeCurveSimplePhase.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts)
@@ -74,12 +75,22 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
    “pre-start” while the hero countdown is clearly in the live round — see
    [Chain time and sale phase (issue #48)](#chain-time-and-sale-phase-issue-48)
    and [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48).
-4. **No new tokens, no new fee paths.** The Protocol view only displays
+5. **No new tokens, no new fee paths.** The Protocol view only displays
    what the contracts already expose. It never decodes JSON sink blobs or
    re-derives fee splits — it shows raw `bps` / addresses straight from
    `FeeRouter` and the routed top-level sinks. Human formatting uses
    `formatBpsAsPercent` / `formatCompactFromRaw` per
    [`design.md`](./design.md).
+
+<a id="wrong-network-write-gating-issue-95"></a>
+
+## Wrong network write gating (issue #95)
+
+**Implementation:** **`ChainMismatchWriteBarrier`** overlays (Option C); primary CTAs additionally respect **`useWalletTargetChainMismatch()`** (Option A); **`chainMismatchWriteMessage`** rejects **`writeContract`** paths before assembling calldata. **`SwitchToTargetChainButton`** issues **`wallet_switchEthereumChain`** for [`configuredChain()`](../../frontend/src/lib/chain.ts).
+
+**Targets:** `/timecurve` buy panel · `/timecurve/arena` buy hub, standings/post-end **`runVoid`** surface, **`WarbowSection`** · `/referrals` register · `/vesting` claim (not **`/protocol`**, **`/kumbaya`**, **`/sir`** navigational stubs).
+
+Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [play checklist](../../skills/verify-yo-chain-write-network/SKILL.md).
 
 ## Chain time and sale phase (issue #48)
 

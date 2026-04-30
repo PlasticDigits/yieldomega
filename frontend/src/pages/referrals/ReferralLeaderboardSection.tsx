@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
+import { AddressInline } from "@/components/AddressInline";
 import { formatAmountTriple, formatLocaleInteger } from "@/lib/formatAmount";
 import {
   fetchReferralReferrerLeaderboard,
@@ -124,7 +125,11 @@ export function ReferralLeaderboardSection({ className }: Props) {
               >
                 <span className="referrals-leaderboard-row__rank">#{row.rank}</span>
                 <div className="referrals-leaderboard-row__identity">
-                  <code title={row.referrer}>{truncateHexAddress(row.referrer, 8, 6)}</code>
+                  <AddressInline
+                    address={row.referrer}
+                    formatWallet={(addr, fb) => (addr ? truncateHexAddress(addr, 8, 6) : fb)}
+                    size={22}
+                  />
                   <span>
                     {formatLocaleInteger(row.referred_buy_count)} indexed{" "}
                     {row.referred_buy_count === "1" ? "buy" : "buys"} using this code
