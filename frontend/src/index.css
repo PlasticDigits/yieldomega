@@ -263,7 +263,6 @@ label:has(input[type="radio"]:disabled) {
   border: 4px solid var(--line);
   pointer-events: none;
   z-index: 0;
-  box-shadow: 6px 6px 0 rgba(11, 31, 20, 0.35);
 }
 
 .app-shell::before {
@@ -303,7 +302,6 @@ label:has(input[type="radio"]:disabled) {
   background:
     var(--panel-gloss),
     linear-gradient(180deg, #fffef8 0%, var(--bg-cream) 100%);
-  box-shadow: var(--shadow-hard), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
   box-sizing: border-box;
 }
 
@@ -330,7 +328,6 @@ label:has(input[type="radio"]:disabled) {
   border: 4px solid var(--line);
   border-radius: 1.15rem;
   background: linear-gradient(180deg, var(--arcade-green-300) 0%, var(--arcade-green-500) 100%);
-  box-shadow: 5px 5px 0 var(--line), inset 0 2px 0 rgba(255, 255, 255, 0.35);
   font-family: "Bungee", cursive;
   font-size: clamp(1rem, 2vw, 1.25rem);
   font-weight: 700;
@@ -342,7 +339,6 @@ label:has(input[type="radio"]:disabled) {
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 160ms ease,
-    box-shadow 160ms ease,
     filter 160ms ease;
 }
 
@@ -351,7 +347,6 @@ label:has(input[type="radio"]:disabled) {
   height: 2.5rem;
   object-fit: contain;
   flex-shrink: 0;
-  filter: drop-shadow(2px 2px 0 var(--line));
 }
 
 .brand-link:hover {
@@ -671,14 +666,12 @@ label:has(input[type="radio"]:disabled) {
   border: 3px solid var(--line);
   border-radius: 999px;
   background: #fff;
-  box-shadow: 4px 4px 0 var(--line);
   color: var(--text-main);
   text-decoration: none;
   font-weight: 700;
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 150ms ease,
-    box-shadow 150ms ease,
     background 150ms ease,
     filter 150ms ease;
 }
@@ -689,7 +682,6 @@ label:has(input[type="radio"]:disabled) {
 
 .nav-link--active {
   background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
-  box-shadow: 4px 4px 0 var(--line), inset 0 -2px 0 rgba(212, 160, 18, 0.35);
 }
 
 .app-header__wallet {
@@ -711,7 +703,6 @@ label:has(input[type="radio"]:disabled) {
   border: 3px solid var(--line);
   border-radius: 999px;
   background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
-  box-shadow: 4px 4px 0 var(--line);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   font-family: "IBM Plex Mono", monospace;
@@ -748,7 +739,6 @@ label:has(input[type="radio"]:disabled) {
   padding: 0.48rem 0.95rem;
   border: 3px solid var(--line);
   border-radius: 999px;
-  box-shadow: 5px 5px 0 var(--line);
   color: var(--text-main);
   font-weight: 800;
   letter-spacing: 0.01em;
@@ -756,7 +746,6 @@ label:has(input[type="radio"]:disabled) {
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 150ms ease,
-    box-shadow 150ms ease,
     filter 150ms ease,
     background 150ms ease;
 }
@@ -2015,7 +2004,6 @@ label:has(input[type="radio"]:disabled) {
     var(--panel-gloss),
     linear-gradient(180deg, #fffef8, var(--bg-cream));
   font-size: 0.92rem;
-  box-shadow: 5px 5px 0 var(--line);
 }
 
 .app-footer__row {
@@ -2044,7 +2032,6 @@ label:has(input[type="radio"]:disabled) {
   border: 3px solid var(--line);
   border-radius: 999px;
   background: linear-gradient(180deg, #fff, #f0fff6);
-  box-shadow: 4px 4px 0 var(--line);
   text-decoration: none;
 }
 
@@ -3017,7 +3004,6 @@ code {
     min-height: 2.45rem;
     padding: 0.3rem 0.6rem;
     font-size: clamp(0.82rem, 3.8vw, 1rem);
-    box-shadow: 4px 4px 0 var(--line);
     justify-content: center;
     text-align: center;
     line-height: 1.1;
@@ -3033,7 +3019,6 @@ code {
     white-space: normal;
     word-break: break-word;
     hyphens: auto;
-    box-shadow: 3px 3px 0 var(--line);
     justify-content: center;
   }
 
@@ -3042,7 +3027,6 @@ code {
     min-height: 2.25rem;
     flex: 1 1 0;
     min-width: 0;
-    box-shadow: 3px 3px 0 var(--line);
   }
 
   .chain-pill {
