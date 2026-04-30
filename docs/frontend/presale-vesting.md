@@ -26,5 +26,5 @@ Anvil Playwright: [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) exports t
 
 - [Final signoff / `claimsEnabled`](../operations/final-signoff-and-value-movement.md)
 - [Invariant map — presale vesting frontend](../testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92)
-- Play checklist: [`skills/verify-yo-presale-vesting/SKILL.md`](../../skills/verify-yo-presale-vesting/SKILL.md)
-- Wrong-network write gate (#95): [`wallet-connection.md` § #95](wallet-connection.md#wrong-network-write-gating-issue-95); play checklist [`skills/verify-yo-chain-write-network/SKILL.md`](../../skills/verify-yo-chain-write-network/SKILL.md)
+- Play checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-92`](../testing/manual-qa-checklists.md#manual-qa-issue-92)
+- Wrong-network write gate (#95): [`wallet-connection.md` § #95](wallet-connection.md#wrong-network-write-gating-issue-95); play checklist [`../testing/manual-qa-checklists.md#manual-qa-issue-95`](../testing/manual-qa-checklists.md#manual-qa-issue-95)
