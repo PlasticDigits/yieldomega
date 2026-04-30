@@ -35,3 +35,13 @@ export function isReservedTopLevelPathSegment(segment: string): boolean {
 export function isReservedUnderTimecurve(segment: string): boolean {
   return APP_RESERVED_UNDER_TIMECURVE.has(segment.trim().toLowerCase());
 }
+
+/**
+ * True when a normalized referral slug must not be used for path/query capture or
+ * registration in the web app — same rules as the second segment of `/timecurve/{slug}`.
+ * Input should already be normalized (lowercase `[a-z0-9]`, length 3–16).
+ */
+export function isReferralSlugReservedForRouting(normalizedSlug: string): boolean {
+  const s = normalizedSlug.trim().toLowerCase();
+  return isReservedUnderTimecurve(s) || isReservedTopLevelPathSegment(s);
+}

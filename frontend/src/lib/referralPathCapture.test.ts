@@ -21,6 +21,11 @@ describe("extractReferralCodeFromPathname", () => {
     expect(extractReferralCodeFromPathname("/timecurve/protocol")).toBeNull();
   });
 
+  it("returns null when the slug mirrors a reserved top-level segment", () => {
+    expect(extractReferralCodeFromPathname("/timecurve/home")).toBeNull();
+    expect(extractReferralCodeFromPathname("/timecurve/referrals")).toBeNull();
+  });
+
   it("returns null for longer paths (no path capture yet)", () => {
     expect(extractReferralCodeFromPathname("/a/b/c")).toBeNull();
   });

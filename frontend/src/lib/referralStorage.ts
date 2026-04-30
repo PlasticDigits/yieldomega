@@ -2,11 +2,53 @@
 
 import { extractReferralCodeFromPathname } from "@/lib/referralPathCapture";
 import { normalizeReferralCode } from "@/lib/referralCode";
+import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
 /** localStorage/sessionStorage key for captured referral (not a secret). */
 const REF_STORAGE = "yieldomega.ref.v1";
 
 const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
+
+/**
+ * If only one of `localStorage` / `sessionStorage` still holds the pending payload
+ * (some hard-reloads, devtools, or browser quirks), copy it into the other so reads
+ * stay consistent. When both differ, the entry with the newer `ts` wins and overwrites both.
+ */
+function syncPendingReferralAcrossStores(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    const fromSession = window.sessionStorage.getItem(REF_STORAGE);
+    const fromLocal = window.localStorage.getItem(REF_STORAGE);
+    if (!fromSession && !fromLocal) {
+      return;
+    }
+    if (fromSession && !fromLocal) {
+      window.localStorage.setItem(REF_STORAGE, fromSession);
+      return;
+    }
+    if (fromLocal && !fromSession) {
+      window.sessionStorage.setItem(REF_STORAGE, fromLocal);
+      return;
+    }
+    if (fromSession && fromLocal && fromSession !== fromLocal) {
+      const tsOf = (raw: string): number => {
+        try {
+          const p = JSON.parse(raw) as { ts?: number };
+          return typeof p.ts === "number" ? p.ts : 0;
+        } catch {
+          return 0;
+        }
+      };
+      const winner = tsOf(fromLocal) >= tsOf(fromSession) ? fromLocal : fromSession;
+      window.localStorage.setItem(REF_STORAGE, winner);
+      window.sessionStorage.setItem(REF_STORAGE, winner);
+    }
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 function writePendingToStores(code: string): void {
   if (typeof window === "undefined") {
@@ -29,6 +71,9 @@ function captureFromRefQueryString(search: string): boolean {
   }
   try {
     const normalized = normalizeReferralCode(ref);
+    if (isReferralSlugReservedForRouting(normalized)) {
+      return false;
+    }
     writePendingToStores(normalized);
     return true;
   } catch {
@@ -45,6 +90,7 @@ export function applyReferralUrlCapture(pathname: string, search: string): void 
   if (typeof window === "undefined") {
     return;
   }
+  syncPendingReferralAcrossStores();
   if (captureFromRefQueryString(search)) {
     return;
   }
@@ -68,8 +114,10 @@ export function getPendingReferralCode(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
+  syncPendingReferralAcrossStores();
   try {
-    const raw = window.sessionStorage.getItem(REF_STORAGE) ?? window.localStorage.getItem(REF_STORAGE);
+    /** Prefer local first: it survives tab close; session is kept in sync above. */
+    const raw = window.localStorage.getItem(REF_STORAGE) ?? window.sessionStorage.getItem(REF_STORAGE);
     if (!raw) {
       return null;
     }
