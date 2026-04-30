@@ -2,7 +2,7 @@
 
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { abbreviateAddressEnds } from "@/lib/addressFormat";
-import { megaEtherscanAddressUrl } from "@/lib/megaEtherscan";
+import { explorerAddressUrl } from "@/lib/explorer";
 
 const MOBILE_ADDRESS_VIEWPORT_MAX = 479;
 
@@ -13,11 +13,11 @@ type Props = {
 };
 
 /**
- * Monospace explorer link — full address ≥480px viewport; **`0xab…1234`** (first 4 + last 4 characters) ≤479px ([GitLab #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93)).
+ * Monospace explorer link — full address ≥480px viewport; **`0xab…1234`** (first 4 + last 4 characters) ≤479px ([GitLab #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93)); base URL follows **`VITE_EXPLORER_BASE_URL`** with **`AddressInline`** ([GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)).
  */
 export function MegaScannerAddressLink({ address, className }: Props) {
   const narrow = useIsViewportAtMost(MOBILE_ADDRESS_VIEWPORT_MAX);
-  const href = megaEtherscanAddressUrl(address);
+  const href = explorerAddressUrl(address);
 
   const full = address.trim();
   const display = narrow ? abbreviateAddressEnds(full, 4, 4) : full;
@@ -36,7 +36,7 @@ export function MegaScannerAddressLink({ address, className }: Props) {
     <a
       href={href}
       target="_blank"
-      rel="noreferrer"
+      rel="noreferrer noopener"
       className={`${cls} cursor-external-link`}
       title={address.trim()}
     >
