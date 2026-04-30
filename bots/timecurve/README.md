@@ -100,7 +100,30 @@ Deploy logic is **shared** with Playwright Anvil E2E via [`scripts/lib/anvil_dep
 
 Global options: `--send`, `--allow-anvil-funding`, `--env-file PATH`.
 
-**Local stack:** With `SKIP_ANVIL_RICH_STATE=1`, `scripts/start-local-anvil-stack.sh` defaults `START_BOT_SWARM=1` (set `START_BOT_SWARM=0` to skip). When it **starts** Anvil for the swarm it uses **`anvil --accounts 30`** plus **`--block-time`** (default **12** s via **`YIELDOMEGA_ANVIL_BLOCK_TIME_SEC`** — [GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)); then it syncs bot env and runs the swarm. Install deps first (venv + `pip install -e ".[dev]"`, or PEP 668 fallback above). The script **preflights** `import web3` and prints the same install hints if deps are missing.
+**Local stack:** With `SKIP_ANVIL_RICH_STATE=1`, `scripts/start-local-anvil-stack.sh` defaults `START_BOT_SWARM=1` (set `START_BOT_SWARM=0` to skip). When it **starts** Anvil for the swarm it uses **`anvil --accounts 30`** plus **`--block-time`** (default **12** s via **`YIELDOMEGA_ANVIL_BLOCK_TIME_SEC`** — [GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)); then it syncs bot env and runs the swarm. Install deps first (venv + `pip install -e ".[dev]"`, or PEP 668 fallback above). The script **preflights** `import web3` and prints the same install hints if deps are missing. **`YIELDOMEGA_SWARM_REFERRALS=0`** is forwarded from your shell when set before the script (non-referral buys); the stack prints a one-line summary — [GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102).
+
+### Run `run_swarm()` without `start-local-anvil-stack.sh`
+
+Use this when Anvil + DeployDev (or `frontend/.env.local`) already exist and you only want the Python swarm.
+
+1. **Repository root** as the current working directory (so `load_config` finds `bots/timecurve/.env.local`).
+2. **`frontend/.env.local`** with RPC, chain id, and contract addresses (from the full stack, `scripts/e2e-anvil.sh`, or `scripts/anvil-export-bot-env.sh`).
+3. **`bash scripts/sync-bot-env-from-frontend.sh`** — copies/syncs into **`bots/timecurve/.env.local`**.
+4. **`export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`** (required for one-shot ETH + mock CL8Y funding).
+5. Optional: **`export YIELDOMEGA_SWARM_REFERRALS=0`** — skips registrar funding and shared referral code on workers ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102), [GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)).
+6. **`PYTHONPATH=bots/timecurve/src`** and the same Python that has `web3` installed, **from repo root**:
+
+   ```bash
+   PYTHONPATH=bots/timecurve/src python3 -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()"
+   ```
+
+   Or, from `bots/timecurve` after activating the venv:
+
+   ```bash
+   timecurve-bot --allow-anvil-funding swarm
+   ```
+
+If `load_config` fails (missing RPC or TimeCurve), `run_swarm()` prints a short hint to run **`sync-bot-env-from-frontend.sh`** and stay at repo root.
 
 ## Implementation note
 

@@ -39,6 +39,22 @@ _BOT_SRC = _REPO_ROOT / "bots" / "timecurve" / "src"
 _PID_FILE = Path("/tmp/yieldomega_bot_swarm.pids")
 _LOG_DIR = Path("/tmp")
 
+_SWARM_CONFIG_HINT = (
+    "  Hint: from repository root run `bash scripts/sync-bot-env-from-frontend.sh` "
+    "(needs `frontend/.env.local` or equivalent), export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1, "
+    "and use repo-root cwd so `bots/timecurve/.env.local` is loaded by `load_config`."
+)
+
+
+def _load_config_for_swarm() -> BotConfig:
+    try:
+        return load_config(env_file=None, send=True, allow_anvil_funding=False)
+    except ValueError as e:
+        print(f"swarm: config error: {e}", file=sys.stderr)
+        print(_SWARM_CONFIG_HINT, file=sys.stderr)
+        raise SystemExit(2) from None
+
+
 # Plenty of mock CL8Y for max-CHARM buys and fee noise (wei, 18 decimals).
 _MINT_WEI = 10**33
 # Native ETH on Anvil for gas (10_000 ETH each — refills drained dev accounts).
@@ -53,7 +69,7 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
         print("swarm: warning: existing PID file — remove stale processes or delete", _PID_FILE, file=sys.stderr)
 
     if cfg is None:
-        cfg = load_config(env_file=None, send=True, allow_anvil_funding=False)
+        cfg = _load_config_for_swarm()
     if not cfg.allow_anvil_funding:
         print(
             "swarm: set YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 (or run: timecurve-bot --allow-anvil-funding swarm) "

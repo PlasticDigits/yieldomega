@@ -16,6 +16,8 @@
 #   When SKIP_ANVIL_RICH_STATE=1, START_BOT_SWARM defaults to 1 (set START_BOT_SWARM=0 to skip).
 #   When rich state runs (sale ended), START_BOT_SWARM defaults to 0.
 #   Requires Python deps (import web3): venv install in bots/timecurve/README.md, or PEP 668 fallback there.
+#   Optional: export YIELDOMEGA_SWARM_REFERRALS=0 before this script to skip shared referral registration /
+#   YIELDOMEGA_REFERRAL_CODE on workers (non-referral buys — [GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102)).
 #
 # Swarm + default 300s per-wallet buy cooldown + Anvil automine stalls chain time once every wallet sleeps (GitLab #99):
 #   recommend YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 and/or explicit YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC for dense buys.
@@ -347,6 +349,11 @@ echo "  curl -s http://127.0.0.1:${INDEXER_PORT}/v1/timecurve/buys?limit=5 | jq 
 if [[ "${START_BOT_SWARM}" == "1" ]]; then
   echo ""
   echo "=== Bot swarm (START_BOT_SWARM=1) ==="
+  if [[ "${YIELDOMEGA_SWARM_REFERRALS:-1}" == "0" ]]; then
+    echo "  YIELDOMEGA_SWARM_REFERRALS=0 — referral bootstrap disabled (non-referral buy path)"
+  else
+    echo "  Swarm referrals: ON — shared code for workers (export YIELDOMEGA_SWARM_REFERRALS=0 to opt out — GitLab #102)"
+  fi
   chmod +x "${ROOT}/scripts/sync-bot-env-from-frontend.sh" 2>/dev/null || true
   bash "${ROOT}/scripts/sync-bot-env-from-frontend.sh"
   BOT_PY="python3"
