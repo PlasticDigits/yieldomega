@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatUnits } from "viem";
 import { useWatchContractEvent } from "wagmi";
@@ -11,7 +11,6 @@ import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { AddressInline } from "@/components/AddressInline";
 import { timeCurveBuyEventAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
@@ -37,11 +36,13 @@ import {
   maxGrossSpendAtFloat,
 } from "@/lib/timeCurveMath";
 import {
+  buySpendEnvelopeFillRatio,
   envelopeCurveParamsFromWire,
   formatBuyAge,
   type EnvelopeCurveParams,
 } from "@/lib/timeCurveBuyDisplay";
 import { listBuyImpactTicks, type BuyImpactTick } from "@/lib/timeCurveUx";
+import { buySizeColor } from "@/pages/timecurve/buySizeColor";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -100,14 +101,25 @@ function buyBandPosition(
   buy: BuyItem,
   envelopeParams: EnvelopeCurveParams | null,
   fallbackBounds: { minS: bigint; maxS: bigint } | null,
-): { percent: number; title: string } | null {
+  decimals: number,
+): {
+  fillPercent: number;
+  positionPercent: number;
+  minLabel: string;
+  maxLabel: string;
+  sizeLabel: string;
+  accentColor: string;
+  title: string;
+} | null {
   const amount = parseTickerBigInt(buy.amount);
   if (amount === null) return null;
 
   let minSpend: bigint | undefined;
   let maxSpend: bigint | undefined;
+  let arenaRatio: number | null = null;
   if (envelopeParams && buy.block_timestamp?.trim()) {
     try {
+      arenaRatio = buySpendEnvelopeFillRatio(buy, envelopeParams);
       const elapsedSec = Math.max(
         0,
         Number(BigInt(buy.block_timestamp.trim())) - envelopeParams.saleStartSec,
@@ -137,16 +149,33 @@ function buyBandPosition(
     maxSpend = fallbackBounds.maxS;
   }
   if (minSpend === undefined || maxSpend === undefined || maxSpend <= minSpend) return null;
-  if (amount <= minSpend) {
-    return { percent: 0, title: "At the live minimum buy band" };
-  }
+  const fillRatio =
+    arenaRatio !== null
+      ? arenaRatio
+      : Math.max(0, Math.min(1, Number((amount * 10_000n) / maxSpend) / 10_000));
+  const fillPercent = Math.max(0, Math.min(100, fillRatio * 100));
+  let positionPercent = 0;
   if (amount >= maxSpend) {
-    return { percent: 100, title: "At the live maximum buy band" };
+    positionPercent = 100;
+  } else if (amount > minSpend) {
+    positionPercent = Number(((amount - minSpend) * 10_000n) / (maxSpend - minSpend)) / 100;
   }
-  const percent = Number(((amount - minSpend) * 10_000n) / (maxSpend - minSpend)) / 100;
+  const sizeLabel =
+    fillPercent >= 80
+      ? "Max pressure"
+      : fillPercent >= 55
+        ? "Heavy buy"
+        : fillPercent >= 25
+          ? "Mid band"
+          : "Near minimum";
   return {
-    percent,
-    title: `${Math.round(percent)}% from the minimum to maximum CL8Y buy band`,
+    fillPercent,
+    positionPercent,
+    minLabel: formatCompactFromRaw(minSpend, decimals, { sigfigs: 3 }),
+    maxLabel: formatCompactFromRaw(maxSpend, decimals, { sigfigs: 3 }),
+    sizeLabel,
+    accentColor: buySizeColor(fillRatio),
+    title: `${Math.round(fillPercent)}% of current max CL8Y band; ${Math.round(positionPercent)}% from min to max`,
   };
 }
 
@@ -162,6 +191,52 @@ function tickerImpactTicks(buy: BuyItem): BuyImpactTick[] {
     out.push({ id: "streak", label: "Streak", sub: `${activeStreak.toString()}x`, tone: "info" });
   }
   return out.slice(0, 6);
+}
+
+function tickerCardTheme(buy: BuyItem, band: ReturnType<typeof buyBandPosition>) {
+  const flagPenalty = parseTickerBigInt(buy.bp_flag_penalty) ?? 0n;
+  const activeStreak = parseTickerBigInt(buy.buyer_active_defended_streak) ?? 0n;
+  const bandFill = band?.fillPercent ?? 0;
+  if (flagPenalty > 0n || buy.flag_planted === true) {
+    return {
+      className: "timecurve-simple__ticker-row--flag",
+      badge: "WarBow flag",
+      artSrc: "/art/icons/warbow-flag.png",
+    };
+  }
+  if (buy.timer_hard_reset) {
+    return {
+      className: "timecurve-simple__ticker-row--reset",
+      badge: "Clock reset",
+      artSrc: "/art/icons/status-cooldown.png",
+    };
+  }
+  if (activeStreak >= 2n) {
+    return {
+      className: "timecurve-simple__ticker-row--streak",
+      badge: "Streak",
+      artSrc: "/art/cutouts/bunny-guarding.png",
+    };
+  }
+  if (bandFill >= 75) {
+    return {
+      className: "timecurve-simple__ticker-row--max",
+      badge: "Big bite",
+      artSrc: "/art/cutouts/sniper-shark-coin-bandolier.png",
+    };
+  }
+  if (bandFill >= 35) {
+    return {
+      className: "timecurve-simple__ticker-row--mid",
+      badge: "Momentum",
+      artSrc: "/art/hat-coin-front.png",
+    };
+  }
+  return {
+    className: "timecurve-simple__ticker-row--min",
+    badge: "Fresh buy",
+    artSrc: CHARM_TOKEN_LOGO,
+  };
 }
 
 export function TimeCurveSimplePage() {
@@ -1050,14 +1125,6 @@ export function TimeCurveSimplePage() {
         launchHelperCopy={launchHelperCopy}
       />
 
-      {/* Indexer health — `/timecurve` hides the global footer; mirror the
-          footer pill here so Simple still shows live vs offline ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)). */}
-      {indexerBaseUrl() ? (
-        <div className="timecurve-simple__indexer-strip">
-          <IndexerStatusBar />
-        </div>
-      ) : null}
-
       {/* Recent buys — moved out of the timer panel and given its own slim
           section so the spotlight row stays focused on the timer + buy CTA. */}
       <PageSection
@@ -1075,16 +1142,39 @@ export function TimeCurveSimplePage() {
             )}
             <ul className="timecurve-simple__activity-list">
               {recentBuys.slice(0, 5).map((b) => {
-                const band = buyBandPosition(b, tickerEnvelopeParams, session.cl8ySpendBounds);
+                const band = buyBandPosition(
+                  b,
+                  tickerEnvelopeParams,
+                  session.cl8ySpendBounds,
+                  session.decimals,
+                );
                 const age = formatBuyAge(b.block_timestamp, tickerNowSec);
                 const ticks = tickerImpactTicks(b);
-                const bandPercent = band ? Math.round(band.percent) : null;
+                const theme = tickerCardTheme(b, band);
+                const bandFillPercent = band ? Math.round(band.fillPercent) : null;
+                const tickerStyle = {
+                  "--ticker-accent": band?.accentColor ?? "#1fb86a",
+                  "--ticker-band-fill": band
+                    ? `${Math.max(8, Math.min(100, band.fillPercent))}%`
+                    : "100%",
+                } as CSSProperties;
                 return (
                   <li
                     key={`${b.tx_hash}-${b.log_index}`}
-                    className={`timecurve-simple__ticker-row ${buyEventTone(b.actual_seconds_added, b.timer_hard_reset)}`}
+                    className={[
+                      "timecurve-simple__ticker-row",
+                      buyEventTone(b.actual_seconds_added, b.timer_hard_reset),
+                      theme.className,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={tickerStyle}
                   >
+                    <div className="timecurve-simple__ticker-art" aria-hidden="true">
+                      <img src={theme.artSrc} alt="" width={42} height={42} decoding="async" />
+                    </div>
                     <div className="timecurve-simple__ticker-main">
+                      <span className="timecurve-simple__ticker-badge">{theme.badge}</span>
                       <AddressInline
                         address={b.buyer}
                         size={22}
@@ -1096,10 +1186,12 @@ export function TimeCurveSimplePage() {
                     </div>
                     <div className="timecurve-simple__ticker-amounts">
                       <span className="timecurve-simple__ticker-amount">
+                        <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
                         <strong>{formatCompactFromRaw(b.amount, session.decimals, { sigfigs: 4 })}</strong>
                         <span> CL8Y spent</span>
                       </span>
                       <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
+                        <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
                         <strong>{formatCompactFromRaw(b.charm_wad, 18, { sigfigs: 4 })}</strong>
                         <span> CHARM minted</span>
                       </span>
@@ -1109,19 +1201,24 @@ export function TimeCurveSimplePage() {
                       title={band?.title ?? "Min/max band position unavailable for this indexed buy"}
                     >
                       <div className="timecurve-simple__ticker-band-head">
-                        <span>Min</span>
-                        <strong>{bandPercent !== null ? `${bandPercent}% of band` : "Band pending"}</strong>
-                        <span>Max</span>
+                        <span>{band ? `Min ${band.minLabel}` : "Min"}</span>
+                        <strong>{bandFillPercent !== null ? `${bandFillPercent}% of max` : "Band pending"}</strong>
+                        <span>{band ? `Max ${band.maxLabel}` : "Max"}</span>
                       </div>
                       <div className="timecurve-simple__ticker-band-track" aria-hidden="true">
+                        <span className="timecurve-simple__ticker-band-min-marker" />
                         <span
                           className={
-                            bandPercent !== null
+                            bandFillPercent !== null
                               ? "timecurve-simple__ticker-band-fill"
                               : "timecurve-simple__ticker-band-fill timecurve-simple__ticker-band-fill--unknown"
                           }
-                          style={bandPercent !== null ? { width: `${Math.max(5, bandPercent)}%` } : undefined}
                         />
+                      </div>
+                      <div className="timecurve-simple__ticker-band-foot">
+                        {band
+                          ? `${band.sizeLabel} · ${Math.round(band.positionPercent)}% through min-max`
+                          : "Waiting for band math"}
                       </div>
                     </div>
                     <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
