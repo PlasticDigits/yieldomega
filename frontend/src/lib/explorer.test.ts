@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { explorerTxUrl } from "./explorer";
 
 describe("explorerTxUrl", () => {
-  it("returns undefined when env base URL is unset", () => {
+  it("defaults to MegaETH Etherscan when env base URL is unset", () => {
     vi.stubEnv("VITE_EXPLORER_BASE_URL", "");
-    expect(explorerTxUrl("0x" + "a".repeat(64))).toBeUndefined();
+    const h = "0x" + "a".repeat(64);
+    expect(explorerTxUrl(h)).toBe(`https://mega.etherscan.io/tx/${h}`);
   });
 
   it("builds tx path and strips trailing slash on base", () => {
