@@ -193,6 +193,36 @@ function tickerImpactTicks(buy: BuyItem): BuyImpactTick[] {
   return out.slice(0, 6);
 }
 
+function tickerEffectDisplay(tick: BuyImpactTick): { label: string; sub?: string; glyph: string } {
+  switch (tick.id) {
+    case "flag-plant":
+      return { label: "Flag planted", sub: tick.sub, glyph: "WB" };
+    case "flag":
+      return { label: "Flag hit", sub: tick.sub ? `-${tick.sub} BP` : undefined, glyph: "WB" };
+    case "hreset":
+      return { label: "Clock reset", sub: tick.sub, glyph: "CLK" };
+    case "sbreak":
+      return { label: "Streak break", sub: tick.sub, glyph: "STK" };
+    case "ambush":
+      return { label: "Ambush", sub: tick.sub, glyph: "AMB" };
+    case "clutch":
+      return { label: "Clutch", sub: tick.sub, glyph: "CLT" };
+    case "tbp":
+      return { label: "Timer BP", sub: tick.sub, glyph: "BP" };
+    case "def":
+    case "streak":
+      return { label: "Defended streak", sub: tick.sub, glyph: "DEF" };
+    case "wb":
+      return { label: "Battle Points", sub: tick.sub, glyph: "BP" };
+    case "tadd":
+      return { label: "Clock added", sub: tick.sub, glyph: "+T" };
+    case "buy":
+      return { label: "On-chain buy", sub: tick.sub === "—" ? undefined : tick.sub, glyph: "YO" };
+    default:
+      return { label: tick.label, sub: tick.sub, glyph: "YO" };
+  }
+}
+
 function tickerCardTheme(buy: BuyItem, band: ReturnType<typeof buyBandPosition>) {
   const flagPenalty = parseTickerBigInt(buy.bp_flag_penalty) ?? 0n;
   const activeStreak = parseTickerBigInt(buy.buyer_active_defended_streak) ?? 0n;
@@ -1222,12 +1252,23 @@ export function TimeCurveSimplePage() {
                       </div>
                     </div>
                     <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
-                      {ticks.map((tick) => (
-                        <li key={tick.id} className={`live-buy-tick live-buy-tick--${tick.tone}`}>
-                          <span className="live-buy-tick__label">{tick.label}</span>
-                          {tick.sub ? <span className="live-buy-tick__sub">{tick.sub}</span> : null}
-                        </li>
-                      ))}
+                      {ticks.map((tick) => {
+                        const effect = tickerEffectDisplay(tick);
+                        return (
+                          <li
+                            key={tick.id}
+                            className={`live-buy-tick live-buy-tick--${tick.tone} live-buy-tick--effect-${tick.id}`}
+                          >
+                            <span className="live-buy-tick__glyph" aria-hidden="true">
+                              {effect.glyph}
+                            </span>
+                            <span className="live-buy-tick__text">
+                              <span className="live-buy-tick__label">{effect.label}</span>
+                              {effect.sub ? <span className="live-buy-tick__sub">{effect.sub}</span> : null}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                     <div className="timecurve-simple__ticker-meta">
                       {b.battle_points_after ? (
