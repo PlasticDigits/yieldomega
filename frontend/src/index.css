@@ -2913,6 +2913,132 @@ label:has(input[type="radio"]:disabled) {
   margin: 0;
 }
 
+.warbow-hero-actions {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.warbow-hero-actions__wallet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 3px solid var(--line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.warbow-hero-actions__eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.warbow-hero-actions__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+.warbow-hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 3px solid var(--line);
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(circle at top right, rgba(255, 229, 102, 0.34), transparent 38%),
+    rgba(255, 255, 255, 0.82);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.warbow-hero-card--steal {
+  grid-column: span 2;
+  background:
+    radial-gradient(circle at top right, rgba(255, 111, 97, 0.26), transparent 42%),
+    rgba(255, 255, 255, 0.84);
+}
+
+.warbow-hero-card--revenge {
+  background:
+    radial-gradient(circle at top right, rgba(255, 216, 110, 0.48), transparent 42%),
+    rgba(255, 255, 255, 0.84);
+}
+
+.warbow-hero-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.warbow-hero-card h3 {
+  margin: 0;
+  font-family: "Bungee", cursive;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+
+.warbow-hero-candidates {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.warbow-hero-candidate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.65rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 3px solid var(--line);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 3px 3px 0 var(--line);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.warbow-hero-candidate--selected {
+  background: linear-gradient(180deg, #fff5c5, #ffd86e);
+  transform: translateY(-1px);
+}
+
+.warbow-hero-candidate small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.warbow-hero-actions__mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.warbow-hero-actions__mini-stats span,
+.warbow-hero-actions__checkbox {
+  padding: 0.45rem 0.55rem;
+  border: 2px solid rgba(11, 31, 20, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.92rem;
+}
+
+.warbow-hero-actions__checkbox {
+  display: block;
+}
+
 .third-party-cutout-row {
   position: relative;
   min-height: 4rem;
@@ -3225,6 +3351,22 @@ code {
 
   .timecurve-action-row .btn-secondary {
     width: 100%;
+  }
+
+  .warbow-hero-actions__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .warbow-hero-card--steal {
+    grid-column: auto;
+  }
+
+  .warbow-hero-actions__wallet {
+    align-items: stretch;
+  }
+
+  .warbow-hero-candidate {
+    grid-template-columns: 1fr;
   }
 
   .form-input {
