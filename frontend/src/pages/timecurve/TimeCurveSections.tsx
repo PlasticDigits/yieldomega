@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { isAddress } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
@@ -14,6 +15,7 @@ import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
 import { formatBpsAsPercent, formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
+import { megaEtherscanAddressUrl } from "@/lib/megaEtherscan";
 import type {
   BattlePointBreakdownRow,
   BuyHistoryPoint,
@@ -37,6 +39,26 @@ import { FeedCard, RankingList, type RankingRow, StatCard } from "./timecurveUi"
 type MotionProps = Record<string, unknown>;
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
+
+function PodiumAddressExplorerInline(props: {
+  address: string | undefined;
+  formatWallet: WalletFormatShort;
+  size?: number;
+}) {
+  const { address: addr, formatWallet, size = 16 } = props;
+  const raw = addr?.trim();
+  const linked = Boolean(raw && isAddress(raw as `0x${string}`) && raw.toLowerCase() !== ZERO_ADDR);
+  const href = linked && raw ? megaEtherscanAddressUrl(raw) : undefined;
+  const body = <AddressInline address={addr} formatWallet={formatWallet} fallback="—" size={size} />;
+  if (!href) {
+    return body;
+  }
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="cursor-external-link podium-address-explorer">
+      {body}
+    </a>
+  );
+}
 
 function WarbowPendingFlagChainPanel(props: {
   readsReady: boolean;
@@ -535,22 +557,35 @@ export function PodiumsSection(props: {
       lede="Four reserve tracks: Last Buy, WarBow (top Battle Points), Defended Streak, and Time Booster. Each pays 1st / 2nd / 3rd in CL8Y from the podium pool."
     >
       <div className="podium-preview">
-        {podiumPayoutPreview.map((row, idx) => (
-          <div key={idx} className="podium-block">
-            <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
-            <p className="muted">{PODIUM_HELP[idx]}</p>
-            <RankingList
-              rows={(["1st", "2nd", "3rd"] as const).map((lab, placeIndex) => ({
-                key: `preview-${idx}-${lab}`,
-                rank: placeIndex + 1,
-                label: lab,
-                value: <AmountDisplay raw={row.places[placeIndex]} decimals={decimals} />,
-                meta: placeIndex === 0 ? "Largest reserve slice in category" : "Reserve payout preview",
-              }))}
-              emptyText="Waiting for podium pool balance."
-            />
-          </div>
-        ))}
+        {podiumPayoutPreview.map((row, idx) => {
+          const onchainPodium = podiumRows[idx];
+          return (
+            <div key={idx} className="podium-block">
+              <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
+              <p className="muted">{PODIUM_HELP[idx]}</p>
+              <RankingList
+                rows={(["1st", "2nd", "3rd"] as const).map((lab, placeIndex) => ({
+                  key: `preview-${idx}-${lab}`,
+                  rank: placeIndex + 1,
+                  label: (
+                    <PodiumAddressExplorerInline
+                      address={onchainPodium?.winners[placeIndex]}
+                      formatWallet={formatWallet}
+                      size={16}
+                    />
+                  ),
+                  value: <AmountDisplay raw={row.places[placeIndex]} decimals={decimals} />,
+                  meta: placeIndex === 0 ? "Largest reserve slice in category" : "Reserve payout preview",
+                  highlight: Boolean(
+                    address &&
+                      onchainPodium?.winners[placeIndex]?.toLowerCase() === address.toLowerCase(),
+                  ),
+                }))}
+                emptyText="Waiting for podium pool balance."
+              />
+            </div>
+          );
+        })}
       </div>
       <details className="podium-block accordion-panel">
         <summary>
@@ -581,7 +616,7 @@ export function PodiumsSection(props: {
                         key: `podium-${index}-${winner}-${placeIndex}`,
                         rank: placeIndex + 1,
                         label: (
-                          <AddressInline address={winner} formatWallet={formatWallet} size={16} />
+                          <PodiumAddressExplorerInline address={winner} formatWallet={formatWallet} size={16} />
                         ),
                         value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? "0"),
                         meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
