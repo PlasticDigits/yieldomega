@@ -257,14 +257,10 @@ export function TimeCurveArenaView() {
       items.push("Hard-reset timer toward 15m");
     } else if (timerExtensionPreview !== undefined && timerExtensionPreview > 0) {
       items.push(`+${formatLocaleInteger(timerExtensionPreview)}s timer`);
-    } else {
-      items.push("Timer at cap");
     }
 
     if (timerExtensionPreview !== undefined && timerExtensionPreview > 0) {
       items.push(`+${formatLocaleInteger(timerExtensionPreview)}s time-booster credit`);
-    } else {
-      items.push("No time-booster credit");
     }
 
     const activeStreak =
@@ -275,8 +271,6 @@ export function TimeCurveArenaView() {
           ? `Continue your streak (${formatLocaleInteger(activeStreak)} -> ${formatLocaleInteger(activeStreak + 1n)})`
           : "Start or break defended streak",
       );
-    } else {
-      items.push("No defended-streak change");
     }
 
     if (plantWarBowFlag) {
@@ -291,8 +285,6 @@ export function TimeCurveArenaView() {
       } else {
         items.push("Plant pending WarBow flag");
       }
-    } else {
-      items.push("No WarBow flag plant (plain CHARM buy)");
     }
 
     if (secondsRemaining !== undefined && secondsRemaining < 30) {
