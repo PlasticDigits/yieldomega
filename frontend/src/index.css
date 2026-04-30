@@ -6019,10 +6019,8 @@ code {
   color: rgba(60, 40, 0, 0.6);
 }
 
-/* CHARM glyph + ↑ tick indicator next to the live "1 CHARM costs right
-   now" label. The glyph is `/tokens/charm.png` (canonical CHARM art).
-   The arrow uses the existing coin-wobble keyframe to draw the eye to the
-   "ticks up every block" message under the label. */
+/* CHARM glyph next to the live "1 CHARM costs right now" label. The glyph
+   is `/tokens/charm.png` (canonical CHARM art). */
 .timecurve-simple__rate-label-row {
   display: inline-flex;
   align-items: center;
@@ -6089,22 +6087,6 @@ code {
   filter: drop-shadow(1px 1px 0 var(--line));
   image-rendering: pixelated;
   animation: coin-wobble 5s ease-in-out infinite;
-}
-
-.timecurve-simple__rate-tick {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.05rem;
-  height: 1.05rem;
-  border: 2px solid var(--line);
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--arcade-green-300), var(--arcade-green-500));
-  color: var(--arcade-green-900);
-  font-size: 0.75rem;
-  font-weight: 900;
-  line-height: 1;
-  box-shadow: 1px 1px 0 var(--line);
 }
 
 /* Mascot cutout positions for the sale hub.

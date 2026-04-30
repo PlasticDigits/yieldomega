@@ -531,10 +531,9 @@ export function TimeCurveSimplePage() {
     >
       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--now">
         <span className="timecurve-simple__rate-label-row">
-          {/* CHARM coin glyph + ↑ tick badge make "what you're buying"
-              and "the price ticks up every block" instantly readable
-              before the user parses any text. Decorative; the textual
-              label remains the source of truth for assistive tech. */}
+          {/* CHARM coin glyph makes "what you're buying" readable before the
+              user parses the label. Decorative; the label is the source of
+              truth for assistive tech. */}
           <img
             className="timecurve-simple__rate-glyph"
             src={CHARM_TOKEN_LOGO}
@@ -545,9 +544,6 @@ export function TimeCurveSimplePage() {
             height={24}
           />
           <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
-          <span className="timecurve-simple__rate-tick" aria-hidden="true">
-            ↑
-          </span>
         </span>
         <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
           {rateBoardPayOptions}
