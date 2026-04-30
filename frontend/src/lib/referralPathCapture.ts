@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { normalizeReferralCode } from "@/lib/referralCode";
-import { isReservedTopLevelPathSegment, isReservedUnderTimecurve } from "@/lib/referralPathReserved";
+import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
 function pathSegments(pathname: string): string[] {
   return pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
@@ -19,10 +19,7 @@ export function extractReferralCodeFromPathname(pathname: string): string | null
   const parts = pathSegments(pathname);
   if (parts.length === 2 && parts[0]!.toLowerCase() === "timecurve") {
     const seg = parts[1]!;
-    if (isReservedUnderTimecurve(seg)) {
-      return null;
-    }
-    if (isReservedTopLevelPathSegment(seg)) {
+    if (isReferralSlugReservedForRouting(seg)) {
       return null;
     }
     return tryNormalizeReferralSlug(seg);
