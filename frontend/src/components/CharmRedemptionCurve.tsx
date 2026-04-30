@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { formatUnits } from "viem";
+import { CONVERSION_ARROW_SRC } from "@/components/ui/ConversionArrow";
 import { parseBigIntString } from "@/lib/formatAmount";
 
 type CharmRedemptionCurveProps = {
@@ -144,9 +145,24 @@ export function CharmRedemptionCurve({
         <text x={padL} y={H - 6} fontSize="10" fill="currentColor" opacity={0.7}>
           0
         </text>
-        <text x={padL + plotW - 40} y={H - 6} fontSize="10" fill="currentColor" opacity={0.7}>
-          total charm weight →
+        <text
+          x={padL + plotW - 13}
+          y={H - 6}
+          textAnchor="end"
+          fontSize="10"
+          fill="currentColor"
+          opacity={0.7}
+        >
+          total charm weight
         </text>
+        <image
+          href={CONVERSION_ARROW_SRC}
+          x={padL + plotW - 11}
+          y={H - 16}
+          width="9"
+          height="9"
+          opacity={0.72}
+        />
       </svg>
       <p className="muted" style={{ marginTop: "0.5rem" }}>
         {summary}

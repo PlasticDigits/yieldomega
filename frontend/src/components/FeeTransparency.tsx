@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useState } from "react";
+import { ConversionArrow } from "@/components/ui/ConversionArrow";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useReadContracts } from "wagmi";
 import { TxHash } from "@/components/TxHash";
@@ -118,7 +119,8 @@ export function FeeTransparency() {
                   decoding="async"
                 />
               : null}
-              <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)} →{" "}
+              <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)}{" "}
+              <ConversionArrow size={12} className="fee-sink-list__conversion-arrow" />{" "}
               <span className="mono">{dest}</span>
             </li>
           );
