@@ -4,10 +4,11 @@
   "contracts": {
     "TimeCurve": "0x59b670e9fA9D0A427751Af201D676719a970857b",
     "RabbitTreasury": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-    "LeprechaunNFT": "0xc5a5C42992dECbae36851359345FE25997F5C42d",
+    "LeprechaunNFT": "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
     "FeeRouter": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
     "PodiumPool": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-    "ReferralRegistry": "0x0B306BF915C4d645ff596e518fAf3F9669b97016"
+    "ReferralRegistry": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+    "DoubPresaleVesting": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933"
   },
   "deployBlock": 1
 }
