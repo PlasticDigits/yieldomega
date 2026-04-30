@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useReadContracts } from "wagmi";
+import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
 import { AmountDisplay } from "@/components/AmountDisplay";
-import { AddressInline } from "@/components/AddressInline";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -15,6 +15,7 @@ import {
 import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -176,7 +177,7 @@ export function TimeCurveProtocolPage() {
   const renderAddress = (i: number) => {
     const r = get(i);
     if (r?.status === "success" && r.result !== undefined) {
-      return <AddressInline address={String(r.result)} size={18} />;
+      return <MegaScannerAddressLink address={String(r.result) as HexAddress} />;
     }
     return "—";
   };
@@ -223,25 +224,25 @@ export function TimeCurveProtocolPage() {
         lede="These match what the contract is returning right now. Refreshed every ~1.5s."
       >
         <dl className="kv">
-          <dt>saleStart</dt>
+          <dt>{humanizeKvLabel("saleStart")}</dt>
           <dd>{renderUnix(0)}</dd>
-          <dt>deadline</dt>
+          <dt>{humanizeKvLabel("deadline")}</dt>
           <dd>{renderUnix(1)}</dd>
-          <dt>ended</dt>
+          <dt>{humanizeKvLabel("ended")}</dt>
           <dd>{renderBool(2)}</dd>
-          <dt>totalRaised</dt>
+          <dt>{humanizeKvLabel("totalRaised")}</dt>
           <dd>{renderAmount(3, 18)}</dd>
-          <dt>totalCharmWeight</dt>
+          <dt>{humanizeKvLabel("totalCharmWeight")}</dt>
           <dd>{renderAmount(4, 18)}</dd>
-          <dt>totalTokensForSale</dt>
+          <dt>{humanizeKvLabel("totalTokensForSale")}</dt>
           <dd>{renderAmount(5, 18)}</dd>
-          <dt>currentMinBuyAmount</dt>
+          <dt>{humanizeKvLabel("currentMinBuyAmount")}</dt>
           <dd>{renderAmount(6, 18)}</dd>
-          <dt>currentMaxBuyAmount</dt>
+          <dt>{humanizeKvLabel("currentMaxBuyAmount")}</dt>
           <dd>{renderAmount(7, 18)}</dd>
-          <dt>currentPricePerCharmWad</dt>
+          <dt>{humanizeKvLabel("currentPricePerCharmWad")}</dt>
           <dd>{renderAmount(8, 18)}</dd>
-          <dt>prizesDistributed</dt>
+          <dt>{humanizeKvLabel("prizesDistributed")}</dt>
           <dd>{renderBool(21)}</dd>
         </dl>
       </PageSection>
@@ -253,9 +254,9 @@ export function TimeCurveProtocolPage() {
         lede="These were fixed at deploy time and cannot change."
       >
         <dl className="kv">
-          <dt>initialMinBuy (envelope ref)</dt>
+          <dt>{humanizeKvLabel("initialMinBuy (envelope ref)")}</dt>
           <dd>{renderAmount(9, 18)}</dd>
-          <dt>growthRateWad</dt>
+          <dt>{humanizeKvLabel("growthRateWad")}</dt>
           <dd>
             {(() => {
               const r = get(10);
@@ -264,15 +265,15 @@ export function TimeCurveProtocolPage() {
                 : "—";
             })()}
           </dd>
-          <dt>timerExtensionSec</dt>
+          <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
           <dd>{renderInt(11)}</dd>
-          <dt>initialTimerSec</dt>
+          <dt>{humanizeKvLabel("initialTimerSec")}</dt>
           <dd>{renderInt(12)}</dd>
-          <dt>timerCapSec</dt>
+          <dt>{humanizeKvLabel("timerCapSec")}</dt>
           <dd>{renderInt(13)}</dd>
-          <dt>buyCooldownSec</dt>
+          <dt>{humanizeKvLabel("buyCooldownSec")}</dt>
           <dd>{renderInt(14)}</dd>
-          <dt>REFERRAL_EACH_BPS</dt>
+          <dt>{humanizeKvLabel("REFERRAL_EACH_BPS")}</dt>
           <dd>
             {(() => {
               const r = get(15);
@@ -281,7 +282,7 @@ export function TimeCurveProtocolPage() {
                 : "—";
             })()}
           </dd>
-          <dt>charmPrice basePriceWad</dt>
+          <dt>{humanizeKvLabel("charmPrice basePriceWad")}</dt>
           <dd>
             {charmPriceParams?.[0]?.status === "success" && charmPriceParams[0].result !== undefined ? (
               <AmountDisplay raw={String(charmPriceParams[0].result)} decimals={18} />
@@ -289,7 +290,7 @@ export function TimeCurveProtocolPage() {
               "—"
             )}
           </dd>
-          <dt>charmPrice dailyIncrementWad</dt>
+          <dt>{humanizeKvLabel("charmPrice dailyIncrementWad")}</dt>
           <dd>
             {charmPriceParams?.[1]?.status === "success" && charmPriceParams[1].result !== undefined ? (
               <AmountDisplay raw={String(charmPriceParams[1].result)} decimals={18} />
@@ -307,21 +308,21 @@ export function TimeCurveProtocolPage() {
         lede="Onchain caps that bound steal / guard / flag mechanics."
       >
         <dl className="kv">
-          <dt>WARBOW_FLAG_SILENCE_SEC</dt>
+          <dt>{humanizeKvLabel("WARBOW_FLAG_SILENCE_SEC")}</dt>
           <dd>{renderInt(24)}</dd>
-          <dt>WARBOW_FLAG_CLAIM_BP</dt>
+          <dt>{humanizeKvLabel("WARBOW_FLAG_CLAIM_BP")}</dt>
           <dd>{renderInt(25)}</dd>
-          <dt>WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY</dt>
+          <dt>{humanizeKvLabel("WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY")}</dt>
           <dd>{renderInt(26)}</dd>
-          <dt>WARBOW_STEAL_BURN_WAD</dt>
+          <dt>{humanizeKvLabel("WARBOW_STEAL_BURN_WAD")}</dt>
           <dd>{renderAmount(27, 18)}</dd>
-          <dt>WARBOW_GUARD_BURN_WAD</dt>
+          <dt>{humanizeKvLabel("WARBOW_GUARD_BURN_WAD")}</dt>
           <dd>{renderAmount(28, 18)}</dd>
-          <dt>WARBOW_REVENGE_WINDOW_SEC</dt>
+          <dt>{humanizeKvLabel("WARBOW_REVENGE_WINDOW_SEC")}</dt>
           <dd>{renderInt(29)}</dd>
-          <dt>warbowPendingFlagOwner</dt>
+          <dt>{humanizeKvLabel("warbowPendingFlagOwner")}</dt>
           <dd>{renderAddress(22)}</dd>
-          <dt>warbowPendingFlagPlantAt</dt>
+          <dt>{humanizeKvLabel("warbowPendingFlagPlantAt")}</dt>
           <dd>{renderUnix(23)}</dd>
         </dl>
       </PageSection>
@@ -333,15 +334,15 @@ export function TimeCurveProtocolPage() {
         lede="Addresses that TimeCurve forwards to."
       >
         <dl className="kv">
-          <dt>acceptedAsset (CL8Y)</dt>
+          <dt>{humanizeKvLabel("acceptedAsset (CL8Y)")}</dt>
           <dd>{renderAddress(19)}</dd>
-          <dt>launchedToken</dt>
+          <dt>{humanizeKvLabel("launchedToken")}</dt>
           <dd>{renderAddress(20)}</dd>
-          <dt>charmPrice</dt>
+          <dt>{humanizeKvLabel("charmPrice")}</dt>
           <dd>{renderAddress(18)}</dd>
-          <dt>feeRouter</dt>
+          <dt>{humanizeKvLabel("feeRouter")}</dt>
           <dd>{renderAddress(16)}</dd>
-          <dt>podiumPool</dt>
+          <dt>{humanizeKvLabel("podiumPool")}</dt>
           <dd>{renderAddress(17)}</dd>
         </dl>
       </PageSection>
@@ -370,7 +371,7 @@ export function TimeCurveProtocolPage() {
               return (
                 <li key={label}>
                   <strong>{label}</strong> · weight {formatBpsAsPercent(Number(weightBps))} ·{" "}
-                  <AddressInline address={destination} size={16} />
+                  <MegaScannerAddressLink address={destination} />
                 </li>
               );
             })}

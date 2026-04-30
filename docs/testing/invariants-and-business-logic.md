@@ -510,6 +510,17 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 
 **Play checklist (3rd-party agents):** [`skills/verify-yo-presale-vesting/SKILL.md`](../../skills/verify-yo-presale-vesting/SKILL.md). **Anvil E2E:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh).
 
+<a id="canonical-fee-sinks-mobile-gitlab-93"></a>
+
+### Canonical fee sinks — mobile address affordance + readable protocol labels (GitLab [#93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93))
+
+| Invariant | Meaning | Evidence |
+|-----------|---------|----------|
+| **Mobile address link** | Viewports **≤479px** (`matchMedia max-width: 479px`): each **full** EVM address (`0x` + 40 hex) in the global **Canonical fee sinks** panel and related trust rows shows **`0x`** + **first four** + **ellipsis** + **last four** characters; the control remains a **single** tap target linking to **`https://mega.etherscan.io/address/{addr}`** (lowercased path segment), including **local Anvil** QA. Wider viewports show the **full** hex in the same link. Invalid / non-42-char strings render as monospace text without a link. | [`MegaScannerAddressLink.tsx`](../../frontend/src/components/MegaScannerAddressLink.tsx), [`megaEtherscan.ts`](../../frontend/src/lib/megaEtherscan.ts), [`abbreviateAddressEnds`](../../frontend/src/lib/addressFormat.ts), [`FeeTransparency.tsx`](../../frontend/src/components/FeeTransparency.tsx) |
+| **Operator-readable names** | KV labels that mirror **Solidity** getters use **spaced title case**: `WARBOW_FLAG_SILENCE_SEC` → *Warbow Flag Silence Sec*; `warbowPendingFlagOwner` → *Warbow Pending Flag Owner*; multi-token rows like `charmPrice basePriceWad` → *Charm Price · …*. Prose phrases such as *seconds remaining* stay unchanged (`humanizeKvLabel` heuristics). | [`humanizeIdentifier.ts`](../../frontend/src/lib/humanizeIdentifier.ts), [`TimeCurveProtocolPage.tsx`](../../frontend/src/pages/TimeCurveProtocolPage.tsx), [`TimeCurveSections.tsx`](../../frontend/src/pages/timecurve/TimeCurveSections.tsx), [`humanizeIdentifier.test.ts`](../../frontend/src/lib/humanizeIdentifier.test.ts) |
+
+**Play checklist (3rd-party agents):** [`skills/verify-yo-fee-sinks-mobile/SKILL.md`](../../skills/verify-yo-fee-sinks-mobile/SKILL.md). **Spec:** [`timecurve-views.md` — global footer fee sinks](../frontend/timecurve-views.md#global-footer-fee-sinks-mobile-issue-93).
+
 ### FeeSink and PodiumPool
 
 | Invariant | Meaning | Tests |
@@ -565,6 +576,7 @@ CI: `playwright-e2e` job in [`.github/workflows/unit-tests.yml`](../../.github/w
 | Rabbit deposits API path | `indexerApi.test.ts`: `encodeURIComponent` on `user` query |
 | TimeCurve `ledgerSecIntForPhase` + `derivePhase` | Prefers hero `chainNowSec` over block time when set; state machine for Simple + Arena | [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts) (issue [#48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48), [view doc](../frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)) |
 | Presale vesting display helpers | `formatDoubHuman` + `dualWallClockLines` for `/vesting` | [`presaleVestingFormat.test.ts`](../../frontend/src/pages/presaleVesting/presaleVestingFormat.test.ts) ([issue #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)) |
+| Fee sinks labels + abbreviated addresses + explorer URL helper | `humanizeKvLabel` · `megaEtherscanAddressUrl` · `abbreviateAddressEnds` for **42-char** hex | [`humanizeIdentifier.test.ts`](../../frontend/src/lib/humanizeIdentifier.test.ts), [`megaEtherscan.test.ts`](../../frontend/src/lib/megaEtherscan.test.ts), [`addressFormat.test.ts`](../../frontend/src/lib/addressFormat.test.ts) ([issue #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93)) |
 
 ### TimeCurve frontend: sale phase and hero timer
 
