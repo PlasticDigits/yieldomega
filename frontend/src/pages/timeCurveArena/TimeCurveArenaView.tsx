@@ -803,7 +803,11 @@ export function TimeCurveArenaView() {
                             <a href="https://gitlab.com/PlasticDigits/yieldomega/-/issues/63">issue #63</a>.
                           </p>
                         ) : (
-                          <p className="muted">Unchecked: CHARM buy without updating the WarBow pending flag slot.</p>
+                          <p className="muted">
+                            Global pending-flag slot: check → after silence, <strong>+1000 BP</strong> if you claim in
+                            time, or <strong>−2000 BP</strong> if another buy clears you after claim opens. Unchecked:
+                            CHARM only, slot unchanged.
+                          </p>
                         )}
                       </div>
                       <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
