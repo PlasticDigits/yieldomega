@@ -2,11 +2,10 @@
 
 /**
  * Canonical “A → B” conversion glyph for TimeCurve pay rails and fee sinks.
- * Source: `/art/icons/ui-conversion-arrow.svg`. Optional Replicate refresh:
- * `scripts/replicate-art/ui_conversion_arrow_batch.py` (writes PNG under
- * `pending_manual_review/` for manual promotion if desired).
+ * Source: `/art/icons/ui-conversion-arrow.png` (Replicate gpt-image-2; regenerate via
+ * `scripts/replicate-art/ui_conversion_arrow_batch.py`, or `--fetch-prediction-id` for an existing run).
  */
-export const CONVERSION_ARROW_SRC = "/art/icons/ui-conversion-arrow.svg";
+export const CONVERSION_ARROW_SRC = "/art/icons/ui-conversion-arrow.png";
 
 type ConversionArrowProps = {
   /** Pixel width/height (square). */
