@@ -1,6 +1,6 @@
 # Wallet connection (EVM)
 
-**Issues:** [GitLab #58 — SafePal / WalletConnect](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58), [GitLab #81 — single-chain wagmi (no incidental mainnet RPC)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81)
+**Issues:** [GitLab #58 — SafePal / WalletConnect](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58), [GitLab #81 — single-chain wagmi (no incidental mainnet RPC)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81), [GitLab #95 — wrong-chain write gating (`VITE_CHAIN_ID` match)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)
 
 The app uses **RainbowKit** + **wagmi** (`frontend/src/wagmi-config.ts`). Participant-facing connect surfaces use `<ConnectButton.Custom>` in the header and [`WalletConnectButton`](../../frontend/src/components/WalletConnectButton.tsx) on pages such as TimeCurve Simple ([`timecurve-views.md`](timecurve-views.md)).
 
@@ -11,6 +11,18 @@ The app uses **RainbowKit** + **wagmi** (`frontend/src/wagmi-config.ts`). Partic
 3. **`multiInjectedProviderDiscovery: true`** — Enables **EIP-6963** multi-wallet discovery in the browser (wagmi), so more than one injected provider can appear reliably when multiple extensions are installed.
 4. **SafePal in the modal** — RainbowKit’s stock `getDefaultConfig` “Popular” group does **not** include `safepalWallet`. YieldOmega passes an explicit wallet group that adds **`safepalWallet`** before **`walletConnectWallet`**. SafePal’s RainbowKit connector uses **injected** `safepalProvider` / `isSafePal` when the extension is present, otherwise **WalletConnect** with SafePal mobile deep links.
 
+<a id="wrong-network-write-gating-issue-95"></a>
+
+### Wrong-network write gating (issue #95)
+
+RainbowKit can surface **Wrong Network** while the app still exposes **`writeContract`** CTAs (`Buy CHARM`, WarBow steals, **`/referrals`** register, **`/vesting`** `claim()`, …). YieldOmega aligns the **canonical target `chainId`** with **`VITE_CHAIN_ID`** and **`VITE_RPC_URL`** via **`resolveChainRpcConfig`** ([`configuredTargetChainId()`](../../frontend/src/lib/chain.ts); default **Anvil 31337** — [`frontend/.env.example`](../../frontend/.env.example)). While connected and **`useChainId()`** mismatches:
+
+- **`ChainMismatchWriteBarrier`** overlays the gated panels (still readable underneath with dimmed backdrop).
+- **`SwitchToTargetChainButton`** calls wagmi **`switchChain`** (EIP-3326 **`wallet_switchEthereumChain`**).
+- **`chainMismatchWriteMessage`** returns early from submit handlers (**defense in depth**).
+
+**Out of scope:** **`ThirdPartyDexPage`** (`/kumbaya`, `/sir`) outbound venue links — not ABI writes emitted by this app.
+
 ## Manual verification (post-deploy)
 
 - **Extension:** SafePal browser extension installed → open connect modal → **SafePal Wallet** visible and connects on the target chain.
@@ -18,6 +30,6 @@ The app uses **RainbowKit** + **wagmi** (`frontend/src/wagmi-config.ts`). Partic
 
 ## Agent / contributor cross-links
 
-- Test matrix: [`docs/testing/strategy.md`](../testing/strategy.md), invariant summary: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#wallet-connect-ux-issue-58) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58)), single-chain wagmi: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#frontend-single-chain-wagmi-issue-81) ([issue #81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81)).
+- Test matrix: [`docs/testing/strategy.md`](../testing/strategy.md), invariant summary: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#wallet-connect-ux-issue-58) ([issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58)), single-chain wagmi: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#frontend-single-chain-wagmi-issue-81) ([issue #81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81)), wrong-chain writes: [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) — [invariants § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [play skill](../../skills/verify-yo-chain-write-network/SKILL.md).
 - Play skills (participants): [`skills/README.md`](../../skills/README.md).
 - Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
