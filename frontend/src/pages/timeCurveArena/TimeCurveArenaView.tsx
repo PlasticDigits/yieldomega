@@ -505,9 +505,6 @@ export function TimeCurveArenaView() {
                             height={24}
                           />
                           <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
-                          <span className="timecurve-simple__rate-tick" aria-hidden="true">
-                            ↑
-                          </span>
                         </span>
                         <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
                           {rateBoardPayOptions}
