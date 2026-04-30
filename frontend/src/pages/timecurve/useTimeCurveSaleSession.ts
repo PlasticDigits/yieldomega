@@ -17,6 +17,7 @@ import {
   erc20Abi,
   kumbayaQuoterV2Abi,
   kumbayaSwapRouterAbi,
+  linearCharmPriceReadAbi,
   timeCurveBuyEventAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
@@ -43,6 +44,7 @@ import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import {
   derivePhase,
   ledgerSecIntForPhase,
@@ -131,6 +133,8 @@ export type UseTimeCurveSaleSession = {
   launchCl8yValueWei: bigint | undefined;
   /** Live per-CHARM price in CL8Y wei — exposed so the UX can show "1 CHARM ≈ X CL8Y at launch". */
   pricePerCharmWad: bigint | undefined;
+  /** Envelope parameters for recent-buy min/max position displays; mirrors the Arena ticker math. */
+  buyEnvelopeParams: EnvelopeCurveParamsWire | null;
   /**
    * Projected CL8Y value of **one CHARM** at launch (1.2× clearing price anchor).
    * Used by the rate board DOUB = ? tile chain and for Kumbaya `quoteExactOutput` into ETH/USDM.
@@ -229,11 +233,14 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
         { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
         { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
         { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
         { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
         { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
         { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
         { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
@@ -306,11 +313,14 @@ export function useTimeCurveSaleSession(
     maxBuyR,
     charmBoundsR,
     pricePerCharmR,
+    charmPriceR,
     acceptedAssetR,
     referralRegistryR,
     totalRaisedR,
     totalCharmWeightR,
     totalTokensForSaleR,
+    initialMinBuyR,
+    growthRateWadR,
     buyCooldownSecR,
     launchedTokenR,
     buyFeeRoutingEnabledR,
@@ -323,8 +333,30 @@ export function useTimeCurveSaleSession(
 
   const acceptedAsset =
     acceptedAssetR?.status === "success" ? (acceptedAssetR.result as HexAddress) : undefined;
+  const charmPriceAddress =
+    charmPriceR?.status === "success" ? (charmPriceR.result as HexAddress) : undefined;
   const launchedToken =
     launchedTokenR?.status === "success" ? (launchedTokenR.result as HexAddress) : undefined;
+
+  const { data: linearPriceReadsRaw } = useReadContracts({
+    contracts: charmPriceAddress
+      ? [
+          {
+            address: charmPriceAddress,
+            abi: linearCharmPriceReadAbi,
+            functionName: "basePriceWad",
+          },
+          {
+            address: charmPriceAddress,
+            abi: linearCharmPriceReadAbi,
+            functionName: "dailyIncrementWad",
+          },
+        ]
+      : [],
+    query: { enabled: Boolean(charmPriceAddress) },
+  });
+  const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
+  const [basePriceWadR, dailyIncrementWadR] = linearPriceReads ?? [];
 
   const { data: tokenDecimals } = useReadContract({
     address: acceptedAsset,
@@ -387,6 +419,29 @@ export function useTimeCurveSaleSession(
       }),
     [coreData, ended, saleStartSec, deadlineSec, phaseLedgerSecInt],
   );
+
+  const buyEnvelopeParams = useMemo((): EnvelopeCurveParamsWire | null => {
+    if (
+      saleStartR?.status !== "success" ||
+      initialMinBuyR?.status !== "success" ||
+      growthRateWadR?.status !== "success" ||
+      basePriceWadR?.status !== "success" ||
+      dailyIncrementWadR?.status !== "success"
+    ) {
+      return null;
+    }
+    const start = Number(saleStartR.result as bigint);
+    if (start <= 0) {
+      return null;
+    }
+    return {
+      saleStartSec: start,
+      charmEnvelopeRefWad: (initialMinBuyR.result as bigint).toString(),
+      growthRateWad: (growthRateWadR.result as bigint).toString(),
+      basePriceWad: (basePriceWadR.result as bigint).toString(),
+      dailyIncrementWad: (dailyIncrementWadR.result as bigint).toString(),
+    };
+  }, [saleStartR, initialMinBuyR, growthRateWadR, basePriceWadR, dailyIncrementWadR]);
 
   const preStartCountdownSec =
     saleStartSec !== undefined && saleStartSec > phaseLedgerSecInt
@@ -1086,6 +1141,7 @@ export function useTimeCurveSaleSession(
     expectedTokenFromCharms,
     launchCl8yValueWei,
     pricePerCharmWad,
+    buyEnvelopeParams,
     launchCl8yPerCharmWei,
     referralRegistryOn,
     pendingReferralCode,
