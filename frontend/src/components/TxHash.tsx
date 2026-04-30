@@ -7,7 +7,7 @@ export function TxHash({ hash }: { hash: string }) {
   const short = `${hash.slice(0, 10)}…`;
   if (url) {
     return (
-      <a href={url} target="_blank" rel="noreferrer" className="mono cursor-external-link">
+      <a href={url} target="_blank" rel="noreferrer noopener" className="mono cursor-external-link">
         {short}
       </a>
     );

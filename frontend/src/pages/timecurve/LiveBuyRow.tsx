@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { KeyboardEvent, MouseEvent } from "react";
 import { useMemo } from "react";
 import type { BuyItem } from "@/lib/indexerApi";
 import {
@@ -11,7 +12,7 @@ import {
 import { listBuyImpactTicks } from "@/lib/timeCurveUx";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import { explorerTxUrl } from "@/lib/explorer";
-import { WalletBlockie } from "@/components/WalletBlockie";
+import { AddressInline } from "@/components/AddressInline";
 import { BuyEnvelopeMiniMeter } from "@/pages/timecurve/BuyEnvelopeMiniPie";
 
 type Props = {
@@ -32,6 +33,10 @@ const toneClass: Record<string, string> = {
   neutral: "live-buy-tick--neutral",
 };
 
+function targetIsInsideExplorerLink(target: EventTarget | null): boolean {
+  return Boolean(target && (target as HTMLElement).closest?.("a[href]"));
+}
+
 export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelopeParams, variant }: Props) {
   const ticks = listBuyImpactTicks(buy, 5);
   const age = formatBuyAge(buy.block_timestamp, nowUnixSec);
@@ -46,21 +51,29 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
       ? "Spent amount shown, but band fill needs indexer block time on this buy"
       : `Spend ~${Math.round(ratio * 100)}% of max gross band at that block`;
 
+  const stopExplorerBubble = interactive
+    ? (e: MouseEvent<HTMLAnchorElement>) => {
+        e.stopPropagation();
+      }
+    : undefined;
+
   const body = (
     <>
-      <div className="live-buy-row__identity">
-        <WalletBlockie address={buy.buyer} size={blockieSize} className="live-buy-row__blockie" title={buy.buyer} />
-        {variant === "hero" && (
+      {variant === "hero" ? (
+        <div className="live-buy-row__identity">
           <div className="live-buy-row__meter">
             <BuyEnvelopeMiniMeter ratio={ratio} amountRaw={buy.amount} title={pieTitle} />
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
       <div className="live-buy-row__body">
         <div className="live-buy-row__head">
-          <span className="live-buy-row__who mono" title={buy.buyer}>
-            {who}
-          </span>
+          <AddressInline
+            address={buy.buyer}
+            formatWallet={formatWallet}
+            size={blockieSize}
+            onExplorerLinkClick={stopExplorerBubble}
+          />
           {age !== null ? (
             <span className="live-buy-row__age">{age}</span>
           ) : variant === "hero" ? (
@@ -83,53 +96,55 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
 
   const rootClass = variant === "hero" ? "live-buy-row live-buy-row--hero" : "live-buy-row live-buy-row--modal";
 
-  if (interactive) {
-    return (
-      <div className={rootClass}>
-        <button
-          type="button"
-          className="live-buy-row__hit"
-          onClick={() => onSelectBuy(buy)}
-          aria-label={`View details for buy by ${who}`}
-        >
-          {body}
-        </button>
-        {txUrl ? (
-          <a
-            className="live-buy-row__tx"
-            href={txUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            aria-label={`View transaction ${buy.tx_hash.slice(0, 10)}… on explorer`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {variant === "modal" ? "view tx" : "tx"}
-          </a>
-        ) : (
-          variant === "hero" ? (
-            <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
-              ·
-            </span>
-          ) : null
-        )}
-      </div>
-    );
-  }
+  const openDetails = () => onSelectBuy?.(buy);
+
+  const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (!interactive) return;
+    if (targetIsInsideExplorerLink(e.target)) return;
+    openDetails();
+  };
+
+  const onRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!interactive) return;
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (targetIsInsideExplorerLink(e.target)) return;
+    e.preventDefault();
+    openDetails();
+  };
+
+  const hit = interactive ? (
+    <div
+      className="live-buy-row__hit"
+      role="group"
+      tabIndex={0}
+      onClick={onRowClick}
+      onKeyDown={onRowKeyDown}
+      aria-label={`View details for buy by ${who}`}
+    >
+      {body}
+    </div>
+  ) : (
+    <div className="live-buy-row__hit live-buy-row__hit--static">{body}</div>
+  );
 
   return (
     <div className={rootClass}>
-      <div className="live-buy-row__hit live-buy-row__hit--static">{body}</div>
+      {hit}
       {txUrl ? (
-        <a className="live-buy-row__tx" href={txUrl} target="_blank" rel="noreferrer noopener">
+        <a
+          className="live-buy-row__tx"
+          href={txUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={`View transaction ${buy.tx_hash.slice(0, 10)}… on explorer`}
+        >
           {variant === "modal" ? "view tx" : "tx"}
         </a>
-      ) : (
-        variant === "hero" ? (
-          <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
-            ·
-          </span>
-        ) : null
-      )}
+      ) : variant === "hero" ? (
+        <span className="live-buy-row__tx live-buy-row__tx--muted" aria-hidden>
+          ·
+        </span>
+      ) : null}
     </div>
   );
 }
