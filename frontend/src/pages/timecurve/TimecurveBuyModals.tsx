@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useId, useMemo, useRef, type UIEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type UIEvent } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { Modal } from "@/components/ui/Modal";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
@@ -44,7 +44,6 @@ type Props = {
   address: string | undefined;
   formatWallet: WalletFormatShort;
   decimals: number;
-  nowUnixSec: number;
   envelopeParams: EnvelopeCurveParamsWire | null;
 };
 
@@ -63,12 +62,19 @@ export function TimecurveBuyModals({
   address,
   formatWallet,
   decimals,
-  nowUnixSec,
   envelopeParams,
 }: Props) {
   const listTitleId = useId();
   const detailTitleId = useId();
   const listRef = useRef<HTMLUListElement | null>(null);
+  const [wallNowUnixSec, setWallNowUnixSec] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setWallNowUnixSec(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const listModalTitle = useMemo(() => {
     const loaded = buys?.length ?? 0;
@@ -142,7 +148,7 @@ export function TimecurveBuyModals({
                     buy={buy}
                     formatWallet={formatWallet}
                     onSelectBuy={onSelectBuy}
-                    nowUnixSec={nowUnixSec}
+                    nowUnixSec={wallNowUnixSec}
                     envelopeParams={envelopeParams}
                     variant="modal"
                   />
