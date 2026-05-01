@@ -52,3 +52,7 @@ Cross-link **[`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega
 ## G. Relationship to in-repo bots
 
 [`bots/timecurve/`](../../bots/timecurve/) is **maintained AGPL** project code for local Anvil and ops. Participants may **study** it or run it per its README; casual production use requires understanding **AGPL obligations** and operational risk.
+
+## H. Contributor note — full local stack (maintainers / QA only)
+
+If you **are** editing this repo and need **Postgres + Anvil + indexer + Vite** in one flow, use **[`docs/testing/qa-local-full-stack.md`](../../docs/testing/qa-local-full-stack.md)** and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)). **Participants** automating against a **remote** RPC do not need that path.
