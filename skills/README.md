@@ -23,7 +23,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 
 ## Contributor documentation (QA / harness)
 
-Fork and build workflows, Playwright-Anvil concurrency, indexer offline checks, referral rows, **`VITE_EXPLORER_BASE_URL`** / address links (**#98**), mobile **`AlbumPlayerBar`** vs nav clearance (**#103** — [`contributor-mobile-album-dock/SKILL.md`](contributor-mobile-album-dock/SKILL.md)), and related procedures: **[`docs/testing/manual-qa-checklists.md`](../docs/testing/manual-qa-checklists.md)** plus [`docs/testing/strategy.md`](../docs/testing/strategy.md) · [`docs/testing/e2e-anvil.md`](../docs/testing/e2e-anvil.md) · [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md).
+Fork and build workflows, **local full-stack QA orchestrator** ([`docs/testing/qa-local-full-stack.md`](../docs/testing/qa-local-full-stack.md), [GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)), Playwright-Anvil concurrency, indexer offline checks, referral rows, **`VITE_EXPLORER_BASE_URL`** / address links (**#98**), mobile **`AlbumPlayerBar`** vs nav clearance (**#103** — [`contributor-mobile-album-dock/SKILL.md`](contributor-mobile-album-dock/SKILL.md)), and related procedures: **[`docs/testing/manual-qa-checklists.md`](../docs/testing/manual-qa-checklists.md)** plus [`docs/testing/strategy.md`](../docs/testing/strategy.md) · [`docs/testing/e2e-anvil.md`](../docs/testing/e2e-anvil.md) · [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md).
 
 ## Related reading (protocol + UX)
 
