@@ -343,6 +343,10 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 **Intent:** One **Web Audio** graph serves **Blockie Hills** BGM (streaming MP3) and decoded **SFX** buses. **#68** shipped autoplay attempt, gesture unlock, mix prefs in **`yieldomega:audio:v1:prefs`**, and TimeCurve / global UI wiring. **#71** adds **playback resume**: same key namespace, **`playbackState`** JSON, **track id** reconciliation if the manifest changes, **7-day** staleness (offset only), **≥4s** coalesced writes while playing, and synchronous flush on **pause**, **skip**, **natural `ended`**, **`visibilitychange` → hidden**, **`pagehide` / `beforeunload`**.
 
+<a id="mobile-album-dock-layout-issue-103"></a>
+
+**INV-AUDIO-103 — Mobile dock vs nav chrome ([GitLab #103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)):** The **`AlbumPlayerBar`** shell uses **`position: fixed`** (`z-index: 1050`, `.album-player-dock`). On **`max-width: 720px`**, the bordered **`RootLayout`** **`.app-header`** gains **`margin-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem))`** so the menu card sits **below** the dock bubble — no overlap with typical phone widths. **`top` / `right` offsets on the dock** stay as in **#68**; **tablet/desktop** (`min-width: 721px`) header rhythm is unchanged. Token: [`mobileAlbumDockLayout.ts`](../../frontend/src/audio/mobileAlbumDockLayout.ts) (`MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM` **must** match **`index.css`**).
+
 | Invariant | Meaning | Automated / manual |
 |-----------|---------|-------------------|
 | Graph + buses | `WebAudioMixer`: `bgmGain` + `sfxGain` → `masterGain` → destination | Code review |
@@ -351,12 +355,13 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 | **Throttle** | No periodic **localStorage** writes faster than **`AUDIO_PLAYBACK_PERIODIC_SAVE_MS`** (~4s) during steady playback | Manual timer or unit gate (`createMinIntervalGate`) |
 | **Skip / end** | Next track always starts at **0:00** in storage and on element | Manual |
 | **Dock title** | Initial React **`trackIndex`** reads **`loadAudioPlaybackState`** in sync with **`WebAudioMixer`** hydrate | Manual refresh mid-album |
+| **Mobile clearance (#103)** | **`INV-AUDIO-103`**: narrow viewports clear dock vs **`.app-header`** via scoped **`margin-top`**; **`MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM`** ↔ **`index.css`** | Vitest [`mobileAlbumDockLayout.test.ts`](../../frontend/src/audio/mobileAlbumDockLayout.test.ts); manual [#103](manual-qa-checklists.md#manual-qa-issue-103) |
 
-**Unit tests:** [`audioPlaybackState.test.ts`](../../frontend/src/audio/audioPlaybackState.test.ts) (`normalizePlaybackState`, save/load, stale TTL, throttle gate), [`albumPlaylist.test.ts`](../../frontend/src/audio/albumPlaylist.test.ts) (`id` + `durationSec` on tracks).
+**Unit tests:** [`audioPlaybackState.test.ts`](../../frontend/src/audio/audioPlaybackState.test.ts) (`normalizePlaybackState`, save/load, stale TTL, throttle gate), [`albumPlaylist.test.ts`](../../frontend/src/audio/albumPlaylist.test.ts) (`id` + `durationSec` on tracks), [`mobileAlbumDockLayout.test.ts`](../../frontend/src/audio/mobileAlbumDockLayout.test.ts) (**#103** token parity).
 
-**Manual QA (agents):** [`manual-qa-checklists.md#manual-qa-issue-71`](manual-qa-checklists.md#manual-qa-issue-71) · GitLab [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71).
+**Manual QA (agents):** [`manual-qa-checklists.md#manual-qa-issue-71`](manual-qa-checklists.md#manual-qa-issue-71) · GitLab [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71); dock vs nav [**#103**](manual-qa-checklists.md#manual-qa-issue-103).
 
-**Product / UX doc:** [sound-effects-recommendations §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · GitLab [#68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68).
+**Product / UX doc:** [sound-effects-recommendations §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · GitLab [#68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · mobile clearance [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103).
 
 ---
 

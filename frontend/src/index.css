@@ -373,7 +373,8 @@ label:has(input[type="radio"]:disabled) {
 }
 
 /* Album 1 BGM + mix bus — fixed top-right bubble (GitLab #68).
- * Above `.launch-countdown` (1000); below `.modal-overlay` (1100+) so dialogs stay on top. */
+ * Above `.launch-countdown` (1000); below `.modal-overlay` (1100+) so dialogs stay on top.
+ * Mobile clearance vs `.app-header`: INV-AUDIO-103 — see `mobileAlbumDockLayout.ts`, GitLab #103. */
 .album-player-dock {
   --album-dock-w: min(11.1rem, calc((100vw - 1.75rem) * 0.6));
   position: fixed;
@@ -3151,7 +3152,9 @@ code {
     align-items: stretch;
     width: calc(100% - 0.75rem);
     max-width: min(72rem, 100vw - 0.75rem);
-    margin-top: 0.5rem;
+    /* INV-AUDIO-103: Clear fixed `.album-player-dock` above this card (GitLab #103).
+     * 4.5rem tracks `MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM` in `mobileAlbumDockLayout.ts`. */
+    margin-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
     margin-left: auto;
     margin-right: auto;
     padding: 0.65rem 0.7rem;
