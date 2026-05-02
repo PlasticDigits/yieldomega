@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS idx_fee_sink_withdrawn;
+DROP TABLE IF EXISTS idx_doub_vesting_claims_enabled;
+DROP TABLE IF EXISTS idx_doub_vesting_claimed;
+DROP TABLE IF EXISTS idx_doub_vesting_started;
+DROP TABLE IF EXISTS idx_podium_pool_prize_pusher_set;
+DROP TABLE IF EXISTS idx_rabbit_withdrawal_fee_accrued;
+DROP TABLE IF EXISTS idx_rabbit_protocol_revenue_split;
+DROP TABLE IF EXISTS idx_rabbit_burrow_reserve_buckets;
+DROP TABLE IF EXISTS idx_timecurve_buy_router_cl8y_surplus;
+DROP TABLE IF EXISTS idx_timecurve_buy_router_set;
+DROP TABLE IF EXISTS idx_timecurve_reserve_podium_payouts_enabled;
+DROP TABLE IF EXISTS idx_timecurve_charm_redemption_enabled;
+DROP TABLE IF EXISTS idx_timecurve_buy_fee_routing_enabled;
