@@ -17,13 +17,13 @@ The **`AlbumPlayerBar`** wrapper uses **`position: fixed`** (`.album-player-dock
 |-------|-----------|
 | CSS | `frontend/src/index.css` — `@media (max-width: 720px)` **`.app-header`** `margin-top`: `max(0.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem))` |
 | Numeric token | `frontend/src/audio/mobileAlbumDockLayout.ts` — **`MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM`** (**must** equal **`4.5`** and match the **`+ 4.5rem`** term in CSS) |
-| Regression test | `frontend/src/audio/mobileAlbumDockLayout.test.ts` |
+| Regression test | `frontend/src/audio/mobileAlbumDockLayout.test.ts` — canonical **`4.5`** plus **`index.css`** `env(safe-area-inset-top, 0px) + Nrem` ↔ TS ([GitLab #107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107)) |
 
 Do **not** raise **`AlbumPlayerBar`** above dialogs (`z-index` stays below modal overlays). Do **not** change **`min-width: 721px`** header **`margin-top`** rhythm when tuning mobile clearance.
 
 ## Doc map
 
-- [Invariants — mobile dock §103](../../docs/testing/invariants-and-business-logic.md#mobile-album-dock-layout-issue-103)
+- [Invariants — mobile dock §103](../../docs/testing/invariants-and-business-logic.md#mobile-album-dock-layout-issue-103) (bidirectional TS/CSS Vitest — [#107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107))
 - [Manual QA — #103](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-103)
 - [Sound effects §8 — bullet](../../docs/frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
 - [TimeCurve views — Simple audio](../../docs/frontend/timecurve-views.md#timecurve-simple-audio-issue-68)
@@ -31,4 +31,4 @@ Do **not** raise **`AlbumPlayerBar`** above dialogs (`z-index` stays below modal
 
 ## GitLab
 
-[Work item #103 — Mobile music UI overlaps top menu card](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)
+[Work item #103 — Mobile music UI overlaps top menu card](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) · [Issue #107 — INV-AUDIO-103 Vitest reads `index.css`](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107)

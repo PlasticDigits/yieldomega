@@ -12,6 +12,8 @@
  * changing tablet/desktop (`min-width: 721px`) rhythms.
  *
  * Keep this file aligned with the `@media (max-width: 720px)` `.app-header`
- * rule in `frontend/src/index.css`.
+ * rule in `frontend/src/index.css`. Vitest
+ * [`mobileAlbumDockLayout.test.ts`](./mobileAlbumDockLayout.test.ts) asserts
+ * bidirectional parity ([GitLab #107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107)).
  */
 export const MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM = 4.5 as const;
