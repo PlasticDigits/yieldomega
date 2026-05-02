@@ -3,6 +3,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchIndexerStatus,
+  fetchTimecurveBuys,
+  fetchTimecurveChainTimer,
   rabbitDepositsApiPath,
   referralAppliedApiPath,
   referralReferrerLeaderboardApiPath,
@@ -171,5 +173,34 @@ describe("fetchIndexerStatus", () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
 
     await expect(fetchIndexerStatus()).resolves.toBeNull();
+  });
+});
+
+describe("indexer JSON bodies (issue #111)", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("fetchTimecurveBuys resolves null when response is 200 OK but body is not JSON", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response("not json", { status: 200, headers: { "content-type": "application/json" } }),
+    );
+    await expect(fetchTimecurveBuys(20, 0)).resolves.toBeNull();
+  });
+
+  it("fetchTimecurveChainTimer resolves null when response is 200 OK but json() rejects", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new SyntaxError("Unexpected token")),
+    } as Response);
+    await expect(fetchTimecurveChainTimer()).resolves.toBeNull();
   });
 });

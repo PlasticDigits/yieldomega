@@ -95,7 +95,7 @@ async function getJson<T>(path: string): Promise<T | null> {
       console.warn("[indexer]", res.status, path);
       return null;
     }
-    return res.json() as Promise<T>;
+    return (await res.json()) as T;
   } catch {
     return null;
   }
@@ -126,7 +126,7 @@ export type TimecurveChainTimer = {
 
 /**
  * Latest `deadline` / `timerCapSec` / head `block.timestamp` from indexer RPC poll (~1s).
- * Returns null if indexer is unset, unreachable, or chain-timer is not configured (503).
+ * Returns null if indexer is unset, unreachable, chain-timer is not configured (503), or the body is not valid JSON ([issue #111](https://gitlab.com/PlasticDigits/yieldomega/-/issues/111)).
  */
 export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | null> {
   const base = indexerBaseUrl();
@@ -138,7 +138,7 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
     if (!res.ok) {
       return null;
     }
-    return res.json() as Promise<TimecurveChainTimer>;
+    return (await res.json()) as TimecurveChainTimer;
   } catch {
     return null;
   }
