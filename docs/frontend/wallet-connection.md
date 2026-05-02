@@ -28,7 +28,7 @@ RainbowKit can surface **Wrong Network** while the app still exposes **`writeCon
 
 - **`ChainMismatchWriteBarrier`** overlays the gated panels (still readable underneath with dimmed backdrop).
 - **`SwitchToTargetChainButton`** calls wagmi **`switchChain`** (EIP-3326 **`wallet_switchEthereumChain`**).
-- **`chainMismatchWriteMessage`** returns early from submit handlers (**defense in depth**).
+- **`chainMismatchWriteMessage`** returns early from submit handlers (**defense in depth**). **`/vesting`** **`claim`** additionally sets local error state so the same message appears **in the wallet panel** if the click races a network switch ([GitLab #106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106)).
 
 **Out of scope:** **`ThirdPartyDexPage`** (`/kumbaya`, `/sir`) outbound venue links — not ABI writes emitted by this app.
 
