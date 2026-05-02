@@ -851,6 +851,260 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_fee_routing_enabled (
+                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(*enabled)
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_charm_redemption_enabled (
+                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(*enabled)
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_reserve_podium_payouts_enabled (
+                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(*enabled)
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterSet { router } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, router_address
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*router))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (
+                    block_number, block_hash, tx_hash, log_index, contract_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(u256_dec(*amount))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::PodiumPoolPrizePusherSet { pusher } => {
+            sqlx::query(
+                r#"INSERT INTO idx_podium_pool_prize_pusher_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, pusher
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*pusher))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::RabbitBurrowReserveBuckets {
+            epoch_id,
+            redeemable_backing,
+            protocol_owned_backing,
+            total_backing,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_rabbit_burrow_reserve_buckets (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    epoch_id, redeemable_backing, protocol_owned_backing, total_backing
+                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(u256_dec(*epoch_id))
+            .bind(u256_dec(*redeemable_backing))
+            .bind(u256_dec(*protocol_owned_backing))
+            .bind(u256_dec(*total_backing))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::RabbitProtocolRevenueSplit {
+            epoch_id,
+            gross_amount,
+            to_protocol_bucket,
+            burned_amount,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_rabbit_protocol_revenue_split (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    epoch_id, gross_amount, to_protocol_bucket, burned_amount
+                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(u256_dec(*epoch_id))
+            .bind(u256_dec(*gross_amount))
+            .bind(u256_dec(*to_protocol_bucket))
+            .bind(u256_dec(*burned_amount))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::RabbitWithdrawalFeeAccrued {
+            asset,
+            fee_amount,
+            cumulative_withdraw_fees,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_rabbit_withdrawal_fee_accrued (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    asset, fee_amount, cumulative_withdraw_fees
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*asset))
+            .bind(u256_dec(*fee_amount))
+            .bind(u256_dec(*cumulative_withdraw_fees))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::DoubVestingStarted {
+            start_timestamp,
+            duration_sec,
+            total_allocated,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_doub_vesting_started (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    start_timestamp, duration_sec, total_allocated
+                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(u256_dec(*start_timestamp))
+            .bind(u256_dec(*duration_sec))
+            .bind(u256_dec(*total_allocated))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::DoubVestingClaimed {
+            beneficiary,
+            amount,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_doub_vesting_claimed (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    beneficiary, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*beneficiary))
+            .bind(u256_dec(*amount))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::DoubVestingClaimsEnabled { enabled } => {
+            sqlx::query(
+                r#"INSERT INTO idx_doub_vesting_claims_enabled (
+                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(*enabled)
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::FeeSinkWithdrawn {
+            token,
+            recipient,
+            amount,
+            actor,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_fee_sink_withdrawn (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    token, recipient, amount, actor
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(addr_hex(*recipient))
+            .bind(u256_dec(*amount))
+            .bind(addr_hex(*actor))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
 

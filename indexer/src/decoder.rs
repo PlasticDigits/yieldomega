@@ -132,6 +132,10 @@ mod contracts {
                 uint256 brokenActiveLength
             );
             event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
+            event BuyFeeRoutingEnabled(bool enabled);
+            event CharmRedemptionEnabled(bool enabled);
+            event ReservePodiumPayoutsEnabled(bool enabled);
+            event TimeCurveBuyRouterSet(address indexed router);
         }
     }
 
@@ -139,6 +143,7 @@ mod contracts {
         /// Companion router observability (`TimeCurve.buyFor` entry — GitLab #65 / #67).
         contract TimeCurveBuyRouterEvents {
             event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossCl8y, uint8 payKind);
+            event Cl8ySurplusToProtocol(uint256 amount);
         }
     }
 
@@ -151,6 +156,7 @@ mod contracts {
     sol! {
         contract PodiumPoolEvents {
             event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+            event PrizePusherSet(address indexed pusher);
         }
     }
 
@@ -195,6 +201,23 @@ mod contracts {
                 uint256 cumulativeInAsset,
                 uint256 indexed epochId
             );
+            event BurrowReserveBuckets(
+                uint256 indexed epochId,
+                uint256 redeemableBacking,
+                uint256 protocolOwnedBacking,
+                uint256 totalBacking
+            );
+            event BurrowProtocolRevenueSplit(
+                uint256 indexed epochId,
+                uint256 grossAmount,
+                uint256 toProtocolBucket,
+                uint256 burnedAmount
+            );
+            event BurrowWithdrawalFeeAccrued(
+                address indexed asset,
+                uint256 feeAmount,
+                uint256 cumulativeWithdrawFees
+            );
             event BurrowRepricingApplied(
                 uint256 indexed epochId,
                 uint256 repricingFactorWad,
@@ -224,12 +247,26 @@ mod contracts {
             event FeesDistributed(address indexed token, uint256 amount, uint256[5] shares);
         }
     }
+
+    sol! {
+        contract DoubPresaleVestingEvents {
+            event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
+            event Claimed(address indexed beneficiary, uint256 amount);
+            event ClaimsEnabled(bool enabled);
+        }
+    }
+
+    sol! {
+        contract FeeSinkEvents {
+            event Withdrawn(address indexed token, address indexed to, uint256 amount, address indexed actor);
+        }
+    }
 }
 
 use contracts::{
-    FeeRouterEvents, LeprechaunEvents, PodiumPoolEvents, RabbitTreasuryEvents,
-    ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents, TimeCurveBuyV2Activity,
-    TimeCurveEvents, TimeCurveEventsLegacy,
+    DoubPresaleVestingEvents, FeeRouterEvents, FeeSinkEvents, LeprechaunEvents, PodiumPoolEvents,
+    RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents,
+    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -281,6 +318,7 @@ pub enum DecodedEvent {
         gross_cl8y: U256,
         pay_kind: u8,
     },
+    TimeCurveBuyRouterCl8ySurplus { amount: U256 },
     TimeCurveSaleEnded {
         end_timestamp: U256,
         total_raised: U256,
@@ -348,6 +386,10 @@ pub enum DecodedEvent {
     TimeCurveWarBowDefendedStreakWindowCleared {
         cleared_wallet: Address,
     },
+    TimeCurveBuyFeeRoutingEnabled { enabled: bool },
+    TimeCurveCharmRedemptionEnabled { enabled: bool },
+    TimeCurveReservePodiumPayoutsEnabled { enabled: bool },
+    TimeCurveBuyRouterSet { router: Address },
     ReferralCodeRegistered {
         owner: Address,
         code_hash: B256,
@@ -360,6 +402,7 @@ pub enum DecodedEvent {
         category: u8,
         placement: u8,
     },
+    PodiumPoolPrizePusherSet { pusher: Address },
     RabbitEpochOpened {
         epoch_id: U256,
         start_timestamp: U256,
@@ -407,6 +450,23 @@ pub enum DecodedEvent {
         cumulative_in_asset: U256,
         epoch_id: U256,
     },
+    RabbitBurrowReserveBuckets {
+        epoch_id: U256,
+        redeemable_backing: U256,
+        protocol_owned_backing: U256,
+        total_backing: U256,
+    },
+    RabbitProtocolRevenueSplit {
+        epoch_id: U256,
+        gross_amount: U256,
+        to_protocol_bucket: U256,
+        burned_amount: U256,
+    },
+    RabbitWithdrawalFeeAccrued {
+        asset: Address,
+        fee_amount: U256,
+        cumulative_withdraw_fees: U256,
+    },
     RabbitRepricingApplied {
         epoch_id: U256,
         repricing_factor_wad: U256,
@@ -439,6 +499,22 @@ pub enum DecodedEvent {
         token: Address,
         amount: U256,
         shares: [U256; 5],
+    },
+    DoubVestingStarted {
+        start_timestamp: U256,
+        duration_sec: U256,
+        total_allocated: U256,
+    },
+    DoubVestingClaimed {
+        beneficiary: Address,
+        amount: U256,
+    },
+    DoubVestingClaimsEnabled { enabled: bool },
+    FeeSinkWithdrawn {
+        token: Address,
+        recipient: Address,
+        amount: U256,
+        actor: Address,
     },
     Unknown {
         #[allow(dead_code)]
@@ -702,6 +778,38 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == TimeCurveEvents::BuyFeeRoutingEnabled::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::BuyFeeRoutingEnabled::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyFeeRoutingEnabled {
+                enabled: e.enabled,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::CharmRedemptionEnabled::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::CharmRedemptionEnabled::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveCharmRedemptionEnabled {
+                enabled: e.enabled,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::ReservePodiumPayoutsEnabled::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::ReservePodiumPayoutsEnabled::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveReservePodiumPayoutsEnabled {
+                enabled: e.enabled,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::TimeCurveBuyRouterSet::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::TimeCurveBuyRouterSet::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyRouterSet {
+                router: e.router,
+            };
+        }
+    }
     if topic0 == TimeCurveBuyRouterEvents::BuyViaKumbaya::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveBuyRouterEvents::BuyViaKumbaya::decode_log(log, true) {
             let e = d.data;
@@ -710,6 +818,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 charm_wad: e.charmWad,
                 gross_cl8y: e.grossCl8y,
                 pay_kind: e.payKind,
+            };
+        }
+    }
+    if topic0 == TimeCurveBuyRouterEvents::Cl8ySurplusToProtocol::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyRouterEvents::Cl8ySurplusToProtocol::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyRouterCl8ySurplus {
+                amount: e.amount,
             };
         }
     }
@@ -732,6 +848,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 amount: e.amount,
                 category: e.category,
                 placement: e.placement,
+            };
+        }
+    }
+    if topic0 == PodiumPoolEvents::PrizePusherSet::SIGNATURE_HASH {
+        if let Ok(d) = PodiumPoolEvents::PrizePusherSet::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::PodiumPoolPrizePusherSet {
+                pusher: e.pusher,
             };
         }
     }
@@ -817,6 +941,38 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == RabbitTreasuryEvents::BurrowReserveBuckets::SIGNATURE_HASH {
+        if let Ok(d) = RabbitTreasuryEvents::BurrowReserveBuckets::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::RabbitBurrowReserveBuckets {
+                epoch_id: e.epochId,
+                redeemable_backing: e.redeemableBacking,
+                protocol_owned_backing: e.protocolOwnedBacking,
+                total_backing: e.totalBacking,
+            };
+        }
+    }
+    if topic0 == RabbitTreasuryEvents::BurrowProtocolRevenueSplit::SIGNATURE_HASH {
+        if let Ok(d) = RabbitTreasuryEvents::BurrowProtocolRevenueSplit::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::RabbitProtocolRevenueSplit {
+                epoch_id: e.epochId,
+                gross_amount: e.grossAmount,
+                to_protocol_bucket: e.toProtocolBucket,
+                burned_amount: e.burnedAmount,
+            };
+        }
+    }
+    if topic0 == RabbitTreasuryEvents::BurrowWithdrawalFeeAccrued::SIGNATURE_HASH {
+        if let Ok(d) = RabbitTreasuryEvents::BurrowWithdrawalFeeAccrued::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::RabbitWithdrawalFeeAccrued {
+                asset: e.asset,
+                fee_amount: e.feeAmount,
+                cumulative_withdraw_fees: e.cumulativeWithdrawFees,
+            };
+        }
+    }
     if topic0 == RabbitTreasuryEvents::BurrowRepricingApplied::SIGNATURE_HASH {
         if let Ok(d) = RabbitTreasuryEvents::BurrowRepricingApplied::decode_log(log, true) {
             let e = d.data;
@@ -877,6 +1033,44 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 token: e.token,
                 amount: e.amount,
                 shares: e.shares,
+            };
+        }
+    }
+    if topic0 == DoubPresaleVestingEvents::VestingStarted::SIGNATURE_HASH {
+        if let Ok(d) = DoubPresaleVestingEvents::VestingStarted::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::DoubVestingStarted {
+                start_timestamp: e.startTimestamp,
+                duration_sec: e.durationSec,
+                total_allocated: e.totalAllocated_,
+            };
+        }
+    }
+    if topic0 == DoubPresaleVestingEvents::Claimed::SIGNATURE_HASH {
+        if let Ok(d) = DoubPresaleVestingEvents::Claimed::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::DoubVestingClaimed {
+                beneficiary: e.beneficiary,
+                amount: e.amount,
+            };
+        }
+    }
+    if topic0 == DoubPresaleVestingEvents::ClaimsEnabled::SIGNATURE_HASH {
+        if let Ok(d) = DoubPresaleVestingEvents::ClaimsEnabled::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::DoubVestingClaimsEnabled {
+                enabled: e.enabled,
+            };
+        }
+    }
+    if topic0 == FeeSinkEvents::Withdrawn::SIGNATURE_HASH {
+        if let Ok(d) = FeeSinkEvents::Withdrawn::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::FeeSinkWithdrawn {
+                token: e.token,
+                recipient: e.to,
+                amount: e.amount,
+                actor: e.actor,
             };
         }
     }
@@ -1118,6 +1312,68 @@ mod tests {
                 assert_eq!(v, victim);
                 assert_eq!(amount_bp, U256::from(50u64));
                 assert!(bypassed_victim_daily_limit);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_doub_vesting_claimed() {
+        let ben = Address::repeat_byte(0xaa);
+        let e = DoubPresaleVestingEvents::Claimed {
+            beneficiary: ben,
+            amount: U256::from(555u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xfe),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::DoubVestingClaimed {
+                beneficiary: b,
+                amount,
+            } => {
+                assert_eq!(b, ben);
+                assert_eq!(amount, U256::from(555u64));
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_fee_sink_withdrawn() {
+        let token = Address::repeat_byte(0x01);
+        let to = Address::repeat_byte(0x02);
+        let actor = Address::repeat_byte(0x03);
+        let e = FeeSinkEvents::Withdrawn {
+            token,
+            to,
+            amount: U256::from(777u64),
+            actor,
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xbd),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::FeeSinkWithdrawn {
+                token: t,
+                recipient,
+                amount,
+                actor: a,
+            } => {
+                assert_eq!(t, token);
+                assert_eq!(recipient, to);
+                assert_eq!(amount, U256::from(777u64));
+                assert_eq!(a, actor);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }
