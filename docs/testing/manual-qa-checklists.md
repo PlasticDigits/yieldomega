@@ -404,6 +404,8 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 ## Album 1 BGM resume (GitLab #71)
 
+**Canonical verification:** This anchor is the **single** contributor / agent checklist for BGM resume. Older links to `skills/verify-yo-album-bgm-resume/SKILL.md` are **obsolete** ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100)) — replace them with this section (`#manual-qa-issue-71`) or [`skills/README.md`](../../skills/README.md) § contributor QA.
+
 **Goal:** **Blockie Hills** BGM **track + offset** survive **refresh** and tab reopen ([issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) autoplay semantics).
 
 ### Preconditions
@@ -423,7 +425,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 **Implementation map:** [`audioPlaybackState.ts`](../../frontend/src/audio/audioPlaybackState.ts) · [`WebAudioMixer.ts`](../../frontend/src/audio/WebAudioMixer.ts) · [`AudioEngineProvider.tsx`](../../frontend/src/audio/AudioEngineProvider.tsx)
 
-**Doc map:** [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · [invariants — Album 1 BGM](invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68)
+**Doc map:** [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · [invariants — Album 1 BGM](invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [Agents: contributor manual QA](../agents/metadata-and-skills.md#contributor-manual-qa-not-play-skills)
 
 <a id="manual-qa-issue-103"></a>
 
