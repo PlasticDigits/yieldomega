@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted,
+//! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted
+//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included),
 //! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
 //! referral / prize tables), then HTTP API smoke.
 //!
@@ -636,6 +637,47 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared {
             cleared_wallet: alice,
         }),
+        next(DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled: true }),
+        next(DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled: false }),
+        next(DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled: true }),
+        next(DecodedEvent::TimeCurveBuyRouterSet {
+            router: addr_byte(0x44),
+        }),
+        next(DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: u2 }),
+        next(DecodedEvent::PodiumPoolPrizePusherSet { pusher: addr_byte(0x55) }),
+        next(DecodedEvent::RabbitBurrowReserveBuckets {
+            epoch_id: u1,
+            redeemable_backing: u1,
+            protocol_owned_backing: u2,
+            total_backing: u2,
+        }),
+        next(DecodedEvent::RabbitProtocolRevenueSplit {
+            epoch_id: u1,
+            gross_amount: u2,
+            to_protocol_bucket: u1,
+            burned_amount: U256::ZERO,
+        }),
+        next(DecodedEvent::RabbitWithdrawalFeeAccrued {
+            asset: reserve,
+            fee_amount: u1,
+            cumulative_withdraw_fees: u2,
+        }),
+        next(DecodedEvent::DoubVestingStarted {
+            start_timestamp: u1,
+            duration_sec: U256::from(86_400u64),
+            total_allocated: U256::from(1_000_000u128 * 10u128.pow(18)),
+        }),
+        next(DecodedEvent::DoubVestingClaimed {
+            beneficiary: alice,
+            amount: u2,
+        }),
+        next(DecodedEvent::DoubVestingClaimsEnabled { enabled: true }),
+        next(DecodedEvent::FeeSinkWithdrawn {
+            token: reserve,
+            recipient: alice,
+            amount: u2,
+            actor: addr_byte(0xfa),
+        }),
         next(DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
             buyer: alice,
             charm_wad: u1,
@@ -744,6 +786,49 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
         1
     );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_charm_redemption_enabled", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_reserve_podium_payouts_enabled", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_set", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_cl8y_surplus", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_podium_pool_prize_pusher_set", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_rabbit_burrow_reserve_buckets", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_rabbit_protocol_revenue_split", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_rabbit_withdrawal_fee_accrued", 100).await,
+        1
+    );
+    assert_eq!(count_where(&pool, "idx_doub_vesting_started", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_doub_vesting_claimed", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_doub_vesting_claims_enabled", 100).await,
+        1
+    );
+    assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 1);
 
     // Idempotency: same (tx_hash, log_index) again
     let first = &logs[1];
@@ -888,6 +973,16 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
+        0
+    );
+    assert_eq!(count_where(&pool, "idx_doub_vesting_claimed", 100).await, 0);
+    assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_reserve_podium_payouts_enabled", 100).await,
         0
     );
     assert_eq!(
