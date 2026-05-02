@@ -82,6 +82,7 @@ import {
   projectedReservePerDoubWad,
 } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
+import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
 import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
 import {
@@ -2257,6 +2258,7 @@ export function useTimeCurveArenaModel() {
         functionName: "buy",
         args: buyArgs,
       });
+      playGameSfxCoinHitBuySubmit();
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
         clearPendingReferralCode();
