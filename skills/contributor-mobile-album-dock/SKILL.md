@@ -5,7 +5,7 @@ description: Contributor guardrail for GitLab #103 — mobile INV-AUDIO-103 clea
 
 # Contributor — mobile album dock vs nav (GitLab #103)
 
-**Audience:** Agents editing **`frontend/`** layout or audio chrome (not play-skills participants).
+**Audience:** Agents editing **`frontend/`** layout or audio chrome (not play-skills participants). **Checklist anchor:** use **[manual QA #103](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-103)** for verification; this file is implementation detail only ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100) — see [Agents: metadata and skills](../../docs/agents/metadata-and-skills.md#contributor-manual-qa-not-play-skills)).
 
 ## Invariant — `INV-AUDIO-103`
 
