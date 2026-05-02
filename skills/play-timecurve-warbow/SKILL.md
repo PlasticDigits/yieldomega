@@ -67,6 +67,7 @@ Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladd
 - **CL8Y burn invariants (fuzz):** each successful **`warbowActivateGuard`**, **`warbowSteal`** (no bypass), and **`warbowRevenge`** moves the documented **fixed WAD** from the payer to the **burn sink** (`0x…dEaD`) in one tx — see [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) and [invariants — WarBow CL8Y burns](../../docs/testing/invariants-and-business-logic.md#timecurve-warbow-cl8y-burns-issue-70).
 - **Policy context:** [CL8Y flow audit](../../docs/onchain/cl8y-flow-audit.md) (approved **user-driven** exception for these burns).
 - **Arena hero UX:** steal / guard / revenge are surfaced in `PageHeroArcadeBanner`; target suggestions are discovery-only and preserve live onchain preflight — see [timecurve views #101](../../docs/frontend/timecurve-views.md#arena-warbow-hero-actions-issue-101) and [invariants #101](../../docs/testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101).
+- **Frontend audio (#68):** With audio unlocked, a **sparse** **`warbow_twang`** may play only on **indexed top‑three** leaderboard moments (**enter** the podium from deeper/unranked **or** climb **within** ranks **1–3**; muted for mid‑pack rank drift alone — **`warbowRankSfxPolicy`**; **~18 s** mixer throttle; not every poll). Participant expectation only — UX may change ([sound-effects §8](../../docs/frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)).
 
 ## Related play skills
 
