@@ -75,10 +75,10 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       "ui_button_click",
       "charmed_confirm",
       "coin_hit_shallow",
-      "kumbaya_whoosh",
       "peer_buy_distant",
       "timer_heartbeat_calm",
       "timer_heartbeat_urgent",
+      "warbow_twang",
     ]);
   }, [mixer]);
 

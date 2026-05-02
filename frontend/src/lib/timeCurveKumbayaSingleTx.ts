@@ -15,6 +15,7 @@ import {
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
+import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
 
 const BYTES32_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -107,6 +108,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     args: [charmWad, h, plantWarBowFlag, payKind, deadline, maxIn, route.path],
     value: payWith === "eth" ? maxIn : undefined,
   });
+  playGameSfxCoinHitBuySubmit();
   await waitForTransactionReceipt(cfg, { hash });
 }
 

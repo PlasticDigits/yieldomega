@@ -53,6 +53,7 @@ import {
 import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
+import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
 
 const WAD_ONE_CHARM = 10n ** 18n;
 
@@ -1036,6 +1037,7 @@ export function useTimeCurveSaleSession(
         functionName: "buy",
         args: buyArgs,
       });
+      playGameSfxCoinHitBuySubmit();
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
         clearPendingReferralCode();
