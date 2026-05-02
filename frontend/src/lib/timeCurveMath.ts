@@ -58,6 +58,10 @@ export function minCharmWadAt(
   growthRateWad: bigint,
   elapsed: bigint,
 ): bigint {
+  // Parity with `TimeCurve._charmBounds`: `initialMinBuy == 0` (degenerate storage; issue #61) → base envelope, not div-by-zero (issue #73).
+  if (charmEnvelopeRefWad === 0n) {
+    return CHARM_MIN_BASE_WAD;
+  }
   const scale = currentMinBuyAt(charmEnvelopeRefWad, growthRateWad, elapsed);
   return (CHARM_MIN_BASE_WAD * scale) / charmEnvelopeRefWad;
 }
@@ -67,6 +71,9 @@ export function maxCharmWadAt(
   growthRateWad: bigint,
   elapsed: bigint,
 ): bigint {
+  if (charmEnvelopeRefWad === 0n) {
+    return CHARM_MAX_BASE_WAD;
+  }
   const scale = currentMinBuyAt(charmEnvelopeRefWad, growthRateWad, elapsed);
   return (CHARM_MAX_BASE_WAD * scale) / charmEnvelopeRefWad;
 }
@@ -117,6 +124,9 @@ export function minCharmWadAtFloat(
   growthRateWad: bigint,
   elapsedSec: number,
 ): bigint {
+  if (charmEnvelopeRefWad === 0n) {
+    return CHARM_MIN_BASE_WAD;
+  }
   const scale = currentMinBuyAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
   return (CHARM_MIN_BASE_WAD * scale) / charmEnvelopeRefWad;
 }
@@ -126,6 +136,9 @@ export function maxCharmWadAtFloat(
   growthRateWad: bigint,
   elapsedSec: number,
 ): bigint {
+  if (charmEnvelopeRefWad === 0n) {
+    return CHARM_MAX_BASE_WAD;
+  }
   const scale = currentMinBuyAtFloat(charmEnvelopeRefWad, growthRateWad, elapsedSec);
   return (CHARM_MAX_BASE_WAD * scale) / charmEnvelopeRefWad;
 }

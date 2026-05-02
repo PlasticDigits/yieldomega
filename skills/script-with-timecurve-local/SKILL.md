@@ -18,6 +18,7 @@ description: Author local TypeScript or Python scripts against deployed TimeCurv
 
 - **RPC URL** and **chain ID** in env; **private keys** via env or hardware — **no commits** of secrets.
 - **UUPS proxies:** Use the **ERC1967 proxy** for `TimeCurve` and siblings for **live state** and writes — not the **implementation** row in `run-latest.json` ([`docs/testing/anvil-rich-state.md`](../../docs/testing/anvil-rich-state.md), [issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61), [`docs/contracts/foundry-and-megaeth.md`](../../docs/contracts/foundry-and-megaeth.md)).
+- **Envelope ref `0` (wrong row / replicas):** Onchain **`currentCharmBoundsWad`** falls back to the **base CHARM band** when **`initialMinBuy == 0`** ([issue #73](https://gitlab.com/PlasticDigits/yieldomega/-/issues/73)). Off-chain TypeScript mirroring the same scaling should guard **`ref === 0n`** the same way ([issue #109](https://gitlab.com/PlasticDigits/yieldomega/-/issues/109), [`invariants` §109](../../docs/testing/invariants-and-business-logic.md#ts-charm-envelope-ref-zero-issue-109)).
 - Resolve addresses from deployment artifacts, registry JSON, or explorer for the **target** network.
 
 ## C. Read-before-write checklist

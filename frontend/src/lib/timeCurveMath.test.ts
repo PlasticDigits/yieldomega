@@ -2,10 +2,15 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  CHARM_MAX_BASE_WAD,
   CHARM_MIN_BASE_WAD,
   currentMinBuyAt,
   displayMinGrossSpendWad,
+  maxCharmWadAt,
+  maxCharmWadAtFloat,
   maxGrossSpendAtFloat,
+  minCharmWadAt,
+  minCharmWadAtFloat,
   minGrossSpendAtFloat,
   WAD,
 } from "./timeCurveMath";
@@ -46,5 +51,23 @@ describe("currentMinBuyAt", () => {
     const target = 1.44 * Number(WAD);
     const rel = Math.abs(Number(mb) - target) / target;
     expect(rel).toBeLessThan(1e-4);
+  });
+});
+
+describe("CHARM bounds mirror vs TimeCurve._charmBounds (ref === 0)", () => {
+  it("minCharmWadAt returns CHARM_MIN_BASE_WAD when ref is zero", () => {
+    expect(minCharmWadAt(0n, GROWTH_RATE_20PCT, ONE_DAY)).toBe(CHARM_MIN_BASE_WAD);
+  });
+
+  it("maxCharmWadAt returns CHARM_MAX_BASE_WAD when ref is zero", () => {
+    expect(maxCharmWadAt(0n, GROWTH_RATE_20PCT, ONE_DAY)).toBe(CHARM_MAX_BASE_WAD);
+  });
+
+  it("minCharmWadAtFloat returns CHARM_MIN_BASE_WAD when ref is zero", () => {
+    expect(minCharmWadAtFloat(0n, GROWTH_RATE_20PCT, 86_400)).toBe(CHARM_MIN_BASE_WAD);
+  });
+
+  it("maxCharmWadAtFloat returns CHARM_MAX_BASE_WAD when ref is zero", () => {
+    expect(maxCharmWadAtFloat(0n, GROWTH_RATE_20PCT, 86_400)).toBe(CHARM_MAX_BASE_WAD);
   });
 });
