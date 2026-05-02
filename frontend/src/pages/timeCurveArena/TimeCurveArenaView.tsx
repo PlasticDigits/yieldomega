@@ -36,6 +36,7 @@ import { buildBuyBattlePointBreakdown } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { useArenaHeroCountdownSecondSfx } from "@/pages/timeCurveArena/useArenaHeroCountdownSecondSfx";
+import { useArenaWarbowRankSfx } from "@/pages/timeCurveArena/useArenaWarbowRankSfx";
 import { usePeerBuyHeadSfx } from "@/pages/timecurve/usePeerBuyHeadSfx";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
@@ -113,6 +114,12 @@ export function TimeCurveArenaView() {
     saleActive,
     secondsRemaining,
     reduceMotion: Boolean(prefersReducedMotion),
+  });
+
+  useArenaWarbowRankSfx({
+    viewerConnected: Boolean(address),
+    saleActive,
+    warbowRank,
   });
 
   function formatPriceFixed6(raw: bigint): string {
