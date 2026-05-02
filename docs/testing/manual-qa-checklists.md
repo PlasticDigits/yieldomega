@@ -25,6 +25,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) | [Album 1 BGM resume](#manual-qa-issue-71) |
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
 | [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
+| [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -205,7 +206,21 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 - [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · [`chainMismatchWriteGuard.test.ts`](../../frontend/src/lib/chainMismatchWriteGuard.test.ts)
 - [`ChainMismatchWriteBarrier.tsx`](../../frontend/src/components/ChainMismatchWriteBarrier.tsx), [`SwitchToTargetChainButton.tsx`](../../frontend/src/components/SwitchToTargetChainButton.tsx)
 
-**Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [`timecurve-views.md`](../frontend/timecurve-views.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95)
+**Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [`timecurve-views.md`](../frontend/timecurve-views.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95) · [§ #106 — `/vesting` claim race](#manual-qa-issue-106)
+
+<a id="manual-qa-issue-106"></a>
+
+## Presale vesting — claim chain mismatch UX (GitLab #106)
+
+**Why:** The **`Claim DOUB`** button is **`disabled`** when **`useWalletTargetChainMismatch()`** is true, but a wallet can **switch networks** between paint and click; the **`claim`** **`onClick`** must not **silently return** when **`chainMismatchWriteMessage(chainId)`** is set.
+
+### Checklist
+
+1. **`/vesting`** with vesting env + beneficiary wallet + **`claimable > 0`** on the target chain: **Claim DOUB** works when the wallet stays on **`VITE_CHAIN_ID`**.
+2. **Race:** On target chain with **Claim** enabled, switch the wallet to **another** chain **immediately** click **Claim DOUB** before the overlay catches up — expect an **error** **`StatusMessage`** with **`Wrong network:`** … **`Switch to chain …`** (same copy family as Simple buy / referrals register).
+3. **Recovery:** Use **Switch to …** / reconnect on target chain — gate error clears when back on target (**no** stale banner).
+
+**Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · **Invariant:** [§ #106](invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
 
 <a id="manual-qa-issue-78"></a>
 
@@ -325,6 +340,7 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 6. **Wallet:** allocation / claimed / claimable match `cast` / explorer.
 7. **`claimsEnabled` false:** Claim disabled; messaging references signoff ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 8. **`claimable > 0`:** **Claim DOUB** submits `claim()`.
+9. **Wrong-chain race (#106):** If **Claim** is clicked after a **network switch** before the UI re-disables the button, expect an in-panel **`Wrong network:`** **`StatusMessage`** (same family as Simple buy / referrals) — [dedicated checklist § #106](#manual-qa-issue-106).
 
 **Automated:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via `bash scripts/e2e-anvil.sh`.
 

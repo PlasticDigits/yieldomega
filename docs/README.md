@@ -38,7 +38,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Foundry and MegaETH | [contracts/foundry-and-megaeth.md](contracts/foundry-and-megaeth.md) |
 | Indexer (Rust + Postgres) | [indexer/design.md](indexer/design.md) |
 | Frontend (Vite static) | [frontend/design.md](frontend/design.md) |
-| Presale vesting `/vesting` (DoubPresaleVesting, GitLab #92) | [frontend/presale-vesting.md](frontend/presale-vesting.md) |
+| Presale vesting `/vesting` (DoubPresaleVesting; GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92); claim wrong-chain UI [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106)) | [frontend/presale-vesting.md](frontend/presale-vesting.md) |
 | Testing strategy (3 stages) | [testing/strategy.md](testing/strategy.md) |
 | CI (workflows vs stages) | [testing/ci.md](testing/ci.md) |
 | Anvil-backed E2E (Playwright + local chain) | [testing/e2e-anvil.md](testing/e2e-anvil.md) |

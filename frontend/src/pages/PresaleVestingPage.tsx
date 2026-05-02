@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { PageHero } from "@/components/ui/PageHero";
@@ -17,6 +17,7 @@ export function PresaleVestingPage() {
   const { address: wallet } = useAccount();
   const chainId = useChainId();
   const { mismatch: chainMismatchForWrites } = useWalletTargetChainMismatch();
+  const [claimGateError, setClaimGateError] = useState<string | null>(null);
 
   const qCommon = { address: vesting, abi: doubPresaleVestingReadAbi, query: { enabled: !!vesting } } as const;
 
@@ -96,10 +97,17 @@ export function PresaleVestingPage() {
 
   useEffect(() => {
     if (claimSuccess) {
+      setClaimGateError(null);
       void refetchAll();
       resetWrite();
     }
   }, [claimSuccess, refetchAll, resetWrite]);
+
+  useEffect(() => {
+    if (!chainMismatchWriteMessage(chainId)) {
+      setClaimGateError(null);
+    }
+  }, [chainId]);
 
   if (!vesting) {
     return (
@@ -257,6 +265,7 @@ export function PresaleVestingPage() {
                 <p>{formatDoubHuman(claimable)} DOUB</p>
               </>
             ) : null}
+            {claimGateError ? <StatusMessage variant="error">{claimGateError}</StatusMessage> : null}
             {claimError ? <StatusMessage variant="error">{claimError.message}</StatusMessage> : null}
             <p style={{ marginTop: "1rem" }}>
               <button
@@ -271,8 +280,12 @@ export function PresaleVestingPage() {
                   claimConfirming
                 }
                 onClick={() => {
+                  setClaimGateError(null);
                   const netErr = chainMismatchWriteMessage(chainId);
-                  if (netErr) return;
+                  if (netErr) {
+                    setClaimGateError(netErr);
+                    return;
+                  }
                   writeContract({
                     address: vesting,
                     abi: doubPresaleVestingWriteAbi,
