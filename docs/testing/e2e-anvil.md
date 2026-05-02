@@ -2,7 +2,7 @@
 
 This document describes **Playwright E2E tests that exercise the frontend against a local [Anvil](https://book.getfoundry.sh/reference/anvil/) node** with contracts deployed via [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol). It complements [strategy.md](strategy.md) and [ci.md](ci.md).
 
-**Full-stack manual QA** (Postgres + indexer + **`npm run dev`**, no Playwright): [`qa-local-full-stack.md`](qa-local-full-stack.md) and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)).
+**Full-stack manual QA** (Postgres + indexer + **`npm run dev`**, no Playwright): [`qa-local-full-stack.md`](qa-local-full-stack.md) and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104); orchestrator **`--help`** — [GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)).
 
 ## What this is for
 

@@ -24,7 +24,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97) | [Keyboard focus visible (WCAG 2.4.7)](#manual-qa-issue-97) |
 | [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) | [Album 1 BGM resume](#manual-qa-issue-71) |
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
-| [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
+| [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -460,6 +460,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 ### Checklist
 
+- [ ] `bash scripts/start-qa-local-full-stack.sh --help` prints usage only — **must not** contain **`set -euo pipefail`** ([GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)).
 - [ ] From repo root: `bash scripts/start-qa-local-full-stack.sh` completes without error (or your chosen flags: `--no-frontend`, `--live-sale`, `--kumbaya`, `--no-swarm`).
 - [ ] `cast block-number --rpc-url "$(grep '^VITE_RPC_URL=' frontend/.env.local | tail -1 | cut -d= -f2-)"` succeeds.
 - [ ] `grep '^VITE_INDEXER_URL=' frontend/.env.local` — `curl -sf "<url>/v1/status"` returns OK.
@@ -468,4 +469,4 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 - [ ] Optional: `make check-frontend-env` passes.
 - [ ] **Stop / teardown:** PIDs in [`qa-local-full-stack.md — Stopping`](qa-local-full-stack.md#stopping-the-stack) match your processes.
 
-**Doc map:** [invariants — #104](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)
+**Doc map:** [invariants — #104 / #105](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) · [issue #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)
