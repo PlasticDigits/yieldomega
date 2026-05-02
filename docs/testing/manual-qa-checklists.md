@@ -443,6 +443,23 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 **Doc map:** [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) · [invariants — Album 1 BGM](invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [Agents: contributor manual QA](../agents/metadata-and-skills.md#contributor-manual-qa-not-play-skills)
 
+<a id="manual-qa-sfx-coin-warbow-108"></a>
+
+## SFX — buy coin + WarBow twang (GitLab #68 / #108)
+
+Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **`useTimeCurveSaleSession`**, **`useTimeCurveArenaModel`**, **`useArenaWarbowRankSfx`**, or **`WebAudioMixer` throttles**.
+
+### Checklist
+
+1. **Simple + Arena — CL8Y path:** After signing **`TimeCurve.buy`**, a **shallow coin** plays **before** the receipt lands; **charmed** still plays on success.
+2. **ETH / USDM — single-tx router:** After signing **`buyViaKumbaya`**, the same **coin** fires once (not on wrap/approve-only steps in the two‑step fallback).
+3. **Arena — WarBow podium:** **`warbow_twang`** fires only when the indexed ladder shows **top‑3 entry** (from unranked/deep) **or** a move **among ranks ≤3** (see `warbowRankSfxPolicy` — **no** stinger on e.g. **10 → 4**); **≤1** hit per **~18 s** throttle.
+4. **Kumbaya whoosh:** Confirm **no** whoosh on mere **quote refresh** (still **unwired**).
+
+**Spec:** [`INV-AUDIO-68-WIRE`](invariants-and-business-logic.md#timecurve-sfx-buy-warbow-issue-108) · [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
+
+**Automation:** [`warbowRankSfxPolicy.test.ts`](../../frontend/src/audio/warbowRankSfxPolicy.test.ts)
+
 <a id="manual-qa-issue-103"></a>
 
 ## Mobile album dock vs nav chrome (GitLab #103)

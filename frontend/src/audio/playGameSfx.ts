@@ -15,6 +15,15 @@ export function playGameSfx(id: SfxId, opts?: PlaySfxOptions): void {
   void mixer?.playSfx(id, opts);
 }
 
+/** After wallet returns **`tx` hash** for TimeCurve **`buy`** / **`buyViaKumbaya`** (GitLab #68). */
+export function playGameSfxCoinHitBuySubmit(): void {
+  playGameSfx("coin_hit_shallow", { gainMul: 0.9 });
+}
+
+export function playGameSfxWarbowTwangThrottled(): void {
+  mixer?.playWarbowTwangThrottled();
+}
+
 export function playGameSfxPeerBuyThrottled(): void {
   mixer?.playPeerBuyDistantThrottled();
 }

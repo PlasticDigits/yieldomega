@@ -21,6 +21,9 @@ const PEER_BUY_MIN_GAP_MS = 8500;
 const TIMER_CALM_MIN_GAP_MS = 48_000;
 const TIMER_URGENT_MIN_GAP_MS = 26_000;
 
+/** WarBow ladder stinger — keep sparse under indexer jitter. */
+const WARBOW_TWANG_MIN_GAP_MS = 18_000;
+
 /**
  * Web Audio graph: `bgm` and `sfx` buses into `master` → destination.
  * BGM uses one {@link HTMLAudioElement} + {@link MediaElementAudioSourceNode}
@@ -55,6 +58,8 @@ export class WebAudioMixer {
   private lastTimerCalmAt = 0;
 
   private lastTimerUrgentAt = 0;
+
+  private lastWarbowTwangAt = 0;
 
   private onTrackChange: ((t: AlbumTrack, index: number) => void) | null = null;
 
@@ -327,5 +332,12 @@ export class WebAudioMixer {
     if (now - this.lastTimerUrgentAt < TIMER_URGENT_MIN_GAP_MS) return;
     this.lastTimerUrgentAt = now;
     void this.playSfx("timer_heartbeat_urgent", { gainMul: 0.95 });
+  }
+
+  playWarbowTwangThrottled(): void {
+    const now = performance.now();
+    if (now - this.lastWarbowTwangAt < WARBOW_TWANG_MIN_GAP_MS) return;
+    this.lastWarbowTwangAt = now;
+    void this.playSfx("warbow_twang", { gainMul: 0.78 });
   }
 }
