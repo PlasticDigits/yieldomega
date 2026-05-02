@@ -1,6 +1,6 @@
 # QA: local full stack (Anvil, indexer, frontend, optional swarm)
 
-Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + contracts + indexer + Vite**, with env and flags **centralized** via [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh). Implements [GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104).
+Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + contracts + indexer + Vite**, with env and flags **centralized** via [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh). Implements [GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104). **`--help`** prints only leading `#` banner lines (never shell setup below the banner; [GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)).
 
 **Non-goals:** This path does **not** run Playwright. Use [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) and [`e2e-anvil.md`](e2e-anvil.md) for automated browser E2E.
 
@@ -8,7 +8,7 @@ Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + 
 
 ## Invariants (do not regress)
 
-1. **Single source of deploy/indexer logic:** The orchestrator **only** calls [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh). It must not duplicate `forge script`, DB reset, or indexer spawn.
+1. **Single source of deploy/indexer logic:** The orchestrator **only** calls [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh). It must not duplicate `forge script`, DB reset, or indexer spawn. **`bash scripts/start-qa-local-full-stack.sh --help`** must not echo lines like **`set -euo pipefail`** ([GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)).
 2. **Frontend env:** `VITE_*` and `VITE_INDEXER_URL` come from **`frontend/.env.local`** written by the stack. **Restart Vite** after that file changes (or start Vite *after* the stack, which this orchestrator does when not passing `--no-frontend`).
 3. **ERC1967 proxies:** Use **proxy** addresses from the stack / registry — never the **implementation** row in `run-latest.json` for live calls ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61); [`docs/testing/anvil-rich-state.md`](anvil-rich-state.md)).
 4. **Reused Anvil RPC:** If the stack **reuses** an existing listener on `ANVIL_PORT`, it cannot apply `--block-time`; swarm + long **buy cooldown** can stall **`block.timestamp`** ([issue #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)). Prefer a fresh Anvil from the stack or short cooldown ([issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)).

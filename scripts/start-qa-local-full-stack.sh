@@ -42,7 +42,8 @@ STACK_SCRIPT="${ROOT}/scripts/start-local-anvil-stack.sh"
 WITH_FRONTEND=1
 
 usage() {
-  sed -n '3,35p' "$0" | sed 's/^# \{0,1\}//'
+  # Stop at first non-comment line so `set -euo pipefail` etc. never leak into --help (GitLab #105).
+  awk 'NR < 3 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
 }
 
 parse_args() {

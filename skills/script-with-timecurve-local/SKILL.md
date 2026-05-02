@@ -55,4 +55,4 @@ Cross-link **[`why-yieldomega-participation-matters/SKILL.md`](../why-yieldomega
 
 ## H. Contributor note — full local stack (maintainers / QA only)
 
-If you **are** editing this repo and need **Postgres + Anvil + indexer + Vite** in one flow, use **[`docs/testing/qa-local-full-stack.md`](../../docs/testing/qa-local-full-stack.md)** and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)). **Participants** automating against a **remote** RPC do not need that path.
+If you **are** editing this repo and need **Postgres + Anvil + indexer + Vite** in one flow, use **[`docs/testing/qa-local-full-stack.md`](../../docs/testing/qa-local-full-stack.md)** and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)). **`--help`** prints **banner comments only** — no stray **`set …`** shell lines ([GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)). **Participants** automating against a **remote** RPC do not need that path.
