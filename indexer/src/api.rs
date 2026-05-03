@@ -11,21 +11,22 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use alloy_primitives::Address;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use tokio::sync::RwLock;
 
-use crate::chain_timer::ChainTimerSnapshot;
+use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.9.0";
+const SCHEMA_VERSION: &str = "1.10.0";
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
-    /// Filled by background RPC poll when `ADDRESS_REGISTRY` includes TimeCurve.
-    pub chain_timer: Arc<RwLock<Option<ChainTimerSnapshot>>>,
+    /// Filled by background RPC poll when `ADDRESS_REGISTRY` includes TimeCurve (`timer` + podiums).
+    pub chain_timer: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -60,6 +61,7 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
         .route("/v1/timecurve/chain-timer", get(timecurve_chain_timer))
+        .route("/v1/timecurve/podiums", get(timecurve_podiums))
         .route("/v1/timecurve/buys", get(timecurve_buys))
         .route(
             "/v1/timecurve/warbow/battle-feed",
@@ -129,7 +131,8 @@ async fn healthz() -> impl IntoResponse {
 async fn timecurve_chain_timer(State(state): State<AppState>) -> Response {
     let guard = state.chain_timer.read().await;
     match &*guard {
-        Some(j) => {
+        Some(head) => {
+            let j: ChainTimerSnapshot = head.timer.clone();
             let mut res = Json(j).into_response();
             *res.headers_mut() = with_schema_version(res.headers().clone());
             res
@@ -146,6 +149,113 @@ async fn timecurve_chain_timer(State(state): State<AppState>) -> Response {
             res
         }
     }
+}
+
+/// Last-three-`Buy` snapshot matching `TimeCurve._finalizeLastBuyers` (1st = latest buyer).
+/// Uses indexed buys so the Simple page can refresh with the ticker without hammering RPC per wallet.
+async fn fetch_last_buy_prediction_row(pool: &PgPool) -> Result<PodiumRpcRow, sqlx::Error> {
+    let total_buys: i64 =
+        sqlx::query_scalar(r#"SELECT COALESCE(MAX(buy_index), 0)::bigint FROM idx_timecurve_buy"#)
+            .fetch_one(pool)
+            .await?;
+
+    let cap = std::cmp::min(3i64, total_buys) as usize;
+    let zero = format!("{:#x}", Address::ZERO);
+    if cap == 0 {
+        return Ok(PodiumRpcRow {
+            winners: std::array::from_fn(|_| zero.clone()),
+            values: std::array::from_fn(|_| String::from("0")),
+        });
+    }
+
+    let buyers: Vec<String> = sqlx::query_scalar::<_, String>(
+        r#"SELECT buyer FROM idx_timecurve_buy
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT $1"#,
+    )
+    .bind(cap as i64)
+    .fetch_all(pool)
+    .await?;
+
+    let mut winners = std::array::from_fn(|_| zero.clone());
+    let mut values = std::array::from_fn(|_| String::from("0"));
+    for (i, b) in buyers.iter().enumerate() {
+        if i >= 3 {
+            break;
+        }
+        winners[i] = b.to_ascii_lowercase();
+        values[i] = (cap - i).to_string();
+    }
+    Ok(PodiumRpcRow { winners, values })
+}
+
+async fn timecurve_podiums(State(state): State<AppState>) -> Response {
+    let guard = state.chain_timer.read().await;
+    let Some(head) = guard.as_ref() else {
+        let mut res = (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "error": "podium snapshot not configured (set ADDRESS_REGISTRY with TimeCurve)"
+            })),
+        )
+            .into_response();
+        *res.headers_mut() = with_schema_version(res.headers().clone());
+        return res;
+    };
+
+    let predicted = match fetch_last_buy_prediction_row(&state.pool).await {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::warn!(?e, "timecurve_podiums: last-buy prediction query failed");
+            let z = format!("{:#x}", Address::ZERO);
+            PodiumRpcRow {
+                winners: std::array::from_fn(|_| z.clone()),
+                values: std::array::from_fn(|_| String::from("0")),
+            }
+        }
+    };
+
+    let last_row = if head.sale_ended {
+        json!({
+            "winners": head.podium_contract[0].winners,
+            "values": head.podium_contract[0].values,
+            "last_buy_prediction": false,
+        })
+    } else {
+        json!({
+            "winners": predicted.winners,
+            "values": predicted.values,
+            "last_buy_prediction": true,
+        })
+    };
+
+    let body = json!({
+        "sale_ended": head.sale_ended,
+        "read_block_number": head.timer.read_block_number,
+        "polled_at_ms": head.timer.polled_at_ms,
+        "rows": [
+            last_row,
+            {
+                "winners": head.podium_contract[3].winners,
+                "values": head.podium_contract[3].values,
+                "last_buy_prediction": false,
+            },
+            {
+                "winners": head.podium_contract[2].winners,
+                "values": head.podium_contract[2].values,
+                "last_buy_prediction": false,
+            },
+            {
+                "winners": head.podium_contract[1].winners,
+                "values": head.podium_contract[1].values,
+                "last_buy_prediction": false,
+            },
+        ],
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
 }
 
 async fn status(State(state): State<AppState>) -> Response {

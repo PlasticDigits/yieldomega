@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { formatUnits } from "viem";
-import { useWatchContractEvent } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
+import { useReadContract, useWatchContractEvent } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
@@ -12,7 +13,7 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
-import { timeCurveBuyEventAbi } from "@/lib/abis";
+import { erc20Abi, timeCurveBuyEventAbi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
@@ -30,6 +31,8 @@ import {
 import {
   doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
+  podiumCategorySlices,
+  podiumPlacementShares,
 } from "@/lib/timeCurvePodiumMath";
 import {
   displayMinGrossSpendAtFloat,
@@ -49,10 +52,10 @@ import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePha
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
-import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
-import { usePodiumReads } from "@/pages/timecurve/usePodiumReads";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
+import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
+import { TIMECURVE_PODIUMS_QUERY_KEY, usePodiumReads } from "@/pages/timecurve/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
 
 /** Indexer page size for Simple recent-buys poll (head) and scroll load-more chunks. */
@@ -281,7 +284,7 @@ export function TimeCurveSimplePage() {
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const prefersReducedMotion = useReducedMotion();
   const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
-  const podiumReads = usePodiumReads(tc, { refetchIntervalMs: 5000 });
+  const queryClient = useQueryClient();
 
   const phaseInfo = phaseBadge(session.phase);
 
@@ -296,6 +299,39 @@ export function TimeCurveSimplePage() {
   const heroLabel = phaseInfo.label;
 
   const heroNarrative = phaseNarrative(session.phase);
+
+  const podiumReads = usePodiumReads(tc);
+  const { data: podiumAcceptedAsset } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "acceptedAsset",
+    query: { enabled: Boolean(tc) },
+  });
+  const { data: podiumPoolAddress } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "podiumPool",
+    query: { enabled: Boolean(tc) },
+  });
+  const { data: podiumPoolBalance } = useReadContract({
+    address: podiumAcceptedAsset as `0x${string}` | undefined,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: podiumPoolAddress ? [podiumPoolAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: Boolean(podiumAcceptedAsset && podiumPoolAddress),
+      refetchInterval: 1000,
+    },
+  });
+  const podiumPayoutPreview = useMemo(() => {
+    if (typeof podiumPoolBalance !== "bigint") {
+      return undefined;
+    }
+    return podiumCategorySlices(podiumPoolBalance).map((slice) => {
+      const [first, second, third] = podiumPlacementShares(slice);
+      return { places: [first.toString(), second.toString(), third.toString()] as const };
+    });
+  }, [podiumPoolBalance]);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
   /** After the user loads older pages, polls merge new head rows but leave this cursor frozen (Arena pattern). */
@@ -321,7 +357,9 @@ export function TimeCurveSimplePage() {
     enabled: Boolean(tc),
     onLogs: () => {
       setBuyFeedRefreshNonce((n) => n + 1);
-      void podiumReads.refetch();
+      if (indexerBaseUrl()) {
+        void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
+      }
     },
   });
 
@@ -1212,6 +1250,9 @@ export function TimeCurveSimplePage() {
         podiumRows={podiumReads.data}
         podiumLoading={podiumReads.isLoading}
         podiumRefreshing={podiumReads.isFetching && !podiumReads.isLoading}
+        podiumPayoutPreview={podiumPayoutPreview}
+        decimals={session.decimals}
+        lastBuyPredictionActive={podiumReads.lastBuyPredictionActive}
         address={session.walletAddress}
       />
 

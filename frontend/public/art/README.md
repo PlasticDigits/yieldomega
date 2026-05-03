@@ -117,6 +117,8 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 | `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) | Fee sink pictograms beside canonical onchain sink labels ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `ui-conversion-arrow.png` | [`ConversionArrow`](../../src/components/ui/ConversionArrow.tsx) (`TimeCurveArenaView`, `FeeTransparency`, `CharmRedemptionCurve`) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
 | `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ (inline WarBow rows) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+| `timecurve-podium-last-buy.png` / `timecurve-podium-warbow.png` / `timecurve-podium-defended-streak.png` / `timecurve-podium-time-booster.png` | [`TimeCurveSimplePodiumSection.tsx`](../../src/pages/timecurve/TimeCurveSimplePodiumSection.tsx) | 140×140 small-slot reserve podium icons generated once for the 70px Simple card art wells. |
+| `timecurve-podium-rank-first.png` / `timecurve-podium-rank-second.png` / `timecurve-podium-rank-third.png` | [`PodiumRankingList`](../../src/pages/timecurve/timecurveUi.tsx) | 96×96 trophy rank icons displayed at ~40px in Simple podium rows. |
 
 ### `cursors/`
 
@@ -162,14 +164,14 @@ Concept stills for motion / VFX. These are illustration references, **not** runt
 
 ### `podium_prizes/`
 
-Legacy single-illustration prize art kept for the Arena view. Not in the issue #45 catalog — these are pre-existing assets.
+Legacy single-illustration prize art kept for the Arena view. Not in the issue #45 catalog — these are pre-existing assets. The Simple podium summary now uses compact 140×140 pictograms in `icons/timecurve-podium-*.png` so the 70px card art wells stay readable without blank space.
 
 | Slug                 | Used by                                                  |
 |----------------------|----------------------------------------------------------|
-| `lastbuy.png`        | TimeCurve Arena "Last buy" podium card; Simple live reserve podium category art. |
-| `WARBOW_LADDER.png`  | TimeCurve Arena WarBow ladder block; Simple live reserve podium category art. |
-| `DEFENDEDSTREAK.png` | TimeCurve Arena "Defended streak" podium card; Simple live reserve podium category art. |
-| `TIMEBOOSTER.png`    | TimeCurve Arena "Time booster" podium card; Simple live reserve podium category art. |
+| `lastbuy.png`        | TimeCurve Arena "Last buy" podium card. |
+| `WARBOW_LADDER.png`  | TimeCurve Arena WarBow ladder block. |
+| `DEFENDEDSTREAK.png` | TimeCurve Arena "Defended streak" podium card. |
+| `TIMEBOOSTER.png`    | TimeCurve Arena "Time booster" podium card. |
 | `podium prizes.png`  | Composite legacy art (kept for reference).               |
 
 ### `pending_manual_review/`

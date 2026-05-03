@@ -21,6 +21,13 @@ function renderSimplePodiums(overrides: Partial<TimeCurveSimplePodiumSectionProp
       ],
       podiumLoading: false,
       podiumRefreshing: false,
+      podiumPayoutPreview: [
+        { places: ["1600000000000000000", "800000000000000000", "600000000000000000"] },
+        { places: ["1000000000000000000", "500000000000000000", "375000000000000000"] },
+        { places: ["800000000000000000", "400000000000000000", "300000000000000000"] },
+        { places: ["600000000000000000", "300000000000000000", "225000000000000000"] },
+      ],
+      decimals: 18,
       address: undefined,
       ...overrides,
     }),
@@ -37,9 +44,15 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Defended Streak");
     expect(html).toContain("Time Booster");
     expect(html.match(/class="ranking-list__item/g)?.length).toBe(12);
-    expect(html).toContain("1st place");
-    expect(html).toContain("2nd place");
-    expect(html).toContain("3rd place");
+    expect(html).toContain("/art/icons/timecurve-podium-rank-first.png");
+    expect(html).toContain("/art/icons/timecurve-podium-rank-second.png");
+    expect(html).toContain("/art/icons/timecurve-podium-rank-third.png");
+    expect(html).toContain("1st prize");
+    expect(html).toContain("CL8Y");
+    expect(html).toContain("≈ $1.57 USD");
+    expect(html).toContain("1.6");
+    expect(html).not.toContain("predicted leader");
+    expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
   });
 
   it("highlights placements that match the connected wallet", () => {
@@ -52,6 +65,7 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
       podiumRows: [{ winners: [ZERO, ZERO, ZERO], values: ["0", "0", "0"] }],
     });
     expect(html).toContain("Awaiting wallet");
-    expect(html).toContain("Pending");
+    expect(html).toContain("1.6");
+    expect(html).toContain("CL8Y");
   });
 });

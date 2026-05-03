@@ -144,6 +144,24 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
   }
 }
 
+/** `GET /v1/timecurve/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. */
+export type TimecurvePodiumApiRow = {
+  winners: string[];
+  values: string[];
+  last_buy_prediction?: boolean;
+};
+
+export type TimecurvePodiumsResponse = {
+  sale_ended: boolean;
+  read_block_number: string;
+  polled_at_ms: number;
+  rows: TimecurvePodiumApiRow[];
+};
+
+export async function fetchTimecurvePodiums(): Promise<TimecurvePodiumsResponse | null> {
+  return getJson<TimecurvePodiumsResponse>("/v1/timecurve/podiums");
+}
+
 export type WarbowLeaderboardItem = {
   buyer: string;
   battle_points_after: string;
