@@ -109,6 +109,10 @@ the result into `derivePhase` and the simple-view pre-start window. On-chain
 the indexer (and bots) are using — common on local Anvil and multi-rail
 setups.
 
+<a id="scheduled-sale-start-onsalestartsaleat-issue-114"></a>
+
+**Scheduled on-chain starts ([issue #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)):** Operators use **`startSaleAt(epoch)`** so **`saleStart`** can be announced **ahead of wall/mempool drift**, with **`epoch >= block.timestamp`** at call time. Until **`saleStart` arrives on chain**, **`buy`** and WarBow CL8Y paths revert **`"TimeCurve: sale not live"`**; **`deadline`** is **`saleStart + initialTimerSec`** so the opening timer band is tied to **`epoch`**. Read-model CHARM/min-max/price snapshots follow **elapsed-from-live** (**0** until **`now ≥ saleStart`**). Frontend **`saleStartPending`** (see `derivePhase`) should mirror **`saleStart` vs the same indexer-anchored “now”** as [**issue #48**](#chain-time-and-sale-phase-issue-48); map: [**invariants — `startSaleAt` / #114**](../testing/invariants-and-business-logic.md#timecurve-startsaleat-issue-114).
+
 **Spec ↔ test:** [invariants and business — TimeCurve frontend: sale phase and hero timer](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) ·
 [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
 (`ledgerSecIntForPhase`, `derivePhase`).

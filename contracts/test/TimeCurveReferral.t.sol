@@ -73,7 +73,7 @@ contract TimeCurveReferralTest is Test {
 
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         launchedToken.mint(address(tc), 1_000_000e18);
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         reserve.mint(alice, 10e18);
         vm.startPrank(alice);

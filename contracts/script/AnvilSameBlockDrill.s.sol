@@ -66,7 +66,7 @@ contract AnvilSameBlockDrill is Script {
         );
         pv.grantRole(pv.DISTRIBUTOR_ROLE(), address(tc));
         lt.mint(address(tc), 1_000_000e18);
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         vm.stopBroadcast();
 

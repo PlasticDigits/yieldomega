@@ -102,7 +102,7 @@ contract DevStackIntegrationTest is Test {
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
 
         rt.openFirstEpoch();
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);
     }

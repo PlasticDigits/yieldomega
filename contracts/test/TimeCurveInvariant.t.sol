@@ -106,7 +106,7 @@ contract TimeCurveInvariantTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
         launched.mint(address(tc), 1_000_000e18);
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         handler = new TimeCurveHandler(tc, usdm, alice);
         targetContract(address(handler));
     }

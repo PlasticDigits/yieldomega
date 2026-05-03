@@ -76,6 +76,7 @@ export const linearCharmPriceReadAbi = parseAbi([
 ]);
 
 export const timeCurveWriteAbi = parseAbi([
+  "function startSaleAt(uint256 epoch)",
   "function buy(uint256 charmWad)",
   "function buy(uint256 charmWad, bool plantWarBowFlag)",
   "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
