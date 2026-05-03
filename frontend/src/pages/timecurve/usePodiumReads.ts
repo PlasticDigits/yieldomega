@@ -16,7 +16,10 @@ export type PodiumReadRow = {
   values: readonly [string, string, string];
 };
 
-export function usePodiumReads(tc: `0x${string}` | undefined) {
+export function usePodiumReads(
+  tc: `0x${string}` | undefined,
+  options: { refetchIntervalMs?: number } = {},
+) {
   const contracts = tc
     ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
         address: tc,
@@ -25,9 +28,9 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
         args: [category],
       }))
     : [];
-  const { data: rawData, isPending } = useReadContracts({
+  const { data: rawData, isPending, isFetching, refetch } = useReadContracts({
     contracts: contracts as readonly unknown[],
-    query: { enabled: Boolean(tc) },
+    query: { enabled: Boolean(tc), refetchInterval: options.refetchIntervalMs },
   });
   const data = rawData as readonly ContractReadRow[] | undefined;
 
@@ -49,5 +52,5 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
       };
     }) ?? [];
 
-  return { data: rows, isLoading: isPending };
+  return { data: rows, isLoading: isPending, isFetching, refetch };
 }

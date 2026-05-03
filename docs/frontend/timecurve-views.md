@@ -12,7 +12,7 @@ single sub-nav (`<TimeCurveSubnav />`):
 
 | Route                  | Component                | Audience               | Reads from      | Writes from |
 |------------------------|--------------------------|------------------------|-----------------|-------------|
-| `/timecurve`           | `TimeCurveSimplePage`    | New users / first run  | `useTimeCurveSaleSession` (RPC) + `fetchTimecurveBuys` (indexer, latest 3) | `useTimeCurveSaleSession.buy()` |
+| `/timecurve`           | `TimeCurveSimplePage`    | New users / first run  | `useTimeCurveSaleSession` (RPC) + `TimeCurve.podium(category)` (RPC) + `fetchTimecurveBuys` (indexer, latest 3) | `useTimeCurveSaleSession.buy()` |
 | `/timecurve/arena`     | `TimeCurvePage` (existing) | Power users / PvP    | Existing `wagmi` reads + indexer (battle feed, podiums, WarBow)             | Existing `TimeCurvePage` write paths (buy, claim, WarBow steal/guard/revenge/flag) |
 | `/timecurve/protocol`  | `TimeCurveProtocolPage`  | Operators / auditors   | `useReadContracts` against TimeCurve, `LinearCharmPrice`, `FeeRouter`       | _none_ (read-only) |
 
@@ -343,7 +343,18 @@ Below the hub:
    ([§ Stake-at-launch after redeemCharms](#timecurve-simple-stake-redeemed-issue-90)).
    (DOUB as a *rate* stays on the buy-panel rate board during the sale.) UX
    guarantee: if a participant only watches one number during the sale, CL8Y-at-launch is the right stress-free projection.
-5. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
+5. **Live reserve podiums ([issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113))** —
+   a compact Simple-only `PageSection` immediately above **Recent buys** shows
+   all four fixed v1 reserve categories (`Last Buy`, `WarBow`,
+   `Defended Streak`, `Time Booster`) with 1st / 2nd / 3rd rows from
+   `TimeCurve.podium(category)` via the shared `PODIUM_CONTRACT_CATEGORY_INDEX`
+   mapping. It reuses the shared ranking row chrome, category copy, blockie +
+   explorer address display, and marks the connected wallet with the same
+   `ranking-list__item--you` treatment as Arena. A `Buy` log refetches the
+   podium reads immediately; a light RPC interval catches WarBow-only moves.
+   This is read-only UI: the contract remains authoritative for winners, while
+   the indexer remains only a discovery/cache layer.
+6. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.
 
@@ -368,10 +379,10 @@ single primary action. The `showFooter` toggle in
 
 [`FeeTransparency`](../../frontend/src/components/FeeTransparency.tsx) renders live `FeeRouter` sink destinations plus optional indexer history. **Addresses** use [`MegaScannerAddressLink`](../../frontend/src/components/MegaScannerAddressLink.tsx): outbound URLs match [`explorerAddressUrl`](../../frontend/src/lib/explorer.ts) — **`{base}/address/{addr}`** with **`base`** from **`VITE_EXPLORER_BASE_URL`** (default **`https://mega.etherscan.io`**, same as **tx** links), **abbreviated** to **four** leading + **four** trailing glyphs at **≤479px** so rows do not clip in the footer panel. **`TimeCurveProtocolPage`** wired-contract and FeeRouter sink rows use the same component; KV `<dt>` labels use [`humanizeKvLabel`](../../frontend/src/lib/humanizeIdentifier.ts) so `WARBOW_*`, `camelCase`, and similar identifiers read as spaced words (**Manual QA:** [`../testing/manual-qa-checklists.md#manual-qa-issue-93`](../testing/manual-qa-checklists.md#manual-qa-issue-93)). Participant identities elsewhere use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) ([GitLab #98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)).
 
-Below-the-fold sections (WarBow ladder, podiums, full battle feed,
-`RawDataAccordion`) are **deliberately omitted**. They live on `Arena` and
-`Protocol` respectively. The simple page keeps its DOM small so it stays
-fast on slow mobile connections.
+Below-the-fold dense sections (WarBow action ladder, payout preview accordion,
+full battle feed, `RawDataAccordion`) are **deliberately omitted**. They live on
+`Arena` and `Protocol` respectively. Simple keeps only the compact live reserve
+podium snapshot added for [issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113).
 
 <a id="timecurve-simple-stake-redeemed-issue-90"></a>
 
@@ -451,8 +462,12 @@ can watch it flip into the simple view live.
   [`TimeCurveSubnav.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSubnav.test.tsx)
   uses `renderToStaticMarkup` to assert the three tabs render in the right
   order with `aria-current="page"` on the active tab.
+- **Simple podiums:** [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx)
+  asserts all four v1 categories, three placements, viewer highlighting, and
+  empty onchain slot copy ([issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113)).
 - **e2e:** `frontend/e2e/timecurve.spec.ts` asserts the simple view is the
-  default `/timecurve` landing, hides the dense PvP sections above the fold,
+  default `/timecurve` landing, shows the compact podium summary above Recent
+  buys without reintroducing dense Arena sections above the fold,
   routes correctly through the sub-nav, and stays usable at a 390×844 mobile
   viewport. `frontend/e2e/launch-countdown.spec.ts` covers the pre-launch
   gate and its handoff.
@@ -487,6 +502,6 @@ npm run test:e2e -- --workers=5
 
 ---
 
-**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [testing — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Buy CHARM submit-time sizing (issue #82)](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [testing — Kumbaya swap deadline vs Anvil warp (issue #83)](../testing/invariants-and-business-logic.md#timecurve-kumbaya-swap-deadline-chain-time-issue-83) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101)
+**Related:** [testing — invariants (TimeCurve frontend phase)](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) · [testing — Simple live reserve podiums](../testing/invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [testing — WarBow pending flag / `Buy.flagPlanted`](../testing/invariants-and-business-logic.md#timecurve-frontend-warbow-pending-flag-and-buyflagplanted-issue-51) · [testing — WarBow flag plant opt-in (issue #63)](../testing/invariants-and-business-logic.md#timecurve-warbow-flag-plant-opt-in-issue-63) · [testing — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [testing — Arena sniper-shark cutout](../testing/invariants-and-business-logic.md#timecurve-arena-sniper-shark-cutout-issue-80) · [testing — Kumbaya quote refresh (Simple buy CTA)](../testing/invariants-and-business-logic.md#timecurve-simple-kumbaya-quote-refresh-issue-56) · [testing — Buy CHARM submit-time sizing (issue #82)](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [testing — Kumbaya swap deadline vs Anvil warp (issue #83)](../testing/invariants-and-business-logic.md#timecurve-kumbaya-swap-deadline-chain-time-issue-83) · [testing — Album 1 BGM + SFX bus](../testing/invariants-and-business-logic.md#timecurve-frontend-album-1-bgm-and-sfx-bus-issue-68) · [YO-TimeCurve-QA-Checklist](../qa/YO-TimeCurve-QA-Checklist.md) (C1, C12) · [issue #48](https://gitlab.com/PlasticDigits/yieldomega/-/issues/48) · [issue #51](https://gitlab.com/PlasticDigits/yieldomega/-/issues/51) · [issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56) · [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63) · [issue #68](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68) · [issue #80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) · [issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101) · [issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113)
 
 **Agent phase:** [Phase 13 — Frontend design (Vite static)](../agent-phases.md#phase-13)

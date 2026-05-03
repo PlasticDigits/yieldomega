@@ -38,7 +38,7 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 | [`bunny-wave.png`](./cutouts/bunny-wave.png)        | _staged_                                                                | Mascot wave alt — earmarked for `RootLayout` micro-decoration.                         |
 | [`bunny-jump.png`](./cutouts/bunny-jump.png)        | _staged_                                                                | Mascot jump alt — earmarked for HomePage cutout strip.                                 |
 | [`bunny-thinking.png`](./cutouts/bunny-thinking.png) | [`UnderConstruction.tsx`](../../src/pages/UnderConstruction.tsx) (placeholders surface — see below) | "Thinking" mascot for in-queue placeholders. |
-| [`bunny-podium-win.png`](./cutouts/bunny-podium-win.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena podium row) | Victory pose for the podium summary card.                                            |
+| [`bunny-podium-win.png`](./cutouts/bunny-podium-win.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena podium row), [`TimeCurveSimplePodiumSection.tsx`](../../src/pages/timecurve/TimeCurveSimplePodiumSection.tsx) | Victory pose for the podium summary card.                                            |
 | [`bunny-guarding.png`](./cutouts/bunny-guarding.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena WarBow strip) | Guard stance — paired with `icons/warbow-guard.png`.                            |
 | [`bunny-sneak-steal.png`](./cutouts/bunny-sneak-steal.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena WarBow strip) | Steal stance — paired with `icons/warbow-steal.png`.                          |
 | [`leprechaun-bag-bunny-pair.png`](./cutouts/leprechaun-bag-bunny-pair.png) | [`TimeCurveSimplePage.tsx`](../../src/pages/TimeCurveSimplePage.tsx) (timer panel mascot) | Pair scene used as the calm "fair launch" sidekick on the Simple view. |
@@ -166,10 +166,10 @@ Legacy single-illustration prize art kept for the Arena view. Not in the issue #
 
 | Slug                 | Used by                                                  |
 |----------------------|----------------------------------------------------------|
-| `lastbuy.png`        | TimeCurve Arena "Last buy" podium card.                  |
-| `WARBOW_LADDER.png`  | TimeCurve Arena WarBow ladder block.                     |
-| `DEFENDEDSTREAK.png` | TimeCurve Arena "Defended streak" podium card.           |
-| `TIMEBOOSTER.png`    | TimeCurve Arena "Time booster" podium card.              |
+| `lastbuy.png`        | TimeCurve Arena "Last buy" podium card; Simple live reserve podium category art. |
+| `WARBOW_LADDER.png`  | TimeCurve Arena WarBow ladder block; Simple live reserve podium category art. |
+| `DEFENDEDSTREAK.png` | TimeCurve Arena "Defended streak" podium card; Simple live reserve podium category art. |
+| `TIMEBOOSTER.png`    | TimeCurve Arena "Time booster" podium card; Simple live reserve podium category art. |
 | `podium prizes.png`  | Composite legacy art (kept for reference).               |
 
 ### `pending_manual_review/`
