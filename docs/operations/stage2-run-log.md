@@ -13,7 +13,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 - [x] **Command:**  
   `cd contracts && forge script script/DeployDev.s.sol:DeployDev --rpc-url <RPC> --broadcast --code-size-limit 524288` (and Anvil with `--code-size-limit 524288`; see [foundry-and-megaeth.md](../contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas))
-- [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and `TimeCurve.startSale()` after deploy so **deposit** and **buy** work immediately.
+- [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and **`TimeCurve.startSaleAt(block.timestamp)`** after deploy so **deposit** and **buy** work immediately (**`startSaleAt`** replaces legacy `startSale` — [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
 - [x] **Deterministic addresses** (same mnemonic / deploy order): see [contracts/deployments/stage2-anvil-registry.json](../../contracts/deployments/stage2-anvil-registry.json) for `TimeCurve`, `RabbitTreasury`, `LeprechaunNFT` (template for `ADDRESS_REGISTRY_PATH`).
 
 ---

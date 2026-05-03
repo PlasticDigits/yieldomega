@@ -85,7 +85,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(callerRaw != uint160(0));
         address caller = address(callerRaw);
 
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fund(caller, 100e18);
 
         uint256 sinkBefore = reserve.balanceOf(BURN_SINK);
@@ -101,7 +101,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         address victim = address(victim160);
         address stealer = address(stealer160);
 
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fund(victim, 50e18);
         vm.prank(victim);
         tc.buy(1e18);
@@ -125,7 +125,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         address victim = address(victim160);
         address stealer = address(stealer160);
 
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fund(victim, 50e18);
         vm.prank(victim);
         tc.buy(1e18);

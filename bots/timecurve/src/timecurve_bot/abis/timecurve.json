@@ -14,6 +14,7 @@
     "type": "function"
   },
   {"inputs": [], "name": "saleStart", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+  {"inputs":[{"internalType":"uint256","name":"epoch","type":"uint256"}],"name":"startSaleAt","outputs":[],"stateMutability":"nonpayable","type":"function"},
   {"inputs": [], "name": "deadline", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
   {"inputs": [], "name": "ended", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "view", "type": "function"},
   {"inputs": [], "name": "totalRaised", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
