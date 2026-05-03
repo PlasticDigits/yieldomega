@@ -17,6 +17,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) | [Buy CHARM submit-time sizing](#manual-qa-issue-82) |
 | [#79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79) | [Post-end owner gates](#manual-qa-issue-79) |
 | [#90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90) | [Simple stake panel after `redeemCharms`](#manual-qa-issue-90) |
+| [#113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113) | [Simple live reserve podiums](#manual-qa-issue-113) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting `/vesting`](#manual-qa-issue-92) |
 | [#93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93) | [Fee sinks mobile + protocol labels](#manual-qa-issue-93) |
 | [#98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98) | [Canonical address display + explorer base](#manual-qa-issue-98) |
@@ -319,6 +320,28 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 5. Optional: **`data-testid="timecurve-simple-stake-redeemed-doub"`**.
 
 **Doc map:** [timecurve-views — stake redeemed](../frontend/timecurve-views.md#timecurve-simple-stake-redeemed-issue-90) · [invariants — #90](invariants-and-business-logic.md#timecurve-simple-stake-redeemed-issue-90) · [`TimeCurveStakeAtLaunchSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.test.tsx)
+
+<a id="manual-qa-issue-113"></a>
+
+## Simple live reserve podiums (GitLab #113)
+
+**Goal:** `/timecurve` shows a compact, onchain-sourced four-category podium
+snapshot above **Recent buys / Live ticker** without pulling the dense Arena
+surface onto the first-run page.
+
+### Checklist
+
+1. **Placement:** Open `/timecurve`; confirm **Live reserve podiums** appears above **Recent buys** and the **Live ticker** badge.
+2. **Categories:** Confirm all four v1 categories are present: **Last Buy**, **WarBow**, **Defended Streak**, **Time Booster**.
+3. **Placements:** Each category shows 1st / 2nd / 3rd rows with blockie + abbreviated explorer-linked wallet display, or **Awaiting wallet / Pending** for zero onchain slots.
+4. **Viewer highlight:** Connect a wallet that appears in any podium slot; that row has the shared magenta `ranking-list__item--you` ring.
+5. **Refresh:** With local Anvil or bot swarm activity, submit a buy and observe the podium section refresh without a full page reload. WarBow-only moves should also update after the light RPC refresh interval.
+6. **Simple density:** Confirm Simple still does **not** show Arena headings **Podiums and prizes**, **WarBow moves and rivalry**, or **Live battle feed** above the fold.
+7. **Mobile:** At ~390×844, confirm the podium cards stack cleanly and address links remain tappable.
+
+**Automation:** [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx) · [`frontend/e2e/timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts)
+
+**Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
 <a id="manual-qa-issue-92"></a>
 

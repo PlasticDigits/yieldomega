@@ -5891,6 +5891,180 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-top: 0;
 }
 
+.timecurve-simple__podium-panel {
+  margin-top: 0;
+  position: relative;
+  overflow: visible;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255, 220, 108, 0.28), transparent 24%),
+    radial-gradient(circle at 90% 10%, rgba(255, 74, 157, 0.13), transparent 26%),
+    radial-gradient(circle at 50% 100%, rgba(31, 184, 106, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 255, 238, 0.92));
+}
+
+.timecurve-simple__podium-panel > :not(.panel-cutout) {
+  position: relative;
+  z-index: 1;
+}
+
+.panel-cutout--simple-podium {
+  right: -0.8rem;
+  bottom: -1rem;
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.timecurve-simple__podium-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.55rem;
+  border: 2px solid rgba(11, 31, 20, 0.36);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--arcade-green-900);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 rgba(11, 31, 20, 0.16);
+}
+
+.timecurve-simple__podium-refresh::before {
+  content: "";
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 999px;
+  background: var(--arcade-green);
+  box-shadow: 0 0 0 0 rgba(31, 184, 106, 0.42);
+  animation: podium-live-pulse 2.2s ease-out infinite;
+}
+
+.timecurve-simple__podium-grid {
+  margin-top: 1rem;
+}
+
+.timecurve-simple__podium-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 248, 220, 0.7)),
+    radial-gradient(circle at 95% 0%, rgba(255, 209, 102, 0.3), transparent 34%);
+}
+
+.timecurve-simple__podium-card::before,
+.timecurve-simple__podium-card::after {
+  content: "";
+  position: absolute;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--arcade-gold);
+  opacity: 0.7;
+  pointer-events: none;
+  animation: podium-sparkle 4.8s ease-in-out infinite;
+}
+
+.timecurve-simple__podium-card::before {
+  top: 0.6rem;
+  right: 0.9rem;
+}
+
+.timecurve-simple__podium-card::after {
+  right: 2.1rem;
+  bottom: 0.8rem;
+  animation-delay: 1.7s;
+  background: var(--arcade-magenta);
+}
+
+.timecurve-simple__podium-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
+
+.timecurve-simple__podium-card-head p {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.timecurve-simple__podium-art {
+  width: 4.35rem;
+  height: 4.35rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(11, 31, 20, 0.54);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.78), transparent 38%),
+    linear-gradient(180deg, rgba(255, 239, 166, 0.8), rgba(138, 222, 137, 0.46));
+  box-shadow:
+    2px 2px 0 rgba(11, 31, 20, 0.22),
+    inset 0 0 16px rgba(255, 255, 255, 0.36);
+}
+
+.timecurve-simple__podium-art img {
+  display: block;
+  max-width: 86%;
+  max-height: 86%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 0 rgba(11, 31, 20, 0.22));
+}
+
+.timecurve-simple__podium-address .address-inline__label {
+  font-weight: 900;
+}
+
+.timecurve-simple__podium-footnote {
+  margin: 0.85rem 0 0;
+  font-size: 0.84rem;
+}
+
+@keyframes podium-live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(31, 184, 106, 0.42);
+  }
+  70% {
+    box-shadow: 0 0 0 0.5rem rgba(31, 184, 106, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(31, 184, 106, 0);
+  }
+}
+
+@keyframes podium-sparkle {
+  0%,
+  100% {
+    transform: translateY(0) scale(0.8);
+    opacity: 0.28;
+  }
+  45% {
+    transform: translateY(-0.45rem) scale(1.2);
+    opacity: 0.78;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timecurve-simple__podium-refresh::before,
+  .timecurve-simple__podium-card::before,
+  .timecurve-simple__podium-card::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .timecurve-simple__podium-card-head {
+    grid-template-columns: 1fr;
+  }
+
+  .timecurve-simple__podium-art {
+    width: 3.6rem;
+    height: 3.6rem;
+  }
+}
+
 .timecurve-simple__indexer-stale-hint {
   margin: 0 0 0.75rem;
   font-size: 0.85rem;

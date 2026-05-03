@@ -49,6 +49,8 @@ import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePha
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
+import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
+import { usePodiumReads } from "@/pages/timecurve/usePodiumReads";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
@@ -279,6 +281,7 @@ export function TimeCurveSimplePage() {
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const prefersReducedMotion = useReducedMotion();
   const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
+  const podiumReads = usePodiumReads(tc, { refetchIntervalMs: 5000 });
 
   const phaseInfo = phaseBadge(session.phase);
 
@@ -315,9 +318,10 @@ export function TimeCurveSimplePage() {
     address: tc,
     abi: timeCurveBuyEventAbi,
     eventName: "Buy",
-    enabled: Boolean(tc && indexerBaseUrl()),
+    enabled: Boolean(tc),
     onLogs: () => {
       setBuyFeedRefreshNonce((n) => n + 1);
+      void podiumReads.refetch();
     },
   });
 
@@ -1204,11 +1208,19 @@ export function TimeCurveSimplePage() {
         launchHelperCopy={launchHelperCopy}
       />
 
+      <TimeCurveSimplePodiumSection
+        podiumRows={podiumReads.data}
+        podiumLoading={podiumReads.isLoading}
+        podiumRefreshing={podiumReads.isFetching && !podiumReads.isLoading}
+        address={session.walletAddress}
+      />
+
       {/* Recent buys — moved out of the timer panel and given its own slim
           section so the spotlight row stays focused on the timer + buy CTA. */}
       <PageSection
         title="Recent buys"
         className="timecurve-simple__activity-panel"
+        dataTestId="timecurve-simple-live-ticker"
         badgeLabel="Live ticker"
         badgeTone="info"
       >

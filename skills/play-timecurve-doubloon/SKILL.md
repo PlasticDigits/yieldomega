@@ -52,7 +52,7 @@ Plain language for participants:
 
 Reserve podium split from **`PodiumPool`** after the sale follows **`distributePrizes`** on the deployment — verify onchain.
 
-When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history.
+When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history. The Simple frontend route now includes a compact **Live reserve podiums** card above Recent buys ([issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113)); treat it as a convenience view of the same onchain `podium(category)` reads, not as a separate source of truth.
 
 ## Success function (non-financial)
 

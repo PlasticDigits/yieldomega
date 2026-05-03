@@ -12,6 +12,7 @@ type Props = {
   spotlight?: boolean;
   className?: string;
   id?: string;
+  dataTestId?: string;
   children: ReactNode;
   actions?: ReactNode;
   cutout?: {
@@ -30,6 +31,7 @@ export function PageSection({
   spotlight = false,
   className,
   id,
+  dataTestId,
   children,
   actions,
   cutout,
@@ -43,7 +45,7 @@ export function PageSection({
     .join(" ");
 
   return (
-    <section id={id} className={classes}>
+    <section id={id} className={classes} data-testid={dataTestId}>
       {cutout && (
         <CutoutDecoration
           className={cutout.className}

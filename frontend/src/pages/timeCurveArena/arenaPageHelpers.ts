@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { formatLocaleInteger } from "@/lib/formatAmount";
 import type { BuyItem } from "@/lib/indexerApi";
+export { formatPodiumLeaderboardValue } from "@/pages/timecurve/podiumFormat";
 
 export const CL8Y_USD_PRICE_PLACEHOLDER = 1;
 
@@ -37,18 +37,6 @@ export function mergeBuysNewestFirst(
     merged.set(`${buy.tx_hash}-${buy.log_index}`, buy);
   }
   return Array.from(merged.values()).sort(compareBuysNewestFirst);
-}
-
-/** `categoryIndex` follows {@link PODIUM_LABELS} order: 0 Last Buy, 1 WarBow, 2 Defended, 3 Time Booster. */
-export function formatPodiumLeaderboardValue(categoryIndex: number, raw: string): string {
-  const bi = BigInt(raw);
-  if (categoryIndex === 3) {
-    return `${formatLocaleInteger(bi)} s`;
-  }
-  if (categoryIndex === 1) {
-    return `${formatLocaleInteger(bi)} BP`;
-  }
-  return formatLocaleInteger(bi);
 }
 
 export function describeBurstBand(ratio: number | null): string {

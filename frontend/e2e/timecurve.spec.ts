@@ -33,8 +33,20 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
   await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
 });
 
-test("timecurve simple view does NOT show the dense PvP / podiums sections above the fold", async ({ page }) => {
+test("timecurve simple view shows compact podiums without dense Arena sections", async ({ page }) => {
   await ensurePostLaunch(page);
+  const simplePodiums = page.getByTestId("timecurve-simple-podiums");
+  const liveTicker = page.getByTestId("timecurve-simple-live-ticker");
+  await expect(simplePodiums).toBeVisible();
+  await expect(simplePodiums.getByRole("heading", { name: "Live reserve podiums", level: 2 })).toBeVisible();
+  await expect(simplePodiums.getByRole("heading", { name: "Last Buy", level: 3 })).toBeVisible();
+  await expect(simplePodiums.getByRole("heading", { name: "WarBow", level: 3 })).toBeVisible();
+  await expect(simplePodiums.getByRole("heading", { name: "Defended Streak", level: 3 })).toBeVisible();
+  await expect(simplePodiums.getByRole("heading", { name: "Time Booster", level: 3 })).toBeVisible();
+  await expect(liveTicker).toBeVisible();
+  const podiumBox = await simplePodiums.boundingBox();
+  const tickerBox = await liveTicker.boundingBox();
+  expect(podiumBox?.y ?? 0).toBeLessThan(tickerBox?.y ?? Number.POSITIVE_INFINITY);
   await expect(page.getByRole("heading", { name: "WarBow moves and rivalry", level: 2 })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Podiums and prizes", level: 2 })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Live battle feed", level: 2 })).toHaveCount(0);
