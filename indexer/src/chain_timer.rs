@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Polls `deadline()`, `timerCapSec()`, head `block.timestamp`, `ended()`, and `podium(category)`
-//! at the same block tag (hero timer + reserve podium reads).
+//! Polls `saleStart()`, `deadline()`, `timerCapSec()`, head `block.timestamp`, `ended()`, and
+//! `podium(category)` at the same block tag (hero timer + reserve podium reads).
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,6 +13,8 @@ use eyre::{Result, WrapErr};
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration, MissedTickBehavior};
 
+/// `saleStart()` selector (public getter)
+const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
 /// `deadline()` selector
 const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
 /// `timerCapSec()` selector
@@ -25,6 +27,8 @@ const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 /// Cached JSON shape for `GET /v1/timecurve/chain-timer` (matches frontend `TimerChainSnapshot` fields).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainTimerSnapshot {
+    /// `TimeCurve.saleStart()` at `read_block_number` (`"0"` when not scheduled).
+    pub sale_start_sec: String,
     pub deadline_sec: String,
     pub block_timestamp_sec: String,
     pub timer_cap_sec: String,
@@ -55,7 +59,10 @@ fn u256_to_decimal_string(v: U256) -> String {
 
 fn decode_return_u256(data: &[u8]) -> Result<U256> {
     if data.len() < 32 {
-        return Err(eyre::eyre!("eth_call return too short: {} bytes", data.len()));
+        return Err(eyre::eyre!(
+            "eth_call return too short: {} bytes",
+            data.len()
+        ));
     }
     let slice = &data[data.len() - 32..];
     Ok(U256::from_be_slice(slice))
@@ -155,12 +162,22 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
     let block_ts = block.header.timestamp;
     let block_id = BlockId::Number(bn.into());
 
+    let s_req = TransactionRequest::default()
+        .to(tc)
+        .input(Bytes::copy_from_slice(&SEL_SALE_START).into());
+    let s_raw = provider
+        .call(&s_req)
+        .block(block_id)
+        .await
+        .wrap_err("saleStart eth_call")?;
+    let sale_start = decode_return_u256(&s_raw).wrap_err("decode saleStart")?;
+
     let d_req = TransactionRequest::default()
         .to(tc)
         .input(Bytes::copy_from_slice(&SEL_DEADLINE).into());
     let d_raw = provider
         .call(&d_req)
-        .block(block_id.clone())
+        .block(block_id)
         .await
         .wrap_err("deadline eth_call")?;
     let deadline = decode_return_u256(&d_raw).wrap_err("decode deadline")?;
@@ -170,7 +187,7 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
         .input(Bytes::copy_from_slice(&SEL_TIMER_CAP).into());
     let c_raw = provider
         .call(&c_req)
-        .block(block_id.clone())
+        .block(block_id)
         .await
         .wrap_err("timerCapSec eth_call")?;
     let cap = decode_return_u256(&c_raw).wrap_err("decode timerCapSec")?;
@@ -180,7 +197,7 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
         .input(Bytes::copy_from_slice(&SEL_ENDED).into());
     let e_raw = provider
         .call(&e_req)
-        .block(block_id.clone())
+        .block(block_id)
         .await
         .wrap_err("ended eth_call")?;
     let sale_ended = decode_return_bool(&e_raw).wrap_err("decode ended")?;
@@ -193,7 +210,7 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
             .input(encode_podium_call(cat).into());
         let p_raw = provider
             .call(&p_req)
-            .block(block_id.clone())
+            .block(block_id)
             .await
             .wrap_err(format!("podium({cat}) eth_call"))?;
         podium_rows[cat as usize] =
@@ -206,6 +223,7 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
         .unwrap_or(0);
 
     let timer = ChainTimerSnapshot {
+        sale_start_sec: u256_to_decimal_string(sale_start),
         deadline_sec: u256_to_decimal_string(deadline),
         block_timestamp_sec: block_ts.to_string(),
         timer_cap_sec: u256_to_decimal_string(cap),

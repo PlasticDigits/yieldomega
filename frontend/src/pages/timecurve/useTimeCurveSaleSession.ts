@@ -48,6 +48,7 @@ import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import {
   derivePhase,
   ledgerSecIntForPhase,
+  timecurveHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
 import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
@@ -289,6 +290,7 @@ export function useTimeCurveSaleSession(
   const userData = userDataRaw as readonly ContractReadRow[] | undefined;
 
   const {
+    heroTimer,
     secondsRemaining: saleCountdownSec,
     chainNowSec: heroChainNowSec,
     refresh: refreshHeroTimer,
@@ -444,10 +446,19 @@ export function useTimeCurveSaleSession(
     };
   }, [saleStartR, initialMinBuyR, growthRateWadR, basePriceWadR, dailyIncrementWadR]);
 
-  const preStartCountdownSec =
-    saleStartSec !== undefined && saleStartSec > phaseLedgerSecInt
-      ? Math.max(0, saleStartSec - phaseLedgerSecInt)
-      : undefined;
+  const preStartCountdownSec = useMemo(() => {
+    if (phase !== "saleStartPending") {
+      return undefined;
+    }
+    const saleStartForHero =
+      heroTimer && heroTimer.saleStartSec > 0 ? heroTimer.saleStartSec : saleStartSec;
+    return timecurveHeroDisplaySecondsRemaining({
+      phase: "saleStartPending",
+      saleStartSec: saleStartForHero,
+      deadlineSec,
+      chainNowSec: heroChainNowSec,
+    });
+  }, [phase, heroTimer, saleStartSec, deadlineSec, heroChainNowSec]);
 
   const cl8ySpendBounds = useMemo(() => {
     if (minBuyR?.status !== "success" || maxBuyR?.status !== "success") {

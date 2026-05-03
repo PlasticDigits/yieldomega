@@ -64,7 +64,7 @@ export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const {
-    activeStreakR, address, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
+    activeStreakR, address, arenaPhase, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyCooldownSecR,
     buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen,
     buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag,
@@ -908,9 +908,27 @@ export function TimeCurveArenaView() {
             <div className="timer-hero__arena-rail">
               <div className="timer-hero__clock-stack">
             <div className="timer-hero__label">
-              {saleActive ? "Time Remaining" : saleEnded ? "Sale Ended" : "Starts In"}
+              {saleActive
+                ? "Time Remaining"
+                : saleEnded
+                  ? "Sale Ended"
+                  : arenaPhase === "saleStartPending"
+                    ? "TimeCurve Opens In"
+                    : timerExpiredAwaitingEnd
+                      ? "Round timer ended"
+                      : "Starts In"}
             </div>
-            <div className="timer-hero__countdown" aria-live="polite">
+            <div
+              className="timer-hero__countdown"
+              aria-label={
+                arenaPhase === "saleStartPending"
+                  ? secondsRemaining !== undefined
+                    ? `TimeCurve Opens In, ${formatCountdown(secondsRemaining)}`
+                    : "TimeCurve Opens In"
+                  : undefined
+              }
+              aria-live="polite"
+            >
               {secondsRemaining !== undefined ? formatCountdown(secondsRemaining) : "—"}
             </div>
             {saleActive && isConnected && walletCooldownRemainingSec > 0 && (
@@ -1384,6 +1402,13 @@ export function TimeCurveArenaView() {
         saleStart={serializeContractRead(saleStart)}
         deadline={serializeContractRead(deadline)}
         secondsRemaining={secondsRemaining}
+        countdownSecondsContext={
+          arenaPhase === "saleStartPending"
+            ? "untilOpen"
+            : arenaPhase === "saleActive" || arenaPhase === "saleExpiredAwaitingEnd"
+              ? "untilRoundDeadline"
+              : "generic"
+        }
         totalRaised={serializeContractRead(totalRaised)}
         ended={serializeContractRead(ended)}
         maxBuyAmount={maxBuyAmount?.toString()}

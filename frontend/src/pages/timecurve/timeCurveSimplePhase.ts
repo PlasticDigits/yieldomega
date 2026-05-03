@@ -61,6 +61,48 @@ export function derivePhase(input: DerivePhaseInput): SaleSessionPhase {
   return "saleActive";
 }
 
+export type TimecurveHeroCountdownInput = {
+  phase: SaleSessionPhase;
+  /** Prefer `heroTimer.saleStartSec` from indexer chain-timer when > 0; else RPC `saleStart`. */
+  saleStartSec: number | undefined;
+  /** Prefer indexer snapshot `deadline_sec`; falls back to RPC when snapshot missing. */
+  deadlineSec: number | undefined;
+  /** `useTimecurveHeroTimer` `chainNowSec` (indexer-anchored when snapshot exists). */
+  chainNowSec: number | undefined;
+};
+
+/**
+ * Single UX countdown for TimeCurve hero surfaces: **opens in** (`saleStartPending`) vs **round timer**
+ * (`saleActive` / `saleExpiredAwaitingEnd`). Uses the same phase machine as {@link derivePhase}
+ * ([issue #115](https://gitlab.com/PlasticDigits/yieldomega/-/issues/115)).
+ */
+export function timecurveHeroDisplaySecondsRemaining(
+  input: TimecurveHeroCountdownInput,
+): number | undefined {
+  const { phase, saleStartSec, deadlineSec, chainNowSec } = input;
+  if (chainNowSec === undefined || !Number.isFinite(chainNowSec)) {
+    return undefined;
+  }
+  const floorNow = Math.floor(chainNowSec);
+  if (phase === "saleStartPending") {
+    if (
+      saleStartSec === undefined ||
+      !Number.isFinite(saleStartSec) ||
+      saleStartSec <= 0
+    ) {
+      return undefined;
+    }
+    return Math.max(0, saleStartSec - floorNow);
+  }
+  if (phase === "saleActive" || phase === "saleExpiredAwaitingEnd") {
+    if (deadlineSec === undefined || !Number.isFinite(deadlineSec)) {
+      return undefined;
+    }
+    return Math.max(0, deadlineSec - floorNow);
+  }
+  return undefined;
+}
+
 export type PhaseBadge = {
   label: string;
   /** Badge tone matches the dapp-wide `PageBadgeTone` palette. */

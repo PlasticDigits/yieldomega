@@ -115,8 +115,10 @@ export async function fetchTimecurveBuys(limit = 20, offset = 0) {
   return getJson<TimecurveBuysPage>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
 }
 
-/** Indexer-polled head snapshot for hero timer (schema ≥ 1.7.0). */
+/** Indexer-polled head snapshot for hero timer (schema ≥ 1.11.0 adds `sale_start_sec`). */
 export type TimecurveChainTimer = {
+  /** `TimeCurve.saleStart()` at `read_block_number` (`"0"` when unscheduled); omitted on pre-1.11.0 indexers. */
+  sale_start_sec?: string;
   deadline_sec: string;
   block_timestamp_sec: string;
   timer_cap_sec: string;

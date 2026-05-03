@@ -6,6 +6,8 @@ import { indexerBaseUrl } from "@/lib/addresses";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
 export type HeroTimerState = {
+  /** `TimeCurve.saleStart()` from the same indexer poll as `deadline_sec` (0 when unscheduled). */
+  saleStartSec: number;
   deadlineSec: number;
   blockTimestampSec: number;
   timerCapSec: number;
@@ -15,7 +17,11 @@ export type HeroTimerState = {
 };
 
 function snapshotFromIndexerChainTimer(data: TimecurveChainTimer): Omit<HeroTimerState, "fetchedAtSec"> {
+  const rawSale = data.sale_start_sec;
+  const saleStartSec =
+    rawSale !== undefined && rawSale !== "" ? Number(rawSale) : 0;
   return {
+    saleStartSec: Number.isFinite(saleStartSec) ? saleStartSec : 0,
     deadlineSec: Number(data.deadline_sec),
     blockTimestampSec: Number(data.block_timestamp_sec),
     timerCapSec: Number(data.timer_cap_sec),
@@ -25,6 +31,7 @@ function snapshotFromIndexerChainTimer(data: TimecurveChainTimer): Omit<HeroTime
 
 function isFiniteHeroBase(base: Omit<HeroTimerState, "fetchedAtSec">): boolean {
   return (
+    Number.isFinite(base.saleStartSec) &&
     Number.isFinite(base.deadlineSec) &&
     Number.isFinite(base.blockTimestampSec) &&
     Number.isFinite(base.timerCapSec)
