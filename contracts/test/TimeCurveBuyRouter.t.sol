@@ -94,7 +94,7 @@ contract TimeCurveBuyRouterTest is Test {
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         weth = new AnvilWETH9();
         usdm = new AnvilMockUSDM();

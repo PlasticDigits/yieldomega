@@ -42,6 +42,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 ## B. TimeCurve behavior (contract-aligned)
 
+- [ ] **B0** — **Sale bootstrap ([GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)):** Operators use **`owner`** **`startSaleAt(epoch)`** ( **`deadline = epoch + initialTimerSec`** ); **`DeployDev`** / local drills use **`startSaleAt(block.timestamp)`**. **`buy`** (and WarBow CL8Y paths / flag claim) must revert until **`chain time ≥ saleStart`** if **`saleStart` is scheduled in the future**; indexer **`SaleStarted.startTimestamp`** must match **`saleStart`**. Contributor map: [`invariants §114`](../testing/invariants-and-business-logic.md#timecurve-startsaleat-issue-114), [`docs/frontend/timecurve-views.md` §114 anchor](../frontend/timecurve-views.md#scheduled-sale-start-onsalestartsaleat-issue-114).
 - [ ] **B1** — Sale lifecycle: buys extend timer; hard reset when remaining &lt; 13 min — match `TIMER_RESET_*` in `TimeCurve.sol`.
 - [ ] **B2** — Four podium categories — **WarBow** is reserve-funded from `PodiumPool`; see [primitives.md](../product/primitives.md).
 - [ ] **B3** — `distributePrizes`: **40/25/20/15** of **podium pool** balance — not FeeRouter top-level percentages.
