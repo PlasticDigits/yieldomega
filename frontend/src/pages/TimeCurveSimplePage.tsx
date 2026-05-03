@@ -288,6 +288,9 @@ export function TimeCurveSimplePage() {
 
   const phaseInfo = phaseBadge(session.phase);
 
+  const timerSectionTitle =
+    session.phase === "saleStartPending" ? "TimeCurve Opens In" : "Time left";
+
   const heroSecondsRemaining =
     session.phase === "saleActive" || session.phase === "saleExpiredAwaitingEnd"
       ? session.saleCountdownSec
@@ -950,7 +953,7 @@ export function TimeCurveSimplePage() {
       {/* Sale hub — timer + primary buy action share the spotlight row above the fold. */}
       <div className="timecurve-simple__hub">
         <PageSection
-          title="Time left"
+          title={timerSectionTitle}
           spotlight
           className="timecurve-simple__timer-panel"
           badgeLabel={heroLabel}
@@ -959,6 +962,7 @@ export function TimeCurveSimplePage() {
         >
           <TimeCurveTimerHero
             secondsRemaining={heroSecondsRemaining}
+            countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
             foot={
               <>
                 {session.phase === "saleActive" &&

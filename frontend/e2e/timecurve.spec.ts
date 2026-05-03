@@ -23,7 +23,9 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
   await ensurePostLaunch(page);
   await expect(page.locator("main.app-main")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Time left", level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Time left|TimeCurve Opens In/, level: 2 }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /(Buy CHARM|Redeem CHARM|Coming soon)/, level: 2 }),
   ).toBeVisible();
@@ -74,6 +76,8 @@ test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ pag
 test("timecurve simple view stays usable on a 390×844 mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ensurePostLaunch(page);
-  await expect(page.getByRole("heading", { name: "Time left", level: 2 })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Time left|TimeCurve Opens In/, level: 2 }),
+  ).toBeVisible();
   await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
 });

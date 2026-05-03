@@ -67,6 +67,7 @@ import {
   ledgerSecIntForPhase,
   phaseBadge,
   phaseFlags,
+  timecurveHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
@@ -211,7 +212,7 @@ export function useTimeCurveArenaModel() {
 
   const {
     heroTimer,
-    secondsRemaining,
+    secondsRemaining: deadlineSecondsRemaining,
     chainNowSec: heroChainNowSec,
     isBusy: heroTimerBusy,
     refresh: loadHeroTimer,
@@ -799,6 +800,20 @@ export function useTimeCurveArenaModel() {
     [coreTcData, arenaEnded, arenaSaleStartSec, arenaDeadlineSec, phaseLedgerSecInt],
   );
 
+  const heroDisplaySecondsRemaining = useMemo(
+    () =>
+      timecurveHeroDisplaySecondsRemaining({
+        phase: arenaPhase,
+        saleStartSec:
+          heroTimer && heroTimer.saleStartSec > 0
+            ? heroTimer.saleStartSec
+            : arenaSaleStartSec,
+        deadlineSec: heroTimer ? heroTimer.deadlineSec : arenaDeadlineSec,
+        chainNowSec: heroChainNowSec,
+      }),
+    [arenaPhase, heroTimer, arenaSaleStartSec, arenaDeadlineSec, heroChainNowSec],
+  );
+
   // Mutually-exclusive flags derived from `arenaPhase` — the Arena view shares
   // the Simple view's state machine so both pages cannot disagree about which
   // UX branch is live (issue #40 invariant; see
@@ -1280,14 +1295,14 @@ export function useTimeCurveArenaModel() {
 
   const timerExtensionPreview =
     saleActive &&
-    secondsRemaining !== undefined &&
+    deadlineSecondsRemaining !== undefined &&
     timerExtensionSecR?.status === "success" &&
     timerCapSec !== undefined
       ? Math.max(
           0,
           Math.min(
             Number(timerExtensionSecR.result as bigint),
-            Math.max(0, timerCapSec - secondsRemaining),
+            Math.max(0, timerCapSec - deadlineSecondsRemaining),
           ),
         )
       : undefined;
@@ -1512,8 +1527,8 @@ export function useTimeCurveArenaModel() {
   }, [ended, prizesDistributedR, address, timeCurveOwnerAddr]);
 
   const timerNarrative = useMemo(
-    () => describeTimerPreview(secondsRemaining, timerExtensionPreview),
-    [secondsRemaining, timerExtensionPreview],
+    () => describeTimerPreview(deadlineSecondsRemaining, timerExtensionPreview),
+    [deadlineSecondsRemaining, timerExtensionPreview],
   );
 
   const totalRaiseDisplay = useMemo(() => {
@@ -1613,7 +1628,9 @@ export function useTimeCurveArenaModel() {
             ? "Claim your flag"
             : hasRevengeOpen
               ? "Take revenge"
-              : secondsRemaining !== undefined && secondsRemaining < 780
+              : saleActive &&
+                  deadlineSecondsRemaining !== undefined &&
+                  deadlineSecondsRemaining < 780
                 ? "Clutch reset window"
                 : "Make the next move",
         meta:
@@ -1621,7 +1638,9 @@ export function useTimeCurveArenaModel() {
             ? "Silence has held long enough. Claiming now locks in a visible WarBow moment."
             : hasRevengeOpen
               ? "You have a live revenge window. Hit back before it expires."
-              : secondsRemaining !== undefined && secondsRemaining < 780
+              : saleActive &&
+                  deadlineSecondsRemaining !== undefined &&
+                  deadlineSecondsRemaining < 780
                 ? "Buys now can hard-reset the timer toward 15 minutes and swing the room."
                 : "A buy can move timer, podiums, and WarBow status in one shot.",
       },
@@ -1647,9 +1666,16 @@ export function useTimeCurveArenaModel() {
       },
       {
         label: "Why watch",
-        value: secondsRemaining !== undefined && secondsRemaining < 780 ? "Every buy is a swing" : "Lurkers can still enjoy the race",
+        value:
+          saleActive &&
+          deadlineSecondsRemaining !== undefined &&
+          deadlineSecondsRemaining < 780
+            ? "Every buy is a swing"
+            : "Lurkers can still enjoy the race",
         meta:
-          secondsRemaining !== undefined && secondsRemaining < 780
+          saleActive &&
+          deadlineSecondsRemaining !== undefined &&
+          deadlineSecondsRemaining < 780
             ? "Under 13 minutes, resets, streak breaks, and clutch buys become the whole show."
             : "Podiums, streaks, guards, and revenge make the page readable even before you buy.",
       },
@@ -1663,7 +1689,8 @@ export function useTimeCurveArenaModel() {
     distributeHint,
     canClaimWarBowFlag,
     hasRevengeOpen,
-    secondsRemaining,
+    deadlineSecondsRemaining,
+    saleActive,
     timerNarrative,
     warbowPlacementGap,
     warbowRank,
@@ -1675,7 +1702,11 @@ export function useTimeCurveArenaModel() {
     }
     const items: string[] = [];
     items.push(timerNarrative.detail);
-    if (secondsRemaining !== undefined && secondsRemaining < 780) {
+    if (
+      saleActive &&
+      deadlineSecondsRemaining !== undefined &&
+      deadlineSecondsRemaining < 780
+    ) {
       items.push("You are inside the hard-reset band, so this buy can drag the timer back toward 15 minutes.");
     }
     if (referralRegistryOn && pendingRef && useReferral) {
@@ -1692,7 +1723,8 @@ export function useTimeCurveArenaModel() {
   }, [
     saleEnded,
     timerNarrative,
-    secondsRemaining,
+    saleActive,
+    deadlineSecondsRemaining,
     referralRegistryOn,
     pendingRef,
     useReferral,
@@ -2608,7 +2640,8 @@ export function useTimeCurveArenaModel() {
     saleStart,
     secondaryButtonMotion,
     secondsPerDayR,
-    secondsRemaining,
+    secondsRemaining: heroDisplaySecondsRemaining,
+    deadlineSecondsRemaining,
     selectBuy,
     setBlockSyncWallMs,
     setBuyErr,

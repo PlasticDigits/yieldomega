@@ -7,6 +7,7 @@ import {
   phaseBadge,
   phaseFlags,
   phaseNarrative,
+  timecurveHeroDisplaySecondsRemaining,
   type DerivePhaseInput,
   type SaleSessionPhase,
 } from "./timeCurveSimplePhase";
@@ -18,6 +19,52 @@ const BASE: DerivePhaseInput = {
   deadlineSec: 2000,
   ledgerSecInt: 1500,
 };
+
+describe("timecurveHeroDisplaySecondsRemaining (issue #115 — pre-open vs live)", () => {
+  it("counts down to saleStart in saleStartPending", () => {
+    expect(
+      timecurveHeroDisplaySecondsRemaining({
+        phase: "saleStartPending",
+        saleStartSec: 1_000,
+        deadlineSec: 2_000,
+        chainNowSec: 800.7,
+      }),
+    ).toBe(200);
+  });
+
+  it("returns undefined when saleStart is unset in saleStartPending", () => {
+    expect(
+      timecurveHeroDisplaySecondsRemaining({
+        phase: "saleStartPending",
+        saleStartSec: undefined,
+        deadlineSec: 2_000,
+        chainNowSec: 800,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("uses deadline in saleActive", () => {
+    expect(
+      timecurveHeroDisplaySecondsRemaining({
+        phase: "saleActive",
+        saleStartSec: 100,
+        deadlineSec: 1_500,
+        chainNowSec: 1_400.2,
+      }),
+    ).toBe(100);
+  });
+
+  it("returns undefined for loading", () => {
+    expect(
+      timecurveHeroDisplaySecondsRemaining({
+        phase: "loading",
+        saleStartSec: 100,
+        deadlineSec: 200,
+        chainNowSec: 150,
+      }),
+    ).toBeUndefined();
+  });
+});
 
 describe("ledgerSecIntForPhase (issue #48 — align phase with hero timer)", () => {
   it("prefers indexer-anchored hero time over wallet block time", () => {

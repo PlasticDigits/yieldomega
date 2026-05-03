@@ -820,6 +820,8 @@ export function RawDataAccordion(props: {
   saleStart: SerializableContractRead | undefined;
   deadline: SerializableContractRead | undefined;
   secondsRemaining: number | undefined;
+  /** Drives the raw **seconds** row label ([issue #115](https://gitlab.com/PlasticDigits/yieldomega/-/issues/115)). */
+  countdownSecondsContext?: "untilOpen" | "untilRoundDeadline" | "generic";
   totalRaised: SerializableContractRead | undefined;
   ended: SerializableContractRead | undefined;
   maxBuyAmount: string | undefined;
@@ -859,6 +861,7 @@ export function RawDataAccordion(props: {
     saleStart,
     deadline,
     secondsRemaining,
+    countdownSecondsContext = "generic",
     totalRaised,
     ended,
     maxBuyAmount,
@@ -921,7 +924,13 @@ export function RawDataAccordion(props: {
                     "—"
                   )}
                 </dd>
-                <dt>seconds remaining</dt>
+                <dt>
+                  {countdownSecondsContext === "untilOpen"
+                    ? "Seconds until TimeCurve opens (hero clock)"
+                    : countdownSecondsContext === "untilRoundDeadline"
+                      ? "Seconds until round deadline (hero clock)"
+                      : "seconds remaining"}
+                </dt>
                 <dd>
                   {secondsRemaining !== undefined
                     ? `${formatLocaleInteger(Math.floor(secondsRemaining))}s`

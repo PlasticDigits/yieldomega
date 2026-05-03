@@ -113,6 +113,14 @@ setups.
 
 **Scheduled on-chain starts ([issue #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)):** Operators use **`startSaleAt(epoch)`** so **`saleStart`** can be announced **ahead of wall/mempool drift**, with **`epoch >= block.timestamp`** at call time. Until **`saleStart` arrives on chain**, **`buy`** and WarBow CL8Y paths revert **`"TimeCurve: sale not live"`**; **`deadline`** is **`saleStart + initialTimerSec`** so the opening timer band is tied to **`epoch`**. Read-model CHARM/min-max/price snapshots follow **elapsed-from-live** (**0** until **`now ≥ saleStart`**). Frontend **`saleStartPending`** (see `derivePhase`) should mirror **`saleStart` vs the same indexer-anchored “now”** as [**issue #48**](#chain-time-and-sale-phase-issue-48); map: [**invariants — `startSaleAt` / #114**](../testing/invariants-and-business-logic.md#timecurve-startsaleat-issue-114).
 
+<a id="pre-open-countdown-unified-issue-115"></a>
+
+**Pre-open countdown — Simple + Arena unified ([issue #115](https://gitlab.com/PlasticDigits/yieldomega/-/issues/115)):** After **`startSaleAt`**, **`deadline = saleStart + initialTimerSec`**, so **`deadline − chainNow`** during **`saleStartPending`** includes the **live round window** and misleads as an “opens in” clock. **Simple** and **Arena** must both drive prominent hero digits from **`max(0, saleStartSec − floor(chainNow))`** in this phase, using the same **`chainNow`** skew as **`useTimecurveHeroTimer`** ([**#48**](#chain-time-and-sale-phase-issue-48)). Prefer **`sale_start_sec`** on **`GET /v1/timecurve/chain-timer`** (same head block as **`deadline_sec`**, indexer schema **≥ 1.11.0**) so **`saleStart`** and **`deadline`** targets stay co-snapshotted; fallback: RPC **`saleStart()`** when the field is absent. **Copy:** exact phrase **“TimeCurve Opens In”** on pre-start hero surfaces (page title / rail label / assistive labels). **Live** phases keep **`deadline − chainNow`**; **timer-cap / extension preview** math must use the **live** countdown only, not pre-open digits — see **`timecurveHeroDisplaySecondsRemaining`** in [`timeCurveSimplePhase.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.ts). Map: [**invariants — #115**](../testing/invariants-and-business-logic.md#timecurve-pre-open-hero-countdown-issue-115).
+
+**Spec ↔ test:** [invariants — TimeCurve pre-open hero countdown (#115)](../testing/invariants-and-business-logic.md#timecurve-pre-open-hero-countdown-issue-115) ·
+[`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
+(`timecurveHeroDisplaySecondsRemaining`).
+
 **Spec ↔ test:** [invariants and business — TimeCurve frontend: sale phase and hero timer](../testing/invariants-and-business-logic.md#timecurve-frontend-sale-phase-and-hero-timer) ·
 [`timeCurveSimplePhase.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePhase.test.ts)
 (`ledgerSecIntForPhase`, `derivePhase`).

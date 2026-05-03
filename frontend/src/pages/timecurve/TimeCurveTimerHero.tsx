@@ -14,6 +14,12 @@ type Props = {
    * cleanly during the loading phase before the contract reads land.
    */
   secondsRemaining: number | undefined;
+  /** Line above the digits (e.g. extra emphasis); section titles often carry the primary label. */
+  eyebrow?: string;
+  /** Adjusts the default spoken label: **open** → “TimeCurve Opens In” ([issue #115](https://gitlab.com/PlasticDigits/yieldomega/-/issues/115)). */
+  countdownKind?: "open" | "round";
+  /** Spoken summary for assistive tech; overrides `countdownKind` + built-in remainder when set. */
+  countdownAriaLabel?: string;
   /** Inline copy shown directly under the countdown digits. */
   foot?: ReactNode;
 };
@@ -44,15 +50,34 @@ const SPARK_COUNT = 8;
  * page is responsible for clamping `secondsRemaining` against chain head time
  * (see `useTimeCurveSaleSession`).
  */
-export function TimeCurveTimerHero({ secondsRemaining, foot }: Props) {
+export function TimeCurveTimerHero({
+  secondsRemaining,
+  eyebrow,
+  countdownKind = "round",
+  countdownAriaLabel,
+  foot,
+}: Props) {
   const urgency = timerUrgencyClass(secondsRemaining);
   const isCritical = urgency.includes("critical");
   const split =
     secondsRemaining !== undefined ? formatLaunchCountdown(secondsRemaining) : null;
+  const spokenRemaining =
+    secondsRemaining !== undefined
+      ? split && split.days > 0
+        ? `${split.days} days ${split.clock}`
+        : split?.clock ?? ""
+      : "loading";
+  const defaultAria =
+    eyebrow !== undefined && eyebrow !== ""
+      ? `${eyebrow}, ${spokenRemaining}`
+      : countdownKind === "open"
+        ? `TimeCurve Opens In, ${spokenRemaining}`
+        : `Time remaining, ${spokenRemaining}`;
 
   return (
     <div
       className={`timer-hero timecurve-simple__timer-hero ${urgency}`.trim()}
+      aria-label={countdownAriaLabel ?? defaultAria}
       aria-live="polite"
       data-testid="timecurve-simple-timer-hero"
     >
@@ -90,6 +115,9 @@ export function TimeCurveTimerHero({ secondsRemaining, foot }: Props) {
       </div>
 
       <div className="timecurve-simple__timer-hero-inner">
+        {eyebrow !== undefined && eyebrow !== "" ? (
+          <p className="timecurve-simple__timer-hero-eyebrow muted">{eyebrow}</p>
+        ) : null}
         <div
           className="timecurve-simple__timer-clock"
           data-testid="timecurve-simple-timer"
