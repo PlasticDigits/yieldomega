@@ -304,15 +304,31 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
     }
 
-    function startSale() external {
+    /// @dev Elapsed seconds for CHARM envelope + `charmPrice` views. Scheduled **`saleStart` in the future**
+    ///      (`startSaleAt` — GitLab #114) is treated like **t = saleStart**: elapsed **0** until live.
+    function _elapsedForCharmPricing() internal view returns (uint256) {
+        if (saleStart == 0) return 0;
+        return block.timestamp < saleStart ? 0 : block.timestamp - saleStart;
+    }
+
+    /// @notice **Owner-only.** Sets **`saleStart = epoch`** (Unix seconds) and **`deadline = epoch + initialTimerSec`**.
+    /// @dev Single transition (**`saleStart == 0`** before); **`SaleStarted`** first arg **`== epoch`**.
+    ///      Reverts: **`"TimeCurve: already started"`**, **`"TimeCurve: insufficient launched tokens"`**,
+    ///      **`"TimeCurve: invalid epoch"`** (`epoch == 0`; would collide with uninitialized sale),
+    ///      **`"TimeCurve: epoch in past"`** (`epoch < block.timestamp`). Interactive paths (`buy`, WarBow burns, flag claim)
+    ///      additionally require **`block.timestamp >= saleStart`** (**`"TimeCurve: sale not live"`**).
+    ///      See [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114).
+    function startSaleAt(uint256 epoch) external onlyOwner {
         require(saleStart == 0, "TimeCurve: already started");
+        require(epoch != 0, "TimeCurve: invalid epoch");
+        require(epoch >= block.timestamp, "TimeCurve: epoch in past");
         require(
             launchedToken.balanceOf(address(this)) >= totalTokensForSale,
             "TimeCurve: insufficient launched tokens"
         );
-        saleStart = block.timestamp;
-        deadline = block.timestamp + initialTimerSec;
-        emit SaleStarted(block.timestamp, deadline, totalTokensForSale);
+        saleStart = epoch;
+        deadline = epoch + initialTimerSec;
+        emit SaleStarted(epoch, deadline, totalTokensForSale);
     }
 
     /// @notice Plain CHARM buy — does **not** plant/replace the WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
@@ -363,6 +379,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @param plantWarBowFlag If true, this tx sets `warbowPendingFlagOwner` / `warbowPendingFlagPlantAt` to `buyer` / `block.timestamp` (unless same holder opts out of timer reset — see body). If false, pending slot is unchanged when `buyer == warbowPendingFlagOwner` after interrupt handling ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function _buy(address buyer, address payer, uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag) internal {
         require(saleStart > 0, "TimeCurve: not started");
+        require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
         require(block.timestamp < deadline, "TimeCurve: timer expired");
@@ -504,6 +521,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice After **your** buy, wait `WARBOW_FLAG_SILENCE_SEC` with **no other buyer**; then claim **+WARBOW_FLAG_CLAIM_BP**.
     function claimWarBowFlag() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(warbowPendingFlagOwner == msg.sender, "TimeCurve: not flag holder");
         require(block.timestamp >= warbowPendingFlagPlantAt + WARBOW_FLAG_SILENCE_SEC, "TimeCurve: flag silence");
 
@@ -518,6 +536,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @param payBypassBurn If victim already hit **3** steals today, pass `true` and pay **+50 CL8Y** to proceed.
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         _requireSaleInteractionsEnabled();
         require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
 
@@ -569,6 +588,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         _requireSaleInteractionsEnabled();
         require(stealer != address(0), "TimeCurve: zero stealer");
         require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
@@ -594,6 +614,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Burn **10 CL8Y**; for **6h** incoming steals use **1%** instead of **10%**.
     function warbowActivateGuard() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
+        require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         _requireSaleInteractionsEnabled();
         acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
@@ -726,26 +747,26 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function currentMinBuyAmount() external view returns (uint256) {
-        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        uint256 elapsed = _elapsedForCharmPricing();
         (uint256 minCharm,) = _charmBounds(elapsed);
         uint256 p = charmPrice.priceWad(elapsed);
         return Math.mulDiv(minCharm, p, WAD);
     }
 
     function currentMaxBuyAmount() external view returns (uint256) {
-        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        uint256 elapsed = _elapsedForCharmPricing();
         (, uint256 maxCharm) = _charmBounds(elapsed);
         uint256 p = charmPrice.priceWad(elapsed);
         return Math.mulDiv(maxCharm, p, WAD);
     }
 
     function currentCharmBoundsWad() external view returns (uint256 minCharmWad, uint256 maxCharmWad) {
-        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        uint256 elapsed = _elapsedForCharmPricing();
         return _charmBounds(elapsed);
     }
 
     function currentPricePerCharmWad() external view returns (uint256) {
-        uint256 elapsed = saleStart > 0 ? block.timestamp - saleStart : 0;
+        uint256 elapsed = _elapsedForCharmPricing();
         return charmPrice.priceWad(elapsed);
     }
 

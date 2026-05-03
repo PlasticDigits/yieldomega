@@ -7,6 +7,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
@@ -177,16 +178,18 @@ contract TimeCurveTest is Test {
 
     // ── Sale lifecycle ─────────────────────────────────────────────────
 
-    function test_startSale() public {
-        tc.startSale();
-        assertGt(tc.saleStart(), 0);
-        assertGt(tc.deadline(), block.timestamp);
+    /// @dev GitLab #114 — **`deadline = epoch + initialTimerSec`** (not mining-time drift when `epoch` is chosen).
+    function test_startSaleAt_now_sets_saleStart_and_deadline() public {
+        uint256 epoch = block.timestamp;
+        tc.startSaleAt(epoch);
+        assertEq(tc.saleStart(), epoch);
+        assertEq(tc.deadline(), epoch + ONE_DAY);
     }
 
-    function test_startSale_reverts_twice() public {
-        tc.startSale();
+    function test_startSaleAt_reverts_twice() public {
+        tc.startSaleAt(block.timestamp);
         vm.expectRevert("TimeCurve: already started");
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
     }
 
     function test_startSale_insufficient_launched_tokens_reverts() public {
@@ -208,7 +211,40 @@ contract TimeCurveTest is Test {
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcUnder));
         launchedToken.mint(address(tcUnder), 1_000_000e18 - 1);
         vm.expectRevert("TimeCurve: insufficient launched tokens");
-        tcUnder.startSale();
+        tcUnder.startSaleAt(block.timestamp);
+    }
+
+    function test_startSaleAt_reverts_for_non_owner() public {
+        vm.prank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, alice)
+        );
+        tc.startSaleAt(block.timestamp);
+    }
+
+    function test_startSaleAt_reverts_when_epoch_zero() public {
+        vm.expectRevert("TimeCurve: invalid epoch");
+        tc.startSaleAt(0);
+    }
+
+    function test_startSaleAt_reverts_when_epoch_in_past() public {
+        vm.warp(block.timestamp + 3600);
+        vm.expectRevert("TimeCurve: epoch in past");
+        tc.startSaleAt(block.timestamp - 1);
+    }
+
+    /// @dev GitLab #114 — **`saleStart` scheduled in the future** blocks **`buy`** until **`block.timestamp >= saleStart`** (`"sale not live"`).
+    function test_startSaleAt_future_epoch_buys_revert_until_live() public {
+        uint256 epoch = block.timestamp + 600;
+        tc.startSaleAt(epoch);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale not live");
+        tc.buy(1e18);
+        vm.warp(epoch);
+        vm.prank(alice);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(alice), 1e18);
     }
 
     function test_endSale_not_started_reverts() public {
@@ -217,7 +253,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_endSale_already_ended_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -228,7 +264,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_basic() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -238,14 +274,14 @@ contract TimeCurveTest is Test {
     }
 
     function test_buyFor_reverts_when_not_designated_router() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         vm.prank(alice);
         vm.expectRevert(bytes("TimeCurve: not buy router"));
         tc.buyFor(alice, 1e18, false);
     }
 
     function test_buyFor_credits_buyer_when_called_by_router() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         address companion = makeAddr("companionRouter");
         tc.setTimeCurveBuyRouter(companion);
         _fundAndApprove(companion, 5e18);
@@ -256,7 +292,7 @@ contract TimeCurveTest is Test {
 
     /// @dev GitLab #63 — default `buy(charmWad)` does not touch WarBow pending slot.
     function test_buy_plain_does_not_plant_warbow_flag() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -265,7 +301,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_with_plant_sets_pending_flag() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18, true);
@@ -275,7 +311,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Same holder, plain follow-up buy must not reset silence clock (#63).
     function test_holder_second_plain_buy_preserves_plant_at() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 10e18);
         vm.startPrank(alice);
         tc.buy(1e18, true);
@@ -289,7 +325,7 @@ contract TimeCurveTest is Test {
 
     /// @dev GitLab #77 — router `buyFor(..., plant=false)` credits buyer only; no WarBow pending slot.
     function test_buy_for_with_plant_false_does_not_plant() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         address companion = makeAddr("companionRouter");
         tc.setTimeCurveBuyRouter(companion);
         _fundAndApprove(companion, 5e18);
@@ -303,7 +339,7 @@ contract TimeCurveTest is Test {
 
     /// @dev GitLab #77 — router `buyFor(..., plant=true)` plants for **buyer**, not `msg.sender` (router).
     function test_buy_for_with_plant_true_plants() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         address companion = makeAddr("companionRouter");
         tc.setTimeCurveBuyRouter(companion);
         _fundAndApprove(companion, 5e18);
@@ -315,7 +351,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_below_minBuy_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 1e18);
         vm.prank(alice);
         vm.expectRevert("TimeCurve: below min charms");
@@ -323,7 +359,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_above_cap_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         // Max CHARM at envelope start = 10e18 (flat 1:1 price → 10e18 asset cap)
         _fundAndApprove(alice, 20e18);
         vm.prank(alice);
@@ -332,7 +368,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_after_timer_expires_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         vm.warp(block.timestamp + ONE_DAY + 1);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
@@ -347,10 +383,19 @@ contract TimeCurveTest is Test {
         tc.buy(1e18);
     }
 
+    function test_buy_reverts_sale_not_live_when_start_scheduled_future() public {
+        uint256 epoch = block.timestamp + 10_000;
+        tc.startSaleAt(epoch);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale not live");
+        tc.buy(1e18);
+    }
+
     // ── Timer mechanics ────────────────────────────────────────────────
 
     function test_timer_extends_on_buy() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         uint256 initialDeadline = tc.deadline();
 
         vm.warp(block.timestamp + 100);
@@ -364,7 +409,7 @@ contract TimeCurveTest is Test {
     /// @dev Invariant: deadline never exceeds block.timestamp + timerCapSec (extension cap; threat #2).
     function test_timer_cap_fuzz(uint16 numBuys) public {
         uint256 n = uint256(numBuys) % 20 + 1;
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         uint256 ts = block.timestamp;
         for (uint256 i; i < n; ++i) {
             unchecked {
@@ -402,7 +447,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcWide));
         launchedToken.mint(address(tcWide), 1_000_000e18);
-        tcWide.startSale();
+        tcWide.startSaleAt(block.timestamp);
         assertEq(tcWide.deadline(), block.timestamp + ONE_DAY);
 
         _fundAndApproveCurve(alice, 2e18, tcWide);
@@ -440,7 +485,7 @@ contract TimeCurveTest is Test {
     // ── Sale end and claims ────────────────────────────────────────────
 
     function test_endSale_and_claim() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(2e18);
@@ -464,7 +509,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_redeemCharms_reverts_before_end() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -475,7 +520,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_double_redeem_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -490,7 +535,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_redeemCharms_reverts_while_charm_redemption_disabled() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -503,7 +548,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_distributePrizes_reverts_while_reserve_podium_payouts_disabled() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -516,7 +561,7 @@ contract TimeCurveTest is Test {
 
     /// @dev GitLab #70 — `distributePrizes` is `onlyOwner` (manual review of execution, not only the enable flag).
     function test_distributePrizes_reverts_for_non_owner() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -528,7 +573,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_buy_reverts_when_sale_interactions_disabled() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         tc.setBuyFeeRoutingEnabled(false);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
@@ -538,7 +583,7 @@ contract TimeCurveTest is Test {
 
     /// @dev WarBow CL8Y burns share `buyFeeRoutingEnabled` with `buy` (issue #55).
     function test_warbow_cl8y_burns_revert_when_sale_interactions_disabled() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 100e18);
         tc.setBuyFeeRoutingEnabled(false);
         vm.prank(alice);
@@ -549,7 +594,7 @@ contract TimeCurveTest is Test {
     // ── Min buy growth ─────────────────────────────────────────────────
 
     function test_minBuy_grows_over_time() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         uint256 mb0 = tc.currentMinBuyAmount();
         vm.warp(block.timestamp + ONE_DAY);
         uint256 mb1 = tc.currentMinBuyAmount();
@@ -561,7 +606,7 @@ contract TimeCurveTest is Test {
     // ── Prize podiums ──────────────────────────────────────────────────
 
     function test_last_buyers_podium() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -589,7 +634,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_warbow_ladder_podium_orders_by_battle_points() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         for (uint256 i; i < 3; ++i) {
             _fundAndApprove(alice, 2e18);
@@ -643,7 +688,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcClip));
         launchedToken.mint(address(tcClip), 1_000_000e18);
-        tcClip.startSale();
+        tcClip.startSaleAt(block.timestamp);
 
         vm.warp(block.timestamp + 100);
         _fundAndApproveCurve(alice, 2e18, tcClip);
@@ -675,7 +720,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcCap));
         launchedToken.mint(address(tcCap), 1_000_000e18);
-        tcCap.startSale();
+        tcCap.startSaleAt(block.timestamp);
 
         _fundAndApproveCurve(alice, 2e18, tcCap);
         vm.prank(alice);
@@ -688,7 +733,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
 
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
@@ -706,7 +751,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_warbow_steal_revert_2x_rule() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -723,7 +768,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_warbow_revenge_once() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -749,7 +794,7 @@ contract TimeCurveTest is Test {
     /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).
     function test_warbow_revenge_reverts_after_end_sale() public {
         TimeCurve t = _newTimeCurveShortTimer(500);
-        t.startSale();
+        t.startSaleAt(block.timestamp);
         vm.warp(t.saleStart() + 10);
         _fundAndApproveCurve(alice, 2e18, t);
         vm.prank(alice);
@@ -770,7 +815,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_warbow_guard_emits_cl8y_burned() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 100e18);
         vm.expectEmit(true, true, false, true);
         emit TimeCurve.WarBowCl8yBurned(
@@ -783,7 +828,7 @@ contract TimeCurveTest is Test {
     /// @dev After a hard reset, remaining is exactly 15m; warp so remaining < 15m before the second qualifying buy.
     function test_defended_streak_same_wallet_two_resets_under_15m_window() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);
-        t800.startSale();
+        t800.startSaleAt(block.timestamp);
         vm.warp(t800.saleStart() + 100);
         _fundAndApproveCurve(alice, 4e18, t800);
         vm.prank(alice);
@@ -802,7 +847,7 @@ contract TimeCurveTest is Test {
     /// @dev Second wallet buying inside the window clears the first wallet's **active** streak; best stays recorded.
     function test_defended_streak_second_player_under_window_ends_first_active() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);
-        t800.startSale();
+        t800.startSaleAt(block.timestamp);
         vm.warp(t800.saleStart() + 100);
         _fundAndApproveCurve(alice, 2e18, t800);
         vm.prank(alice);
@@ -822,7 +867,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Buys while at least 15 minutes remain do not increase defended streak.
     function test_defended_streak_no_increment_outside_15m_window() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 4e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -837,7 +882,7 @@ contract TimeCurveTest is Test {
     /// @dev Buy with remaining ≥ window clears active streak holder; best unchanged.
     function test_defended_streak_leaving_window_clears_active() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);
-        t800.startSale();
+        t800.startSaleAt(block.timestamp);
         vm.warp(t800.saleStart() + 100);
         _fundAndApproveCurve(alice, 4e18, t800);
         vm.prank(alice);
@@ -863,7 +908,7 @@ contract TimeCurveTest is Test {
     /// @dev With 5+ buys, podium keeps the three most recent buyers; values are 3,2,1 (ordering / ranking).
     function test_last_buy_three_most_recent_rank_values() public {
         address eve = makeAddr("eve");
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -894,7 +939,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Last-buy 1st place receives reserve from `distributePrizes` (four-category settlement).
     function test_last_buy_distribute_prizes_pays_first_place() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -922,7 +967,7 @@ contract TimeCurveTest is Test {
 
     /// @dev `totalEffectiveTimerSecAdded` matches the sum of per-buy deadline deltas.
     function test_time_booster_score_matches_sum_of_deadline_deltas() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 20e18);
         uint256 d0 = tc.deadline();
         vm.prank(alice);
@@ -941,7 +986,7 @@ contract TimeCurveTest is Test {
     /// @dev Under-15m remaining: Time booster still credits **actual** `newDeadline - oldDeadline` only.
     function test_time_booster_under_15m_window_uses_actual_seconds_added() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);
-        t800.startSale();
+        t800.startSaleAt(block.timestamp);
         vm.warp(t800.saleStart() + 100);
         uint256 beforeD = t800.deadline();
         _fundAndApproveCurve(alice, 4e18, t800);
@@ -953,7 +998,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Leaderboard: higher total effective seconds ranks above lower.
     function test_time_booster_leaderboard_orders_by_total_effective_seconds() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 30e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -980,7 +1025,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Min vs max CHARM in band at start: each qualifying buy adds base BP (no reset bonus on 24h clock).
     function test_warbow_base_bp_flat_per_buy_independent_of_charm_wad() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
         uint256 spendMin = tc.currentMinBuyAmount();
         uint256 spendMax = tc.currentMaxBuyAmount();
@@ -1002,7 +1047,7 @@ contract TimeCurveTest is Test {
     /// @dev Remaining < 13m triggers hard reset toward 15m; awards reset + ambush when breaking a 1-tick streak.
     function test_timer_hard_reset_below_13m_and_ambush_bonus() public {
         TimeCurve t800 = _newTimeCurveShortTimer(800);
-        t800.startSale();
+        t800.startSaleAt(block.timestamp);
         vm.warp(t800.saleStart() + 100);
         _fundAndApproveCurve(alice, 2e18, t800);
         vm.prank(alice);
@@ -1025,7 +1070,7 @@ contract TimeCurveTest is Test {
     /// @dev Three defended increments: park `now` at `deadline - 700s` before buys 2–3 so remaining stays in (<13m, <15m) band.
     function test_defended_streak_same_wallet_three_resets_under_15m() public {
         TimeCurve t600 = _newTimeCurveShortTimer(600);
-        t600.startSale();
+        t600.startSaleAt(block.timestamp);
         vm.warp(t600.saleStart() + 100);
         _fundAndApproveCurve(alice, 20e18, t600);
         vm.prank(alice);
@@ -1044,7 +1089,7 @@ contract TimeCurveTest is Test {
     /// @dev Podium uses **best** streak; after a rival ends your active run, your peak stays on the board.
     function test_defended_streak_podium_orders_by_best_streak() public {
         TimeCurve t600 = _newTimeCurveShortTimer(600);
-        t600.startSale();
+        t600.startSaleAt(block.timestamp);
         vm.warp(t600.saleStart() + 100);
         _fundAndApproveCurve(alice, 20e18, t600);
         vm.prank(alice);
@@ -1076,7 +1121,7 @@ contract TimeCurveTest is Test {
 
     function test_round_settlement_four_categories_podium_payouts_smoke() public {
         TimeCurve t = _newTimeCurveShortTimer(800);
-        t.startSale();
+        t.startSaleAt(block.timestamp);
         vm.warp(t.saleStart() + 100);
 
         _fundAndApproveCurve(alice, 80e18, t);
@@ -1131,7 +1176,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_fees_routed_on_buy() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 10e18);
         vm.prank(alice);
         tc.buy(10e18);
@@ -1152,7 +1197,7 @@ contract TimeCurveTest is Test {
         uint256 initMin = tc.initialMinBuy();
         address cp = address(tc.charmPrice());
 
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 3e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -1170,7 +1215,7 @@ contract TimeCurveTest is Test {
     ///      `docs/onchain/security-and-threat-model.md` — TimeCurve threat #1.
     function test_sameBlock_buyOrder_lastBuyerReflectsSecondCall() public {
         uint256 bn = block.number;
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         _fundAndApprove(bob, 5e18);
 
@@ -1192,7 +1237,7 @@ contract TimeCurveTest is Test {
     // ── Ended state invariant ──────────────────────────────────────────
 
     function test_buy_after_end_reverts() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -1352,7 +1397,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcSmall));
         launchedToken.mint(address(tcSmall), 1);
-        tcSmall.startSale();
+        tcSmall.startSaleAt(block.timestamp);
         _fundAndApproveCurve(alice, 10e18, tcSmall);
         _fundAndApproveCurve(bob, 10e18, tcSmall);
         vm.prank(alice);
@@ -1372,7 +1417,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Empty vault must not set `prizesDistributed` (otherwise a griefer could brick prizes forever).
     function test_distributePrizes_empty_vault_is_retryable() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -1393,7 +1438,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Tiny pool with no payable integer splits for filled podiums should stay retryable.
     function test_distributePrizes_dust_pool_is_retryable() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -1410,7 +1455,7 @@ contract TimeCurveTest is Test {
     }
 
     function test_distributePrizes_reduces_vault_and_sets_flag() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
         tc.buy(1e18);
@@ -1439,7 +1484,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Min/max CHARM share one envelope factor; integer `mulDiv` floors ⇒ check ~10/0.99 within rounding slack.
     function test_charmBounds_ratio_10_over_099_fuzz(uint32 elapsedSec) public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         uint256 el = uint256(elapsedSec) % (30 * ONE_DAY);
         vm.warp(block.timestamp + el);
         (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
@@ -1453,7 +1498,7 @@ contract TimeCurveTest is Test {
 
     /// @dev CHARM bounds scale ~20%/day with canonical `growthRateWad` (exponential envelope).
     function test_charmBounds_scale_approx_20_percent_per_day() public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         (uint256 min0, uint256 max0) = tc.currentCharmBoundsWad();
         vm.warp(block.timestamp + ONE_DAY);
         (uint256 min1, uint256 max1) = tc.currentCharmBoundsWad();
@@ -1463,7 +1508,7 @@ contract TimeCurveTest is Test {
 
     /// @dev Gross spend equals `charmWad * priceWad / WAD` for arbitrary valid CHARM in band (fuzz).
     function test_buy_charmWad_in_bounds_fuzz(uint128 charmRaw) public {
-        tc.startSale();
+        tc.startSaleAt(block.timestamp);
         (uint256 minC, uint256 maxC) = tc.currentCharmBoundsWad();
         uint256 c = bound(uint256(charmRaw), minC, maxC);
         uint256 p = tc.currentPricePerCharmWad();
@@ -1495,7 +1540,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcLin));
         launchedToken.mint(address(tcLin), 1_000_000e18);
-        tcLin.startSale();
+        tcLin.startSaleAt(block.timestamp);
 
         assertEq(tcLin.currentPricePerCharmWad(), 1e18);
         vm.warp(block.timestamp + ONE_DAY);
@@ -1555,7 +1600,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
         launchedToken.mint(address(tcd), 1_000_000e18);
-        tcd.startSale();
+        tcd.startSaleAt(block.timestamp);
         _fundAndApproveCurve(alice, 5e18, tcd);
         vm.prank(alice);
         tcd.buy(1e18);
@@ -1583,7 +1628,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
         launchedToken.mint(address(tcd), 1_000_000e18);
-        tcd.startSale();
+        tcd.startSaleAt(block.timestamp);
         _fundAndApproveCurve(alice, 5e18, tcd);
         vm.prank(alice);
         tcd.buy(1e18);
@@ -1616,7 +1661,7 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tcd));
         launchedToken.mint(address(tcd), 1_000_000e18);
-        tcd.startSale();
+        tcd.startSaleAt(block.timestamp);
         _fundAndApproveCurve(alice, 5e18, tcd);
         _fundAndApproveCurve(bob, 5e18, tcd);
         vm.prank(alice);
