@@ -13,7 +13,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 - [x] **Command:**  
   `cd contracts && forge script script/DeployDev.s.sol:DeployDev --rpc-url <RPC> --broadcast --code-size-limit 524288` (and Anvil with `--code-size-limit 524288`; see [foundry-and-megaeth.md](../contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas))
-- [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and **`TimeCurve.startSaleAt(block.timestamp)`** after deploy so **deposit** and **buy** work immediately (**`startSaleAt`** replaces legacy `startSale` — [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
+- [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and schedules **`TimeCurve.startSaleAt(block.timestamp + YIELDOMEGA_DEV_SALE_START_DELAY_SEC)`** after deploy so Forge broadcast simulation time cannot become a past epoch by the execution transaction. Local stack scripts then advance Anvil to that `saleStart` before rich-state or live-sale QA, so **deposit** and **buy** work immediately for the run (**`startSaleAt`** replaces legacy `startSale` — [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
 - [x] **Deterministic addresses** (same mnemonic / deploy order): see [contracts/deployments/stage2-anvil-registry.json](../../contracts/deployments/stage2-anvil-registry.json) for `TimeCurve`, `RabbitTreasury`, `LeprechaunNFT` (template for `ADDRESS_REGISTRY_PATH`).
 
 ---
@@ -101,7 +101,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 ```bash
 # Terminal A — Anvil (pick a free port)
-anvil --host 127.0.0.1 --port 18545 --code-size-limit 524288
+anvil --host 127.0.0.1 --port 18545 --gas-limit 60000000 --code-size-limit 524288
 
 # Deploy
 cd contracts && forge script script/DeployDev.s.sol:DeployDev \

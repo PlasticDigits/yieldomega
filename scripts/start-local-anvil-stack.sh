@@ -26,6 +26,10 @@
 #
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # DeployDev uses forge --code-size-limit 524288 (EIP-170 pre-broadcast sim + MegaEVM-sized TimeCurve).
+# Local Anvil uses a higher block gas limit by default because DeployDev broadcasts the whole dev stack
+# and can exceed Anvil's 30M default on current Foundry builds. Override with YIELDOMEGA_ANVIL_GAS_LIMIT.
+# DeployDev schedules TimeCurve saleStart safely ahead for broadcast; this stack advances local Anvil
+# to that saleStart before rich-state simulation or live-sale QA. Override delay with YIELDOMEGA_DEV_SALE_START_DELAY_SEC.
 # Usage from repo root:
 #   bash scripts/start-local-anvil-stack.sh
 # Optional **full Kumbaya + buy-router parity** (same fixtures as `scripts/e2e-anvil.sh`; indexer ingests `BuyViaKumbaya` — GitLab #84):
@@ -47,6 +51,7 @@ REGISTRY_OUT="${CONTRACTS}/deployments/local-anvil-registry.json"
 
 ANVIL_PORT="${ANVIL_PORT:-8545}"
 RPC_URL="${RPC_URL:-http://127.0.0.1:${ANVIL_PORT}}"
+ANVIL_GAS_LIMIT="${YIELDOMEGA_ANVIL_GAS_LIMIT:-60000000}"
 PG_HOST_PORT="${PG_HOST_PORT:-5433}"
 INDEXER_PORT="${INDEXER_PORT:-3100}"
 DOCKER_PG="${DOCKER_PG:-yieldomega-pg}"
@@ -173,7 +178,8 @@ else
     fi
   fi
   # MegaEVM 512 KiB max deployed code (524288 = 0x80000) — Anvil's --code-size-limit is decimal only.
-  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --code-size-limit 524288 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
+  # DeployDev can exceed Anvil's default 30M block gas limit; keep local stack roomy and explicit.
+  anvil --host 127.0.0.1 --port "${ANVIL_PORT}" --gas-limit "${ANVIL_GAS_LIMIT}" --code-size-limit 524288 "${ANVIL_EXTRA[@]}" >/tmp/yieldomega_anvil_stack.log 2>&1 &
   echo $! > /tmp/yieldomega_anvil_stack.pid
   for _ in $(seq 1 30); do
     cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1 && break
@@ -198,6 +204,35 @@ env -u RESERVE_ASSET_ADDRESS -u USDM_ADDRESS forge script script/DeployDev.s.sol
   --broadcast --rpc-url "${RPC_URL}" --optimizer-runs 1 --code-size-limit 524288 -vv > "${DEPLOY_LOG}" 2>&1
 [[ -f "${RUN_JSON}" ]] || { tail -n 60 "${DEPLOY_LOG}" >&2; die "Missing ${RUN_JSON} (see ${DEPLOY_LOG})"; }
 
+extract_addr_from_log() {
+  local label="$1"
+  grep -E "^[[:space:]]*${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
+}
+
+block_ts_dec() {
+  cast block latest --rpc-url "${RPC_URL}" --json | jq -r '.timestamp' | head -1 | cast to-dec
+}
+
+warp_to_timecurve_sale_start() {
+  local tc="$1"
+  local sale_start
+  local now
+  sale_start="$(cast call "${tc}" "saleStart()(uint256)" --rpc-url "${RPC_URL}" | awk '{print $1}' | cast to-dec)"
+  now="$(block_ts_dec)"
+  if [[ "${sale_start}" -le "${now}" ]]; then
+    echo "TimeCurve saleStart ${sale_start} already live at chain time ${now}."
+    return 0
+  fi
+  local delta=$((sale_start - now))
+  echo "Advancing Anvil ${delta}s to TimeCurve saleStart ${sale_start} (GitLab #114)."
+  cast rpc --rpc-url "${RPC_URL}" anvil_increaseTime "$(printf '0x%x' "${delta}")" >/dev/null
+  cast rpc --rpc-url "${RPC_URL}" anvil_mine 1 >/dev/null
+}
+
+TC="$(extract_addr_from_log "TimeCurve")"
+[[ -n "${TC}" ]] || die "Could not parse TimeCurve from ${DEPLOY_LOG}."
+warp_to_timecurve_sale_start "${TC}"
+
 if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
   echo "=== Simulate (rich state) === SKIPPED (SKIP_ANVIL_RICH_STATE=1)"
 else
@@ -210,10 +245,6 @@ echo "=== Write ${REGISTRY_OUT} ==="
 # PodiumPool, …) live behind ERC1967 proxies. The broadcast JSON's `contractName`
 # labels the impl, not the proxy, so we grep the `console.log` lines emitted by
 # `DeployDev.s.sol` instead (same approach as `scripts/lib/anvil_deploy_dev.sh`).
-extract_addr_from_log() {
-  local label="$1"
-  grep -E "^[[:space:]]*${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
-}
 TC="$(extract_addr_from_log "TimeCurve")"
 RT="$(extract_addr_from_log "RabbitTreasury")"
 FR="$(extract_addr_from_log "FeeRouter")"

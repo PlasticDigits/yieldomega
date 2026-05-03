@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    let chain_timer_cache: Arc<RwLock<Option<chain_timer::ChainTimerSnapshot>>> =
+    let chain_timer_cache: Arc<RwLock<Option<chain_timer::TimecurveHeadSnapshot>>> =
         Arc::new(RwLock::new(None));
 
     if let Some(addr) = config.address_registry.as_ref().and_then(|r| {

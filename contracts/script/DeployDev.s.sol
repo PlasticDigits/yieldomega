@@ -146,8 +146,14 @@ contract DeployDev is Script {
         console.log("TimeCurve:", address(tc));
 
         // Burrow deposits require an open epoch; TimeCurve buys require a started sale.
+        // `forge script --broadcast` evaluates script expressions during simulation, then
+        // broadcasts the resulting transactions. Schedule safely ahead so `startSaleAt`
+        // cannot see the simulated epoch as already in the past by the time its
+        // transaction lands on local Anvil; stack scripts warp to this epoch before QA
+        // simulation/live-sale flows (GitLab #114).
         rt.openFirstEpoch();
-        tc.startSaleAt(block.timestamp);
+        uint256 saleStartDelaySec = vm.envOr("YIELDOMEGA_DEV_SALE_START_DELAY_SEC", uint256(300));
+        tc.startSaleAt(block.timestamp + saleStartDelaySec);
         // Dev convenience: allow post-end flows in local Anvil drills (issue #55 gates default off in `initialize`).
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);

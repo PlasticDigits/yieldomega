@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useQuery } from "@tanstack/react-query";
 import { useReadContracts } from "wagmi";
+import { zeroAddress } from "viem";
 import { timeCurveReadAbi } from "@/lib/abis";
+import { indexerBaseUrl } from "@/lib/addresses";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { fetchTimecurvePodiums } from "@/lib/indexerApi";
+import { reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
+
+export const TIMECURVE_PODIUMS_QUERY_KEY = ["timecurve-podiums"] as const;
 
 type ContractReadRow = {
   status: "success" | "failure";
@@ -16,10 +23,37 @@ export type PodiumReadRow = {
   values: readonly [string, string, string];
 };
 
-export function usePodiumReads(
-  tc: `0x${string}` | undefined,
-  options: { refetchIntervalMs?: number } = {},
-) {
+function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
+  const pad = (i: number) => {
+    const w = (winnersIn[i] ?? "").trim();
+    if (!w || w === "0x") {
+      return zeroAddress;
+    }
+    return w as `0x${string}`;
+  };
+  const vpad = (i: number) => valuesIn[i] ?? "0";
+  return {
+    winners: [pad(0), pad(1), pad(2)],
+    values: [vpad(0), vpad(1), vpad(2)] as const,
+  };
+}
+
+/** Prefer indexer head cache (~1s RPC poll server-side); fall back to direct reads when `VITE_INDEXER_URL` is unset. */
+export function usePodiumReads(tc: `0x${string}` | undefined) {
+  const indexerOn = Boolean(indexerBaseUrl());
+
+  const indexerQuery = useQuery({
+    queryKey: TIMECURVE_PODIUMS_QUERY_KEY,
+    queryFn: async () => {
+      const body = await fetchTimecurvePodiums();
+      reportIndexerFetchAttempt(body != null);
+      return body;
+    },
+    enabled: indexerOn && Boolean(tc),
+    staleTime: 0,
+    refetchInterval: 1000,
+  });
+
   const contracts = tc
     ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
         address: tc,
@@ -28,16 +62,34 @@ export function usePodiumReads(
         args: [category],
       }))
     : [];
-  const { data: rawData, isPending, isFetching, refetch } = useReadContracts({
-    contracts: contracts as readonly unknown[],
-    query: { enabled: Boolean(tc), refetchInterval: options.refetchIntervalMs },
-  });
-  const data = rawData as readonly ContractReadRow[] | undefined;
 
+  const rpc = useReadContracts({
+    contracts: contracts as readonly unknown[],
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
+
+  if (indexerOn) {
+    const raw = indexerQuery.data?.rows ?? [];
+    const rows: PodiumReadRow[] = [0, 1, 2, 3].map((i) =>
+      asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []),
+    );
+    const lastBuyPredictionActive = indexerQuery.data ? !indexerQuery.data.sale_ended : false;
+
+    return {
+      data: rows,
+      lastBuyPredictionActive,
+      isLoading: indexerQuery.isPending,
+      isFetching: indexerQuery.isFetching,
+      refetch: indexerQuery.refetch,
+      source: "indexer" as const,
+    };
+  }
+
+  const rawData = rpc.data as readonly ContractReadRow[] | undefined;
   const rows: PodiumReadRow[] =
-    data?.map((r) => {
+    rawData?.map((r) => {
       if (r.status !== "success") {
-        return { winners: ["0x0", "0x0", "0x0"] as const, values: ["0", "0", "0"] as const };
+        return asPodiumRow([], []);
       }
       const result = r.result as readonly [readonly `0x${string}`[], readonly (bigint | string)[]];
       const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
@@ -52,5 +104,12 @@ export function usePodiumReads(
       };
     }) ?? [];
 
-  return { data: rows, isLoading: isPending, isFetching, refetch };
+  return {
+    data: rows,
+    lastBuyPredictionActive: false,
+    isLoading: rpc.isPending,
+    isFetching: rpc.isFetching,
+    refetch: rpc.refetch,
+    source: "rpc" as const,
+  };
 }
