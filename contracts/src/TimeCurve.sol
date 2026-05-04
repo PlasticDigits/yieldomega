@@ -76,7 +76,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint8 public constant WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY = 3;
 
     uint256 public constant SECONDS_PER_DAY = 86_400;
-    /// @notice Wall-clock upper bound (seconds) on interactive sale phase from `saleStart` for buys & WarBow burns (GitLab #124 / audit I-01).
+    /// @notice Wall-clock upper bound (seconds) on **pricing elapsed** and on **`block.timestamp`** for buys & WarBow CL8Y burns (GitLab #124 / audit I-01).
+    /// @dev The cap check is **inclusive**: **`block.timestamp == saleStart + MAX_SALE_ELAPSED_SEC`** still passes so a buy can land on the last second of the 300-day window when **`deadline`** remains **`>`** `block.timestamp` (typically **`deadline == saleStart + MAX_SALE_ELAPSED_SEC + 1`** after timer extension clamp — see `_buy` ordering).
     uint256 public constant MAX_SALE_ELAPSED_SEC = 300 * SECONDS_PER_DAY;
     /// @notice Governance may sweep unredeemed **launchedToken** (full ERC-20 balance here) only after this many
     ///         seconds after **`saleEndedAt`** (set in `endSale`). Mirrors the **empty-podium residual** pattern
@@ -426,6 +427,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
+        // Inclusive last second at the 300-day wall (`<=`) — issue #124 discussion / product intent.
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         require(block.timestamp < deadline, "TimeCurve: timer expired");
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeCurve: buy cooldown");
