@@ -57,8 +57,9 @@ Resolve truth in this order; **indexers must not override** onchain state for **
 1. Read [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) end-to-end before suggesting amounts or strategies.
 2. Use **onchain** reads for **epoch id**, **balances**, **params**, and **pause** state relevant to the deployment.
 3. Explain that **withdraw** and **deposit** paths depend on **current parameters** the human can read from chain.
-4. For **expected reserve payout** on a withdraw, point to onchain **`previewWithdraw`** (when the caller is the user’s wallet) or **`previewWithdrawFor(user, …)`** when simulating from another address—see [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) § withdraw formula (not nominal 1:1 minus a simple fee).
-5. Encourage the human to monitor **reserve health** concepts from **canonical events**, not social media rumors.
+4. **`withdraw`** burns DOUB via **`ERC20Burnable.burnFrom`**: the participant must **`approve` DOUB** to the **`RabbitTreasury`** proxy for at least the redeemed amount before submitting **`withdraw`** ([GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132), [`INV-DOUB-132`](../../docs/testing/invariants-and-business-logic.md#doubloon-allowance-burn-gitlab-132)).
+5. For **expected reserve payout** on a withdraw, point to onchain **`previewWithdraw`** (when the caller is the user’s wallet) or **`previewWithdrawFor(user, …)`** when simulating from another address—see [`docs/product/rabbit-treasury.md`](../../docs/product/rabbit-treasury.md) § withdraw formula (not nominal 1:1 minus a simple fee).
+6. Encourage the human to monitor **reserve health** concepts from **canonical events**, not social media rumors.
 
 ## What you must not do
 
