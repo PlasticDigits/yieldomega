@@ -109,6 +109,12 @@ the result into `derivePhase` and the simple-view pre-start window. On-chain
 the indexer (and bots) are using — common on local Anvil and multi-rail
 setups.
 
+<a id="inclusive-round-deadline-issue-136"></a>
+
+**Inclusive round `deadline()` + WarBow cutoff ([issue #136](https://gitlab.com/PlasticDigits/yieldomega/-/issues/136)):** **`TimeCurve`** lets **`buy` / `buyFor`**, **`claimWarBowFlag`**, and WarBow **`warbowSteal` / `warbowRevenge` / `warbowActivateGuard`** succeed through **`block.timestamp == deadline()`**; they revert **`timer expired`** only when **`block.timestamp > deadline()`**. **`endSale`** succeeds only when **`block.timestamp > deadline()`**. **`derivePhase`** mirrors that: **`saleExpiredAwaitingEnd`** when **`ledgerSecInt > deadlineSec`**, not **`>=`**, so the hero/badge do not show “expired” until the block after the inclusive last countdown second. **`TimeCurveBuyRouter.buyViaKumbaya`** uses **`block.timestamp > deadline()`** for **`BadSalePhase`** past-round semantics.
+
+**Participant play skills:** [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md). Contributor map: [**invariants — #136**](../testing/invariants-and-business-logic.md#timecurve-round-deadline-inclusive-warbow-gitlab-136).
+
 <a id="scheduled-sale-start-onsalestartsaleat-issue-114"></a>
 
 **Scheduled on-chain starts ([issue #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)):** Operators use **`startSaleAt(epoch)`** so **`saleStart`** can be announced **ahead of wall/mempool drift**, with **`epoch >= block.timestamp`** at call time. Until **`saleStart` arrives on chain**, **`buy`** and WarBow CL8Y paths revert **`"TimeCurve: sale not live"`**; **`deadline`** is **`saleStart + initialTimerSec`** so the opening timer band is tied to **`epoch`**. Read-model CHARM/min-max/price snapshots follow **elapsed-from-live** (**0** until **`now ≥ saleStart`**). Frontend **`saleStartPending`** (see `derivePhase`) should mirror **`saleStart` vs the same indexer-anchored “now”** as [**issue #48**](#chain-time-and-sale-phase-issue-48); map: [**invariants — `startSaleAt` / #114**](../testing/invariants-and-business-logic.md#timecurve-startsaleat-issue-114).
