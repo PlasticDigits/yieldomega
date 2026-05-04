@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted
-//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included),
+//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included;
+//! GitLab [#139](https://gitlab.com/PlasticDigits/yieldomega/-/issues/139) `PodiumResidualRecipientSet` + buy-router `EthRescued`/`Erc20Rescued`),
 //! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
 //! referral / prize tables), then HTTP API smoke.
 //!
@@ -702,8 +703,22 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             recipient: addr_byte(0x46),
             amount: u2,
         }),
+        next(DecodedEvent::TimeCurvePodiumResidualRecipientSet {
+            recipient: addr_byte(0x47),
+        }),
         next(DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: u2 }),
-        next(DecodedEvent::PodiumPoolPrizePusherSet { pusher: addr_byte(0x55) }),
+        next(DecodedEvent::TimeCurveBuyRouterEthRescued {
+            to: addr_byte(0x48),
+            amount: u1,
+        }),
+        next(DecodedEvent::TimeCurveBuyRouterErc20Rescued {
+            token: reserve,
+            to: addr_byte(0x49),
+            amount: u2,
+        }),
+        next(DecodedEvent::PodiumPoolPrizePusherSet {
+            pusher: addr_byte(0x55),
+        }),
         next(DecodedEvent::RabbitBurrowReserveBuckets {
             epoch_id: u1,
             redeemable_backing: u1,
@@ -787,10 +802,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_referral_code_registered", 100).await,
         1
     );
-    assert_eq!(
-        count_where(&pool, "idx_podium_pool_paid", 100).await,
-        1
-    );
+    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_rabbit_epoch_opened", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_rabbit_health_epoch_finalized", 100).await,
@@ -833,7 +845,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
+        1
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
         1
@@ -842,7 +857,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
+        1
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
         1
@@ -901,7 +919,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(
+        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
+        1
+    );
+    assert_eq!(
         count_where(&pool, "idx_timecurve_buy_router_cl8y_surplus", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
         1
     );
     assert_eq!(
@@ -937,7 +967,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     persist_decoded_log(&pool, first).await.expect("replay");
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     let k_last = logs.last().expect("kumbaya log");
-    persist_decoded_log(&pool, k_last).await.expect("replay kumbaya");
+    persist_decoded_log(&pool, k_last)
+        .await
+        .expect("replay kumbaya");
     assert_eq!(
         count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
         1
@@ -1066,7 +1098,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 0);
     // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
         0
@@ -1075,7 +1110,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         0
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
         0
@@ -1105,6 +1143,18 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(
+        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
+        0
+    );
+    assert_eq!(
         count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
         0
     );
@@ -1126,10 +1176,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_referral_code_registered", 100).await,
         0
     );
-    assert_eq!(
-        count_where(&pool, "idx_podium_pool_paid", 100).await,
-        0
-    );
+    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 0);
     assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);
     assert_eq!(
         count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
