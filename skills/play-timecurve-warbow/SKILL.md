@@ -28,6 +28,7 @@ For participant-owned **TS / Python** tooling (reads, submits, WarBow-related ca
 
 ## Core rules (participant-facing)
 
+- **Round timer vs WarBow:** **`deadline()`** is the **last inclusive** second **`buy`** and WarBow mutations (steal / revenge / guard / **flag claim** BP) remain onchain-valid; after **`block.timestamp > deadline()`**, txs revert **`timer expired`** until **`endSale`** runs (**[GitLab #136](https://gitlab.com/PlasticDigits/yieldomega/-/issues/136)** — contributor map [`invariants §136`](../../docs/testing/invariants-and-business-logic.md#timecurve-round-deadline-inclusive-warbow-gitlab-136)).
 - **Timer:** Each qualifying buy either **extends** the sale end by the configured extension **or**, if **remaining time before the buy** is **strictly below 13 minutes**, performs a **hard reset** so remaining snaps toward **15 minutes** (still capped by the global timer cap). See onchain `TimeMath.extendDeadlineOrResetBelowThreshold`.
 - **BP from buys:** Base, hard-reset bonus, **clutch** (remaining before buy **&lt; 30s**), **streak-break**, **ambush** (hard reset plus streak-break in same tx)—see **Documented defaults**; verify `WARBOW_*` on deployment.
 - **Defended streak (prize category + WarBow context):** Under **15 minutes** remaining, streak logic and **best** streak for the podium are onchain; WarBow uses **active** streak of the **last buyer under the window** for break/ambush calculations (see primitives).

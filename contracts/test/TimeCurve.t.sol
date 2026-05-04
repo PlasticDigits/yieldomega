@@ -301,6 +301,59 @@ contract TimeCurveTest is Test {
         tc.endSale();
     }
 
+    /// @dev GitLab #136 — **`endSale`** is **`> deadline`**; same second as inclusive last buy remains blocked.
+    function test_end_sale_reverts_until_strictly_after_deadline() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        uint256 dl = tc.deadline();
+        vm.warp(dl);
+        vm.expectRevert("TimeCurve: timer not expired");
+        tc.endSale();
+        vm.warp(dl + 1);
+        tc.endSale();
+        assertTrue(tc.ended());
+    }
+
+    /// @dev GitLab #136 — inclusive round timer; a first buy may land on **`block.timestamp == deadline()`** (no prior cooldown).
+    function test_buy_succeeds_at_deadline_second() public {
+        tc.startSaleAt(block.timestamp);
+        vm.warp(tc.deadline());
+        (uint256 minCharm,) = tc.currentCharmBoundsWad();
+        uint256 spend = tc.currentMinBuyAmount();
+        _fundAndApprove(alice, spend);
+        vm.prank(alice);
+        tc.buy(minCharm);
+    }
+
+    /// @dev GitLab #136 — Finding 6: no WarBow steal after **`deadline`** until **`endSale`** settles phase.
+    function test_gitlab136_warbow_steal_reverts_when_past_deadline_before_endsale() public {
+        TimeCurve t = _newTimeCurveShortTimer(500);
+        t.startSaleAt(block.timestamp);
+
+        vm.warp(t.saleStart() + 10);
+        _fundAndApproveCurve(alice, 2e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+
+        vm.warp(t.deadline() + 1);
+        uint256 aliceBpBefore = t.battlePoints(alice);
+        assertFalse(t.ended());
+
+        _fundAndApproveCurve(bob, t.WARBOW_STEAL_BURN_WAD(), t);
+        vm.prank(bob);
+        vm.expectRevert("TimeCurve: timer expired");
+        t.warbowSteal(alice, false);
+        assertEq(t.battlePoints(alice), aliceBpBefore);
+
+        vm.warp(t.deadline() + 2);
+        t.endSale();
+        vm.prank(bob);
+        vm.expectRevert("TimeCurve: bad phase");
+        t.warbowSteal(alice, false);
+    }
+
     function test_buy_basic() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
