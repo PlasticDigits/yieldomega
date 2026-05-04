@@ -112,6 +112,8 @@ Recommendation:
 - Add a rescue function gated by governance for unrelated stuck tokens.
 - Add tests for pre-seeded WETH/stable balances.
 
+**Status (GitLab [#117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117)):** Implemented on **`main`** — net-of-snapshot **`PAY_ETH` / `PAY_STABLE`** refunds, **`Ownable2Step`** **`rescueETH` / `rescueERC20`**, Forge tests in [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol); invariant map [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timecurve-buy-router-net-refund-rescue-issue-117).
+
 ### M-03: `RabbitTreasury` parameter setters lack bounds for several math-critical values
 
 Affected contract: `RabbitTreasury`

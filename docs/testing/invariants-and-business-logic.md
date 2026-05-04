@@ -376,6 +376,19 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 **CL8Y surplus (issue #70):** After `buyFor`, any **CL8Y** remaining on the router (exact-output dust / rounding, or accidental pre-seed on the router) is **`safeTransfer`’d to `cl8yProtocolTreasury`** — not refunded to the buyer. Constructor requires a **non-zero** treasury address. **`Cl8ySurplusToProtocol`** event. Tests: [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol) `test_buyViaKumbaya_preseed_cl8y_surplus_routes_to_protocol_treasury`. [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70) · [CL8Y flow audit](../onchain/cl8y-flow-audit.md).
 
+<a id="timecurve-buy-router-net-refund-rescue-issue-117"></a>
+
+### `TimeCurveBuyRouter` — net WETH/USDM refunds + owner rescue ([issue #117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117))
+
+**Intent:** Audit **M‑02** (pre‑seed **WETH** / **`stableToken`** could be refunded to **`buyViaKumbaya`** callers as if it were marginal unused input). The router snapshots **opening** **`balanceOf(this)`** for the funding leg **before** `deposit`/`transferFrom`; post‑`exactOutput`, **PAY_ETH** unwraps **`balanceAfter − snapshot`** and **`call`s** exactly that ETH to **`msg.sender`**; **PAY_STABLE** **`safeTransfer`s** **`balanceAfter − snapshot`** only. Opening stranded balances therefore **stay** until governance rescue.
+
+| Invariant ID | Statement |
+|----------------|-----------|
+| **`INV-BUYROUTER-117-NET-REFUND`** | Refund \(\le\) \(\Delta\) input token balance since the snapshot; **never** implicitly pays out third‑party deposits to the buyer. |
+| **`INV-BUYROUTER-117-RESCUE`** | **`rescueETH` / `rescueERC20`** are **`onlyOwner`** (**[`Ownable2Step`](../../contracts/lib/openzeppelin-contracts/contracts/access/Ownable2Step.sol)**), **`nonReentrant`**, allow **`amount == type(uint256).max`** ⇒ full sweep; emit **`EthRescued`** / **`Erc20Rescued`**. (**Indexer:** optional decoding of rescue events — not required for game reads.) |
+
+**Constructor:** `initialOwner` (non‑zero, same trust domain as **TimeCurve** ops — typically multisig aligned) is explicit from deploy scripts; **`DeployKumbayaAnvilFixtures`** passes **`deployer`** for **`cl8yProtocolTreasury`** and **`initialOwner`** on Anvil. **Forge:** `test_issue117_buyViaKumbaya_preseed_*`, `test_issue117_rescue_*` in [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol). **Product / integration narrative:** [`kumbaya.md` § single‑tx router](../integrations/kumbaya.md#issue-65-single-tx-router).
+
 ---
 
 <a id="referrals-page-visual-issue-64"></a>
