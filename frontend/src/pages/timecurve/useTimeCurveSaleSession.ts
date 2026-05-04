@@ -40,6 +40,11 @@ import {
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
+import {
+  assertWalletBuySessionUnchanged,
+  captureWalletBuySession,
+  WALLET_BUY_SESSION_DRIFT_MESSAGE,
+} from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -82,6 +87,9 @@ function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
  *   ETH/USDM (issue #66) — one tx replacing swap + `buy` while preserving sale semantics.
  * - This hook never speaks to the indexer; the simple view stays usable when
  *   only RPC is available.
+ * - **`submitBuy`** latches **`getAccount(wagmi)`** after submit-time sizing and
+ *   aborts when the wallet **disconnects**, **switches accounts**, or **changes
+ *   chains** mid-flow ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
  */
 export type UseTimeCurveSaleSession = {
   ready: boolean;
@@ -900,6 +908,15 @@ export function useTimeCurveSaleSession(
       setBuyError(freshSizing.message);
       return;
     }
+    const buySessionSnapshot = captureWalletBuySession(wagmiConfig);
+    if (
+      !buySessionSnapshot ||
+      buySessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
+      buySessionSnapshot.chainId !== chainId
+    ) {
+      setBuyError(WALLET_BUY_SESSION_DRIFT_MESSAGE);
+      return;
+    }
     const cw = freshSizing.charmWad;
     const amount = freshSizing.spendWei;
 
@@ -914,6 +931,9 @@ export function useTimeCurveSaleSession(
     }
 
     try {
+      const guardBuySession = () =>
+        assertWalletBuySessionUnchanged(wagmiConfig, buySessionSnapshot);
+
       if (payWith !== "cl8y") {
         const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
         if (!k.ok) {
@@ -934,6 +954,7 @@ export function useTimeCurveSaleSession(
           return;
         }
         if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
+          guardBuySession();
           await submitKumbayaSingleTxBuy({
             wagmiConfig,
             writeContractAsync: writeContractAsync as WalletWriteAsync,
@@ -946,6 +967,7 @@ export function useTimeCurveSaleSession(
             charmWad: cw,
             codeHash,
             plantWarBowFlag,
+            sessionSnapshot: buySessionSnapshot,
           });
           if (codeHash) {
             clearPendingReferralCode();
@@ -960,6 +982,7 @@ export function useTimeCurveSaleSession(
           functionName: "quoteExactOutput",
           args: [route.path, amount],
         });
+        guardBuySession();
         const qIn = (quote as readonly [bigint, ...unknown[]])[0];
         const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
 
@@ -971,12 +994,14 @@ export function useTimeCurveSaleSession(
             value: maxIn,
           });
           await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
+          guardBuySession();
           const wAllow = await readContract(wagmiConfig, {
             address: k.config.weth,
             abi: weth9Abi,
             functionName: "allowance",
             args: [address, k.config.swapRouter],
           });
+          guardBuySession();
           if (wAllow < maxIn) {
             const wAp = await writeContractAsync({
               address: k.config.weth,
@@ -985,6 +1010,7 @@ export function useTimeCurveSaleSession(
               args: [k.config.swapRouter, maxUint256],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+            guardBuySession();
           }
         } else if (payWith === "usdm") {
           const uAllow = await readContract(wagmiConfig, {
@@ -993,6 +1019,7 @@ export function useTimeCurveSaleSession(
             functionName: "allowance",
             args: [address, k.config.swapRouter],
           });
+          guardBuySession();
           if (uAllow < maxIn) {
             const uAp = await writeContractAsync({
               address: route.tokenIn,
@@ -1001,10 +1028,12 @@ export function useTimeCurveSaleSession(
               args: [k.config.swapRouter, maxUint256],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
+            guardBuySession();
           }
         }
 
         const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
+        guardBuySession();
         const swapHash = await writeContractAsync({
           address: k.config.swapRouter,
           abi: kumbayaSwapRouterAbi,
@@ -1020,6 +1049,7 @@ export function useTimeCurveSaleSession(
           ],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
+        guardBuySession();
       }
 
       const allow = await readContract(wagmiConfig, {
@@ -1028,6 +1058,7 @@ export function useTimeCurveSaleSession(
         functionName: "allowance",
         args: [address, tc],
       });
+      guardBuySession();
       if (allow < amount) {
         const approveHash = await writeContractAsync({
           address: acceptedAsset,
@@ -1036,6 +1067,7 @@ export function useTimeCurveSaleSession(
           args: [tc, maxUint256],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+        guardBuySession();
       }
       const buyArgs = codeHash
         ? ([cw, codeHash, plantWarBowFlag] as const)
@@ -1048,6 +1080,7 @@ export function useTimeCurveSaleSession(
         functionName: "buy",
         args: buyArgs,
       });
+      guardBuySession();
       playGameSfxCoinHitBuySubmit();
       await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
       if (codeHash) {
