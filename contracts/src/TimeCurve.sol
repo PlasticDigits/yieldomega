@@ -395,6 +395,14 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, ref);
     }
 
+    /// @dev Ingress credit to this contract must match `expected` so accounting matches tokens moved ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
+    function _pullAcceptedExact(address from, uint256 expected) private returns (uint256 received) {
+        uint256 balBefore = acceptedAsset.balanceOf(address(this));
+        acceptedAsset.safeTransferFrom(from, address(this), expected);
+        received = acceptedAsset.balanceOf(address(this)) - balBefore;
+        require(received == expected, "TimeCurve: ERC20 parity");
+    }
+
     /// @param buyer Wallet credited for CHARM weight, WarBow, podiums, cooldown, and referrals.
     /// @param payer Source of accepted-asset (`msg.sender` for normal `buy`; companion router for `buyFor`).
     /// @param plantWarBowFlag If true, this tx sets `warbowPendingFlagOwner` / `warbowPendingFlagPlantAt` to `buyer` / `block.timestamp` (unless same holder opts out of timer reset — see body). If false, pending slot is unchanged when `buyer == warbowPendingFlagOwner` after interrupt handling ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
@@ -420,7 +428,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             require(address(referralRegistry) != address(0), "TimeCurve: referral disabled");
         }
 
-        acceptedAsset.safeTransferFrom(payer, address(this), amount);
+        uint256 received = _pullAcceptedExact(payer, amount);
 
         if (codeHash != bytes32(0)) {
             address referrer = referralRegistry.ownerOfCode(codeHash);
@@ -431,7 +439,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             charmWeight[referrer] += refEach;
             charmWeight[buyer] += refEach;
             totalCharmWeight += refEach * 2;
-            emit ReferralApplied(buyer, referrer, codeHash, refEach, refEach, amount);
+            emit ReferralApplied(buyer, referrer, codeHash, refEach, refEach, received);
         }
 
         uint256 buyerCharmFromBuy = charmWad;
@@ -441,10 +449,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmWeight[buyer] += buyerCharmFromBuy;
         totalCharmWeight += buyerCharmFromBuy;
 
-        acceptedAsset.safeTransfer(address(feeRouter), amount);
-        feeRouter.distributeFees(acceptedAsset, amount);
+        acceptedAsset.safeTransfer(address(feeRouter), received);
+        feeRouter.distributeFees(acceptedAsset, received);
 
-        totalRaised += amount;
+        totalRaised += received;
         buyCount[buyer] += 1;
         _totalBuys += 1;
 
@@ -520,7 +528,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit Buy(
             buyer,
             charmWad,
-            amount,
+            received,
             priceWad,
             deadline,
             totalRaised,
@@ -567,13 +575,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
-        uint8 received = stealsReceivedOnDay[victim][day];
-        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_STEAL_BURN_WAD);
+        uint8 victimStealsToday = stealsReceivedOnDay[victim][day];
+        _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);
         uint256 totalBurn = WARBOW_STEAL_BURN_WAD;
-        if (received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
+        if (victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
             require(payBypassBurn, "TimeCurve: steal victim daily limit");
-            acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
+            _pullAcceptedExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
             emit WarBowCl8yBurned(
                 msg.sender, uint8(WarBowBurnReason.StealLimitBypass), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD
             );
@@ -594,8 +602,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _subBattlePoints(victim, take);
         _addBattlePoints(msg.sender, take);
 
-        if (received < type(uint8).max) {
-            stealsReceivedOnDay[victim][day] = received + 1;
+        if (victimStealsToday < type(uint8).max) {
+            stealsReceivedOnDay[victim][day] = victimStealsToday + 1;
         }
 
         warbowPendingRevengeStealer[victim] = msg.sender;
@@ -606,7 +614,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             victim,
             take,
             totalBurn,
-            payBypassBurn && received >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
+            payBypassBurn && victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
             battlePoints[victim],
             battlePoints[msg.sender]
         );
@@ -622,7 +630,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
         require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
 
-        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_REVENGE_BURN_WAD);
+        _pullAcceptedExact(msg.sender, WARBOW_REVENGE_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Revenge), WARBOW_REVENGE_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_REVENGE_BURN_WAD);
 
@@ -645,7 +653,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleInteractionsEnabled();
-        acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
+        _pullAcceptedExact(msg.sender, WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
 

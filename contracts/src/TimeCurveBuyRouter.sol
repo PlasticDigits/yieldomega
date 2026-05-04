@@ -56,6 +56,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     error TimeCurveBuyRouter__EthMode();
     error TimeCurveBuyRouter__StableMode();
     error TimeCurveBuyRouter__StableNotConfigured();
+    error TimeCurveBuyRouter__StableIngressParity();
     error TimeCurveBuyRouter__EthValue();
     error TimeCurveBuyRouter__ZeroTreasury();
     error TimeCurveBuyRouter__RefundInvariant();
@@ -108,10 +109,9 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
 
         TimeCurve tc = timeCurve;
         uint256 saleStart_ = tc.saleStart();
-        if (
-            saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_
-                || block.timestamp >= tc.deadline()
-        ) revert TimeCurveBuyRouter__BadSalePhase();
+        if (saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_ || block.timestamp >= tc.deadline()) {
+            revert TimeCurveBuyRouter__BadSalePhase();
+        }
 
         (uint256 minCharm, uint256 maxCharm) = tc.currentCharmBoundsWad();
         if (charmWad < minCharm || charmWad > maxCharm) revert TimeCurveBuyRouter__CharmBounds();
@@ -136,6 +136,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
             if (address(stableToken) == address(0)) revert TimeCurveBuyRouter__StableNotConfigured();
             inputSnapshot = stableToken.balanceOf(address(this));
             stableToken.safeTransferFrom(msg.sender, address(this), amountInMaximum);
+            uint256 stableReceived = stableToken.balanceOf(address(this)) - inputSnapshot;
+            if (stableReceived != amountInMaximum) revert TimeCurveBuyRouter__StableIngressParity();
             stableToken.forceApprove(address(kumbayaRouter), amountInMaximum);
         }
 

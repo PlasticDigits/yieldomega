@@ -152,6 +152,7 @@ contract DeployDev is Script {
         // Dev convenience: allow post-end flows in local Anvil drills (issue #55 gates default off in `initialize`).
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);
+        tc.setPodiumResidualRecipient(address(ecoTreasury));
 
         // ── DoubPresaleVesting (dev presale bucket stand-in — GitLab #92) ──
         address[] memory vBen = new address[](2);
