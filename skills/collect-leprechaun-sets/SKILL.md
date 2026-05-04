@@ -23,6 +23,8 @@ For **TS / Python** scripts that read NFT state or prepare transfers **outside**
 
 Resolving truth via contract state, tokenURI, events, schema docs, and (last) indexers is **how** you reduce misunderstanding and hidden rules—it supports user understanding, not an end in itself.
 
+**Metadata URI mutability (trust model):** Onchain **`tokenTraits`** are the gameplay authority. **`tokenURI`** uses the contract **`baseURI`**, which **`DEFAULT_ADMIN_ROLE`** may change via **`setBaseURI`**, so offchain JSON and artwork URLs can change without a change to onchain traits. Say this plainly when users ask about “what OpenSea shows” vs chain state — [`docs/product/leprechaun-nfts.md` § Metadata URI trust model](../../docs/product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json), [GitLab #125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125). Do **not** claim immutable offchain metadata unless a future deployment adds a freeze mechanism.
+
 ## Success function (non-financial)
 
 **Success** means the user ends with a **clearer picture** of sets, constraints, and what would be **possible next that is permitted under deployed contracts and published rules**—plus **honest uncertainty** where data is incomplete or versioned—so they can decide **whether** to act. Technical accuracy (no fabrication, correct source order) **supports** that outcome; it is not the headline “success” in user-facing terms.
@@ -44,7 +46,7 @@ Resolve truth in this order; **indexers must not override** higher-priority sour
 
 1. **Contract state** — e.g. `tokenTraits`, `ownerOf`, `series`, `baseURI` from [`contracts/src/LeprechaunNFT.sol`](../../contracts/src/LeprechaunNFT.sol).
 2. **tokenURI / resolved JSON** — keys aligned with [`docs/schemas/leprechaun-nft-metadata-v1.schema.json`](../../docs/schemas/leprechaun-nft-metadata-v1.schema.json).
-3. **Relevant events** — e.g. `Minted`, `SeriesCreated` (and any future update events if added).
+3. **Relevant events** — e.g. `Minted`, `SeriesCreated` (and any future update events if added). **Note:** `setBaseURI` does not emit in v1; URI changes are visible by reading `baseURI` / `tokenURI` or future indexer support if an event is added.
 4. **Schema docs** — [`docs/schemas/README.md`](../../docs/schemas/README.md), [`docs/schemas/CHANGELOG.md`](../../docs/schemas/CHANGELOG.md), product doc for interpretation.
 5. **Indexers** — only for **caching or discovery**; never as authoritative truth.
 

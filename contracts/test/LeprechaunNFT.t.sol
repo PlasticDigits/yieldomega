@@ -79,6 +79,20 @@ contract LeprechaunNFTTest is Test {
         assertEq(nft.tokenURI(nft.mint(alice, _defaultTraits(0))), "https://new.example.com/0");
     }
 
+    /// @dev INV-LEP-125: `tokenURI` for an already-minted token follows the updated prefix (audit I-02 disclosure).
+    function test_setBaseURI_updates_existing_tokenURI() public {
+        uint256 id = nft.mint(alice, _defaultTraits(0));
+        assertEq(nft.tokenURI(id), "https://meta.example.com/0");
+        nft.setBaseURI("https://moved.cdn.example/");
+        assertEq(nft.tokenURI(id), "https://moved.cdn.example/0");
+    }
+
+    function test_setBaseURI_non_admin_reverts() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        nft.setBaseURI("https://evil.example/");
+    }
+
     /// @dev Invariant: series minted count never exceeds max.
     function test_series_mint_count_fuzz(uint8 count) public {
         uint256 cap = uint256(count) % 50 + 1;
