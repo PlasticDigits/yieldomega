@@ -812,6 +812,119 @@ contract TimeCurveTest is Test {
         assertEq(vCat[0], values[0]);
     }
 
+    /// @dev GitLab #129 — steals lower victim BP without repainting every wallet; `refreshWarbowPodium` repaints.
+    function test_warbow_podium_steal_then_refresh_updates_top_three_snapshot() public {
+        tc.startSaleAt(block.timestamp);
+        _fundWarbowStealers();
+
+        uint256 b = tc.WARBOW_BASE_BUY_BP();
+        for (uint256 i; i < 12; ++i) {
+            _warpPastBuyCooldown(tc, carol);
+            vm.prank(carol);
+            tc.buy(1e18);
+        }
+        for (uint256 i; i < 16; ++i) {
+            _warpPastBuyCooldown(tc, bob);
+            vm.prank(bob);
+            tc.buy(1e18);
+        }
+        for (uint256 i; i < 60; ++i) {
+            _warpPastBuyCooldown(tc, alice);
+            vm.prank(alice);
+            tc.buy(1e18);
+        }
+
+        assertEq(tc.battlePoints(alice), 60 * b);
+
+        for (uint256 i; i < 80; ++i) {
+            uint256 abpAlice = tc.battlePoints(alice);
+            uint256 abpDave = tc.battlePoints(dave);
+            if (abpAlice < abpDave * 2 || abpAlice == 0) break;
+            vm.prank(dave);
+            tc.warbowSteal(alice, false);
+            _advanceWarbowDay();
+        }
+
+        for (uint256 i; i < 40; ++i) {
+            uint256 bbpBob = tc.battlePoints(bob);
+            uint256 cbpCarol = tc.battlePoints(carol);
+            if (bbpBob == 0) break;
+            if (bbpBob < cbpCarol * 2) break;
+            vm.prank(carol);
+            tc.warbowSteal(bob, false);
+            _advanceWarbowDay();
+        }
+
+        assertGt(tc.battlePoints(dave), tc.battlePoints(bob));
+
+        tc.refreshWarbowPodium(_warbowCandidateQuartet());
+
+        (address[3] memory w,) = tc.warbowLadderPodium();
+        assertEq(w[0], alice);
+        assertEq(w[1], dave);
+        assertEq(w[2], bob);
+    }
+
+    /// @dev GitLab #129 — non-zero podium pool requires owner `finalizeWarbowPodium` before `distributePrizes`.
+    function test_finalizeWarbowPodium_enables_nonzero_pool_distributePrizes() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.expectRevert("TimeCurve: warbow podium not finalized");
+        tc.distributePrizes();
+
+        assertFalse(tc.warbowPodiumFinalized());
+        _finalizeWarbowOne(tc, alice);
+
+        tc.distributePrizes();
+        assertTrue(tc.warbowPodiumFinalized());
+        assertTrue(tc.prizesDistributed());
+    }
+
+    /// @dev GitLab #129 — `refreshWarbowPodium` clears the finalize latch until the owner refinalizes.
+    function test_refreshWarbowPodium_invalidates_finalize_latch() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        _finalizeWarbowOne(tc, alice);
+        assertTrue(tc.warbowPodiumFinalized());
+
+        tc.refreshWarbowPodium(_warbowCandidateQuartet());
+        assertFalse(tc.warbowPodiumFinalized());
+
+        vm.expectRevert("TimeCurve: warbow podium not finalized");
+        tc.distributePrizes();
+    }
+
+    /// @dev GitLab #129 — `finalizeWarbowPodium` is post-`endSale` only.
+    function test_finalizeWarbowPodium_reverts_before_endSale() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        vm.expectRevert("TimeCurve: not ended");
+        _finalizeWarbowQuartet(tc);
+    }
+
+    /// @dev WarBow steals pull CL8Y; fund `dave` for long steal chains + max `approve`.
+    function _fundWarbowStealers() internal {
+        _fundAndApprove(alice, 500e18);
+        _fundAndApprove(bob, 500e18);
+        _fundAndApprove(carol, 500e18);
+        _fundAndApprove(dave, 10_000e18);
+        vm.prank(dave);
+        reserve.approve(address(tc), type(uint256).max);
+    }
+
     function test_time_booster_tracks_effective_seconds_not_nominal_when_clipped() public {
         uint256 cap = 200;
         TimeCurve tcClip = _deployTimeCurve(
@@ -936,11 +1049,16 @@ contract TimeCurveTest is Test {
         TimeCurve t = _newTimeCurveShortTimer(500);
         t.startSaleAt(block.timestamp);
         vm.warp(t.saleStart() + 10);
-        _fundAndApproveCurve(alice, 2e18, t);
+        _fundAndApproveCurve(alice, 4e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
 
-        _fundAndApproveCurve(bob, t.WARBOW_STEAL_BURN_WAD(), t);
+        _fundAndApproveCurve(bob, 4e18 + t.WARBOW_STEAL_BURN_WAD(), t);
+        vm.prank(bob);
+        t.buy(1e18);
         vm.prank(bob);
         t.warbowSteal(alice, false);
 
