@@ -8,6 +8,7 @@ pragma solidity ^0.8.24;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {DevOnlyChainGuard} from "./DevOnlyChainGuard.sol";
 
 interface ITimeCurve {
     function buy(uint256 charmWad) external;
@@ -60,6 +61,7 @@ uint256 constant PK_C = 0x7c852118294e51e653712a81e05800f419141751be58f605c371e1
 
 contract SimulateAnvilRichStatePart1 is Script {
     function run() external {
+        DevOnlyChainGuard.assertDevScriptChain();
         address reserve = vm.envOr("RESERVE_ASSET_ADDRESS", address(0));
         if (reserve == address(0)) {
             reserve = vm.envAddress("USDM_ADDRESS");
@@ -130,6 +132,7 @@ contract SimulateAnvilRichStatePart1 is Script {
 
 contract SimulateAnvilRichStatePart2 is Script {
     function run() external {
+        DevOnlyChainGuard.assertDevScriptChain();
         address tc = vm.envAddress("TIMECURVE_ADDRESS");
         address rt = vm.envAddress("RABBIT_TREASURY_ADDRESS");
         address nft = vm.envAddress("LEPRECHAUN_NFT_ADDRESS");
@@ -221,6 +224,7 @@ contract SimulateAnvilRichStatePart2 is Script {
 ///      Use after Part1 + warp (see `anvil_rich_state.sh` with `ANVIL_RICH_END_SALE_ONLY=1`).
 contract SimulateAnvilRichStatePart2EndSaleOnly is Script {
     function run() external {
+        DevOnlyChainGuard.assertDevScriptChain();
         address tc = vm.envAddress("TIMECURVE_ADDRESS");
         address deployer = vm.addr(PK_DEPLOYER);
 
