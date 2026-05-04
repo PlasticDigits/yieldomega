@@ -876,6 +876,54 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::FeeRouterDistributableTokenUpdated {
+            token,
+            allowed,
+            actor,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_fee_router_distributable_token_updated (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    token, allowed, actor
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(*allowed)
+            .bind(addr_hex(*actor))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::FeeRouterERC20Rescued {
+            token,
+            recipient,
+            amount,
+            actor,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_fee_router_erc20_rescued (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    token, recipient, amount, actor
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(addr_hex(*recipient))
+            .bind(u256_dec(*amount))
+            .bind(addr_hex(*actor))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy_fee_routing_enabled (
