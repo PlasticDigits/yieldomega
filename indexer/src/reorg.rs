@@ -6,7 +6,8 @@ use alloy_primitives::B256;
 use alloy_provider::Provider;
 use eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
-use sqlx::{PgConnection, PgPool, Row};
+use sqlx::postgres::PgConnection;
+use sqlx::{PgPool, Row};
 
 /// Maximum ancestor walk during reorg before treating as catastrophic.
 pub const MAX_REORG_DEPTH: u64 = 128;
@@ -58,7 +59,7 @@ pub async fn load_chain_pointer(pool: &PgPool) -> Result<ChainPointer> {
     })
 }
 
-/// Persist pointer after successfully processing a block (owning connection / transaction).
+/// Persist pointer after successfully processing a block (within `conn` or standalone).
 pub async fn save_chain_pointer_conn(conn: &mut PgConnection, p: &ChainPointer) -> Result<()> {
     let json = pointer_to_json(p)?;
     sqlx::query(
@@ -71,18 +72,13 @@ pub async fn save_chain_pointer_conn(conn: &mut PgConnection, p: &ChainPointer) 
     Ok(())
 }
 
-/// Persist pointer after successfully processing a block.
 pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
     let mut conn = pool.acquire().await?;
     save_chain_pointer_conn(&mut *conn, p).await
 }
 
-/// Record a canonical block hash for reorg walk-back (owning connection / transaction).
-pub async fn upsert_indexed_block_conn(
-    conn: &mut PgConnection,
-    number: u64,
-    hash: B256,
-) -> Result<()> {
+/// Record a canonical block hash for reorg walk-back.
+pub async fn upsert_indexed_block_conn(conn: &mut PgConnection, number: u64, hash: B256) -> Result<()> {
     let n = number as i64;
     let h = format!("{:#x}", hash);
     sqlx::query(
@@ -96,7 +92,6 @@ pub async fn upsert_indexed_block_conn(
     Ok(())
 }
 
-/// Record a canonical block hash for reorg walk-back.
 pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Result<()> {
     let mut conn = pool.acquire().await?;
     upsert_indexed_block_conn(&mut *conn, number, hash).await
@@ -152,6 +147,8 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_timecurve_buy",
         "idx_timecurve_buy_fee_routing_enabled",
         "idx_timecurve_buy_router_cl8y_surplus",
+        "idx_timecurve_buy_router_erc20_rescued",
+        "idx_timecurve_buy_router_eth_rescued",
         "idx_timecurve_buy_router_kumbaya",
         "idx_timecurve_buy_router_set",
         "idx_timecurve_presale_vesting_set",
@@ -161,6 +158,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_timecurve_charms_redeemed",
         "idx_timecurve_prizes_distributed",
         "idx_timecurve_prizes_settled_empty_podium_pool",
+        "idx_timecurve_podium_residual_recipient_set",
         "idx_timecurve_referral_applied",
         "idx_timecurve_reserve_podium_payouts_enabled",
         "idx_timecurve_sale_ended",

@@ -14,6 +14,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network write gating](#manual-qa-issue-95) |
+| [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [TimeCurve buy — wallet session drift mid-flow](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) | [`TimeCurveBuyRouter` on Anvil](#manual-qa-issue-78) |
 | [#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) | [Buy CHARM submit-time sizing](#manual-qa-issue-82) |
 | [#79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79) | [Post-end owner gates](#manual-qa-issue-79) |
@@ -28,6 +29,8 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
 | [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
+| [#142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142) | [Indexer production `DATABASE_URL` hygiene](#manual-qa-issue-142) |
+| [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -222,6 +225,31 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 
 **Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [`timecurve-views.md`](../frontend/timecurve-views.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95) · [§ #106 — `/vesting` claim race](#manual-qa-issue-106)
 
+<a id="manual-qa-issue-144-wallet-session-drift-on-buy"></a>
+
+## TimeCurve buy — wallet session drift mid-flow (GitLab #144)
+
+**Why:** ETH/USDM entry paths issue **multiple** signed txs / receipts before **`TimeCurve.buy`**. Switching wallet accounts or chains mid-flow must **abort** with explicit copy (**`Wallet or network changed during purchase — please retry from the beginning.`**), not mixed-recipient swaps or opaque reverts.
+
+### Preconditions
+
+1. Local stack or testnet where **TimeCurve Simple** and **Arena** buys work (sale live, `buyFeeRoutingEnabled`, Kumbaya env if testing ETH/USDM).
+2. A wallet with **two accounts** on the **same** target **`VITE_CHAIN_ID`** (e.g. MetaMask / Rabby).
+
+### Manual steps
+
+1. **Happy path:** Complete one **CL8Y** buy on **`/timecurve`** without switching accounts — no regression.
+2. **Account switch (two-step ETH/USDM or CL8Y if multi-step):** Start a buy that pauses between steps (e.g. after wrap or after **first** confirmation). Switch to **another account** in the extension before the next signature — expect **aborted** flow and the **#144** error string in buy error state (`buyError` / `buyErr`); **no** successful buy attributed to the original account without user retry from scratch.
+3. **Network switch:** On target chain, begin a multi-step buy, then switch the wallet to **another chain** before the next step — expect the same **#144** message (or **#95** wrong-network preflight if the switch happens before guarded steps; either is acceptable UX as long as the user is not led through a mixed-wallet success).
+4. **Single-tx router:** When **`timeCurveBuyRouter` ≠ 0** and **`buyViaKumbaya`** path is active, switching account between **USDM approve** and **router** tx (if two steps) should still **abort** per internal guards.
+
+### Code references
+
+- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`walletBuySessionGuard.test.ts`](../../frontend/src/lib/walletBuySessionGuard.test.ts)
+- [`useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx) · [`timeCurveKumbayaSingleTx.ts`](../../frontend/src/lib/timeCurveKumbayaSingleTx.ts)
+
+**Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144)
+
 <a id="manual-qa-issue-106"></a>
 
 ## Presale vesting — claim chain mismatch UX (GitLab #106)
@@ -235,6 +263,20 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 3. **Recovery:** Use **Switch to …** / reconnect on target chain — gate error clears when back on target (**no** stale banner).
 
 **Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · **Invariant:** [§ #106](invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
+
+<a id="manual-qa-issue-145"></a>
+
+## Presale vesting — claim error redaction (GitLab #145)
+
+**Why:** Wagmi / viem errors can embed **full RPC URLs** (including **`VITE_RPC_URL`** API keys). The **`/vesting`** claim panel must not echo those strings into **`StatusMessage`** (screenshots, screen share, DevTools).
+
+### Checklist
+
+1. **Unit / CI:** [`revertMessage.test.ts`](../../frontend/src/lib/revertMessage.test.ts) covers synthetic Alchemy-style URLs and **`friendlyRevertFromUnknown`** integration.
+2. **Manual / staging:** With a throwaway RPC URL containing an obvious fake key in **`VITE_RPC_URL`**, force a **`claim`** write failure (e.g. disable network or bad calldata if needed) — confirm the visible error contains **`[RPC URL redacted]`** (or mapped friendly copy) and **not** the full URL / key substring.
+3. **Write-surface audit:** Grep **`StatusMessage`** + raw **`.message`** on wallet writes — **`PresaleVestingPage`** must use **`friendlyRevertFromUnknown`** only (no raw wagmi **`message`**).
+
+**Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`revertMessage.ts`](../../frontend/src/lib/revertMessage.ts) · **Invariant:** [§ #145](invariants-and-business-logic.md#presale-vesting-claim-error-redaction-gitlab-145) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
 
 <a id="manual-qa-issue-78"></a>
 
@@ -377,6 +419,7 @@ surface onto the first-run page.
 7. **`claimsEnabled` false:** Claim disabled; messaging references signoff ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 8. **`claimable > 0`:** **Claim DOUB** submits `claim()`.
 9. **Wrong-chain race (#106):** If **Claim** is clicked after a **network switch** before the UI re-disables the button, expect an in-panel **`Wrong network:`** **`StatusMessage`** (same family as Simple buy / referrals) — [dedicated checklist § #106](#manual-qa-issue-106).
+10. **Claim RPC leak (#145):** Claim failures must **not** print raw RPC URLs — see [§ #145](#manual-qa-issue-145).
 
 **Automated:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via `bash scripts/e2e-anvil.sh`.
 
@@ -539,3 +582,17 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] **Stop / teardown:** PIDs in [`qa-local-full-stack.md — Stopping`](qa-local-full-stack.md#stopping-the-stack) match your processes.
 
 **Doc map:** [invariants — #104 / #105](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) · [issue #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)
+
+<a id="manual-qa-issue-142"></a>
+
+## Indexer production `DATABASE_URL` placeholders (GitLab #142)
+
+**Goal:** Production operators must not boot the indexer with copy-pasted template credentials from [`indexer/.env.example`](../../indexer/.env.example). **`INDEXER_PRODUCTION=1`** (see [`indexer/README.md`](../../indexer/README.md)) fails fast when **`DATABASE_URL`** contains forbidden substrings ([`INV-INDEXER-142`](invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142)).
+
+### Checklist
+
+- [ ] From `indexer/`, with a **real** Postgres URL (not containing **`CHANGE_ME_BEFORE_DEPLOY`** or **`user:password@`**-style trivial passwords) and **`CORS_ALLOWED_ORIGINS`**: `INDEXER_PRODUCTION=1 DATABASE_URL=… CORS_ALLOWED_ORIGINS=https://example.com …` — `cargo run` progresses past config (or use **`cargo test`** only for substring unit tests).
+- [ ] Same shell, swap to `DATABASE_URL=postgres://u:CHANGE_ME_BEFORE_DEPLOY@localhost/db`: expect immediate error mentioning **forbidden placeholder** / **GitLab #142**.
+- [ ] Open [`indexer/.env.example`](../../indexer/.env.example): confirm warnings above **`RPC_URL` / `CHAIN_ID`** and non-production-looking **`DATABASE_URL`**.
+
+**Doc map:** [indexer README](../../indexer/README.md) · [invariants — #142](invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142)

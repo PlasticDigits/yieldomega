@@ -70,6 +70,8 @@ forge script script/DeployDev.s.sol --fork-url megaeth_testnet --code-size-limit
 cast chain-id --rpc-url https://carrot.megaeth.com/rpc
 ```
 
+**Mis-RPC safety ([GitLab #141](https://gitlab.com/PlasticDigits/yieldomega/-/issues/141)):** `DeployDev` and the other **dev** scripts in `script/` (`DeployKumbayaAnvilFixtures`, `AnvilSameBlockDrill`, `SimulateAnvilRichState*`) call [`DevOnlyChainGuard.sol`](./script/DevOnlyChainGuard.sol) so they only run on chain IDs **31337**, **6342**, or **6343**. They **revert** on MegaETH **mainnet (4326)** and other networks, preventing a mistaken `--rpc-url` from deploying mocks or flipping dev operator flags with a production key.
+
 Set `ETH_RPC_URL` or pass `--rpc-url` to point `cast send`, `forge script`, and wallet tools at the network you intend. Rate limits and URL churn are documented on the official testnet/mainnet pages.
 
 ### Multidimensional gas pitfalls (MegaEVM)

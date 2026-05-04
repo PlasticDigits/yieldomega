@@ -146,6 +146,8 @@ mod contracts {
             event DoubPresaleVestingSet(address indexed vesting);
             event UnredeemedLaunchedTokenRecipientSet(address indexed recipient);
             event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
+            /// Governance sink routing for orphaned podium residuals (audit M‑01 lineage).
+            event PodiumResidualRecipientSet(address indexed recipient);
         }
     }
 
@@ -154,6 +156,8 @@ mod contracts {
         contract TimeCurveBuyRouterEvents {
             event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossCl8y, uint8 payKind);
             event Cl8ySurplusToProtocol(uint256 amount);
+            event EthRescued(address indexed to, uint256 amount);
+            event Erc20Rescued(address indexed token, address indexed to, uint256 amount);
         }
     }
 
@@ -339,7 +343,19 @@ pub enum DecodedEvent {
         gross_cl8y: U256,
         pay_kind: u8,
     },
-    TimeCurveBuyRouterCl8ySurplus { amount: U256 },
+    TimeCurveBuyRouterCl8ySurplus {
+        amount: U256,
+    },
+    /// GitLab #139 / #117 — **distinct topic0** from **`FeeRouter.ERC20Rescued`** (`idx_fee_router_erc20_rescued`).
+    TimeCurveBuyRouterEthRescued {
+        to: Address,
+        amount: U256,
+    },
+    TimeCurveBuyRouterErc20Rescued {
+        token: Address,
+        to: Address,
+        amount: U256,
+    },
     TimeCurveSaleEnded {
         end_timestamp: U256,
         total_raised: U256,
@@ -351,7 +367,9 @@ pub enum DecodedEvent {
     },
     TimeCurvePrizesDistributed,
     /// GitLab #133 — `distributePrizes` when `PodiumPool` balance is zero (no `PrizesDistributed`).
-    TimeCurvePrizesSettledEmptyPodiumPool { podium_pool: Address },
+    TimeCurvePrizesSettledEmptyPodiumPool {
+        podium_pool: Address,
+    },
     TimeCurveReferralApplied {
         buyer: Address,
         referrer: Address,
@@ -415,13 +433,32 @@ pub enum DecodedEvent {
     TimeCurveWarBowDefendedStreakWindowCleared {
         cleared_wallet: Address,
     },
-    TimeCurveBuyFeeRoutingEnabled { enabled: bool },
-    TimeCurveCharmRedemptionEnabled { enabled: bool },
-    TimeCurveReservePodiumPayoutsEnabled { enabled: bool },
-    TimeCurveBuyRouterSet { router: Address },
-    TimeCurveDoubPresaleVestingSet { vesting: Address },
-    TimeCurveUnredeemedLaunchedTokenRecipientSet { recipient: Address },
-    TimeCurveUnredeemedLaunchedTokenSwept { recipient: Address, amount: U256 },
+    TimeCurveBuyFeeRoutingEnabled {
+        enabled: bool,
+    },
+    TimeCurveCharmRedemptionEnabled {
+        enabled: bool,
+    },
+    TimeCurveReservePodiumPayoutsEnabled {
+        enabled: bool,
+    },
+    TimeCurveBuyRouterSet {
+        router: Address,
+    },
+    TimeCurveDoubPresaleVestingSet {
+        vesting: Address,
+    },
+    TimeCurveUnredeemedLaunchedTokenRecipientSet {
+        recipient: Address,
+    },
+    TimeCurveUnredeemedLaunchedTokenSwept {
+        recipient: Address,
+        amount: U256,
+    },
+    /// GitLab #139 — owner `setPodiumResidualRecipient`; distinct from **`PodiumPool.PodiumResidualForwarded`** rows.
+    TimeCurvePodiumResidualRecipientSet {
+        recipient: Address,
+    },
     ReferralCodeRegistered {
         owner: Address,
         code_hash: B256,
@@ -440,7 +477,9 @@ pub enum DecodedEvent {
         amount: U256,
         category: u8,
     },
-    PodiumPoolPrizePusherSet { pusher: Address },
+    PodiumPoolPrizePusherSet {
+        pusher: Address,
+    },
     RabbitEpochOpened {
         epoch_id: U256,
         start_timestamp: U256,
@@ -560,7 +599,9 @@ pub enum DecodedEvent {
         beneficiary: Address,
         amount: U256,
     },
-    DoubVestingClaimsEnabled { enabled: bool },
+    DoubVestingClaimsEnabled {
+        enabled: bool,
+    },
     /// GitLab #137 — `rescueERC20`; `kind` **0** = vesting-token excess, **1** = non-vesting token.
     DoubVestingRescueErc20 {
         token: Address,
@@ -858,41 +899,31 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
     if topic0 == TimeCurveEvents::BuyFeeRoutingEnabled::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::BuyFeeRoutingEnabled::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveBuyFeeRoutingEnabled {
-                enabled: e.enabled,
-            };
+            return DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled: e.enabled };
         }
     }
     if topic0 == TimeCurveEvents::CharmRedemptionEnabled::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::CharmRedemptionEnabled::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveCharmRedemptionEnabled {
-                enabled: e.enabled,
-            };
+            return DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled: e.enabled };
         }
     }
     if topic0 == TimeCurveEvents::ReservePodiumPayoutsEnabled::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::ReservePodiumPayoutsEnabled::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveReservePodiumPayoutsEnabled {
-                enabled: e.enabled,
-            };
+            return DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled: e.enabled };
         }
     }
     if topic0 == TimeCurveEvents::TimeCurveBuyRouterSet::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::TimeCurveBuyRouterSet::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveBuyRouterSet {
-                router: e.router,
-            };
+            return DecodedEvent::TimeCurveBuyRouterSet { router: e.router };
         }
     }
     if topic0 == TimeCurveEvents::DoubPresaleVestingSet::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::DoubPresaleVestingSet::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveDoubPresaleVestingSet {
-                vesting: e.vesting,
-            };
+            return DecodedEvent::TimeCurveDoubPresaleVestingSet { vesting: e.vesting };
         }
     }
     if topic0 == TimeCurveEvents::UnredeemedLaunchedTokenRecipientSet::SIGNATURE_HASH {
@@ -912,6 +943,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == TimeCurveEvents::PodiumResidualRecipientSet::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::PodiumResidualRecipientSet::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurvePodiumResidualRecipientSet {
+                recipient: e.recipient,
+            };
+        }
+    }
     if topic0 == TimeCurveBuyRouterEvents::BuyViaKumbaya::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveBuyRouterEvents::BuyViaKumbaya::decode_log(log, true) {
             let e = d.data;
@@ -926,7 +965,24 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
     if topic0 == TimeCurveBuyRouterEvents::Cl8ySurplusToProtocol::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveBuyRouterEvents::Cl8ySurplusToProtocol::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::TimeCurveBuyRouterCl8ySurplus {
+            return DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: e.amount };
+        }
+    }
+    if topic0 == TimeCurveBuyRouterEvents::EthRescued::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyRouterEvents::EthRescued::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyRouterEthRescued {
+                to: e.to,
+                amount: e.amount,
+            };
+        }
+    }
+    if topic0 == TimeCurveBuyRouterEvents::Erc20Rescued::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveBuyRouterEvents::Erc20Rescued::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuyRouterErc20Rescued {
+                token: e.token,
+                to: e.to,
                 amount: e.amount,
             };
         }
@@ -967,9 +1023,7 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
     if topic0 == PodiumPoolEvents::PrizePusherSet::SIGNATURE_HASH {
         if let Ok(d) = PodiumPoolEvents::PrizePusherSet::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::PodiumPoolPrizePusherSet {
-                pusher: e.pusher,
-            };
+            return DecodedEvent::PodiumPoolPrizePusherSet { pusher: e.pusher };
         }
     }
     if topic0 == RabbitTreasuryEvents::BurrowEpochOpened::SIGNATURE_HASH {
@@ -1192,9 +1246,7 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
     if topic0 == DoubPresaleVestingEvents::ClaimsEnabled::SIGNATURE_HASH {
         if let Ok(d) = DoubPresaleVestingEvents::ClaimsEnabled::decode_log(log, true) {
             let e = d.data;
-            return DecodedEvent::DoubVestingClaimsEnabled {
-                enabled: e.enabled,
-            };
+            return DecodedEvent::DoubVestingClaimsEnabled { enabled: e.enabled };
         }
     }
     if topic0 == DoubPresaleVestingEvents::RescueERC20::SIGNATURE_HASH {
@@ -1342,7 +1394,9 @@ mod tests {
     #[test]
     fn roundtrip_prizes_settled_empty_podium_pool() {
         let pool_addr = Address::repeat_byte(0x66);
-        let e = TimeCurveEvents::PrizesSettledEmptyPodiumPool { podiumPool: pool_addr };
+        let e = TimeCurveEvents::PrizesSettledEmptyPodiumPool {
+            podiumPool: pool_addr,
+        };
         let data = e.encode_log_data();
         let log = Log::new_unchecked(
             Address::repeat_byte(0xbb),
@@ -1607,6 +1661,102 @@ mod tests {
                 assert_eq!(recipient, to);
                 assert_eq!(amount, U256::from(777u64));
                 assert_eq!(a, actor);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_gl139_audit_events_topic0_matches_cast() {
+        assert_eq!(
+            TimeCurveEvents::PodiumResidualRecipientSet::SIGNATURE_HASH.to_string(),
+            "0xa6e4f2aee6b35aa8421caacf310e5c03e2cbcd6033f13950dddfb6cf6aeb8a5e"
+        );
+        assert_eq!(
+            TimeCurveBuyRouterEvents::EthRescued::SIGNATURE_HASH.to_string(),
+            "0xff76eef98b5bdf97a95e78ef7e4f3da9681cd874619e7dbc5767e38ed162b803"
+        );
+        assert_eq!(
+            TimeCurveBuyRouterEvents::Erc20Rescued::SIGNATURE_HASH.to_string(),
+            "0x979df1132f95973986943fa23571e7c75da68d35dfed9b384346876c5cfc5ab9"
+        );
+    }
+
+    #[test]
+    fn roundtrip_podium_residual_recipient_set() {
+        let recipient = Address::repeat_byte(0xaa);
+        let e = TimeCurveEvents::PodiumResidualRecipientSet { recipient };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurvePodiumResidualRecipientSet { recipient: r } => {
+                assert_eq!(r, recipient);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_buy_router_eth_rescued() {
+        let to = Address::repeat_byte(0xbb);
+        let e = TimeCurveBuyRouterEvents::EthRescued {
+            to,
+            amount: U256::from(456u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xcc),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveBuyRouterEthRescued { to: out, amount } => {
+                assert_eq!(out, to);
+                assert_eq!(amount, U256::from(456u64));
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_buy_router_erc20_rescued_distinct_from_fee_router() {
+        let token = Address::repeat_byte(0x11);
+        let to = Address::repeat_byte(0x22);
+        let e = TimeCurveBuyRouterEvents::Erc20Rescued {
+            token,
+            to,
+            amount: U256::from(789u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xdd),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        assert_ne!(
+            topic0,
+            FeeRouterEvents::ERC20Rescued::SIGNATURE_HASH,
+            "buy-router rescue must not alias FeeRouter.ERC20Rescued topic0"
+        );
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveBuyRouterErc20Rescued {
+                token: t,
+                to: recipient,
+                amount,
+            } => {
+                assert_eq!(t, token);
+                assert_eq!(recipient, to);
+                assert_eq!(amount, U256::from(789u64));
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

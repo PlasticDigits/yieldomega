@@ -5,7 +5,8 @@
 use alloy_primitives::{Address, U256};
 use eyre::Result;
 use serde_json::json;
-use sqlx::{PgConnection, PgPool};
+use sqlx::postgres::PgConnection;
+use sqlx::PgPool;
 
 use crate::decoder::{DecodedEvent, DecodedLog};
 
@@ -21,9 +22,7 @@ fn b256_hex(h: alloy_primitives::B256) -> String {
     format!("{:#x}", h)
 }
 
-/// Persist a decoded log on an open Postgres connection (pool handle or transaction).
-///
-/// Unknown `DecodedEvent` variants are skipped. Caller defines commit boundaries.
+/// Persist a decoded log on an existing Postgres connection or transaction. Unknown events are skipped.
 pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -> Result<()> {
     let block = d.block_number as i64;
     let block_h = b256_hex(d.block_hash);
@@ -1081,6 +1080,22 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::TimeCurvePodiumResidualRecipientSet { recipient } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_podium_residual_recipient_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, recipient
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*recipient))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (
@@ -1093,6 +1108,41 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .bind(&tx_h)
             .bind(log_i)
             .bind(&contract)
+            .bind(u256_dec(*amount))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterEthRescued { to, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_eth_rescued (
+                    block_number, block_hash, tx_hash, log_index, contract_address, to_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*to))
+            .bind(u256_dec(*amount))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterErc20Rescued { token, to, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_erc20_rescued (
+                    block_number, block_hash, tx_hash, log_index, contract_address, token, to_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(addr_hex(*to))
             .bind(u256_dec(*amount))
             .execute(&mut *conn)
             .await?;
@@ -1302,7 +1352,7 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
     Ok(())
 }
 
-/// Persist a decoded log using a dedicated pool connection (one auto-commit transaction).
+/// Pool convenience wrapper (one acquired connection).
 pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
     let mut conn = pool.acquire().await?;
     persist_decoded_log_conn(&mut *conn, d).await

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
-import { maxUint256 } from "viem";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PageSection } from "@/components/ui/PageSection";
@@ -216,7 +215,7 @@ export function ReferralRegisterSection({ className }: Props) {
           address: cl8yToken,
           abi: erc20Abi,
           functionName: "approve",
-          args: [registry, maxUint256],
+          args: [registry, need],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }

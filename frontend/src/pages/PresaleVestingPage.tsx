@@ -9,6 +9,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { addresses } from "@/lib/addresses";
 import { doubPresaleVestingReadAbi, doubPresaleVestingWriteAbi } from "@/lib/abis";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { dualWallClockLines, formatDoubHuman } from "@/pages/presaleVesting/presaleVestingFormat";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 
@@ -266,7 +267,9 @@ export function PresaleVestingPage() {
               </>
             ) : null}
             {claimGateError ? <StatusMessage variant="error">{claimGateError}</StatusMessage> : null}
-            {claimError ? <StatusMessage variant="error">{claimError.message}</StatusMessage> : null}
+            {claimError ? (
+              <StatusMessage variant="error">{friendlyRevertFromUnknown(claimError)}</StatusMessage>
+            ) : null}
             <p style={{ marginTop: "1rem" }}>
               <button
                 type="button"

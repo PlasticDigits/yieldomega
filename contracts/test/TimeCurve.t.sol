@@ -772,6 +772,80 @@ contract TimeCurveTest is Test {
         tc.warbowActivateGuard();
     }
 
+    /// @dev GitLab #146 / #131 (finding 2): flipping `buyFeeRoutingEnabled` after activity blocks further CL8Y WarBow defense (`warbowActivateGuard`).
+    function test_buy_fee_routing_freeze_after_buy_blocks_warbow_defense() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        tc.setBuyFeeRoutingEnabled(false);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale interactions disabled");
+        tc.warbowActivateGuard();
+    }
+
+    /// @dev GitLab #146: one-buy **fresh** attacker can `warbowSteal` a high-BP victim for **`WARBOW_STEAL_BURN_WAD`** CL8Y (burn-invariant regression; compare **`abp == 0`** rejection in `test_warbow_steal_revert_zero_attacker_bp`).
+    function test_warbow_steal_fresh_wallet_drains_high_bp_victim_for_one_cl8y() public {
+        address victimV = makeAddr("v146");
+        address freshStealer = makeAddr("fresh146");
+
+        tc.startSaleAt(block.timestamp);
+        _boostVictimBpForSteal(tc, victimV);
+
+        _fundAndApprove(freshStealer, 200e18);
+        vm.prank(freshStealer);
+        tc.buy(1e18);
+
+        uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        _fundAndApprove(freshStealer, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(freshStealer);
+        tc.warbowSteal(victimV, false);
+        assertEq(
+            reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore,
+            tc.WARBOW_STEAL_BURN_WAD()
+        );
+    }
+
+    /// @dev GitLab #146 / #131 (finding 5) vs **#135**: per-(victim, stealer) revenge slots — victim may `warbowRevenge` **both** stealers; a second steal must not erase the first window.
+    function test_warbow_revenge_overwritten_by_second_stealer_shields_first() public {
+        address victimV = makeAddr("victim146");
+        address stealerA = makeAddr("stealerA146");
+        address stealerB = makeAddr("stealerB146");
+
+        tc.startSaleAt(block.timestamp);
+        _boostVictimBpForSteal(tc, victimV);
+
+        _fundAndApprove(stealerA, 500e18);
+        vm.prank(stealerA);
+        tc.buy(1e18);
+        _fundAndApprove(stealerB, 500e18);
+        vm.prank(stealerB);
+        tc.buy(1e18);
+
+        _fundAndApprove(stealerA, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealerA);
+        tc.warbowSteal(victimV, false);
+        assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealerA), 0, "slot A");
+
+        _fundAndApprove(stealerB, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealerB);
+        tc.warbowSteal(victimV, false);
+        assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealerB), 0, "slot B");
+        assertGt(
+            tc.warbowPendingRevengeExpiryExclusive(victimV, stealerA),
+            0,
+            "GitLab #135: first stealer slot must survive second steal"
+        );
+
+        _fundAndApprove(victimV, 500e18 + tc.WARBOW_REVENGE_BURN_WAD());
+        vm.prank(victimV);
+        tc.warbowRevenge(stealerB);
+        _fundAndApprove(victimV, 500e18 + tc.WARBOW_REVENGE_BURN_WAD());
+        vm.prank(victimV);
+        tc.warbowRevenge(stealerA);
+    }
+
     // ── Min buy growth ─────────────────────────────────────────────────
 
     function test_minBuy_grows_over_time() public {
