@@ -44,6 +44,9 @@ contract TimeCurveTest is Test {
     address carol = makeAddr("carol");
     address dave = makeAddr("dave");
 
+    /// @dev GitLab #116 — CL8Y sink for empty/partial podium slice remainder (tests only).
+    address protocolSink = makeAddr("protocolSink");
+
     // FeeRouter sinks: LP 30% · CL8Y burn 40% · podium 20% · team 0% · Rabbit 10% (+ remainder) (bps)
     address sinkLp = makeAddr("sinkLp");
     address sinkBurn = makeAddr("sinkBurn");
@@ -137,6 +140,7 @@ contract TimeCurveTest is Test {
 
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);
+        tc.setPodiumResidualRecipient(protocolSink);
     }
 
     function _fundAndApprove(address user, uint256 amount) internal {
@@ -177,6 +181,35 @@ contract TimeCurveTest is Test {
         );
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
         launchedToken.mint(address(t), 1_000_000e18);
+        t.setCharmRedemptionEnabled(true);
+        t.setReservePodiumPayoutsEnabled(true);
+        t.setPodiumResidualRecipient(protocolSink);
+        return t;
+    }
+
+    /// @dev `initialTimerSec == timerCapSec` with **small cap** (same technique as `test_time_booster_zero_when_already_at_cap`).
+    function _newTimeCurveTimerAtCap() internal returns (TimeCurve) {
+        uint256 cap = 200;
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            cap,
+            cap,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        t.setCharmRedemptionEnabled(true);
+        t.setReservePodiumPayoutsEnabled(true);
+        t.setPodiumResidualRecipient(protocolSink);
         return t;
     }
 
@@ -1524,6 +1557,111 @@ contract TimeCurveTest is Test {
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
         assertLt(reserve.balanceOf(address(podiumPool)), vaultBefore);
+    }
+
+    /// @dev GitLab #116 — no defended-streak updates while every buy has >= 15m remaining; 20% slice → protocol.
+    function test_distributePrizes_empty_defended_forwards_20pct_to_protocol() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 50e18);
+        _fundAndApprove(bob, 50e18);
+        _fundAndApprove(carol, 50e18);
+        _fundAndApprove(dave, 50e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
+        vm.prank(bob);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, bob);
+        vm.prank(carol);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, carol);
+        vm.prank(dave);
+        tc.buy(1e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        (address[3] memory dw,) = tc.podium(tc.CAT_DEFENDED_STREAK());
+        assertEq(dw[0], address(0));
+
+        uint256 prizePool = reserve.balanceOf(address(podiumPool));
+        uint256 expectDefSlice = (prizePool * 20) / 100;
+        uint256 sinkBefore = reserve.balanceOf(protocolSink);
+
+        tc.distributePrizes();
+        assertEq(reserve.balanceOf(address(podiumPool)), 0);
+        assertTrue(tc.prizesDistributed());
+        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, expectDefSlice);
+    }
+
+    /// @dev GitLab #116 — timer-at-cap sale (`_newTimeCurveTimerAtCap`) still drains `PodiumPool` to winners + protocol (no stranded CL8Y).
+    function test_distributePrizes_timer_at_cap_drains_podium_pool() public {
+        TimeCurve tCap = _newTimeCurveTimerAtCap();
+        tCap.startSaleAt(block.timestamp);
+        _fundAndApproveCurve(alice, 50e18, tCap);
+        _fundAndApproveCurve(bob, 50e18, tCap);
+        vm.prank(alice);
+        tCap.buy(1e18);
+        _warpPastBuyCooldown(tCap, alice);
+        vm.prank(bob);
+        tCap.buy(1e18);
+
+        vm.warp(tCap.deadline() + 1);
+        tCap.endSale();
+
+        uint256 sinkBefore = reserve.balanceOf(protocolSink);
+        tCap.distributePrizes();
+        assertEq(reserve.balanceOf(address(podiumPool)), 0);
+        assertTrue(tCap.prizesDistributed());
+        assertGt(reserve.balanceOf(protocolSink), sinkBefore);
+    }
+
+    /// @dev GitLab #116 — with a **single** buyer, multiple categories forward residual; exact 1st-place last-buy payment is still `(4/7)*sLast`.
+    function test_distributePrizes_partial_last_buy_forwards_unfilled_placements() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 10e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        uint256 prizePool = reserve.balanceOf(address(podiumPool));
+        uint256 sLast = (prizePool * 40) / 100;
+        uint256 sWar = (prizePool * 25) / 100;
+        uint256 expectFirstLast = (sLast * 4) / 7;
+        uint256 expectFirstWar = (sWar * 4) / 7;
+
+        uint256 aliceBefore = reserve.balanceOf(alice);
+
+        tc.distributePrizes();
+
+        assertEq(reserve.balanceOf(address(podiumPool)), 0);
+        assertGt(reserve.balanceOf(protocolSink), 0);
+        // Same sole buyer wins 1st on last-buy and WarBow podiums when unopposed.
+        assertEq(reserve.balanceOf(alice) - aliceBefore, expectFirstLast + expectFirstWar);
+    }
+
+    /// @dev GitLab #116 — residual routing requires `setPodiumResidualRecipient`; unset ⇒ revert (defended empty).
+    function test_distributePrizes_reverts_when_residual_recipient_unset() public {
+        tc.setPodiumResidualRecipient(address(0));
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 20e18);
+        _fundAndApprove(bob, 20e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
+        vm.prank(bob);
+        tc.buy(1e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        (address[3] memory dw,) = tc.podium(tc.CAT_DEFENDED_STREAK());
+        assertEq(dw[0], address(0));
+
+        vm.expectRevert("TimeCurve: zero podium residual recipient");
+        tc.distributePrizes();
+        assertFalse(tc.prizesDistributed());
     }
 
     // ── CHARM band × exponential envelope vs linear price ─────────────────

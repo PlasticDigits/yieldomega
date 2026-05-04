@@ -115,6 +115,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_nft_minted",
         "idx_nft_series_created",
         "idx_podium_pool_paid",
+        "idx_podium_pool_residual_forwarded",
         "idx_podium_pool_prize_pusher_set",
         "idx_rabbit_burrow_reserve_buckets",
         "idx_rabbit_deposit",

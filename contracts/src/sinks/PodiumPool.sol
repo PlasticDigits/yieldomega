@@ -19,6 +19,7 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
     address public prizePusher;
 
     event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+    event PodiumResidualForwarded(address indexed token, address indexed recipient, uint256 amount, uint8 category);
     event PrizePusherSet(address indexed pusher);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -61,6 +62,19 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
         require(winner != address(0), "PodiumPool: zero winner");
         token.safeTransfer(winner, amount);
         emit PodiumPaid(winner, address(token), amount, category, placement);
+    }
+
+    /// @notice Forward **residual** reserve held for the podium path to protocol or another sink (not a podium winner row).
+    /// @dev Mirrors `payPodiumPayout` **auth**: `prizePusher` when set (production), otherwise `DISTRIBUTOR_ROLE`.
+    function forwardPodiumResidual(IERC20 token, address recipient, uint256 amount, uint8 category) external {
+        if (prizePusher != address(0)) {
+            require(msg.sender == prizePusher, "PodiumPool: not prize pusher");
+        } else {
+            require(hasRole(DISTRIBUTOR_ROLE, msg.sender), "PodiumPool: not distributor");
+        }
+        require(recipient != address(0), "PodiumPool: zero recipient");
+        token.safeTransfer(recipient, amount);
+        emit PodiumResidualForwarded(address(token), recipient, amount, category);
     }
 
     uint256[50] private __gap;

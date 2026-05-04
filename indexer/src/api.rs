@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.11.0";
+const SCHEMA_VERSION: &str = "1.12.0";
 
 #[derive(Clone)]
 pub struct AppState {

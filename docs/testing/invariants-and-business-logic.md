@@ -728,6 +728,7 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 |-----------|---------|--------|
 | Sink withdraw | Only `WITHDRAWER_ROLE`; `to != address(0)` | `FeeSinks.t.sol`: `test_feeSink_withdraw_happy_path`, `test_feeSink_withdraw_unauthorized_reverts`, `test_feeSink_withdraw_zero_to_reverts` |
 | Podium payout | **`prizePusher`** if set (production **TimeCurve**), else **`DISTRIBUTOR_ROLE`**; `winner != address(0)` | `test_podiumPool_payPodiumPayout_happy_path`, `test_podiumPool_payPodiumPayout_unauthorized_reverts`, `test_podiumPool_payPodiumPayout_zero_winner_reverts`, `test_podiumPool_payPodiumPayout_prize_pusher_wins_over_distributor_role` |
+| Podium residual forward ([#116](https://gitlab.com/PlasticDigits/yieldomega/-/issues/116)) | Same auth as **`payPodiumPayout`**; `to != address(0)`; `amount > 0` | `test_podiumPool_forwardPodiumResidual_happy_path`, `test_podiumPool_forwardPodiumResidual_unauthorized_reverts`, `test_podiumPool_forwardPodiumResidual_zero_recipient_reverts`, `test_podiumPool_forwardPodiumResidual_prize_pusher_wins_over_distributor_role` |
 
 ### LeprechaunNFT
 
