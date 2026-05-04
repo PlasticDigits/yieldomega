@@ -6,6 +6,7 @@ use alloy_primitives::B256;
 use alloy_provider::Provider;
 use eyre::{bail, Result};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgConnection;
 use sqlx::{PgPool, Row};
 
 /// Maximum ancestor walk during reorg before treating as catastrophic.
@@ -58,21 +59,26 @@ pub async fn load_chain_pointer(pool: &PgPool) -> Result<ChainPointer> {
     })
 }
 
-/// Persist pointer after successfully processing a block.
-pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
+/// Persist pointer after successfully processing a block (within `conn` or standalone).
+pub async fn save_chain_pointer_conn(conn: &mut PgConnection, p: &ChainPointer) -> Result<()> {
     let json = pointer_to_json(p)?;
     sqlx::query(
         "INSERT INTO indexer_state (key, value) VALUES ('chain_pointer', $1)
          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
     )
     .bind(json)
-    .execute(pool)
+    .execute(conn)
     .await?;
     Ok(())
 }
 
+pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    save_chain_pointer_conn(&mut *conn, p).await
+}
+
 /// Record a canonical block hash for reorg walk-back.
-pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Result<()> {
+pub async fn upsert_indexed_block_conn(conn: &mut PgConnection, number: u64, hash: B256) -> Result<()> {
     let n = number as i64;
     let h = format!("{:#x}", hash);
     sqlx::query(
@@ -81,9 +87,14 @@ pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Res
     )
     .bind(n)
     .bind(&h)
-    .execute(pool)
+    .execute(conn)
     .await?;
     Ok(())
+}
+
+pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    upsert_indexed_block_conn(&mut *conn, number, hash).await
 }
 
 /// Stored hash for `block_number`, if any.
