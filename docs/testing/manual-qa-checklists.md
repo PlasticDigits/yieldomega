@@ -10,6 +10,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev buy cooldown](#manual-qa-issue-88) |
 | [#99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99) | [Bot swarm + Anvil chain time](#manual-qa-issue-99) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals `/referrals` surface](#manual-qa-issue-64) |
+| [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network write gating](#manual-qa-issue-95) |
@@ -111,8 +112,8 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 ### Authoritative docs
 
 - [`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend) — **`/referrals`** is **not** in the **`UnderConstruction`** set at TGE (**F-11** / [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); [`YO-DOUB-Launch-UX-Flows.md`](../../YO-DOUB-Launch-UX-Flows.md).
-- [`docs/product/referrals.md`](../product/referrals.md) — code rules, link capture, **browser storage key table** (pending vs my-code — [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)).
-- [invariants — Referrals page](invariants-and-business-logic.md#referrals-page-visual-issue-64).
+- [`docs/product/referrals.md`](../product/referrals.md) — code rules, link capture, **registration ordering / mempool fairness** ([GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121), [§ ordering](../product/referrals.md#referral-registration-ordering-issue-121)), **browser storage key table** (pending vs my-code — [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)).
+- [invariants — Referrals page](invariants-and-business-logic.md#referrals-page-visual-issue-64) · [invariants — **#121** registration ordering](invariants-and-business-logic.md#referral-registration-ordering-issue-121).
 - Contributor Anvil runbook: [e2e-anvil.md](e2e-anvil.md) (`bash scripts/e2e-anvil.sh`).
 
 ### Preconditions
@@ -127,7 +128,7 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 | Row | What to verify | Suggested evidence |
 |-----|----------------|-------------------|
 | **R1** | `/referrals` renders (`data-testid="referrals-surface"`) behind launch gate | Screenshot |
-| **R2** | Connected wallet, **not** yet registered: burn copy + input + CTA | Screenshot |
+| **R2** | Connected wallet, **not** yet registered: burn copy + input + CTA · **ordering disclosure** visible (`referrals-register-ordering-disclosure` — [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121)) | Screenshot |
 | **R3** | Disconnected: wallet-gated placeholder | Screenshot |
 | **R4** | Approve → `registerCode` → success → **`localStorage`** **`yieldomega.myrefcode.v1.<walletLowercase>`** vs pending **`yieldomega.ref.v1`** ([GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)) | Tx hash(es) + screenshot |
 | **R5** | Registered: code visible + copy-able **path** and **`?ref=`** URLs | Screenshot |
@@ -139,6 +140,18 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 - CI: `frontend/e2e/referrals-surface.spec.ts`
 - Anvil: `frontend/e2e/anvil-referrals.spec.ts`
 - Unit: `frontend/src/lib/referralPathCapture.test.ts`
+
+<a id="manual-qa-issue-121-referrals-register-disclosure"></a>
+
+### Referrals — register ordering disclosure ([GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121))
+
+Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/audit_smartcontract_1777813071.md#l-02-referral-code-registration-is-front-runnable)).
+
+- [ ] On **`/referrals`** with registry configured, connected **unregistered** wallet: **`data-testid="referrals-register-ordering-disclosure"`** renders **above** **Register & burn CL8Y**, copy matches [product referrals — § registration ordering](../product/referrals.md#referral-registration-ordering-issue-121) (**first successful on-chain registration**, public **mempool**, **burn** applies only if your tx succeeds).
+- [ ] **Narrow viewport:** disclosure + burn line + input + primary CTA do not clip or collide.
+- [ ] **Burn row** (`registrationBurnAmount` via `AmountDisplay`) unchanged vs chain.
+
+**Automated:** [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) asserts the disclosure test id appears in the connected unregistered path.
 
 <a id="manual-qa-issue-80"></a>
 

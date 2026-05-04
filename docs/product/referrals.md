@@ -66,6 +66,17 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 - **Self-referral** blocked onchain.
 - **Invalid or unregistered codes** revert (no silent fallback).
 
+<a id="referral-registration-ordering-issue-121"></a>
+
+### Registration ordering and mempool visibility (audit L-02; [GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121))
+
+- **Winner rule:** `ReferralRegistry` assigns a code to the **first address whose `registerCode` succeeds** for that normalized slug. Later attempts revert with **`ReferralRegistry: code taken`**. There is **no** protocol-level reservation keyed on “I submitted first” or a pending public-mempool transaction.
+- **Calldata on public mempools:** The **plaintext code** is in `registerCode` calldata **before execution**. Anyone who observes a pending registration may broadcast a competing transaction with the **same normalized code**; **miner/builder ordering, gas price, and inclusion rules** decide which executes first ([audit L-02](../../audits/audit_smartcontract_1777813071.md#l-02-referral-code-registration-is-front-runnable)).
+- **Burn as an economic barrier, not FIFO fairness:** **`registrationBurnAmount`** CL8Y is transferred **only after** uniqueness checks succeed ([CL8Y token §](#cl8y-token)). The **successful** claimant pays the burn to the irreversible sink; **failed / reverted** attempts **do not** spend that registration burn ([`ReferralRegistry.sol`](../../contracts/src/ReferralRegistry.sol)).
+- **Product stance (v1):** Treat ordering as **transparent and onchain** — disclosure in product docs + register UX; **no** commit‑reveal, signed offchain reservations, or private‑mempool‑only flows in this work item ([issue #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121)).
+
+Invariant + test-strategy notes: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referral-registration-ordering-issue-121) · Contributor checklist: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-121-referrals-register-disclosure).
+
 ## Related contracts
 
 - `ReferralRegistry` — code ownership and CL8Y burn.

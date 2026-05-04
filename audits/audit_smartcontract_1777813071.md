@@ -152,6 +152,8 @@ Recommendation:
 - If code ownership matters economically, use commit-reveal registration or signed offchain reservations.
 - If front-running is acceptable, document "first included transaction wins" in referral UX and docs.
 
+**Repo follow-up:** Disclosure + register UX + product/invariant docs — [GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) (`docs/product/referrals.md` § registration ordering; `ReferralRegisterSection` `referrals-register-ordering-disclosure`).
+
 ### L-03: Several AccessControl deployments do not reject zero admin addresses
 
 Affected contracts:
