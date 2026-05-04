@@ -38,7 +38,8 @@ contract DeployDev is Script {
     address internal constant SALE_CL8Y_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     function run() external {
-        uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
+        uint256 deployerKey =
+            vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(deployerKey);
 
         vm.startBroadcast(deployerKey);
@@ -71,21 +72,21 @@ contract DeployDev is Script {
         RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
             ERC20(reserveAsset),
             doub,
-            86_400,                             // epochDuration
-            2e18,                               // cMaxWad
-            1_050_000_000_000_000_000,          // cStarWad (1.05)
-            2e16,                               // alphaWad (0.02)
-            2e18,                               // betaWad
-            98e16,                              // mMinWad (0.98)
-            102e16,                             // mMaxWad (1.02)
-            5e17,                               // lamWad (0.5)
-            2e16,                               // deltaMaxFracWad (0.02)
-            1,                                  // eps
-            25e16,                              // protocolRevenueBurnShareWad (25% of fee gross burned)
-            1e16,                               // withdrawFeeWad (1%)
-            5e17,                               // minRedemptionEfficiencyWad (50% floor when health is 0)
-            0,                                  // redemptionCooldownEpochs (0 = off)
-            address(0),                         // burnSink (0 → DEFAULT_BURN_SINK)
+            86_400, // epochDuration
+            2e18, // cMaxWad
+            1_050_000_000_000_000_000, // cStarWad (1.05)
+            2e16, // alphaWad (0.02)
+            2e18, // betaWad
+            98e16, // mMinWad (0.98)
+            102e16, // mMaxWad (1.02)
+            5e17, // lamWad (0.5)
+            2e16, // deltaMaxFracWad (0.02)
+            1, // eps
+            25e16, // protocolRevenueBurnShareWad (25% of fee gross burned)
+            1e16, // withdrawFeeWad (1%)
+            5e17, // minRedemptionEfficiencyWad (50% floor when health is 0)
+            0, // redemptionCooldownEpochs (0 = off)
+            address(0), // burnSink (0 → DEFAULT_BURN_SINK)
             deployer
         );
         doub.grantRole(doub.MINTER_ROLE(), address(rt));
@@ -94,21 +95,14 @@ contract DeployDev is Script {
         // ── Fee Router (UUPS proxy) ────────────────────────────────────
         FeeRouter router = UUPSDeployLib.deployFeeRouter(
             deployer,
-            [
-                address(doubLP),
-                SALE_CL8Y_BURN_SINK,
-                address(podiumPool),
-                address(ecoTreasury),
-                address(rt)
-            ],
+            [address(doubLP), SALE_CL8Y_BURN_SINK, address(podiumPool), address(ecoTreasury), address(rt)],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
         console.log("FeeRouter:", address(router));
 
         // ── Referral registry (UUPS proxy) ────────────────────────────
-        ReferralRegistry referralRegistry =
-            UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), 1e18, deployer);
+        ReferralRegistry referralRegistry = UUPSDeployLib.deployReferralRegistry(IERC20(reserveAsset), 1e18, deployer);
         console.log("ReferralRegistry:", address(referralRegistry));
 
         // ── TimeCurve (dev placeholder — needs launched token) ─────────
@@ -167,15 +161,15 @@ contract DeployDev is Script {
         vAmt[1] = 4_000e18;
         uint256 vTotal = 10_000e18;
         uint256 vDurationSec = 180 days;
-        DoubPresaleVesting presaleVesting = UUPSDeployLib.deployDoubPresaleVesting(
-            IERC20(address(doub)), deployer, vBen, vAmt, vTotal, vDurationSec
-        );
+        DoubPresaleVesting presaleVesting =
+            UUPSDeployLib.deployDoubPresaleVesting(IERC20(address(doub)), deployer, vBen, vAmt, vTotal, vDurationSec);
         doub.grantRole(doub.MINTER_ROLE(), deployer);
         doub.mint(address(presaleVesting), vTotal);
         doub.revokeRole(doub.MINTER_ROLE(), deployer);
         presaleVesting.setClaimsEnabled(true);
         presaleVesting.startVesting();
         console.log("DoubPresaleVesting:", address(presaleVesting));
+        tc.setDoubPresaleVesting(address(presaleVesting));
 
         // ── Leprechaun NFT ─────────────────────────────────────────────
         LeprechaunNFT nft = new LeprechaunNFT("Leprechaun", "LEPR", "", deployer);
@@ -200,5 +194,8 @@ contract MockReserveCl8y is ERC20 {
 
 contract MockLaunchToken is ERC20 {
     constructor() ERC20("Mock Launch Token", "MLT") {}
-    function mint(address to, uint256 amount) external { _mint(to, amount); }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
 }

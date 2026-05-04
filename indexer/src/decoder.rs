@@ -136,6 +136,7 @@ mod contracts {
             event CharmRedemptionEnabled(bool enabled);
             event ReservePodiumPayoutsEnabled(bool enabled);
             event TimeCurveBuyRouterSet(address indexed router);
+            event DoubPresaleVestingSet(address indexed vesting);
         }
     }
 
@@ -390,6 +391,7 @@ pub enum DecodedEvent {
     TimeCurveCharmRedemptionEnabled { enabled: bool },
     TimeCurveReservePodiumPayoutsEnabled { enabled: bool },
     TimeCurveBuyRouterSet { router: Address },
+    TimeCurveDoubPresaleVestingSet { vesting: Address },
     ReferralCodeRegistered {
         owner: Address,
         code_hash: B256,
@@ -807,6 +809,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             let e = d.data;
             return DecodedEvent::TimeCurveBuyRouterSet {
                 router: e.router,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::DoubPresaleVestingSet::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::DoubPresaleVestingSet::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveDoubPresaleVestingSet {
+                vesting: e.vesting,
             };
         }
     }

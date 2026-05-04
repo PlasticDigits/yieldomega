@@ -365,6 +365,10 @@ label:has(input[type="radio"]:disabled) {
   margin-top: 0.55rem;
 }
 
+.app-header__presale-charm-badge {
+  margin-top: 0.55rem;
+}
+
 .app-nav {
   display: flex;
   flex-wrap: wrap;

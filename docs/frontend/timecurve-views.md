@@ -385,6 +385,12 @@ single primary action. The `showFooter` toggle in
 [`RootLayout.tsx`](../../frontend/src/layout/RootLayout.tsx) is keyed on
 `location.pathname === "/timecurve"`.
 
+<a id="timecurve-presale-charm-header-hint"></a>
+
+### Root header — presale CHARM bonus (`/timecurve*`)
+
+When **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** resolves to the **`DoubPresaleVesting`** proxy and **`isBeneficiary(connectedWallet)`** is true, the global header shows **`Presale +15% CHARM`** ([`TimecurvePresaleCharmHeaderBadge`](../../frontend/src/layout/TimecurvePresaleCharmHeaderBadge.tsx)) on **`/timecurve`** and **`/timecurve/*`**. Authoritative weighting lives in **`TimeCurve`** (`doubPresaleVesting`, `PRESALE_CHARM_WEIGHT_BPS`, `setDoubPresaleVesting`). Map: [`INV-TC-PRESALE-CHARM-BOOST`](../testing/invariants-and-business-logic.md#timecurve-presale-charm-weight-boost).
+
 <a id="global-footer-fee-sinks-mobile-issue-93"></a>
 
 ### Global footer — fee sinks on narrow viewports ([issue #93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93))

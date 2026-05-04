@@ -14,6 +14,9 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// @notice Immutable beneficiary set and per-address allocations fixed at deploy. The owner starts vesting once;
 ///         each beneficiary may claim according to the schedule below.
 ///
+///         When **`TimeCurve.doubPresaleVesting`** points at this contract (proxy), **beneficiaries** also earn a **+15%**
+///         **CHARM weight** bonus on each TimeCurve buy's purchased `charmWad` (see `TimeCurve.PRESALE_CHARM_WEIGHT_BPS`).
+///
 /// ## Schedule (per beneficiary)
 /// - **Cliff:** **30%** of `allocation` becomes vested at `vestingStart` (TGE).
 /// - **Linear:** the remaining **70%** (implicitly `allocation - cliffAmount`) vests linearly in time from

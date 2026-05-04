@@ -10,6 +10,7 @@ import { PageBadge } from "@/components/ui/PageBadge";
 import { governanceUrl } from "@/lib/addresses";
 import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
+import { TimecurvePresaleCharmHeaderBadge } from "@/layout/TimecurvePresaleCharmHeaderBadge";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -51,6 +52,7 @@ export function RootLayout() {
             />
             YieldOmega
           </NavLink>
+          <TimecurvePresaleCharmHeaderBadge />
           <PageBadge
             label="TimeCurve live"
             tone="live"

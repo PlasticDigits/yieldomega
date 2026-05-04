@@ -915,6 +915,22 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveDoubPresaleVestingSet { vesting } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_presale_vesting_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, vesting_address
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*vesting))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (

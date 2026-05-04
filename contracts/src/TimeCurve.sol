@@ -13,6 +13,7 @@ import {FeeRouter} from "./FeeRouter.sol";
 import {PodiumPool} from "./sinks/PodiumPool.sol";
 import {IReferralRegistry} from "./interfaces/IReferralRegistry.sol";
 import {ICharmPrice} from "./interfaces/ICharmPrice.sol";
+import {IDoubPresaleBeneficiary} from "./interfaces/IDoubPresaleBeneficiary.sol";
 
 /// @title TimeCurve — token launch primitive + WarBow Ladder (PvP Battle Points)
 /// @notice CHARM bounds × linear price; timer uses +2m extension, or **hard reset toward 15m remaining** when under 13m left
@@ -78,6 +79,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
     uint16 public constant REFERRAL_EACH_BPS = 500; // 5% each to referrer + buyer (CHARM weight)
+    /// @notice Extra CHARM **weight** (not extra `charmWad` spend) for `DoubPresaleVesting` beneficiaries on each buy — **15%** of purchased `charmWad`.
+    uint16 public constant PRESALE_CHARM_WEIGHT_BPS = 1500;
 
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
@@ -200,16 +203,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad);
     event WarBowFlagClaimed(address indexed player, uint256 bonusBp, uint256 battlePointsAfter);
     event WarBowFlagPenalized(
-        address indexed formerHolder,
-        uint256 penaltyBp,
-        address indexed triggeringBuyer,
-        uint256 battlePointsAfter
+        address indexed formerHolder, uint256 penaltyBp, address indexed triggeringBuyer, uint256 battlePointsAfter
     );
     /// @notice Accepted-asset burn to `BURN_SINK` for WarBow actions (uniform accounting).
     event WarBowCl8yBurned(address indexed payer, uint8 indexed reason, uint256 amountWad);
-    event WarBowDefendedStreakContinued(
-        address indexed wallet, uint256 activeStreak, uint256 bestStreak
-    );
+    event WarBowDefendedStreakContinued(address indexed wallet, uint256 activeStreak, uint256 bestStreak);
     event WarBowDefendedStreakBroken(
         address indexed formerHolder, address indexed interrupter, uint256 brokenActiveLength
     );
@@ -223,6 +221,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event ReservePodiumPayoutsEnabled(bool enabled);
     /// @notice `timeCurveBuyRouter` updated (single-tx Kumbaya → `buyFor` entry; GitLab #65).
     event TimeCurveBuyRouterSet(address indexed router);
+    /// @notice `DoubPresaleVesting` (or compatible) used to gate **+15%** CHARM weight on buys for `isBeneficiary(buyer)`. Zero = disabled.
+    event DoubPresaleVestingSet(address indexed vesting);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -299,6 +299,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit TimeCurveBuyRouterSet(router);
     }
 
+    /// @notice Wire **`DoubPresaleVesting`** (proxy) so beneficiaries get **+`PRESALE_CHARM_WEIGHT_BPS` / 1e4** extra CHARM weight on the purchased `charmWad` each buy (redeems like additional spend-free CHARM; referral tranches unchanged). Pass **`address(0)`** to disable.
+    function setDoubPresaleVesting(address vesting) external onlyOwner {
+        doubPresaleVesting = vesting;
+        emit DoubPresaleVestingSet(vesting);
+    }
+
     /// @dev `buyFeeRoutingEnabled` — blocks `_buy` and WarBow CL8Y pulls (not `claimWarBowFlag`, which burns no CL8Y).
     function _requireSaleInteractionsEnabled() internal view {
         require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
@@ -322,10 +328,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(saleStart == 0, "TimeCurve: already started");
         require(epoch != 0, "TimeCurve: invalid epoch");
         require(epoch >= block.timestamp, "TimeCurve: epoch in past");
-        require(
-            launchedToken.balanceOf(address(this)) >= totalTokensForSale,
-            "TimeCurve: insufficient launched tokens"
-        );
+        require(launchedToken.balanceOf(address(this)) >= totalTokensForSale, "TimeCurve: insufficient launched tokens");
         saleStart = epoch;
         deadline = epoch + initialTimerSec;
         emit SaleStarted(epoch, deadline, totalTokensForSale);
@@ -412,8 +415,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             emit ReferralApplied(buyer, referrer, codeHash, refEach, refEach, amount);
         }
 
-        charmWeight[buyer] += charmWad;
-        totalCharmWeight += charmWad;
+        uint256 buyerCharmFromBuy = charmWad;
+        if (doubPresaleVesting != address(0) && IDoubPresaleBeneficiary(doubPresaleVesting).isBeneficiary(buyer)) {
+            buyerCharmFromBuy += (charmWad * uint256(PRESALE_CHARM_WEIGHT_BPS)) / 10_000;
+        }
+        charmWeight[buyer] += buyerCharmFromBuy;
+        totalCharmWeight += buyerCharmFromBuy;
 
         acceptedAsset.safeTransfer(address(feeRouter), amount);
         feeRouter.distributeFees(acceptedAsset, amount);
@@ -432,9 +439,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
                 uint256 pen = WARBOW_FLAG_CLAIM_BP * 2;
                 _subBattlePoints(warbowPendingFlagOwner, pen);
                 flagPenalty = pen;
-                emit WarBowFlagPenalized(
-                    warbowPendingFlagOwner, pen, buyer, battlePoints[warbowPendingFlagOwner]
-                );
+                emit WarBowFlagPenalized(warbowPendingFlagOwner, pen, buyer, battlePoints[warbowPendingFlagOwner]);
             }
             warbowPendingFlagOwner = address(0);
             warbowPendingFlagPlantAt = 0;
@@ -560,7 +565,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 abp = battlePoints[msg.sender];
         require(vbp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
 
-        uint16 bps = block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
+        uint16 bps =
+            block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
         uint256 take = (vbp * uint256(bps)) / 10_000;
         require(take > 0, "TimeCurve: steal zero");
 
@@ -897,5 +903,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Trusted companion for `buyFor` (ETH/USDM → Kumbaya → CL8Y `buy` in one tx). Zero = disabled.
     address public timeCurveBuyRouter;
 
-    uint256[48] private __gap;
+    /// @notice When set, `isBeneficiary(buyer)` on this contract adds **+15%** CHARM weight to the purchased `charmWad` (see `PRESALE_CHARM_WEIGHT_BPS`). Canonical mainnet: **`DoubPresaleVesting` ERC-1967 proxy**.
+    address public doubPresaleVesting;
+
+    uint256[47] private __gap;
 }
