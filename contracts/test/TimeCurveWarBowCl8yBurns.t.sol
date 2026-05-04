@@ -86,6 +86,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
     function testFuzz_warbow_guard_burn_exact_to_sink(uint160 callerRaw) public {
         vm.assume(callerRaw != uint160(0));
         address caller = address(callerRaw);
+        vm.assume(caller != address(tc));
 
         tc.startSaleAt(block.timestamp);
         _fund(caller, 100e18);
@@ -102,6 +103,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(victim160 != stealer160);
         address victim = address(victim160);
         address stealer = address(stealer160);
+        vm.assume(victim != address(tc) && stealer != address(tc));
 
         tc.startSaleAt(block.timestamp);
         _fund(victim, 50e18);
@@ -126,6 +128,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(victim160 != stealer160);
         address victim = address(victim160);
         address stealer = address(stealer160);
+        vm.assume(victim != address(tc) && stealer != address(tc));
 
         tc.startSaleAt(block.timestamp);
         _fund(victim, 50e18);
