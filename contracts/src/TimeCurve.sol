@@ -195,6 +195,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Full **`launchedToken`** balance forwarded after grace — GitLab #128.
     event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
     event PrizesDistributed();
+    /// @dev GitLab #133 — `PodiumPool` had **zero** balance at settlement; `prizesDistributed` latches true (no refill/retry).
+    ///      Distinct from **`PrizesDistributed`** (non-zero pool drained successfully).
+    event PrizesSettledEmptyPodiumPool(address indexed podiumPool);
     event ReferralApplied(
         address indexed buyer,
         address indexed referrer,
@@ -782,12 +785,18 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     ///      `reservePodiumPayoutsEnabled` gate (policy in `docs/onchain/cl8y-flow-audit.md`).
     ///      GitLab #116: any per-category slice not paid to winners (empty/partial podium) is **forwarded** to
     ///      `podiumResidualRecipient`, then `prizesDistributed` is set (**after** `PodiumPool` is drained).
+    ///      GitLab #133: if the pool balance is **zero**, owner must still have enabled reserve payouts; execution
+    ///      emits `PrizesSettledEmptyPodiumPool` and sets `prizesDistributed` (**no** later refill + `distributePrizes` retry).
+    ///      Non-zero path emits `PrizesDistributed` only after full drain.
     function distributePrizes() external onlyOwner nonReentrant {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
 
         uint256 prizePool = acceptedAsset.balanceOf(address(podiumPool));
         if (prizePool == 0) {
+            require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");
+            prizesDistributed = true;
+            emit PrizesSettledEmptyPodiumPool(address(podiumPool));
             return;
         }
         require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");

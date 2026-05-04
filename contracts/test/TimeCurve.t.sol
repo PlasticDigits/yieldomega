@@ -1500,8 +1500,9 @@ contract TimeCurveTest is Test {
 
     // ── Prize distribution (griefing / sad paths) ──────────────────────
 
-    /// @dev Empty vault must not set `prizesDistributed` (otherwise a griefer could brick prizes forever).
-    function test_distributePrizes_empty_vault_is_retryable() public {
+    /// @dev GitLab #133 — empty vault is an explicit settlement: emits `PrizesSettledEmptyPodiumPool`, sets
+    ///      `prizesDistributed`, blocks refill + retry.
+    function test_distributePrizes_empty_vault_emits_empty_settlement_and_locks() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -1513,16 +1514,21 @@ contract TimeCurveTest is Test {
         assertGt(expectedPrize, 0);
         deal(address(reserve), address(podiumPool), 0);
 
-        tc.distributePrizes();
-        assertFalse(tc.prizesDistributed());
-
-        deal(address(reserve), address(podiumPool), expectedPrize);
+        vm.expectEmit(true, false, false, true, address(tc));
+        emit TimeCurve.PrizesSettledEmptyPodiumPool(address(podiumPool));
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
+
+        vm.expectRevert("TimeCurve: prizes done");
+        tc.distributePrizes();
+
+        deal(address(reserve), address(podiumPool), expectedPrize);
+        vm.expectRevert("TimeCurve: prizes done");
+        tc.distributePrizes();
     }
 
-    /// @dev Tiny pool with no payable integer splits for filled podiums should stay retryable.
-    function test_distributePrizes_dust_pool_is_retryable() public {
+    /// @dev GitLab #133 — after empty settlement, funding `PodiumPool` does not reopen `distributePrizes`.
+    function test_distributePrizes_after_empty_settlement_refill_does_not_retry() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -1532,11 +1538,26 @@ contract TimeCurveTest is Test {
 
         deal(address(reserve), address(podiumPool), 0);
         tc.distributePrizes();
-        assertFalse(tc.prizesDistributed());
+        assertTrue(tc.prizesDistributed());
 
         deal(address(reserve), address(podiumPool), 1_000_000e18);
+        vm.expectRevert("TimeCurve: prizes done");
         tc.distributePrizes();
-        assertTrue(tc.prizesDistributed());
+    }
+
+    /// @dev GitLab #133 — empty pool uses the same `reservePodiumPayoutsEnabled` gate as non-zero payout path.
+    function test_distributePrizes_empty_pool_reverts_when_reserve_podium_payouts_disabled() public {
+        tc.setReservePodiumPayoutsEnabled(false);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        deal(address(reserve), address(podiumPool), 0);
+        vm.expectRevert("TimeCurve: reserve podium payouts disabled");
+        tc.distributePrizes();
+        assertFalse(tc.prizesDistributed());
     }
 
     function test_distributePrizes_reduces_vault_and_sets_flag() public {
