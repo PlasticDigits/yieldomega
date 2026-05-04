@@ -25,7 +25,14 @@ export function friendlyRevertMessage(raw: string): string {
     ["timecurve: already redeemed", "This wallet already redeemed its charms."],
     ["timecurve: nothing to redeem", "There is nothing claimable for this wallet at current totals."],
     ["timecurve: steal victim daily limit", "That victim already hit the daily steal cap unless you pay the bypass burn."],
-    ["timecurve: steal 2x rule", "You can only steal from a rival with at least 2x your Battle Points."],
+    [
+      "timecurve: steal attacker daily limit",
+      "You already landed three steals today from this wallet unless you pay the bypass burn.",
+    ],
+    [
+      "timecurve: steal 2x rule",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points.",
+    ],
     ["timecurve: bad victim", "Choose a real rival address instead of zero or your own wallet."],
     ["timecurve: steal zero", "That steal would move zero Battle Points, so the contract rejected it."],
     ["timecurve: not flag holder", "Only the wallet holding the planted flag can claim it."],
