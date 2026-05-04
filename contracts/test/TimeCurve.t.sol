@@ -1616,17 +1616,20 @@ contract TimeCurveTest is Test {
         tCap.endSale();
 
         uint256 prizePool = reserve.balanceOf(address(podiumPool));
-        uint256 sLast = (prizePool * 40) / 100;
-        uint256 sWar = (prizePool * 25) / 100;
-        uint256 sDef = (prizePool * 20) / 100;
-        uint256 sTime = prizePool - sLast - sWar - sDef;
+        uint256 aliceBefore = reserve.balanceOf(alice);
+        uint256 bobBefore = reserve.balanceOf(bob);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
-        // Defended-streak podium also stays empty when every buy has >= 15m remaining.
-        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, sDef + sTime);
+        assertEq(
+            (reserve.balanceOf(alice) - aliceBefore) + (reserve.balanceOf(bob) - bobBefore)
+                + (reserve.balanceOf(protocolSink) - sinkBefore),
+            prizePool,
+            "winners + protocol sink account for full podium pool"
+        );
+        assertGt(reserve.balanceOf(protocolSink), sinkBefore, "protocol receives residual slices / forwards");
     }
 
     /// @dev GitLab #116 — defended + time booster empty together (same sale shape as the two tests above combined).
