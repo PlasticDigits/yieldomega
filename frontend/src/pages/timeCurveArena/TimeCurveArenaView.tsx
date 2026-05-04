@@ -7,6 +7,7 @@ import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -838,6 +839,7 @@ export function TimeCurveArenaView() {
                           </p>
                         )}
                       </div>
+                      <Cl8yTimeCurveUnlimitedApprovalFieldset disabled={!isConnected} />
                       <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
                         <div className="timecurve-arena-buy-panel__effects-title">
                           <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
