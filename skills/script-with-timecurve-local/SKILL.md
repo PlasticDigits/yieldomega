@@ -44,7 +44,7 @@ Poll or call **before** each write (or on a tight loop for time-sensitive flows)
 ## E. Referrals, `buyFor`, routers
 
 - **Referrals:** Code rules and capture semantics in [`docs/product/referrals.md`](../../docs/product/referrals.md).
-- **`buyFor` / `TimeCurveBuyRouter` / `buyViaKumbaya`:** [`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md) — gross CL8Y, router attestation, env parity for local registry.
+- **`buyFor` / `TimeCurveBuyRouter` / `buyViaKumbaya`:** [`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md) — gross CL8Y, router attestation, env parity for local registry. **`buyViaKumbaya`** refunds **marginal ETH/stable only**; do not rely on unsolicited router donations as subsidy ([GitLab #117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117), [`invariants §117`](../../docs/testing/invariants-and-business-logic.md#timecurve-buy-router-net-refund-rescue-issue-117)).
 
 ## F. Safety / ethics
 

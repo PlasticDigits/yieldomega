@@ -112,6 +112,8 @@ Recommendation:
 - Add a rescue function gated by governance for unrelated stuck tokens.
 - Add tests for pre-seeded WETH/stable balances.
 
+**Status (GitLab [#117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117)):** Implemented on **`main`** — net-of-snapshot **`PAY_ETH` / `PAY_STABLE`** refunds, **`Ownable2Step`** **`rescueETH` / `rescueERC20`**, Forge tests in [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol); invariant map [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timecurve-buy-router-net-refund-rescue-issue-117).
+
 ### M-03: `RabbitTreasury` parameter setters lack bounds for several math-critical values
 
 Affected contract: `RabbitTreasury`
@@ -139,7 +141,7 @@ Recommendation:
 - Add `block.timestamp >= tc.saleStart()` to the router sale-phase check.
 - Add a future-sale router test mirroring the direct TimeCurve pre-start test.
 
-### L-02: Referral code registration is front-runnable
+**Addressed:** [GitLab #118](https://gitlab.com/PlasticDigits/yieldomega/-/issues/118) — **`TimeCurveBuyRouter.buyViaKumbaya`** reverts **`BadSalePhase`** when **`block.timestamp < saleStart()`** before **`exactOutput`**; Forge coverage in **`TimeCurveBuyRouterScheduledNotLive118Test`** ([`audits/audit_smartcontract_1777813071.md`](../../audits/audit_smartcontract_1777813071.md) § L-01). Referral code registration is front-runnable
 
 Affected contract: `ReferralRegistry`
 
