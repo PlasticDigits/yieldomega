@@ -225,6 +225,8 @@ Affected contracts:
 
 This is not expected under current sale timing assumptions, but it is a latent denial-of-service boundary if a sale is extended or left open far beyond expected duration.
 
+**Mitigated:** [GitLab #124](https://gitlab.com/PlasticDigits/yieldomega/-/issues/124) — **`MAX_SALE_ELAPSED_SEC`**, capped **`_elapsedForCharmPricing`**, **`LinearCharmPrice`** increment bounds, **`deadline`** clamped to **`saleStart + MAX + 1`**, and **`block.timestamp <= saleStart + MAX`** on **`buy` / WarBow CL8Y** (inclusive last second at the wall when the countdown still allows the tx). Map: [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md#timecurve-max-sale-elapsed-gitlab-124).
+
 Recommendation:
 
 - Bound accepted growth and pricing parameters at deployment.

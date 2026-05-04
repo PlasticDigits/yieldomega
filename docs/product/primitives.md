@@ -41,6 +41,7 @@ TimeCurve is a **token launch primitive** that blends ideas from bonding curves,
 ### Sale end condition
 
 - The sale **ends** when the **timer reaches zero** without further extension past the end boundary.
+- **300-day hard wall ([GitLab #124](https://gitlab.com/PlasticDigits/yieldomega/-/issues/124)):** **`TimeCurve`** caps pricing elapsed and rejects **`buy` / `buyFor`** and WarBow **CL8Y** paths when **`block.timestamp > saleStart + MAX_SALE_ELAPSED_SEC`** ( **`300 × 86400`** seconds). The onchain guard uses **`<=`**, so **`block.timestamp == saleStart + MAX_SALE_ELAPSED_SEC`** can still be valid when **`block.timestamp < deadline`** (often after timer extensions clamp **`deadline`** to **`saleStart + MAX_SALE_ELAPSED_SEC + 1`** — see [`invariants §124`](../testing/invariants-and-business-logic.md#timecurve-max-sale-elapsed-gitlab-124), [`PARAMETERS.md`](../../contracts/PARAMETERS.md) § TimeCurve).
 - After end, **no further buys** are accepted; **redemption** of charms for **DOUB** and **podium** payouts follow rules defined onchain. WarBow **actions** that require an open sale (`!ended`) are blocked after end; **revenge** may still be callable if the contract allows post-end (verify deployment); guard/steal/flag flows in v1 are gated to active sale phase in `TimeCurve`.
 
 ### Reserve podium categories (exactly four)

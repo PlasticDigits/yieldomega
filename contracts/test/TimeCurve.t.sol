@@ -2103,6 +2103,47 @@ contract TimeCurveTest is Test {
         assertEq(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
     }
 
+    /// @dev GitLab #124 — inclusive wall: at `saleStart + MAX` a buy succeeds when `deadline` was clamped to `MAX + 1` (extension near the hard cap).
+    function test_gitlab124_buy_succeeds_at_hard_wall_second_when_deadline_clamped() public {
+        uint256 maxSec = 300 * ONE_DAY;
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            maxSec,
+            maxSec,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        uint256 t0 = 1_000_000;
+        vm.warp(t0);
+        t.startSaleAt(t0);
+        vm.warp(t0 + maxSec - 100);
+        (uint256 minC,) = t.currentCharmBoundsWad();
+        uint256 spend = (minC * t.currentPricePerCharmWad()) / WAD;
+        _fundAndApproveCurve(alice, spend * 2, t);
+        vm.prank(alice);
+        t.buy(minC);
+        assertEq(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
+
+        uint256 atWall = t.saleStart() + maxSec;
+        vm.warp(atWall);
+        (uint256 minAtWall,) = t.currentCharmBoundsWad();
+        uint256 spend2 = (minAtWall * t.currentPricePerCharmWad()) / WAD;
+        _fundAndApproveCurve(alice, spend2, t);
+        vm.prank(alice);
+        t.buy(minAtWall);
+        assertEq(t.buyCount(alice), 2);
+    }
+
     function test_gitlab124_startSaleAt_uses_min_of_initial_timer_and_hard_cap() public {
         uint256 maxSec = 300 * ONE_DAY;
         TimeCurve t = _deployTimeCurve(
