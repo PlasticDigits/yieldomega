@@ -247,6 +247,13 @@ mod contracts {
                 uint16[5] newWeights
             );
             event FeesDistributed(address indexed token, uint256 amount, uint256[5] shares);
+            event DistributableTokenUpdated(address indexed token, bool allowed, address indexed actor);
+            event ERC20Rescued(
+                address indexed token,
+                address indexed to,
+                uint256 amount,
+                address indexed actor
+            );
         }
     }
 
@@ -508,6 +515,19 @@ pub enum DecodedEvent {
         token: Address,
         amount: U256,
         shares: [U256; 5],
+    },
+    /// @dev GitLab #122 — `setDistributableToken`
+    FeeRouterDistributableTokenUpdated {
+        token: Address,
+        allowed: bool,
+        actor: Address,
+    },
+    /// @dev GitLab #122 — `rescueERC20`
+    FeeRouterERC20Rescued {
+        token: Address,
+        recipient: Address,
+        amount: U256,
+        actor: Address,
     },
     DoubVestingStarted {
         start_timestamp: U256,
@@ -1061,6 +1081,27 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 token: e.token,
                 amount: e.amount,
                 shares: e.shares,
+            };
+        }
+    }
+    if topic0 == FeeRouterEvents::DistributableTokenUpdated::SIGNATURE_HASH {
+        if let Ok(d) = FeeRouterEvents::DistributableTokenUpdated::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::FeeRouterDistributableTokenUpdated {
+                token: e.token,
+                allowed: e.allowed,
+                actor: e.actor,
+            };
+        }
+    }
+    if topic0 == FeeRouterEvents::ERC20Rescued::SIGNATURE_HASH {
+        if let Ok(d) = FeeRouterEvents::ERC20Rescued::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::FeeRouterERC20Rescued {
+                token: e.token,
+                recipient: e.to,
+                amount: e.amount,
+                actor: e.actor,
             };
         }
     }

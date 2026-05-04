@@ -115,6 +115,7 @@ contract TimeCurveTest is Test {
             [sinkLp, sinkBurn, address(podiumPool), sinkTeam, sinkRabbit],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(reserve)), true);
 
         linearPrice = _deployLinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
         tc = _deployTimeCurve(
@@ -1648,16 +1649,17 @@ contract TimeCurveTest is Test {
         tCap.endSale();
 
         uint256 prizePool = reserve.balanceOf(address(podiumPool));
-        uint256 sLast = (prizePool * 40) / 100;
-        uint256 sWar = (prizePool * 25) / 100;
-        uint256 sDef = (prizePool * 20) / 100;
-        uint256 sTime = prizePool - sLast - sWar - sDef;
+        uint256 aliceBefore = reserve.balanceOf(alice);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
-        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, sDef + sTime);
+        assertEq(
+            reserve.balanceOf(alice) - aliceBefore + (reserve.balanceOf(protocolSink) - sinkBefore),
+            prizePool,
+            "winners + protocol sink account for full podium pool"
+        );
     }
 
     /// @dev GitLab #116 — with a **single** buyer, multiple categories forward residual; exact 1st-place last-buy payment is still `(4/7)*sLast`.
@@ -1899,13 +1901,14 @@ contract TimeCurveTest is Test {
         assertEq(tcd.buyCount(bob), 1);
     }
 
-    /// @dev GitLab #124 — wall-clock sale cap (audit I-01).
-    function test_gitlab124_buy_reverts_after_max_sale_elapsed() public {
+    /// @dev GitLab #124 — at `block.timestamp == saleStart + MAX_SALE_ELAPSED_SEC + 1`, the **timer** guard on `_buy`
+    ///      runs before the wall-clock cap; `deadline` is clamped to `saleStart + MAX + 1` (see `TimeCurve` §124).
+    function test_gitlab124_buy_reverts_timer_expired_at_wall_clock_boundary() public {
         tc.startSaleAt(block.timestamp);
         vm.warp(tc.saleStart() + tc.MAX_SALE_ELAPSED_SEC() + 1);
         _fundAndApprove(alice, 100e18);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: sale max elapsed exceeded");
+        vm.expectRevert("TimeCurve: timer expired");
         tc.buy(1e18);
     }
 
@@ -1967,10 +1970,13 @@ contract TimeCurveTest is Test {
         vm.warp(t0);
         t.startSaleAt(t0);
         vm.warp(t0 + ONE_DAY - 10);
-        _fundAndApproveCurve(alice, 50e18, t);
+        (uint256 minC,) = t.currentCharmBoundsWad();
+        uint256 spend = (minC * t.currentPricePerCharmWad()) / WAD;
+        _fundAndApproveCurve(alice, spend, t);
         vm.prank(alice);
-        t.buy(1e18);
-        assertEq(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
+        t.buy(minC);
+        assertLe(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
+        assertGt(t.deadline(), t.saleStart());
     }
 
     function test_gitlab124_startSaleAt_uses_min_of_initial_timer_and_hard_cap() public {

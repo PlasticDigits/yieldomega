@@ -87,6 +87,7 @@ contract TimeCurveInvariantTest is Test {
             [s0, s1, address(podiumPool), s3, s4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(usdm)), true);
         linearPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
         tc = UUPSDeployLib.deployTimeCurve(
             IERC20(address(usdm)),

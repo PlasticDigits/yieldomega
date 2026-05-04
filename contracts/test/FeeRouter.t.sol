@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
@@ -30,6 +31,7 @@ contract FeeRouterTest is Test {
             [sink0, sink1, sink2, sink3, sink4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(token)), true);
     }
 
     function test_distributeFees_canonical_split() public {
@@ -113,5 +115,58 @@ contract FeeRouterTest is Test {
             total += w;
         }
         assertEq(total, 10_000);
+    }
+
+    function test_distributeFees_reverts_when_token_not_distributable() public {
+        MockToken stray = new MockToken();
+        stray.mint(address(router), 1_000);
+        vm.expectRevert("FeeRouter: token not distributable");
+        router.distributeFees(IERC20(address(stray)), 1_000);
+    }
+
+    function test_setDistributableToken_emits_and_gate() public {
+        MockToken stray = new MockToken();
+        assertEq(router.distributableToken(address(stray)), false);
+        vm.expectEmit(true, true, true, true);
+        emit FeeRouter.DistributableTokenUpdated(address(stray), true, address(this));
+        router.setDistributableToken(IERC20(address(stray)), true);
+        stray.mint(address(router), 100);
+        router.distributeFees(IERC20(address(stray)), 100);
+        assertEq(stray.balanceOf(sink0), 30);
+    }
+
+    function test_setDistributableToken_zero_token_reverts() public {
+        vm.expectRevert("FeeRouter: zero token");
+        router.setDistributableToken(IERC20(address(0)), true);
+    }
+
+    function test_setDistributableToken_unauthorized_reverts() public {
+        vm.prank(makeAddr("rando"));
+        vm.expectRevert();
+        router.setDistributableToken(IERC20(address(token)), false);
+    }
+
+    function test_rescueERC20_moves_balance() public {
+        MockToken stray = new MockToken();
+        stray.mint(address(router), 500);
+        address recipient = makeAddr("recipient");
+        vm.expectEmit(true, true, true, true);
+        emit FeeRouter.ERC20Rescued(address(stray), recipient, 500, address(this));
+        router.rescueERC20(IERC20(address(stray)), recipient, 500);
+        assertEq(stray.balanceOf(recipient), 500);
+        assertEq(stray.balanceOf(address(router)), 0);
+    }
+
+    function test_rescueERC20_unauthorized_reverts() public {
+        token.mint(address(router), 100);
+        vm.prank(makeAddr("rando"));
+        vm.expectRevert();
+        router.rescueERC20(IERC20(address(token)), sink0, 100);
+    }
+
+    function test_rescueERC20_zero_to_reverts() public {
+        token.mint(address(router), 10);
+        vm.expectRevert("FeeRouter: zero to");
+        router.rescueERC20(IERC20(address(token)), address(0), 10);
     }
 }

@@ -178,18 +178,20 @@ Recommendation:
 
 ### L-04: Public fee distribution and sink withdrawals depend on correct token/sink choices
 
+**Status (main):** Addressed by [GitLab #122](https://gitlab.com/PlasticDigits/yieldomega/-/issues/122) — `distributeFees` requires a **`GOVERNOR_ROLE`** allowlist (`setDistributableToken`); governed **`rescueERC20`** + events **`DistributableTokenUpdated`**, **`ERC20Rescued`**; docs in [`docs/onchain/fee-routing-and-governance.md`](../docs/onchain/fee-routing-and-governance.md).
+
 Affected contracts:
 
 - `FeeRouter`
 - `FeeSink`
 - `PodiumPool`
 
-`FeeRouter.distributeFees` is intentionally permissionless and sends any token balance held by the router to configured sinks. Fee sinks then allow governed withdrawals. This supports liveness and dust cleanup, but means any accidental ERC20 sent to the router can be routed to the configured sinks by anyone.
+Historically, `FeeRouter.distributeFees` was permissionless for **any** token balance held by the router. Today, only **allowlisted** tokens may be split to sinks; other balances are recovered only via **`rescueERC20`**.
 
 Recommendation:
 
 - Keep documenting that `FeeRouter` is not a custody contract.
-- Consider an allowlist or rescue policy if third-party tokens are likely to be sent accidentally.
+- **Done:** allowlist + governed rescue for stray tokens (see #122).
 
 ### L-05: Standard-ERC20 assumptions are security-critical
 

@@ -130,7 +130,7 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 Plain-language checks that should hold **after any** fee-routing or related parameter update (and after governance-bound delays execute, if applicable). Align testing posture with [../testing/strategy.md](../testing/strategy.md) and risk framing in [security-and-threat-model.md](security-and-threat-model.md).
 
-**Invariant index:** [TimeCurve split totals](#invariant-timecurve-split-totals) · [No invalid weights](#invariant-non-negative-weights) · [Carve-out layering](#invariant-carve-out-layering) · [Destinations match policy](#invariant-destination-policy) · [Podium sub-weights](#invariant-prize-sub-weights) · [No hidden fee paths](#invariant-no-hidden-paths) · [Parameter change events](#invariant-parameter-change-events) · [Governance bounds](#invariant-governance-bounds) · [Module schedule match](#invariant-module-schedule-match)
+**Invariant index:** [TimeCurve split totals](#invariant-timecurve-split-totals) · [No invalid weights](#invariant-non-negative-weights) · [Carve-out layering](#invariant-carve-out-layering) · [Destinations match policy](#invariant-destination-policy) · [Podium sub-weights](#invariant-prize-sub-weights) · [No hidden fee paths](#invariant-no-hidden-paths) · [FeeRouter distributable token](#invariant-feerouter-distributable-token) · [Parameter change events](#invariant-parameter-change-events) · [Governance bounds](#invariant-governance-bounds) · [Module schedule match](#invariant-module-schedule-match)
 
 <a id="invariant-timecurve-split-totals"></a>
 
@@ -162,6 +162,12 @@ Each non-zero sink’s configured **destination** matches the intended receiver 
 
 Category shares **inside** the [20% podium pool bucket](#fee-sinks) sum to **100%** of that bucket (40% last buy · 25% WarBow · 20% defended streak · 15% time booster). Within each category, top-3 placements use ratio **4∶2∶1** (1st = 2× 2nd, 2nd = 2× 3rd). Internal splits are **fixed in `TimeCurve`** today; they do **not** change the **top-level** five-sink split unless the **fee split weights** governor updates that layer.
 
+<a id="invariant-feerouter-distributable-token"></a>
+
+### Invariant: FeeRouter distributable token (GitLab #122)
+
+`FeeRouter.distributeFees` **reverts** unless the token is **allowlisted** via `setDistributableToken` (`GOVERNOR_ROLE`). Canonical sale asset (e.g. CL8Y) must be marked distributable at deploy or before first split. **Stray or wrong** ERC-20 is **not** split to sinks by arbitrary callers; recovery uses **`rescueERC20`** (`GOVERNOR_ROLE` only), with **`DistributableTokenUpdated`** and **`ERC20Rescued`** for observability. **Never** instruct users to deposit to `FeeRouter` as if it were a wallet.
+
 <a id="invariant-no-hidden-paths"></a>
 
 ### Invariant: No hidden fee paths
@@ -191,6 +197,7 @@ Any module that claims to follow the **TimeCurve launch default** exposes a live
 - **Hidden fee paths** that are not emitted as events — contradicts [invariant: no hidden paths](#invariant-no-hidden-paths) and [invariant: parameter change events](#invariant-parameter-change-events).
 - **Unbounded admin keys** that can drain user deposits without timelock or onchain notice — see [security-and-threat-model.md](security-and-threat-model.md) and [invariant: governance bounds](#invariant-governance-bounds).
 - **Parallel DAO** for TimeCurve that contradicts CL8Y’s ecosystem mandate **without** an explicit community decision — see [Objectives](#objectives) and [../product/vision.md](../product/vision.md).
+- **Treating `FeeRouter` as a wallet** — do **not** send arbitrary ERC-20 to the router; permissionless `distributeFees` only runs for **governance-allowlisted** tokens, and stray balances are recovered only via governed `rescueERC20` ([GitLab #122](https://gitlab.com/PlasticDigits/yieldomega/-/issues/122), audit L-04).
 
 ## Events and observability
 

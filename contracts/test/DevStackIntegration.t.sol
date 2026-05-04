@@ -12,6 +12,7 @@ import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockReserveCl8y, MockLaunchToken} from "../script/DeployDev.s.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
@@ -77,6 +78,7 @@ contract DevStackIntegrationTest is Test {
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
+        router.setDistributableToken(IERC20(address(reserveAsset)), true);
 
         lt = new MockLaunchToken();
         lt.mint(address(this), 1_000_000e18);
