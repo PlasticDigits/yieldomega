@@ -269,6 +269,32 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
+            victim,
+            stealer,
+            expiry_exclusive,
+            steal_seq,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_warbow_revenge_window (
+                    block_number, block_hash, tx_hash, log_index, contract_address,
+                    block_timestamp, victim, stealer, expiry_exclusive, steal_seq
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(block_ts)
+            .bind(addr_hex(*victim))
+            .bind(addr_hex(*stealer))
+            .bind(u256_dec(*expiry_exclusive))
+            .bind(u256_dec(*steal_seq))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveWarBowRevenge {
             avenger,
             stealer,

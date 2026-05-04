@@ -7,6 +7,7 @@ import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
+import type { WarbowPendingRevengeItem } from "@/lib/indexerApi";
 import type { WarbowPreflightNarrative } from "@/lib/timeCurveUx";
 
 export type WarbowStealCandidate = {
@@ -35,11 +36,12 @@ type Props = {
   warbowPreflightIssue: string | null;
   runWarBowSteal: () => Promise<void>;
   runWarBowGuard: () => Promise<void>;
-  runWarBowRevenge: () => Promise<void>;
+  runWarBowRevenge: (stealer: `0x${string}`) => Promise<void>;
   guardedActive: boolean;
   guardUntilSec: string;
   hasRevengeOpen: boolean;
-  pendingRevengeStealer: `0x${string}` | undefined;
+  pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
+  revengeIndexerConfigured: boolean;
   revengeDeadlineSec: string;
   warbowGuardBurnWad: string;
   warbowBypassBurnWad: string;
@@ -70,7 +72,8 @@ export function WarbowHeroActions({
   guardedActive,
   guardUntilSec,
   hasRevengeOpen,
-  pendingRevengeStealer,
+  pendingRevengeTargets,
+  revengeIndexerConfigured,
   revengeDeadlineSec,
   warbowGuardBurnWad,
   warbowBypassBurnWad,
@@ -233,26 +236,39 @@ export function WarbowHeroActions({
             <span className="warbow-hero-actions__eyebrow">Counterpunch</span>
             <h3>Revenge</h3>
           </div>
-          {hasRevengeOpen && pendingRevengeStealer ? (
+          {hasRevengeOpen ? (
             <>
               <p className="muted">
-                Pending stealer{" "}
-                <AddressInline address={pendingRevengeStealer} formatWallet={formatWallet} size={16} /> · expires{" "}
+                You have {pendingRevengeTargets.length} open counter-hit
+                {pendingRevengeTargets.length === 1 ? "" : "s"}. Earliest expiry{" "}
                 <UnixTimestampDisplay raw={revengeDeadlineSec} />.
               </p>
-              <button
-                type="button"
-                className="btn-secondary btn-secondary--priority"
-                disabled={!canPressWarbow}
-                onClick={() => void runWarBowRevenge()}
-                data-testid="warbow-hero-revenge-submit"
-              >
-                Take revenge
-              </button>
+              <ul className="warbow-hero-revenge-list">
+                {pendingRevengeTargets.map((row) => (
+                  <li key={`${row.stealer}-${row.expiry_exclusive}`}>
+                    <AddressInline address={row.stealer} formatWallet={formatWallet} size={16} />
+                    <span className="muted">
+                      {" "}
+                      · until <UnixTimestampDisplay raw={row.expiry_exclusive} />
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-secondary--priority"
+                      disabled={!canPressWarbow}
+                      onClick={() => void runWarBowRevenge(row.stealer as `0x${string}`)}
+                      data-testid="warbow-hero-revenge-submit"
+                    >
+                      Take revenge
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </>
           ) : (
             <StatusMessage variant="muted">
-              No revenge slot is open for this wallet. A successful steal against you opens one pending stealer.
+              {revengeIndexerConfigured
+                ? "No unconsumed revenge windows for this wallet in the indexer."
+                : "Set VITE_INDEXER_URL to list every pending stealer (per-slot windows; GitLab #135)."}
             </StatusMessage>
           )}
         </article>

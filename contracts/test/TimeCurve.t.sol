@@ -878,6 +878,115 @@ contract TimeCurveTest is Test {
         assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - dead0, tc.WARBOW_REVENGE_BURN_WAD());
     }
 
+    /// @dev GitLab #135: one victim can hold non-overwriting revenge windows vs many stealers; consume in any order.
+    function test_warbow_revenge_seven_stealers_distinct_slots() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 500e18);
+        for (uint256 b = 0; b < 12; b++) {
+            vm.prank(alice);
+            tc.buy(1e18);
+            _warpPastBuyCooldown(tc, alice);
+        }
+
+        address[7] memory stealers;
+        for (uint256 i = 0; i < 7; i++) {
+            stealers[i] = makeAddr(string.concat("rbStealer", vm.toString(i)));
+        }
+
+        for (uint256 i = 0; i < 7; i++) {
+            bool bypass = i >= 3;
+            uint256 extra = bypass ? tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() : 0;
+            _fundAndApprove(stealers[i], 50e18 + tc.WARBOW_STEAL_BURN_WAD() + extra);
+            vm.prank(stealers[i]);
+            tc.warbowSteal(alice, bypass);
+            assertGt(tc.warbowPendingRevengeExpiryExclusive(alice, stealers[i]), block.timestamp);
+            assertEq(tc.warbowPendingRevengeStealSeq(alice, stealers[i]), 1);
+        }
+
+        uint256[7] memory order = [uint256(3), 1, 6, 0, 5, 2, 4];
+        for (uint256 j = 0; j < 7; j++) {
+            uint256 i = order[j];
+            _fundAndApprove(alice, 50e18 + tc.WARBOW_REVENGE_BURN_WAD());
+            vm.prank(alice);
+            tc.warbowRevenge(stealers[i]);
+            assertEq(tc.warbowPendingRevengeExpiryExclusive(alice, stealers[i]), 0);
+        }
+    }
+
+    /// @dev GitLab #135 fuzz: N stealers (1..7), revenge permuted by seed — no slot overwrite footgun.
+    function testFuzz_warbow_revenge_multi_stealer_overlap(uint8 nRaw, uint256 seed) public {
+        uint256 n = uint256(nRaw % 7);
+        n = n + 1;
+
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 500e18);
+        for (uint256 b = 0; b < 12; b++) {
+            vm.prank(alice);
+            tc.buy(1e18);
+            _warpPastBuyCooldown(tc, alice);
+        }
+
+        address[] memory stealers = new address[](n);
+        for (uint256 i = 0; i < n; i++) {
+            bool bypass = i >= 3;
+            uint256 extra = bypass ? tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() : 0;
+            stealers[i] = makeAddr(string.concat("fzStealer", vm.toString(i)));
+            _fundAndApprove(stealers[i], 50e18 + tc.WARBOW_STEAL_BURN_WAD() + extra);
+            vm.prank(stealers[i]);
+            tc.warbowSteal(alice, bypass);
+            assertEq(tc.warbowPendingRevengeStealSeq(alice, stealers[i]), 1);
+        }
+
+        uint256 offset = n > 0 ? seed % n : 0;
+        for (uint256 k = 0; k < n; k++) {
+            address s = stealers[(offset + k) % n];
+            _fundAndApprove(alice, 50e18 + tc.WARBOW_REVENGE_BURN_WAD());
+            vm.prank(alice);
+            tc.warbowRevenge(s);
+            assertEq(tc.warbowPendingRevengeExpiryExclusive(alice, s), 0);
+        }
+    }
+
+    /// @dev Same stealer stealing again bumps `stealSeq` and refreshes expiry.
+    function test_warbow_same_stealer_resteal_refreshes_window_and_seq() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        tc.buy(10e18);
+
+        _fundAndApprove(bob, 100e18 + 2 * tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.warbowSteal(alice, false);
+        uint256 e1 = tc.warbowPendingRevengeExpiryExclusive(alice, bob);
+        assertEq(tc.warbowPendingRevengeStealSeq(alice, bob), 1);
+
+        vm.warp(block.timestamp + 100);
+        vm.prank(bob);
+        tc.warbowSteal(alice, false);
+        uint256 e2 = tc.warbowPendingRevengeExpiryExclusive(alice, bob);
+        assertGt(e2, e1);
+        assertEq(tc.warbowPendingRevengeStealSeq(alice, bob), 2);
+    }
+
+    function test_warbow_double_revenge_same_stealer_reverts() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.warbowSteal(alice, false);
+
+        _fundAndApprove(alice, 2e18 + 2 * tc.WARBOW_REVENGE_BURN_WAD());
+        vm.prank(alice);
+        tc.warbowRevenge(bob);
+
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: revenge not pending");
+        tc.warbowRevenge(bob);
+    }
+
     /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).
     function test_warbow_revenge_reverts_after_end_sale() public {
         TimeCurve t = _newTimeCurveShortTimer(500);

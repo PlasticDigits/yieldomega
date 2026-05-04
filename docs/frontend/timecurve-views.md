@@ -181,9 +181,12 @@ decision surface directly through
    existing live contract reads (`battlePoints`, `stealsReceivedOnDay`) and
    `describeStealPreflight` remain the final eligibility preview.
 3. **Guard + revenge are obvious:** guard is a visible hero CTA with burn and
-   active-until copy; revenge renders as a single action only when
-   `warbowPendingRevengeStealer` / `warbowPendingRevengeExpiry` say the slot is
-   open, including counterparty and deadline inline.
+   active-until copy; **revenge lists every open stealer** when the indexer is
+   configured (`GET /v1/timecurve/warbow/pending-revenge`, reconciled from
+   **`WarBowRevengeWindowOpened`** vs **`WarBowRevenge`** — [GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135)). Onchain reads use
+   **`warbowPendingRevengeExpiryExclusive(victim, stealer)`** and
+   **`warbowPendingRevengeStealSeq(victim, stealer)`** per pair; each **Take
+   revenge** CTA passes the **stealer** address to **`warbowRevenge(stealer)`**.
 4. **Write barriers stay shared:** the hero WarBow cluster is inside the same
    `ChainMismatchWriteBarrier` pattern as the lower WarBow section, and the
    submit functions still preflight `chainMismatchWriteMessage` plus
@@ -194,7 +197,7 @@ target still has to pass live onchain reads and wallet simulation. Empty
 candidate state is explicit and points users to the detailed section's manual
 address path.
 
-**Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
+**Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
 
 <a id="arena-sniper-shark-cutout-issue-80"></a>
 

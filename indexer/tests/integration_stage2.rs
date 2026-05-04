@@ -289,6 +289,35 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/warbow/pending-revenge?victim=0xbad&now_sec=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    let vb2 = format!("{:#x}", addr_byte(0xb2));
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/timecurve/warbow/pending-revenge?victim={vb2}&now_sec=1"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pr = response_json(res).await;
+    assert!(pr["items"].is_array());
+
     sqlx::query(
         r#"INSERT INTO idx_timecurve_buy (
             block_number, block_hash, tx_hash, log_index, contract_address,
@@ -608,6 +637,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             victim_bp_after: u2,
             attacker_bp_after: u1,
         }),
+        next(DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
+            victim: addr_byte(0xb2),
+            stealer: alice,
+            expiry_exclusive: u2,
+            steal_seq: u1,
+        }),
         next(DecodedEvent::TimeCurveWarBowRevenge {
             avenger: alice,
             stealer: addr_byte(0xb2),
@@ -787,6 +822,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 1);
     assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
+        1
+    );
+    assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         1
     );
@@ -899,6 +938,29 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     };
     persist_decoded_log(&pool, &unknown).await.expect("unknown");
 
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+    });
+    let vb2 = format!("{:#x}", addr_byte(0xb2));
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/timecurve/warbow/pending-revenge?victim={vb2}&now_sec=1"
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pr = response_json(res).await;
+    let items = pr["items"].as_array().expect("items");
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["stealer"], format!("{:#x}", alice));
+
     // ── B) `rollback_after` ─────────────────────────────────────────────
     let h5 = b256_lo(5);
     let h20 = b256_lo(20);
@@ -988,6 +1050,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
     assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         0
