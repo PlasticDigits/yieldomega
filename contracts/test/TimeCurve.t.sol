@@ -1911,15 +1911,41 @@ contract TimeCurveTest is Test {
         assertEq(tcd.buyCount(bob), 1);
     }
 
-    /// @dev GitLab #124 — at `block.timestamp == saleStart + MAX_SALE_ELAPSED_SEC + 1`, the **timer** guard on `_buy`
-    ///      runs before the wall-clock cap; `deadline` is clamped to `saleStart + MAX + 1` (see `TimeCurve` §124).
-    function test_gitlab124_buy_reverts_timer_expired_at_wall_clock_boundary() public {
-        tc.startSaleAt(block.timestamp);
-        vm.warp(tc.saleStart() + tc.MAX_SALE_ELAPSED_SEC() + 1);
-        _fundAndApprove(alice, 100e18);
+    /// @dev GitLab #124 — `buy` past `MAX_SALE_ELAPSED_SEC` reverts even if the countdown timer is still live.
+    function test_gitlab124_buy_reverts_after_wall_clock_cap() public {
+        uint256 maxSec = 300 * ONE_DAY;
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            maxSec,
+            maxSec,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        uint256 t0 = 3_000_000;
+        vm.warp(t0);
+        t.startSaleAt(t0);
+        vm.warp(t.saleStart() + maxSec - 1);
+        (uint256 minC,) = t.currentCharmBoundsWad();
+        uint256 spend = (minC * t.currentPricePerCharmWad()) / WAD;
+        _fundAndApproveCurve(alice, spend, t);
         vm.prank(alice);
-        vm.expectRevert("TimeCurve: timer expired");
-        tc.buy(1e18);
+        t.buy(minC);
+        vm.warp(t.saleStart() + maxSec + 1);
+        _warpPastBuyCooldown(t, alice);
+        _fundAndApproveCurve(alice, spend, t);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale max elapsed exceeded");
+        t.buy(1e18);
     }
 
     function test_gitlab124_warbow_guard_reverts_after_wall() public {

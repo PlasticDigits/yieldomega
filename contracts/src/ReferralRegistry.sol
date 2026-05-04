@@ -30,10 +30,7 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
         _disableInitializers();
     }
 
-    function initialize(IERC20 _cl8yToken, uint256 _registrationBurnAmount, address initialOwner)
-        external
-        initializer
-    {
+    function initialize(IERC20 _cl8yToken, uint256 _registrationBurnAmount, address initialOwner) external initializer {
         require(address(_cl8yToken) != address(0), "ReferralRegistry: zero CL8Y");
         require(_registrationBurnAmount > 0, "ReferralRegistry: zero burn");
         __Ownable_init(initialOwner);
@@ -66,7 +63,12 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
         require(codeOwner[h] == address(0), "ReferralRegistry: code taken");
         require(ownerCode[msg.sender] == bytes32(0), "ReferralRegistry: already registered");
 
+        uint256 burnSinkBefore = cl8yToken.balanceOf(BURN_ADDRESS);
         cl8yToken.safeTransferFrom(msg.sender, BURN_ADDRESS, registrationBurnAmount);
+        require(
+            cl8yToken.balanceOf(BURN_ADDRESS) - burnSinkBefore == registrationBurnAmount,
+            "ReferralRegistry: ERC20 parity"
+        );
 
         codeOwner[h] = msg.sender;
         ownerCode[msg.sender] = h;
@@ -89,10 +91,7 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
                 c += 32;
                 b[i] = bytes1(c);
             }
-            require(
-                (c >= 97 && c <= 122) || (c >= 48 && c <= 57),
-                "ReferralRegistry: invalid charset"
-            );
+            require((c >= 97 && c <= 122) || (c >= 48 && c <= 57), "ReferralRegistry: invalid charset");
         }
     }
 

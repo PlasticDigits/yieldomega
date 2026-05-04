@@ -12,11 +12,8 @@ import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
-import {
-    AnvilWETH9,
-    AnvilMockUSDM,
-    AnvilKumbayaRouter
-} from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {AnvilWETH9, AnvilMockUSDM, AnvilKumbayaRouter} from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 
 contract MockReserveCl8y is ERC20 {
     constructor() ERC20("CL8Y", "CL8Y") {
@@ -54,6 +51,7 @@ abstract contract TimeCurveBuyRouterFixture is Test {
     AnvilMockUSDM usdm;
     AnvilKumbayaRouter kumbaya;
     TimeCurveBuyRouter buyRouter;
+    MockERC20FeeOnTransfer internal feeStable;
     address cl8yProtocolTreasury = makeAddr("cl8yProtocolTreasury");
 
     address alice = makeAddr("alice");
@@ -66,13 +64,7 @@ abstract contract TimeCurveBuyRouterFixture is Test {
         podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
         feeRouter = UUPSDeployLib.deployFeeRouter(
             address(this),
-            [
-                makeAddr("lp"),
-                SALE_CL8Y_BURN_SINK,
-                address(podiumPool),
-                makeAddr("team"),
-                makeAddr("rabbit")
-            ],
+            [makeAddr("lp"), SALE_CL8Y_BURN_SINK, address(podiumPool), makeAddr("team"), makeAddr("rabbit")],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         feeRouter.setDistributableToken(IERC20(address(reserve)), true);
@@ -115,8 +107,73 @@ abstract contract TimeCurveBuyRouterFixture is Test {
         kumbaya.setPair(address(weth), address(reserve), 8000e18, 8_000_000e18);
         kumbaya.setOwner(address(0));
 
-        buyRouter = new TimeCurveBuyRouter(tc, address(kumbaya), address(weth), address(usdm), cl8yProtocolTreasury, address(this));
+        buyRouter = new TimeCurveBuyRouter(
+            tc, address(kumbaya), address(weth), address(usdm), cl8yProtocolTreasury, address(this)
+        );
         tc.setTimeCurveBuyRouter(address(buyRouter));
+    }
+
+    /// @dev Same as `deployBuyRouterFixture` but stable collateral is fee-on-transfer ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
+    function deployBuyRouterFixtureFeeStable(uint256 saleEpoch) internal {
+        reserve = new MockReserveCl8y();
+        lt = new MockLaunchToken();
+        lt.mint(address(this), 1_000_000e18);
+
+        podiumPool = UUPSDeployLib.deployPodiumPool(address(this));
+        feeRouter = UUPSDeployLib.deployFeeRouter(
+            address(this),
+            [makeAddr("lp"), SALE_CL8Y_BURN_SINK, address(podiumPool), makeAddr("team"), makeAddr("rabbit")],
+            [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
+        );
+        feeRouter.setDistributableToken(IERC20(address(reserve)), true);
+
+        charmPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 1e17, address(this));
+        tc = UUPSDeployLib.deployTimeCurve(
+            IERC20(address(reserve)),
+            lt,
+            feeRouter,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(charmPrice)),
+            1e18,
+            GROWTH_WAD,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            1,
+            address(this)
+        );
+        lt.transfer(address(tc), 1_000_000e18);
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
+        tc.startSaleAt(saleEpoch);
+
+        weth = new AnvilWETH9();
+        feeStable = new MockERC20FeeOnTransfer(100);
+        feeStable.mint(address(this), 500_000_000e18);
+        kumbaya = new AnvilKumbayaRouter();
+
+        weth.deposit{value: 8000 ether}();
+        weth.transfer(address(kumbaya), 8000 ether);
+
+        uint256 cl8yBal = reserve.balanceOf(address(this));
+        require(cl8yBal >= 50_000_000e18);
+        reserve.transfer(address(kumbaya), 50_000_000e18);
+
+        feeStable.transfer(address(kumbaya), 100_000_000e18);
+
+        kumbaya.setPair(address(feeStable), address(weth), 80_000_000e18, 80_000e18);
+        kumbaya.setPair(address(weth), address(reserve), 8000e18, 8_000_000e18);
+        kumbaya.setOwner(address(0));
+
+        buyRouter = new TimeCurveBuyRouter(
+            tc, address(kumbaya), address(weth), address(feeStable), cl8yProtocolTreasury, address(this)
+        );
+        tc.setTimeCurveBuyRouter(address(buyRouter));
+    }
+
+    function _pathFeeStableToCl8y() internal view returns (bytes memory) {
+        return abi.encodePacked(address(reserve), uint24(3000), address(weth), uint24(3000), address(feeStable));
     }
 
     function _pathUsdmToCl8y() internal view returns (bytes memory) {
@@ -142,15 +199,7 @@ contract TimeCurveBuyRouterTest is TimeCurveBuyRouterFixture {
 
         vm.startPrank(alice);
         usdm.approve(address(buyRouter), maxIn);
-        buyRouter.buyViaKumbaya(
-            charmWad,
-            bytes32(0),
-            false,
-            buyRouter.PAY_STABLE(),
-            block.timestamp + 600,
-            maxIn,
-            path
-        );
+        buyRouter.buyViaKumbaya(charmWad, bytes32(0), false, buyRouter.PAY_STABLE(), block.timestamp + 600, maxIn, path);
         vm.stopPrank();
 
         assertEq(tc.charmWeight(alice), charmWad);
@@ -239,15 +288,7 @@ contract TimeCurveBuyRouterTest is TimeCurveBuyRouterFixture {
         usdm.mint(alice, maxIn);
         vm.startPrank(alice);
         usdm.approve(address(buyRouter), maxIn);
-        buyRouter.buyViaKumbaya(
-            charmWad,
-            bytes32(0),
-            false,
-            buyRouter.PAY_STABLE(),
-            block.timestamp + 600,
-            maxIn,
-            path
-        );
+        buyRouter.buyViaKumbaya(charmWad, bytes32(0), false, buyRouter.PAY_STABLE(), block.timestamp + 600, maxIn, path);
         vm.stopPrank();
 
         assertEq(tc.charmWeight(alice), charmWad);
@@ -335,15 +376,7 @@ contract TimeCurveBuyRouterScheduledNotLive118Test is TimeCurveBuyRouterFixture 
         usdm.approve(address(buyRouter), maxIn);
         uint8 payStable = buyRouter.PAY_STABLE();
         vm.expectRevert(TimeCurveBuyRouter.TimeCurveBuyRouter__BadSalePhase.selector);
-        buyRouter.buyViaKumbaya(
-            charmWad,
-            bytes32(0),
-            false,
-            payStable,
-            block.timestamp + 600,
-            maxIn,
-            path
-        );
+        buyRouter.buyViaKumbaya(charmWad, bytes32(0), false, payStable, block.timestamp + 600, maxIn, path);
         vm.stopPrank();
     }
 
@@ -359,9 +392,7 @@ contract TimeCurveBuyRouterScheduledNotLive118Test is TimeCurveBuyRouterFixture 
         vm.startPrank(alice);
         uint8 payEth = buyRouter.PAY_ETH();
         vm.expectRevert(TimeCurveBuyRouter.TimeCurveBuyRouter__BadSalePhase.selector);
-        buyRouter.buyViaKumbaya{value: maxIn}(
-            charmWad, bytes32(0), false, payEth, block.timestamp + 600, maxIn, path
-        );
+        buyRouter.buyViaKumbaya{value: maxIn}(charmWad, bytes32(0), false, payEth, block.timestamp + 600, maxIn, path);
         vm.stopPrank();
     }
 
@@ -379,15 +410,7 @@ contract TimeCurveBuyRouterScheduledNotLive118Test is TimeCurveBuyRouterFixture 
 
         vm.startPrank(alice);
         usdm.approve(address(buyRouter), maxIn);
-        buyRouter.buyViaKumbaya(
-            charmWad,
-            bytes32(0),
-            false,
-            buyRouter.PAY_STABLE(),
-            block.timestamp + 600,
-            maxIn,
-            path
-        );
+        buyRouter.buyViaKumbaya(charmWad, bytes32(0), false, buyRouter.PAY_STABLE(), block.timestamp + 600, maxIn, path);
         vm.stopPrank();
 
         assertEq(tc.charmWeight(alice), charmWad);
@@ -411,5 +434,27 @@ contract TimeCurveBuyRouterScheduledNotLive118Test is TimeCurveBuyRouterFixture 
         vm.stopPrank();
 
         assertEq(tc.charmWeight(alice), charmWad);
+    }
+}
+
+/// @dev GitLab #123 — `PAY_STABLE` pull must credit the router `amountInMaximum` exactly (reverts before swap wiring).
+contract TimeCurveBuyRouterStableIngress123Test is TimeCurveBuyRouterFixture {
+    function setUp() public {
+        deployBuyRouterFixtureFeeStable(block.timestamp);
+    }
+
+    function test_buyViaKumbaya_stable_feeOnTransfer_reverts_StableIngressParity() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = _pathFeeStableToCl8y();
+        uint256 maxIn = 10_000_000e18;
+
+        feeStable.mint(alice, maxIn);
+
+        vm.startPrank(alice);
+        feeStable.approve(address(buyRouter), maxIn);
+        uint8 payStable = buyRouter.PAY_STABLE();
+        vm.expectRevert(TimeCurveBuyRouter.TimeCurveBuyRouter__StableIngressParity.selector);
+        buyRouter.buyViaKumbaya(charmWad, bytes32(0), false, payStable, block.timestamp + 600, maxIn, path);
+        vm.stopPrank();
     }
 }

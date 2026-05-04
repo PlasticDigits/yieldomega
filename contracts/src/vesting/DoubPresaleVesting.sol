@@ -29,6 +29,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// - **Non-zero schedule:** `vestingDuration > 0`; `requiredTotalAllocation > 0`; every `amounts[i] > 0`.
 /// - **Enumerable set:** the contract holds an `EnumerableSet.AddressSet` mirroring beneficiaries for O(1) membership and O(n) enumeration.
 /// - **Funding:** `startVesting` requires `token.balanceOf(this) >= totalAllocated` so claims cannot exceed funded DOUB.
+///   Funding assumes **canonical ERC20** transfers (ingress parity on pulling contracts such as `TimeCurve` / Burrow — [GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
 /// - **Claim bound:** cumulative claims per address never exceed `allocation[address]`; vested never exceeds allocation at any time.
 /// - **Single start:** `startVesting` succeeds at most once.
 /// - **Claims gate:** `claim` is blocked until `claimsEnabled` is set `true` by the owner (final signoff / operational go-live) — `docs/operations/final-signoff-and-value-movement.md` ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).

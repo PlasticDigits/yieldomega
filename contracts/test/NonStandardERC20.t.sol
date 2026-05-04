@@ -20,6 +20,7 @@ import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 
 contract MockPlain is ERC20 {
     constructor() ERC20("P", "P") {}
+
     function mint(address to, uint256 a) external {
         _mint(to, a);
     }
@@ -91,9 +92,7 @@ contract NonStandardERC20Test is Test {
     function test_alwaysRevert_feeRouter_distributeReverts() public {
         MockERC20AlwaysRevert t = new MockERC20AlwaysRevert();
         FeeRouter r = UUPSDeployLib.deployFeeRouter(
-            address(this),
-            [s0, s1, s2, s3, s4],
-            [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
+            address(this), [s0, s1, s2, s3, s4], [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
         );
         r.setDistributableToken(IERC20(address(t)), true);
         t.mint(address(r), 1000);

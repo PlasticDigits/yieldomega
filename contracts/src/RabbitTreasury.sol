@@ -4,7 +4,9 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {
+    AccessControlEnumerableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -109,16 +111,10 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
     );
     event BurrowEpochReserveSnapshot(uint256 indexed epochId, address indexed reserveAsset, uint256 balance);
     event BurrowReserveBalanceUpdated(
-        address indexed reserveAsset,
-        uint256 balanceAfter,
-        int256 delta,
-        uint8 reasonCode
+        address indexed reserveAsset, uint256 balanceAfter, int256 delta, uint8 reasonCode
     );
     event BurrowReserveBuckets(
-        uint256 indexed epochId,
-        uint256 redeemableBacking,
-        uint256 protocolOwnedBacking,
-        uint256 totalBacking
+        uint256 indexed epochId, uint256 redeemableBacking, uint256 protocolOwnedBacking, uint256 totalBacking
     );
     event BurrowDeposited(
         address indexed user,
@@ -136,24 +132,13 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         uint256 indexed epochId,
         uint256 factionId
     );
-    event BurrowFeeAccrued(
-        address indexed asset,
-        uint256 amount,
-        uint256 cumulativeInAsset,
-        uint256 indexed epochId
-    );
+    event BurrowFeeAccrued(address indexed asset, uint256 amount, uint256 cumulativeInAsset, uint256 indexed epochId);
     event BurrowProtocolRevenueSplit(
-        uint256 indexed epochId,
-        uint256 grossAmount,
-        uint256 toProtocolBucket,
-        uint256 burnedAmount
+        uint256 indexed epochId, uint256 grossAmount, uint256 toProtocolBucket, uint256 burnedAmount
     );
     event BurrowWithdrawalFeeAccrued(address indexed asset, uint256 feeAmount, uint256 cumulativeWithdrawFees);
     event BurrowRepricingApplied(
-        uint256 indexed epochId,
-        uint256 repricingFactorWad,
-        uint256 priorInternalPriceWad,
-        uint256 newInternalPriceWad
+        uint256 indexed epochId, uint256 repricingFactorWad, uint256 priorInternalPriceWad, uint256 newInternalPriceWad
     );
     event ParamsUpdated(address indexed actor, string paramName, uint256 oldValue, uint256 newValue);
 
@@ -283,10 +268,11 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         (userOut, feeToProtocol,,) = _previewWithdraw(doubAmount, user);
     }
 
-    function _previewWithdraw(
-        uint256 doubAmount,
-        address user
-    ) internal view returns (uint256 userOut, uint256 feeToProtocol, uint256 grossFromRedeemable, uint256 effWad) {
+    function _previewWithdraw(uint256 doubAmount, address user)
+        internal
+        view
+        returns (uint256 userOut, uint256 feeToProtocol, uint256 grossFromRedeemable, uint256 effWad)
+    {
         if (doubAmount == 0) return (0, 0, 0, WAD);
         uint256 supply = doub.totalSupply();
         require(supply > 0, "RT: zero supply");
@@ -296,8 +282,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         uint256 baseOut = Math.min(nominalOut, proRataCap);
 
         uint256 h = redemptionHealthWad();
-        effWad = minRedemptionEfficiencyWad
-            + Math.mulDiv(WAD - minRedemptionEfficiencyWad, h, WAD);
+        effWad = minRedemptionEfficiencyWad + Math.mulDiv(WAD - minRedemptionEfficiencyWad, h, WAD);
         grossFromRedeemable = Math.mulDiv(baseOut, effWad, WAD);
 
         feeToProtocol = Math.mulDiv(grossFromRedeemable, withdrawFeeWad, WAD);
@@ -341,9 +326,8 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         uint256 nextE = supply > 0 ? BurrowMath.nextEWad(eWad, m, lamWad, deltaMaxFracWad) : eWad;
 
         uint256 repricingFactor = nextE > 0 ? Math.mulDiv(nextE, WAD, priorE) : WAD;
-        uint256 reserveRatio = supply > 0
-            ? Math.mulDiv(R, WAD, Math.mulDiv(supply, nextE, WAD) + eps)
-            : type(uint256).max;
+        uint256 reserveRatio =
+            supply > 0 ? Math.mulDiv(R, WAD, Math.mulDiv(supply, nextE, WAD) + eps) : type(uint256).max;
         uint256 backingPerDoub = supply > 0 ? Math.mulDiv(R, WAD, supply) : 0;
 
         eWad = nextE;
@@ -352,13 +336,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         emit BurrowEpochReserveSnapshot(currentEpochId, address(reserveAsset), R);
         emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, R);
         emit BurrowHealthEpochFinalized(
-            currentEpochId,
-            block.timestamp,
-            reserveRatio,
-            supply,
-            repricingFactor,
-            backingPerDoub,
-            nextE
+            currentEpochId, block.timestamp, reserveRatio, supply, repricingFactor, backingPerDoub, nextE
         );
 
         // Open next epoch
@@ -375,16 +353,19 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         require(currentEpochId > 0, "RT: no epoch");
         require(amount > 0, "RT: zero amount");
 
+        uint256 balBefore = reserveAsset.balanceOf(address(this));
         reserveAsset.safeTransferFrom(msg.sender, address(this), amount);
-        redeemableBacking += amount;
+        uint256 received = reserveAsset.balanceOf(address(this)) - balBefore;
+        require(received == amount, "RT: ERC20 parity");
+        redeemableBacking += received;
 
-        uint256 doubOut = Math.mulDiv(amount, WAD, eWad);
+        uint256 doubOut = Math.mulDiv(received, WAD, eWad);
         doub.mint(msg.sender, doubOut);
 
         uint256 total = redeemableBacking + protocolOwnedBacking;
-        emit BurrowReserveBalanceUpdated(address(reserveAsset), total, int256(amount), REASON_DEPOSIT);
+        emit BurrowReserveBalanceUpdated(address(reserveAsset), total, int256(received), REASON_DEPOSIT);
         emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, total);
-        emit BurrowDeposited(msg.sender, address(reserveAsset), amount, doubOut, currentEpochId, factionId);
+        emit BurrowDeposited(msg.sender, address(reserveAsset), received, doubOut, currentEpochId, factionId);
     }
 
     /// @notice Burn DOUB and withdraw reserve from **redeemable** backing only, with pro-rata cap,
@@ -418,9 +399,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         cumulativeWithdrawFees += feeToProtocol;
 
         uint256 total = redeemableBacking + protocolOwnedBacking;
-        emit BurrowReserveBalanceUpdated(
-            address(reserveAsset), total, -int256(userOut), REASON_WITHDRAW
-        );
+        emit BurrowReserveBalanceUpdated(address(reserveAsset), total, -int256(userOut), REASON_WITHDRAW);
         if (feeToProtocol > 0) {
             emit BurrowWithdrawalFeeAccrued(address(reserveAsset), feeToProtocol, cumulativeWithdrawFees);
         }
@@ -433,12 +412,15 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
     ///      defer explicit approved-exception docs vs `FeeRouter` routing until treasury audit follow-up.
     function receiveFee(uint256 amount) external onlyRole(FEE_ROUTER_ROLE) {
         require(amount > 0, "RT: zero fee");
+        uint256 balBefore = reserveAsset.balanceOf(address(this));
         reserveAsset.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 received = reserveAsset.balanceOf(address(this)) - balBefore;
+        require(received == amount, "RT: ERC20 parity");
 
-        uint256 burned = Math.mulDiv(amount, protocolRevenueBurnShareWad, WAD);
-        uint256 toProtocol = amount - burned;
+        uint256 burned = Math.mulDiv(received, protocolRevenueBurnShareWad, WAD);
+        uint256 toProtocol = received - burned;
 
-        cumulativeFees += amount;
+        cumulativeFees += received;
         cumulativeBurned += burned;
         protocolOwnedBacking += toProtocol;
 
@@ -447,10 +429,10 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         }
 
         uint256 total = redeemableBacking + protocolOwnedBacking;
-        int256 netDelta = int256(amount) - int256(burned);
+        int256 netDelta = int256(received) - int256(burned);
         emit BurrowReserveBalanceUpdated(address(reserveAsset), total, netDelta, REASON_FEE);
-        emit BurrowFeeAccrued(address(reserveAsset), amount, cumulativeFees, currentEpochId);
-        emit BurrowProtocolRevenueSplit(currentEpochId, amount, toProtocol, burned);
+        emit BurrowFeeAccrued(address(reserveAsset), received, cumulativeFees, currentEpochId);
+        emit BurrowProtocolRevenueSplit(currentEpochId, received, toProtocol, burned);
         emit BurrowReserveBuckets(currentEpochId, redeemableBacking, protocolOwnedBacking, total);
     }
 

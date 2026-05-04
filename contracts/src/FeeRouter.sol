@@ -4,7 +4,9 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
+import {
+    AccessControlEnumerableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlEnumerableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {FeeMath} from "./libraries/FeeMath.sol";
 
@@ -52,10 +54,7 @@ contract FeeRouter is Initializable, AccessControlEnumerableUpgradeable, UUPSUpg
         _disableInitializers();
     }
 
-    function initialize(address admin, address[5] memory destinations, uint16[5] memory weights)
-        external
-        initializer
-    {
+    function initialize(address admin, address[5] memory destinations, uint16[5] memory weights) external initializer {
         __AccessControlEnumerable_init();
         __AccessControl_init();
         require(admin != address(0), "FeeRouter: zero admin");
@@ -69,6 +68,7 @@ contract FeeRouter is Initializable, AccessControlEnumerableUpgradeable, UUPSUpg
     /// @notice Distribute `amount` of `token` held by this contract to all sinks.
     ///         Last sink receives any rounding remainder to prevent dust loss.
     /// @dev Reverts unless `distributableToken[token]` is true (governance-set allowlist; GitLab #122).
+    ///      Callers must ensure `amount` matches the **measured** ingress segment credited to this contract ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
     function distributeFees(IERC20 token, uint256 amount) external {
         require(distributableToken[address(token)], "FeeRouter: token not distributable");
         require(amount > 0, "FeeRouter: zero amount");
