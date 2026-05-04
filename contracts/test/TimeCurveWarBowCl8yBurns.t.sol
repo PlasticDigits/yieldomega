@@ -82,6 +82,13 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         reserve.approve(address(tc), amount);
     }
 
+    function _warpPastBuyCooldown(address user) internal {
+        uint256 until = tc.nextBuyAllowedAt(user);
+        if (until > block.timestamp) {
+            vm.warp(until);
+        }
+    }
+
     /// @dev Invariant: each successful `warbowActivateGuard` increases dead-address CL8Y by exactly `WARBOW_GUARD_BURN_WAD`.
     function testFuzz_warbow_guard_burn_exact_to_sink(uint160 callerRaw) public {
         vm.assume(callerRaw != uint160(0));
@@ -104,9 +111,17 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         address victim = address(victim160);
         address stealer = address(stealer160);
         vm.assume(victim != address(tc) && stealer != address(tc));
+        vm.assume(victim.code.length == 0 && stealer.code.length == 0);
 
         tc.startSaleAt(block.timestamp);
+        _fund(stealer, 50e18);
+        vm.prank(stealer);
+        tc.buy(1e18);
+
         _fund(victim, 50e18);
+        vm.prank(victim);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(victim);
         vm.prank(victim);
         tc.buy(1e18);
 
@@ -122,16 +137,24 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
     }
 
     /// @dev Invariant: `warbowSteal` without bypass moves exactly `WARBOW_STEAL_BURN_WAD` to the burn sink.
-    ///      Victim has BP from a buy; stealer has zero BP (2× rule satisfied).
+    ///      GitLab #134: **`abp > 0`** and **`vbp ≥ 2 × abp`** — stealer earns BP from one buy; victim from two.
     function testFuzz_warbow_steal_burn_exact_to_sink(uint160 victim160, uint160 stealer160) public {
         vm.assume(victim160 != uint160(0) && stealer160 != uint160(0));
         vm.assume(victim160 != stealer160);
         address victim = address(victim160);
         address stealer = address(stealer160);
         vm.assume(victim != address(tc) && stealer != address(tc));
+        vm.assume(victim.code.length == 0 && stealer.code.length == 0);
 
         tc.startSaleAt(block.timestamp);
+        _fund(stealer, 50e18);
+        vm.prank(stealer);
+        tc.buy(1e18);
+
         _fund(victim, 50e18);
+        vm.prank(victim);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(victim);
         vm.prank(victim);
         tc.buy(1e18);
 
