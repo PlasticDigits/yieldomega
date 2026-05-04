@@ -354,6 +354,10 @@ export type PrizeDistributionItem = {
   tx_hash: string;
   log_index: number;
   contract_address: string;
+  /** Absent on pre-1.14.0 indexer responses; treated as `"distributed"`. */
+  kind?: "distributed" | "settled_empty_podium_pool";
+  /** Set when `kind === "settled_empty_podium_pool"` (PodiumPool address from the event). */
+  podium_pool?: string | null;
 };
 
 export async function fetchTimecurvePrizeDistributions(limit = 20, offset = 0) {

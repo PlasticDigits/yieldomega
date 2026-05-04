@@ -202,10 +202,6 @@ contract TimeCurveTest is Test {
         target.finalizeWarbowPodium(c);
     }
 
-    function _advanceWarbowDay() internal {
-        vm.warp((block.timestamp / ONE_DAY + 1) * ONE_DAY);
-    }
-
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
     function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
         require(initialTimerSec >= 120, "test: initial timer");
@@ -854,57 +850,45 @@ contract TimeCurveTest is Test {
         assertEq(vCat[0], values[0]);
     }
 
-    /// @dev GitLab #129 — BP drops via steals; `refreshWarbowPodium` repaints from live `battlePoints`.
+    /// @dev GitLab #129 — after a steal mutates BP, `refreshWarbowPodium` re-sorts the WarBow snapshot from live scores.
     function test_warbow_podium_steal_then_refresh_updates_top_three_snapshot() public {
         tc.startSaleAt(block.timestamp);
         _fundWarbowStealers();
 
+        vm.prank(dave);
+        tc.buy(1e18);
+
         uint256 b = tc.WARBOW_BASE_BUY_BP();
-        for (uint256 i; i < 12; ++i) {
+        for (uint256 i; i < 3; ++i) {
             _warpPastBuyCooldown(tc, carol);
             vm.prank(carol);
             tc.buy(1e18);
         }
-        for (uint256 i; i < 16; ++i) {
+        for (uint256 i; i < 4; ++i) {
             _warpPastBuyCooldown(tc, bob);
             vm.prank(bob);
             tc.buy(1e18);
         }
-        for (uint256 i; i < 60; ++i) {
+        for (uint256 i; i < 5; ++i) {
             _warpPastBuyCooldown(tc, alice);
             vm.prank(alice);
             tc.buy(1e18);
         }
 
-        assertEq(tc.battlePoints(alice), 60 * b);
+        assertEq(tc.battlePoints(alice), 5 * b);
+        assertEq(tc.battlePoints(bob), 4 * b);
+        assertEq(tc.battlePoints(carol), 3 * b);
+        assertEq(tc.battlePoints(dave), b);
 
-        for (uint256 i; i < 80; ++i) {
-            uint256 abpAlice = tc.battlePoints(alice);
-            uint256 abpDave = tc.battlePoints(dave);
-            if (abpAlice < abpDave * 2 || abpAlice == 0) break;
-            vm.prank(dave);
-            tc.warbowSteal(alice, false);
-            _advanceWarbowDay();
-        }
-
-        for (uint256 i; i < 40; ++i) {
-            uint256 bbpBob = tc.battlePoints(bob);
-            uint256 cbpCarol = tc.battlePoints(carol);
-            if (bbpBob == 0) break;
-            if (bbpBob < cbpCarol * 2) break;
-            vm.prank(carol);
-            tc.warbowSteal(bob, false);
-            _advanceWarbowDay();
-        }
-
-        assertGt(tc.battlePoints(dave), tc.battlePoints(bob));
+        vm.prank(dave);
+        tc.warbowSteal(carol, false);
 
         tc.refreshWarbowPodium(_warbowCandidateQuartet());
 
         (address[3] memory w,) = tc.warbowLadderPodium();
         assertEq(w[0], alice);
-        assertEq(w[1], dave);
-        assertEq(w[2], bob);
+        assertEq(w[1], bob);
+        assertEq(w[2], carol);
     }
 
     function test_finalizeWarbowPodium_enables_nonzero_pool_distributePrizes() public {
@@ -1089,7 +1073,7 @@ contract TimeCurveTest is Test {
 
         tc.startSaleAt(block.timestamp);
 
-        _fundAndApprove(stealer, 20e18);
+        _fundAndApprove(stealer, 500e18);
         vm.prank(stealer);
         tc.buy(1e18);
 
@@ -1100,7 +1084,7 @@ contract TimeCurveTest is Test {
 
         uint256 burnBase = tc.WARBOW_STEAL_BURN_WAD();
         uint256 burnBypass = tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD();
-        _fundAndApprove(stealer, 100e18);
+        _fundAndApprove(stealer, 200e18);
         vm.prank(stealer);
         tc.warbowSteal(v0, false);
         vm.prank(stealer);
@@ -1119,13 +1103,14 @@ contract TimeCurveTest is Test {
         assertGe(dead, 4 * burnBase + burnBypass, "base + limit bypass burns");
     }
 
+    /// @dev Six qualifying buys ⇒ **1500 BP** so sequential steals still satisfy **`vbp >= 2 * abp`** (GitLab #134).
     function _boostVictimBpForSteal(TimeCurve t, address victim) internal {
-        _fundAndApproveCurve(victim, 20e18, t);
-        vm.prank(victim);
-        t.buy(1e18);
-        _warpPastBuyCooldown(t, victim);
-        vm.prank(victim);
-        t.buy(1e18);
+        _fundAndApproveCurve(victim, 200e18, t);
+        for (uint256 i; i < 6; ++i) {
+            if (i > 0) _warpPastBuyCooldown(t, victim);
+            vm.prank(victim);
+            t.buy(1e18);
+        }
     }
 
     function test_warbow_revenge_once() public {
@@ -1157,25 +1142,29 @@ contract TimeCurveTest is Test {
 
     /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).
     function test_warbow_revenge_reverts_after_end_sale() public {
-        TimeCurve t = _newTimeCurveShortTimer(500);
-        t.startSaleAt(block.timestamp);
-        vm.warp(t.saleStart() + 10);
-        _fundAndApproveCurve(alice, 2e18, t);
-        vm.prank(alice);
-        t.buy(1e18);
-
-        _fundAndApproveCurve(bob, t.WARBOW_STEAL_BURN_WAD(), t);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(bob, 2e18);
         vm.prank(bob);
-        t.warbowSteal(alice, false);
+        tc.buy(1e18);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
+        vm.prank(alice);
+        tc.buy(1e18);
 
-        vm.warp(t.deadline() + 1);
-        t.endSale();
-        assertTrue(t.ended());
+        _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.warbowSteal(alice, false);
 
-        _fundAndApproveCurve(alice, 2e18 + t.WARBOW_REVENGE_BURN_WAD(), t);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        assertTrue(tc.ended());
+
+        _fundAndApprove(alice, 2e18 + tc.WARBOW_REVENGE_BURN_WAD());
         vm.prank(alice);
         vm.expectRevert("TimeCurve: bad phase");
-        t.warbowRevenge(bob);
+        tc.warbowRevenge(bob);
     }
 
     function test_warbow_guard_emits_cl8y_burned() public {
@@ -1321,6 +1310,7 @@ contract TimeCurveTest is Test {
         (address[3] memory w,) = tc.podium(tc.CAT_LAST_BUYERS());
         address winner = w[0];
         uint256 balBefore = reserve.balanceOf(winner);
+        _finalizeWarbowQuartet(tc);
         tc.distributePrizes();
         assertGt(reserve.balanceOf(winner), balBefore);
     }
@@ -1530,6 +1520,7 @@ contract TimeCurveTest is Test {
         (address[3] memory lb,) = t.podium(t.CAT_LAST_BUYERS());
         uint256 lastWinnerBalBefore = reserve.balanceOf(lb[0]);
 
+        _finalizeWarbowQuartet(t);
         t.distributePrizes();
 
         assertTrue(t.prizesDistributed());
@@ -1777,8 +1768,10 @@ contract TimeCurveTest is Test {
 
     // ── Prize distribution (griefing / sad paths) ──────────────────────
 
-    /// @dev Empty vault must not set `prizesDistributed` (otherwise a griefer could brick prizes forever).
-    function test_distributePrizes_empty_vault_is_retryable() public {
+    // ── Prize distribution (GitLab #133 empty pool / #129 non-empty) ───
+
+    /// @dev GitLab #133 — empty pool: dedicated event + `prizesDistributed` (no WarBow finalize).
+    function test_distributePrizes_empty_vault_emits_empty_settlement_and_locks() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -1790,16 +1783,21 @@ contract TimeCurveTest is Test {
         assertGt(expectedPrize, 0);
         deal(address(reserve), address(podiumPool), 0);
 
-        tc.distributePrizes();
-        assertFalse(tc.prizesDistributed());
-
-        deal(address(reserve), address(podiumPool), expectedPrize);
+        vm.expectEmit(true, false, false, true, address(tc));
+        emit TimeCurve.PrizesSettledEmptyPodiumPool(address(podiumPool));
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
+
+        vm.expectRevert("TimeCurve: prizes done");
+        tc.distributePrizes();
+
+        deal(address(reserve), address(podiumPool), expectedPrize);
+        vm.expectRevert("TimeCurve: prizes done");
+        tc.distributePrizes();
     }
 
-    /// @dev Tiny pool with no payable integer splits for filled podiums should stay retryable.
-    function test_distributePrizes_dust_pool_is_retryable() public {
+    /// @dev GitLab #133 — refill after empty settlement cannot retry distribution.
+    function test_distributePrizes_after_empty_settlement_refill_does_not_retry() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -1809,11 +1807,26 @@ contract TimeCurveTest is Test {
 
         deal(address(reserve), address(podiumPool), 0);
         tc.distributePrizes();
-        assertFalse(tc.prizesDistributed());
+        assertTrue(tc.prizesDistributed());
 
         deal(address(reserve), address(podiumPool), 1_000_000e18);
+        vm.expectRevert("TimeCurve: prizes done");
         tc.distributePrizes();
-        assertTrue(tc.prizesDistributed());
+    }
+
+    /// @dev GitLab #133 — `reservePodiumPayoutsEnabled` applies when pool is empty.
+    function test_distributePrizes_empty_pool_reverts_when_reserve_podium_payouts_disabled() public {
+        tc.setReservePodiumPayoutsEnabled(false);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        deal(address(reserve), address(podiumPool), 0);
+        vm.expectRevert("TimeCurve: reserve podium payouts disabled");
+        tc.distributePrizes();
+        assertFalse(tc.prizesDistributed());
     }
 
     function test_distributePrizes_reduces_vault_and_sets_flag() public {
@@ -1836,6 +1849,7 @@ contract TimeCurveTest is Test {
 
         uint256 vaultBefore = reserve.balanceOf(address(podiumPool));
         assertGt(vaultBefore, 0);
+        _finalizeWarbowQuartet(tc);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
         assertLt(reserve.balanceOf(address(podiumPool)), vaultBefore);
@@ -1870,6 +1884,7 @@ contract TimeCurveTest is Test {
         uint256 expectDefSlice = (prizePool * 20) / 100;
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
+        _finalizeWarbowQuartet(tc);
         tc.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tc.prizesDistributed());
@@ -1896,6 +1911,7 @@ contract TimeCurveTest is Test {
         uint256 bobBefore = reserve.balanceOf(bob);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
+        _finalizeWarbowPair(tCap, alice, bob);
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
@@ -1933,6 +1949,7 @@ contract TimeCurveTest is Test {
         uint256 carolBefore = reserve.balanceOf(carol);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
+        _finalizeWarbowTriple(tCap, alice, bob, carol);
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
@@ -1966,6 +1983,7 @@ contract TimeCurveTest is Test {
         uint256 aliceBefore = reserve.balanceOf(alice);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
+        _finalizeWarbowOne(tc, alice);
         tc.distributePrizes();
 
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
@@ -2078,6 +2096,7 @@ contract TimeCurveTest is Test {
         (address[3] memory dw,) = tc.podium(tc.CAT_DEFENDED_STREAK());
         assertEq(dw[0], address(0));
 
+        _finalizeWarbowPair(tc, alice, bob);
         vm.expectRevert("TimeCurve: zero podium residual recipient");
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());

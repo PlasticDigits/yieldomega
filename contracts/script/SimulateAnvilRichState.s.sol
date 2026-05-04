@@ -14,6 +14,7 @@ interface ITimeCurve {
     function endSale() external;
     function setCharmRedemptionEnabled(bool enabled) external;
     function setReservePodiumPayoutsEnabled(bool enabled) external;
+    function finalizeWarbowPodium(address[] calldata candidates) external;
     function redeemCharms() external;
     function distributePrizes() external;
     function deadline() external view returns (uint256);
@@ -135,6 +136,8 @@ contract SimulateAnvilRichStatePart2 is Script {
 
         address alice = vm.addr(PK_A);
         address bob = vm.addr(PK_B);
+        address carol = vm.addr(PK_C);
+        address deployer = vm.addr(PK_DEPLOYER);
 
         console2.log("SimulateAnvilRichStatePart2");
         console2.log("  TimeCurve", tc);
@@ -153,6 +156,12 @@ contract SimulateAnvilRichStatePart2 is Script {
         _claim(PK_DEPLOYER, tc);
 
         vm.startBroadcast(PK_DEPLOYER);
+        address[] memory warbowFinalize = new address[](4);
+        warbowFinalize[0] = alice;
+        warbowFinalize[1] = bob;
+        warbowFinalize[2] = carol;
+        warbowFinalize[3] = deployer;
+        ITimeCurve(tc).finalizeWarbowPodium(warbowFinalize);
         ITimeCurve(tc).distributePrizes();
         vm.stopBroadcast();
 

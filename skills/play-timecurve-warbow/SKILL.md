@@ -21,7 +21,7 @@ For participant-owned **TS / Python** tooling (reads, submits, WarBow-related ca
 
 ## Truth order
 
-1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, **`warbowPendingRevengeExpiryExclusive(victim, stealer)`**, **`warbowPendingRevengeStealSeq(victim, stealer)`** (per-stealer revenge windows — [GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135); **not** legacy single-slot getters), `warbowGuardUntil`, `stealsReceivedOnDay`, **`buyFeeRoutingEnabled`** (issue #55: if **false**, **steal / revenge / guard** revert before CL8Y moves; **not** `claimWarBowFlag`), constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
+1. **Deployed `TimeCurve`** — `battlePoints`, `warbowLadderPodium`, **`warbowPodiumFinalized`** ( **`distributePrizes`** gate when the podium pool is funded — [#129](https://gitlab.com/PlasticDigits/yieldomega/-/issues/129)), `warbowPendingFlagOwner`, `warbowPendingFlagPlantAt`, **`warbowPendingRevengeExpiryExclusive(victim, stealer)`**, **`warbowPendingRevengeStealSeq(victim, stealer)`** (per-stealer revenge windows — [GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135); **not** legacy single-slot getters), `warbowGuardUntil`, `stealsReceivedOnDay`, **`buyFeeRoutingEnabled`** (issue #55: if **false**, **steal / revenge / guard** revert before CL8Y moves; **not** `claimWarBowFlag` or **`refreshWarbowPodium`** [#129]), constants `WARBOW_*`, `TIMER_RESET_*`, `DEFENDED_STREAK_WINDOW_SEC`.
 2. **Events** — `Buy` (BP line items, `hardReset`, streak fields; **`flagPlanted` is `true` iff that buy opted into planting** the WarBow pending flag — [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63); regression tests for **referral** and **`buyFor` router** passthrough: [issue #77](https://gitlab.com/PlasticDigits/yieldomega/-/issues/77); it is **not** alone proof of who **currently** holds the flag), `WarBowSteal`, `WarBowRevenge`, **`WarBowRevengeWindowOpened`** (opens/refreshes the **`(victim, stealer)`** window), `WarBowGuardActivated`, `WarBowFlagClaimed`, `WarBowFlagPenalized`, `WarBowCl8yBurned`, defended-streak events.
 3. **Product docs** — [`docs/product/primitives.md`](../../docs/product/primitives.md).
 4. **Indexer / frontend** — discovery and history; **do not** override chain for eligibility or balances. The Arena hero's suggested steal targets (issue #101) are convenience rows from `warbowLadderPodium()` plus the indexed leaderboard; selecting one should still be verified against live `battlePoints` and `stealsReceivedOnDay`.
@@ -56,6 +56,16 @@ Steal limits keyed to **`block.timestamp / 86400`** (UTC day index). When advisi
 ## Tie-break (WarBow ladder top-3)
 
 Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladder snapshot, **lower `uint160(address)` ranks higher** (deterministic onchain ordering; see [`docs/product/primitives.md`](../../docs/product/primitives.md)).
+
+## Rare snapshot drift — refresh vs finalize ([GitLab #129](https://gitlab.com/PlasticDigits/yieldomega/-/issues/129))
+
+The **`warbowLadderPodium()`** triple can disagree with authoritative **`battlePoints`** in edge cases discussed in-protocol.
+
+- **`refreshWarbowPodium(address[] candidates)`** — **permissionless**; loops candidates and **`_updateWarbowPodium`** with **live** BP; emits **`WarbowPodiumRefreshed`**; sets **`warbowPodiumFinalized = false`** (owners must **`finalizeWarbowPodium`** again before **`distributePrizes`** runs on a non-zero podium pool).
+- **`finalizeWarbowPodium(address[])`** — **`onlyOwner`**, **`ended`**, **`!prizesDistributed`**; clears the WarBow podium, re-inserts every **`battlePoints[c] > 0`** candidate, sets **`warbowPodiumFinalized = true`**; emits **`WarbowPodiumFinalized`**.
+- **Arena UX** — `/timecurve/arena` may show **Claim your WarBow position (refresh snapshot)** when the heuristic in [`timeCurveWarbowSnapshotClaim.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.ts) detects a mismatch during the live sale (**not** authoritative; still verify **`battlePoints`** + receipt on explorers).
+
+Contributor map — [`INV-WARBOW-129-*`](../../docs/testing/invariants-and-business-logic.md#warbow-podium-snapshot-drifts-gitlab-129) · UX — [`timecurve-views #129`](../../docs/frontend/timecurve-views.md#warbow-ladder-podium-snapshot-mismatch-issue-129).
 
 ## What you must not do
 
