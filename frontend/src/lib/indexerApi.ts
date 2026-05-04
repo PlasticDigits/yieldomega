@@ -333,6 +333,10 @@ export type PrizeDistributionItem = {
   tx_hash: string;
   log_index: number;
   contract_address: string;
+  /** `"drained"` — `PrizesDistributed`; `"empty_podium"` — GitLab #133 empty-pool latch */
+  kind: string;
+  /** Set when kind is `empty_podium` */
+  podium_pool?: string;
 };
 
 export async function fetchTimecurvePrizeDistributions(limit = 20, offset = 0) {

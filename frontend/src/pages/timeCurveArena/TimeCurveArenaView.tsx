@@ -94,7 +94,7 @@ export function TimeCurveArenaView() {
     timerAddedR, timerCapSecR, timerExpiredAwaitingEnd, timerExtensionPreview,
     timerExtensionSecR, timerNarrative, totalCharmWeightR, totalRaiseDisplay, totalRaised,
     totalTokensForSaleR,
-    useReferral, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCooldownRemainingSec,
+    useReferral, attackerStealsTodayBigInt, victimBattlePointsBigInt, victimStealsTodayBigInt, viewerBattlePoints, walletCooldownRemainingSec,
     warbowActionHint, warbowBypassBurnWad, warbowFeed, warbowFlagClaimBp, warbowFlagOwnerR,
     warbowFlagPlantR, warbowFlagSilenceSec, warbowGuardBurnWad, warbowLeaderboardRows,
     warbowMaxSteals, warbowMomentumBars, warbowPreflightIssue, warbowRank, warbowStealCandidates, warbowTopRows,

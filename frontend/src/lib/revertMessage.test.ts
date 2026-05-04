@@ -15,8 +15,9 @@ describe("friendlyRevertMessage", () => {
 
   it("maps common WarBow eligibility failures", () => {
     expect(friendlyRevertMessage("TimeCurve: steal 2x rule")).toBe(
-      "You can only steal from a rival with at least 2x your Battle Points.",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points.",
     );
+    expect(friendlyRevertMessage("TimeCurve: steal attacker daily limit")).toContain("three steals today");
     expect(friendlyRevertMessage("TimeCurve: flag silence")).toBe(
       "The silence timer has not finished, so the flag is not claimable yet.",
     );

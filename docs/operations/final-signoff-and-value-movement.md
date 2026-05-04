@@ -14,7 +14,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | **TimeCurve** | `sweepUnredeemedLaunchedToken()` — remainder of **`launchedToken`** after **7-day** grace from **`saleEndedAt`** ([GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128)) | **`setUnredeemedLaunchedTokenRecipient(address)`** (sink for sweep) + **`onlyOwner`** `sweep…` timing (not gated by `charmRedemptionEnabled`) | `unredeemedLaunchedTokenRecipient` unset until owner sets; no sweep until grace elapses |
 | **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
 
-**`distributePrizes` empty pool:** if `PodiumPool` balance is zero, the function returns without setting `prizesDistributed` (unchanged griefing / retry behavior). The reserve-payout gate applies only when `prizePool > 0`.
+**`distributePrizes` zero `PodiumPool` balance ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)):** requires **`reservePodiumPayoutsEnabled`** (same as non-empty path). Sets **`prizesDistributed`**, emits **`PrizesSettledEmptyPodiumPool(podiumPool)`** — **distinct from** **`PrizesDistributed`** (emitted only after a **non-empty** pool is fully drained). **No** refill-then-second-`distributePrizes` routing; donated CL8Y left in `PodiumPool` after settlement is **outside** this contract path.
 
 **`claimWarBowFlag`:** does **not** spend CL8Y — **not** gated by `buyFeeRoutingEnabled` (only BP / silence rules apply).
 

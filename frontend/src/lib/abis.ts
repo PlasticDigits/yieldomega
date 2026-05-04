@@ -57,6 +57,7 @@ export const timeCurveReadAbi = parseAbi([
   "function warbowPendingRevengeStealer(address victim) view returns (address)",
   "function warbowPendingRevengeExpiry(address victim) view returns (uint256)",
   "function stealsReceivedOnDay(address victim, uint256 day) view returns (uint8)",
+  "function stealsCommittedByAttackerOnDay(address attacker, uint256 day) view returns (uint8)",
   "function WARBOW_STEAL_BURN_WAD() view returns (uint256)",
   "function WARBOW_GUARD_BURN_WAD() view returns (uint256)",
   "function WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() view returns (uint256)",

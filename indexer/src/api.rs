@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.12.0";
+const SCHEMA_VERSION: &str = "1.13.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -1340,6 +1340,9 @@ struct PrizeDistributionRow {
     tx_hash: String,
     log_index: i32,
     contract_address: String,
+    /// `"drained"` when `PrizesDistributed` indexed; `"empty_podium"` for `PrizesSettledEmptyPodiumPool` ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)).
+    kind: String,
+    podium_pool: Option<String>,
 }
 
 async fn timecurve_prize_distributions(
@@ -1350,8 +1353,18 @@ async fn timecurve_prize_distributions(
     let off = p.offset.max(0);
 
     let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index, contract_address
-           FROM idx_timecurve_prizes_distributed
+        r#"SELECT block_number, tx_hash, log_index, contract_address, kind, podium_pool
+           FROM (
+               SELECT block_number, tx_hash, log_index, contract_address,
+                      CAST('drained' AS VARCHAR(32)) AS kind,
+                      CAST(NULL AS VARCHAR(42)) AS podium_pool
+               FROM idx_timecurve_prizes_distributed
+               UNION ALL
+               SELECT block_number, tx_hash, log_index, contract_address,
+                      CAST('empty_podium' AS VARCHAR(32)) AS kind,
+                      podium_pool
+               FROM idx_timecurve_prizes_settled_empty_podium_pool
+           ) AS prize_settlement_signals
            ORDER BY block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
     )
@@ -1379,6 +1392,8 @@ async fn timecurve_prize_distributions(
                 tx_hash: r.try_get("tx_hash").ok()?,
                 log_index: r.try_get("log_index").ok()?,
                 contract_address: r.try_get("contract_address").ok()?,
+                kind: r.try_get("kind").ok()?,
+                podium_pool: r.try_get("podium_pool").ok(),
             })
         })
         .collect();
