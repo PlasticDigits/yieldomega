@@ -63,6 +63,10 @@ Sustainability depends on **actual fee generation**, **game activity**, and **ec
 
 - Metrics for health and repricing should use **defined epochs** (for example rolling 24h, or epoch-based snapshots) that are **visible onchain** or derivable from onchain events so indexers and agents agree on state.
 
+### `epochId` is accounting windows, not a multi-stage product roadmap
+
+Yieldomega **v1 is not** marketed as a separate **“Epoch 2 / next governance era”** product phase keyed off Burrow counters. On-chain, **`finalizeEpoch` increments `epochId`** for **rolling snapshots**, **repricing steps**, and **withdrawal cooldown indexing** only. Operational delays for parameter changes should use **timelocks**, **two-step admin**, or explicit governance process — **not** ambiguity about “waiting for the next epoch” as if that were a distinct product stage. See [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md) § Rabbit Treasury (Burrow), [`fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md#rabbit-treasury-repricing-parameters-gitlab-119), and [GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119).
+
 ## Separation from CL8Y treasury
 
 - Rabbit Treasury is **player-facing** and **game-layer** capital.

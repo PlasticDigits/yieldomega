@@ -82,11 +82,15 @@ This section states **intent**. Exact onchain roles (multisig, governor contract
 
 <a id="governance-rabbit-repricing"></a>
 
+<a id="rabbit-treasury-repricing-parameters-gitlab-119"></a>
+
 ### Rabbit Treasury repricing parameters
 
 **Intended governor:** **CL8Y** or limited admin with caps and delays.
 
 **Scope:** Burrow repricing and related knobs — distinct from the **TimeCurve** fee **slice** routed to Rabbit Treasury ([fee sink registry](#fee-sinks)).
+
+**On-chain bounds ([GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119)):** `RabbitTreasury` rejects out-of-envelope Burrow curve inputs at **`initialize`** and on **`setCStarWad` / `setAlphaWad` / `setBetaWad` / `setLamWad` / `setDeltaMaxFracWad`** so permissionless **`finalizeEpoch`** is less likely to hit **`BurrowMath`** panics from governance typos. Numeric envelopes match [`contracts/PARAMETERS.md`](../../contracts/PARAMETERS.md) § Rabbit Treasury (Burrow). **`epochId`** increments are **rolling accounting windows**, not a separate product "next epoch" roadmap — governance delays belong in **timelock / process**, not that framing ([`rabbit-treasury.md` § epochId](../product/rabbit-treasury.md#epochid-is-accounting-windows-not-a-multi-stage-product-roadmap)).
 
 <a id="nft-collection-issuance-new-series"></a>
 

@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TimeCurve} from "./TimeCurve.sol";
@@ -30,8 +32,12 @@ interface IKumbayaSwapRouter {
 /// @notice Pulls spend from `msg.sender`, swaps to **exact** TimeCurve gross CL8Y for `charmWad`, then `buyFor`.
 ///         Path must be v3 packed **tokenOut (CL8Y) → … → tokenIn (WETH or `stableToken`)** per `docs/integrations/kumbaya.md`.
 /// @dev Immutable companion: owner wires `TimeCurve.setTimeCurveBuyRouter(address(this))`. Trust model: same team as TimeCurve admin.
+///      Sale-phase checks mirror **`TimeCurve`** live-window rules (`block.timestamp >= saleStart` once scheduled) so **`buyViaKumbaya`**
+///      fails fast before swap wiring when **`startSaleAt(epoch)`** left **`epoch` in the future** ([GitLab #118](https://gitlab.com/PlasticDigits/yieldomega/-/issues/118)).
 ///      Post-swap **CL8Y surplus** (exact-output dust / rounding) is sent to `cl8yProtocolTreasury`, not the buyer (GitLab #70).
-contract TimeCurveBuyRouter is ReentrancyGuard {
+///      **ETH / stable refunds** repay only \(\Delta\) balance since snapshot so pre-seeded WETH/stable cannot subsidize callers (GitLab #117).
+///      `owner` may **`rescueETH` / `rescueERC20`** for stranded liquidity (typically multisig-aligned with TimeCurve ops).
+contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     using SafeERC20 for IERC20;
 
     TimeCurve public immutable timeCurve;
@@ -52,19 +58,27 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     error TimeCurveBuyRouter__StableNotConfigured();
     error TimeCurveBuyRouter__EthValue();
     error TimeCurveBuyRouter__ZeroTreasury();
+    error TimeCurveBuyRouter__RefundInvariant();
+    error TimeCurveBuyRouter__RescueZeroRecipient();
+    error TimeCurveBuyRouter__RescueZeroToken();
+    error TimeCurveBuyRouter__RescueExceedsBalance();
 
     event BuyViaKumbaya(address indexed buyer, uint256 charmWad, uint256 grossCl8y, uint8 payKind);
     event Cl8ySurplusToProtocol(uint256 amount);
+    event EthRescued(address indexed to, uint256 amount);
+    event Erc20Rescued(address indexed token, address indexed to, uint256 amount);
 
     /// @param stableToken_ Pass `address(0)` if only ETH (WETH) pay mode is allowed on this deployment.
     /// @param cl8yProtocolTreasury_ Non-zero sink for CL8Y left on the router after `buyFor` (no buyer refund of CL8Y).
+    /// @param initialOwner_ Governance / ops account for **`rescue*`** + `Ownable2Step` lifecycle (typically same trust domain as `TimeCurve` owner).
     constructor(
         TimeCurve timeCurve_,
         address kumbayaRouter_,
         address weth_,
         address stableToken_,
-        address cl8yProtocolTreasury_
-    ) {
+        address cl8yProtocolTreasury_,
+        address initialOwner_
+    ) Ownable(initialOwner_) {
         if (cl8yProtocolTreasury_ == address(0)) revert TimeCurveBuyRouter__ZeroTreasury();
         timeCurve = timeCurve_;
         kumbayaRouter = IKumbayaSwapRouter(kumbayaRouter_);
@@ -78,6 +92,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     uint8 public constant PAY_STABLE = 1;
 
     /// @notice `path` last token must be WETH for `PAY_ETH`, or `stableToken` for `PAY_STABLE`. First token must be TimeCurve accepted asset (CL8Y).
+    /// @dev Reverts **`TimeCurveBuyRouter__BadSalePhase`** when the sale is unscheduled, ended, past **`deadline`**, or **scheduled but not yet live**
+    ///      (`block.timestamp < saleStart()` after **`startSaleAt`** — GitLab #114 / #118), **before** path pricing, **`exactOutput`**, or **`buyFor`**.
     /// @param plantWarBowFlag Forwarded to `TimeCurve.buyFor` — opt-in WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function buyViaKumbaya(
         uint256 charmWad,
@@ -91,7 +107,11 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
         if (payKind > PAY_STABLE) revert TimeCurveBuyRouter__BadPath();
 
         TimeCurve tc = timeCurve;
-        if (tc.saleStart() == 0 || tc.ended() || block.timestamp >= tc.deadline()) revert TimeCurveBuyRouter__BadSalePhase();
+        uint256 saleStart_ = tc.saleStart();
+        if (
+            saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_
+                || block.timestamp >= tc.deadline()
+        ) revert TimeCurveBuyRouter__BadSalePhase();
 
         (uint256 minCharm, uint256 maxCharm) = tc.currentCharmBoundsWad();
         if (charmWad < minCharm || charmWad > maxCharm) revert TimeCurveBuyRouter__CharmBounds();
@@ -106,12 +126,15 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
         uint256 cl8yBefore = cl8yTok.balanceOf(address(this));
         IERC20 wethErc = IERC20(address(weth));
 
+        uint256 inputSnapshot;
         if (payKind == PAY_ETH) {
             if (msg.value == 0) revert TimeCurveBuyRouter__EthValue();
+            inputSnapshot = wethErc.balanceOf(address(this));
             weth.deposit{value: msg.value}();
             wethErc.forceApprove(address(kumbayaRouter), amountInMaximum);
         } else {
             if (address(stableToken) == address(0)) revert TimeCurveBuyRouter__StableNotConfigured();
+            inputSnapshot = stableToken.balanceOf(address(this));
             stableToken.safeTransferFrom(msg.sender, address(this), amountInMaximum);
             stableToken.forceApprove(address(kumbayaRouter), amountInMaximum);
         }
@@ -128,17 +151,21 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
 
         if (payKind == PAY_ETH) {
             wethErc.forceApprove(address(kumbayaRouter), 0);
-            uint256 wethLeft = weth.balanceOf(address(this));
-            if (wethLeft > 0) {
-                weth.withdraw(wethLeft);
-                (bool ok,) = payable(msg.sender).call{value: wethLeft}("");
+            uint256 wethBal = weth.balanceOf(address(this));
+            if (wethBal < inputSnapshot) revert TimeCurveBuyRouter__RefundInvariant();
+            uint256 refundWeth = wethBal - inputSnapshot;
+            if (refundWeth > 0) {
+                weth.withdraw(refundWeth);
+                (bool ok,) = payable(msg.sender).call{value: refundWeth}("");
                 require(ok, "TimeCurveBuyRouter: eth refund");
             }
         } else {
             stableToken.forceApprove(address(kumbayaRouter), 0);
-            uint256 stLeft = stableToken.balanceOf(address(this));
-            if (stLeft > 0) {
-                stableToken.safeTransfer(msg.sender, stLeft);
+            uint256 stBal = stableToken.balanceOf(address(this));
+            if (stBal < inputSnapshot) revert TimeCurveBuyRouter__RefundInvariant();
+            uint256 refundStable = stBal - inputSnapshot;
+            if (refundStable > 0) {
+                stableToken.safeTransfer(msg.sender, refundStable);
             }
         }
 
@@ -159,6 +186,31 @@ contract TimeCurveBuyRouter is ReentrancyGuard {
     }
 
     receive() external payable {}
+
+    /// @notice Native ETH accidentally sent to this contract (outside WETH withdrawals). **`amount == type(uint256).max`** means full balance.
+    function rescueETH(address payable to, uint256 amount) external onlyOwner nonReentrant {
+        if (to == address(0)) revert TimeCurveBuyRouter__RescueZeroRecipient();
+        uint256 bal = address(this).balance;
+        uint256 send = amount == type(uint256).max ? bal : amount;
+        if (send == 0) return;
+        if (send > bal) revert TimeCurveBuyRouter__RescueExceedsBalance();
+        (bool ok,) = to.call{value: send}("");
+        require(ok, "TimeCurveBuyRouter: eth rescue");
+        emit EthRescued(to, send);
+    }
+
+    /// @notice Sweep ERC20 stranded on this contract (includes WETH, stable, arbitrary tokens). **`amount == type(uint256).max`** means full balance.
+    /// @dev Does not automatically forward CL8Y from active swaps (`buyViaKumbaya` still routes surplus to `cl8yProtocolTreasury`); this is ops recovery only.
+    function rescueERC20(IERC20 token, address to, uint256 amount) external onlyOwner nonReentrant {
+        if (address(token) == address(0)) revert TimeCurveBuyRouter__RescueZeroToken();
+        if (to == address(0)) revert TimeCurveBuyRouter__RescueZeroRecipient();
+        uint256 bal = token.balanceOf(address(this));
+        uint256 send = amount == type(uint256).max ? bal : amount;
+        if (send == 0) return;
+        if (send > bal) revert TimeCurveBuyRouter__RescueExceedsBalance();
+        token.safeTransfer(to, send);
+        emit Erc20Rescued(address(token), to, send);
+    }
 
     function _validatePath(bytes calldata path, address cl8y, uint8 payKind) internal view {
         if (path.length < 43 || (path.length - 20) % 23 != 0) revert TimeCurveBuyRouter__BadPath();

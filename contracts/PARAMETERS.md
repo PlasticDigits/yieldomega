@@ -72,18 +72,20 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 
 ## Rabbit Treasury (Burrow)
 
-| Parameter | Testnet default | Bounds / notes | Status |
-|-----------|-----------------|----------------|--------|
+On-chain **`PARAMS_ROLE`** updates must stay inside the envelopes below (enforced in `RabbitTreasury` setters + `initialize`; see [GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119)). **`c_max`** is fixed at deploy (no setter).
+
+| Parameter | Testnet default | On-chain bounds (WAD) | Status |
+|-----------|-----------------|----------------------|--------|
 | Reserve asset | Testnet **CL8Y** | Same as TimeCurve accepted asset | **TODO** — address |
 | Epoch duration | 86 400 seconds (24 h) | > 0 | Default |
-| `c_max` | `2e18` (2.0) | Per simulations | Default |
-| `c_star` | `1.05e18` (1.05) | Per simulations | Default |
-| `alpha` | `2e16` (0.02) | Per simulations | Default |
-| `beta` | `2e18` (2.0) | Per simulations | Default |
-| `m_min` | `98e16` (0.98) | Per simulations | Default |
-| `m_max` | `102e16` (1.02) | Per simulations | Default |
-| `lambda` | `5e17` (0.5) | Per simulations | Default |
-| `delta_max_frac` | `2e16` (0.02) | Per simulations | Default |
+| `c_max` | `2e18` (2.0) | Immutable after deploy | Default |
+| `c_star` | `1.05e18` (1.05) | `(0, c_max]` | Default |
+| `alpha` | `2e16` (0.02) | `[0, 1)` i.e. `alphaWad < 1e18` | Default |
+| `beta` | `2e18` (2.0) | `(0, 10 * WAD]` | Default |
+| `m_min` | `98e16` (0.98) | `setMBoundsWad`: `m_min < m_max` | Default |
+| `m_max` | `102e16` (1.02) | (paired with `m_min`) | Default |
+| `lambda` | `5e17` (0.5) | `(0, WAD]` | Default |
+| `delta_max_frac` | `2e16` (0.02) | `(0, 20 * 1e16]` (max **20%** per-step cap on **|Δe|/e**) | Default |
 | `eps` (coverage denominator floor) | `1` | > 0 | Default |
 | Initial `e` (exchange rate) | `1e18` (1.0) | > 0 | Default |
 | `protocolRevenueBurnShareWad` | `25e16` (25% of `receiveFee` gross burned) | `< 1e18` | `PARAMS_ROLE` |

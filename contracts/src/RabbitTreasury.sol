@@ -26,6 +26,14 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
 
     uint256 internal constant WAD = 1e18;
 
+    /// @notice Upper bound for `betaWad` (governed); keeps PRB `exp`/`tanh` paths within tested envelopes (`BurrowMath`).
+    /// @dev Must stay aligned with `contracts/PARAMETERS.md` § Rabbit Treasury (Burrow); GitLab #119.
+    uint256 internal constant MAX_BURROW_BETA_WAD = 10 * WAD;
+
+    /// @notice Upper bound for `deltaMaxFracWad` — max fraction of `e` movable per finalize step (WAD-scaled).
+    /// @dev Default deploy uses `2e16` (2%); cap allows headroom for governance without unbounded jumps.
+    uint256 internal constant MAX_BURROW_DELTA_MAX_FRAC_WAD = 20 * 1e16;
+
     /// @notice Default burn sink when constructor `_burnSink` is zero (standard dead address).
     address public constant DEFAULT_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
@@ -183,6 +191,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         require(_protocolRevenueBurnShareWad < WAD, "RT: burn share >= 100%");
         require(_withdrawFeeWad < WAD, "RT: withdraw fee >= 100%");
         require(_minRedemptionEfficiencyWad > 0 && _minRedemptionEfficiencyWad <= WAD, "RT: min eff");
+        _validateBurrowCurveParams(_cMaxWad, _cStarWad, _alphaWad, _betaWad, _lamWad, _deltaMaxFracWad);
 
         __AccessControlEnumerable_init();
         __AccessControl_init();
@@ -215,6 +224,22 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
     }
 
     function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    /// @dev Shared envelope for initializer and Burrow curve `PARAMS_ROLE` setters (GitLab #119).
+    function _validateBurrowCurveParams(
+        uint256 cMax,
+        uint256 cStar,
+        uint256 alpha,
+        uint256 beta,
+        uint256 lam,
+        uint256 deltaMaxFrac
+    ) private pure {
+        require(cStar > 0 && cStar <= cMax, "RT: cStar");
+        require(alpha < WAD, "RT: alpha");
+        require(beta > 0 && beta <= MAX_BURROW_BETA_WAD, "RT: beta");
+        require(lam > 0 && lam <= WAD, "RT: lam");
+        require(deltaMaxFrac > 0 && deltaMaxFrac <= MAX_BURROW_DELTA_MAX_FRAC_WAD, "RT: deltaMax");
+    }
 
     /// @notice Total reserve tokens held in accounting (must match `reserveAsset.balanceOf(this)` after ops).
     function totalReserves() external view returns (uint256) {
@@ -298,7 +323,9 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
     }
 
     /// @notice Finalize the current epoch and open the next one.
-    ///         Applies BurrowMath repricing using **total** backing (redeemable + protocol) for coverage.
+    /// @dev `epochId` advances a rolling accounting window (snapshots, repricing, withdrawal cooldown indexing),
+    ///      not a separate product "Epoch 2" roadmap stage (see `docs/product/rabbit-treasury.md`, GitLab #119).
+    ///      Applies BurrowMath repricing using **total** backing (redeemable + protocol) for coverage.
     function finalizeEpoch() external {
         require(currentEpochId > 0, "RT: no epoch");
         require(block.timestamp >= epochEnd, "RT: epoch not ended");
@@ -438,17 +465,23 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
 
     // ── Parameter updates (governed) ───────────────────────────────────
 
+    /// @param val Coverage pivot `c*` (WAD); must satisfy `0 < val <= cMaxWad` (GitLab #119).
     function setCStarWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val > 0 && val <= cMaxWad, "RT: cStar");
         emit ParamsUpdated(msg.sender, "cStarWad", cStarWad, val);
         cStarWad = val;
     }
 
+    /// @param val Tanh strength `α` (WAD); must satisfy `val < WAD` so `BurrowMath.multiplierWad` never hits `inner<=0` via governance alone.
     function setAlphaWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val < WAD, "RT: alpha");
         emit ParamsUpdated(msg.sender, "alphaWad", alphaWad, val);
         alphaWad = val;
     }
 
+    /// @param val Curve steepness `β` (WAD); must satisfy `0 < val <= MAX_BURROW_BETA_WAD`.
     function setBetaWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val > 0 && val <= MAX_BURROW_BETA_WAD, "RT: beta");
         emit ParamsUpdated(msg.sender, "betaWad", betaWad, val);
         betaWad = val;
     }
@@ -461,12 +494,16 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         mMaxWad = _mMax;
     }
 
+    /// @param val Smoothing `λ` (WAD); must satisfy `0 < val <= WAD`.
     function setLamWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val > 0 && val <= WAD, "RT: lam");
         emit ParamsUpdated(msg.sender, "lamWad", lamWad, val);
         lamWad = val;
     }
 
+    /// @param val Per-step relative cap on `|Δe|` (WAD); must satisfy `0 < val <= MAX_BURROW_DELTA_MAX_FRAC_WAD`.
     function setDeltaMaxFracWad(uint256 val) external onlyRole(PARAMS_ROLE) {
+        require(val > 0 && val <= MAX_BURROW_DELTA_MAX_FRAC_WAD, "RT: deltaMax");
         emit ParamsUpdated(msg.sender, "deltaMaxFracWad", deltaMaxFracWad, val);
         deltaMaxFracWad = val;
     }
