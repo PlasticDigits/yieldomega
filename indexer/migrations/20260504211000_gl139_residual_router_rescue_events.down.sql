@@ -1,0 +1,8 @@
+DROP INDEX IF EXISTS idx_timecurve_buy_router_erc20_rescued_block;
+DROP TABLE IF EXISTS idx_timecurve_buy_router_erc20_rescued;
+
+DROP INDEX IF EXISTS idx_timecurve_buy_router_eth_rescued_block;
+DROP TABLE IF EXISTS idx_timecurve_buy_router_eth_rescued;
+
+DROP INDEX IF EXISTS idx_timecurve_podium_residual_recipient_set_block;
+DROP TABLE IF EXISTS idx_timecurve_podium_residual_recipient_set;

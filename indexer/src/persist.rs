@@ -1079,6 +1079,22 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurvePodiumResidualRecipientSet { recipient } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_podium_residual_recipient_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, recipient
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*recipient))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (
@@ -1091,6 +1107,41 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&tx_h)
             .bind(log_i)
             .bind(&contract)
+            .bind(u256_dec(*amount))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterEthRescued { to, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_eth_rescued (
+                    block_number, block_hash, tx_hash, log_index, contract_address, to_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*to))
+            .bind(u256_dec(*amount))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveBuyRouterErc20Rescued { token, to, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_buy_router_erc20_rescued (
+                    block_number, block_hash, tx_hash, log_index, contract_address, token, to_address, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*token))
+            .bind(addr_hex(*to))
             .bind(u256_dec(*amount))
             .execute(pool)
             .await?;
