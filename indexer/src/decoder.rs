@@ -291,6 +291,8 @@ pub struct DecodedLog {
     pub event: DecodedEvent,
 }
 
+// Event payloads mirror ABI shapes; the buy (`TimeCurveBuy`) variant is wide by design.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum DecodedEvent {
     TimeCurveSaleStarted {

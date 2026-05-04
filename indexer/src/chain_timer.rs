@@ -89,19 +89,19 @@ fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
         addr_word_hex(Address::ZERO),
     ];
     let mut values = [String::from("0"), String::from("0"), String::from("0")];
-    for i in 0..3 {
+    for (i, winner) in winners.iter_mut().enumerate() {
         let off = i * 32;
         let w = Address::from_word(
             data[off..off + 32]
                 .try_into()
                 .map_err(|_| eyre::eyre!("podium winner word"))?,
         );
-        winners[i] = addr_word_hex(w);
+        *winner = addr_word_hex(w);
     }
-    for i in 0..3 {
+    for (i, value) in values.iter_mut().enumerate() {
         let off = (3 + i) * 32;
         let v = U256::from_be_slice(&data[off..off + 32]);
-        values[i] = u256_to_decimal_string(v);
+        *value = u256_to_decimal_string(v);
     }
     Ok(PodiumRpcRow { winners, values })
 }
