@@ -50,6 +50,12 @@ GitHub Actions sets `YIELDOMEGA_PG_TEST_URL` against a **service container** so 
 
 If the variable is **unset or empty** locally, that test **returns immediately** and still reports **passed** — it does **not** prove Postgres behavior. Export a URL to the same database you use for manual indexer runs when you need local parity with CI.
 
+<a id="indexer-block-ingest-transaction-gitlab-146"></a>
+
+### Indexer block ingest — single SQL transaction per block ([GitLab #146](https://gitlab.com/PlasticDigits/yieldomega/-/issues/146))
+
+**INV-INDEXER-146:** JSON-RPC block ingestion (`ingestion::run`) wraps **all** `persist_decoded_log_conn` calls for that block’s filtered logs plus **`indexed_blocks`** upsert and **`chain_pointer`** save in **one** Postgres transaction. A persist failure **rolls back** the whole block (pointer does not advance on partial rows). Forge regressions from the same issue cover **Doubloon** burn authority, WarBow / fee-routing gates, and **DoubPresaleVesting** post-start excess DOUB economics; Postgres coverage: `postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash` in [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) (requires `YIELDOMEGA_PG_TEST_URL`).
+
 <a id="indexer-emitted-event-coverage-gitlab-112"></a>
 
 ### Indexer emitted-event coverage (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112))
