@@ -2,10 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  capElapsedForSalePricing,
   CHARM_MAX_BASE_WAD,
   CHARM_MIN_BASE_WAD,
   currentMinBuyAt,
   displayMinGrossSpendWad,
+  linearPriceWad,
   maxCharmWadAt,
   maxCharmWadAtFloat,
   maxGrossSpendAtFloat,
@@ -19,6 +21,21 @@ import {
 /** ln(1.2) in WAD — matches contracts/test/TimeMath.t.sol */
 const GROWTH_RATE_20PCT = 182_321_556_793_954_592n;
 const ONE_DAY = 86400n;
+
+describe("capElapsedForSalePricing / MAX_SALE_ELAPSED_SEC (GitLab #124)", () => {
+  it("caps bigint elapsed at the onchain 300-day wall", () => {
+    const over = MAX_SALE_ELAPSED_SEC + 86400n * 7n;
+    expect(capElapsedForSalePricing(over)).toBe(MAX_SALE_ELAPSED_SEC);
+  });
+
+  it("linearPriceWad plateaus after the cap (matches saturated elapsed)", () => {
+    const base = WAD;
+    const daily = 10n ** 16n;
+    const atCap = linearPriceWad(base, daily, MAX_SALE_ELAPSED_SEC);
+    const beyond = linearPriceWad(base, daily, MAX_SALE_ELAPSED_SEC + 86400n * 60n);
+    expect(beyond).toBe(atCap);
+  });
+});
 
 describe("displayMinGrossSpendWad", () => {
   it("maps contract min through CHARM_MIN_BASE so nominal min is 1/10 max gross at same elapsed", () => {

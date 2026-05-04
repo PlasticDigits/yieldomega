@@ -1940,12 +1940,13 @@ contract TimeCurveTest is Test {
         _fundAndApproveCurve(alice, spend, t);
         vm.prank(alice);
         t.buy(minC);
-        vm.warp(t.saleStart() + maxSec + 1);
-        _warpPastBuyCooldown(t, alice);
+        uint256 until = t.nextBuyAllowedAt(alice);
+        uint256 pastWall = t.saleStart() + maxSec + 2;
+        vm.warp(pastWall > until ? pastWall : until);
         _fundAndApproveCurve(alice, spend, t);
         vm.prank(alice);
         vm.expectRevert("TimeCurve: sale max elapsed exceeded");
-        t.buy(1e18);
+        t.buy(minC);
     }
 
     function test_gitlab124_warbow_guard_reverts_after_wall() public {
