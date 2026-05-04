@@ -19,6 +19,7 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
     address public prizePusher;
 
     event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+    /// @dev Forwarded when a category slice has no payable placements or partial podium (M-01 / GitLab #116).
     event PodiumResidualForwarded(address indexed token, address indexed recipient, uint256 amount, uint8 category);
     event PrizePusherSet(address indexed pusher);
 
@@ -73,6 +74,7 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
             require(hasRole(DISTRIBUTOR_ROLE, msg.sender), "PodiumPool: not distributor");
         }
         require(recipient != address(0), "PodiumPool: zero recipient");
+        require(amount > 0, "PodiumPool: zero amount");
         token.safeTransfer(recipient, amount);
         emit PodiumResidualForwarded(address(token), recipient, amount, category);
     }
