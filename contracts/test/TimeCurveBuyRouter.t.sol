@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
@@ -113,7 +114,7 @@ contract TimeCurveBuyRouterTest is Test {
         kumbaya.setPair(address(weth), address(reserve), 8000e18, 8_000_000e18);
         kumbaya.setOwner(address(0));
 
-        buyRouter = new TimeCurveBuyRouter(tc, address(kumbaya), address(weth), address(usdm), cl8yProtocolTreasury);
+        buyRouter = new TimeCurveBuyRouter(tc, address(kumbaya), address(weth), address(usdm), cl8yProtocolTreasury, address(this));
         tc.setTimeCurveBuyRouter(address(buyRouter));
     }
 
@@ -188,6 +189,98 @@ contract TimeCurveBuyRouterTest is Test {
         vm.stopPrank();
 
         assertEq(tc.charmWeight(alice), charmWad);
+    }
+
+    /// @dev GitLab #117 — pre-seeded WETH on router is not refunded to the buyer as “unused wrap.”
+    function test_issue117_buyViaKumbaya_preseed_weth_kept_on_router() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = abi.encodePacked(address(reserve), uint24(3000), address(weth));
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        uint256 preseed = 3e18;
+        vm.deal(address(this), 100 ether);
+        weth.deposit{value: preseed}();
+        weth.transfer(address(buyRouter), preseed);
+
+        vm.deal(alice, maxIn);
+        vm.startPrank(alice);
+        buyRouter.buyViaKumbaya{value: maxIn}(
+            charmWad, bytes32(0), false, buyRouter.PAY_ETH(), block.timestamp + 600, maxIn, path
+        );
+        vm.stopPrank();
+
+        assertEq(tc.charmWeight(alice), charmWad);
+        assertEq(weth.balanceOf(address(buyRouter)), preseed, "stranded WETH remains");
+        uint256 refundEth = alice.balance;
+        assertApproxEqAbs(refundEth, maxIn - quotedIn, maxIn / 5000 + 3);
+    }
+
+    /// @dev GitLab #117 — pre-seeded stable on router stays; buyer gets unused margin only.
+    function test_issue117_buyViaKumbaya_preseed_stable_kept_on_router() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = _pathUsdmToCl8y();
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        uint256 preseed = 50_000e18;
+        usdm.mint(address(buyRouter), preseed);
+
+        usdm.mint(alice, maxIn);
+        vm.startPrank(alice);
+        usdm.approve(address(buyRouter), maxIn);
+        buyRouter.buyViaKumbaya(
+            charmWad,
+            bytes32(0),
+            false,
+            buyRouter.PAY_STABLE(),
+            block.timestamp + 600,
+            maxIn,
+            path
+        );
+        vm.stopPrank();
+
+        assertEq(tc.charmWeight(alice), charmWad);
+        assertEq(usdm.balanceOf(address(buyRouter)), preseed);
+        uint256 aliceRefund = usdm.balanceOf(alice);
+        assertApproxEqAbs(aliceRefund, maxIn - quotedIn, maxIn / 5000 + 3);
+    }
+
+    function test_issue117_rescue_eth_and_erc20_only_owner() public {
+        address sink = makeAddr("sink");
+
+        vm.deal(address(buyRouter), 0.42 ether);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        buyRouter.rescueETH(payable(sink), type(uint256).max);
+
+        buyRouter.rescueETH(payable(sink), type(uint256).max);
+        assertEq(sink.balance, 0.42 ether);
+        assertEq(address(buyRouter).balance, 0);
+
+        vm.deal(address(this), 10 ether);
+        weth.deposit{value: 2e17}();
+        weth.transfer(address(buyRouter), 2e17);
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        buyRouter.rescueERC20(IERC20(address(weth)), sink, type(uint256).max);
+
+        buyRouter.rescueERC20(IERC20(address(weth)), sink, type(uint256).max);
+        assertEq(weth.balanceOf(address(buyRouter)), 0);
+        assertEq(weth.balanceOf(sink), 2e17);
+    }
+
+    /// @dev CL8Y may be stranded only via mishap — owner rescue is allowed same as other ERC20 (#117 checklist).
+    function test_issue117_rescue_cl8y_routes_via_owner_ops() public {
+        address ops = makeAddr("ops_sink");
+        uint256 amt = 1e16;
+        reserve.mint(address(buyRouter), amt);
+        buyRouter.rescueERC20(IERC20(address(reserve)), ops, type(uint256).max);
+        assertEq(reserve.balanceOf(ops), amt);
+        assertEq(reserve.balanceOf(address(buyRouter)), 0);
     }
 
     function test_buyFor_revertsWhenRouterUnset() public {

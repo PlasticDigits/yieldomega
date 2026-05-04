@@ -54,7 +54,7 @@ contract DeployKumbayaAnvilFixtures is Script {
 
         // CL8Y surplus from exact-output swaps routes to deployer for Anvil (use `CL8YProtocolTreasury` on mainnet).
         TimeCurveBuyRouter buyRouter =
-            new TimeCurveBuyRouter(TimeCurve(timeCurve), address(router), address(weth), address(usdm), deployer);
+            new TimeCurveBuyRouter(TimeCurve(timeCurve), address(router), address(weth), address(usdm), deployer, deployer);
         TimeCurve(timeCurve).setTimeCurveBuyRouter(address(buyRouter));
 
         vm.stopBroadcast();
