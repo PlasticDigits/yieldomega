@@ -29,6 +29,7 @@ RainbowKit can surface **Wrong Network** while the app still exposes **`writeCon
 - **`ChainMismatchWriteBarrier`** overlays the gated panels (still readable underneath with dimmed backdrop).
 - **`SwitchToTargetChainButton`** calls wagmi **`switchChain`** (EIP-3326 **`wallet_switchEthereumChain`**).
 - **`chainMismatchWriteMessage`** returns early from submit handlers (**defense in depth**). **`/vesting`** **`claim`** additionally sets local error state so the same message appears **in the wallet panel** if the click races a network switch ([GitLab #106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106)).
+- **RPC privacy:** When **`/vesting`** **`claim`** (and other paths using **`friendlyRevertFromUnknown`**) surface provider failures, user-visible text **redacts** **`VITE_RPC_URL`** and common hosted-RPC URL patterns so API keys are not echoed ([GitLab #145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145); [`presale-vesting.md`](presale-vesting.md), [`revertMessage.ts`](../../frontend/src/lib/revertMessage.ts)).
 
 **Out of scope:** **`ThirdPartyDexPage`** (`/kumbaya`, `/sir`) outbound venue links — not ABI writes emitted by this app.
 

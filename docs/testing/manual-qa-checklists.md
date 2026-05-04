@@ -28,6 +28,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
 | [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
+| [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -236,6 +237,20 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 
 **Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · **Invariant:** [§ #106](invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
 
+<a id="manual-qa-issue-145"></a>
+
+## Presale vesting — claim error redaction (GitLab #145)
+
+**Why:** Wagmi / viem errors can embed **full RPC URLs** (including **`VITE_RPC_URL`** API keys). The **`/vesting`** claim panel must not echo those strings into **`StatusMessage`** (screenshots, screen share, DevTools).
+
+### Checklist
+
+1. **Unit / CI:** [`revertMessage.test.ts`](../../frontend/src/lib/revertMessage.test.ts) covers synthetic Alchemy-style URLs and **`friendlyRevertFromUnknown`** integration.
+2. **Manual / staging:** With a throwaway RPC URL containing an obvious fake key in **`VITE_RPC_URL`**, force a **`claim`** write failure (e.g. disable network or bad calldata if needed) — confirm the visible error contains **`[RPC URL redacted]`** (or mapped friendly copy) and **not** the full URL / key substring.
+3. **Write-surface audit:** Grep **`StatusMessage`** + raw **`.message`** on wallet writes — **`PresaleVestingPage`** must use **`friendlyRevertFromUnknown`** only (no raw wagmi **`message`**).
+
+**Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`revertMessage.ts`](../../frontend/src/lib/revertMessage.ts) · **Invariant:** [§ #145](invariants-and-business-logic.md#presale-vesting-claim-error-redaction-gitlab-145) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
+
 <a id="manual-qa-issue-78"></a>
 
 ## `TimeCurveBuyRouter` on Anvil (GitLab #65 / #78 / #84)
@@ -377,6 +392,7 @@ surface onto the first-run page.
 7. **`claimsEnabled` false:** Claim disabled; messaging references signoff ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 8. **`claimable > 0`:** **Claim DOUB** submits `claim()`.
 9. **Wrong-chain race (#106):** If **Claim** is clicked after a **network switch** before the UI re-disables the button, expect an in-panel **`Wrong network:`** **`StatusMessage`** (same family as Simple buy / referrals) — [dedicated checklist § #106](#manual-qa-issue-106).
+10. **Claim RPC leak (#145):** Claim failures must **not** print raw RPC URLs — see [§ #145](#manual-qa-issue-145).
 
 **Automated:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via `bash scripts/e2e-anvil.sh`.
 
