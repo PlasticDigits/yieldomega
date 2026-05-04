@@ -763,11 +763,22 @@ export function BattleFeedSection(props: {
               <h3>Prize batch runs</h3>
               {prizeDist && prizeDist.length > 0 ? (
                 <ul className="event-list">
-                  {prizeDist.map((item) => (
-                    <li key={`${item.tx_hash}-${item.log_index}`}>
-                      PrizesDistributed · block {formatLocaleInteger(item.block_number)} · tx <TxHash hash={item.tx_hash} />
+                  {prizeDist.map((item) => {
+                    const kind = item.kind ?? "drained";
+                    return (
+                    <li key={`${item.tx_hash}-${item.log_index}-${kind}`}>
+                      {kind === "empty_podium" ? (
+                        <>
+                          PrizesSettledEmptyPodiumPool (
+                          <AddressInline address={item.podium_pool ?? ""} formatWallet={formatWallet} size={14} />)
+                        </>
+                      ) : (
+                        <>PrizesDistributed</>
+                      )}{" "}
+                      · block {formatLocaleInteger(item.block_number)} · tx <TxHash hash={item.tx_hash} />
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               ) : (
                 <StatusMessage variant="muted">No prize batch runs indexed yet.</StatusMessage>

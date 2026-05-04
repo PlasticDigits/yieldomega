@@ -555,6 +555,13 @@ export function useTimeCurveArenaModel() {
     args: stealVictim && tc ? [stealVictim, utcDayId] : undefined,
     query: { enabled: Boolean(tc && stealVictim) },
   });
+  const { data: attackerStealsToday } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "stealsCommittedByAttackerOnDay",
+    args: address && tc ? [address, utcDayId] : undefined,
+    query: { enabled: Boolean(tc && address) },
+  });
   const { data: victimBattlePoints } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
@@ -1785,6 +1792,8 @@ export function useTimeCurveArenaModel() {
 
   const victimStealsTodayBigInt =
     victimStealsToday !== undefined ? BigInt(victimStealsToday as bigint | number) : undefined;
+  const attackerStealsTodayBigInt =
+    attackerStealsToday !== undefined ? BigInt(attackerStealsToday as bigint | number) : undefined;
   const victimBattlePointsBigInt =
     victimBattlePoints !== undefined ? BigInt(victimBattlePoints as bigint | number) : undefined;
   const stealPreflight = useMemo(
@@ -1799,6 +1808,7 @@ export function useTimeCurveArenaModel() {
           viewerBattlePoints,
           victimBattlePoints: victimBattlePointsBigInt,
           victimStealsToday: victimStealsTodayBigInt,
+          attackerStealsToday: attackerStealsTodayBigInt,
           maxStealsPerDay: BigInt(warbowMaxSteals),
           bypassSelected: stealBypass,
           guardActive: guardedActive,
@@ -1814,6 +1824,7 @@ export function useTimeCurveArenaModel() {
       viewerBattlePoints,
       victimBattlePointsBigInt,
       victimStealsTodayBigInt,
+      attackerStealsTodayBigInt,
       warbowMaxSteals,
       stealBypass,
       guardedActive,
@@ -2714,6 +2725,7 @@ export function useTimeCurveArenaModel() {
     victimBattlePointsBigInt,
     victimStealsToday,
     victimStealsTodayBigInt,
+    attackerStealsTodayBigInt,
     viewerBattlePoints,
     walletCl8yBal,
     walletCooldownRemainingSec,

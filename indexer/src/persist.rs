@@ -207,6 +207,22 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool { podium_pool } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_prizes_settled_empty_podium_pool (
+                    block_number, block_hash, tx_hash, log_index, contract_address, podium_pool
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*podium_pool))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveReferralApplied {
             buyer,
             referrer,
