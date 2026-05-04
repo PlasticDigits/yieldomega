@@ -74,7 +74,7 @@ Any other variable documented for [`start-local-anvil-stack.sh`](../../scripts/s
 | Area | Variables (representative) |
 |------|----------------------------|
 | Stack / Anvil | `ANVIL_PORT`, `RPC_URL`, `SKIP_ANVIL_RICH_STATE`, `START_BOT_SWARM`, `YIELDOMEGA_ANVIL_BLOCK_TIME_SEC`, `YIELDOMEGA_ANVIL_GAS_LIMIT`, `YIELDOMEGA_DEV_SALE_START_DELAY_SEC`, `YIELDOMEGA_DEPLOY_NO_COOLDOWN`, `YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`, `YIELDOMEGA_DEPLOY_KUMBAYA`, `DEPLOYER_PK`, `FOUNDRY_OUT` |
-| Postgres / indexer | `PG_HOST_PORT`, `INDEXER_PORT`, `QA_USE_FIXED_INDEXER_PORT`, `DOCKER_PG` |
+| Postgres / indexer | `PG_HOST_PORT`, `INDEXER_PORT`, `QA_USE_FIXED_INDEXER_PORT`, `DOCKER_PG`; production deploys: **`INDEXER_PRODUCTION=1`** requires non-placeholder **`DATABASE_URL`** ([GitLab #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142), [`indexer/README.md`](../../indexer/README.md)) |
 | Frontend timing | `LAUNCH_OFFSET_SEC` → `VITE_LAUNCH_TIMESTAMP` in `.env.local` |
 | Swarm | `YIELDOMEGA_SWARM_REFERRALS`, `YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`; stack runs [`scripts/sync-bot-env-from-frontend.sh`](../../scripts/sync-bot-env-from-frontend.sh) before swarm ([issue #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102)) |
 | Vite port | `FRONTEND_DEV_PORT` (orchestrator → `npm run dev -- --port …`) |

@@ -350,6 +350,22 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 **Doc:** [timecurve-views — Indexer offline (#96), malformed JSON (#111)](../frontend/timecurve-views.md#indexer-offline-ux-issue-96) · extends [#96](#indexer-offline-ux-and-backoff-gitlab-96) above.
 
+<a id="indexer-production-database-url-placeholders-gitlab-142"></a>
+
+### Indexer production `DATABASE_URL` — placeholder rejection (issue #142)
+
+**`INV-INDEXER-142`:** When **`INDEXER_PRODUCTION`** is enabled ([`indexer/src/cors_config.rs`](../../indexer/src/cors_config.rs)), **`Config::from_env`** must **`bail!`** if **`DATABASE_URL`** contains any substring listed in **`FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS`** in [`indexer/src/config.rs`](../../indexer/src/config.rs) (compared **case-insensitively**). This blocks copy-paste deployments with template credentials from [`indexer/.env.example`](../../indexer/.env.example) (for example **`CHANGE_ME_BEFORE_DEPLOY`**) or the legacy **`:password@`** tutorial userinfo pattern.
+
+| Invariant | Check |
+|-----------|--------|
+| **Production gate** | [`ensure_production_database_url`](../../indexer/src/config.rs) runs after **`DATABASE_URL`** is read; no DB connect before the check. |
+| **Non-production** | Without **`INDEXER_PRODUCTION`**, local URLs such as **`postgres://yieldomega:password@127.0.0.1/...`** from [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) remain valid. |
+| **Operator docs** | [indexer/README.md](../../indexer/README.md) · [`.env.example`](../../indexer/.env.example) warn that **`RPC_URL` / `CHAIN_ID`** defaults are not a substitute for mainnet review. |
+
+**Automated:** unit tests on `first_forbidden_production_database_url_substring` in [`config.rs`](../../indexer/src/config.rs).
+
+**Doc:** [indexer design — Configuration](../indexer/design.md#configuration) · [issue #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142).
+
 <a id="timecurve-simple-stake-redeemed-issue-90"></a>
 
 ### TimeCurve Simple — stake panel after `redeemCharms` (issue #90)

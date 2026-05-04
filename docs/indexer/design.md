@@ -48,6 +48,7 @@ Also decode **`TimeCurve`** governance / wiring events (**`BuyFeeRoutingEnabled`
 
 - **RPC URL**, **chain id**, **start block**, **contract address registry** per deployment.
 - **Database URL** and migration directory.
+- **Production (`INDEXER_PRODUCTION`)** — When truthy (same tokens as [CORS production mode](../../indexer/src/cors_config.rs)), [`Config::from_env`](../../indexer/src/config.rs) rejects **`DATABASE_URL`** values that contain known **placeholder substrings** ([GitLab #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142); **`INV-INDEXER-142`** in [invariants — production DB URL](../testing/invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142), [indexer README](../../indexer/README.md)). Unset **`INDEXER_PRODUCTION`** for local/dev (including `postgres://yieldomega:password@…` from [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh)).
 
 ## AGPL note
 
