@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
+import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
@@ -17,7 +18,10 @@ import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
-    function mint(address to, uint256 amount) external { _mint(to, amount); }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
 }
 
 contract TimeCurveTest is Test {
@@ -216,9 +220,7 @@ contract TimeCurveTest is Test {
 
     function test_startSaleAt_reverts_for_non_owner() public {
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, alice));
         tc.startSaleAt(block.timestamp);
     }
 
@@ -271,6 +273,56 @@ contract TimeCurveTest is Test {
         assertEq(tc.charmWeight(alice), 1e18);
         assertEq(tc.totalCharmWeight(), 1e18);
         assertEq(tc.totalRaised(), 1e18);
+    }
+
+    function test_buy_presale_beneficiary_adds_15pct_charm_weight() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amt = new uint256[](1);
+        amt[0] = 1_000e18;
+        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(
+            IERC20(address(reserve)), address(this), ben, amt, 1_000e18, 180 days
+        );
+        tc.setDoubPresaleVesting(address(v));
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(alice), 1_150_000_000_000_000_000);
+        assertEq(tc.totalCharmWeight(), 1_150_000_000_000_000_000);
+    }
+
+    function test_buy_non_presale_beneficiary_no_boost_when_vesting_set() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amt = new uint256[](1);
+        amt[0] = 1_000e18;
+        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(
+            IERC20(address(reserve)), address(this), ben, amt, 1_000e18, 180 days
+        );
+        tc.setDoubPresaleVesting(address(v));
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(bob, 100e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(bob), 1e18);
+    }
+
+    function test_presale_charm_boost_zero_when_vesting_cleared() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amt = new uint256[](1);
+        amt[0] = 1_000e18;
+        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(
+            IERC20(address(reserve)), address(this), ben, amt, 1_000e18, 180 days
+        );
+        tc.setDoubPresaleVesting(address(v));
+        tc.setDoubPresaleVesting(address(0));
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(alice), 1e18);
     }
 
     function test_buyFor_reverts_when_not_designated_router() public {
@@ -628,9 +680,9 @@ contract TimeCurveTest is Test {
         tc.endSale();
 
         (address[3] memory winners,) = tc.podium(tc.CAT_LAST_BUYERS());
-        assertEq(winners[0], dave);  // last buyer = 1st
+        assertEq(winners[0], dave); // last buyer = 1st
         assertEq(winners[1], carol); // second to last = 2nd
-        assertEq(winners[2], bob);   // third to last = 3rd
+        assertEq(winners[2], bob); // third to last = 3rd
     }
 
     function test_warbow_ladder_podium_orders_by_battle_points() public {
@@ -785,10 +837,7 @@ contract TimeCurveTest is Test {
 
         uint256 revTake = (bobBpAfterSteal * 1000) / 10_000;
         assertEq(tc.battlePoints(bob), bobBpAfterSteal - revTake);
-        assertEq(
-            reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - dead0,
-            tc.WARBOW_REVENGE_BURN_WAD()
-        );
+        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - dead0, tc.WARBOW_REVENGE_BURN_WAD());
     }
 
     /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).
@@ -818,9 +867,7 @@ contract TimeCurveTest is Test {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 100e18);
         vm.expectEmit(true, true, false, true);
-        emit TimeCurve.WarBowCl8yBurned(
-            alice, uint8(TimeCurve.WarBowBurnReason.Guard), tc.WARBOW_GUARD_BURN_WAD()
-        );
+        emit TimeCurve.WarBowCl8yBurned(alice, uint8(TimeCurve.WarBowBurnReason.Guard), tc.WARBOW_GUARD_BURN_WAD());
         vm.prank(alice);
         tc.warbowActivateGuard();
     }
