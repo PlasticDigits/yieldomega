@@ -274,6 +274,14 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 
 **Spec ↔ test:** [invariants — submit-time CHARM sizing](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [integrations/kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-82) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82).
 
+<a id="erc20-approval-sizing-gitlab-143"></a>
+
+## ERC-20 approval sizing — CL8Y → TimeCurve (GitLab #143)
+
+TimeCurve **Simple** and **Arena** buy panels include **`Cl8yTimeCurveUnlimitedApprovalFieldset`**: default **exact** **`approve(TimeCurve, grossCl8yForTx)`** for **`buy`** and shared WarBow CL8Y pulls; optional checkbox stores **`yieldomega.erc20.cl8yTimeCurveUnlimited.v1`** and restores **`type(uint256).max`** for fewer repeat approvals (disclosure links **H-01** + [wallet-connection §143](wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143)). Kumbaya legs approve **slippage-bounded `maxIn`** to routers only. **`/referrals`** register approves the onchain burn amount exactly.
+
+**Spec ↔ test:** [invariants — #143](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143).
+
 <a id="kumbaya-swap-deadline-chain-time-issue-83"></a>
 
 ## Kumbaya swap deadline — chain time (issue #83)

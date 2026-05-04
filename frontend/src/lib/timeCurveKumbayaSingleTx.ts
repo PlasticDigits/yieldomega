@@ -4,7 +4,6 @@
 // `TimeCurveBuyRouter.buyViaKumbaya` (issue #66). Two-step swap + `buy` remains when
 // `timeCurveBuyRouter` is zero onchain.
 
-import { maxUint256 } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import type { Config } from "wagmi";
 import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
@@ -94,7 +93,7 @@ export async function submitKumbayaSingleTxBuy(params: {
         address: route.tokenIn,
         abi: erc20Abi,
         functionName: "approve",
-        args: [router, maxUint256],
+        args: [router, maxIn],
       });
       await waitForTransactionReceipt(cfg, { hash: uAp });
     }

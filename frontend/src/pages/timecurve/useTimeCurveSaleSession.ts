@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatUnits, maxUint256, parseUnits } from "viem";
+import { formatUnits, parseUnits } from "viem";
 import {
   useAccount,
   useBalance,
@@ -23,6 +23,10 @@ import {
   timeCurveWriteAbi,
   weth9Abi,
 } from "@/lib/abis";
+import {
+  cl8yTimeCurveApprovalAmountWei,
+  readCl8yTimeCurveUnlimitedApproval,
+} from "@/lib/cl8yTimeCurveApprovalPreference";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
 import {
@@ -982,7 +986,7 @@ export function useTimeCurveSaleSession(
               address: k.config.weth,
               abi: weth9Abi,
               functionName: "approve",
-              args: [k.config.swapRouter, maxUint256],
+              args: [k.config.swapRouter, maxIn],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
           }
@@ -998,7 +1002,7 @@ export function useTimeCurveSaleSession(
               address: route.tokenIn,
               abi: erc20Abi,
               functionName: "approve",
-              args: [k.config.swapRouter, maxUint256],
+              args: [k.config.swapRouter, maxIn],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
           }
@@ -1028,12 +1032,16 @@ export function useTimeCurveSaleSession(
         functionName: "allowance",
         args: [address, tc],
       });
+      const approveAmt = cl8yTimeCurveApprovalAmountWei(
+        amount,
+        readCl8yTimeCurveUnlimitedApproval(),
+      );
       if (allow < amount) {
         const approveHash = await writeContractAsync({
           address: acceptedAsset,
           abi: erc20Abi,
           functionName: "approve",
-          args: [tc, maxUint256],
+          args: [tc, approveAmt],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
