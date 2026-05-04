@@ -36,6 +36,14 @@ Nodes **must** reject creations that exceed these bounds. **Ethereum L1** and **
 
 This project should still favor **clear modules** for audits and upgrade clarity ([../architecture/overview.md](../architecture/overview.md)), even though MegaEVM allows much larger single-contract artifacts than EIP-170.
 
+## Dev-only `forge script` entrypoints (chain allowlist, GitLab [#141](https://gitlab.com/PlasticDigits/yieldomega/-/issues/141))
+
+<a id="dev-only-forge-script-entrypoints-chain-allowlist-gitlab-141"></a>
+
+Convenience scripts under [`contracts/script/`](../contracts/script/) — including **`DeployDev`**, **`DeployKumbayaAnvilFixtures`**, **`AnvilSameBlockDrill`**, and **`SimulateAnvilRichState*`** — are intended for **Anvil** and **MegaETH testnet** experimentation only. Each calls **`DevOnlyChainGuard.assertDevScriptChain()`** at the start of **`run()`**, allowing **`block.chainid`** **31337**, **6343**, or **6342** (legacy testnet id). **MegaETH mainnet (4326)** and all other chain IDs **revert immediately**, so a mistaken **`--rpc-url`** cannot deploy mocks or flip dev operator gates against a production key. Do **not** use these script names for production mainnet releases; follow [deployment-stages.md](../operations/deployment-stages.md) and dedicated production deploy tooling.
+
+**Verification:** [`DevOnlyChainGuard.t.sol`](../contracts/test/DevOnlyChainGuard.t.sol). **Invariant map:** [§ `INV-DEVSCRIPT-141`](../testing/invariants-and-business-logic.md#forge-dev-scripts-chain-allowlist-gitlab-141).
+
 ## Networks and workflow
 
 - **Local** — `anvil` or MegaETH-provided dev tooling for fast iteration.
