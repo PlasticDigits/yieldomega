@@ -16,8 +16,17 @@ contract MockDoub is ERC20 {
     }
 }
 
+contract MockOtherErc20 is ERC20 {
+    constructor() ERC20("Stray", "STR") {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
 contract DoubPresaleVestingTest is Test {
     MockDoub internal doub;
+    MockOtherErc20 internal stray;
     uint256 internal constant DURATION = 180 days;
     address internal owner = makeAddr("owner");
     address internal alice = makeAddr("alice");
@@ -39,6 +48,7 @@ contract DoubPresaleVestingTest is Test {
 
     function setUp() public {
         doub = new MockDoub();
+        stray = new MockOtherErc20();
     }
 
     function test_constructor_reverts_totalMismatch() public {
@@ -399,10 +409,164 @@ contract DoubPresaleVestingTest is Test {
         uint256[] memory amts = new uint256[](2);
         amts[0] = 10_000_000e18;
         amts[1] = 11_500_000e18;
-        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, presale, DURATION);
+        DoubPresaleVesting v =
+            UUPSDeployLib.deployDoubPresaleVesting(IERC20(address(doub)), owner, ben, amts, presale, DURATION);
         assertEq(v.totalAllocated(), presale);
         doub.mint(address(v), presale);
         vm.prank(owner);
         v.startVesting();
+    }
+
+    function test_rescueERC20_vestingToken_excess_succeeds() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 115e18);
+        vm.prank(owner);
+        v.startVesting();
+        address sink = makeAddr("sink");
+        vm.prank(owner);
+        v.rescueERC20(IERC20(address(doub)), sink, 15e18);
+        assertEq(doub.balanceOf(sink), 15e18);
+        assertEq(doub.balanceOf(address(v)), 100e18);
+        assertEq(v.reserveDoubForOutstandingClaimsWad(), 100e18);
+    }
+
+    function test_rescueERC20_vestingToken_max_sends_all_excess() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 103e18);
+        vm.prank(owner);
+        v.startVesting();
+        address sink = makeAddr("sink");
+        vm.prank(owner);
+        v.rescueERC20(IERC20(address(doub)), sink, type(uint256).max);
+        assertEq(doub.balanceOf(sink), 3e18);
+        assertEq(doub.balanceOf(address(v)), 100e18);
+    }
+
+    function test_rescueERC20_vestingToken_cannot_touch_reserve() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__RescueExceedsExcess.selector, 0, 1));
+        v.rescueERC20(IERC20(address(doub)), makeAddr("sink"), 1);
+    }
+
+    function test_rescueERC20_after_claim_allows_only_excess_over_remaining_liability() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
+        vm.prank(alice);
+        v.claim();
+        assertEq(v.reserveDoubForOutstandingClaimsWad(), 70e18);
+        assertEq(doub.balanceOf(address(v)), 70e18);
+        doub.mint(address(v), 12e18);
+        assertEq(doub.balanceOf(address(v)), 82e18);
+        address sink = makeAddr("sink");
+        vm.prank(owner);
+        v.rescueERC20(IERC20(address(doub)), sink, 12e18);
+        assertEq(doub.balanceOf(sink), 12e18);
+        assertEq(doub.balanceOf(address(v)), 70e18);
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__RescueExceedsExcess.selector, 0, 1));
+        v.rescueERC20(IERC20(address(doub)), sink, 1);
+    }
+
+    function test_rescueERC20_foreign_token_full_balance() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        stray.mint(address(v), 42e18);
+        vm.prank(owner);
+        v.startVesting();
+        address sink = makeAddr("sink");
+        vm.prank(owner);
+        v.rescueERC20(IERC20(address(stray)), sink, type(uint256).max);
+        assertEq(stray.balanceOf(sink), 42e18);
+        assertEq(stray.balanceOf(address(v)), 0);
+    }
+
+    function test_rescueERC20_nonOwner_reverts() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 110e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(alice);
+        vm.expectRevert();
+        v.rescueERC20(IERC20(address(doub)), makeAddr("sink"), 1e18);
+    }
+
+    function test_rescueERC20_zero_to_reverts() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 110e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__RescueZeroRecipient.selector);
+        v.rescueERC20(IERC20(address(doub)), address(0), 1);
+    }
+
+    function test_rescueERC20_zero_amount_reverts() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__RescueZeroAmount.selector);
+        v.rescueERC20(IERC20(address(doub)), makeAddr("sink"), 0);
+    }
+
+    /// @dev Small excess + bounded rescue amounts stay within reserve invariant.
+    function test_fuzz_rescueERC20_vesting_excess_bounded(uint128 excessRaw, uint128 takeRaw) public {
+        uint256 excess = bound(uint256(excessRaw), 1, 1e21);
+        uint256 take = bound(uint256(takeRaw), 1, excess);
+
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18 + excess);
+        vm.prank(owner);
+        v.startVesting();
+        address sink = makeAddr("sink");
+        vm.prank(owner);
+        v.rescueERC20(IERC20(address(doub)), sink, take);
+        assertEq(doub.balanceOf(address(v)), 100e18 + excess - take);
+        assertEq(doub.balanceOf(sink), take);
     }
 }

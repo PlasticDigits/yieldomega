@@ -108,6 +108,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
     for table in [
         "idx_doub_vesting_claimed",
         "idx_doub_vesting_claims_enabled",
+        "idx_doub_vesting_rescue_erc20",
         "idx_doub_vesting_started",
         "idx_fee_router_distributable_token_updated",
         "idx_fee_router_erc20_rescued",

@@ -9,10 +9,13 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | System | User-facing action | Onchain control | Default after `initialize` |
 |--------|----------------------|-----------------|-----------------------------|
 | **DOUB presale vesting** | `claim()` | `setClaimsEnabled(bool)` (`onlyOwner`) | `claimsEnabled == false` |
+| **DOUB presale vesting** | — (ops / treasury) | `rescueERC20(token, to, amount)` (`onlyOwner`) — **excess** vesting DOUB and stray non-vesting ERC20 only ([GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137); [invariants §137](../testing/invariants-and-business-logic.md#doub-presale-vesting-owner-rescue-gitlab-137)) | n/a |
 | **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
 | **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
 | **TimeCurve** | `sweepUnredeemedLaunchedToken()` — remainder of **`launchedToken`** after **7-day** grace from **`saleEndedAt`** ([GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128)) | **`setUnredeemedLaunchedTokenRecipient(address)`** (sink for sweep) + **`onlyOwner`** `sweep…` timing (not gated by `charmRedemptionEnabled`) | `unredeemedLaunchedTokenRecipient` unset until owner sets; no sweep until grace elapses |
 | **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
+
+<a id="doub-presale-vesting"></a>
 
 **`distributePrizes` empty pool:** if `PodiumPool` balance is zero, the function returns without setting `prizesDistributed` (unchanged griefing / retry behavior). The reserve-payout gate applies only when `prizePool > 0`.
 
