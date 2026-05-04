@@ -370,6 +370,8 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
 
     /// @notice Burn DOUB and withdraw reserve from **redeemable** backing only, with pro-rata cap,
     ///         health-aware efficiency, optional cooldown, and withdrawal fee to protocol bucket.
+    /// @dev Caller must have granted this contract an ERC-20 **allowance** on `doub` for at least `doubAmount`
+    ///      (`Doubloon` uses standard `burnFrom` — no privileged burn role; [GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)).
     /// @dev TODO GitLab #70 — CL8Y outflow policy: `withdraw` is a public user redemption path; defer stricter owner/admin
     ///      alignment with `docs/onchain/cl8y-flow-audit.md` until product signs off on Burrow exceptions.
     function withdraw(uint256 doubAmount, uint256 factionId) external whenNotPaused {
@@ -390,7 +392,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
 
         require(grossFromRedeemable <= redeemableBacking, "RT: redeemable underflow");
 
-        doub.burn(msg.sender, doubAmount);
+        doub.burnFrom(msg.sender, doubAmount);
         redeemableBacking -= grossFromRedeemable;
         protocolOwnedBacking += feeToProtocol;
         reserveAsset.safeTransfer(msg.sender, userOut);

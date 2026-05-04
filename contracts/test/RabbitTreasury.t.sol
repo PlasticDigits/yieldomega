@@ -76,6 +76,12 @@ contract RabbitTreasuryTest is Test {
         reserve.approve(address(rt), amount);
     }
 
+    /// @dev `withdraw` burns via `Doubloon.burnFrom` — requires DOUB allowance to `RabbitTreasury` ([GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)).
+    function _approveDoubWithdrawMax(address user) internal {
+        vm.prank(user);
+        doub.approve(address(rt), type(uint256).max);
+    }
+
     /// @dev Withdraw math uses `minRedemptionEfficiencyWad` and `withdrawFeeWad`; tests that need nominal 1:1 redemption at `e=1` should pin efficiency to 100%.
     function _setFullRedemptionEfficiency() internal {
         rt.setMinRedemptionEfficiencyWad(WAD);
@@ -139,6 +145,8 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.deposit(100e18, 0);
 
+        _approveDoubWithdrawMax(alice);
+
         (uint256 userOut, uint256 wFee) = rt.previewWithdrawFor(alice, 50e18);
         vm.prank(alice);
         rt.withdraw(50e18, 0);
@@ -158,6 +166,8 @@ contract RabbitTreasuryTest is Test {
         _fundAndApprove(alice, dep);
         vm.prank(alice);
         rt.deposit(dep, 0);
+
+        _approveDoubWithdrawMax(alice);
 
         uint256 doubBal = doub.balanceOf(alice);
         uint256 amt = bound(uint256(withdrawBps), 1, doubBal);
@@ -182,10 +192,23 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.deposit(10e18, 0);
 
+        _approveDoubWithdrawMax(alice);
+
         // Alice has 10 DOUB, try to withdraw 20 DOUB (she doesn't have enough)
         vm.prank(alice);
         vm.expectRevert();
         rt.withdraw(20e18, 0);
+    }
+
+    function test_withdraw_reverts_withoutDoubAllowance() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        rt.deposit(100e18, 0);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        rt.withdraw(50e18, 0);
     }
 
     // ── Epoch finalization and repricing ────────────────────────────────
@@ -243,6 +266,9 @@ contract RabbitTreasuryTest is Test {
 
         vm.prank(alice);
         doub.transfer(bob, 25_000_000e18);
+
+        _approveDoubWithdrawMax(alice);
+        _approveDoubWithdrawMax(bob);
 
         for (uint256 i; i < 60; ++i) {
             assertEq(reserve.balanceOf(address(rt)), rt.totalReserves(), "reserve balance vs totalReserves");
@@ -331,6 +357,8 @@ contract RabbitTreasuryTest is Test {
 
         (uint256 previewOut,) = rt.previewWithdrawFor(alice, toWithdraw);
         vm.assume(previewOut > 0);
+
+        _approveDoubWithdrawMax(alice);
 
         vm.prank(alice);
         rt.withdraw(toWithdraw, 0);
@@ -532,6 +560,7 @@ contract RabbitTreasuryTest is Test {
 
         uint256 balBefore = reserve.balanceOf(alice);
         uint256 aliceDoub = doub.balanceOf(alice);
+        _approveDoubWithdrawMax(alice);
         vm.prank(alice);
         rt.withdraw(aliceDoub, 0);
 
@@ -585,6 +614,8 @@ contract RabbitTreasuryTest is Test {
         vm.prank(alice);
         rt.deposit(100e18, 0);
 
+        _approveDoubWithdrawMax(alice);
+
         vm.prank(alice);
         rt.withdraw(10e18, 0);
 
@@ -629,6 +660,7 @@ contract RabbitTreasuryTest is Test {
         assertLt(userOut, nominalFull);
         assertLe(userOut, rt.redeemableBacking());
 
+        _approveDoubWithdrawMax(alice);
         vm.prank(alice);
         rt.withdraw(s, 0);
         assertEq(rt.redeemableBacking(), 0);
@@ -652,9 +684,11 @@ contract RabbitTreasuryTest is Test {
         uint256 protoMid = rt.protocolOwnedBacking();
 
         uint256 aliceDoub = doub.balanceOf(alice);
+        _approveDoubWithdrawMax(alice);
         vm.prank(alice);
         rt.withdraw(aliceDoub, 0);
         uint256 bobDoub = doub.balanceOf(bob);
+        _approveDoubWithdrawMax(bob);
         vm.prank(bob);
         rt.withdraw(bobDoub, 0);
 

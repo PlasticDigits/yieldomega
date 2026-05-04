@@ -109,6 +109,7 @@ contract SimulateAnvilRichStatePart1 is Script {
         uint256 bobDoub = IERC20(doubAddr).balanceOf(bob);
         if (bobDoub > 1e15) {
             vm.startBroadcast(PK_B);
+            IERC20(doubAddr).approve(rt, type(uint256).max);
             IRabbitTreasury(rt).withdraw(bobDoub / 2, 3);
             vm.stopBroadcast();
         }
