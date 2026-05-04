@@ -99,6 +99,7 @@ contract DeployDev is Script {
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
         rt.grantRole(rt.FEE_ROUTER_ROLE(), address(router));
+        router.setDistributableToken(IERC20(reserveAsset), true);
         console.log("FeeRouter:", address(router));
 
         // ── Referral registry (UUPS proxy) ────────────────────────────

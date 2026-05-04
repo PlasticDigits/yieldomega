@@ -55,6 +55,7 @@ contract NonStandardERC20Test is Test {
             [s0, s1, address(pv), s3, s4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        r.setDistributableToken(IERC20(address(ft)), true);
         LinearCharmPrice cp = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
         TimeCurve tc = UUPSDeployLib.deployTimeCurve(
             IERC20(address(ft)),
@@ -93,6 +94,7 @@ contract NonStandardERC20Test is Test {
             [s0, s1, s2, s3, s4],
             [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
         );
+        r.setDistributableToken(IERC20(address(t)), true);
         t.mint(address(r), 1000);
         vm.expectRevert(MockERC20AlwaysRevert.TransferBlocked.selector);
         r.distributeFees(IERC20(address(t)), 1000);
@@ -106,6 +108,7 @@ contract NonStandardERC20Test is Test {
             [sinkA, s1, s2, s3, s4],
             [uint16(2000), uint16(2000), uint16(2000), uint16(2000), uint16(2000)]
         );
+        r.setDistributableToken(IERC20(address(t)), true);
         t.mint(address(r), 1000);
         vm.expectRevert(MockERC20BlockedSink.BlockedRecipient.selector);
         r.distributeFees(IERC20(address(t)), 1000);

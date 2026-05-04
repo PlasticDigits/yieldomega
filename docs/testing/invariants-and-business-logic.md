@@ -58,7 +58,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 
 **Historical compatibility:** legacy **`AllocationClaimed`** logs decode into **`TimeCurveCharmsRedeemed`** (same row shape); there is **no duplicate** AllocationClaimed-only table ([issue discussion](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112)).
 
-**Contributor / third-party agents:** indexer scope is contributor Phase 18 / [`.cursor/skills/yieldomega-guardrails`](../../.cursor/skills/yieldomega-guardrails/SKILL.md). Participant-facing indexer *usage* pointers stay in **[`skills/README.md`](../../skills/README.md)** (derived read models, API pagination).
+**Contributor / third-party agents:** indexer scope is contributor Phase 18 / [`.cursor/skills/yieldomega-guardrails`](../../.cursor/skills/yieldomega-guardrails/SKILL.md). Participant-facing indexer *usage* pointers stay in **[`skills/README.md`](../../skills/README.md)** (derived read models, API pagination). **`FeeRouter`** emits **`DistributableTokenUpdated`** / **`ERC20Rescued`** for governance observability ([GitLab #122](https://gitlab.com/PlasticDigits/yieldomega/-/issues/122); tables **`idx_fee_router_*`** in migrations).
 
 ---
 
@@ -68,7 +68,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 |------|----------------|-------------------------|
 | **TimeCurve** | Sale lifecycle: **exponential CHARM band** (0.99–10 CHARM × envelope), **linear per-CHARM price** (`ICharmPrice`), timer extension with cap, fees to router, sale end, CHARM-weighted redemption, prize podiums. **Redemption monotonicity (no referral):** [primitives — CL8Y value of DOUB per CHARM](../product/primitives.md#timecurve-redemption-cl8y-density-no-referral). **Gates (issue #55):** `buyFeeRoutingEnabled` — sale `buy` → `FeeRouter` **and** WarBow CL8Y paths (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`); `charmRedemptionEnabled` (`redeemCharms`); `reservePodiumPayoutsEnabled` (CL8Y `distributePrizes` when prize pool non-zero) — [operations: final signoff](../operations/final-signoff-and-value-movement.md). | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol), [LinearCharmPrice.sol](../../contracts/src/pricing/LinearCharmPrice.sol) |
 | **Rabbit Treasury (Burrow)** | Deposits → **redeemable** backing + DOUB mint; `receiveFee` → burn + **protocol-owned** backing (no DOUB mint); withdraw from redeemable only (pro-rata, health efficiency, fees → protocol); epoch repricing via **total** backing + BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
-| **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
+| **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. **`distributeFees`** only for **`GOVERNOR_ROLE`**-allowlisted tokens; stray assets use **`rescueERC20`** ([§ #122](../testing/invariants-and-business-logic.md#feerouter-distributable-token-and-rescue-gitlab-122)). | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **DOUB presale vesting** | Immutable `EnumerableSet` of beneficiaries + allocations; constructor enforces `sum(amounts) == requiredTotal`; **30%** vested at `vestingStart`, **70%** linear over `vestingDuration`; `startVesting` once when `token.balanceOf(this) >= totalAllocated`. **`claims` gate (issue #55):** `claim()` requires `claimsEnabled` via `setClaimsEnabled` (`onlyOwner`) — [operations: final signoff](../operations/final-signoff-and-value-movement.md). | [DoubPresaleVesting.sol](../../contracts/src/vesting/DoubPresaleVesting.sol), [PARAMETERS.md](../../contracts/PARAMETERS.md) |
 | **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
 | **Indexer** | Decode canonical logs, **exhaustively cover emitted events** stored in Postgres for history / future UI ([§ #112](#indexer-emitted-event-coverage-gitlab-112); [scoped issue discussion](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112)); idempotent persist; chain pointer + reorg rollback of **all** `idx_*` tables. **`TimeCurveBuyRouter`** `BuyViaKumbaya` + `TimeCurve` `Buy` correlation for multi-asset entry metadata ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [`persist.rs`](../../indexer/src/persist.rs), [`reorg.rs`](../../indexer/src/reorg.rs), [design — emitted logs](../indexer/design.md), [integrations/kumbaya.md](../integrations/kumbaya.md) |
@@ -579,15 +579,19 @@ Mitigations and product stance: [security-and-threat-model.md — Implementation
 | Coverage / multiplier bounds | `C` clipped; `m ∈ [m_min, m_max]` | `BurrowMath.t.sol`: `test_coverage_clips_high`, `test_multiplier_bounds_fuzz`, `test_epoch_invariants_fuzz` |
 | Numeric parity with sims | One epoch matches Python reference | `test_matches_python_reference_epoch` |
 
+<a id="feerouter-distributable-token-and-rescue-gitlab-122"></a>
+
 ### FeeMath and FeeRouter
 
 | Invariant | Meaning | Tests |
 |-----------|---------|--------|
-| Stateful accounting (fuzz) | Router balance and sink totals match funded vs distributed under random `fund`/`distribute` sequences | [FeeRouterInvariant.t.sol](../../contracts/test/FeeRouterInvariant.t.sol): `invariant_feeRouter_routerBalanceMatchesGhost`, `invariant_feeRouter_sinksSumEqualsDistributed` |
+| Stateful accounting (fuzz) | Router balance and sink totals match funded vs distributed under random `fund`/`distribute` sequences (allowlisted token) | [FeeRouterInvariant.t.sol](../../contracts/test/FeeRouterInvariant.t.sol): `invariant_feeRouter_routerBalanceMatchesGhost`, `invariant_feeRouter_sinksSumEqualsDistributed` |
 | Weights sum to 10_000 | Library + router reject bad sums | `FeeMath.t.sol`: `test_validateWeights_canonical_split`, `test_validateWeights_reverts_wrong_sum`, `test_validateWeights_reverts_single_overflow`; `FeeRouter.t.sol`: `test_updateSinks_invalid_sum_reverts`, `test_weights_sum_invariant` |
 | BPS share basics | Integer division and rounding-down behavior | `test_bpsShare_basic`, `test_bpsShare_rounding_down` |
 | BPS split no overallocation | Sum of shares ≤ amount (fuzz) | `test_bpsShare_no_overallocation_fuzz` |
 | Non-zero distribution | Zero total amount reverts | `test_distributeFees_zero_reverts` |
+| Distributable allowlist (L-04 / #122) | Non-allowlisted token cannot be split to sinks; governor can `setDistributableToken` | `test_distributeFees_reverts_when_token_not_distributable`, `test_setDistributableToken_emits_and_gate`, `test_setDistributableToken_zero_token_reverts`, `test_setDistributableToken_unauthorized_reverts` |
+| Governed rescue (L-04 / #122) | `rescueERC20` transfers balance without fee split; only `GOVERNOR_ROLE` | `test_rescueERC20_moves_balance`, `test_rescueERC20_unauthorized_reverts`, `test_rescueERC20_zero_to_reverts` |
 | Sufficient balance | Cannot distribute more than router holds | `test_distributeFees_insufficient_balance_reverts` |
 | Remainder to last sink | No dust stuck in router | `test_distributeFees_remainder_to_last_sink`, `test_no_dust_fuzz` |
 | Canonical 25/35/20/0/20 split | Matches governance doc | `test_distributeFees_canonical_split` |
@@ -743,7 +747,7 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | [RabbitTreasury.t.sol](../../contracts/test/RabbitTreasury.t.sol) | 29 | Epochs, deposit/withdraw, finalize, pause, fee split/burn, bucket anti-leak, cooldown, stress exits, repricing vs redemption |
 | [RabbitTreasuryInvariant.t.sol](../../contracts/test/RabbitTreasuryInvariant.t.sol) | 2 | Foundry **invariant** handlers: reserves vs balance, DOUB supply vs mint/burn |
 | [FeeMath.t.sol](../../contracts/test/FeeMath.t.sol) | 6 | Weight validation, BPS shares |
-| [FeeRouter.t.sol](../../contracts/test/FeeRouter.t.sol) | 10 | Distribution, dust, **insufficient balance**, governance |
+| [FeeRouter.t.sol](../../contracts/test/FeeRouter.t.sol) | 17 | Distribution, dust, **insufficient balance**, governance, **allowlist + rescue (#122)** |
 | [FeeRouterInvariant.t.sol](../../contracts/test/FeeRouterInvariant.t.sol) | 2 | Foundry **invariant** handlers: router ledger + sink totals |
 | [FeeSinks.t.sol](../../contracts/test/FeeSinks.t.sol) | 7 | `FeeSink` withdraw access + zero `to`; `PodiumPool.payPodiumPayout` auth + zero winner + **prizePusher** vs `DISTRIBUTOR_ROLE` ([issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) |
 | [TimeCurveWarBowCl8yBurns.t.sol](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) | 3 | Fuzz: WarBow CL8Y burn amounts match constants to burn sink ([issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) |

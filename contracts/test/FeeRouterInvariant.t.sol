@@ -60,6 +60,7 @@ contract FeeRouterInvariantTest is Test {
             sinks,
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(token)), true);
         handler = new FeeRouterHandler(token, router);
         targetContract(address(handler));
     }

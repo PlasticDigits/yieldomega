@@ -74,6 +74,7 @@ contract TimeCurveBuyRouterTest is Test {
             ],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        feeRouter.setDistributableToken(IERC20(address(reserve)), true);
 
         charmPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 1e17, address(this));
         tc = UUPSDeployLib.deployTimeCurve(

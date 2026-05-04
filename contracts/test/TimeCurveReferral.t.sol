@@ -52,6 +52,7 @@ contract TimeCurveReferralTest is Test {
             [sink0, sink1, address(podiumPool), sink3, sink4],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(reserve)), true);
 
         linearPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
         tc = UUPSDeployLib.deployTimeCurve(
