@@ -161,7 +161,49 @@ contract TimeCurveTest is Test {
     /// @dev `vm.warp(ts + 1)` can be a no-op if already at `ts`; use onchain `nextBuyAllowedAt` for reliable pacing.
     function _warpPastBuyCooldown(TimeCurve target, address user) internal {
         uint256 until = target.nextBuyAllowedAt(user);
-        vm.warp(until);
+        uint256 t = block.timestamp;
+        if (until > t) {
+            vm.warp(until);
+        }
+    }
+
+    /// @dev GitLab #129 — addresses for default `alice/bob/carol/dave` BP actors in this suite.
+    function _warbowCandidateQuartet() internal view returns (address[] memory c) {
+        c = new address[](4);
+        c[0] = alice;
+        c[1] = bob;
+        c[2] = carol;
+        c[3] = dave;
+    }
+
+    function _finalizeWarbowQuartet(TimeCurve target) internal {
+        address[] memory c = _warbowCandidateQuartet();
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowOne(TimeCurve target, address who) internal {
+        address[] memory c = new address[](1);
+        c[0] = who;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowPair(TimeCurve target, address a, address b) internal {
+        address[] memory c = new address[](2);
+        c[0] = a;
+        c[1] = b;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowTriple(TimeCurve target, address a, address b2, address c_) internal {
+        address[] memory c = new address[](3);
+        c[0] = a;
+        c[1] = b2;
+        c[2] = c_;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _advanceWarbowDay() internal {
+        vm.warp((block.timestamp / ONE_DAY + 1) * ONE_DAY);
     }
 
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
@@ -825,18 +867,23 @@ contract TimeCurveTest is Test {
     function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
         tc.startSaleAt(block.timestamp);
 
-        _fundAndApprove(alice, 2e18);
+        _fundAndApprove(alice, 4e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
         uint256 a0 = tc.battlePoints(alice);
 
         uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
-        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
+        _fundAndApprove(bob, 4e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.buy(1e18);
         vm.prank(bob);
         tc.warbowSteal(alice, false);
 
         assertEq(tc.battlePoints(alice), a0 - (a0 * 1000) / 10_000);
-        assertEq(tc.battlePoints(bob), (a0 * 1000) / 10_000);
+        assertEq(tc.battlePoints(bob), tc.WARBOW_BASE_BUY_BP() + (a0 * 1000) / 10_000);
         assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
     }
 
@@ -859,11 +906,16 @@ contract TimeCurveTest is Test {
 
     function test_warbow_revenge_once() public {
         tc.startSaleAt(block.timestamp);
-        _fundAndApprove(alice, 2e18);
+        _fundAndApprove(alice, 4e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
 
-        _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD());
+        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.buy(1e18);
         vm.prank(bob);
         tc.warbowSteal(alice, false);
         uint256 bobBpAfterSteal = tc.battlePoints(bob);
