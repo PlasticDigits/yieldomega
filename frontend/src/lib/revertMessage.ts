@@ -2,6 +2,42 @@
 
 import { BaseError } from "viem";
 
+/** Placeholder when RPC URLs or hosted keys would otherwise appear in UI ([GitLab #145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145)). */
+export const REDACTED_RPC_URL_MARKER = "[RPC URL redacted]";
+
+export type RedactUserVisibleRpcOpts = {
+  /** Extra substrings to strip (tests); longest-first merge with build-time RPC when set. */
+  extraKnownRpcUrlSubstrings?: readonly string[];
+};
+
+/**
+ * Removes embedded RPC URLs from user-visible error text so screenshots / DevTools do not leak keys.
+ * Applies **`VITE_RPC_URL`** when defined plus generic **`*.alchemy.com/v2/*`**, **`*.infura.io/v3/*`**, **`*.quiknode.pro/*`** patterns.
+ */
+export function redactSensitiveUrlsInUserMessage(raw: string, opts?: RedactUserVisibleRpcOpts): string {
+  let s = raw;
+  const fromEnv =
+    typeof import.meta.env.VITE_RPC_URL === "string" && import.meta.env.VITE_RPC_URL.length > 0
+      ? import.meta.env.VITE_RPC_URL
+      : "";
+  const extras = opts?.extraKnownRpcUrlSubstrings ?? [];
+  const known = [...extras, ...(fromEnv ? [fromEnv] : [])].sort((a, b) => b.length - a.length);
+  for (const fragment of known) {
+    if (!fragment.length || !s.includes(fragment)) continue;
+    s = s.split(fragment).join(REDACTED_RPC_URL_MARKER);
+  }
+  const patterns: RegExp[] = [
+    /https?:\/\/[^\s)'"<]+\.alchemy\.com\/v2\/[^\s)'"<]+/gi,
+    /wss?:\/\/[^\s)'"<]+\.alchemy\.com[^\s)'"<]+/gi,
+    /https?:\/\/[^\s)'"<]+\.infura\.io\/v3\/[^\s)'"<]+/gi,
+    /https?:\/\/[^\s)'"<]+\.quiknode\.pro\/[^\s)'"<]+/gi,
+  ];
+  for (const re of patterns) {
+    s = s.replace(re, REDACTED_RPC_URL_MARKER);
+  }
+  return s;
+}
+
 /** Map common revert strings to short UI copy (still show raw tail if unknown). */
 export function friendlyRevertMessage(raw: string): string {
   const s = raw.toLowerCase();
@@ -87,6 +123,7 @@ export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpt
   } else {
     raw = String(err);
   }
+  raw = redactSensitiveUrlsInUserMessage(raw);
   if (opts?.buySubmit && looksLikeBareExecutionRevert(raw)) {
     return BARE_BUY_CHARM_SHIFT_HINT;
   }
