@@ -416,6 +416,7 @@ export function describeStealPreflight(
     viewerBattlePoints: bigint | undefined;
     victimBattlePoints: bigint | undefined;
     victimStealsToday: bigint | undefined;
+    attackerStealsToday: bigint | undefined;
     maxStealsPerDay: bigint;
     bypassSelected: boolean;
     guardActive: boolean;
@@ -431,6 +432,7 @@ export function describeStealPreflight(
     viewerBattlePoints,
     victimBattlePoints,
     victimStealsToday,
+    attackerStealsToday,
     maxStealsPerDay,
     bypassSelected,
     guardActive,
@@ -440,7 +442,7 @@ export function describeStealPreflight(
     return {
       tone: "muted",
       title: "Connect to inspect WarBow",
-      detail: "Live BP reads, per-victim steal caps, and write simulation need a connected wallet.",
+      detail: "Live BP reads, victim + attacker UTC-day steal caps, and write simulation need a connected wallet.",
     };
   }
   if (!saleActive) {
@@ -473,6 +475,14 @@ export function describeStealPreflight(
       detail: "The page is still pulling Battle Points for you and the victim before it can grade the steal.",
     };
   }
+  if (viewerBattlePoints === 0n) {
+    return {
+      tone: "error",
+      title: "Earn Battle Points first",
+      detail:
+        "WarBow steals require your wallet to carry Battle Points already so fresh wallets cannot bypass the intended underdog-vs-leader framing.",
+    };
+  }
   if (victimBattlePoints < viewerBattlePoints * 2n) {
     return {
       tone: "error",
@@ -480,11 +490,22 @@ export function describeStealPreflight(
       detail: `${formatShort(victim, "Victim")} has ${victimBattlePoints} BP vs your ${viewerBattlePoints} BP, so the steal would revert right now.`,
     };
   }
-  if (victimStealsToday !== undefined && victimStealsToday >= maxStealsPerDay && !bypassSelected) {
+  const victimCapped =
+    victimStealsToday !== undefined && victimStealsToday >= maxStealsPerDay && !bypassSelected;
+  const attackerCapped =
+    attackerStealsToday !== undefined && attackerStealsToday >= maxStealsPerDay && !bypassSelected;
+  if (victimCapped || attackerCapped) {
+    const victimPart = `${formatShort(victim, "Victim")} already hit ${maxStealsPerDay} steals received today`;
+    const detail =
+      victimCapped && attackerCapped
+        ? `${victimPart}, and you already landed ${maxStealsPerDay} steals today from this wallet (attacker UTC-day counter applies across victims). Enable bypass if you still want to burn for the hit.`
+        : victimCapped
+          ? `${victimPart}. Enable bypass if you still want to burn for the hit.`
+          : `You already landed ${maxStealsPerDay} steals today from this wallet (UTC-day counter applies across any victims). Enable bypass if you still want to burn for the hit.`;
     return {
       tone: "warning",
-      title: "Daily cap reached",
-      detail: `${formatShort(victim, "Victim")} already hit ${maxStealsPerDay} steals today. Enable bypass if you still want to burn for the hit.`,
+      title: "Daily steal limit",
+      detail,
     };
   }
   return {
@@ -492,7 +513,7 @@ export function describeStealPreflight(
     title: "Steal looks eligible",
     detail: guardActive
       ? `${formatShort(victim, "Victim")} passes the 2x rule. Your own guard is already live, so decide whether to keep defending or convert that safety into pressure.`
-      : `${formatShort(victim, "Victim")} passes the 2x rule${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals today` : ""}.`,
+      : `${formatShort(victim, "Victim")} passes the 2x rule${victimStealsToday !== undefined ? ` and is at ${victimStealsToday}/${maxStealsPerDay} steals received today` : ""}${attackerStealsToday !== undefined ? `; your wallet is at ${attackerStealsToday}/${maxStealsPerDay} steals landed today` : ""}.`,
   };
 }
 
