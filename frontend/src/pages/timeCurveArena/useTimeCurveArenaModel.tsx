@@ -2,7 +2,7 @@
 
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { formatUnits, isAddress, maxUint256, parseUnits } from "viem";
+import { formatUnits, isAddress, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
@@ -55,6 +55,10 @@ import {
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
+import {
+  cl8yTimeCurveApprovalAmountWei,
+  readCl8yTimeCurveUnlimitedApproval,
+} from "@/lib/cl8yTimeCurveApprovalPreference";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -2343,7 +2347,7 @@ export function useTimeCurveArenaModel() {
               address: k.config.weth,
               abi: weth9Abi,
               functionName: "approve",
-              args: [k.config.swapRouter, maxUint256],
+              args: [k.config.swapRouter, maxIn],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
             guardBuySession();
@@ -2361,7 +2365,7 @@ export function useTimeCurveArenaModel() {
               address: route.tokenIn,
               abi: erc20Abi,
               functionName: "approve",
-              args: [k.config.swapRouter, maxUint256],
+              args: [k.config.swapRouter, maxIn],
             });
             await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
             guardBuySession();
@@ -2395,12 +2399,16 @@ export function useTimeCurveArenaModel() {
         args: [address, tc],
       });
       guardBuySession();
+      const approveAmt = cl8yTimeCurveApprovalAmountWei(
+        totalPull,
+        readCl8yTimeCurveUnlimitedApproval(),
+      );
       if (allow < totalPull) {
         const approveHash = await writeContractAsync({
           address: tokenAddr,
           abi: erc20Abi,
           functionName: "approve",
-          args: [tc, maxUint256],
+          args: [tc, approveAmt],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
         guardBuySession();
@@ -2460,11 +2468,15 @@ export function useTimeCurveArenaModel() {
       args: [address, tc],
     });
     if (allow < need) {
+      const approveAmt = cl8yTimeCurveApprovalAmountWei(
+        need,
+        readCl8yTimeCurveUnlimitedApproval(),
+      );
       const approveHash = await writeContractAsync({
         address: tokenAddr,
         abi: erc20Abi,
         functionName: "approve",
-        args: [tc, maxUint256],
+        args: [tc, approveAmt],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
     }
