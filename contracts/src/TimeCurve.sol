@@ -351,6 +351,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
     }
 
+    /// @dev Forbids `msg.sender == BURN_SINK`. With balance-delta **`_pullAcceptedExact`**, that address would
+    ///      **`transferFrom`** into this contract then **`safeTransfer`** back to itself — **net zero** CL8Y to
+    ///      the sink while WarBow state could still mutate (GitLab #123 follow-up / fuzz counterexample).
+    function _requireWarbowParticipantCaller() private view {
+        require(msg.sender != BURN_SINK, "TimeCurve: burn sink caller");
+    }
+
     /// @dev Elapsed seconds for CHARM envelope + `charmPrice` views. Scheduled **`saleStart` in the future**
     ///      (`startSaleAt` — GitLab #114) is treated like **t = saleStart**: elapsed **0** until live.
     ///      Capped at `MAX_SALE_ELAPSED_SEC` so linear price matches its documented plateau (GitLab #124).
@@ -614,6 +621,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleRoundTimerStillLive();
         _requireSaleInteractionsEnabled();
+        _requireWarbowParticipantCaller();
         require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
@@ -684,6 +692,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleRoundTimerStillLive();
         _requireSaleInteractionsEnabled();
+        _requireWarbowParticipantCaller();
         require(stealer != address(0), "TimeCurve: zero stealer");
         uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
         require(exp != 0, "TimeCurve: revenge not pending");
@@ -712,6 +721,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleRoundTimerStillLive();
         _requireSaleInteractionsEnabled();
+        _requireWarbowParticipantCaller();
         _pullAcceptedExact(msg.sender, WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
@@ -798,8 +808,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(ended, "TimeCurve: not ended");
         require(saleEndedAt > 0, "TimeCurve: sale end time unset");
         require(
-            block.timestamp >= saleEndedAt + UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC,
-            "TimeCurve: unredeemed grace active"
+            block.timestamp >= saleEndedAt + UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC, "TimeCurve: unredeemed grace active"
         );
         address to = unredeemedLaunchedTokenRecipient;
         require(to != address(0), "TimeCurve: zero unredeemed launched token recipient");
