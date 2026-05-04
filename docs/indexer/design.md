@@ -41,6 +41,7 @@ Also decode **`TimeCurve`** governance / wiring events (**`BuyFeeRoutingEnabled`
 - Paginate all list endpoints; include **cursor** or **block-height** watermarks.
 - Expose **schema version** header or field.
 - **Referrals (GitLab #94):** `GET /v1/referrals/referrer-leaderboard` and `GET /v1/referrals/wallet-charm-summary` aggregate **`idx_timecurve_referral_applied` only** — see [`docs/product/referrals.md`](../product/referrals.md#referrals-dashboard-issue-94) and the test map in [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-leaderboard-and-earnings-issue-94).
+- **WarBow pending revenge (GitLab #135):** `GET /v1/timecurve/warbow/pending-revenge` reconciles **`WarBowRevengeWindowOpened`** rows in **`idx_timecurve_warbow_revenge_window`** against **`WarBowRevenge`** so victims see **every** open **(victim, stealer)** window; onchain truth remains **`warbowPendingRevengeExpiryExclusive` / `warbowPendingRevengeStealSeq`** — [invariants §135](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135).
 - Do not return **actionable** balances without optional **client verification** hints (for example contract call template).
 
 ## Configuration

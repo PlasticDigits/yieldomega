@@ -32,6 +32,7 @@ import type {
   ReferralAppliedItem,
   TimecurveBuyerStats,
   WarbowBattleFeedItem,
+  WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
 import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
 import { FeedCard, RankingList, type RankingRow, StatCard } from "./timecurveUi";
@@ -282,12 +283,14 @@ export function WarbowSection(props: {
   runWarBowSteal: () => Promise<void>;
   runWarBowGuard: () => Promise<void>;
   runWarBowClaimFlag: () => Promise<void>;
-  runWarBowRevenge: () => Promise<void>;
+  runWarBowRevenge: (stealer?: `0x${string}`) => Promise<void>;
   isWriting: boolean;
   canClaimWarBowFlag: boolean;
   iHoldPlantFlag: boolean;
   flagSilenceEndSec: string;
   hasRevengeOpen: boolean;
+  pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
+  revengeIndexerConfigured: boolean;
   secondaryButtonMotion: MotionProps;
   stealPreflight: WarbowPreflightNarrative;
   warbowPreflightIssue: string | null;
@@ -332,6 +335,8 @@ export function WarbowSection(props: {
     iHoldPlantFlag,
     flagSilenceEndSec,
     hasRevengeOpen,
+    pendingRevengeTargets,
+    revengeIndexerConfigured,
     secondaryButtonMotion,
     stealPreflight,
     warbowPreflightIssue,
@@ -471,16 +476,47 @@ export function WarbowSection(props: {
             >
               Claim flag
             </motion.button>
-            <motion.button
-              type="button"
-              className="btn-secondary btn-secondary--priority"
-              disabled={isWriting || !hasRevengeOpen}
-              onClick={() => void runWarBowRevenge()}
-              {...secondaryButtonMotion}
-            >
-              Trigger revenge
-            </motion.button>
           </div>
+          {revengeIndexerConfigured ? (
+            hasRevengeOpen ? (
+              <div className="podium-block" style={{ marginTop: "0.75rem" }}>
+                <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+                  Open revenge windows (each stealer has its own slot; GitLab #135). Pick a stealer:
+                </p>
+                <ul className="feed-grid" style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {pendingRevengeTargets.map((row) => (
+                    <li
+                      key={`${row.stealer}-${row.expiry_exclusive}`}
+                      style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}
+                    >
+                      <AddressInline address={row.stealer} formatWallet={formatWallet} size={16} />
+                      <span className="muted">
+                        until <UnixTimestampDisplay raw={row.expiry_exclusive} />
+                      </span>
+                      <motion.button
+                        type="button"
+                        className="btn-secondary btn-secondary--priority"
+                        disabled={isWriting}
+                        onClick={() => void runWarBowRevenge(row.stealer as `0x${string}`)}
+                        {...secondaryButtonMotion}
+                      >
+                        Trigger revenge
+                      </motion.button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <StatusMessage variant="muted">
+                Indexer: no unconsumed revenge windows for this wallet.
+              </StatusMessage>
+            )
+          ) : (
+            <StatusMessage variant="muted">
+              Set <span className="mono">VITE_INDEXER_URL</span> to list every pending stealer (per-slot windows; GitLab
+              #135).
+            </StatusMessage>
+          )}
           {(gasWarbowGuard !== undefined || gasWarbowFlag !== undefined || gasWarbowRevenge !== undefined) && (
             <StatusMessage variant="muted">
               {gasWarbowGuard !== undefined && <>Guard gas ~{formatLocaleInteger(BigInt(gasWarbowGuard))}</>}
@@ -833,8 +869,9 @@ export function RawDataAccordion(props: {
   battlePointsResult: SerializableContractRead | undefined;
   activeStreakResult: SerializableContractRead | undefined;
   bestStreakResult: SerializableContractRead | undefined;
-  pendingRevengeStealer: string | undefined;
-  revengeDeadlineSec: string;
+  /** Per-stealer open windows from indexer ([GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135)). */
+  pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
+  revengeIndexerConfigured: boolean;
   buyerStats: TimecurveBuyerStats | null;
   initialMinBuyResult: SerializableContractRead | undefined;
   growthRateWadResult: SerializableContractRead | undefined;
@@ -873,8 +910,8 @@ export function RawDataAccordion(props: {
     battlePointsResult,
     activeStreakResult,
     bestStreakResult,
-    pendingRevengeStealer,
-    revengeDeadlineSec,
+    pendingRevengeTargets,
+    revengeIndexerConfigured,
     buyerStats,
     initialMinBuyResult,
     growthRateWadResult,
@@ -1001,19 +1038,28 @@ export function RawDataAccordion(props: {
                       ? formatLocaleInteger(BigInt(bestStreakResult.result))
                       : "—"}
                   </dd>
-                  <dt>revenge</dt>
+                  <dt>revenge (open windows)</dt>
                   <dd>
-                    {pendingRevengeStealer && pendingRevengeStealer !== ZERO_ADDR ? (
-                      <>
-                        <AddressInline
-                          address={pendingRevengeStealer}
-                          formatWallet={formatWallet}
-                          size={16}
-                        />{" "}
-                        <span className="mono">· {formatUnixSecIsoUtc(BigInt(revengeDeadlineSec))}</span>
-                      </>
-                    ) : (
+                    {!isConnected ? (
                       "—"
+                    ) : !revengeIndexerConfigured ? (
+                      <span className="muted">
+                        Indexer URL not set — per-stealer list unavailable (GitLab #135).
+                      </span>
+                    ) : pendingRevengeTargets.length === 0 ? (
+                      "—"
+                    ) : (
+                      <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
+                        {pendingRevengeTargets.map((row) => (
+                          <li key={`${row.stealer}-${row.expiry_exclusive}`}>
+                            <AddressInline address={row.stealer} formatWallet={formatWallet} size={16} />
+                            <span className="mono">
+                              {" "}
+                              · {formatUnixSecIsoUtc(BigInt(row.expiry_exclusive))}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </dd>
                 </dl>

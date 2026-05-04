@@ -138,10 +138,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Guard reduces incoming steal % until this timestamp (exclusive).
     mapping(address => uint256) public warbowGuardUntil;
 
-    /// @notice Last stealer for revenge (overwritten on each new steal **to** this victim).
-    mapping(address => address) public warbowPendingRevengeStealer;
-    /// @notice Inclusive upper bound for `warbowRevenge` (`< expiry` check).
-    mapping(address => uint256) public warbowPendingRevengeExpiry;
+    /// @notice Per-(victim, stealer) revenge window: valid while `block.timestamp < value`. Zero = no open window.
+    /// @dev Replacing the single-slot model (GitLab #135): colluding stealers can no longer rotate one pointer.
+    mapping(address victim => mapping(address stealer => uint256)) public warbowPendingRevengeExpiryExclusive;
+    /// @notice Monotonic sequence per (victim, stealer) for observability / ordering (emitted on each qualifying steal).
+    mapping(address victim => mapping(address stealer => uint64)) public warbowPendingRevengeStealSeq;
 
     struct Podium {
         address[3] winners;
@@ -211,6 +212,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         bool bypassedVictimDailyLimit,
         uint256 victimBpAfter,
         uint256 attackerBpAfter
+    );
+    /// @dev Emitted on every successful `warbowSteal` so indexers rebuild multi-stealer pending sets (GitLab #135).
+    event WarBowRevengeWindowOpened(
+        address indexed victim, address indexed stealer, uint256 expiryExclusive, uint256 stealSeq
     );
     event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 amountBp, uint256 burnPaidWad);
     event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad);
@@ -623,8 +628,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             stealsReceivedOnDay[victim][day] = victimStealsToday + 1;
         }
 
-        warbowPendingRevengeStealer[victim] = msg.sender;
-        warbowPendingRevengeExpiry[victim] = block.timestamp + WARBOW_REVENGE_WINDOW_SEC;
+        uint256 exp = block.timestamp + WARBOW_REVENGE_WINDOW_SEC;
+        warbowPendingRevengeExpiryExclusive[victim][msg.sender] = exp;
+        warbowPendingRevengeStealSeq[victim][msg.sender] += 1;
+        emit WarBowRevengeWindowOpened(victim, msg.sender, exp, warbowPendingRevengeStealSeq[victim][msg.sender]);
 
         emit WarBowSteal(
             msg.sender,
@@ -637,15 +644,16 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         );
     }
 
-    /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
+    /// @notice Within **24h** of a `warbowSteal` **from `stealer` to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once (per stealer slot).
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleInteractionsEnabled();
         require(stealer != address(0), "TimeCurve: zero stealer");
-        require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
-        require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
+        uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
+        require(exp != 0, "TimeCurve: revenge not pending");
+        require(block.timestamp < exp, "TimeCurve: revenge expired");
 
         _pullAcceptedExact(msg.sender, WARBOW_REVENGE_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Revenge), WARBOW_REVENGE_BURN_WAD);
@@ -658,8 +666,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
 
-        warbowPendingRevengeStealer[msg.sender] = address(0);
-        warbowPendingRevengeExpiry[msg.sender] = 0;
+        warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
 
         emit WarBowRevenge(msg.sender, stealer, take, WARBOW_REVENGE_BURN_WAD);
     }
