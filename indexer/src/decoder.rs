@@ -264,6 +264,7 @@ mod contracts {
             event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
             event Claimed(address indexed beneficiary, uint256 amount);
             event ClaimsEnabled(bool enabled);
+            event RescueERC20(address indexed token, address indexed to, uint256 amount, uint8 kind);
         }
     }
 
@@ -545,6 +546,13 @@ pub enum DecodedEvent {
         amount: U256,
     },
     DoubVestingClaimsEnabled { enabled: bool },
+    /// GitLab #137 — `rescueERC20`; `kind` **0** = vesting-token excess, **1** = non-vesting token.
+    DoubVestingRescueErc20 {
+        token: Address,
+        recipient: Address,
+        amount: U256,
+        kind: u8,
+    },
     FeeSinkWithdrawn {
         token: Address,
         recipient: Address,
@@ -1155,6 +1163,17 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == DoubPresaleVestingEvents::RescueERC20::SIGNATURE_HASH {
+        if let Ok(d) = DoubPresaleVestingEvents::RescueERC20::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::DoubVestingRescueErc20 {
+                token: e.token,
+                recipient: e.to,
+                amount: e.amount,
+                kind: e.kind,
+            };
+        }
+    }
     if topic0 == FeeSinkEvents::Withdrawn::SIGNATURE_HASH {
         if let Ok(d) = FeeSinkEvents::Withdrawn::decode_log(log, true) {
             let e = d.data;
@@ -1431,6 +1450,40 @@ mod tests {
             } => {
                 assert_eq!(b, ben);
                 assert_eq!(amount, U256::from(555u64));
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_doub_vesting_rescue_erc20() {
+        let token = Address::repeat_byte(0x11);
+        let to = Address::repeat_byte(0x22);
+        let e = DoubPresaleVestingEvents::RescueERC20 {
+            token,
+            to,
+            amount: U256::from(999u64),
+            kind: 1u8,
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xfe),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::DoubVestingRescueErc20 {
+                token: t,
+                recipient,
+                amount,
+                kind,
+            } => {
+                assert_eq!(t, token);
+                assert_eq!(recipient, to);
+                assert_eq!(amount, U256::from(999u64));
+                assert_eq!(kind, 1u8);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

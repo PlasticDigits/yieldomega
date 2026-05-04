@@ -693,6 +693,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             amount: u2,
         }),
         next(DecodedEvent::DoubVestingClaimsEnabled { enabled: true }),
+        next(DecodedEvent::DoubVestingRescueErc20 {
+            token: addr_byte(0x33),
+            recipient: addr_byte(0x44),
+            amount: u1,
+            kind: 0,
+        }),
         next(DecodedEvent::FeeSinkWithdrawn {
             token: reserve,
             recipient: alice,
@@ -874,6 +880,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_doub_vesting_claims_enabled", 100).await,
         1
     );
+    assert_eq!(
+        count_where(&pool, "idx_doub_vesting_rescue_erc20", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 1);
 
     // Idempotency: same (tx_hash, log_index) again
@@ -1026,6 +1036,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(count_where(&pool, "idx_doub_vesting_claimed", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_doub_vesting_rescue_erc20", 100).await,
+        0
+    );
     assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 0);
     assert_eq!(
         count_where(&pool, "idx_timecurve_reserve_podium_payouts_enabled", 100).await,

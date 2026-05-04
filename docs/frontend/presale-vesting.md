@@ -20,11 +20,12 @@ Anvil Playwright: [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) exports t
 - **Clock:** **vestingStart** and **vestingStart + vestingDuration** are shown in the browser’s **local** timezone and in **UTC**.
 - **Wallet panel:** **allocation**, **claimed**, **claimable** via `allocationOf` / `claimedOf` / `claimable` (`claimable` uses chain `block.timestamp` on read).
 - **Claim CTA:** gated on `claimsEnabled` and non-zero `claimable` ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
+- **Owner rescue (treasury / ops):** `onlyOwner` **`rescueERC20`** recovers **excess** vesting DOUB (above aggregate beneficiary remainder) and stray non-vesting ERC20; beneficiaries’ **`claim`** caps are unchanged — [GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137), [invariants — § #137](../testing/invariants-and-business-logic.md#doub-presale-vesting-owner-rescue-gitlab-137), [final signoff § vesting](../operations/final-signoff-and-value-movement.md#doub-presale-vesting).
 - **Wrong-chain guard:** **`useChainId()`** must equal [**`configuredTargetChainId()`**](../../frontend/src/lib/chain.ts) (`VITE_CHAIN_ID`; default **Anvil 31337**) before **`claim()`** prompts — overlay + EIP-3326 switch CTA ([issue #95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)). **Race:** if **`claim`** fires while mismatched, **`chainMismatchWriteMessage`** copy is shown as an error **`StatusMessage`** above the button ([GitLab #106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106)).
 
 ## Cross-links
 
-- [Final signoff / `claimsEnabled`](../operations/final-signoff-and-value-movement.md)
+- [Final signoff / `claimsEnabled` / vesting rescue](../operations/final-signoff-and-value-movement.md)
 - [Invariant map — presale vesting frontend](../testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92) · [§ #106 claim chain preflight](../testing/invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106)
 - Play checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-92`](../testing/manual-qa-checklists.md#manual-qa-issue-92)
 - Wrong-network write gate (#95): [`wallet-connection.md` § #95](wallet-connection.md#wrong-network-write-gating-issue-95); play checklist [`../testing/manual-qa-checklists.md#manual-qa-issue-95`](../testing/manual-qa-checklists.md#manual-qa-issue-95)

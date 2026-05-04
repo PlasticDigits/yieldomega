@@ -33,6 +33,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// - **Claim bound:** cumulative claims per address never exceed `allocation[address]`; vested never exceeds allocation at any time.
 /// - **Single start:** `startVesting` succeeds at most once.
 /// - **Claims gate:** `claim` is blocked until `claimsEnabled` is set `true` by the owner (final signoff / operational go-live) — `docs/operations/final-signoff-and-value-movement.md` ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
+/// - **Owner rescue (`rescueERC20`, [GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137)):** `onlyOwner` may sweep **excess** vesting **`token`** (balance above **`totalAllocated − Σ claimedOf`** over beneficiaries) and **full** balances of **other** ERC20s sent by mistake — aligned with **`FeeRouter` / `TimeCurveBuyRouter`** recovery precedent ([issue #117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117)); does not weaken per-beneficiary claim caps ([issue #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123) ingress assumptions unchanged).
 ///
 /// ## Rounding
 /// Cliff uses `mulDiv(allocation, 3000, 10000)`. Linear tranche uses `allocation - cliff` as cap so `cliff + linearCap == allocation`.
@@ -64,6 +65,8 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
     event Claimed(address indexed beneficiary, uint256 amount);
     event ClaimsEnabled(bool enabled);
+    /// @notice Owner recovery sweep. `kind`: **0** = vesting-token excess only; **1** = non-vesting token (full balance subject to `amount`).
+    event RescueERC20(address indexed token, address indexed to, uint256 amount, uint8 kind);
 
     error DoubVesting__ZeroToken();
     error DoubVesting__ArrayLengthMismatch();
@@ -79,6 +82,11 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     error DoubVesting__Underfunded(uint256 balance, uint256 needed);
     error DoubVesting__NothingToClaim();
     error DoubVesting__ClaimsNotEnabled();
+    error DoubVesting__RescueZeroRecipient();
+    error DoubVesting__RescueZeroAmount();
+    error DoubVesting__RescueExceedsExcess(uint256 maxExcess, uint256 attempted);
+    error DoubVesting__RescueExceedsBalance(uint256 balance, uint256 attempted);
+    error DoubVesting__RescueUndercollateralized(uint256 balance, uint256 reserveNeeded);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -147,6 +155,19 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
         return _beneficiarySet.contains(account);
     }
 
+    /// @dev O(n) over beneficiaries. Matches `Σ allocation − Σ claimed` = DOUB that could still be claimed in aggregate (each beneficiary is capped at `allocation − claimed`).
+    function totalClaimedAcrossBeneficiaries() public view returns (uint256 sum) {
+        uint256 n = _beneficiarySet.length();
+        for (uint256 i; i < n; ++i) {
+            sum += claimedOf[_beneficiarySet.at(i)];
+        }
+    }
+
+    /// @notice Minimum DOUB balance that must remain when rescuing the vesting `token` so outstanding claims stay fundable.
+    function reserveDoubForOutstandingClaimsWad() public view returns (uint256) {
+        return totalAllocated - totalClaimedAcrossBeneficiaries();
+    }
+
     /// @notice Vested amount for `account` at timestamp `t` (does not subtract claimed).
     function vestedAt(address account, uint256 t) public view returns (uint256) {
         uint256 alloc = allocationOf[account];
@@ -197,6 +218,36 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
         claimedOf[msg.sender] += amount;
         token.safeTransfer(msg.sender, amount);
         emit Claimed(msg.sender, amount);
+    }
+
+    /// @notice Owner-only ERC20 recovery. **Vesting `token`:** may move only balance above `reserveDoubForOutstandingClaimsWad()` (excess / mistaken over-funding). **Any other token:** may move up to `balanceOf(this)` (stranded dust).
+    /// @dev `amount == type(uint256).max` sends the full allowed amount for that branch. Zero `amount` reverts; zero `to` reverts.
+    function rescueERC20(IERC20 t, address to, uint256 amount) external onlyOwner nonReentrant {
+        if (to == address(0)) revert DoubVesting__RescueZeroRecipient();
+        if (amount == 0) revert DoubVesting__RescueZeroAmount();
+        if (address(t) == address(0)) revert DoubVesting__ZeroToken();
+
+        uint256 bal = t.balanceOf(address(this));
+        uint256 send;
+        uint8 kind;
+
+        if (address(t) == address(token)) {
+            uint256 reserve = reserveDoubForOutstandingClaimsWad();
+            if (bal < reserve) revert DoubVesting__RescueUndercollateralized(bal, reserve);
+            uint256 maxExcess = bal - reserve;
+            send = amount == type(uint256).max ? maxExcess : amount;
+            if (send > maxExcess) revert DoubVesting__RescueExceedsExcess(maxExcess, send);
+            kind = 0;
+        } else {
+            send = amount == type(uint256).max ? bal : amount;
+            if (send > bal) revert DoubVesting__RescueExceedsBalance(bal, send);
+            kind = 1;
+        }
+
+        if (send == 0) return;
+
+        t.safeTransfer(to, send);
+        emit RescueERC20(address(t), to, send, kind);
     }
 
     uint256[49] private __gap;
