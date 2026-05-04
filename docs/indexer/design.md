@@ -10,7 +10,7 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 
 ## Core responsibilities
 
-1. **Ingestion** — Follow new heads via JSON-RPC or streaming APIs (mechanism TBD). Respect MegaETH **~1s** block time.
+1. **Ingestion** — Follow new heads via JSON-RPC or streaming APIs (mechanism TBD). Respect MegaETH **~1s** block time. **Durability:** each indexed block’s decoded inserts, `indexed_blocks` row, and `chain_pointer` update commit **atomically** (Postgres transaction) so crashes cannot split the pointer from partial event rows ([GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140), [`INV-INDEXER-140`](../testing/invariants-and-business-logic.md#indexer-transactional-block-ingestion-gitlab-140)).
 2. **Deterministic decoding** — Map logs to ABIs; reject unknown signatures or version them explicitly.
 3. **Reorg handling** — Track a **canonical chain pointer** and **rollback** to common ancestor on reorg; reapply blocks. Depth policy must be documented (for example finalize after N confirmations for UI badges).
 4. **Persistence** — Normalized tables + optional materialized views for heavy queries.
