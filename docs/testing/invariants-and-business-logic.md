@@ -232,6 +232,22 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 
 **Docs / play:** [timecurve-views — hero #101 / revenge list](../frontend/timecurve-views.md#arena-warbow-hero-actions-issue-101) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md) · [issue #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135).
 
+<a id="timecurve-warbow-steal-rules-gitlab-134"></a>
+
+### WarBow steal ranking, drain math, and UTC-day caps ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134))
+
+**Intent:** Steals stay **underdog-vs-leader** PvP: **no zero-BP sybil steals**, explicit **floor(10%) / floor(1%)** drain semantics, and **independent UTC-day counters** on **victim receives** vs **attacker commits** so bypass economics are **per wallet**, not funnelable through rotating fresh identities alone.
+
+| Invariant ID | Check |
+|--------------|-------|
+| **`INV-WARBOW-134-RANK`** | **`warbowSteal`** requires **`battlePoints(attacker) > 0`** and **`battlePoints(victim) ≥ 2 × battlePoints(attacker)`** — revert **`TimeCurve: steal 2x rule`**. |
+| **`INV-WARBOW-134-DRAIN`** | BP moved is **`_warbowStealDrainBp(victimBp, drainBps)`** with **`drainBps ∈ {WARBOW_STEAL_DRAIN_BPS, WARBOW_STEAL_DRAIN_GUARDED_BPS}`**; **`take == 0`** → **`steal zero`**. |
+| **`INV-WARBOW-134-UTC-VICTIM`** | **`stealsReceivedOnDay[victim][day]`** increments on success; when **≥ `WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY`** before the tx, **`payBypassBurn`** must be **true** or revert **`TimeCurve: steal victim daily limit`**. |
+| **`INV-WARBOW-134-UTC-ATTACKER`** | **`stealsCommittedByAttackerOnDay[attacker][day]`** increments on success; when **≥** the same threshold before the tx, **`payBypassBurn`** must be **true** or revert **`TimeCurve: steal attacker daily limit`**. |
+| **`INV-WARBOW-134-BYPASS-SINK`** | When **either** UTC gate binds, the contract pulls **`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`** once and emits **`StealLimitBypass`**; **`WarBowSteal.bypassedVictimDailyLimit`** documents **any** bypass burn (field name unchanged). |
+
+**Forge:** [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) — `test_warbow_steal_revert_zero_attacker_bp`, `test_warbow_steal_attacker_daily_limit_fourth_needs_bypass`; [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol) (steal burn fuzz assumes **positive** stealer BP). **Frontend:** [`timeCurveUx.ts` — `describeStealPreflight`](../../frontend/src/lib/timeCurveUx.ts), Arena `WarbowSection` / `WarbowHeroActions`, [`revertMessage.ts`](../../frontend/src/lib/revertMessage.ts). **Docs / play:** [primitives — Steal](../product/primitives.md#steal-warbowsteal) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md).
+
 <a id="timecurve-simple-live-reserve-podiums-issue-113"></a>
 
 ### TimeCurve Simple live reserve podiums (issue #113)
