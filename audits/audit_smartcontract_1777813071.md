@@ -158,6 +158,8 @@ Recommendation:
 
 ### L-03: Several AccessControl deployments do not reject zero admin addresses
 
+**Status:** Addressed in repository ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)) — see **`INV-AC-ZERO-ADMIN-120`** in [docs/testing/invariants-and-business-logic.md](../docs/testing/invariants-and-business-logic.md#accesscontrol-zero-admin-deployments-gitlab-120) and [`AccessControlZeroAdmin.t.sol`](../contracts/test/AccessControlZeroAdmin.t.sol).
+
 Affected contracts:
 
 - `RabbitTreasury`

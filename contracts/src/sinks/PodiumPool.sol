@@ -29,6 +29,7 @@ contract PodiumPool is Initializable, AccessControlEnumerableUpgradeable, UUPSUp
     function initialize(address admin) external initializer {
         __AccessControlEnumerable_init();
         __AccessControl_init();
+        require(admin != address(0), "PodiumPool: zero admin");
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
