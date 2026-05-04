@@ -40,6 +40,8 @@ Let `S` = DOUB `totalSupply`, `R` = `redeemableBacking`, `e` = `eWad`, `L = S * 
 
 Governance may set **redemption cooldown** (minimum epochs between withdrawals per address).
 
+**DOUB allowance for withdraw:** On-chain **`withdraw`** calls **`Doubloon.burnFrom(msg.sender, doubAmount)`**. Participants must **`approve`** the **`RabbitTreasury`** proxy as spender on **DOUB** for at least the burn amount (standard ERC-20 allowance semantics — [GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132); **`INV-DOUB-132`** in [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#doubloon-allowance-burn-gitlab-132)).
+
 ### Onchain transparency
 
 In addition to legacy getters, the contract exposes **`redeemableBacking`**, **`protocolOwnedBacking`**, **`totalReserves()` / `totalBacking()`**, **`cumulativeBurned`**, **`cumulativeWithdrawFees`**, **`redemptionHealthWad()`**, **`redemptionLiabilityWad()`**, **`previewWithdraw`**, and **`previewWithdrawFor(address user, …)`**. **`previewWithdraw`** applies **redemption cooldown** using **`msg.sender`** (fine for wallet `eth_call`s); **`previewWithdrawFor`** is for quoting a **specific user** (indexers, tests, or backend sims). New events: **`BurrowReserveBuckets`**, **`BurrowProtocolRevenueSplit`**, **`BurrowWithdrawalFeeAccrued`**. Indexers may treat these as a **strict superset** of the canonical table below (schema bump when persisting new fields).

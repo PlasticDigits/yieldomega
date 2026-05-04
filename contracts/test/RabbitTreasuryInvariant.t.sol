@@ -42,6 +42,8 @@ contract RabbitTreasuryHandler is Test {
         vm.prank(alice);
         rt.deposit(amt, 0);
         ghost_doubMinted += doub.balanceOf(alice) - db;
+        vm.prank(alice);
+        doub.approve(address(rt), type(uint256).max);
     }
 
     function depositBob(uint256 amt) external {
@@ -53,6 +55,8 @@ contract RabbitTreasuryHandler is Test {
         vm.prank(bob);
         rt.deposit(amt, 0);
         ghost_doubMinted += doub.balanceOf(bob) - db;
+        vm.prank(bob);
+        doub.approve(address(rt), type(uint256).max);
     }
 
     function withdrawAlice(uint256 raw) external {
