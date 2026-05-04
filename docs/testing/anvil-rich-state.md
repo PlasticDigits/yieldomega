@@ -91,7 +91,7 @@ See [`docs/testing/e2e-anvil.md`](e2e-anvil.md) for the `VITE_*` contract.
 | Phase | Contracts | Notable decoded events (indexer) |
 |-------|-----------|----------------------------------|
 | Part1 | TimeCurve, RabbitTreasury | `Buy`, `BurrowDeposited`, `BurrowReserveBalanceUpdated`, `BurrowWithdrawn` |
-| Warp + Part2 | TimeCurve, LeprechaunNFT, RabbitTreasury | `SaleEnded`, `CharmsRedeemed`, `PrizesDistributed`, `SeriesCreated`, `Minted`, `ParamsUpdated` |
+| Warp + Part2 | TimeCurve, LeprechaunNFT, RabbitTreasury | `SaleEnded`, `CharmsRedeemed`, `PrizesDistributed` (non-zero podium pool in harness), `SeriesCreated`, `Minted`, `ParamsUpdated` — zero pool emits **`PrizesSettledEmptyPodiumPool`** instead ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)) |
 | Shell epochs | RabbitTreasury | `BurrowRepricingApplied`, `BurrowEpochReserveSnapshot`, `BurrowHealthEpochFinalized`, `BurrowEpochOpened` |
 
 FeeRouter `FeesDistributed` / `SinksUpdated` are **not** indexed by the current decoder.

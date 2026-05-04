@@ -116,7 +116,8 @@ RES_ADDR="$(cast to-checksum "${RES_HEX}" 2>/dev/null || echo "")"
 PRIZE_BAL_RAW="$(cast call "${RES_ADDR}" "balanceOf(address)(uint256)" "$PODIUM_ADDR" --rpc-url "${RPC_URL}" | awk '{print $1}')"
 PRIZE_BAL="$(cast to-dec "$PRIZE_BAL_RAW" 2>/dev/null | head -1 || echo 0)"
 if [[ "${PRIZE_BAL:-0}" == "0" ]]; then
-  echo "Podium pool reserve balance is 0 — distributePrizes would no-op before the gate; cannot verify row 3/4. Run full Part1 buys first." >&2
+  echo "Podium pool reserve balance is 0 — this script verifies the funded-pool path (reserve gate → finalizeWarbowPodium → PrizesDistributed)." >&2
+  echo "With zero balance, distributePrizes settles via GitLab #133 (reserve gate → PrizesSettledEmptyPodiumPool → prizesDistributed); seed PodiumPool CL8Y from Part1 buys or use Forge tests." >&2
   exit 1
 fi
 
