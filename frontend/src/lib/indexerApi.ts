@@ -333,6 +333,8 @@ export type PrizeDistributionItem = {
   tx_hash: string;
   log_index: number;
   contract_address: string;
+  kind: string;
+  podium_pool?: string;
 };
 
 export async function fetchTimecurvePrizeDistributions(limit = 20, offset = 0) {

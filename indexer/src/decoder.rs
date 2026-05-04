@@ -81,6 +81,7 @@ mod contracts {
             event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
             event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
             event PrizesDistributed();
+            event PrizesSettledEmptyPodiumPool(address indexed podiumPool);
             event ReferralApplied(
                 address indexed buyer,
                 address indexed referrer,
@@ -342,6 +343,7 @@ pub enum DecodedEvent {
         token_amount: U256,
     },
     TimeCurvePrizesDistributed,
+    TimeCurvePrizesSettledEmptyPodiumPool { podium_pool: Address },
     TimeCurveReferralApplied {
         buyer: Address,
         referrer: Address,
@@ -705,6 +707,13 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
         && TimeCurveEvents::PrizesDistributed::decode_log(log, true).is_ok()
     {
         return DecodedEvent::TimeCurvePrizesDistributed;
+    }
+    if topic0 == TimeCurveEvents::PrizesSettledEmptyPodiumPool::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::PrizesSettledEmptyPodiumPool::decode_log(log, true) {
+            return DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool {
+                podium_pool: d.data.podiumPool,
+            };
+        }
     }
     if topic0 == TimeCurveEvents::ReferralApplied::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::ReferralApplied::decode_log(log, true) {

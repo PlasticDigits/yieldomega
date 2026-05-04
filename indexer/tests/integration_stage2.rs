@@ -488,6 +488,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             token_amount: u1,
         }),
         next(DecodedEvent::TimeCurvePrizesDistributed),
+        next(DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool {
+            podium_pool: addr_byte(0xbd),
+        }),
         next(DecodedEvent::TimeCurveReferralApplied {
             buyer: alice,
             referrer: addr_byte(0xee),
@@ -729,6 +732,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_prizes_distributed", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_prizes_settled_empty_podium_pool", 100).await,
         1
     );
     assert_eq!(
