@@ -53,7 +53,12 @@ contract ReferralRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable,
         return codeOwner[codeHash];
     }
 
-    /// @notice Register a unique code; burns `registrationBurnAmount` of CL8Y from the caller.
+    /// @notice Register a unique code; burns `registrationBurnAmount` of CL8Y from the caller on success only.
+    /// @dev Code ownership follows the **first successful inclusion** among competing `registerCode` calls—there is no
+    ///      mempool FIFO or offchain reservation. The normalized string is plain calldata **before execution**, so
+    ///      public observers may race the same slug; the fixed CL8Y burn (paid only after uniqueness checks pass)
+    ///      is the deliberate economic deterrent to casual squatting. Product disclosure: docs/product/referrals.md —
+    ///      Registration ordering (#121).
     function registerCode(string calldata code) external {
         bytes memory norm = _normalizeToBytes(code);
         bytes32 h = _hashNormalized(norm);

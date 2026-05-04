@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6; #86 copy confirmation).
+ * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6; #86 copy confirmation; #121 register disclosure element).
  * Requires `bash scripts/e2e-anvil.sh` (sets `ANVIL_E2E=1`, `VITE_TIMECURVE_ADDRESS`, mock wallet).
  * R3 (disconnected) and R1 post-launch shell variants are covered in `referrals-surface.spec.ts` + manual QA.
  *
@@ -39,6 +39,7 @@ test.describe("Anvil referrals surface", () => {
 
     await expect(page.getByText("Connect a wallet.", { exact: false })).not.toBeVisible();
     await expect(page.getByText(/Burn per registration/i)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("referrals-register-ordering-disclosure")).toBeVisible();
 
     const code = `r${Date.now().toString(36).slice(-10)}`.toLowerCase();
     await page.getByLabel(/New code/i).fill(code);

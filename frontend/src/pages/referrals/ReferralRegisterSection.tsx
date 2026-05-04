@@ -362,6 +362,17 @@ export function ReferralRegisterSection({ className }: Props) {
                 CL8Y
               </p>
             )}
+            <p
+              className="muted"
+              style={{ marginTop: burnWad !== undefined ? "0.5rem" : 0 }}
+              data-testid="referrals-register-ordering-disclosure"
+            >
+              Desirable codes are not “held” while your transaction waits: whoever gets the{" "}
+              <strong>first successful on-chain registration</strong> wins the slug. Codes are visible in public
+              mempool calldata, so others may compete for inclusion order. Submitting confirms you accept{" "}
+              <strong>on-chain ordering</strong> and this{" "}
+              <strong>{burnWad !== undefined ? "published burn" : "CL8Y burn"}</strong>.
+            </p>
             <div className="form-row" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
               <label className="form-label" style={{ flex: "1 1 200px" }} htmlFor="ref-register-code">
                 New code

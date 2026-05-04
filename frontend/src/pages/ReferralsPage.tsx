@@ -17,7 +17,11 @@ function ReferralOverviewStrip() {
       <article className="referrals-overview-card">
         <span className="referrals-overview-card__step">01</span>
         <h2>Claim a code</h2>
-        <p>Burn CL8Y once through ReferralRegistry. The code owner stays on-chain; plaintext only helps sharing.</p>
+        <p>
+          Burn CL8Y once via ReferralRegistry. Ownership is whoever wins the{" "}
+          <strong>first successful registration</strong> for that slug (public mempool ordering); plaintext stored here
+          only helps share links.
+        </p>
       </article>
       <article className="referrals-overview-card referrals-overview-card--gold">
         <span className="referrals-overview-card__step">02</span>
