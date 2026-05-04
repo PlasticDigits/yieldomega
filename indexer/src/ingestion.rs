@@ -12,10 +12,10 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::decoder::decode_rpc_log;
-use crate::persist::persist_decoded_log;
+use crate::persist::persist_decoded_log_conn;
 use crate::reorg::{
-    find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer,
-    upsert_indexed_block, ChainPointer,
+    find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer_conn,
+    upsert_indexed_block_conn, ChainPointer,
 };
 
 pub(crate) fn next_block_to_process(pointer: &ChainPointer, effective_start: u64) -> u64 {
@@ -51,8 +51,10 @@ async fn bootstrap_pointer(
         block_number: parent,
         block_hash: hash,
     };
-    upsert_indexed_block(pool, parent, hash).await?;
-    save_chain_pointer(pool, pointer).await?;
+    let mut tx = pool.begin().await?;
+    upsert_indexed_block_conn(&mut *tx, parent, hash).await?;
+    save_chain_pointer_conn(&mut *tx, pointer).await?;
+    tx.commit().await?;
     tracing::info!(
         block = parent,
         %hash,
@@ -144,24 +146,24 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
         let filter = Filter::new().select(next).address(addrs.clone());
         let logs = provider.get_logs(&filter).await?;
 
+        let mut tx = pool.begin().await?;
         for lg in &logs {
             if lg.removed {
                 continue;
             }
             if let Some(decoded) = decode_rpc_log(lg) {
-                if let Err(e) = persist_decoded_log(pool, &decoded).await {
-                    tracing::error!(?e, "persist log failed");
-                }
+                persist_decoded_log_conn(&mut *tx, &decoded).await?;
             }
         }
 
         let block_hash: B256 = block.header.hash;
-        upsert_indexed_block(pool, next, block_hash).await?;
+        upsert_indexed_block_conn(&mut *tx, next, block_hash).await?;
         pointer = ChainPointer {
             block_number: next,
             block_hash,
         };
-        save_chain_pointer(pool, &pointer).await?;
+        save_chain_pointer_conn(&mut *tx, &pointer).await?;
+        tx.commit().await?;
 
         if next.is_multiple_of(100) {
             tracing::debug!(block = next, "indexed block");

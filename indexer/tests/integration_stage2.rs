@@ -3,7 +3,8 @@
 //! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted
 //! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included),
 //! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
-//! referral / prize tables), then HTTP API smoke.
+//! referral / prize tables), **per-block ingestion transaction rollback** ([GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140)),
+//! then HTTP API smoke.
 //!
 //! **When `YIELDOMEGA_PG_TEST_URL` is unset or empty:** the test returns immediately and still
 //! **reports `ok`** — it does not connect to Postgres. For real coverage, set the URL (see
@@ -1150,6 +1151,63 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(p.block_number, 5);
     assert_eq!(p.block_hash, h5);
 
-    // ── C) HTTP API (axum) on same pool ───────────────────────────────────
+    // ── C) Per-block transaction rollback leaves no ghost rows (#140) ───
+    let ptr_before_d = p;
+    const GHOST_BLOCK: u64 = 9_990_001;
+    let ghost_sale = DecodedLog {
+        block_number: GHOST_BLOCK,
+        block_hash: b256_lo(GHOST_BLOCK + 20_000),
+        tx_hash: b256_lo(99_001_234),
+        log_index: 0,
+        block_timestamp: None,
+        contract: CONTRACT,
+        event: DecodedEvent::TimeCurveSaleStarted {
+            start_timestamp: u1,
+            initial_deadline: u2,
+            total_tokens_for_sale: U256::from(42u64),
+        },
+    };
+    let mut tx = pool.begin().await.expect("tx begin");
+    yieldomega_indexer::persist::persist_decoded_log_conn(&mut *tx, &ghost_sale)
+        .await
+        .expect("ghost persist");
+    yieldomega_indexer::reorg::upsert_indexed_block_conn(
+        &mut *tx,
+        GHOST_BLOCK,
+        ghost_sale.block_hash,
+    )
+    .await
+    .expect("ghost ib");
+    yieldomega_indexer::reorg::save_chain_pointer_conn(
+        &mut *tx,
+        &ChainPointer {
+            block_number: GHOST_BLOCK,
+            block_hash: ghost_sale.block_hash,
+        },
+    )
+    .await
+    .expect("ghost ptr");
+    tx.rollback().await.expect("rollback ghost");
+
+    let p_after = load_chain_pointer(&pool).await.expect("ptr after rollback");
+    assert_eq!(p_after.block_number, ptr_before_d.block_number);
+    assert_eq!(p_after.block_hash, ptr_before_d.block_hash);
+    assert_eq!(
+        count_where(
+            &pool,
+            "idx_timecurve_sale_started",
+            GHOST_BLOCK as i64
+        )
+        .await,
+        0
+    );
+    let ib = sqlx::query("SELECT 1 FROM indexed_blocks WHERE block_number = $1")
+        .bind(GHOST_BLOCK as i64)
+        .fetch_optional(&pool)
+        .await
+        .expect("ib q");
+    assert!(ib.is_none());
+
+    // ── D) HTTP API (axum) on same pool ───────────────────────────────────
     api_http_smoke(&pool).await;
 }

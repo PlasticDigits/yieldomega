@@ -77,6 +77,8 @@ steps (see `reorg.rs`), comparing RPC block hashes to stored rows. `rollback_aft
 deletes event rows and `indexed_blocks` entries with `block_number` strictly
 greater than the ancestor, then resets `chain_pointer` in a single transaction.
 
+**Per-block ingestion (crash safety):** Normal forward ingestion wraps each block’s log persists, `indexed_blocks` upsert, and `chain_pointer` write in **one** database transaction so a crash mid-block cannot leave “partial block N” visible while the pointer still says N−1 (or advance the pointer without all events). See [GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140) and **`INV-INDEXER-140`** in [`docs/testing/invariants-and-business-logic.md`](../docs/testing/invariants-and-business-logic.md#indexer-transactional-block-ingestion-gitlab-140).
+
 **Manual reorg check (Stage 2):** With a local chain, reorg the fork (e.g. Anvil
 `anvil_reset` / alternative parent) once, confirm the indexer logs a reorg and
 API lists remain consistent for the smoke transactions, and record the outcome
