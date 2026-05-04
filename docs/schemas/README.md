@@ -2,6 +2,8 @@
 
 This folder holds **machine-readable outlines** for authoritative gameplay metadata (for example Leprechaun NFT JSON that is stored onchain, hashed, or pinned behind a verifiable URI). Schemas are **draft parameters** until product and engineering sign off; contract encoding comes after that.
 
+**Host and path vs JSON shape:** The schema defines the **structure and keys** of metadata JSON. **Where** that JSON is served (URL prefix from `LeprechaunNFT.baseURI`, CDN, IPFS gateway, etc.) can change when admins call `setBaseURI` without changing the onchain trait tuple — see [product — Metadata URI trust model](../product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json) and [GitLab #125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125).
+
 **Start here for docs navigation:** [../README.md](../README.md) — the top-level documentation map lists architecture, product, indexer, and agent docs.
 
 ## Artifacts

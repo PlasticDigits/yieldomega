@@ -10,12 +10,20 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 /// @notice ERC-721 with onchain gameplay traits aligned to
 ///         docs/product/leprechaun-nfts.md and schemas/leprechaun-nft-metadata-v1.schema.json.
 ///         Series identifiers are machine-readable onchain.
+/// @dev Offchain JSON / artwork URLs: `tokenURI` is `baseURI` + decimal `tokenId` (OpenZeppelin ERC721).
+///      The holder of `DEFAULT_ADMIN_ROLE` may call `setBaseURI` at any time, intentionally mutating the URI
+///      prefix (for example CDN moves, hosting changes, corrected metadata files). Gameplay authority for stored
+///      traits remains in onchain `tokenTraits`; wallets and marketplaces that resolve `tokenURI` can therefore
+///      show different offchain presentation over time without a change to onchain trait tuples.
+///      Disclosure tracked in GitLab #125 (audit I-02).
 contract LeprechaunNFT is ERC721Enumerable, AccessControlEnumerable {
     using Strings for uint256;
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     uint256 private _nextTokenId;
+    /// @notice Prefix for `tokenURI` (concatenated with decimal token id string). Admin-mutable via `setBaseURI`;
+    ///         see contract-level documentation for trust model (offchain presentation vs onchain traits).
     string public baseURI;
 
     // ── Onchain trait storage ──────────────────────────────────────────
@@ -83,10 +91,14 @@ contract LeprechaunNFT is ERC721Enumerable, AccessControlEnumerable {
 
     // ── Metadata ───────────────────────────────────────────────────────
 
+    /// @inheritdoc ERC721
+    /// @dev Returns storage `baseURI`; after `setBaseURI`, existing tokens report `tokenURI` under the new prefix.
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
 
+    /// @notice Updates the URI prefix used for all `tokenURI` results. Only `DEFAULT_ADMIN_ROLE`.
+    /// @dev Intentionally mutable for operational flexibility; does not rewrite `tokenTraits`.
     function setBaseURI(string calldata newBaseURI) external onlyRole(DEFAULT_ADMIN_ROLE) {
         baseURI = newBaseURI;
     }
