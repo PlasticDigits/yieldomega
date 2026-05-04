@@ -66,7 +66,7 @@ flowchart LR
 ## Relationship to product primitives
 
 - **TimeCurve** and **Rabbit Treasury** generate fees and participation; **TimeCurve** uses the canonical split in [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) ([full doc](../onchain/fee-routing-and-governance.md)); other modules use **their own** documented routes.
-- **Leprechaun NFTs** attach identity and bonuses; metadata must remain **machine-readable onchain** (see [product/leprechaun-nfts.md](../product/leprechaun-nfts.md)).
+- **Leprechaun NFTs** attach identity and bonuses; gameplay fields must remain **machine-readable onchain** (see [product/leprechaun-nfts.md](../product/leprechaun-nfts.md)). **Offchain** presentation linked from `tokenURI` can change if **`DEFAULT_ADMIN_ROLE`** updates `baseURI` ([metadata trust model](../product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json)).
 
 ## User data flows
 

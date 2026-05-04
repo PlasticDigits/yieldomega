@@ -118,3 +118,6 @@ conversion rules per [research/stablecoin-and-reserves.md](../docs/research/stab
 | Max supply per series | **TODO** — define per series | **TODO** |
 | Schema version | `1.0.0` | Default |
 | Series IDs | Sequential uint256 | Default |
+| `baseURI` / `tokenURI` prefix | Set at deploy; updatable via `setBaseURI` | **`DEFAULT_ADMIN_ROLE`** may change offchain JSON root intentionally ([product disclosure](../docs/product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json), [GitLab #125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125)); onchain `tokenTraits` stay authoritative for gameplay fields |
+
+See [product/leprechaun-nfts.md — Metadata URI trust model](../docs/product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json) and contract NatSpec on `LeprechaunNFT`.
