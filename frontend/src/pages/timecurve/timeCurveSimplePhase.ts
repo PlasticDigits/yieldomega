@@ -55,7 +55,7 @@ export function derivePhase(input: DerivePhaseInput): SaleSessionPhase {
   if (ended === true) return "saleEnded";
   if (saleStartSec === undefined || saleStartSec === 0) return "loading";
   if (ledgerSecInt < saleStartSec) return "saleStartPending";
-  if (deadlineSec !== undefined && ledgerSecInt >= deadlineSec) {
+  if (deadlineSec !== undefined && ledgerSecInt > deadlineSec) {
     return "saleExpiredAwaitingEnd";
   }
   return "saleActive";
@@ -166,6 +166,10 @@ export function phaseNarrative(phase: SaleSessionPhase): string {
  * Simple view. **Invariant:** at most one of these four flags is `true`; if
  * the phase is `loading`, all four are `false` (the page should render its
  * loading state instead).
+ *
+ * **Round deadline (GitLab #136):** onchain **`buy`** / WarBow mutations allow
+ * **`block.timestamp <= deadline()`**; `derivePhase` keeps **`saleActive`** until
+ * **`ledgerSecInt > deadlineSec`** (exclusive end), matching **`endSale`**’s **`>` deadline**.
  */
 export type PhaseFlags = {
   saleActive: boolean;

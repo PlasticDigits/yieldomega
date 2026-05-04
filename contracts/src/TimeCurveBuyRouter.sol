@@ -93,7 +93,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     uint8 public constant PAY_STABLE = 1;
 
     /// @notice `path` last token must be WETH for `PAY_ETH`, or `stableToken` for `PAY_STABLE`. First token must be TimeCurve accepted asset (CL8Y).
-    /// @dev Reverts **`TimeCurveBuyRouter__BadSalePhase`** when the sale is unscheduled, ended, past **`deadline`**, or **scheduled but not yet live**
+    /// @dev Reverts **`TimeCurveBuyRouter__BadSalePhase`** when the sale is unscheduled, ended, **strictly past `deadline()`**, or **scheduled but not yet live**
     ///      (`block.timestamp < saleStart()` after **`startSaleAt`** — GitLab #114 / #118), **before** path pricing, **`exactOutput`**, or **`buyFor`**.
     /// @param plantWarBowFlag Forwarded to `TimeCurve.buyFor` — opt-in WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function buyViaKumbaya(
@@ -109,7 +109,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
 
         TimeCurve tc = timeCurve;
         uint256 saleStart_ = tc.saleStart();
-        if (saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_ || block.timestamp >= tc.deadline()) {
+        if (saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_ || block.timestamp > tc.deadline()) {
             revert TimeCurveBuyRouter__BadSalePhase();
         }
 
