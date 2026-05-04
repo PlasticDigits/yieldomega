@@ -24,6 +24,7 @@ abstract contract FeeSink is Initializable, AccessControlEnumerableUpgradeable, 
     function __FeeSink_init(address admin) internal onlyInitializing {
         __AccessControlEnumerable_init();
         __AccessControl_init();
+        require(admin != address(0), "FeeSink: zero admin");
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(WITHDRAWER_ROLE, admin);
     }

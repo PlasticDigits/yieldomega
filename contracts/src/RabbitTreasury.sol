@@ -183,6 +183,7 @@ contract RabbitTreasury is Initializable, AccessControlEnumerableUpgradeable, Pa
         require(_protocolRevenueBurnShareWad < WAD, "RT: burn share >= 100%");
         require(_withdrawFeeWad < WAD, "RT: withdraw fee >= 100%");
         require(_minRedemptionEfficiencyWad > 0 && _minRedemptionEfficiencyWad <= WAD, "RT: min eff");
+        require(admin != address(0), "RT: zero admin");
 
         __AccessControlEnumerable_init();
         __AccessControl_init();

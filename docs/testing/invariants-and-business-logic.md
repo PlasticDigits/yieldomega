@@ -68,9 +68,9 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 |------|----------------|-------------------------|
 | **TimeCurve** | Sale lifecycle: **exponential CHARM band** (0.99–10 CHARM × envelope), **linear per-CHARM price** (`ICharmPrice`), timer extension with cap, fees to router, sale end, CHARM-weighted redemption, prize podiums. **Redemption monotonicity (no referral):** [primitives — CL8Y value of DOUB per CHARM](../product/primitives.md#timecurve-redemption-cl8y-density-no-referral). **Gates (issue #55):** `buyFeeRoutingEnabled` — sale `buy` → `FeeRouter` **and** WarBow CL8Y paths (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`); `charmRedemptionEnabled` (`redeemCharms`); `reservePodiumPayoutsEnabled` (CL8Y `distributePrizes` when prize pool non-zero) — [operations: final signoff](../operations/final-signoff-and-value-movement.md). | [product/primitives.md](../product/primitives.md), [TimeCurve.sol](../../contracts/src/TimeCurve.sol), [LinearCharmPrice.sol](../../contracts/src/pricing/LinearCharmPrice.sol) |
 | **Rabbit Treasury (Burrow)** | Deposits → **redeemable** backing + DOUB mint; `receiveFee` → burn + **protocol-owned** backing (no DOUB mint); withdraw from redeemable only (pro-rata, health efficiency, fees → protocol); epoch repricing via **total** backing + BurrowMath; canonical Burrow* events. | [product/rabbit-treasury.md](../product/rabbit-treasury.md), [RabbitTreasury.sol](../../contracts/src/RabbitTreasury.sol) |
-| **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
+| **Fee routing** | TimeCurve pulls sale asset from buyer, forwards to `FeeRouter`; splits per bps to sinks; weights sum to 10_000; remainder to last sink. **`FeeRouter.initialize`** rejects **`admin == address(0)`** before sink validation ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)). | [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md), [FeeRouter.sol](../../contracts/src/FeeRouter.sol) |
 | **DOUB presale vesting** | Immutable `EnumerableSet` of beneficiaries + allocations; constructor enforces `sum(amounts) == requiredTotal`; **30%** vested at `vestingStart`, **70%** linear over `vestingDuration`; `startVesting` once when `token.balanceOf(this) >= totalAllocated`. **`claims` gate (issue #55):** `claim()` requires `claimsEnabled` via `setClaimsEnabled` (`onlyOwner`) — [operations: final signoff](../operations/final-signoff-and-value-movement.md). | [DoubPresaleVesting.sol](../../contracts/src/vesting/DoubPresaleVesting.sol), [PARAMETERS.md](../../contracts/PARAMETERS.md) |
-| **NFT** | Series supply cap, authorized mint, traits onchain. | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
+| **NFT** | Series supply cap, authorized mint, traits onchain. Constructor rejects **`admin == address(0)`** before role grants ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)). | [LeprechaunNFT.sol](../../contracts/src/LeprechaunNFT.sol), [schemas/README.md](../schemas/README.md) |
 | **Indexer** | Decode canonical logs, **exhaustively cover emitted events** stored in Postgres for history / future UI ([§ #112](#indexer-emitted-event-coverage-gitlab-112); [scoped issue discussion](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112)); idempotent persist; chain pointer + reorg rollback of **all** `idx_*` tables. **`TimeCurveBuyRouter`** `BuyViaKumbaya` + `TimeCurve` `Buy` correlation for multi-asset entry metadata ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [`persist.rs`](../../indexer/src/persist.rs), [`reorg.rs`](../../indexer/src/reorg.rs), [design — emitted logs](../indexer/design.md), [integrations/kumbaya.md](../integrations/kumbaya.md) |
 | **Frontend** | Env-driven chain, addresses, indexer URL normalization for read paths. | [frontend/.env.example](../../frontend/.env.example), [frontend/src/lib/addresses.ts](../../frontend/src/lib/addresses.ts) |
 | **Frontend — indexer offline / backoff (#96)** | When `VITE_INDEXER_URL` is set, shared **`reportIndexerFetchAttempt`**: offline after **3** debounced failure seconds; **`IndexerStatusBar`** **Indexer offline · retrying**; pollers back off **30s → 60s → 120s**; Simple **Recent buys** empty copy distinguishes unreachable indexer vs zero rows. **`getJson`** / **`fetchTimecurveChainTimer`** **`await res.json()`** so HTTP **200** with non-JSON bodies surface as **`null`** (not escaped rejections) and feed the same failure streak ([issue #111](https://gitlab.com/PlasticDigits/yieldomega/-/issues/111)). | [timecurve-views — issue #96](../frontend/timecurve-views.md#indexer-offline-ux-issue-96), [invariants — #96](#indexer-offline-ux-and-backoff-gitlab-96), [`indexerApi.ts`](../../frontend/src/lib/indexerApi.ts), [`indexerConnectivity.ts`](../../frontend/src/lib/indexerConnectivity.ts) |
@@ -570,6 +570,23 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 
 Mitigations and product stance: [security-and-threat-model.md — Implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening).
 
+<a id="accesscontrol-zero-admin-deployments-gitlab-120"></a>
+
+### AccessControl zero-admin deployment guard (GitLab [#120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120); audit L-03)
+
+**INV-AC-ZERO-ADMIN-120:** Contracts that grant **`DEFAULT_ADMIN_ROLE`** from a caller-supplied **`admin`** in their **`initializer`** or **`constructor`** must **`require(admin != address(0), …)`** **before** any **`_grantRole(DEFAULT_ADMIN_ROLE, admin)`** (and before co-granted roles in the same block: **`WITHDRAWER_ROLE`**, **`GOVERNOR_ROLE`**, **`PARAMS_ROLE`**, **`PAUSER_ROLE`**, **`MINTER_ROLE`** as applicable). OpenZeppelin **`AccessControl._grantRole`** does not treat **`address(0)`** as invalid; a zero admin is an operator footgun that can brick governance.
+
+| Surface | Revert prefix | Tests |
+|---------|---------------|--------|
+| **`FeeSink.__FeeSink_init`** (covers **`CL8YProtocolTreasury`**, **`DoubLPIncentives`**, **`EcosystemTreasury`**) | `FeeSink: zero admin` | [`AccessControlZeroAdmin.t.sol`](../../contracts/test/AccessControlZeroAdmin.t.sol) |
+| **`PodiumPool.initialize`** | `PodiumPool: zero admin` | same |
+| **`FeeRouter.initialize`** | `FeeRouter: zero admin` (runs **before** **`_setSinks`** — zero admin loses to this check, not sink validation) | same |
+| **`RabbitTreasury.initialize`** | `RT: zero admin` | same |
+| **`Doubloon` constructor** | `Doubloon: zero admin` | same |
+| **`LeprechaunNFT` constructor** | `LeprechaunNFT: zero admin` | same |
+
+Operator context: [fee-routing-and-governance.md — Governance actors](../onchain/fee-routing-and-governance.md#governance-actors). Third-party deployers: [skills/README.md](../../skills/README.md).
+
 ### RabbitTreasury and BurrowMath
 
 | Invariant | Meaning | Tests |
@@ -588,6 +605,7 @@ Mitigations and product stance: [security-and-threat-model.md — Implementation
 | Chained epochs | Finalize advances `epochId` and can run again next window | `test_finalizeEpoch_can_run_twice_advances_epoch` |
 | Fee receiver role | Only fee router can push fees | `test_receiveFee`, `test_receiveFee_unauthorized_reverts`, `test_receiveFee_zero_reverts` |
 | Pause | Paused state blocks deposit; unpause restores | `test_pause_blocks_deposit`, `test_unpause_allows_deposit` |
+| Zero admin at initialize | `initialize(..., admin=0)` reverts before roles | [`AccessControlZeroAdmin.t.sol`](../../contracts/test/AccessControlZeroAdmin.t.sol) ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)) |
 | Parameter governance | Burrow params update emits event; unauthorized reverts | `test_params_update_emits_event`, `test_params_update_unauthorized_reverts`, `test_setMBounds_invalid_reverts` |
 | Coverage / multiplier bounds | `C` clipped; `m ∈ [m_min, m_max]` | `BurrowMath.t.sol`: `test_coverage_clips_high`, `test_multiplier_bounds_fuzz`, `test_epoch_invariants_fuzz` |
 | Numeric parity with sims | One epoch matches Python reference | `test_matches_python_reference_epoch` |
@@ -605,6 +623,7 @@ Mitigations and product stance: [security-and-threat-model.md — Implementation
 | Remainder to last sink | No dust stuck in router | `test_distributeFees_remainder_to_last_sink`, `test_no_dust_fuzz` |
 | Canonical 25/35/20/0/20 split | Matches governance doc | `test_distributeFees_canonical_split` |
 | Governance on sinks | `updateSinks` happy path + auth + zero address | `test_updateSinks`, `test_updateSinks_unauthorized_reverts`, `test_updateSinks_zero_address_reverts` |
+| Zero admin at initialize | Proxy deploy reverts before roles / sinks | [`AccessControlZeroAdmin.t.sol`](../../contracts/test/AccessControlZeroAdmin.t.sol) `test_FeeRouter_zeroAdmin_reverts_before_sink_validation` ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)) |
 
 Align fee expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants).
 

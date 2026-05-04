@@ -52,6 +52,7 @@ contract LeprechaunNFT is ERC721Enumerable, AccessControlEnumerable {
     constructor(string memory name_, string memory symbol_, string memory baseURI_, address admin)
         ERC721(name_, symbol_)
     {
+        require(admin != address(0), "LeprechaunNFT: zero admin");
         baseURI = baseURI_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
