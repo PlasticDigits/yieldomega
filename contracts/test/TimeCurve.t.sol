@@ -825,18 +825,23 @@ contract TimeCurveTest is Test {
     function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
         tc.startSaleAt(block.timestamp);
 
-        _fundAndApprove(alice, 2e18);
+        _fundAndApprove(alice, 4e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
         uint256 a0 = tc.battlePoints(alice);
 
         uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
-        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
+        _fundAndApprove(bob, 4e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.buy(1e18);
         vm.prank(bob);
         tc.warbowSteal(alice, false);
 
         assertEq(tc.battlePoints(alice), a0 - (a0 * 1000) / 10_000);
-        assertEq(tc.battlePoints(bob), (a0 * 1000) / 10_000);
+        assertEq(tc.battlePoints(bob), tc.WARBOW_BASE_BUY_BP() + (a0 * 1000) / 10_000);
         assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
     }
 
@@ -857,13 +862,90 @@ contract TimeCurveTest is Test {
         tc.warbowSteal(bob, false);
     }
 
-    function test_warbow_revenge_once() public {
+    /// @dev GitLab #134 — zero-BP attackers must not steal under the tightened 2× rule.
+    function test_warbow_steal_revert_zero_attacker_bp() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
         vm.prank(alice);
         tc.buy(1e18);
 
         _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        vm.expectRevert("TimeCurve: steal 2x rule");
+        tc.warbowSteal(alice, false);
+    }
+
+    /// @dev GitLab #134 — fourth successful steal **from the same wallet** in one UTC day requires bypass CL8Y (attacker-side cap).
+    function test_warbow_steal_attacker_daily_limit_fourth_needs_bypass() public {
+        tc.startSaleAt(block.timestamp);
+
+        address v1 = makeAddr("warbowVictim1");
+        address v2 = makeAddr("warbowVictim2");
+        address v3 = makeAddr("warbowVictim3");
+        address v4 = makeAddr("warbowVictim4");
+
+        for (uint256 i = 0; i < 5; i++) {
+            _fundAndApprove(v1, 50e18);
+            vm.prank(v1);
+            tc.buy(1e18);
+            vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
+
+            _fundAndApprove(v2, 50e18);
+            vm.prank(v2);
+            tc.buy(1e18);
+            vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
+
+            _fundAndApprove(v3, 50e18);
+            vm.prank(v3);
+            tc.buy(1e18);
+            vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
+
+            _fundAndApprove(v4, 50e18);
+            vm.prank(v4);
+            tc.buy(1e18);
+            vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
+        }
+
+        _fundAndApprove(bob, 50e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+
+        uint256 day = block.timestamp / tc.SECONDS_PER_DAY();
+        assertEq(tc.stealsCommittedByAttackerOnDay(bob, day), 0);
+
+        _fundAndApprove(bob, 100e18 + 3 * tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.warbowSteal(v1, false);
+        vm.prank(bob);
+        tc.warbowSteal(v2, false);
+        vm.prank(bob);
+        tc.warbowSteal(v3, false);
+
+        assertEq(tc.stealsCommittedByAttackerOnDay(bob, day), 3);
+
+        _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        vm.expectRevert("TimeCurve: steal attacker daily limit");
+        tc.warbowSteal(v4, false);
+
+        _fundAndApprove(bob, tc.WARBOW_STEAL_BURN_WAD() + tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD());
+        vm.prank(bob);
+        tc.warbowSteal(v4, true);
+        assertEq(tc.stealsCommittedByAttackerOnDay(bob, day), 4);
+    }
+
+    function test_warbow_revenge_once() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 4e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(bob);
+        tc.buy(1e18);
         vm.prank(bob);
         tc.warbowSteal(alice, false);
         uint256 bobBpAfterSteal = tc.battlePoints(bob);
@@ -883,11 +965,16 @@ contract TimeCurveTest is Test {
         TimeCurve t = _newTimeCurveShortTimer(500);
         t.startSaleAt(block.timestamp);
         vm.warp(t.saleStart() + 10);
-        _fundAndApproveCurve(alice, 2e18, t);
+        _fundAndApproveCurve(alice, 4e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+        _warpPastBuyCooldown(t, alice);
         vm.prank(alice);
         t.buy(1e18);
 
-        _fundAndApproveCurve(bob, t.WARBOW_STEAL_BURN_WAD(), t);
+        _fundAndApproveCurve(bob, 4e18 + t.WARBOW_STEAL_BURN_WAD(), t);
+        vm.prank(bob);
+        t.buy(1e18);
         vm.prank(bob);
         t.warbowSteal(alice, false);
 

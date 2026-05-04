@@ -555,6 +555,13 @@ export function useTimeCurveArenaModel() {
     args: stealVictim && tc ? [stealVictim, utcDayId] : undefined,
     query: { enabled: Boolean(tc && stealVictim) },
   });
+  const { data: attackerStealsToday } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "stealsCommittedByAttackerOnDay",
+    args: address && tc ? [address, utcDayId] : undefined,
+    query: { enabled: Boolean(tc && address) },
+  });
   const { data: victimBattlePoints } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
@@ -1396,6 +1403,9 @@ export function useTimeCurveArenaModel() {
       if (battlePoints <= 0n) {
         return false;
       }
+      if (viewerBp !== undefined && viewerBp === 0n) {
+        return false;
+      }
       return viewerBp === undefined || battlePoints >= viewerBp * 2n;
     }
 
@@ -1787,6 +1797,8 @@ export function useTimeCurveArenaModel() {
     victimStealsToday !== undefined ? BigInt(victimStealsToday as bigint | number) : undefined;
   const victimBattlePointsBigInt =
     victimBattlePoints !== undefined ? BigInt(victimBattlePoints as bigint | number) : undefined;
+  const attackerStealsTodayBigInt =
+    attackerStealsToday !== undefined ? BigInt(attackerStealsToday as bigint | number) : undefined;
   const stealPreflight = useMemo(
     () =>
       describeStealPreflight(
@@ -1799,6 +1811,7 @@ export function useTimeCurveArenaModel() {
           viewerBattlePoints,
           victimBattlePoints: victimBattlePointsBigInt,
           victimStealsToday: victimStealsTodayBigInt,
+          attackerStealsToday: attackerStealsTodayBigInt,
           maxStealsPerDay: BigInt(warbowMaxSteals),
           bypassSelected: stealBypass,
           guardActive: guardedActive,
@@ -1814,6 +1827,7 @@ export function useTimeCurveArenaModel() {
       viewerBattlePoints,
       victimBattlePointsBigInt,
       victimStealsTodayBigInt,
+      attackerStealsTodayBigInt,
       warbowMaxSteals,
       stealBypass,
       guardedActive,
@@ -1844,7 +1858,7 @@ export function useTimeCurveArenaModel() {
     }
     return guardedActive
       ? "Your guard is already up. Use the live window to defend, steal, or buy for momentum."
-      : "Target rivals with at least 2x your BP, or use guard to make yourself harder to drain.";
+      : "Target rivals with at least 2× your Battle Points (you need positive BP yourself), or use guard to make yourself harder to drain.";
   }, [
     isConnected,
     saleActive,
@@ -2714,6 +2728,7 @@ export function useTimeCurveArenaModel() {
     victimBattlePointsBigInt,
     victimStealsToday,
     victimStealsTodayBigInt,
+    attackerStealsTodayBigInt,
     viewerBattlePoints,
     walletCl8yBal,
     walletCooldownRemainingSec,

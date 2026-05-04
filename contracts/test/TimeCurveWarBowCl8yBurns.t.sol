@@ -106,11 +106,19 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(victim != address(tc) && stealer != address(tc));
 
         tc.startSaleAt(block.timestamp);
-        _fund(victim, 50e18);
+        _fund(victim, 100e18);
+        vm.prank(victim);
+        tc.buy(1e18);
+        vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
         vm.prank(victim);
         tc.buy(1e18);
 
-        _fund(stealer, 50e18 + tc.WARBOW_STEAL_BURN_WAD());
+        _fund(stealer, 100e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealer);
+        tc.buy(1e18);
+        vm.assume(tc.battlePoints(stealer) > 0);
+        vm.assume(tc.battlePoints(victim) >= 2 * tc.battlePoints(stealer));
+
         vm.prank(stealer);
         tc.warbowSteal(victim, false);
 
@@ -122,7 +130,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
     }
 
     /// @dev Invariant: `warbowSteal` without bypass moves exactly `WARBOW_STEAL_BURN_WAD` to the burn sink.
-    ///      Victim has BP from a buy; stealer has zero BP (2× rule satisfied).
+    ///      Victim BP dominates stealer (**≥ 2×**) and stealer has **> 0** BP ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
     function testFuzz_warbow_steal_burn_exact_to_sink(uint160 victim160, uint160 stealer160) public {
         vm.assume(victim160 != uint160(0) && stealer160 != uint160(0));
         vm.assume(victim160 != stealer160);
@@ -131,11 +139,19 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(victim != address(tc) && stealer != address(tc));
 
         tc.startSaleAt(block.timestamp);
-        _fund(victim, 50e18);
+        _fund(victim, 100e18);
+        vm.prank(victim);
+        tc.buy(1e18);
+        vm.warp(block.timestamp + TEST_BUY_COOLDOWN_SEC);
         vm.prank(victim);
         tc.buy(1e18);
 
-        _fund(stealer, 50e18 + tc.WARBOW_STEAL_BURN_WAD());
+        _fund(stealer, 100e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealer);
+        tc.buy(1e18);
+        vm.assume(tc.battlePoints(stealer) > 0);
+        vm.assume(tc.battlePoints(victim) >= 2 * tc.battlePoints(stealer));
+
         uint256 sinkBefore = reserve.balanceOf(BURN_SINK);
         vm.prank(stealer);
         tc.warbowSteal(victim, false);

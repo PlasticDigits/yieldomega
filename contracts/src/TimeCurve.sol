@@ -582,8 +582,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP, battlePoints[msg.sender]);
     }
 
-    /// @notice Burn **1 CL8Y** (accepted asset); steal **10%** (or **1%** if victim guarded) of victim’s BP. Victim must have **≥ 2×** your BP.
-    /// @param payBypassBurn If victim already hit **3** steals today, pass `true` and pay **+50 CL8Y** to proceed.
+    /// @dev BP swing from **`warbowSteal`**: **`floor(victimBp × drainBps / 10_000)`**. Unguarded **`drainBps == WARBOW_STEAL_DRAIN_BPS`** (**10%** of victim BP); guarded **`WARBOW_STEAL_DRAIN_GUARDED_BPS`** (**1%**). Integer floor — **`take == 0`** is rejected (**`steal zero`**) ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
+    function _warbowStealDrainBp(uint256 victimBp, uint256 drainBps) internal pure returns (uint256) {
+        return (victimBp * drainBps) / 10_000;
+    }
+
+    /// @notice Burn **1 CL8Y** (accepted asset); steal **`floor`**(**10%**) (or **`floor`**(**1%**) if victim guarded) of victim’s BP via {_warbowStealDrainBp}. **Ranking:** **`battlePoints[victim] ≥ 2 × battlePoints[msg.sender]`** and **`battlePoints[msg.sender] > 0`** (no zero-BP sybil steals — [GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
+    /// @param payBypassBurn When either UTC-day gate binds (**victim** received **`≥ WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY`** steals already **or** **you** already landed **`≥`** that many steals today **from any victims**), pass **`true`** and pay **`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`** (**+50 CL8Y**) once in addition to the base steal burn.
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
@@ -593,11 +598,20 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
         uint8 victimStealsToday = stealsReceivedOnDay[victim][day];
+        uint8 attackerStealsToday = stealsCommittedByAttackerOnDay[msg.sender][day];
+        bool bypassVictimUtcDay = victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
+        bool bypassAttackerUtcDay = attackerStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
+
         _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);
         uint256 totalBurn = WARBOW_STEAL_BURN_WAD;
-        if (victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
+        if (bypassAttackerUtcDay) {
+            require(payBypassBurn, "TimeCurve: steal attacker daily limit");
+        }
+        if (bypassVictimUtcDay) {
             require(payBypassBurn, "TimeCurve: steal victim daily limit");
+        }
+        if (bypassAttackerUtcDay || bypassVictimUtcDay) {
             _pullAcceptedExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
             emit WarBowCl8yBurned(
                 msg.sender, uint8(WarBowBurnReason.StealLimitBypass), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD
@@ -609,11 +623,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         uint256 vbp = battlePoints[victim];
         uint256 abp = battlePoints[msg.sender];
-        require(vbp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
+        require(abp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
 
         uint16 bps =
             block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
-        uint256 take = (vbp * uint256(bps)) / 10_000;
+        uint256 take = _warbowStealDrainBp(vbp, uint256(bps));
         require(take > 0, "TimeCurve: steal zero");
 
         _subBattlePoints(victim, take);
@@ -621,6 +635,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         if (victimStealsToday < type(uint8).max) {
             stealsReceivedOnDay[victim][day] = victimStealsToday + 1;
+        }
+        if (attackerStealsToday < type(uint8).max) {
+            stealsCommittedByAttackerOnDay[msg.sender][day] = attackerStealsToday + 1;
         }
 
         warbowPendingRevengeStealer[victim] = msg.sender;
@@ -631,7 +648,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             victim,
             take,
             totalBurn,
-            payBypassBurn && victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
+            payBypassBurn && (bypassVictimUtcDay || bypassAttackerUtcDay),
             battlePoints[victim],
             battlePoints[msg.sender]
         );
@@ -1009,5 +1026,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice **`block.timestamp` when `endSale()` succeeded** — starts the unredeemed-launch-token sweep grace clock.
     uint256 public saleEndedAt;
 
-    uint256[44] private __gap;
+    /// @notice UTC-day id (`block.timestamp / SECONDS_PER_DAY`) → successful **`warbowSteal`** txs already executed **from** this wallet that day ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
+    /// @dev Uses **`WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY`** with the same semantics as **`stealsReceivedOnDay`**, but keyed by **attacker**. From steal **4** onward **by this wallet** (any victims), **`payBypassBurn`** must be **true** and **`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`** is charged once per tx when either limit binds.
+    mapping(address => mapping(uint256 => uint8)) public stealsCommittedByAttackerOnDay;
+
+    uint256[43] private __gap;
 }
