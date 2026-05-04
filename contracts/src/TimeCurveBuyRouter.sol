@@ -32,6 +32,8 @@ interface IKumbayaSwapRouter {
 /// @notice Pulls spend from `msg.sender`, swaps to **exact** TimeCurve gross CL8Y for `charmWad`, then `buyFor`.
 ///         Path must be v3 packed **tokenOut (CL8Y) → … → tokenIn (WETH or `stableToken`)** per `docs/integrations/kumbaya.md`.
 /// @dev Immutable companion: owner wires `TimeCurve.setTimeCurveBuyRouter(address(this))`. Trust model: same team as TimeCurve admin.
+///      Sale-phase checks mirror **`TimeCurve`** live-window rules (`block.timestamp >= saleStart` once scheduled) so **`buyViaKumbaya`**
+///      fails fast before swap wiring when **`startSaleAt(epoch)`** left **`epoch` in the future** ([GitLab #118](https://gitlab.com/PlasticDigits/yieldomega/-/issues/118)).
 ///      Post-swap **CL8Y surplus** (exact-output dust / rounding) is sent to `cl8yProtocolTreasury`, not the buyer (GitLab #70).
 ///      **ETH / stable refunds** repay only \(\Delta\) balance since snapshot so pre-seeded WETH/stable cannot subsidize callers (GitLab #117).
 ///      `owner` may **`rescueETH` / `rescueERC20`** for stranded liquidity (typically multisig-aligned with TimeCurve ops).
@@ -90,6 +92,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     uint8 public constant PAY_STABLE = 1;
 
     /// @notice `path` last token must be WETH for `PAY_ETH`, or `stableToken` for `PAY_STABLE`. First token must be TimeCurve accepted asset (CL8Y).
+    /// @dev Reverts **`TimeCurveBuyRouter__BadSalePhase`** when the sale is unscheduled, ended, past **`deadline`**, or **scheduled but not yet live**
+    ///      (`block.timestamp < saleStart()` after **`startSaleAt`** — GitLab #114 / #118), **before** path pricing, **`exactOutput`**, or **`buyFor`**.
     /// @param plantWarBowFlag Forwarded to `TimeCurve.buyFor` — opt-in WarBow pending flag ([GitLab #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)).
     function buyViaKumbaya(
         uint256 charmWad,
@@ -103,7 +107,11 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
         if (payKind > PAY_STABLE) revert TimeCurveBuyRouter__BadPath();
 
         TimeCurve tc = timeCurve;
-        if (tc.saleStart() == 0 || tc.ended() || block.timestamp >= tc.deadline()) revert TimeCurveBuyRouter__BadSalePhase();
+        uint256 saleStart_ = tc.saleStart();
+        if (
+            saleStart_ == 0 || tc.ended() || block.timestamp < saleStart_
+                || block.timestamp >= tc.deadline()
+        ) revert TimeCurveBuyRouter__BadSalePhase();
 
         (uint256 minCharm, uint256 maxCharm) = tc.currentCharmBoundsWad();
         if (charmWad < minCharm || charmWad > maxCharm) revert TimeCurveBuyRouter__CharmBounds();

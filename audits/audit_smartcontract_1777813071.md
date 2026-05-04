@@ -141,7 +141,7 @@ Recommendation:
 - Add `block.timestamp >= tc.saleStart()` to the router sale-phase check.
 - Add a future-sale router test mirroring the direct TimeCurve pre-start test.
 
-### L-02: Referral code registration is front-runnable
+**Addressed:** [GitLab #118](https://gitlab.com/PlasticDigits/yieldomega/-/issues/118) — **`TimeCurveBuyRouter.buyViaKumbaya`** reverts **`BadSalePhase`** when **`block.timestamp < saleStart()`** before **`exactOutput`**; Forge coverage in **`TimeCurveBuyRouterScheduledNotLive118Test`** ([`audits/audit_smartcontract_1777813071.md`](../../audits/audit_smartcontract_1777813071.md) § L-01). Referral code registration is front-runnable
 
 Affected contract: `ReferralRegistry`
 

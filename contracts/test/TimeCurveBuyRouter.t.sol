@@ -36,8 +36,8 @@ contract MockLaunchToken is ERC20 {
     }
 }
 
-/// @dev Single-tx USDM → Kumbaya → `buyFor` (GitLab #65).
-contract TimeCurveBuyRouterTest is Test {
+/// @dev Shared DeployDev-style stack + Anvil Kumbaya fixture for router tests ([GitLab #65](https://gitlab.com/PlasticDigits/yieldomega/-/issues/65)).
+abstract contract TimeCurveBuyRouterFixture is Test {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
@@ -58,7 +58,7 @@ contract TimeCurveBuyRouterTest is Test {
 
     address alice = makeAddr("alice");
 
-    function setUp() public {
+    function deployBuyRouterFixture(uint256 saleEpoch) internal {
         reserve = new MockReserveCl8y();
         lt = new MockLaunchToken();
         lt.mint(address(this), 1_000_000e18);
@@ -95,7 +95,7 @@ contract TimeCurveBuyRouterTest is Test {
         );
         lt.transfer(address(tc), 1_000_000e18);
         podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(tc));
-        tc.startSaleAt(block.timestamp);
+        tc.startSaleAt(saleEpoch);
 
         weth = new AnvilWETH9();
         usdm = new AnvilMockUSDM();
@@ -120,6 +120,13 @@ contract TimeCurveBuyRouterTest is Test {
 
     function _pathUsdmToCl8y() internal view returns (bytes memory) {
         return abi.encodePacked(address(reserve), uint24(3000), address(weth), uint24(3000), address(usdm));
+    }
+}
+
+/// @dev Single-tx USDM → Kumbaya → `buyFor` (GitLab #65).
+contract TimeCurveBuyRouterTest is TimeCurveBuyRouterFixture {
+    function setUp() public {
+        deployBuyRouterFixture(block.timestamp);
     }
 
     function test_buyViaKumbaya_stable_creditsAlice() public {
@@ -302,5 +309,106 @@ contract TimeCurveBuyRouterTest is Test {
         );
         vm.expectRevert(bytes("TimeCurve: not buy router"));
         tc2.buyFor(alice, 1e18, false);
+    }
+}
+
+/// @dev GitLab #118 — scheduled `startSaleAt(epoch)` with `epoch > block.timestamp`: router must revert **`BadSalePhase`** before **`exactOutput`** (audit L-01).
+contract TimeCurveBuyRouterScheduledNotLive118Test is TimeCurveBuyRouterFixture {
+    uint256 internal constant FUTURE_OFFSET = 3600;
+
+    function setUp() public {
+        deployBuyRouterFixture(block.timestamp + FUTURE_OFFSET);
+    }
+
+    function test_buyViaKumbaya_badSalePhase_whenScheduledNotLive_stable() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = _pathUsdmToCl8y();
+
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        usdm.mint(alice, maxIn);
+
+        vm.startPrank(alice);
+        usdm.approve(address(buyRouter), maxIn);
+        uint8 payStable = buyRouter.PAY_STABLE();
+        vm.expectRevert(TimeCurveBuyRouter.TimeCurveBuyRouter__BadSalePhase.selector);
+        buyRouter.buyViaKumbaya(
+            charmWad,
+            bytes32(0),
+            false,
+            payStable,
+            block.timestamp + 600,
+            maxIn,
+            path
+        );
+        vm.stopPrank();
+    }
+
+    function test_buyViaKumbaya_badSalePhase_whenScheduledNotLive_eth() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = abi.encodePacked(address(reserve), uint24(3000), address(weth));
+
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        vm.deal(alice, maxIn);
+        vm.startPrank(alice);
+        uint8 payEth = buyRouter.PAY_ETH();
+        vm.expectRevert(TimeCurveBuyRouter.TimeCurveBuyRouter__BadSalePhase.selector);
+        buyRouter.buyViaKumbaya{value: maxIn}(
+            charmWad, bytes32(0), false, payEth, block.timestamp + 600, maxIn, path
+        );
+        vm.stopPrank();
+    }
+
+    function test_buyViaKumbaya_stable_succeeds_afterWarpToSaleStart() public {
+        vm.warp(tc.saleStart());
+
+        uint256 charmWad = 1e18;
+        bytes memory path = _pathUsdmToCl8y();
+
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        usdm.mint(alice, maxIn);
+
+        vm.startPrank(alice);
+        usdm.approve(address(buyRouter), maxIn);
+        buyRouter.buyViaKumbaya(
+            charmWad,
+            bytes32(0),
+            false,
+            buyRouter.PAY_STABLE(),
+            block.timestamp + 600,
+            maxIn,
+            path
+        );
+        vm.stopPrank();
+
+        assertEq(tc.charmWeight(alice), charmWad);
+    }
+
+    function test_buyViaKumbaya_eth_succeeds_afterWarpToSaleStart() public {
+        vm.warp(tc.saleStart());
+
+        uint256 charmWad = 1e18;
+        bytes memory path = abi.encodePacked(address(reserve), uint24(3000), address(weth));
+
+        uint256 gross = (charmWad * tc.currentPricePerCharmWad()) / WAD;
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        vm.deal(alice, maxIn);
+        vm.startPrank(alice);
+        buyRouter.buyViaKumbaya{value: maxIn}(
+            charmWad, bytes32(0), false, buyRouter.PAY_ETH(), block.timestamp + 600, maxIn, path
+        );
+        vm.stopPrank();
+
+        assertEq(tc.charmWeight(alice), charmWad);
     }
 }
