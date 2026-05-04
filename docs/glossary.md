@@ -16,7 +16,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **Rabbit Treasury** — Reserve-linked **treasury game layer** (also called the **Burrow** in UX): users deposit reserve assets and hold internal claims whose effective value can adjust based on **reserve health** over rolling periods (for example 24 hours). Designed to avoid brittle “hard rug” dynamics while staying honest that sustainability depends on real fees and usage—not magic yield. **Not** the primary governance treasury.
 
-- **Leprechaun NFTs** — Collectibles with **onchain, machine-readable metadata**: gameplay bonuses, sets, factions, synergy tags, and **agent skill flags**. NFTs anchor identity, progression, and team play inside the ecosystem.
+- **Leprechaun NFTs** — Collectibles with **onchain, machine-readable metadata**: gameplay bonuses, sets, factions, synergy tags, and **agent skill flags**. NFTs anchor identity, progression, and team play inside the ecosystem. **Offchain** images / JSON reached via `tokenURI` use an **admin-configurable** `baseURI` prefix (`setBaseURI`); **onchain** `tokenTraits` stay the gameplay authority unless minted otherwise ([`leprechaun-nfts.md`](product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json)).
 
 ## Assets and naming
 

@@ -31,6 +31,13 @@ Each token should expose or hash to structured data that includes, at minimum:
 
 Exact encoding (JSON in URI vs pure onchain tuples vs hybrid) is an implementation choice, but **authority** for gameplay fields must be **onchain** (direct storage or verifiable hash with onchain manifest).
 
+### Metadata URI trust model (onchain traits vs offchain JSON)
+
+- **Onchain:** `LeprechaunNFT.tokenTraits` stores the canonical gameplay tuple minted for each token. That storage is not rewritten when metadata URLs change.
+- **Offchain:** ERC-721 `tokenURI` is built from the contract `baseURI` plus the token id (see [`LeprechaunNFT.sol`](../../contracts/src/LeprechaunNFT.sol)). Any account holding `DEFAULT_ADMIN_ROLE` may call `setBaseURI`, **intentionally changing** the prefix used for all `tokenURI` values (existing and future tokens). Reasons include CDN moves, hosting changes, or correcting offchain JSON while keeping onchain traits fixed.
+- **Participant / integrator expectation:** Wallets and marketplaces resolve `tokenURI` to JSON and media; that presentation **can drift** over time if the admin updates `baseURI`, even when onchain traits are unchanged. This is **disclosed by design**, not a promise of immutable offchain metadata — audit **I-02**, tracked in [GitLab #125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125).
+- **Governance:** Who may hold `DEFAULT_ADMIN_ROLE` over time is an operations question; see [PARAMETERS.md — Governance addresses](../../contracts/PARAMETERS.md#governance-addresses).
+
 ## Sets and factions
 
 - **Sets** unlock **synergies** when completed or at thresholds (for example 3/5 pieces).
