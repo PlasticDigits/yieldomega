@@ -84,7 +84,9 @@ export type TimecurveDotMegaSourceInput = {
   podiumRows: readonly { winners: readonly [string, string, string] }[];
   /** Top-3 WarBow ladder wallets from `warbowLadderPodium` when available. */
   warbowPodiumWallets: readonly string[] | undefined;
+  /** @deprecated single-target; prefer pendingRevengeStealers for multi-window (#135). */
   pendingRevengeStealer?: string;
+  pendingRevengeStealers?: readonly string[];
 };
 
 /** Collect checksummed wallet addresses shown on TimeCurve for DotMega reverse lookups. */
@@ -135,6 +137,9 @@ export function collectTimecurveWalletAddressesForDotMega(input: TimecurveDotMeg
     }
   }
   add(input.pendingRevengeStealer);
+  for (const s of input.pendingRevengeStealers ?? []) {
+    add(s);
+  }
   for (const item of input.warbowFeed ?? []) {
     walkUnknownForAddresses(item.detail, sink);
   }

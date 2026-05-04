@@ -98,6 +98,12 @@ mod contracts {
                 uint256 victimBpAfter,
                 uint256 attackerBpAfter
             );
+            event WarBowRevengeWindowOpened(
+                address indexed victim,
+                address indexed stealer,
+                uint256 expiryExclusive,
+                uint256 stealSeq
+            );
             event WarBowRevenge(
                 address indexed avenger,
                 address indexed stealer,
@@ -359,6 +365,12 @@ pub enum DecodedEvent {
         bypassed_victim_daily_limit: bool,
         victim_bp_after: U256,
         attacker_bp_after: U256,
+    },
+    TimeCurveWarBowRevengeWindowOpened {
+        victim: Address,
+        stealer: Address,
+        expiry_exclusive: U256,
+        steal_seq: U256,
     },
     TimeCurveWarBowRevenge {
         avenger: Address,
@@ -738,6 +750,17 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 bypassed_victim_daily_limit: e.bypassedVictimDailyLimit,
                 victim_bp_after: e.victimBpAfter,
                 attacker_bp_after: e.attackerBpAfter,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::WarBowRevengeWindowOpened::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::WarBowRevengeWindowOpened::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
+                victim: e.victim,
+                stealer: e.stealer,
+                expiry_exclusive: e.expiryExclusive,
+                steal_seq: e.stealSeq,
             };
         }
     }
@@ -1423,6 +1446,40 @@ mod tests {
                 assert_eq!(v, victim);
                 assert_eq!(amount_bp, U256::from(50u64));
                 assert!(bypassed_victim_daily_limit);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_warbow_revenge_window_opened() {
+        let victim = Address::repeat_byte(0x22);
+        let stealer = Address::repeat_byte(0x11);
+        let e = TimeCurveEvents::WarBowRevengeWindowOpened {
+            victim,
+            stealer,
+            expiryExclusive: U256::from(1700u64),
+            stealSeq: U256::from(3u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
+                victim: v,
+                stealer: s,
+                expiry_exclusive,
+                steal_seq,
+            } => {
+                assert_eq!(v, victim);
+                assert_eq!(s, stealer);
+                assert_eq!(expiry_exclusive, U256::from(1700u64));
+                assert_eq!(steal_seq, U256::from(3u64));
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

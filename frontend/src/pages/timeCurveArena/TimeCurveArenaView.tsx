@@ -81,11 +81,11 @@ export function TimeCurveArenaView() {
     loadingMoreBuys, maxBuyAmount, minBuy, minSpendCurvePoints, nonCl8yBuyBlocked,
     onCl8ySpendInputBlur, onCl8ySpendSlider,     openBuyListModal, bandBoundaryQuotesLoading,
     payTokenDecimals, payWalletBalance, payWith,
-    pendingRef, plantWarBowFlag, pendingRevengeStealer, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
+    pendingRef, plantWarBowFlag, pendingRevengeTargets, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
     prizeDist, prizePayouts, prizesDistributedR, quotedBandMaxPayInWei, quotedBandMinPayInWei,
     quotedLaunchPerCharmPayInWei, quotedPayInWei, quotedPerCharmPayInWei, refApplied,
-    rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, runVoid, runWarBowClaimFlag, runWarBowGuard,
+    rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, revengeIndexerConfigured, runVoid, runWarBowClaimFlag, runWarBowGuard,
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
     secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setPlantWarBowFlag, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
@@ -1105,7 +1105,8 @@ export function TimeCurveArenaView() {
               guardedActive={guardedActive}
               guardUntilSec={guardUntilSec.toString()}
               hasRevengeOpen={hasRevengeOpen}
-              pendingRevengeStealer={pendingRevengeStealer}
+              pendingRevengeTargets={pendingRevengeTargets}
+              revengeIndexerConfigured={revengeIndexerConfigured}
               revengeDeadlineSec={revengeDeadlineSec.toString()}
               warbowGuardBurnWad={warbowGuardBurnWad.toString()}
               warbowBypassBurnWad={warbowBypassBurnWad.toString()}
@@ -1339,6 +1340,8 @@ export function TimeCurveArenaView() {
         iHoldPlantFlag={iHoldPlantFlag}
         flagSilenceEndSec={flagSilenceEndSec.toString()}
         hasRevengeOpen={hasRevengeOpen}
+        pendingRevengeTargets={pendingRevengeTargets}
+        revengeIndexerConfigured={revengeIndexerConfigured}
         secondaryButtonMotion={secondaryButtonMotion as Record<string, unknown>}
         stealPreflight={stealPreflight}
         warbowPreflightIssue={warbowPreflightIssue}
@@ -1420,8 +1423,8 @@ export function TimeCurveArenaView() {
         battlePointsResult={serializeContractRead(battlePtsR)}
         activeStreakResult={serializeContractRead(activeStreakR)}
         bestStreakResult={serializeContractRead(bestStreakR)}
-        pendingRevengeStealer={pendingRevengeStealer}
-        revengeDeadlineSec={revengeDeadlineSec.toString()}
+        pendingRevengeTargets={pendingRevengeTargets}
+        revengeIndexerConfigured={revengeIndexerConfigured}
         buyerStats={indexerBaseUrl() ? buyerStats : null}
         initialMinBuyResult={serializeContractRead(initialMinBuyR)}
         growthRateWadResult={serializeContractRead(growthRateWadR)}

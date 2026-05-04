@@ -102,6 +102,7 @@ import {
   fetchReferralApplied,
   fetchTimecurveWarbowBattleFeed,
   fetchTimecurveWarbowLeaderboard,
+  fetchWarbowPendingRevenge,
   type CharmRedemptionItem,
   type BuyItem,
   type PrizeDistributionItem,
@@ -110,6 +111,7 @@ import {
   type TimecurveBuyerStats,
   type WarbowBattleFeedItem,
   type WarbowLeaderboardItem,
+  type WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import {
@@ -169,6 +171,7 @@ export function useTimeCurveArenaModel() {
   const [gasWarbowFlag, setGasWarbowFlag] = useState<bigint | undefined>(undefined);
   const [gasWarbowRevenge, setGasWarbowRevenge] = useState<bigint | undefined>(undefined);
   const [warbowPreflightIssue, setWarbowPreflightIssue] = useState<string | null>(null);
+  const [pendingRevengeRows, setPendingRevengeRows] = useState<WarbowPendingRevengeItem[]>([]);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
   const { data: latestBlock } = useBlock({ watch: true });
@@ -515,8 +518,6 @@ export function useTimeCurveArenaModel() {
           { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "warbowGuardUntil", args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeStealer", args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingRevengeExpiry", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt", args: [address] },
         ]
       : [];
@@ -622,8 +623,6 @@ export function useTimeCurveArenaModel() {
     activeStreakR,
     bestStreakR,
     warbowGuardUntilR,
-    revengeStealerR,
-    revengeExpiryR,
     nextBuyAllowedAtR,
   ] = userSaleData ?? [];
   const viewerBattlePoints =
@@ -836,18 +835,50 @@ export function useTimeCurveArenaModel() {
     flagPlantAtSec > 0n &&
     BigInt(ledgerSecInt) >= flagSilenceEndSec;
 
+  const loadPendingRevenge = useCallback(() => {
+    if (!address || !indexerBaseUrl() || !saleActive) {
+      setPendingRevengeRows([]);
+      return;
+    }
+    void fetchWarbowPendingRevenge(address, ledgerSecInt).then((page) => {
+      if (page?.items) {
+        setPendingRevengeRows(page.items);
+        reportIndexerFetchAttempt(true);
+      } else {
+        setPendingRevengeRows([]);
+        if (indexerBaseUrl()) {
+          reportIndexerFetchAttempt(false);
+        }
+      }
+    });
+  }, [address, ledgerSecInt, saleActive]);
+
+  const pendingRevengeTargets = useMemo(() => {
+    const now = BigInt(ledgerSecInt);
+    return pendingRevengeRows.filter((r) => BigInt(r.expiry_exclusive) > now);
+  }, [pendingRevengeRows, ledgerSecInt]);
+
   const pendingRevengeStealer =
-    revengeStealerR?.status === "success"
-      ? (revengeStealerR.result as `0x${string}`)
+    pendingRevengeTargets[0]?.stealer !== undefined
+      ? (pendingRevengeTargets[0].stealer as `0x${string}`)
       : undefined;
-  const revengeDeadlineSec =
-    revengeExpiryR?.status === "success" ? BigInt(revengeExpiryR.result as bigint) : 0n;
-  const hasRevengeOpen =
-    Boolean(
-      pendingRevengeStealer &&
-        pendingRevengeStealer !== "0x0000000000000000000000000000000000000000" &&
-        BigInt(ledgerSecInt) < revengeDeadlineSec,
+  const revengeDeadlineSec = useMemo(() => {
+    if (pendingRevengeTargets.length === 0) {
+      return 0n;
+    }
+    return pendingRevengeTargets.reduce(
+      (min, r) => {
+        const e = BigInt(r.expiry_exclusive);
+        return min === 0n || e < min ? e : min;
+      },
+      0n,
     );
+  }, [pendingRevengeTargets]);
+  const hasRevengeOpen = pendingRevengeTargets.length > 0;
+
+  useEffect(() => {
+    loadPendingRevenge();
+  }, [loadPendingRevenge]);
 
   const guardUntilSec =
     warbowGuardUntilR?.status === "success" ? BigInt(warbowGuardUntilR.result as bigint) : 0n;
@@ -1334,6 +1365,7 @@ export function useTimeCurveArenaModel() {
         podiumRows: podiumReads.data ?? [],
         warbowPodiumWallets: warbowPodiumWalletList,
         pendingRevengeStealer,
+        pendingRevengeStealers: pendingRevengeTargets.map((t) => t.stealer),
       }),
     [
       address,
@@ -1348,6 +1380,7 @@ export function useTimeCurveArenaModel() {
       podiumReads.data,
       warbowPodiumWalletList,
       pendingRevengeStealer,
+      pendingRevengeTargets,
     ],
   );
 
@@ -1450,10 +1483,11 @@ export function useTimeCurveArenaModel() {
   const refetchAll = useCallback(() => {
     void refetch();
     void refetchUserSale();
+    loadPendingRevenge();
     if (address && indexerBaseUrl()) {
       void fetchTimecurveBuyerStats(address).then(setBuyerStats);
     }
-  }, [refetch, refetchUserSale, address]);
+  }, [refetch, refetchUserSale, address, loadPendingRevenge]);
 
   const expectedTokenFromCharms = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {
@@ -2423,7 +2457,7 @@ export function useTimeCurveArenaModel() {
     }
   }
 
-  async function runWarBowRevenge() {
+  async function runWarBowRevenge(stealerArg?: `0x${string}`) {
     setBuyErr(null);
     if (failIfWrongChainForWrites()) return;
     if (buyFeeRoutingEnabled === false) {
@@ -2432,7 +2466,8 @@ export function useTimeCurveArenaModel() {
       );
       return;
     }
-    if (!tc || !address || !pendingRevengeStealer) {
+    const stealer = stealerArg ?? pendingRevengeStealer;
+    if (!tc || !address || !stealer) {
       return;
     }
     try {
@@ -2441,7 +2476,7 @@ export function useTimeCurveArenaModel() {
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "warbowRevenge",
-        args: [pendingRevengeStealer],
+        args: [stealer],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
@@ -2595,6 +2630,7 @@ export function useTimeCurveArenaModel() {
     payWith,
     pendingRef,
     pendingRevengeStealer,
+    pendingRevengeTargets,
     perCharmPayQuoteLoading,
     phaseLedgerSecInt,
     podiumPayoutPreview,
@@ -2628,8 +2664,7 @@ export function useTimeCurveArenaModel() {
     refetchUserSale,
     refetchWarbowPolicy,
     revengeDeadlineSec,
-    revengeExpiryR,
-    revengeStealerR,
+    revengeIndexerConfigured: Boolean(indexerBaseUrl()),
     runVoid,
     runWarBowClaimFlag,
     runWarBowGuard,
