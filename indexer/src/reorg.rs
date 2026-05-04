@@ -138,6 +138,8 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_timecurve_buy_router_kumbaya",
         "idx_timecurve_buy_router_set",
         "idx_timecurve_presale_vesting_set",
+        "idx_timecurve_unredeemed_launched_token_recipient_set",
+        "idx_timecurve_unredeemed_launched_token_swept",
         "idx_timecurve_charm_redemption_enabled",
         "idx_timecurve_charms_redeemed",
         "idx_timecurve_prizes_distributed",

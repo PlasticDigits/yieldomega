@@ -78,6 +78,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant SECONDS_PER_DAY = 86_400;
     /// @notice Wall-clock upper bound (seconds) on interactive sale phase from `saleStart` for buys & WarBow burns (GitLab #124 / audit I-01).
     uint256 public constant MAX_SALE_ELAPSED_SEC = 300 * SECONDS_PER_DAY;
+    /// @notice Governance may sweep unredeemed **launchedToken** (full ERC-20 balance here) only after this many
+    ///         seconds after **`saleEndedAt`** (set in `endSale`). Mirrors the **empty-podium residual** pattern
+    ///         (GitLab #116 / audit M-01) for the DOUB sale bucket — [GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128).
+    uint256 public constant UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC = 7 days;
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
     uint16 public constant REFERRAL_EACH_BPS = 500; // 5% each to referrer + buyer (CHARM weight)
@@ -185,6 +189,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
     /// @dev Sink for **`distributePrizes`** category slice remainder when no payable winner (partial/empty podium). GitLab #116.
     event PodiumResidualRecipientSet(address indexed recipient);
+    /// @dev Governance sink for **`sweepUnredeemedLaunchedToken`** (GitLab #128).
+    event UnredeemedLaunchedTokenRecipientSet(address indexed recipient);
+    /// @dev Full **`launchedToken`** balance forwarded after grace — GitLab #128.
+    event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
     event PrizesDistributed();
     event ReferralApplied(
         address indexed buyer,
@@ -316,6 +324,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function setPodiumResidualRecipient(address recipient) external onlyOwner {
         podiumResidualRecipient = recipient;
         emit PodiumResidualRecipientSet(recipient);
+    }
+
+    /// @notice Governance sink for **`sweepUnredeemedLaunchedToken`** (GitLab #128). Independent from
+    ///         **`podiumResidualRecipient`** (CL8Y podium slice remainder — #116).
+    function setUnredeemedLaunchedTokenRecipient(address recipient) external onlyOwner {
+        unredeemedLaunchedTokenRecipient = recipient;
+        emit UnredeemedLaunchedTokenRecipientSet(recipient);
     }
 
     /// @dev `buyFeeRoutingEnabled` — blocks `_buy` and WarBow CL8Y pulls (not `claimWarBowFlag`, which burns no CL8Y).
@@ -712,6 +727,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(!ended, "TimeCurve: already ended");
         require(block.timestamp >= deadline, "TimeCurve: timer not expired");
         ended = true;
+        saleEndedAt = block.timestamp;
         _finalizeLastBuyers();
         emit SaleEnded(block.timestamp, totalRaised, _totalBuys);
     }
@@ -728,6 +744,34 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(tokenOut > 0, "TimeCurve: nothing to redeem");
         launchedToken.safeTransfer(msg.sender, tokenOut);
         emit CharmsRedeemed(msg.sender, tokenOut);
+    }
+
+    /// @notice **Owner-only** sweep of **all** `launchedToken` held here (unredeemed sale allocation + rounding dust)
+    ///         to **`unredeemedLaunchedTokenRecipient`**, callable only when **`block.timestamp >= saleEndedAt +
+    ///         UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC`**. Participants who have not redeemed by then forfeit the
+    ///         remainder to governance routing — GitLab #128.
+    function sweepUnredeemedLaunchedToken() external onlyOwner nonReentrant {
+        require(ended, "TimeCurve: not ended");
+        require(saleEndedAt > 0, "TimeCurve: sale end time unset");
+        require(
+            block.timestamp >= saleEndedAt + UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC,
+            "TimeCurve: unredeemed grace active"
+        );
+        address to = unredeemedLaunchedTokenRecipient;
+        require(to != address(0), "TimeCurve: zero unredeemed launched token recipient");
+        uint256 bal = launchedToken.balanceOf(address(this));
+        require(bal > 0, "TimeCurve: nothing to sweep");
+        launchedToken.safeTransfer(to, bal);
+        emit UnredeemedLaunchedTokenSwept(to, bal);
+    }
+
+    /// @notice `onlyOwner` **backfill** for UUPS upgrades when **`ended == true`** was reached **before** `saleEndedAt`
+    ///         existed: set `saleEndedAt` to the real **`SaleEnded`** timestamp (from canonical logs). Callable **once**.
+    function repairSaleEndedAt(uint256 endedAtTs) external onlyOwner {
+        require(ended, "TimeCurve: not ended");
+        require(saleEndedAt == 0, "TimeCurve: sale ended at already set");
+        require(endedAtTs > 0 && endedAtTs <= block.timestamp, "TimeCurve: invalid sale ended at");
+        saleEndedAt = endedAtTs;
     }
 
     /// @notice **40%** last buy · **25%** WarBow · **20%** defended streak · **15%** time booster
@@ -957,5 +1001,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Protocol treasury / ops sink for **unpaid** podium slice remainder (GitLab #116 / audit M-01). Wires like **`TimeCurveBuyRouter.cl8yProtocolTreasury`** in ops.
     address public podiumResidualRecipient;
 
-    uint256[46] private __gap;
+    /// @notice Where **`sweepUnredeemedLaunchedToken`** sends the remaining **`launchedToken`** balance after grace (GitLab #128).
+    address public unredeemedLaunchedTokenRecipient;
+
+    /// @notice **`block.timestamp` when `endSale()` succeeded** — starts the unredeemed-launch-token sweep grace clock.
+    uint256 public saleEndedAt;
+
+    uint256[44] private __gap;
 }

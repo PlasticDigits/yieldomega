@@ -657,6 +657,13 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::TimeCurveDoubPresaleVestingSet {
             vesting: addr_byte(0x45),
         }),
+        next(DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet {
+            recipient: addr_byte(0x46),
+        }),
+        next(DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept {
+            recipient: addr_byte(0x46),
+            amount: u2,
+        }),
         next(DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: u2 }),
         next(DecodedEvent::PodiumPoolPrizePusherSet { pusher: addr_byte(0x55) }),
         next(DecodedEvent::RabbitBurrowReserveBuckets {
@@ -826,6 +833,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_timecurve_presale_vesting_set", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(
+            &pool,
+            "idx_timecurve_unredeemed_launched_token_recipient_set",
+            100
+        )
+        .await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_unredeemed_launched_token_swept", 100).await,
         1
     );
     assert_eq!(
