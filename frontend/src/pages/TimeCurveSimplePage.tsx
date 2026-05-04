@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useReadContract, useWatchContractEvent } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -1128,6 +1129,9 @@ export function TimeCurveSimplePage() {
                   </p>
                 ) : null}
               </div>
+              <Cl8yTimeCurveUnlimitedApprovalFieldset
+                disabled={session.phase !== "saleActive" || !session.walletConnected}
+              />
               {session.buyFeeRoutingEnabled === false && (
                 <StatusMessage variant="muted">
                   Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable.
