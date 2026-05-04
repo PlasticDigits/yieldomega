@@ -16,6 +16,7 @@ import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
 
 /// @notice Shared **implementation → ERC1967Proxy + initialize** helpers for core UUPS contracts (GitLab #54).
+/// @dev Called contracts enforce **`admin != address(0)`** onchain where they grant **`DEFAULT_ADMIN_ROLE`** ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)); tests cover zero-admin reverts — do not rely on this library for that invariant.
 library UUPSDeployLib {
     function deployPodiumPool(address admin) internal returns (PodiumPool) {
         PodiumPool impl = new PodiumPool();

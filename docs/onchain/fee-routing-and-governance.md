@@ -56,6 +56,8 @@ Fees from **Rabbit Treasury activity** (deposits, withdrawals, game flows), **se
 
 This section states **intent**. Exact onchain roles (multisig, governor contract, module registry) are implementation details.
 
+**Deployer / EVM boundary ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120), audit L-03):** **`FeeRouter`**, **`PodiumPool`**, **`FeeSink`** derivatives (**`CL8YProtocolTreasury`**, **`DoubLPIncentives`**, **`EcosystemTreasury`**), **`RabbitTreasury`**, **`Doubloon`**, and **`LeprechaunNFT`** reject **`admin == address(0)`** in their initializers or constructors **before** granting **`DEFAULT_ADMIN_ROLE`** (and co-granted roles in the same block). A zero admin would not yield a usable **`AccessControl`** governor; deployment scripts must pass a non-zero admin account or contract.
+
 <a id="governance-fee-split-weights"></a>
 
 ### Fee split weights and TimeCurve sink destinations
