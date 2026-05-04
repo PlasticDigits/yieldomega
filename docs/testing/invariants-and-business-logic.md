@@ -190,7 +190,7 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 |-----------|-------|
 | **Hero visibility** | `PageHeroArcadeBanner` renders `WarbowHeroActions` with wallet context and **Steal / Guard / Revenge** controls before the detailed `WarbowSection`. |
 | **Steal candidate source** | Candidates are deduped from `warbowLadderPodium()` and `/v1/timecurve/warbow/leaderboard`; indexer rows are only discovery hints. |
-| **Onchain eligibility remains final** | Selecting a candidate writes `stealVictimInput`, which triggers the existing live contract reads for victim BP and `stealsReceivedOnDay`; `describeStealPreflight` and wallet simulation still gate the action. |
+| **Onchain eligibility remains final** | Selecting a candidate writes `stealVictimInput`, which triggers the existing live contract reads for victim BP, `stealsReceivedOnDay`, and `stealsCommittedByAttackerOnDay`; `describeStealPreflight` and wallet simulation still gate the action. |
 | **Write barriers** | Hero WarBow controls sit under `ChainMismatchWriteBarrier`; submit functions also abort on `chainMismatchWriteMessage` and `buyFeeRoutingEnabled === false`. |
 | **Empty state** | No suggested target renders a clear empty state and leaves the manual address path in `WarbowSection` available. |
 
