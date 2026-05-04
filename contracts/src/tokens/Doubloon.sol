@@ -9,6 +9,7 @@ contract Doubloon is ERC20, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(address admin) ERC20("Doubloon", "DOUB") {
+        require(admin != address(0), "Doubloon: zero admin");
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
