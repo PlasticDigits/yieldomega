@@ -138,10 +138,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Guard reduces incoming steal % until this timestamp (exclusive).
     mapping(address => uint256) public warbowGuardUntil;
 
-    /// @notice Last stealer for revenge (overwritten on each new steal **to** this victim).
-    mapping(address => address) public warbowPendingRevengeStealer;
-    /// @notice Inclusive upper bound for `warbowRevenge` (`< expiry` check).
-    mapping(address => uint256) public warbowPendingRevengeExpiry;
+    /// @notice Per-(victim, stealer) revenge window: valid while `block.timestamp < value`. Zero = no open window.
+    /// @dev Replacing the single-slot model (GitLab #135): colluding stealers can no longer rotate one pointer.
+    mapping(address victim => mapping(address stealer => uint256)) public warbowPendingRevengeExpiryExclusive;
+    /// @notice Monotonic sequence per (victim, stealer) for observability / ordering (emitted on each qualifying steal).
+    mapping(address victim => mapping(address stealer => uint64)) public warbowPendingRevengeStealSeq;
 
     struct Podium {
         address[3] winners;
@@ -195,6 +196,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Full **`launchedToken`** balance forwarded after grace — GitLab #128.
     event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
     event PrizesDistributed();
+    /// @dev GitLab #129 — permissionless repair when BP steals leave `_warbowPodium` stale.
+    event WarbowPodiumRefreshed(address indexed caller, uint256 candidateCount);
+    /// @dev GitLab #129 — owner rebuild + latch before non-empty `distributePrizes`.
+    event WarbowPodiumFinalized(address indexed owner_, uint256 candidateCount);
     event ReferralApplied(
         address indexed buyer,
         address indexed referrer,
@@ -203,6 +208,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 refereeCharmAdded,
         uint256 grossAmountRoutedToFeeRouter
     );
+    /// @dev `bypassedVictimDailyLimit` is **historical naming** — **true** iff a **daily-limit bypass** burn applied ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134): victim **or** attacker UTC-day gate).
     event WarBowSteal(
         address indexed attacker,
         address indexed victim,
@@ -211,6 +217,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         bool bypassedVictimDailyLimit,
         uint256 victimBpAfter,
         uint256 attackerBpAfter
+    );
+    /// @dev Emitted on every successful `warbowSteal` so indexers rebuild multi-stealer pending sets (GitLab #135).
+    event WarBowRevengeWindowOpened(
+        address indexed victim, address indexed stealer, uint256 expiryExclusive, uint256 stealSeq
     );
     event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 amountBp, uint256 burnPaidWad);
     event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad);
@@ -594,8 +604,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP, battlePoints[msg.sender]);
     }
 
-    /// @notice Burn **1 CL8Y** (accepted asset); steal **10%** (or **1%** if victim guarded) of victim’s BP. Victim must have **≥ 2×** your BP.
-    /// @param payBypassBurn If victim already hit **3** steals today, pass `true` and pay **+50 CL8Y** to proceed.
+    /// @notice Burn **1 CL8Y** (accepted asset); steal **`_warbowStealDrainBp`** of victim’s BP (**10%** or **1%** if guarded). Requires **`battlePoints(attacker) > 0`** and **`battlePoints(victim) ≥ 2 × battlePoints(attacker)`**.
+    /// @param payBypassBurn When **either** the victim **or** this attacker hit **3** steals on this UTC day before this tx, pass `true` and pay **+50 CL8Y** once to proceed ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
@@ -606,11 +616,20 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         uint256 day = block.timestamp / SECONDS_PER_DAY;
         uint8 victimStealsToday = stealsReceivedOnDay[victim][day];
+        uint8 attackerStealsToday = stealsCommittedByAttackerOnDay[msg.sender][day];
+        bool victimLimitBefore = victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
+        bool attackerLimitBefore = attackerStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
+
         _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);
         uint256 totalBurn = WARBOW_STEAL_BURN_WAD;
-        if (victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY) {
+        if (victimLimitBefore) {
             require(payBypassBurn, "TimeCurve: steal victim daily limit");
+        } else if (attackerLimitBefore) {
+            require(payBypassBurn, "TimeCurve: steal attacker daily limit");
+        }
+
+        if (victimLimitBefore || attackerLimitBefore) {
             _pullAcceptedExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
             emit WarBowCl8yBurned(
                 msg.sender, uint8(WarBowBurnReason.StealLimitBypass), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD
@@ -622,11 +641,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         uint256 vbp = battlePoints[victim];
         uint256 abp = battlePoints[msg.sender];
-        require(vbp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
+        require(abp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
 
         uint16 bps =
             block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
-        uint256 take = (vbp * uint256(bps)) / 10_000;
+        uint256 take = _warbowStealDrainBp(vbp, bps);
         require(take > 0, "TimeCurve: steal zero");
 
         _subBattlePoints(victim, take);
@@ -635,22 +654,28 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         if (victimStealsToday < type(uint8).max) {
             stealsReceivedOnDay[victim][day] = victimStealsToday + 1;
         }
+        if (attackerStealsToday < type(uint8).max) {
+            stealsCommittedByAttackerOnDay[msg.sender][day] = attackerStealsToday + 1;
+        }
 
-        warbowPendingRevengeStealer[victim] = msg.sender;
-        warbowPendingRevengeExpiry[victim] = block.timestamp + WARBOW_REVENGE_WINDOW_SEC;
+        uint256 exp = block.timestamp + WARBOW_REVENGE_WINDOW_SEC;
+        warbowPendingRevengeExpiryExclusive[victim][msg.sender] = exp;
+        warbowPendingRevengeStealSeq[victim][msg.sender] += 1;
+        emit WarBowRevengeWindowOpened(victim, msg.sender, exp, warbowPendingRevengeStealSeq[victim][msg.sender]);
 
+        bool limitBypassBurned = victimLimitBefore || attackerLimitBefore;
         emit WarBowSteal(
             msg.sender,
             victim,
             take,
             totalBurn,
-            payBypassBurn && victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY,
+            payBypassBurn && limitBypassBurned,
             battlePoints[victim],
             battlePoints[msg.sender]
         );
     }
 
-    /// @notice Within **24h** of `warbowSteal` **to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once.
+    /// @notice Within **24h** of a `warbowSteal` **from `stealer` to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once (per stealer slot).
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
@@ -658,22 +683,22 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _requireSaleRoundTimerStillLive();
         _requireSaleInteractionsEnabled();
         require(stealer != address(0), "TimeCurve: zero stealer");
-        require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
-        require(block.timestamp < warbowPendingRevengeExpiry[msg.sender], "TimeCurve: revenge expired");
+        uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
+        require(exp != 0, "TimeCurve: revenge not pending");
+        require(block.timestamp < exp, "TimeCurve: revenge expired");
 
         _pullAcceptedExact(msg.sender, WARBOW_REVENGE_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Revenge), WARBOW_REVENGE_BURN_WAD);
         acceptedAsset.safeTransfer(BURN_SINK, WARBOW_REVENGE_BURN_WAD);
 
         uint256 sbp = battlePoints[stealer];
-        uint256 take = (sbp * uint256(WARBOW_STEAL_DRAIN_BPS)) / 10_000;
+        uint256 take = _warbowStealDrainBp(sbp, WARBOW_STEAL_DRAIN_BPS);
         require(take > 0, "TimeCurve: revenge zero");
 
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
 
-        warbowPendingRevengeStealer[msg.sender] = address(0);
-        warbowPendingRevengeExpiry[msg.sender] = 0;
+        warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
 
         emit WarBowRevenge(msg.sender, stealer, take, WARBOW_REVENGE_BURN_WAD);
     }
@@ -806,6 +831,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             return;
         }
         require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");
+        require(warbowPodiumFinalized, "TimeCurve: warbow podium not finalized");
 
         uint256 sLast = (prizePool * 40) / 100;
         uint256 sWar = (prizePool * 25) / 100;
@@ -1002,6 +1028,55 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
 
+    /// @dev Integer floor BP drain for steals/revenge (**bps / 10_000**). GitLab #134 documents **`INV-WARBOW-134-DRAIN`**.
+    function _warbowStealDrainBp(uint256 victimBp, uint16 drainBps) internal pure returns (uint256) {
+        return (victimBp * uint256(drainBps)) / 10_000;
+    }
+
+    function _clearWarbowPodium() internal {
+        Podium storage p = _warbowPodium;
+        p.winners[0] = address(0);
+        p.winners[1] = address(0);
+        p.winners[2] = address(0);
+        p.values[0] = 0;
+        p.values[1] = 0;
+        p.values[2] = 0;
+    }
+
+    /// @notice Permissionless podium repair — re-applies `_updateWarbowPodium` for each candidate using **live**
+    ///         `battlePoints`. Pass current podium occupants plus wallets that may have overtaken them (gas ∝ len).
+    /// @dev GitLab #129 — BP can drop via steals; stale slots are not auto-cleared unless addressed. Any `refreshWarbowPodium`
+    ///      sets `warbowPodiumFinalized = false`; the owner must call `finalizeWarbowPodium` again before `distributePrizes`
+    ///      with a non-zero prize pool.
+    function refreshWarbowPodium(address[] calldata candidates) external nonReentrant {
+        warbowPodiumFinalized = false;
+        for (uint256 i; i < candidates.length; ++i) {
+            address c = candidates[i];
+            if (c == address(0)) continue;
+            _updateWarbowPodium(c, battlePoints[c]);
+        }
+        emit WarbowPodiumRefreshed(msg.sender, candidates.length);
+    }
+
+    /// @notice Owner-only: clear WarBow podium and rebuild top-3 from `battlePoints` for every **non-zero** BP address in `candidates`.
+    ///         Sets `warbowPodiumFinalized` for non-empty `distributePrizes` (GitLab #129).
+    /// @dev Pass a superset of BP earners (indexer / offchain). Omitted wallets cannot influence the rebuild.
+    function finalizeWarbowPodium(address[] calldata candidates) external onlyOwner nonReentrant {
+        require(ended, "TimeCurve: not ended");
+        require(!prizesDistributed, "TimeCurve: prizes done");
+        _clearWarbowPodium();
+        for (uint256 i; i < candidates.length; ++i) {
+            address c = candidates[i];
+            if (c == address(0)) continue;
+            uint256 bp = battlePoints[c];
+            if (bp > 0) {
+                _updateWarbowPodium(c, bp);
+            }
+        }
+        warbowPodiumFinalized = true;
+        emit WarbowPodiumFinalized(msg.sender, candidates.length);
+    }
+
     /// @notice If false, reverts `buy` and WarBow CL8Y actions (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y burn.)
     bool public buyFeeRoutingEnabled;
     /// @notice If false, `redeemCharms` reverts. Default: false until owner signoff.
@@ -1024,5 +1099,11 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice **`block.timestamp` when `endSale()` succeeded** — starts the unredeemed-launch-token sweep grace clock.
     uint256 public saleEndedAt;
 
-    uint256[44] private __gap;
+    /// @notice Unix-day id → steals **committed by this attacker wallet** that UTC day ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
+    mapping(address => mapping(uint256 => uint8)) public stealsCommittedByAttackerOnDay;
+
+    /// @notice Latched by `finalizeWarbowPodium`; required when `distributePrizes` pays a non-zero podium pool. GitLab #129.
+    bool public warbowPodiumFinalized;
+
+    uint256[42] private __gap;
 }

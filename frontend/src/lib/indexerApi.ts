@@ -193,6 +193,27 @@ export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
   );
 }
 
+export type WarbowPendingRevengeItem = {
+  stealer: string;
+  expiry_exclusive: string;
+  steal_seq: string;
+  window_block_number: string;
+  window_log_index: number;
+};
+
+export type WarbowPendingRevengeResponse = {
+  victim: string;
+  now_sec: number;
+  items: WarbowPendingRevengeItem[];
+  note?: string;
+};
+
+/** GitLab #135: open (victim, stealer) windows reconciled from `WarBowRevengeWindowOpened` + `WarBowRevenge`. */
+export async function fetchWarbowPendingRevenge(victim: string, nowSec: number) {
+  const path = `/v1/timecurve/warbow/pending-revenge?victim=${encodeURIComponent(victim)}&now_sec=${nowSec}`;
+  return getJson<WarbowPendingRevengeResponse>(path);
+}
+
 export type TimecurveBuyerStats = {
   buyer: string;
   indexed_charm_weight: string;

@@ -155,6 +155,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
         "idx_timecurve_warbow_flag_claimed",
         "idx_timecurve_warbow_flag_penalized",
         "idx_timecurve_warbow_guard",
+        "idx_timecurve_warbow_revenge_window",
         "idx_timecurve_warbow_revenge",
         "idx_timecurve_warbow_steal",
     ] {

@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.12.0";
+const SCHEMA_VERSION: &str = "1.13.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -78,6 +78,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/timecurve/warbow/guard-latest",
             get(timecurve_warbow_guard_latest),
+        )
+        .route(
+            "/v1/timecurve/warbow/pending-revenge",
+            get(timecurve_warbow_pending_revenge),
         )
         .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
@@ -837,6 +841,114 @@ async fn timecurve_warbow_guard_latest(
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
+}
+
+/// Open revenge windows for a victim (GitLab #135): latest `WarBowRevengeWindowOpened` per stealer,
+/// filtered by chain `now_sec` and excluding stealer slots consumed by a later `WarBowRevenge` row.
+async fn timecurve_warbow_pending_revenge(
+    State(state): State<AppState>,
+    Query(q): Query<WarBowPendingRevengeQuery>,
+) -> Response {
+    if !valid_0x_address20(&q.victim) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "victim must be a 0x-prefixed 20-byte address" })),
+        )
+            .into_response();
+    }
+    if q.now_sec < 0 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "now_sec must be >= 0 (chain Unix seconds)" })),
+        )
+            .into_response();
+    }
+
+    let now_s = q.now_sec.to_string();
+    let rows = sqlx::query(
+        r#"WITH latest AS (
+            SELECT DISTINCT ON (stealer)
+                stealer,
+                expiry_exclusive,
+                steal_seq,
+                block_number,
+                log_index
+            FROM idx_timecurve_warbow_revenge_window
+            WHERE LOWER(victim) = LOWER($1)
+            ORDER BY stealer, block_number DESC, log_index DESC
+        )
+        SELECT l.stealer,
+               l.expiry_exclusive::text AS expiry_exclusive,
+               l.steal_seq::text AS steal_seq,
+               l.block_number::text AS window_block_number,
+               l.log_index
+        FROM latest l
+        WHERE l.expiry_exclusive > $2::numeric
+          AND NOT EXISTS (
+            SELECT 1 FROM idx_timecurve_warbow_revenge r
+            WHERE LOWER(r.avenger) = LOWER($1)
+              AND LOWER(r.stealer) = LOWER(l.stealer)
+              AND (
+                r.block_number > l.block_number
+                OR (r.block_number = l.block_number AND r.log_index > l.log_index)
+              )
+          )
+        ORDER BY l.stealer"#,
+    )
+    .bind(&q.victim)
+    .bind(&now_s)
+    .fetch_all(&state.pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let items: Vec<WarBowPendingRevengeRow> = rows
+        .into_iter()
+        .filter_map(|r| {
+            Some(WarBowPendingRevengeRow {
+                stealer: r.try_get("stealer").ok()?,
+                expiry_exclusive: r.try_get("expiry_exclusive").ok()?,
+                steal_seq: r.try_get("steal_seq").ok()?,
+                window_block_number: r.try_get("window_block_number").ok()?,
+                window_log_index: r.try_get("log_index").ok()?,
+            })
+        })
+        .collect();
+
+    let body = json!({
+        "victim": q.victim,
+        "now_sec": q.now_sec,
+        "items": items,
+        "note": "Each item is an unconsumed (victim, stealer) window; `expiry_exclusive` matches onchain `warbowPendingRevengeExpiryExclusive` semantics (`block.timestamp < expiry`).",
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct WarBowPendingRevengeQuery {
+    pub victim: String,
+    pub now_sec: i64,
+}
+
+#[derive(Serialize)]
+struct WarBowPendingRevengeRow {
+    stealer: String,
+    expiry_exclusive: String,
+    steal_seq: String,
+    window_block_number: String,
+    window_log_index: i32,
 }
 
 #[derive(Debug, serde::Deserialize)]

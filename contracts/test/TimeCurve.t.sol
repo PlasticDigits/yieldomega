@@ -161,7 +161,49 @@ contract TimeCurveTest is Test {
     /// @dev `vm.warp(ts + 1)` can be a no-op if already at `ts`; use onchain `nextBuyAllowedAt` for reliable pacing.
     function _warpPastBuyCooldown(TimeCurve target, address user) internal {
         uint256 until = target.nextBuyAllowedAt(user);
-        vm.warp(until);
+        uint256 t = block.timestamp;
+        if (until > t) {
+            vm.warp(until);
+        }
+    }
+
+    /// @dev GitLab #129 — default WarBow finalist addresses (`alice/bob/carol/dave`) used in podium tests here.
+    function _warbowCandidateQuartet() internal view returns (address[] memory c) {
+        c = new address[](4);
+        c[0] = alice;
+        c[1] = bob;
+        c[2] = carol;
+        c[3] = dave;
+    }
+
+    function _finalizeWarbowQuartet(TimeCurve target) internal {
+        address[] memory c = _warbowCandidateQuartet();
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowOne(TimeCurve target, address who) internal {
+        address[] memory c = new address[](1);
+        c[0] = who;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowPair(TimeCurve target, address a, address b) internal {
+        address[] memory c = new address[](2);
+        c[0] = a;
+        c[1] = b;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _finalizeWarbowTriple(TimeCurve target, address a, address b2, address c_) internal {
+        address[] memory c = new address[](3);
+        c[0] = a;
+        c[1] = b2;
+        c[2] = c_;
+        target.finalizeWarbowPodium(c);
+    }
+
+    function _advanceWarbowDay() internal {
+        vm.warp((block.timestamp / ONE_DAY + 1) * ONE_DAY);
     }
 
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
@@ -812,6 +854,115 @@ contract TimeCurveTest is Test {
         assertEq(vCat[0], values[0]);
     }
 
+    /// @dev GitLab #129 — BP drops via steals; `refreshWarbowPodium` repaints from live `battlePoints`.
+    function test_warbow_podium_steal_then_refresh_updates_top_three_snapshot() public {
+        tc.startSaleAt(block.timestamp);
+        _fundWarbowStealers();
+
+        uint256 b = tc.WARBOW_BASE_BUY_BP();
+        for (uint256 i; i < 12; ++i) {
+            _warpPastBuyCooldown(tc, carol);
+            vm.prank(carol);
+            tc.buy(1e18);
+        }
+        for (uint256 i; i < 16; ++i) {
+            _warpPastBuyCooldown(tc, bob);
+            vm.prank(bob);
+            tc.buy(1e18);
+        }
+        for (uint256 i; i < 60; ++i) {
+            _warpPastBuyCooldown(tc, alice);
+            vm.prank(alice);
+            tc.buy(1e18);
+        }
+
+        assertEq(tc.battlePoints(alice), 60 * b);
+
+        for (uint256 i; i < 80; ++i) {
+            uint256 abpAlice = tc.battlePoints(alice);
+            uint256 abpDave = tc.battlePoints(dave);
+            if (abpAlice < abpDave * 2 || abpAlice == 0) break;
+            vm.prank(dave);
+            tc.warbowSteal(alice, false);
+            _advanceWarbowDay();
+        }
+
+        for (uint256 i; i < 40; ++i) {
+            uint256 bbpBob = tc.battlePoints(bob);
+            uint256 cbpCarol = tc.battlePoints(carol);
+            if (bbpBob == 0) break;
+            if (bbpBob < cbpCarol * 2) break;
+            vm.prank(carol);
+            tc.warbowSteal(bob, false);
+            _advanceWarbowDay();
+        }
+
+        assertGt(tc.battlePoints(dave), tc.battlePoints(bob));
+
+        tc.refreshWarbowPodium(_warbowCandidateQuartet());
+
+        (address[3] memory w,) = tc.warbowLadderPodium();
+        assertEq(w[0], alice);
+        assertEq(w[1], dave);
+        assertEq(w[2], bob);
+    }
+
+    function test_finalizeWarbowPodium_enables_nonzero_pool_distributePrizes() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.expectRevert("TimeCurve: warbow podium not finalized");
+        tc.distributePrizes();
+
+        assertFalse(tc.warbowPodiumFinalized());
+        _finalizeWarbowOne(tc, alice);
+
+        tc.distributePrizes();
+        assertTrue(tc.warbowPodiumFinalized());
+        assertTrue(tc.prizesDistributed());
+    }
+
+    function test_refreshWarbowPodium_invalidates_finalize_latch() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        _finalizeWarbowOne(tc, alice);
+        assertTrue(tc.warbowPodiumFinalized());
+
+        tc.refreshWarbowPodium(_warbowCandidateQuartet());
+        assertFalse(tc.warbowPodiumFinalized());
+
+        vm.expectRevert("TimeCurve: warbow podium not finalized");
+        tc.distributePrizes();
+    }
+
+    function test_finalizeWarbowPodium_reverts_before_endSale() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+
+        vm.expectRevert("TimeCurve: not ended");
+        _finalizeWarbowQuartet(tc);
+    }
+
+    function _fundWarbowStealers() internal {
+        _fundAndApprove(alice, 500e18);
+        _fundAndApprove(bob, 500e18);
+        _fundAndApprove(carol, 500e18);
+        _fundAndApprove(dave, 10_000e18);
+        vm.prank(dave);
+        reserve.approve(address(tc), type(uint256).max);
+    }
+
     function test_time_booster_tracks_effective_seconds_not_nominal_when_clipped() public {
         uint256 cap = 200;
         TimeCurve tcClip = _deployTimeCurve(
@@ -878,7 +1029,13 @@ contract TimeCurveTest is Test {
     function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
         tc.startSaleAt(block.timestamp);
 
+        _fundAndApprove(bob, 2e18);
+        vm.prank(bob);
+        tc.buy(1e18);
         _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
         uint256 a0 = tc.battlePoints(alice);
@@ -889,7 +1046,7 @@ contract TimeCurveTest is Test {
         tc.warbowSteal(alice, false);
 
         assertEq(tc.battlePoints(alice), a0 - (a0 * 1000) / 10_000);
-        assertEq(tc.battlePoints(bob), (a0 * 1000) / 10_000);
+        assertEq(tc.battlePoints(bob), tc.WARBOW_BASE_BUY_BP() + (a0 * 1000) / 10_000);
         assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
     }
 
@@ -910,9 +1067,76 @@ contract TimeCurveTest is Test {
         tc.warbowSteal(bob, false);
     }
 
-    function test_warbow_revenge_once() public {
+    /// @dev GitLab #134 — zero-BP attackers cannot satisfy **`abp > 0`** arm of the 2× rule.
+    function test_warbow_steal_revert_zero_attacker_bp() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _fundAndApprove(carol, tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(carol);
+        vm.expectRevert("TimeCurve: steal 2x rule");
+        tc.warbowSteal(alice, false);
+    }
+
+    /// @dev GitLab #134 — per-attacker UTC cap mirrors victim cap; 4th steal needs bypass burn allowance.
+    function test_warbow_steal_attacker_daily_limit_fourth_needs_bypass() public {
+        address v0 = makeAddr("capV0");
+        address v1 = makeAddr("capV1");
+        address v2 = makeAddr("capV2");
+        address v3 = makeAddr("capV3");
+        address stealer = makeAddr("capStealer");
+
+        tc.startSaleAt(block.timestamp);
+
+        _fundAndApprove(stealer, 20e18);
+        vm.prank(stealer);
+        tc.buy(1e18);
+
+        _boostVictimBpForSteal(tc, v0);
+        _boostVictimBpForSteal(tc, v1);
+        _boostVictimBpForSteal(tc, v2);
+        _boostVictimBpForSteal(tc, v3);
+
+        uint256 burnBase = tc.WARBOW_STEAL_BURN_WAD();
+        uint256 burnBypass = tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD();
+        _fundAndApprove(stealer, 100e18);
+        vm.prank(stealer);
+        tc.warbowSteal(v0, false);
+        vm.prank(stealer);
+        tc.warbowSteal(v1, false);
+        vm.prank(stealer);
+        tc.warbowSteal(v2, false);
+
+        vm.prank(stealer);
+        vm.expectRevert("TimeCurve: steal attacker daily limit");
+        tc.warbowSteal(v3, false);
+
+        vm.prank(stealer);
+        tc.warbowSteal(v3, true);
+
+        uint256 dead = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        assertGe(dead, 4 * burnBase + burnBypass, "base + limit bypass burns");
+    }
+
+    function _boostVictimBpForSteal(TimeCurve t, address victim) internal {
+        _fundAndApproveCurve(victim, 20e18, t);
+        vm.prank(victim);
+        t.buy(1e18);
+        _warpPastBuyCooldown(t, victim);
+        vm.prank(victim);
+        t.buy(1e18);
+    }
+
+    function test_warbow_revenge_once() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(bob, 2e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
 
