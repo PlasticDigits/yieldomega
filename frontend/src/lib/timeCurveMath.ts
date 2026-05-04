@@ -5,6 +5,22 @@ export const WAD = 10n ** 18n;
 
 const SECONDS_PER_DAY = 86400n;
 
+/** Matches onchain `TimeCurve.MAX_SALE_ELAPSED_SEC` (300 wall-clock sale days; GitLab #124). */
+export const MAX_SALE_ELAPSED_SEC = 300n * SECONDS_PER_DAY;
+
+/** Caps elapsed seconds for chart/UI parity with `TimeCurve._elapsedForCharmPricing`. */
+export function capElapsedForSalePricing(elapsed: bigint): bigint {
+  if (elapsed <= 0n) return 0n;
+  return elapsed > MAX_SALE_ELAPSED_SEC ? MAX_SALE_ELAPSED_SEC : elapsed;
+}
+
+const MAX_SALE_ELAPSED_SEC_NUM = Number(MAX_SALE_ELAPSED_SEC);
+
+function capElapsedSecFloat(elapsedSec: number): number {
+  if (!Number.isFinite(elapsedSec) || elapsedSec <= 0) return 0;
+  return Math.min(elapsedSec, MAX_SALE_ELAPSED_SEC_NUM);
+}
+
 /**
  * Minimum buy at `elapsed` seconds after sale start — mirrors
  * `TimeMath.currentMinBuy` in contracts (PRB `exp` on WAD exponent).
@@ -15,10 +31,11 @@ export function currentMinBuyAt(
   growthRateWad: bigint,
   elapsed: bigint,
 ): bigint {
-  if (elapsed <= 0n) {
+  const e = capElapsedForSalePricing(elapsed);
+  if (e <= 0n) {
     return initialMinBuy;
   }
-  const exponentWad = (growthRateWad * elapsed) / SECONDS_PER_DAY;
+  const exponentWad = (growthRateWad * e) / SECONDS_PER_DAY;
   const factorFloat = Math.exp(Number(exponentWad) / Number(WAD));
   if (!Number.isFinite(factorFloat) || factorFloat <= 0) {
     return initialMinBuy;
@@ -34,12 +51,13 @@ export function sampleMinBuyCurve(
   elapsedMax: bigint,
   points: number,
 ): { elapsed: bigint; minBuy: bigint }[] {
-  if (points < 2 || elapsedMax <= 0n) {
+  const cappedMax = capElapsedForSalePricing(elapsedMax);
+  if (points < 2 || cappedMax <= 0n) {
     return [{ elapsed: 0n, minBuy: currentMinBuyAt(initialMinBuy, growthRateWad, 0n) }];
   }
   const out: { elapsed: bigint; minBuy: bigint }[] = [];
   for (let i = 0; i < points; i += 1) {
-    const elapsed = (elapsedMax * BigInt(i)) / BigInt(points - 1);
+    const elapsed = (cappedMax * BigInt(i)) / BigInt(points - 1);
     out.push({
       elapsed,
       minBuy: currentMinBuyAt(initialMinBuy, growthRateWad, elapsed),
@@ -80,7 +98,8 @@ export function maxCharmWadAt(
 
 /** Matches `LinearCharmPrice.priceWad`. */
 export function linearPriceWad(basePriceWad: bigint, dailyIncrementWad: bigint, elapsed: bigint): bigint {
-  return basePriceWad + (dailyIncrementWad * elapsed) / SECONDS_PER_DAY;
+  const e = capElapsedForSalePricing(elapsed);
+  return basePriceWad + (dailyIncrementWad * e) / SECONDS_PER_DAY;
 }
 
 /**
@@ -100,7 +119,9 @@ export function currentMinBuyAtFloat(
   elapsedSec: number,
 ): bigint {
   if (elapsedSec <= 0) return initialMinBuy;
-  const exponentWad = growthExponentWadFromElapsedFloat(growthRateWad, elapsedSec);
+  const cappedSec = capElapsedSecFloat(elapsedSec);
+  if (cappedSec <= 0) return initialMinBuy;
+  const exponentWad = growthExponentWadFromElapsedFloat(growthRateWad, cappedSec);
   const factorFloat = Math.exp(Number(exponentWad) / Number(WAD));
   if (!Number.isFinite(factorFloat) || factorFloat <= 0) {
     return initialMinBuy;
@@ -115,7 +136,8 @@ export function linearPriceWadFloat(
   dailyIncrementWad: bigint,
   elapsedSec: number,
 ): bigint {
-  const us = BigInt(Math.round(Math.max(0, elapsedSec) * 1_000_000));
+  const cappedSec = capElapsedSecFloat(elapsedSec);
+  const us = BigInt(Math.round(cappedSec * 1_000_000));
   return basePriceWad + (dailyIncrementWad * us) / (86400n * 1_000_000n);
 }
 

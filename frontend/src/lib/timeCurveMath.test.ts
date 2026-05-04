@@ -12,6 +12,7 @@ import {
   minCharmWadAt,
   minCharmWadAtFloat,
   minGrossSpendAtFloat,
+  MAX_SALE_ELAPSED_SEC,
   WAD,
 } from "./timeCurveMath";
 
@@ -51,6 +52,12 @@ describe("currentMinBuyAt", () => {
     const target = 1.44 * Number(WAD);
     const rel = Math.abs(Number(mb) - target) / target;
     expect(rel).toBeLessThan(1e-4);
+  });
+
+  it("plateaus after MAX_SALE_ELAPSED_SEC wall clock (GitLab #124)", () => {
+    const a = currentMinBuyAt(WAD, GROWTH_RATE_20PCT, MAX_SALE_ELAPSED_SEC);
+    const b = currentMinBuyAt(WAD, GROWTH_RATE_20PCT, MAX_SALE_ELAPSED_SEC + ONE_DAY);
+    expect(a).toBe(b);
   });
 });
 
