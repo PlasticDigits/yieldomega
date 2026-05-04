@@ -277,6 +277,8 @@ export function WarbowSection(props: {
   warbowLeaderboardRows: RankingRow[];
   warbowFeed: WarbowBattleFeedItem[] | null;
   address: string | undefined;
+  refreshWarBowSnapshotSuggested: boolean;
+  runRefreshWarBowPodiumSnapshot: () => Promise<void>;
   buildWarbowNarrative: (item: WarbowBattleFeedItem, viewer: string | undefined) => FeedNarrative;
   stealBypass: boolean;
   setStealBypass: (value: boolean) => void;
@@ -323,6 +325,8 @@ export function WarbowSection(props: {
     warbowLeaderboardRows,
     warbowFeed,
     address,
+    refreshWarBowSnapshotSuggested,
+    runRefreshWarBowPodiumSnapshot,
     buildWarbowNarrative,
     stealBypass,
     setStealBypass,
@@ -537,6 +541,28 @@ export function WarbowSection(props: {
         <div className="podium-block">
           <h3>Top rivals</h3>
           <RankingList rows={warbowTopRows} emptyText="Waiting for WarBow contract snapshot." />
+          {isConnected && saleActive && refreshWarBowSnapshotSuggested && (
+            <>
+              <div style={{ marginTop: "0.65rem", marginBottom: "0.5rem" }}>
+                <StatusMessage variant="muted">
+                  <strong>Snapshot mismatch.</strong> Your live Battle Points look podium-eligible, but the onchain WarBow
+                  ladder snapshot disagrees — anyone can submit <span className="mono">refreshWarbowPodium</span> so the UI
+                  and prize cuts match <span className="mono">battlePoints</span> (GitLab #129).
+                </StatusMessage>
+              </div>
+              <div className="timecurve-action-row">
+                <motion.button
+                  type="button"
+                  className="btn-secondary btn-secondary--priority"
+                  disabled={isWriting}
+                  onClick={() => void runRefreshWarBowPodiumSnapshot()}
+                  {...secondaryButtonMotion}
+                >
+                  Claim your WarBow position (refresh snapshot)
+                </motion.button>
+              </div>
+            </>
+          )}
         </div>
         <div className="podium-block">
           <h3>Chasing pack</h3>
@@ -801,7 +827,17 @@ export function BattleFeedSection(props: {
                 <ul className="event-list">
                   {prizeDist.map((item) => (
                     <li key={`${item.tx_hash}-${item.log_index}`}>
-                      PrizesDistributed · block {formatLocaleInteger(item.block_number)} · tx <TxHash hash={item.tx_hash} />
+                      {(item.kind ?? "distributed") === "settled_empty_podium_pool"
+                        ? "PrizesSettledEmptyPodiumPool"
+                        : "PrizesDistributed"}{" "}
+                      · block {formatLocaleInteger(item.block_number)}
+                      {(item.kind ?? "distributed") === "settled_empty_podium_pool" && item.podium_pool ? (
+                        <>
+                          {" "}
+                          · pool <AddressInline address={item.podium_pool} formatWallet={formatWallet} size={16} />
+                        </>
+                      ) : null}{" "}
+                      · tx <TxHash hash={item.tx_hash} />
                     </li>
                   ))}
                 </ul>

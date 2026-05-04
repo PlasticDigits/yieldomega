@@ -54,6 +54,7 @@ import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
+import { viewerShouldSuggestWarBowPodiumRefresh, warBowRefreshCandidateAddresses } from "@/lib/timeCurveWarbowSnapshotClaim";
 import {
   buildBuyBattlePointBreakdown,
   buildBuyFeedNarrative,
@@ -449,6 +450,7 @@ export function useTimeCurveArenaModel() {
         { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
       ]
     : [];
@@ -480,6 +482,7 @@ export function useTimeCurveArenaModel() {
         { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPodiumFinalized" },
       ]
     : [];
   const {
@@ -590,6 +593,7 @@ export function useTimeCurveArenaModel() {
     totalCharmWeightR,
     buyCooldownSecR,
     timeCurveBuyRouterR,
+    reservePodiumPayoutsEnabledR,
     timeCurveOwnerR,
   ] = coreTcData ?? [];
 
@@ -606,6 +610,7 @@ export function useTimeCurveArenaModel() {
     secondsPerDayR,
     warbowRevengeWindowR,
     warbowRevengeBurnR,
+    warbowPodiumFinalizedR,
   ] = warbowPolicyData ?? [];
 
   const timeCurveOwnerAddr =
@@ -642,6 +647,8 @@ export function useTimeCurveArenaModel() {
     warbowMaxStealsR?.status === "success" ? Number(warbowMaxStealsR.result as number | bigint) : 3;
   const warbowRevengeBurnWad =
     warbowRevengeBurnR?.status === "success" ? (warbowRevengeBurnR.result as bigint) : 10n ** 18n;
+  const warbowPodiumFinalized =
+    warbowPodiumFinalizedR?.status === "success" ? (warbowPodiumFinalizedR.result as boolean) : undefined;
 
   void secondsPerDayR;
   void warbowRevengeWindowR;
@@ -1408,6 +1415,27 @@ export function useTimeCurveArenaModel() {
       highlight: sameAddress(wallets[index], address),
     }));
   }, [warbowLadderPodiumR, formatWallet, address]);
+
+  const refreshWarBowSnapshotSuggested = useMemo(() => {
+    if (!address || !isAddress(address)) {
+      return false;
+    }
+    if (battlePtsR?.status !== "success" || warbowLadderPodiumR?.status !== "success") {
+      return false;
+    }
+    const [wallets, values] = warbowLadderPodiumR.result as readonly [
+      readonly `0x${string}`[],
+      readonly bigint[],
+    ];
+    return viewerShouldSuggestWarBowPodiumRefresh({
+      viewer: address as `0x${string}`,
+      viewerBp: battlePtsR.result as bigint,
+      podiumWallets: wallets,
+      podiumValues: values,
+      saleEnded,
+    });
+  }, [address, battlePtsR, warbowLadderPodiumR, saleEnded]);
+
   const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
     key: `warbow-indexer-${row.buyer}`,
     rank: index + 1,
@@ -1557,8 +1585,29 @@ export function useTimeCurveArenaModel() {
     if (address && timeCurveOwnerAddr && !sameAddress(address, timeCurveOwnerAddr)) {
       return "Only the TimeCurve owner wallet can call distributePrizes onchain (issue #70).";
     }
+    const reserveOn =
+      reservePodiumPayoutsEnabledR?.status === "success" &&
+      (reservePodiumPayoutsEnabledR.result as boolean);
+    const podiumFinalized =
+      warbowPodiumFinalizedR?.status === "success" && (warbowPodiumFinalizedR.result as boolean);
+    if (
+      reserveOn &&
+      address &&
+      timeCurveOwnerAddr &&
+      sameAddress(address, timeCurveOwnerAddr) &&
+      !podiumFinalized
+    ) {
+      return "Owner: call finalizeWarbowPodium(candidates) before distributePrizes when reserve podium payouts are on and the WarBow prize slice may be non-zero (GitLab #129). Empty pool paths still no-op.";
+    }
     return "May return without changing state if the podium pool balance is too small; retry after fees accrue.";
-  }, [ended, prizesDistributedR, address, timeCurveOwnerAddr]);
+  }, [
+    ended,
+    prizesDistributedR,
+    address,
+    timeCurveOwnerAddr,
+    reservePodiumPayoutsEnabledR,
+    warbowPodiumFinalizedR,
+  ]);
 
   const timerNarrative = useMemo(
     () => describeTimerPreview(deadlineSecondsRemaining, timerExtensionPreview),
@@ -2485,6 +2534,37 @@ export function useTimeCurveArenaModel() {
     }
   }
 
+  async function runRefreshWarBowPodiumSnapshot() {
+    setBuyErr(null);
+    if (failIfWrongChainForWrites()) {
+      return;
+    }
+    if (!tc || !address) {
+      return;
+    }
+    if (warbowLadderPodiumR?.status !== "success") {
+      setBuyErr("WarBow ladder snapshot is not loaded yet.");
+      return;
+    }
+    const [wallets] = warbowLadderPodiumR.result as readonly [readonly `0x${string}`[], readonly bigint[]];
+    const candidates = warBowRefreshCandidateAddresses({
+      viewer: address as `0x${string}`,
+      podiumWallets: wallets,
+    });
+    try {
+      const hash = await writeContractAsync({
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "refreshWarbowPodium",
+        args: [candidates],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      refetchAll();
+    } catch (e) {
+      setBuyErr(friendlyRevertFromUnknown(e));
+    }
+  }
+
   async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
     setBuyErr(null);
     if (failIfWrongChainForWrites()) return;
@@ -2663,8 +2743,11 @@ export function useTimeCurveArenaModel() {
     refetchCoreTc,
     refetchUserSale,
     refetchWarbowPolicy,
+    refreshWarBowSnapshotSuggested,
     revengeDeadlineSec,
     revengeIndexerConfigured: Boolean(indexerBaseUrl()),
+    reservePodiumPayoutsEnabledR,
+    runRefreshWarBowPodiumSnapshot,
     runVoid,
     runWarBowClaimFlag,
     runWarBowGuard,
@@ -2778,6 +2861,7 @@ export function useTimeCurveArenaModel() {
     warbowPolicyDataRaw,
     warbowPolicyError,
     warbowPolicyPending,
+    warbowPodiumFinalized,
     warbowPreflightIssue,
     warbowRank,
     warbowStealCandidates,

@@ -81,6 +81,7 @@ mod contracts {
             event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
             event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
             event PrizesDistributed();
+            event PrizesSettledEmptyPodiumPool(address indexed podiumPool);
             event ReferralApplied(
                 address indexed buyer,
                 address indexed referrer,
@@ -349,6 +350,8 @@ pub enum DecodedEvent {
         token_amount: U256,
     },
     TimeCurvePrizesDistributed,
+    /// GitLab #133 — `distributePrizes` when `PodiumPool` balance is zero (no `PrizesDistributed`).
+    TimeCurvePrizesSettledEmptyPodiumPool { podium_pool: Address },
     TimeCurveReferralApplied {
         buyer: Address,
         referrer: Address,
@@ -725,6 +728,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
         && TimeCurveEvents::PrizesDistributed::decode_log(log, true).is_ok()
     {
         return DecodedEvent::TimeCurvePrizesDistributed;
+    }
+    if topic0 == TimeCurveEvents::PrizesSettledEmptyPodiumPool::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::PrizesSettledEmptyPodiumPool::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool {
+                podium_pool: e.podiumPool,
+            };
+        }
     }
     if topic0 == TimeCurveEvents::ReferralApplied::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::ReferralApplied::decode_log(log, true) {
@@ -1323,6 +1334,26 @@ mod tests {
                 assert_eq!(b, buyer);
                 assert_eq!(amount, U256::from(100u64));
                 assert_eq!(buy_index, U256::ZERO);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_prizes_settled_empty_podium_pool() {
+        let pool_addr = Address::repeat_byte(0x66);
+        let e = TimeCurveEvents::PrizesSettledEmptyPodiumPool { podiumPool: pool_addr };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xbb),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool { podium_pool } => {
+                assert_eq!(podium_pool, pool_addr);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

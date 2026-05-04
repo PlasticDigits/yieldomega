@@ -196,6 +196,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Full **`launchedToken`** balance forwarded after grace — GitLab #128.
     event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
     event PrizesDistributed();
+    /// @dev GitLab #133 — zero `PodiumPool` balance at `distributePrizes` (**no** `PrizesDistributed`).
+    event PrizesSettledEmptyPodiumPool(address indexed podiumPool);
     /// @dev GitLab #129 — permissionless repair when BP steals leave `_warbowPodium` stale.
     event WarbowPodiumRefreshed(address indexed caller, uint256 candidateCount);
     /// @dev GitLab #129 — owner rebuild + latch before non-empty `distributePrizes`.
@@ -822,12 +824,21 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     ///      `reservePodiumPayoutsEnabled` gate (policy in `docs/onchain/cl8y-flow-audit.md`).
     ///      GitLab #116: any per-category slice not paid to winners (empty/partial podium) is **forwarded** to
     ///      `podiumResidualRecipient`, then `prizesDistributed` is set (**after** `PodiumPool` is drained).
+    ///      GitLab #133: when **`prizePool == 0`** and **`reservePodiumPayoutsEnabled`**, sets **`prizesDistributed`** and emits
+    ///      **`PrizesSettledEmptyPodiumPool`** (**no** `PrizesDistributed`, **no** category pulls — GitLab #129 finalize still irrelevant).
+    ///      GitLab #133: **zero** pool — **`reservePodiumPayoutsEnabled`**, **`PrizesSettledEmptyPodiumPool`**, latch
+    ///      **`prizesDistributed`** (**no** WarBow finalize). **Non-zero** — **`warbowPodiumFinalized`** (**#129**) then
+    ///      payouts; **`PrizesDistributed`** after drain.
     function distributePrizes() external onlyOwner nonReentrant {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
 
         uint256 prizePool = acceptedAsset.balanceOf(address(podiumPool));
         if (prizePool == 0) {
+            // GitLab #133 — lock `prizesDistributed` without moving CL8Y; still requires reserve payout signoff (#55).
+            require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");
+            prizesDistributed = true;
+            emit PrizesSettledEmptyPodiumPool(address(podiumPool));
             return;
         }
         require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");

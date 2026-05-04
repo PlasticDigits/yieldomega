@@ -13,11 +13,11 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
 | **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
 | **TimeCurve** | `sweepUnredeemedLaunchedToken()` — remainder of **`launchedToken`** after **7-day** grace from **`saleEndedAt`** ([GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128)) | **`setUnredeemedLaunchedTokenRecipient(address)`** (sink for sweep) + **`onlyOwner`** `sweep…` timing (not gated by `charmRedemptionEnabled`) | `unredeemedLaunchedTokenRecipient` unset until owner sets; no sweep until grace elapses |
-| **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when prize pool would be paid |
+| **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners when pool **non-zero** (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) **or** explicit **zero-pool** settlement ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when CL8Y podium settlement would move funds |
 
 <a id="doub-presale-vesting"></a>
 
-**`distributePrizes` empty pool:** if `PodiumPool` balance is zero, the function returns without setting `prizesDistributed` (unchanged griefing / retry behavior). The reserve-payout gate applies only when `prizePool > 0`.
+**`distributePrizes` empty pool ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)):** if `PodiumPool` balance is zero, the function still requires **`reservePodiumPayoutsEnabled`**, emits **`PrizesSettledEmptyPodiumPool`**, and sets **`prizesDistributed`** (no **`PrizesDistributed`** event). Ops cannot refill and run **`distributePrizes`** again.
 
 **`claimWarBowFlag`:** does **not** spend CL8Y — **not** gated by `buyFeeRoutingEnabled` (only BP / silence rules apply).
 
@@ -34,9 +34,9 @@ New storage is **appended** before `__gap` in `TimeCurve` and `DoubPresaleVestin
 
 ## Post-end gate live walkthrough (issues #55 / [GitLab #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79))
 
-Forge tests cover the revert strings; issue #79 tracks a **one-chain** `cast` walkthrough: `redeemCharms` with `charmRedemptionEnabled == false`, then owner enables + success; `distributePrizes` with `reservePodiumPayoutsEnabled == false` and **non-zero** podium pool, then owner enables + success.
+Forge tests cover the revert strings; issue #79 tracks a **one-chain** `cast` walkthrough: `redeemCharms` with `charmRedemptionEnabled == false`, then owner enables + success; `distributePrizes` with `reservePodiumPayoutsEnabled == false` and **non-zero** podium pool, then owner enables + success (the **zero-pool** explicit settlement path is in Forge — [GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)).
 
 - **Setup:** `ANVIL_RICH_END_SALE_ONLY=1` with [`contracts/script/anvil_rich_state.sh`](../../contracts/script/anvil_rich_state.sh) runs `SimulateAnvilRichStatePart1` → warp past `deadline` → `SimulateAnvilRichStatePart2EndSaleOnly` (resets [DeployDev](../../contracts/script/DeployDev.s.sol)’s post-end flags to `false`, then `endSale()`). The default **full** rich script runs Part2, which flips those flags on and pays out — that path **cannot** re-run the “gate off” reverts on the same state.
 - **Verify:** [`scripts/verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh) (also indexed under [invariants — issue #79](../testing/invariants-and-business-logic.md#timecurve-post-end-gates-live-anvil-gitlab-79) and [contributor manual QA — post-end gates](../testing/manual-qa-checklists.md#manual-qa-issue-79)).
 
-**Manual fallback** (if the script fails): ensure `TimeCurve.ended() == true`, `charmRedemptionEnabled == false`, `reservePodiumPayoutsEnabled == false`, `prizesDistributed == false`, and non-zero `acceptedAsset` balance of `podiumPool`; then repeat the same `cast send` / revert checks row-by-row as in the script.
+**Manual fallback** (if the script fails): ensure `TimeCurve.ended() == true`, `charmRedemptionEnabled == false`, `reservePodiumPayoutsEnabled == false`, `prizesDistributed == false`, and non-zero `acceptedAsset` balance of `podiumPool` for the **non-zero distribution** script rows (empty-pool settlement — **#133** — uses the same **`reservePodiumPayoutsEnabled`** gate but different event semantics; see Forge).

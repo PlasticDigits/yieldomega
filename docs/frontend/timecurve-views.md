@@ -205,6 +205,18 @@ address path.
 
 **Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
 
+<a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
+
+## WarBow ladder snapshot mismatch vs live Battle Points (#129)
+
+`/timecurve/arena` **`WarbowSection` → Top rivals** renders **`warbowLadderPodium()`** (same snapshot as the WarBow **`podium(CAT_WARBOW)`** winners list). In rare cases those values can lag **`battlePoints(address)`** reads (the contract documents that **`refreshWarbowPodium`** is the permissionless repair hook — [GitLab #129](https://gitlab.com/PlasticDigits/yieldomega/-/issues/129)).
+
+1. **Participant CTA (sale live):** when a small client heuristic ([`timeCurveWarbowSnapshotClaim.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.ts)) thinks the connected wallet’s BP should appear on the podium or should replace a shown value, the section surfaces **Claim your WarBow position (refresh snapshot)**. The write path calls **`refreshWarbowPodium`** with the viewer plus current podium addresses (no CL8Y burn; **not** gated on **`buyFeeRoutingEnabled`** — unlike steal / guard / revenge).
+2. **Post-end owner path:** **`finalizeWarbowPodium(candidates)`** rebuilds the podium from **`bp > 0`** wallets in the candidate list and sets **`warbowPodiumFinalized`**. **`distributePrizes`** with a **non-zero** pool requires **`reservePodiumPayoutsEnabled`** and **`warbowPodiumFinalized`** (`TimeCurve.sol`; **zero** pool still early-returns). **`refreshWarbowPodium` after an owner finalize** clears **`warbowPodiumFinalized`** again — redo finalize before distributing.
+3. **Agents / scripts:** see [invariants §129](../testing/invariants-and-business-logic.md#warbow-podium-snapshot-drifts-gitlab-129); Anvil Part2 and [`verify-timecurve-post-end-gates-anvil.sh`](../../scripts/verify-timecurve-post-end-gates-anvil.sh) call **`finalizeWarbowPodium`** before **`distributePrizes`**.
+
+**Spec ↔ test:** [invariants §129](../testing/invariants-and-business-logic.md#warbow-podium-snapshot-drifts-gitlab-129) · [`timeCurveWarbowSnapshotClaim.test.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.test.ts) · [play skill](../../skills/play-timecurve-warbow/SKILL.md).
+
 <a id="arena-sniper-shark-cutout-issue-80"></a>
 
 ## Arena sniper-shark cutout (issue #80)

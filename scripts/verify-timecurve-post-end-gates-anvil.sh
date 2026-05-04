@@ -28,14 +28,19 @@ PK_DEPLOYER="${PK_DEPLOYER:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae
 # Anvil #1 — matches SimulateAnvilRichState Part1 `PK_A` (buyer with charm weight)
 PK_ALICE="${PK_ALICE:-0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d}"
 ADDR_ALICE="${ADDR_ALICE:-$(cast wallet address --private-key "$PK_ALICE" 2>/dev/null || true)}"
+PK_BOB="${PK_BOB:-0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a}"
+PK_CAROL="${PK_CAROL:-0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6}"
+ADDR_BOB="${ADDR_BOB:-$(cast wallet address --private-key "$PK_BOB" 2>/dev/null || true)}"
+ADDR_CAROL="${ADDR_CAROL:-$(cast wallet address --private-key "$PK_CAROL" 2>/dev/null || true)}"
+ADDR_DEPLOYER="${ADDR_DEPLOYER:-$(cast wallet address --private-key "$PK_DEPLOYER" 2>/dev/null || true)}"
 
 if ! command -v cast >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
   echo "verify-timecurve-post-end-gates-anvil: need cast and jq in PATH." >&2
   exit 1
 fi
 
-if [[ -z "$ADDR_ALICE" ]]; then
-  echo "verify-timecurve-post-end-gates-anvil: could not derive ADDR_ALICE from PK_ALICE." >&2
+if [[ -z "$ADDR_BOB" || -z "$ADDR_CAROL" || -z "$ADDR_DEPLOYER" ]]; then
+  echo "verify-timecurve-post-end-gates-anvil: could not derive ADDR_BOB / ADDR_CAROL / ADDR_DEPLOYER." >&2
   exit 1
 fi
 
@@ -151,8 +156,10 @@ echo "=== Row 3: distributePrizes reverts when reservePodiumPayoutsEnabled is fa
 expect_revert "distributePrizes" "TimeCurve: reserve podium payouts disabled" \
   cast send "$TC" "distributePrizes()" --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL"
 
-echo "=== Row 4: setReservePodiumPayoutsEnabled(true) -> distributePrizes succeeds ==="
+echo "=== Row 4: setReservePodiumPayoutsEnabled(true) -> finalizeWarbowPodium (owner) -> distributePrizes succeeds (#129) ==="
 cast send "$TC" "setReservePodiumPayoutsEnabled(bool)" true --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
+FIN_WB="[$ADDR_ALICE,$ADDR_BOB,$ADDR_CAROL,$ADDR_DEPLOYER]"
+cast send "$TC" "finalizeWarbowPodium(address[])" "$FIN_WB" --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
 cast send "$TC" "distributePrizes()" --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
 echo "PASS: distributePrizes succeeded with gate on"
 
