@@ -76,6 +76,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint8 public constant WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY = 3;
 
     uint256 public constant SECONDS_PER_DAY = 86_400;
+    /// @notice Wall-clock upper bound (seconds) on interactive sale phase from `saleStart` for buys & WarBow burns (GitLab #124 / audit I-01).
+    uint256 public constant MAX_SALE_ELAPSED_SEC = 300 * SECONDS_PER_DAY;
     uint256 public constant WARBOW_REVENGE_WINDOW_SEC = 24 hours;
 
     uint16 public constant REFERRAL_EACH_BPS = 500; // 5% each to referrer + buyer (CHARM weight)
@@ -181,6 +183,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     );
     event SaleEnded(uint256 endTimestamp, uint256 totalRaised, uint256 totalBuys);
     event CharmsRedeemed(address indexed buyer, uint256 tokenAmount);
+    /// @dev Sink for **`distributePrizes`** category slice remainder when no payable winner (partial/empty podium). GitLab #116.
+    event PodiumResidualRecipientSet(address indexed recipient);
     event PrizesDistributed();
     event ReferralApplied(
         address indexed buyer,
@@ -255,6 +259,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(_initialTimerSec > 0, "TimeCurve: zero initial timer");
         require(_timerCapSec >= _timerExtensionSec, "TimeCurve: cap < extension");
         require(_timerCapSec >= _initialTimerSec, "TimeCurve: cap < initial timer");
+        require(_initialTimerSec <= MAX_SALE_ELAPSED_SEC, "TimeCurve: initial timer too long");
+        require(_timerCapSec <= MAX_SALE_ELAPSED_SEC, "TimeCurve: timer cap too long");
         require(_totalTokensForSale > 0, "TimeCurve: zero tokens");
         require(_buyCooldownSec > 0, "TimeCurve: zero buy cooldown");
         __Ownable_init(upgradeAdmin);
@@ -305,6 +311,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit DoubPresaleVestingSet(vesting);
     }
 
+    /// @notice CL8Y sink for **unallocated** per-category slices after `distributePrizes` (empty/partial podiums — GitLab #116).
+    /// @dev Required **when** any such remainder is non-zero; may stay **`address(0)`** when all categories pay out in full.
+    function setPodiumResidualRecipient(address recipient) external onlyOwner {
+        podiumResidualRecipient = recipient;
+        emit PodiumResidualRecipientSet(recipient);
+    }
+
     /// @dev `buyFeeRoutingEnabled` — blocks `_buy` and WarBow CL8Y pulls (not `claimWarBowFlag`, which burns no CL8Y).
     function _requireSaleInteractionsEnabled() internal view {
         require(buyFeeRoutingEnabled, "TimeCurve: sale interactions disabled");
@@ -312,9 +325,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     /// @dev Elapsed seconds for CHARM envelope + `charmPrice` views. Scheduled **`saleStart` in the future**
     ///      (`startSaleAt` — GitLab #114) is treated like **t = saleStart**: elapsed **0** until live.
+    ///      Capped at `MAX_SALE_ELAPSED_SEC` so linear price matches its documented plateau (GitLab #124).
     function _elapsedForCharmPricing() internal view returns (uint256) {
         if (saleStart == 0) return 0;
-        return block.timestamp < saleStart ? 0 : block.timestamp - saleStart;
+        if (block.timestamp < saleStart) return 0;
+        uint256 e = block.timestamp - saleStart;
+        return e > MAX_SALE_ELAPSED_SEC ? MAX_SALE_ELAPSED_SEC : e;
     }
 
     /// @notice **Owner-only.** Sets **`saleStart = epoch`** (Unix seconds) and **`deadline = epoch + initialTimerSec`**.
@@ -330,7 +346,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(epoch >= block.timestamp, "TimeCurve: epoch in past");
         require(launchedToken.balanceOf(address(this)) >= totalTokensForSale, "TimeCurve: insufficient launched tokens");
         saleStart = epoch;
-        deadline = epoch + initialTimerSec;
+        uint256 capDl = epoch + MAX_SALE_ELAPSED_SEC + 1;
+        uint256 wantDl = epoch + initialTimerSec;
+        deadline = wantDl > capDl ? capDl : wantDl;
         emit SaleStarted(epoch, deadline, totalTokensForSale);
     }
 
@@ -386,9 +404,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
         require(block.timestamp < deadline, "TimeCurve: timer expired");
+        require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeCurve: buy cooldown");
 
-        uint256 elapsed = block.timestamp - saleStart;
+        uint256 elapsed = _elapsedForCharmPricing();
         (uint256 minCharm, uint256 maxCharm) = _charmBounds(elapsed);
         require(charmWad >= minCharm, "TimeCurve: below min charms");
         require(charmWad <= maxCharm, "TimeCurve: above max charms");
@@ -453,8 +472,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             TIMER_RESET_BELOW_REMAINING_SEC,
             TIMER_RESET_TO_REMAINING_SEC
         );
-        deadline = newDl;
-        uint256 actualSecondsAdded = newDl - deadlineBefore;
+        uint256 hardCapDl = saleStart + MAX_SALE_ELAPSED_SEC + 1;
+        deadline = newDl > hardCapDl ? hardCapDl : newDl;
+        uint256 actualSecondsAdded = deadline - deadlineBefore;
 
         _trackLastBuyer(buyer);
 
@@ -542,6 +562,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
+        require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleInteractionsEnabled();
         require(victim != address(0) && victim != msg.sender, "TimeCurve: bad victim");
 
@@ -595,6 +616,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
+        require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleInteractionsEnabled();
         require(stealer != address(0), "TimeCurve: zero stealer");
         require(warbowPendingRevengeStealer[msg.sender] == stealer, "TimeCurve: revenge not pending");
@@ -621,6 +643,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function warbowActivateGuard() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
+        require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
         _requireSaleInteractionsEnabled();
         acceptedAsset.safeTransferFrom(msg.sender, address(this), WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
@@ -703,7 +726,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     ///         (integer split of podium pool; last slice takes remainder — matches 8/5/4/3% of gross raise vs 20% pool).
     /// @dev GitLab #70: execution is **owner-only** so CL8Y podium outflows receive the same manual-review bar as the
     ///      `reservePodiumPayoutsEnabled` gate (policy in `docs/onchain/cl8y-flow-audit.md`).
-    function distributePrizes() external onlyOwner {
+    ///      GitLab #116: any per-category slice not paid to winners (empty/partial podium) is **forwarded** to
+    ///      `podiumResidualRecipient`, then `prizesDistributed` is set (**after** `PodiumPool` is drained).
+    function distributePrizes() external onlyOwner nonReentrant {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
 
@@ -718,14 +743,26 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 sDef = (prizePool * 20) / 100;
         uint256 sTime = prizePool - sLast - sWar - sDef;
 
+        _forwardCategoryPrizes(_podiums[CAT_LAST_BUYERS], sLast, CAT_LAST_BUYERS);
+        _forwardCategoryPrizes(_warbowPodium, sWar, CAT_WARBOW);
+        _forwardCategoryPrizes(_podiums[CAT_DEFENDED_STREAK], sDef, CAT_DEFENDED_STREAK);
+        _forwardCategoryPrizes(_podiums[CAT_TIME_BOOSTER], sTime, CAT_TIME_BOOSTER);
+
+        require(acceptedAsset.balanceOf(address(podiumPool)) == 0, "TimeCurve: podium not drained");
+
         prizesDistributed = true;
-
-        _payPodiumFrom(_podiums[CAT_LAST_BUYERS], sLast, CAT_LAST_BUYERS);
-        _payPodiumFrom(_warbowPodium, sWar, CAT_WARBOW);
-        _payPodiumFrom(_podiums[CAT_DEFENDED_STREAK], sDef, CAT_DEFENDED_STREAK);
-        _payPodiumFrom(_podiums[CAT_TIME_BOOSTER], sTime, CAT_TIME_BOOSTER);
-
         emit PrizesDistributed();
+    }
+
+    /// @dev Pays winners from `slice`, then routes **slice − paid** to `podiumResidualRecipient` (GitLab #116).
+    function _forwardCategoryPrizes(Podium storage p, uint256 slice, uint8 category) internal {
+        if (slice == 0) return;
+        uint256 paid = _payPodiumFrom(p, slice, category);
+        if (paid >= slice) return;
+        uint256 residual = slice - paid;
+        address to = podiumResidualRecipient;
+        require(to != address(0), "TimeCurve: zero podium residual recipient");
+        podiumPool.forwardPodiumResidual(acceptedAsset, to, residual, category);
     }
 
     function _podiumSharesFromSlice(uint256 slice)
@@ -738,17 +775,20 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         third = slice - first - second;
     }
 
-    function _payPodiumFrom(Podium storage p, uint256 slice, uint8 category) internal {
-        if (slice == 0) return;
+    function _payPodiumFrom(Podium storage p, uint256 slice, uint8 category) internal returns (uint256 paid) {
+        if (slice == 0) return 0;
         (uint256 sh0, uint256 sh1, uint256 sh2) = _podiumSharesFromSlice(slice);
         if (p.winners[0] != address(0) && sh0 > 0) {
             podiumPool.payPodiumPayout(acceptedAsset, p.winners[0], sh0, category, 0);
+            paid += sh0;
         }
         if (p.winners[1] != address(0) && sh1 > 0) {
             podiumPool.payPodiumPayout(acceptedAsset, p.winners[1], sh1, category, 1);
+            paid += sh1;
         }
         if (p.winners[2] != address(0) && sh2 > 0) {
             podiumPool.payPodiumPayout(acceptedAsset, p.winners[2], sh2, category, 2);
+            paid += sh2;
         }
     }
 
@@ -906,5 +946,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice When set, `isBeneficiary(buyer)` on this contract adds **+15%** CHARM weight to the purchased `charmWad` (see `PRESALE_CHARM_WEIGHT_BPS`). Canonical mainnet: **`DoubPresaleVesting` ERC-1967 proxy**.
     address public doubPresaleVesting;
 
-    uint256[47] private __gap;
+    /// @notice Protocol treasury / ops sink for **unpaid** podium slice remainder (GitLab #116 / audit M-01). Wires like **`TimeCurveBuyRouter.cl8yProtocolTreasury`** in ops.
+    address public podiumResidualRecipient;
+
+    uint256[46] private __gap;
 }

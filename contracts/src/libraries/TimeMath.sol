@@ -15,7 +15,7 @@ library TimeMath {
     /// @notice Compute current minimum buy: initialMinBuy * exp(growthRateWad * elapsed / 86400).
     /// @param initialMinBuy Starting minimum buy amount (asset decimals).
     /// @param growthRateWad  ln(1 + dailyGrowthFrac) in WAD. For 20%/day: ~182_321_556_793_954_592.
-    /// @param elapsed        Seconds since sale start.
+    /// @param elapsed        Seconds since sale start (uncapped). **`TimeCurve`** forwards **`min(elapsed, MAX_SALE_ELAPSED_SEC)`** for live pricing (GitLab #124).
     /// @return minBuy        Current minimum buy (same decimals as initialMinBuy).
     function currentMinBuy(
         uint256 initialMinBuy,

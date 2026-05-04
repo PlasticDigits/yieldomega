@@ -33,4 +33,14 @@ contract LinearCharmPriceTest is Test {
         vm.expectRevert(abi.encodeWithSignature("Error(string)", "LinearCharmPrice: zero base"));
         new ERC1967Proxy(address(impl), abi.encodeCall(LinearCharmPrice.initialize, (0, 1, address(this))));
     }
+
+    function test_gitlab124_initialize_increment_too_large_reverts() public {
+        LinearCharmPrice impl = new LinearCharmPrice();
+        uint256 base = 1e18;
+        uint256 badDaily = type(uint256).max / 300 + 1;
+        vm.expectRevert(abi.encodeWithSignature("Error(string)", "LinearCharmPrice: increment too large"));
+        new ERC1967Proxy(
+            address(impl), abi.encodeCall(LinearCharmPrice.initialize, (base, badDaily, address(this)))
+        );
+    }
 }

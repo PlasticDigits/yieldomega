@@ -31,6 +31,7 @@ contract TimeCurveTest is Test {
     uint256 internal constant GROWTH_RATE = 182_321_556_793_954_592; // ln(1.2) WAD
     uint256 internal constant ONE_DAY = 86_400;
     uint256 internal constant FOUR_DAYS = 4 * ONE_DAY;
+    uint256 internal constant THREE_HUNDRED_DAYS = 300 * ONE_DAY;
 
     MockERC20 reserve;
     MockERC20 launchedToken;
@@ -43,7 +44,6 @@ contract TimeCurveTest is Test {
     address bob = makeAddr("bob");
     address carol = makeAddr("carol");
     address dave = makeAddr("dave");
-
     /// @dev GitLab #116 — CL8Y sink for empty/partial podium slice remainder (tests only).
     address protocolSink = makeAddr("protocolSink");
 
@@ -1594,8 +1594,8 @@ contract TimeCurveTest is Test {
         assertEq(reserve.balanceOf(protocolSink) - sinkBefore, expectDefSlice);
     }
 
-    /// @dev GitLab #116 — timer-at-cap sale (`_newTimeCurveTimerAtCap`) still drains `PodiumPool` to winners + protocol (no stranded CL8Y).
-    function test_distributePrizes_timer_at_cap_drains_podium_pool() public {
+    /// @dev GitLab #116 — `initialTimerSec == timerCapSec` ⇒ `actualSecondsAdded == 0` ⇒ empty time booster; 15% remainder slice → protocol.
+    function test_distributePrizes_empty_time_booster_forwards_time_slice_to_protocol() public {
         TimeCurve tCap = _newTimeCurveTimerAtCap();
         tCap.startSaleAt(block.timestamp);
         _fundAndApproveCurve(alice, 50e18, tCap);
@@ -1606,14 +1606,58 @@ contract TimeCurveTest is Test {
         vm.prank(bob);
         tCap.buy(1e18);
 
+        (, uint256[3] memory tbVal) = tCap.podium(tCap.CAT_TIME_BOOSTER());
+        assertEq(tbVal[0], 0, "time booster values stay 0");
+        assertEq(tbVal[1], 0);
+        assertEq(tbVal[2], 0);
+
         vm.warp(tCap.deadline() + 1);
         tCap.endSale();
 
+        uint256 prizePool = reserve.balanceOf(address(podiumPool));
+        uint256 sLast = (prizePool * 40) / 100;
+        uint256 sWar = (prizePool * 25) / 100;
+        uint256 sDef = (prizePool * 20) / 100;
+        uint256 sTime = prizePool - sLast - sWar - sDef;
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
+
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
-        assertGt(reserve.balanceOf(protocolSink), sinkBefore);
+        // Defended-streak podium also stays empty when every buy has >= 15m remaining.
+        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, sDef + sTime);
+    }
+
+    /// @dev GitLab #116 — defended + time booster empty together (same sale shape as the two tests above combined).
+    function test_distributePrizes_multi_empty_categories_sum_to_protocol() public {
+        TimeCurve tCap = _newTimeCurveTimerAtCap();
+        tCap.startSaleAt(block.timestamp);
+        _fundAndApproveCurve(alice, 50e18, tCap);
+        _fundAndApproveCurve(bob, 50e18, tCap);
+        _fundAndApproveCurve(carol, 50e18, tCap);
+        vm.prank(alice);
+        tCap.buy(1e18);
+        _warpPastBuyCooldown(tCap, alice);
+        vm.prank(bob);
+        tCap.buy(1e18);
+        _warpPastBuyCooldown(tCap, bob);
+        vm.prank(carol);
+        tCap.buy(1e18);
+
+        vm.warp(tCap.deadline() + 1);
+        tCap.endSale();
+
+        uint256 prizePool = reserve.balanceOf(address(podiumPool));
+        uint256 sLast = (prizePool * 40) / 100;
+        uint256 sWar = (prizePool * 25) / 100;
+        uint256 sDef = (prizePool * 20) / 100;
+        uint256 sTime = prizePool - sLast - sWar - sDef;
+        uint256 sinkBefore = reserve.balanceOf(protocolSink);
+
+        tCap.distributePrizes();
+        assertEq(reserve.balanceOf(address(podiumPool)), 0);
+        assertTrue(tCap.prizesDistributed());
+        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, sDef + sTime);
     }
 
     /// @dev GitLab #116 — with a **single** buyer, multiple categories forward residual; exact 1st-place last-buy payment is still `(4/7)*sLast`.
@@ -1628,18 +1672,16 @@ contract TimeCurveTest is Test {
 
         uint256 prizePool = reserve.balanceOf(address(podiumPool));
         uint256 sLast = (prizePool * 40) / 100;
-        uint256 sWar = (prizePool * 25) / 100;
         uint256 expectFirstLast = (sLast * 4) / 7;
-        uint256 expectFirstWar = (sWar * 4) / 7;
 
         uint256 aliceBefore = reserve.balanceOf(alice);
+        uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
         tc.distributePrizes();
 
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
-        assertGt(reserve.balanceOf(protocolSink), 0);
-        // Same sole buyer wins 1st on last-buy and WarBow podiums when unopposed.
-        assertEq(reserve.balanceOf(alice) - aliceBefore, expectFirstLast + expectFirstWar);
+        assertGt(reserve.balanceOf(protocolSink), sinkBefore);
+        assertEq(reserve.balanceOf(alice) - aliceBefore, expectFirstLast);
     }
 
     /// @dev GitLab #116 — residual routing requires `setPodiumResidualRecipient`; unset ⇒ revert (defended empty).
@@ -1855,6 +1897,131 @@ contract TimeCurveTest is Test {
         tcd.buy(1e18);
         assertEq(tcd.buyCount(alice), 1);
         assertEq(tcd.buyCount(bob), 1);
+    }
+
+    /// @dev GitLab #124 — wall-clock sale cap (audit I-01).
+    function test_gitlab124_buy_reverts_after_max_sale_elapsed() public {
+        tc.startSaleAt(block.timestamp);
+        vm.warp(tc.saleStart() + tc.MAX_SALE_ELAPSED_SEC() + 1);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale max elapsed exceeded");
+        tc.buy(1e18);
+    }
+
+    function test_gitlab124_warbow_guard_reverts_after_wall() public {
+        tc.startSaleAt(block.timestamp);
+        vm.warp(tc.saleStart() + tc.MAX_SALE_ELAPSED_SEC() + 1);
+        _fundAndApprove(alice, 100e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeCurve: sale max elapsed exceeded");
+        tc.warbowActivateGuard();
+    }
+
+    function test_gitlab124_currentPrice_plateaus_after_300d() public {
+        LinearCharmPrice lp = _deployLinearCharmPrice(1e18, 1e17);
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(lp)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            FOUR_DAYS,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        uint256 t0 = 1_000_000;
+        vm.warp(t0);
+        t.startSaleAt(t0);
+        vm.warp(t0 + THREE_HUNDRED_DAYS + 7 * ONE_DAY);
+        assertEq(t.currentPricePerCharmWad(), lp.priceWad(THREE_HUNDRED_DAYS));
+    }
+
+    function test_gitlab124_deadline_clamped_to_hard_cap_after_extension() public {
+        uint256 maxSec = 300 * ONE_DAY;
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            ONE_DAY,
+            maxSec,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        uint256 t0 = 1_000_000;
+        vm.warp(t0);
+        t.startSaleAt(t0);
+        vm.warp(t0 + ONE_DAY - 10);
+        _fundAndApproveCurve(alice, 50e18, t);
+        vm.prank(alice);
+        t.buy(1e18);
+        assertEq(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
+    }
+
+    function test_gitlab124_startSaleAt_uses_min_of_initial_timer_and_hard_cap() public {
+        uint256 maxSec = 300 * ONE_DAY;
+        TimeCurve t = _deployTimeCurve(
+            reserve,
+            launchedToken,
+            router,
+            podiumPool,
+            address(0),
+            ICharmPrice(address(linearPrice)),
+            1e18,
+            GROWTH_RATE,
+            120,
+            maxSec,
+            maxSec,
+            1_000_000e18,
+            TEST_BUY_COOLDOWN_SEC
+        );
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), address(t));
+        launchedToken.mint(address(t), 1_000_000e18);
+        uint256 t0 = 2_000_000;
+        vm.warp(t0);
+        t.startSaleAt(t0);
+        assertEq(t.deadline(), t0 + maxSec);
+    }
+
+    function test_gitlab124_initialize_reverts_when_initial_timer_exceeds_max() public {
+        uint256 maxSec = 300 * ONE_DAY;
+        _expectTimeCurveInitRevert(
+            abi.encodeCall(
+                TimeCurve.initialize,
+                (
+                    reserve,
+                    launchedToken,
+                    router,
+                    podiumPool,
+                    address(0),
+                    ICharmPrice(address(linearPrice)),
+                    1e18,
+                    GROWTH_RATE,
+                    120,
+                    maxSec + 1,
+                    maxSec + 1,
+                    1_000_000e18,
+                    TEST_BUY_COOLDOWN_SEC,
+                    address(this)
+                )
+            ),
+            "TimeCurve: initial timer too long"
+        );
     }
 }
 

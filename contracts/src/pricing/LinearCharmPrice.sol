@@ -12,6 +12,8 @@ import {ICharmPrice} from "../interfaces/ICharmPrice.sol";
 ///         Production: UUPS proxy; **proxy address** is canonical (GitLab #54).
 contract LinearCharmPrice is Initializable, OwnableUpgradeable, UUPSUpgradeable, ICharmPrice {
     uint256 internal constant SECONDS_PER_DAY = 86_400;
+    /// @notice Matches `TimeCurve.MAX_SALE_ELAPSED_SEC / SECONDS_PER_DAY` — linear plateau bound in initializer (GitLab #124).
+    uint256 public constant MAX_SALE_DAYS_FOR_PRICE = 300;
 
     uint256 public basePriceWad;
     uint256 public dailyIncrementWad;
@@ -23,6 +25,11 @@ contract LinearCharmPrice is Initializable, OwnableUpgradeable, UUPSUpgradeable,
 
     function initialize(uint256 _basePriceWad, uint256 _dailyIncrementWad, address initialOwner) external initializer {
         require(_basePriceWad > 0, "LinearCharmPrice: zero base");
+        require(_dailyIncrementWad <= type(uint256).max / MAX_SALE_DAYS_FOR_PRICE, "LinearCharmPrice: increment too large");
+        require(
+            _basePriceWad <= type(uint256).max - _dailyIncrementWad * MAX_SALE_DAYS_FOR_PRICE,
+            "LinearCharmPrice: increment too large"
+        );
         __Ownable_init(initialOwner);
         basePriceWad = _basePriceWad;
         dailyIncrementWad = _dailyIncrementWad;
