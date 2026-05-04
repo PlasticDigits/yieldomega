@@ -403,8 +403,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
         require(!ended, "TimeCurve: ended");
         _requireSaleInteractionsEnabled();
-        require(block.timestamp < deadline, "TimeCurve: timer expired");
         require(block.timestamp <= saleStart + MAX_SALE_ELAPSED_SEC, "TimeCurve: sale max elapsed exceeded");
+        require(block.timestamp < deadline, "TimeCurve: timer expired");
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeCurve: buy cooldown");
 
         uint256 elapsed = _elapsedForCharmPricing();
