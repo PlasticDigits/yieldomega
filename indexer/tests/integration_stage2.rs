@@ -4,7 +4,8 @@
 //! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included;
 //! GitLab [#139](https://gitlab.com/PlasticDigits/yieldomega/-/issues/139) `PodiumResidualRecipientSet` + buy-router `EthRescued`/`Erc20Rescued`),
 //! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
-//! referral / prize tables), then HTTP API smoke.
+//! referral / prize tables), **block-level SQL transaction semantics for ingest** ([GitLab #146](https://gitlab.com/PlasticDigits/yieldomega/-/issues/146)),
+//! then HTTP API smoke.
 //!
 //! **When `YIELDOMEGA_PG_TEST_URL` is unset or empty:** the test returns immediately and still
 //! **reports `ok`** — it does not connect to Postgres. For real coverage, set the URL (see
@@ -29,7 +30,7 @@ use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
-use yieldomega_indexer::persist::persist_decoded_log;
+use yieldomega_indexer::persist::{persist_decoded_log, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
 };
@@ -1199,4 +1200,86 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     // ── C) HTTP API (axum) on same pool ───────────────────────────────────
     api_http_smoke(&pool).await;
+}
+
+/// GitLab #146: block-level SQL transaction semantics — rollback drops all `persist_decoded_log_conn` rows for the tx; commit persists atomically (mirrors `ingestion::run` block ingest).
+#[tokio::test]
+async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash() {
+    let Some(url) = pg_url() else {
+        eprintln!("integration gitlab146 block tx: skip (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    let u1 = U256::from(1u8);
+    let u2 = U256::from(2u8);
+    let alice = addr_byte(0xa1);
+    let shared_tx = 888_888u64;
+    let tx_hex = format!("{:#x}", b256_lo(shared_tx));
+
+    let buy_log = |log_index: u64| DecodedLog {
+        block_number: 777,
+        block_hash: b256_lo(777 + 10_000),
+        tx_hash: b256_lo(shared_tx),
+        log_index,
+        block_timestamp: None,
+        contract: CONTRACT,
+        event: DecodedEvent::TimeCurveBuy {
+            buyer: alice,
+            charm_wad: u1,
+            amount: u1,
+            price_per_charm_wad: u1,
+            new_deadline: u2,
+            total_raised_after: u1,
+            buy_index: u1,
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
+        },
+    };
+
+    let mut tx = pool.begin().await.expect("begin");
+    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+        .await
+        .expect("persist 0");
+    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+        .await
+        .expect("persist 1");
+    tx.rollback().await.expect("rollback");
+
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
+        .bind(&tx_hex)
+        .fetch_one(&pool)
+        .await
+        .expect("count after rollback");
+    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 0);
+
+    let mut tx = pool.begin().await.expect("begin2");
+    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+        .await
+        .expect("persist 0b");
+    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+        .await
+        .expect("persist 1b");
+    tx.commit().await.expect("commit");
+
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
+        .bind(&tx_hex)
+        .fetch_one(&pool)
+        .await
+        .expect("count after commit");
+    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 2);
 }
