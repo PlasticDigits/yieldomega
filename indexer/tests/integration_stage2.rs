@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 //! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted
-//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included),
+//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included;
+//! GitLab [#139](https://gitlab.com/PlasticDigits/yieldomega/-/issues/139) `PodiumResidualRecipientSet` + buy-router `EthRescued`/`Erc20Rescued`),
 //! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
-//! referral / prize tables), **per-block ingestion transaction rollback** ([GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140)),
+//! referral / prize tables), **per-block SQL transaction semantics for ingest** ([GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140); umbrella [#146](https://gitlab.com/PlasticDigits/yieldomega/-/issues/146)),
 //! then HTTP API smoke.
 //!
 //! **When `YIELDOMEGA_PG_TEST_URL` is unset or empty:** the test returns immediately and still
@@ -29,7 +30,7 @@ use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
-use yieldomega_indexer::persist::persist_decoded_log;
+use yieldomega_indexer::persist::{persist_decoded_log, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
 };
@@ -703,8 +704,22 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             recipient: addr_byte(0x46),
             amount: u2,
         }),
+        next(DecodedEvent::TimeCurvePodiumResidualRecipientSet {
+            recipient: addr_byte(0x47),
+        }),
         next(DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: u2 }),
-        next(DecodedEvent::PodiumPoolPrizePusherSet { pusher: addr_byte(0x55) }),
+        next(DecodedEvent::TimeCurveBuyRouterEthRescued {
+            to: addr_byte(0x48),
+            amount: u1,
+        }),
+        next(DecodedEvent::TimeCurveBuyRouterErc20Rescued {
+            token: reserve,
+            to: addr_byte(0x49),
+            amount: u2,
+        }),
+        next(DecodedEvent::PodiumPoolPrizePusherSet {
+            pusher: addr_byte(0x55),
+        }),
         next(DecodedEvent::RabbitBurrowReserveBuckets {
             epoch_id: u1,
             redeemable_backing: u1,
@@ -788,10 +803,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_referral_code_registered", 100).await,
         1
     );
-    assert_eq!(
-        count_where(&pool, "idx_podium_pool_paid", 100).await,
-        1
-    );
+    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_rabbit_epoch_opened", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_rabbit_health_epoch_finalized", 100).await,
@@ -834,7 +846,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
+        1
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
         1
@@ -843,7 +858,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
+        1
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
         1
@@ -902,7 +920,19 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(
+        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
+        1
+    );
+    assert_eq!(
         count_where(&pool, "idx_timecurve_buy_router_cl8y_surplus", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
         1
     );
     assert_eq!(
@@ -938,7 +968,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     persist_decoded_log(&pool, first).await.expect("replay");
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     let k_last = logs.last().expect("kumbaya log");
-    persist_decoded_log(&pool, k_last).await.expect("replay kumbaya");
+    persist_decoded_log(&pool, k_last)
+        .await
+        .expect("replay kumbaya");
     assert_eq!(
         count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
         1
@@ -1067,7 +1099,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 0);
     // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
         0
@@ -1076,7 +1111,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
         0
     );
-    assert_eq!(count_where(&pool, "idx_timecurve_warbow_guard", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
+        0
+    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
         0
@@ -1106,6 +1144,18 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(
+        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
+        0
+    );
+    assert_eq!(
         count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
         0
     );
@@ -1127,10 +1177,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_referral_code_registered", 100).await,
         0
     );
-    assert_eq!(
-        count_where(&pool, "idx_podium_pool_paid", 100).await,
-        0
-    );
+    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 0);
     assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);
     assert_eq!(
         count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
@@ -1210,4 +1257,86 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     // ── D) HTTP API (axum) on same pool ───────────────────────────────────
     api_http_smoke(&pool).await;
+}
+
+/// GitLab #146: block-level SQL transaction semantics — rollback drops all `persist_decoded_log_conn` rows for the tx; commit persists atomically (mirrors `ingestion::run` block ingest).
+#[tokio::test]
+async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash() {
+    let Some(url) = pg_url() else {
+        eprintln!("integration gitlab146 block tx: skip (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    let u1 = U256::from(1u8);
+    let u2 = U256::from(2u8);
+    let alice = addr_byte(0xa1);
+    let shared_tx = 888_888u64;
+    let tx_hex = format!("{:#x}", b256_lo(shared_tx));
+
+    let buy_log = |log_index: u64| DecodedLog {
+        block_number: 777,
+        block_hash: b256_lo(777 + 10_000),
+        tx_hash: b256_lo(shared_tx),
+        log_index,
+        block_timestamp: None,
+        contract: CONTRACT,
+        event: DecodedEvent::TimeCurveBuy {
+            buyer: alice,
+            charm_wad: u1,
+            amount: u1,
+            price_per_charm_wad: u1,
+            new_deadline: u2,
+            total_raised_after: u1,
+            buy_index: u1,
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            battle_points_after: U256::ZERO,
+            bp_base_buy: U256::ZERO,
+            bp_timer_reset_bonus: U256::ZERO,
+            bp_clutch_bonus: U256::ZERO,
+            bp_streak_break_bonus: U256::ZERO,
+            bp_ambush_bonus: U256::ZERO,
+            bp_flag_penalty: U256::ZERO,
+            flag_planted: false,
+            buyer_total_effective_timer_sec: U256::ZERO,
+            buyer_active_defended_streak: U256::ZERO,
+            buyer_best_defended_streak: U256::ZERO,
+        },
+    };
+
+    let mut tx = pool.begin().await.expect("begin");
+    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+        .await
+        .expect("persist 0");
+    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+        .await
+        .expect("persist 1");
+    tx.rollback().await.expect("rollback");
+
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
+        .bind(&tx_hex)
+        .fetch_one(&pool)
+        .await
+        .expect("count after rollback");
+    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 0);
+
+    let mut tx = pool.begin().await.expect("begin2");
+    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+        .await
+        .expect("persist 0b");
+    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+        .await
+        .expect("persist 1b");
+    tx.commit().await.expect("commit");
+
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
+        .bind(&tx_hex)
+        .fetch_one(&pool)
+        .await
+        .expect("count after commit");
+    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 2);
 }

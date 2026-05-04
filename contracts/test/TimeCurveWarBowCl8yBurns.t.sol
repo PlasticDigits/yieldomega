@@ -94,6 +94,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.assume(callerRaw != uint160(0));
         address caller = address(callerRaw);
         vm.assume(caller != address(tc));
+        vm.assume(caller != BURN_SINK);
 
         tc.startSaleAt(block.timestamp);
         _fund(caller, 100e18);
@@ -111,6 +112,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         address victim = address(victim160);
         address stealer = address(stealer160);
         vm.assume(victim != address(tc) && stealer != address(tc));
+        vm.assume(victim != BURN_SINK && stealer != BURN_SINK);
         vm.assume(victim.code.length == 0 && stealer.code.length == 0);
 
         tc.startSaleAt(block.timestamp);
@@ -144,6 +146,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         address victim = address(victim160);
         address stealer = address(stealer160);
         vm.assume(victim != address(tc) && stealer != address(tc));
+        vm.assume(victim != BURN_SINK && stealer != BURN_SINK);
         vm.assume(victim.code.length == 0 && stealer.code.length == 0);
 
         tc.startSaleAt(block.timestamp);
@@ -163,5 +166,27 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.prank(stealer);
         tc.warbowSteal(victim, false);
         assertEq(reserve.balanceOf(BURN_SINK) - sinkBefore, tc.WARBOW_STEAL_BURN_WAD());
+    }
+
+    /// @dev GitLab #123 — forbids **`msg.sender == BURN_SINK`**: **`_pullAcceptedExact`** round-trips CL8Y with net zero ingress to sink while downstream checks could hypothetically diverge (`INV-WARBOW-123-BURN-CALLER`).
+    function test_warbow_steal_reverts_when_caller_is_burn_sink() public {
+        tc.startSaleAt(block.timestamp);
+        vm.prank(BURN_SINK);
+        vm.expectRevert("TimeCurve: burn sink caller");
+        tc.warbowSteal(makeAddr("victim"), false);
+    }
+
+    function test_warbow_revenge_reverts_when_caller_is_burn_sink() public {
+        tc.startSaleAt(block.timestamp);
+        vm.prank(BURN_SINK);
+        vm.expectRevert("TimeCurve: burn sink caller");
+        tc.warbowRevenge(makeAddr("stealer"));
+    }
+
+    function test_warbow_guard_reverts_when_caller_is_burn_sink() public {
+        tc.startSaleAt(block.timestamp);
+        vm.prank(BURN_SINK);
+        vm.expectRevert("TimeCurve: burn sink caller");
+        tc.warbowActivateGuard();
     }
 }

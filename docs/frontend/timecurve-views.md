@@ -59,7 +59,7 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
    write through `useWriteContract`. Approval handling, allowance checks, and
    referral plumbing live in one place per page surface but route to the
    same contract entrypoint with the same argument shape.
-3. **`chainId` matches build target before wallet writes.** When connected and **`useChainId()`** ≠ [`configuredTargetChainId()`](../../frontend/src/lib/chain.ts) (`VITE_CHAIN_ID` / `VITE_RPC_URL`; default **Anvil** **31337**), Simple + Arena gated panels show **`ChainMismatchWriteBarrier`** and submit paths **`chainMismatchWriteMessage`** gates — [**Wrong network write gating (#95)**](#wrong-network-write-gating-issue-95); [wallet-connection.md § #95](wallet-connection.md#wrong-network-write-gating-issue-95).
+3. **`chainId` matches build target before wallet writes.** When connected and **`useChainId()`** ≠ [`configuredTargetChainId()`](../../frontend/src/lib/chain.ts) (`VITE_CHAIN_ID` / `VITE_RPC_URL`; default **Anvil** **31337**), Simple + Arena gated panels show **`ChainMismatchWriteBarrier`** and submit paths **`chainMismatchWriteMessage`** gates — [**Wrong network write gating (#95)**](#wrong-network-write-gating-issue-95); [wallet-connection.md § #95](wallet-connection.md#wrong-network-write-gating-issue-95). **Mid-flow drift:** multi-step **`submitBuy`** / Arena **`handleBuy`** also latch **`getAccount(wagmi)`** after sizing and abort when account or **`chainId`** changes between awaits — [**GitLab #144**](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144); [`wallet-connection.md` § #144](wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144); [`invariants` § #144](../testing/invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144).
 4. **One phase machine + one clock for phase and hero timer.** Sale phase
    derivation (`saleStartPending`, `saleActive`, `saleExpiredAwaitingEnd`,
    `saleEnded`) lives in
@@ -90,7 +90,7 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
 
 **Targets:** `/timecurve` buy panel · `/timecurve/arena` buy hub, standings/post-end **`runVoid`** surface, **`WarbowSection`** · `/referrals` register · `/vesting` claim (not **`/protocol`**, **`/kumbaya`**, **`/sir`** navigational stubs).
 
-Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-95).
+Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`wallet-connection.md` — Session continuity (#144)](wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [`invariants` § #144](../testing/invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144), [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-95).
 
 ## Chain time and sale phase (issue #48)
 
@@ -273,6 +273,14 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 5. **Bare revert copy:** buy submit catches pass `{ buySubmit: true }` into [`friendlyRevertFromUnknown`](../../frontend/src/lib/revertMessage.ts) so generic **“execution reverted for an unknown reason”** maps to guidance about the band moving ([issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). Rare residual failures at the edge may succeed on **retry** after one block or a small slider nudge.
 
 **Spec ↔ test:** [invariants — submit-time CHARM sizing](../testing/invariants-and-business-logic.md#timecurve-buy-charm-submit-fresh-bounds-issue-82) · [integrations/kumbaya.md — single-tx](../integrations/kumbaya.md#issue-65-single-tx-router) · [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-82) · [issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82).
+
+<a id="erc20-approval-sizing-gitlab-143"></a>
+
+## ERC-20 approval sizing — CL8Y → TimeCurve (GitLab #143)
+
+TimeCurve **Simple** and **Arena** buy panels include **`Cl8yTimeCurveUnlimitedApprovalFieldset`**: default **exact** **`approve(TimeCurve, grossCl8yForTx)`** for **`buy`** and shared WarBow CL8Y pulls; optional checkbox stores **`yieldomega.erc20.cl8yTimeCurveUnlimited.v1`** and restores **`type(uint256).max`** for fewer repeat approvals (disclosure links **H-01** + [wallet-connection §143](wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143)). Kumbaya legs approve **slippage-bounded `maxIn`** to routers only. **`/referrals`** register approves the onchain burn amount exactly.
+
+**Spec ↔ test:** [invariants — #143](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143).
 
 <a id="kumbaya-swap-deadline-chain-time-issue-83"></a>
 

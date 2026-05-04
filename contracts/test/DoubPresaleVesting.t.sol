@@ -417,6 +417,28 @@ contract DoubPresaleVestingTest is Test {
         v.startVesting();
     }
 
+    /// @dev GitLab #146 / #131 (finding 7): DOUB sent after `startVesting` is **not** schedulable via `claim` (excess sits until owner `rescueERC20`, [GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137)).
+    function test_excess_doub_above_total_allocated_is_unrecoverable() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        doub.mint(address(v), 50e18);
+
+        vm.warp(block.timestamp + DURATION + 1);
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
+        vm.prank(alice);
+        v.claim();
+
+        assertEq(doub.balanceOf(alice), 100e18);
+        assertEq(doub.balanceOf(address(v)), 50e18, "post-start lump sum is not absorbed by vesting math");
+    }
+
     function test_rescueERC20_vestingToken_excess_succeeds() public {
         address[] memory ben = new address[](1);
         ben[0] = alice;

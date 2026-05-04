@@ -146,24 +146,38 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
         let filter = Filter::new().select(next).address(addrs.clone());
         let logs = provider.get_logs(&filter).await?;
 
-        let mut tx = pool.begin().await?;
-        for lg in &logs {
-            if lg.removed {
-                continue;
-            }
-            if let Some(decoded) = decode_rpc_log(lg) {
-                persist_decoded_log_conn(&mut *tx, &decoded).await?;
-            }
-        }
-
         let block_hash: B256 = block.header.hash;
-        upsert_indexed_block_conn(&mut *tx, next, block_hash).await?;
-        pointer = ChainPointer {
+        let pointer_next = ChainPointer {
             block_number: next,
             block_hash,
         };
-        save_chain_pointer_conn(&mut *tx, &pointer).await?;
-        tx.commit().await?;
+
+        let mut tx = pool.begin().await?;
+        let ingest_block = async {
+            for lg in &logs {
+                if lg.removed {
+                    continue;
+                }
+                if let Some(decoded) = decode_rpc_log(lg) {
+                    persist_decoded_log_conn(&mut *tx, &decoded).await?;
+                }
+            }
+            upsert_indexed_block_conn(&mut *tx, next, block_hash).await?;
+            save_chain_pointer_conn(&mut *tx, &pointer_next).await?;
+            Ok::<_, eyre::Report>(())
+        }
+        .await;
+
+        match ingest_block {
+            Ok(()) => {
+                tx.commit().await?;
+                pointer = pointer_next;
+            }
+            Err(e) => {
+                tx.rollback().await.ok();
+                return Err(e);
+            }
+        }
 
         if next.is_multiple_of(100) {
             tracing::debug!(block = next, "indexed block");

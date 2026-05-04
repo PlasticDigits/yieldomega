@@ -3,9 +3,45 @@
 use std::path::PathBuf;
 
 use alloy_primitives::Address;
-use eyre::{Context, Result};
+use eyre::{bail, Context, Result};
 use serde::Deserialize;
 use std::net::SocketAddr;
+
+/// Substrings that must **not** appear in `DATABASE_URL` (case-insensitive) when
+/// [`crate::cors_config::indexer_production_enabled`] is true.
+///
+/// **Keep in sync** with placeholders in `indexer/.env.example` and operator docs in
+/// `indexer/README.md` ([GitLab #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142)).
+///
+/// | Substring | Rationale |
+/// |-----------|-----------|
+/// | `change_me_before_deploy` | Documented template token — not a real credential. |
+/// | `:password@` | Trivial password shipped in older examples (`user:password@host`). |
+const FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS: &[&str] =
+    &["change_me_before_deploy", ":password@"];
+
+/// Return the first forbidden substring found in `database_url` (lowercased match), if any.
+pub fn first_forbidden_production_database_url_substring(database_url: &str) -> Option<&'static str> {
+    let lowered = database_url.to_lowercase();
+    FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS
+        .iter()
+        .copied()
+        .find(|sub| lowered.contains(sub))
+}
+
+/// Fail when `INDEXER_PRODUCTION` is set and `DATABASE_URL` still looks like a copy-pasted template.
+pub fn ensure_production_database_url(database_url: &str) -> Result<()> {
+    if !crate::cors_config::indexer_production_enabled() {
+        return Ok(());
+    }
+    if let Some(sub) = first_forbidden_production_database_url_substring(database_url) {
+        bail!(
+            "INDEXER_PRODUCTION is set but DATABASE_URL contains forbidden placeholder substring {:?} — replace with a unique credential; see indexer/.env.example and indexer/README.md (GitLab #142)",
+            sub
+        );
+    }
+    Ok(())
+}
 
 /// Parsed `dev-addresses.json` (see contracts/deployments/dev-addresses.example.json).
 #[derive(Debug, Clone, Deserialize)]
@@ -116,8 +152,11 @@ impl Config {
             }
         }
 
+        let database_url = required("DATABASE_URL")?;
+        ensure_production_database_url(&database_url)?;
+
         Ok(Self {
-            database_url: required("DATABASE_URL")?,
+            database_url,
             rpc_url: required("RPC_URL")?,
             chain_id,
             start_block,
@@ -143,4 +182,39 @@ impl Config {
 
 fn required(key: &str) -> Result<String> {
     std::env::var(key).wrap_err_with(|| format!("missing required env var: {key}"))
+}
+
+#[cfg(test)]
+mod production_database_url_tests {
+    use super::*;
+
+    #[test]
+    fn forbidden_substring_change_me_case_insensitive() {
+        assert_eq!(
+            first_forbidden_production_database_url_substring(
+                "postgres://u:Change_Me_Before_Deploy@h/db",
+            ),
+            Some("change_me_before_deploy"),
+        );
+    }
+
+    #[test]
+    fn forbidden_substring_trivial_password_userinfo() {
+        assert_eq!(
+            first_forbidden_production_database_url_substring(
+                "postgres://yieldomega:password@127.0.0.1/db",
+            ),
+            Some(":password@"),
+        );
+    }
+
+    #[test]
+    fn no_match_for_strong_credential() {
+        assert_eq!(
+            first_forbidden_production_database_url_substring(
+                "postgres://yieldomega:hx7_kL9mN2pQ@127.0.0.1:5432/db",
+            ),
+            None,
+        );
+    }
 }

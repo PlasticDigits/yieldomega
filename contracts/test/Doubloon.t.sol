@@ -69,4 +69,23 @@ contract DoubloonTest is Test {
         vm.expectRevert();
         token.burnFrom(alice, 1);
     }
+
+    /// @dev GitLab #146 / #131 (finding 1): a **secondary** `MINTER_ROLE` grant is **mint** authority only;
+    ///      draining another holder requires standard ERC-20 **`approve` → `burnFrom`** ([GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)).
+    function test_burn_drains_arbitrary_holder_via_secondary_minter() public {
+        address secondary = makeAddr("secondaryMinter");
+        token.grantRole(token.MINTER_ROLE(), secondary);
+
+        vm.startPrank(secondary);
+        token.mint(alice, 100e18);
+        vm.expectRevert();
+        token.burnFrom(alice, 1);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        token.approve(secondary, 40e18);
+        vm.prank(secondary);
+        token.burnFrom(alice, 40e18);
+        assertEq(token.balanceOf(alice), 60e18, "allowance-gated burnFrom is the holder-consent path");
+    }
 }
