@@ -52,6 +52,7 @@ abstract contract TimeCurveBuyRouterFixture is Test {
     TimeCurve tc;
     AnvilWETH9 weth;
     AnvilMockUSDM usdm;
+    MockERC20FeeOnTransfer feeStable;
     AnvilKumbayaRouter kumbaya;
     TimeCurveBuyRouter buyRouter;
     address cl8yProtocolTreasury = makeAddr("cl8yProtocolTreasury");

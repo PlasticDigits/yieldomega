@@ -87,4 +87,48 @@ contract FeeSinksTest is Test {
         podiumPool.payPodiumPayout(IERC20(address(token)), winner, 50, 1, 1);
         assertEq(token.balanceOf(winner), 50);
     }
+
+    /// @dev GitLab #116 — `forwardPodiumResidual` mirrors `payPodiumPayout` auth (prize pusher when set).
+    function test_podiumPool_forwardPodiumResidual_happy_path() public {
+        address distributor = makeAddr("timecurve");
+        address protocol = makeAddr("protocol");
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), distributor);
+        token.mint(address(podiumPool), 99);
+        vm.prank(distributor);
+        podiumPool.forwardPodiumResidual(IERC20(address(token)), protocol, 42, 2);
+        assertEq(token.balanceOf(protocol), 42);
+        assertEq(token.balanceOf(address(podiumPool)), 57);
+    }
+
+    function test_podiumPool_forwardPodiumResidual_unauthorized_reverts() public {
+        token.mint(address(podiumPool), 1);
+        vm.prank(stranger);
+        vm.expectRevert();
+        podiumPool.forwardPodiumResidual(IERC20(address(token)), winner, 1, 0);
+    }
+
+    function test_podiumPool_forwardPodiumResidual_zero_recipient_reverts() public {
+        address distributor = makeAddr("timecurve");
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), distributor);
+        token.mint(address(podiumPool), 1);
+        vm.prank(distributor);
+        vm.expectRevert("PodiumPool: zero recipient");
+        podiumPool.forwardPodiumResidual(IERC20(address(token)), address(0), 1, 0);
+    }
+
+    /// @dev GitLab #116 — same auth as `payPodiumPayout` when `prizePusher` is wired (GitLab #70).
+    function test_podiumPool_forwardPodiumResidual_prize_pusher_wins_over_distributor_role() public {
+        address distributor = makeAddr("timecurve");
+        address rogue = makeAddr("rogue");
+        address protocol = makeAddr("protocol");
+        token.mint(address(podiumPool), 50);
+        podiumPool.grantRole(podiumPool.DISTRIBUTOR_ROLE(), rogue);
+        podiumPool.setPrizePusher(distributor);
+        vm.prank(rogue);
+        vm.expectRevert();
+        podiumPool.forwardPodiumResidual(IERC20(address(token)), protocol, 50, 3);
+        vm.prank(distributor);
+        podiumPool.forwardPodiumResidual(IERC20(address(token)), protocol, 50, 3);
+        assertEq(token.balanceOf(protocol), 50);
+    }
 }

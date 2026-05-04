@@ -157,6 +157,7 @@ mod contracts {
     sol! {
         contract PodiumPoolEvents {
             event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
+            event PodiumResidualForwarded(address indexed token, address indexed recipient, uint256 amount, uint8 category);
             event PrizePusherSet(address indexed pusher);
         }
     }
@@ -403,6 +404,12 @@ pub enum DecodedEvent {
         amount: U256,
         category: u8,
         placement: u8,
+    },
+    PodiumPoolResidualForwarded {
+        token: Address,
+        recipient: Address,
+        amount: U256,
+        category: u8,
     },
     PodiumPoolPrizePusherSet { pusher: Address },
     RabbitEpochOpened {
@@ -858,6 +865,17 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 amount: e.amount,
                 category: e.category,
                 placement: e.placement,
+            };
+        }
+    }
+    if topic0 == PodiumPoolEvents::PodiumResidualForwarded::SIGNATURE_HASH {
+        if let Ok(d) = PodiumPoolEvents::PodiumResidualForwarded::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::PodiumPoolResidualForwarded {
+                token: e.token,
+                recipient: e.recipient,
+                amount: e.amount,
+                category: e.category,
             };
         }
     }

@@ -16,6 +16,7 @@ import {MockERC20BlockedSink} from "./mocks/MockERC20BlockedSink.sol";
 import {MockERC20Rebasing} from "./mocks/MockERC20Rebasing.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
+import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 
 contract MockPlain is ERC20 {
     constructor() ERC20("P", "P") {}
@@ -46,7 +47,7 @@ contract NonStandardERC20Test is Test {
     address internal s3 = makeAddr("s3");
     address internal s4 = makeAddr("s4");
 
-    function test_feeOnTransfer_timeCurve_buyReverts_distributeExpectsFullAmount() public {
+    function test_feeOnTransfer_timeCurve_buyReverts_erc20Parity() public {
         MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
         MockPlain lt = new MockPlain();
         PodiumPool pv = UUPSDeployLib.deployPodiumPool(address(this));
@@ -82,7 +83,7 @@ contract NonStandardERC20Test is Test {
         ft.approve(address(tc), 100e18);
 
         vm.prank(user);
-        vm.expectRevert();
+        vm.expectRevert(bytes("TimeCurve: ERC20 parity"));
         tc.buy(10e18);
     }
 
@@ -109,6 +110,87 @@ contract NonStandardERC20Test is Test {
         t.mint(address(r), 1000);
         vm.expectRevert(MockERC20BlockedSink.BlockedRecipient.selector);
         r.distributeFees(IERC20(address(t)), 1000);
+    }
+
+    function test_feeOnTransfer_rabbitTreasury_deposit_reverts_erc20Parity() public {
+        MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
+        Doubloon d = new Doubloon(address(this));
+        RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
+            IERC20(address(ft)),
+            d,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            25e16,
+            1e16,
+            5e17,
+            0,
+            address(0),
+            address(this)
+        );
+        d.grantRole(d.MINTER_ROLE(), address(rt));
+        rt.openFirstEpoch();
+
+        address u = makeAddr("u");
+        ft.mint(u, 100e18);
+        vm.prank(u);
+        ft.approve(address(rt), 100e18);
+        vm.prank(u);
+        vm.expectRevert(bytes("RT: ERC20 parity"));
+        rt.deposit(100e18, 0);
+    }
+
+    function test_feeOnTransfer_rabbitTreasury_receiveFee_reverts_erc20Parity() public {
+        MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
+        Doubloon d = new Doubloon(address(this));
+        RabbitTreasury rt = UUPSDeployLib.deployRabbitTreasury(
+            IERC20(address(ft)),
+            d,
+            ONE_DAY,
+            C_MAX,
+            C_STAR,
+            ALPHA,
+            BETA,
+            M_MIN,
+            M_MAX,
+            LAM,
+            DELTA_MAX_FRAC,
+            EPS,
+            25e16,
+            1e16,
+            5e17,
+            0,
+            address(0),
+            address(this)
+        );
+        d.grantRole(d.MINTER_ROLE(), address(rt));
+        rt.openFirstEpoch();
+        rt.grantRole(rt.FEE_ROUTER_ROLE(), address(this));
+
+        ft.mint(address(this), 1000e18);
+        ft.approve(address(rt), 1000e18);
+        vm.expectRevert(bytes("RT: ERC20 parity"));
+        rt.receiveFee(1000e18);
+    }
+
+    function test_feeOnTransfer_referralRegistry_register_reverts_erc20Parity() public {
+        MockERC20FeeOnTransfer ft = new MockERC20FeeOnTransfer(100);
+        ReferralRegistry reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(ft)), 1e18, address(this));
+
+        address u = makeAddr("u");
+        ft.mint(u, 10e18);
+        vm.prank(u);
+        ft.approve(address(reg), 10e18);
+        vm.prank(u);
+        vm.expectRevert(bytes("ReferralRegistry: ERC20 parity"));
+        reg.registerCode("abc");
     }
 
     function test_alwaysRevert_rabbitTreasury_depositReverts() public {
