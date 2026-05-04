@@ -109,8 +109,9 @@ describe("derivePhase (TimeCurve simple view state machine)", () => {
     expect(derivePhase({ ...BASE, ledgerSecInt: 1999 })).toBe("saleActive");
   });
 
-  it("returns 'saleExpiredAwaitingEnd' once chain time crosses deadline (pre-endSale)", () => {
-    expect(derivePhase({ ...BASE, ledgerSecInt: 2000 })).toBe("saleExpiredAwaitingEnd");
+  it("returns 'saleExpiredAwaitingEnd' only after chain time is strictly past deadline (GitLab #136)", () => {
+    expect(derivePhase({ ...BASE, ledgerSecInt: 2000 })).toBe("saleActive");
+    expect(derivePhase({ ...BASE, ledgerSecInt: 2001 })).toBe("saleExpiredAwaitingEnd");
     expect(derivePhase({ ...BASE, ledgerSecInt: 9999 })).toBe("saleExpiredAwaitingEnd");
   });
 

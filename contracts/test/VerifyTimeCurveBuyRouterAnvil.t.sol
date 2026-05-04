@@ -62,7 +62,7 @@ contract VerifyTimeCurveBuyRouterAnvilTest is Test {
         TimeCurve tc = TimeCurve(payable(tcAddr));
 
         require(
-            !tc.ended() && block.timestamp < tc.deadline(),
+            !tc.ended() && block.timestamp <= tc.deadline(),
             "issue78: sale not live - use SKIP_ANVIL_RICH_STATE=1"
         );
         require(tc.saleStart() > 0, "issue78: sale not started");
