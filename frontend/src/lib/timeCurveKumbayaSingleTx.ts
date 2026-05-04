@@ -15,6 +15,10 @@ import {
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
+import {
+  assertWalletBuySessionUnchanged,
+  type WalletBuySessionSnapshot,
+} from "@/lib/walletBuySessionGuard";
 import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
 
 const BYTES32_ZERO =
@@ -41,6 +45,9 @@ function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
 /**
  * `quoteExactOutput` + slippage + `buyViaKumbaya` in one user-signed write (or two when USDM
  * still needs a separate `approve` to `timeCurveBuyRouter`).
+ *
+ * **`sessionSnapshot`** — latched wallet session after submit-time sizing; aborts if account or
+ * chain drift across internal awaits ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
  */
 export async function submitKumbayaSingleTxBuy(params: {
   wagmiConfig: Config;
@@ -55,6 +62,7 @@ export async function submitKumbayaSingleTxBuy(params: {
   codeHash: `0x${string}` | undefined;
   /** Same opt-in as `TimeCurve.buy` / `buyFor` ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
+  sessionSnapshot: WalletBuySessionSnapshot;
 }): Promise<void> {
   const {
     wagmiConfig: cfg,
@@ -68,6 +76,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     charmWad,
     codeHash,
     plantWarBowFlag,
+    sessionSnapshot,
   } = params;
   const router = timeCurveBuyRouter as `0x${string}`;
 
@@ -77,6 +86,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     functionName: "quoteExactOutput",
     args: [route.path, cl8yOut],
   });
+  assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   const qIn = (quote as readonly [bigint, ...unknown[]])[0];
   const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
   const payKind = payWith === "eth" ? PAY_ETH : PAY_STABLE;
@@ -89,6 +99,7 @@ export async function submitKumbayaSingleTxBuy(params: {
       functionName: "allowance",
       args: [userAddress, router],
     });
+    assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     if (uAllow < maxIn) {
       const uAp = await writeContractAsync({
         address: route.tokenIn,
@@ -97,10 +108,12 @@ export async function submitKumbayaSingleTxBuy(params: {
         args: [router, maxUint256],
       });
       await waitForTransactionReceipt(cfg, { hash: uAp });
+      assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     }
   }
 
   const deadline = await fetchSwapDeadlineUnixSec(cfg, 600);
+  assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   const hash = await writeContractAsync({
     address: router,
     abi: timeCurveBuyRouterAbi,
@@ -108,8 +121,10 @@ export async function submitKumbayaSingleTxBuy(params: {
     args: [charmWad, h, plantWarBowFlag, payKind, deadline, maxIn, route.path],
     value: payWith === "eth" ? maxIn : undefined,
   });
+  assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   playGameSfxCoinHitBuySubmit();
   await waitForTransactionReceipt(cfg, { hash });
+  assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
 }
 
 export { BYTES32_ZERO, PAY_ETH, PAY_STABLE };
