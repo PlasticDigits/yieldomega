@@ -195,6 +195,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Full **`launchedToken`** balance forwarded after grace — GitLab #128.
     event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
     event PrizesDistributed();
+    /// @dev GitLab #129 — permissionless repair when BP steals leave `_warbowPodium` stale.
+    event WarbowPodiumRefreshed(address indexed caller, uint256 candidateCount);
+    /// @dev GitLab #129 — owner rebuild + latch before non-empty `distributePrizes`.
+    event WarbowPodiumFinalized(address indexed owner_, uint256 candidateCount);
     event ReferralApplied(
         address indexed buyer,
         address indexed referrer,
@@ -791,6 +795,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             return;
         }
         require(reservePodiumPayoutsEnabled, "TimeCurve: reserve podium payouts disabled");
+        require(warbowPodiumFinalized, "TimeCurve: warbow podium not finalized");
 
         uint256 sLast = (prizePool * 40) / 100;
         uint256 sWar = (prizePool * 25) / 100;
@@ -987,6 +992,50 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return uint160(p.winners[a]) < uint160(p.winners[b]);
     }
 
+    function _clearWarbowPodium() internal {
+        Podium storage p = _warbowPodium;
+        p.winners[0] = address(0);
+        p.winners[1] = address(0);
+        p.winners[2] = address(0);
+        p.values[0] = 0;
+        p.values[1] = 0;
+        p.values[2] = 0;
+    }
+
+    /// @notice Permissionless podium repair — re-applies `_updateWarbowPodium` for each candidate using **live**
+    ///         `battlePoints`. Pass current podium occupants plus wallets that may have overtaken them (gas ∝ len).
+    /// @dev GitLab #129 — BP can drop via steals; stale slots are not auto-cleared unless addressed. Any `refreshWarbowPodium`
+    ///      sets `warbowPodiumFinalized = false`; the owner must call `finalizeWarbowPodium` again before `distributePrizes`
+    ///      with a non-zero prize pool.
+    function refreshWarbowPodium(address[] calldata candidates) external nonReentrant {
+        warbowPodiumFinalized = false;
+        for (uint256 i; i < candidates.length; ++i) {
+            address c = candidates[i];
+            if (c == address(0)) continue;
+            _updateWarbowPodium(c, battlePoints[c]);
+        }
+        emit WarbowPodiumRefreshed(msg.sender, candidates.length);
+    }
+
+    /// @notice Owner-only: clear WarBow podium and rebuild top-3 from `battlePoints` for every **non-zero** BP address in `candidates`.
+    ///         Sets `warbowPodiumFinalized` for non-empty `distributePrizes` (GitLab #129).
+    /// @dev Pass a superset of BP earners (indexer / offchain). Omitted wallets cannot influence the rebuild.
+    function finalizeWarbowPodium(address[] calldata candidates) external onlyOwner nonReentrant {
+        require(ended, "TimeCurve: not ended");
+        require(!prizesDistributed, "TimeCurve: prizes done");
+        _clearWarbowPodium();
+        for (uint256 i; i < candidates.length; ++i) {
+            address c = candidates[i];
+            if (c == address(0)) continue;
+            uint256 bp = battlePoints[c];
+            if (bp > 0) {
+                _updateWarbowPodium(c, bp);
+            }
+        }
+        warbowPodiumFinalized = true;
+        emit WarbowPodiumFinalized(msg.sender, candidates.length);
+    }
+
     /// @notice If false, reverts `buy` and WarBow CL8Y actions (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y burn.)
     bool public buyFeeRoutingEnabled;
     /// @notice If false, `redeemCharms` reverts. Default: false until owner signoff.
@@ -1009,5 +1058,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice **`block.timestamp` when `endSale()` succeeded** — starts the unredeemed-launch-token sweep grace clock.
     uint256 public saleEndedAt;
 
-    uint256[44] private __gap;
+    /// @notice Latched by `finalizeWarbowPodium`; required when `distributePrizes` pays a non-zero podium pool. GitLab #129.
+    bool public warbowPodiumFinalized;
+
+    uint256[43] private __gap;
 }
