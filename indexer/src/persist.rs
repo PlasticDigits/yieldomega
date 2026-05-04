@@ -5,6 +5,7 @@
 use alloy_primitives::{Address, U256};
 use eyre::Result;
 use serde_json::json;
+use sqlx::postgres::PgConnection;
 use sqlx::PgPool;
 
 use crate::decoder::{DecodedEvent, DecodedLog};
@@ -21,8 +22,8 @@ fn b256_hex(h: alloy_primitives::B256) -> String {
     format!("{:#x}", h)
 }
 
-/// Persist a decoded log. Unknown events are skipped.
-pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
+/// Persist a decoded log on an existing Postgres connection or transaction. Unknown events are skipped.
+pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -> Result<()> {
     let block = d.block_number as i64;
     let block_h = b256_hex(d.block_hash);
     let tx_h = b256_hex(d.tx_hash);
@@ -51,7 +52,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*start_timestamp))
             .bind(u256_dec(*initial_deadline))
             .bind(u256_dec(*total_tokens_for_sale))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuy {
@@ -119,7 +120,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*buyer_total_effective_timer_sec))
             .bind(u256_dec(*buyer_active_defended_streak))
             .bind(u256_dec(*buyer_best_defended_streak))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
@@ -145,7 +146,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*charm_wad))
             .bind(u256_dec(*gross_cl8y))
             .bind(pk)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveSaleEnded {
@@ -168,7 +169,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*end_timestamp))
             .bind(u256_dec(*total_raised))
             .bind(u256_dec(*total_buys))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveCharmsRedeemed {
@@ -189,7 +190,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*buyer))
             .bind(u256_dec(*token_amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurvePrizesDistributed => {
@@ -204,7 +205,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&tx_h)
             .bind(log_i)
             .bind(&contract)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool { podium_pool } => {
@@ -220,7 +221,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*podium_pool))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveReferralApplied {
@@ -249,7 +250,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*referrer_amount))
             .bind(u256_dec(*referee_amount))
             .bind(u256_dec(*amount_to_fee_router))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowSteal {
@@ -282,7 +283,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(*bypassed_victim_daily_limit)
             .bind(u256_dec(*victim_bp_after))
             .bind(u256_dec(*attacker_bp_after))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
@@ -308,7 +309,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*stealer))
             .bind(u256_dec(*expiry_exclusive))
             .bind(u256_dec(*steal_seq))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowRevenge {
@@ -334,7 +335,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*stealer))
             .bind(u256_dec(*amount_bp))
             .bind(u256_dec(*burn_paid_wad))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowGuardActivated {
@@ -358,7 +359,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*player))
             .bind(u256_dec(*guard_until_ts))
             .bind(u256_dec(*burn_paid_wad))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowFlagClaimed {
@@ -382,7 +383,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*player))
             .bind(u256_dec(*bonus_bp))
             .bind(u256_dec(*battle_points_after))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowFlagPenalized {
@@ -408,7 +409,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*penalty_bp))
             .bind(addr_hex(*triggering_buyer))
             .bind(u256_dec(*battle_points_after))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowCl8yBurned {
@@ -432,7 +433,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*payer))
             .bind(i16::from(*reason))
             .bind(u256_dec(*amount_wad))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
@@ -456,7 +457,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*wallet))
             .bind(u256_dec(*active_streak))
             .bind(u256_dec(*best_streak))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
@@ -480,7 +481,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*former_holder))
             .bind(addr_hex(*interrupter))
             .bind(u256_dec(*broken_active_length))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared { cleared_wallet } => {
@@ -498,7 +499,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(block_ts)
             .bind(addr_hex(*cleared_wallet))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::ReferralCodeRegistered {
@@ -521,7 +522,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*owner))
             .bind(b256_hex(*code_hash))
             .bind(normalized_code.as_str())
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::PodiumPoolPaid {
@@ -548,7 +549,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*amount))
             .bind(i16::from(*category))
             .bind(i16::from(*placement))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::PodiumPoolResidualForwarded {
@@ -573,7 +574,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*recipient))
             .bind(u256_dec(*amount))
             .bind(i16::from(*category))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitEpochOpened {
@@ -596,7 +597,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*epoch_id))
             .bind(u256_dec(*start_timestamp))
             .bind(u256_dec(*end_timestamp))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitHealthEpochFinalized {
@@ -628,7 +629,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*repricing_factor_wad))
             .bind(u256_dec(*backing_per_doubloon_wad))
             .bind(u256_dec(*internal_state_e_wad))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitEpochReserveSnapshot {
@@ -651,7 +652,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*epoch_id))
             .bind(addr_hex(*reserve_asset))
             .bind(u256_dec(*balance))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitReserveBalanceUpdated {
@@ -676,7 +677,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*balance_after))
             .bind(delta)
             .bind(*reason_code as i16)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitDeposit {
@@ -705,7 +706,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*doub_out))
             .bind(u256_dec(*epoch_id))
             .bind(u256_dec(*faction_id))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitWithdrawal {
@@ -734,7 +735,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*doub_in))
             .bind(u256_dec(*epoch_id))
             .bind(u256_dec(*faction_id))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitFeeAccrued {
@@ -759,7 +760,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*amount))
             .bind(u256_dec(*cumulative_in_asset))
             .bind(u256_dec(*epoch_id))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitRepricingApplied {
@@ -784,7 +785,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*repricing_factor_wad))
             .bind(u256_dec(*prior_internal_price_wad))
             .bind(u256_dec(*new_internal_price_wad))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitParamsUpdated {
@@ -809,7 +810,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(param_name)
             .bind(u256_dec(*old_value))
             .bind(u256_dec(*new_value))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::NftSeriesCreated {
@@ -830,7 +831,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(u256_dec(*series_id))
             .bind(u256_dec(*max_supply))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::NftMinted {
@@ -853,7 +854,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*token_id))
             .bind(u256_dec(*series_id))
             .bind(addr_hex(*to))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::FeeRouterSinksUpdated {
@@ -888,7 +889,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*actor))
             .bind(&old_json)
             .bind(&new_json)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::FeeRouterFeesDistributed {
@@ -915,7 +916,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*token))
             .bind(u256_dec(*amount))
             .bind(&shares_json)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::FeeRouterDistributableTokenUpdated {
@@ -938,7 +939,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*token))
             .bind(*allowed)
             .bind(addr_hex(*actor))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::FeeRouterERC20Rescued {
@@ -963,7 +964,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*recipient))
             .bind(u256_dec(*amount))
             .bind(addr_hex(*actor))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled } => {
@@ -979,7 +980,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(*enabled)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled } => {
@@ -995,7 +996,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(*enabled)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled } => {
@@ -1011,7 +1012,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(*enabled)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyRouterSet { router } => {
@@ -1027,7 +1028,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*router))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveDoubPresaleVestingSet { vesting } => {
@@ -1043,7 +1044,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*vesting))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet { recipient } => {
@@ -1059,7 +1060,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*recipient))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept { recipient, amount } => {
@@ -1076,7 +1077,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*recipient))
             .bind(u256_dec(*amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurvePodiumResidualRecipientSet { recipient } => {
@@ -1092,7 +1093,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*recipient))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
@@ -1108,7 +1109,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(u256_dec(*amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyRouterEthRescued { to, amount } => {
@@ -1125,7 +1126,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*to))
             .bind(u256_dec(*amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::TimeCurveBuyRouterErc20Rescued { token, to, amount } => {
@@ -1143,7 +1144,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*token))
             .bind(addr_hex(*to))
             .bind(u256_dec(*amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::PodiumPoolPrizePusherSet { pusher } => {
@@ -1159,7 +1160,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(addr_hex(*pusher))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitBurrowReserveBuckets {
@@ -1184,7 +1185,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*redeemable_backing))
             .bind(u256_dec(*protocol_owned_backing))
             .bind(u256_dec(*total_backing))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitProtocolRevenueSplit {
@@ -1209,7 +1210,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*gross_amount))
             .bind(u256_dec(*to_protocol_bucket))
             .bind(u256_dec(*burned_amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::RabbitWithdrawalFeeAccrued {
@@ -1232,7 +1233,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*asset))
             .bind(u256_dec(*fee_amount))
             .bind(u256_dec(*cumulative_withdraw_fees))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::DoubVestingStarted {
@@ -1255,7 +1256,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(u256_dec(*start_timestamp))
             .bind(u256_dec(*duration_sec))
             .bind(u256_dec(*total_allocated))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::DoubVestingClaimed {
@@ -1276,7 +1277,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(&contract)
             .bind(addr_hex(*beneficiary))
             .bind(u256_dec(*amount))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::DoubVestingClaimsEnabled { enabled } => {
@@ -1292,7 +1293,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(log_i)
             .bind(&contract)
             .bind(*enabled)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::DoubVestingRescueErc20 {
@@ -1317,7 +1318,7 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*recipient))
             .bind(u256_dec(*amount))
             .bind(*kind as i16)
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::FeeSinkWithdrawn {
@@ -1342,11 +1343,17 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .bind(addr_hex(*recipient))
             .bind(u256_dec(*amount))
             .bind(addr_hex(*actor))
-            .execute(pool)
+            .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::Unknown { .. } => {}
     }
 
     Ok(())
+}
+
+/// Pool convenience wrapper (one acquired connection).
+pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
+    let mut conn = pool.acquire().await?;
+    persist_decoded_log_conn(&mut *conn, d).await
 }
