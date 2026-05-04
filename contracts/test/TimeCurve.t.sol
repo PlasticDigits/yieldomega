@@ -1595,7 +1595,7 @@ contract TimeCurveTest is Test {
         assertEq(reserve.balanceOf(protocolSink) - sinkBefore, expectDefSlice);
     }
 
-    /// @dev GitLab #116 — `initialTimerSec == timerCapSec` ⇒ `actualSecondsAdded == 0` ⇒ empty time booster; 15% remainder slice → protocol.
+    /// @dev GitLab #116 — timer-at-cap curve: two buyers, **full** CL8Y from `podiumPool` to winners + `protocolSink` (no stranded balance).
     function test_distributePrizes_empty_time_booster_forwards_time_slice_to_protocol() public {
         TimeCurve tCap = _newTimeCurveTimerAtCap();
         tCap.startSaleAt(block.timestamp);
@@ -1606,11 +1606,6 @@ contract TimeCurveTest is Test {
         _warpPastBuyCooldown(tCap, alice);
         vm.prank(bob);
         tCap.buy(1e18);
-
-        (, uint256[3] memory tbVal) = tCap.podium(tCap.CAT_TIME_BOOSTER());
-        assertEq(tbVal[0], 0, "time booster values stay 0");
-        assertEq(tbVal[1], 0);
-        assertEq(tbVal[2], 0);
 
         vm.warp(tCap.deadline() + 1);
         tCap.endSale();
@@ -1653,13 +1648,16 @@ contract TimeCurveTest is Test {
 
         uint256 prizePool = reserve.balanceOf(address(podiumPool));
         uint256 aliceBefore = reserve.balanceOf(alice);
+        uint256 bobBefore = reserve.balanceOf(bob);
+        uint256 carolBefore = reserve.balanceOf(carol);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
         assertEq(
-            reserve.balanceOf(alice) - aliceBefore + (reserve.balanceOf(protocolSink) - sinkBefore),
+            (reserve.balanceOf(alice) - aliceBefore) + (reserve.balanceOf(bob) - bobBefore)
+                + (reserve.balanceOf(carol) - carolBefore) + (reserve.balanceOf(protocolSink) - sinkBefore),
             prizePool,
             "winners + protocol sink account for full podium pool"
         );
@@ -1677,7 +1675,12 @@ contract TimeCurveTest is Test {
 
         uint256 prizePool = reserve.balanceOf(address(podiumPool));
         uint256 sLast = (prizePool * 40) / 100;
+        uint256 sWar = (prizePool * 25) / 100;
+        uint256 sDef = (prizePool * 20) / 100;
+        uint256 sTime = prizePool - sLast - sWar - sDef;
         uint256 expectFirstLast = (sLast * 4) / 7;
+        uint256 expectFirstWar = (sWar * 4) / 7;
+        uint256 expectFirstTime = (sTime * 4) / 7;
 
         uint256 aliceBefore = reserve.balanceOf(alice);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
@@ -1686,7 +1689,11 @@ contract TimeCurveTest is Test {
 
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertGt(reserve.balanceOf(protocolSink), sinkBefore);
-        assertEq(reserve.balanceOf(alice) - aliceBefore, expectFirstLast);
+        assertEq(
+            reserve.balanceOf(alice) - aliceBefore,
+            expectFirstLast + expectFirstWar + expectFirstTime,
+            "sole buyer takes 1st on last-buy, WarBow, and time booster when unopposed"
+        );
     }
 
     /// @dev GitLab #116 — residual routing requires `setPodiumResidualRecipient`; unset ⇒ revert (defended empty).
@@ -1962,7 +1969,7 @@ contract TimeCurveTest is Test {
             1e18,
             GROWTH_RATE,
             120,
-            ONE_DAY,
+            maxSec,
             maxSec,
             1_000_000e18,
             TEST_BUY_COOLDOWN_SEC
@@ -1972,14 +1979,13 @@ contract TimeCurveTest is Test {
         uint256 t0 = 1_000_000;
         vm.warp(t0);
         t.startSaleAt(t0);
-        vm.warp(t0 + ONE_DAY - 10);
+        vm.warp(t0 + maxSec - 100);
         (uint256 minC,) = t.currentCharmBoundsWad();
         uint256 spend = (minC * t.currentPricePerCharmWad()) / WAD;
         _fundAndApproveCurve(alice, spend, t);
         vm.prank(alice);
         t.buy(minC);
-        assertLe(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
-        assertGt(t.deadline(), t.saleStart());
+        assertEq(t.deadline(), t.saleStart() + t.MAX_SALE_ELAPSED_SEC() + 1);
     }
 
     function test_gitlab124_startSaleAt_uses_min_of_initial_timer_and_hard_cap() public {
