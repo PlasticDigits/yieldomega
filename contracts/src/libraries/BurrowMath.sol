@@ -41,6 +41,7 @@ library BurrowMath {
     }
 
     /// @notice m = clip(1 + alpha * tanh(beta * (C - c*)), m_min, m_max) with WAD inputs.
+    /// @dev Governance must keep `alphaWad < WAD` (`RabbitTreasury.setAlphaWad`) so `inner > 0` holds for governed params (GitLab #119).
     function multiplierWad(
         uint256 CWad,
         uint256 cStarWad,

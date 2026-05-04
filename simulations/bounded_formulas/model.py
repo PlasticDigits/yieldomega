@@ -12,7 +12,11 @@ def clip(x: float, lo: float, hi: float) -> float:
 
 @dataclass(frozen=True)
 class BurrowParams:
-    """Tunable parameters (mirror intended onchain fixed-point ranges)."""
+    """Tunable parameters (mirror intended onchain fixed-point ranges).
+
+    On-chain `RabbitTreasury` enforces envelopes at initialize + PARAMS_ROLE setters;
+    keep defaults consistent with `contracts/PARAMETERS.md` § Rabbit Treasury (GitLab #119).
+    """
 
     # Clip coverage ratio R/(S*e) to [0, c_max]. Upper clip avoids blow-ups when S*e is tiny;
     # lower bound stays 0 so insolvency is visible (symmetric c_min would fake health at R=0).

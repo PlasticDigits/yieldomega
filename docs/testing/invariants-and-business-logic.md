@@ -585,6 +585,18 @@ Canonical definitions: [product/primitives.md](../product/primitives.md). Implem
 
 Mitigations and product stance: [security-and-threat-model.md — Implementation notes](../onchain/security-and-threat-model.md#implementation-notes-contract-hardening).
 
+<a id="rabbit-treasury-burrow-param-bounds-gitlab-119"></a>
+
+### RabbitTreasury Burrow param bounds + `finalizeEpoch` liveness (GitLab [#119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119))
+
+| Invariant | Meaning | Evidence |
+|-----------|---------|----------|
+| **Governed curve envelope** | `c*` ∈ `(0, c_max]`; `alpha` ∈ `[0, 1)` (`alphaWad < WAD`); `beta` ∈ `(0, 10]`; `lambda` ∈ `(0, 1]`; `delta_max_frac` ∈ `(0, 0.20]` (WAD-scaled); mirrored at **`initialize`**. | [`RabbitTreasury.sol`](../../contracts/src/RabbitTreasury.sol), [`PARAMETERS.md`](../../contracts/PARAMETERS.md) § Rabbit Treasury |
+| **Revert at setter, not only at finalize** | Illegal values rejected with **`RT: …`** stable strings; prevents reaching `BurrowMath: inner<=0` from **`alphaWad ≥ WAD`** via governance alone. | `test_setAlphaWad_reverts_when_not_strictly_below_wad`, `test_setCStarWad_reverts_out_of_envelope`, … |
+| **`initialize` validation** | Proxy deploy with invalid curve params reverts (cheat schedules **`new ERC1967Proxy`**, not library-internal deploy). | `test_initialize_reverts_zero_cStar` |
+| **Permissionless finalize after legal extremes** | Boundary-legal knob updates still allow **`finalizeEpoch`** on representative backing/supply. | `test_finalizeEpoch_succeeds_after_extreme_legal_params` |
+| **Product framing** | **`epochId`** = rolling accounting windows — not "defer governance to next product epoch." | [`rabbit-treasury.md`](../product/rabbit-treasury.md#epochid-is-accounting-windows-not-a-multi-stage-product-roadmap), [`fee-routing-and-governance.md`](../onchain/fee-routing-and-governance.md#rabbit-treasury-repricing-parameters-gitlab-119) |
+
 ### RabbitTreasury and BurrowMath
 
 | Invariant | Meaning | Tests |
@@ -603,7 +615,7 @@ Mitigations and product stance: [security-and-threat-model.md — Implementation
 | Chained epochs | Finalize advances `epochId` and can run again next window | `test_finalizeEpoch_can_run_twice_advances_epoch` |
 | Fee receiver role | Only fee router can push fees | `test_receiveFee`, `test_receiveFee_unauthorized_reverts`, `test_receiveFee_zero_reverts` |
 | Pause | Paused state blocks deposit; unpause restores | `test_pause_blocks_deposit`, `test_unpause_allows_deposit` |
-| Parameter governance | Burrow params update emits event; unauthorized reverts | `test_params_update_emits_event`, `test_params_update_unauthorized_reverts`, `test_setMBounds_invalid_reverts` |
+| Parameter governance | Burrow params update emits event; unauthorized reverts; **curve envelope** reverts ([GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119)) | `test_params_update_emits_event`, `test_params_update_unauthorized_reverts`, `test_setMBounds_invalid_reverts`, `test_setCStarWad_reverts_out_of_envelope`, `test_setAlphaWad_reverts_when_not_strictly_below_wad`, `test_setBetaWad_reverts_out_of_envelope`, `test_setLamWad_reverts_out_of_envelope`, `test_setDeltaMaxFracWad_reverts_out_of_envelope`, `test_initialize_reverts_zero_cStar`, `test_finalizeEpoch_succeeds_after_extreme_legal_params` |
 | Coverage / multiplier bounds | `C` clipped; `m ∈ [m_min, m_max]` | `BurrowMath.t.sol`: `test_coverage_clips_high`, `test_multiplier_bounds_fuzz`, `test_epoch_invariants_fuzz` |
 | Numeric parity with sims | One epoch matches Python reference | `test_matches_python_reference_epoch` |
 
@@ -768,7 +780,7 @@ Every `contracts/test/*.t.sol` test function maps to the invariant tables above.
 | [TimeCurveInvariant.t.sol](../../contracts/test/TimeCurveInvariant.t.sol) | 2 | Foundry **invariant** handlers: `totalRaised` ghost, `totalCharmWeight` ghost |
 | [TimeCurveFork.t.sol](../../contracts/test/TimeCurveFork.t.sol) | 1 | Optional `FORK_URL` fork smoke (no-op if unset) |
 | [BurrowMath.t.sol](../../contracts/test/BurrowMath.t.sol) | 4 | Coverage clip, multiplier/epoch fuzz, Python parity |
-| [RabbitTreasury.t.sol](../../contracts/test/RabbitTreasury.t.sol) | 29 | Epochs, deposit/withdraw, finalize, pause, fee split/burn, bucket anti-leak, cooldown, stress exits, repricing vs redemption |
+| [RabbitTreasury.t.sol](../../contracts/test/RabbitTreasury.t.sol) | 36 | Epochs, deposit/withdraw, finalize, pause, fee split/burn, bucket anti-leak, cooldown, stress exits, repricing vs redemption, **Burrow param bounds (#119)** |
 | [RabbitTreasuryInvariant.t.sol](../../contracts/test/RabbitTreasuryInvariant.t.sol) | 2 | Foundry **invariant** handlers: reserves vs balance, DOUB supply vs mint/burn |
 | [FeeMath.t.sol](../../contracts/test/FeeMath.t.sol) | 6 | Weight validation, BPS shares |
 | [FeeRouter.t.sol](../../contracts/test/FeeRouter.t.sol) | 10 | Distribution, dust, **insufficient balance**, governance |

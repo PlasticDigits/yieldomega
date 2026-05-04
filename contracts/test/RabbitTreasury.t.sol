@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {RabbitTreasury} from "../src/RabbitTreasury.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
@@ -412,6 +414,90 @@ contract RabbitTreasuryTest is Test {
     function test_setMBounds_invalid_reverts() public {
         vm.expectRevert("RT: mMin >= mMax");
         rt.setMBoundsWad(M_MAX, M_MIN);
+    }
+
+    function test_setCStarWad_reverts_out_of_envelope() public {
+        vm.expectRevert("RT: cStar");
+        rt.setCStarWad(0);
+        vm.expectRevert("RT: cStar");
+        rt.setCStarWad(C_MAX + 1);
+    }
+
+    function test_setAlphaWad_reverts_when_not_strictly_below_wad() public {
+        vm.expectRevert("RT: alpha");
+        rt.setAlphaWad(WAD);
+    }
+
+    function test_setBetaWad_reverts_out_of_envelope() public {
+        vm.expectRevert("RT: beta");
+        rt.setBetaWad(0);
+        vm.expectRevert("RT: beta");
+        rt.setBetaWad(10 * WAD + 1);
+    }
+
+    function test_setLamWad_reverts_out_of_envelope() public {
+        vm.expectRevert("RT: lam");
+        rt.setLamWad(0);
+        vm.expectRevert("RT: lam");
+        rt.setLamWad(WAD + 1);
+    }
+
+    function test_setDeltaMaxFracWad_reverts_out_of_envelope() public {
+        uint256 maxFrac = 20 * 1e16;
+        vm.expectRevert("RT: deltaMax");
+        rt.setDeltaMaxFracWad(0);
+        vm.expectRevert("RT: deltaMax");
+        rt.setDeltaMaxFracWad(maxFrac + 1);
+    }
+
+    /// @dev `vm.expectRevert` must wrap the **proxied** `new ERC1967Proxy` — library-internal deploy bypasses cheat scheduling (GitLab #119).
+    function test_initialize_reverts_zero_cStar() public {
+        Doubloon dBad = new Doubloon(address(this));
+        RabbitTreasury impl = new RabbitTreasury();
+        bytes memory data = abi.encodeCall(
+            RabbitTreasury.initialize,
+            (
+                IERC20(address(reserve)),
+                dBad,
+                ONE_DAY,
+                C_MAX,
+                uint256(0),
+                ALPHA,
+                BETA,
+                M_MIN,
+                M_MAX,
+                LAM,
+                DELTA_MAX_FRAC,
+                EPS,
+                25e16,
+                1e16,
+                5e17,
+                0,
+                address(0),
+                address(this)
+            )
+        );
+        vm.expectRevert("RT: cStar");
+        new ERC1967Proxy(address(impl), data);
+    }
+
+    /// @dev Boundary-legal Burrow knobs still allow permissionless `finalizeEpoch` on representative backing/supply.
+    function test_finalizeEpoch_succeeds_after_extreme_legal_params() public {
+        rt.openFirstEpoch();
+        _fundAndApprove(alice, 1_000_000e18);
+        vm.prank(alice);
+        rt.deposit(1_000_000e18, 0);
+
+        rt.setCStarWad(C_MAX);
+        rt.setAlphaWad(WAD - 1);
+        rt.setBetaWad(10 * WAD);
+        rt.setLamWad(WAD);
+        rt.setDeltaMaxFracWad(20 * 1e16);
+
+        vm.warp(rt.epochEnd());
+        rt.finalizeEpoch();
+        assertEq(rt.currentEpochId(), 2);
+        assertGt(rt.eWad(), 0);
     }
 
     // ── Bucket model & anti-leak ───────────────────────────────────────
