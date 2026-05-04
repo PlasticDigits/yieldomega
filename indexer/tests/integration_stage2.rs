@@ -588,6 +588,17 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             amount: u2,
             shares: [u1, u1, u1, u1, u2],
         }),
+        next(DecodedEvent::FeeRouterDistributableTokenUpdated {
+            token: reserve,
+            allowed: true,
+            actor: alice,
+        }),
+        next(DecodedEvent::FeeRouterERC20Rescued {
+            token: reserve,
+            recipient: alice,
+            amount: u1,
+            actor: alice,
+        }),
         next(DecodedEvent::TimeCurveWarBowSteal {
             attacker: alice,
             victim: addr_byte(0xb2),
@@ -757,6 +768,14 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_fee_router_fees_distributed", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
         1
     );
     assert_eq!(count_where(&pool, "idx_timecurve_warbow_steal", 100).await, 1);
@@ -1005,6 +1024,14 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
+        0
+    );
+    assert_eq!(
+        count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
+        0
+    );
 
     let row = sqlx::query("SELECT block_number FROM indexed_blocks WHERE block_number = 20")
         .fetch_optional(&pool)

@@ -112,6 +112,7 @@ contract TimeCurveTest is Test {
             [sinkLp, sinkBurn, address(podiumPool), sinkTeam, sinkRabbit],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(reserve)), true);
 
         linearPrice = _deployLinearCharmPrice(1e18, 0); // flat 1:1 asset wei per 1e18 CHARM for tests
         tc = _deployTimeCurve(

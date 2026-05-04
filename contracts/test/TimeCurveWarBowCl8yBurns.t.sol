@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
@@ -51,6 +52,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
             [sinkLp, sinkBurn, address(podiumPool), sinkTeam, sinkRabbit],
             [uint16(3000), uint16(4000), uint16(2000), uint16(0), uint16(1000)]
         );
+        router.setDistributableToken(IERC20(address(reserve)), true);
         linearPrice = UUPSDeployLib.deployLinearCharmPrice(1e18, 0, address(this));
         tc = UUPSDeployLib.deployTimeCurve(
             reserve,
