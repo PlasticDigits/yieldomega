@@ -30,6 +30,12 @@ Each **buy** routes the **full gross** amount in the accepted asset through **`F
 
 **Podium internals (onchain defaults):** four categories — **last buy (40%** of pool**)** · **WarBow / top Battle Points (25%)** · **defended streak (20%)** · **time booster (15%)** — i.e. **8%** · **5%** · **4%** · **3%** of **gross raise** respectively (the podium pool is **20%** of each buy). Within each category placements use **4∶2∶1** (1st is twice 2nd; 2nd twice 3rd). **WarBow** leaderboard snapshots fund the WarBow slice; opening/closing window categories remain **removed**.
 
+<a id="timecurve-unredeemed-launch-allocation-gitlab-128"></a>
+
+### TimeCurve — unredeemed DOUB allocation sweep (GitLab #128)
+
+**`onlyOwner` `setUnredeemedLaunchedTokenRecipient`** defines where **`sweepUnredeemedLaunchedToken`** sends the full **`launchedToken`** balance held by **`TimeCurve`** after **`block.timestamp >= saleEndedAt + UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC`** (**7 days**). This is **independent** from **`podiumResidualRecipient`** (empty / partial CL8Y podium remainder — GitLab #116 / audit M-01 on the reserve side). `DeployDev` wires **both** to **`EcosystemTreasury`** for local QA ([`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol)).
+
 <a id="fee-sinks"></a>
 
 ### Fee sinks (canonical TimeCurve)

@@ -153,6 +153,7 @@ contract DeployDev is Script {
         tc.setCharmRedemptionEnabled(true);
         tc.setReservePodiumPayoutsEnabled(true);
         tc.setPodiumResidualRecipient(address(ecoTreasury));
+        tc.setUnredeemedLaunchedTokenRecipient(address(ecoTreasury));
 
         // ── DoubPresaleVesting (dev presale bucket stand-in — GitLab #92) ──
         address[] memory vBen = new address[](2);

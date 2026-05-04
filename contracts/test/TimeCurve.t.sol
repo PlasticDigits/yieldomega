@@ -46,6 +46,8 @@ contract TimeCurveTest is Test {
     address dave = makeAddr("dave");
     /// @dev GitLab #116 — CL8Y sink for empty/partial podium slice remainder (tests only).
     address protocolSink = makeAddr("protocolSink");
+    /// @dev GitLab #128 — governance sink for unredeemed launched-token sweep (tests only).
+    address governanceSink = makeAddr("governanceSink");
 
     // FeeRouter sinks: LP 30% · CL8Y burn 40% · podium 20% · team 0% · Rabbit 10% (+ remainder) (bps)
     address sinkLp = makeAddr("sinkLp");
@@ -581,8 +583,10 @@ contract TimeCurveTest is Test {
         tc.buy(3e18);
 
         vm.warp(tc.deadline() + 1);
+        uint256 endedAt = block.timestamp;
         tc.endSale();
         assertTrue(tc.ended());
+        assertEq(tc.saleEndedAt(), endedAt);
 
         vm.prank(alice);
         tc.redeemCharms();
@@ -1694,6 +1698,90 @@ contract TimeCurveTest is Test {
             expectFirstLast + expectFirstWar + expectFirstTime,
             "sole buyer takes 1st on last-buy, WarBow, and time booster when unopposed"
         );
+    }
+
+    /// @dev GitLab #128 — `sweepUnredeemedLaunchedToken` routes Bob’s unredeemed share (+ dust) after grace.
+    function test_sweepUnredeemedLaunchedToken_after_grace_to_governance() public {
+        tc.setUnredeemedLaunchedTokenRecipient(governanceSink);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(2e18);
+        _fundAndApprove(bob, 5e18);
+        vm.prank(bob);
+        tc.buy(3e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.prank(alice);
+        tc.redeemCharms();
+
+        uint256 balBefore = launchedToken.balanceOf(address(tc));
+        assertEq(balBefore, 600_000e18, "only bob unredeemed");
+
+        vm.warp(tc.saleEndedAt() + tc.UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC() + 1);
+        tc.sweepUnredeemedLaunchedToken();
+
+        assertEq(launchedToken.balanceOf(address(tc)), 0);
+        assertEq(launchedToken.balanceOf(governanceSink), balBefore);
+    }
+
+    function test_sweepUnredeemedLaunchedToken_reverts_before_grace() public {
+        tc.setUnredeemedLaunchedTokenRecipient(governanceSink);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(2e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.expectRevert("TimeCurve: unredeemed grace active");
+        tc.sweepUnredeemedLaunchedToken();
+    }
+
+    function test_sweepUnredeemedLaunchedToken_reverts_zero_recipient() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(2e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.warp(tc.saleEndedAt() + tc.UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC() + 1);
+        vm.expectRevert("TimeCurve: zero unredeemed launched token recipient");
+        tc.sweepUnredeemedLaunchedToken();
+    }
+
+    function test_sweepUnredeemedLaunchedToken_reverts_nothing_to_sweep() public {
+        tc.setUnredeemedLaunchedTokenRecipient(governanceSink);
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(2e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        vm.prank(alice);
+        tc.redeemCharms();
+
+        vm.warp(tc.saleEndedAt() + tc.UNREDEEMED_LAUNCHED_TOKEN_GRACE_SEC() + 1);
+        vm.expectRevert("TimeCurve: nothing to sweep");
+        tc.sweepUnredeemedLaunchedToken();
+    }
+
+    function test_repairSaleEndedAt_reverts_when_already_set() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 5e18);
+        vm.prank(alice);
+        tc.buy(2e18);
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.expectRevert("TimeCurve: sale ended at already set");
+        tc.repairSaleEndedAt(block.timestamp - 1);
     }
 
     /// @dev GitLab #116 — residual routing requires `setPodiumResidualRecipient`; unset ⇒ revert (defended empty).

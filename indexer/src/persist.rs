@@ -1004,6 +1004,39 @@ pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
             .execute(pool)
             .await?;
         }
+        DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet { recipient } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_unredeemed_launched_token_recipient_set (
+                    block_number, block_hash, tx_hash, log_index, contract_address, recipient
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*recipient))
+            .execute(pool)
+            .await?;
+        }
+        DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept { recipient, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_timecurve_unredeemed_launched_token_swept (
+                    block_number, block_hash, tx_hash, log_index, contract_address, recipient, amount
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&block_h)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(&contract)
+            .bind(addr_hex(*recipient))
+            .bind(u256_dec(*amount))
+            .execute(pool)
+            .await?;
+        }
         DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (

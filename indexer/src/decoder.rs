@@ -137,6 +137,8 @@ mod contracts {
             event ReservePodiumPayoutsEnabled(bool enabled);
             event TimeCurveBuyRouterSet(address indexed router);
             event DoubPresaleVestingSet(address indexed vesting);
+            event UnredeemedLaunchedTokenRecipientSet(address indexed recipient);
+            event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
         }
     }
 
@@ -402,6 +404,8 @@ pub enum DecodedEvent {
     TimeCurveReservePodiumPayoutsEnabled { enabled: bool },
     TimeCurveBuyRouterSet { router: Address },
     TimeCurveDoubPresaleVestingSet { vesting: Address },
+    TimeCurveUnredeemedLaunchedTokenRecipientSet { recipient: Address },
+    TimeCurveUnredeemedLaunchedTokenSwept { recipient: Address, amount: U256 },
     ReferralCodeRegistered {
         owner: Address,
         code_hash: B256,
@@ -846,6 +850,23 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             let e = d.data;
             return DecodedEvent::TimeCurveDoubPresaleVestingSet {
                 vesting: e.vesting,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::UnredeemedLaunchedTokenRecipientSet::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::UnredeemedLaunchedTokenRecipientSet::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet {
+                recipient: e.recipient,
+            };
+        }
+    }
+    if topic0 == TimeCurveEvents::UnredeemedLaunchedTokenSwept::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveEvents::UnredeemedLaunchedTokenSwept::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept {
+                recipient: e.recipient,
+                amount: e.amount,
             };
         }
     }
