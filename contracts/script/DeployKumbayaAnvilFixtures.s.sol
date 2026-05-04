@@ -10,6 +10,7 @@ import {
 } from "../src/fixtures/AnvilKumbayaFixture.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {TimeCurveBuyRouter} from "../src/TimeCurveBuyRouter.sol";
+import {DevOnlyChainGuard} from "./DevOnlyChainGuard.sol";
 
 interface ITimeCurveAsset {
     function acceptedAsset() external view returns (address);
@@ -22,6 +23,7 @@ interface ITimeCurveAsset {
 ///        --broadcast --rpc-url <RPC> --sig run(address) <TimeCurve>
 contract DeployKumbayaAnvilFixtures is Script {
     function run(address timeCurve) external {
+        DevOnlyChainGuard.assertDevScriptChain();
         uint256 deployerKey = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(deployerKey);
         address cl8y = ITimeCurveAsset(timeCurve).acceptedAsset();

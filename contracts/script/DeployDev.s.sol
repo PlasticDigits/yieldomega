@@ -18,11 +18,12 @@ import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 import {DeployDevBuyCooldown} from "./DeployDevBuyCooldown.sol";
+import {DevOnlyChainGuard} from "./DevOnlyChainGuard.sol";
 
 /// @notice Deploy all core contracts to a dev/local environment.
 ///         Core game + routing contracts deploy as **UUPS ERC1967 proxies**; logged addresses are **proxy** addresses.
 ///         Tokens (`Doubloon`), NFTs (`LeprechaunNFT`), and dev mocks stay direct deployments (GitLab #54).
-///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288 (recommended on Anvil; Forge pre-broadcast sim enforces EIP-170 unless raised — see docs/contracts/foundry-and-megaeth.md).
+///         Usage: forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288 (recommended on Anvil; Forge pre-broadcast sim enforces EIP-170 unless raised — see docs/contracts/foundry-and-megaeth.md). **`DevOnlyChainGuard`** restricts **`run()`** to **31337 / 6342 / 6343** ([GitLab #141](https://gitlab.com/PlasticDigits/yieldomega/-/issues/141)).
 ///         Outputs addresses to console; copy into deployments/dev-addresses.example.json.
 ///         Per-wallet TimeCurve buy cooldown: default **300** s; QA throughput on Anvil via **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`**
 ///         (defaults to **1** s) and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** — see [`DeployDevBuyCooldown.sol`](./DeployDevBuyCooldown.sol) ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)).
@@ -38,6 +39,7 @@ contract DeployDev is Script {
     address internal constant SALE_CL8Y_BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
     function run() external {
+        DevOnlyChainGuard.assertDevScriptChain();
         uint256 deployerKey =
             vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(deployerKey);
