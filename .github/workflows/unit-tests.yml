@@ -120,6 +120,15 @@ jobs:
       - name: Unit tests
         run: PYTHONPATH=. python3 -m unittest discover -s tests -v
 
+  scripts-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Kumbaya env line merge regression (#154)
+        run: bash scripts/test-kumbaya-env-set-line.sh
+
   bots-timecurve-test:
     runs-on: ubuntu-latest
     defaults:

@@ -35,22 +35,16 @@ yieldomega_registry_merge_timecurve_buy_router() {
   mv "${tmp}" "${registry_json}"
 }
 
-# Idempotent: set or replace KEY=value (hex addresses — avoid special chars in values).
+# Idempotent: set or replace KEY=value with literal semantics (GitLab #154).
+# Implementation: scripts/lib/kumbaya_env_set_line.py — treats value bytes verbatim (no sed &/# metacharacters).
 _yieldomega_env_kumbaya_marker="# GitLab #84 — Kumbaya Anvil fixtures (merged by Yieldomega scripts)"
+_yieldomega_env_set_line_py="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kumbaya_env_set_line.py"
 _yieldomega_env_set_line() {
   local file="$1" key="$2" val="$3"
   if [[ ! -f "${file}" ]]; then
     return 0
   fi
-  if grep -q "^${key}=" "${file}" 2>/dev/null; then
-    sed -i "s#^${key}=.*#${key}=${val}#" "${file}"
-  else
-    if ! grep -qF "${_yieldomega_env_kumbaya_marker}" "${file}" 2>/dev/null; then
-      echo "" >> "${file}"
-      echo "${_yieldomega_env_kumbaya_marker}" >> "${file}"
-    fi
-    echo "${key}=${val}" >> "${file}"
-  fi
+  python3 "${_yieldomega_env_set_line_py}" "${file}" "${key}" "${val}" "${_yieldomega_env_kumbaya_marker}"
 }
 
 # Full parity with scripts/e2e-anvil.sh after DeployKumbayaAnvilFixtures (WETH, USDM, swap router, quoter, buy router).

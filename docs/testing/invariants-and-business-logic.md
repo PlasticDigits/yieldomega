@@ -525,11 +525,21 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 |----------|--------|
 | **Preconditions** | Anvil **`--code-size-limit 524288`**; **TimeCurve** = **proxy**; sale **not** ended (use `SKIP_ANVIL_RICH_STATE=1` for default stack, or a fresh `DeployDev`). |
 | **Script** | `bash scripts/verify-timecurve-buy-router-anvil.sh` sets **`YIELDOMEGA_FORK_VERIFY=1`** and runs **`forge test`** for [`VerifyTimeCurveBuyRouterAnvil.t.sol`](../../contracts/test/VerifyTimeCurveBuyRouterAnvil.t.sol) against **`FORK_URL`**. With **`YIELDOMEGA_DEPLOY_KUMBAYA=1`**, broadcasts **`DeployKumbayaAnvilFixtures`** when **`timeCurveBuyRouter()`** is zero. After a non-zero router, **jq-merges** **`contracts.TimeCurveBuyRouter`** into **`local-anvil-registry.json`** when present and merges **`VITE_KUMBAYA_*`** into **`frontend/.env.local`** when the deploy log supplies fixture addresses ([issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84)). |
-| **Local registry + indexer ([issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84))** | **`ADDRESS_REGISTRY_PATH`** must include **`contracts.TimeCurveBuyRouter`** matching **`cast call <TimeCurve> "timeCurveBuyRouter()(address)"`** after fixtures, or **`BuyViaKumbaya`** rows are **not** ingested ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). **Restart** the indexer after the verify script or **`YIELDOMEGA_DEPLOY_KUMBAYA=1`** stack start so it reloads the registry. Optional one-shot stack: **`YIELDOMEGA_DEPLOY_KUMBAYA=1 bash scripts/start-local-anvil-stack.sh`**. Helpers: [`scripts/lib/kumbaya_local_anvil_env.sh`](../../scripts/lib/kumbaya_local_anvil_env.sh). |
+| **Local registry + indexer ([issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84))** | **`ADDRESS_REGISTRY_PATH`** must include **`contracts.TimeCurveBuyRouter`** matching **`cast call <TimeCurve> "timeCurveBuyRouter()(address)"`** after fixtures, or **`BuyViaKumbaya`** rows are **not** ingested ([issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). **Restart** the indexer after the verify script or **`YIELDOMEGA_DEPLOY_KUMBAYA=1`** stack start so it reloads the registry. Optional one-shot stack: **`YIELDOMEGA_DEPLOY_KUMBAYA=1 bash scripts/start-local-anvil-stack.sh`**. Helpers: [`scripts/lib/kumbaya_local_anvil_env.sh`](../../scripts/lib/kumbaya_local_anvil_env.sh). **`VITE_*`** line merge is **literal** (**[#154](#kumbaya-env-local-line-merge-gitlab-154)**). |
 | **Buy event `flagPlanted`** | The fork test uses **`warbowPendingFlagOwner`** (same **opt-in** semantics as the **`Buy`** event, [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)) instead of log decoding. |
 | **CI / default `forge test`** | Without **`YIELDOMEGA_FORK_VERIFY`**, the test **no-ops** (passes) so `forge test` in CI is unchanged. |
 
 **Manual QA (third-party agents):** [`manual-qa-checklists.md#manual-qa-issue-78`](manual-qa-checklists.md#manual-qa-issue-78) · [issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78).
+
+<a id="kumbaya-env-local-line-merge-gitlab-154"></a>
+
+### Kumbaya local `frontend/.env.local` merge — literal KEY=value ([issue #154](https://gitlab.com/PlasticDigits/yieldomega/-/issues/154))
+
+**Intent:** Stack helpers must not corrupt **`frontend/.env.local`** when **`KEY=value`** payloads contain characters **`sed` treats specially** in substitutions (**`&`**, **`#`**, **`/`**, backslashes).
+
+**INV-KUMBAYA-ENV-154:** [`scripts/lib/kumbaya_local_anvil_env.sh`](../../scripts/lib/kumbaya_local_anvil_env.sh) delegates line writes to [`scripts/lib/kumbaya_env_set_line.py`](../../scripts/lib/kumbaya_env_set_line.py) so values are **literal** UTF-8 strings (**single-line** keys and values; newline rejected). **Regression:** [`scripts/test-kumbaya-env-set-line.sh`](../../scripts/test-kumbaya-env-set-line.sh).
+
+**Doc:** [kumbaya.md — Localnet (Anvil)](../integrations/kumbaya.md#localnet-anvil) · [issue #154](https://gitlab.com/PlasticDigits/yieldomega/-/issues/154).
 
 ---
 
