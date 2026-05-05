@@ -4,6 +4,7 @@
 # scripts/start-local-anvil-stack.sh (single source of truth), then optionally Vite dev server.
 #
 # GitLab #104 — docs/testing/qa-local-full-stack.md
+# GitLab #153 — trap cleanup for background Vite (readiness interrupt / abort before ready)
 #
 # Usage (repo root):
 #   bash scripts/start-qa-local-full-stack.sh
@@ -89,46 +90,8 @@ read_dotenv_value() {
   grep -E "^${key}=" "$file" | tail -1 | cut -d= -f2-
 }
 
-start_frontend_dev() {
-  local port="${FRONTEND_DEV_PORT:-5173}"
-  local pid_file="/tmp/yieldomega_frontend_qa.pid"
-  local log_file="/tmp/yieldomega_frontend_qa.log"
-
-  command -v npm >/dev/null 2>&1 || {
-    echo "Need npm to start Vite (install Node) or pass --no-frontend." >&2
-    exit 1
-  }
-
-  if [[ -f "${pid_file}" ]]; then
-    local old
-    old="$(cat "${pid_file}" 2>/dev/null || true)"
-    if [[ -n "${old}" ]] && kill -0 "${old}" 2>/dev/null; then
-      echo "Stopping prior QA frontend (PID ${old})…" >&2
-      kill "${old}" 2>/dev/null || true
-      sleep 0.3
-    fi
-  fi
-
-  if [[ ! -d "${FRONTEND}/node_modules" ]]; then
-    echo "frontend/node_modules missing — run: cd frontend && npm ci" >&2
-    exit 1
-  fi
-
-  echo "=== Vite dev (127.0.0.1:${port}) ===" >&2
-  (
-    cd "${FRONTEND}"
-    npm run dev -- --host 127.0.0.1 --port "${port}"
-  ) >>"${log_file}" 2>&1 &
-  echo $! >"${pid_file}"
-  echo "  Log: ${log_file}   PID: $(cat "${pid_file}")" >&2
-
-  for _ in $(seq 1 60); do
-    if curl -sf "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
-      break
-    fi
-    sleep 0.5
-  done
-}
+# shellcheck source=scripts/lib/qa_local_full_stack_frontend.sh
+source "${ROOT}/scripts/lib/qa_local_full_stack_frontend.sh"
 
 parse_args "$@"
 

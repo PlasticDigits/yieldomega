@@ -27,7 +27,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97) | [Keyboard focus visible (WCAG 2.4.7)](#manual-qa-issue-97) |
 | [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) | [Album 1 BGM resume](#manual-qa-issue-71) |
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
-| [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
+| [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**; [#153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153) Vite traps) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
 | [#120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120) | [`AccessControl` zero admin — indexer + frontend derived layers](#manual-qa-issue-120-accesscontrol-zero-admin-derived-layers) |
 | [#142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142) | [Indexer production `DATABASE_URL` hygiene](#manual-qa-issue-142) |
@@ -580,9 +580,10 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] `curl -s "$(grep '^VITE_INDEXER_URL=' frontend/.env.local | tail -1 | cut -d= -f2-)/v1/timecurve/buys?limit=5" | jq .` — valid JSON array.
 - [ ] With default frontend start: `http://127.0.0.1:${FRONTEND_DEV_PORT:-5173}/` responds (or run Vite manually after `--no-frontend`).
 - [ ] Optional: `make check-frontend-env` passes.
+- [ ] `bash scripts/verify-qa-orchestrator-frontend-trap.sh` prints **`OK:`** (hermetic trap + PID kill smoke for [GitLab #153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153)).
 - [ ] **Stop / teardown:** PIDs in [`qa-local-full-stack.md — Stopping`](qa-local-full-stack.md#stopping-the-stack) match your processes.
 
-**Doc map:** [invariants — #104 / #105](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) · [issue #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)
+**Doc map:** [invariants — #104 / #105 / #153](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) · [issue #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) · [issue #153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153)
 
 <a id="manual-qa-issue-120-accesscontrol-zero-admin-derived-layers"></a>
 

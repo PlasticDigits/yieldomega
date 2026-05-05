@@ -6,7 +6,7 @@ This document describes **Playwright E2E tests that exercise the frontend agains
 
 **`forge script` chain guard ([GitLab #141](https://gitlab.com/PlasticDigits/yieldomega/-/issues/141)):** `DeployDev` and related dev scripts in [`contracts/script/`](../../contracts/script/) revert unless the RPC’s chain id is **31337** (this E2E path), **6343**, or **6342** — see [`DevOnlyChainGuard.sol`](../../contracts/script/DevOnlyChainGuard.sol) and [foundry-and-megaeth.md § dev-only scripts](../contracts/foundry-and-megaeth.md#dev-only-forge-script-entrypoints-chain-allowlist-gitlab-141). Pointing the same `forge script` at MegaETH **mainnet (4326)** fails fast by design.
 
-**Full-stack manual QA** (Postgres + indexer + **`npm run dev`**, no Playwright): [`qa-local-full-stack.md`](qa-local-full-stack.md) and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104); orchestrator **`--help`** — [GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)).
+**Full-stack manual QA** (Postgres + indexer + **`npm run dev`**, no Playwright): [`qa-local-full-stack.md`](qa-local-full-stack.md) and [`scripts/start-qa-local-full-stack.sh`](../../scripts/start-qa-local-full-stack.sh) ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104); orchestrator **`--help`** — [GitLab #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105); **Vite cleanup / traps** — [GitLab #153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153)).
 
 ## What this is for
 
