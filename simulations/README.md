@@ -12,6 +12,15 @@ PYTHONPATH=. python3 -m bounded_formulas
 PYTHONPATH=. python3 -m timecurve_sim --seeds 40 --top 8 --out output/timecurve_sweep.json
 ```
 
+**EcoStrategy audit scenarios (shark vs believer)** — [`audits/audit_ecostrategy_1777969776.md`](../audits/audit_ecostrategy_1777969776.md), [GitLab #161](https://gitlab.com/PlasticDigits/yieldomega/-/issues/161):
+
+```bash
+PYTHONPATH=. python3 -m ecostrategy --scenario all --seed 42 --out output/ecostrategy_report.json
+PYTHONPATH=. python3 -m ecostrategy --scenario C --population 240 --horizon-sec 28800
+```
+
+Package [`ecostrategy/`](ecostrategy/) implements **scenarios A–C** with **`WarBowWorld`** (`warbowSteal` / `warbowRevenge` / `warbowActivateGuard` rules: 2× eligibility, 10%/1% drains, UTC-day caps, 24h revenge windows). JSON/Markdown-friendly CLI prints **`mirrored_from_contract`** vs **`approximations`** (`ecostrategy/constants.py`). Tests: `tests/test_ecostrategy.py`.
+
 Use `python3 -m timecurve_sim --full-grid` for a larger grid (slower). The Monte Carlo sweep uses **canonical timer policy** aligned with deploy docs: **24 h** initial countdown, **96 h** remaining-time cap, **120 s** extension per buy, **20%/day** CHARM-envelope growth (see `timecurve_sim.model.canonical_timecurve_params`). **Timer hard-reset:** when remaining time before a buy is **strictly below 13 minutes**, the next deadline snaps toward **15 minutes** remaining (`extend_deadline_or_reset_below_threshold`, matching `TimeMath.extendDeadlineOrResetBelowThreshold` / `TimeCurve.sol`). **WarBow (simulated):** each qualifying buy accrues **Battle Points** from the same **base / hard-reset / clutch / streak-break / ambush** structure as onchain `buy` (see `warbow_buy_bp_delta` + `process_defended_streak_sim` in `timecurve_sim.model`). Optional **toy PvP steals** (`pvp_steal_prob` in `run_single_sale`) drain 10% BP from a random victim for concentration metrics only—they are **not** a full `warbowSteal` model (no UTC-day cap, 2× rule, or CL8Y burns). Sweep JSON includes **`gini_bp`**, **`hard_reset_frac`**, and related fields alongside spend Gini.
 
 Each TimeCurve run uses a fixed **observation horizon** (default 8h simulated time) so timer extensions cannot make the run unbounded; metrics favor **lower Gini**, **lower top-5% spend share**, and **lower labeled-whale spend share** among 500 agents with mixed budgets.
