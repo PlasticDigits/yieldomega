@@ -342,7 +342,7 @@ narrow):
      of ~1e-5 CL8Y are visibly obvious. Underneath, the at-launch chain
      "1 CHARM = N DOUB = M CL8Y" gives participants the full math: DOUB
      comes from `doubPerCharmAtLaunchWad(totalTokensForSale, totalCharmWeight)`
-     and CL8Y from `participantLaunchValueCl8yWei` (the canonical 1.2×
+     and CL8Y from `participantLaunchValueCl8yWei` (the canonical 1.275×
      anchor). Both refresh via the hook's wagmi `refetchInterval: 1000` and
      `useBlock({ watch: true })` so they update on every new block / buy.
    - Inline min–max pill, slider + numeric input, two-line preview
@@ -373,7 +373,7 @@ Below the hub:
    active or ended): two big-number tiles — your CHARM count and the
    projected **CL8Y at launch** computed from
    [`participantLaunchValueCl8yWei`](../../frontend/src/lib/timeCurvePodiumMath.ts)
-   (the **launch-anchor invariant**: `1.2 × per-CHARM clearing price`,
+   (the **launch-anchor invariant**: `1.275 × per-CHARM clearing price`,
    enforced by `DoubLPIncentives` and pinned by the
    [`launch-anchor invariant`](../testing/invariants-and-business-logic.md)
    test in `timeCurvePodiumMath.test.ts`). During the sale the **personal DOUB

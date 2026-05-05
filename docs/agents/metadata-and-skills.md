@@ -35,7 +35,7 @@ Agents (and humans driving them) who want to **use** onchain games and treasurie
 |------------|----------|
 | [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing before other play skills. |
 | [../../skills/script-with-timecurve-local/SKILL.md](../../skills/script-with-timecurve-local/SKILL.md) | Local TypeScript or Python scripts vs **deployed** contracts (reads, env, timing-sensitive buy **process**—not repo patches). |
-| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** fixed v1 reserve podium **categories**, DOUB / fee sinks ([`primitives.md`](../product/primitives.md)). |
+| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** fixed v1 reserve podium **categories**, DOUB / fee sinks ([`primitives.md`](../product/primitives.md)), **CL8Y-at-launch** (**1.275×** clearing anchor — [GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158), [`invariants` anchor](../testing/invariants-and-business-logic.md#timecurve-launch-anchor-gitlab-158)). |
 | [../../skills/play-timecurve-warbow/SKILL.md](../../skills/play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag. |
 | [../../skills/play-rabbit-treasury/SKILL.md](../../skills/play-rabbit-treasury/SKILL.md) | Burrow deposits, epochs, withdraws, reserve-linked behavior. |
 | [../../skills/collect-leprechaun-sets/SKILL.md](../../skills/collect-leprechaun-sets/SKILL.md) | Leprechaun sets, traits, and collecting onchain. |
