@@ -251,6 +251,30 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 
 **Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144)
 
+<a id="manual-qa-issue-155-referral-register-wallet-session-drift"></a>
+
+## Referral registration — wallet session drift mid-flow (GitLab #155)
+
+**Why:** **`ReferralRegisterSection`** runs **`allowance` → optional CL8Y `approve` → `registerCode`** across multiple awaits. Switching wallet accounts or **`chainId`** mid-flow must **abort** with **`Wallet or network changed during purchase — please retry from the beginning.`** (same **`WALLET_BUY_SESSION_DRIFT_MESSAGE`** as [#144](#manual-qa-issue-144-wallet-session-drift-on-buy)), and must **not** call **`setStoredMyReferralCodeForWallet`** under the wrong wallet key.
+
+### Preconditions
+
+1. Local stack or testnet with **`ReferralRegistry`** configured (`VITE_REFERRAL_REGISTRY_ADDRESS` or **`TimeCurve.referralRegistry()`**).
+2. Wallet **A** with CL8Y balance ≥ **`registrationBurnAmount`** on the target chain (and same wallet **B** if testing account switch).
+
+### Manual steps
+
+1. **Happy path:** Connect wallet **A**, enter a fresh normalized code, **Register & burn CL8Y** without switching accounts — registration succeeds; **`yieldomega.myrefcode.v1.<walletA>`** holds the plaintext when applicable.
+2. **Account switch:** Connect **A**, enter a code, click **Register**. After the **first** wallet prompt (e.g. approve) but **before** **`registerCode`** confirms, switch to wallet **B** in the extension — expect **Could not register:** … **`Wallet or network changed during purchase — please retry from the beginning.`** Inspect **Application → Local Storage** — no new **`myrefcode`** entry keyed to **A** from this aborted attempt alone (storage must stay aligned with the signing wallet).
+3. **Network switch:** On target chain, start registration, then switch the wallet to **another chain** before the next signature — same **#155** message (or **#95** preflight if the switch happens before guarded steps).
+
+### Code references
+
+- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`referralRegisterWalletSession.test.ts`](../../frontend/src/pages/referrals/referralRegisterWalletSession.test.ts)
+- [`ReferralRegisterSection.tsx`](../../frontend/src/pages/referrals/ReferralRegisterSection.tsx)
+
+**Doc map:** [`wallet-connection.md` § #155](../frontend/wallet-connection.md#wallet-session-continuity-during-referral-register-gitlab-155) · [invariants — #155](invariants-and-business-logic.md#referral-registration-wallet-session-drift-gitlab-155)
+
 <a id="manual-qa-issue-106"></a>
 
 ## Presale vesting — claim chain mismatch UX (GitLab #106)
