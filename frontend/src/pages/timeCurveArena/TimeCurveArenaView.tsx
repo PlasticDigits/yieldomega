@@ -642,7 +642,7 @@ export function TimeCurveArenaView() {
                           </span>
                         </div>
                         <span className="timecurve-simple__rate-foot muted">
-                          1.2× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
+                          1.275× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
                         </span>
                       </div>
                     </div>

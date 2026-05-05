@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
   doubPerCharmAtLaunchWad,
   kumbayaBandLowerWad,
+  LAUNCH_LIQUIDITY_ANCHOR_DEN,
+  LAUNCH_LIQUIDITY_ANCHOR_NUM,
   launchLiquidityAnchorWad,
   participantLaunchValueCl8yWei,
   podiumCategorySlices,
@@ -38,42 +40,43 @@ describe("timeCurvePodiumMath", () => {
   });
 });
 
-describe("launch-anchor invariant: launch price = final per-CHARM price × 1.2", () => {
-  // The locked-liquidity sink (`DoubLPIncentives`) seeds DOUB/CL8Y at 1.2× the
-  // clearing anchor. Both `launchLiquidityAnchorWad` (operator/protocol math)
+describe("launch-anchor invariant: launch price = final per-CHARM price × 1.275", () => {
+  // The locked-liquidity sink (`DoubLPIncentives`) seeds DOUB/CL8Y at 1.275× the
+  // clearing anchor ([GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158)).
+  // Both `launchLiquidityAnchorWad` (operator/protocol math)
   // and `participantLaunchValueCl8yWei` (per-wallet UX) must obey the same
-  // 12/10 multiplier — pin both to the spec example so any future drift is
+  // `LAUNCH_LIQUIDITY_ANCHOR_NUM / DEN` ratio — pin both to the spec example so any future drift is
   // caught immediately.
 
-  it("launchLiquidityAnchorWad multiplies by exactly 12/10", () => {
-    expect(launchLiquidityAnchorWad(WAD)).toBe((WAD * 12n) / 10n);
+  it("launchLiquidityAnchorWad multiplies by exactly NUM/DEN (1275/1000)", () => {
+    expect(launchLiquidityAnchorWad(WAD)).toBe((WAD * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN);
     expect(launchLiquidityAnchorWad(0n)).toBe(0n);
-    // 5 reserve-per-DOUB clearing → 6 launch anchor.
-    expect(launchLiquidityAnchorWad(5n * WAD)).toBe(6n * WAD);
+    // 5 reserve-per-DOUB clearing → 5 × 1.275 = 6.375 launch anchor.
+    expect(launchLiquidityAnchorWad(5n * WAD)).toBe((5n * WAD * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN);
   });
 
   it("kumbayaBandLowerWad is 0.8× the launch anchor", () => {
-    const launch = 6n * WAD;
+    const launch = (5n * WAD * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN;
     expect(kumbayaBandLowerWad(launch)).toBe((launch * 8n) / 10n);
   });
 
-  it("spec example: 1 CHARM at 2 CL8Y/CHARM final price ⇒ 2.4 CL8Y at launch", () => {
+  it("spec example: 1 CHARM at 2 CL8Y/CHARM final price ⇒ 2.55 CL8Y at launch", () => {
     // From the brief: "if the final user pays 2 cl8y for 1 charm and 1 charm
-    // post launch is 100 doub, then 100 doub would be 2.4 cl8y worth."
+    // post launch is 100 doub, then 100 doub would be 2.55 cl8y worth."
     const oneCharm = WAD;
     const twoCl8yPerCharm = 2n * WAD;
-    const expected = 24n * 10n ** 17n; // 2.4 CL8Y in 18-decimal wei
+    const expected = 255n * 10n ** 16n; // 2.55 CL8Y in 18-decimal wei
     expect(
       participantLaunchValueCl8yWei({ charmWeightWad: oneCharm, pricePerCharmWad: twoCl8yPerCharm }),
     ).toBe(expected);
   });
 
-  it("scales linearly in CHARM (10 CHARM → 24 CL8Y at launch)", () => {
+  it("scales linearly in CHARM (10 CHARM → 25.5 CL8Y at launch)", () => {
     const tenCharm = 10n * WAD;
     const twoCl8yPerCharm = 2n * WAD;
     expect(
       participantLaunchValueCl8yWei({ charmWeightWad: tenCharm, pricePerCharmWad: twoCl8yPerCharm }),
-    ).toBe(24n * WAD);
+    ).toBe(255n * 10n ** 17n);
   });
 
   it("returns undefined when an input is missing (unloaded reads)", () => {

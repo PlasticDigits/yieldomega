@@ -138,7 +138,7 @@ export type UseTimeCurveSaleSession = {
   expectedTokenFromCharms: bigint | undefined;
   /**
    * Projected CL8Y value of the connected wallet's CHARM at launch — uses the
-   * canonical **1.2× per-CHARM clearing price** anchor enforced by
+   * canonical **1.275× per-CHARM clearing price** anchor enforced by
    * `DoubLPIncentives` (see [`launch-anchor invariant`](../../../docs/testing/invariants-and-business-logic.md)).
    * Live and non-decreasing through the sale; `undefined` when reads are
    * pending; `0n` when the wallet holds no CHARM (so UI can render a clean
@@ -150,7 +150,7 @@ export type UseTimeCurveSaleSession = {
   /** Envelope parameters for recent-buy min/max position displays; mirrors the Arena ticker math. */
   buyEnvelopeParams: EnvelopeCurveParamsWire | null;
   /**
-   * Projected CL8Y value of **one CHARM** at launch (1.2× clearing price anchor).
+   * Projected CL8Y value of **one CHARM** at launch (1.275× clearing price anchor).
    * Used by the rate board DOUB = ? tile chain and for Kumbaya `quoteExactOutput` into ETH/USDM.
    */
   launchCl8yPerCharmWei: bigint | undefined;
@@ -846,7 +846,7 @@ export function useTimeCurveSaleSession(
   const pricePerCharmWad =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
 
-  // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.2× × per-CHARM
+  // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.275× × per-CHARM
   // price). Recompute reactively against the live `currentPricePerCharmWad` so the
   // value rises through the sale (UX prop: "what your CHARM is worth in CL8Y at
   // launch — only goes up").

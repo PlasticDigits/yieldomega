@@ -66,7 +66,7 @@ const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
  * Default `/timecurve` view — the **simple, first-run path** described in
  * issue #40. The page surfaces only what a new visitor needs: time remaining,
  * the single primary buy action, and what their CHARM is currently worth in
- * CL8Y at launch (the **launch-anchor invariant**: `1.2 × per-CHARM price`,
+ * CL8Y at launch (the **launch-anchor invariant**: `1.275 × per-CHARM price`,
  * see [`launchplan-timecurve.md`](../../launchplan-timecurve.md) and
  * [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md)).
  *
@@ -466,7 +466,7 @@ export function TimeCurveSimplePage() {
   }, [buysNextOffset, fetchOlderBuysPage, recentBuys?.length]);
 
   // Launch-anchor invariant (DoubLPIncentives policy): 1 CHARM is projected
-  // to be worth `1.2 × pricePerCharmWad` CL8Y at launch. We expose three
+  // to be worth `1.275 × pricePerCharmWad` CL8Y at launch. We expose three
   // derived numbers for the UI: the per-CHARM caption ("1 CHARM = X CL8Y at
   // launch"), the buy-delta ("This buy adds ≈ Y CL8Y of launch value"), and
   // the live DOUB-per-CHARM redemption rate ("1 CHARM = N DOUB at launch")
@@ -693,7 +693,7 @@ export function TimeCurveSimplePage() {
   // block; waiting costs money). We pair it with the at-launch chain so the
   // user can see where the "your stake is worth Y CL8Y at launch" projection
   // comes from: `1 CHARM = N DOUB = M CL8Y at launch`. The CL8Y projection
-  // is the canonical 1.2× anchor (`participantLaunchValueCl8yWei`); the DOUB
+  // is the canonical 1.275× anchor (`participantLaunchValueCl8yWei`); the DOUB
   // figure is `totalTokensForSale / totalCharmWeight` (decreases as more
   // CHARM mints). Live updates come for free because both inputs refresh on
   // every block via the hook's wagmi reads.
@@ -941,7 +941,7 @@ export function TimeCurveSimplePage() {
           </span>
         </div>
         <span className="timecurve-simple__rate-foot muted">
-          1.2× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
+          1.275× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
         </span>
       </div>
     </div>
@@ -1069,7 +1069,7 @@ export function TimeCurveSimplePage() {
             height={180}
           />
           {/* Live rate board: current price (big, ticks every block) +
-              at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.2× anchor). */}
+              at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.275× anchor). */}
           {session.phase === "saleActive" && rateBoard}
 
           {!session.walletConnected && session.phase !== "loading" && (
