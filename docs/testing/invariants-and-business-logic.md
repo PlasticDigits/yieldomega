@@ -295,8 +295,9 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **`warbowRevenge(stealer)`** | Clears **only** the **`[msg.sender][stealer]`** slot; other stealers' windows remain until consumed or past expiry. |
 | **Indexer** | Table **`idx_timecurve_warbow_revenge_window`** + rollback coverage per [**INV-INDEXER-112**](#indexer-emitted-event-coverage-gitlab-112); **`GET /v1/timecurve/warbow/pending-revenge`** reconciles open rows vs later **`WarBowRevenge`**. |
 | **Arena UX** | `WarbowHeroActions` + `WarbowSection` show **per-stealer** actions when **`VITE_INDEXER_URL`** is set; raw accordion lists **all** open windows. Without indexer URL, hero explains that the full list requires env configuration. |
+| **`INV-WARBOW-135-CARD`** | **Cardinality:** ≥**7** distinct stealers vs one victim can hold **simultaneous** open revenge slots on one UTC day (**`payBypassBurn`** from the victim’s **4th** received steal onward per **`WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY`**); victim may **`warbowRevenge(stealer)`** in any order and each tx clears **only** that **`[victim][stealer]`** row. |
 
-**Automated:** Foundry [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) (multi-stealer + fuzz); indexer integration stage2; [`WarbowHeroActions.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.test.tsx).
+**Automated:** Foundry [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) — `test_warbow_revenge_overwritten_by_second_stealer_shields_first` (minimal **2**-stealer isolation), **`test_warbow_revenge_seven_stealers_distinct_slots`** (explicit **7** + non-sequential consume order), **`testFuzz_warbow_revenge_distinct_stealer_slots_overlap`** (**7–14** stealers, **256** runs); indexer integration stage2; [`WarbowHeroActions.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.test.tsx).
 
 **Docs / play:** [timecurve-views — hero #101 / revenge list](../frontend/timecurve-views.md#arena-warbow-hero-actions-issue-101) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md) · [issue #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135).
 
