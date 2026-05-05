@@ -7,7 +7,8 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 /**
  * Rare drift: `_warbowPodium` snapshot can disagree with live `battlePoints` (permissionless refresh path — GitLab #129).
  * Heuristic: suggest `refreshWarbowPodium([...])` when the viewer is missing from the advertised top‑3 despite BP
- * that should beat third place / incomplete board / value mismatch — consult onchain ladder for payouts.
+ * that should beat third place (including **equal BP** with a **lower `uint160` address** — onchain tie-break) /
+ * incomplete board / value mismatch — consult onchain ladder for payouts.
  */
 export function viewerShouldSuggestWarBowPodiumRefresh(args: {
   viewer?: `0x${string}`;
@@ -41,7 +42,13 @@ export function viewerShouldSuggestWarBowPodiumRefresh(args: {
   if (!w3 || sameAddress(w3, ZERO)) {
     return true;
   }
-  return viewerBp > v3;
+  if (viewerBp > v3) {
+    return true;
+  }
+  if (viewerBp === v3) {
+    return BigInt(viewer) < BigInt(w3);
+  }
+  return false;
 }
 
 /** Calldata superset: connected wallet + current snapshot holders (zeros skipped by the contract). */

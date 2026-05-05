@@ -64,11 +64,11 @@ Higher **BP** ranks above. If two addresses have **equal** BP on the WarBow ladd
 
 The **`warbowLadderPodium()`** triple can disagree with authoritative **`battlePoints`** in edge cases discussed in-protocol.
 
-- **`refreshWarbowPodium(address[] candidates)`** — **permissionless**; loops candidates and **`_updateWarbowPodium`** with **live** BP; emits **`WarbowPodiumRefreshed`**; sets **`warbowPodiumFinalized = false`** (owners must **`finalizeWarbowPodium`** again before **`distributePrizes`** runs on a non-zero podium pool).
+- **`refreshWarbowPodium(address[] candidates)`** — **permissionless** **while the sale is live** (`require(!ended)` — [GitLab #149](https://gitlab.com/PlasticDigits/yieldomega/-/issues/149)); loops candidates and **`_updateWarbowPodium`** with **live** BP; emits **`WarbowPodiumRefreshed`**; sets **`warbowPodiumFinalized = false`** (owners must **`finalizeWarbowPodium`** again before **`distributePrizes`** runs on a non-zero podium pool).
 - **`finalizeWarbowPodium(address[])`** — **`onlyOwner`**, **`ended`**, **`!prizesDistributed`**; clears the WarBow podium, re-inserts every **`battlePoints[c] > 0`** candidate, sets **`warbowPodiumFinalized = true`**; emits **`WarbowPodiumFinalized`**. Not required on the **zero `PodiumPool` balance** **`distributePrizes`** path ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)).
 - **Arena UX** — `/timecurve/arena` may show **Claim your WarBow position (refresh snapshot)** when the heuristic in [`timeCurveWarbowSnapshotClaim.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.ts) detects a mismatch during the live sale (**not** authoritative; still verify **`battlePoints`** + receipt on explorers).
 
-Contributor map — [`INV-WARBOW-129-*`](../../docs/testing/invariants-and-business-logic.md#warbow-podium-snapshot-drifts-gitlab-129) · UX — [`timecurve-views #129`](../../docs/frontend/timecurve-views.md#warbow-ladder-podium-snapshot-mismatch-issue-129).
+Contributor map — [`INV-WARBOW-129-*`](../../docs/testing/invariants-and-business-logic.md#warbow-podium-snapshot-drifts-gitlab-129) · [§ #149 (Arena / indexer / post-end refresh)](../../docs/testing/invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening) · UX — [`timecurve-views #129`](../../docs/frontend/timecurve-views.md#warbow-ladder-podium-snapshot-mismatch-issue-129).
 
 ## What you must not do
 

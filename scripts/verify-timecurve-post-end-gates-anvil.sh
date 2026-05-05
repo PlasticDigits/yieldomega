@@ -39,8 +39,8 @@ if ! command -v cast >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ -z "$ADDR_BOB" || -z "$ADDR_CAROL" || -z "$ADDR_DEPLOYER" ]]; then
-  echo "verify-timecurve-post-end-gates-anvil: could not derive ADDR_BOB / ADDR_CAROL / ADDR_DEPLOYER." >&2
+if [[ -z "$ADDR_ALICE" || -z "$ADDR_BOB" || -z "$ADDR_CAROL" || -z "$ADDR_DEPLOYER" ]]; then
+  echo "verify-timecurve-post-end-gates-anvil: could not derive ADDR_ALICE / ADDR_BOB / ADDR_CAROL / ADDR_DEPLOYER." >&2
   exit 1
 fi
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, parseUnits } from "viem";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
@@ -222,6 +222,8 @@ export function useTimeCurveArenaModel() {
   }, [chainId]);
 
   const ledgerSecInt = Math.floor(blockChainSec);
+  const ledgerSecIntRef = useRef(ledgerSecInt);
+  ledgerSecIntRef.current = ledgerSecInt;
 
   const {
     heroTimer,
@@ -863,7 +865,8 @@ export function useTimeCurveArenaModel() {
       setPendingRevengeRows([]);
       return;
     }
-    void fetchWarbowPendingRevenge(address, ledgerSecInt).then((page) => {
+    const nowSec = ledgerSecIntRef.current;
+    void fetchWarbowPendingRevenge(address, nowSec).then((page) => {
       if (page?.items) {
         setPendingRevengeRows(page.items);
         reportIndexerFetchAttempt(true);
@@ -874,11 +877,18 @@ export function useTimeCurveArenaModel() {
         }
       }
     });
-  }, [address, ledgerSecInt, saleActive]);
+  }, [address, saleActive]);
 
   const pendingRevengeTargets = useMemo(() => {
     const now = BigInt(ledgerSecInt);
-    return pendingRevengeRows.filter((r) => BigInt(r.expiry_exclusive) > now);
+    const rows = pendingRevengeRows.filter((r) => BigInt(r.expiry_exclusive) > now);
+    return [...rows].sort((a, b) => {
+      const ea = BigInt(a.expiry_exclusive);
+      const eb = BigInt(b.expiry_exclusive);
+      if (ea < eb) return -1;
+      if (ea > eb) return 1;
+      return a.stealer.localeCompare(b.stealer);
+    });
   }, [pendingRevengeRows, ledgerSecInt]);
 
   const pendingRevengeStealer =
@@ -902,6 +912,16 @@ export function useTimeCurveArenaModel() {
   useEffect(() => {
     loadPendingRevenge();
   }, [loadPendingRevenge]);
+
+  useEffect(() => {
+    if (!address || !indexerBaseUrl() || !saleActive) {
+      return undefined;
+    }
+    const id = window.setInterval(() => {
+      loadPendingRevenge();
+    }, 8000);
+    return () => window.clearInterval(id);
+  }, [address, saleActive, loadPendingRevenge]);
 
   const guardUntilSec =
     warbowGuardUntilR?.status === "success" ? BigInt(warbowGuardUntilR.result as bigint) : 0n;
