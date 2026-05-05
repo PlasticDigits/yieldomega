@@ -217,6 +217,21 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .clone()
         .oneshot(
             Request::builder()
+                .uri("/v1/timecurve/warbow/refresh-candidates?limit=50&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert!(j["candidates"].is_array());
+    assert!(j.get("total").is_some());
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
                 .uri("/v1/referrals/wallet-charm-summary?wallet=0xbad")
                 .body(Body::empty())
                 .unwrap(),

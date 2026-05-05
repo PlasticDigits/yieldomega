@@ -193,6 +193,33 @@ export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
   );
 }
 
+/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.0 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)). */
+export type WarbowRefreshCandidatesResponse = {
+  candidates: string[];
+  limit: number;
+  offset: number;
+  total: number;
+  next_offset: number | null;
+  podium_warbow_hint_count: number;
+  distinct_sql_cap_hit: boolean;
+  note?: string;
+};
+
+/**
+ * Superset addresses for `refreshWarbowPodium` while the sale is live (indexer + head WarBow podium hint).
+ * Paginate with `offset` when `next_offset` is set. Uses `VITE_INDEXER_URL`.
+ */
+export async function fetchTimecurveWarbowRefreshCandidates(
+  limit = 200,
+  offset = 0,
+): Promise<WarbowRefreshCandidatesResponse | null> {
+  const lim = Math.min(500, Math.max(1, Math.floor(limit)));
+  const off = Math.max(0, Math.floor(offset));
+  return getJson<WarbowRefreshCandidatesResponse>(
+    `/v1/timecurve/warbow/refresh-candidates?limit=${lim}&offset=${off}`,
+  );
+}
+
 export type WarbowPendingRevengeItem = {
   stealer: string;
   expiry_exclusive: string;
