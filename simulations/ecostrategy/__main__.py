@@ -13,11 +13,11 @@ from ecostrategy.scenarios import SCENARIO_RUNNERS
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
-        description="EcoStrategy audit scenarios A–C — shark vs believer modeling (Python sim)",
+        description="EcoStrategy audit scenarios A–E — shark vs believer modeling (Python sim)",
     )
     ap.add_argument(
         "--scenario",
-        choices=("A", "B", "C", "all"),
+        choices=("A", "B", "C", "D", "E", "all"),
         default="all",
         help="Which scenario to run (default: all)",
     )
@@ -32,11 +32,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    keys = ["A", "B", "C"] if args.scenario == "all" else [args.scenario]
+    keys = ["A", "B", "C", "D", "E"] if args.scenario == "all" else [args.scenario]
     results = []
     for k in keys:
         fn = SCENARIO_RUNNERS[k]
-        r = fn(seed=args.seed, population=args.population, horizon_sec=args.horizon_sec)
+        if k == "E":
+            r = fn(seed=args.seed, population=max(1, args.population))
+        else:
+            r = fn(seed=args.seed, population=args.population, horizon_sec=args.horizon_sec)
         results.append(r.to_json_dict())
 
     payload = {
