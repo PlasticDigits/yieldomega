@@ -62,7 +62,9 @@ Fees from **Rabbit Treasury activity** (deposits, withdrawals, game flows), **se
 
 This section states **intent**. Exact onchain roles (multisig, governor contract, module registry) are implementation details.
 
-**Deployer / EVM boundary ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120), audit L-03):** **`FeeRouter`**, **`PodiumPool`**, **`FeeSink`** derivatives (**`CL8YProtocolTreasury`**, **`DoubLPIncentives`**, **`EcosystemTreasury`**), **`RabbitTreasury`**, **`Doubloon`**, and **`LeprechaunNFT`** reject **`admin == address(0)`** in their initializers or constructors **before** granting **`DEFAULT_ADMIN_ROLE`** (and co-granted roles in the same block). A zero admin would not yield a usable **`AccessControl`** governor; deployment scripts must pass a non-zero admin account or contract.
+<a id="deployer-evm-boundary-gitlab-120"></a>
+
+**Deployer / EVM boundary ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120), audit L-03):** **`FeeRouter`**, **`PodiumPool`**, **`FeeSink`** derivatives (**`CL8YProtocolTreasury`**, **`DoubLPIncentives`**, **`EcosystemTreasury`**), **`RabbitTreasury`**, **`Doubloon`**, and **`LeprechaunNFT`** reject **`admin == address(0)`** in their initializers or constructors **before** granting **`DEFAULT_ADMIN_ROLE`** (and co-granted roles in the same block). A zero admin would not yield a usable **`AccessControl`** governor; deployment scripts must pass a non-zero admin account or contract. **Indexer + static app** do not reconstruct this from logs or env alone — see **`INV-INDEXER-120-DEPLOY`** / **`INV-FRONTEND-120-DEPLOY`** in [invariants § #120](../testing/invariants-and-business-logic.md#accesscontrol-zero-admin-deployments-gitlab-120).
 
 **Doubloon burn vs mint ([GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)):** **`Doubloon`** separates inflation authority (**`MINTER_ROLE`**) from burns: third-party burns use **`ERC20Burnable.burnFrom`** and a holder **`approve`** ( **`RabbitTreasury.withdraw`** path). Map: [`INV-DOUB-132`](../testing/invariants-and-business-logic.md#doubloon-allowance-burn-gitlab-132).
 
