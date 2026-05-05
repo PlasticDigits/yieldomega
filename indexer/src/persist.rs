@@ -1352,8 +1352,14 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
     Ok(())
 }
 
-/// Pool convenience wrapper (one acquired connection).
-pub async fn persist_decoded_log(pool: &PgPool, d: &DecodedLog) -> Result<()> {
+/// Pool wrapper that **autocommits** one decoded log per call (`acquire` → insert → implicit `COMMIT`).
+///
+/// Hot-path block ingestion uses [`persist_decoded_log_conn`] inside a single SQL transaction per block
+/// (GitLab #140 — **`INV-INDEXER-140`** in repo `docs/testing/invariants-and-business-logic.md`). Use this
+/// only when **single-event** persistence is intentional (integration tests, one-off tools). For atomic
+/// multi-log batches, open a SQL transaction on the pool and call [`persist_decoded_log_conn`] on that
+/// connection (GitLab #148).
+pub async fn persist_decoded_log_autocommit(pool: &PgPool, d: &DecodedLog) -> Result<()> {
     let mut conn = pool.acquire().await?;
-    persist_decoded_log_conn(&mut *conn, d).await
+    persist_decoded_log_conn(&mut conn, d).await
 }

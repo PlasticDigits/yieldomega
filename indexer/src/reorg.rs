@@ -74,7 +74,7 @@ pub async fn save_chain_pointer_conn(conn: &mut PgConnection, p: &ChainPointer) 
 
 pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
     let mut conn = pool.acquire().await?;
-    save_chain_pointer_conn(&mut *conn, p).await
+    save_chain_pointer_conn(&mut conn, p).await
 }
 
 /// Record a canonical block hash for reorg walk-back.
@@ -94,7 +94,7 @@ pub async fn upsert_indexed_block_conn(conn: &mut PgConnection, number: u64, has
 
 pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Result<()> {
     let mut conn = pool.acquire().await?;
-    upsert_indexed_block_conn(&mut *conn, number, hash).await
+    upsert_indexed_block_conn(&mut conn, number, hash).await
 }
 
 /// Stored hash for `block_number`, if any.

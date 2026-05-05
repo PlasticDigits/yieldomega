@@ -64,7 +64,7 @@ export const timeCurveReadAbi = parseAbi([
   "function WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() view returns (uint256)",
   "function WARBOW_FLAG_SILENCE_SEC() view returns (uint256)",
   "function WARBOW_FLAG_CLAIM_BP() view returns (uint256)",
-  "function WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY() view returns (uint8)",
+  "function WARBOW_MAX_STEALS_PER_DAY() view returns (uint8)",
   "function SECONDS_PER_DAY() view returns (uint256)",
   "function WARBOW_REVENGE_WINDOW_SEC() view returns (uint256)",
   "function WARBOW_REVENGE_BURN_WAD() view returns (uint256)",

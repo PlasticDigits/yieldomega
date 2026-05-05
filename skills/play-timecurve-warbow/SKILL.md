@@ -54,7 +54,7 @@ Steals, revenges, guard, and non-buy flag claims **move BP**; ladder ordering is
 
 ## UTC day boundary for steals
 
-Steal limits keyed to **`block.timestamp / 86400`** (UTC day index). When advising “how many steals left,” use the chain clock and **`stealsReceivedOnDay(victim, dayId)`** (victim receives) plus **`stealsCommittedByAttackerOnDay(attacker, dayId)`** (attacker commits) — [GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134), [`invariants §134`](../../docs/testing/invariants-and-business-logic.md#timecurve-warbow-steal-rules-gitlab-134).
+Steal limits keyed to **`block.timestamp / 86400`** (UTC day index). When advising “how many steals left,” use the chain clock and **`stealsReceivedOnDay(victim, dayId)`** (victim receives) plus **`stealsCommittedByAttackerOnDay(attacker, dayId)`** (attacker commits) — [GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134), [`invariants §134`](../../docs/testing/invariants-and-business-logic.md#timecurve-warbow-steal-rules-gitlab-134). The numeric cap before bypass rules apply is **`WARBOW_MAX_STEALS_PER_DAY()`** on **`TimeCurve`** (same threshold on **both** counters — naming clarity [GitLab #148](https://gitlab.com/PlasticDigits/yieldomega/-/issues/148)).
 
 ## Tie-break (WarBow ladder top-3)
 
