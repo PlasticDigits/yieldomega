@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Multi-step `submitBuy` uses several awaits; wagmi may switch account or chain
-// between steps ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
+// Multi-step `submitBuy` and **`/referrals`** `registerCode` (allowance / approve / register)
+// use several awaits; wagmi may switch account or chain between steps
+// ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144),
+// [GitLab #155](https://gitlab.com/PlasticDigits/yieldomega/-/issues/155)).
 
 import type { Config } from "wagmi";
 import { getAccount } from "wagmi/actions";

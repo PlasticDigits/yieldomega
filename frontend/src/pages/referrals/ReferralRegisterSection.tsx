@@ -18,6 +18,11 @@ import {
   setStoredMyReferralCodeForWallet,
 } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import {
+  WALLET_BUY_SESSION_DRIFT_MESSAGE,
+  assertWalletBuySessionUnchanged,
+  captureWalletBuySession,
+} from "@/lib/walletBuySessionGuard";
 import { wagmiConfig } from "@/wagmi-config";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import {
@@ -203,13 +208,25 @@ export function ReferralRegisterSection({ className }: Props) {
       return;
     }
     try {
+      const sessionSnapshot = captureWalletBuySession(wagmiConfig);
+      if (
+        !sessionSnapshot ||
+        sessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
+        sessionSnapshot.chainId !== chainId
+      ) {
+        setFormErr(WALLET_BUY_SESSION_DRIFT_MESSAGE);
+        return;
+      }
+      const guardSession = () => assertWalletBuySessionUnchanged(wagmiConfig, sessionSnapshot);
+
       const need = burnWad;
       const allow = await readContract(wagmiConfig, {
         address: cl8yToken,
         abi: erc20Abi,
         functionName: "allowance",
-        args: [address, registry],
+        args: [sessionSnapshot.address, registry],
       });
+      guardSession();
       if (allow < need) {
         const approveHash = await writeContractAsync({
           address: cl8yToken,
@@ -218,7 +235,9 @@ export function ReferralRegisterSection({ className }: Props) {
           args: [registry, need],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+        guardSession();
       }
+      guardSession();
       const regHash = await writeContractAsync({
         address: registry,
         abi: referralRegistryWriteAbi,
@@ -226,7 +245,8 @@ export function ReferralRegisterSection({ className }: Props) {
         args: [normalized],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash: regHash });
-      setStoredMyReferralCodeForWallet(address, normalized);
+      guardSession();
+      setStoredMyReferralCodeForWallet(sessionSnapshot.address, normalized);
       setCodeInput("");
       await refetchOwner();
     } catch (e) {
