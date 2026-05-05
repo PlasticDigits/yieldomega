@@ -29,6 +29,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
 | [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
+| [#120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120) | [`AccessControl` zero admin — indexer + frontend derived layers](#manual-qa-issue-120-accesscontrol-zero-admin-derived-layers) |
 | [#142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142) | [Indexer production `DATABASE_URL` hygiene](#manual-qa-issue-142) |
 | [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 
@@ -582,6 +583,25 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] **Stop / teardown:** PIDs in [`qa-local-full-stack.md — Stopping`](qa-local-full-stack.md#stopping-the-stack) match your processes.
 
 **Doc map:** [invariants — #104 / #105](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104) · [issue #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) · [issue #105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105)
+
+<a id="manual-qa-issue-120-accesscontrol-zero-admin-derived-layers"></a>
+
+## AccessControl zero admin — derived read model / UX layers (GitLab #120)
+
+**Why:** Solidity **`INV-AC-ZERO-ADMIN-120`** closes the deploy-time footgun in **`constructor` / `initializer`** scope ([`AccessControlZeroAdmin.t.sol`](../../contracts/test/AccessControlZeroAdmin.t.sol)). A reverting initialize emits **no** protocol logs—the **indexer** cannot surface “attempted zero admin,” and the **static frontend** does not add a dedicated AccessControl probe at boot.
+
+### Invariants (do not regress)
+
+1. **`INV-INDEXER-120-DEPLOY`** — Do not expect Postgres or HTTP API rows that detect a **failed** zero-admin deploy; evidence is **Forge** + **successful** chain bytecode.
+2. **`INV-FRONTEND-120-DEPLOY`** — Do not add silent assumptions that “indexer empty” implies bad admin wiring; mis-set **`VITE_*`** or wrong proxy remains an **RPC / reads** problem.
+
+### Checklist
+
+- [ ] `cd contracts && FOUNDRY_PROFILE=ci forge test --match-path test/AccessControlZeroAdmin.t.sol -vv` — **all** zero-admin tests **revert** as expected (no behavior change for valid admins).
+- [ ] Read [`indexer/README.md` — #120](../../indexer/README.md#accesscontrol-zero-admin-gitlab-120) and [`docs/indexer/design.md`](../indexer/design.md#accesscontrol-zero-admin-gitlab-120): confirm deploy-boundary wording matches **no-log** reality.
+- [ ] Read [`docs/frontend/wallet-connection.md` — #120](../frontend/wallet-connection.md#accesscontrol-zero-admin-deployment-gitlab-120): confirm frontend **does not** claim indexer-backed detection of zero admin.
+
+**Doc map:** [invariants — #120 + derived IDs](invariants-and-business-logic.md#accesscontrol-zero-admin-deployments-gitlab-120) · [fee-routing — deployer boundary](../onchain/fee-routing-and-governance.md#deployer-evm-boundary-gitlab-120) · [skills README — contributor #120](../../skills/README.md)
 
 <a id="manual-qa-issue-142"></a>
 

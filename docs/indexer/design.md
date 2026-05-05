@@ -6,6 +6,10 @@ The indexer is an **offchain read model**. It **follows** MegaETH chain history,
 
 It must **never** be the **authority** for balances, winners, or treasury outcomes ([../architecture/overview.md](../architecture/overview.md)).
 
+<a id="accesscontrol-zero-admin-gitlab-120"></a>
+
+**Deploy tx boundary ([GitLab #120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120)):** Contracts that **`require(admin != address(0)`** during **`initializer` / `constructor`** revert **without emitting** Yieldomega **`event`s** afterward. **`INV-INDEXER-120-DEPLOY`** applies: the indexer’s job starts at **successful** bytecode at **`ADDRESS_REGISTRY`** addresses—Forge coverage **`AccessControlZeroAdmin.t.sol`** is the invariant hook, not Postgres. See **[`INV-INDEXER-120-DEPLOY`](../testing/invariants-and-business-logic.md#indexer-accesscontrol-deploy-footgun-gitlab-120)** and [indexer README — #120](../../indexer/README.md#accesscontrol-zero-admin-gitlab-120).
+
 **Fee and routing parameters:** Contracts should emit **old value, new value, actor** on changes ([invariant: parameter change events](../onchain/fee-routing-and-governance.md#invariant-parameter-change-events)); the indexer should decode and store them for reconciliation. Canonical sinks and governance intent: [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks), [governance actors](../onchain/fee-routing-and-governance.md#governance-actors).
 
 ## Core responsibilities
