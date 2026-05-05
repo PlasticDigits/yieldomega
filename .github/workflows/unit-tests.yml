@@ -66,6 +66,15 @@ jobs:
         with:
           components: clippy
 
+      - name: Unique sqlx migration versions
+        run: |
+          set -euo pipefail
+          dups=$(for f in migrations/*.sql; do basename "$f" | cut -d_ -f1; done | sort | uniq -c | awk '$1>2 {print $2}')
+          if [ -n "$dups" ]; then
+            echo "::error::Each migration timestamp must be unique (at most one up + one down per version). Collision on: $dups" >&2
+            exit 1
+          fi
+
       - name: Cargo clippy
         run: cargo clippy --all-targets -- -D warnings
 
