@@ -644,9 +644,9 @@ async fn timecurve_warbow_leaderboard(
                   tx_hash,
                   log_index
            FROM (
-             SELECT DISTINCT ON (LOWER(buyer)) buyer, battle_points_after, block_number, tx_hash, log_index
+             SELECT DISTINCT ON (buyer) buyer, battle_points_after, block_number, tx_hash, log_index
              FROM idx_timecurve_buy
-             ORDER BY LOWER(buyer), block_number DESC, log_index DESC
+             ORDER BY buyer, block_number DESC, log_index DESC
            ) latest
            ORDER BY battle_points_after::numeric DESC, block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
@@ -723,17 +723,18 @@ async fn timecurve_warbow_steals_by_victim_day(
             .into_response();
     }
 
+    let victim = bind_addr_lower(&q.victim);
     let rows = sqlx::query(
         r#"SELECT (block_timestamp / 86400)::text AS utc_day,
                   COUNT(*)::text AS steal_count
            FROM idx_timecurve_warbow_steal
-           WHERE LOWER(victim) = LOWER($1)
+           WHERE victim = $1
              AND block_timestamp IS NOT NULL
            GROUP BY (block_timestamp / 86400)
            ORDER BY (block_timestamp / 86400) DESC
            LIMIT 366"#,
     )
-    .bind(&q.victim)
+    .bind(&victim)
     .fetch_all(&state.pool)
     .await;
 
@@ -796,16 +797,17 @@ async fn timecurve_warbow_guard_latest(
             .into_response();
     }
 
+    let player = bind_addr_lower(&q.player);
     let row = sqlx::query(
         r#"SELECT player, guard_until_ts::text AS guard_until_ts, burn_paid_wad::text AS burn_paid_wad,
                   block_number::text AS block_number, tx_hash, log_index,
                   block_timestamp::text AS block_timestamp
            FROM idx_timecurve_warbow_guard
-           WHERE LOWER(player) = LOWER($1)
+           WHERE player = $1
            ORDER BY block_number DESC, log_index DESC
            LIMIT 1"#,
     )
-    .bind(&q.player)
+    .bind(&player)
     .fetch_optional(&state.pool)
     .await;
 
@@ -865,6 +867,7 @@ async fn timecurve_warbow_pending_revenge(
     }
 
     let now_s = q.now_sec.to_string();
+    let victim = bind_addr_lower(&q.victim);
     let rows = sqlx::query(
         r#"WITH latest AS (
             SELECT DISTINCT ON (stealer)
@@ -874,7 +877,7 @@ async fn timecurve_warbow_pending_revenge(
                 block_number,
                 log_index
             FROM idx_timecurve_warbow_revenge_window
-            WHERE LOWER(victim) = LOWER($1)
+            WHERE victim = $1
             ORDER BY stealer, block_number DESC, log_index DESC
         )
         SELECT l.stealer,
@@ -886,16 +889,16 @@ async fn timecurve_warbow_pending_revenge(
         WHERE l.expiry_exclusive > $2::numeric
           AND NOT EXISTS (
             SELECT 1 FROM idx_timecurve_warbow_revenge r
-            WHERE LOWER(r.avenger) = LOWER($1)
-              AND LOWER(r.stealer) = LOWER(l.stealer)
+            WHERE r.avenger = $1
+              AND r.stealer = l.stealer
               AND (
                 r.block_number > l.block_number
                 OR (r.block_number = l.block_number AND r.log_index > l.log_index)
               )
           )
-        ORDER BY l.stealer"#,
+        ORDER BY l.expiry_exclusive ASC, l.stealer ASC"#,
     )
-    .bind(&q.victim)
+    .bind(&victim)
     .bind(&now_s)
     .fetch_all(&state.pool)
     .await;
@@ -956,6 +959,11 @@ pub struct BuyerStatsQuery {
     pub buyer: String,
 }
 
+/// Lowercase `0x` + 40-hex for SQL equality against `persist` [`addr_hex`](crate::persist) values (always lowercase).
+fn bind_addr_lower(s: &str) -> String {
+    s.to_ascii_lowercase()
+}
+
 fn valid_0x_address20(s: &str) -> bool {
     s.starts_with("0x") && s.len() == 42 && s[2..].chars().all(|c| c.is_ascii_hexdigit())
 }
@@ -972,13 +980,14 @@ async fn timecurve_buyer_stats(
             .into_response();
     }
 
+    let buyer = bind_addr_lower(&q.buyer);
     let row = sqlx::query(
         r#"SELECT COALESCE(SUM(COALESCE(charm_wad, amount)), 0)::text AS indexed_charm_weight,
                   COUNT(*)::text AS indexed_buy_count
            FROM idx_timecurve_buy
-           WHERE LOWER(buyer) = LOWER($1)"#,
+           WHERE buyer = $1"#,
     )
-    .bind(&q.buyer)
+    .bind(&buyer)
     .fetch_one(&state.pool)
     .await;
 
@@ -1036,18 +1045,19 @@ async fn rabbit_deposits(State(state): State<AppState>, Query(p): Query<PagePara
             )
                 .into_response();
         }
+        let user = bind_addr_lower(u);
         sqlx::query(
             r#"SELECT block_number, tx_hash, log_index, user_address, reserve_asset,
                       amount::text AS amount, doub_out::text AS doub_out,
                       epoch_id::text AS epoch_id, faction_id::text AS faction_id
                FROM idx_rabbit_deposit
-               WHERE LOWER(user_address) = LOWER($3)
+               WHERE user_address = $3
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
         )
         .bind(lim)
         .bind(off)
-        .bind(u)
+        .bind(&user)
         .fetch_all(&state.pool)
         .await
     } else {
@@ -1139,18 +1149,19 @@ async fn rabbit_withdrawals(
             )
                 .into_response();
         }
+        let user = bind_addr_lower(u);
         sqlx::query(
             r#"SELECT block_number, tx_hash, log_index, user_address, reserve_asset,
                       amount::text AS amount, doub_in::text AS doub_in,
                       epoch_id::text AS epoch_id, faction_id::text AS faction_id
                FROM idx_rabbit_withdrawal
-               WHERE LOWER(user_address) = LOWER($3)
+               WHERE user_address = $3
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
         )
         .bind(lim)
         .bind(off)
-        .bind(u)
+        .bind(&user)
         .fetch_all(&state.pool)
         .await
     } else {

@@ -1068,8 +1068,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     ///         `battlePoints`. Pass current podium occupants plus wallets that may have overtaken them (gas ∝ len).
     /// @dev GitLab #129 — BP can drop via steals; stale slots are not auto-cleared unless addressed. Any `refreshWarbowPodium`
     ///      sets `warbowPodiumFinalized = false`; the owner must call `finalizeWarbowPodium` again before `distributePrizes`
-    ///      with a non-zero prize pool.
+    ///      with a non-zero prize pool. **GitLab #149:** reverts after `endSale` so post-end callers cannot clear the
+    ///      owner finalize latch via permissionless refresh (public-mempool grief vs `distributePrizes`).
     function refreshWarbowPodium(address[] calldata candidates) external nonReentrant {
+        require(!ended, "TimeCurve: ended");
         warbowPodiumFinalized = false;
         for (uint256 i; i < candidates.length; ++i) {
             address c = candidates[i];

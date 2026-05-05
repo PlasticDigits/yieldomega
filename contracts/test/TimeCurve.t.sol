@@ -1113,7 +1113,8 @@ contract TimeCurveTest is Test {
         assertTrue(tc.prizesDistributed());
     }
 
-    function test_refreshWarbowPodium_invalidates_finalize_latch() public {
+    /// @dev GitLab #149 — `refreshWarbowPodium` is sale-only; post-`endSale` permissionless refresh cannot unlatch owner finalize.
+    function test_refreshWarbowPodium_reverts_after_endSale() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 5e18);
         vm.prank(alice);
@@ -1124,11 +1125,12 @@ contract TimeCurveTest is Test {
         _finalizeWarbowOne(tc, alice);
         assertTrue(tc.warbowPodiumFinalized());
 
+        vm.expectRevert("TimeCurve: ended");
         tc.refreshWarbowPodium(_warbowCandidateQuartet());
-        assertFalse(tc.warbowPodiumFinalized());
 
-        vm.expectRevert("TimeCurve: warbow podium not finalized");
+        assertTrue(tc.warbowPodiumFinalized());
         tc.distributePrizes();
+        assertTrue(tc.prizesDistributed());
     }
 
     function test_finalizeWarbowPodium_reverts_before_endSale() public {
