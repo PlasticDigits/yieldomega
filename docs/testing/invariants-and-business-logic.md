@@ -898,6 +898,19 @@ Operator context: [fee-routing-and-governance.md — Governance actors](../oncha
 
 Align fee expectations with [post-update invariants](../onchain/fee-routing-and-governance.md#post-update-invariants).
 
+<a id="rabbit-treasury-vault-interim-gitlab-159"></a>
+
+### RabbitTreasuryVault interim custody (GitLab [#159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159))
+
+**Intent:** EcoStrategy audit **H-01** — **`FeeRouter.distributeFees`** pays sinks with **`ERC20.safeTransfer`**. The fifth sink is documented as funding Rabbit workstreams; **`RabbitTreasury.receiveFee`** is the Burrow hook that books **`protocolOwnedBacking`** / burn splits. Until that path is production-proven, **`RabbitTreasuryVault`** accumulates the Rabbit slice as **plain ERC-20 custody** with owner **`withdrawERC20`** / **`withdrawETH`** and **`ERC20Withdrawn`** / **`ETHWithdrawn`** (+ **`reason`** string).
+
+| ID | Invariant |
+|----|-----------|
+| **`INV-VAULT-159-NOT-BURROW`** | **`ERC20.balanceOf(RabbitTreasuryVault)` is not `protocolOwnedBacking`** (nor redeemable backing). Burrow books **`receiveFee`** gross flows only when **`FEE_ROUTER_ROLE`** callers invoke **`receiveFee`** per [`RabbitTreasury.sol`](../../contracts/src/RabbitTreasury.sol). Treat vault balances as **unbooked** until swept into **`RabbitTreasury`** or sinks migrate via **`FeeRouter.updateSinks`**. |
+| **`INV-VAULT-159-ROUTING`** | **`distributeFees`** credits the vault when the fifth **`FeeRouter`** sink destination is the vault; **`withdrawERC20`** moves arbitrary ERC-20 to **`to != 0`**; **`Ownable2Step`** gates sweeps. |
+
+**Tests:** [`RabbitTreasuryVault.t.sol`](../../contracts/test/RabbitTreasuryVault.t.sol) (`test_distributeFees_increases_vault_balance`, `test_owner_withdrawERC20_moves_balance`, auth / ETH sweep). **Docs:** [`treasury-contracts.md`](../onchain/treasury-contracts.md#rabbit-treasury-vault-gitlab-159).
+
 ### DoubPresaleVesting
 
 | Invariant | Meaning | Tests |
