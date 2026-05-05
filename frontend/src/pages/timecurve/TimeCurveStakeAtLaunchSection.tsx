@@ -62,7 +62,7 @@ export function TimeCurveStakeAtLaunchSection({
 
   const defaultLede: ReactNode = (
     <>
-      The DOUB/CL8Y locked liquidity seeds at <strong>1.2×</strong> the per-CHARM clearing price, so
+      The DOUB/CL8Y locked liquidity seeds at <strong>1.275×</strong> the per-CHARM clearing price, so
       your CHARM is projected in CL8Y here — a number that <strong>only goes up</strong> as the sale
       heats up. Hidden on purpose: the DOUB count, which dilutes as more CHARM mints.
     </>
@@ -86,7 +86,7 @@ export function TimeCurveStakeAtLaunchSection({
     <PageSection
       title="Your stake at launch"
       className={`timecurve-simple__stake-panel${redeemed ? " timecurve-simple__stake-panel--redeemed" : ""}`}
-      badgeLabel="1.2× launch anchor"
+      badgeLabel="1.275× launch anchor"
       badgeTone="info"
       lede={redeemed ? redeemedLede : defaultLede}
       actions={redeemed ? <SettledHeaderDecor /> : undefined}

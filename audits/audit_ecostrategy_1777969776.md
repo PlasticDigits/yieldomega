@@ -206,9 +206,9 @@ Affected code and docs:
 - `contracts/PARAMETERS.md`
 - `frontend/src/lib/timeCurvePodiumMath.ts`
 
-The docs and frontend helpers emphasize a 1.2x launch anchor: DOUB/CL8Y locked liquidity should seed at 1.2x the final per-CHARM clearing price, making a participant's CHARM projected CL8Y-at-launch non-decreasing in the no-referral path. That is a powerful believer-facing claim.
+The docs and frontend helpers emphasize a **1.275×** launch anchor (product raised from the **1.2×** figure in this review snapshot — [GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158)): DOUB/CL8Y locked liquidity should seed at **1.275×** the final per-CHARM clearing price, making a participant's CHARM projected CL8Y-at-launch non-decreasing in the no-referral path. That is a powerful believer-facing claim.
 
-The actual LP fee sink is a governed sink/custody surface, not a contract that enforces the 1.2x pool creation, lock timing, Kumbaya band, or DOUB/CL8Y ratio. If launch liquidity is delayed, manually seeded at a different price, partially funded, or arbitraged before ordinary participants can act, the reported CL8Y-at-launch value can become misleading.
+The actual LP fee sink is a governed sink/custody surface, not a contract that enforces the **1.275×** pool creation, lock timing, Kumbaya band, or DOUB/CL8Y ratio. If launch liquidity is delayed, manually seeded at a different price, partially funded, or arbitraged before ordinary participants can act, the reported CL8Y-at-launch value can become misleading.
 
 Impact:
 
@@ -220,7 +220,7 @@ Recommendation:
 
 - Add a launch runbook gate: before enabling redemption/podium payouts, verify final price, DOUB amount, CL8Y amount, LP lock, Kumbaya band, and onchain transaction hashes.
 - Keep frontend projected launch value explicitly labeled as policy until the LP is actually seeded and locked.
-- Consider moving critical launch-anchor enforcement into a dedicated contract if the 1.2x guarantee is meant to be protocol-enforced rather than operational.
+- Consider moving critical launch-anchor enforcement into a dedicated contract if the **documented launch-anchor multiplier** guarantee is meant to be protocol-enforced rather than operational.
 
 Suggested severity: Medium. This is an operational/economic guarantee risk, not a Solidity exploit.
 
