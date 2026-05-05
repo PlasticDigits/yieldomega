@@ -85,7 +85,6 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 **Automated:** existing Forge WarBow UTC-cap tests (unchanged behavior); **`cargo test`** — [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) (calls **`persist_decoded_log_autocommit`** where appropriate).
 
 <a id="gitlab-149-warbow-arena-indexer-hardening"></a>
-<a id="gitlab-149-third-pass-warbow-stack-hardening"></a>
 
 ### GitLab #149 — Arena pending-revenge load, WarBow SQL indexes, post-end refresh gate ([GitLab #149](https://gitlab.com/PlasticDigits/yieldomega/-/issues/149))
 
