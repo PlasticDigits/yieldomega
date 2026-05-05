@@ -20,6 +20,10 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 4. **Persistence** — Normalized tables + optional materialized views for heavy queries.
 5. **API** — HTTP (REST or GraphQL TBD) with stable schemas **versioned** for agents.
 
+<a id="http-api-error-bodies-gitlab-157"></a>
+
+**Public HTTP error bodies ([GitLab #157](https://gitlab.com/PlasticDigits/yieldomega/-/issues/157)):** When a read handler hits an unexpected **`sqlx::Error`**, the JSON response uses a **generic** **`error`** string; full failure text is **`tracing::error!`** only (**`INV-INDEXER-157`** in [invariants — § #157](../testing/invariants-and-business-logic.md#indexer-public-api-500-error-redaction-gitlab-157), [`api.rs`](../../indexer/src/api.rs)).
+
 ## Conceptual entities
 
 Examples of tables or projections (names illustrative):

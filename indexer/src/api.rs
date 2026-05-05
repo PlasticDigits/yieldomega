@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use alloy_primitives::Address;
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -11,7 +12,6 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use alloy_primitives::Address;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::{PgPool, Row};
@@ -126,6 +126,18 @@ fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap 
         SCHEMA_VERSION.parse().unwrap(),
     );
     h
+}
+/// Stable `error` field for HTTP 500 responses when Postgres/sqlx fails on a public read route.
+/// Full [`sqlx::Error`] is logged server-side only ([GitLab #157](https://gitlab.com/PlasticDigits/yieldomega/-/issues/157)).
+const PUBLIC_INTERNAL_DB_ERROR: &str = "internal server error";
+
+fn internal_db_error_response(context: &'static str, err: sqlx::Error) -> Response {
+    tracing::error!(error = %err, context, "indexer API: database query failed");
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({ "error": PUBLIC_INTERNAL_DB_ERROR })),
+    )
+        .into_response()
 }
 
 async fn healthz() -> impl IntoResponse {
@@ -336,19 +348,16 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
-    let total: i64 = match sqlx::query_scalar::<_, i64>("SELECT COUNT(*)::bigint FROM idx_timecurve_buy")
-        .fetch_one(&state.pool)
-        .await
-    {
-        Ok(n) => n,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
-        }
-    };
+    let total: i64 =
+        match sqlx::query_scalar::<_, i64>("SELECT COUNT(*)::bigint FROM idx_timecurve_buy")
+            .fetch_one(&state.pool)
+            .await
+        {
+            Ok(n) => n,
+            Err(e) => {
+                return internal_db_error_response("GET /v1/timecurve/buys total_count", e);
+            }
+        };
 
     let rows = sqlx::query(
         r#"SELECT b.block_number, b.block_hash, b.contract_address,
@@ -395,11 +404,7 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/buys page", e);
         }
     };
 
@@ -430,11 +435,15 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                 bp_ambush_bonus: r.try_get("bp_ambush_bonus").ok()?,
                 bp_flag_penalty: r.try_get("bp_flag_penalty").ok()?,
                 flag_planted: r.try_get("flag_planted").ok()?,
-                buyer_total_effective_timer_sec: r.try_get("buyer_total_effective_timer_sec").ok()?,
+                buyer_total_effective_timer_sec: r
+                    .try_get("buyer_total_effective_timer_sec")
+                    .ok()?,
                 buyer_active_defended_streak: r.try_get("buyer_active_defended_streak").ok()?,
                 buyer_best_defended_streak: r.try_get("buyer_best_defended_streak").ok()?,
                 entry_pay_asset: kumbaya_entry_pay_asset(
-                    r.try_get::<Option<i16>, _>("kumbaya_pay_kind_raw").ok().flatten(),
+                    r.try_get::<Option<i16>, _>("kumbaya_pay_kind_raw")
+                        .ok()
+                        .flatten(),
                 ),
                 router_attested_gross_cl8y: r
                     .try_get::<Option<String>, _>("router_attested_gross_cl8y")
@@ -579,11 +588,7 @@ async fn timecurve_warbow_battle_feed(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/warbow/battle-feed", e);
         }
     };
 
@@ -659,11 +664,7 @@ async fn timecurve_warbow_leaderboard(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/warbow/leaderboard", e);
         }
     };
 
@@ -741,11 +742,7 @@ async fn timecurve_warbow_steals_by_victim_day(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/warbow/steals-by-victim-day", e);
         }
     };
 
@@ -814,11 +811,7 @@ async fn timecurve_warbow_guard_latest(
     let row = match row {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/warbow/guard-latest", e);
         }
     };
 
@@ -906,11 +899,7 @@ async fn timecurve_warbow_pending_revenge(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/warbow/pending-revenge", e);
         }
     };
 
@@ -994,11 +983,7 @@ async fn timecurve_buyer_stats(
     let row = match row {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/buyer-stats", e);
         }
     };
 
@@ -1078,11 +1063,7 @@ async fn rabbit_deposits(State(state): State<AppState>, Query(p): Query<PagePara
     let rows = match result {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/rabbit/deposits", e);
         }
     };
 
@@ -1182,11 +1163,7 @@ async fn rabbit_withdrawals(
     let rows = match result {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/rabbit/withdrawals", e);
         }
     };
 
@@ -1266,11 +1243,7 @@ async fn rabbit_health_epochs(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/rabbit/health-epochs", e);
         }
     };
 
@@ -1340,11 +1313,7 @@ async fn timecurve_charm_redemptions(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/charm-redemptions", e);
         }
     };
 
@@ -1408,11 +1377,7 @@ async fn leprechaun_mints(State(state): State<AppState>, Query(p): Query<PagePar
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/leprechauns/mints", e);
         }
     };
 
@@ -1500,11 +1465,7 @@ async fn timecurve_prize_distributions(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/prize-distributions", e);
         }
     };
 
@@ -1574,11 +1535,7 @@ async fn timecurve_prize_payouts(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/timecurve/prize-payouts", e);
         }
     };
 
@@ -1647,11 +1604,7 @@ async fn referral_registrations(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/referrals/registrations", e);
         }
     };
 
@@ -1753,11 +1706,7 @@ async fn referral_applied(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/referrals/applied", e);
         }
     };
 
@@ -1829,11 +1778,7 @@ async fn referral_referrer_leaderboard(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/referrals/referrer-leaderboard", e);
         }
     };
 
@@ -1908,11 +1853,7 @@ async fn referral_wallet_charm_summary(
     let row = match row {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/referrals/wallet-charm-summary", e);
         }
     };
 
@@ -1962,11 +1903,7 @@ async fn fee_router_sinks_updates(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/fee-router/sinks-updates", e);
         }
     };
 
@@ -2036,11 +1973,7 @@ async fn fee_router_fees_distributed(
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/fee-router/fees-distributed", e);
         }
     };
 
@@ -2118,11 +2051,7 @@ async fn rabbit_faction_stats(State(state): State<AppState>) -> Response {
     let rows = match rows {
         Ok(r) => r,
         Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": e.to_string() })),
-            )
-                .into_response();
+            return internal_db_error_response("GET /v1/rabbit/faction-stats", e);
         }
     };
 
@@ -2143,6 +2072,28 @@ async fn rabbit_faction_stats(State(state): State<AppState>) -> Response {
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
+}
+
+#[cfg(test)]
+mod internal_db_error_response_tests {
+    use super::{internal_db_error_response, PUBLIC_INTERNAL_DB_ERROR};
+    use axum::http::StatusCode;
+    use http_body_util::BodyExt;
+    use serde_json::Value;
+
+    #[tokio::test]
+    async fn internal_db_error_response_does_not_echo_sqlx_in_json_body() {
+        let err = sqlx::Error::Protocol("idx_timecurve_buy relation does not exist".into());
+        let res = internal_db_error_response("test_ctx", err);
+        assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = res.into_body().collect().await.unwrap().to_bytes();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        let s = v["error"].as_str().expect("error string");
+        assert_eq!(s, PUBLIC_INTERNAL_DB_ERROR);
+        let lower = s.to_ascii_lowercase();
+        assert!(!lower.contains("idx_timecurve"));
+        assert!(!lower.contains("relation"));
+    }
 }
 
 #[cfg(test)]
