@@ -846,6 +846,135 @@ contract TimeCurveTest is Test {
         tc.warbowRevenge(stealerA);
     }
 
+    /// @dev GitLab #135 — explicit **7** distinct stealers vs one victim (Product / brouie checklist); overlaps one UTC day (`payBypassBurn` from 4th steal for victim cap).
+    function test_warbow_revenge_seven_stealers_distinct_slots() public {
+        address victimV = makeAddr("victim135seven");
+
+        tc.startSaleAt(block.timestamp);
+        _boostVictimBpForSteal(tc, victimV);
+
+        address[7] memory stealers;
+        for (uint256 i; i < 7; ++i) {
+            stealers[i] = address(uint160(uint256(keccak256(abi.encode("stealer135seven", i)))));
+        }
+
+        for (uint256 i; i < 7; ++i) {
+            address s = stealers[i];
+            _fundAndApprove(s, 500e18);
+            vm.prank(s);
+            tc.buy(1e18);
+
+            bool bypass = i >= 3;
+            uint256 extra = bypass ? tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() : 0;
+            _fundAndApprove(s, 200e18 + tc.WARBOW_STEAL_BURN_WAD() + extra);
+            vm.prank(s);
+            tc.warbowSteal(victimV, bypass);
+
+            assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0, "new slot");
+            for (uint256 j; j < i; ++j) {
+                assertGt(
+                    tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[j]),
+                    0,
+                    "prior slots survive"
+                );
+            }
+        }
+
+        _fundAndApprove(victimV, 2000e18 + 7 * tc.WARBOW_REVENGE_BURN_WAD());
+        uint256[7] memory order = [uint256(3), 1, 6, 0, 5, 2, 4];
+        bool[7] memory done;
+        for (uint256 k; k < 7; ++k) {
+            uint256 idx = order[k];
+            address s = stealers[idx];
+            vm.prank(victimV);
+            tc.warbowRevenge(s);
+            assertEq(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0);
+            done[idx] = true;
+            for (uint256 m; m < 7; ++m) {
+                if (done[m]) {
+                    assertEq(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[m]), 0);
+                } else {
+                    assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[m]), 0);
+                }
+            }
+        }
+    }
+
+    /// @dev GitLab #135 — fuzz cardinality **≥7** stealers; victim BP scaled so **`vbp ≥ 2 × abp`** holds through the sequence.
+    function testFuzz_warbow_revenge_distinct_stealer_slots_overlap(uint8 nStealersU8, uint256 entropy) public {
+        uint256 n = uint256(nStealersU8);
+        vm.assume(n >= 7 && n <= 14);
+
+        address victimV = address(uint160(uint256(keccak256(abi.encode("victim135fuzz", entropy)))));
+        tc.startSaleAt(block.timestamp);
+
+        uint256 victimBuys = n <= 11 ? uint256(10) : uint256(18);
+        _boostVictimBpForStealManyBuys(tc, victimV, victimBuys);
+
+        address[] memory stealers = new address[](n);
+        for (uint256 i; i < n; ++i) {
+            stealers[i] = address(uint160(uint256(keccak256(abi.encode("stealer135fuzz", entropy, i)))));
+        }
+
+        for (uint256 i; i < n; ++i) {
+            address s = stealers[i];
+            _fundAndApprove(s, 500e18);
+            vm.prank(s);
+            tc.buy(1e18);
+
+            bool bypass = i >= 3;
+            uint256 extra = bypass ? tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() : 0;
+            _fundAndApprove(s, 200e18 + tc.WARBOW_STEAL_BURN_WAD() + extra);
+            vm.prank(s);
+            tc.warbowSteal(victimV, bypass);
+
+            uint256 vbp = tc.battlePoints(victimV);
+            uint256 abp = tc.battlePoints(s);
+            assertGe(vbp, 2 * abp, "2x rule holds mid-sequence");
+
+            assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0);
+            for (uint256 j; j < i; ++j) {
+                assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[j]), 0);
+            }
+        }
+
+        _fundAndApprove(victimV, 5000e18 + n * tc.WARBOW_REVENGE_BURN_WAD());
+        bool[] memory done = new bool[](n);
+        for (uint256 k; k < n; ++k) {
+            uint256 idx = uint256(keccak256(abi.encode(entropy, k, "revOrder"))) % n;
+            uint256 walks;
+            while (done[idx]) {
+                idx = (idx + 1) % n;
+                ++walks;
+                assertLt(walks, n + 1, "must find pending slot");
+            }
+
+            address s = stealers[idx];
+            vm.prank(victimV);
+            tc.warbowRevenge(s);
+            assertEq(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0);
+            done[idx] = true;
+            for (uint256 m; m < n; ++m) {
+                if (done[m]) {
+                    assertEq(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[m]), 0);
+                } else {
+                    assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[m]), 0);
+                }
+            }
+        }
+    }
+
+    /// @dev Same as **`_boostVictimBpForSteal`** but parameterized buy count (**≥6**) for deep WarBow fuzz sequences (GitLab #135).
+    function _boostVictimBpForStealManyBuys(TimeCurve t, address victim, uint256 nBuys) internal {
+        require(nBuys >= 6, "helper min buys");
+        _fundAndApproveCurve(victim, 10_000e18, t);
+        for (uint256 i; i < nBuys; ++i) {
+            if (i > 0) _warpPastBuyCooldown(t, victim);
+            vm.prank(victim);
+            t.buy(1e18);
+        }
+    }
+
     // ── Min buy growth ─────────────────────────────────────────────────
 
     function test_minBuy_grows_over_time() public {
