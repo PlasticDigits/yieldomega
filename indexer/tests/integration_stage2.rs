@@ -30,7 +30,7 @@ use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
-use yieldomega_indexer::persist::{persist_decoded_log, persist_decoded_log_conn};
+use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
 };
@@ -427,10 +427,10 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
             pay_kind: 0,
         },
     };
-    persist_decoded_log(pool, &buy_join)
+    persist_decoded_log_autocommit(pool, &buy_join)
         .await
         .expect("persist join buy");
-    persist_decoded_log(pool, &k_log)
+    persist_decoded_log_autocommit(pool, &k_log)
         .await
         .expect("persist buy via kumbaya");
     let res = app
@@ -768,7 +768,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     ];
 
     for d in &logs {
-        persist_decoded_log(&pool, d)
+        persist_decoded_log_autocommit(&pool, d)
             .await
             .unwrap_or_else(|e| panic!("persist {:?}: {e}", d.event));
     }
@@ -965,10 +965,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     // Idempotency: same (tx_hash, log_index) again
     let first = &logs[1];
-    persist_decoded_log(&pool, first).await.expect("replay");
+    persist_decoded_log_autocommit(&pool, first).await.expect("replay");
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     let k_last = logs.last().expect("kumbaya log");
-    persist_decoded_log(&pool, k_last)
+    persist_decoded_log_autocommit(&pool, k_last)
         .await
         .expect("replay kumbaya");
     assert_eq!(
@@ -986,7 +986,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         contract: CONTRACT,
         event: DecodedEvent::Unknown { topic0: B256::ZERO },
     };
-    persist_decoded_log(&pool, &unknown).await.expect("unknown");
+    persist_decoded_log_autocommit(&pool, &unknown).await.expect("unknown");
 
     let app = router(AppState {
         pool: pool.clone(),
@@ -1087,8 +1087,8 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             buyer_best_defended_streak: U256::ZERO,
         },
     );
-    persist_decoded_log(&pool, &d5).await.expect("d5");
-    persist_decoded_log(&pool, &d20).await.expect("d20");
+    persist_decoded_log_autocommit(&pool, &d5).await.expect("d5");
+    persist_decoded_log_autocommit(&pool, &d20).await.expect("d20");
 
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 5).await, 1);
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 1);
@@ -1215,18 +1215,18 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         },
     };
     let mut tx = pool.begin().await.expect("tx begin");
-    yieldomega_indexer::persist::persist_decoded_log_conn(&mut *tx, &ghost_sale)
+    yieldomega_indexer::persist::persist_decoded_log_conn(&mut tx, &ghost_sale)
         .await
         .expect("ghost persist");
     yieldomega_indexer::reorg::upsert_indexed_block_conn(
-        &mut *tx,
+        &mut tx,
         GHOST_BLOCK,
         ghost_sale.block_hash,
     )
     .await
     .expect("ghost ib");
     yieldomega_indexer::reorg::save_chain_pointer_conn(
-        &mut *tx,
+        &mut tx,
         &ChainPointer {
             block_number: GHOST_BLOCK,
             block_hash: ghost_sale.block_hash,
@@ -1309,10 +1309,10 @@ async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash(
     };
 
     let mut tx = pool.begin().await.expect("begin");
-    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+    persist_decoded_log_conn(&mut tx, &buy_log(0))
         .await
         .expect("persist 0");
-    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+    persist_decoded_log_conn(&mut tx, &buy_log(1))
         .await
         .expect("persist 1");
     tx.rollback().await.expect("rollback");
@@ -1325,10 +1325,10 @@ async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash(
     assert_eq!(row.try_get::<i64, _>("c").unwrap(), 0);
 
     let mut tx = pool.begin().await.expect("begin2");
-    persist_decoded_log_conn(&mut *tx, &buy_log(0))
+    persist_decoded_log_conn(&mut tx, &buy_log(0))
         .await
         .expect("persist 0b");
-    persist_decoded_log_conn(&mut *tx, &buy_log(1))
+    persist_decoded_log_conn(&mut tx, &buy_log(1))
         .await
         .expect("persist 1b");
     tx.commit().await.expect("commit");

@@ -487,7 +487,7 @@ export function useTimeCurveArenaModel() {
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_DAY" },
         { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },

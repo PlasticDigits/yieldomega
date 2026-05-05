@@ -73,7 +73,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     uint16 public constant WARBOW_STEAL_DRAIN_BPS = 1000; // 10%
     uint16 public constant WARBOW_STEAL_DRAIN_GUARDED_BPS = 100; // 1%
-    uint8 public constant WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY = 3;
+    /// @notice Max successful **`warbowSteal`** receipts per **victim** per UTC day **and** max commits per **attacker** per UTC day before bypass applies ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134); shared numeric threshold — naming hygiene [GitLab #148](https://gitlab.com/PlasticDigits/yieldomega/-/issues/148)).
+    uint8 public constant WARBOW_MAX_STEALS_PER_DAY = 3;
 
     uint256 public constant SECONDS_PER_DAY = 86_400;
     /// @notice Wall-clock upper bound (seconds) on **pricing elapsed** and on **`block.timestamp`** for buys & WarBow CL8Y burns (GitLab #124 / audit I-01).
@@ -627,8 +628,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 day = block.timestamp / SECONDS_PER_DAY;
         uint8 victimStealsToday = stealsReceivedOnDay[victim][day];
         uint8 attackerStealsToday = stealsCommittedByAttackerOnDay[msg.sender][day];
-        bool victimLimitBefore = victimStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
-        bool attackerLimitBefore = attackerStealsToday >= WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY;
+        bool victimLimitBefore = victimStealsToday >= WARBOW_MAX_STEALS_PER_DAY;
+        bool attackerLimitBefore = attackerStealsToday >= WARBOW_MAX_STEALS_PER_DAY;
 
         _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);

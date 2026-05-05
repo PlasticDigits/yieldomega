@@ -69,7 +69,7 @@ const TC_READS = [
   "warbowPendingFlagPlantAt",
   "WARBOW_FLAG_SILENCE_SEC",
   "WARBOW_FLAG_CLAIM_BP",
-  "WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY",
+  "WARBOW_MAX_STEALS_PER_DAY",
   "WARBOW_STEAL_BURN_WAD",
   "WARBOW_GUARD_BURN_WAD",
   "WARBOW_REVENGE_WINDOW_SEC",
@@ -312,7 +312,7 @@ export function TimeCurveProtocolPage() {
           <dd>{renderInt(24)}</dd>
           <dt>{humanizeKvLabel("WARBOW_FLAG_CLAIM_BP")}</dt>
           <dd>{renderInt(25)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_MAX_STEALS_PER_VICTIM_PER_DAY")}</dt>
+          <dt>{humanizeKvLabel("WARBOW_MAX_STEALS_PER_DAY")}</dt>
           <dd>{renderInt(26)}</dd>
           <dt>{humanizeKvLabel("WARBOW_STEAL_BURN_WAD")}</dt>
           <dd>{renderAmount(27, 18)}</dd>

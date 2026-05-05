@@ -52,8 +52,8 @@ async fn bootstrap_pointer(
         block_hash: hash,
     };
     let mut tx = pool.begin().await?;
-    upsert_indexed_block_conn(&mut *tx, parent, hash).await?;
-    save_chain_pointer_conn(&mut *tx, pointer).await?;
+    upsert_indexed_block_conn(&mut tx, parent, hash).await?;
+    save_chain_pointer_conn(&mut tx, pointer).await?;
     tx.commit().await?;
     tracing::info!(
         block = parent,
@@ -159,11 +159,11 @@ pub async fn run(pool: &PgPool, config: &Config) -> Result<()> {
                     continue;
                 }
                 if let Some(decoded) = decode_rpc_log(lg) {
-                    persist_decoded_log_conn(&mut *tx, &decoded).await?;
+                    persist_decoded_log_conn(&mut tx, &decoded).await?;
                 }
             }
-            upsert_indexed_block_conn(&mut *tx, next, block_hash).await?;
-            save_chain_pointer_conn(&mut *tx, &pointer_next).await?;
+            upsert_indexed_block_conn(&mut tx, next, block_hash).await?;
+            save_chain_pointer_conn(&mut tx, &pointer_next).await?;
             Ok::<_, eyre::Report>(())
         }
         .await;
