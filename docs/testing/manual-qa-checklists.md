@@ -31,6 +31,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
 | [#120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120) | [`AccessControl` zero admin — indexer + frontend derived layers](#manual-qa-issue-120-accesscontrol-zero-admin-derived-layers) |
 | [#142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142) | [Indexer production `DATABASE_URL` hygiene](#manual-qa-issue-142) |
+| [#156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156) | [Indexer production `ADDRESS_REGISTRY` / `CHAIN_ID`](#manual-qa-issue-156) |
 | [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
@@ -617,3 +618,19 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] Open [`indexer/.env.example`](../../indexer/.env.example): confirm warnings above **`RPC_URL` / `CHAIN_ID`** and non-production-looking **`DATABASE_URL`**.
 
 **Doc map:** [indexer README](../../indexer/README.md) · [invariants — #142](invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142)
+
+<a id="manual-qa-issue-156"></a>
+
+## Indexer production `ADDRESS_REGISTRY` / `CHAIN_ID` (GitLab #156)
+
+**Goal:** With **`INDEXER_PRODUCTION=1`**, a wrong registry file, wrong **`CHAIN_ID`**, invalid addresses, or missing ingestion registry must **exit during config load** — not warn, skip bad rows, or idle forever ([`INV-INDEXER-156`](invariants-and-business-logic.md#indexer-production-address-registry-fail-closed-gitlab-156)).
+
+### Checklist
+
+- [ ] **`INDEXER_PRODUCTION=1`**, **`INGESTION_ENABLED=true`** (default), valid **`DATABASE_URL`** / **`CORS_ALLOWED_ORIGINS`**, **omit** **`ADDRESS_REGISTRY_PATH`** → `cargo run` fails at config with a message about **`ADDRESS_REGISTRY_PATH`** / production ingestion.
+- [ ] Same, but set **`ADDRESS_REGISTRY_PATH`** to a JSON whose **`chain_id`** ≠ **`CHAIN_ID`** → non-zero exit mentioning **`CHAIN_ID`**.
+- [ ] Registry with a **non-empty** invalid **`TimeCurve`** string → non-zero exit (not “skipping invalid address”).
+- [ ] Unset **`INDEXER_PRODUCTION`**: registry **`chain_id`** mismatch still **warns** only; behavior matches pre-#156 local workflows.
+- [ ] `cd indexer && cargo test production_registry_validation` — all tests pass.
+
+**Doc map:** [indexer README — checklist](../../indexer/README.md) · [invariants — #156](invariants-and-business-logic.md#indexer-production-address-registry-fail-closed-gitlab-156)
