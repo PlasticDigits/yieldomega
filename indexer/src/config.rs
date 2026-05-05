@@ -7,6 +7,13 @@ use eyre::{bail, Context, Result};
 use serde::Deserialize;
 use std::net::SocketAddr;
 
+/// Chains where **`deploy_block` may be zero** in production (local Anvil). All other chains
+/// require a positive **`deploy_block`** so **`effective_start_block`** is not silently wrong.
+///
+/// MegaETH devnets **6342 / 6343** still require a real deploy anchor when **`INDEXER_PRODUCTION`**
+/// is set — only **31337** skips this check ([GitLab #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156)).
+const PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS: &[u64] = &[31337];
+
 /// Substrings that must **not** appear in `DATABASE_URL` (case-insensitive) when
 /// [`crate::cors_config::indexer_production_enabled`] is true.
 ///
@@ -97,6 +104,141 @@ impl AddressRegistry {
     }
 }
 
+/// When **`INDEXER_PRODUCTION`** is enabled, validate registry vs **`CHAIN_ID`** and (when
+/// ingestion is enabled) mandatory proxy addresses. See [`validate_address_registry_for_production`].
+pub fn ensure_production_address_registry(
+    chain_id: u64,
+    ingestion_enabled: bool,
+    address_registry: &Option<AddressRegistry>,
+    require_buy_router: bool,
+) -> Result<()> {
+    if !crate::cors_config::indexer_production_enabled() {
+        return Ok(());
+    }
+
+    if ingestion_enabled && address_registry.is_none() {
+        bail!(
+            "INDEXER_PRODUCTION with INGESTION_ENABLED requires ADDRESS_REGISTRY_PATH — \
+             refusing API-only idle ingestion in production (GitLab #156)"
+        );
+    }
+
+    let Some(reg) = address_registry else {
+        return Ok(());
+    };
+
+    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, require_buy_router)
+}
+
+/// Fail closed on misconfigured **`ADDRESS_REGISTRY`** JSON when **`INDEXER_PRODUCTION`** is on.
+///
+/// - **`ingestion_enabled`:** mandatory protocol fields must be non-empty, parseable **ERC-20
+///   sized** addresses, and **non-zero**; resolved log filter set must be non-empty; optional
+///   **`TimeCurveBuyRouter`** is required when **`require_buy_router`** is true.
+/// - **Always (when this is called for a `Some` registry):** `registry.chain_id` must match
+///   **`CHAIN_ID`**; any **non-empty** contract string must parse (no silent skip).
+pub fn validate_address_registry_for_production(
+    reg: &AddressRegistry,
+    chain_id: u64,
+    ingestion_enabled: bool,
+    require_buy_router: bool,
+) -> Result<()> {
+    if reg.chain_id != chain_id {
+        bail!(
+            "ADDRESS_REGISTRY chain_id {} does not match CHAIN_ID {} — fix registry JSON or CHAIN_ID (GitLab #156)",
+            reg.chain_id,
+            chain_id
+        );
+    }
+
+    let strict_parse = |field: &str, raw: &str| -> Result<Address> {
+        let s = raw.trim();
+        if s.is_empty() {
+            bail!("INDEXER_PRODUCTION: {field} is empty in ADDRESS_REGISTRY");
+        }
+        let a: Address = s
+            .parse()
+            .wrap_err_with(|| format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}"))?;
+        if a == Address::ZERO {
+            bail!("INDEXER_PRODUCTION: {field} must not be the zero address");
+        }
+        Ok(a)
+    };
+
+    let parse_optional_buy_router = |raw: &str| -> Result<Option<Address>> {
+        let s = raw.trim();
+        if s.is_empty() {
+            if require_buy_router {
+                bail!(
+                    "INDEXER_PRODUCTION: TimeCurveBuyRouter is required — set INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=0 to allow omission, or add the router proxy to ADDRESS_REGISTRY (GitLab #156, GitLab #67)"
+                );
+            }
+            return Ok(None);
+        }
+        let a: Address = s.parse().wrap_err_with(|| {
+            format!("INDEXER_PRODUCTION: TimeCurveBuyRouter is not a valid address: {s:?}")
+        })?;
+        if a == Address::ZERO {
+            bail!("INDEXER_PRODUCTION: TimeCurveBuyRouter must not be the zero address");
+        }
+        Ok(Some(a))
+    };
+
+    // Non-empty garbage in any field must not be silently skipped in production.
+    for (field, raw) in [
+        ("TimeCurve", reg.contracts.timecurve.as_str()),
+        ("TimeCurveBuyRouter", reg.contracts.timecurve_buy_router.as_str()),
+        ("RabbitTreasury", reg.contracts.rabbit_treasury.as_str()),
+        ("LeprechaunNFT", reg.contracts.leprechaun_nft.as_str()),
+        ("FeeRouter", reg.contracts.fee_router.as_str()),
+        ("ReferralRegistry", reg.contracts.referral_registry.as_str()),
+        ("PodiumPool", reg.contracts.podium_pool.as_str()),
+    ] {
+        let s = raw.trim();
+        if s.is_empty() {
+            continue;
+        }
+        let _: Address = s
+            .parse()
+            .wrap_err_with(|| format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}"))?;
+    }
+
+    if !ingestion_enabled {
+        return Ok(());
+    }
+
+    let _ = strict_parse("TimeCurve", &reg.contracts.timecurve)?;
+    let _ = strict_parse("RabbitTreasury", &reg.contracts.rabbit_treasury)?;
+    let _ = strict_parse("LeprechaunNFT", &reg.contracts.leprechaun_nft)?;
+    let _ = strict_parse("FeeRouter", &reg.contracts.fee_router)?;
+    let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
+    let _ = strict_parse("PodiumPool", &reg.contracts.podium_pool)?;
+    let _ = parse_optional_buy_router(&reg.contracts.timecurve_buy_router)?;
+
+    if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {
+        bail!(
+            "INDEXER_PRODUCTION: deploy_block is 0 in ADDRESS_REGISTRY for chain_id {} — set the deployment anchor block (GitLab #156)",
+            chain_id
+        );
+    }
+
+    let addrs = reg.index_addresses();
+    if addrs.is_empty() {
+        bail!(
+            "INDEXER_PRODUCTION: no contract addresses resolved for eth_getLogs — check ADDRESS_REGISTRY (GitLab #156)"
+        );
+    }
+
+    Ok(())
+}
+
+fn registry_require_buy_router_from_env() -> bool {
+    match std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER") {
+        Ok(s) => matches!(s.to_lowercase().as_str(), "1" | "true" | "yes"),
+        Err(_) => false,
+    }
+}
+
 /// Runtime configuration loaded from environment (and optional registry file).
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -142,8 +284,16 @@ impl Config {
             .parse()
             .wrap_err("CHAIN_ID must be a u64")?;
 
+        let require_buy_router = registry_require_buy_router_from_env();
+        ensure_production_address_registry(
+            chain_id,
+            ingestion_enabled,
+            &address_registry,
+            require_buy_router,
+        )?;
+
         if let Some(ref reg) = address_registry {
-            if reg.chain_id != chain_id {
+            if reg.chain_id != chain_id && !crate::cors_config::indexer_production_enabled() {
                 tracing::warn!(
                     registry_chain = reg.chain_id,
                     config_chain = chain_id,
@@ -216,5 +366,128 @@ mod production_database_url_tests {
             ),
             None,
         );
+    }
+}
+
+#[cfg(test)]
+mod production_registry_validation_tests {
+    use super::*;
+
+    const ADDR_A: &str = "0x1111111111111111111111111111111111111111";
+    const ADDR_B: &str = "0x2222222222222222222222222222222222222222";
+
+    fn filled_contracts(buy_router: &str) -> RegistryContracts {
+        RegistryContracts {
+            timecurve: ADDR_A.into(),
+            timecurve_buy_router: buy_router.into(),
+            rabbit_treasury: ADDR_A.into(),
+            leprechaun_nft: ADDR_A.into(),
+            fee_router: ADDR_A.into(),
+            referral_registry: ADDR_A.into(),
+            podium_pool: ADDR_A.into(),
+        }
+    }
+
+    fn reg(chain_id: u64, deploy_block: u64, contracts: RegistryContracts) -> AddressRegistry {
+        AddressRegistry {
+            chain_id,
+            contracts,
+            deploy_block,
+        }
+    }
+
+    #[test]
+    fn rejects_registry_chain_id_mismatch() {
+        let r = reg(1, 100, filled_contracts(""));
+        let e = validate_address_registry_for_production(&r, 2, true, false).unwrap_err();
+        assert!(
+            e.to_string().contains("CHAIN_ID"),
+            "unexpected error: {e:?}"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_address_when_non_empty() {
+        let mut c = filled_contracts("");
+        c.timecurve = "not-an-address".into();
+        let r = reg(1, 100, c);
+        assert!(validate_address_registry_for_production(&r, 1, false, false).is_err());
+    }
+
+    #[test]
+    fn rejects_empty_mandatory_when_ingestion() {
+        let mut c = filled_contracts("");
+        c.fee_router = "  ".into();
+        let r = reg(1, 100, c);
+        let e = validate_address_registry_for_production(&r, 1, true, false).unwrap_err();
+        assert!(e.to_string().contains("FeeRouter"), "{e:?}");
+    }
+
+    #[test]
+    fn rejects_zero_mandatory_when_ingestion() {
+        let mut c = filled_contracts("");
+        c.podium_pool = Address::ZERO.to_string();
+        let r = reg(1, 100, c);
+        assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
+    }
+
+    #[test]
+    fn rejects_deploy_block_zero_on_non_local_chain_with_ingestion() {
+        let r = reg(4326, 0, filled_contracts(""));
+        let e = validate_address_registry_for_production(&r, 4326, true, false).unwrap_err();
+        assert!(e.to_string().contains("deploy_block"), "{e:?}");
+    }
+
+    #[test]
+    fn allows_deploy_block_zero_on_anvil_chain_with_ingestion() {
+        let r = reg(31337, 0, filled_contracts(""));
+        validate_address_registry_for_production(&r, 31337, true, false).unwrap();
+    }
+
+    #[test]
+    fn rejects_empty_index_set_when_all_mandatory_unparseable_ingestion() {
+        let c = RegistryContracts {
+            timecurve: "nope".into(),
+            timecurve_buy_router: String::new(),
+            rabbit_treasury: "nope2".into(),
+            leprechaun_nft: String::new(),
+            fee_router: String::new(),
+            referral_registry: String::new(),
+            podium_pool: String::new(),
+        };
+        let r = reg(1, 1, c);
+        assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
+    }
+
+    #[test]
+    fn require_buy_router_missing_fails() {
+        let r = reg(1, 1, filled_contracts(""));
+        let e = validate_address_registry_for_production(&r, 1, true, true).unwrap_err();
+        assert!(
+            e.to_string().contains("TimeCurveBuyRouter"),
+            "unexpected: {e:?}"
+        );
+    }
+
+    #[test]
+    fn require_buy_router_present_ok() {
+        let r = reg(1, 1, filled_contracts(ADDR_B));
+        validate_address_registry_for_production(&r, 1, true, true).unwrap();
+    }
+
+    #[test]
+    fn api_only_skips_mandatory_addresses_but_still_validates_nonempty_fields() {
+        let mut c = RegistryContracts {
+            timecurve: String::new(),
+            timecurve_buy_router: String::new(),
+            rabbit_treasury: String::new(),
+            leprechaun_nft: String::new(),
+            fee_router: String::new(),
+            referral_registry: String::new(),
+            podium_pool: String::new(),
+        };
+        c.timecurve = "bogus".into();
+        let r = reg(5, 0, c);
+        assert!(validate_address_registry_for_production(&r, 5, false, false).is_err());
     }
 }

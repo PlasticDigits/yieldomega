@@ -442,6 +442,25 @@ When **Pay with** is **ETH** or **USDM**, the Simple buy CTA must stay **disable
 
 **Doc:** [indexer design — Configuration](../indexer/design.md#configuration) · [issue #142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142).
 
+<a id="indexer-production-address-registry-fail-closed-gitlab-156"></a>
+
+### Indexer production `ADDRESS_REGISTRY` — fail closed (issue #156)
+
+**`INV-INDEXER-156`:** When **`INDEXER_PRODUCTION`** is enabled, **`Config::from_env`** must **`bail!`** on unsafe registry or chain configuration so production never runs **warn-and-idle** ingestion with a wrong or empty address set ([audit M-02](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156)).
+
+| Invariant | Check |
+|-----------|--------|
+| **Ingestion + registry path** | With **`INGESTION_ENABLED`** truthy (default), missing **`ADDRESS_REGISTRY_PATH`** → startup error (not API-only idle loop). |
+| **`CHAIN_ID` vs JSON `chain_id`** | Mismatch → **`bail!`** (non-production keeps **warn** only when a registry file is present). |
+| **Parse / zero / mandatory fields** | With ingestion enabled: **`TimeCurve`**, **`RabbitTreasury`**, **`LeprechaunNFT`**, **`FeeRouter`**, **`ReferralRegistry`**, **`PodiumPool`** must be non-empty, parseable, and non-zero; any other **non-empty** field must parse (no silent skip of garbage strings). |
+| **`deploy_block`** | For **`CHAIN_ID ∉ {31337}`**, **`deploy_block`** must be **> 0**. **`31337`** (Anvil) may use **`0`**. |
+| **`TimeCurveBuyRouter`** | Optional unless **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** (`1` / `true` / `yes`), then the router proxy must be set ([GitLab #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)). |
+| **Non-production** | Without **`INDEXER_PRODUCTION`**, existing warn / skip / idle behavior is unchanged. |
+
+**Automated:** unit tests in **`production_registry_validation_tests`** in [`indexer/src/config.rs`](../../indexer/src/config.rs).
+
+**Doc:** [indexer README — production checklist](../../indexer/README.md) · [indexer design — Configuration](../indexer/design.md#configuration) · [issue #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156).
+
 <a id="timecurve-simple-stake-redeemed-issue-90"></a>
 
 ### TimeCurve Simple — stake panel after `redeemCharms` (issue #90)
