@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.14.0";
+const SCHEMA_VERSION: &str = "1.15.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -45,6 +45,33 @@ fn default_limit() -> i64 {
 
 fn clamp_limit(l: i64) -> i64 {
     l.clamp(1, 200)
+}
+
+fn default_refresh_candidates_limit() -> i64 {
+    200
+}
+
+fn clamp_refresh_candidates_limit(l: i64) -> i64 {
+    l.clamp(1, 500)
+}
+
+/// Upper bound on DISTINCT wallet rows pulled from Postgres before merging RPC podium hints ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).
+const REFRESH_CANDIDATES_DISTINCT_CAP: i64 = 10_000;
+
+#[derive(Debug, serde::Deserialize)]
+pub struct RefreshCandidatesParams {
+    #[serde(default = "default_refresh_candidates_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+}
+
+fn normalize_refresh_candidate_addr(w: &str) -> Option<String> {
+    let s = w.trim().to_ascii_lowercase();
+    if s.is_empty() || s == "0x0000000000000000000000000000000000000000" {
+        return None;
+    }
+    Some(s)
 }
 
 /// Maps `TimeCurveBuyRouter` `PAY_ETH` / `PAY_STABLE` for API consumers (GitLab #67).
@@ -82,6 +109,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/timecurve/warbow/pending-revenge",
             get(timecurve_warbow_pending_revenge),
+        )
+        .route(
+            "/v1/timecurve/warbow/refresh-candidates",
+            get(timecurve_warbow_refresh_candidates),
         )
         .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
@@ -921,6 +952,108 @@ async fn timecurve_warbow_pending_revenge(
         "now_sec": q.now_sec,
         "items": items,
         "note": "Each item is an unconsumed (victim, stealer) window; `expiry_exclusive` matches onchain `warbowPendingRevengeExpiryExclusive` semantics (`block.timestamp < expiry`).",
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+/// Offchain superset of wallets to feed `refreshWarbowPodium(candidates)` while the sale is live ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).
+async fn timecurve_warbow_refresh_candidates(
+    State(state): State<AppState>,
+    Query(p): Query<RefreshCandidatesParams>,
+) -> Response {
+    let page_lim = clamp_refresh_candidates_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let sql_addrs: Vec<String> = match sqlx::query_scalar::<_, String>(
+        r#"SELECT DISTINCT LOWER(TRIM(addr)) AS addr
+           FROM (
+             SELECT attacker AS addr FROM idx_timecurve_warbow_steal
+             UNION ALL SELECT victim FROM idx_timecurve_warbow_steal
+             UNION ALL SELECT avenger FROM idx_timecurve_warbow_revenge
+             UNION ALL SELECT stealer FROM idx_timecurve_warbow_revenge
+             UNION ALL SELECT victim FROM idx_timecurve_warbow_revenge_window
+             UNION ALL SELECT stealer FROM idx_timecurve_warbow_revenge_window
+             UNION ALL SELECT player FROM idx_timecurve_warbow_guard
+             UNION ALL SELECT player FROM idx_timecurve_warbow_flag_claimed
+             UNION ALL SELECT former_holder FROM idx_timecurve_warbow_flag_penalized
+             UNION ALL SELECT triggering_buyer FROM idx_timecurve_warbow_flag_penalized
+             UNION ALL SELECT payer FROM idx_timecurve_warbow_cl8y_burned
+             UNION ALL SELECT wallet FROM idx_timecurve_warbow_ds_continued
+             UNION ALL SELECT former_holder FROM idx_timecurve_warbow_ds_broken
+             UNION ALL SELECT interrupter FROM idx_timecurve_warbow_ds_broken
+             UNION ALL SELECT cleared_wallet FROM idx_timecurve_warbow_ds_window_cleared
+             UNION ALL SELECT buyer FROM idx_timecurve_buy WHERE battle_points_after > 0
+           ) u
+           WHERE TRIM(addr) <> ''
+             AND LOWER(TRIM(addr)) <> '0x0000000000000000000000000000000000000000'
+           ORDER BY addr
+           LIMIT $1"#,
+    )
+    .bind(REFRESH_CANDIDATES_DISTINCT_CAP)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/timecurve/warbow/refresh-candidates", e);
+        }
+    };
+
+    let distinct_sql_cap_hit = sql_addrs.len() as i64 >= REFRESH_CANDIDATES_DISTINCT_CAP;
+
+    let guard = state.chain_timer.read().await;
+    let mut podium_hints: Vec<String> = Vec::new();
+    if let Some(head) = guard.as_ref() {
+        for w in &head.podium_contract[3].winners {
+            if let Some(a) = normalize_refresh_candidate_addr(w) {
+                if !podium_hints.contains(&a) {
+                    podium_hints.push(a);
+                }
+            }
+        }
+    }
+
+    let podium_hint_count = podium_hints.len() as i64;
+    let mut seen = std::collections::BTreeSet::<String>::new();
+    let mut merged: Vec<String> = Vec::new();
+    for a in podium_hints {
+        if seen.insert(a.clone()) {
+            merged.push(a);
+        }
+    }
+    for a in sql_addrs {
+        if seen.insert(a.clone()) {
+            merged.push(a);
+        }
+    }
+
+    let total = merged.len() as i64;
+    let start = off as usize;
+    let page: Vec<String> = if start >= merged.len() {
+        Vec::new()
+    } else {
+        let end = start.saturating_add(page_lim as usize).min(merged.len());
+        merged[start..end].to_vec()
+    };
+
+    let next_offset = if (start as i64).saturating_add(page.len() as i64) < total {
+        Some(off + page_lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "candidates": page,
+        "limit": page_lim,
+        "offset": off,
+        "total": total,
+        "next_offset": next_offset,
+        "podium_warbow_hint_count": podium_hint_count,
+        "distinct_sql_cap_hit": distinct_sql_cap_hit,
+        "note": "Sale-live hook only: onchain `refreshWarbowPodium` reverts with `TimeCurve: ended` after `endSale` (GitLab #149). Post-end operators must call owner `finalizeWarbowPodium`. Candidates prepend head-indexer WarBow `podium` RPC hints (when chain-timer is configured), then DISTINCT indexed WarBow participants plus buyers with `battle_points_after > 0`. Rows are alphabetically ordered after hints; `distinct_sql_cap_hit` means the SQL branch hit its DISTINCT cap.",
     });
 
     let mut res = Json(body).into_response();

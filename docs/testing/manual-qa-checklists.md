@@ -424,6 +424,26 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
+<a id="manual-qa-issue-160"></a>
+
+## Protocol — WarBow refresh candidates (GitLab #160)
+
+**Goal:** Operators can load indexer-derived **`refreshWarbowPodium`** candidates from **`/timecurve/protocol`** while respecting sale-live vs post-end onchain rules.
+
+### Preconditions
+
+- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.0** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
+
+### Checklist
+
+1. Open **`/timecurve/protocol`**; locate **WarBow podium refresh**.
+2. With sale **live** (`ended == false`): **Load candidates from indexer** succeeds; counts and **`SQL DISTINCT cap hit`** render without errors.
+3. Connect wallet on **build target chain**; **Refresh WarBow podium** submits **`refreshWarbowPodium`** (or surfaces a clear revert / chain gate).
+4. After **`endSale`** (`ended == true`): confirm UI warns and **Refresh WarBow podium** stays disabled; onchain post-end path remains owner **`finalizeWarbowPodium`** (#149).
+5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`note`** present.
+
+**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** ([invariants §149](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-92"></a>
 
 ## Presale vesting `/vesting` (GitLab #92)

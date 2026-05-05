@@ -18,6 +18,7 @@ import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 
 /**
@@ -27,7 +28,8 @@ import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase"
  * Invariant: every value rendered here is read directly from a public view
  * function on `TimeCurve`, `LinearCharmPrice`, or `FeeRouter`. We never derive
  * values that the contract does not expose, so this page can be used to
- * verify the simple / arena views.
+ * verify the simple / arena views. The WarBow refresh helper uses the indexer
+ * only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
  */
 type ContractReadRow = {
   status: "success" | "failure";
@@ -201,6 +203,9 @@ export function TimeCurveProtocolPage() {
   });
   const protocolPhaseBadge = phaseBadge(protocolPhase);
 
+  const saleEnded =
+    endedRow?.status === "success" ? (endedRow.result as boolean) : true;
+
   return (
     <div className="page timecurve-protocol-page">
       <TimeCurveSubnav active="protocol" />
@@ -325,6 +330,19 @@ export function TimeCurveProtocolPage() {
           <dt>{humanizeKvLabel("warbowPendingFlagPlantAt")}</dt>
           <dd>{renderUnix(23)}</dd>
         </dl>
+      </PageSection>
+
+      <PageSection
+        title="WarBow podium refresh"
+        badgeLabel="indexer + wallet"
+        badgeTone="info"
+        lede="Load deduped `refreshWarbowPodium` candidates from the indexer while the sale is live. Requires VITE_INDEXER_URL and a connected wallet on the build target chain."
+      >
+        <TimeCurveProtocolWarbowRefreshSection
+          timeCurve={tc}
+          saleEnded={saleEnded}
+          refetchParentReads={() => reads.refetch()}
+        />
       </PageSection>
 
       <PageSection
