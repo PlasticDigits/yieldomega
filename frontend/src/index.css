@@ -7591,7 +7591,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* "Your stake at launch" panel — two big-number tiles backed by the
-   `participantLaunchValueCl8yWei` invariant (1.2× per-CHARM clearing price). */
+   `participantLaunchValueCl8yWei` invariant (1.275× per-CHARM clearing price). */
 .timecurve-simple__stake-panel {
   margin-bottom: 0.5rem;
 }
