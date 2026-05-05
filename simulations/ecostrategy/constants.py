@@ -38,7 +38,26 @@ MIRRORED_FROM_CONTRACT = {
         f"+{REFERRAL_REFEREE_BPS / 100:g}% referee + {REFERRAL_REFERRER_BPS / 100:g}% referrer"
     ),
     "DoubPresaleVesting beneficiary — `PRESALE_CHARM_WEIGHT_BPS`": PRESALE_CHARM_WEIGHT_BPS,
+    "FeeRouter — five sinks, last gets remainder": (
+        "matches `FeeRouter.distributeFees` + `FeeMath.bpsShare` for first four sinks"
+    ),
+    "PARAMETERS.md — TimeCurve fee split (bps)": (
+        "3000 LP · 4000 burn · 2000 podium · 0 team · 1000 Rabbit (must sum 10000)"
+    ),
+    "Launch anchor CL8Y projection": (
+        "gross CL8Y per CHARM × 1275/1000 (DoubLP incentives seed vs final clearing)"
+    ),
 }
+
+# Default TimeCurve → FeeRouter weights per `contracts/PARAMETERS.md` (sink order: LP · burn · podium · team · Rabbit).
+FEE_SINK_WEIGHTS_BPS_DEFAULT: tuple[int, int, int, int, int] = (3000, 4000, 2000, 0, 1000)
+
+# Launch-anchor projection (GitLab #158) — same ratio as `LAUNCH_LIQUIDITY_ANCHOR_*` in frontend helpers.
+LAUNCH_LIQUIDITY_ANCHOR_NUM = 1275
+LAUNCH_LIQUIDITY_ANCHOR_DEN = 1000
+
+# Illustrative `protocolRevenueBurnShareWad` for scenario E (deploy/runtime varies); Burrow books splits via `receiveFee`.
+DEFAULT_PROTOCOL_REVENUE_BURN_SHARE_WAD = 200_000_000_000_000_000  # 0.2e18 — illustrative only
 
 APPROXIMATIONS_AND_SCENARIO_ONLY = [
     "Poisson arrivals, synthetic wallet budgets, and fixed observation horizons are not onchain.",
@@ -47,4 +66,7 @@ APPROXIMATIONS_AND_SCENARIO_ONLY = [
     "`UTC day` uses `int(timestamp // 86400)` like `block.timestamp / SECONDS_PER_DAY` onchain.",
     "Scenario B stacks referee + referrer + presale bonuses at 125% of paid CHARM for the same buy — models "
     "audit M-01 common-control stacking; not a separate onchain validation.",
+    "Scenario D compares two discrete orderings in the final observation window; mempool partial fills and builder bundles are not modeled.",
+    "Scenario E uses a scalar Burrow state and one gross buy fee slice; full RabbitTreasury `receiveFee` WAD split should "
+    "mirror deployed `protocolRevenueBurnShareWad`.",
 ]
