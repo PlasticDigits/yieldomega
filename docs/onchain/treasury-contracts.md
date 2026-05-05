@@ -11,8 +11,16 @@ Use **separate contract deployments** (distinct addresses), not a single vault w
 | **DoubLPIncentives** | **TODO:** Dedicated receiver for **30%** of **TimeCurve** fees earmarked for **DOUB / CL8Y** liquidity (LP rewards, gauge, or vault-to-pool routing). Finalize **contract name**, **deployment address**, **AMM/pool targets**, and **claim mechanics**; wire **TimeCurve** / fee router to this address. See [fee sinks](fee-routing-and-governance.md#fee-sinks) and [governance](fee-routing-and-governance.md#governance-actors). |
 | **Burn sink** (`0x…dEaD` or governance-chosen) | **40%** of **TimeCurve** fees: **CL8Y is burned** (the sale asset is already CL8Y — not framed as a separate “buy-and-burn” product step). |
 | **CL8YProtocolTreasury** | **Optional / legacy** holding contract; **not** the default **FeeRouter** destination for the burn slice in current deploy scripts. |
+| **`RabbitTreasuryVault`** | **Optional interim custody** for the **fifth FeeRouter sink** (Rabbit slice): receives **`ERC20`** via **`FeeRouter.distributeFees`** only—no deposit hook. Governance **`withdrawERC20` / `withdrawETH`** can sweep to arbitrary recipients with transparent events ([GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159), EcoStrategy audit **H-01**). **Vault ERC-20 balances are not `RabbitTreasury.protocolOwnedBacking`** until value is intentionally routed into **`RabbitTreasury.receiveFee`** (or governance migrates routing via **`FeeRouter.updateSinks`** once Burrow integration is proven). Contract: [`RabbitTreasuryVault.sol`](../../contracts/src/sinks/RabbitTreasuryVault.sol). |
 
 Routers and primitives send fees to explicit addresses; **no** silent commingling of player reserves with protocol buy/burn wallets.
+
+<a id="rabbit-treasury-vault-gitlab-159"></a>
+
+### `RabbitTreasuryVault` vs Burrow accounting
+
+- **`RabbitTreasuryVault`** holds **unbooked** reserve tokens sitting off **`receiveFee`** bookkeeping. Agents and dashboards must **not** add vault **`ERC20.balanceOf`** to **`protocolOwnedBacking`** / **`redeemableBacking`** mental models until operators migrate custody into **`RabbitTreasury`** per governance procedure.
+- **Wiring:** deploy vault → **`FeeRouter.updateSinks`** sets the fifth destination to the vault address → **`distributeFees`** credits the vault. **`DeployDev`** continues to send the fifth sink to **`RabbitTreasury`** for local Burrow QA unless governance chooses otherwise ([`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol)).
 
 ## OpenZeppelin `AccessControlEnumerable`
 

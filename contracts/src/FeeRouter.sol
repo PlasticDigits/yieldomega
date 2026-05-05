@@ -13,7 +13,8 @@ import {FeeMath} from "./libraries/FeeMath.sol";
 /// @notice Routes fees from TimeCurve (and future primitives) to canonical sinks.
 /// @dev Weights are in basis points and must sum to 10 000.
 ///      Post-update invariants per docs/onchain/fee-routing-and-governance.md.
-///      Sink order (TimeCurve launch default): DOUB/CL8Y LP · **CL8Y burned** (sale asset burn sink) · podium pool · team (may be 0 bps) · Rabbit Treasury.
+///      Sink order (TimeCurve launch default): DOUB/CL8Y LP · **CL8Y burned** (sale asset burn sink) · podium pool · team (may be 0 bps) · Rabbit Treasury
+///      (or interim **`RabbitTreasuryVault`** custody — [GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159)).
 ///      The **last** sink receives rounding remainder from `distributeFees`.
 ///      Production deployments use a UUPS proxy; **proxy address** is canonical for integrators (GitLab #54).
 /// @dev **Not a custody contract:** participants and integrators must **not** treat this address as a wallet.

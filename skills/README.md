@@ -35,7 +35,7 @@ Fork and build workflows, **local full-stack QA orchestrator** ([`docs/testing/q
 - [TimeCurve primitives](../docs/product/primitives.md)
 - [Rabbit Treasury](../docs/product/rabbit-treasury.md)
 - [Leprechaun NFTs](../docs/product/leprechaun-nfts.md)
-- [Fee routing and governance](../docs/onchain/fee-routing-and-governance.md)
+- [Fee routing and governance](../docs/onchain/fee-routing-and-governance.md) · **`RabbitTreasuryVault`** interim fifth-sink custody vs Burrow **`receiveFee`** bookkeeping ([GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159), [`INV-VAULT-159-NOT-BURROW`](../docs/testing/invariants-and-business-logic.md#rabbit-treasury-vault-interim-gitlab-159), [`treasury-contracts §159`](../docs/onchain/treasury-contracts.md#rabbit-treasury-vault-gitlab-159))
 - [Final signoff and value movement (onchain gates)](../docs/operations/final-signoff-and-value-movement.md) ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55))
 - [Glossary](../docs/glossary.md)
 - [Architecture overview](../docs/architecture/overview.md) — onchain truth vs indexer/frontend roles

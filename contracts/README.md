@@ -126,6 +126,7 @@ need human decisions before mainnet.
 | `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
 | `DoubLPIncentives` | DOUB / CL8Y liquidity sink (**30%** launch default) — LP mechanics TODO |
 | `EcosystemTreasury` | Team / ecosystem sink address (**0%** weight at launch; still wired in `DeployDev`) |
+| `RabbitTreasuryVault` | Optional **interim** fifth-sink custody ([GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159)); **`Ownable2Step`** withdrawals; **not** Burrow accounting until **`receiveFee`** path |
 | `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting; `DEFAULT_ADMIN_ROLE` may `setBaseURI` (offchain `tokenURI` JSON root mutable; traits stay onchain — [product doc](../docs/product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json), [#125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125)) |
 | `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |
 | `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
