@@ -152,6 +152,19 @@ class TestEcoScenarios(unittest.TestCase):
         self.assertIn("buy_first_bp_leader_idx", d.metrics)
         self.assertIn("pvp_first_bp_leader_idx", d.metrics)
         self.assertIn("ordering_bp_leader_idx_match", d.metrics)
+        # Paired runs must not share one after_tick closure (GitLab #169): guard_once leader_guarded is per-run.
+        self.assertEqual(
+            int(d.metrics["buy_first_warbow_guards"]),
+            int(d.metrics["pvp_first_warbow_guards"]),
+        )
+
+    def test_scenario_d_warbow_guards_parity_seed_42(self) -> None:
+        """Regression: shared after_tick used to leave pvp_first with zero guards (issue #169)."""
+        d = run_scenario_d(seed=42, population=240, horizon_sec=28_800.0)
+        self.assertEqual(
+            int(d.metrics["buy_first_warbow_guards"]),
+            int(d.metrics["pvp_first_warbow_guards"]),
+        )
 
     def test_scenario_e_receive_fee_books_coverage(self) -> None:
         e = run_scenario_e(seed=11, population=1)

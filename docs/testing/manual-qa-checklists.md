@@ -287,8 +287,17 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 1. **`/vesting`** with vesting env + beneficiary wallet + **`claimable > 0`** on the target chain: **Claim DOUB** works when the wallet stays on **`VITE_CHAIN_ID`**.
 2. **Race:** On target chain with **Claim** enabled, switch the wallet to **another** chain **immediately** click **Claim DOUB** before the overlay catches up — expect an **error** **`StatusMessage`** with **`Wrong network:`** … **`Switch to chain …`** (same copy family as Simple buy / referrals register).
 3. **Recovery:** Use **Switch to …** / reconnect on target chain — gate error clears when back on target (**no** stale banner).
+4. **Wagmi claim error (GitLab #166):** On target with **`claimable > 0`**, switch to a **wrong** chain, trigger a wallet prompt for **Claim DOUB** (e.g. reject in MetaMask), confirm a red **`StatusMessage`** from **`friendlyRevertFromUnknown`**, then switch **back** to the build target — the wagmi error panel must **clear without** reload (same recovery posture as step 3 for **`claimGateError`**). On target, a **same-chain** reject should **keep** the error until a successful claim, explicit retry path, or wrong-chain round-trip per **`INV-FRONTEND-166`**.
 
-**Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · **Invariant:** [§ #106](invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
+**Code:** [`PresaleVestingPage.tsx`](../../frontend/src/pages/PresaleVestingPage.tsx) · [`usePresaleVestingChainWriteEffects.ts`](../../frontend/src/pages/presaleVesting/usePresaleVestingChainWriteEffects.ts) · [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts) · **Invariant:** [§ #106](invariants-and-business-logic.md#presale-vesting-claim-chain-preflight-gitlab-106) · [§ #166](invariants-and-business-logic.md#presale-vesting-claim-wagmi-error-clear-on-target-gitlab-166) · [`presale-vesting.md` § UX](../frontend/presale-vesting.md)
+
+<a id="manual-qa-issue-166-presale-vesting-claim-error-chain-return"></a>
+
+## Presale vesting — wagmi claim error clears on target return (GitLab #166)
+
+This is **checklist item 4** under [§ #106 — claim chain mismatch](#manual-qa-issue-106). **Why:** wagmi's **`useWriteContract` `error`** could persist after switching back to **`VITE_CHAIN_ID`**; **`reset()`** runs only on a **wrong-chain → target** transition so same-chain rejects still surface until retry or success.
+
+**Invariant:** [`INV-FRONTEND-166` — § #166](invariants-and-business-logic.md#presale-vesting-claim-wagmi-error-clear-on-target-gitlab-166) · **Vitest:** [`presaleVestingWriteErrorChainReset.test.ts`](../../frontend/src/pages/presaleVesting/presaleVestingWriteErrorChainReset.test.ts)
 
 <a id="manual-qa-issue-145"></a>
 
@@ -432,7 +441,7 @@ surface onto the first-run page.
 
 ### Preconditions
 
-- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.0** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
+- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.1** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
 
 ### Checklist
 
@@ -440,9 +449,9 @@ surface onto the first-run page.
 2. With sale **live** (`ended == false`): **Load candidates from indexer** succeeds; counts and **`SQL DISTINCT cap hit`** render without errors.
 3. Connect wallet on **build target chain**; **Refresh WarBow podium** submits **`refreshWarbowPodium`** (or surfaces a clear revert / chain gate).
 4. After **`endSale`** (`ended == true`): confirm UI warns and **Refresh WarBow podium** stays disabled; onchain post-end path remains owner **`finalizeWarbowPodium`** (#149).
-5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`note`** present.
+5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`sale_ended`**, **`note`** present.
 
-**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** ([invariants §149](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
 <a id="manual-qa-issue-92"></a>
 

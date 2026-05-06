@@ -475,6 +475,10 @@ def run_scenario_d(
     Runs two full simulations with the same RNG seed: **`pvp_first`** executes **`after_tick`** before intra-tick buys
     inside the window; **`buy_first`** keeps the default buys-then-WarBow order. Tallies **`warbow_flags_planted`**
     on simulated buys (audit ordering narrative — not onchain `plantWarBowFlag` gas ordering).
+
+    Each run must use its own **`after_tick`** closure from **`_scenario_c_style_after_tick`**: the factory holds
+    mutable **`leader_guarded`** state; sharing one closure across runs would let the first run exhaust **`guard_once`**
+    and bias ordering metrics ([GitLab #169](https://gitlab.com/PlasticDigits/yieldomega/-/issues/169)).
     """
     rng_buy = random.Random(seed)
     rng_pvp = random.Random(seed)
@@ -488,7 +492,15 @@ def run_scenario_d(
         else min(3600.0, max(120.0, 0.22 * horizon_sec))
     )
 
-    after_tick = _scenario_c_style_after_tick(
+    after_tick_buy = _scenario_c_style_after_tick(
+        population=population,
+        predators=predators,
+        pvp_start=pvp_start,
+        steal_prob=steal_prob,
+        revenge_prob=revenge_prob,
+        guard_once=guard_once,
+    )
+    after_tick_pvp = _scenario_c_style_after_tick(
         population=population,
         predators=predators,
         pvp_start=pvp_start,
@@ -510,7 +522,7 @@ def run_scenario_d(
         small_frac=0.72,
         world=world_buy,
         charm_weight_mult=lambda _i: 1.0,
-        after_tick=after_tick,
+        after_tick=after_tick_buy,
         final_window_sec=fw,
         final_window_pvp_first=False,
         final_window_plant_flag_prob=plant_flag_prob,
@@ -528,7 +540,7 @@ def run_scenario_d(
         small_frac=0.72,
         world=world_pvp,
         charm_weight_mult=lambda _i: 1.0,
-        after_tick=after_tick,
+        after_tick=after_tick_pvp,
         final_window_sec=fw,
         final_window_pvp_first=True,
         final_window_plant_flag_prob=plant_flag_prob,
