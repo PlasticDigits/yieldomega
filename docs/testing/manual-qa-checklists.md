@@ -33,6 +33,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#142](https://gitlab.com/PlasticDigits/yieldomega/-/issues/142) | [Indexer production `DATABASE_URL` hygiene](#manual-qa-issue-142) |
 | [#156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156) | [Indexer production `ADDRESS_REGISTRY` / `CHAIN_ID`](#manual-qa-issue-156) |
 | [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
+| [#163](https://gitlab.com/PlasticDigits/yieldomega/-/issues/163) | [Placeholder split-layout hero figure (wide / landscape)](#manual-qa-issue-163) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -549,6 +550,20 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 3. **Contrast:** Ring visible on light and green chrome.
 
 **Doc map:** [design — Accessibility](../frontend/design.md#accessibility-and-ux) · [`wallet-connection.md`](../frontend/wallet-connection.md) · [invariants — #97](invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97)
+
+<a id="manual-qa-issue-163"></a>
+
+## Placeholder split-layout hero figure — wide / landscape (GitLab #163)
+
+**Why:** [`UnderConstruction`](../../frontend/src/pages/UnderConstruction.tsx) (e.g. **`/rabbit-treasury`**, **`/collection`**) and [`ThirdPartyDexPage`](../../frontend/src/components/ThirdPartyDexPage.tsx) (**`/kumbaya`**, **`/sir`**) render a bordered **`.placeholder-figure`** beside **`PageSection`** inside **`.split-layout`**. Without **`align-self: start`**, the figure stretched to the taller column and showed **empty panel** below the image ([`INV-FRONTEND-163`](invariants-and-business-logic.md#placeholder-split-layout-figure-gitlab-163)).
+
+### Checklist
+
+1. **Desktop (width > ~720px, two columns):** Open **`/rabbit-treasury`**, **`/collection`**, **`/kumbaya`**, **`/sir`** — the left image card’s **border** should hug the **image** (no tall empty green band inside the frame).
+2. **Landscape phone / narrow-tall viewport** where the layout still uses **two columns:** same check — no interior gap between image bottom and card border.
+3. **Narrow / stacked (`max-width: 720px`):** layout stacks to one column; image card still looks coherent (no overflow clipping).
+
+**Doc map:** [design — Placeholder split panels](../frontend/design.md#placeholder-split-panels-gitlab-163) · [invariants — #163](invariants-and-business-logic.md#placeholder-split-layout-figure-gitlab-163) · [`placeholderSplitLayoutCss.test.ts`](../../frontend/src/lib/placeholderSplitLayoutCss.test.ts)
 
 <a id="manual-qa-issue-71"></a>
 
