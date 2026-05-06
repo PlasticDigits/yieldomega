@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use alloy_primitives::Address;
 use eyre::{bail, Context, Result};
@@ -251,6 +252,9 @@ pub struct Config {
     pub address_registry: Option<AddressRegistry>,
     /// When false, ingestion task exits immediately (API only).
     pub ingestion_enabled: bool,
+    /// HTTP JSON-RPC per-request timeout (ingestion + chain-timer poller), from
+    /// `INDEXER_RPC_REQUEST_TIMEOUT_SEC` ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
+    pub rpc_request_timeout: Duration,
 }
 
 impl Config {
@@ -305,6 +309,8 @@ impl Config {
         let database_url = required("DATABASE_URL")?;
         ensure_production_database_url(&database_url)?;
 
+        let rpc_request_timeout = parse_rpc_request_timeout()?;
+
         Ok(Self {
             database_url,
             rpc_url: required("RPC_URL")?,
@@ -316,6 +322,7 @@ impl Config {
                 .wrap_err("LISTEN_ADDR must be a valid socket address")?,
             address_registry,
             ingestion_enabled,
+            rpc_request_timeout,
         })
     }
 
@@ -332,6 +339,25 @@ impl Config {
 
 fn required(key: &str) -> Result<String> {
     std::env::var(key).wrap_err_with(|| format!("missing required env var: {key}"))
+}
+
+/// Default HTTP RPC timeout (seconds). Bounds hung TCP/RPC calls ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
+const DEFAULT_RPC_REQUEST_TIMEOUT_SECS: u64 = 5;
+/// Maximum configurable HTTP RPC timeout (seconds).
+const MAX_RPC_REQUEST_TIMEOUT_SECS: u64 = 120;
+
+fn parse_rpc_request_timeout() -> Result<Duration> {
+    let secs: u64 = match std::env::var("INDEXER_RPC_REQUEST_TIMEOUT_SEC") {
+        Ok(s) => s
+            .parse()
+            .wrap_err("INDEXER_RPC_REQUEST_TIMEOUT_SEC must be a base-10 u64 (seconds)")?,
+        Err(_) => DEFAULT_RPC_REQUEST_TIMEOUT_SECS,
+    };
+    if secs == 0 {
+        bail!("INDEXER_RPC_REQUEST_TIMEOUT_SEC must be at least 1");
+    }
+    let secs = secs.min(MAX_RPC_REQUEST_TIMEOUT_SECS);
+    Ok(Duration::from_secs(secs))
 }
 
 #[cfg(test)]

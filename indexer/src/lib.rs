@@ -11,3 +11,4 @@ pub mod decoder;
 pub mod ingestion;
 pub mod persist;
 pub mod reorg;
+pub mod rpc_http;
