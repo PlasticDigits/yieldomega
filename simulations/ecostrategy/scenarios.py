@@ -1,4 +1,4 @@
-"""EcoStrategy audit scenarios A–E (GitLab #161).
+"""EcoStrategy audit scenarios A–F (GitLab #161, coverage gaps #167).
 
 **A** — Early believers vs late sharks (believers never steal; sharks activate late).
 
@@ -9,6 +9,9 @@
 **D** — Final-window ordering: WarBow tick before vs after buys (same seed); optional WarBow flag plant tally.
 
 **E** — FeeRouter fifth-sink Rabbit slice vs `receiveFee` booking + launch-anchor CL8Y (audit H-01 narrative).
+
+**F** — Sybil cluster: one operator’s capital split across `wallets_per_operator` wallets vs the field (audit M-03-eco;
+requires per-wallet buy cooldown from **`TimeCurveParams.buyCooldownSec`** in `_simulate_sale`).
 """
 
 from __future__ import annotations
@@ -96,6 +99,9 @@ def _simulate_sale(
     final_window_sec: float = 0.0,
     final_window_pvp_first: bool = False,
     final_window_plant_flag_prob: float = 0.0,
+    start_unix_offset_sec: float = 0.0,
+    wallet_budget_overrides: dict[int, float] | None = None,
+    operator_indices: list[int] | None = None,
 ) -> dict[str, float | int]:
     budgets: list[float] = []
     tier: list[str] = []
@@ -111,25 +117,33 @@ def _simulate_sale(
             budgets.append(rng.uniform(400, 2500))
             tier.append("medium")
 
+    if wallet_budget_overrides:
+        for i, b in wallet_budget_overrides.items():
+            if 0 <= i < population:
+                budgets[i] = b
+
     spend_by_player = [0.0] * population
     charm_weight = [0.0] * population
     buys_by_player = [0] * population
     active_streak = [0] * population
     best_streak = [0] * population
     ds_last: int | None = None
-    now = 0.0
+    now = float(start_unix_offset_sec)
     end = p.initial_timer_sec
     total_buys = 0
     total_spend = 0.0
     hard_reset_buys = 0
     steps = 0
     flags_planted = 0
+    next_allowed_at = [0.0] * population
 
     assert world.n == population
     bp = world.bp
 
-    while now < end and now < horizon_sec and steps < max_steps:
-        in_final = final_window_sec > 0.0 and now >= horizon_sec - final_window_sec
+    horizon_eff = float(start_unix_offset_sec) + horizon_sec
+
+    while now < end and now < horizon_eff and steps < max_steps:
+        in_final = final_window_sec > 0.0 and now >= horizon_eff - final_window_sec
         pvp_first_tick = in_final and final_window_pvp_first
         if after_tick is not None and pvp_first_tick:
             after_tick(now, world, rng)
@@ -137,6 +151,8 @@ def _simulate_sale(
         n_arrivals = _poisson(rng, arrival_rate * dt_sec)
         for _ in range(n_arrivals):
             idx = rng.randrange(population)
+            if p.buy_cooldown_sec > 0.0 and now + 1e-12 < next_allowed_at[idx]:
+                continue
             mb = min_buy_at(now, p)
             cap = mb * p.purchase_cap_mult
             b = budgets[idx]
@@ -157,6 +173,8 @@ def _simulate_sale(
                 spend = clamp_spend(spend, now, p)
             if spend < mb - 1e-9:
                 continue
+
+            world.apply_interrupting_buy(idx, now)
 
             deadline_before = end
             remaining_before = deadline_before - now
@@ -192,7 +210,12 @@ def _simulate_sale(
             total_spend += spend
             end = new_end
 
-            if in_final and final_window_plant_flag_prob > 0.0 and rng.random() < final_window_plant_flag_prob:
+            if p.buy_cooldown_sec > 0.0:
+                next_allowed_at[idx] = now + p.buy_cooldown_sec
+
+            plant = in_final and final_window_plant_flag_prob > 0.0 and rng.random() < final_window_plant_flag_prob
+            world.plant_flag_after_buy(idx, now, plant)
+            if plant:
                 flags_planted += 1
 
         if after_tick is not None and not pvp_first_tick:
@@ -225,7 +248,26 @@ def _simulate_sale(
         "warbow_guards": world.guards_activated,
         "sum_charm_weight": sum(charm_weight),
         "warbow_flags_planted": flags_planted,
+        "warbow_flag_claims": world.flag_claims_succeeded,
+        "warbow_flag_penalties": world.flag_penalties_applied,
     }
+    if start_unix_offset_sec != 0.0:
+        out["sim_start_unix_offset_sec"] = start_unix_offset_sec
+    if operator_indices:
+        oi = list(operator_indices)
+        op_spend = sum(spend_by_player[i] for i in oi)
+        op_cw = sum(charm_weight[i] for i in oi)
+        op_bp = sum(int(bp[i]) for i in oi)
+        top3 = set(sorted(range(population), key=lambda i: bp[i], reverse=True)[:3])
+        slots = sum(1 for i in oi if i in top3)
+        den_spend = max(total_spend, 1e-18)
+        den_cw = max(sum(charm_weight), 1e-18)
+        den_bp = max(total_bp, 1e-18)
+        out["operator_spend_share"] = op_spend / den_spend
+        out["operator_charm_weight_share"] = op_cw / den_cw
+        out["operator_bp_share"] = op_bp / den_bp
+        out["operator_podium_slots_top3_bp"] = slots
+        out["operator_wallet_count"] = len(oi)
     return out
 
 
@@ -587,10 +629,57 @@ def run_scenario_e(
     )
 
 
+def run_scenario_f(
+    *,
+    seed: int = 42,
+    population: int = 240,
+    horizon_sec: float = 28_800.0,
+    operator_capital: float = 500_000.0,
+    wallets_per_operator: int = 5,
+) -> EcoScenarioResult:
+    """Sybil-style capital split: first **`wallets_per_operator`** wallets share **`operator_capital`** evenly.
+
+    Compares aggregate spend / CHARM weight / BP / top-3 BP slots for the operator slice vs the field
+    (audit M-03-eco; depends on per-wallet **`buyCooldownSec`** gating in **`_simulate_sale`** — GitLab #167).
+    """
+    rng = random.Random(seed)
+    p = canonical_timecurve_params()
+    k = max(1, min(int(wallets_per_operator), population))
+    world = WarBowWorld(population)
+    per = operator_capital / k
+    overrides = {i: per for i in range(k)}
+    operator_indices = list(range(k))
+
+    metrics = _simulate_sale(
+        p,
+        rng,
+        population=population,
+        dt_sec=10.0,
+        arrival_rate=0.11,
+        horizon_sec=horizon_sec,
+        max_steps=60_000,
+        whale_frac=0.05,
+        small_frac=0.72,
+        world=world,
+        charm_weight_mult=lambda _i: 1.0,
+        after_tick=None,
+        wallet_budget_overrides=overrides,
+        operator_indices=operator_indices,
+    )
+    return EcoScenarioResult(
+        scenario="F",
+        seed=seed,
+        population=population,
+        horizon_sec=horizon_sec,
+        metrics=metrics,
+    )
+
+
 SCENARIO_RUNNERS = {
     "A": run_scenario_a,
     "B": run_scenario_b,
     "C": run_scenario_c,
     "D": run_scenario_d,
     "E": run_scenario_e,
+    "F": run_scenario_f,
 }
