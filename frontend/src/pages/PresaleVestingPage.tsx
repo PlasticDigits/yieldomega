@@ -11,6 +11,7 @@ import { doubPresaleVestingReadAbi, doubPresaleVestingWriteAbi } from "@/lib/abi
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { dualWallClockLines, formatDoubHuman } from "@/pages/presaleVesting/presaleVestingFormat";
+import { usePresaleVestingChainWriteEffects } from "@/pages/presaleVesting/usePresaleVestingChainWriteEffects";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 
 export function PresaleVestingPage() {
@@ -104,11 +105,12 @@ export function PresaleVestingPage() {
     }
   }, [claimSuccess, refetchAll, resetWrite]);
 
-  useEffect(() => {
-    if (!chainMismatchWriteMessage(chainId)) {
-      setClaimGateError(null);
-    }
-  }, [chainId]);
+  usePresaleVestingChainWriteEffects({
+    chainId,
+    writeContractError: claimError,
+    resetWrite,
+    setClaimGateError,
+  });
 
   if (!vesting) {
     return (
