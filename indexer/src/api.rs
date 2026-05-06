@@ -431,7 +431,7 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
                SELECT kk.pay_kind, kk.gross_cl8y
                FROM idx_timecurve_buy_router_kumbaya kk
                WHERE kk.tx_hash = b.tx_hash
-                 AND lower(kk.buyer) = lower(b.buyer)
+                 AND kk.buyer = b.buyer
                  AND kk.charm_wad = b.charm_wad
                ORDER BY kk.log_index DESC
                LIMIT 1
@@ -1828,7 +1828,7 @@ async fn referral_applied(
                       referee_amount::text AS referee_amount,
                       amount_to_fee_router::text AS amount_to_fee_router
                FROM idx_timecurve_referral_applied
-               WHERE lower(referrer) = lower($3)
+               WHERE referrer = $3
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
         )
@@ -1985,16 +1985,16 @@ async fn referral_wallet_charm_summary(
         r#"SELECT
               (SELECT COALESCE(SUM(referrer_amount), 0)::text
                  FROM idx_timecurve_referral_applied
-                WHERE lower(referrer) = lower($1)) AS referrer_charm_wad,
+                WHERE referrer = $1) AS referrer_charm_wad,
               (SELECT COALESCE(SUM(referee_amount), 0)::text
                  FROM idx_timecurve_referral_applied
-                WHERE lower(buyer) = lower($1)) AS referee_charm_wad,
+                WHERE buyer = $1) AS referee_charm_wad,
               (SELECT COUNT(*)::text
                  FROM idx_timecurve_referral_applied
-                WHERE lower(referrer) = lower($1)) AS referred_buy_count,
+                WHERE referrer = $1) AS referred_buy_count,
               (SELECT COUNT(*)::text
                  FROM idx_timecurve_referral_applied
-                WHERE lower(buyer) = lower($1)) AS referee_buy_count"#,
+                WHERE buyer = $1) AS referee_buy_count"#,
     )
     .bind(&w)
     .fetch_one(&state.pool)
