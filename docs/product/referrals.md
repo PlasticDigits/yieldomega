@@ -94,6 +94,8 @@ The frontend may surface **derived** referral metrics for UX. They must map to *
 | **Wallet CHARM summary** | Same log fields, filtered by wallet | `GET /v1/referrals/wallet-charm-summary?wallet=0x…` — **`referrer_charm_wad`** = Σ `referrer_amount` where `referrer = wallet`; **`referee_charm_wad`** = Σ `referee_amount` where `buyer = wallet`; counts are indexed referral buy rows (not total sale CHARM weight). |
 | **CL8Y / pay-asset “notional” on `/referrals`** | Illustrative only | Uses live **`currentPricePerCharmWad`** × combined indexed referral CHARM for **spot CL8Y** at the current sale curve; **USDM** / **ETH** hints reuse the same **static fallback** multipliers as other pay-mode labels (`frontend/src/lib/kumbayaDisplayFallback.ts`), not live DEX quotes. |
 
+Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at insert; HTTP handlers bind lowercase addresses and use **bare equality** in SQL so btree indexes apply (**[`INV-INDEXER-165`](../testing/invariants-and-business-logic.md#indexer-referral-applied-address-predicates-gitlab-165)**, [GitLab #165](https://gitlab.com/PlasticDigits/yieldomega/-/issues/165)).
+
 **Wagmi** currently exposes **one active address**; the “Connected wallet” panel documents that multi-account wallets still switch one address at a time.
 
 ## Automated checks (frontend)
