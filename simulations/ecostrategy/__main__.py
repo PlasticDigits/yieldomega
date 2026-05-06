@@ -13,11 +13,11 @@ from ecostrategy.scenarios import SCENARIO_RUNNERS
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
-        description="EcoStrategy audit scenarios A–E — shark vs believer modeling (Python sim)",
+        description="EcoStrategy audit scenarios A–F — shark vs believer + sybil/cooldown coverage (Python sim)",
     )
     ap.add_argument(
         "--scenario",
-        choices=("A", "B", "C", "D", "E", "all"),
+        choices=("A", "B", "C", "D", "E", "F", "all"),
         default="all",
         help="Which scenario to run (default: all)",
     )
@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
 
-    keys = ["A", "B", "C", "D", "E"] if args.scenario == "all" else [args.scenario]
+    keys = ["A", "B", "C", "D", "E", "F"] if args.scenario == "all" else [args.scenario]
     results = []
     for k in keys:
         fn = SCENARIO_RUNNERS[k]
@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = {
         "gitlab_issue": "https://gitlab.com/PlasticDigits/yieldomega/-/issues/161",
+        "gitlab_issue_coverage": "https://gitlab.com/PlasticDigits/yieldomega/-/issues/167",
         "mirrored_from_contract": MIRRORED_FROM_CONTRACT,
         "approximations": APPROXIMATIONS_AND_SCENARIO_ONLY,
         "runs": results,

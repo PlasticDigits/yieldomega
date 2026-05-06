@@ -25,7 +25,7 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 
 ### EcoStrategy scenarios (GitLab #161 — modeling entry)
 
-Agents that **model** economic scenarios (not participants acting onchain) should use contributor tooling **`simulations/ecostrategy/`**: reproducible **`python3 -m ecostrategy`** scenarios **A–C**, **`WarBowWorld`** rules aligned with `TimeCurve` steals/revenge/guard, and explicit constant manifests ([`INV-SIM-161`](../docs/testing/invariants-and-business-logic.md#ecostrategy-audit-scenarios-gitlab-161), [`simulations/README.md`](../simulations/README.md), [GitLab #161](https://gitlab.com/PlasticDigits/yieldomega/-/issues/161)). Interpreting **live** WarBow transactions remains [`play-timecurve-warbow/SKILL.md`](play-timecurve-warbow/SKILL.md).
+Agents that **model** economic scenarios (not participants acting onchain) should use contributor tooling **`simulations/ecostrategy/`**: reproducible **`python3 -m ecostrategy`** scenarios **A–F**, **`WarBowWorld`** rules aligned with `TimeCurve` steals/revenge/guard/flag ladder, per-wallet buy cooldown in **`_simulate_sale`**, and explicit constant manifests ([`INV-SIM-161`](../docs/testing/invariants-and-business-logic.md#ecostrategy-audit-scenarios-gitlab-161), [`INV-SIM-167`](../docs/testing/invariants-and-business-logic.md#ecostrategy-sim-coverage-gitlab-167), [`simulations/README.md`](../simulations/README.md), [GitLab #161](https://gitlab.com/PlasticDigits/yieldomega/-/issues/161), [GitLab #167](https://gitlab.com/PlasticDigits/yieldomega/-/issues/167)). Interpreting **live** WarBow transactions remains [`play-timecurve-warbow/SKILL.md`](play-timecurve-warbow/SKILL.md).
 
 ## Contributor documentation (QA / harness)
 

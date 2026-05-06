@@ -1,13 +1,30 @@
+import random
 import unittest
+from dataclasses import replace
 
-from ecostrategy.constants import WARBOW_MAX_STEALS_PER_DAY, WARBOW_STEAL_DRAIN_BPS
+from ecostrategy.constants import (
+    SECONDS_PER_DAY,
+    WARBOW_FLAG_CLAIM_BP,
+    WARBOW_FLAG_SILENCE_SEC,
+    WARBOW_MAX_STEALS_PER_DAY,
+    WARBOW_STEAL_DRAIN_BPS,
+)
 from ecostrategy.fee_routing import fee_router_five_shares
-from ecostrategy.scenarios import run_scenario_a, run_scenario_b, run_scenario_c, run_scenario_d, run_scenario_e
+from ecostrategy.scenarios import (
+    _simulate_sale,
+    run_scenario_a,
+    run_scenario_b,
+    run_scenario_c,
+    run_scenario_d,
+    run_scenario_e,
+    run_scenario_f,
+)
 from ecostrategy.warbow_pvp import (
     WarBowWorld,
     warbow_revenge_drain_bp,
     warbow_steal_drain_bp,
 )
+from timecurve_sim.model import canonical_timecurve_params
 
 
 class TestWarBowWorld(unittest.TestCase):
@@ -58,6 +75,44 @@ class TestWarBowWorld(unittest.TestCase):
         self.assertTrue(w.try_revenge(1, 0, 200.0))
         self.assertEqual(w.bp[0], max(0, sbp_before - take_rev))
 
+    def test_utc_rollover_fourth_steal_without_bypass(self) -> None:
+        w = WarBowWorld(2)
+        w.bp[0] = 100
+        w.bp[1] = 10_000
+        t0 = float(SECONDS_PER_DAY) - 1.0
+        for _ in range(3):
+            self.assertTrue(w.try_steal(0, 1, t0, pay_bypass_if_needed=False))
+        self.assertFalse(w.try_steal(0, 1, t0, pay_bypass_if_needed=False))
+        t1 = float(SECONDS_PER_DAY)
+        self.assertTrue(w.try_steal(0, 1, t1, pay_bypass_if_needed=False))
+
+    def test_flag_interrupt_after_silence_applies_penalty(self) -> None:
+        w = WarBowWorld(3)
+        w.bp[0] = 5000
+        w.bp[1] = 200
+        w.plant_flag_after_buy(0, 0.0, True)
+        t = float(WARBOW_FLAG_SILENCE_SEC) + 1.0
+        pen = w.apply_interrupting_buy(1, t)
+        self.assertEqual(pen, WARBOW_FLAG_CLAIM_BP * 2)
+        self.assertEqual(w.flag_penalties_applied, 1)
+
+    def test_flag_interrupt_before_silence_clears_without_penalty(self) -> None:
+        w = WarBowWorld(2)
+        w.bp[0] = 5000
+        w.plant_flag_after_buy(0, 0.0, True)
+        pen = w.apply_interrupting_buy(1, 10.0)
+        self.assertEqual(pen, 0)
+        self.assertEqual(w.flag_penalties_applied, 0)
+        self.assertIsNone(w.pending_flag_owner)
+
+    def test_flag_claim_awards_bp(self) -> None:
+        w = WarBowWorld(2)
+        w.bp[0] = 100
+        w.plant_flag_after_buy(0, 0.0, True)
+        self.assertTrue(w.try_claim_flag(0, float(WARBOW_FLAG_SILENCE_SEC) + 0.1))
+        self.assertEqual(w.bp[0], 100 + WARBOW_FLAG_CLAIM_BP)
+        self.assertEqual(w.flag_claims_succeeded, 1)
+
 
 class TestFeeRouterFiveSinks(unittest.TestCase):
     def test_shares_sum_to_gross_and_rabbit_is_remainder(self) -> None:
@@ -103,6 +158,75 @@ class TestEcoScenarios(unittest.TestCase):
         self.assertEqual(e.scenario, "E")
         self.assertGreater(float(e.metrics["burrow_coverage_delta_receive_minus_direct"]), 0.0)
         self.assertGreater(float(e.metrics["launch_anchor_cl8y_per_charm_at_clearing"]), 0.0)
+
+    def test_simulate_sale_buy_cooldown_reduces_buys_vs_short_cooldown(self) -> None:
+        seed = 9
+        short = replace(canonical_timecurve_params(), buy_cooldown_sec=1.0)
+        long_cd = replace(canonical_timecurve_params(), buy_cooldown_sec=10_000.0)
+        m_short = _simulate_sale(
+            short,
+            random.Random(seed),
+            population=40,
+            dt_sec=5.0,
+            arrival_rate=0.35,
+            horizon_sec=8000.0,
+            max_steps=50_000,
+            whale_frac=0.1,
+            small_frac=0.6,
+            world=WarBowWorld(40),
+            charm_weight_mult=lambda _i: 1.0,
+            after_tick=None,
+        )
+        m_long = _simulate_sale(
+            long_cd,
+            random.Random(seed),
+            population=40,
+            dt_sec=5.0,
+            arrival_rate=0.35,
+            horizon_sec=8000.0,
+            max_steps=50_000,
+            whale_frac=0.1,
+            small_frac=0.6,
+            world=WarBowWorld(40),
+            charm_weight_mult=lambda _i: 1.0,
+            after_tick=None,
+        )
+        self.assertGreater(int(m_short["total_buys"]), int(m_long["total_buys"]))
+
+    def test_simulate_sale_utc_offset_in_metrics(self) -> None:
+        off = float(SECONDS_PER_DAY) - 400.0
+        p = canonical_timecurve_params()
+        m = _simulate_sale(
+            p,
+            random.Random(3),
+            population=20,
+            dt_sec=15.0,
+            arrival_rate=0.08,
+            horizon_sec=900.0,
+            max_steps=5000,
+            whale_frac=0.1,
+            small_frac=0.5,
+            world=WarBowWorld(20),
+            charm_weight_mult=lambda _i: 1.0,
+            after_tick=None,
+            start_unix_offset_sec=off,
+        )
+        self.assertEqual(float(m["sim_start_unix_offset_sec"]), off)
+        self.assertGreater(float(m["sale_horizon_sec_used"]), off)
+
+    def test_scenario_f_operator_metrics(self) -> None:
+        f = run_scenario_f(
+            seed=4,
+            population=80,
+            horizon_sec=4000.0,
+            wallets_per_operator=10,
+            operator_capital=200_000.0,
+        )
+        self.assertEqual(f.scenario, "F")
+        self.assertIn("operator_spend_share", f.metrics)
+        self.assertIn("operator_bp_share", f.metrics)
+        self.assertGreater(float(f.metrics["operator_spend_share"]), 0.0)
+        self.assertEqual(int(f.metrics["operator_wallet_count"]), 10)
 
 
 if __name__ == "__main__":
