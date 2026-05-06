@@ -8,6 +8,7 @@ from ecostrategy.scenarios import (
     run_scenario_c,
     run_scenario_d,
     run_scenario_e,
+    run_scenario_f,
 )
 from ecostrategy.warbow_pvp import WarBowWorld
 
@@ -21,4 +22,5 @@ __all__ = [
     "run_scenario_c",
     "run_scenario_d",
     "run_scenario_e",
+    "run_scenario_f",
 ]

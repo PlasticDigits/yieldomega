@@ -4,6 +4,9 @@ Invariant-style rules (see GitLab #161, audit M-02):
 - Steal: attacker BP > 0, victim BP ≥ 2× attacker BP; drain uses `WARBOW_STEAL_DRAIN_*_BPS`; guard reduces to 1%.
 - UTC-day caps on steals received (victim) and steals committed (attacker); optional bypass (sim assumes paid).
 - Revenge: within 24h window per (victim, stealer), drain 10% of stealer BP once.
+
+Flag ladder (GitLab #167, audit L-02-eco): pending owner + plant time; interrupting buy clears pending and may apply
+`2 × WARBOW_FLAG_CLAIM_BP` BP penalty after `WARBOW_FLAG_SILENCE_SEC`; `try_claim_flag` awards `WARBOW_FLAG_CLAIM_BP`.
 """
 
 from __future__ import annotations
@@ -12,6 +15,8 @@ from dataclasses import dataclass, field
 
 from ecostrategy.constants import (
     SECONDS_PER_DAY,
+    WARBOW_FLAG_CLAIM_BP,
+    WARBOW_FLAG_SILENCE_SEC,
     WARBOW_GUARD_DURATION_SEC,
     WARBOW_MAX_STEALS_PER_DAY,
     WARBOW_REVENGE_WINDOW_SEC,
@@ -48,6 +53,11 @@ class WarBowWorld:
     steals_succeeded: int = 0
     revenges_succeeded: int = 0
     guards_activated: int = 0
+
+    pending_flag_owner: int | None = None
+    pending_flag_plant_at: float = 0.0
+    flag_claims_succeeded: int = 0
+    flag_penalties_applied: int = 0
 
     def __post_init__(self) -> None:
         if not self.bp:
@@ -129,4 +139,37 @@ class WarBowWorld:
         if u > self.guard_until[who]:
             self.guard_until[who] = u
         self.guards_activated += 1
+        return True
+
+    def apply_interrupting_buy(self, buyer: int, now_sec: float) -> int:
+        """Mirror `_buy` flag block before BP: different buyer after silence penalizes prior holder; always clears pending."""
+        owner = self.pending_flag_owner
+        if owner is None or buyer == owner:
+            return 0
+        pen_bp = 0
+        if now_sec >= self.pending_flag_plant_at + WARBOW_FLAG_SILENCE_SEC:
+            pen_bp = WARBOW_FLAG_CLAIM_BP * 2
+            self.bp[owner] = max(0, self.bp[owner] - pen_bp)
+            self.flag_penalties_applied += 1
+        self.pending_flag_owner = None
+        self.pending_flag_plant_at = 0.0
+        return pen_bp
+
+    def plant_flag_after_buy(self, buyer: int, now_sec: float, plant: bool) -> None:
+        """After BP accrual on `buy`, optional `plantWarBowFlag` sets pending owner + plant time."""
+        if not plant:
+            return
+        self.pending_flag_owner = buyer
+        self.pending_flag_plant_at = now_sec
+
+    def try_claim_flag(self, who: int, now_sec: float) -> bool:
+        """`claimWarBowFlag` after silence with no intervening different buyer (sim: explicit claim tick)."""
+        if self.pending_flag_owner is None or who != self.pending_flag_owner:
+            return False
+        if now_sec < self.pending_flag_plant_at + WARBOW_FLAG_SILENCE_SEC:
+            return False
+        self.pending_flag_owner = None
+        self.pending_flag_plant_at = 0.0
+        self.bp[who] += WARBOW_FLAG_CLAIM_BP
+        self.flag_claims_succeeded += 1
         return True
