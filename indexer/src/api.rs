@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.15.0";
+const SCHEMA_VERSION: &str = "1.15.1";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -379,16 +379,18 @@ async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParam
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
-    let total: i64 =
-        match sqlx::query_scalar::<_, i64>("SELECT COUNT(*)::bigint FROM idx_timecurve_buy")
-            .fetch_one(&state.pool)
-            .await
-        {
-            Ok(n) => n,
-            Err(e) => {
-                return internal_db_error_response("GET /v1/timecurve/buys total_count", e);
-            }
-        };
+    // Total matches row cardinality while `buy_index` stays sequential 1..N per TimeCurve emits (GitLab #170).
+    let total: i64 = match sqlx::query_scalar::<_, i64>(
+        "SELECT COALESCE(MAX(buy_index), 0)::bigint FROM idx_timecurve_buy",
+    )
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(n) => n,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/timecurve/buys total_count", e);
+        }
+    };
 
     let rows = sqlx::query(
         r#"SELECT b.block_number, b.block_hash, b.contract_address,
@@ -1005,12 +1007,16 @@ async fn timecurve_warbow_refresh_candidates(
     let distinct_sql_cap_hit = sql_addrs.len() as i64 >= REFRESH_CANDIDATES_DISTINCT_CAP;
 
     let guard = state.chain_timer.read().await;
+    let sale_ended = guard.as_ref().is_some_and(|h| h.sale_ended);
     let mut podium_hints: Vec<String> = Vec::new();
     if let Some(head) = guard.as_ref() {
-        for w in &head.podium_contract[3].winners {
-            if let Some(a) = normalize_refresh_candidate_addr(w) {
-                if !podium_hints.contains(&a) {
-                    podium_hints.push(a);
+        // Post-end WarBow snapshot is finalized — do not merge as refresh hints (GitLab #170); contract forbids refresh anyway (#149).
+        if !head.sale_ended {
+            for w in &head.podium_contract[3].winners {
+                if let Some(a) = normalize_refresh_candidate_addr(w) {
+                    if !podium_hints.contains(&a) {
+                        podium_hints.push(a);
+                    }
                 }
             }
         }
@@ -1053,7 +1059,8 @@ async fn timecurve_warbow_refresh_candidates(
         "next_offset": next_offset,
         "podium_warbow_hint_count": podium_hint_count,
         "distinct_sql_cap_hit": distinct_sql_cap_hit,
-        "note": "Sale-live hook only: onchain `refreshWarbowPodium` reverts with `TimeCurve: ended` after `endSale` (GitLab #149). Post-end operators must call owner `finalizeWarbowPodium`. Candidates prepend head-indexer WarBow `podium` RPC hints (when chain-timer is configured), then DISTINCT indexed WarBow participants plus buyers with `battle_points_after > 0`. Rows are alphabetically ordered after hints; `distinct_sql_cap_hit` means the SQL branch hit its DISTINCT cap.",
+        "sale_ended": sale_ended,
+        "note": "Sale-live hook only: onchain `refreshWarbowPodium` reverts with `TimeCurve: ended` after `endSale` (GitLab #149). Post-end operators must call owner `finalizeWarbowPodium`. While `sale_ended` is false and chain-timer is configured, candidates prepend head-indexer WarBow `podium` RPC hints; after sale end (or with no timer), hints are omitted (GitLab #170). Then DISTINCT indexed WarBow participants plus buyers with `battle_points_after > 0`. Rows are alphabetically ordered after hints; `distinct_sql_cap_hit` means the SQL branch hit its DISTINCT cap.",
     });
 
     let mut res = Json(body).into_response();
@@ -1900,7 +1907,7 @@ async fn referral_referrer_leaderboard(
                   COUNT(*)::text AS referred_buy_count
              FROM idx_timecurve_referral_applied
             GROUP BY referrer
-            ORDER BY SUM(referrer_amount) DESC NULLS LAST
+            ORDER BY SUM(referrer_amount) DESC NULLS LAST, referrer ASC
             LIMIT $1 OFFSET $2"#,
     )
     .bind(lim)

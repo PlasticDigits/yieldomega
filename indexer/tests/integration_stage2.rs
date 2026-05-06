@@ -227,6 +227,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     let j = response_json(res).await;
     assert!(j["candidates"].is_array());
     assert!(j.get("total").is_some());
+    assert_eq!(j["sale_ended"], false);
 
     let res = app
         .clone()

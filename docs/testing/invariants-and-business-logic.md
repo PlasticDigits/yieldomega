@@ -97,14 +97,30 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **`INV-WARBOW-149-REFRESH-ENDED`** | **`refreshWarbowPodium`** **`require(!ended, "TimeCurve: ended")`** — sale-time repair only. |
 | **`INV-WARBOW-149-PODIUM-HEURISTIC`** | **`viewerShouldSuggestWarBowPodiumRefresh`**: off-podium viewer suggests refresh when **`viewerBp > third`** or **(equal BP ∧ `uint160(viewer) < uint160(thirdWallet)`)** — [`timeCurveWarbowSnapshotClaim.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.ts). |
 | **`INV-SCRIPT-149-ADDR-ALICE`** | **`verify-timecurve-post-end-gates-anvil.sh`** rejects empty **`ADDR_ALICE`** / Bob / Carol / Deployer. |
-| **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** | **`GET /v1/timecurve/warbow/refresh-candidates`** (schema **≥ 1.15.0**, [GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)) returns paginated **`candidates`** for calldata to **`refreshWarbowPodium`** **while the sale is live** only — prepends head-indexer **WarBow `podium(category=3)`** RPC hints when **`chain_timer`** is configured, then DISTINCT wallets from indexed WarBow tables + **`idx_timecurve_buy`** rows with **`battle_points_after > 0`**; **`distinct_sql_cap_hit`** signals the SQL DISTINCT cap (**10 000**). **Does not** change **`INV-WARBOW-149-REFRESH-ENDED`**. UI: [`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx) on **`/timecurve/protocol`**. |
+| **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** | **`GET /v1/timecurve/warbow/refresh-candidates`** (schema **≥ 1.15.1**, [GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160); head WarBow hint omission post-end — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)) returns paginated **`candidates`** for calldata to **`refreshWarbowPodium`** **while the sale is live** only — prepends head-indexer **WarBow `podium(category=3)`** RPC hints when **`chain_timer`** is configured **and** **`!sale_ended`**, then DISTINCT wallets from indexed WarBow tables + **`idx_timecurve_buy`** rows with **`battle_points_after > 0`**; **`distinct_sql_cap_hit`** signals the SQL DISTINCT cap (**10 000**); body includes **`sale_ended`** mirroring the head timer when present (**`false`** when the timer is unset). **Does not** change **`INV-WARBOW-149-REFRESH-ENDED`**. UI: [`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx) on **`/timecurve/protocol`**. |
 
 **Automated:** Forge **`test_refreshWarbowPodium_reverts_after_endSale`** · Vitest **`timeCurveWarbowSnapshotClaim.test.ts`** · **`cargo test`** (`integration_stage2` WarBow routes incl. **`/v1/timecurve/warbow/refresh-candidates`**).
 
 **Docs / play:** [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md) · [§ #129 refresh](#warbow-podium-snapshot-drifts-gitlab-129).
 
----
+<a id="gitlab-170-indexer-frontend-p3-polish"></a>
 
+### GitLab #170 — Indexer + frontend P3 polish ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170))
+
+**Intent:** Reduce hot-path Postgres work on **`GET /v1/timecurve/buys`**, make referrer leaderboard pages deterministic on ties, surface indexer load failures in the protocol WarBow refresh panel, and stop merging post-end WarBow “refresh” hints that the contract rejects anyway (#149).
+
+| ID | Check |
+|----|--------|
+| **`INV-INDEXER-170-BUYS-TOTAL`** | **`GET /v1/timecurve/buys`** **`total`** uses **`COALESCE(MAX(buy_index), 0)`** — equivalent to **`COUNT(*)`** while each persisted **`Buy`** row keeps **`buy_index`** sequential **1..N** per **`TimeCurve`** emits (same envelope as [`fetch_last_buy_prediction_row`](../../indexer/src/api.rs)). |
+| **`INV-INDEXER-170-REFERRAL-LB-TIE`** | **`GET /v1/referrals/referrer-leaderboard`** orders **`SUM(referrer_amount) DESC NULLS LAST, referrer ASC`** — stable **`LIMIT`/`OFFSET`** when totals tie. **`rank`** in JSON remains **page ordinal** (**`offset + row_index + 1`**), not dense competitive placement when multiple referrers share the same Σ amount. |
+| **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** | **`GET /v1/timecurve/warbow/refresh-candidates`** skips head WarBow podium hint prepend when **`chain_timer.sale_ended`**; includes **`sale_ended`** in the body (**[`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`](#gitlab-149-warbow-arena-indexer-hardening)**). |
+| **`INV-FRONTEND-170-WARBOW-IDX-ERR`** | **`TimeCurveProtocolWarbowRefreshSection`** **`loadFromIndexer`** wraps pagination / checksum in **`try`/`catch`** — **`friendlyRevertFromUnknown`** on unexpected failures; clears candidates / extras (**[`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx)**). |
+
+**Automated:** **`cargo test`** (`integration_stage2` asserts **`sale_ended`** on **`refresh-candidates`** smoke).
+
+**Docs / play:** [`skills/README.md`](../../skills/README.md) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md).
+
+---
 
 ## Business logic (what the code is supposed to enforce)
 
@@ -667,7 +683,7 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 | Invariant | Meaning |
 |-----------|---------|
-| Leaderboard ordering | **`GET /v1/referrals/referrer-leaderboard`** sorts by **Σ `referrer_amount`** descending. |
+| Leaderboard ordering | **`GET /v1/referrals/referrer-leaderboard`** sorts by **Σ `referrer_amount`** descending, then **`referrer ASC`** for deterministic pagination when totals tie ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170) · **`INV-INDEXER-170-REFERRAL-LB-TIE`**). |
 | Wallet row | **`GET /v1/referrals/wallet-charm-summary`** returns string integer **wei** totals for referrer vs referee CHARM splits. |
 | Schema | Indexer **`x-schema-version`** bumped with new routes (see `indexer/src/api.rs`). |
 

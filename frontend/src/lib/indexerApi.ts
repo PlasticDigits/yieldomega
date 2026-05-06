@@ -193,7 +193,7 @@ export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
   );
 }
 
-/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.0 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)). */
+/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
 export type WarbowRefreshCandidatesResponse = {
   candidates: string[];
   limit: number;
@@ -202,6 +202,8 @@ export type WarbowRefreshCandidatesResponse = {
   next_offset: number | null;
   podium_warbow_hint_count: number;
   distinct_sql_cap_hit: boolean;
+  /** Head chain-timer reports sale ended — indexer omits WarBow podium hints ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
+  sale_ended: boolean;
   note?: string;
 };
 
