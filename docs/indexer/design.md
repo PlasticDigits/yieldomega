@@ -24,6 +24,10 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 
 **Public HTTP error bodies ([GitLab #157](https://gitlab.com/PlasticDigits/yieldomega/-/issues/157)):** When a read handler hits an unexpected **`sqlx::Error`**, the JSON response uses a **generic** **`error`** string; full failure text is **`tracing::error!`** only (**`INV-INDEXER-157`** in [invariants — § #157](../testing/invariants-and-business-logic.md#indexer-public-api-500-error-redaction-gitlab-157), [`api.rs`](../../indexer/src/api.rs)).
 
+<a id="indexer-runtime-resilience-gitlab-168"></a>
+
+**Runtime resilience ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)):** JSON-RPC HTTP clients use a **bounded per-request timeout** (**`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**, default **5s**) so hung transports fail fast instead of freezing ingestion or the chain-timer snapshot loop (**`INV-INDEXER-168`**). Ingestion errors trigger a **supervised retry loop** with backoff in [`main.rs`](../../indexer/src/main.rs). **`GET /v1/status`** exposes **`ingestion_alive`** and **`last_indexed_at_ms`** for operator smoke checks ([invariants §168](../testing/invariants-and-business-logic.md#indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168)).
+
 ## Conceptual entities
 
 Examples of tables or projections (names illustrative):
