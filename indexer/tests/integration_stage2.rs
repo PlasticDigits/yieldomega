@@ -16,6 +16,7 @@
 //! The same test finishes with HTTP API checks on the shared pool.
 
 use alloy_primitives::{address, Address, B256, U256};
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 
 use axum::{
@@ -84,6 +85,8 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     let app = router(AppState {
         pool: pool.clone(),
         chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
     });
 
     let res = app
@@ -124,6 +127,8 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     assert!(res.headers().get("x-schema-version").is_some());
     let status_json = response_json(res).await;
     assert_eq!(status_json["database_connected"], true);
+    assert_eq!(status_json["ingestion_alive"], false);
+    assert_eq!(status_json["last_indexed_at_ms"], 0);
 
     let res = app
         .clone()
@@ -1007,6 +1012,8 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     let app = router(AppState {
         pool: pool.clone(),
         chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
     });
     let vb2 = format!("{:#x}", addr_byte(0xb2));
     let res = app

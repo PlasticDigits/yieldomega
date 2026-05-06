@@ -2,6 +2,7 @@
 
 //! HTTP API (axum): paginated reads for frontend and agents.
 
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use alloy_primitives::Address;
@@ -20,13 +21,17 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.15.1";
+const SCHEMA_VERSION: &str = "1.16.1";
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
     /// Filled by background RPC poll when `ADDRESS_REGISTRY` includes TimeCurve (`timer` + podiums).
     pub chain_timer: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
+    /// Mirrors ingestion task active-loop flag ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
+    pub ingestion_alive: Arc<AtomicBool>,
+    /// Wall-clock millis after last committed indexed block; **0** if none.
+    pub last_indexed_at_ms: Arc<AtomicU64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -326,11 +331,16 @@ async fn status(State(state): State<AppState>) -> Response {
     .ok()
     .flatten();
 
+    let ingestion_alive = state.ingestion_alive.load(Ordering::Acquire);
+    let last_indexed_at_ms = state.last_indexed_at_ms.load(Ordering::Acquire);
+
     let body = json!({
         "schema_version": SCHEMA_VERSION,
         "database_connected": db_ok,
         "chain_pointer": chain_pointer,
         "max_indexed_block": max_block,
+        "ingestion_alive": ingestion_alive,
+        "last_indexed_at_ms": last_indexed_at_ms,
     });
 
     let mut res = Json(body).into_response();

@@ -7,11 +7,13 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy_primitives::{Address, Bytes, U256};
-use alloy_provider::{Provider, ProviderBuilder, ReqwestProvider};
+use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, BlockTransactionsKind, TransactionRequest};
 use eyre::{Result, WrapErr};
 use tokio::sync::RwLock;
 use tokio::time::{interval, Duration, MissedTickBehavior};
+
+use crate::rpc_http::reqwest_http_provider;
 
 /// `saleStart()` selector (public getter)
 const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
@@ -127,6 +129,7 @@ pub async fn run_poll_loop(
     rpc_url: String,
     timecurve: Address,
     cache: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
+    rpc_request_timeout: Duration,
 ) {
     let url: reqwest::Url = match rpc_url.parse() {
         Ok(u) => u,
@@ -135,7 +138,13 @@ pub async fn run_poll_loop(
             return;
         }
     };
-    let provider = ProviderBuilder::new().on_http(url);
+    let provider = match reqwest_http_provider(url, rpc_request_timeout) {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::error!(?e, "chain_timer: failed to build RPC client");
+            return;
+        }
+    };
     let mut ticker = interval(Duration::from_secs(1));
     ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
 

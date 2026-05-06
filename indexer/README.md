@@ -5,7 +5,12 @@ Offchain read model: MegaETH RPC → decoded logs → Postgres → HTTP API. Aut
 ## Configuration
 
 - Copy [`indexer/.env.example`](.env.example) to **`indexer/.env`** (or export the same variables). Never commit real secrets.
-- Required env vars: **`DATABASE_URL`**, **`RPC_URL`**, **`CHAIN_ID`**. Optional: **`START_BLOCK`**, **`ADDRESS_REGISTRY_PATH`**, **`INGESTION_ENABLED`**, **`LISTEN_ADDR`**.
+- Required env vars: **`DATABASE_URL`**, **`RPC_URL`**, **`CHAIN_ID`**. Optional: **`START_BLOCK`**, **`ADDRESS_REGISTRY_PATH`**, **`INGESTION_ENABLED`**, **`LISTEN_ADDR`**, **`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**.
+
+### Ingestion supervision + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
+
+<a id="ingestion-supervision--rpc-timeouts-gitlab-168"></a>
+**`INV-INDEXER-168`:** The binary **retries** block ingestion with **exponential backoff** (1s → 60s cap) after a **fatal** `ingestion::run` error instead of leaving the HTTP API as a **stale-data zombie** with a dead background task. **JSON-RPC** uses a **reqwest** per-request **timeout** from **`INDEXER_RPC_REQUEST_TIMEOUT_SEC`** (default **5**; clamped **1–120** seconds) for both **ingestion** and the **`/v1/timecurve/chain-timer`** poller. **`GET /v1/status`** (schema **≥ 1.16.1**) exposes **`ingestion_alive`** (whether the configured ingestion task is in its **active** indexing loop — **`false`** when **`INGESTION_ENABLED`** is off or no registry addresses) and **`last_indexed_at_ms`** (wall-clock millis after the last committed indexed block; **0** if none yet). Map: [invariants §168](../docs/testing/invariants-and-business-logic.md#indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168) · [`main.rs`](src/main.rs) · [`ingestion.rs`](src/ingestion.rs) · [`rpc_http.rs`](src/rpc_http.rs) · [`chain_timer.rs`](src/chain_timer.rs) · [`api.rs`](src/api.rs).
 
 ### `INDEXER_PRODUCTION`
 
