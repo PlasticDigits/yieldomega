@@ -44,7 +44,7 @@ function renderHero(overrides: Partial<Parameters<typeof WarbowHeroActions>[0]> 
     warbowPreflightIssue: null,
     runWarBowSteal: async () => {},
     runWarBowGuard: async () => {},
-    runWarBowRevenge: async (_stealer?: `0x${string}`) => {},
+    runWarBowRevenge: async () => {},
     guardedActive: false,
     guardUntilSec: "0",
     hasRevengeOpen: true,
