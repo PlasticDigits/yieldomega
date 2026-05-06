@@ -102,7 +102,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
         const chunk = await fetchTimecurveWarbowRefreshCandidates(500, off);
         if (!chunk) {
           setLoadErr(
-            "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.15.0).",
+            "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.15.1).",
           );
           setLoadedCandidates([]);
           setIdxExtras(null);
@@ -128,6 +128,10 @@ export function TimeCurveProtocolWarbowRefreshSection({
         podium_warbow_hint_count: podiumHintCount,
         distinct_sql_cap_hit: capHit,
       });
+    } catch (e) {
+      setLoadErr(friendlyRevertFromUnknown(e));
+      setLoadedCandidates([]);
+      setIdxExtras(null);
     } finally {
       setLoadingIdx(false);
     }

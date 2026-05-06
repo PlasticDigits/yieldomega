@@ -432,7 +432,7 @@ surface onto the first-run page.
 
 ### Preconditions
 
-- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.0** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
+- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.1** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
 
 ### Checklist
 
@@ -440,9 +440,9 @@ surface onto the first-run page.
 2. With sale **live** (`ended == false`): **Load candidates from indexer** succeeds; counts and **`SQL DISTINCT cap hit`** render without errors.
 3. Connect wallet on **build target chain**; **Refresh WarBow podium** submits **`refreshWarbowPodium`** (or surfaces a clear revert / chain gate).
 4. After **`endSale`** (`ended == true`): confirm UI warns and **Refresh WarBow podium** stays disabled; onchain post-end path remains owner **`finalizeWarbowPodium`** (#149).
-5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`note`** present.
+5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`sale_ended`**, **`note`** present.
 
-**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** ([invariants §149](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
 <a id="manual-qa-issue-92"></a>
 
