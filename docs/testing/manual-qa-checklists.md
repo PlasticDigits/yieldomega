@@ -27,6 +27,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97) | [Keyboard focus visible (WCAG 2.4.7)](#manual-qa-issue-97) |
 | [#71](https://gitlab.com/PlasticDigits/yieldomega/-/issues/71) | [Album 1 BGM resume](#manual-qa-issue-71) |
 | [#103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103) | [Mobile album dock vs nav chrome](#manual-qa-issue-103) |
+| [#171](https://gitlab.com/PlasticDigits/yieldomega/-/issues/171) | [Header mascot vs TimeCurve nav clearance](#manual-qa-issue-171) |
 | [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) (+ [#105](https://gitlab.com/PlasticDigits/yieldomega/-/issues/105) orchestrator **`--help`**; [#153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153) Vite traps) | [Local full stack QA orchestrator](#manual-qa-issue-104) |
 | [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106) | [Presale vesting claim — chain mismatch feedback](#manual-qa-issue-106) |
 | [#120](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120) | [`AccessControl` zero admin — indexer + frontend derived layers](#manual-qa-issue-120-accesscontrol-zero-admin-derived-layers) |
@@ -628,6 +629,28 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] **Optional:** `cd frontend && npm run test -- src/audio/mobileAlbumDockLayout.test.ts` (Vitest asserts **`index.css`** **`+ Nrem`** ↔ TS constant — [GitLab #107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107))
 
 **Doc map:** [invariants — #103](invariants-and-business-logic.md#mobile-album-dock-layout-issue-103) · [sound-effects §8 — mobile dock bullet](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
+
+<a id="manual-qa-issue-171"></a>
+
+## Header mascot vs TimeCurve nav clearance (GitLab #171)
+
+**Goal:** On desktop and landscape widths, the decorative circular mascot in the global header must not overlap the **TimeCurve** nav button or any other primary nav hit target.
+
+### Invariants
+
+1. `.app-header__brand` reserves the mascot footprint through `--app-header-mascot-clearance`; the absolute mascot stays inside that reserved gutter.
+2. `.app-header__mascot` is decorative and **`pointer-events: none`**, so it cannot intercept clicks even while visually near nav.
+3. At **`max-width: 720px`**, the mascot remains hidden and the reserved gutter resets to zero so mobile nav keeps its full width.
+
+### Checklist
+
+- [ ] Desktop width (`≥1024px`): **YieldOmega**, status badges, **TimeCurve**, and the wallet controls are aligned with a visible gap between the mascot and **TimeCurve**.
+- [ ] Landscape tablet width (`721–1023px`): if the header wraps, the mascot does not cover nav text, focus rings, or pointer hit areas.
+- [ ] Narrow width (`≤720px`): mascot is hidden; nav stays a three-column grid with no empty mascot gutter.
+- [ ] Keyboard Tab through the header: focus ring on **TimeCurve** is fully visible and not covered by the mascot.
+- [ ] Optional: `cd frontend && npm run test -- src/layout/headerLayoutCss.test.ts`.
+
+**Doc map:** [invariants — #171](invariants-and-business-logic.md#frontend-header-mascot-nav-clearance-gitlab-171) · [frontend design — global header layout](../frontend/design.md#accessibility-and-ux)
 
 <a id="manual-qa-issue-104"></a>
 

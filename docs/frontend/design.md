@@ -45,6 +45,12 @@
 - Clear **network indicator** (chain id).
 - **Human-readable** errors from reverts where possible (`cast` / viem decoding patterns TBD).
 - Avoid **dark patterns** that obscure fees or timer rules.
+- **Global header layout** — decorative header art must never cover navigation
+  labels or hit targets. The `RootLayout` mascot reserves a desktop/landscape
+  gutter in [`index.css`](../../frontend/src/index.css), becomes
+  `pointer-events: none`, and is hidden at the existing mobile breakpoint
+  ([GitLab #171](https://gitlab.com/PlasticDigits/yieldomega/-/issues/171),
+  [`INV-FRONTEND-171-HEADER-MASCOT`](../testing/invariants-and-business-logic.md#frontend-header-mascot-nav-clearance-gitlab-171)).
 - **Keyboard focus (WCAG 2.4.7)** — Interactive controls use **`:focus-visible`** rings via **`--yo-focus-ring`** in [`index.css`](../../frontend/src/index.css). App-level selectors are mirrored under **`[data-rk]`** so RainbowKit’s reset (`outline: none` on modal controls) does not hide focus during Tab navigation ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97), [`wallet-connection.md`](./wallet-connection.md), [invariants — #97](../testing/invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97)). Play checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-97`](../testing/manual-qa-checklists.md#manual-qa-issue-97).
 
 ### Amount display (`AmountDisplay`)
