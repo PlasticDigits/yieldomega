@@ -80,6 +80,7 @@ class TestTimeCurveModel(unittest.TestCase):
         self.assertEqual(p.initial_timer_sec, 86400.0)
         self.assertEqual(p.timer_cap_from_now_sec, 96 * 3600.0)
         self.assertAlmostEqual(p.daily_growth_frac, 0.20)
+        self.assertEqual(p.buy_cooldown_sec, 300.0)
 
     def test_hybrid_early_leg_linear(self) -> None:
         p = TimeCurveParams(

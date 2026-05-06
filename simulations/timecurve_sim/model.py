@@ -42,6 +42,8 @@ class TimeCurveParams:
     # Hard-reset branch (`TimeMath.extendDeadlineOrResetBelowThreshold`); defaults match `TimeCurve.sol`.
     timer_reset_below_remaining_sec: float = TIMER_RESET_BELOW_REMAINING_SEC
     timer_reset_to_remaining_sec: float = TIMER_RESET_TO_REMAINING_SEC
+    # Per-wallet buy pacing (`TimeCurve.buyCooldownSec` / `nextBuyAllowedAt`); default matches PARAMETERS.md.
+    buy_cooldown_sec: float = 300.0
 
 
 def min_buy_at(t_sec: float, p: TimeCurveParams) -> float:
@@ -194,6 +196,7 @@ def canonical_timecurve_params(
     initial_timer_sec: float = 24 * 3600.0,
     hybrid_linear_days: float | None = None,
     hybrid_tail_daily_frac: float | None = None,
+    buy_cooldown_sec: float = 300.0,
 ) -> TimeCurveParams:
     """
     Canonical deployment targets (docs + `DeployDev.s.sol`): 24h initial, 96h timer cap,
@@ -208,6 +211,7 @@ def canonical_timecurve_params(
         initial_timer_sec=initial_timer_sec,
         hybrid_linear_days=hybrid_linear_days,
         hybrid_tail_daily_frac=hybrid_tail_daily_frac,
+        buy_cooldown_sec=buy_cooldown_sec,
     )
 
 
