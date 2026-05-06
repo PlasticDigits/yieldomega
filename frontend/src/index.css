@@ -1955,6 +1955,17 @@ label:has(input[type="radio"]:disabled) {
   vertical-align: middle;
 }
 
+/* GitLab #163: `.split-layout` is CSS Grid; items default to `align-self: stretch`.
+   The right column (`PageSection`) is often taller, so the bordered figure stretched
+   to that row height while the `<img>` stayed intrinsic-height — empty panel below
+   the art and a “broken card” look on wide / landscape viewports. */
+.split-layout > .placeholder-figure {
+  min-width: 0;
+  width: 100%;
+  max-width: min(42rem, 100%);
+  align-self: start;
+}
+
 .loading-state {
   display: flex;
   flex-wrap: wrap;
