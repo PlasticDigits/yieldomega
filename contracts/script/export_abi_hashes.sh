@@ -29,6 +29,11 @@ declare -a PAIRS=(
   "CL8YProtocolTreasury.sol:CL8YProtocolTreasury"
   "DoubLPIncentives.sol:DoubLPIncentives"
   "EcosystemTreasury.sol:EcosystemTreasury"
+  "RabbitTreasuryVault.sol:RabbitTreasuryVault"
+  "ReferralRegistry.sol:ReferralRegistry"
+  "LinearCharmPrice.sol:LinearCharmPrice"
+  "DoubPresaleVesting.sol:DoubPresaleVesting"
+  "TimeCurveBuyRouter.sol:TimeCurveBuyRouter"
 )
 
 echo "  \"abiHashesSha256\": {"

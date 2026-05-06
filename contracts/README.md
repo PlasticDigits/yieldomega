@@ -89,6 +89,21 @@ More context: [`../docs/contracts/foundry-and-megaeth.md`](../docs/contracts/fou
 
 MegaEVM uses **512 KiB** max **deployed** bytecode and **536 KiB** max **initcode** (see [MegaETH contract limits](https://docs.megaeth.com/spec/megaevm/contract-limits)), **not** Ethereum’s **EIP-170** ~24 KiB runtime cap. **Nested-call gas** uses MegaEVM’s **98/100** forwarding rule ([Gas forwarding](https://docs.megaeth.com/spec/megaevm/gas-forwarding.md)). A **stock** `anvil` process still uses EIP-170’s **0x6000** (~24 KiB) unless you set **`--code-size-limit 524288`** (decimal only; hex like **`0x80000`** is rejected by Anvil) for **512 KiB** (MegaEVM parity). The repo’s **`scripts/start-local-anvil-stack.sh`**, **`scripts/e2e-anvil.sh`**, **`scripts/anvil-export-bot-env.sh`**, **`scripts/lib/anvil_deploy_dev.sh`**, **`contracts/script/anvil_rich_state.sh`**, and **`contracts/script/anvil_same_block_drill.sh`** pass **524288** on **Anvil** and on **`forge script`** where applicable (Forge simulates before `--broadcast` with its own EIP-170 check). After `forge build`, use `forge build --sizes` or inspect `out/<Name>.sol/<Name>.json` to confirm artifacts fit your **target chain**; see [foundry-and-megaeth.md](../docs/contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas) and [issue #72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72).
 
+## Deploy (production / MegaETH)
+
+For the contracts-only MegaETH quickstart and the indexer/frontend handoff, see
+[`../docs/operations/deployment-guide.md`](../docs/operations/deployment-guide.md).
+The production wrapper is:
+
+```bash
+scripts/deploy-megaeth-contracts.sh <SALE_START_EPOCH>
+```
+
+It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol), prompts for the
+private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, assigns
+owner/admin/governance roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
+and writes an address registry under `.deploy/`.
+
 ## Deploy (dev)
 
 Deploy all core contracts to a local or dev environment:
