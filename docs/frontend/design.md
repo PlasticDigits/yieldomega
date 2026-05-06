@@ -119,6 +119,12 @@ pack via the same generation pipeline used for
 The textual label in any badge / icon component remains the **a11y source
 of truth**; pictograms are decorative (`alt=""` + `aria-hidden`).
 
+<a id="placeholder-split-panels-gitlab-163"></a>
+
+### Placeholder split panels (GitLab #163)
+
+**`UnderConstruction`** and **`ThirdPartyDexPage`** place a scene raster inside **`.placeholder-figure`** on the left of a **two-column** **`.split-layout`**. CSS Grid stretches row items to the **taller** track by default; the **`<img>`** keeps **intrinsic** block size, which used to leave **empty bordered space** below the art on **wide** and **landscape** viewports. **`INV-FRONTEND-163`:** **`index.css`** scopes **`.split-layout > .placeholder-figure`** with **`align-self: start`**, **`width: 100%`**, **`max-width: min(42rem, 100%)`**, **`min-width: 0`**. Contributor checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-163`](../testing/manual-qa-checklists.md#manual-qa-issue-163); Vitest parity: [`placeholderSplitLayoutCss.test.ts`](../../frontend/src/lib/placeholderSplitLayoutCss.test.ts).
+
 ## Security posture
 
 - **No private keys** in the client.
