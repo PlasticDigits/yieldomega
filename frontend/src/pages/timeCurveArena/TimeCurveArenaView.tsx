@@ -738,10 +738,10 @@ export function TimeCurveArenaView() {
                           )}
                         </div>
                         {cl8ySpendBounds ? (
-                          <label
+                          <div
                             className={`form-label timecurve-cl8y-buy-controls__slider-label timecurve-cl8y-buy-controls__slider-label--pay-${payWith}`}
                           >
-                            {paySpendSuffix} spend
+                            <span>{paySpendSuffix} spend</span>
                             <input
                               type="range"
                               className="form-input"
@@ -779,7 +779,7 @@ export function TimeCurveArenaView() {
                                 )}
                               </span>
                             )}
-                          </label>
+                          </div>
                         ) : (
                           <StatusMessage variant="muted">
                             Waiting for onchain min/max spend reads…
