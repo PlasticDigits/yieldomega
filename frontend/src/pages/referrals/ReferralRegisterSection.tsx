@@ -402,17 +402,17 @@ export function ReferralRegisterSection({ className }: Props) {
               <strong>{burnWad !== undefined ? "published burn" : "CL8Y burn"}</strong>.
             </p>
             <div className="form-row" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
-              <label className="form-label" style={{ flex: "1 1 200px" }} htmlFor="ref-register-code">
-                New code
+              <div className="form-label" style={{ flex: "1 1 200px" }}>
+                <span>New code</span>
                 <input
-                  id="ref-register-code"
                   className="form-input"
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value)}
                   placeholder="e.g. luck777"
                   autoComplete="off"
+                  aria-label="New code"
                 />
-              </label>
+              </div>
               <button
                 type="button"
                 className="btn-primary"

@@ -978,6 +978,12 @@ label:has(input[type="radio"]:disabled) {
   margin: 0;
   padding: 0;
 }
+@media (min-width: 721px) {
+  .home-cta-grid {
+    grid-template-columns: repeat(3, minmax(16rem, 22rem));
+    justify-content: center;
+  }
+}
 
 .home-cta-grid__item {
   list-style: none;
