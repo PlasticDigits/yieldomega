@@ -10,6 +10,8 @@ import { addresses } from "@/lib/addresses";
 import { doubPresaleVestingReadAbi, doubPresaleVestingWriteAbi } from "@/lib/abis";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
+import { wagmiConfig } from "@/wagmi-config";
 import { dualWallClockLines, formatDoubHuman } from "@/pages/presaleVesting/presaleVestingFormat";
 import { usePresaleVestingChainWriteEffects } from "@/pages/presaleVesting/usePresaleVestingChainWriteEffects";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
@@ -91,7 +93,7 @@ export function PresaleVestingPage() {
     refetchTotal,
   ]);
 
-  const { writeContract, data: claimHash, isPending: claimSubmitting, error: claimError, reset: resetWrite } =
+  const { writeContractAsync, data: claimHash, isPending: claimSubmitting, error: claimError, reset: resetWrite } =
     useWriteContract();
   const { isLoading: claimConfirming, isSuccess: claimSuccess } = useWaitForTransactionReceipt({
     hash: claimHash,
@@ -284,18 +286,30 @@ export function PresaleVestingPage() {
                   claimSubmitting ||
                   claimConfirming
                 }
-                onClick={() => {
+                onClick={async () => {
                   setClaimGateError(null);
                   const netErr = chainMismatchWriteMessage(chainId);
                   if (netErr) {
                     setClaimGateError(netErr);
                     return;
                   }
-                  writeContract({
-                    address: vesting,
-                    abi: doubPresaleVestingWriteAbi,
-                    functionName: "claim",
-                  });
+                  if (!wallet) {
+                    setClaimGateError("Connect a wallet to claim.");
+                    return;
+                  }
+                  try {
+                    await writeContractWithGasBuffer({
+                      wagmiConfig,
+                      writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+                      account: wallet,
+                      chainId,
+                      address: vesting,
+                      abi: doubPresaleVestingWriteAbi,
+                      functionName: "claim",
+                    });
+                  } catch (e) {
+                    setClaimGateError(friendlyRevertFromUnknown(e));
+                  }
                 }}
               >
                 {claimSubmitting || claimConfirming ? "Confirming…" : "Claim DOUB"}

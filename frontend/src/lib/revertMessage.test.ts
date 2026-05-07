@@ -7,6 +7,7 @@ import {
   friendlyRevertMessage,
   redactSensitiveUrlsInUserMessage,
 } from "./revertMessage";
+import { GasSoftCapExceededError } from "./writeContractWithGasBuffer";
 
 describe("friendlyRevertMessage", () => {
   it("maps live charm band errors to clearer buy copy", () => {
@@ -77,5 +78,15 @@ describe("friendlyRevertFromUnknown", () => {
     const msg = friendlyRevertFromUnknown(err);
     expect(msg).not.toContain("supersecretapikey");
     expect(msg).toContain(REDACTED_RPC_URL_MARKER);
+  });
+});
+
+describe("friendlyRevertFromUnknown — GasSoftCapExceededError (issue #176)", () => {
+  it("surfaces estimated and cap values with a clear safety-cap message", () => {
+    const err = new GasSoftCapExceededError(1_000_000n, 1_300_000n, 1_000_000n);
+    const msg = friendlyRevertFromUnknown(err);
+    expect(msg).toContain("safety cap");
+    expect(msg).toContain("1000000");
+    expect(msg).toContain("+30% buffer");
   });
 });

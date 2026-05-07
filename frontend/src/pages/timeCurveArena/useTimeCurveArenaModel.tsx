@@ -35,6 +35,7 @@ import {
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import {
   assertWalletBuySessionUnchanged,
@@ -2319,6 +2320,7 @@ export function useTimeCurveArenaModel() {
             wagmiConfig,
             writeContractAsync: writeContractAsync as WalletWriteAsync,
             userAddress: address,
+            chainId,
             timeCurveBuyRouter: singleRes.router,
             payWith,
             kConfig: k.config,
@@ -2347,7 +2349,11 @@ export function useTimeCurveArenaModel() {
         const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
 
         if (payWith === "eth") {
-          const wrapHash = await writeContractAsync({
+          const { hash: wrapHash } = await writeContractWithGasBuffer({
+            wagmiConfig,
+            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+            account: address as `0x${string}`,
+            chainId,
             address: k.config.weth,
             abi: weth9Abi,
             functionName: "deposit",
@@ -2363,7 +2369,11 @@ export function useTimeCurveArenaModel() {
           });
           guardBuySession();
           if (wAllow < maxIn) {
-            const wAp = await writeContractAsync({
+            const { hash: wAp } = await writeContractWithGasBuffer({
+              wagmiConfig,
+              writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+              account: address as `0x${string}`,
+              chainId,
               address: k.config.weth,
               abi: weth9Abi,
               functionName: "approve",
@@ -2381,7 +2391,11 @@ export function useTimeCurveArenaModel() {
           });
           guardBuySession();
           if (uAllow < maxIn) {
-            const uAp = await writeContractAsync({
+            const { hash: uAp } = await writeContractWithGasBuffer({
+              wagmiConfig,
+              writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+              account: address as `0x${string}`,
+              chainId,
               address: route.tokenIn,
               abi: erc20Abi,
               functionName: "approve",
@@ -2394,7 +2408,11 @@ export function useTimeCurveArenaModel() {
 
         const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
         guardBuySession();
-        const swapHash = await writeContractAsync({
+        const { hash: swapHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
           address: k.config.swapRouter,
           abi: kumbayaSwapRouterAbi,
           functionName: "exactOutput",
@@ -2407,6 +2425,8 @@ export function useTimeCurveArenaModel() {
               amountInMaximum: maxIn,
             },
           ],
+          onEstimateRevert: "rethrow",
+          softCapGas: 6_000_000n,
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
         guardBuySession();
@@ -2424,7 +2444,11 @@ export function useTimeCurveArenaModel() {
         readCl8yTimeCurveUnlimitedApproval(),
       );
       if (allow < totalPull) {
-        const approveHash = await writeContractAsync({
+        const { hash: approveHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
           address: tokenAddr,
           abi: erc20Abi,
           functionName: "approve",
@@ -2438,7 +2462,11 @@ export function useTimeCurveArenaModel() {
         : plantWarBowFlag
           ? ([cw, plantWarBowFlag] as const)
           : ([cw] as const);
-      const buyHash = await writeContractAsync({
+      const { hash: buyHash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "buy",
@@ -2492,7 +2520,11 @@ export function useTimeCurveArenaModel() {
         need,
         readCl8yTimeCurveUnlimitedApproval(),
       );
-      const approveHash = await writeContractAsync({
+      const { hash: approveHash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tokenAddr,
         abi: erc20Abi,
         functionName: "approve",
@@ -2515,7 +2547,11 @@ export function useTimeCurveArenaModel() {
       return;
     }
     try {
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "claimWarBowFlag",
@@ -2543,7 +2579,11 @@ export function useTimeCurveArenaModel() {
     const need = warbowStealBurnWad + (stealBypass ? warbowBypassBurnWad : 0n);
     try {
       await ensureTcAllowance(need);
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "warbowSteal",
@@ -2570,7 +2610,11 @@ export function useTimeCurveArenaModel() {
     }
     try {
       await ensureTcAllowance(warbowGuardBurnWad);
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "warbowActivateGuard",
@@ -2597,7 +2641,11 @@ export function useTimeCurveArenaModel() {
     }
     try {
       await ensureTcAllowance(warbowRevengeBurnWad);
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "warbowRevenge",
@@ -2628,11 +2676,17 @@ export function useTimeCurveArenaModel() {
       podiumWallets: wallets,
     });
     try {
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "refreshWarbowPodium",
         args: [candidates],
+        onEstimateRevert: "rethrow",
+        softCapGas: 12_000_000n,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
@@ -2648,10 +2702,18 @@ export function useTimeCurveArenaModel() {
       return;
     }
     try {
-      const hash = await writeContractAsync({
+      const isDistribute = fn === "distributePrizes";
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: fn,
+        ...(isDistribute
+          ? { onEstimateRevert: "rethrow" as const, softCapGas: 18_000_000n }
+          : {}),
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();

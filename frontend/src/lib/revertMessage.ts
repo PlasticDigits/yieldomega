@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { BaseError } from "viem";
+import { GasSoftCapExceededError } from "@/lib/writeContractWithGasBuffer";
 
 /** Placeholder when RPC URLs or hosted keys would otherwise appear in UI ([GitLab #145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145)). */
 export const REDACTED_RPC_URL_MARKER = "[RPC URL redacted]";
@@ -114,6 +115,9 @@ export type FriendlyRevertOpts = {
 
 /** Prefer viem `BaseError` fields (`shortMessage`, `details`) when present. */
 export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpts): string {
+  if (err instanceof GasSoftCapExceededError) {
+    return `Gas estimate (${err.estimatedGas}) exceeds the safety cap (${err.softCapGas}) after the +30% buffer. Retry shortly or contact support if this persists.`;
+  }
   let raw: string;
   if (err instanceof BaseError) {
     const details = "details" in err && typeof err.details === "string" ? err.details : "";

@@ -18,6 +18,7 @@ import {
   setStoredMyReferralCodeForWallet,
 } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import {
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
   assertWalletBuySessionUnchanged,
@@ -228,7 +229,11 @@ export function ReferralRegisterSection({ className }: Props) {
       });
       guardSession();
       if (allow < need) {
-        const approveHash = await writeContractAsync({
+        const { hash: approveHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
           address: cl8yToken,
           abi: erc20Abi,
           functionName: "approve",
@@ -238,7 +243,11 @@ export function ReferralRegisterSection({ className }: Props) {
         guardSession();
       }
       guardSession();
-      const regHash = await writeContractAsync({
+      const { hash: regHash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: registry,
         abi: referralRegistryWriteAbi,
         functionName: "registerCode",
