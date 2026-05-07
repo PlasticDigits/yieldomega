@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useReadContracts } from "wagmi";
@@ -9,7 +9,7 @@ import { TxHash } from "@/components/TxHash";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
-import { feeRouterReadAbi } from "@/lib/abis";
+import { erc20Abi, feeRouterReadAbi } from "@/lib/abis";
 import {
   fetchFeeRouterFeesDistributed,
   fetchFeeRouterSinksUpdates,
@@ -38,6 +38,27 @@ export function FeeTransparency() {
   const [sinksHistory, setSinksHistory] = useState<FeeRouterSinksUpdateItem[] | null>(null);
   const [feesDistributed, setFeesDistributed] = useState<FeeRouterFeesDistributedItem[] | null>(null);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
+  const feeTokenAddrs = useMemo(
+    () => Array.from(new Set(feesDistributed?.map((r) => r.token) ?? [])),
+    [feesDistributed],
+  );
+  const { data: feeTokenDecimalsResults } = useReadContracts({
+    contracts: feeTokenAddrs.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: erc20Abi,
+      functionName: "decimals" as const,
+    })),
+    query: { enabled: feeTokenAddrs.length > 0 },
+  });
+  const feeTokenDecimalsByAddr = useMemo(() => {
+    const map = new Map<string, number>();
+    feeTokenDecimalsResults?.forEach((r, i) => {
+      if (r.status === "success" && typeof r.result === "number") {
+        map.set(feeTokenAddrs[i], r.result);
+      }
+    });
+    return map;
+  }, [feeTokenDecimalsResults, feeTokenAddrs]);
 
   const { data, isPending, isError } = useReadContracts({
     contracts: fr
@@ -150,15 +171,15 @@ export function FeeTransparency() {
             <strong>Recent fee distributions</strong> (indexer mirror)
           </p>
           <ul className="fee-sink-list fee-sink-list--compact">
-            {/* `amount` is uint256 from indexer; format as 18 dp — matches dominant WAD/ERC-20 paths; adjust if API adds per-token decimals. */}
+            {/* `amount` is uint256 from indexer; decimals resolved from `row.token` via `erc20Abi.decimals()` reads, falling back to 18 (GitLab #110). */}
             {feesDistributed.map((row) => (
               <li key={`${row.tx_hash}-${row.log_index}`}>
                 block {formatLocaleInteger(row.block_number)} — token{" "}
                 <MegaScannerAddressLink address={row.token} /> — amount{" "}
                 <span className="mono">
-                  {formatCompactFromRaw(rawToBigIntForFormat(row.amount), 18)}
+                  {formatCompactFromRaw(rawToBigIntForFormat(row.amount), feeTokenDecimalsByAddr.get(row.token) ?? 18)}
                 </span>{" "}
-                — per sink {formatFeeSharesJsonForDisplay(row.shares_json)} — tx{" "}
+                — per sink {formatFeeSharesJsonForDisplay(row.shares_json, feeTokenDecimalsByAddr.get(row.token) ?? 18)} — tx{" "}
                 <TxHash hash={row.tx_hash} />
               </li>
             ))}
@@ -197,8 +218,8 @@ function formatSinksJsonForDisplay(json: string): string {
   }
 }
 
-/** `shares` from indexer are per-sink token amounts (wei); 18 dp assumed (see amount row). */
-function formatFeeSharesJsonForDisplay(json: string): string {
+/** `shares` from indexer are per-sink token amounts (wei); decimals threaded from caller. */
+function formatFeeSharesJsonForDisplay(json: string, decimals: number): string {
   try {
     const p = JSON.parse(json) as { shares?: unknown };
     const s = p.shares;
@@ -208,7 +229,7 @@ function formatFeeSharesJsonForDisplay(json: string): string {
     const parts: string[] = [];
     for (let i = 0; i < s.length; i++) {
       const label = FEE_SINK_LABELS[i] ?? `Sink ${i}`;
-      const amt = formatCompactFromRaw(rawToBigIntForFormat(String(s[i])), 18);
+      const amt = formatCompactFromRaw(rawToBigIntForFormat(String(s[i])), decimals);
       parts.push(`${label} ${amt}`);
     }
     return parts.length > 0 ? parts.join(" · ") : "—";
