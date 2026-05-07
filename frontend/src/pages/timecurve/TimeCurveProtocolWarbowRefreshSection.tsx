@@ -113,8 +113,10 @@ export function TimeCurveProtocolWarbowRefreshSection({
           podiumHintCount = chunk.podium_warbow_hint_count;
         }
         capHit = capHit || chunk.distinct_sql_cap_hit;
-        for (const c of chunk.candidates) {
-          pages.push(c);
+        if (Array.isArray(chunk.candidates)) {
+          for (const c of chunk.candidates) {
+            pages.push(c);
+          }
         }
         if (chunk.next_offset === null || chunk.next_offset === undefined) {
           break;
@@ -143,8 +145,9 @@ export function TimeCurveProtocolWarbowRefreshSection({
       setTxErr("Sale has ended — `refreshWarbowPodium` reverts onchain (GitLab #149). Use owner `finalizeWarbowPodium` after `endSale`.");
       return;
     }
-    if (chainMismatchWriteMessage(chainId)) {
-      setTxErr(chainMismatchWriteMessage(chainId) ?? "Wrong network for writes.");
+    const cm = chainMismatchWriteMessage(chainId);
+    if (cm) {
+      setTxErr(cm);
       return;
     }
     if (!address) {
