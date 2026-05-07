@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.16.1";
+const SCHEMA_VERSION: &str = "1.17.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -1912,12 +1912,18 @@ async fn referral_referrer_leaderboard(
     let off = p.offset.max(0);
 
     let rows = sqlx::query(
-        r#"SELECT referrer,
-                  COALESCE(SUM(referrer_amount), 0)::text AS total_referrer_charm_wad,
-                  COUNT(*)::text AS referred_buy_count
-             FROM idx_timecurve_referral_applied
-            GROUP BY referrer
-            ORDER BY SUM(referrer_amount) DESC NULLS LAST, referrer ASC
+        r#"SELECT referrer, total_referrer_charm_wad, referred_buy_count, rank
+             FROM (
+                 SELECT referrer,
+                        COALESCE(SUM(referrer_amount), 0)::text AS total_referrer_charm_wad,
+                        COUNT(*)::text                          AS referred_buy_count,
+                        RANK() OVER (
+                            ORDER BY COALESCE(SUM(referrer_amount), 0) DESC NULLS LAST
+                        )::bigint                               AS rank
+                   FROM idx_timecurve_referral_applied
+                  GROUP BY referrer
+             ) ranked
+            ORDER BY rank ASC, referrer ASC
             LIMIT $1 OFFSET $2"#,
     )
     .bind(lim)
@@ -1934,10 +1940,9 @@ async fn referral_referrer_leaderboard(
 
     let items: Vec<ReferralReferrerLeaderboardRow> = rows
         .into_iter()
-        .enumerate()
-        .filter_map(|(i, r)| {
+        .filter_map(|r| {
             Some(ReferralReferrerLeaderboardRow {
-                rank: off + i as i64 + 1,
+                rank: r.try_get::<i64, _>("rank").ok()?,
                 referrer: r.try_get("referrer").ok()?,
                 total_referrer_charm_wad: r.try_get("total_referrer_charm_wad").ok()?,
                 referred_buy_count: r.try_get("referred_buy_count").ok()?,

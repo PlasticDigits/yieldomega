@@ -1363,3 +1363,122 @@ async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash(
         .expect("count after commit");
     assert_eq!(row.try_get::<i64, _>("c").unwrap(), 2);
 }
+
+
+#[tokio::test]
+async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
+    // GitLab #177 — referrer leaderboard `rank` field must be dense-competitive (RANK() over SUM),
+    // not page ordinal. Ties share the same numeric rank; the next non-tied entry skips by tie-count
+    // (1, 2, 2, 4 pattern). Pagination across tie-group boundaries must not duplicate or skip referrers.
+    let Some(url) = pg_url() else {
+        eprintln!("integration_stage2: skip gitlab177 (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    // Clean slate for this test's referral rows so prior tests don't pollute the leaderboard.
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("clear referral table");
+
+    // Seed 4 referrers with a controlled tie pattern:
+    //   referrer A: 300 wad  -> rank 1
+    //   referrer B: 200 wad  -> rank 2 (tied with C)
+    //   referrer C: 200 wad  -> rank 2 (tied with B)
+    //   referrer D: 100 wad  -> rank 4 (skips 3)
+    let seeds: &[(&str, &str, i64)] = &[
+        ("0x000000000000000000000000000000000000aaaa", "0x0000000000000000000000000000000000000001", 300),
+        ("0x000000000000000000000000000000000000bbbb", "0x0000000000000000000000000000000000000002", 200),
+        ("0x000000000000000000000000000000000000cccc", "0x0000000000000000000000000000000000000003", 200),
+        ("0x000000000000000000000000000000000000dddd", "0x0000000000000000000000000000000000000004", 100),
+    ];
+
+    for (i, (referrer, buyer, amount)) in seeds.iter().enumerate() {
+        sqlx::query(
+            r#"INSERT INTO idx_timecurve_referral_applied (
+                  block_number, block_hash, tx_hash, log_index, contract_address,
+                  buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
+               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
+        )
+        .bind(900_i64 + i as i64)
+        .bind(format!("0x{:0>64}", i + 1))
+        .bind(format!("0x{:0>64}", 100 + i + 1))
+        .bind(0_i32)
+        .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+        .bind(*buyer)
+        .bind(*referrer)
+        .bind(format!("0x{:0>64}", 200 + i + 1))
+        .bind(amount.to_string())
+        .bind("0")
+        .bind("0")
+        .execute(&pool)
+        .await
+        .expect("seed referral row");
+    }
+
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+
+    // Full leaderboard request — verify rank values directly.
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = response_json(res).await;
+    let items = body["items"].as_array().expect("items array");
+    assert_eq!(items.len(), 4, "expected 4 referrers, got {}", items.len());
+
+    // Rank assertions — dense-competitive (RANK()), 1, 2, 2, 4 with referrer ASC tiebreaker.
+    assert_eq!(items[0]["rank"].as_i64(), Some(1));
+    assert_eq!(items[0]["referrer"].as_str(), Some("0x000000000000000000000000000000000000aaaa"));
+
+    assert_eq!(items[1]["rank"].as_i64(), Some(2));
+    assert_eq!(items[2]["rank"].as_i64(), Some(2));
+    // Referrer ASC tiebreaker between bbbb and cccc: bbbb < cccc.
+    assert_eq!(items[1]["referrer"].as_str(), Some("0x000000000000000000000000000000000000bbbb"));
+    assert_eq!(items[2]["referrer"].as_str(), Some("0x000000000000000000000000000000000000cccc"));
+
+    assert_eq!(items[3]["rank"].as_i64(), Some(4));
+    assert_eq!(items[3]["referrer"].as_str(), Some("0x000000000000000000000000000000000000dddd"));
+
+    // Paginated request crossing the tie boundary — limit=2, offset=2 must return ranks [2, 4],
+    // not [3, 4] (page ordinal would have given 3, 4). Confirms rank value is leaderboard-rank, not page-position.
+    let res2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let body2 = response_json(res2).await;
+    let items2 = body2["items"].as_array().expect("items array page2");
+    assert_eq!(items2.len(), 2, "expected 2 rows on page 2, got {}", items2.len());
+    assert_eq!(items2[0]["rank"].as_i64(), Some(2), "first row of offset=2 should still be rank 2 (tied)");
+    assert_eq!(items2[0]["referrer"].as_str(), Some("0x000000000000000000000000000000000000cccc"));
+    assert_eq!(items2[1]["rank"].as_i64(), Some(4), "second row of offset=2 should be rank 4 (skips 3)");
+    assert_eq!(items2[1]["referrer"].as_str(), Some("0x000000000000000000000000000000000000dddd"));
+
+    // Cleanup so the test is rerunnable without leftover rows.
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral table");
+}
