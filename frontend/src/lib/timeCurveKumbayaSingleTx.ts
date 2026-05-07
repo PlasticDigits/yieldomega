@@ -5,6 +5,7 @@
 // `timeCurveBuyRouter` is zero onchain.
 
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
+import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import type { Config } from "wagmi";
 import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
 import type { HexAddress } from "@/lib/addresses";
@@ -32,6 +33,7 @@ export type WalletWriteAsync = (args: {
   functionName: string;
   args?: readonly unknown[];
   value?: bigint;
+  gas?: bigint;
 }) => Promise<`0x${string}`>;
 
 function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
@@ -52,6 +54,7 @@ export async function submitKumbayaSingleTxBuy(params: {
   wagmiConfig: Config;
   writeContractAsync: WalletWriteAsync;
   userAddress: `0x${string}`;
+  chainId: number;
   timeCurveBuyRouter: HexAddress;
   payWith: "eth" | "usdm";
   kConfig: KumbayaChainConfigResolved;
@@ -67,6 +70,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     wagmiConfig: cfg,
     writeContractAsync,
     userAddress,
+    chainId,
     timeCurveBuyRouter,
     payWith,
     kConfig,
@@ -100,7 +104,11 @@ export async function submitKumbayaSingleTxBuy(params: {
     });
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     if (uAllow < maxIn) {
-      const uAp = await writeContractAsync({
+      const { hash: uAp } = await writeContractWithGasBuffer({
+        wagmiConfig: cfg,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: userAddress,
+        chainId,
         address: route.tokenIn,
         abi: erc20Abi,
         functionName: "approve",
@@ -113,12 +121,18 @@ export async function submitKumbayaSingleTxBuy(params: {
 
   const deadline = await fetchSwapDeadlineUnixSec(cfg, 600);
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
-  const hash = await writeContractAsync({
+  const { hash } = await writeContractWithGasBuffer({
+    wagmiConfig: cfg,
+    writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+    account: userAddress,
+    chainId,
     address: router,
     abi: timeCurveBuyRouterAbi,
     functionName: "buyViaKumbaya",
     args: [charmWad, h, plantWarBowFlag, payKind, deadline, maxIn, route.path],
     value: payWith === "eth" ? maxIn : undefined,
+    onEstimateRevert: "rethrow",
+    softCapGas: 8_000_000n,
   });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   playGameSfxCoinHitBuySubmit();
