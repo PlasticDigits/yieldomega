@@ -10,6 +10,7 @@ import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import type { HexAddress } from "@/lib/addresses";
 import { fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { warBowRefreshCandidateAddresses } from "@/lib/timeCurveWarbowSnapshotClaim";
 import { wagmiConfig } from "@/wagmi-config";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -169,11 +170,17 @@ export function TimeCurveProtocolWarbowRefreshSection({
       podiumWallets: [...loadedCandidates, ...podiumWallets],
     });
     try {
-      const hash = await writeContractAsync({
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
         address: timeCurve,
         abi: timeCurveWriteAbi,
         functionName: "refreshWarbowPodium",
         args: [calldata],
+        onEstimateRevert: "rethrow",
+        softCapGas: 12_000_000n,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       void refetchParentReads();
