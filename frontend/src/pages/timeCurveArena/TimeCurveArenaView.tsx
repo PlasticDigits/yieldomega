@@ -84,7 +84,7 @@ export function TimeCurveArenaView() {
     payTokenDecimals, payWalletBalance, payWith,
     pendingRef, plantWarBowFlag, pendingRevengeTargets, perCharmPayQuoteLoading, pricePerCharmR, podiumPayoutPreview,
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
-    prizeDist, prizePayouts, prizesDistributedR, quotedBandMaxPayInWei, quotedBandMinPayInWei,
+    prizeDist, prizePayouts, prizesDistributedR, pvpErr, quotedBandMaxPayInWei, quotedBandMinPayInWei,
     quotedLaunchPerCharmPayInWei, quotedPayInWei, quotedPerCharmPayInWei, refApplied,
     rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, revengeIndexerConfigured, refreshWarBowSnapshotSuggested,
     runVoid, runRefreshWarBowPodiumSnapshot, runWarBowClaimFlag, runWarBowGuard,
@@ -1117,6 +1117,7 @@ export function TimeCurveArenaView() {
               isWriting={isWriting}
             />
           </ChainMismatchWriteBarrier>
+          {pvpErr && <StatusMessage variant="error">{pvpErr}</StatusMessage>}
         </PageHeroArcadeBanner>
       </div>
 
@@ -1358,6 +1359,7 @@ export function TimeCurveArenaView() {
         gasWarbowRevenge={gasWarbowRevenge?.toString()}
       />
       </ChainMismatchWriteBarrier>
+      {pvpErr && <StatusMessage variant="error">{pvpErr}</StatusMessage>}
 
       <PodiumsSection
         podiumPayoutPreview={podiumPayoutPreview}
