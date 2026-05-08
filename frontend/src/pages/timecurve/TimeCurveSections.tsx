@@ -398,8 +398,8 @@ export function WarbowSection(props: {
       />
       {isConnected && saleActive && (
         <>
-          <label className="form-label">
-            Steal victim address
+          <div className="form-label">
+            <span>Steal victim address</span>
             <input
               type="text"
               className="form-input"
@@ -407,8 +407,9 @@ export function WarbowSection(props: {
               value={stealVictimInput}
               onChange={(e) => setStealVictimInput(e.target.value)}
               spellCheck={false}
+              aria-label="Steal victim address"
             />
-          </label>
+          </div>
           {stealVictim && victimStealsToday !== undefined && (
             <StatusMessage variant="muted">
               Victim steals received today: {formatLocaleInteger(BigInt(victimStealsToday))} /{" "}
