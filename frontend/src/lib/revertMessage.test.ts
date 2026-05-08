@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
+import { BaseError } from "viem";
 import {
   REDACTED_RPC_URL_MARKER,
   friendlyRevertFromUnknown,
@@ -88,5 +89,34 @@ describe("friendlyRevertFromUnknown — GasSoftCapExceededError (issue #176)", (
     expect(msg).toContain("safety cap");
     expect(msg).toContain("1000000");
     expect(msg).toContain("+30% buffer");
+  });
+});
+
+describe("friendlyRevertFromUnknown — viem BaseError dedup ([#183](https://gitlab.com/PlasticDigits/yieldomega/-/issues/183))", () => {
+  it("does not duplicate the revert reason from BaseError shortMessage / details / message", () => {
+    // mimics the real shape of a viem BaseError raised by a reverted contract call:
+    //   shortMessage = "The contract function ... reverted with the following reason: <reason>"
+    //   details = "<reason>"
+    //   message = composed by viem (shortMessage + metaMessages + version footer)
+    const err = new BaseError(
+      "The contract function \"warbowSteal\" reverted with the following reason: nonce too low",
+      { details: "nonce too low" },
+    );
+    const msg = friendlyRevertFromUnknown(err);
+    // revert reason should appear at most once
+    const occurrences = (msg.match(/nonce too low/gi) ?? []).length;
+    expect(occurrences).toBeLessThanOrEqual(1);
+    // "Contract Call" footer leaked from err.message must not surface
+    expect(msg).not.toMatch(/Contract Call/i);
+    // no double-prefix from the "reverted with the following reason" template
+    const prefixOccurrences = (msg.match(/reverted with the following reason/gi) ?? []).length;
+    expect(prefixOccurrences).toBeLessThanOrEqual(1);
+  });
+
+  it("still returns a usable single-line message when only shortMessage is populated", () => {
+    const err = new BaseError("The contract function \"buy\" reverted with the following reason: TimeCurve: below min buy");
+    const msg = friendlyRevertFromUnknown(err);
+    // matches the friendly mapping for "timecurve: below min buy"
+    expect(msg).toBe("Amount is below the current minimum buy.");
   });
 });
