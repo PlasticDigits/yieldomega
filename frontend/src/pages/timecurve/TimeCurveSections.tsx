@@ -449,7 +449,7 @@ export function WarbowSection(props: {
               </StatusMessage>
             </>
           )}
-          <label className="form-label">
+          <label>
             <input type="checkbox" checked={stealBypass} onChange={(e) => setStealBypass(e.target.checked)} /> Pay the
             bypass burn if the victim already hit the UTC-day steal cap
           </label>
