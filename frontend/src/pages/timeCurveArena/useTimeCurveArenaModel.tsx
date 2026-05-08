@@ -152,6 +152,7 @@ export function useTimeCurveArenaModel() {
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
   const [buyErr, setBuyErr] = useState<string | null>(null);
+  const [pvpErr, setPvpErr] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
   const [displayTick, setDisplayTick] = useState(0);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
@@ -219,6 +220,12 @@ export function useTimeCurveArenaModel() {
     const msg = chainMismatchWriteMessage(chainId);
     if (!msg) return false;
     setBuyErr(msg);
+    return true;
+  }, [chainId]);
+  const failIfWrongChainForPvpWrites = useCallback((): boolean => {
+    const msg = chainMismatchWriteMessage(chainId);
+    if (!msg) return false;
+    setPvpErr(msg);
     return true;
   }, [chainId]);
 
@@ -2535,10 +2542,10 @@ export function useTimeCurveArenaModel() {
   }
 
   async function runWarBowClaimFlag() {
-    setBuyErr(null);
-    if (failIfWrongChainForWrites()) return;
+    setPvpErr(null);
+    if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
-      setBuyErr(
+      setPvpErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
       );
       return;
@@ -2559,21 +2566,21 @@ export function useTimeCurveArenaModel() {
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
     } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
+      setPvpErr(friendlyRevertFromUnknown(e));
     }
   }
 
   async function runWarBowSteal() {
-    setBuyErr(null);
-    if (failIfWrongChainForWrites()) return;
+    setPvpErr(null);
+    if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
-      setBuyErr(
+      setPvpErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
       );
       return;
     }
     if (!tc || !address || !stealVictim) {
-      setBuyErr("Enter a valid victim address.");
+      setPvpErr("Enter a valid victim address.");
       return;
     }
     const need = warbowStealBurnWad + (stealBypass ? warbowBypassBurnWad : 0n);
@@ -2592,15 +2599,15 @@ export function useTimeCurveArenaModel() {
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
     } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
+      setPvpErr(friendlyRevertFromUnknown(e));
     }
   }
 
   async function runWarBowGuard() {
-    setBuyErr(null);
-    if (failIfWrongChainForWrites()) return;
+    setPvpErr(null);
+    if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
-      setBuyErr(
+      setPvpErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
       );
       return;
@@ -2622,15 +2629,15 @@ export function useTimeCurveArenaModel() {
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
     } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
+      setPvpErr(friendlyRevertFromUnknown(e));
     }
   }
 
   async function runWarBowRevenge(stealerArg?: `0x${string}`) {
-    setBuyErr(null);
-    if (failIfWrongChainForWrites()) return;
+    setPvpErr(null);
+    if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
-      setBuyErr(
+      setPvpErr(
         "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
       );
       return;
@@ -2654,7 +2661,7 @@ export function useTimeCurveArenaModel() {
       await waitForTransactionReceipt(wagmiConfig, { hash });
       refetchAll();
     } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
+      setPvpErr(friendlyRevertFromUnknown(e));
     }
   }
 
@@ -2871,6 +2878,7 @@ export function useTimeCurveArenaModel() {
     prizeDist,
     prizePayouts,
     prizesDistributedR,
+    pvpErr,
     refApplied,
     refRegAddr,
     referralEachBps,
@@ -2925,6 +2933,7 @@ export function useTimeCurveArenaModel() {
     setPendingRef,
     setPrizeDist,
     setPrizePayouts,
+    setPvpErr,
     setRefApplied,
     setSpendInputStr,
     setSpendWei,
