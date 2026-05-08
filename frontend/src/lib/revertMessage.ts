@@ -120,8 +120,11 @@ export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpt
   }
   let raw: string;
   if (err instanceof BaseError) {
+    // Prefer viem's user-facing `shortMessage` to avoid duplication: `err.message` already
+    // contains `shortMessage` plus a "Contract Call:" footer with metadata, so concatenating
+    // all three fields produced repeated revert text and a leaked footer in the UI ([#183](https://gitlab.com/PlasticDigits/yieldomega/-/issues/183)).
     const details = "details" in err && typeof err.details === "string" ? err.details : "";
-    raw = [err.shortMessage, details, err.message].filter(Boolean).join(" ");
+    raw = err.shortMessage || details || err.message;
   } else if (err instanceof Error) {
     raw = err.message;
   } else {
