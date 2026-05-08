@@ -2886,6 +2886,14 @@ label:has(input[type="radio"]:disabled) {
 .btn-primary--priority {
   animation: priority-bounce 3.1s var(--motion-bounce) infinite;
 }
+.btn-primary--priority:disabled {
+  /* Cancel the priority-bounce animation while disabled so the button
+     doesn't visually read as "interactable" when the disabled prop is
+     set (e.g. wrong-chain, insufficient bounds). The opacity dim from
+     .btn-primary:disabled and the grayscale from arcade-variant
+     :disabled stay in effect. GitLab #184. */
+  animation: none;
+}
 
 .btn-secondary {
   font: inherit;
