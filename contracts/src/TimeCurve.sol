@@ -199,9 +199,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event PrizesDistributed();
     /// @dev GitLab #133 — zero `PodiumPool` balance at `distributePrizes` (**no** `PrizesDistributed`).
     event PrizesSettledEmptyPodiumPool(address indexed podiumPool);
-    /// @dev GitLab #129 — permissionless repair when BP steals leave `_warbowPodium` stale.
-    event WarbowPodiumRefreshed(address indexed caller, uint256 candidateCount);
-    /// @dev GitLab #129 — owner rebuild + latch before non-empty `distributePrizes`.
+    /// @dev GitLab #129 / #172 — owner sets WarBow podium + latch before non-empty `distributePrizes`.
     event WarbowPodiumFinalized(address indexed owner_, uint256 candidateCount);
     event ReferralApplied(
         address indexed buyer,
@@ -737,14 +735,12 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _addBattlePoints(address a, uint256 v) internal {
         if (v == 0) return;
         battlePoints[a] += v;
-        _updateWarbowPodium(a, battlePoints[a]);
     }
 
     function _subBattlePoints(address a, uint256 v) internal {
         if (v == 0) return;
         uint256 b = battlePoints[a];
         battlePoints[a] = b > v ? b - v : 0;
-        _updateWarbowPodium(a, battlePoints[a]);
     }
 
     function _processDefendedStreak(address buyer, uint256 remainingBeforeBuy, uint256 actualSecondsAdded) internal {
@@ -989,60 +985,6 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
     }
 
-    /// @dev Battle Points can decrease; maintain top-3 with deterministic tie-break (lower address ranks higher when tied).
-    function _updateWarbowPodium(address candidate, uint256 candidateValue) internal {
-        Podium storage p = _warbowPodium;
-        bool found;
-        for (uint8 i; i < 3; ++i) {
-            if (p.winners[i] == candidate) {
-                p.values[i] = candidateValue;
-                found = true;
-                break;
-            }
-        }
-        if (!found && candidateValue > 0) {
-            uint8 minIdx = 0;
-            uint256 minVal = p.values[0];
-            for (uint8 i = 1; i < 3; ++i) {
-                if (p.values[i] < minVal || p.winners[i] == address(0)) {
-                    minVal = p.values[i];
-                    minIdx = i;
-                }
-            }
-            if (p.winners[minIdx] == address(0) || candidateValue > minVal) {
-                p.winners[minIdx] = candidate;
-                p.values[minIdx] = candidateValue;
-            }
-        }
-        _sortPodiumTriplet(p);
-        for (uint8 i; i < 3; ++i) {
-            if (p.values[i] == 0) {
-                p.winners[i] = address(0);
-            }
-        }
-    }
-
-    function _sortPodiumTriplet(Podium storage p) internal {
-        for (uint8 iter; iter < 3; ++iter) {
-            bool swapped;
-            for (uint8 i; i < 2; ++i) {
-                if (_shouldSwapPodium(p, i, i + 1)) {
-                    (p.winners[i], p.winners[i + 1]) = (p.winners[i + 1], p.winners[i]);
-                    (p.values[i], p.values[i + 1]) = (p.values[i + 1], p.values[i]);
-                    swapped = true;
-                }
-            }
-            if (!swapped) break;
-        }
-    }
-
-    function _shouldSwapPodium(Podium storage p, uint8 a, uint8 b) internal view returns (bool) {
-        if (p.values[a] < p.values[b]) return true;
-        if (p.values[a] > p.values[b]) return false;
-        if (p.winners[a] == p.winners[b]) return false;
-        return uint160(p.winners[a]) > uint160(p.winners[b]);
-    }
-
     function _betterRanked(Podium storage p, uint8 a, uint8 b) internal view returns (bool) {
         if (p.values[a] > p.values[b]) return true;
         if (p.values[a] < p.values[b]) return false;
@@ -1054,50 +996,44 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return (victimBp * uint256(drainBps)) / 10_000;
     }
 
-    function _clearWarbowPodium() internal {
-        Podium storage p = _warbowPodium;
-        p.winners[0] = address(0);
-        p.winners[1] = address(0);
-        p.winners[2] = address(0);
-        p.values[0] = 0;
-        p.values[1] = 0;
-        p.values[2] = 0;
-    }
-
-    /// @notice Permissionless podium repair — re-applies `_updateWarbowPodium` for each candidate using **live**
-    ///         `battlePoints`. Pass current podium occupants plus wallets that may have overtaken them (gas ∝ len).
-    /// @dev GitLab #129 — BP can drop via steals; stale slots are not auto-cleared unless addressed. Any `refreshWarbowPodium`
-    ///      sets `warbowPodiumFinalized = false`; the owner must call `finalizeWarbowPodium` again before `distributePrizes`
-    ///      with a non-zero prize pool. **GitLab #149:** reverts after `endSale` so post-end callers cannot clear the
-    ///      owner finalize latch via permissionless refresh (public-mempool grief vs `distributePrizes`).
-    function refreshWarbowPodium(address[] calldata candidates) external nonReentrant {
-        require(!ended, "TimeCurve: ended");
-        warbowPodiumFinalized = false;
-        for (uint256 i; i < candidates.length; ++i) {
-            address c = candidates[i];
-            if (c == address(0)) continue;
-            _updateWarbowPodium(c, battlePoints[c]);
-        }
-        emit WarbowPodiumRefreshed(msg.sender, candidates.length);
-    }
-
-    /// @notice Owner-only: clear WarBow podium and rebuild top-3 from `battlePoints` for every **non-zero** BP address in `candidates`.
-    ///         Sets `warbowPodiumFinalized` for non-empty `distributePrizes` (GitLab #129).
-    /// @dev Pass a superset of BP earners (indexer / offchain). Omitted wallets cannot influence the rebuild.
-    function finalizeWarbowPodium(address[] calldata candidates) external onlyOwner nonReentrant {
+    /// @notice Owner-only: set WarBow podium **after** the sale ends. Values are **live** `battlePoints` reads at call time.
+    /// @dev GitLab #172 — replaces automatic onchain top-3 maintenance + `refreshWarbowPodium`. **Governance trust:**
+    ///      the owner chooses **first / second / third**; the contract only checks **left-packed** addresses (no gaps)
+    ///      and **strictly decreasing** positive battle points along occupied ranks (trailing `address(0)` slots are
+    ///      padding with implicit BP `0`). Tied BP cannot be expressed as two distinct adjacent ranks.
+    function finalizeWarbowPodium(address first, address second, address third) external onlyOwner nonReentrant {
         require(ended, "TimeCurve: not ended");
         require(!prizesDistributed, "TimeCurve: prizes done");
-        _clearWarbowPodium();
-        for (uint256 i; i < candidates.length; ++i) {
-            address c = candidates[i];
-            if (c == address(0)) continue;
-            uint256 bp = battlePoints[c];
-            if (bp > 0) {
-                _updateWarbowPodium(c, bp);
+
+        require(second == address(0) || first != address(0), "TimeCurve: warbow podium gap");
+        require(third == address(0) || second != address(0), "TimeCurve: warbow podium gap");
+
+        uint256 bpFirst = first == address(0) ? 0 : battlePoints[first];
+        uint256 bpSecond = second == address(0) ? 0 : battlePoints[second];
+        uint256 bpThird = third == address(0) ? 0 : battlePoints[third];
+
+        if (third != address(0)) {
+            require(bpFirst > bpSecond && bpSecond > bpThird, "TimeCurve: warbow podium BP ordering");
+        } else if (second != address(0)) {
+            require(bpFirst > bpSecond && bpThird == 0, "TimeCurve: warbow podium BP ordering");
+        } else {
+            if (first == address(0)) {
+                require(bpFirst == 0 && bpSecond == 0 && bpThird == 0, "TimeCurve: warbow podium gap");
+            } else {
+                require(bpFirst > 0, "TimeCurve: warbow podium BP ordering");
             }
         }
+
+        Podium storage p = _warbowPodium;
+        p.winners[0] = first;
+        p.winners[1] = second;
+        p.winners[2] = third;
+        p.values[0] = bpFirst;
+        p.values[1] = bpSecond;
+        p.values[2] = bpThird;
+
         warbowPodiumFinalized = true;
-        emit WarbowPodiumFinalized(msg.sender, candidates.length);
+        emit WarbowPodiumFinalized(msg.sender, 3);
     }
 
     /// @notice If false, reverts `buy` and WarBow CL8Y actions (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y burn.)

@@ -437,23 +437,23 @@ surface onto the first-run page.
 
 <a id="manual-qa-issue-160"></a>
 
-## Protocol — WarBow refresh candidates (GitLab #160)
+## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)
 
-**Goal:** Operators can load indexer-derived **`refreshWarbowPodium`** candidates from **`/timecurve/protocol`** while respecting sale-live vs post-end onchain rules.
+**Goal:** Operators can load indexer-derived **`GET /v1/timecurve/warbow/refresh-candidates`** as a **reference** list on **`/timecurve/protocol`**, then (post-**`endSale`**) the **owner** submits **`finalizeWarbowPodium(first, second, third)`** with live **`battlePoints`** ordering (**#172**).
 
 ### Preconditions
 
-- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.1** and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
+- Full stack or staging with **`VITE_INDEXER_URL`** pointing at an indexer **≥ schema 1.15.1** (**≥ 1.18.0** for responses **without** legacy **`distinct_sql_cap_hit`**) and **`VITE_TIMECURVE_ADDRESS`** on the target chain.
 
 ### Checklist
 
-1. Open **`/timecurve/protocol`**; locate **WarBow podium refresh**.
-2. With sale **live** (`ended == false`): **Load candidates from indexer** succeeds; counts and **`SQL DISTINCT cap hit`** render without errors.
-3. Connect wallet on **build target chain**; **Refresh WarBow podium** submits **`refreshWarbowPodium`** (or surfaces a clear revert / chain gate).
-4. After **`endSale`** (`ended == true`): confirm UI warns and **Refresh WarBow podium** stays disabled; onchain post-end path remains owner **`finalizeWarbowPodium`** (#149).
-5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`sale_ended`**, **`note`** present.
+1. Open **`/timecurve/protocol`**; locate **WarBow podium (governance)**.
+2. **Load reference candidates from indexer** succeeds; merged **`total`** / hint counts render without errors (**no** “SQL DISTINCT cap hit” field on **≥ 1.18.0** indexers).
+3. With sale **live** (`ended == false`): indexer panel still loads reference rows; **finalize** button stays disabled until **`ended`** matches props / onchain reads.
+4. After **`endSale`** (`ended == true`): connect **`TimeCurve.owner()`** on the build target chain; **Submit finalizeWarbowPodium** succeeds with valid left-packed ranks + BP ordering (or surfaces a clear revert / chain gate).
+5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`sale_ended`**, **`note`** present; confirm **`distinct_sql_cap_hit`** is **absent** on **1.18.0+**.
 
-**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** · **`INV-WARBOW-172-*`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
 <a id="manual-qa-issue-92"></a>
 

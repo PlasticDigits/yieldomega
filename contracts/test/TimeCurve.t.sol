@@ -167,40 +167,18 @@ contract TimeCurveTest is Test {
         }
     }
 
-    /// @dev GitLab #129 — default WarBow finalist addresses (`alice/bob/carol/dave`) used in podium tests here.
-    function _warbowCandidateQuartet() internal view returns (address[] memory c) {
-        c = new address[](4);
-        c[0] = alice;
-        c[1] = bob;
-        c[2] = carol;
-        c[3] = dave;
+    function _finalizeWarbowTop1(TimeCurve target, address w) internal {
+        target.finalizeWarbowPodium(w, address(0), address(0));
     }
 
-    function _finalizeWarbowQuartet(TimeCurve target) internal {
-        address[] memory c = _warbowCandidateQuartet();
-        target.finalizeWarbowPodium(c);
+    function _finalizeWarbowTop2(TimeCurve target, address first, address second) internal {
+        target.finalizeWarbowPodium(first, second, address(0));
     }
 
-    function _finalizeWarbowOne(TimeCurve target, address who) internal {
-        address[] memory c = new address[](1);
-        c[0] = who;
-        target.finalizeWarbowPodium(c);
+    function _finalizeWarbowTop3(TimeCurve target, address first, address second, address third) internal {
+        target.finalizeWarbowPodium(first, second, third);
     }
 
-    function _finalizeWarbowPair(TimeCurve target, address a, address b) internal {
-        address[] memory c = new address[](2);
-        c[0] = a;
-        c[1] = b;
-        target.finalizeWarbowPodium(c);
-    }
-
-    function _finalizeWarbowTriple(TimeCurve target, address a, address b2, address c_) internal {
-        address[] memory c = new address[](3);
-        c[0] = a;
-        c[1] = b2;
-        c[2] = c_;
-        target.finalizeWarbowPodium(c);
-    }
 
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
     function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
@@ -1017,7 +995,7 @@ contract TimeCurveTest is Test {
         assertEq(winners[2], bob); // third to last = 3rd
     }
 
-    function test_warbow_ladder_podium_orders_by_battle_points() public {
+    function test_warbow_ladder_battle_points_rank_before_governance_finalize() public {
         tc.startSaleAt(block.timestamp);
 
         for (uint256 i; i < 3; ++i) {
@@ -1042,19 +1020,27 @@ contract TimeCurveTest is Test {
         assertEq(tc.battlePoints(carol), base);
 
         (address[3] memory winners, uint256[3] memory values) = tc.warbowLadderPodium();
-        assertEq(winners[0], alice);
-        assertEq(values[0], 3 * base);
-        assertEq(winners[1], bob);
-        assertEq(values[1], 2 * base);
-        assertEq(winners[2], carol);
-        assertEq(values[2], base);
+        assertEq(winners[0], address(0));
+        assertEq(values[0], 0);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        tc.finalizeWarbowPodium(alice, bob, carol);
+
+        (address[3] memory w2, uint256[3] memory v2) = tc.warbowLadderPodium();
+        assertEq(w2[0], alice);
+        assertEq(v2[0], 3 * base);
+        assertEq(w2[1], bob);
+        assertEq(v2[1], 2 * base);
+        assertEq(w2[2], carol);
+        assertEq(v2[2], base);
         (address[3] memory wCat, uint256[3] memory vCat) = tc.podium(tc.CAT_WARBOW());
-        assertEq(wCat[0], winners[0]);
-        assertEq(vCat[0], values[0]);
+        assertEq(wCat[0], w2[0]);
+        assertEq(vCat[0], v2[0]);
     }
 
-    /// @dev GitLab #129 — after a steal mutates BP, `refreshWarbowPodium` re-sorts the WarBow snapshot from live scores.
-    function test_warbow_podium_steal_then_refresh_updates_top_three_snapshot() public {
+    /// @dev GitLab #172 — steals change BP; onchain WarBow podium stays empty until owner `finalizeWarbowPodium`.
+    function test_warbow_steal_bps_then_governance_finalize_orders_podium() public {
         tc.startSaleAt(block.timestamp);
         _fundWarbowStealers();
 
@@ -1086,12 +1072,36 @@ contract TimeCurveTest is Test {
         vm.prank(dave);
         tc.warbowSteal(carol, false);
 
-        tc.refreshWarbowPodium(_warbowCandidateQuartet());
+        (address[3] memory wPre,) = tc.warbowLadderPodium();
+        assertEq(wPre[0], address(0));
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+        tc.finalizeWarbowPodium(alice, bob, carol);
 
         (address[3] memory w,) = tc.warbowLadderPodium();
         assertEq(w[0], alice);
         assertEq(w[1], bob);
         assertEq(w[2], carol);
+    }
+
+    function test_finalizeWarbowPodium_reverts_on_wrong_bp_order() public {
+        tc.startSaleAt(block.timestamp);
+        _fundAndApprove(alice, 2e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _fundAndApprove(bob, 2e18);
+        vm.prank(bob);
+        tc.buy(1e18);
+
+        vm.warp(tc.deadline() + 1);
+        tc.endSale();
+
+        vm.expectRevert("TimeCurve: warbow podium BP ordering");
+        tc.finalizeWarbowPodium(bob, alice, address(0));
     }
 
     function test_finalizeWarbowPodium_enables_nonzero_pool_distributePrizes() public {
@@ -1106,30 +1116,10 @@ contract TimeCurveTest is Test {
         tc.distributePrizes();
 
         assertFalse(tc.warbowPodiumFinalized());
-        _finalizeWarbowOne(tc, alice);
+        _finalizeWarbowTop1(tc, alice);
 
         tc.distributePrizes();
         assertTrue(tc.warbowPodiumFinalized());
-        assertTrue(tc.prizesDistributed());
-    }
-
-    /// @dev GitLab #149 — `refreshWarbowPodium` is sale-only; post-`endSale` permissionless refresh cannot unlatch owner finalize.
-    function test_refreshWarbowPodium_reverts_after_endSale() public {
-        tc.startSaleAt(block.timestamp);
-        _fundAndApprove(alice, 5e18);
-        vm.prank(alice);
-        tc.buy(1e18);
-        vm.warp(tc.deadline() + 1);
-        tc.endSale();
-
-        _finalizeWarbowOne(tc, alice);
-        assertTrue(tc.warbowPodiumFinalized());
-
-        vm.expectRevert("TimeCurve: ended");
-        tc.refreshWarbowPodium(_warbowCandidateQuartet());
-
-        assertTrue(tc.warbowPodiumFinalized());
-        tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
     }
 
@@ -1140,7 +1130,7 @@ contract TimeCurveTest is Test {
         tc.buy(1e18);
 
         vm.expectRevert("TimeCurve: not ended");
-        _finalizeWarbowQuartet(tc);
+        _finalizeWarbowTop1(tc, alice);
     }
 
     function _fundWarbowStealers() internal {
@@ -1515,7 +1505,7 @@ contract TimeCurveTest is Test {
         (address[3] memory w,) = tc.podium(tc.CAT_LAST_BUYERS());
         address winner = w[0];
         uint256 balBefore = reserve.balanceOf(winner);
-        _finalizeWarbowQuartet(tc);
+        _finalizeWarbowTop1(tc, alice);
         tc.distributePrizes();
         assertGt(reserve.balanceOf(winner), balBefore);
     }
@@ -1725,7 +1715,7 @@ contract TimeCurveTest is Test {
         (address[3] memory lb,) = t.podium(t.CAT_LAST_BUYERS());
         uint256 lastWinnerBalBefore = reserve.balanceOf(lb[0]);
 
-        _finalizeWarbowQuartet(t);
+        _finalizeWarbowTop3(t, alice, bob, address(0));
         t.distributePrizes();
 
         assertTrue(t.prizesDistributed());
@@ -2054,7 +2044,7 @@ contract TimeCurveTest is Test {
 
         uint256 vaultBefore = reserve.balanceOf(address(podiumPool));
         assertGt(vaultBefore, 0);
-        _finalizeWarbowQuartet(tc);
+        _finalizeWarbowTop1(tc, alice);
         tc.distributePrizes();
         assertTrue(tc.prizesDistributed());
         assertLt(reserve.balanceOf(address(podiumPool)), vaultBefore);
@@ -2067,6 +2057,9 @@ contract TimeCurveTest is Test {
         _fundAndApprove(bob, 50e18);
         _fundAndApprove(carol, 50e18);
         _fundAndApprove(dave, 50e18);
+        vm.prank(alice);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(tc, alice);
         vm.prank(alice);
         tc.buy(1e18);
         _warpPastBuyCooldown(tc, alice);
@@ -2089,11 +2082,13 @@ contract TimeCurveTest is Test {
         uint256 expectDefSlice = (prizePool * 20) / 100;
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
-        _finalizeWarbowQuartet(tc);
+        _finalizeWarbowTop2(tc, alice, bob);
         tc.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tc.prizesDistributed());
-        assertEq(reserve.balanceOf(protocolSink) - sinkBefore, expectDefSlice);
+        // Defended slice is empty (100% to sink). WarBow may also forward the 3rd podium sub-share when only two
+        // ranked winners are set — GitLab #172 governance podium.
+        assertGe(reserve.balanceOf(protocolSink) - sinkBefore, expectDefSlice);
     }
 
     /// @dev GitLab #116 — timer-at-cap curve: two buyers, **full** CL8Y from `podiumPool` to winners + `protocolSink` (no stranded balance).
@@ -2116,7 +2111,7 @@ contract TimeCurveTest is Test {
         uint256 bobBefore = reserve.balanceOf(bob);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
-        _finalizeWarbowPair(tCap, alice, bob);
+        _finalizeWarbowTop1(tCap, alice);
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
@@ -2154,7 +2149,7 @@ contract TimeCurveTest is Test {
         uint256 carolBefore = reserve.balanceOf(carol);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
-        _finalizeWarbowTriple(tCap, alice, bob, carol);
+        _finalizeWarbowTop1(tCap, alice);
         tCap.distributePrizes();
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
         assertTrue(tCap.prizesDistributed());
@@ -2188,7 +2183,7 @@ contract TimeCurveTest is Test {
         uint256 aliceBefore = reserve.balanceOf(alice);
         uint256 sinkBefore = reserve.balanceOf(protocolSink);
 
-        _finalizeWarbowOne(tc, alice);
+        _finalizeWarbowTop1(tc, alice);
         tc.distributePrizes();
 
         assertEq(reserve.balanceOf(address(podiumPool)), 0);
@@ -2301,7 +2296,7 @@ contract TimeCurveTest is Test {
         (address[3] memory dw,) = tc.podium(tc.CAT_DEFENDED_STREAK());
         assertEq(dw[0], address(0));
 
-        _finalizeWarbowPair(tc, alice, bob);
+        _finalizeWarbowTop1(tc, alice);
         vm.expectRevert("TimeCurve: zero podium residual recipient");
         tc.distributePrizes();
         assertFalse(tc.prizesDistributed());

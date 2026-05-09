@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.17.0";
+const SCHEMA_VERSION: &str = "1.18.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -59,9 +59,6 @@ fn default_refresh_candidates_limit() -> i64 {
 fn clamp_refresh_candidates_limit(l: i64) -> i64 {
     l.clamp(1, 500)
 }
-
-/// Upper bound on DISTINCT wallet rows pulled from Postgres before merging RPC podium hints ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).
-const REFRESH_CANDIDATES_DISTINCT_CAP: i64 = 10_000;
 
 #[derive(Debug, serde::Deserialize)]
 pub struct RefreshCandidatesParams {
@@ -971,7 +968,8 @@ async fn timecurve_warbow_pending_revenge(
     res
 }
 
-/// Offchain superset of wallets to feed `refreshWarbowPodium(candidates)` while the sale is live ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).
+/// Deduped wallets that participated in WarBow or have positive indexed BP — operator reference for post-sale
+/// governance `finalizeWarbowPodium` ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172); supersedes refresh calldata #160).
 async fn timecurve_warbow_refresh_candidates(
     State(state): State<AppState>,
     Query(p): Query<RefreshCandidatesParams>,
@@ -1001,10 +999,8 @@ async fn timecurve_warbow_refresh_candidates(
            ) u
            WHERE TRIM(addr) <> ''
              AND LOWER(TRIM(addr)) <> '0x0000000000000000000000000000000000000000'
-           ORDER BY addr
-           LIMIT $1"#,
+           ORDER BY addr"#,
     )
-    .bind(REFRESH_CANDIDATES_DISTINCT_CAP)
     .fetch_all(&state.pool)
     .await
     {
@@ -1013,8 +1009,6 @@ async fn timecurve_warbow_refresh_candidates(
             return internal_db_error_response("GET /v1/timecurve/warbow/refresh-candidates", e);
         }
     };
-
-    let distinct_sql_cap_hit = sql_addrs.len() as i64 >= REFRESH_CANDIDATES_DISTINCT_CAP;
 
     let guard = state.chain_timer.read().await;
     let sale_ended = guard.as_ref().is_some_and(|h| h.sale_ended);
@@ -1068,9 +1062,8 @@ async fn timecurve_warbow_refresh_candidates(
         "total": total,
         "next_offset": next_offset,
         "podium_warbow_hint_count": podium_hint_count,
-        "distinct_sql_cap_hit": distinct_sql_cap_hit,
         "sale_ended": sale_ended,
-        "note": "Sale-live hook only: onchain `refreshWarbowPodium` reverts with `TimeCurve: ended` after `endSale` (GitLab #149). Post-end operators must call owner `finalizeWarbowPodium`. While `sale_ended` is false and chain-timer is configured, candidates prepend head-indexer WarBow `podium` RPC hints; after sale end (or with no timer), hints are omitted (GitLab #170). Then DISTINCT indexed WarBow participants plus buyers with `battle_points_after > 0`. Rows are alphabetically ordered after hints; `distinct_sql_cap_hit` means the SQL branch hit its DISTINCT cap.",
+        "note": "Deduped wallets from indexed WarBow tables plus buyers with battle_points_after > 0 — unbounded DISTINCT list for operator tooling (GitLab #172). Head WarBow `podium` RPC hints prepend only while `sale_ended` is false when chain-timer is configured (GitLab #170). Onchain WarBow podium is set post-end by owner `finalizeWarbowPodium(first, second, third)` with strict BP ordering.",
     });
 
     let mut res = Json(body).into_response();

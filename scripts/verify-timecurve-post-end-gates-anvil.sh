@@ -159,8 +159,9 @@ expect_revert "distributePrizes" "TimeCurve: reserve podium payouts disabled" \
 
 echo "=== Row 4: setReservePodiumPayoutsEnabled(true) -> finalizeWarbowPodium (owner) -> distributePrizes succeeds (#129) ==="
 cast send "$TC" "setReservePodiumPayoutsEnabled(bool)" true --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
-FIN_WB="[$ADDR_ALICE,$ADDR_BOB,$ADDR_CAROL,$ADDR_DEPLOYER]"
-cast send "$TC" "finalizeWarbowPodium(address[])" "$FIN_WB" --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
+cast send "$TC" "finalizeWarbowPodium(address,address,address)" "$ADDR_ALICE" \
+  "0x0000000000000000000000000000000000000000" "0x0000000000000000000000000000000000000000" \
+  --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
 cast send "$TC" "distributePrizes()" --private-key "$PK_DEPLOYER" --rpc-url "$RPC_URL" >/dev/null
 echo "PASS: distributePrizes succeeded with gate on"
 

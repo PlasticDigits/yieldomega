@@ -15,7 +15,7 @@ interface ITimeCurve {
     function endSale() external;
     function setCharmRedemptionEnabled(bool enabled) external;
     function setReservePodiumPayoutsEnabled(bool enabled) external;
-    function finalizeWarbowPodium(address[] calldata candidates) external;
+    function finalizeWarbowPodium(address first, address second, address third) external;
     function redeemCharms() external;
     function distributePrizes() external;
     function deadline() external view returns (uint256);
@@ -159,12 +159,8 @@ contract SimulateAnvilRichStatePart2 is Script {
         _claim(PK_DEPLOYER, tc);
 
         vm.startBroadcast(PK_DEPLOYER);
-        address[] memory warbowFinalize = new address[](4);
-        warbowFinalize[0] = alice;
-        warbowFinalize[1] = bob;
-        warbowFinalize[2] = carol;
-        warbowFinalize[3] = deployer;
-        ITimeCurve(tc).finalizeWarbowPodium(warbowFinalize);
+        // One buy each ⇒ identical base BP — governance finalizes a single first-place holder (GitLab #172).
+        ITimeCurve(tc).finalizeWarbowPodium(alice, address(0), address(0));
         ITimeCurve(tc).distributePrizes();
         vm.stopBroadcast();
 
