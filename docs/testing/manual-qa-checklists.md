@@ -475,6 +475,22 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views — #189](../frontend/timecurve-views.md#arena-warbow-chasing-pack-scroll-gitlab-189) · [invariants — **`INV-FRONTEND-189-WARBOW-CHASING-PACK`**](invariants-and-business-logic.md#timecurve-arena-warbow-chasing-pack-gitlab-189) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
+<a id="manual-qa-issue-188"></a>
+
+## Arena — post-timer settlement row visible (GitLab #188)
+
+**Goal:** When the **round timer is past `deadline`** but **`TimeCurve.ended()`** is still **false**, **`/timecurve/arena`** shows **End sale**, **Redeem charms**, and **Distribute prizes** in the status panel — not only the live standings grid — so the **permissionless `endSale`** path is obvious.
+
+### Checklist
+
+1. Repro a chain state with **`saleExpiredAwaitingEnd`** (e.g. local Anvil after **`anvil_rich_state`** warp + **`endSale` not yet called**, or staging snapshot).
+2. Open **`/timecurve/arena`**; confirm the panel title/badge reflects **settlement** (e.g. **Round over — settle onchain** / **End sale first**), not only **Standings and prize chase**.
+3. **End sale** button is **present** and **enabled** (subject to wrong-network gate).
+4. **Redeem charms** and **Distribute prizes** are **visible** and **disabled** with helper copy until **`ended`** reads **true** after **End sale**.
+5. After **`endSale`** confirms, **End sale** disappears; **Redeem** enables per existing gates (**`charmRedemptionEnabled`**, weight, etc.).
+
+**Doc map:** [timecurve-views — #188](../frontend/timecurve-views.md#arena-settlement-panel-timer-expired-gitlab-188) · [invariants — **`INV-FRONTEND-188-ARENA-SETTLEMENT`**](invariants-and-business-logic.md#timecurve-arena-settlement-panel-timer-expired-gitlab-188) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-160"></a>
 
 ## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)
