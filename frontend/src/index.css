@@ -1815,6 +1815,14 @@ label:has(input[type="radio"]:disabled) {
   font-size: 0.85rem;
 }
 
+/* Arena WarBow — Chasing pack: full indexer ladder (7+ rows); scroll instead of clipping ([GitLab #189](https://gitlab.com/PlasticDigits/yieldomega/-/issues/189)). */
+.warbow-chasing-pack-scroll {
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  margin-right: -0.2rem;
+}
+
 .arcade-banner {
   display: flex;
   flex-wrap: wrap;

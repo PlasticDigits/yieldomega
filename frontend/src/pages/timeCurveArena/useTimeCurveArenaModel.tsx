@@ -134,6 +134,7 @@ import {
 } from "./arenaPageHelpers";
 import { TimeCurveArenaWalletMono } from "./TimeCurveArenaWalletMono";
 import type { WarbowStealCandidate } from "./WarbowHeroActions";
+import { warbowLeaderboardForChasingPackDisplay } from "./warbowChasingPackLeaderboard";
 
 const WAD_ONE_CHARM = 10n ** 18n;
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
@@ -1487,16 +1488,20 @@ export function useTimeCurveArenaModel() {
     }));
   }, [warbowLadderPodiumR, formatWallet, address]);
 
-  const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
-    key: `warbow-indexer-${row.buyer}`,
-    rank: index + 1,
-    label: <TimeCurveArenaWalletMono addr={row.buyer} formatWallet={formatWallet} />,
-    meta: sameAddress(row.buyer, address)
-      ? "Connected wallet"
-      : `block ${formatLocaleInteger(row.block_number)}`,
-    value: `${formatLocaleInteger(BigInt(row.battle_points_after))} BP`,
-    highlight: sameAddress(row.buyer, address),
-  }));
+  const warbowLeaderboardRows: RankingRow[] = useMemo(
+    () =>
+      warbowLeaderboardForChasingPackDisplay(warbowLb).map((row, index) => ({
+        key: `warbow-indexer-${row.buyer}`,
+        rank: index + 1,
+        label: <TimeCurveArenaWalletMono addr={row.buyer} formatWallet={formatWallet} />,
+        meta: sameAddress(row.buyer, address)
+          ? "Connected wallet"
+          : `block ${formatLocaleInteger(row.block_number)}`,
+        value: `${formatLocaleInteger(BigInt(row.battle_points_after))} BP`,
+        highlight: sameAddress(row.buyer, address),
+      })),
+    [warbowLb, formatWallet, address],
+  );
   const warbowStealCandidates: WarbowStealCandidate[] = useMemo(() => {
     const candidates = new Map<string, WarbowStealCandidate>();
     const viewerBp = viewerBattlePoints;
