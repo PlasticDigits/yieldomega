@@ -86,7 +86,7 @@ export const timeCurveWriteAbi = parseAbi([
   "function warbowSteal(address victim, bool payBypassBurn)",
   "function warbowRevenge(address stealer)",
   "function warbowActivateGuard()",
-  "function refreshWarbowPodium(address[] candidates)",
+  "function finalizeWarbowPodium(address first, address second, address third)",
   "function endSale()",
   "function redeemCharms()",
   "function distributePrizes()",

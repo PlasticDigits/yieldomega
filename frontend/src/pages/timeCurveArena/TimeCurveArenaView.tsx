@@ -86,8 +86,8 @@ export function TimeCurveArenaView() {
     podiumPoolBal, podiumReads, podiumSpotlights, prefersReducedMotion, primaryButtonMotion,
     prizeDist, prizePayouts, prizesDistributedR, pvpErr, quotedBandMaxPayInWei, quotedBandMinPayInWei,
     quotedLaunchPerCharmPayInWei, quotedPayInWei, quotedPerCharmPayInWei, refApplied,
-    rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, revengeIndexerConfigured, refreshWarBowSnapshotSuggested,
-    runVoid, runRefreshWarBowPodiumSnapshot, runWarBowClaimFlag, runWarBowGuard,
+    rateBoardKumbayaWarning, referralRegistryOn, revengeDeadlineSec, revengeIndexerConfigured,
+    runVoid, runWarBowClaimFlag, runWarBowGuard,
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
     secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setPlantWarBowFlag, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
@@ -1332,8 +1332,6 @@ export function TimeCurveArenaView() {
         warbowLeaderboardRows={warbowLeaderboardRows}
         warbowFeed={warbowFeed}
         address={address}
-        refreshWarBowSnapshotSuggested={refreshWarBowSnapshotSuggested}
-        runRefreshWarBowPodiumSnapshot={runRefreshWarBowPodiumSnapshot}
         buildWarbowNarrative={buildWarbowNarrativeForFeed}
         stealBypass={stealBypass}
         setStealBypass={setStealBypass}

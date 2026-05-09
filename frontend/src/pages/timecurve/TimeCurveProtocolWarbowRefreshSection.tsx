@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useChainId, useReadContracts, useWriteContract } from "wagmi";
-import { getAddress, type Hex } from "viem";
+import { getAddress, isAddress, type Hex, zeroAddress } from "viem";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
@@ -11,7 +11,6 @@ import type { HexAddress } from "@/lib/addresses";
 import { fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
-import { warBowRefreshCandidateAddresses } from "@/lib/timeCurveWarbowSnapshotClaim";
 import { wagmiConfig } from "@/wagmi-config";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
@@ -38,9 +37,20 @@ function checksumCandidates(lowerOrMixed: readonly string[]): Hex[] {
   return out;
 }
 
+function parseSlot(s: string): `0x${string}` {
+  const t = s.trim();
+  if (!t) {
+    return zeroAddress;
+  }
+  if (!isAddress(t)) {
+    throw new Error("Invalid address");
+  }
+  return getAddress(t as HexAddress);
+}
+
 type Props = {
   timeCurve: HexAddress;
-  /** From live `ended()` read — refresh is onchain-forbidden after sale end (#149). */
+  /** From live `ended()` read — finalize is post-sale only. */
   saleEnded: boolean;
   refetchParentReads: () => unknown;
 };
@@ -56,23 +66,35 @@ export function TimeCurveProtocolWarbowRefreshSection({
   const [idxExtras, setIdxExtras] = useState<{
     apiTotal: number;
     podium_warbow_hint_count: number;
-    distinct_sql_cap_hit: boolean;
   } | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [txErr, setTxErr] = useState<string | null>(null);
   const [loadingIdx, setLoadingIdx] = useState(false);
+  const [slot1, setSlot1] = useState("");
+  const [slot2, setSlot2] = useState("");
+  const [slot3, setSlot3] = useState("");
 
   const wbReads = useReadContracts({
     contracts: [
       {
         address: timeCurve,
         abi: timeCurveReadAbi,
-        functionName: "warbowLadderPodium",
+        functionName: "warbowPodiumFinalized",
       },
       {
         address: timeCurve,
         abi: timeCurveReadAbi,
-        functionName: "warbowPodiumFinalized",
+        functionName: "ended",
+      },
+      {
+        address: timeCurve,
+        abi: timeCurveReadAbi,
+        functionName: "prizesDistributed",
+      },
+      {
+        address: timeCurve,
+        abi: timeCurveReadAbi,
+        functionName: "owner",
       },
     ],
     query: { enabled: Boolean(timeCurve) },
@@ -97,13 +119,12 @@ export function TimeCurveProtocolWarbowRefreshSection({
       let guard = 0;
       let apiTotal = 0;
       let podiumHintCount = 0;
-      let capHit = false;
       while (guard < 50) {
         guard += 1;
         const chunk = await fetchTimecurveWarbowRefreshCandidates(500, off);
         if (!chunk) {
           setLoadErr(
-            "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.15.1).",
+            "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.18.0).",
           );
           setLoadedCandidates([]);
           setIdxExtras(null);
@@ -113,7 +134,6 @@ export function TimeCurveProtocolWarbowRefreshSection({
           apiTotal = chunk.total;
           podiumHintCount = chunk.podium_warbow_hint_count;
         }
-        capHit = capHit || chunk.distinct_sql_cap_hit;
         if (Array.isArray(chunk.candidates)) {
           for (const c of chunk.candidates) {
             pages.push(c);
@@ -129,7 +149,6 @@ export function TimeCurveProtocolWarbowRefreshSection({
       setIdxExtras({
         apiTotal,
         podium_warbow_hint_count: podiumHintCount,
-        distinct_sql_cap_hit: capHit,
       });
     } catch (e) {
       setLoadErr(friendlyRevertFromUnknown(e));
@@ -140,35 +159,32 @@ export function TimeCurveProtocolWarbowRefreshSection({
     }
   };
 
-  const runRefresh = async () => {
+  const runFinalize = async () => {
     setTxErr(null);
-    if (saleEnded) {
-      setTxErr("Sale has ended — `refreshWarbowPodium` reverts onchain (GitLab #149). Use owner `finalizeWarbowPodium` after `endSale`.");
-      return;
-    }
     const cm = chainMismatchWriteMessage(chainId);
     if (cm) {
       setTxErr(cm);
       return;
     }
     if (!address) {
-      setTxErr("Connect a wallet to submit the refresh transaction.");
+      setTxErr("Connect the owner wallet to finalize.");
       return;
     }
-    const pr = wbReads.data;
-    if (!pr || pr[0]?.status !== "success" || pr[0].result === undefined) {
-      setTxErr("WarBow ladder snapshot is not loaded yet.");
+    if (!saleEnded) {
+      setTxErr("Sale must be ended before `finalizeWarbowPodium` is allowed onchain.");
       return;
     }
-    if (loadedCandidates.length === 0) {
-      setTxErr("Load candidates from the indexer first.");
+    let first: `0x${string}`;
+    let second: `0x${string}`;
+    let third: `0x${string}`;
+    try {
+      first = parseSlot(slot1);
+      second = parseSlot(slot2);
+      third = parseSlot(slot3);
+    } catch {
+      setTxErr("Enter valid 0x addresses (or leave trailing slots blank for zero address).");
       return;
     }
-    const [podiumWallets] = pr[0].result as readonly [readonly `0x${string}`[], readonly bigint[]];
-    const calldata = warBowRefreshCandidateAddresses({
-      viewer: address as `0x${string}`,
-      podiumWallets: [...loadedCandidates, ...podiumWallets],
-    });
     try {
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
@@ -177,10 +193,10 @@ export function TimeCurveProtocolWarbowRefreshSection({
         chainId,
         address: timeCurve,
         abi: timeCurveWriteAbi,
-        functionName: "refreshWarbowPodium",
-        args: [calldata],
+        functionName: "finalizeWarbowPodium",
+        args: [first, second, third],
         onEstimateRevert: "rethrow",
-        softCapGas: 12_000_000n,
+        softCapGas: 800_000n,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       void refetchParentReads();
@@ -191,21 +207,33 @@ export function TimeCurveProtocolWarbowRefreshSection({
   };
 
   const warbowPodiumFinalized =
-    wbReads.data?.[1]?.status === "success" ? (wbReads.data[1]!.result as boolean) : undefined;
+    wbReads.data?.[0]?.status === "success" ? (wbReads.data[0]!.result as boolean) : undefined;
+  const onchainEnded = wbReads.data?.[1]?.status === "success" ? (wbReads.data[1]!.result as boolean) : undefined;
+  const prizesDistributed =
+    wbReads.data?.[2]?.status === "success" ? (wbReads.data[2]!.result as boolean) : undefined;
+  const tcOwner =
+    wbReads.data?.[3]?.status === "success" ? (wbReads.data[3]!.result as `0x${string}`) : undefined;
+  const isOwner =
+    address && tcOwner && address.toLowerCase() === tcOwner.toLowerCase();
 
   return (
     <div className="timecurve-protocol-warbow-refresh" data-testid="timecurve-protocol-warbow-refresh">
       <p className="text-muted" style={{ marginTop: 0 }}>
-        While the sale is live, anyone may repair a stale WarBow ladder snapshot with{" "}
-        <span className="mono">refreshWarbowPodium</span> (GitLab #129). This panel loads a deduped
-        candidate superset from the indexer, merges your connected wallet and the onchain{" "}
-        <span className="mono">warbowLadderPodium</span> row, then submits the transaction. After{" "}
-        <span className="mono">endSale</span>, this path reverts — use owner{" "}
-        <span className="mono">finalizeWarbowPodium</span> instead (#149 / #160).
+        WarBow ladder payouts are no longer maintained automatically onchain. After{" "}
+        <span className="mono">endSale</span>, the owner calls{" "}
+        <span className="mono">finalizeWarbowPodium(first, second, third)</span> with live{" "}
+        <span className="mono">battlePoints</span> strictly decreasing along occupied ranks (GitLab #172). Use the
+        indexer list below as a reference set while choosing governance ordering.
       </p>
       <dl className="kv" style={{ marginBottom: "1rem" }}>
         <dt>warbowPodiumFinalized (read)</dt>
         <dd>{warbowPodiumFinalized === undefined ? "—" : String(warbowPodiumFinalized)}</dd>
+        <dt>ended / prizesDistributed</dt>
+        <dd>
+          {onchainEnded === undefined || prizesDistributed === undefined
+            ? "—"
+            : `${String(onchainEnded)} / ${String(prizesDistributed)}`}
+        </dd>
         <dt>Indexer candidates loaded (checksummed)</dt>
         <dd>{loadedCandidates.length ? String(loadedCandidates.length) : "—"}</dd>
         {idxExtras && (
@@ -214,15 +242,12 @@ export function TimeCurveProtocolWarbowRefreshSection({
             <dd>{String(idxExtras.apiTotal)}</dd>
             <dt>Head WarBow hints merged</dt>
             <dd>{String(idxExtras.podium_warbow_hint_count)}</dd>
-            <dt>SQL DISTINCT cap hit</dt>
-            <dd>{String(idxExtras.distinct_sql_cap_hit)}</dd>
           </>
         )}
       </dl>
-      {saleEnded && (
-        <StatusMessage variant="placeholder">
-          Sale ended — permissionless refresh is disabled onchain. Operators finalize WarBow for prize
-          distribution via <span className="mono">finalizeWarbowPodium</span>.
+      {!isOwner && address && tcOwner && (
+        <StatusMessage variant="muted">
+          Connected wallet is not <span className="mono">TimeCurve.owner()</span> — finalize requires the owner.
         </StatusMessage>
       )}
       {loadErr && <StatusMessage variant="error">{loadErr}</StatusMessage>}
@@ -230,16 +255,58 @@ export function TimeCurveProtocolWarbowRefreshSection({
       <ChainMismatchWriteBarrier testId="timecurve-protocol-warbow-refresh-chain-gate">
         <div className="cluster-row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
           <button type="button" className="yo-btn-secondary" disabled={loadingIdx} onClick={() => void loadFromIndexer()}>
-            {loadingIdx ? "Loading…" : "Load candidates from indexer"}
+            {loadingIdx ? "Loading…" : "Load reference candidates from indexer"}
           </button>
-          <button
-            type="button"
-            className="yo-btn"
-            disabled={saleEnded || isWriting || loadedCandidates.length === 0}
-            onClick={() => void runRefresh()}
-          >
-            {isWriting ? "Submitting…" : "Refresh WarBow podium"}
-          </button>
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <h4 className="text-muted" style={{ marginTop: 0 }}>
+            Owner finalize (post-sale)
+          </h4>
+          <div className="cluster-col" style={{ gap: "0.5rem", maxWidth: "42rem" }}>
+            <label className="text-muted">
+              First (highest BP)
+              <input
+                className="yo-input"
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                value={slot1}
+                onChange={(e) => setSlot1(e.target.value)}
+                placeholder="0x…"
+                spellCheck={false}
+              />
+            </label>
+            <label className="text-muted">
+              Second
+              <input
+                className="yo-input"
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                value={slot2}
+                onChange={(e) => setSlot2(e.target.value)}
+                placeholder="0x… or blank"
+                spellCheck={false}
+              />
+            </label>
+            <label className="text-muted">
+              Third
+              <input
+                className="yo-input"
+                style={{ width: "100%", marginTop: "0.25rem" }}
+                value={slot3}
+                onChange={(e) => setSlot3(e.target.value)}
+                placeholder="0x… or blank"
+                spellCheck={false}
+              />
+            </label>
+            <button
+              type="button"
+              className="yo-btn"
+              disabled={
+                !saleEnded || !isOwner || isWriting || prizesDistributed === true || onchainEnded === false
+              }
+              onClick={() => void runFinalize()}
+            >
+              {isWriting ? "Submitting…" : "Submit finalizeWarbowPodium"}
+            </button>
+          </div>
         </div>
       </ChainMismatchWriteBarrier>
     </div>

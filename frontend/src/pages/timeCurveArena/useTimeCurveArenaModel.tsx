@@ -64,7 +64,6 @@ import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
-import { viewerShouldSuggestWarBowPodiumRefresh, warBowRefreshCandidateAddresses } from "@/lib/timeCurveWarbowSnapshotClaim";
 import {
   buildBuyBattlePointBreakdown,
   buildBuyFeedNarrative,
@@ -1460,26 +1459,6 @@ export function useTimeCurveArenaModel() {
     }));
   }, [warbowLadderPodiumR, formatWallet, address]);
 
-  const refreshWarBowSnapshotSuggested = useMemo(() => {
-    if (!address || !isAddress(address)) {
-      return false;
-    }
-    if (battlePtsR?.status !== "success" || warbowLadderPodiumR?.status !== "success") {
-      return false;
-    }
-    const [wallets, values] = warbowLadderPodiumR.result as readonly [
-      readonly `0x${string}`[],
-      readonly bigint[],
-    ];
-    return viewerShouldSuggestWarBowPodiumRefresh({
-      viewer: address as `0x${string}`,
-      viewerBp: battlePtsR.result as bigint,
-      podiumWallets: wallets,
-      podiumValues: values,
-      saleEnded,
-    });
-  }, [address, battlePtsR, warbowLadderPodiumR, saleEnded]);
-
   const warbowLeaderboardRows: RankingRow[] = (warbowLb ?? []).slice(0, 6).map((row, index) => ({
     key: `warbow-indexer-${row.buyer}`,
     rank: index + 1,
@@ -1644,7 +1623,7 @@ export function useTimeCurveArenaModel() {
       sameAddress(address, timeCurveOwnerAddr) &&
       !podiumFinalized
     ) {
-      return "Owner: call finalizeWarbowPodium(candidates) before distributePrizes when reserve podium payouts are on and the WarBow prize slice may be non-zero (GitLab #129). Empty pool paths still no-op.";
+      return "Owner: call finalizeWarbowPodium(first, second, third) before distributePrizes when reserve podium payouts are on and the WarBow prize slice may be non-zero (GitLab #129 / #172). Empty pool paths still no-op.";
     }
     return "May return without changing state if the podium pool balance is too small; retry after fees accrue.";
   }, [
@@ -2665,43 +2644,6 @@ export function useTimeCurveArenaModel() {
     }
   }
 
-  async function runRefreshWarBowPodiumSnapshot() {
-    setBuyErr(null);
-    if (failIfWrongChainForWrites()) {
-      return;
-    }
-    if (!tc || !address) {
-      return;
-    }
-    if (warbowLadderPodiumR?.status !== "success") {
-      setBuyErr("WarBow ladder snapshot is not loaded yet.");
-      return;
-    }
-    const [wallets] = warbowLadderPodiumR.result as readonly [readonly `0x${string}`[], readonly bigint[]];
-    const candidates = warBowRefreshCandidateAddresses({
-      viewer: address as `0x${string}`,
-      podiumWallets: wallets,
-    });
-    try {
-      const { hash } = await writeContractWithGasBuffer({
-        wagmiConfig,
-        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-        account: address as `0x${string}`,
-        chainId,
-        address: tc,
-        abi: timeCurveWriteAbi,
-        functionName: "refreshWarbowPodium",
-        args: [candidates],
-        onEstimateRevert: "rethrow",
-        softCapGas: 12_000_000n,
-      });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
-    } catch (e) {
-      setBuyErr(friendlyRevertFromUnknown(e));
-    }
-  }
-
   async function runVoid(fn: "endSale" | "redeemCharms" | "distributePrizes") {
     setBuyErr(null);
     if (failIfWrongChainForWrites()) return;
@@ -2889,11 +2831,9 @@ export function useTimeCurveArenaModel() {
     refetchCoreTc,
     refetchUserSale,
     refetchWarbowPolicy,
-    refreshWarBowSnapshotSuggested,
     revengeDeadlineSec,
     revengeIndexerConfigured: Boolean(indexerBaseUrl()),
     reservePodiumPayoutsEnabledR,
-    runRefreshWarBowPodiumSnapshot,
     runVoid,
     runWarBowClaimFlag,
     runWarBowGuard,

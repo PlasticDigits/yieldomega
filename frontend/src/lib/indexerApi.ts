@@ -193,7 +193,7 @@ export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
   );
 }
 
-/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
+/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)); DISTINCT list unbounded from 1.18.0 ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)). */
 export type WarbowRefreshCandidatesResponse = {
   candidates: string[];
   limit: number;
@@ -201,14 +201,14 @@ export type WarbowRefreshCandidatesResponse = {
   total: number;
   next_offset: number | null;
   podium_warbow_hint_count: number;
-  distinct_sql_cap_hit: boolean;
   /** Head chain-timer reports sale ended — indexer omits WarBow podium hints ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
   sale_ended: boolean;
   note?: string;
 };
 
 /**
- * Superset addresses for `refreshWarbowPodium` while the sale is live (indexer + head WarBow podium hint).
+ * Deduped wallet list for operator tooling: indexer WarBow tables + buys with `battle_points_after > 0`, optionally
+ * merged with head WarBow podium hints while `!sale_ended` ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)).
  * Paginate with `offset` when `next_offset` is set. Uses `VITE_INDEXER_URL`.
  */
 export async function fetchTimecurveWarbowRefreshCandidates(

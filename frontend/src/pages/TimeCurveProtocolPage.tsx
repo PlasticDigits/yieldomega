@@ -333,10 +333,10 @@ export function TimeCurveProtocolPage() {
       </PageSection>
 
       <PageSection
-        title="WarBow podium refresh"
-        badgeLabel="indexer + wallet"
+        title="WarBow podium (governance)"
+        badgeLabel="indexer + owner"
         badgeTone="info"
-        lede="Load deduped `refreshWarbowPodium` candidates from the indexer while the sale is live. Requires VITE_INDEXER_URL and a connected wallet on the build target chain."
+        lede="After `endSale`, the owner calls `finalizeWarbowPodium(first, second, third)` with live `battlePoints` ordering (GitLab #172). Load indexer reference candidates here; requires `VITE_INDEXER_URL` and a connected wallet on the build target chain for writes."
       >
         <TimeCurveProtocolWarbowRefreshSection
           timeCurve={tc}
