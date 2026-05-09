@@ -473,7 +473,27 @@ surface onto the first-run page.
 4. After **`endSale`** (`ended == true`): connect **`TimeCurve.owner()`** on the build target chain; **Submit finalizeWarbowPodium** succeeds with valid left-packed ranks + BP ordering (or surfaces a clear revert / chain gate).
 5. Optional: `curl` **`GET …/v1/timecurve/warbow/refresh-candidates?limit=10&offset=0`** — JSON **`candidates`** array, **`total`**, **`sale_ended`**, **`note`** present; confirm **`distinct_sql_cap_hit`** is **absent** on **1.18.0+**.
 
-**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** · **`INV-WARBOW-172-*`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+**Doc map:** [timecurve-views — protocol row](../frontend/timecurve-views.md) · [timecurve-views — #174 guard](../frontend/timecurve-views.md#warbow-refresh-candidates-ui-pagination-guard-gitlab-174) · [indexer design — agents](../indexer/design.md) · **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** · **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** · **`INV-FRONTEND-174-WARBOW-REFRESH-GUARD`** · **`INV-WARBOW-172-*`** ([invariants §149 / §170](invariants-and-business-logic.md#gitlab-149-warbow-arena-indexer-hardening) · [§174](invariants-and-business-logic.md#gitlab-174-warbow-refresh-pagination-guard)) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
+<a id="manual-qa-issue-174-warbow-refresh-pagination-guard"></a>
+
+## Protocol — WarBow refresh pagination guard warning (GitLab #174)
+
+**Goal:** When the **`/timecurve/protocol`** panel hits its **client-side** page ceiling while the indexer still advertises **`next_offset`**, operators see a **warning** (not a silent truncate).
+
+### Preconditions
+
+- Same as [§ #160 / #172](#manual-qa-issue-160) (**`VITE_INDEXER_URL`**, schema **≥ 1.15.1**).
+
+### Checklist
+
+1. **Happy path:** With a chain/indexer where **`refresh-candidates`** returns **`next_offset: null`** within the first **50** pages, **Load reference candidates** shows **no** yellow **`warning-text`** banner; candidate count matches expectations.
+2. **Guard path (staged):** Mock or fixture an indexer (or temporary local patch) that always returns a **positive** **`next_offset`** for **50** consecutive pages — confirm a **warning** **`StatusMessage`** appears, the loaded checksum count is **at most 25,000** raw rows (**50 × 500**), and **`finalizeWarbowPodium`** remains usable (warning is non-blocking).
+3. **Regression:** After a successful full load, reload again — warning clears when the natural end is reached.
+
+**Automation:** Vitest [`warbowRefreshCandidatesPagination.test.ts`](../../frontend/src/lib/warbowRefreshCandidatesPagination.test.ts) · **`INV-FRONTEND-174-WARBOW-REFRESH-GUARD`** ([invariants §174](invariants-and-business-logic.md#gitlab-174-warbow-refresh-pagination-guard)).
+
+**Doc map:** [timecurve-views — #174](../frontend/timecurve-views.md#warbow-refresh-candidates-ui-pagination-guard-gitlab-174) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
 <a id="manual-qa-issue-92"></a>
 

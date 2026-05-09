@@ -97,9 +97,9 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | **`INV-WARBOW-172-NO-PERM-REFRESH`** | **`refreshWarbowPodium`** removed — no permissionless podium repair during the sale ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)). |
 | **`INV-WARBOW-172-SNAPSHOT-CLAIM-STUB`** | **`viewerShouldSuggestWarBowPodiumRefresh`** is a **compat stub** that always returns **`false`** — [`timeCurveWarbowSnapshotClaim.ts`](../../frontend/src/lib/timeCurveWarbowSnapshotClaim.ts) (**#172**). |
 | **`INV-SCRIPT-149-ADDR-ALICE`** | **`verify-timecurve-post-end-gates-anvil.sh`** rejects empty **`ADDR_ALICE`** / Bob / Carol / Deployer. |
-| **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** | **`GET /v1/timecurve/warbow/refresh-candidates`** (schema **≥ 1.15.1**, [GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160); head WarBow hint omission post-end — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170); **unbounded DISTINCT** — [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)) returns paginated **`candidates`** for **operator reference** (indexer + optional head WarBow hints while **`!sale_ended`**), then DISTINCT wallets from indexed WarBow tables + **`idx_timecurve_buy`** rows with **`battle_points_after > 0`**; body includes **`sale_ended`** mirroring the head timer when present (**`false`** when the timer is unset). **No** **`distinct_sql_cap_hit`** field (schema **≥ 1.18.0**). UI: [`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx) on **`/timecurve/protocol`** (governance finalize + indexer load). |
+| **`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`** | **`GET /v1/timecurve/warbow/refresh-candidates`** (schema **≥ 1.15.1**, [GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160); head WarBow hint omission post-end — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170); **unbounded DISTINCT** — [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)) returns paginated **`candidates`** for **operator reference** (indexer + optional head WarBow hints while **`!sale_ended`**), then DISTINCT wallets from indexed WarBow tables + **`idx_timecurve_buy`** rows with **`battle_points_after > 0`**; body includes **`sale_ended`** mirroring the head timer when present (**`false`** when the timer is unset). **No** **`distinct_sql_cap_hit`** field (schema **≥ 1.18.0**). UI: [`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx) on **`/timecurve/protocol`** (governance finalize + indexer load); client paging ceiling + guard warning — [GitLab #174](https://gitlab.com/PlasticDigits/yieldomega/-/issues/174), **`INV-FRONTEND-174-WARBOW-REFRESH-GUARD`**. |
 
-**Automated:** Vitest **`timeCurveWarbowSnapshotClaim.test.ts`** · **`cargo test`** (`integration_stage2` WarBow routes incl. **`/v1/timecurve/warbow/refresh-candidates`**) · Forge WarBow / finalize coverage in **`TimeCurve.t.sol`**.
+**Automated:** Vitest **`timeCurveWarbowSnapshotClaim.test.ts`** · **`warbowRefreshCandidatesPagination.test.ts`** · **`cargo test`** (`integration_stage2` WarBow routes incl. **`/v1/timecurve/warbow/refresh-candidates`**) · Forge WarBow / finalize coverage in **`TimeCurve.t.sol`**.
 
 **Docs / play:** [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md) · [§ #129 / #172 finalize](#warbow-podium-snapshot-drifts-gitlab-129).
 
@@ -119,6 +119,20 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 **Automated:** **`cargo test`** (`integration_stage2` asserts **`sale_ended`** on **`refresh-candidates`** smoke).
 
 **Docs / play:** [`skills/README.md`](../../skills/README.md) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md).
+
+<a id="gitlab-174-warbow-refresh-pagination-guard"></a>
+
+### GitLab #174 — WarBow refresh-candidates UI paging guard ([GitLab #174](https://gitlab.com/PlasticDigits/yieldomega/-/issues/174))
+
+**Intent:** With unbounded DISTINCT on **`refresh-candidates`** ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)), the protocol panel’s client still caps how many pages it loads. If that ceiling is hit while the API still returns **`next_offset`**, operators must see a **non-fatal warning** — the loaded checksum list is incomplete for governance reference.
+
+| ID | Check |
+|----|--------|
+| **`INV-FRONTEND-174-WARBOW-REFRESH-GUARD`** | **`TimeCurveProtocolWarbowRefreshSection`** uses **`accumulateWarbowRefreshCandidatePages`** ([`warbowRefreshCandidatesPagination.ts`](../../frontend/src/lib/warbowRefreshCandidatesPagination.ts)) with **`WARBOW_REFRESH_CANDIDATES_MAX_PAGES`** × **`WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT`** (**50 × 500**). When **`MAX_PAGES`** is consumed while the last chunk still carries a non-null **`next_offset`**, **`loadFromIndexer`** shows **`StatusMessage`** **`variant="warning"`** and still renders checksum candidates + API totals. **Natural** completion (**`next_offset === null`**) produces **no** warning. |
+
+**Automated:** Vitest **`warbowRefreshCandidatesPagination.test.ts`**.
+
+**Docs / play:** [`timecurve-views — /timecurve/protocol`](../frontend/timecurve-views.md#warbow-refresh-candidates-ui-pagination-guard-gitlab-174) · [`manual QA #174`](manual-qa-checklists.md#manual-qa-issue-174-warbow-refresh-pagination-guard) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md).
 
 ---
 
