@@ -215,6 +215,16 @@ address path.
 
 **Spec ↔ test:** [invariants §182](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx).
 
+<a id="arena-settlement-panel-timer-expired-gitlab-188"></a>
+
+## Arena settlement panel — timer expired vs `ended` (GitLab #188)
+
+After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone calls **`endSale()`** (**`ended`** flips **`true`**). **`redeemCharms`** and **`distributePrizes`** still **`require(ended)`** on **`TimeCurve`**.
+
+**Arena UX:** the **Standings and prize chase** / **After sale actions** status panel treats **`saleExpiredAwaitingEnd` OR `saleEnded`** as the **settlement** layout: **End sale** is shown while **`ended` is false**; **Redeem charms** and **Distribute prizes** stay visible but **disabled** (with **`title` + helper copy) until **`ended`** is **`true`**, so participants always see the path that unlocks “claim” without hunting another route. Hooks: **`data-testid`s** **`timecurve-arena-end-sale`**, **`timecurve-arena-redeem-charms`**, **`timecurve-arena-distribute-prizes`**.
+
+**Spec ↔ test:** [invariants §188](../testing/invariants-and-business-logic.md#timecurve-arena-settlement-panel-timer-expired-gitlab-188) · [`TimeCurveArenaView.tsx`](../../frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx) · [manual QA (#188)](../testing/manual-qa-checklists.md#manual-qa-issue-188) · [play skill](../../skills/play-timecurve-warbow/SKILL.md).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)

@@ -142,6 +142,8 @@ function WarbowPendingFlagChainPanel(props: {
 export function WhatMattersSection(props: {
   saleActive: boolean;
   saleEnded: boolean;
+  /** True when round timer is past `deadline` but `TimeCurve.ended()` is still false (GitLab #188). */
+  timerExpiredAwaitingEnd?: boolean;
   whatMattersNowCards: { label: string; value: ReactNode; meta: ReactNode }[];
   minBuy: SerializableContractRead | undefined;
   decimals: number;
@@ -159,6 +161,7 @@ export function WhatMattersSection(props: {
   const {
     saleActive,
     saleEnded,
+    timerExpiredAwaitingEnd = false,
     whatMattersNowCards,
     minBuy,
     decimals,
@@ -174,11 +177,13 @@ export function WhatMattersSection(props: {
     distributeHint,
   } = props;
 
+  const settlementSurface = saleEnded || timerExpiredAwaitingEnd;
+
   return (
     <PageSection
       title="What matters now"
-      badgeLabel={saleActive ? "Player view" : saleEnded ? "Settlement view" : "Live setup"}
-      badgeTone={saleActive ? "live" : saleEnded ? "warning" : "info"}
+      badgeLabel={saleActive ? "Player view" : settlementSurface ? "Settlement view" : "Live setup"}
+      badgeTone={saleActive ? "live" : settlementSurface ? "warning" : "info"}
       spotlight
       className="timecurve-panel timecurve-panel--summary"
       cutout={{
@@ -207,9 +212,9 @@ export function WhatMattersSection(props: {
           meta="Human-readable reserve spend floor"
         />
         <StatCard
-          label={saleEnded ? "Expected redemption" : "Your charm weight"}
+          label={settlementSurface ? "Expected redemption" : "Your charm weight"}
           value={
-            saleEnded ? (
+            settlementSurface ? (
               expectedTokenFromCharms !== undefined ? (
                 <AmountDisplay raw={expectedTokenFromCharms} decimals={18} />
               ) : (
@@ -221,7 +226,13 @@ export function WhatMattersSection(props: {
               "—"
             )
           }
-          meta={saleEnded ? "Projected launched-token claim" : "Onchain charm weight for your wallet"}
+          meta={
+            settlementSurface
+              ? timerExpiredAwaitingEnd && !saleEnded
+                ? "Preview — redeem unlocks after End sale onchain"
+                : "Projected launched-token claim"
+              : "Onchain charm weight for your wallet"
+          }
         />
         <StatCard
           label="Podium pool"
@@ -250,7 +261,7 @@ export function WhatMattersSection(props: {
       {isError && <StatusMessage variant="error">Could not read contract (check RPC / network).</StatusMessage>}
       {indexerMismatch && <StatusMessage variant="error">{indexerMismatch}</StatusMessage>}
       {claimHint && <StatusMessage variant="muted">{claimHint}</StatusMessage>}
-      {saleEnded && distributeHint && <StatusMessage variant="muted">{distributeHint}</StatusMessage>}
+      {settlementSurface && distributeHint && <StatusMessage variant="muted">{distributeHint}</StatusMessage>}
     </PageSection>
   );
 }
