@@ -184,6 +184,25 @@ export function useTimeCurveArenaModel() {
   const [warbowPreflightIssue, setWarbowPreflightIssue] = useState<string | null>(null);
   const [pendingRevengeRows, setPendingRevengeRows] = useState<WarbowPendingRevengeItem[]>([]);
 
+  /** Drop stale parallel responses when unmounting or a newer refresh starts ([GitLab #182](https://gitlab.com/PlasticDigits/yieldomega/-/issues/182)). */
+  const warbowIndexerFetchSeqRef = useRef(0);
+  const refreshWarbowIndexerAggregates = useCallback(async () => {
+    const seq = ++warbowIndexerFetchSeqRef.current;
+    const [lb, fd] = await Promise.all([
+      fetchTimecurveWarbowLeaderboard(12, 0),
+      fetchTimecurveWarbowBattleFeed(20, 0),
+    ]);
+    if (seq !== warbowIndexerFetchSeqRef.current) {
+      return;
+    }
+    const ok = lb != null && fd != null;
+    if (indexerBaseUrl()) {
+      reportIndexerFetchAttempt(ok);
+    }
+    setWarbowLb(lb?.items ?? null);
+    setWarbowFeed(fd?.items ?? null);
+  }, []);
+
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
   const { data: latestBlock } = useBlock({ watch: true });
   const blockTimestampSec =
@@ -368,21 +387,30 @@ export function useTimeCurveArenaModel() {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId = 0;
+
+    const scheduleLoop = () => {
+      timeoutId = window.setTimeout(async () => {
+        await refreshWarbowIndexerAggregates();
+        if (!cancelled && indexerBaseUrl()) {
+          scheduleLoop();
+        }
+      }, getIndexerBackoffPollMs(5000));
+    };
+
     void (async () => {
-      const [lb, fd] = await Promise.all([
-        fetchTimecurveWarbowLeaderboard(12, 0),
-        fetchTimecurveWarbowBattleFeed(20, 0),
-      ]);
-      if (cancelled) {
-        return;
+      await refreshWarbowIndexerAggregates();
+      if (!cancelled && indexerBaseUrl()) {
+        scheduleLoop();
       }
-      setWarbowLb(lb?.items ?? null);
-      setWarbowFeed(fd?.items ?? null);
     })();
+
     return () => {
       cancelled = true;
+      warbowIndexerFetchSeqRef.current += 1;
+      window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [refreshWarbowIndexerAggregates]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1538,10 +1566,11 @@ export function useTimeCurveArenaModel() {
     void refetch();
     void refetchUserSale();
     loadPendingRevenge();
+    void refreshWarbowIndexerAggregates();
     if (address && indexerBaseUrl()) {
       void fetchTimecurveBuyerStats(address).then(setBuyerStats);
     }
-  }, [refetch, refetchUserSale, address, loadPendingRevenge]);
+  }, [refetch, refetchUserSale, address, loadPendingRevenge, refreshWarbowIndexerAggregates]);
 
   const expectedTokenFromCharms = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {

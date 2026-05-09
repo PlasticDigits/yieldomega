@@ -435,6 +435,26 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
+<a id="manual-qa-issue-182"></a>
+
+## Arena — WarBow indexer rank + feed refresh (GitLab #182)
+
+**Goal:** After BP-changing activity, **Your WarBow rank**, **chasing pack** rows, and **rivalry / battle feed** match the indexer within a short window **without** reloading **`/timecurve/arena`**.
+
+### Preconditions
+
+- Full stack or staging with **`VITE_INDEXER_URL`** and indexer caught up to the chain used by the wallet.
+
+### Checklist
+
+1. Open **`/timecurve/arena`**; note **Your WarBow rank** and top chasing-pack rows (or **Unranked** if applicable).
+2. Perform a **BP-changing** action (e.g. **steal**, **buy** with WarBow flag plant, **claim flag**, **revenge**, **guard**).
+3. After the tx confirms and the indexer ingests (**~2–10 s** locally), confirm **Your WarBow rank** and chasing-pack list update if indexed BP ordering changed.
+4. Confirm **rivalry / battle feed** shows new rows when corresponding events exist (may require another participant or bot traffic).
+5. Optional: leave the tab open **without** acting; when another wallet moves the ladder, confirm rank / feed drift resolves within **one or two** poll intervals (**~5 s** base backoff, longer after indexer failures per shared backoff).
+
+**Doc map:** [timecurve-views — #182](../frontend/timecurve-views.md#arena-warbow-indexer-leaderboard-feed-refresh-gitlab-182) · [invariants — **`INV-FRONTEND-182-WARBOW-IDX`**](invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-160"></a>
 
 ## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)

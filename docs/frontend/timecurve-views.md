@@ -205,6 +205,16 @@ address path.
 
 **Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
 
+<a id="arena-warbow-indexer-leaderboard-feed-refresh-gitlab-182"></a>
+
+## Arena WarBow indexer leaderboard + rivalry feed refresh (GitLab #182)
+
+**Your WarBow rank**, the **chasing pack** (indexed leaderboard hints), and the **rivalry / battle feed** panels read **`GET /v1/timecurve/warbow/leaderboard`** and **`GET /v1/timecurve/warbow/battle-feed`**. Those responses must refresh when Battle Points change from **your** txs and eventually reflect **other** wallets’ activity without requiring a full page reload ([GitLab #182](https://gitlab.com/PlasticDigits/yieldomega/-/issues/182)).
+
+**Behavior:** **`useTimeCurveArenaModel`** reloads both endpoints **after local writes succeed** (same **`refetchAll`** path as wagmi contract refetches — buys, WarBow actions, post-end **`runVoid`**), **and** on a **~5s backoff** poll while Arena stays mounted when **`VITE_INDEXER_URL`** is set. Contract **`battlePoints`** reads already updated live; indexer-backed rank / feed now track indexed state on the same cadence.
+
+**Spec ↔ test:** [invariants §182](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)
