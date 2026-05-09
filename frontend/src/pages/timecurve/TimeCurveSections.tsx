@@ -541,7 +541,9 @@ export function WarbowSection(props: {
         </div>
         <div className="podium-block">
           <h3>Chasing pack</h3>
-          <RankingList rows={warbowLeaderboardRows} emptyText="Set the indexer URL or wait for indexed buys." />
+          <div className="warbow-chasing-pack-scroll" data-testid="warbow-chasing-pack-scroll">
+            <RankingList rows={warbowLeaderboardRows} emptyText="Set the indexer URL or wait for indexed buys." />
+          </div>
         </div>
       </div>
       <div className="podium-block">

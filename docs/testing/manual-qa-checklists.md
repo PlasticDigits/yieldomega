@@ -455,6 +455,26 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views — #182](../frontend/timecurve-views.md#arena-warbow-indexer-leaderboard-feed-refresh-gitlab-182) · [invariants — **`INV-FRONTEND-182-WARBOW-IDX`**](invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
+<a id="manual-qa-issue-189"></a>
+
+## Arena — WarBow Chasing pack (7+ ladder rows) (GitLab #189)
+
+**Goal:** **Chasing pack** shows **every** wallet returned by the indexer ladder for the current page (**no** hidden sixth-row cap) and remains usable when **seven or more** rows exist.
+
+### Preconditions
+
+- Full stack or staging with **`VITE_INDEXER_URL`** and **≥ 7** distinct wallets on **`GET /v1/timecurve/warbow/leaderboard`** (local bot swarm + rich state, or shared env with traffic).
+
+### Checklist
+
+1. Open **`/timecurve/arena`** → **WarBow moves and rivalry** → **Chasing pack**.
+2. Confirm **row count** matches the indexer ladder length you expect (at least **7** visible ranks when the API returns **7+** rows).
+3. Confirm **ranks** are **1…N** with **no** gap after rank **6**.
+4. **Layout:** With a long list, confirm the **Chasing pack** column scrolls vertically (**no** page-level overflow or overlap with **Top rivals**); optional: **`[data-testid="warbow-chasing-pack-scroll"]`** wraps the list.
+5. **Mobile / narrow:** Repeat at ~390×844 — scroll still works; **Top rivals** + **Chasing pack** stack without clipped addresses.
+
+**Doc map:** [timecurve-views — #189](../frontend/timecurve-views.md#arena-warbow-chasing-pack-scroll-gitlab-189) · [invariants — **`INV-FRONTEND-189-WARBOW-CHASING-PACK`**](invariants-and-business-logic.md#timecurve-arena-warbow-chasing-pack-gitlab-189) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-160"></a>
 
 ## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)

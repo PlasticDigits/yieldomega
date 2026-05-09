@@ -215,6 +215,14 @@ address path.
 
 **Spec ↔ test:** [invariants §182](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx).
 
+<a id="arena-warbow-chasing-pack-scroll-gitlab-189"></a>
+
+## Arena WarBow Chasing pack — full ladder + scroll (GitLab #189)
+
+**Chasing pack** (**`WarbowSection`**, beside **Top rivals**) lists wallets from the **same** indexed WarBow ladder response as **Your WarBow rank**. The UI must **not** truncate after **six** rows: **seventh+** entries render with **rank** continuity, and the list lives in **`.warbow-chasing-pack-scroll`** so a long ladder scrolls inside a **bounded height** instead of blowing up the **`.split-layout`** row ([GitLab #189](https://gitlab.com/PlasticDigits/yieldomega/-/issues/189)).
+
+**Spec ↔ test:** [invariants §189](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-chasing-pack-gitlab-189) · [`warbowChasingPackLeaderboard.ts`](../../frontend/src/pages/timeCurveArena/warbowChasingPackLeaderboard.ts) · [`WarbowSection` — `TimeCurveSections.tsx`](../../frontend/src/pages/timecurve/TimeCurveSections.tsx) · [manual QA (#189)](../testing/manual-qa-checklists.md#manual-qa-issue-189).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)
