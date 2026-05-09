@@ -1728,6 +1728,36 @@ export function useTimeCurveArenaModel() {
   }, [address, battlePtsR, warbowLadderPodiumR]);
 
   const whatMattersNowCards = useMemo(() => {
+    if (timerExpiredAwaitingEnd && !saleEnded) {
+      return [
+        {
+          label: "Round state",
+          value: "End sale first",
+          meta: "The live timer is past deadline, but `TimeCurve.ended()` is still false. Anyone can call endSale to unlock charm redemption and owner prize flows.",
+        },
+        {
+          label: "Your claim (preview)",
+          value:
+            expectedTokenFromCharms !== undefined ? (
+              <AmountDisplay raw={expectedTokenFromCharms.toString()} decimals={18} />
+            ) : (
+              "—"
+            ),
+          meta: "Projected DOUB from charm weight — Redeem charms works only after End sale succeeds onchain.",
+        },
+        {
+          label: "Podium pool",
+          value:
+            podiumPoolBal !== undefined ? (
+              <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
+            ) : (
+              "—"
+            ),
+          meta: distributeHint,
+        },
+      ];
+    }
+
     if (saleEnded) {
       return [
         {
@@ -1820,11 +1850,12 @@ export function useTimeCurveArenaModel() {
     ];
   }, [
     saleEnded,
+    timerExpiredAwaitingEnd,
     claimHint,
+    distributeHint,
     expectedTokenFromCharms,
     podiumPoolBal,
     decimals,
-    distributeHint,
     canClaimWarBowFlag,
     hasRevengeOpen,
     deadlineSecondsRemaining,

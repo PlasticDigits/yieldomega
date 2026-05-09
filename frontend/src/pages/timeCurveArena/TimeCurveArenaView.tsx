@@ -103,6 +103,10 @@ export function TimeCurveArenaView() {
     whatMattersNowCards
   } = props;
 
+  const onchainEnded = ended?.status === "success" && Boolean(ended.result);
+  /** `saleEnded` OR `saleExpiredAwaitingEnd` — settlement CTAs must not hide behind the live-standings layout (GitLab #188). */
+  const showPostRoundSettlementPanel = saleEnded || timerExpiredAwaitingEnd;
+
   const pricePerCharmWad =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
 
@@ -1124,6 +1128,7 @@ export function TimeCurveArenaView() {
       <WhatMattersSection
         saleActive={saleActive}
         saleEnded={saleEnded}
+        timerExpiredAwaitingEnd={timerExpiredAwaitingEnd}
         whatMattersNowCards={whatMattersNowCards}
         minBuy={serializeContractRead(minBuy)}
         decimals={decimals}
@@ -1143,9 +1148,17 @@ export function TimeCurveArenaView() {
 
         <ChainMismatchWriteBarrier testId="timecurve-arena-standings-chain-write-gate">
         <PageSection
-          title={saleEnded ? "After sale actions" : "Standings and prize chase"}
-          badgeLabel={saleEnded ? "Redeem and settle" : "Competitive surface"}
-          badgeTone={saleEnded ? "warning" : "live"}
+          title={
+            showPostRoundSettlementPanel
+              ? saleEnded
+                ? "After sale actions"
+                : "Round over — settle onchain"
+              : "Standings and prize chase"
+          }
+          badgeLabel={
+            showPostRoundSettlementPanel ? (saleEnded ? "Redeem and settle" : "End sale first") : "Competitive surface"
+          }
+          badgeTone={showPostRoundSettlementPanel ? "warning" : "live"}
           spotlight
           className="timecurve-panel timecurve-panel--status"
           cutout={{
@@ -1155,27 +1168,38 @@ export function TimeCurveArenaView() {
             className: "panel-cutout panel-cutout--lower-right cutout-decoration--float",
           }}
           lede={
-            saleEnded
-              ? "When the timer expires, use this panel to end the round, redeem charms, and settle the reserve podium pool."
+            showPostRoundSettlementPanel
+              ? saleEnded
+                ? "When the timer expires, use this panel to end the round, redeem charms, and settle the reserve podium pool."
+                : "The live timer is past deadline. Call End sale first (any wallet may submit). Then redeem CHARM for DOUB and, when you are the owner with payouts enabled, distribute reserve prizes."
               : "Scan the live ladder, podium leaders, and momentum before you choose whether to buy, defend, or press PvP."
           }
         >
-          {saleEnded ? (
+          {showPostRoundSettlementPanel ? (
             <>
               <div className="timecurve-action-row">
-                <motion.button
-                  type="button"
-                  className="btn-secondary btn-secondary--critical"
-                  disabled={isWriting || chainMismatch}
-                  onClick={() => runVoid("endSale")}
-                  {...secondaryButtonMotion}
-                >
-                  End sale
-                </motion.button>
+                {!onchainEnded && (
+                  <motion.button
+                    type="button"
+                    className="btn-secondary btn-secondary--critical"
+                    disabled={isWriting || chainMismatch}
+                    data-testid="timecurve-arena-end-sale"
+                    onClick={() => runVoid("endSale")}
+                    {...secondaryButtonMotion}
+                  >
+                    End sale
+                  </motion.button>
+                )}
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--priority"
-                  disabled={isWriting || chainMismatch}
+                  disabled={isWriting || chainMismatch || !onchainEnded}
+                  data-testid="timecurve-arena-redeem-charms"
+                  title={
+                    !onchainEnded
+                      ? "Run End sale onchain first — redeemCharms requires TimeCurve.ended()."
+                      : undefined
+                  }
                   onClick={() => runVoid("redeemCharms")}
                   {...secondaryButtonMotion}
                 >
@@ -1184,13 +1208,26 @@ export function TimeCurveArenaView() {
                 <motion.button
                   type="button"
                   className="btn-secondary btn-secondary--priority"
-                  disabled={isWriting || chainMismatch || !canDistributePrizesAsOwner}
+                  disabled={isWriting || chainMismatch || !canDistributePrizesAsOwner || !onchainEnded}
+                  data-testid="timecurve-arena-distribute-prizes"
+                  title={
+                    !onchainEnded
+                      ? "Run End sale onchain first — distributePrizes requires TimeCurve.ended()."
+                      : undefined
+                  }
                   onClick={() => runVoid("distributePrizes")}
                   {...secondaryButtonMotion}
                 >
                   Distribute prizes
                 </motion.button>
               </div>
+              {!onchainEnded && (
+                <StatusMessage variant="muted">
+                  Redeem charms and Distribute prizes stay disabled until <strong>End sale</strong> succeeds —{" "}
+                  <code>redeemCharms</code> and <code>distributePrizes</code> require <code>ended == true</code> on{" "}
+                  <code>TimeCurve</code>.
+                </StatusMessage>
+              )}
               {(gasClaim !== undefined || gasDistribute !== undefined) && (
                 <StatusMessage variant="muted">
                   {gasClaim !== undefined && <>Estimated gas for redeem: ~{formatLocaleInteger(gasClaim)} units</>}
