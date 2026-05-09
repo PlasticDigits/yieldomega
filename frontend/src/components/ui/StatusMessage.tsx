@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-type Variant = "muted" | "placeholder" | "error" | "loading";
+type Variant = "muted" | "placeholder" | "error" | "warning" | "loading";
 
 type Props = {
   variant?: Variant;
@@ -28,7 +28,13 @@ export function StatusMessage({ variant = "muted", children, className }: Props)
   }
 
   const variantClass =
-    variant === "error" ? "error-text" : variant === "placeholder" ? "placeholder" : "muted";
+    variant === "error"
+      ? "error-text"
+      : variant === "warning"
+        ? "warning-text"
+        : variant === "placeholder"
+          ? "placeholder"
+          : "muted";
   const classes = [variantClass, className].filter(Boolean).join(" ");
   return <p className={classes}>{children}</p>;
 }

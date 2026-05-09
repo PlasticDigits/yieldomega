@@ -9,6 +9,11 @@ import { timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import type { HexAddress } from "@/lib/addresses";
 import { fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
+import {
+  WARBOW_REFRESH_CANDIDATES_MAX_PAGES,
+  WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT,
+  accumulateWarbowRefreshCandidatePages,
+} from "@/lib/warbowRefreshCandidatesPagination";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { wagmiConfig } from "@/wagmi-config";
@@ -68,6 +73,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
     podium_warbow_hint_count: number;
   } | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [txErr, setTxErr] = useState<string | null>(null);
   const [loadingIdx, setLoadingIdx] = useState(false);
   const [slot1, setSlot1] = useState("");
@@ -112,48 +118,34 @@ export function TimeCurveProtocolWarbowRefreshSection({
 
   const loadFromIndexer = async () => {
     setLoadErr(null);
+    setLoadWarning(null);
     setLoadingIdx(true);
     try {
-      const pages: string[] = [];
-      let off = 0;
-      let guard = 0;
-      let apiTotal = 0;
-      let podiumHintCount = 0;
-      while (guard < 50) {
-        guard += 1;
-        const chunk = await fetchTimecurveWarbowRefreshCandidates(500, off);
-        if (!chunk) {
-          setLoadErr(
-            "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.18.0).",
-          );
-          setLoadedCandidates([]);
-          setIdxExtras(null);
-          return;
-        }
-        if (off === 0) {
-          apiTotal = chunk.total;
-          podiumHintCount = chunk.podium_warbow_hint_count;
-        }
-        if (Array.isArray(chunk.candidates)) {
-          for (const c of chunk.candidates) {
-            pages.push(c);
-          }
-        }
-        if (chunk.next_offset === null || chunk.next_offset === undefined) {
-          break;
-        }
-        off = chunk.next_offset;
+      const acc = await accumulateWarbowRefreshCandidatePages(fetchTimecurveWarbowRefreshCandidates);
+      if (!acc.ok) {
+        setLoadErr(
+          "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.18.0).",
+        );
+        setLoadedCandidates([]);
+        setIdxExtras(null);
+        return;
       }
-      const checksumPage = checksumCandidates(pages);
+      if (acc.truncatedByGuard) {
+        setLoadWarning(
+          `Reference wallet list was truncated at the UI paging ceiling (${WARBOW_REFRESH_CANDIDATES_MAX_PAGES} pages × ${WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT} rows per request). More candidates may exist on the indexer — continue with GET /v1/timecurve/warbow/refresh-candidates using higher offsets, or raise the client page limit in code before relying on this set for finalizeWarbowPodium. https://gitlab.com/PlasticDigits/yieldomega/-/issues/174`,
+        );
+      }
+      const checksumPage = checksumCandidates(acc.pages);
       setLoadedCandidates(checksumPage);
       setIdxExtras({
-        apiTotal,
-        podium_warbow_hint_count: podiumHintCount,
+        apiTotal: acc.apiTotal,
+        podium_warbow_hint_count: acc.podiumWarbowHintCount,
       });
     } catch (e) {
       setLoadErr(friendlyRevertFromUnknown(e));
       setLoadedCandidates([]);
       setIdxExtras(null);
+      setLoadWarning(null);
     } finally {
       setLoadingIdx(false);
     }
@@ -250,6 +242,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
           Connected wallet is not <span className="mono">TimeCurve.owner()</span> — finalize requires the owner.
         </StatusMessage>
       )}
+      {loadWarning && <StatusMessage variant="warning">{loadWarning}</StatusMessage>}
       {loadErr && <StatusMessage variant="error">{loadErr}</StatusMessage>}
       {txErr && <StatusMessage variant="error">{txErr}</StatusMessage>}
       <ChainMismatchWriteBarrier testId="timecurve-protocol-warbow-refresh-chain-gate">

@@ -2767,6 +2767,16 @@ label:has(input[type="radio"]:disabled) {
   box-shadow: 4px 4px 0 var(--line);
 }
 
+.warning-text {
+  display: inline-block;
+  padding: 0.5rem 0.75rem;
+  border: 3px solid var(--line);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, #fef3c7, #fde68a);
+  color: #78350f;
+  box-shadow: 4px 4px 0 var(--line);
+}
+
 .podium-preview {
   display: grid;
   gap: 1rem;
