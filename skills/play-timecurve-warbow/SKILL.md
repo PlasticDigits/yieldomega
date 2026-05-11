@@ -19,7 +19,7 @@ You are helping a **participant** use **WarBow** mechanics on **TimeCurve**: **B
 
 For participant-owned **TS / Python** tooling (reads, submits, WarBow-related calls) against **deployed** `TimeCurve`, see [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md).
 
-**YieldOmega web wallet UX:** Steal / guard / revenge pull CL8Y through **`TimeCurve`** with the same **`approve`** pattern as **`buy`** — default **exact** allowance per tx in the shipped UI, optional **unlimited** CL8Y→TimeCurve (local checkbox) with **H-01** disclosure — [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143), [`wallet-connection §143`](../../docs/frontend/wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143).
+**YieldOmega web wallet UX:** Steal / guard / revenge pull CL8Y through **`TimeCurve`** with the same **`approve`** pattern as **`buy`** — default **exact** allowance per tx in the shipped UI, optional **unlimited** CL8Y→TimeCurve (local checkbox) with **H-01** disclosure — [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143), [`wallet-connection §143`](../../docs/frontend/wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143). On **`/timecurve/arena`**, invalid / empty steal-victim validation stays **under the victim field** in **`WarbowSection`**, not in the hero **`pvpErr`** strip — [GitLab #195](https://gitlab.com/PlasticDigits/yieldomega/-/issues/195), [`timecurve-views §195`](../../docs/frontend/timecurve-views.md#arena-warbow-steal-victim-field-gitlab-195), [`INV-FRONTEND-195-WARBOW-STEAL-FORM`](../../docs/testing/invariants-and-business-logic.md#timecurve-arena-warbow-steal-victim-validation-gitlab-195).
 
 ## Truth order
 
