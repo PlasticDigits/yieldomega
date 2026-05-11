@@ -70,7 +70,7 @@ export function TimeCurveArenaView() {
   const totalRaiseUsdFreshness = useRelativeFreshnessLabel(props.totalRaiseCl8yObservedAtMs);
   const { mismatch: chainMismatch, walletChainId } = useWalletTargetChainMismatch();
   const {
-    activeStreakR, address, arenaPhase, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
+    activeStreakR, address, arenaPhase, arenaPhaseBadge, arenaWarbowStealFormErr, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyAddsCl8yAtLaunch, buyCooldownSecR,
     buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen,
     buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag,
@@ -96,7 +96,8 @@ export function TimeCurveArenaView() {
     runWarBowRevenge, runWarBowSteal, saleActive, saleEnded, saleStart, secondaryButtonMotion,
     secondsRemaining, selectBuy, setBuyListModalOpen, setDetailBuy, setPayWith, setPlantWarBowFlag, setSpendInputStr,
     setStealBypass, setStealVictimInput, setUseReferral, sinkReads, spendInputStr,
-    spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, swapQuoteFailed,
+    spendSliderPermille, stealBypass, stealPreflight, stealVictim, stealVictimInput, stealVictimInputFormatError,
+    swapQuoteFailed,
     swapQuoteLoading, tc,
     timerAddedR, timerCapSecR, timerExpiredAwaitingEnd, timerExtensionPreview,
     timerExtensionSecR, timerNarrative, totalCharmWeightR, totalRaiseDisplay, totalRaised,
@@ -1396,6 +1397,8 @@ export function TimeCurveArenaView() {
         isConnected={isConnected}
         stealVictimInput={stealVictimInput}
         setStealVictimInput={setStealVictimInput}
+        stealVictimInputFormatError={stealVictimInputFormatError}
+        arenaWarbowStealFormErr={arenaWarbowStealFormErr}
         stealVictim={stealVictim}
         victimStealsToday={victimStealsTodayBigInt?.toString()}
         warbowTopRows={warbowTopRows}

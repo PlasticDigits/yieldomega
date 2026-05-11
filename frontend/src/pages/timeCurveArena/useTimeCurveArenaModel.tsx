@@ -136,6 +136,11 @@ import {
 import { TimeCurveArenaWalletMono } from "./TimeCurveArenaWalletMono";
 import type { WarbowStealCandidate } from "./WarbowHeroActions";
 import { warbowLeaderboardForChasingPackDisplay } from "./warbowChasingPackLeaderboard";
+import {
+  WARBOW_STEAL_VICTIM_EMPTY_ATTEMPT,
+  WARBOW_STEAL_VICTIM_INVALID_ADDRESS,
+  warbowStealVictimInputFormatError,
+} from "@/lib/warbowStealVictimInput";
 
 const WAD_ONE_CHARM = 10n ** 18n;
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
@@ -154,6 +159,8 @@ export function useTimeCurveArenaModel() {
   const [spendInputStr, setSpendInputStr] = useState("");
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [pvpErr, setPvpErr] = useState<string | null>(null);
+  /** Steal-victim empty / format feedback scoped to the detailed WarBow form (GitLab #195); never use for chain/revert banners. */
+  const [arenaWarbowStealFormErr, setArenaWarbowStealFormErr] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
   const [displayTick, setDisplayTick] = useState(0);
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
@@ -164,6 +171,10 @@ export function useTimeCurveArenaModel() {
   const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
   const [stealVictimInput, setStealVictimInput] = useState("");
   const [stealBypass, setStealBypass] = useState(false);
+
+  useEffect(() => {
+    setArenaWarbowStealFormErr(null);
+  }, [stealVictimInput]);
   const [prizePayouts, setPrizePayouts] = useState<PrizePayoutItem[] | null>(null);
   const [prizeDist, setPrizeDist] = useState<PrizeDistributionItem[] | null>(null);
   const [refApplied, setRefApplied] = useState<ReferralAppliedItem[] | null>(null);
@@ -597,6 +608,11 @@ export function useTimeCurveArenaModel() {
     stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
       ? (stealVictimInput.trim() as `0x${string}`)
       : undefined;
+
+  const stealVictimInputFormatError = useMemo(
+    () => warbowStealVictimInputFormatError(stealVictimInput),
+    [stealVictimInput],
+  );
 
   const utcDayId = BigInt(Math.floor(ledgerSecInt / 86_400));
 
@@ -2028,9 +2044,6 @@ export function useTimeCurveArenaModel() {
     if (hasRevengeOpen) {
       return "Revenge is available right now. You get one clean answer window against the pending stealer.";
     }
-    if (stealVictimInput.trim().length > 0 && !isAddress(stealVictimInput.trim())) {
-      return "Enter a valid victim address to preview steal pressure.";
-    }
     if (stealVictim) {
       return warbowPreflightIssue ?? `${stealPreflight.title}. ${stealPreflight.detail}`;
     }
@@ -2043,7 +2056,6 @@ export function useTimeCurveArenaModel() {
     saleEnded,
     canClaimWarBowFlag,
     hasRevengeOpen,
-    stealVictimInput,
     stealVictim,
     guardedActive,
     stealPreflight,
@@ -2630,6 +2642,7 @@ export function useTimeCurveArenaModel() {
 
   async function runWarBowSteal() {
     setPvpErr(null);
+    setArenaWarbowStealFormErr(null);
     if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setPvpErr(
@@ -2638,7 +2651,10 @@ export function useTimeCurveArenaModel() {
       return;
     }
     if (!tc || !address || !stealVictim) {
-      setPvpErr("Enter a valid victim address.");
+      const trimmed = stealVictimInput.trim();
+      setArenaWarbowStealFormErr(
+        trimmed.length > 0 ? WARBOW_STEAL_VICTIM_INVALID_ADDRESS : WARBOW_STEAL_VICTIM_EMPTY_ATTEMPT,
+      );
       return;
     }
     const need = warbowStealBurnWad + (stealBypass ? warbowBypassBurnWad : 0n);
@@ -2759,6 +2775,7 @@ export function useTimeCurveArenaModel() {
     arenaPhase,
     arenaPhaseBadge,
     arenaSaleStartSec,
+    arenaWarbowStealFormErr,
     basePriceWadR,
     battlePtsR,
     bestStreakR,
@@ -2974,6 +2991,7 @@ export function useTimeCurveArenaModel() {
     stealPreflight,
     stealVictim,
     stealVictimInput,
+    stealVictimInputFormatError,
     swapQuoteFailed,
     swapQuoteLoading,
     tc,

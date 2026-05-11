@@ -282,6 +282,10 @@ export function WarbowSection(props: {
   isConnected: boolean;
   stealVictimInput: string;
   setStealVictimInput: (value: string) => void;
+  /** Non-empty invalid hex — scoped under victim input (GitLab #195). */
+  stealVictimInputFormatError: string | null;
+  /** Empty-victim steal click — cleared when input changes. */
+  arenaWarbowStealFormErr: string | null;
   stealVictim?: string;
   victimStealsToday: string | undefined;
   warbowTopRows: RankingRow[];
@@ -328,6 +332,8 @@ export function WarbowSection(props: {
     isConnected,
     stealVictimInput,
     setStealVictimInput,
+    stealVictimInputFormatError,
+    arenaWarbowStealFormErr,
     stealVictim,
     victimStealsToday,
     warbowTopRows,
@@ -417,6 +423,11 @@ export function WarbowSection(props: {
               aria-label="Steal victim address"
             />
           </div>
+          {(stealVictimInputFormatError || arenaWarbowStealFormErr) && (
+            <StatusMessage variant="error" data-testid="warbow-steal-victim-form-status">
+              {stealVictimInputFormatError ?? arenaWarbowStealFormErr}
+            </StatusMessage>
+          )}
           {stealVictim && victimStealsToday !== undefined && (
             <StatusMessage variant="muted">
               Victim steals received today: {formatLocaleInteger(BigInt(victimStealsToday))} /{" "}
