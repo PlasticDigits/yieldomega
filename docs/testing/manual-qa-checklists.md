@@ -507,6 +507,23 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views — #191](../frontend/timecurve-views.md#timecurve-buy-hub-numeric-display-gitlab-191) · [invariants — **`INV-FRONTEND-191-BUY-HUB-DERIVED`**](invariants-and-business-logic.md#timecurve-buy-hub-derived-numeric-display-gitlab-191) · [`timeCurveBuyHubFormat.ts`](../../frontend/src/lib/timeCurveBuyHubFormat.ts) · [GitLab #191](https://gitlab.com/PlasticDigits/yieldomega/-/issues/191)
 
+<a id="manual-qa-issue-192"></a>
+
+## TimeCurve — USD equivalent staleness (GitLab #192)
+
+**Goal:** Participants can see that **USD-shaped** numbers are **not** live oracle quotes, and when the **CL8Y** basis last moved — without noisy banners.
+
+### Checklist
+
+1. **Arena — sale live:** open **`/timecurve/arena`** with a connected wallet on the target chain; under the hero timer, confirm **TOTAL RAISE** (CL8Y) and **TOTAL USD** render.
+2. Hover the **TOTAL USD** block (or long-press on mobile): **`title`** explains the **1 CL8Y = 1 USD** placeholder and ~1s poll context.
+3. Confirm the muted line **“CL8Y total seen … · USD is illustrative (1 CL8Y = $1)”** appears when reads succeed; after a buy (or forced refetch), the **“… ago”** segment should eventually advance (ticks ~every **8s**).
+4. **Simple:** open **`/timecurve`** → **Live reserve podiums**; confirm **≈ $… USD** rows still render; hover one **≈** row for the static **0.98×** tooltip.
+5. Read the second footnote under the grid (**static CL8Y→USDM display shape**); when preview data exists, confirm **“Prize CL8Y preview seen …”** appears.
+6. **Narrow viewport (~375px):** confirm the Arena affordance line and Simple footnote wrap cleanly (no clipped hero text).
+
+**Doc map:** [timecurve-views — #192](../frontend/timecurve-views.md#usd-equivalent-staleness-gitlab-192) · [invariants — **`INV-FRONTEND-192-USD-AFFORDANCE`**](invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
+
 <a id="manual-qa-issue-160"></a>
 
 ## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)

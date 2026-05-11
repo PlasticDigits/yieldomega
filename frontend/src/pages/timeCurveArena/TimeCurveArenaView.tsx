@@ -17,6 +17,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
@@ -39,6 +40,7 @@ import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { useArenaHeroCountdownSecondSfx } from "@/pages/timeCurveArena/useArenaHeroCountdownSecondSfx";
 import { useArenaWarbowRankSfx } from "@/pages/timeCurveArena/useArenaWarbowRankSfx";
+import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { usePeerBuyHeadSfx } from "@/pages/timecurve/usePeerBuyHeadSfx";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
@@ -64,6 +66,7 @@ const ARENA_SNIPER_SHARK_CUTOUT = "/art/cutouts/sniper-shark-peek-scope.png";
 
 export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
+  const totalRaiseUsdFreshness = useRelativeFreshnessLabel(props.totalRaiseCl8yObservedAtMs);
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const {
     activeStreakR, address, arenaPhase, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
@@ -1055,7 +1058,17 @@ export function TimeCurveArenaView() {
                   <div className="timer-hero__total-raise">
                     TOTAL RAISE: {totalRaiseDisplay.cl8y} CL8Y
                   </div>
-                  <div className="timer-hero__total-usd">TOTAL USD: {totalRaiseDisplay.usd}</div>
+                  <div
+                    className="timer-hero__total-usd-block"
+                    title={ARENA_TOTAL_USD_EQUIV_TITLE}
+                  >
+                    <div className="timer-hero__total-usd">TOTAL USD: {totalRaiseDisplay.usd}</div>
+                    {totalRaiseUsdFreshness ? (
+                      <div className="timer-hero__total-usd-affordance">
+                        CL8Y total seen {totalRaiseUsdFreshness} · USD is illustrative (1 CL8Y = $1)
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </>
             )}
