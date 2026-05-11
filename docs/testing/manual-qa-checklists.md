@@ -491,6 +491,22 @@ surface onto the first-run page.
 
 **Doc map:** [timecurve-views — #188](../frontend/timecurve-views.md#arena-settlement-panel-timer-expired-gitlab-188) · [invariants — **`INV-FRONTEND-188-ARENA-SETTLEMENT`**](invariants-and-business-logic.md#timecurve-arena-settlement-panel-timer-expired-gitlab-188) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
+<a id="manual-qa-issue-191"></a>
+
+## TimeCurve Simple + Arena — buy hub numeric consistency (GitLab #191)
+
+**Goal:** **Live band**, **CHARM preview**, **Worth at launch ≈**, and Arena **buy summary** lines use the same **four significant figures** compact policy; hero per-CHARM tiles still show **fixed** fractional digits for tick visibility.
+
+### Checklist
+
+1. Open **`/timecurve`** and **`/timecurve/arena`** with a funded wallet during **`saleActive`**; move the spend slider.
+2. Confirm **Live band** min–max uses the same digit density as **You add** CHARM and **Worth at launch ≈** (no unexplained jump from e.g. **3** to **4** sigfig styling on one card).
+3. On **Arena**, **`data-testid="timecurve-arena-buy-preview"`** shows **Worth at launch ≈** when CHARM &gt; 0 (parity with Simple **`timecurve-simple-buy-preview`**).
+4. Toggle **ETH** / **USDM** pay modes (when Kumbaya is configured): band hints + parenthetical CL8Y band still match the **4** sigfig policy.
+5. Compare **recent buys** table on Simple: CL8Y and CHARM columns match the buy-preview formatter (no harsher truncation than the preview row).
+
+**Doc map:** [timecurve-views — #191](../frontend/timecurve-views.md#timecurve-buy-hub-numeric-display-gitlab-191) · [invariants — **`INV-FRONTEND-191-BUY-HUB-DERIVED`**](invariants-and-business-logic.md#timecurve-buy-hub-derived-numeric-display-gitlab-191) · [`timeCurveBuyHubFormat.ts`](../../frontend/src/lib/timeCurveBuyHubFormat.ts) · [GitLab #191](https://gitlab.com/PlasticDigits/yieldomega/-/issues/191)
+
 <a id="manual-qa-issue-160"></a>
 
 ## Protocol — WarBow refresh candidates + governance finalize (GitLab #160 / #172)

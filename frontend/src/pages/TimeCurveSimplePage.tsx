@@ -20,6 +20,7 @@ import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -586,9 +587,9 @@ export function TimeCurveSimplePage() {
       {session.payWith === "cl8y" ? (
         <>
           Live band&nbsp;
-          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
           &nbsp;–&nbsp;
-          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
           &nbsp;CL8Y
         </>
       ) : session.bandBoundaryQuotesLoading ||
@@ -596,26 +597,26 @@ export function TimeCurveSimplePage() {
         session.quotedBandMaxPayInWei === undefined ? (
         <>
           Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
-          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
           &nbsp;–&nbsp;
-          <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
         </>
       ) : (
         <>
           Live band ≈&nbsp;
           <strong>
-            {formatCompactFromRaw(session.quotedBandMinPayInWei, session.payTokenDecimals)}
+            {formatBuyHubDerivedCompact(session.quotedBandMinPayInWei, session.payTokenDecimals)}
           </strong>
           &nbsp;–&nbsp;
           <strong>
-            {formatCompactFromRaw(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
+            {formatBuyHubDerivedCompact(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
           </strong>
           &nbsp;{paySpendSuffix}&nbsp;
           <span className="muted">
             (CL8Y&nbsp;
-            <strong>{formatCompactFromRaw(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
             &nbsp;–&nbsp;
-            <strong>{formatCompactFromRaw(session.cl8ySpendBounds.maxS, session.decimals)}</strong>)
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>)
           </span>
         </>
       )}
@@ -630,7 +631,7 @@ export function TimeCurveSimplePage() {
         <div className="timecurve-simple__buy-preview-row">
           <span className="timecurve-simple__buy-preview-label">You add</span>
           <strong className="timecurve-simple__buy-preview-value">
-            {formatCompactFromRaw(session.charmWadSelected, 18, { sigfigs: 4 })}
+            {formatBuyHubDerivedCompact(session.charmWadSelected, 18)}
           </strong>
           <span className="timecurve-simple__buy-preview-unit">CHARM</span>
         </div>
@@ -638,7 +639,7 @@ export function TimeCurveSimplePage() {
           <div className="timecurve-simple__buy-preview-row timecurve-simple__buy-preview-row--launch">
             <span className="timecurve-simple__buy-preview-label">Worth at launch ≈</span>
             <strong className="timecurve-simple__buy-preview-value">
-              {formatCompactFromRaw(buyAddsCl8yAtLaunch, session.decimals, { sigfigs: 4 })}
+              {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, session.decimals)}
             </strong>
             <span className="timecurve-simple__buy-preview-unit">CL8Y</span>
           </div>
@@ -685,7 +686,7 @@ export function TimeCurveSimplePage() {
 
   const launchHelperCopy =
     session.launchCl8yPerCharmWei !== undefined
-      ? `1 CHARM ≈ ${formatCompactFromRaw(session.launchCl8yPerCharmWei, session.decimals, { sigfigs: 4 })} CL8Y at launch`
+      ? `1 CHARM ≈ ${formatBuyHubDerivedCompact(session.launchCl8yPerCharmWei, session.decimals)} CL8Y at launch`
       : "Loading launch projection…";
 
   // Rate board (top of buy panel) — the **single most-important number on
@@ -1333,12 +1334,12 @@ export function TimeCurveSimplePage() {
                       <div className="timecurve-simple__ticker-amounts">
                         <span className="timecurve-simple__ticker-amount">
                           <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                          <strong>{formatCompactFromRaw(b.amount, session.decimals, { sigfigs: 4 })}</strong>
+                          <strong>{formatBuyHubDerivedCompact(b.amount, session.decimals)}</strong>
                           <span> CL8Y spent</span>
                         </span>
                         <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
                           <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                          <strong>{formatCompactFromRaw(b.charm_wad, 18, { sigfigs: 4 })}</strong>
+                          <strong>{formatBuyHubDerivedCompact(b.charm_wad, 18)}</strong>
                           <span> CHARM minted</span>
                         </span>
                       </div>

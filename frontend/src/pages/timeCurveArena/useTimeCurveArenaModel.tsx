@@ -1133,6 +1133,15 @@ export function useTimeCurveArenaModel() {
     [pricePerCharmForQuote],
   );
 
+  const buyAddsCl8yAtLaunch = useMemo(
+    () =>
+      participantLaunchValueCl8yWei({
+        charmWeightWad: charmWadSelected,
+        pricePerCharmWad: pricePerCharmForQuote,
+      }),
+    [charmWadSelected, pricePerCharmForQuote],
+  );
+
   const charmPriceQuoteEnabled =
     payWith !== "cl8y" &&
     saleActive &&
@@ -2755,6 +2764,7 @@ export function useTimeCurveArenaModel() {
     buildWarbowNarrativeForFeed,
     buyCooldownSecR,
     buyCountR,
+    buyAddsCl8yAtLaunch,
     buyEnvelopeParams,
     buyErr,
     buyFeeRoutingEnabled,
