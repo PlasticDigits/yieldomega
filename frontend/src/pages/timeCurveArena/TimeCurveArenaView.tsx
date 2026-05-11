@@ -17,6 +17,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
@@ -67,7 +68,7 @@ const ARENA_SNIPER_SHARK_CUTOUT = "/art/cutouts/sniper-shark-peek-scope.png";
 export function TimeCurveArenaView() {
   const props = useTimeCurveArenaModel();
   const totalRaiseUsdFreshness = useRelativeFreshnessLabel(props.totalRaiseCl8yObservedAtMs);
-  const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
+  const { mismatch: chainMismatch, walletChainId } = useWalletTargetChainMismatch();
   const {
     activeStreakR, address, arenaPhase, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
     buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyAddsCl8yAtLaunch, buyCooldownSecR,
@@ -877,7 +878,13 @@ export function TimeCurveArenaView() {
                         <>
                           <motion.button
                             type="button"
-                            className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
+                            className={[
+                              "btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade",
+                              chainMismatch ? "timecurve-simple__cta--wrong-network" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            data-testid="timecurve-arena-buy-charm-cta"
                             disabled={
                               isWriting ||
                               chainMismatch ||
@@ -888,8 +895,11 @@ export function TimeCurveArenaView() {
                               nonCl8yBuyBlocked ||
                               buyFeeRoutingEnabled === false
                             }
+                            title={
+                              chainMismatch ? chainMismatchWriteMessage(walletChainId) ?? undefined : undefined
+                            }
                             onClick={() => void handleBuy()}
-                            {...primaryButtonMotion}
+                            {...(chainMismatch ? {} : primaryButtonMotion)}
                           >
                             <img
                               className="timecurve-simple__cta-glyph"
