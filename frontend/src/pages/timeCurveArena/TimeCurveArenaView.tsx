@@ -18,6 +18,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -66,7 +67,7 @@ export function TimeCurveArenaView() {
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const {
     activeStreakR, address, arenaPhase, arenaPhaseBadge, basePriceWadR, battlePtsR, bestStreakR,
-    buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyCooldownSecR,
+    buildBuyNarrativeForFeed, buildWarbowNarrativeForFeed, buyAddsCl8yAtLaunch, buyCooldownSecR,
     buyCountR, buyEnvelopeParams, buyErr, buyFeeRoutingEnabled, buyHistoryPoints, buyListModalOpen,
     buyPanelRisk, buyerStats, buys, buysNextOffset, buysTotal, canClaimWarBowFlag,
     canDistributePrizesAsOwner, charmWadSelected,
@@ -262,10 +263,10 @@ export function TimeCurveArenaView() {
   const buyProjectedEffects = useMemo(() => {
     const items: string[] = [];
     if (charmWadSelected !== undefined && charmWadSelected > 0n) {
-      items.push(`+${formatCompactFromRaw(charmWadSelected, 18, { sigfigs: 4 })} CHARM`);
+      items.push(`+${formatBuyHubDerivedCompact(charmWadSelected, 18)} CHARM`);
     }
     if (estimatedSpend !== undefined && estimatedSpend > 0n) {
-      items.push(`${formatCompactFromRaw(estimatedSpend, decimals, { sigfigs: 4 })} CL8Y spend`);
+      items.push(`${formatBuyHubDerivedCompact(estimatedSpend, decimals)} CL8Y spend`);
     }
 
     if (secondsRemaining === undefined) {
@@ -672,9 +673,9 @@ export function TimeCurveArenaView() {
                             {payWith === "cl8y" ? (
                               <>
                                 Live band&nbsp;
-                                <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
                                 &nbsp;–&nbsp;
-                                <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
+                                <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.maxS, decimals)}</strong>
                                 &nbsp;CL8Y
                               </>
                             ) : bandBoundaryQuotesLoading ||
@@ -682,26 +683,26 @@ export function TimeCurveArenaView() {
                               quotedBandMaxPayInWei === undefined ? (
                               <>
                                 Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
-                                <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
                                 &nbsp;–&nbsp;
-                                <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>
+                                <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.maxS, decimals)}</strong>
                               </>
                             ) : (
                               <>
                                 Live band ≈&nbsp;
                                 <strong>
-                                  {formatCompactFromRaw(quotedBandMinPayInWei, payTokenDecimals)}
+                                  {formatBuyHubDerivedCompact(quotedBandMinPayInWei, payTokenDecimals)}
                                 </strong>
                                 &nbsp;–&nbsp;
                                 <strong>
-                                  {formatCompactFromRaw(quotedBandMaxPayInWei, payTokenDecimals)}
+                                  {formatBuyHubDerivedCompact(quotedBandMaxPayInWei, payTokenDecimals)}
                                 </strong>
                                 &nbsp;{paySpendSuffix}&nbsp;
                                 <span className="muted">
                                   (CL8Y&nbsp;
-                                  <strong>{formatCompactFromRaw(cl8ySpendBounds.minS, decimals)}</strong>
+                                  <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
                                   &nbsp;–&nbsp;
-                                  <strong>{formatCompactFromRaw(cl8ySpendBounds.maxS, decimals)}</strong>)
+                                  <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.maxS, decimals)}</strong>)
                                 </span>
                               </>
                             )}
@@ -795,10 +796,19 @@ export function TimeCurveArenaView() {
                           <div className="timecurve-simple__buy-preview-row">
                             <span className="timecurve-simple__buy-preview-label">You add</span>
                             <strong className="timecurve-simple__buy-preview-value">
-                              {formatCompactFromRaw(charmWadSelected, 18, { sigfigs: 4 })}
+                              {formatBuyHubDerivedCompact(charmWadSelected, 18)}
                             </strong>
                             <span className="timecurve-simple__buy-preview-unit">CHARM</span>
                           </div>
+                          {buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n && (
+                            <div className="timecurve-simple__buy-preview-row timecurve-simple__buy-preview-row--launch">
+                              <span className="timecurve-simple__buy-preview-label">Worth at launch ≈</span>
+                              <strong className="timecurve-simple__buy-preview-value">
+                                {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, decimals)}
+                              </strong>
+                              <span className="timecurve-simple__buy-preview-unit">CL8Y</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
