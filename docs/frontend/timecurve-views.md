@@ -205,6 +205,14 @@ address path.
 
 **Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
 
+<a id="arena-warbow-steal-victim-field-gitlab-195"></a>
+
+## Arena WarBow — steal victim field validation (GitLab #195)
+
+On **`/timecurve/arena`**, the detailed **`WarbowSection`** steal victim `<input>` uses shared helpers in [`warbowStealVictimInput.ts`](../../frontend/src/lib/warbowStealVictimInput.ts). **Invalid partial hex** and **Attempt steal** with no resolved victim surface **`StatusMessage variant="error"`** only **under that input** (`data-testid="warbow-steal-victim-form-status"`). They must **not** populate the hero / lower **`pvpErr`** strips for pure field validation, and **`warbowActionHint`** must **not** embed invalid-address validation (so a fresh load does not show steal-field errors above the form).
+
+**Spec ↔ test:** [invariants — #195](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-steal-victim-validation-gitlab-195) · [GitLab #195](https://gitlab.com/PlasticDigits/yieldomega/-/issues/195).
+
 <a id="arena-warbow-indexer-leaderboard-feed-refresh-gitlab-182"></a>
 
 ## Arena WarBow indexer leaderboard + rivalry feed refresh (GitLab #182)
