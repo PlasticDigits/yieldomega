@@ -3,6 +3,7 @@
 import type { BuyItem } from "@/lib/indexerApi";
 export { formatPodiumLeaderboardValue } from "@/pages/timecurve/podiumFormat";
 
+/** Placeholder **USD** rate for Arena total-raise display only (1 CL8Y = 1 USD); not an oracle. [GitLab #192](https://gitlab.com/PlasticDigits/yieldomega/-/issues/192). */
 export const CL8Y_USD_PRICE_PLACEHOLDER = 1;
 
 export function compareBuysNewestFirst(a: BuyItem, b: BuyItem): number {

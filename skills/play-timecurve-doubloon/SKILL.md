@@ -56,6 +56,8 @@ Reserve podium split from **`PodiumPool`** after the sale follows **`distributeP
 
 When helping someone interpret standings, prefer **contract reads** (`podium(category)`, per-wallet mappings) and **`Buy` events** over indexer summaries unless the user only needs approximate history. The Simple frontend route now includes a compact **Live reserve podiums** card above Recent buys ([issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113)); treat it as a convenience view of the same onchain `podium(category)` reads, not as a separate source of truth.
 
+**USD-shaped hints in the app ([GitLab #192](https://gitlab.com/PlasticDigits/yieldomega/-/issues/192)):** Arena **TOTAL USD** and Simple podium **≈ $… USD** lines apply **fixed app constants** to **CL8Y** totals or previews — they are **not** live FX or oracle prices. Prefer interpreting **CL8Y** from chain/indexer; use USD lines only as rough, labeled context — [`INV-FRONTEND-192-USD-AFFORDANCE`](../../docs/testing/invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192), [`timecurve-views` §192](../../docs/frontend/timecurve-views.md#usd-equivalent-staleness-gitlab-192).
+
 ## Success function (non-financial)
 
 **Success** means the user understands **sale state**, **timing constraints**, **fee routing** as **documented and verified onchain**, and **risks**—with **honest uncertainty** where RPC, indexers, or docs disagree—so they can decide **whether** to act. Technical accuracy (correct addresses, parameters, reads) **supports** that outcome.

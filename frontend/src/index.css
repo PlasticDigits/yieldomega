@@ -4592,11 +4592,26 @@ a.podium-address-explorer:hover .address-inline__label {
   color: #ffffff;
 }
 .timer-hero__total-usd {
-  margin-top: 0.2rem;
+  margin-top: 0;
   font-size: 0.72rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.55);
+}
+.timer-hero__total-usd-block {
+  margin-top: 0.2rem;
+}
+.timer-hero__total-usd-affordance {
+  margin-top: 0.12rem;
+  max-width: 22rem;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 0.6rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.42);
 }
 .timer-hero--warning .timer-hero__countdown {
   color: #fbbf24;
@@ -6515,6 +6530,12 @@ a.podium-address-explorer:hover .address-inline__label {
 .timecurve-simple__podium-footnote {
   margin: 0.85rem 0 0;
   font-size: 0.8rem;
+}
+
+.timecurve-simple__podium-usd-affordance {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.38;
 }
 
 @keyframes podium-live-pulse {

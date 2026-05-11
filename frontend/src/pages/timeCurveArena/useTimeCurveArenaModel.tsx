@@ -61,6 +61,7 @@ import {
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
@@ -1701,6 +1702,10 @@ export function useTimeCurveArenaModel() {
     return { cl8y, usd };
   }, [totalRaised, decimals]);
 
+  const totalRaiseSerialized =
+    totalRaised?.status === "success" ? String(totalRaised.result as bigint) : undefined;
+  const totalRaiseCl8yObservedAtMs = useLastObservedAtForSerializedDep(totalRaiseSerialized);
+
   const confettiGuide = useMemo(() => {
     const latestBuy = buys?.[0];
     if (!latestBuy) {
@@ -2983,6 +2988,7 @@ export function useTimeCurveArenaModel() {
     tokenDecimals,
     totalCharmWeightR,
     totalRaiseDisplay,
+    totalRaiseCl8yObservedAtMs,
     totalRaised,
     totalTokensForSaleR,
     useReferral,
