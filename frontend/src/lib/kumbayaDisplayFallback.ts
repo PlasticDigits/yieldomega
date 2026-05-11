@@ -8,6 +8,9 @@ import type { PayWithAsset } from "@/lib/kumbayaRoutes";
  *
  * - 1 CL8Y ≈ 0.98 USDM
  * - 1 CL8Y ≈ 0.000419 ETH
+ *
+ * Used for **USD-shaped** podium hints on Simple; see `docs/testing/invariants-and-business-logic.md`
+ * (**INV-FRONTEND-192**, [GitLab #192](https://gitlab.com/PlasticDigits/yieldomega/-/issues/192)).
  */
 export function fallbackPayTokenWeiForCl8y(cl8yWei: bigint, payWith: "eth" | "usdm"): bigint {
   if (payWith === "usdm") {

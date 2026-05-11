@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { AddressInline } from "@/components/AddressInline";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
+import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
+import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
+import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
 import type { PodiumReadRow } from "./usePodiumReads";
 import { PodiumRankingList, type RankingRow } from "./timecurveUi";
@@ -46,6 +49,15 @@ function sameAddress(a: string | undefined, b: string | undefined): boolean {
 function hasWinner(address: string | undefined): boolean {
   const raw = address?.trim();
   return Boolean(raw && isAddress(raw as `0x${string}`) && raw.toLowerCase() !== ZERO_ADDR);
+}
+
+function podiumPayoutPreviewSerialized(
+  preview: TimeCurveSimplePodiumSectionProps["podiumPayoutPreview"] | undefined,
+): string | undefined {
+  if (!preview?.length) {
+    return undefined;
+  }
+  return preview.map((row) => row.places.join(":")).join("|");
 }
 
 function rankingRowsForPodium(
@@ -90,7 +102,12 @@ function rankingRowsForPodium(
             <small>CL8Y</small>
           </span>
           {usdLabel !== undefined && (
-            <span className="timecurve-simple__podium-prize-usd">≈ ${usdLabel} USD</span>
+            <span
+              className="timecurve-simple__podium-prize-usd"
+              title={SIMPLE_PODIUM_USD_EQUIV_TITLE}
+            >
+              ≈ ${usdLabel} USD
+            </span>
           )}
         </span>
       ),
@@ -171,6 +188,15 @@ export function TimeCurveSimplePodiumSection({
   lastBuyPredictionActive = false,
   address,
 }: TimeCurveSimplePodiumSectionProps) {
+  const previewSerialized = useMemo(
+    () => podiumPayoutPreviewSerialized(podiumPayoutPreview),
+    [podiumPayoutPreview],
+  );
+  const podiumPrizeCl8yObservedAtMs = useLastObservedAtForSerializedDep(previewSerialized);
+  const podiumUsdFreshness = useRelativeFreshnessLabel(
+    previewSerialized === undefined ? undefined : podiumPrizeCl8yObservedAtMs,
+  );
+
   return (
     <PageSection
       title="Live reserve podiums"
@@ -216,6 +242,13 @@ export function TimeCurveSimplePodiumSection({
           ? "Last Buy shows a running prediction from indexed purchases until the sale ends"
           : "Last Buy finalizes from the onchain end-sale snapshot"}
         ; other tracks follow live onchain leaderboards. Animations respect reduced motion.
+      </p>
+      <p
+        className="muted timecurve-simple__podium-footnote timecurve-simple__podium-usd-affordance"
+        title={SIMPLE_PODIUM_USD_EQUIV_TITLE}
+      >
+        ≈ USD uses a static CL8Y→USDM display shape (0.98×; not a live oracle).
+        {podiumUsdFreshness ? <> Prize CL8Y preview seen {podiumUsdFreshness}.</> : null}
       </p>
     </PageSection>
   );
