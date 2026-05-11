@@ -7826,6 +7826,19 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: grayscale(0.45) brightness(0.96);
 }
 
+/* Arena BUY CHARM — GitLab #194: wrong-network must read as disabled (arcade
+   lever + gold panel chrome stay high-contrast under the #95 barrier overlay). */
+.timer-hero__arena-buy .chain-write-gate__overlay {
+  z-index: 40;
+}
+
+.timecurve-simple__cta--arcade.timecurve-simple__cta--wrong-network:disabled {
+  opacity: 0.38;
+  filter: grayscale(0.82) brightness(0.88);
+  box-shadow: 3px 3px 0 var(--line);
+  text-shadow: none;
+}
+
 .timecurve-simple__cta-glyph {
   width: clamp(1.5rem, 3vw, 2rem);
   height: clamp(1.5rem, 3vw, 2rem);

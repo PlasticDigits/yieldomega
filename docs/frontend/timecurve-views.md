@@ -92,6 +92,16 @@ implementation in `TimeCurveSimplePage` or `TimeCurveProtocolPage`.
 
 Further reading: [`wallet-connection.md` — Wrong-network (#95)](wallet-connection.md#wrong-network-write-gating-issue-95), [`wallet-connection.md` — Session continuity (#144)](wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144), [`invariants` § #95](../testing/invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95), [`invariants` § #144](../testing/invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144), [play checklist](../testing/manual-qa-checklists.md#manual-qa-issue-95).
 
+<a id="arena-buy-charm-wrong-chain-visual-gitlab-194"></a>
+
+## Arena `Buy CHARM` wrong-chain visual (GitLab #194)
+
+**Problem:** The Arena **arcade** primary CTA stayed **functionally** disabled on wrong **`chainId`**, but could still **look** “live” (gold gradient + motion) relative to **`btn-secondary`** settlement buttons in the standings panel.
+
+**Fix:** When **`useWalletTargetChainMismatch()`** is true, **`TimeCurveArenaView`** adds **`timecurve-simple__cta--wrong-network`**, **`title={chainMismatchWriteMessage(walletChainId)}`**, **`data-testid="timecurve-arena-buy-charm-cta"`**, skips **`primaryButtonMotion`**, and uses scoped CSS for **stronger dimming**; the buy hub **`ChainMismatchWriteBarrier`** overlay gets a **higher `z-index`** so it stacks above z-indexed panel chrome.
+
+**Map:** [`INV-FRONTEND-194-ARENA-BUY-CHAIN`](../testing/invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194) · [manual QA (#194)](../testing/manual-qa-checklists.md#manual-qa-issue-194-arena-buy-chain-visual) · [`TimeCurveArenaView.tsx`](../../frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx) · [`index.css`](../../frontend/src/index.css).
+
 ## Chain time and sale phase (issue #48)
 
 **What must not happen:** the **hero deadline countdown** (and urgency styling

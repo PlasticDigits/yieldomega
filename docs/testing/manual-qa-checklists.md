@@ -14,6 +14,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network write gating](#manual-qa-issue-95) |
+| [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194) | [Arena `Buy CHARM` wrong-chain visual](#manual-qa-issue-194-arena-buy-chain-visual) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [TimeCurve buy — wallet session drift mid-flow](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78) | [`TimeCurveBuyRouter` on Anvil](#manual-qa-issue-78) |
 | [#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) | [Buy CHARM submit-time sizing](#manual-qa-issue-82) |
@@ -228,6 +229,30 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 - [`ChainMismatchWriteBarrier.tsx`](../../frontend/src/components/ChainMismatchWriteBarrier.tsx), [`SwitchToTargetChainButton.tsx`](../../frontend/src/components/SwitchToTargetChainButton.tsx)
 
 **Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [`timecurve-views.md`](../frontend/timecurve-views.md#wrong-network-write-gating-issue-95) · [invariants — #95](invariants-and-business-logic.md#frontend-wallet-chain-write-gating-issue-95) · [§ #106 — `/vesting` claim race](#manual-qa-issue-106)
+
+<a id="manual-qa-issue-194-arena-buy-chain-visual"></a>
+
+## Arena `Buy CHARM` — wrong-chain visual parity (GitLab #194)
+
+**Why:** The Arena **arcade** primary CTA already respected **`chainMismatch`** in its **`disabled`** prop, but the **gold / motion** affordance could still read as “press me” compared with **`btn-secondary`** settlement CTAs under the same wrong-network state ([GitLab #194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194)).
+
+### Preconditions
+
+Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (or a known **`VITE_CHAIN_ID`**) and a wallet that can switch chains.
+
+### Manual steps
+
+1. Open **`/timecurve/arena`** during **`saleActive`** with the wallet on the **correct** target chain — **Buy CHARM** shows the normal **arcade** styling and hover lift (unless reduced motion).
+2. Switch the wallet to a **wrong** chain — confirm **`timecurve-arena-buy-chain-write-gate`** overlay still appears, and the **`Buy CHARM`** control (**`data-testid="timecurve-arena-buy-charm-cta"`**) is **dimmed / muted** (not the same “live gold lever” read as step 1), **`disabled`**, and exposes **`chainMismatchWriteMessage`** as a native **`title`** tooltip on hover / long-press.
+3. Confirm **End sale** / **Redeem charms** / **Distribute prizes** (when the settlement row is visible) still match prior wrong-network expectations.
+4. Switch back to the build target chain **without** a full page reload — **Buy CHARM** regains normal arcade styling and hover motion.
+
+### Code references
+
+- [`TimeCurveArenaView.tsx`](../../frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx) · [`index.css`](../../frontend/src/index.css) (`timecurve-simple__cta--wrong-network`, `.timer-hero__arena-buy .chain-write-gate__overlay`)
+- [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts)
+
+**Doc map:** [`timecurve-views.md` §194](../frontend/timecurve-views.md#arena-buy-charm-wrong-chain-visual-gitlab-194) · [invariants — `INV-FRONTEND-194-ARENA-BUY-CHAIN`](invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194)
 
 <a id="manual-qa-issue-144-wallet-session-drift-on-buy"></a>
 
