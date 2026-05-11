@@ -233,6 +233,16 @@ After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone c
 
 **Spec ↔ test:** [invariants §188](../testing/invariants-and-business-logic.md#timecurve-arena-settlement-panel-timer-expired-gitlab-188) · [`TimeCurveArenaView.tsx`](../../frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx) · [manual QA (#188)](../testing/manual-qa-checklists.md#manual-qa-issue-188) · [play skill](../../skills/play-timecurve-warbow/SKILL.md).
 
+<a id="usd-equivalent-staleness-gitlab-192"></a>
+
+## USD equivalent — staleness + basis (GitLab #192)
+
+**Arena (`/timecurve/arena`, sale live):** the hero **TOTAL USD** line multiplies onchain **`totalRaised`** by a **fixed placeholder** (**`CL8Y_USD_PRICE_PLACEHOLDER = 1`**). A muted second line shows **when the CL8Y total last changed** (serialized `totalRaised` from the ~1s core read bundle) and states that **USD is illustrative**. Hover the block for the full **`title`** ([`ARENA_TOTAL_USD_EQUIV_TITLE`](../../frontend/src/lib/cl8yUsdEquivalentDisplay.ts)).
+
+**Simple (`/timecurve`):** **Live reserve podiums** show **≈ $… USD** beside CL8Y prize hints using the app’s **static** **`fallbackPayTokenWeiForCl8y`** USDM-shaped rate (**0.98×** — not a live stablecoin quote). Each **≈** row exposes the same basis via **`title`**; the section footnote repeats the static-rate disclosure and, when a prize preview is present, **when the preview last changed**.
+
+**Spec ↔ test:** [invariants §192](../testing/invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192) · [`cl8yUsdEquivalentDisplay.ts`](../../frontend/src/lib/cl8yUsdEquivalentDisplay.ts) · [`TimeCurveSimplePodiumSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.tsx) · [manual QA (#192)](../testing/manual-qa-checklists.md#manual-qa-issue-192) · [play skill — USD hints](../../skills/play-timecurve-doubloon/SKILL.md).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)

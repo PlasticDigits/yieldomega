@@ -50,6 +50,7 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("1st prize");
     expect(html).toContain("CL8Y");
     expect(html).toContain("≈ $1.57 USD");
+    expect(html).toContain("static CL8Y→USDM");
     expect(html).toContain("1.6");
     expect(html).not.toContain("predicted leader");
     expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
