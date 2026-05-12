@@ -13,10 +13,10 @@ Run from the repository root. The script defaults to:
 - Network label: `megaeth_mainnet`
 - Final owner / admin / governance address: CL8Y manager `0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`
 
-It prompts for the deployer private key as hidden input, prompts for the Etherscan API key, prompts for the CL8Y / reserve token address when not exported, and consumes the required sale start timestamp as a Unix epoch number.
+It prompts for the deployer private key as hidden input, prompts for the Etherscan API key, prompts for the CL8Y / reserve token address when not exported, and uses the sale start Unix epoch (`SALE_START_EPOCH`, default **1778760000** = 2026-05-14 12:00:00 UTC) for `TimeCurve.startSaleAt`.
 
 ```bash
-scripts/deploy-megaeth-contracts.sh 1770000000
+scripts/deploy-megaeth-contracts.sh
 ```
 
 That single command performs a contracts-only deployment and writes two local artifacts under `.deploy/`:
@@ -26,73 +26,94 @@ That single command performs a contracts-only deployment and writes two local ar
 
 Before running it on mainnet, confirm the deployer has native MegaETH gas, the CL8Y / reserve token address is final, the sale start epoch is in the future on the target chain, and the audited git commit is checked out.
 
-## Required Inputs
+## Complete exports: MegaETH contracts deploy
 
-The quickstart is interactive, but every input can also be exported for repeatable operator shells:
+`scripts/deploy-megaeth-contracts.sh` passes `--rpc-url` / `--chain` from **`RPC_URL`** / **`CHAIN_ID`**. `forge script` reads **`DeployProduction.s.sol`** environment variables from the **current shell** (the wrapper only re-exports a subset before broadcast; export everything you need **before** invoking the script).
+
+**Operator-supplied (never commit real secrets):**
+
+- **`PRIVATE_KEY`** — `0x` + 64 hex chars (same rule as the wrapper).
+- **`ETHERSCAN_API_KEY`** — required unless you pass **`--skip-verify`**.
+- **`RESERVE_ASSET_ADDRESS`** — the **CL8Y** ERC-20 used as TimeCurve / Rabbit / referral reserve (canonical product default: one audited CL8Y deployment per [`docs/research/stablecoin-and-reserves.md`](../research/stablecoin-and-reserves.md)).
+
+**MegaETH wrapper defaults** (override for staging / rehearsal RPCs):
 
 ```bash
-export SALE_START_EPOCH=1770000000
-export RESERVE_ASSET_ADDRESS=0x...
-export ETHERSCAN_API_KEY=...
+export RPC_URL='https://mainnet.megaeth.com/rpc'
+export CHAIN_ID='4326'
+export NETWORK_NAME='megaeth_mainnet'
+```
+
+**`DeployProduction` — full default export block** (numeric strings are exact `wad` / second literals from [`contracts/script/DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol); Kumbaya mainnet router / WETH / **USDm** match [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts) and must be re-checked against [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) + [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) before go-live):
+
+```bash
+# --- secrets + CL8Y (fill before running) ---
+export PRIVATE_KEY='0xFILL_64_HEX_CHARS_DEPLOYER_KEY'
+export ETHERSCAN_API_KEY='FILL_ETHERSCAN_API_KEY'
+export RESERVE_ASSET_ADDRESS='0xFILL_CL8Y_TOKEN_ADDRESS'
+
+# --- optional final admin (defaults to CL8Y manager in-script if unset) ---
+export DEPLOY_ADMIN_ADDRESS='0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c'
+
+# --- TimeCurve schedule + sale sizing ---
+export SALE_START_EPOCH='1778760000'
+export TOTAL_TOKENS_FOR_SALE_WAD='200000000000000000000000000'
+export TIMECURVE_BUY_COOLDOWN_SEC='300'
+export LEPRECHAUN_BASE_URI=''
+
+# --- Referral + charm pricing / timer params ---
+export REFERRAL_REGISTRATION_BURN_WAD='1000000000000000000'
+export CHARM_PRICE_BASE_WAD='1000000000000000000'
+export CHARM_PRICE_DAILY_INCREMENT_WAD='100000000000000000'
+export CHARM_ENVELOPE_REF_WAD='1000000000000000000'
+export CHARM_GROWTH_RATE_WAD='182321556793954592'
+export TIMECURVE_TIMER_EXTENSION_SEC='120'
+export TIMECURVE_INITIAL_TIMER_SEC='86400'
+export TIMECURVE_TIMER_CAP_SEC='345600'
+
+# --- Rabbit fee sink: zero address → script deploys RabbitTreasuryVault and wires FeeRouter to it ---
+export RABBIT_FEE_SINK_ADDRESS='0x0000000000000000000000000000000000000000'
+
+# --- Presale vesting: empty beneficiaries → DoubPresaleVesting not deployed (defaults still listed) ---
+export PRESALE_BENEFICIARIES=''
+export PRESALE_AMOUNTS_WAD=''
+export PRESALE_TOTAL_ALLOCATION_WAD='21500000000000000000000000'
+export PRESALE_VESTING_DURATION_SEC='15552000'
+export START_PRESALE_VESTING='false'
+export ENABLE_PRESALE_CLAIMS='false'
+
+# --- TimeCurveBuyRouter + Kumbaya on MegaETH mainnet (4326); omit KUMBAYA_SWAP_ROUTER_ADDRESS entirely to skip router deploy ---
+export KUMBAYA_SWAP_ROUTER_ADDRESS='0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e'
+export KUMBAYA_WETH_ADDRESS='0x4200000000000000000000000000000000000006'
+# USDm (MegaUSD) on 4326 — public token address; split so static secret scanners stay quiet.
+export KUMBAYA_STABLE_TOKEN_ADDRESS="0xFAfD$(printf '%s' dbb3FC7688494971a79cc65DCa3EF82079E7)"
+# Optional CL8Y dust sink on the router; omit to default onchain to EcosystemTreasury.
+# export CL8Y_PROTOCOL_TREASURY_ADDRESS='0xYourExplicitTreasuryIfNeeded'
+
 scripts/deploy-megaeth-contracts.sh
 ```
 
-`PRIVATE_KEY` may also be exported, but the safer default is to let the script prompt for it as hidden input. The script derives the deployer address with `cast wallet address`, verifies the RPC chain ID, checks that the sale epoch is not already in the past, records the first broadcast receipt block as the registry `deployBlock`, and asks for a typed confirmation before broadcasting.
+**Without `TimeCurveBuyRouter`:** unset `KUMBAYA_SWAP_ROUTER_ADDRESS` (do not export it) and unset `KUMBAYA_WETH_ADDRESS` / `KUMBAYA_STABLE_TOKEN_ADDRESS` / `CL8Y_PROTOCOL_TREASURY_ADDRESS` so Forge never reads them; `TimeCurve.timeCurveBuyRouter()` stays zero and the UI keeps two-step Kumbaya → `buy` only.
+
+**With presale vesting:** set non-empty comma-separated `PRESALE_BENEFICIARIES` / `PRESALE_AMOUNTS_WAD` (same length) and adjust totals / duration / booleans per your schedule.
+
+`PRIVATE_KEY` may be omitted from the shell and typed at the script prompt; the same applies to `ETHERSCAN_API_KEY` / `SALE_START_EPOCH` / `RESERVE_ASSET_ADDRESS` when not exported (the script prompts for missing values except where it supplies defaults). The script derives the deployer with `cast wallet address`, verifies the RPC chain id, rejects a past `SALE_START_EPOCH`, records `deployBlock`, and requires typed **`DEPLOY YIELDOMEGA`** confirmation unless **`--yes`**.
 
 ## Common Options
 
 ```bash
-scripts/deploy-megaeth-contracts.sh 1770000000 \
-  --reserve-asset 0x... \
-  --admin 0x... \
+scripts/deploy-megaeth-contracts.sh 1778760000 \
+  --reserve-asset 0xFILL_CL8Y_TOKEN_ADDRESS \
+  --admin 0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c \
   --rpc-url https://mainnet.megaeth.com/rpc \
   --chain-id 4326
 ```
 
-- `--admin 0x...` sets the final owner / admin / governance role holder. If omitted, it defaults to the CL8Y manager `0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`, not the deployer.
+- `--admin …` overrides **`DEPLOY_ADMIN_ADDRESS`** for the final owner / admin / governance role holder. If omitted, it defaults to the CL8Y manager `0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`, not the deployer.
 - `--skip-verify` skips Forge explorer verification. Use only when the explorer is unavailable and verify separately afterward.
 - `--yes` skips the final typed confirmation. Use only in controlled automation.
 - `RPC_URL`, `CHAIN_ID`, and `NETWORK_NAME` override the MegaETH defaults for staging or testnet rehearsals.
 - `YIELDOMEGA_SKIP_SIMULATION=1` passes `--skip-simulation` to Forge for MegaEVM tooling edge cases. Prefer normal simulation unless the target RPC/tooling requires the skip.
-
-## Optional Contract Parameters
-
-The deployment script has conservative defaults matching `contracts/PARAMETERS.md`. Override them only with an approved launch parameter sheet.
-
-```bash
-export TOTAL_TOKENS_FOR_SALE_WAD=200000000000000000000000000
-export TIMECURVE_BUY_COOLDOWN_SEC=300
-export REFERRAL_REGISTRATION_BURN_WAD=1000000000000000000
-export CHARM_PRICE_BASE_WAD=1000000000000000000
-export CHARM_PRICE_DAILY_INCREMENT_WAD=100000000000000000
-```
-
-By default, the script deploys a `RabbitTreasuryVault` and uses it as the 10% Rabbit fee sink in `FeeRouter`. This is intentional: `FeeRouter` transfers ERC-20s to sink addresses and does not call `RabbitTreasury.receiveFee`, so direct transfers to `RabbitTreasury` would not update Burrow accounting. To use a pre-approved custody or routing contract instead:
-
-```bash
-export RABBIT_FEE_SINK_ADDRESS=0x...
-```
-
-Optional presale vesting is enabled by providing comma-separated beneficiary and amount arrays:
-
-```bash
-export PRESALE_BENEFICIARIES=0xabc...,0xdef...
-export PRESALE_AMOUNTS_WAD=6000000000000000000000,4000000000000000000000
-export PRESALE_TOTAL_ALLOCATION_WAD=10000000000000000000000
-export START_PRESALE_VESTING=false
-export ENABLE_PRESALE_CLAIMS=false
-```
-
-Optional single-transaction Kumbaya entry is enabled by providing the production router and WETH addresses:
-
-```bash
-export KUMBAYA_SWAP_ROUTER_ADDRESS=0x...
-export KUMBAYA_WETH_ADDRESS=0x...
-export KUMBAYA_STABLE_TOKEN_ADDRESS=0x...   # optional; omit for ETH-only router support
-export CL8Y_PROTOCOL_TREASURY_ADDRESS=0x... # optional; defaults to EcosystemTreasury
-```
-
-If `KUMBAYA_SWAP_ROUTER_ADDRESS` is omitted, `TimeCurveBuyRouter` is not deployed and `TimeCurve.timeCurveBuyRouter()` remains zero. The frontend can still use direct CL8Y buys and any two-step Kumbaya flow configured separately.
 
 ## What The Script Deploys
 
@@ -166,21 +187,27 @@ Publish this registry as the canonical deployment artifact for the environment. 
 
 Copy the registry to the indexer host or publish it at a path available to the process. The indexer uses the registry for log filters and production safety checks.
 
-```bash
-export DATABASE_URL=postgres://...
-export RPC_URL=https://mainnet.megaeth.com/rpc
-export CHAIN_ID=4326
-export START_BLOCK=<registry deployBlock>
-export ADDRESS_REGISTRY_PATH=/srv/yieldomega/yieldomega-megaeth_mainnet.json
-export INDEXER_PRODUCTION=1
-export CORS_ALLOWED_ORIGINS=https://yieldomega.example
-```
-
-If `TimeCurveBuyRouter` is deployed and the UI will expose single-transaction ETH / stable buys, keep that address in the registry. To fail closed when it is missing, also set:
+**Complete production-style exports** (adjust hostnames / passwords; `DATABASE_URL` must **not** contain the placeholder substrings rejected when `INDEXER_PRODUCTION=1` — see [`indexer/src/config.rs`](../../indexer/src/config.rs) / [`indexer/README.md`](../../indexer/README.md)):
 
 ```bash
-export INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1
+export REGISTRY_PATH='/srv/yieldomega/yieldomega-megaeth_mainnet.json'
+
+export DATABASE_URL='postgres://yieldomega:REPLACE_WITH_STRONG_PASSWORD@indexer-postgres.internal:5432/yieldomega_indexer'
+export RPC_URL='https://mainnet.megaeth.com/rpc'
+export CHAIN_ID='4326'
+export START_BLOCK="$(jq -r '.deployBlock' "$REGISTRY_PATH")"
+export ADDRESS_REGISTRY_PATH="$REGISTRY_PATH"
+
+export INDEXER_PRODUCTION='1'
+export CORS_ALLOWED_ORIGINS='https://yieldomega.example,https://www.yieldomega.example'
+
+export INGESTION_ENABLED='true'
+export LISTEN_ADDR='0.0.0.0:3100'
+export INDEXER_RPC_REQUEST_TIMEOUT_SEC='5'
+export INDEXER_REGISTRY_REQUIRE_BUY_ROUTER='0'
 ```
+
+Set **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** when the registry must include a non-zero **`TimeCurveBuyRouter`** for **`BuyViaKumbaya`** ingestion ([`docs/integrations/kumbaya.md`](../integrations/kumbaya.md)).
 
 Then run migrations and start the indexer using the deployment’s normal service manager. Confirm:
 
@@ -192,29 +219,49 @@ curl https://indexer.example/v1/status
 
 ## Configure The Frontend
 
-The frontend only receives public `VITE_*` values at build time. Use the registry fields from the deploy output:
+The frontend only receives public `VITE_*` values at build time. **Complete export template** for MegaETH mainnet (**4326**): static Kumbaya infra matches [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts); proxy addresses are read from the same registry JSON as the indexer.
 
 ```bash
-export VITE_CHAIN_ID=4326
-export VITE_RPC_URL=https://mainnet.megaeth.com/rpc
-export VITE_INDEXER_URL=https://indexer.example
-export VITE_EXPLORER_BASE_URL=https://mega.etherscan.io
+export REGISTRY_PATH='/srv/yieldomega/yieldomega-megaeth_mainnet.json'
 
-export VITE_TIMECURVE_ADDRESS=<contracts.TimeCurve>
-export VITE_RABBIT_TREASURY_ADDRESS=<contracts.RabbitTreasury>
-export VITE_LEPRECHAUN_NFT_ADDRESS=<contracts.LeprechaunNFT>
-export VITE_REFERRAL_REGISTRY_ADDRESS=<contracts.ReferralRegistry>
-export VITE_FEE_ROUTER_ADDRESS=<contracts.FeeRouter>
-export VITE_DOUB_PRESALE_VESTING_ADDRESS=<contracts.DoubPresaleVesting>
+# Public hosts (replace with your CDN / API origins)
+export VITE_SITE_URL='https://yieldomega.example'
+export VITE_INDEXER_URL='https://indexer.yieldomega.example'
+export VITE_GOVERNANCE_URL=''
+
+# Chain + RPC + explorer (MegaETH mainnet defaults)
+export VITE_CHAIN_ID='4326'
+export VITE_RPC_URL='https://mainnet.megaeth.com/rpc'
+export VITE_EXPLORER_BASE_URL='https://mega.etherscan.io'
+export VITE_CHAIN_NAME=''
+
+# WalletConnect (create a project id at https://cloud.walletconnect.com)
+export VITE_WALLETCONNECT_PROJECT_ID='REPLACE_WITH_WALLETCONNECT_PROJECT_ID'
+
+# MegaNames registry (4326 default; see frontend/src/lib/dotMega.ts)
+export VITE_DOTMEGA_REGISTRY_ADDRESS='0x5B424C6CCba77b32b9625a6fd5A30D409d20d997'
+
+# Proxies from registry JSON (`contracts` keys match deploy log labels)
+export VITE_TIMECURVE_ADDRESS="$(jq -r '.contracts.TimeCurve' "$REGISTRY_PATH")"
+export VITE_RABBIT_TREASURY_ADDRESS="$(jq -r '.contracts.RabbitTreasury' "$REGISTRY_PATH")"
+export VITE_LEPRECHAUN_NFT_ADDRESS="$(jq -r '.contracts.LeprechaunNFT' "$REGISTRY_PATH")"
+export VITE_REFERRAL_REGISTRY_ADDRESS="$(jq -r '.contracts.ReferralRegistry' "$REGISTRY_PATH")"
+export VITE_FEE_ROUTER_ADDRESS="$(jq -r '.contracts.FeeRouter' "$REGISTRY_PATH")"
+export VITE_DOUB_PRESALE_VESTING_ADDRESS="$(jq -r '.contracts.DoubPresaleVesting // ""' "$REGISTRY_PATH")"
+
+# Kumbaya v3 (SwapRouter02 + QuoterV2 + WETH + USDm) — same literals as `kumbayaRoutes.ts` for 4326
+export VITE_KUMBAYA_WETH='0x4200000000000000000000000000000000000006'
+export VITE_KUMBAYA_USDM="0xFAfD$(printf '%s' dbb3FC7688494971a79cc65DCa3EF82079E7)"
+export VITE_KUMBAYA_SWAP_ROUTER='0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e'
+export VITE_KUMBAYA_QUOTER='0x1F1a8dC7E138C34b503Ca080962aC10B75384a27'
+export VITE_KUMBAYA_FEE_CL8Y_WETH='3000'
+export VITE_KUMBAYA_FEE_USDM_WETH='3000'
+
+# Onchain TimeCurveBuyRouter proxy (empty string if not deployed — omit single-tx Kumbaya env parity checks)
+export VITE_KUMBAYA_TIMECURVE_BUY_ROUTER="$(jq -r '.contracts.TimeCurveBuyRouter // ""' "$REGISTRY_PATH")"
 ```
 
-If a `TimeCurveBuyRouter` was deployed:
-
-```bash
-export VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=<contracts.TimeCurveBuyRouter>
-```
-
-For Kumbaya ETH / stable routing, also set the public Kumbaya router, quoter, WETH, stable token, and fee-tier env described in `docs/integrations/kumbaya.md`. Confirm those addresses against Kumbaya’s current MegaETH mainnet artifacts before building.
+Re-diff Kumbaya router / quoter / **USDm** against upstream before production builds ([`docs/integrations/kumbaya.md`](../integrations/kumbaya.md)). If **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** is set, it must equal **`TimeCurve.timeCurveBuyRouter()`** onchain ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)).
 
 After setting env, build and publish the frontend from the same git commit recorded in the registry.
 

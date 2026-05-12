@@ -29,13 +29,17 @@ Usage:
   scripts/deploy-megaeth-contracts.sh [SALE_START_EPOCH] [options]
 
 Quickstart:
-  scripts/deploy-megaeth-contracts.sh 1770000000
+  scripts/deploy-megaeth-contracts.sh
+
+  # optional explicit epoch (else 1778760000 = 2026-05-14 12:00:00 UTC):
+  scripts/deploy-megaeth-contracts.sh 1778760000
 
 Defaults:
   RPC_URL=https://mainnet.megaeth.com/rpc
   CHAIN_ID=4326
   NETWORK_NAME=megaeth_mainnet
   DEPLOY_ADMIN_ADDRESS=0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c
+  SALE_START_EPOCH=1778760000 when omitted (env, positional, and prompt)
 
 Options:
   --rpc-url URL              Override target RPC_URL.
@@ -48,6 +52,7 @@ Options:
   -h, --help                 Show this help.
 
 Optional environment:
+  SALE_START_EPOCH (defaults to 1778760000 = 2026-05-14 12:00:00 UTC),
   TOTAL_TOKENS_FOR_SALE_WAD, TIMECURVE_BUY_COOLDOWN_SEC,
   REFERRAL_REGISTRATION_BURN_WAD, CHARM_PRICE_BASE_WAD,
   CHARM_PRICE_DAILY_INCREMENT_WAD, KUMBAYA_SWAP_ROUTER_ADDRESS,
@@ -109,6 +114,9 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Default: 2026-05-14 12:00:00 UTC (TimeCurve `startSaleAt` anchor when unset — GitLab #114).
+SALE_START_EPOCH="${SALE_START_EPOCH:-1778760000}"
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
