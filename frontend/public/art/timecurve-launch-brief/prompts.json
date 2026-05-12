@@ -1,0 +1,35 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/timecurve-launch-brief",
+  "single_attempt_per_image": true,
+  "jobs": [
+    {
+      "slug": "onchain-pressure",
+      "title": "Onchain Pressure",
+      "mode": "character worldbuilding with light infographic labels",
+      "output": "onchain-pressure.png",
+      "subject": "Wide 3:2 cinematic arcade scene. Multiple adult mascot hands and gloved player hands reach toward a single glowing emerald-gold onchain button mounted on a transparent smart-contract pedestal. A chunky countdown clock above the button visibly ticks down with clean large text: \"ONCHAIN PRESSURE\" and small label \"timer ticking down\". The button is connected by glowing block-chain links to a wallet signature plaque and a block-height tower, showing the pressure is onchain and public. Atmosphere: tense but playful, not scary, with sparkles, voxel hills, and DOUB hat-coins orbiting the timer. No fake dates, no profit claims, no extra paragraphs."
+    },
+    {
+      "slug": "nft-identity",
+      "title": "NFT Identity",
+      "mode": "character worldbuilding",
+      "output": "nft-identity.png",
+      "subject": "Wide 3:2 collectible roster scene. Three unique adult avatar characters stand on separate glowing NFT identity plinths inside a magical arcade character-select hall. One avatar is a sniper-style patient strategist with scope goggles and a calm blue-green glow; one is a patient defender with shield, guard stance, and warm gold glow; one is a timer-focused tactician with clock charms and purple-green glow. Each avatar has distinct silhouette, accessories, and playstyle aura. Add only tiny readable labels on plinth nameplates: \"SNIPER\", \"DEFENDER\", \"TIMING\". Include token-logo inspired hat badges and NFT card frames, but do not imply immutable offchain metadata or guaranteed advantage."
+    },
+    {
+      "slug": "pattern-recognition",
+      "title": "Pattern Recognition",
+      "mode": "split character worldbuilding",
+      "output": "pattern-recognition.png",
+      "subject": "Wide 3:2 split-screen composition. Left side: one focused adult player-avatar wearing glowing glasses sees clear highlighted paths, timer arcs, CHARM band rails, and buy-flow lines through a transparent TimeCurve arena map. Right side: other players see colorful chaos: tangled coin trails, spinning clocks, floating blocks, and scattered signals. Make the contrast obvious with two clean labels only: \"PATTERNS\" on the left and \"CHAOS\" on the right. The highlighted lines should feel like analysis and timing discipline, not supernatural certainty. Keep it playful, readable, and brand-consistent."
+    },
+    {
+      "slug": "time-curve-infographic",
+      "title": "Time Curve",
+      "mode": "accurate infographic with text",
+      "output": "time-curve-infographic.png",
+      "subject": "Wide 3:2 infographic poster on parchment-like UI cards inside the Yieldomega arcade world. Main headline text exactly: \"TIME CURVE\". Below it, a clean sequence of five large labeled panels with simple icons:\n1. \"OPENS AT saleStart\" with subtext \"TimeCurve Opens In\"\n2. \"24h INITIAL CLOCK\"\n3. \"+120s PER BUY\" with small cap label \"96h cap\"\n4. \"UNDER 13m -> RESET TOWARD 15m\"\n5. \"300d WALL\"\nAdd a side card titled \"KNOW THIS\" with four short bullets: \"CHARM band grows\", \"Price schedule is separate\", \"Redeem CHARM for DOUB after end\", \"Podium: Last Buy / WarBow / Defended / Booster\".\nAdd a footer fee ribbon with labels: \"30 LP\", \"40 BURN\", \"20 PODIUM\", \"10 RABBIT\", \"0 TEAM\".\nUse clear typography, lots of whitespace, icons for chain clock, CHARM rail, DOUB coin, podium, rabbit treasury. Do not include a calendar date, dollar returns, or any claim of guaranteed wins."
+    }
+  ]
+}
