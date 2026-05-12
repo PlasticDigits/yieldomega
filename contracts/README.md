@@ -96,10 +96,10 @@ For the contracts-only MegaETH quickstart and the indexer/frontend handoff, see
 The production wrapper is:
 
 ```bash
-scripts/deploy-megaeth-contracts.sh <SALE_START_EPOCH>
+scripts/deploy-megaeth-contracts.sh [SALE_START_EPOCH]
 ```
 
-It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol), prompts for the
+Omit the argument (and `SALE_START_EPOCH` env) to use the default **1778760000** (2026-05-14 12:00:00 UTC). It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol), prompts for the
 private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, assigns
 owner/admin/governance roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
 and writes an address registry under `.deploy/`.

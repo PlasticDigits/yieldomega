@@ -22,7 +22,8 @@ import {TimeCurveBuyRouter} from "../src/TimeCurveBuyRouter.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 
 /// @notice Production-oriented deployment for core YieldOmega contracts.
-/// @dev The companion shell wrapper supplies PRIVATE_KEY, SALE_START_EPOCH, and MegaETH defaults.
+/// @dev The companion shell wrapper supplies PRIVATE_KEY and MegaETH defaults; `SALE_START_EPOCH`
+///      defaults to **1778760000** (2026-05-14 12:00:00 UTC) when unset (TimeCurve `startSaleAt` — #114).
 ///      This script deliberately does not deploy mock tokens and is not guarded to dev chains.
 contract DeployProduction is Script {
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
@@ -60,7 +61,7 @@ contract DeployProduction is Script {
         d.reserveAsset = vm.envAddress("RESERVE_ASSET_ADDRESS");
         require(d.reserveAsset != address(0), "DeployProduction: zero reserve");
 
-        uint256 saleStartEpoch = vm.envUint("SALE_START_EPOCH");
+        uint256 saleStartEpoch = vm.envOr("SALE_START_EPOCH", uint256(1_778_760_000));
         uint256 totalTokensForSale = vm.envOr("TOTAL_TOKENS_FOR_SALE_WAD", uint256(200_000_000e18));
         uint256 buyCooldownSec = vm.envOr("TIMECURVE_BUY_COOLDOWN_SEC", uint256(300));
         string memory nftBaseUri = vm.envOr("LEPRECHAUN_BASE_URI", string(""));
