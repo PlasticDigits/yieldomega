@@ -12,15 +12,16 @@ function cssBlock(css: string, selector: string, window = 900): string {
 
 describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
+  const simplePage = fs.readFileSync(path.resolve(__dirname, "../pages/TimeCurveSimplePage.tsx"), "utf8");
 
-  it("reclaims phone-width buy-panel space reserved for decorative cutouts", () => {
+  it("keeps the Simple buy panel free of the former floating coin-stack cutout", () => {
+    expect(simplePage).not.toContain("panel-cutout--coin-stack");
+    expect(simplePage).not.toContain("/art/hat-coin-stack.png");
+    expect(css).not.toContain(".timecurve-simple__buy-panel .chain-write-gate");
+  });
+
+  it("collapses the phone-width buy-panel slider layout", () => {
     const block = cssBlock(css, "@container timecurveSimplePage (max-width: 520px)", 1_500);
-    expect(block).toContain(".timecurve-simple__buy-panel.data-panel");
-    expect(block).toContain("padding-right: clamp(0.95rem, 4vw, 1.15rem)");
-    expect(block).toContain(".timecurve-simple__buy-panel .chain-write-gate");
-    expect(block).toContain("padding-right: 0");
-    expect(block).toContain(".timecurve-simple__buy-panel .panel-cutout--coin-stack");
-    expect(block).toContain("display: none");
     expect(block).toContain(".timecurve-simple__slider-row");
     expect(block).toContain("grid-template-columns: minmax(0, 1fr)");
   });
