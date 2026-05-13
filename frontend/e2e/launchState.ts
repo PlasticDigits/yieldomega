@@ -14,7 +14,7 @@ import type { Page } from "@playwright/test";
  *   Index `/` lands on `TimeCurveSimplePage` (issue #40); HomePage moves to
  *   `/home`. Secondary surfaces render normally.
  * - `"no-env"` — `VITE_LAUNCH_TIMESTAMP` is unset. The shell renders normally
- *   with HomePage at `/` and no `/home` route.
+ *   with HomePage at `/`; `/home` is the same hub surface (alias — GitLab #199).
  *
  * `detectLaunchState` is the single source of truth for this branching across
  * the e2e suite; new specs that assume a particular shell should call it and

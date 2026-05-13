@@ -73,6 +73,13 @@ const TIMECURVE_ROUTES: Surface[] = [
 
 const ROUTES_NO_ENV: Surface[] = [
   { path: undefined, element: <HomePage /> },
+  /**
+   * Hub alias: post-launch builds use `/home` for `HomePage` while `/` is
+   * TimeCurve. When `VITE_LAUNCH_TIMESTAMP` is unset, `/` stays canonical for
+   * the hub — still register `/home` so deep links and QA checklists do not
+   * hit an empty `<Outlet />` (GitLab #199).
+   */
+  { path: "home", element: <HomePage /> },
   ...TIMECURVE_ROUTES,
   ...SECONDARY_ROUTES,
 ];

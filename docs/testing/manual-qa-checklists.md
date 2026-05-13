@@ -13,6 +13,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
+| [#199](https://gitlab.com/PlasticDigits/yieldomega/-/issues/199) | [`LaunchGate` `/home` hub route (no-env + post-launch)](#manual-qa-issue-199-home-route-launchgate) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network write gating](#manual-qa-issue-95) |
 | [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194) | [Arena `Buy CHARM` wrong-chain visual](#manual-qa-issue-194-arena-buy-chain-visual) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [TimeCurve buy — wallet session drift mid-flow](#manual-qa-issue-144-wallet-session-drift-on-buy) |
@@ -200,6 +201,22 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 **Defaults:** Unset **`VITE_CHAIN_ID`** / **`VITE_RPC_URL`** → **31337** + **`http://127.0.0.1:8545`**.
 
 **Doc map:** [`wallet-connection.md`](../frontend/wallet-connection.md) · [invariants — #81](invariants-and-business-logic.md#frontend-single-chain-wagmi-issue-81)
+
+<a id="manual-qa-issue-199-home-route-launchgate"></a>
+
+## `LaunchGate` `/home` hub route — no-env + post-launch (GitLab #199)
+
+**Why:** Without **`VITE_LAUNCH_TIMESTAMP`**, the marketing hub lives at **`/`**. **`ROUTES_NO_ENV`** previously omitted **`path: "home"`**, so **`http://127.0.0.1:<port>/home`** matched **`RootLayout`** but rendered an **empty** `<Outlet />` (shell + green grid only). Post-launch builds already map **`/home` → `HomePage`**.
+
+### Checklist
+
+1. **No-env:** `cd frontend && npm run dev` with **no** `VITE_LAUNCH_TIMESTAMP` in `.env` / `.env.local`.
+2. Open **`/home`** (e.g. `http://127.0.0.1:5173/home`).
+3. Expect **`YieldOmega`** hero **`h1`**, hero art, **Open TimeCurve** CTA, and **surface cards** — same hub as **`/`** (not a blank main).
+4. **`/`** still shows the same hub; **no** double layout (single **`RootLayout`** outlet).
+5. **Post-launch (optional):** rebuild with **`VITE_LAUNCH_TIMESTAMP`** in the **past** → **`/`** is TimeCurve Simple, **`/home`** is still the full hub.
+
+**Doc map:** [`timecurve-views.md` — LaunchCountdown → Simple handoff](../frontend/timecurve-views.md#launchcountdown--simple-handoff) · [invariants — #199](invariants-and-business-logic.md#launchgate-home-route--no-env-parity-gitlab-199) · [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx)
 
 <a id="manual-qa-issue-95"></a>
 
