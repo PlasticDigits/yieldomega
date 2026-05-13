@@ -22,7 +22,7 @@ describe("home product card grid CSS (GitLab #198)", () => {
     expect(cssBlock(css, ".home-cta-grid")).toContain("align-items: stretch;");
 
     const desktopGridBlock = css.match(
-      /@media \(min-width: 721px\) \{[\s\S]*?\.home-cta-grid \{[\s\S]*?\n  \}\n\}/,
+      /@media \(min-width: 721px\) \{[\s\S]*?\.home-cta-grid \{[\s\S]*?\n {2}\}\n\}/,
     );
     expect(desktopGridBlock).not.toBeNull();
     expect(desktopGridBlock![0]).toContain("grid-auto-rows: 1fr;");
