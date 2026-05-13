@@ -17,13 +17,18 @@ import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
 import {ICharmPrice} from "../src/interfaces/ICharmPrice.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
+import {PresaleCharmBeneficiaryRegistry} from "../src/vesting/PresaleCharmBeneficiaryRegistry.sol";
 import {LeprechaunNFT} from "../src/LeprechaunNFT.sol";
 import {TimeCurveBuyRouter} from "../src/TimeCurveBuyRouter.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 
 /// @notice Production-oriented deployment for core YieldOmega contracts.
-/// @dev The companion shell wrapper supplies PRIVATE_KEY and MegaETH defaults; `SALE_START_EPOCH`
-///      defaults to **1778760000** (2026-05-14 12:00:00 UTC) when unset (TimeCurve `startSaleAt` — #114).
+/// @dev The companion shell wrapper prompts for the deployer key as hidden terminal input, passes
+///      `PRIVATE_KEY` only to the ephemeral `forge script` subprocess (never from a durable env export),
+///      and supplies MegaETH defaults; `SALE_START_EPOCH` defaults to **1779105600** (2026-05-18 12:00:00 UTC) when unset (TimeCurve `startSaleAt` — #114).
+///      **Presale CHARM +15%:** non-empty **`PRESALE_CHARM_BOOST_ADDRESSES`** deploys **`PresaleCharmBeneficiaryRegistry`**. Non-empty **`PRESALE_BENEFICIARIES`**
+///      deploys **`DoubPresaleVesting`** (DOUB allocations; may use different wallets than the boost list). **Both** may deploy in one run; **`TimeCurve.setDoubPresaleVesting`**
+///      prefers the **registry** when present (boost `isBeneficiary`), else the vesting contract.
 ///      This script deliberately does not deploy mock tokens and is not guarded to dev chains.
 contract DeployProduction is Script {
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
@@ -45,6 +50,7 @@ contract DeployProduction is Script {
         LinearCharmPrice charmPrice;
         TimeCurve timeCurve;
         DoubPresaleVesting presaleVesting;
+        PresaleCharmBeneficiaryRegistry presaleCharmRegistry;
         LeprechaunNFT leprechaunNFT;
         TimeCurveBuyRouter timeCurveBuyRouter;
     }
@@ -61,7 +67,7 @@ contract DeployProduction is Script {
         d.reserveAsset = vm.envAddress("RESERVE_ASSET_ADDRESS");
         require(d.reserveAsset != address(0), "DeployProduction: zero reserve");
 
-        uint256 saleStartEpoch = vm.envOr("SALE_START_EPOCH", uint256(1_778_760_000));
+        uint256 saleStartEpoch = vm.envOr("SALE_START_EPOCH", uint256(1_779_105_600));
         uint256 totalTokensForSale = vm.envOr("TOTAL_TOKENS_FOR_SALE_WAD", uint256(200_000_000e18));
         uint256 buyCooldownSec = vm.envOr("TIMECURVE_BUY_COOLDOWN_SEC", uint256(300));
         string memory nftBaseUri = vm.envOr("LEPRECHAUN_BASE_URI", string(""));
@@ -148,8 +154,15 @@ contract DeployProduction is Script {
         d.timeCurve.setPodiumResidualRecipient(address(d.ecosystemTreasury));
         d.timeCurve.setUnredeemedLaunchedTokenRecipient(address(d.ecosystemTreasury));
 
-        d.presaleVesting = _maybeDeployPresaleVesting(d);
-        if (address(d.presaleVesting) != address(0)) {
+        string memory rawVestingBeneficiaries = vm.envOr("PRESALE_BENEFICIARIES", string(""));
+        d.presaleVesting = bytes(rawVestingBeneficiaries).length > 0
+            ? _maybeDeployPresaleVesting(d)
+            : DoubPresaleVesting(address(0));
+        d.presaleCharmRegistry = _maybeDeployPresaleCharmRegistry();
+
+        if (address(d.presaleCharmRegistry) != address(0)) {
+            d.timeCurve.setDoubPresaleVesting(address(d.presaleCharmRegistry));
+        } else if (address(d.presaleVesting) != address(0)) {
             d.timeCurve.setDoubPresaleVesting(address(d.presaleVesting));
         }
 
@@ -197,6 +210,15 @@ contract DeployProduction is Script {
             vesting.setClaimsEnabled(true);
         }
         return vesting;
+    }
+
+    function _maybeDeployPresaleCharmRegistry() internal returns (PresaleCharmBeneficiaryRegistry) {
+        string memory raw = vm.envOr("PRESALE_CHARM_BOOST_ADDRESSES", string(""));
+        if (bytes(raw).length == 0) {
+            return PresaleCharmBeneficiaryRegistry(address(0));
+        }
+        address[] memory addrs = vm.envAddress("PRESALE_CHARM_BOOST_ADDRESSES", ",");
+        return new PresaleCharmBeneficiaryRegistry(addrs);
     }
 
     function _maybeDeployTimeCurveBuyRouter(Deployment memory d) internal returns (TimeCurveBuyRouter) {
@@ -274,6 +296,7 @@ contract DeployProduction is Script {
         console.log("LinearCharmPrice:", address(d.charmPrice));
         console.log("TimeCurve:", address(d.timeCurve));
         console.log("DoubPresaleVesting:", address(d.presaleVesting));
+        console.log("PresaleCharmBeneficiaryRegistry:", address(d.presaleCharmRegistry));
         console.log("TimeCurveBuyRouter:", address(d.timeCurveBuyRouter));
         console.log("LeprechaunNFT:", address(d.leprechaunNFT));
         console.log("LaunchedToken:", address(d.doub));

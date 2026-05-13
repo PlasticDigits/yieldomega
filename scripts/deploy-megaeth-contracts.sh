@@ -3,6 +3,10 @@
 # Contracts-only production deployment wrapper for MegaETH.
 set -euo pipefail
 
+# Deployer key: never read from the environment (avoids leaking via `export` / dotfiles).
+# The script keeps it in a shell variable and passes it only to the Forge child process.
+unset -v PRIVATE_KEY 2>/dev/null || true
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS_DIR="${ROOT}/contracts"
 DEPLOY_DIR="${ROOT}/.deploy"
@@ -11,6 +15,13 @@ DEFAULT_RPC_URL="https://mainnet.megaeth.com/rpc"
 DEFAULT_CHAIN_ID="4326"
 DEFAULT_NETWORK_NAME="megaeth_mainnet"
 DEFAULT_DEPLOY_ADMIN_ADDRESS="0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c"
+# Canonical CL8Y (TimeCurve / Rabbit / referral reserve) on MegaETH mainnet — override for other chains or test doubles.
+DEFAULT_MEGAETH_MAINNET_CL8Y="0xfBAa45A537cF07dC768c469FfaC4e88208B0098D"
+# Canonical TimeCurve +15% CHARM presale wallets (MegaETH 4326). First wallet may differ from vesting DOUB recipient — see DEFAULT_MEGAETH_MAINNET_PRESALE_BENEFICIARIES.
+DEFAULT_MEGAETH_MAINNET_PRESALE_CHARM_BOOST_ADDRESSES="0xA5F424182E8E94c328EC6441ebf508e1cb48f8bA,0x7fb70BC1d5D30945f64a91B4a9C84792dfA9403b,0x45999a8Dd96b4df3AadBC395669b2b0928a7aF17,0x6186290B28D511bFF971631c916244A9fC539cfE,0x212D17402321BD15D092A3444766649d00c5A9F4"
+# Canonical DoubPresaleVesting allocation wallets (4326): first tranche (10M DOUB) to delegate wallet; others match CHARM boost list.
+DEFAULT_MEGAETH_MAINNET_PRESALE_BENEFICIARIES="0x0965a4Ce0e6eDDd87eA8F6cF73a8462b8B47fc7D,0x7fb70BC1d5D30945f64a91B4a9C84792dfA9403b,0x45999a8Dd96b4df3AadBC395669b2b0928a7aF17,0x6186290B28D511bFF971631c916244A9fC539cfE,0x212D17402321BD15D092A3444766649d00c5A9F4"
+DEFAULT_MEGAETH_MAINNET_PRESALE_AMOUNTS_WAD="10000000000000000000000000,4000000000000000000000000,5000000000000000000000000,2000000000000000000000000,500000000000000000000000"
 
 RPC_URL="${RPC_URL:-$DEFAULT_RPC_URL}"
 CHAIN_ID="${CHAIN_ID:-$DEFAULT_CHAIN_ID}"
@@ -20,8 +31,9 @@ ASSUME_YES=false
 SALE_START_EPOCH="${SALE_START_EPOCH:-}"
 RESERVE_ASSET_ADDRESS="${RESERVE_ASSET_ADDRESS:-}"
 DEPLOY_ADMIN_ADDRESS="${DEPLOY_ADMIN_ADDRESS:-$DEFAULT_DEPLOY_ADMIN_ADDRESS}"
-PRIVATE_KEY="${PRIVATE_KEY:-}"
 ETHERSCAN_API_KEY="${ETHERSCAN_API_KEY:-}"
+# Populated only by password-style prompt; never exported to the parent shell.
+DEPLOYER_PRIVATE_KEY=""
 
 usage() {
   cat <<'USAGE'
@@ -31,15 +43,18 @@ Usage:
 Quickstart:
   scripts/deploy-megaeth-contracts.sh
 
-  # optional explicit epoch (else 1778760000 = 2026-05-14 12:00:00 UTC):
-  scripts/deploy-megaeth-contracts.sh 1778760000
+  # optional explicit epoch (else 1779105600 = 2026-05-18 12:00:00 UTC Monday):
+  scripts/deploy-megaeth-contracts.sh 1779105600
 
 Defaults:
   RPC_URL=https://mainnet.megaeth.com/rpc
   CHAIN_ID=4326
   NETWORK_NAME=megaeth_mainnet
   DEPLOY_ADMIN_ADDRESS=0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c
-  SALE_START_EPOCH=1778760000 when omitted (env, positional, and prompt)
+  SALE_START_EPOCH=1779105600 when omitted (env, positional, and prompt)
+  RESERVE_ASSET_ADDRESS=0xfBAa45A537cF07dC768c469FfaC4e88208B0098D when CHAIN_ID=4326 and unset
+  PRESALE_CHARM_BOOST_ADDRESSES=five canonical CHARM boost wallets when CHAIN_ID=4326 and unset (export empty to skip registry)
+  PRESALE_BENEFICIARIES / PRESALE_AMOUNTS_WAD=canonical vesting row (first wallet may differ from boost #1) when CHAIN_ID=4326 and PRESALE_BENEFICIARIES unset (export empty to skip vesting)
 
 Options:
   --rpc-url URL              Override target RPC_URL.
@@ -51,14 +66,22 @@ Options:
   -y, --yes                  Skip the final typed confirmation.
   -h, --help                 Show this help.
 
+Security:
+  The deployer private key is always requested as a hidden terminal prompt (like a password).
+  It is not read from PRIVATE_KEY or any other environment variable and is not exported from
+  this script; it is passed only to the ephemeral Forge broadcast subprocess.
+
 Optional environment:
-  SALE_START_EPOCH (defaults to 1778760000 = 2026-05-14 12:00:00 UTC),
+  RESERVE_ASSET_ADDRESS (defaults to 0xfBAa45A537cF07dC768c469FfaC4e88208B0098D when CHAIN_ID=4326 and unset),
+  PRESALE_CHARM_BOOST_ADDRESSES (defaults on CHAIN_ID=4326 when unset; export empty to omit registry / on-chain +15% boost),
+  PRESALE_BENEFICIARIES / PRESALE_AMOUNTS_WAD (defaults on CHAIN_ID=4326 when PRESALE_BENEFICIARIES unset; export empty to omit DoubPresaleVesting; may differ from boost list — TimeCurve uses registry for `isBeneficiary` when both deploy),
+  SALE_START_EPOCH (defaults to 1779105600 = 2026-05-18 12:00:00 UTC),
   TOTAL_TOKENS_FOR_SALE_WAD, TIMECURVE_BUY_COOLDOWN_SEC,
   REFERRAL_REGISTRATION_BURN_WAD, CHARM_PRICE_BASE_WAD,
   CHARM_PRICE_DAILY_INCREMENT_WAD, KUMBAYA_SWAP_ROUTER_ADDRESS,
   KUMBAYA_WETH_ADDRESS, KUMBAYA_STABLE_TOKEN_ADDRESS,
   CL8Y_PROTOCOL_TREASURY_ADDRESS, RABBIT_FEE_SINK_ADDRESS,
-  PRESALE_BENEFICIARIES, PRESALE_AMOUNTS_WAD,
+  PRESALE_CHARM_BOOST_ADDRESSES, PRESALE_BENEFICIARIES, PRESALE_AMOUNTS_WAD,
   PRESALE_TOTAL_ALLOCATION_WAD, START_PRESALE_VESTING,
   ENABLE_PRESALE_CLAIMS, LEPRECHAUN_BASE_URI.
 USAGE
@@ -115,8 +138,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Default: 2026-05-14 12:00:00 UTC (TimeCurve `startSaleAt` anchor when unset — GitLab #114).
-SALE_START_EPOCH="${SALE_START_EPOCH:-1778760000}"
+# Default: 2026-05-18 12:00:00 UTC (TimeCurve `startSaleAt` anchor when unset — GitLab #114).
+SALE_START_EPOCH="${SALE_START_EPOCH:-1779105600}"
+
+if [[ -z "$RESERVE_ASSET_ADDRESS" && "$CHAIN_ID" == "4326" ]]; then
+  RESERVE_ASSET_ADDRESS="$DEFAULT_MEGAETH_MAINNET_CL8Y"
+fi
+
+if [[ -z "${PRESALE_CHARM_BOOST_ADDRESSES+x}" && "$CHAIN_ID" == "4326" ]]; then
+  PRESALE_CHARM_BOOST_ADDRESSES="$DEFAULT_MEGAETH_MAINNET_PRESALE_CHARM_BOOST_ADDRESSES"
+fi
+
+if [[ -z "${PRESALE_BENEFICIARIES+x}" && "$CHAIN_ID" == "4326" ]]; then
+  PRESALE_BENEFICIARIES="$DEFAULT_MEGAETH_MAINNET_PRESALE_BENEFICIARIES"
+  PRESALE_AMOUNTS_WAD="$DEFAULT_MEGAETH_MAINNET_PRESALE_AMOUNTS_WAD"
+fi
 
 need_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -156,13 +192,24 @@ need_cmd jq
 need_cmd python3
 need_cmd git
 
-prompt_secret PRIVATE_KEY "Private key (hidden, 0x-prefixed): "
+read_deployer_private_key() {
+  read -r -s -p "Deployer private key (hidden, 0x + 64 hex): " DEPLOYER_PRIVATE_KEY
+  echo
+}
+
+read_deployer_private_key
 prompt_secret ETHERSCAN_API_KEY "Etherscan API key (hidden; press Enter only if using --skip-verify): "
 prompt_value SALE_START_EPOCH "Sale start epoch seconds: "
 prompt_value RESERVE_ASSET_ADDRESS "CL8Y / reserve ERC-20 address: "
 
-if [[ ! "$PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-  echo "PRIVATE_KEY must be a 0x-prefixed 32-byte hex key." >&2
+wipe_deployer_key() {
+  DEPLOYER_PRIVATE_KEY=""
+  unset -v DEPLOYER_PRIVATE_KEY PRIVATE_KEY 2>/dev/null || true
+}
+trap wipe_deployer_key EXIT
+
+if [[ ! "$DEPLOYER_PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
+  echo "Deployer private key must be a 0x-prefixed 32-byte hex key." >&2
   exit 1
 fi
 if [[ ! "$SALE_START_EPOCH" =~ ^[0-9]+$ ]] || [[ "$SALE_START_EPOCH" == "0" ]]; then
@@ -178,7 +225,7 @@ if [[ "$VERIFY" == true && -z "$ETHERSCAN_API_KEY" ]]; then
   exit 1
 fi
 
-DEPLOYER_ADDRESS="$(cast wallet address --private-key "$PRIVATE_KEY")"
+DEPLOYER_ADDRESS="$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")"
 if [[ -z "$DEPLOY_ADMIN_ADDRESS" ]]; then
   DEPLOY_ADMIN_ADDRESS="$DEFAULT_DEPLOY_ADMIN_ADDRESS"
 fi
@@ -224,6 +271,16 @@ REGISTRY_FILE="${DEPLOY_DIR}/yieldomega-${NETWORK_NAME}-${RUN_ID}.json"
 PRECHECK_BLOCK="$(cast block-number --rpc-url "$RPC_URL")"
 GIT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 
+if [[ -n "${PRESALE_BENEFICIARIES:-}" && -n "${PRESALE_CHARM_BOOST_ADDRESSES:-}" ]]; then
+  PRESALE_SUMMARY="vesting+charm: beneficiaries=${PRESALE_BENEFICIARIES} | boost=${PRESALE_CHARM_BOOST_ADDRESSES}"
+elif [[ -n "${PRESALE_BENEFICIARIES:-}" ]]; then
+  PRESALE_SUMMARY="DoubPresaleVesting: ${PRESALE_BENEFICIARIES} (PRESALE_AMOUNTS_WAD=${PRESALE_AMOUNTS_WAD:-})"
+elif [[ -n "${PRESALE_CHARM_BOOST_ADDRESSES:-}" ]]; then
+  PRESALE_SUMMARY="PresaleCharmBeneficiaryRegistry: ${PRESALE_CHARM_BOOST_ADDRESSES}"
+else
+  PRESALE_SUMMARY="none"
+fi
+
 cat <<SUMMARY
 
 YieldOmega contracts deployment
@@ -233,6 +290,7 @@ YieldOmega contracts deployment
   Deployer:      ${DEPLOYER_ADDRESS}
   Final admin:   ${DEPLOY_ADMIN_ADDRESS}
   Reserve asset: ${RESERVE_ASSET_ADDRESS}
+  Presale:       ${PRESALE_SUMMARY}
   Sale start:    ${SALE_START_EPOCH}
   Precheck block:${PRECHECK_BLOCK}
   Verify:        ${VERIFY}
@@ -248,15 +306,6 @@ if [[ "$ASSUME_YES" != true ]]; then
     exit 1
   fi
 fi
-
-export PRIVATE_KEY
-export ETHERSCAN_API_KEY
-export SALE_START_EPOCH
-export RESERVE_ASSET_ADDRESS
-export DEPLOY_ADMIN_ADDRESS
-
-cd "$CONTRACTS_DIR"
-forge build
 
 forge_args=(
   script/DeployProduction.s.sol:DeployProduction
@@ -274,7 +323,23 @@ if [[ "${YIELDOMEGA_SKIP_SIMULATION:-0}" =~ ^(1|true|yes)$ ]]; then
   forge_args+=(--skip-simulation)
 fi
 
-forge script "${forge_args[@]}" 2>&1 | tee "$LOG_FILE"
+# PRIVATE_KEY exists only inside this subshell for `forge`; parent never exports it.
+(
+  export PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY"
+  export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY"
+  export SALE_START_EPOCH="$SALE_START_EPOCH"
+  export RESERVE_ASSET_ADDRESS="$RESERVE_ASSET_ADDRESS"
+  export DEPLOY_ADMIN_ADDRESS="$DEPLOY_ADMIN_ADDRESS"
+  export PRESALE_BENEFICIARIES="${PRESALE_BENEFICIARIES:-}"
+  export PRESALE_AMOUNTS_WAD="${PRESALE_AMOUNTS_WAD:-}"
+  export PRESALE_CHARM_BOOST_ADDRESSES="${PRESALE_CHARM_BOOST_ADDRESSES:-}"
+  cd "$CONTRACTS_DIR"
+  forge build
+  forge script "${forge_args[@]}"
+) 2>&1 | tee "$LOG_FILE"
+
+wipe_deployer_key
+trap - EXIT
 
 RUN_JSON="${CONTRACTS_DIR}/broadcast/DeployProduction.s.sol/${CHAIN_ID}/run-latest.json"
 if [[ ! -f "$RUN_JSON" ]]; then
@@ -347,6 +412,7 @@ REFERRAL="$(extract_addr ReferralRegistry)"
 CHARM_PRICE="$(extract_addr LinearCharmPrice)"
 TC="$(extract_addr TimeCurve)"
 DPV="$(zero_to_empty "$(extract_addr DoubPresaleVesting)")"
+PCRG="$(zero_to_empty "$(extract_addr PresaleCharmBeneficiaryRegistry)")"
 BUY_ROUTER="$(zero_to_empty "$(extract_addr TimeCurveBuyRouter)")"
 NFT="$(extract_addr LeprechaunNFT)"
 
@@ -379,6 +445,7 @@ jq -n \
   --arg buyRouter "$BUY_ROUTER" \
   --arg nft "$NFT" \
   --arg dpv "$DPV" \
+  --arg pcrg "$PCRG" \
   --arg deployer "$DEPLOYER_ADDRESS" \
   --argjson deployBlock "$DEPLOY_BLOCK" \
   --arg gitCommit "$GIT_COMMIT" \
@@ -404,6 +471,7 @@ jq -n \
       LaunchedToken: $doub,
       ReferralRegistry: $referral,
       DoubPresaleVesting: $dpv,
+      PresaleCharmBeneficiaryRegistry: $pcrg,
       LinearCharmPrice: $charmPrice
     },
     deployer: $deployer,
@@ -433,6 +501,9 @@ echo "  VITE_REFERRAL_REGISTRY_ADDRESS=${REFERRAL}"
 echo "  VITE_FEE_ROUTER_ADDRESS=${FEE_ROUTER}"
 if [[ -n "$DPV" ]]; then
   echo "  VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}"
+fi
+if [[ -n "$PCRG" ]]; then
+  echo "  VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY=${PCRG}"
 fi
 if [[ -n "$BUY_ROUTER" ]]; then
   echo "  VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=${BUY_ROUTER}"
