@@ -19,4 +19,5 @@ regexes = [
 # otherwise matches 0x…40-hex strings in JSON values.
 paths = [
   '''\.deploy/.*-registry-.*\.json$''',
+  '''^indexer/address-registry\.megaeth-mainnet\.json$''',
 ]

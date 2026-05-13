@@ -105,6 +105,20 @@ impl AddressRegistry {
     }
 }
 
+/// Committed MegaETH mainnet address registry JSON (see `write-production-registry-from-broadcast.sh`).
+/// When **`ADDRESS_REGISTRY_PATH`** is unset or empty, [`Config::from_env`] loads this file **only
+/// if it exists** and its JSON **`chain_id`** equals **`CHAIN_ID`** from the environment (so local
+/// dev with another `CHAIN_ID` does not silently pick up mainnet addresses).
+const DEFAULT_ADDRESS_REGISTRY_FILE: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/address-registry.megaeth-mainnet.json");
+
+fn load_address_registry_from_path(path: &PathBuf) -> Result<AddressRegistry> {
+    let raw = std::fs::read_to_string(path)
+        .wrap_err_with(|| format!("read address registry: {}", path.display()))?;
+    serde_json::from_str(&raw)
+        .wrap_err_with(|| format!("parse address registry JSON: {}", path.display()))
+}
+
 /// When **`INDEXER_PRODUCTION`** is enabled, validate registry vs **`CHAIN_ID`** and (when
 /// ingestion is enabled) mandatory proxy addresses. See [`validate_address_registry_for_production`].
 pub fn ensure_production_address_registry(
@@ -119,8 +133,9 @@ pub fn ensure_production_address_registry(
 
     if ingestion_enabled && address_registry.is_none() {
         bail!(
-            "INDEXER_PRODUCTION with INGESTION_ENABLED requires ADDRESS_REGISTRY_PATH — \
-             refusing API-only idle ingestion in production (GitLab #156)"
+            "INDEXER_PRODUCTION with INGESTION_ENABLED requires an address registry — \
+             set ADDRESS_REGISTRY_PATH, or ship the committed default file at {} (GitLab #156)",
+            DEFAULT_ADDRESS_REGISTRY_FILE
         );
     }
 
@@ -262,16 +277,38 @@ impl Config {
     pub fn from_env() -> Result<Self> {
         dotenvy::dotenv().ok();
 
+        let chain_id: u64 = required("CHAIN_ID")?
+            .parse()
+            .wrap_err("CHAIN_ID must be a u64")?;
+
         let address_registry = match std::env::var("ADDRESS_REGISTRY_PATH") {
-            Ok(p) => {
-                let path = PathBuf::from(&p);
-                let raw = std::fs::read_to_string(&path)
-                    .wrap_err_with(|| format!("read ADDRESS_REGISTRY_PATH: {}", path.display()))?;
-                let reg: AddressRegistry = serde_json::from_str(&raw)
-                    .wrap_err_with(|| format!("parse address registry JSON: {}", path.display()))?;
-                Some(reg)
+            Ok(p) if !p.trim().is_empty() => {
+                let path = PathBuf::from(p.trim());
+                Some(load_address_registry_from_path(&path)?)
             }
-            Err(_) => None,
+            _ => {
+                let path = PathBuf::from(DEFAULT_ADDRESS_REGISTRY_FILE);
+                if path.exists() {
+                    let reg = load_address_registry_from_path(&path)?;
+                    if reg.chain_id == chain_id {
+                        tracing::info!(
+                            path = %path.display(),
+                            "loaded default address registry (ADDRESS_REGISTRY_PATH unset)"
+                        );
+                        Some(reg)
+                    } else {
+                        tracing::warn!(
+                            registry_chain = reg.chain_id,
+                            config_chain = chain_id,
+                            path = %path.display(),
+                            "skipping default address registry (CHAIN_ID mismatch; set ADDRESS_REGISTRY_PATH explicitly)"
+                        );
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
         };
 
         let start_block: u64 = std::env::var("START_BLOCK")
@@ -283,10 +320,6 @@ impl Config {
             Ok(s) => !matches!(s.to_lowercase().as_str(), "0" | "false" | "no"),
             Err(_) => true,
         };
-
-        let chain_id: u64 = required("CHAIN_ID")?
-            .parse()
-            .wrap_err("CHAIN_ID must be a u64")?;
 
         let require_buy_router = registry_require_buy_router_from_env();
         ensure_production_address_registry(

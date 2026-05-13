@@ -292,6 +292,7 @@ After setting env, build and publish the frontend from the same git commit recor
 Minimum checks before announcing the deployment:
 
 - Confirm every proxy address in the registry is the proxy, not an implementation.
+- After a **`DoubPresaleVesting`** UUPS upgrade, confirm the **verified implementation** on MegaETH Etherscan matches the [root README](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/README.md) reference (`0xFE4C7A3BadA9790dE52146D8fB05012c735B7247`); update that README line when you publish a newer verified impl.
 - Confirm explorer verification links for the deployed contracts.
 - Confirm `TimeCurve.saleStart()` equals the requested epoch.
 - Confirm `TimeCurve.launchedToken()` equals `Doubloon`.

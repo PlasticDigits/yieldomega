@@ -5,7 +5,7 @@ Offchain read model: MegaETH RPC → decoded logs → Postgres → HTTP API. Aut
 ## Configuration
 
 - Copy [`indexer/.env.example`](.env.example) to **`indexer/.env`** (or export the same variables). Never commit real secrets.
-- Required env vars: **`DATABASE_URL`**, **`RPC_URL`**, **`CHAIN_ID`**. Optional: **`START_BLOCK`**, **`ADDRESS_REGISTRY_PATH`**, **`INGESTION_ENABLED`**, **`LISTEN_ADDR`**, **`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**.
+- Required env vars: **`DATABASE_URL`**, **`RPC_URL`**, **`CHAIN_ID`**. Optional: **`START_BLOCK`**, **`ADDRESS_REGISTRY_PATH`** (omit when using the committed default registry for the same **`CHAIN_ID`** — see below), **`INGESTION_ENABLED`**, **`LISTEN_ADDR`**, **`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**.
 
 ### Ingestion supervision + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
 
@@ -22,11 +22,17 @@ When **`INDEXER_PRODUCTION`** is **`1`**, **`true`**, or **`yes`** (case-insensi
 
 Omit **`INDEXER_PRODUCTION`** for local stacks (e.g. [`scripts/start-local-anvil-stack.sh`](../scripts/start-local-anvil-stack.sh) exporting **`postgres://yieldomega:password@…`**).
 
+### Default address registry (MegaETH mainnet)
+
+When **`ADDRESS_REGISTRY_PATH`** is **unset** or **empty**, the binary looks for **`address-registry.megaeth-mainnet.json`** next to the `indexer/` crate (same path used at compile time via **`CARGO_MANIFEST_DIR`**). If that file exists **and** its JSON **`chain_id`** equals **`CHAIN_ID`**, it is loaded automatically. Otherwise ingestion behaves as if no registry was configured until you set **`ADDRESS_REGISTRY_PATH`** explicitly.
+
+This keeps Render/Git deploys simple when **`CHAIN_ID=4326`** and the committed registry file is in the repo. For any other chain, set **`ADDRESS_REGISTRY_PATH`** to your registry file.
+
 ### Production operator checklist — `ADDRESS_REGISTRY` ([issue #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156))
 
 When **`INDEXER_PRODUCTION=1`** and **`INGESTION_ENABLED`** is not disabled:
 
-- Set **`ADDRESS_REGISTRY_PATH`** to the deployment **`dev-addresses.json`** (or equivalent) used by your environment.
+- Set **`ADDRESS_REGISTRY_PATH`** to your deployment registry JSON **or** rely on the **default** committed **`address-registry.megaeth-mainnet.json`** when **`CHAIN_ID`** matches that file ([`src/config.rs`](src/config.rs)).
 - Confirm **`chain_id`** in that file equals **`CHAIN_ID`**.
 - Confirm every mandatory contract key is the **ERC-1967 proxy** address from your deploy artifact, **not** an implementation row ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)): **`TimeCurve`**, **`RabbitTreasury`**, **`LeprechaunNFT`**, **`FeeRouter`**, **`ReferralRegistry`**, **`PodiumPool`** (alias **`PrizeVault`** in JSON).
 - Set **`deploy_block`** to the deployment anchor block (must be **> 0** except on **`CHAIN_ID=31337`** Anvil).
@@ -40,11 +46,33 @@ When **`INDEXER_PRODUCTION=1`** and **`INGESTION_ENABLED`** is not disabled:
 
 ### Verification ([issue #156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156))
 
-- **`INDEXER_PRODUCTION=1`**, default ingestion, **no** **`ADDRESS_REGISTRY_PATH`** → config load exits non-zero.
+- **`INDEXER_PRODUCTION=1`**, default ingestion, **no** registry (no **`ADDRESS_REGISTRY_PATH`**, no default file, or default **`chain_id`** mismatch) → config load exits non-zero.
 - **`INDEXER_PRODUCTION=1`** + registry **`chain_id`** ≠ **`CHAIN_ID`** → exits non-zero.
 - **`INDEXER_PRODUCTION=1`** + registry with a **non-empty** invalid address string → exits non-zero (no silent skip).
 - Without **`INDEXER_PRODUCTION`**, mismatched **`chain_id`** still **warns** only; invalid strings still warn-and-skip as before.
 - Unit tests: `cd indexer && cargo test production_registry_validation` (see [`src/config.rs`](src/config.rs)).
+
+### Render.com and other Git-based hosts
+
+The JSON under **`.deploy/`** on your laptop is **not** on Render until you put it there. **`contracts/broadcast/`** is **gitignored**, so Forge’s `run-latest.json` is not in the repo either.
+
+**`ADDRESS_REGISTRY_PATH`** is optional when you **commit** **`indexer/address-registry.megaeth-mainnet.json`** and run with **`CHAIN_ID=4326`**: the indexer loads that file automatically (see **Default address registry** above). You can still set **`ADDRESS_REGISTRY_PATH`** to override.
+
+If you do set **`ADDRESS_REGISTRY_PATH`**, it must be a path the indexer process can **`read()`** on that machine ([`config.rs`](src/config.rs): `std::fs::read_to_string`). It can be **relative to the process working directory** (whatever directory your Render **Start Command** runs from) or an absolute path.
+
+**Practical pattern (override file)**
+
+1. On your dev machine, generate the registry (e.g. `scripts/write-production-registry-from-broadcast.sh`).
+2. Copy the result into the repo under a **stable name**, e.g. **`indexer/address-registry.megaeth-mainnet.json`**, and **commit + push** (these are public contract addresses, not secrets).
+3. In Render **Environment**, optionally set **`ADDRESS_REGISTRY_PATH`** to a path that matches your **Start Command** cwd if you do not use the default filename:
+   - If the service starts from the **repo root** (common for `rootDir` = repo):  
+     `ADDRESS_REGISTRY_PATH=indexer/address-registry.megaeth-mainnet.json`
+   - If you **`cd indexer`** before starting the binary: put the file in `indexer/` and use  
+     `ADDRESS_REGISTRY_PATH=address-registry.megaeth-mainnet.json`
+
+If you are unsure of cwd, temporarily set the start command to `pwd; ls -la; …` or check Render’s shell docs — the path must resolve from that cwd.
+
+**Alternatives:** Render **Secret Files** (mount a file and point **`ADDRESS_REGISTRY_PATH`** at the mount path), or a **build step** that `curl`s the JSON from private storage — still ends as a filesystem path the binary can read.
 
 ## Build and test
 
