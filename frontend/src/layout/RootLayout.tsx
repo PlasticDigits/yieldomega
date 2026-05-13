@@ -6,7 +6,6 @@ import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
-import { PageBadge } from "@/components/ui/PageBadge";
 import { governanceUrl } from "@/lib/addresses";
 import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
@@ -53,12 +52,6 @@ export function RootLayout() {
             YieldOmega
           </NavLink>
           <TimecurvePresaleCharmHeaderBadge />
-          <PageBadge
-            label="TimeCurve live"
-            tone="live"
-            className="app-header__status"
-            iconSrc="/art/icons/status-live.png"
-          />
           <CutoutDecoration
             className="app-header__mascot cutout-decoration--sway"
             src="/art/cutouts/loading-mascot-circle.png"
