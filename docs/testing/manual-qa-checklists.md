@@ -39,6 +39,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 | [#163](https://gitlab.com/PlasticDigits/yieldomega/-/issues/163) | [Placeholder split-layout hero figure (wide / landscape)](#manual-qa-issue-163) |
 | [#198](https://gitlab.com/PlasticDigits/yieldomega/-/issues/198) | [Homepage product card grid alignment](#manual-qa-issue-198) |
+| [#201](https://gitlab.com/PlasticDigits/yieldomega/-/issues/201) | [TimeCurve mobile/tablet layout containment](#manual-qa-issue-201) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -755,6 +756,24 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 **Automated:** [`homeCardGridCss.test.ts`](../../frontend/src/lib/homeCardGridCss.test.ts) asserts the CSS stretch contract for homepage cards and referral overview cards.
 
 **Doc map:** [design — Home product card grid](../frontend/design.md#home-product-card-grid-gitlab-198) · [invariants — #198](invariants-and-business-logic.md#frontend-home-product-card-grid-gitlab-198)
+
+<a id="manual-qa-issue-201"></a>
+
+## TimeCurve mobile/tablet layout containment (GitLab #201)
+
+**Goal:** TimeCurve Simple and Arena WarBow surfaces should fit within phone
+safe areas and tablet card borders without horizontal clipping.
+
+### Checklist
+
+1. **iPhone 14 Pro Max (`430 × 932`) / similar phone:** open `/timecurve`; the buy panel’s right edge, CTA, slider, amount input, and Advanced disclosure stay inside the viewport. There should be no horizontal page scroll.
+2. **Narrow phone (`390 × 844`):** repeat `/timecurve`; the decorative coin stack is hidden and the slider/input row stacks cleanly.
+3. **iPad Mini / Air (`768–820 px` wide):** open `/timecurve/arena`; in the WarBow hero actions, **Guard** and **Counterpunch / Revenge** stay inside their cards, and the Revenge list/buttons wrap if present.
+4. **Detailed WarBow section:** scroll to **WarBow moves and rivalry**; Top rivals / Chasing pack stack or fit without clipped card borders.
+
+**Automated:** [`timeCurveResponsiveLayoutCss.test.ts`](../../frontend/src/lib/timeCurveResponsiveLayoutCss.test.ts) asserts the CSS breakpoints; [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) checks mobile/tablet viewport overflow when the relevant surface is configured.
+
+**Doc map:** [timecurve-views — #201](../frontend/timecurve-views.md#timecurve-responsive-layout-gitlab-201) · [invariants — #201](invariants-and-business-logic.md#timecurve-responsive-layout-gitlab-201)
 
 <a id="manual-qa-issue-71"></a>
 
