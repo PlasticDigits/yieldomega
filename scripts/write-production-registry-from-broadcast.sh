@@ -34,6 +34,7 @@ RESERVE_ASSET_ADDRESS=""
 DEPLOYER_ADDRESS=""
 RPC_URL=""
 WITH_FORGE_BUILD=false
+HANDOFF_DIR=""
 
 usage() {
   cat <<'USAGE'
@@ -64,6 +65,9 @@ Options:
 After a successful write, the script prints suggested INDEXER_* and VITE_* lines (same shape as
 `scripts/deploy-megaeth-contracts.sh`). You still set VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL,
 VITE_WALLETCONNECT_PROJECT_ID, etc. yourself — see frontend/.env.example.
+
+  --handoff DIR         Write DIR with address-registry.json, indexer.env, vite-frontend.env,
+                        and README.txt for scp to production (DIR relative to repo root OK).
 USAGE
 }
 
@@ -100,6 +104,10 @@ while [[ $# -gt 0 ]]; do
     --with-forge-build)
       WITH_FORGE_BUILD=true
       shift
+      ;;
+    --handoff)
+      HANDOFF_DIR="${2:?missing value for --handoff}"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -184,6 +192,10 @@ fi
 if [[ -z "$OUT_FILE" ]]; then
   mkdir -p "$DEPLOY_DIR"
   OUT_FILE="${DEPLOY_DIR}/yieldomega-${NETWORK_NAME}-registry-$(date -u +%Y%m%dT%H%M%SZ).json"
+fi
+
+if [[ -n "$HANDOFF_DIR" && "$HANDOFF_DIR" != /* ]]; then
+  HANDOFF_DIR="$ROOT/$HANDOFF_DIR"
 fi
 
 GIT_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
@@ -391,18 +403,26 @@ KUMBAYA_ROUTER="${KUMBAYA_SWAP_ROUTER_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_
 KUMBAYA_WETH="${KUMBAYA_WETH_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_WETH}"
 KUMBAYA_STABLE="${KUMBAYA_STABLE_TOKEN_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_STABLE}"
 
-echo "Wrote registry: ${OUT_FILE}"
+if [[ "$OUT_FILE" == "$ROOT"/* ]]; then
+  REGISTRY_REPO_REL=".${OUT_FILE#"$ROOT"}"
+else
+  REGISTRY_REPO_REL="$OUT_FILE"
+fi
+
+echo "Wrote registry (path inside this repo): ${REGISTRY_REPO_REL}"
+echo "  (Full path on your dev machine only — the production server has different users/paths.)"
+echo "  ${OUT_FILE}"
 echo
-echo "Indexer env:"
+echo "Indexer env — use on the server that runs the indexer (fix ADDRESS_REGISTRY_PATH after you upload the JSON):"
 echo "  CHAIN_ID=${CHAIN_ID}"
 echo "  RPC_URL=${RPC_HINT}"
 echo "  START_BLOCK=${DEPLOY_BLOCK}"
-echo "  ADDRESS_REGISTRY_PATH=${OUT_FILE}"
+echo "  ADDRESS_REGISTRY_PATH=/your/server/path/to/$(basename "$OUT_FILE")"
 if [[ -n "$BUY_ROUTER" ]]; then
   echo "  INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1"
 fi
 echo
-echo "Frontend env (Vite; add to frontend/.env.production or host secrets):"
+echo "Frontend env (Vite) — for the machine that builds the static site / CI secrets:"
 echo "  VITE_CHAIN_ID=${CHAIN_ID}"
 echo "  VITE_RPC_URL=${RPC_HINT}"
 echo "  VITE_TIMECURVE_ADDRESS=${TC}"
@@ -426,4 +446,70 @@ if [[ -n "$BUY_ROUTER" ]]; then
   echo "  VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=${BUY_ROUTER}"
 fi
 echo
-echo "Also set (not in onchain registry): VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL, VITE_WALLETCONNECT_PROJECT_ID — see frontend/.env.example."
+echo "Also set yourself: VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL, VITE_WALLETCONNECT_PROJECT_ID — see frontend/.env.example."
+
+if [[ -n "$HANDOFF_DIR" ]]; then
+  mkdir -p "$HANDOFF_DIR"
+  HANDOFF_REL="$HANDOFF_DIR"
+  if [[ "$HANDOFF_DIR" == "$ROOT"/* ]]; then
+    HANDOFF_REL=".${HANDOFF_DIR#"$ROOT"}"
+  fi
+  cp -f "$OUT_FILE" "${HANDOFF_DIR}/address-registry.json"
+  cat >"${HANDOFF_DIR}/README.txt" <<EOF
+YieldOmega — files for your production server (created on your dev laptop)
+
+The path /home/... in any earlier terminal output is only YOUR machine. On production, paths
+look like /var/www/... or /home/deploy/... — that is expected.
+
+1. From your repo, copy this whole folder to the server, e.g.:
+     scp -r ${HANDOFF_REL} user@your-server:/opt/yieldomega/
+2. On the server, edit indexer.env: set ADDRESS_REGISTRY_PATH to the real absolute path of
+   address-registry.json on that host.
+3. Merge vite-frontend.env into frontend/.env.production (or your host/CI env).
+4. Add DATABASE_URL and other indexer settings per indexer/README.md.
+EOF
+
+  {
+    echo "# Edit after upload: absolute path to address-registry.json on THIS server."
+    echo "ADDRESS_REGISTRY_PATH=/opt/yieldomega/$(basename "$HANDOFF_DIR")/address-registry.json"
+    echo "CHAIN_ID=${CHAIN_ID}"
+    echo "RPC_URL=${RPC_HINT}"
+    echo "START_BLOCK=${DEPLOY_BLOCK}"
+    if [[ -n "$BUY_ROUTER" ]]; then
+      echo "INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1"
+    fi
+    echo "# DATABASE_URL=… INDEXER_PRODUCTION=… — indexer/README.md"
+  } >"${HANDOFF_DIR}/indexer.env"
+
+  {
+    echo "# Vite — merge into .env.production"
+    echo "VITE_CHAIN_ID=${CHAIN_ID}"
+    echo "VITE_RPC_URL=${RPC_HINT}"
+    echo "VITE_TIMECURVE_ADDRESS=${TC}"
+    echo "VITE_RABBIT_TREASURY_ADDRESS=${RT}"
+    echo "VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}"
+    echo "VITE_REFERRAL_REGISTRY_ADDRESS=${REFERRAL}"
+    echo "VITE_FEE_ROUTER_ADDRESS=${FEE_ROUTER}"
+    if [[ -n "$DPV" ]]; then
+      echo "VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}"
+    fi
+    if [[ -n "$PCRG" ]]; then
+      echo "VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY=${PCRG}"
+    fi
+    if [[ -n "$BUY_ROUTER" ]]; then
+      echo "VITE_KUMBAYA_WETH=${KUMBAYA_WETH}"
+      echo "VITE_KUMBAYA_USDM=${KUMBAYA_STABLE}"
+      echo "VITE_KUMBAYA_SWAP_ROUTER=${KUMBAYA_ROUTER}"
+      if [[ "$CHAIN_ID" == "4326" ]]; then
+        echo "VITE_KUMBAYA_QUOTER=${DEFAULT_MEGAETH_MAINNET_KUMBAYA_QUOTER}"
+      fi
+      echo "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=${BUY_ROUTER}"
+    fi
+    echo "# VITE_INDEXER_URL=https://…"
+    echo "# VITE_EXPLORER_BASE_URL=https://…"
+    echo "# VITE_WALLETCONNECT_PROJECT_ID=…"
+  } >"${HANDOFF_DIR}/vite-frontend.env"
+
+  echo
+  echo "Handoff folder (scp this directory to prod): ${HANDOFF_REL}/"
+fi

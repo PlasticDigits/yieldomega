@@ -34,6 +34,8 @@ MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**
 
 UUPS cores are deployed behind **proxies**; use the addresses in this table for RPC and wallet calls. Foundry `run-latest.json` may also list **implementation** deployments for the same logical name—do not treat those as the live protocol surface ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 
+**Verified `DoubPresaleVesting` implementation** (logic behind the proxy above; upgrades replace this address): [`0xFE4C7A3BadA9790dE52146D8fB05012c735B7247`](https://mega.etherscan.io/address/0xFE4C7A3BadA9790dE52146D8fB05012c735B7247#code).
+
 ## Monorepo package directories
 
 Authoritative layout and naming are in [`docs/architecture/repository-layout.md`](docs/architecture/repository-layout.md). The three package roots are:
