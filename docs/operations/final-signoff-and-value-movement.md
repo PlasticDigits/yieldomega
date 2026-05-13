@@ -10,6 +10,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 |--------|----------------------|-----------------|-----------------------------|
 | **DOUB presale vesting** | `claim()` | `setClaimsEnabled(bool)` (`onlyOwner`) | `claimsEnabled == false` |
 | **DOUB presale vesting** | — (ops / treasury) | `rescueERC20(token, to, amount)` (`onlyOwner`) — **excess** vesting DOUB and stray non-vesting ERC20 only ([GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137); [invariants §137](../testing/invariants-and-business-logic.md#doub-presale-vesting-owner-rescue-gitlab-137)) | n/a |
+| **DOUB presale vesting** | — (ops / cap correction) | `reduceAllocationsUniformBps` / `burnDoubExcessAboveOutstanding` (`onlyOwner`) — uniform row shrink (floor) then **burn** DOUB above outstanding claim reserve; **token** must be **`ERC20Burnable`** (canonical **Doubloon**); reverts if any row would fall below `claimedOf` | n/a |
 | **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
 | **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
 | **TimeCurve** | `sweepUnredeemedLaunchedToken()` — remainder of **`launchedToken`** after **7-day** grace from **`saleEndedAt`** ([GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128)) | **`setUnredeemedLaunchedTokenRecipient(address)`** (sink for sweep) + **`onlyOwner`** `sweep…` timing (not gated by `charmRedemptionEnabled`) | `unredeemedLaunchedTokenRecipient` unset until owner sets; no sweep until grace elapses |
@@ -24,7 +25,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 ## Suggested go-live order (example)
 
 1. Complete testing and deploy **with gates in safe defaults** (`charmRedemptionEnabled` and `reservePodiumPayoutsEnabled` off; presale `claimsEnabled` off).
-2. **Presale:** fund vesting, `startVesting` if the schedule should run, then **`setClaimsEnabled(true)`** when legal/ops are ready for DOUB claims.
+2. **Presale:** fund vesting, `startVesting` if the schedule should run. If final allocations sit below the funded bucket, **`reduceAllocationsUniformBps` → `burnDoubExcessAboveOutstanding`** (owner). When legal/ops are ready for DOUB claims, **`setClaimsEnabled(true)`**.
 3. **TimeCurve (post timer):** `endSale()` as today; then **`setCharmRedemptionEnabled(true)`** for DOUB sale allocation to buyers and/or **`setReservePodiumPayoutsEnabled(true)`** for **CL8Y reserve** podium payouts — order may differ by checklist (redeem vs CL8Y allocation are separate signoffs).
 4. **Emergency halt of live sale:** `setBuyFeeRoutingEnabled(false)` stops **`buy` → `FeeRouter`** and **WarBow CL8Y** actions (`steal` / `revenge` / `guard`) in one switch (`TimeCurve: sale interactions disabled`). Flag claims (`claimWarBowFlag`) are unchanged.
 

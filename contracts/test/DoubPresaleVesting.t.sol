@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
 import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
 
-contract MockDoub is ERC20 {
+contract MockDoub is ERC20Burnable {
     constructor() ERC20("Doubloon", "DOUB") {}
 
     function mint(address to, uint256 amount) external {
@@ -590,5 +591,75 @@ contract DoubPresaleVestingTest is Test {
         v.rescueERC20(IERC20(address(doub)), sink, take);
         assertEq(doub.balanceOf(address(v)), 100e18 + excess - take);
         assertEq(doub.balanceOf(sink), take);
+    }
+
+    function test_reduceAllocationsUniformBps_then_burn_excess() public {
+        address[] memory ben = new address[](2);
+        ben[0] = alice;
+        ben[1] = bob;
+        uint256[] memory amts = new uint256[](2);
+        amts[0] = 1000e18;
+        amts[1] = 500e18;
+        uint256 total = 1500e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, total);
+        doub.mint(address(v), total);
+        vm.startPrank(owner);
+        v.reduceAllocationsUniformBps(1000);
+        assertEq(v.totalAllocated(), 1350e18);
+        assertEq(v.allocationOf(alice), 900e18);
+        assertEq(v.allocationOf(bob), 450e18);
+        v.burnDoubExcessAboveOutstanding();
+        vm.stopPrank();
+        assertEq(doub.balanceOf(address(v)), 1350e18);
+        assertEq(doub.totalSupply(), 1350e18);
+    }
+
+    function test_reduceAllocationsUniformBps_reverts_invalid_bps() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        vm.startPrank(owner);
+        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__InvalidReductionBps.selector, 0));
+        v.reduceAllocationsUniformBps(0);
+        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__InvalidReductionBps.selector, 10_000));
+        v.reduceAllocationsUniformBps(10_000);
+        vm.stopPrank();
+    }
+
+    function test_burnDoubExcessAboveOutstanding_reverts_when_no_excess() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__NoExcessDoubToBurn.selector);
+        v.burnDoubExcessAboveOutstanding();
+    }
+
+    function test_reduceAllocationsUniformBps_reverts_when_claimed_exceeds_new_row() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
+        vm.prank(alice);
+        v.claim();
+        assertEq(v.claimedOf(alice), 30e18);
+        vm.prank(owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                DoubPresaleVesting.DoubVesting__ReductionUndercollateralizesBeneficiary.selector, alice, 20e18, 30e18
+            )
+        );
+        v.reduceAllocationsUniformBps(8000);
     }
 }

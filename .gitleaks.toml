@@ -15,3 +15,8 @@ description = "MegaETH mainnet USDm token contract (public address, not an API k
 regexes = [
   '''(?i)0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7''',
 ]
+# On-chain deployment registries under .deploy/ list contract addresses; generic-api-key
+# otherwise matches 0x…40-hex strings in JSON values.
+paths = [
+  '''\.deploy/.*-registry-.*\.json$''',
+]

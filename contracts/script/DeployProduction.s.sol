@@ -282,6 +282,9 @@ contract DeployProduction is Script {
 
     function _log(Deployment memory d, uint256 saleStartEpoch, uint256 totalTokensForSale) internal pure {
         console.log("=== YieldOmega Production Deployment ===");
+        console.log(
+            "Addresses below: this Forge run (local VM). MegaETH explorers stay empty until broadcast txs mine."
+        );
         console.log("Deployer:", d.deployer);
         console.log("Admin:", d.admin);
         console.log("ReserveAsset:", d.reserveAsset);

@@ -81,6 +81,9 @@ dist/
 build/
 out/
 
+# Python (contracts tooling, e.g. Slither)
+contracts/.venv-slither/
+
 # Python simulations
 simulations/.venv/
 bots/timecurve/.venv/
