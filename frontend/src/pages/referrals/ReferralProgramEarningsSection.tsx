@@ -78,10 +78,10 @@ export function ReferralProgramEarningsSection({ className }: Props) {
   return (
     <PageSection
       className={className}
-      title="Referral program CHARM"
+      title="Your referral CHARM"
       badgeLabel="Referrals + TimeCurve"
       badgeTone="info"
-      lede="Each qualifying referral purchase splits your role into referrer rewards and buyer bonuses. Onchain TimeCurve values remain the source of truth for execution."
+      lede="Track the extra CHARM weight credited when people use your code or when you buy through someone else's trail."
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">
@@ -90,7 +90,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
           </span>
           <div>
             <strong>Connect to see your CHARM</strong>
-            <p>The page will load referrer CHARM, buyer bonus CHARM, and illustrative current CL8Y value.</p>
+            <p>The page will load guide CHARM, traveler CHARM, and an illustrative current CL8Y view.</p>
           </div>
         </div>
       ) : loadErr ? (
@@ -107,7 +107,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
               here for this wallet.
             </StatusMessage>
           ) : null}
-          <p className="data-panel__label">As referrer (others used your code)</p>
+          <p className="data-panel__label">As guide (others used your code)</p>
           <p style={{ margin: 0 }}>
             <strong>
               <AmountDisplay raw={summary.referrer_charm_wad} decimals={18} />
@@ -119,7 +119,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             </span>
           </p>
           <p className="data-panel__label" style={{ marginTop: "1rem" }}>
-            As buyer (you used someone else&apos;s code)
+            As traveler (you used someone else&apos;s code)
           </p>
           <p style={{ margin: 0 }}>
             <strong>

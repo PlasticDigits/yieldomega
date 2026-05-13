@@ -282,29 +282,30 @@ export function ReferralRegisterSection({ className }: Props) {
   return (
     <div className={className ?? ""}>
       <PageSection
-        title="Reward parameters"
+        title="How the bonus works"
         badgeLabel="On-chain"
         badgeTone="live"
-        lede="Referral incentives are CHARM weight (not a reserve send). Values below are read from TimeCurve when an address is configured."
+        lede="A referred TimeCurve buy gives extra CHARM weight to both people. It is not a wallet payout, and the contract math is the source of truth."
       >
         <p className="muted" style={{ marginTop: 0 }}>
           {tc && refEachBps !== undefined ? (
             <>
-              Per-side referral bonus: <strong>{formatBpsAsPercent(Number(refEachBps))}</strong> of <code>charmWad</code> to
-              the buyer and the same to the referrer (canonical: <code>docs/product/referrals.md</code>).
+              Current per-side bonus: <strong>{formatBpsAsPercent(Number(refEachBps))}</strong> extra CHARM weight
+              for the buyer and <strong>{formatBpsAsPercent(Number(refEachBps))}</strong> extra CHARM weight for the
+              referrer.
             </>
           ) : (
-            <>Set `VITE_TIMECURVE_ADDRESS` to show live `REFERRAL_EACH_BPS`.</>
+            <>Connect this build to TimeCurve to show the live referral bonus.</>
           )}
         </p>
       </PageSection>
 
       <ChainMismatchWriteBarrier testId="referrals-register-chain-write-gate">
       <PageSection
-        title="Register a code"
+        title="Claim your guide code"
         badgeLabel="CL8Y burn"
         badgeTone="warning"
-        lede="Registering a code burns CL8Y on-chain. Use 3–16 characters, letters and digits only (canonical: lowercase a–z, 0–9)."
+        lede="Choose the name people will see in your share link. Codes use 3–16 letters or digits and are stored as lowercase."
       >
         {!isConnected && (
           <StatusMessage variant="placeholder">
@@ -382,24 +383,23 @@ export function ReferralRegisterSection({ className }: Props) {
         {isConnected && !hasRegistered && (
           <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {burnWad !== undefined && cl8yToken && (
-              <p className="muted" style={{ marginTop: 0 }}>
-                Burn per registration:{" "}
+              <div className="referrals-register-cost" aria-label="Referral registration cost">
+                <span>Claim cost</span>
                 <strong>
-                  <AmountDisplay raw={burnWad.toString()} decimals={18} />
-                </strong>{" "}
-                CL8Y
-              </p>
+                  <AmountDisplay raw={burnWad.toString()} decimals={18} /> CL8Y
+                </strong>
+                <small>Burned only if the registration succeeds.</small>
+              </div>
             )}
             <p
-              className="muted"
+              className="muted referrals-register-disclosure"
               style={{ marginTop: burnWad !== undefined ? "0.5rem" : 0 }}
               data-testid="referrals-register-ordering-disclosure"
             >
-              Desirable codes are not “held” while your transaction waits: whoever gets the{" "}
+              Code claims are public and competitive. Desirable codes are not held while your transaction waits:
+              whoever gets the{" "}
               <strong>first successful on-chain registration</strong> wins the slug. Codes are visible in public
-              mempool calldata, so others may compete for inclusion order. Submitting confirms you accept{" "}
-              <strong>on-chain ordering</strong> and this{" "}
-              <strong>{burnWad !== undefined ? "published burn" : "CL8Y burn"}</strong>.
+              mempool calldata, so others may compete for inclusion order.
             </p>
             <div className="form-row" style={{ alignItems: "flex-end", flexWrap: "wrap" }}>
               <div className="form-label" style={{ flex: "1 1 200px" }}>

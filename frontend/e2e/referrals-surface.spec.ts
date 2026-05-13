@@ -16,7 +16,8 @@ test("referrals page shell renders when not behind launch countdown", async ({ p
   await page.goto("/referrals");
   await expect(page.getByTestId("referrals-surface")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Referrer leaderboard", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Claim your guide code", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Guide leaderboard", level: 2 })).toBeVisible();
 
   const gated =
     page.getByText("Connect a wallet", { exact: false }).or(page.getByText(/No registry address/i));

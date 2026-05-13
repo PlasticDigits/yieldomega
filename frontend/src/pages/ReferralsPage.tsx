@@ -15,26 +15,50 @@ function ReferralOverviewStrip() {
     <div className="referrals-overview-grid" aria-label="Referral program overview">
       <article className="referrals-overview-card">
         <span className="referrals-overview-card__step">01</span>
-        <h2>Claim a code</h2>
+        <h2>Claim your sigil</h2>
         <p>
-          Burn CL8Y once via ReferralRegistry. Ownership is whoever wins the{" "}
-          <strong>first successful registration</strong> for that slug (public mempool ordering); plaintext stored here
-          only helps share links.
+          Pick a short code, burn CL8Y once, and make it yours on ReferralRegistry. The first successful on-chain
+          registration wins the name.
         </p>
       </article>
       <article className="referrals-overview-card referrals-overview-card--gold">
         <span className="referrals-overview-card__step">02</span>
-        <h2>Share a live route</h2>
+        <h2>Send a trail</h2>
         <p>
-          Use <code>/?ref=code</code> or <code>/timecurve/code</code>. Browser storage captures pending codes only.
+          Share a TimeCurve path or a <code>?ref=</code> link. Visitors arrive with your code ready for their next
+          qualifying buy.
         </p>
       </article>
       <article className="referrals-overview-card referrals-overview-card--blue">
         <span className="referrals-overview-card__step">03</span>
-        <h2>Track CHARM</h2>
-        <p>Referral bonuses are CHARM weight from TimeCurve events; rankings here reflect recorded referral activity.</p>
+        <h2>Grow CHARM</h2>
+        <p>
+          When a linked buy qualifies, both traveler and guide gain extra CHARM weight. The board only counts recorded
+          TimeCurve events.
+        </p>
       </article>
     </div>
+  );
+}
+
+function ReferralQuestStrip() {
+  return (
+    <aside className="referrals-quest-strip" aria-label="Referral quest guide">
+      <div>
+        <span className="referrals-quest-strip__eyebrow">Lucky Ledger Route</span>
+        <h2>Guide new buyers through the burrow</h2>
+        <p>
+          Referrals are not offchain points or promo codes. They are a small onchain quest: register a name, share the
+          trail, and let TimeCurve add CHARM weight when a buy uses that code.
+        </p>
+      </div>
+      <div className="referrals-quest-strip__badges" aria-label="Referral facts">
+        <span>3-16 letters or digits</span>
+        <span>1 CL8Y burn</span>
+        <span>One code per wallet</span>
+        <span>5% CHARM each side</span>
+      </div>
+    </aside>
   );
 }
 
@@ -67,7 +91,7 @@ export function ReferralsPage() {
         badgeTone="live"
         coinSrc="/art/hat-coin-stack.png"
         sceneSrc="/art/scenes/referrals-hero.jpg"
-        lede="Short codes, CL8Y registration burn, and TimeCurve buy bonuses — authority stays on ReferralRegistry + TimeCurve; this client captures links and shows read-only on-chain parameters."
+        lede="Claim a memorable guide code, share a TimeCurve trail, and help new buyers join the YieldOmega game with CHARM bonuses both sides can understand."
         mascot={{
           src: CUT.secondary,
           width: 208,
@@ -76,12 +100,13 @@ export function ReferralsPage() {
         }}
       />
       <ReferralOverviewStrip />
+      <ReferralQuestStrip />
+      <ReferralRegisterSection className="referral-register" />
       <div className="referrals-dashboard-grid">
         <ReferralConnectedWalletSection className="referrals-panel referrals-panel--wallet" />
         <ReferralProgramEarningsSection className="referrals-panel referrals-panel--earnings" />
       </div>
       <ReferralLeaderboardSection className="referrals-panel referrals-panel--leaderboard" />
-      <ReferralRegisterSection className="referral-register" />
     </section>
   );
 }
