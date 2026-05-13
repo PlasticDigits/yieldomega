@@ -2492,6 +2492,78 @@ label:has(input[type="radio"]:disabled) {
   overflow-wrap: anywhere;
 }
 
+.referrals-quest-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(0.85rem, 2vw, 1.25rem);
+  align-items: center;
+  padding: clamp(1rem, 2.4vw, 1.35rem);
+  border: 5px solid var(--line);
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 229, 102, 0.46), transparent 30%),
+    radial-gradient(circle at 95% 100%, rgba(94, 200, 255, 0.26), transparent 34%),
+    var(--panel-gloss),
+    linear-gradient(135deg, #f8fff2 0%, #dfffea 58%, #fff1b8 100%);
+  box-shadow: 7px 7px 0 var(--line), var(--shadow-soft);
+  overflow: hidden;
+}
+
+.referrals-quest-strip__eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 0.45rem;
+  padding: 0.22rem 0.6rem;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: var(--arcade-green-300);
+  color: #fff;
+  font-family: "Bungee", cursive;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.referrals-quest-strip h2 {
+  margin: 0;
+  font-family: "Bungee", cursive;
+  font-size: clamp(1rem, 2vw, 1.45rem);
+  line-height: 1.05;
+  color: var(--arcade-green-900);
+  text-transform: uppercase;
+}
+
+.referrals-quest-strip p {
+  max-width: 68ch;
+  margin: 0.45rem 0 0;
+  color: rgba(6, 61, 36, 0.82);
+  line-height: 1.5;
+}
+
+.referrals-quest-strip__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  max-width: 20rem;
+  padding-right: clamp(0rem, 6vw, 3.5rem);
+}
+
+.referrals-quest-strip__badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0.3rem 0.65rem;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 2px 2px 0 var(--line);
+  color: var(--arcade-green-900);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
 .referrals-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
@@ -2716,6 +2788,49 @@ label:has(input[type="radio"]:disabled) {
 
 .referral-register > .data-panel::after {
   display: none;
+}
+
+.referrals-register-disclosure {
+  padding: 0.75rem 0.85rem;
+  border: 2px dashed rgba(11, 31, 20, 0.55);
+  border-radius: 0.95rem;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.referrals-register-cost {
+  display: grid;
+  gap: 0.12rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 3px solid var(--line);
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.7), transparent 35%),
+    linear-gradient(180deg, #fff8c7 0%, #ffd95e 100%);
+  box-shadow: 4px 4px 0 var(--line);
+  color: var(--arcade-green-900);
+}
+
+.referrals-register-cost span,
+.referrals-register-cost small {
+  color: rgba(6, 61, 36, 0.76);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.referrals-register-cost strong {
+  font-family: "Bungee", cursive;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  line-height: 1.05;
+}
+
+.referrals-register-cost small {
+  max-width: 22rem;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .kv {
@@ -3424,6 +3539,16 @@ code {
   .referrals-dashboard-grid,
   .referrals-leaderboard__summary {
     grid-template-columns: 1fr;
+  }
+
+  .referrals-quest-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .referrals-quest-strip__badges {
+    justify-content: flex-start;
+    max-width: none;
+    padding-right: 0;
   }
 
   .referrals-overview-card {

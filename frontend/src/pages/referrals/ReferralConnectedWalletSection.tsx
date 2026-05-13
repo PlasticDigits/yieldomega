@@ -84,10 +84,10 @@ export function ReferralConnectedWalletSection({ className }: Props) {
   return (
     <PageSection
       className={className}
-      title="Connected wallet"
+      title="Your guide status"
       badgeLabel="ReferralRegistry"
       badgeTone="live"
-      lede="The active wallet's ownerCode is read from ReferralRegistry. Plaintext is local UX only."
+      lede="See whether the connected wallet already claimed a guide code. The chain stores ownership; this browser only remembers the readable name when you register here."
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--wallet">
@@ -96,7 +96,7 @@ export function ReferralConnectedWalletSection({ className }: Props) {
           </span>
           <div>
             <strong>Connect a wallet</strong>
-            <p>We will show whether the active address has a registered code and whether this browser knows the plaintext.</p>
+            <p>We will show whether this address has a registered guide code and share links ready.</p>
           </div>
         </div>
       ) : !registry ? (

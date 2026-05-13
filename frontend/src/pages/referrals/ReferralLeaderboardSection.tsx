@@ -81,10 +81,10 @@ export function ReferralLeaderboardSection({ className }: Props) {
   return (
     <PageSection
       className={className}
-      title="Referrer leaderboard"
-      badgeLabel="Referrers"
+      title="Guide leaderboard"
+      badgeLabel="Guides"
       badgeTone="live"
-      lede="Ranked by total referrer CHARM from qualifying referral purchases. No synthetic points."
+      lede="Ranked by CHARM weight earned from qualifying referred buys. No synthetic points, no offchain boosts."
       cutout={{
         src: REF_CUT.tertiary,
         width: 108,
@@ -97,7 +97,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
         <StatusMessage variant="muted">Loading leaderboard…</StatusMessage>
       ) : items.length === 0 ? (
         <StatusMessage variant="muted">
-          No referral activity in the leaderboard yet — it fills in as referrers earn CHARM from linked buys.
+          No guide activity yet. The board wakes up as linked buys settle onchain.
         </StatusMessage>
       ) : (
         <>
@@ -107,7 +107,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
               <strong>{formatLocaleInteger(leaderboard.totalBuys)}</strong>
             </div>
             <div>
-              <span>Total referrer CHARM</span>
+              <span>Total guide CHARM</span>
               <strong>{topCharm.abbrev}</strong>
             </div>
           </div>
