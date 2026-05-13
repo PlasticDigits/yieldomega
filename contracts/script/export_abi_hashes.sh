@@ -33,6 +33,7 @@ declare -a PAIRS=(
   "ReferralRegistry.sol:ReferralRegistry"
   "LinearCharmPrice.sol:LinearCharmPrice"
   "DoubPresaleVesting.sol:DoubPresaleVesting"
+  "PresaleCharmBeneficiaryRegistry.sol:PresaleCharmBeneficiaryRegistry"
   "TimeCurveBuyRouter.sol:TimeCurveBuyRouter"
 )
 

@@ -330,16 +330,16 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 
 ### TimeCurve presale CHARM weight bonus (`INV-TC-PRESALE-CHARM-BOOST`)
 
-**Intent:** Addresses in **`DoubPresaleVesting`** earn **+15%** of each **`buy` / `buyFor`** **`charmWad`** as **extra `charmWeight` and `totalCharmWeight`** when **`TimeCurve.doubPresaleVesting`** is set to that vesting contract’s **ERC-1967 proxy**. **Gross accepted-asset spend** for the buy is **unchanged** (same `amount` routed to **`FeeRouter`**). Referral splits still apply as today; the presale bonus applies **only** to the buyer’s purchased-`charmWad` weight line (not to the referrer’s referral tranche). Canonical product copy: [primitives — TimeCurve buy + redemption](../product/primitives.md) · header hint: [timecurve-views — presale header](../frontend/timecurve-views.md#timecurve-presale-charm-header-hint).
+**Intent:** Addresses for which **`IDoubPresaleBeneficiary.isBeneficiary`** is true on **`TimeCurve.doubPresaleVesting`** earn **+15%** of each **`buy` / `buyFor`** **`charmWad`** as **extra `charmWeight` and `totalCharmWeight`**. The pointer may be **`DoubPresaleVesting`** (vesting + membership) or **`PresaleCharmBeneficiaryRegistry`** (membership only). **Gross accepted-asset spend** for the buy is **unchanged** (same `amount` routed to **`FeeRouter`**). Referral splits still apply as today; the presale bonus applies **only** to the buyer’s purchased-`charmWad` weight line (not to the referrer’s referral tranche). Canonical product copy: [primitives — TimeCurve buy + redemption](../product/primitives.md) · header hint: [timecurve-views — presale header](../frontend/timecurve-views.md#timecurve-presale-charm-header-hint). Deploy / QA split checklist: [GitLab #202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202) · [manual QA — #202](manual-qa-checklists.md#manual-qa-issue-202-presale-charm-registry).
 
 | Invariant | Check |
 |-----------|-------|
 | **BPS** | Onchain constant **`PRESALE_CHARM_WEIGHT_BPS`** (`1500`). |
-| **Membership** | `IDoubPresaleBeneficiary(doubPresaleVesting).isBeneficiary(buyer)`; `doubPresaleVesting == address(0)` disables the bonus. |
+| **Membership** | `IDoubPresaleBeneficiary(TimeCurve.doubPresaleVesting).isBeneficiary(buyer)` — typically the **`PresaleCharmBeneficiaryRegistry`** when deployed (else **`DoubPresaleVesting`**); `doubPresaleVesting == address(0)` disables the bonus. |
 | **Ops event** | `setDoubPresaleVesting` emits **`DoubPresaleVestingSet`**; indexer table **`idx_timecurve_presale_vesting_set`** ([§ #112](#indexer-emitted-event-coverage-gitlab-112)). |
 | **Local DeployDev** | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) calls **`setDoubPresaleVesting`** after vesting deploy so stack QA matches mainnet wiring. |
 
-**Forge:** [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) — `test_buy_presale_beneficiary_adds_15pct_charm_weight`, `test_buy_non_presale_beneficiary_no_boost_when_vesting_set`, `test_presale_charm_boost_zero_when_vesting_cleared`.
+**Forge:** [`TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol) — `test_buy_presale_beneficiary_adds_15pct_charm_weight`, `test_buy_non_presale_beneficiary_no_boost_when_vesting_set`, `test_presale_charm_boost_zero_when_vesting_cleared`. [`PresaleCharmBeneficiaryRegistry.t.sol`](../../contracts/test/PresaleCharmBeneficiaryRegistry.t.sol) — membership constructor reverts + `isBeneficiary` reads ([GitLab #202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202)).
 
 ---
 

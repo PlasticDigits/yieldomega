@@ -525,7 +525,7 @@ single primary action. The `showFooter` toggle in
 
 ### Root header — presale CHARM bonus (`/timecurve*`)
 
-When **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** resolves to the **`DoubPresaleVesting`** proxy and **`isBeneficiary(connectedWallet)`** is true, the global header shows **`Presale +15% CHARM`** ([`TimecurvePresaleCharmHeaderBadge`](../../frontend/src/layout/TimecurvePresaleCharmHeaderBadge.tsx)) on **`/timecurve`** and **`/timecurve/*`**. Authoritative weighting lives in **`TimeCurve`** (`doubPresaleVesting`, `PRESALE_CHARM_WEIGHT_BPS`, `setDoubPresaleVesting`). Map: [`INV-TC-PRESALE-CHARM-BOOST`](../testing/invariants-and-business-logic.md#timecurve-presale-charm-weight-boost).
+When **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** or **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** resolves to a contract that returns **`isBeneficiary(connectedWallet) === true`**, the global header shows **`Presale +15% CHARM`**. **When both env vars are set**, the badge reads **`isBeneficiary`** from the **registry first** (same order as on-chain **`TimeCurve`** when both contracts are deployed). Authoritative weighting lives in **`TimeCurve`** (`doubPresaleVesting`, `PRESALE_CHARM_WEIGHT_BPS`, `setDoubPresaleVesting`). Map: [`INV-TC-PRESALE-CHARM-BOOST`](../testing/invariants-and-business-logic.md#timecurve-presale-charm-weight-boost). Contributor QA checklist: [manual-qa — GitLab #202](../testing/manual-qa-checklists.md#manual-qa-issue-202-presale-charm-registry).
 
 <a id="global-footer-fee-sinks-mobile-issue-93"></a>
 
