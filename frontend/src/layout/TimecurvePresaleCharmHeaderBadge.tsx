@@ -10,21 +10,23 @@ function isTimecurveSurfacePath(pathname: string): boolean {
   return pathname === "/timecurve" || pathname.startsWith("/timecurve/");
 }
 
-/** Header hint when the connected wallet is a `DoubPresaleVesting` beneficiary — matches onchain `TimeCurve` presale CHARM weight bonus. */
+/** Header hint when the connected wallet receives the TimeCurve presale CHARM weight bonus (`isBeneficiary` on vesting or `PresaleCharmBeneficiaryRegistry`). */
 export function TimecurvePresaleCharmHeaderBadge() {
   const { pathname } = useLocation();
   const { address } = useAccount();
   const vesting = addresses.doubPresaleVesting;
+  const charmRegistry = addresses.presaleCharmBeneficiaryRegistry;
+  const beneficiaryLookup = charmRegistry ?? vesting;
   const surface = isTimecurveSurfacePath(pathname);
   const { data: isBeneficiary } = useReadContract({
-    address: vesting,
+    address: beneficiaryLookup,
     abi: doubPresaleVestingReadAbi,
     functionName: "isBeneficiary",
     args: address ? [address] : undefined,
-    query: { enabled: Boolean(surface && vesting && address) },
+    query: { enabled: Boolean(surface && beneficiaryLookup && address) },
   });
 
-  if (!surface || !vesting || !address || !isBeneficiary) {
+  if (!surface || !beneficiaryLookup || !address || !isBeneficiary) {
     return null;
   }
 
