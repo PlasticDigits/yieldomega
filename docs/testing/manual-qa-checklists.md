@@ -23,6 +23,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90) | [Simple stake panel after `redeemCharms`](#manual-qa-issue-90) |
 | [#113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113) | [Simple live reserve podiums](#manual-qa-issue-113) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting `/vesting`](#manual-qa-issue-92) |
+| [#202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202) | [Presale CHARM +15% registry split + header badge](#manual-qa-issue-202-presale-charm-registry) |
 | [#93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93) | [Fee sinks mobile + protocol labels](#manual-qa-issue-93) |
 | [#98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98) | [Canonical address display + explorer base](#manual-qa-issue-98) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline UX](#manual-qa-issue-96) |
@@ -631,6 +632,26 @@ surface onto the first-run page.
 10. **Claim RPC leak (#145):** Claim failures must **not** print raw RPC URLs — see [§ #145](#manual-qa-issue-145).
 
 **Automated:** [`anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts) via `bash scripts/e2e-anvil.sh`.
+
+<a id="manual-qa-issue-202-presale-charm-registry"></a>
+
+## Presale CHARM +15% — `PresaleCharmBeneficiaryRegistry` vs vesting (GitLab #202)
+
+**Why:** Production may deploy [`PresaleCharmBeneficiaryRegistry`](../../contracts/src/vesting/PresaleCharmBeneficiaryRegistry.sol) so **+15% CHARM weight** membership can differ from **`DoubPresaleVesting`** allocation rows. **`TimeCurve.doubPresaleVesting`** is the historical name for the pointer read by **`isBeneficiary`** — it may be the **registry** when both contracts exist ([`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol), [`scripts/deploy-megaeth-contracts.sh`](../../scripts/deploy-megaeth-contracts.sh)). Frontend: **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** drives the global **Presale +15% CHARM** header badge on TimeCurve surfaces; **`/vesting`** stays tied to **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** only.
+
+### Invariants (do not regress)
+
+1. **Onchain:** When the registry is deployed in the same production run, **`TimeCurve.setDoubPresaleVesting`** targets the **registry** so **`isBeneficiary`** matches the CHARM boost list ([`INV-TC-PRESALE-CHARM-BOOST`](invariants-and-business-logic.md#timecurve-presale-charm-weight-boost)).
+2. **Header badge:** [`TimecurvePresaleCharmHeaderBadge`](../../frontend/src/layout/TimecurvePresaleCharmHeaderBadge.tsx) resolves **`charmRegistry ?? vesting`** — **registry first** when both env vars are set (matches on-chain preference).
+3. **`/vesting`:** Claims and schedule reads use the **vesting proxy** only; the registry is **not** a vesting contract.
+
+### Checklist
+
+- [ ] **`forge test --match-contract PresaleCharmBeneficiaryRegistryTest`** and **`forge test --match-path test/TimeCurve.t.sol --match-test presale`** pass locally.
+- [ ] With **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** + **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** set to addresses where **only** the registry marks the connected wallet **`isBeneficiary`**: **`/timecurve`** shows **Presale +15% CHARM**; **`/vesting`** does **not** imply a claim unless the vesting contract lists that wallet.
+- [ ] MegaETH deploy wrapper / [`deployment-guide`](../operations/deployment-guide.md) export blocks: **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** and vesting proxy lines match **`jq`** snippets after a dry run when both artifacts deploy.
+
+**Doc map:** [presale-vesting.md — env](../frontend/presale-vesting.md) · [timecurve-views — presale header](../frontend/timecurve-views.md#timecurve-presale-charm-header-hint) · [invariants — `INV-TC-PRESALE-CHARM-BOOST`](invariants-and-business-logic.md#timecurve-presale-charm-weight-boost) · [GitLab #202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202)
 
 <a id="manual-qa-issue-93"></a>
 

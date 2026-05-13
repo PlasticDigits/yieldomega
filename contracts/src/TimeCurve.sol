@@ -325,7 +325,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit TimeCurveBuyRouterSet(router);
     }
 
-    /// @notice Wire **`DoubPresaleVesting`** (proxy) so beneficiaries get **+`PRESALE_CHARM_WEIGHT_BPS` / 1e4** extra CHARM weight on the purchased `charmWad` each buy (redeems like additional spend-free CHARM; referral tranches unchanged). Pass **`address(0)`** to disable.
+    /// @notice Wire a contract implementing **`IDoubPresaleBeneficiary`** (canonical: **`DoubPresaleVesting`** proxy, or **`PresaleCharmBeneficiaryRegistry`** when vesting is not deployed) so matching wallets get **+`PRESALE_CHARM_WEIGHT_BPS` / 1e4** extra CHARM weight on the purchased `charmWad` each buy (redeems like additional spend-free CHARM; referral tranches unchanged). Pass **`address(0)`** to disable.
     function setDoubPresaleVesting(address vesting) external onlyOwner {
         doubPresaleVesting = vesting;
         emit DoubPresaleVestingSet(vesting);
@@ -1046,7 +1046,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @notice Trusted companion for `buyFor` (ETH/USDM → Kumbaya → CL8Y `buy` in one tx). Zero = disabled.
     address public timeCurveBuyRouter;
 
-    /// @notice When set, `isBeneficiary(buyer)` on this contract adds **+15%** CHARM weight to the purchased `charmWad` (see `PRESALE_CHARM_WEIGHT_BPS`). Canonical mainnet: **`DoubPresaleVesting` ERC-1967 proxy**.
+    /// @notice When set, `isBeneficiary(buyer)` on this contract adds **+15%** CHARM weight to the purchased `charmWad` (see `PRESALE_CHARM_WEIGHT_BPS`). Canonical: **`DoubPresaleVesting`** proxy, or **`PresaleCharmBeneficiaryRegistry`** when vesting is not deployed.
     address public doubPresaleVesting;
 
     /// @notice Protocol treasury / ops sink for **unpaid** podium slice remainder (GitLab #116 / audit M-01). Wires like **`TimeCurveBuyRouter.cl8yProtocolTreasury`** in ops.

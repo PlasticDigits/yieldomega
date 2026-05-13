@@ -69,7 +69,8 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Bucket | Amount (whole DOUB) | Notes |
 |--------|---------------------|--------|
 | TimeCurve sale | **200M** | Must match `totalTokensForSale` at deploy |
-| Presale | **21.5M** | **30%** at vesting start · **70%** linear over **180 days** — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; **`setClaimsEnabled(true)`** when operational signoff allows DOUB claims ([issue #55](../docs/operations/final-signoff-and-value-movement.md)); document beneficiary addresses at deploy |
+| Presale CHARM +15% | — | Five canonical boost wallets; first participant’s **10M** DOUB vests to **`0x0965…`** while they keep **`isBeneficiary`** on the registry as **`0xA5F4…`** ([`deployment-guide`](../docs/operations/deployment-guide.md)). Wired via **`TimeCurve.doubPresaleVesting`**: [`PresaleCharmBeneficiaryRegistry`](src/vesting/PresaleCharmBeneficiaryRegistry.sol) when deployed, else [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol) |
+| Presale DOUB vesting (optional) | **21.5M** total (**10M / 4M / 5M / 2M / 0.5M** example split) | **30%** at vesting start · **70%** linear over **180 days** (six months) — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; **`setClaimsEnabled(true)`** when operational signoff allows DOUB claims ([issue #55](../docs/operations/final-signoff-and-value-movement.md)); deploy only when `PRESALE_BENEFICIARIES` is set |
 | V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
 
 ## Rabbit Treasury (Burrow)

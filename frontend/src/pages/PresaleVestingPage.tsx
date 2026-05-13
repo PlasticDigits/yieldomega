@@ -154,7 +154,7 @@ export function PresaleVestingPage() {
         badgeTone="live"
         coinSrc="/art/token-logo.png"
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
-        lede="30% vests at the schedule start (TGE); 70% vests linearly over the on-chain vesting duration (canonical presale bucket: 180 days). Authority and balances are reads against DoubPresaleVesting; claims require claimsEnabled. This URL is not linked from the main nav — share it directly with presale wallets (GitLab #92)."
+        lede="30% vests at the schedule start (TGE); 70% vests linearly over the on-chain vesting duration (canonical production: 180 days / six months). Authority and balances are reads against DoubPresaleVesting; claims require claimsEnabled. This URL is not linked from the main nav — share it directly with presale wallets (GitLab #92)."
       />
       <PageSection
         title="Contract schedule"
