@@ -1,5 +1,5 @@
-# QA deploy artifact (generated on server; scp to laptop)
-.deploy/local.env
+# Local deploy handoffs / logs / generated env (not versioned)
+.deploy/
 
 # Environment and secrets (never commit)
 .env
