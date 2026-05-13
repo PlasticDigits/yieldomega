@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Resolve **ERC1967 proxy** addresses from a `DeployDev.s.sol` broadcast `run-*.json`.
+# Resolve **ERC1967 proxy** addresses from a Forge broadcast `run-*.json` (e.g. `DeployDev.s.sol`
+# or `DeployProduction.s.sol`).
 #
 # Foundry records the **implementation** CREATE with `contractName` "TimeCurve", "RabbitTreasury",
 # etc. The address integrators must use is the **ERC1967Proxy** whose constructor `arguments[0]`

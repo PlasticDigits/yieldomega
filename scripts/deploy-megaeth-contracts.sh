@@ -34,6 +34,8 @@ CHAIN_ID="${CHAIN_ID:-$DEFAULT_CHAIN_ID}"
 NETWORK_NAME="${NETWORK_NAME:-$DEFAULT_NETWORK_NAME}"
 VERIFY=true
 ASSUME_YES=false
+# Append forge script --resume (continue from broadcast/DeployProduction.s.sol/<chain>/run-latest.json).
+FORGE_RESUME=false
 SALE_START_EPOCH="${SALE_START_EPOCH:-}"
 RESERVE_ASSET_ADDRESS="${RESERVE_ASSET_ADDRESS:-}"
 DEPLOY_ADMIN_ADDRESS="${DEPLOY_ADMIN_ADDRESS:-$DEFAULT_DEPLOY_ADMIN_ADDRESS}"
@@ -70,6 +72,7 @@ Options:
   --reserve-asset ADDRESS    CL8Y/reserve ERC-20 address.
   --admin ADDRESS            Final admin / owner address. Defaults to CL8Y manager.
   --skip-verify              Broadcast without explorer verification.
+  --resume                   Resume a partial DeployProduction broadcast (forge --resume; same env as the failed run).
   -y, --yes                  Skip the final typed confirmation.
   -h, --help                 Show this help.
 
@@ -91,6 +94,16 @@ Optional environment:
   PRESALE_CHARM_BOOST_ADDRESSES, PRESALE_BENEFICIARIES, PRESALE_AMOUNTS_WAD,
   PRESALE_TOTAL_ALLOCATION_WAD, START_PRESALE_VESTING,
   ENABLE_PRESALE_CLAIMS, LEPRECHAUN_BASE_URI.
+
+Partial broadcast (RPC reset, "Nonce too low"):
+  Re-run with --resume and the same RPC_URL / CHAIN_ID / deploy env as the interrupted run so forge
+  can submit remaining txs from contracts/broadcast/DeployProduction.s.sol/<CHAIN_ID>/run-latest.json.
+  If a tx mined but forge never recorded it, patch run-latest.json with a known tx hash:
+    python3 scripts/repair_foundry_broadcast_tx.py contracts/broadcast/DeployProduction.s.sol/<CHAIN_ID>/run-latest.json <TX_HASH> --rpc-url "$RPC_URL"
+  Widen HTTP timeouts if needed: forge --timeout / ETH_TIMEOUT and --rpc-timeout (see forge script --help).
+
+Registry JSON only (no forge script / resume; uses broadcast run-latest.json):
+  scripts/write-production-registry-from-broadcast.sh
 USAGE
 }
 
@@ -118,6 +131,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-verify)
       VERIFY=false
+      shift
+      ;;
+    --resume)
+      FORGE_RESUME=true
       shift
       ;;
     -y|--yes)
@@ -334,12 +351,15 @@ if [[ "$ASSUME_YES" != true ]]; then
   fi
 fi
 
+# Forge simulates before --broadcast with EIP-170 (24 KiB) unless raised; MegaETH
+# MegaEVM allows 512 KiB deployed code — match other repo entrypoints (issue #72).
 forge_args=(
   script/DeployProduction.s.sol:DeployProduction
   --rpc-url "$RPC_URL"
   --chain "$CHAIN_ID"
   --broadcast
   --slow
+  --code-size-limit 524288
   -vvv
 )
 
@@ -348,6 +368,9 @@ if [[ "$VERIFY" == true ]]; then
 fi
 if [[ "${YIELDOMEGA_SKIP_SIMULATION:-0}" =~ ^(1|true|yes)$ ]]; then
   forge_args+=(--skip-simulation)
+fi
+if [[ "$FORGE_RESUME" == true ]]; then
+  forge_args+=(--resume)
 fi
 
 # PRIVATE_KEY exists only inside this subshell for `forge`; parent never exports it.
@@ -409,17 +432,15 @@ if [[ ! "$DEPLOY_BLOCK" =~ ^[0-9]+$ ]] || [[ "$DEPLOY_BLOCK" == "0" ]]; then
   exit 1
 fi
 
-extract_addr() {
-  local label="$1"
-  awk -v label="$label" '
-    $0 ~ "^[[:space:]]*" label ":" {
-      for (i = 1; i <= NF; ++i) {
-        if ($i ~ /^0x[0-9a-fA-F]{40}$/) value = $i
-      }
-    }
-    END { print value }
-  ' "$LOG_FILE"
-}
+# Forge often omits Solidity console.log lines from the tee'd log when verification dominates
+# output; read canonical CREATE / proxy addresses from the broadcast JSON instead (GitLab #61).
+BROADCAST_ADDR_LIB="${ROOT}/scripts/lib/broadcast_proxy_addresses.sh"
+if [[ ! -f "$BROADCAST_ADDR_LIB" ]]; then
+  echo "Missing ${BROADCAST_ADDR_LIB}" >&2
+  exit 1
+fi
+# shellcheck source=lib/broadcast_proxy_addresses.sh
+source "$BROADCAST_ADDR_LIB"
 
 zero_to_empty() {
   if [[ "${1:-}" == "0x0000000000000000000000000000000000000000" ]]; then
@@ -429,26 +450,86 @@ zero_to_empty() {
   fi
 }
 
-DOUB="$(extract_addr Doubloon)"
-PODIUM="$(extract_addr PodiumPool)"
-SALE_BURN="$(extract_addr SaleCl8yBurnSink)"
-DOUB_LP="$(extract_addr DoubLPIncentives)"
-ECO="$(extract_addr EcosystemTreasury)"
-RT_VAULT="$(zero_to_empty "$(extract_addr RabbitTreasuryVault)")"
-RABBIT_FEE_SINK="$(extract_addr RabbitFeeSink)"
-RT="$(extract_addr RabbitTreasury)"
-FEE_ROUTER="$(extract_addr FeeRouter)"
-REFERRAL="$(extract_addr ReferralRegistry)"
-CHARM_PRICE="$(extract_addr LinearCharmPrice)"
-TC="$(extract_addr TimeCurve)"
-DPV="$(zero_to_empty "$(extract_addr DoubPresaleVesting)")"
-PCRG="$(zero_to_empty "$(extract_addr PresaleCharmBeneficiaryRegistry)")"
-BUY_ROUTER="$(zero_to_empty "$(extract_addr TimeCurveBuyRouter)")"
-NFT="$(extract_addr LeprechaunNFT)"
+DOUB="$(broadcast_direct_create_address "$RUN_JSON" Doubloon)"
+PODIUM="$(broadcast_erc1967_proxy_address "$RUN_JSON" PodiumPool)"
+# Matches `DeployProduction.s.sol` `BURN_SINK` (not deployed; FeeRouter init embeds the same).
+SALE_BURN="0x000000000000000000000000000000000000dEaD"
+DOUB_LP="$(broadcast_erc1967_proxy_address "$RUN_JSON" DoubLPIncentives)"
+ECO="$(broadcast_erc1967_proxy_address "$RUN_JSON" EcosystemTreasury)"
+RT_VAULT="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" RabbitTreasuryVault)")"
+if [[ -n "$RT_VAULT" ]]; then
+  RABBIT_FEE_SINK="$RT_VAULT"
+else
+  if ! RABBIT_FEE_SINK="$(
+    python3 - "$RUN_JSON" <<'PY'
+import json
+import re
+import subprocess
+import sys
+
+run = json.load(open(sys.argv[1], encoding="utf-8"))
+impl = next(
+    (
+        t["contractAddress"]
+        for t in run["transactions"]
+        if t.get("transactionType") == "CREATE" and t.get("contractName") == "FeeRouter"
+    ),
+    None,
+)
+if not impl:
+    print("No FeeRouter implementation CREATE in broadcast JSON.", file=sys.stderr)
+    sys.exit(1)
+init = None
+want = str(impl).lower()
+for t in run["transactions"]:
+    if t.get("transactionType") != "CREATE" or t.get("contractName") != "ERC1967Proxy":
+        continue
+    args = t.get("arguments") or []
+    if len(args) < 2 or str(args[0]).lower() != want:
+        continue
+    init = args[1]
+    break
+if not init:
+    print("No FeeRouter ERC1967Proxy CREATE in broadcast JSON.", file=sys.stderr)
+    sys.exit(1)
+raw = subprocess.check_output(
+    [
+        "cast",
+        "calldata-decode",
+        "initialize(address,address[5],uint16[5])",
+        init,
+    ],
+    stderr=subprocess.DEVNULL,
+    text=True,
+)
+lines = [ln.strip() for ln in raw.strip().splitlines() if ln.strip() and not ln.startswith("Warning:")]
+if len(lines) < 2:
+    print("Unexpected cast calldata-decode output for FeeRouter.initialize.", file=sys.stderr)
+    sys.exit(1)
+addrs = re.findall(r"0x[a-fA-F]{40}", lines[1])
+if len(addrs) < 5:
+    print("Could not parse FeeRouter destination addresses from cast output.", file=sys.stderr)
+    sys.exit(1)
+print(addrs[4])
+PY
+  )"; then
+    echo "Could not resolve RabbitFeeSink from FeeRouter init in ${RUN_JSON} (no vault row)." >&2
+    exit 1
+  fi
+fi
+RT="$(broadcast_erc1967_proxy_address "$RUN_JSON" RabbitTreasury)"
+FEE_ROUTER="$(broadcast_erc1967_proxy_address "$RUN_JSON" FeeRouter)"
+REFERRAL="$(broadcast_erc1967_proxy_address "$RUN_JSON" ReferralRegistry)"
+CHARM_PRICE="$(broadcast_erc1967_proxy_address "$RUN_JSON" LinearCharmPrice)"
+TC="$(broadcast_erc1967_proxy_address "$RUN_JSON" TimeCurve)"
+DPV="$(zero_to_empty "$(broadcast_erc1967_proxy_address "$RUN_JSON" DoubPresaleVesting 2>/dev/null || true)")"
+PCRG="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" PresaleCharmBeneficiaryRegistry)")"
+BUY_ROUTER="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" TimeCurveBuyRouter)")"
+NFT="$(broadcast_direct_create_address "$RUN_JSON" LeprechaunNFT)"
 
 for required in DOUB PODIUM SALE_BURN DOUB_LP ECO RABBIT_FEE_SINK RT FEE_ROUTER REFERRAL CHARM_PRICE TC NFT; do
   if [[ -z "${!required:-}" ]]; then
-    echo "Could not parse ${required} from deploy log: ${LOG_FILE}" >&2
+    echo "Could not resolve ${required} from broadcast JSON: ${RUN_JSON}" >&2
     exit 1
   fi
 done

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -13,6 +14,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeab
 /// @title DoubPresaleVesting — DOUB presale allocations with cliff + linear vesting
 /// @notice Immutable beneficiary set and per-address allocations fixed at deploy. The owner starts vesting once;
 ///         each beneficiary may claim according to the schedule below.
+///
+///         **Post-deploy cap adjustment (rare):** `onlyOwner` may **`reduceAllocationsUniformBps`** to scale every
+///         beneficiary row down by the same basis points (floor per row), then **`burnDoubExcessAboveOutstanding`**
+///         to **`burn`** DOUB held here above aggregate remaining claim liability (`reserveDoubForOutstandingClaimsWad`).
+///         Requires the vesting **`token`** to implement **`ERC20Burnable.burn`** (canonical **Doubloon**). Prefer
+///         **`reduceAllocationsUniformBps` → `burnDoubExcessAboveOutstanding`** order so excess reflects lowered caps.
 ///
 ///         When **`TimeCurve.doubPresaleVesting`** points at this contract (proxy), **beneficiaries** also earn a **+15%**
 ///         **CHARM weight** bonus on each TimeCurve buy's purchased `charmWad` (see `TimeCurve.PRESALE_CHARM_WEIGHT_BPS`).
@@ -65,6 +72,8 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
     event Claimed(address indexed beneficiary, uint256 amount);
     event ClaimsEnabled(bool enabled);
+    event AllocationsReducedUniformBps(uint16 reductionBps, uint256 oldTotalAllocated, uint256 newTotalAllocated);
+    event DoubExcessBurned(uint256 amount);
     /// @notice Owner recovery sweep. `kind`: **0** = vesting-token excess only; **1** = non-vesting token (full balance subject to `amount`).
     event RescueERC20(address indexed token, address indexed to, uint256 amount, uint8 kind);
 
@@ -87,6 +96,10 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     error DoubVesting__RescueExceedsExcess(uint256 maxExcess, uint256 attempted);
     error DoubVesting__RescueExceedsBalance(uint256 balance, uint256 attempted);
     error DoubVesting__RescueUndercollateralized(uint256 balance, uint256 reserveNeeded);
+    error DoubVesting__InvalidReductionBps(uint256 bps);
+    error DoubVesting__ReductionUndercollateralizesBeneficiary(address beneficiary, uint256 newAllocation, uint256 claimed);
+    error DoubVesting__ReductionZeroNewTotal();
+    error DoubVesting__NoExcessDoubToBurn();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -138,6 +151,43 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     function setClaimsEnabled(bool enabled) external onlyOwner {
         claimsEnabled = enabled;
         emit ClaimsEnabled(enabled);
+    }
+
+    /// @notice Scale every beneficiary `allocationOf` by `(10_000 − reductionBps) / 10_000` (floor per row). Callable
+    ///         multiple times; each call applies to **current** rows. Reverts if any row would fall below `claimedOf`.
+    /// @param reductionBps Basis points removed (must be in `(0, 10_000)`).
+    function reduceAllocationsUniformBps(uint16 reductionBps) external onlyOwner nonReentrant {
+        if (reductionBps == 0 || reductionBps >= 10_000) revert DoubVesting__InvalidReductionBps(reductionBps);
+        uint256 n = _beneficiarySet.length();
+        uint256 factor = 10_000 - uint256(reductionBps);
+        uint256 newTotal;
+        for (uint256 i; i < n; ++i) {
+            address b = _beneficiarySet.at(i);
+            uint256 oldA = allocationOf[b];
+            if (oldA == 0) continue;
+            uint256 newA = Math.mulDiv(oldA, factor, 10_000, Math.Rounding.Floor);
+            if (newA < claimedOf[b]) {
+                revert DoubVesting__ReductionUndercollateralizesBeneficiary(b, newA, claimedOf[b]);
+            }
+            allocationOf[b] = newA;
+            newTotal += newA;
+        }
+        if (newTotal == 0) revert DoubVesting__ReductionZeroNewTotal();
+        uint256 oldTotal = totalAllocated;
+        totalAllocated = newTotal;
+        emit AllocationsReducedUniformBps(reductionBps, oldTotal, newTotal);
+    }
+
+    /// @notice Burn vesting DOUB sitting above aggregate outstanding claim liability (`reserveDoubForOutstandingClaimsWad`).
+    /// @dev Requires **`token`** to be **`ERC20Burnable`** (canonical **Doubloon**). After **`reduceAllocationsUniformBps`**,
+    ///      run this to destroy supply for freed balance. Does **not** replace **`rescueERC20`** for non-burnable tokens.
+    function burnDoubExcessAboveOutstanding() external onlyOwner nonReentrant {
+        uint256 bal = token.balanceOf(address(this));
+        uint256 reserve = reserveDoubForOutstandingClaimsWad();
+        if (bal <= reserve) revert DoubVesting__NoExcessDoubToBurn();
+        uint256 excess = bal - reserve;
+        ERC20Burnable(address(token)).burn(excess);
+        emit DoubExcessBurned(excess);
     }
 
     /// @notice Number of beneficiaries (size of the enumerable set).

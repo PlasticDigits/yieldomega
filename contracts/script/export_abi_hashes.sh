@@ -16,7 +16,13 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-forge build --quiet
+# Registry-only tooling can set YIELDOMEGA_EXPORT_ABI_SKIP_FORGE_BUILD=1 to use existing `out/`
+# artifacts without recompiling (requires a prior `forge build`).
+if [[ "${YIELDOMEGA_EXPORT_ABI_SKIP_FORGE_BUILD:-0}" =~ ^(1|true|yes)$ ]]; then
+  :
+else
+  forge build --quiet
+fi
 
 # Path: out/<SourceFile>.sol/<ContractName>.json
 declare -a PAIRS=(

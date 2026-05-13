@@ -135,7 +135,7 @@ need human decisions before mainnet.
 | `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing (future: optional pause/latch for `buy` / `redeemCharms` / `distributePrizes` per [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
 | `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
 | `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** mint (expected: `RabbitTreasury`); burns are **OpenZeppelin `ERC20Burnable`** (`burn` / **`burnFrom` + allowance** — [GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
-| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration (future: optional gate on `claim` — [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
+| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration; rare ops: **`reduceAllocationsUniformBps`** + **`burnDoubExcessAboveOutstanding`** (owner, **ERC20Burnable** token); **`setClaimsEnabled`** gate ([pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
 | `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
 | `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
 | `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
