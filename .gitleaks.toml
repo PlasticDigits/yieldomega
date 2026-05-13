@@ -1,7 +1,17 @@
 # Gitleaks — https://github.com/gitleaks/gitleaks
-# Extend built-in rules; add [[allowlist]] entries here only for verified false positives.
+# Extend built-in rules; merge `[allowlist]` fields with the default config (arrays append).
 
 title = "yieldomega"
 
 [extend]
 useDefault = true
+
+# MegaETH mainnet USDm (`0xFAfDdbb3…`) — public Kumbaya stable. `generic-api-key` matches
+# `export …TOKEN…='0x…40hex'`; the merged default global allowlist uses `regexTarget = "match"`,
+# so `finding.Match` is the full assignment while `finding.Secret` is only the hex. This
+# pattern matches both (substring).
+[allowlist]
+description = "MegaETH mainnet USDm token contract (public address, not an API key)"
+regexes = [
+  '''(?i)0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7''',
+]
