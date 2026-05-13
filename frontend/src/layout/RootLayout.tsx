@@ -70,20 +70,8 @@ export function RootLayout() {
           <NavLink to="/timecurve" className={navLinkClass}>
             TimeCurve
           </NavLink>
-          <NavLink to="/rabbit-treasury" className={navLinkClass}>
-            Rabbit Treasury
-          </NavLink>
-          <NavLink to="/collection" className={navLinkClass}>
-            Collection
-          </NavLink>
           <NavLink to="/referrals" className={navLinkClass}>
             Referrals
-          </NavLink>
-          <NavLink to="/kumbaya" className={navLinkClass}>
-            Kumbaya
-          </NavLink>
-          <NavLink to="/sir" className={navLinkClass}>
-            Sir
           </NavLink>
         </nav>
         <div className="app-header__wallet">
