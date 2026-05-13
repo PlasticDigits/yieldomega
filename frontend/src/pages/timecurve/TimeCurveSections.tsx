@@ -6,6 +6,7 @@ import { isAddress } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { TxHash } from "@/components/TxHash";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { PageSection } from "@/components/ui/PageSection";
@@ -34,6 +35,7 @@ import type {
   WarbowBattleFeedItem,
   WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
+import { statFromContractRead, statFromOptionalString } from "@/lib/statDisplayFromContractRead";
 import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
 import { FeedCard, RankingList, type RankingRow, StatCard } from "./timecurveUi";
 
@@ -157,6 +159,7 @@ export function WhatMattersSection(props: {
   indexerMismatch: string | null;
   claimHint: string | null;
   distributeHint: string | null;
+  isConnected: boolean;
 }) {
   const {
     saleActive,
@@ -175,9 +178,11 @@ export function WhatMattersSection(props: {
     indexerMismatch,
     claimHint,
     distributeHint,
+    isConnected,
   } = props;
 
   const settlementSurface = saleEnded || timerExpiredAwaitingEnd;
+  const statCtx = { isPending, isConnected };
 
   return (
     <PageSection
@@ -202,28 +207,33 @@ export function WhatMattersSection(props: {
       <div className="stats-grid timecurve-stats-grid">
         <StatCard
           label={saleActive ? "Current min buy" : "Minimum buy"}
-          value={
-            minBuy?.status === "success" && minBuy.result !== undefined ? (
-              <AmountDisplay raw={minBuy.result} decimals={decimals} />
-            ) : (
-              "—"
-            )
-          }
+          value={statFromContractRead(minBuy, statCtx, {
+            mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
+            labels: { loading: "Loading minimum buy…", missing: "Minimum buy unavailable" },
+          })}
           meta="Human-readable reserve spend floor"
         />
         <StatCard
           label={settlementSurface ? "Expected redemption" : "Your charm weight"}
           value={
             settlementSurface ? (
-              expectedTokenFromCharms !== undefined ? (
-                <AmountDisplay raw={expectedTokenFromCharms} decimals={18} />
-              ) : (
-                "—"
-              )
-            ) : charmWeightResult?.status === "success" && charmWeightResult.result !== undefined ? (
-              <AmountDisplay raw={charmWeightResult.result} decimals={18} />
+              statFromOptionalString(expectedTokenFromCharms, statCtx, {
+                mapSuccess: (r) => <AmountDisplay raw={r} decimals={18} />,
+                labels: {
+                  loading: "Loading redemption preview…",
+                  missing: "Redemption preview unavailable",
+                },
+              })
             ) : (
-              "—"
+              statFromContractRead(charmWeightResult, statCtx, {
+                requireWallet: true,
+                mapSuccess: (r) => <AmountDisplay raw={r} decimals={18} />,
+                labels: {
+                  loading: "Loading CHARM weight…",
+                  missing: "CHARM weight unavailable",
+                  connect: "Connect a wallet to see your CHARM weight.",
+                },
+              })
             )
           }
           meta={
@@ -236,22 +246,30 @@ export function WhatMattersSection(props: {
         />
         <StatCard
           label="Podium pool"
-          value={podiumPoolBal !== undefined ? <AmountDisplay raw={podiumPoolBal} decimals={decimals} /> : "—"}
+          value={statFromOptionalString(podiumPoolBal, statCtx, {
+            mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
+            labels: { loading: "Loading podium pool…", missing: "Podium pool unavailable" },
+          })}
           meta="Reserve pool for the four onchain prize categories"
         />
         <StatCard
           label={saleActive ? "Battle Points" : "Total raised"}
           value={
             saleActive ? (
-              battlePointsResult?.status === "success" && battlePointsResult.result !== undefined ? (
-                formatLocaleInteger(BigInt(battlePointsResult.result))
-              ) : (
-                "—"
-              )
-            ) : totalRaisedResult?.status === "success" && totalRaisedResult.result !== undefined ? (
-              <AmountDisplay raw={totalRaisedResult.result} decimals={decimals} />
+              statFromContractRead(battlePointsResult, statCtx, {
+                requireWallet: true,
+                mapSuccess: (r) => formatLocaleInteger(BigInt(r)),
+                labels: {
+                  loading: "Loading Battle Points…",
+                  missing: "Battle Points unavailable",
+                  connect: "Connect a wallet to see Battle Points.",
+                },
+              })
             ) : (
-              "—"
+              statFromContractRead(totalRaisedResult, statCtx, {
+                mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
+                labels: { loading: "Loading total raised…", missing: "Total raised unavailable" },
+              })
             )
           }
           meta={saleActive ? "Your live WarBow PvP score" : "Authoritative sale total from contract reads"}
@@ -439,12 +457,24 @@ export function WarbowSection(props: {
               <div className="stats-grid">
                 <StatCard
                   label="Your BP"
-                  value={viewerBattlePoints !== undefined ? formatLocaleInteger(BigInt(viewerBattlePoints)) : "—"}
+                  value={
+                    viewerBattlePoints !== undefined ? (
+                      formatLocaleInteger(BigInt(viewerBattlePoints))
+                    ) : (
+                      <EmptyDataPlaceholder>Loading your Battle Points…</EmptyDataPlaceholder>
+                    )
+                  }
                   meta="Live contract read"
                 />
                 <StatCard
                   label="Victim BP"
-                  value={victimBattlePoints !== undefined ? formatLocaleInteger(BigInt(victimBattlePoints)) : "—"}
+                  value={
+                    victimBattlePoints !== undefined ? (
+                      formatLocaleInteger(BigInt(victimBattlePoints))
+                    ) : (
+                      <EmptyDataPlaceholder>Loading victim Battle Points…</EmptyDataPlaceholder>
+                    )
+                  }
                   meta="Must be at least 2x your BP"
                 />
                 <StatCard
@@ -452,7 +482,9 @@ export function WarbowSection(props: {
                   value={
                     victimStealsToday !== undefined
                       ? `${formatLocaleInteger(BigInt(victimStealsToday))} / ${formatLocaleInteger(BigInt(warbowMaxSteals))}`
-                      : "—"
+                      : (
+                          <EmptyDataPlaceholder>Loading steal pressure…</EmptyDataPlaceholder>
+                        )
                   }
                   meta="Per-victim UTC-day cap"
                 />
@@ -1256,7 +1288,14 @@ export function StandingsVisuals(props: {
 }) {
   const { buyHistoryPoints, decimals } = props;
   if (buyHistoryPoints.length === 0) {
-    return null;
+    return (
+      <div className="race-history-grid race-history-grid--empty" data-testid="standings-visuals-empty">
+        <StatusMessage variant="muted">
+          <strong>No chart data yet.</strong> Deadline pressure and raise climb appear after indexed buys stream in for
+          this round.
+        </StatusMessage>
+      </div>
+    );
   }
   const maxRaisedStr = buyHistoryPoints[buyHistoryPoints.length - 1]?.totalRaisedAfter ?? "0";
   const maxRaised = BigInt(maxRaisedStr);

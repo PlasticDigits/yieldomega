@@ -101,6 +101,12 @@ export function ReferralProgramEarningsSection({ className }: Props) {
         <StatusMessage variant="muted">No summary data.</StatusMessage>
       ) : (
         <div className="data-panel data-panel--stack" data-testid="referrals-program-earnings">
+          {totals.totalCharm === 0n ? (
+            <StatusMessage variant="muted" data-testid="referrals-earnings-zero-banner">
+              <strong>No indexed referral CHARM yet.</strong> Figures stay at zero until the indexer records
+              ReferralApplied events for this wallet.
+            </StatusMessage>
+          ) : null}
           <p className="data-panel__label">As referrer (others used your code)</p>
           <p style={{ margin: 0 }}>
             <strong>

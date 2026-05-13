@@ -1257,6 +1257,23 @@ label:has(input[type="radio"]:disabled) {
   font-size: 0.85rem;
 }
 
+/* GitLab #200 — stats/charts must read as intentional empty states, not a bare em dash */
+.empty-data-placeholder {
+  display: inline-block;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.stat-card__value .empty-data-placeholder {
+  font-weight: 600;
+}
+
+.timecurve-simple__stake-tile-value .empty-data-placeholder {
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+}
+
 .split-layout {
   display: grid;
   gap: 1rem;

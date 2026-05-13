@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { PageBadge } from "@/components/ui/PageBadge";
 import { PageSection } from "@/components/ui/PageSection";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
@@ -78,9 +79,11 @@ export function TimeCurveStakeAtLaunchSection({
   );
 
   const redeemedDoubDisplay =
-    expectedTokenFromCharms !== undefined && expectedTokenFromCharms > 0n
-      ? formatCompactFromRaw(expectedTokenFromCharms, 18, { sigfigs: 4 })
-      : "—";
+    expectedTokenFromCharms !== undefined && expectedTokenFromCharms > 0n ? (
+      formatCompactFromRaw(expectedTokenFromCharms, 18, { sigfigs: 4 })
+    ) : (
+      <EmptyDataPlaceholder>Redeemed DOUB amount not available yet.</EmptyDataPlaceholder>
+    );
 
   return (
     <PageSection
@@ -98,7 +101,11 @@ export function TimeCurveStakeAtLaunchSection({
             className="timecurve-simple__stake-tile-value"
             data-testid="timecurve-simple-stake-charm"
           >
-            {charmWeightWad !== undefined ? formatCompactFromRaw(charmWeightWad, 18, { sigfigs: 4 }) : "—"}
+            {charmWeightWad !== undefined ? (
+              formatCompactFromRaw(charmWeightWad, 18, { sigfigs: 4 })
+            ) : (
+              <EmptyDataPlaceholder>Loading CHARM weight…</EmptyDataPlaceholder>
+            )}
           </strong>
           <span className="timecurve-simple__stake-tile-unit">CHARM</span>
         </div>
@@ -115,11 +122,13 @@ export function TimeCurveStakeAtLaunchSection({
             className={`timecurve-simple__stake-tile-value${redeemed ? " timecurve-simple__stake-tile-value--redeemed-struck" : ""}`}
             data-testid="timecurve-simple-stake-cl8y-launch"
           >
-            {launchCl8yValueWei !== undefined
-              ? formatCompactFromRaw(launchCl8yValueWei, decimals, {
-                  sigfigs: 4,
-                })
-              : "—"}
+            {launchCl8yValueWei !== undefined ? (
+              formatCompactFromRaw(launchCl8yValueWei, decimals, {
+                sigfigs: 4,
+              })
+            ) : (
+              <EmptyDataPlaceholder>CL8Y-at-launch loads with your CHARM read.</EmptyDataPlaceholder>
+            )}
           </strong>
           <span className="timecurve-simple__stake-tile-unit">CL8Y</span>
         </div>
