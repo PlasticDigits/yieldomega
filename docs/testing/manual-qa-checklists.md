@@ -37,6 +37,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#156](https://gitlab.com/PlasticDigits/yieldomega/-/issues/156) | [Indexer production `ADDRESS_REGISTRY` / `CHAIN_ID`](#manual-qa-issue-156) |
 | [#145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145) | [Presale vesting — claim error redaction (no RPC key in UI)](#manual-qa-issue-145) |
 | [#163](https://gitlab.com/PlasticDigits/yieldomega/-/issues/163) | [Placeholder split-layout hero figure (wide / landscape)](#manual-qa-issue-163) |
+| [#198](https://gitlab.com/PlasticDigits/yieldomega/-/issues/198) | [Homepage product card grid alignment](#manual-qa-issue-198) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
@@ -716,6 +717,23 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 3. **Narrow / stacked (`max-width: 720px`):** layout stacks to one column; image card still looks coherent (no overflow clipping).
 
 **Doc map:** [design — Placeholder split panels](../frontend/design.md#placeholder-split-panels-gitlab-163) · [invariants — #163](invariants-and-business-logic.md#placeholder-split-layout-figure-gitlab-163) · [`placeholderSplitLayoutCss.test.ts`](../../frontend/src/lib/placeholderSplitLayoutCss.test.ts)
+
+<a id="manual-qa-issue-198"></a>
+
+## Homepage product card grid alignment (GitLab #198)
+
+**Goal:** Product cards on the homepage should read as a clean desktop grid, with consistent gutters and matching card heights despite different titles, badges, images, and blurb lengths.
+
+### Checklist
+
+1. **Desktop (`>= 721px`):** open `/` and verify the six product cards form a centered three-column grid; all cards in the grid share the same visible height and the bottom card edges align.
+2. **Responsive stack / narrow widths:** cards stack or reflow without clipping; image slots keep the 4:3 crop and text remains readable.
+3. **`/referrals` overview strip:** the three numbered overview cards keep aligned heights and gutters when shown side by side.
+4. **Hover / focus:** product-card hover lift and keyboard focus still target the full card link.
+
+**Automated:** [`homeCardGridCss.test.ts`](../../frontend/src/lib/homeCardGridCss.test.ts) asserts the CSS stretch contract for homepage cards and referral overview cards.
+
+**Doc map:** [design — Home product card grid](../frontend/design.md#home-product-card-grid-gitlab-198) · [invariants — #198](invariants-and-business-logic.md#frontend-home-product-card-grid-gitlab-198)
 
 <a id="manual-qa-issue-71"></a>
 
