@@ -364,10 +364,6 @@ label:has(input[type="radio"]:disabled) {
   pointer-events: none;
 }
 
-.app-header__status {
-  margin-top: 0.55rem;
-}
-
 .app-header__presale-charm-badge {
   margin-top: 0.55rem;
 }
@@ -3283,11 +3279,6 @@ code {
     grid-row: 1;
     width: 100%;
     padding-inline-end: 0;
-  }
-
-  .app-header__status {
-    justify-self: center;
-    margin-top: 0.45rem;
   }
 
   .app-header__wallet {
