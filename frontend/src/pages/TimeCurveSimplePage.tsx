@@ -1059,16 +1059,6 @@ export function TimeCurveSimplePage() {
           }
         >
           <ChainMismatchWriteBarrier testId="timecurve-simple-chain-write-gate">
-          {/* "Vending machine" sidekick — anchors the gold buy panel to
-              the Yieldomega cast and visually echoes "this is where you
-              spend coins". The bob loop is suppressed for users with
-              `prefers-reduced-motion` via the shared rule below. */}
-          <CutoutDecoration
-            className="panel-cutout panel-cutout--coin-stack"
-            src="/art/hat-coin-stack.png"
-            width={180}
-            height={180}
-          />
           {/* Live rate board: current price (big, ticks every block) +
               at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.275× anchor). */}
           {session.phase === "saleActive" && rateBoard}

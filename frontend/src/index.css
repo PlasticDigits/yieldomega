@@ -5570,11 +5570,11 @@ a.podium-address-explorer:hover .address-inline__label {
  *     as one continuous billboard.
  *   - `.timecurve-simple__buy-panel` becomes a warm gold/honey VENDING
  *     MACHINE — distinct from the timer's green stage, with a bigger,
- *     stamped CTA and CHARM-coin sidekick decoration.
+ *     stamped CTA.
  *   - The generic `.data-panel::after` gold dot is hidden on both panels;
  *     it competes with the new chrome and indicates nothing.
- *   - Mascot cutouts (`leprechaun-bag-bunny-pair.png`,
- *     `hat-coin-stack.png`) anchor each panel to the Yieldomega world.
+ *   - The mascot cutout (`leprechaun-bag-bunny-pair.png`) anchors the
+ *     timer panel to the Yieldomega world.
  *
  * Sibling spec: see `docs/frontend/timecurve-views.md` and the standalone
  * `.launch-countdown` hero (same digit rhythm, urgency colours, days chip,
@@ -6039,18 +6039,6 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @container timecurveSimplePage (max-width: 520px) {
-  .timecurve-simple__buy-panel.data-panel {
-    padding-right: clamp(0.95rem, 4vw, 1.15rem);
-  }
-
-  .timecurve-simple__buy-panel .chain-write-gate {
-    padding-right: 0;
-  }
-
-  .timecurve-simple__buy-panel .panel-cutout--coin-stack {
-    display: none;
-  }
-
   .timecurve-simple__slider-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -6064,18 +6052,6 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (max-width: 520px) {
-  .timecurve-simple__buy-panel.data-panel {
-    padding-right: clamp(0.95rem, 4vw, 1.15rem);
-  }
-
-  .timecurve-simple__buy-panel .chain-write-gate {
-    padding-right: 0;
-  }
-
-  .timecurve-simple__buy-panel .panel-cutout--coin-stack {
-    display: none;
-  }
-
   .timecurve-simple__slider-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -7664,15 +7640,15 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: coin-wobble 5s ease-in-out infinite;
 }
 
-/* Mascot cutout positions for the sale hub.
+/* Mascot cutout positions for TimeCurve surfaces.
    - `--pair-mascot` anchors `leprechaun-bag-bunny-pair.png` to the bottom
      of the timer panel as the calm "fair launch" sidekick (the role the
      art README assigns to that asset).
-   - `--coin-stack` anchors `hat-coin-stack.png` to the buy panel as a
-     hint that the panel is the place where you spend coins.
-   Both cutouts use the existing `.cutout-decoration` chrome (drop shadow
-   + transform-origin), so they sit on top of the panel chrome but below
-   the interactive content (z-index 0). */
+   - `--coin-stack` remains available to buy panels that still opt into the
+     `hat-coin-stack.png` cutout.
+   Cutouts use the existing `.cutout-decoration` chrome (drop shadow +
+   transform-origin), so they sit on top of the panel chrome but below the
+   interactive content (z-index 0). */
 .panel-cutout--pair-mascot {
   bottom: -0.65rem;
   left: -0.85rem;
@@ -7727,22 +7703,6 @@ a.podium-address-explorer:hover .address-inline__label {
    panel's own `overflow: hidden`). */
 .timecurve-simple__timer-panel.data-panel {
   padding-bottom: clamp(1.5rem, 3vw, 2.25rem);
-}
-
-.timecurve-simple__buy-panel.data-panel {
-  padding-right: clamp(2rem, 7vw, 4.25rem);
-}
-
-/* GitLab #190 — the .panel-cutout--coin-stack lives INSIDE
-   .chain-write-gate (the position: relative ancestor that hosts the buy
-   CTA + status messages). The cutout sits at bottom: -0.4rem; right:
-   -0.5rem and is clamp(5rem, 11vw, 7rem) wide, so it overlaps the
-   button's right edge unless the gate reserves matching horizontal
-   space. Buy-panel's own padding-right above only inset the gate's
-   left bound, not its content area. Scope this padding to the buy
-   panel so we don't disturb chain-write-gate usage elsewhere. */
-.timecurve-simple__buy-panel .chain-write-gate {
-  padding-right: clamp(5.5rem, 12vw, 7.5rem);
 }
 
 /* Advanced disclosure: pay-with, slippage, referral. Hidden by default to
