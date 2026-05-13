@@ -41,7 +41,7 @@ Before running it on mainnet, confirm the deployer has native MegaETH gas, the s
 - **`ETHERSCAN_API_KEY`** — may be unset when using **`--skip-verify`**; otherwise set in the environment or paste at the script’s hidden prompt.
 - **`RESERVE_ASSET_ADDRESS`** — the **CL8Y** ERC-20 used as TimeCurve / Rabbit / referral reserve. On **MegaETH mainnet (`CHAIN_ID=4326`)** the canonical deployment is **`0xfBAa45A537cF07dC768c469FfaC4e88208B0098D`**; `scripts/deploy-megaeth-contracts.sh` applies that default when unset. Override for other chains or if governance migrates the token. See also [`docs/research/stablecoin-and-reserves.md`](../research/stablecoin-and-reserves.md).
 
-**MegaETH primary stable (Kumbaya USDM / USDm):** **`0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7`** — use for **`KUMBAYA_STABLE_TOKEN_ADDRESS`** and **`VITE_KUMBAYA_USDM`** (same token; the bash lines below use a `printf` split only so repo secret scanners do not treat the export as a generic API key).
+**MegaETH primary stable (Kumbaya USDM / USDm):** **`0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7`** — use for **`KUMBAYA_STABLE_TOKEN_ADDRESS`** and **`VITE_KUMBAYA_USDM`** (same token).
 
 **MegaETH wrapper defaults** (override for staging / rehearsal RPCs):
 
@@ -51,7 +51,7 @@ export CHAIN_ID='4326'
 export NETWORK_NAME='megaeth_mainnet'
 ```
 
-**`DeployProduction` — full default export block** (optional: omit any line to use the same default inside Solidity or the wrapper, where applicable). Numeric strings are exact `wad` / second literals from [`contracts/script/DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol). Kumbaya mainnet router / WETH / **USDm** match [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts); the wrapper defaults them on **`CHAIN_ID=4326`** so a stock mainnet deploy includes **`TimeCurveBuyRouter`**. Re-check against [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) + [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) before go-live. The **`printf` split** for USDm avoids static secret scanners on the contiguous hex literal in docs.
+**`DeployProduction` — full default export block** (optional: omit any line to use the same default inside Solidity or the wrapper, where applicable). Numeric strings are exact `wad` / second literals from [`contracts/script/DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol). Kumbaya mainnet router / WETH / **USDm** match [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts); the wrapper defaults them on **`CHAIN_ID=4326`** so a stock mainnet deploy includes **`TimeCurveBuyRouter`**. Re-check against [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) + [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) before go-live.
 
 ```bash
 # --- secrets (never export deployer private key; script prompts hidden) ---
@@ -94,8 +94,8 @@ export ENABLE_PRESALE_CLAIMS='false'
 # --- TimeCurveBuyRouter + Kumbaya on MegaETH mainnet (4326); omit to use wrapper defaults ---
 export KUMBAYA_SWAP_ROUTER_ADDRESS='0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e'
 export KUMBAYA_WETH_ADDRESS='0x4200000000000000000000000000000000000006'
-# USDm (MegaUSD) on 4326 — public token address; `printf` split avoids doc-only secret scanner false positives.
-export KUMBAYA_STABLE_TOKEN_ADDRESS="0xFAfD$(printf '%s' dbb3FC7688494971a79cc65DCa3EF82079E7)"
+# USDm (MegaUSD) on 4326
+export KUMBAYA_STABLE_TOKEN_ADDRESS='0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7'
 # Optional CL8Y dust sink on the router; omit to default onchain to EcosystemTreasury.
 # export CL8Y_PROTOCOL_TREASURY_ADDRESS='0xYourExplicitTreasuryIfNeeded'
 
@@ -273,7 +273,7 @@ export VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY="$(jq -r '.contracts.PresaleCharm
 
 # Kumbaya v3 (SwapRouter02 + QuoterV2 + WETH + USDm) — same literals as `kumbayaRoutes.ts` for 4326
 export VITE_KUMBAYA_WETH='0x4200000000000000000000000000000000000006'
-export VITE_KUMBAYA_USDM="0xFAfD$(printf '%s' dbb3FC7688494971a79cc65DCa3EF82079E7)"
+export VITE_KUMBAYA_USDM='0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7'
 export VITE_KUMBAYA_SWAP_ROUTER='0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e'
 export VITE_KUMBAYA_QUOTER='0x1F1a8dC7E138C34b503Ca080962aC10B75384a27'
 export VITE_KUMBAYA_FEE_CL8Y_WETH='3000'
