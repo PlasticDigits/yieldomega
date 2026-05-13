@@ -9,6 +9,7 @@ import { AddressInline } from "@/components/AddressInline";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
@@ -28,6 +29,7 @@ import {
   serializeContractRead,
   type SerializableContractRead,
 } from "@/lib/serializeContractRead";
+import { statFromContractRead, statFromOptionalString } from "@/lib/statDisplayFromContractRead";
 import {
   CHARM_TOKEN_LOGO,
   CL8Y_TOKEN_LOGO,
@@ -148,7 +150,7 @@ export function TimeCurveArenaView() {
 
   const rateNowDisplay = useMemo(() => {
     if (pricePerCharmWad === undefined) {
-      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+      return { text: "Loading live price…" as const, unit: " CL8Y" as const, loading: true as const };
     }
     if (payWith === "cl8y") {
       return {
@@ -196,7 +198,7 @@ export function TimeCurveArenaView() {
 
   const rateLaunchDisplay = useMemo(() => {
     if (launchCl8yPerCharmWei === undefined) {
-      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+      return { text: "Loading launch price…" as const, unit: " CL8Y" as const, loading: true as const };
     }
     if (payWith === "cl8y") {
       return {
@@ -601,9 +603,11 @@ export function TimeCurveArenaView() {
                         <div className="timecurve-simple__rate-pair">
                           <span className="timecurve-simple__rate-pair-tile">
                             <span className="timecurve-simple__rate-pair-value">
-                              {doubPerCharmAtLaunch !== undefined
-                                ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
-                                : "—"}
+                              {doubPerCharmAtLaunch !== undefined ? (
+                                formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
+                              ) : (
+                                <EmptyDataPlaceholder>DOUB-per-CHARM loads with sale totals.</EmptyDataPlaceholder>
+                              )}
                             </span>
                             <span className="timecurve-simple__rate-pair-unit">DOUB</span>
                           </span>
@@ -741,7 +745,7 @@ export function TimeCurveArenaView() {
                                 decimals={payWalletBalance.decimals}
                               />
                             ) : (
-                              "—"
+                              <EmptyDataPlaceholder>Loading wallet balance…</EmptyDataPlaceholder>
                             )
                           ) : (
                             <span className="muted">Connect to read balance</span>
@@ -1176,6 +1180,7 @@ export function TimeCurveArenaView() {
         indexerMismatch={indexerMismatch}
         claimHint={claimHint ?? null}
         distributeHint={distributeHint}
+        isConnected={isConnected}
       />
 
       <div className="split-layout split-layout--hero">
@@ -1277,7 +1282,11 @@ export function TimeCurveArenaView() {
               <div className="stats-grid">
                 <StatCard
                   label="WarBow leader"
-                  value={warbowTopRows[0]?.value ?? "—"}
+                  value={
+                    warbowTopRows[0]?.value ?? (
+                      <EmptyDataPlaceholder>No WarBow leader row yet.</EmptyDataPlaceholder>
+                    )
+                  }
                   meta={warbowTopRows[0]?.label ?? "Waiting for contract snapshot"}
                 />
                 <StatCard
@@ -1287,22 +1296,22 @@ export function TimeCurveArenaView() {
                 />
                 <StatCard
                   label="Podium pool"
-                  value={
-                    podiumPoolBal !== undefined ? (
-                      <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
-                    ) : (
-                      "—"
-                    )
-                  }
+                  value={statFromOptionalString(
+                    typeof podiumPoolBal === "bigint" ? podiumPoolBal.toString() : undefined,
+                    { isPending },
+                    {
+                      mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
+                      labels: { loading: "Loading podium pool…", missing: "Podium pool unavailable" },
+                    },
+                  )}
                   meta="Reserve payout pool shared by four onchain podium categories"
                 />
                 <StatCard
                   label="Your best defended streak"
-                  value={
-                    bestStreakR?.status === "success"
-                      ? formatLocaleInteger(bestStreakR.result as bigint)
-                      : "—"
-                  }
+                  value={statFromContractRead(serializeContractRead(bestStreakR), { isPending, isConnected }, {
+                    mapSuccess: (r) => formatLocaleInteger(BigInt(r)),
+                    labels: { loading: "Loading streak…", missing: "Streak unavailable" },
+                  })}
                   meta="Peak under-15-minute defended streak"
                 />
               </div>

@@ -261,6 +261,18 @@ After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone c
 
 **Spec ↔ test:** [invariants §192](../testing/invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192) · [`cl8yUsdEquivalentDisplay.ts`](../../frontend/src/lib/cl8yUsdEquivalentDisplay.ts) · [`TimeCurveSimplePodiumSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.tsx) · [manual QA (#192)](../testing/manual-qa-checklists.md#manual-qa-issue-192) · [play skill — USD hints](../../skills/play-timecurve-doubloon/SKILL.md).
 
+<a id="stats-charts-empty-states-gitlab-200"></a>
+
+## Stats and charts — explicit empty states (GitLab #200)
+
+**Problem:** A bare **em dash** in a stat tile or chart region reads like a rendering bug when the user is connected but data is still loading, wallet-gated, or legitimately empty.
+
+**Surfaces:** Arena **`WhatMattersSection`** and secondary stats grid, **`StandingsVisuals`** (no indexed buy history), rate-board **DOUB-at-launch** / wallet balance rows, Simple **stake-at-launch** tiles and **live podium** prize preview, **`/referrals`** indexed CHARM totals banner.
+
+**Implementation:** shared **`EmptyDataPlaceholder`** + **`statFromContractRead` / `statFromOptionalString`** ([`EmptyDataPlaceholder.tsx`](../../frontend/src/components/EmptyDataPlaceholder.tsx), [`statDisplayFromContractRead.tsx`](../../frontend/src/lib/statDisplayFromContractRead.tsx)).
+
+**Spec ↔ test:** [invariants §200](../testing/invariants-and-business-logic.md#frontend-stats-charts-empty-states-gitlab-200) · [GitLab #200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200) · [`statDisplayFromContractRead.test.tsx`](../../frontend/src/lib/statDisplayFromContractRead.test.tsx).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)

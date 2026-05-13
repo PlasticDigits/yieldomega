@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { AddressInline } from "@/components/AddressInline";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
@@ -74,7 +75,11 @@ function rankingRowsForPodium(
     const winnerReady = hasWinner(winner);
     const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
     const prizeLabel =
-      prizeRaw !== undefined ? formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 }) : "—";
+      prizeRaw !== undefined ? (
+        formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })
+      ) : (
+        <EmptyDataPlaceholder>Prize not projected yet</EmptyDataPlaceholder>
+      );
     const usdLabel =
       prizeRaw !== undefined
         ? formatCompactFromRaw(
