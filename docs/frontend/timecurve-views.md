@@ -273,6 +273,24 @@ After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone c
 
 **Spec ↔ test:** [invariants §200](../testing/invariants-and-business-logic.md#frontend-stats-charts-empty-states-gitlab-200) · [GitLab #200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200) · [`statDisplayFromContractRead.test.tsx`](../../frontend/src/lib/statDisplayFromContractRead.test.tsx).
 
+<a id="timecurve-responsive-layout-gitlab-201"></a>
+
+## Responsive layout containment — mobile + tablet (GitLab #201)
+
+**Problem:** On phone widths, the Simple buy panel could stay cramped because
+desktop-only decorative coin-stack padding was still reserved after the hub
+collapsed. On tablet widths, Arena WarBow action cards could inherit desktop
+spotlight padding and squeeze **Guard** / **Counterpunch Revenge** tracks enough
+for headings or revenge rows to overflow their card border.
+
+**Invariant:** **`INV-FRONTEND-201-RESPONSIVE-LAYOUT`** keeps TimeCurve surfaces
+inside the viewport and card chrome at phone and tablet breakpoints: the
+Simple buy panel hides the coin-stack cutout and collapses the slider layout at
+≤520 px, while Arena WarBow cards wrap headings / revenge rows and reduce
+TimeCurve spotlight padding at ≤960 px.
+
+**Spec ↔ test:** [invariants §201](../testing/invariants-and-business-logic.md#timecurve-responsive-layout-gitlab-201) · [manual QA #201](../testing/manual-qa-checklists.md#manual-qa-issue-201) · [`timeCurveResponsiveLayoutCss.test.ts`](../../frontend/src/lib/timeCurveResponsiveLayoutCss.test.ts) · [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) · [GitLab #201](https://gitlab.com/PlasticDigits/yieldomega/-/issues/201).
+
 <a id="warbow-ladder-podium-snapshot-mismatch-issue-129"></a>
 
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)

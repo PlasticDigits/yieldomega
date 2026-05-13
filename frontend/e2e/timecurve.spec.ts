@@ -19,6 +19,14 @@ async function ensurePostLaunch(page: Page) {
   await page.goto("/timecurve");
 }
 
+async function expectNoHorizontalViewportOverflow(page: Page) {
+  const overflow = await page.evaluate(() => {
+    const root = document.documentElement;
+    return Math.ceil(root.scrollWidth - window.innerWidth);
+  });
+  expect(overflow).toBeLessThanOrEqual(1);
+}
+
 test("timecurve simple view shows the first-run path (timer + buy CHARM)", async ({ page }) => {
   await ensurePostLaunch(page);
   await expect(page.locator("main.app-main")).toBeVisible();
@@ -80,4 +88,21 @@ test("timecurve simple view stays usable on a 390×844 mobile viewport", async (
     page.getByRole("heading", { name: /Time left|TimeCurve Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
+  await expectNoHorizontalViewportOverflow(page);
+});
+
+test("timecurve Arena WarBow cards stay contained on an iPad Mini viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await ensurePostLaunch(page);
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /Arena/ }).click();
+  await expect(page).toHaveURL(/\/timecurve\/arena$/);
+
+  const warbowHero = page.getByTestId("warbow-hero-actions");
+  test.skip(
+    (await warbowHero.count()) === 0,
+    "WarBow hero actions require a configured TimeCurve address; full-stack Anvil covers the rendered surface.",
+  );
+  await expect(warbowHero).toBeVisible();
+  await expect(warbowHero.getByRole("heading", { name: "Revenge", level: 3 })).toBeVisible();
+  await expectNoHorizontalViewportOverflow(page);
 });
