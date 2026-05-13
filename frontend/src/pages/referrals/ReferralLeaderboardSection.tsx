@@ -30,7 +30,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
         if (!cancelled) {
           if (!page) {
             setItems([]);
-            setErr("Indexer unavailable — set VITE_INDEXER_URL to load the leaderboard.");
+            setErr("Leaderboard is unavailable right now. Try again in a moment.");
           } else {
             setItems(page.items);
           }
@@ -82,9 +82,9 @@ export function ReferralLeaderboardSection({ className }: Props) {
     <PageSection
       className={className}
       title="Referrer leaderboard"
-      badgeLabel="Indexer"
+      badgeLabel="Referrers"
       badgeTone="live"
-      lede="Ranked by indexed referrer CHARM from ReferralApplied events. No synthetic points."
+      lede="Ranked by total referrer CHARM from qualifying referral purchases. No synthetic points."
       cutout={{
         src: REF_CUT.tertiary,
         width: 108,
@@ -97,13 +97,13 @@ export function ReferralLeaderboardSection({ className }: Props) {
         <StatusMessage variant="muted">Loading leaderboard…</StatusMessage>
       ) : items.length === 0 ? (
         <StatusMessage variant="muted">
-          No indexed referral activity yet — the table fills after ReferralApplied rows land in Postgres.
+          No referral activity in the leaderboard yet — it fills in as referrers earn CHARM from linked buys.
         </StatusMessage>
       ) : (
         <>
           <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
             <div>
-              <span>Indexed referral buys</span>
+              <span>Recorded referral buys</span>
               <strong>{formatLocaleInteger(leaderboard.totalBuys)}</strong>
             </div>
             <div>
@@ -131,7 +131,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
                     size={22}
                   />
                   <span>
-                    {formatLocaleInteger(row.referred_buy_count)} indexed{" "}
+                    {formatLocaleInteger(row.referred_buy_count)} recorded{" "}
                     {row.referred_buy_count === "1" ? "buy" : "buys"} using this code
                   </span>
                 </div>

@@ -10,6 +10,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {TimeCurve} from "../src/TimeCurve.sol";
 import {DoubPresaleVesting} from "../src/vesting/DoubPresaleVesting.sol";
+import {PresaleCharmBeneficiaryRegistry} from "../src/vesting/PresaleCharmBeneficiaryRegistry.sol";
 import {FeeRouter} from "../src/FeeRouter.sol";
 import {PodiumPool} from "../src/sinks/PodiumPool.sol";
 import {LinearCharmPrice} from "../src/pricing/LinearCharmPrice.sol";
@@ -178,7 +179,6 @@ contract TimeCurveTest is Test {
     function _finalizeWarbowTop3(TimeCurve target, address first, address second, address third) internal {
         target.finalizeWarbowPodium(first, second, third);
     }
-
 
     /// @dev Small `initialTimerSec` so `warp(deadline - ε)` stays near sale start (CHARM envelope still cheap).
     function _newTimeCurveShortTimer(uint256 initialTimerSec) internal returns (TimeCurve) {
@@ -428,6 +428,41 @@ contract TimeCurveTest is Test {
         vm.prank(alice);
         tc.buy(1e18);
         assertEq(tc.charmWeight(alice), 1e18);
+    }
+
+    /// @dev GitLab #202 — when `TimeCurve.doubPresaleVesting` points at `PresaleCharmBeneficiaryRegistry`, only
+    ///      registry members get +15% CHARM weight; vesting-only beneficiaries do not (mirrors `DeployProduction`).
+    function test_presale_charm_boost_registry_split_vesting_beneficiary_not_boosted() public {
+        address[] memory vestBen = new address[](1);
+        vestBen[0] = carol;
+        uint256[] memory vestAmt = new uint256[](1);
+        vestAmt[0] = 1_000e18;
+        DoubPresaleVesting v = UUPSDeployLib.deployDoubPresaleVesting(
+            IERC20(address(reserve)), address(this), vestBen, vestAmt, 1_000e18, 180 days
+        );
+
+        address[] memory boostAddrs = new address[](1);
+        boostAddrs[0] = dave;
+        PresaleCharmBeneficiaryRegistry reg = new PresaleCharmBeneficiaryRegistry(boostAddrs);
+
+        assertTrue(v.isBeneficiary(carol));
+        assertFalse(v.isBeneficiary(dave));
+        assertTrue(reg.isBeneficiary(dave));
+        assertFalse(reg.isBeneficiary(carol));
+
+        tc.setDoubPresaleVesting(address(reg));
+        tc.startSaleAt(block.timestamp);
+
+        _fundAndApprove(carol, 100e18);
+        vm.prank(carol);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(carol), 1e18);
+
+        _fundAndApprove(dave, 100e18);
+        vm.prank(dave);
+        tc.buy(1e18);
+        assertEq(tc.charmWeight(dave), 1_150_000_000_000_000_000);
+        assertEq(tc.totalCharmWeight(), 2_150_000_000_000_000_000);
     }
 
     function test_buyFor_reverts_when_not_designated_router() public {
@@ -779,10 +814,7 @@ contract TimeCurveTest is Test {
         _fundAndApprove(freshStealer, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
         vm.prank(freshStealer);
         tc.warbowSteal(victimV, false);
-        assertEq(
-            reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore,
-            tc.WARBOW_STEAL_BURN_WAD()
-        );
+        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
     }
 
     /// @dev GitLab #146 / #131 (finding 5) vs **#135**: per-(victim, stealer) revenge slots — victim may `warbowRevenge` **both** stealers; a second steal must not erase the first window.
@@ -850,11 +882,7 @@ contract TimeCurveTest is Test {
 
             assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0, "new slot");
             for (uint256 j; j < i; ++j) {
-                assertGt(
-                    tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[j]),
-                    0,
-                    "prior slots survive"
-                );
+                assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, stealers[j]), 0, "prior slots survive");
             }
         }
 

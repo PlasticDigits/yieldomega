@@ -28,7 +28,18 @@ contract PresaleCharmBeneficiaryRegistryTest is Test {
         address[] memory addrs = new address[](2);
         addrs[0] = A;
         addrs[1] = A;
-        vm.expectRevert(abi.encodeWithSelector(PresaleCharmBeneficiaryRegistry.PresaleCharmBeneficiaryRegistry__Duplicate.selector, A));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PresaleCharmBeneficiaryRegistry.PresaleCharmBeneficiaryRegistry__Duplicate.selector, A
+            )
+        );
+        new PresaleCharmBeneficiaryRegistry(addrs);
+    }
+
+    function test_RevertWhen_zero_account() public {
+        address[] memory addrs = new address[](1);
+        addrs[0] = address(0);
+        vm.expectRevert(PresaleCharmBeneficiaryRegistry.PresaleCharmBeneficiaryRegistry__ZeroAccount.selector);
         new PresaleCharmBeneficiaryRegistry(addrs);
     }
 }

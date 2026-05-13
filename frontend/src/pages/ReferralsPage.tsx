@@ -2,7 +2,6 @@
 
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { PageHero } from "@/components/ui/PageHero";
-import { PageSection } from "@/components/ui/PageSection";
 import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
 import { ReferralConnectedWalletSection } from "@/pages/referrals/ReferralConnectedWalletSection";
 import { ReferralLeaderboardSection } from "@/pages/referrals/ReferralLeaderboardSection";
@@ -33,7 +32,7 @@ function ReferralOverviewStrip() {
       <article className="referrals-overview-card referrals-overview-card--blue">
         <span className="referrals-overview-card__step">03</span>
         <h2>Track CHARM</h2>
-        <p>Referral bonuses are CHARM weight from TimeCurve events; the indexer only mirrors and ranks them.</p>
+        <p>Referral bonuses are CHARM weight from TimeCurve events; rankings here reflect recorded referral activity.</p>
       </article>
     </div>
   );
@@ -82,39 +81,6 @@ export function ReferralsPage() {
         <ReferralProgramEarningsSection className="referrals-panel referrals-panel--earnings" />
       </div>
       <ReferralLeaderboardSection className="referrals-panel referrals-panel--leaderboard" />
-      <PageSection
-        className="referrals-panel referrals-panel--links"
-        title="Links that count"
-        badgeLabel="Client capture"
-        badgeTone="info"
-        lede="Pending referral codes use yieldomega.ref.v1 in localStorage + sessionStorage. Registered share-link plaintext is cached per wallet under yieldomega.myrefcode.v1.<wallet>. Neither store owns codes onchain."
-      >
-        <ul className="accent-list">
-          <li>
-            <code>/?ref=yourcode</code> — same as today; query takes precedence if both a path code and a query are present.
-          </li>
-          <li>
-            <code>/timecurve/{`{code}`}</code> — the live route shape for a path-based slug (the second segment is not <code>arena</code> or{" "}
-            <code>protocol</code>, or a reserved name mirrored from app routing). A root <code>/{`{code}`}</code> short link is not exposed as a route,
-            to avoid a dynamic segment colliding with real paths like <code>/home</code> in the post-launch tree.
-          </li>
-        </ul>
-        <p className="muted" style={{ marginBottom: 0 }}>
-          A governance-tunable on-chain <strong>reserved-word</strong> set is planned; the in-app list in{" "}
-          <code>referralPathReserved.ts</code> should stay aligned when new product routes are added.
-        </p>
-      </PageSection>
-      <PageSection
-        className="referrals-panel referrals-panel--slug"
-        title="Slug transfer"
-        badgeLabel="Contract"
-        badgeTone="soon"
-        lede="This deployment of ReferralRegistry binds one code per address with no on-chain transfer hook. A future version could add a transfer/reset path through governance; until then, treat codes as account-bound for UX."
-      >
-        <p className="muted" style={{ margin: 0 }}>
-          Track on-chain work for governance-updatable reserved words in the product issue; the web layer starts with a static mirror for routing.
-        </p>
-      </PageSection>
       <ReferralRegisterSection className="referral-register" />
     </section>
   );
