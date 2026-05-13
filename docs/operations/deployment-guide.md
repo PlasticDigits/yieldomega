@@ -14,6 +14,7 @@ Run from the repository root. The script defaults to:
 - Final owner / admin / governance address: CL8Y manager `0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`
 - **`SALE_START_EPOCH`:** `1779105600` (2026-05-18 12:00:00 UTC, Monday) when unset before the script runs
 - **`RESERVE_ASSET_ADDRESS`:** canonical MegaETH CL8Y `0xfBAa45A537cF07dC768c469FfaC4e88208B0098D` when unset and **`CHAIN_ID=4326`**
+- **Kumbaya ETH/USDm routing:** mainnet `SwapRouter02`, WETH, and USDm defaults when unset and **`CHAIN_ID=4326`**, which deploys and wires **`TimeCurveBuyRouter`** for single-transaction ETH/USDM TimeCurve entry
 
 **Interactive prompts:** the **deployer private key** is always read as **hidden** input (never from `PRIVATE_KEY` in the environment). **`ETHERSCAN_API_KEY`** is prompted when empty (press Enter only with **`--skip-verify`**). **`SALE_START_EPOCH`** and **`RESERVE_ASSET_ADDRESS`** are prompted only when still empty **after** the defaults above are applied, so a stock MegaETH mainnet run usually skips those two prompts. The scripted sale anchor is `TimeCurve.startSaleAt(SALE_START_EPOCH)` ([issue #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
 
@@ -50,7 +51,7 @@ export CHAIN_ID='4326'
 export NETWORK_NAME='megaeth_mainnet'
 ```
 
-**`DeployProduction` — full default export block** (optional: omit any line to use the same default inside Solidity or the wrapper, where applicable). Numeric strings are exact `wad` / second literals from [`contracts/script/DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol). Kumbaya mainnet router / WETH / **USDm** match [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts); re-check against [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) + [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) before go-live. The **`printf` split** for USDm avoids static secret scanners on the contiguous hex literal in docs.
+**`DeployProduction` — full default export block** (optional: omit any line to use the same default inside Solidity or the wrapper, where applicable). Numeric strings are exact `wad` / second literals from [`contracts/script/DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol). Kumbaya mainnet router / WETH / **USDm** match [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts); the wrapper defaults them on **`CHAIN_ID=4326`** so a stock mainnet deploy includes **`TimeCurveBuyRouter`**. Re-check against [Kumbaya integrator-kit](https://github.com/Kumbaya-xyz/integrator-kit) + [default-token-list](https://github.com/Kumbaya-xyz/default-token-list) before go-live. The **`printf` split** for USDm avoids static secret scanners on the contiguous hex literal in docs.
 
 ```bash
 # --- secrets (never export deployer private key; script prompts hidden) ---
@@ -90,7 +91,7 @@ export PRESALE_VESTING_DURATION_SEC='15552000'
 export START_PRESALE_VESTING='false'
 export ENABLE_PRESALE_CLAIMS='false'
 
-# --- TimeCurveBuyRouter + Kumbaya on MegaETH mainnet (4326); omit KUMBAYA_SWAP_ROUTER_ADDRESS entirely to skip router deploy ---
+# --- TimeCurveBuyRouter + Kumbaya on MegaETH mainnet (4326); omit to use wrapper defaults ---
 export KUMBAYA_SWAP_ROUTER_ADDRESS='0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e'
 export KUMBAYA_WETH_ADDRESS='0x4200000000000000000000000000000000000006'
 # USDm (MegaUSD) on 4326 — public token address; `printf` split avoids doc-only secret scanner false positives.
@@ -101,7 +102,7 @@ export KUMBAYA_STABLE_TOKEN_ADDRESS="0xFAfD$(printf '%s' dbb3FC7688494971a79cc65
 scripts/deploy-megaeth-contracts.sh
 ```
 
-**Without `TimeCurveBuyRouter`:** unset `KUMBAYA_SWAP_ROUTER_ADDRESS` (do not export it) and unset `KUMBAYA_WETH_ADDRESS` / `KUMBAYA_STABLE_TOKEN_ADDRESS` / `CL8Y_PROTOCOL_TREASURY_ADDRESS` so Forge never reads them; `TimeCurve.timeCurveBuyRouter()` stays zero and the UI keeps two-step Kumbaya → `buy` only.
+**Without `TimeCurveBuyRouter`:** export **`KUMBAYA_SWAP_ROUTER_ADDRESS=''`** before running the wrapper, and unset `KUMBAYA_WETH_ADDRESS` / `KUMBAYA_STABLE_TOKEN_ADDRESS` / `CL8Y_PROTOCOL_TREASURY_ADDRESS` so Forge never reads them; `TimeCurve.timeCurveBuyRouter()` stays zero and the UI keeps two-step Kumbaya → `buy` only. On **`CHAIN_ID=4326`**, simply omitting `KUMBAYA_SWAP_ROUTER_ADDRESS` now uses the mainnet default and deploys the router.
 
 **Presale CHARM +15%:** non-empty **`PRESALE_CHARM_BOOST_ADDRESSES`** deploys **`PresaleCharmBeneficiaryRegistry`**. **`TimeCurve.setDoubPresaleVesting`** points at the **registry whenever it is deployed** (so on-chain `isBeneficiary` matches the boost list). The set is **immutable** after deploy; updates need a new registry + owner `setDoubPresaleVesting` on **`TimeCurve`**. **MegaETH (4326):** the wrapper defaults the five canonical boost wallets when **`PRESALE_CHARM_BOOST_ADDRESSES`** is unset. Export **`PRESALE_CHARM_BOOST_ADDRESSES=''`** to deploy with **no** on-chain +15% boost.
 
@@ -109,7 +110,7 @@ scripts/deploy-megaeth-contracts.sh
 
 **Frontend:** set **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** and **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** from the deployment registry so the header badge reads **`isBeneficiary`** from the registry (aligned with **`TimeCurve`**) while **`/vesting`** reads the vesting proxy.
 
-After defaults, the **deployer private key** is still read **only** from the hidden terminal prompt. **`ETHERSCAN_API_KEY`**, **`SALE_START_EPOCH`**, and **`RESERVE_ASSET_ADDRESS`** are prompted **only when empty** at prompt time; on **`CHAIN_ID=4326`**, the wrapper pre-fills **`SALE_START_EPOCH=1779105600`** and **`RESERVE_ASSET_ADDRESS`** to canonical CL8Y when unset, so those prompts are usually skipped. The script derives the deployer address with `cast wallet address` from the typed key, verifies the RPC chain id, rejects a past **`SALE_START_EPOCH`**, records **`deployBlock`**, and requires typed **`DEPLOY YIELDOMEGA`** confirmation unless **`--yes`**.
+After defaults, the **deployer private key** is still read **only** from the hidden terminal prompt. **`ETHERSCAN_API_KEY`**, **`SALE_START_EPOCH`**, and **`RESERVE_ASSET_ADDRESS`** are prompted **only when empty** at prompt time; on **`CHAIN_ID=4326`**, the wrapper pre-fills **`SALE_START_EPOCH=1779105600`**, **`RESERVE_ASSET_ADDRESS`** to canonical CL8Y, the five **`PRESALE_CHARM_BOOST_ADDRESSES`**, the canonical vesting row, and Kumbaya ETH/USDm router inputs when unset, so those prompts are usually skipped. The script derives the deployer address with `cast wallet address` from the typed key, verifies the RPC chain id, rejects a past **`SALE_START_EPOCH`**, records **`deployBlock`**, and requires typed **`DEPLOY YIELDOMEGA`** confirmation unless **`--yes`**.
 
 ## Common Options
 

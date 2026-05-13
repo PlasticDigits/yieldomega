@@ -222,13 +222,15 @@ contract DeployProduction is Script {
     }
 
     function _maybeDeployTimeCurveBuyRouter(Deployment memory d) internal returns (TimeCurveBuyRouter) {
-        address kumbayaRouter = vm.envOr("KUMBAYA_SWAP_ROUTER_ADDRESS", address(0));
-        if (kumbayaRouter == address(0)) {
+        string memory rawKumbayaRouter = vm.envOr("KUMBAYA_SWAP_ROUTER_ADDRESS", string(""));
+        if (bytes(rawKumbayaRouter).length == 0) {
             return TimeCurveBuyRouter(payable(address(0)));
         }
 
+        address kumbayaRouter = vm.parseAddress(rawKumbayaRouter);
         address weth = vm.envAddress("KUMBAYA_WETH_ADDRESS");
-        address stable = vm.envOr("KUMBAYA_STABLE_TOKEN_ADDRESS", address(0));
+        string memory rawStable = vm.envOr("KUMBAYA_STABLE_TOKEN_ADDRESS", string(""));
+        address stable = bytes(rawStable).length == 0 ? address(0) : vm.parseAddress(rawStable);
         address dustTreasury = vm.envOr("CL8Y_PROTOCOL_TREASURY_ADDRESS", address(d.ecosystemTreasury));
         return new TimeCurveBuyRouter(d.timeCurve, kumbayaRouter, weth, stable, dustTreasury, d.admin);
     }
