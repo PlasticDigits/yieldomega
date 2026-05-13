@@ -7,7 +7,7 @@ import { detectLaunchState } from "./launchState";
  * To exercise both states without a second Playwright project, this spec inspects the live page once and
  * branches into the assertions that match the current build:
  *
- * - Build with no `VITE_LAUNCH_TIMESTAMP` (default `.env.example`): root renders `HomePage`, no `/home` route.
+ * - Build with no `VITE_LAUNCH_TIMESTAMP` (default `.env.example`): root renders `HomePage`; `/home` is the same hub (GitLab #199).
  * - Build with `VITE_LAUNCH_TIMESTAMP` in the future: every route locks behind the countdown screen.
  * - Build with `VITE_LAUNCH_TIMESTAMP` in the past: root renders TimeCurve, `/home` renders HomePage.
  */
@@ -52,4 +52,9 @@ test("no-env routing keeps HomePage at / and the primary nav visible", async ({ 
   ).toBeVisible();
   await expect(page.getByLabel("Primary")).toBeVisible();
   await expect(page.getByTestId("launch-countdown")).toHaveCount(0);
+
+  await page.goto("/home");
+  await expect(
+    page.getByRole("heading", { name: "YieldOmega", level: 1 }),
+  ).toBeVisible();
 });

@@ -553,6 +553,8 @@ state stays consistent with the URL even after a hard refresh or deep link.
 The sub-nav advertises one-line hints per tab so users know what they're
 clicking into without having to navigate first.
 
+<a id="launchcountdown--simple-handoff"></a>
+
 ## LaunchCountdown → Simple handoff
 
 `LaunchGate.tsx` controls the pre-launch / post-launch routing. The contract
@@ -567,6 +569,10 @@ is:
   view is just the friendly default.
 - **No countdown configured (`VITE_LAUNCH_TIMESTAMP` unset / `0`):** the
   gate is a no-op and `/timecurve` immediately renders `TimeCurveSimplePage`.
+  **`/`** is the canonical marketing hub (`HomePage`); **`/home`** is registered
+  as the **same** hub surface so direct links do not render an empty
+  `<Outlet />` ([GitLab #199](https://gitlab.com/PlasticDigits/yieldomega/-/issues/199),
+  [`INV-FRONTEND-199-HOME-ROUTE`](../testing/invariants-and-business-logic.md#launchgate-home-route--no-env-parity-gitlab-199)).
 
 For QA you can simulate the pre-launch state with the
 `LAUNCH_OFFSET_SEC` knob in `scripts/start-local-anvil-stack.sh` (see the
