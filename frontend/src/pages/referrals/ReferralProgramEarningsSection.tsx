@@ -41,14 +41,14 @@ export function ReferralProgramEarningsSection({ className }: Props) {
         if (!cancelled) {
           setSummary(r);
           if (!r) {
-            setLoadErr("Indexer did not return a summary (check VITE_INDEXER_URL).");
+            setLoadErr("No referral summary is available yet.");
           }
         }
       },
       () => {
         if (!cancelled) {
           setSummary(null);
-          setLoadErr("Could not load referral summary from the indexer.");
+          setLoadErr("Could not load referral summary. Try again in a moment.");
         }
       },
     );
@@ -78,10 +78,10 @@ export function ReferralProgramEarningsSection({ className }: Props) {
   return (
     <PageSection
       className={className}
-      title="Referral program CHARM (indexed)"
-      badgeLabel="Indexer + TimeCurve"
+      title="Referral program CHARM"
+      badgeLabel="Referrals + TimeCurve"
       badgeTone="info"
-      lede="Indexed ReferralApplied rows split your role into referrer and buyer bonuses. TimeCurve remains authoritative."
+      lede="Each qualifying referral purchase splits your role into referrer rewards and buyer bonuses. Onchain TimeCurve values remain the source of truth for execution."
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">
@@ -103,8 +103,8 @@ export function ReferralProgramEarningsSection({ className }: Props) {
         <div className="data-panel data-panel--stack" data-testid="referrals-program-earnings">
           {totals.totalCharm === 0n ? (
             <StatusMessage variant="muted" data-testid="referrals-earnings-zero-banner">
-              <strong>No indexed referral CHARM yet.</strong> Figures stay at zero until the indexer records
-              ReferralApplied events for this wallet.
+              <strong>No referral CHARM yet.</strong> Totals stay at zero until qualifying referral purchases show up
+              here for this wallet.
             </StatusMessage>
           ) : null}
           <p className="data-panel__label">As referrer (others used your code)</p>
@@ -114,7 +114,8 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             </strong>{" "}
             CHARM weight ·{" "}
             <span className="muted">
-              {summary.referred_buy_count} indexed {Number(summary.referred_buy_count) === 1 ? "buy" : "buys"}
+              {summary.referred_buy_count} recorded{" "}
+              {Number(summary.referred_buy_count) === 1 ? "buy" : "buys"}
             </span>
           </p>
           <p className="data-panel__label" style={{ marginTop: "1rem" }}>
@@ -126,7 +127,8 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             </strong>{" "}
             CHARM weight ·{" "}
             <span className="muted">
-              {summary.referee_buy_count} indexed {Number(summary.referee_buy_count) === 1 ? "buy" : "buys"}
+              {summary.referee_buy_count} recorded{" "}
+              {Number(summary.referee_buy_count) === 1 ? "buy" : "buys"}
             </span>
           </p>
           <p className="data-panel__label" style={{ marginTop: "1rem" }}>
@@ -139,8 +141,8 @@ export function ReferralProgramEarningsSection({ className }: Props) {
           </p>
           {totals.totalCharm === 0n ? (
             <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-              No indexed referral rows yet for this wallet — referral buys will appear after the indexer ingests
-              ReferralApplied logs.
+              No referral activity recorded for this wallet yet — buys with your code (or a code you used) appear here
+              shortly after they settle onchain.
             </p>
           ) : totals.hasPrice && totals.cl8yWei > 0n ? (
             <>

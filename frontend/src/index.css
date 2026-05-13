@@ -2705,10 +2705,6 @@ label:has(input[type="radio"]:disabled) {
   overflow-wrap: anywhere;
 }
 
-.referrals-panel--links .accent-list li {
-  background: rgba(255, 255, 255, 0.82);
-}
-
 .referral-register {
   display: grid;
   gap: 1rem;
