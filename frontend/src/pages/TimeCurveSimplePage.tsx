@@ -1248,7 +1248,6 @@ export function TimeCurveSimplePage() {
       <TimeCurveSimplePodiumSection
         podiumRows={podiumReads.data}
         podiumLoading={podiumReads.isLoading}
-        podiumRefreshing={podiumReads.isFetching && !podiumReads.isLoading}
         podiumPayoutPreview={podiumPayoutPreview}
         decimals={session.decimals}
         lastBuyPredictionActive={podiumReads.lastBuyPredictionActive}
