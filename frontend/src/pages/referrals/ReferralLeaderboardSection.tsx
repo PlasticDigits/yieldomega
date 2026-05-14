@@ -50,17 +50,20 @@ export function ReferralLeaderboardSection({ className }: Props) {
 
   const leaderboard = useMemo(() => {
     if (!items) {
-      return { rows: [], totalBuys: 0n, totalCharmWad: 0n };
+      return { rows: [], totalBuys: 0n, totalCharmWad: 0n, totalCodesRegistered: 0n };
     }
     return items.reduce(
       (acc, it) => {
+        const codes = it.codes_registered_count ?? "0";
         acc.rows.push({
           ...it,
+          codes_registered_count: codes,
           amount: formatAmountTriple(BigInt(it.total_referrer_charm_wad), 18),
           isYou: address?.toLowerCase() === it.referrer.toLowerCase(),
         });
         acc.totalBuys += BigInt(it.referred_buy_count);
         acc.totalCharmWad += BigInt(it.total_referrer_charm_wad);
+        acc.totalCodesRegistered += BigInt(codes);
         return acc;
       },
       {
@@ -72,6 +75,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
         >,
         totalBuys: 0n,
         totalCharmWad: 0n,
+        totalCodesRegistered: 0n,
       },
     );
   }, [items, address]);
@@ -84,7 +88,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
       title="Guide leaderboard"
       badgeLabel="Guides"
       badgeTone="live"
-      lede="Ranked by CHARM weight earned from qualifying referred buys. No synthetic points, no offchain boosts."
+      lede="Ranked by CHARM earned from qualifying referred buys (indexed ReferralApplied). Guides who registered a code on ReferralRegistry appear as soon as that event is indexed—even before the first qualifying buy."
       cutout={{
         src: REF_CUT.tertiary,
         width: 108,
@@ -97,11 +101,16 @@ export function ReferralLeaderboardSection({ className }: Props) {
         <StatusMessage variant="muted">Loading leaderboard…</StatusMessage>
       ) : items.length === 0 ? (
         <StatusMessage variant="muted">
-          No guide activity yet. The board wakes up as linked buys settle onchain.
+          No indexed guide registrations or referral buys yet. Register a code (ReferralRegistry) or link
+          buys (TimeCurve ReferralApplied) to appear here.
         </StatusMessage>
       ) : (
         <>
           <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
+            <div>
+              <span>Codes registered (this page)</span>
+              <strong>{formatLocaleInteger(leaderboard.totalCodesRegistered)}</strong>
+            </div>
             <div>
               <span>Recorded referral buys</span>
               <strong>{formatLocaleInteger(leaderboard.totalBuys)}</strong>
@@ -131,8 +140,11 @@ export function ReferralLeaderboardSection({ className }: Props) {
                     size={22}
                   />
                   <span>
+                    {formatLocaleInteger(row.codes_registered_count)} onchain{" "}
+                    {row.codes_registered_count === "1" ? "code" : "codes"} registered
+                    <br />
                     {formatLocaleInteger(row.referred_buy_count)} recorded{" "}
-                    {row.referred_buy_count === "1" ? "buy" : "buys"} using this code
+                    {row.referred_buy_count === "1" ? "buy" : "buys"} with this referrer code
                   </span>
                 </div>
                 <div className="referrals-leaderboard-row__score">

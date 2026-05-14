@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.18.0";
+const SCHEMA_VERSION: &str = "1.19.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -1888,13 +1888,16 @@ async fn referral_applied(
     res
 }
 
-/// Aggregated **referrer-side** CHARM from indexed `ReferralApplied` rows (`referrerCharmAdded` sum per referrer).
+/// Aggregated **referrer-side** CHARM from indexed `ReferralApplied` plus **registration** rows from
+/// `ReferralCodeRegistered` (`idx_referral_code_registered`) so guides appear before the first buy
+/// ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)).
 #[derive(Serialize)]
 struct ReferralReferrerLeaderboardRow {
     rank: i64,
     referrer: String,
     total_referrer_charm_wad: String,
     referred_buy_count: String,
+    codes_registered_count: String,
 }
 
 async fn referral_referrer_leaderboard(
@@ -1905,16 +1908,41 @@ async fn referral_referrer_leaderboard(
     let off = p.offset.max(0);
 
     let rows = sqlx::query(
-        r#"SELECT referrer, total_referrer_charm_wad, referred_buy_count, rank
+        r#"SELECT referrer,
+                  total_referrer_charm_wad,
+                  referred_buy_count,
+                  codes_registered_count,
+                  rank
              FROM (
-                 SELECT referrer,
-                        COALESCE(SUM(referrer_amount), 0)::text AS total_referrer_charm_wad,
-                        COUNT(*)::text                          AS referred_buy_count,
+                 SELECT r.referrer,
+                        COALESCE(a.total_charm, 0)::text AS total_referrer_charm_wad,
+                        COALESCE(a.buy_count, 0)::text AS referred_buy_count,
+                        COALESCE(reg.cnt, 0)::text AS codes_registered_count,
                         RANK() OVER (
-                            ORDER BY COALESCE(SUM(referrer_amount), 0) DESC NULLS LAST
-                        )::bigint                               AS rank
-                   FROM idx_timecurve_referral_applied
-                  GROUP BY referrer
+                            ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST, r.referrer ASC
+                        )::bigint AS rank
+                   FROM (
+                            SELECT owner_address AS referrer
+                              FROM idx_referral_code_registered
+                            UNION
+                            SELECT referrer
+                              FROM idx_timecurve_referral_applied
+                        ) r
+                   LEFT JOIN (
+                            SELECT referrer,
+                                   SUM(referrer_amount) AS total_charm,
+                                   COUNT(*)::bigint AS buy_count
+                              FROM idx_timecurve_referral_applied
+                             GROUP BY referrer
+                        ) a
+                          ON r.referrer = a.referrer
+                   LEFT JOIN (
+                            SELECT owner_address AS referrer,
+                                   COUNT(*)::bigint AS cnt
+                              FROM idx_referral_code_registered
+                             GROUP BY owner_address
+                        ) reg
+                          ON r.referrer = reg.referrer
              ) ranked
             ORDER BY rank ASC, referrer ASC
             LIMIT $1 OFFSET $2"#,
@@ -1939,6 +1967,7 @@ async fn referral_referrer_leaderboard(
                 referrer: r.try_get("referrer").ok()?,
                 total_referrer_charm_wad: r.try_get("total_referrer_charm_wad").ok()?,
                 referred_buy_count: r.try_get("referred_buy_count").ok()?,
+                codes_registered_count: r.try_get("codes_registered_count").ok()?,
             })
         })
         .collect();

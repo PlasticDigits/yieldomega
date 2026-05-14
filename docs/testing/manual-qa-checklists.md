@@ -10,6 +10,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev buy cooldown](#manual-qa-issue-88) |
 | [#99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99) | [Bot swarm + Anvil chain time](#manual-qa-issue-99) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals `/referrals` surface](#manual-qa-issue-64) |
+| [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
@@ -152,6 +153,25 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 - CI: `frontend/e2e/referrals-surface.spec.ts`
 - Anvil: `frontend/e2e/anvil-referrals.spec.ts`
 - Unit: `frontend/src/lib/referralPathCapture.test.ts`
+
+<a id="manual-qa-issue-204-referrer-leaderboard-registry-union"></a>
+
+### Referrals — guide leaderboard + `ReferralCodeRegistered` union ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204))
+
+**Scope:** Verify the **`/referrals`** **Guide leaderboard** lists wallets that registered a code **before** any **`ReferralApplied`** buy exists, and that per-row copy matches indexer fields.
+
+### Authoritative docs
+
+- [invariants — #204 union + `INV-INDEXER-204-REFERRAL-LB-REGISTRY`](invariants-and-business-logic.md#referrer-leaderboard-registry-union-gitlab-204)
+- [product — dashboard table](../product/referrals.md#referrals-dashboard-issue-94)
+
+### Checklist
+
+- [ ] With indexer **schema ≥ 1.19.0** and at least one indexed **`ReferralCodeRegistered`** for wallet **W** and **zero** `ReferralApplied` rows, **`GET /v1/referrals/referrer-leaderboard`** returns a row for **W** with **`codes_registered_count ≥ 1`**, **`referred_buy_count == 0`**, **`total_referrer_charm_wad == 0`**.
+- [ ] `/referrals` **Guide leaderboard** shows **W** with sublines for **onchain codes registered** and **recorded buys** (may be zero buys).
+- [ ] After a qualifying referred buy indexes for **W**, **`referred_buy_count`** / CHARM increase while **`codes_registered_count`** stays consistent with registry rows.
+
+**Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** (requires **`YIELDOMEGA_PG_TEST_URL`**).
 
 <a id="manual-qa-issue-121-referrals-register-disclosure"></a>
 
