@@ -91,6 +91,39 @@ test("timecurve simple view stays usable on a 390×844 mobile viewport", async (
   await expectNoHorizontalViewportOverflow(page);
 });
 
+test("home product cards reflow without iPad Mini horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto("/home");
+  await expect(page.locator(".home-cta-grid")).toBeVisible();
+  await expectNoHorizontalViewportOverflow(page);
+});
+
+test("timecurve Arena buy hub starts below the fixed mobile audio dock", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await ensurePostLaunch(page);
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /Arena/ }).click();
+  await expect(page).toHaveURL(/\/timecurve\/arena$/);
+
+  const buyPanel = page.locator(".timecurve-arena-buy-panel").first();
+  const missingConfig = page.getByRole("heading", { name: "Configuration missing", level: 2 });
+  await expect(buyPanel.or(missingConfig).first()).toBeVisible();
+  test.skip(
+    (await buyPanel.count()) === 0,
+    "Arena buy hub requires a configured TimeCurve address; full-stack Anvil covers the rendered surface.",
+  );
+  await expect(buyPanel).toBeVisible();
+  await expect(page.locator(".album-player-dock")).toBeVisible();
+
+  const overlapsDock = await page.evaluate(() => {
+    const dock = document.querySelector(".album-player-dock")?.getBoundingClientRect();
+    const panel = document.querySelector(".timecurve-arena-buy-panel")?.getBoundingClientRect();
+    if (!dock || !panel) return false;
+    return dock.left < panel.right && dock.right > panel.left && dock.top < panel.bottom && dock.bottom > panel.top;
+  });
+  expect(overlapsDock).toBe(false);
+  await expectNoHorizontalViewportOverflow(page);
+});
+
 test("timecurve Arena WarBow cards stay contained on an iPad Mini viewport", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await ensurePostLaunch(page);
@@ -98,6 +131,8 @@ test("timecurve Arena WarBow cards stay contained on an iPad Mini viewport", asy
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
 
   const warbowHero = page.getByTestId("warbow-hero-actions");
+  const missingConfig = page.getByRole("heading", { name: "Configuration missing", level: 2 });
+  await expect(warbowHero.or(missingConfig).first()).toBeVisible();
   test.skip(
     (await warbowHero.count()) === 0,
     "WarBow hero actions require a configured TimeCurve address; full-stack Anvil covers the rendered surface.",

@@ -54,11 +54,15 @@
 - **Keyboard focus (WCAG 2.4.7)** — Interactive controls use **`:focus-visible`** rings via **`--yo-focus-ring`** in [`index.css`](../../frontend/src/index.css). App-level selectors are mirrored under **`[data-rk]`** so RainbowKit’s reset (`outline: none` on modal controls) does not hide focus during Tab navigation ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97), [`wallet-connection.md`](./wallet-connection.md), [invariants — #97](../testing/invariants-and-business-logic.md#keyboard-focus-visible-wcag-247-gitlab-97)). Play checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-97`](../testing/manual-qa-checklists.md#manual-qa-issue-97).
 <a id="home-product-card-grid-gitlab-198"></a>
 
-- **Home product card grid** — desktop homepage cards use a stretched CSS Grid row contract:
+- **Home product card grid** — homepage cards use a stretched CSS Grid row contract:
   `.home-cta-grid` owns equal implicit rows, `.home-cta-grid__item` is a flex
   wrapper, and `.home-cta-card` fills the item. This keeps TimeCurve, Rabbit
   Treasury, Collection, Referrals, Kumbaya, and Sir cards visually aligned even
-  when blurbs differ in length ([GitLab #198](https://gitlab.com/PlasticDigits/yieldomega/-/issues/198),
+  when blurbs differ in length. At tablet widths, the grid reflows to two
+  `minmax(0, 22rem)` columns before returning to three columns at desktop width,
+  so iPad Mini / Air viewports do not clip the right-side card or media
+  ([GitLab #198](https://gitlab.com/PlasticDigits/yieldomega/-/issues/198),
+  [GitLab #201](https://gitlab.com/PlasticDigits/yieldomega/-/issues/201),
   [`INV-FRONTEND-198-HOME-CARDS`](../testing/invariants-and-business-logic.md#frontend-home-product-card-grid-gitlab-198),
   manual QA [`#198`](../testing/manual-qa-checklists.md#manual-qa-issue-198)).
 
