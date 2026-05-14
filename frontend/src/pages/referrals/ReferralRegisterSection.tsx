@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, useReadContract, useReadContracts, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
-import { AmountDisplay } from "@/components/AmountDisplay";
+import { buyTokenOnKumbayaUrl } from "@/lib/kumbayaSwapUrl";
+import { CL8Y_USD_PRICE_PLACEHOLDER } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { erc20Abi, referralRegistryReadAbi, referralRegistryWriteAbi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
-import { formatBpsAsPercent } from "@/lib/formatAmount";
+import { formatAmountTriple, formatBpsAsPercent, parseBigIntString } from "@/lib/formatAmount";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { validateCodeClientSide } from "@/lib/referralCodeValidation";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
@@ -427,10 +428,33 @@ export function ReferralRegisterSection({ className }: Props) {
             {burnWad !== undefined && cl8yToken && (
               <div className="referrals-register-cost" aria-label="Referral registration cost">
                 <span>Claim cost</span>
-                <strong>
-                  <AmountDisplay raw={burnWad.toString()} decimals={18} /> CL8Y
+                <strong data-testid="referrals-register-cost-amount">
+                  {formatAmountTriple(parseBigIntString(burnWad.toString()), 18).decimal} CL8Y
                 </strong>
+                {/*
+                  USD figure uses the existing illustrative placeholder pattern
+                  (CL8Y_USD_PRICE_PLACEHOLDER = 1, same as Arena hero "TOTAL USD"),
+                  not a live oracle. See GitLab #192 disclosure pattern. Tooltip
+                  clarifies it is not live FX.
+                */}
+                <small
+                  className="muted"
+                  title="USD shape uses a fixed illustrative placeholder (1 CL8Y = 1 USD), not a live oracle. CL8Y amount is the onchain figure."
+                  data-testid="referrals-register-cost-usd"
+                >
+                  &asymp; ${(Number(formatAmountTriple(parseBigIntString(burnWad.toString()), 18).decimal) * CL8Y_USD_PRICE_PLACEHOLDER).toFixed(2)} USD &middot; illustrative
+                </small>
                 <small>Burned only if the registration succeeds.</small>
+                
+                <a href={buyTokenOnKumbayaUrl(cl8yToken)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="footer-link-pill"
+                  data-testid="referrals-register-buy-cl8y-link"
+                  style={{ marginTop: "0.25rem", alignSelf: "flex-start" }}
+                >
+                  Buy CL8Y on Kumbaya
+                </a>
               </div>
             )}
             <p
