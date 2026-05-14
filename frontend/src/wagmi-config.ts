@@ -8,7 +8,6 @@ import {
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http, mock } from "wagmi";
-import { injected } from "wagmi/connectors";
 import { configuredChain } from "@/lib/chain";
 
 // SPDX-License-Identifier: AGPL-3.0-only
@@ -31,7 +30,7 @@ const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
 if (!projectId && !useE2EMockWallet) {
   console.info(
-    "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty — using injected wallets only (no WalletConnect / Reown). Set the env var for mobile WalletConnect.",
+    "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty — using injected-detection wallets only (no WalletConnect mobile flow). Set the env var to enable mobile WC. See GitLab #203.",
   );
 }
 
@@ -88,10 +87,18 @@ export const wagmiConfig = useE2EMockWallet
         multiInjectedProviderDiscovery: true,
         wallets: rainbowKitWalletGroups,
       })
-    : createConfig({
+    : getDefaultConfig({
+        appName: "YieldOmega",
+        // Placeholder projectId for local dev without WalletConnect. Never reaches a real WC server because walletConnectWallet is omitted from the wallets list below. See GitLab #203.
+        projectId: "yieldomega-local-no-walletconnect",
         chains,
-        connectors: [injected()],
         transports,
         ssr: false,
         multiInjectedProviderDiscovery: true,
+        wallets: [
+          {
+            groupName: "Popular",
+            wallets: [safeWallet, metaMaskWallet, safepalWallet],
+          },
+        ],
       });
