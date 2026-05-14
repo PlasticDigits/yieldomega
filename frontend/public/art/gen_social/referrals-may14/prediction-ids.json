@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "01-share-trail",
+    "prediction_id": "838f8k79vdrmt0cy4t8bqwk04g",
+    "status": "succeeded",
+    "output": "01-share-trail.png"
+  },
+  {
+    "slug": "02-what-is-code",
+    "prediction_id": "mjr4y6yx8srmw0cy4t89nsnwbc",
+    "status": "succeeded",
+    "output": "02-what-is-code.png"
+  },
+  {
+    "slug": "03-sign-up",
+    "prediction_id": "jefs0b6zpdrmw0cy4t8a9azkvm",
+    "status": "succeeded",
+    "output": "03-sign-up.png"
+  },
+  {
+    "slug": "04-share-check-earnings",
+    "prediction_id": "g459ndytzxrmy0cy4t8ah9jeam",
+    "status": "succeeded",
+    "output": "04-share-check-earnings.png"
+  }
+]

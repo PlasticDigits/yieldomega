@@ -1,0 +1,73 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/gen_social/referrals-may14",
+  "single_attempt_per_image": true,
+  "reference_images_used": true,
+  "local_text_overlay": true,
+  "jobs": [
+    {
+      "slug": "01-share-trail",
+      "title": "Earn By Sharing",
+      "output": "01-share-trail.png",
+      "kicker": "YIELDOMEGA REFERRALS",
+      "headline": "Earn by sharing.",
+      "subhead": "Register a guide code, share a TimeCurve trail, and qualifying buys add CHARM weight to both sides.",
+      "panels": [
+        "Claim your sigil",
+        "Send a referral trail",
+        "Grow CHARM together"
+      ],
+      "footer": "Referral rewards are CHARM weight, not a direct wallet payout.",
+      "subject": "Wide 3:2 finished infographic poster. Layout: bold headline band at top, three labeled step cards along the bottom, illustrated action scene through the middle. A friendly adult bunny-leprechaun guide shares a glowing referral trail from a code sigil toward a TimeCurve buy kiosk where a new buyer arrives with a MegaETH wallet lantern. CHARM crystal beams arc back to both the guide and buyer. Use readable arcade typography for the headline, subhead, and step cards. Include arrows, badges, small event-log callouts, voxel hills, rainbow sky, hat-coins, and chain-link sparkles. The card should clearly explain referrals earn CHARM weight by sharing."
+    },
+    {
+      "slug": "02-what-is-code",
+      "title": "What Is a Referral Code",
+      "output": "02-what-is-code.png",
+      "kicker": "REFERRAL CODE BASICS",
+      "headline": "What is a Yieldomega referral code?",
+      "subhead": "A short onchain name that resolves to your wallet through ReferralRegistry.",
+      "panels": [
+        "3-16 lowercase letters or digits",
+        "One code per wallet",
+        "1 CL8Y burn to register",
+        "First successful registration wins",
+        "TimeCurve checks the codeHash"
+      ],
+      "footer": "Share links pass the readable code. The chain stores ownership and applies the referral.",
+      "subject": "Wide 3:2 finished infographic poster explaining a Yieldomega referral code. Layout: bold question headline at top, central ReferralRegistry vault with code sigil and hash crystal, five readable fact tiles around it. Icons: length ruler, letters/digits blocks, one-wallet badge, CL8Y burn flame, first-successful-registration flag, TimeCurve codeHash check. Include a red-bearded leprechaun registrar and adult bunny-leprechaun guide beside the vault. Use readable arcade typography, rich green-gold lighting, coins, chain links, arrows, and sparkles. The card should feel like product education, not just fantasy art."
+    },
+    {
+      "slug": "03-sign-up",
+      "title": "Sign Up With 1 CL8Y",
+      "output": "03-sign-up.png",
+      "kicker": "START HERE",
+      "headline": "Go to yieldomega.com/referrals",
+      "subhead": "Have 1 CL8Y in your MegaETH wallet, then claim your guide code.",
+      "panels": [
+        "1. Connect MegaETH wallet",
+        "2. Pick a 3-16 character code",
+        "3. Approve 1 CL8Y",
+        "4. Register and burn onchain"
+      ],
+      "footer": "The 1 CL8Y burn is paid only if registration succeeds.",
+      "subject": "Wide 3:2 finished onboarding infographic poster. Layout: large URL headline at top, stylized app-screen frame for yieldomega.com/referrals in the middle, four numbered step cards at the bottom. Show a MegaETH wallet portal, one large CL8Y token moving into an emerald burn flame, a code input sigil forming above a chain-confirmation block, and an adult bunny-leprechaun host gesturing toward the process. Use readable arcade typography for the URL, 1 CL8Y requirement, and the four steps: connect wallet, pick code, approve 1 CL8Y, register and burn onchain."
+    },
+    {
+      "slug": "04-share-check-earnings",
+      "title": "Share and Check Earnings",
+      "output": "04-share-check-earnings.png",
+      "kicker": "AFTER YOU REGISTER",
+      "headline": "Share links. Check earnings.",
+      "subhead": "Copy your referral trail, then track CHARM from recorded buys.",
+      "panels": [
+        "Share yieldomega.com/?ref=yourcode",
+        "Or share yieldomega.com/timecurve/yourcode",
+        "Track guide + traveler CHARM",
+        "Leaderboard uses recorded buys"
+      ],
+      "footer": "CL8Y notionals in the app are illustrative. Referral earnings are CHARM weight.",
+      "subject": "Wide 3:2 finished infographic poster showing how to share and check earnings. Layout: headline at top, left side share-link panel with two readable link formats, right side earnings dashboard with guide CHARM, traveler CHARM, combined CHARM, and a compact guide leaderboard. A registered guide code sigil sends two glowing share trails through the Yieldomega landscape toward a TimeCurve kiosk. Event ribbons flow from the kiosk into the earnings board made of CHARM crystals, wallet blockies, and a guide podium. Use readable arcade typography, arrows, badges, and dashboard labels."
+    }
+  ]
+}
