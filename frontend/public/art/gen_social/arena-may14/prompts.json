@@ -1,6 +1,6 @@
 {
   "model": "openai/gpt-image-2",
-  "output_dir": "frontend/public/art/gen_social/arena-certified-ape-may14",
+  "output_dir": "frontend/public/art/gen_social/arena-may14",
   "retry_max": 1,
   "parallel_workers": 5,
   "reference_images_used": true,

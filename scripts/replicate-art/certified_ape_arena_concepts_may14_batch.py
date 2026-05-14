@@ -22,7 +22,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import generate_assets as ga  # noqa: E402
 
 
-OUT_DIR = ga.DEFAULT_OUT / "gen_social" / "arena-certified-ape-may14"
+OUT_DIR = ga.DEFAULT_OUT / "gen_social" / "arena-may14"
 
 
 @dataclass(frozen=True)
@@ -204,7 +204,7 @@ def write_manifest(selected: list[ConceptJob], *, using_refs: bool) -> None:
     }
     (OUT_DIR / "prompts.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     (OUT_DIR / "README.md").write_text(
-        "# Certified Ape Arena Concepts (May 14)\n\n"
+        "# Arena social concepts (May 14)\n\n"
         "Generated with `scripts/replicate-art/certified_ape_arena_concepts_may14_batch.py` — "
         "one Replicate create per image, `retry_max=1`, parallel workers. See `prompts.json`.\n",
         encoding="utf-8",
