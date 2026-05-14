@@ -12,6 +12,7 @@ import { addresses } from "@/lib/addresses";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { formatBpsAsPercent } from "@/lib/formatAmount";
 import { normalizeReferralCode } from "@/lib/referralCode";
+import { validateCodeClientSide } from "@/lib/referralCodeValidation";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 import {
   getStoredMyReferralCodeForWallet,
@@ -146,6 +147,47 @@ export function ReferralRegisterSection({ className }: Props) {
       ownerCodeHash &&
       (hashForStored as string).toLowerCase() === (ownerCodeHash as string).toLowerCase(),
   );
+
+  // Pre-submit code availability check (GitLab #208).
+  // Debounce the typed input so we don't spam the RPC on every keystroke; only after the user
+  // pauses do we hash the code and look up codeOwner onchain to surface "available" / "taken"
+  // before they spend gas on a doomed registerCode.
+  const [debouncedCodeInput, setDebouncedCodeInput] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCodeInput(codeInput), 300);
+    return () => clearTimeout(t);
+  }, [codeInput]);
+  const clientValidation = useMemo(() => validateCodeClientSide(debouncedCodeInput), [debouncedCodeInput]);
+  const { data: hashForTyped } = useReadContract({
+    address: registry,
+    abi: referralRegistryReadAbi,
+    functionName: "hashCode",
+    args: clientValidation.kind === "ok" ? [clientValidation.normalized] : undefined,
+    query: { enabled: Boolean(registry && clientValidation.kind === "ok") },
+  });
+  const { data: ownerOfTyped, isFetching: isCheckingOwner } = useReadContract({
+    address: registry,
+    abi: referralRegistryReadAbi,
+    functionName: "ownerOfCode",
+    args: hashForTyped ? [hashForTyped as `0x${string}`] : undefined,
+    query: { enabled: Boolean(registry && hashForTyped) },
+  });
+  type CodeAvailability =
+    | { kind: "empty" }
+    | { kind: "invalid-length" }
+    | { kind: "invalid-charset" }
+    | { kind: "checking" }
+    | { kind: "available" }
+    | { kind: "taken" };
+  const codeAvailability = useMemo<CodeAvailability>(() => {
+    if (clientValidation.kind !== "ok") return { kind: clientValidation.kind };
+    if (codeInput.trim().toLowerCase() !== clientValidation.normalized) return { kind: "checking" };
+    if (!hashForTyped || ownerOfTyped === undefined) return { kind: "checking" };
+    if (isCheckingOwner) return { kind: "checking" };
+    const ownerStr = (ownerOfTyped as string)?.toLowerCase() ?? "";
+    if (ownerStr === "0x0000000000000000000000000000000000000000") return { kind: "available" };
+    return { kind: "taken" };
+  }, [clientValidation, codeInput, hashForTyped, ownerOfTyped, isCheckingOwner]);
 
   const displayCode = storedMatchesOnchain && storedCode ? storedCode : null;
 
@@ -417,11 +459,44 @@ export function ReferralRegisterSection({ className }: Props) {
                 type="button"
                 className="btn-primary"
                 onClick={onRegister}
-                disabled={chainMismatchForWrites || isWritePending || !codeInput.trim()}
+                disabled={
+                  chainMismatchForWrites ||
+                  isWritePending ||
+                  !codeInput.trim() ||
+                  codeAvailability.kind === "taken" ||
+                  codeAvailability.kind === "invalid-length" ||
+                  codeAvailability.kind === "invalid-charset"
+                }
               >
                 {isWritePending ? "Confirm in wallet…" : "Register & burn CL8Y"}
               </button>
             </div>
+            {/* Pre-submit availability indicator — GitLab #208 */}
+            {codeInput.trim() && codeAvailability.kind === "checking" && (
+              <small className="muted" data-testid="referrals-code-status-checking">
+                Checking availability…
+              </small>
+            )}
+            {codeAvailability.kind === "available" && (
+              <small style={{ color: "var(--color-success, #2e7d32)" }} data-testid="referrals-code-status-available">
+                Code is available.
+              </small>
+            )}
+            {codeAvailability.kind === "taken" && (
+              <small style={{ color: "var(--color-warning, #b58400)" }} data-testid="referrals-code-status-taken">
+                That code is already registered — pick another.
+              </small>
+            )}
+            {codeAvailability.kind === "invalid-length" && (
+              <small style={{ color: "var(--color-warning, #b58400)" }} data-testid="referrals-code-status-invalid-length">
+                Code must be 3–16 characters.
+              </small>
+            )}
+            {codeAvailability.kind === "invalid-charset" && (
+              <small style={{ color: "var(--color-warning, #b58400)" }} data-testid="referrals-code-status-invalid-charset">
+                Code may only use letters (a–z) and digits (0–9).
+              </small>
+            )}
             {formErr && <StatusMessage variant="error">Could not register: {formErr}</StatusMessage>}
           </div>
         )}
