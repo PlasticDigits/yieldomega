@@ -1379,6 +1379,10 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
         .expect("connect_and_migrate");
 
     // Clean slate for this test's referral rows so prior tests don't pollute the leaderboard.
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("clear referral registry table");
     sqlx::query("DELETE FROM idx_timecurve_referral_applied")
         .execute(&pool)
         .await
@@ -1476,9 +1480,164 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
     assert_eq!(items2[1]["rank"].as_i64(), Some(4), "second row of offset=2 should be rank 4 (skips 3)");
     assert_eq!(items2[1]["referrer"].as_str(), Some("0x000000000000000000000000000000000000dddd"));
 
+    for row in items {
+        assert_eq!(
+            row["codes_registered_count"].as_str(),
+            Some("0"),
+            "gitlab177 seeds only ReferralApplied rows"
+        );
+    }
+
     // Cleanup so the test is rerunnable without leftover rows.
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral registry table");
     sqlx::query("DELETE FROM idx_timecurve_referral_applied")
         .execute(&pool)
         .await
         .expect("cleanup referral table");
+}
+
+#[tokio::test]
+async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations() {
+    // GitLab #204 — union `idx_referral_code_registered` so guides appear before the first
+    // `ReferralApplied` buy; `codes_registered_count` surfaces indexed `ReferralCodeRegistered` rows.
+    let Some(url) = pg_url() else {
+        eprintln!("integration_stage2: skip gitlab204 (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("clear referral registry table");
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("clear referral applied table");
+
+    sqlx::query(
+        r#"INSERT INTO idx_referral_code_registered (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              owner_address, code_hash, normalized_code
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+    )
+    .bind(800_i64)
+    .bind(format!("0x{:0>64}", 50))
+    .bind(format!("0x{:0>64}", 60))
+    .bind(0_i32)
+    .bind("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .bind("0x0000000000000000000000000000000000000e01")
+    .bind(format!("0x{:0>64}", 70))
+    .bind("code1")
+    .execute(&pool)
+    .await
+    .expect("seed registry row 0");
+
+    sqlx::query(
+        r#"INSERT INTO idx_referral_code_registered (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              owner_address, code_hash, normalized_code
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+    )
+    .bind(801_i64)
+    .bind(format!("0x{:0>64}", 51))
+    .bind(format!("0x{:0>64}", 61))
+    .bind(0_i32)
+    .bind("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    .bind("0x0000000000000000000000000000000000000e02")
+    .bind(format!("0x{:0>64}", 71))
+    .bind("code2")
+    .execute(&pool)
+    .await
+    .expect("seed registry row 1");
+
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = response_json(res).await;
+    let items = body["items"].as_array().expect("items array");
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e01"));
+    assert_eq!(items[0]["rank"].as_i64(), Some(1));
+    assert_eq!(items[0]["codes_registered_count"].as_str(), Some("1"));
+    assert_eq!(items[0]["referred_buy_count"].as_str(), Some("0"));
+    assert_eq!(items[0]["total_referrer_charm_wad"].as_str(), Some("0"));
+    assert_eq!(items[1]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e02"));
+    assert_eq!(items[1]["rank"].as_i64(), Some(1));
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_referral_applied (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
+    )
+    .bind(850_i64)
+    .bind("0x00000000000000000000000000000000000000000000000000000000000000aa")
+    .bind("0x00000000000000000000000000000000000000000000000000000000000000bb")
+    .bind(0_i32)
+    .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    .bind("0x00000000000000000000000000000000000000b1")
+    .bind("0x0000000000000000000000000000000000000dd1")
+    .bind("0x00000000000000000000000000000000000000000000000000000000000000cc")
+    .bind("500")
+    .bind("0")
+    .bind("0")
+    .execute(&pool)
+    .await
+    .expect("seed referral applied for high-score referrer");
+
+    let res2 = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let body2 = response_json(res2).await;
+    let items2 = body2["items"].as_array().expect("items array after applied insert");
+    assert_eq!(items2.len(), 3);
+    assert_eq!(
+        items2[0]["referrer"].as_str(),
+        Some("0x0000000000000000000000000000000000000dd1")
+    );
+    assert_eq!(items2[0]["rank"].as_i64(), Some(1));
+    assert_eq!(items2[0]["codes_registered_count"].as_str(), Some("0"));
+    assert_eq!(items2[1]["rank"].as_i64(), Some(2));
+    assert_eq!(items2[1]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e01"));
+    assert_eq!(items2[1]["codes_registered_count"].as_str(), Some("1"));
+    assert_eq!(items2[2]["rank"].as_i64(), Some(2));
+    assert_eq!(items2[2]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e02"));
+    assert_eq!(items2[2]["codes_registered_count"].as_str(), Some("1"));
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral registry table");
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral applied table");
 }

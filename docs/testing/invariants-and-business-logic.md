@@ -112,7 +112,7 @@ If the variable is **unset or empty** locally, that test **returns immediately**
 | ID | Check |
 |----|--------|
 | **`INV-INDEXER-170-BUYS-TOTAL`** | **`GET /v1/timecurve/buys`** **`total`** uses **`COALESCE(MAX(buy_index), 0)`** — equivalent to **`COUNT(*)`** while each persisted **`Buy`** row keeps **`buy_index`** sequential **1..N** per **`TimeCurve`** emits (same envelope as [`fetch_last_buy_prediction_row`](../../indexer/src/api.rs)). |
-| **`INV-INDEXER-170-REFERRAL-LB-TIE`** | **`GET /v1/referrals/referrer-leaderboard`** orders **`SUM(referrer_amount) DESC NULLS LAST, referrer ASC`** — stable **`LIMIT`/`OFFSET`** when totals tie. **`rank`** in JSON remains **page ordinal** (**`offset + row_index + 1`**), not dense competitive placement when multiple referrers share the same Σ amount. |
+| **`INV-INDEXER-170-REFERRAL-LB-TIE`** | **`GET /v1/referrals/referrer-leaderboard`** orders **`COALESCE(SUM(referrer_amount),0) DESC NULLS LAST, referrer ASC`** — stable **`LIMIT`/`OFFSET`** when totals tie. **`rank`** in JSON is **dense competitive `RANK()`** over that ordering (ties share a rank; next rank skips — [GitLab #177](https://gitlab.com/PlasticDigits/yieldomega/-/issues/177); `postgres_gitlab177_referrer_leaderboard_dense_rank` in **`integration_stage2.rs`**), **not** page ordinal (**`offset + row_index + 1`**). |
 | **`INV-INDEXER-170-WARBOW-REFRESH-POSTEND`** | **`GET /v1/timecurve/warbow/refresh-candidates`** skips head WarBow podium hint prepend when **`chain_timer.sale_ended`**; includes **`sale_ended`** in the body (**[`INV-INDEXER-160-WARBOW-REFRESH-CANDIDATES`](#gitlab-149-warbow-arena-indexer-hardening)**). |
 | **`INV-FRONTEND-170-WARBOW-IDX-ERR`** | **`TimeCurveProtocolWarbowRefreshSection`** **`loadFromIndexer`** wraps pagination / checksum in **`try`/`catch`** — **`friendlyRevertFromUnknown`** on unexpected failures; clears candidates / extras (**[`TimeCurveProtocolWarbowRefreshSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolWarbowRefreshSection.tsx)**). |
 
@@ -904,16 +904,31 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 ### Referrals — indexer leaderboard + wallet earnings (issue #94)
 
-**Intent:** `/referrals` may show an **indexer-backed referrer leaderboard** and a **per-wallet CHARM summary** without fabricating metrics. Ranks and sums must come from **`idx_timecurve_referral_applied`** / the HTTP routes in [product/referrals.md — dashboard §](../product/referrals.md#referrals-dashboard-issue-94). **CL8Y / USDM / ETH “notional”** lines on the page are **illustrative** (current `currentPricePerCharmWad` × combined indexed referral CHARM, plus fallback pay-asset multipliers) — not tax, legal, or treasury advice.
+**Intent:** `/referrals` may show an **indexer-backed referrer leaderboard** and a **per-wallet CHARM summary** without fabricating metrics. **Guide leaderboard** rows are keyed by the **union** of indexed registry owners and indexed `ReferralApplied` referrers ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)); **CHARM and buy counts** on that route still derive only from **`idx_timecurve_referral_applied`**. The wallet summary route and HTTP contracts remain as in [product/referrals.md — dashboard §](../product/referrals.md#referrals-dashboard-issue-94). **CL8Y / USDM / ETH “notional”** lines on the page are **illustrative** (current `currentPricePerCharmWad` × combined indexed referral CHARM, plus fallback pay-asset multipliers) — not tax, legal, or treasury advice.
 
 | Invariant | Meaning |
 |-----------|---------|
-| Leaderboard ordering | **`GET /v1/referrals/referrer-leaderboard`** sorts by **Σ `referrer_amount`** descending, then **`referrer ASC`** for deterministic pagination when totals tie ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170) · **`INV-INDEXER-170-REFERRAL-LB-TIE`**). |
+| Leaderboard ordering | **`GET /v1/referrals/referrer-leaderboard`** sorts by **Σ `referrer_amount`** descending, then **`referrer ASC`** for deterministic pagination when totals tie ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170) · **`INV-INDEXER-170-REFERRAL-LB-TIE`**; dense **`RANK()`** semantics — [GitLab #177](https://gitlab.com/PlasticDigits/yieldomega/-/issues/177)). |
+| Registry union + registration counts ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)) | **`INV-INDEXER-204-REFERRAL-LB-REGISTRY`:** referrer set = **`UNION`** of **`idx_referral_code_registered.owner_address`** and **`idx_timecurve_referral_applied.referrer`**; response includes **`codes_registered_count`** (per-owner **`COUNT(*)`** on **`idx_referral_code_registered`**). CHARM sum + **`referred_buy_count`** remain **`ReferralApplied`**-only. Schema **≥ 1.19.0** — [`referrer-leaderboard §204`](#referrer-leaderboard-registry-union-gitlab-204). |
 | Wallet row | **`GET /v1/referrals/wallet-charm-summary`** returns string integer **wei** totals for referrer vs referee CHARM splits. |
 | Schema | Indexer **`x-schema-version`** bumped with new routes (see `indexer/src/api.rs`). |
 | **Address predicates + indexes ([GitLab #165](https://gitlab.com/PlasticDigits/yieldomega/-/issues/165))** | **`INV-INDEXER-165`:** Ingestion stores **`buyer` / `referrer`** as **lowercase** hex (`addr_hex`); API handlers validate or **`to_lowercase()`** bind parameters. SQL must use **`column = $n`** (not **`lower(column) = lower($n)`**) so **btree** indexes on **`idx_timecurve_referral_applied(referrer)`** and **`(buyer)`** apply. `/v1/timecurve/buys` Kumbaya LATERAL join uses **`kk.buyer = b.buyer`** (same invariant). Ref: [`indexer/src/api.rs`](../../indexer/src/api.rs); migration **`20260506210000_idx_timecurve_referral_applied_buyer`**. |
 
 **Implementation:** [`ReferralLeaderboardSection.tsx`](../../frontend/src/pages/referrals/ReferralLeaderboardSection.tsx), [`ReferralProgramEarningsSection.tsx`](../../frontend/src/pages/referrals/ReferralProgramEarningsSection.tsx), [`ReferralConnectedWalletSection.tsx`](../../frontend/src/pages/referrals/ReferralConnectedWalletSection.tsx); API: [`indexerApi.ts`](../../frontend/src/lib/indexerApi.ts). **Local swarm:** `timecurve-bot swarm` registers a shared code from HD index **`27`** when **`YIELDOMEGA_SWARM_REFERRALS≠0`** and sets **`YIELDOMEGA_REFERRAL_CODE`** for worker buys — [`swarm_layout.py`](../../bots/timecurve/src/timecurve_bot/swarm_layout.py), [`referral_bootstrap.py`](../../bots/timecurve/src/timecurve_bot/referral_bootstrap.py).
+
+**Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** (requires **`YIELDOMEGA_PG_TEST_URL`**) · **`postgres_gitlab177_referrer_leaderboard_dense_rank`**.
+
+<a id="referrer-leaderboard-registry-union-gitlab-204"></a>
+
+### Referrer leaderboard — `ReferralCodeRegistered` union (GitLab #204)
+
+**Intent (option A):** Pre-launch (or any window with **zero** `ReferralApplied` rows), the `/referrals` **Guide leaderboard** must still list wallets that successfully registered a code on **`ReferralRegistry`**, using indexed **`ReferralCodeRegistered`** rows — not an empty board driven only by buy-attributed CHARM.
+
+| ID | Check |
+|----|--------|
+| **`INV-INDEXER-204-REFERRAL-LB-REGISTRY`** | **`GET /v1/referrals/referrer-leaderboard`** includes every distinct **`owner_address`** from **`idx_referral_code_registered`** even when **`idx_timecurve_referral_applied`** has **no** rows for that wallet; each JSON row carries **`codes_registered_count`** (**`COUNT(*)`** of registry rows for that owner — **0 or 1** under the contract’s one-code-per-owner rule). **`total_referrer_charm_wad`** / **`referred_buy_count`** remain **`ReferralApplied`** aggregates (**`0`** when none). Ordering + **`rank`** follow **`INV-INDEXER-170-REFERRAL-LB-TIE`** (dense **`RANK()`** — [GitLab #177](https://gitlab.com/PlasticDigits/yieldomega/-/issues/177), `postgres_gitlab177_referrer_leaderboard_dense_rank`). |
+
+**Implementation:** [`indexer/src/api.rs`](../../indexer/src/api.rs) (`SCHEMA_VERSION` **1.19.0**+); UI: [`ReferralLeaderboardSection.tsx`](../../frontend/src/pages/referrals/ReferralLeaderboardSection.tsx). Contributor manual QA: [`manual-qa-checklists.md#manual-qa-issue-204-referrer-leaderboard-registry-union`](manual-qa-checklists.md#manual-qa-issue-204-referrer-leaderboard-registry-union). Third-party agent index: [`skills/README.md`](../../skills/README.md).
 
 <a id="indexer-referral-applied-address-predicates-gitlab-165"></a>
 

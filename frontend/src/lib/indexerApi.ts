@@ -426,7 +426,7 @@ export async function fetchReferralApplied(referrer: string | undefined, limit =
   return getJson<{ items: ReferralAppliedItem[] }>(referralAppliedApiPath(referrer, limit));
 }
 
-/** `/v1/referrals/referrer-leaderboard` — aggregated indexed `ReferralApplied.referrerCharmAdded` per referrer ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)). */
+/** `/v1/referrals/referrer-leaderboard` — Σ indexed `ReferralApplied.referrerCharmAdded` per referrer plus **`ReferralCodeRegistered`** union ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), [GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)). */
 export function referralReferrerLeaderboardApiPath(limit: number, offset = 0): string {
   return `/v1/referrals/referrer-leaderboard?limit=${limit}&offset=${offset}`;
 }
@@ -436,6 +436,8 @@ export type ReferralReferrerLeaderboardItem = {
   referrer: string;
   total_referrer_charm_wad: string;
   referred_buy_count: string;
+  /** Indexed `ReferralCodeRegistered` rows for this owner (schema ≥ 1.19.0). */
+  codes_registered_count: string;
 };
 
 export async function fetchReferralReferrerLeaderboard(limit = 25, offset = 0) {
