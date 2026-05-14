@@ -271,7 +271,9 @@ After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone c
 
 **Implementation:** shared **`EmptyDataPlaceholder`** + **`statFromContractRead` / `statFromOptionalString`** ([`EmptyDataPlaceholder.tsx`](../../frontend/src/components/EmptyDataPlaceholder.tsx), [`statDisplayFromContractRead.tsx`](../../frontend/src/lib/statDisplayFromContractRead.tsx)).
 
-**Spec ↔ test:** [invariants §200](../testing/invariants-and-business-logic.md#frontend-stats-charts-empty-states-gitlab-200) · [GitLab #200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200) · [`statDisplayFromContractRead.test.tsx`](../../frontend/src/lib/statDisplayFromContractRead.test.tsx).
+**Follow-up (same issue):** Simple **Live reserve podiums** no longer show the **`PageSection`** header pill that alternated **“Indexer-backed snapshot”** and **“Refreshing podiums…”** — it read as internal stack jargon and could flicker when podium reads refetched ([**`INV-FRONTEND-200-NO-INDEXER-PILL`**](../testing/invariants-and-business-logic.md#frontend-stats-charts-empty-states-gitlab-200), [`TimeCurveSimplePodiumSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.tsx)).
+
+**Spec ↔ test:** [invariants §200](../testing/invariants-and-business-logic.md#frontend-stats-charts-empty-states-gitlab-200) · [GitLab #200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200) · [`statDisplayFromContractRead.test.tsx`](../../frontend/src/lib/statDisplayFromContractRead.test.tsx) · [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx).
 
 <a id="timecurve-responsive-layout-gitlab-201"></a>
 
