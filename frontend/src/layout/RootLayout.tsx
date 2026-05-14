@@ -6,6 +6,7 @@ import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { FeeTransparency } from "@/components/FeeTransparency";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
+import { ReferralsFooterPendingPill } from "@/components/ReferralsFooterPendingPill";
 import { governanceUrl } from "@/lib/addresses";
 import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
@@ -189,6 +190,7 @@ export function RootLayout() {
         <footer className="app-footer">
           <div className="app-footer__row">
             <IndexerStatusBar />
+            <ReferralsFooterPendingPill />
             {gov && (
               <a href={gov} target="_blank" rel="noreferrer" className="footer-link-pill">
                 Governance / CL8Y
