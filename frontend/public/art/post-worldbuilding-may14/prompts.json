@@ -1,0 +1,24 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/post-worldbuilding-may14",
+  "single_attempt_per_image": true,
+  "reference_images_used": true,
+  "jobs": [
+    {
+      "slug": "arena-seat-gate",
+      "title": "Arena Seat Gate",
+      "output": "arena-seat-gate.png",
+      "post_seed": "the arena opens soon. do you have your spot? no entry, no CHARM. no CHARM, no DOUB. the setup is simple and the window is closing. all of this runs on MegaETH. the speed is what makes it possible.",
+      "concept": "A high-speed onchain coliseum threshold where CHARM behaves like a glowing seat-key and empty spots are visibly disappearing as the gate warms up.",
+      "subject": "Wide 3:2 cinematic worldbuilding scene at the outside rim of a floating emerald-gold arcade arena. A transparent smart-contract gate stands open just a crack, fed by bright MegaETH-speed lanes that look like luminous block rails streaking across the sky. Inside the gate, a ring of numbered-looking but unreadable glowing seat pedestals spirals upward; several seats are already lit, while a few remaining dark seats hover near the entrance as scarce open spots. Adult mascot hands and player avatars carry small CHARM-like crystal keys toward the gate, but keep the scene mostly architectural rather than character-heavy. DOUB-style hat-coins glow faintly beyond the threshold as distant treasure silhouettes, not a payout promise. Mood: urgent, magical, clean, fast, and fair; no readable text, no countdown numerals, no infographic panels."
+    },
+    {
+      "slug": "transparent-tidepath",
+      "title": "Transparent Tidepath",
+      "output": "transparent-tidepath.png",
+      "post_seed": "bonding curves hand the sharks the map and tell everyone else to keep up. TimeCurve flips that. the mechanics are visible, the arena is fair, and the Believers have a real path.",
+      "concept": "A glass-floored TimeCurve arena built over old shark waters, where the route is visible to ordinary Believers instead of hidden on a predator map.",
+      "subject": "Wide 3:2 worldbuilding scene split by environment rather than by infographic layout. In the lower shadowy water below, stylized shark silhouettes circle around an old treasure-map table, but the map is blurred, torn, and losing relevance. Above them, a bright transparent glass arena spans the water like a fair launch bridge: visible time rails, charm-band steps, block links, and wallet-signature lanterns are built into the floor so every path can be seen. A small group of adult Believer avatars and bunny-leprechaun mascots walk calmly across the illuminated path toward a central TimeCurve podium, with no single whale dominating. The camera angle should make the clear path and visible mechanics obvious through architecture and light, not labels. No readable words, no chart axes, no comparison poster, no speech bubbles."
+    }
+  ]
+}

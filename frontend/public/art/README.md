@@ -141,6 +141,10 @@ Custom mouse pointers wired through CSS (`cursor: url('/art/cursors/<name>.png')
 
 Numbered **social post** stills (`001.jpg` …) for X / Farcaster / Telegram — generated via [`posts_batch.py`](../../../scripts/replicate-art/posts_batch.py). Not wired into app routes by default; reference as `/art/posts/<id>.jpg`. See [`posts/README.md`](./posts/README.md) for **variety** expectations (infographic vs narrative) and how to run the script.
 
+### `post-worldbuilding-may14/`
+
+Sparse-text worldbuilding stills for the May 14 social posts. Generated via [`post_worldbuilding_may14_batch.py`](../../../scripts/replicate-art/post_worldbuilding_may14_batch.py) with one Replicate create attempt per image. Not wired into app routes by default; reference as `/art/post-worldbuilding-may14/arena-seat-gate.png` and `/art/post-worldbuilding-may14/transparent-tidepath.png`.
+
 ### `social/`
 
 Social and meta-image variants. Wired through `frontend/index.html` (favicon, OpenGraph) and `frontend/vite.config.ts` (`imagePath`).
