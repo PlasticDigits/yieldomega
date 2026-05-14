@@ -20,7 +20,6 @@ function renderSimplePodiums(overrides: Partial<TimeCurveSimplePodiumSectionProp
         { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
       ],
       podiumLoading: false,
-      podiumRefreshing: false,
       podiumPayoutPreview: [
         { places: ["1600000000000000000", "800000000000000000", "600000000000000000"] },
         { places: ["1000000000000000000", "500000000000000000", "375000000000000000"] },
@@ -53,6 +52,7 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("static CL8Y→USDM");
     expect(html).toContain("1.6");
     expect(html).not.toContain("predicted leader");
+    expect(html).not.toContain("Indexer-backed snapshot");
     expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
   });
 

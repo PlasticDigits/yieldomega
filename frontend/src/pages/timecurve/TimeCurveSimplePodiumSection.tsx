@@ -35,7 +35,6 @@ const SIMPLE_PODIUM_TONE_CLASS = [
 export type TimeCurveSimplePodiumSectionProps = {
   podiumRows: PodiumReadRow[];
   podiumLoading: boolean;
-  podiumRefreshing?: boolean;
   podiumPayoutPreview?: readonly { places: readonly [string, string, string] }[];
   decimals: number;
   /** While the sale is live, Last Buy uses indexed buys as a running prediction (`GET /v1/timecurve/podiums`). */
@@ -187,7 +186,6 @@ function SimplePodiumCard({
 export function TimeCurveSimplePodiumSection({
   podiumRows,
   podiumLoading,
-  podiumRefreshing = false,
   podiumPayoutPreview,
   decimals,
   lastBuyPredictionActive = false,
@@ -217,11 +215,6 @@ export function TimeCurveSimplePodiumSection({
         className: "panel-cutout panel-cutout--simple-podium cutout-decoration--float",
       }}
       lede="Four v1 prize races mirrored from the indexer (~1s head poll). Your wallet gets a magenta ring."
-      actions={
-        <span className="timecurve-simple__podium-refresh" aria-live="polite">
-          {podiumRefreshing ? "Refreshing podiums…" : "Indexer-backed snapshot"}
-        </span>
-      }
     >
       {podiumLoading && (
         <StatusMessage variant="loading">Loading the four onchain podium categories…</StatusMessage>
