@@ -1,0 +1,49 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/gen_social/arena-certified-ape-may14",
+  "retry_max": 1,
+  "parallel_workers": 5,
+  "reference_images_used": true,
+  "jobs": [
+    {
+      "slug": "ca-01-every-buy-reshapes-arena",
+      "title": "Every Buy Reshapes The Arena",
+      "kind": "infographic",
+      "output": "ca-01-every-buy-reshapes-arena.png",
+      "concept": "Turn the chat line into a readable \u2018rule shock\u2019 poster: one hero buy press sends a visible timer shockwave through the crowd, with honest on-chain timer rules called out in type.",
+      "subject": "Wide 3:2 finished infographic poster. Headline text exactly: \"EVERY BUY CHANGES THE GAME\". Hero center: a glowing\ncontract pedestal BUY button with an adult hand about to press it; a magical arena timer column visibly stretches\nupward while concentric pressure waves ripple through stylized player silhouettes (panic, excitement, focus). Three\nside callout panels with bold titles: \"+120s EXTENSION\", \"UNDER 13m \u2192 SNAP TOWARD 15m\", \"96h ROUND CAP\". Small footer\nstrip labels: \"TimeCurve\", \"on-chain timer\", \"arena pressure wave\". High-energy fantasy GameFi look, integrated chunky\ncartoon typography, no fine print."
+    },
+    {
+      "slug": "ca-02-warbow-activation-overcharge",
+      "title": "WarBow Activation \u2014 Overcharge",
+      "kind": "worldbuilding",
+      "output": "ca-02-warbow-activation-overcharge.png",
+      "concept": "Legendary WarBow charging in a dark arena: blockchain-energy arrows, target lock, neon green PvP tension \u2014 splash art, not a manual.",
+      "subject": "Wide 3:2 cinematic worldbuilding splash. Inside a dim emerald arena, a legendary WarBow hovers mid-charge, veins of\nglowing green circuit-runes wrapping the limbs. Arrows coalesce from linked cube shards and CL8Y-like sparks (abstract,\nnot a price). A minimal target-lock reticle and Battle Points ember trail suggest PvP focus without dense HUD. Rim light\nin intense green neon, glossy arcade materials, dramatic low angle. Limited text: at most one small diegetic plaque\nreading \"WarBow\"; no captions, no tutorial panels."
+    },
+    {
+      "slug": "ca-03-warbow-versus-time",
+      "title": "WarBow Versus Time",
+      "kind": "worldbuilding",
+      "output": "ca-03-warbow-versus-time.png",
+      "concept": "Symbolic duel: precision archery against a colossal ticking clock \u2014 fantasy cyberpunk crypto arena, no explainer grid.",
+      "subject": "Wide 3:2 cinematic action shot. Adult archer draws a glowing WarBow aimed at a giant suspended arena clock whose face\nis cracking with light; the arrow is a braided beam of emerald chain-energy threading through floating timer rings.\nForeground motion blur, background voxel hills and rainbow sparks softened. Fantasy cyberpunk crypto mood, high contrast,\nno infographic panels, no slogans, no profit copy."
+    },
+    {
+      "slug": "ca-04-new-player-yieldomega-gate",
+      "title": "New Player \u2014 Yieldomega Gate",
+      "kind": "infographic",
+      "output": "ca-04-new-player-yieldomega-gate.png",
+      "concept": "New player crosses into the Yieldomega Arena: gate wordmark, referral holograms as stylized slugs, welcoming but intense \u2014 as a compact onboarding board.",
+      "subject": "Wide 3:2 onboarding infographic poster. Massive glowing arena gate with wordmark exactly \"YIELDOMEGA\" across the lintel.\nA new adult player avatar steps through while short holographic referral slugs float nearby (readable but fake codes like\n\"yo-friend-7qk\" style, not real user data). Three labeled steps along the path: \"ENTER\", \"BRING A CODE\", \"JOIN THE ARENA\".\nSmall badge: \"REFERRALS ON-CHAIN\". Welcoming hosts (bunny-leprechaun + red-bearded leprechaun) wave from the sides without\nspeech bubbles. Fantasy crypto metaverse lighting, green-gold portal flare, chunky readable type."
+    },
+    {
+      "slug": "ca-05-final-seconds-melee",
+      "title": "Final Seconds",
+      "kind": "worldbuilding",
+      "output": "ca-05-final-seconds-melee.png",
+      "concept": "Countdown at five seconds: players scramble for last moves \u2014 pure cinematic stakes, one clear time readout.",
+      "subject": "Wide 3:2 cinematic worldbuilding scene. A colossal arena scoreclock shows one clear readable countdown: \"00:05\" only.\nAdult players burst into motion: one lunges toward a glowing buy pedestal, another raises a WarBow with energy arcing,\nothers show shock, grit, and triumph faces. Explosive emerald-gold light, debris of hat-token sparks, pressure waves\nfrom the timer. Dramatic rim light and motion streaks. No extra captions, no multi-panel explainer, no guarantees."
+    }
+  ]
+}
