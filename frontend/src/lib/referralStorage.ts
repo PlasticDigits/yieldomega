@@ -170,3 +170,19 @@ export function getStoredMyReferralCodeForWallet(address: `0x${string}` | undefi
     return null;
   }
 }
+
+/**
+ * Predicate for the referrals footer pending pill (GitLab #205).
+ * Returns true iff:
+ * - The current pathname is the referrals page (`/referrals` exact match)
+ * - There is a non-empty pending referral code locked in browser storage
+ *
+ * Extracted as a pure function so the component logic is unit-testable
+ * without rendering React or mocking `window.location`.
+ */
+export function shouldShowPendingPill(pathname: string, code: string | null): boolean {
+  if (pathname !== "/referrals") return false;
+  if (!code) return false;
+  if (code.trim().length === 0) return false;
+  return true;
+}
