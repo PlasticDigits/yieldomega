@@ -977,9 +977,15 @@ label:has(input[type="radio"]:disabled) {
 }
 @media (min-width: 721px) {
   .home-cta-grid {
-    grid-template-columns: repeat(3, minmax(16rem, 22rem));
+    grid-template-columns: repeat(2, minmax(0, 22rem));
     grid-auto-rows: 1fr;
     justify-content: center;
+  }
+}
+
+@media (min-width: 960px) {
+  .home-cta-grid {
+    grid-template-columns: repeat(3, minmax(0, 22rem));
   }
 }
 
@@ -3478,6 +3484,12 @@ code {
     padding: 1rem 0.75rem 2.5rem;
   }
 
+  .app-main--timecurve {
+    /* INV-FRONTEND-201: keep mobile TimeCurve cards below the fixed audio dock
+     * when users jump or scroll to the Arena buy hub. */
+    padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 4.85rem));
+  }
+
   .page h1 {
     font-size: clamp(1.9rem, 10vw, 3rem);
   }
@@ -4781,6 +4793,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 800;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
   color: #ffffff;
 }
 .timer-hero__total-usd {
@@ -4788,6 +4801,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.72rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
   color: rgba(255, 255, 255, 0.55);
 }
 .timer-hero__total-usd-block {
@@ -7522,6 +7536,8 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: clamp(1.4rem, 3vw, 2rem);
   font-weight: 900;
   font-family: monospace;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .timecurve-simple__buy-preview-unit {
@@ -7570,6 +7586,8 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 900;
   font-size: clamp(1.35rem, 2.6vw, 1.85rem);
   line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--ink, #111);
 }
 

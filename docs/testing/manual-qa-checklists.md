@@ -761,15 +761,18 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 ## TimeCurve mobile/tablet layout containment (GitLab #201)
 
-**Goal:** TimeCurve Simple and Arena WarBow surfaces should fit within phone
-safe areas and tablet card borders without horizontal clipping.
+**Goal:** TimeCurve Simple, Arena WarBow, and the Home card grid should fit
+within phone safe areas and tablet card borders without horizontal clipping or
+fixed-dock overlap.
 
 ### Checklist
 
 1. **iPhone 14 Pro Max (`430 × 932`) / similar phone:** open `/timecurve`; the buy panel’s right edge, CTA, slider, amount input, and Advanced disclosure stay inside the viewport. There should be no horizontal page scroll.
 2. **Narrow phone (`390 × 844`):** repeat `/timecurve`; the decorative coin stack is hidden and the slider/input row stacks cleanly.
-3. **iPad Mini / Air (`768–820 px` wide):** open `/timecurve/arena`; in the WarBow hero actions, **Guard** and **Counterpunch / Revenge** stay inside their cards, and the Revenge list/buttons wrap if present.
-4. **Detailed WarBow section:** scroll to **WarBow moves and rivalry**; Top rivals / Chasing pack stack or fit without clipped card borders.
+3. **iPad Mini / Air (`768–820 px` wide):** open `/home`; product-card images and card borders wrap to the visible screen with no right-edge clipping or horizontal page scroll.
+4. **iPad Mini / Air (`768–820 px` wide):** open `/timecurve/arena`; in the WarBow hero actions, **Guard** and **Counterpunch / Revenge** stay inside their cards, and the Revenge list/buttons wrap if present.
+5. **iPhone 14 Pro Max (`430 × 932`):** open `/timecurve/arena`; the fixed Blockie Hills dock does not sit on top of the Arena buy hub/card header, and long CL8Y totals / wallet balances wrap or compact instead of forcing horizontal scroll.
+6. **Detailed WarBow section:** scroll to **WarBow moves and rivalry**; Top rivals / Chasing pack stack or fit without clipped card borders.
 
 **Automated:** [`timeCurveResponsiveLayoutCss.test.ts`](../../frontend/src/lib/timeCurveResponsiveLayoutCss.test.ts) asserts the CSS breakpoints; [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) checks mobile/tablet viewport overflow when the relevant surface is configured.
 

@@ -34,9 +34,10 @@ export function RootLayout() {
   // `/timecurve/arena` and `/timecurve/protocol` keep it. See
   // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
   const showFooter = location.pathname !== "/timecurve";
+  const isTimecurveRoute = location.pathname === "/timecurve" || location.pathname.startsWith("/timecurve/");
 
   return (
-    <div className="app-shell">
+    <div className={isTimecurveRoute ? "app-shell app-shell--timecurve" : "app-shell"}>
       <ReferralPathSync />
       <header className="app-header">
         <div className="app-header__top">
@@ -172,7 +173,7 @@ export function RootLayout() {
         </div>
       </header>
       <AlbumPlayerBar />
-      <main className="app-main">
+      <main className={isTimecurveRoute ? "app-main app-main--timecurve" : "app-main"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}

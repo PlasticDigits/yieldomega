@@ -279,15 +279,20 @@ After **`deadline()`** the phase is **`saleExpiredAwaitingEnd`** until someone c
 
 **Problem:** On phone widths, the Simple buy panel could stay cramped because
 desktop-only decorative coin-stack padding was still reserved after the hub
-collapsed. On tablet widths, Arena WarBow action cards could inherit desktop
-spotlight padding and squeeze **Guard** / **Counterpunch Revenge** tracks enough
-for headings or revenge rows to overflow their card border.
+collapsed. On tablet widths, Arena WarBow action cards and the Home product-card
+grid could inherit desktop tracks that exceeded iPad Mini / Air width. On mobile
+Arena, the fixed Blockie Hills dock could visually sit over the buy hub when the
+page was scrolled or deep-linked into the primary action, and long CL8Y totals
+could become hard to read.
 
 **Invariant:** **`INV-FRONTEND-201-RESPONSIVE-LAYOUT`** keeps TimeCurve surfaces
 inside the viewport and card chrome at phone and tablet breakpoints: the
 Simple buy panel hides the coin-stack cutout and collapses the slider layout at
-≤520 px, while Arena WarBow cards wrap headings / revenge rows and reduce
-TimeCurve spotlight padding at ≤960 px.
+≤520 px; the Home card grid uses two tablet columns before its three-column
+desktop layout; Arena WarBow cards wrap headings / revenge rows and reduce
+TimeCurve spotlight padding at ≤960 px; mobile TimeCurve routes add top
+clearance under the fixed audio dock; and hero / buy-panel numeric values wrap
+inside their card rather than forcing horizontal scroll.
 
 **Spec ↔ test:** [invariants §201](../testing/invariants-and-business-logic.md#timecurve-responsive-layout-gitlab-201) · [manual QA #201](../testing/manual-qa-checklists.md#manual-qa-issue-201) · [`timeCurveResponsiveLayoutCss.test.ts`](../../frontend/src/lib/timeCurveResponsiveLayoutCss.test.ts) · [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) · [GitLab #201](https://gitlab.com/PlasticDigits/yieldomega/-/issues/201).
 
