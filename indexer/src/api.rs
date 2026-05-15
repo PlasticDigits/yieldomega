@@ -1919,7 +1919,7 @@ async fn referral_referrer_leaderboard(
                         COALESCE(a.buy_count, 0)::text AS referred_buy_count,
                         COALESCE(reg.cnt, 0)::text AS codes_registered_count,
                         RANK() OVER (
-                            ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST, r.referrer ASC
+                            ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST
                         )::bigint AS rank
                    FROM (
                             SELECT owner_address AS referrer
