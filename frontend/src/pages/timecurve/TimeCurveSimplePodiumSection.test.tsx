@@ -59,6 +59,7 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
     expect(html).toContain("Score: —");
     expect(html).toContain("Score: 1200 Battle Points");
+    expect(html).toContain("Score: 900 Battle Points");
     expect(html).toContain("Score: 4 sequential buys");
     expect(html).toContain("Score: 300s added");
     expect(html).toMatch(/address-inline__label">111111</);
@@ -68,6 +69,18 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
   it("highlights placements that match the connected wallet", () => {
     const html = renderSimplePodiums({ address: ALICE });
     expect(html).toContain("ranking-list__item--you");
+  });
+
+  it("Defended Streak rows show no-streak guidance when on-chain streak values are zero", () => {
+    const html = renderSimplePodiums({
+      podiumRows: [
+        { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"] },
+        { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"] },
+        { winners: [ALICE, BOB, CAROL], values: ["0", "0", "0"] },
+        { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
+      ],
+    });
+    expect(html).toContain("No buy streaks until timer under 15 minutes!");
   });
 
   it("shows a neutral em dash for empty winner slots (no wallet-connect wording)", () => {

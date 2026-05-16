@@ -229,7 +229,7 @@ On **`/timecurve/arena`**, the detailed **`WarbowSection`** steal victim `<input
 
 **Your WarBow rank**, the **chasing pack** (indexed leaderboard hints), and the **rivalry / battle feed** panels read **`GET /v1/timecurve/warbow/leaderboard`** and **`GET /v1/timecurve/warbow/battle-feed`**. Those responses must refresh when Battle Points change from **your** txs and eventually reflect **other** wallets’ activity without requiring a full page reload ([GitLab #182](https://gitlab.com/PlasticDigits/yieldomega/-/issues/182)).
 
-**Behavior:** **`useTimeCurveArenaModel`** reloads both endpoints **after local writes succeed** (same **`refetchAll`** path as wagmi contract refetches — buys, WarBow actions, post-end **`runVoid`**), **and** on a **~5s backoff** poll while Arena stays mounted when **`VITE_INDEXER_URL`** is set. Contract **`battlePoints`** reads already updated live; indexer-backed rank / feed now track indexed state on the same cadence.
+**Behavior:** **`useTimeCurveArenaModel`** reloads both endpoints **after local writes succeed** (same **`refetchAll`** path as wagmi contract refetches — buys, WarBow actions, post-end **`runVoid`**), **on every BP-moving chain log** via **`useWarbowBpMovingEventWatch`**, **and** on a **~1.5s backoff** poll while Arena stays mounted when **`VITE_INDEXER_URL`** is set. Chasing-pack BP digits overlay live **`battlePoints(address)`** when reads succeed ([live WarBow podium](#live-warbow-podium-simple-arena)).
 
 **Spec ↔ test:** [invariants §182](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-indexer-refresh-gitlab-182) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx).
 
@@ -303,6 +303,19 @@ inside their card rather than forcing horizontal scroll.
 ## WarBow ladder snapshot mismatch vs live Battle Points (#129)
 
 `/timecurve/arena` **`WarbowSection` → Top rivals** renders **`warbowLadderPodium()`** (same snapshot as the WarBow **`podium(CAT_WARBOW)`** winners list). During the sale those values can lag **`battlePoints(address)`** reads until the next state-changing WarBow / buy interaction; **GitLab #172** removed permissionless onchain podium repair — post-**`endSale`**, the owner **`finalizeWarbowPodium(first, second, third)`** latches the ladder for **`distributePrizes`** when the pool balance is positive ([GitLab #129](https://gitlab.com/PlasticDigits/yieldomega/-/issues/129)).
+
+<a id="live-warbow-podium-simple-arena"></a>
+
+### Live WarBow podium — Simple + Arena (`INV-FRONTEND-WARBOW-PODIUM-LIVE`)
+
+While **`sale_ended`** is **false**, the **Simple** reserve **WarBow** card and **Arena** chasing-pack ladder must stay aligned with **live Battle Points**, not only the most recent **`Buy`** row in the live feed:
+
+1. **Ranking source:** **`GET /v1/timecurve/podiums`** (WarBow row) and **`GET /v1/timecurve/warbow/leaderboard`** — indexer **`WARBOW_BP_OBSERVATIONS_UNION`** (buys + steal + revenge + flag claim/penalty).
+2. **Immediate invalidation:** **`useWarbowBpMovingEventWatch`** watches **`Buy`**, **`WarBowSteal`**, **`WarBowRevenge`**, **`WarBowFlagClaimed`**, and **`WarBowFlagPenalized`** — invalidates **`TIMECURVE_PODIUMS_QUERY_KEY`** and refetches Arena WarBow aggregates on **every** BP-moving log (not **`WarBowGuardActivated`** — guard does not mutate BP).
+3. **Displayed BP digits:** overlay on-chain **`battlePoints(address)`** reads for the top-3 Simple WarBow winners and for Arena chasing-pack rows when all per-row reads succeed — ranking order stays indexer-driven; numbers match chain truth.
+4. **Poll cadence:** Simple podiums **~1s**; Arena WarBow leaderboard/feed **~1.5s** backoff while mounted.
+
+**Spec ↔ test:** [invariants § live WarBow podium](../testing/invariants-and-business-logic.md#live-warbow-podium-simple-arena-gitlab-warbow-podium-live) · [`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts) · [`warbowPodiumLive.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.ts) · [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts).
 
 1. **Arena (sale live):** there is **no** public “refresh snapshot” write path — compare **`warbowLadderPodium()`** vs live **`battlePoints`** reads when interpreting standings.
 2. **Operators / post-end:** use **`/timecurve/protocol` → WarBow podium (governance)** to load **`GET /v1/timecurve/warbow/refresh-candidates`** (indexer, schema ≥ 1.15.1; post-end hint omission + **`sale_ended`** field — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170); **unbounded DISTINCT** — [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)) as a **reference** while composing **`finalizeWarbowPodium(first, second, third)`** calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).

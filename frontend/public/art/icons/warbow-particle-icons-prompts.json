@@ -1,0 +1,29 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/icons",
+  "single_attempt_per_image": true,
+  "parallel": true,
+  "transparent_background": true,
+  "icon_size_px": 256,
+  "reference_images_used": true,
+  "jobs": [
+    {
+      "slug": "warbow-particle-shield",
+      "title": "WarBow shield particle",
+      "output": "warbow-particle-shield.png",
+      "subject": "A compact fantasy shield icon with emerald face, gold rim, chunky dark outline, small magical highlight, strong readable silhouette, no letters, no words."
+    },
+    {
+      "slug": "warbow-particle-bow",
+      "title": "WarBow bow particle",
+      "output": "warbow-particle-bow.png",
+      "subject": "A compact curved battle bow icon with taut glowing string, emerald-gold wood, tiny sparkle accent, chunky dark outline, strong readable silhouette, no arrows flying, no letters, no words."
+    },
+    {
+      "slug": "warbow-particle-sword",
+      "title": "WarBow sword particle",
+      "output": "warbow-particle-sword.png",
+      "subject": "A compact heroic sword icon angled upward with bright silver blade, emerald-gold hilt, chunky dark outline, small magical highlight, strong readable silhouette, no blood, no letters, no words."
+    }
+  ]
+}

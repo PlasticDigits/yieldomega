@@ -48,7 +48,7 @@ const SIMPLE_PODIUM_TONE_CLASS = [
 ] as const;
 
 export type TimeCurveSimplePodiumSectionProps = {
-  podiumRows: PodiumReadRow[];
+  podiumRows: readonly PodiumReadRow[];
   podiumLoading: boolean;
   podiumPayoutPreview?: readonly { places: readonly [string, string, string] }[];
   decimals: number;

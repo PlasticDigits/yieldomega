@@ -23,6 +23,25 @@ function buy(partial: Partial<BuyItem> & Pick<BuyItem, "buyer" | "block_timestam
 }
 
 describe("formatSimplePodiumScoreLine", () => {
+  it("Defended Streak uses guidance copy when streak value is zero or slot has no winner", () => {
+    expect(
+      formatSimplePodiumScoreLine(2, 0, {
+        winner: ALICE,
+        winnerReady: true,
+        valueRaw: "0",
+        nowUnixSec: 0,
+      }),
+    ).toBe("No buy streaks until timer under 15 minutes!");
+    expect(
+      formatSimplePodiumScoreLine(2, 0, {
+        winner: "0x0000000000000000000000000000000000000000",
+        winnerReady: false,
+        valueRaw: "0",
+        nowUnixSec: 0,
+      }),
+    ).toBe("No buy streaks until timer under 15 minutes!");
+  });
+
   it("formats WarBow BP, defended streak, and time booster from raw values", () => {
     expect(
       formatSimplePodiumScoreLine(1, 0, {

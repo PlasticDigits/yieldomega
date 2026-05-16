@@ -29,6 +29,7 @@ use sqlx::Row;
 use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
+use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
@@ -359,6 +360,236 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
     .execute(pool)
     .await
     .expect("insert api test buy");
+
+    sqlx::query(
+        r#"UPDATE idx_timecurve_buy SET buyer_best_defended_streak = 9, buyer_active_defended_streak = 3
+           WHERE block_number = 42 AND log_index = 1"#,
+    )
+    .execute(pool)
+    .await
+    .expect("seed defended streak snapshot for podium prediction");
+
+    let z = format!("{:#x}", Address::ZERO);
+    let empty_podium = PodiumRpcRow {
+        winners: [z.clone(), z.clone(), z.clone()],
+        values: [String::from("0"), String::from("0"), String::from("0")],
+    };
+    let timer_head = TimecurveHeadSnapshot {
+        timer: ChainTimerSnapshot {
+            sale_start_sec: "1".into(),
+            deadline_sec: "9999999999".into(),
+            block_timestamp_sec: "100".into(),
+            timer_cap_sec: "86400".into(),
+            read_block_number: "99".into(),
+            polled_at_ms: 0,
+        },
+        sale_ended: false,
+        podium_contract: [
+            empty_podium.clone(),
+            empty_podium.clone(),
+            empty_podium.clone(),
+            empty_podium.clone(),
+        ],
+    };
+    let app_podiums = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(Some(timer_head))),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+    let res = app_podiums
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/podiums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pod = response_json(res).await;
+    let rows = pod["rows"].as_array().expect("podium rows");
+    assert_eq!(rows.len(), 4, "{pod:?}");
+    let def = &rows[2];
+    assert_eq!(def["podium_prediction"], true);
+    assert_eq!(
+        def["values"][0].as_str().expect("defended value"),
+        "9",
+        "{def:?}"
+    );
+    let w0 = def["winners"][0].as_str().expect("defended winner");
+    assert_eq!(
+        w0.to_ascii_lowercase(),
+        "0xdddddddddddddddddddddddddddddddddddddddd"
+    );
+
+    // Live WarBow podium prediction: buys + steal/revenge/flag evidence (GitLab live WarBow podium).
+    let wb_alice = format!("{:#x}", addr_byte(0x71));
+    let wb_bob = format!("{:#x}", addr_byte(0x72));
+    let wb_carol = format!("{:#x}", addr_byte(0x73));
+    let wb_contract = "0xcccccccccccccccccccccccccccccccccccccccc";
+
+    for (block, log_index, buyer, bp) in [
+        (60_i64, 1_i32, wb_alice.as_str(), 500_i64),
+        (61, 1, wb_bob.as_str(), 900),
+        (62, 1, wb_carol.as_str(), 300),
+    ] {
+        sqlx::query(
+            r#"INSERT INTO idx_timecurve_buy (
+                block_number, block_hash, tx_hash, log_index, contract_address,
+                buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
+                new_deadline, total_raised_after, buy_index, battle_points_after
+            ) VALUES (
+                $1,
+                '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                $2,
+                $3,
+                $4,
+                $5,
+                1, 1, 1, 1, 3, 4, 5, $6
+            )"#,
+        )
+        .bind(block)
+        .bind(format!("0x{:064x}", block + 10_000))
+        .bind(log_index)
+        .bind(wb_contract)
+        .bind(buyer)
+        .bind(bp)
+        .execute(pool)
+        .await
+        .expect("insert warbow podium buy");
+    }
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_steal (
+            block_number, block_hash, tx_hash, log_index, contract_address,
+            attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
+            victim_bp_after, attacker_bp_after
+        ) VALUES (
+            63,
+            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '0x6363636363636363636363636363636363636363636363636363636363636363',
+            1,
+            $1,
+            $2,
+            $3,
+            100, 1, false, 550, 850
+        )"#,
+    )
+    .bind(wb_contract)
+    .bind(&wb_carol)
+    .bind(&wb_bob)
+    .execute(pool)
+    .await
+    .expect("insert warbow steal for podium prediction");
+
+    let res = app_podiums
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/podiums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pod_after_steal = response_json(res).await;
+    let wb = &pod_after_steal["rows"][1];
+    assert_eq!(wb["podium_prediction"], true);
+    assert_eq!(
+        wb["values"][0].as_str().expect("warbow first bp"),
+        "850",
+        "{wb:?}"
+    );
+    assert_eq!(
+        wb["winners"][0].as_str().expect("warbow first winner").to_ascii_lowercase(),
+        wb_carol.to_ascii_lowercase(),
+        "{wb:?}"
+    );
+    assert_eq!(wb["values"][1].as_str().expect("warbow second bp"), "550");
+    assert_eq!(
+        wb["winners"][1].as_str().expect("warbow second winner").to_ascii_lowercase(),
+        wb_bob.to_ascii_lowercase()
+    );
+    assert_eq!(wb["values"][2].as_str().expect("warbow third bp"), "500");
+    assert_eq!(
+        wb["winners"][2].as_str().expect("warbow third winner").to_ascii_lowercase(),
+        wb_alice.to_ascii_lowercase()
+    );
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_revenge (
+            block_number, block_hash, tx_hash, log_index, contract_address,
+            avenger, stealer, amount_bp, burn_paid_wad, stealer_bp_after, avenger_bp_after
+        ) VALUES (
+            64,
+            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '0x6464646464646464646464646464646464646464646464646464646464646464',
+            1,
+            $1,
+            $2,
+            $3,
+            50, 1, 800, 920
+        )"#,
+    )
+    .bind(wb_contract)
+    .bind(&wb_bob)
+    .bind(&wb_carol)
+    .execute(pool)
+    .await
+    .expect("insert warbow revenge for podium prediction");
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_flag_claimed (
+            block_number, block_hash, tx_hash, log_index, contract_address,
+            player, bonus_bp, battle_points_after
+        ) VALUES (
+            65,
+            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+            '0x6565656565656565656565656565656565656565656565656565656565656565',
+            1,
+            $1,
+            $2,
+            1000, 1920
+        )"#,
+    )
+    .bind(wb_contract)
+    .bind(&wb_carol)
+    .execute(pool)
+    .await
+    .expect("insert warbow flag claim for podium prediction");
+
+    let res = app_podiums
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/podiums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pod_after_flag = response_json(res).await;
+    let wb_final = &pod_after_flag["rows"][1];
+    assert_eq!(
+        wb_final["values"][0].as_str().expect("warbow leader bp"),
+        "1920",
+        "{wb_final:?}"
+    );
+    assert_eq!(
+        wb_final["winners"][0]
+            .as_str()
+            .expect("warbow leader")
+            .to_ascii_lowercase(),
+        wb_carol.to_ascii_lowercase()
+    );
+    assert_eq!(
+        wb_final["values"][1].as_str().expect("warbow second bp after revenge"),
+        "920"
+    );
 
     let res = app
         .clone()

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReadContract, useWatchContractEvent } from "wagmi";
+import { useReadContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
@@ -14,8 +15,9 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
-import { erc20Abi, timeCurveBuyEventAbi, timeCurveReadAbi } from "@/lib/abis";
+import { erc20Abi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { shortAddress } from "@/lib/addressFormat";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import {
@@ -38,7 +40,7 @@ import {
   podiumPlacementShares,
 } from "@/lib/timeCurvePodiumMath";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
-import { formatCountdown } from "@/pages/timecurve/formatTimer";
+import { formatMmSsCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
@@ -46,8 +48,13 @@ import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeA
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 import { TimeCurveSimpleAgentCard } from "@/pages/timecurve/TimeCurveSimpleAgentCard";
+import { TimeCurveBuyProjectedEffects } from "@/pages/timecurve/TimeCurveBuyProjectedEffects";
 import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
-import { TIMECURVE_PODIUMS_QUERY_KEY, usePodiumReads } from "@/pages/timecurve/usePodiumReads";
+import { buildTimeCurveBuyProjectedEffectLines } from "@/pages/timecurve/timeCurveBuyProjectedEffects";
+import {
+  usePodiumReads,
+  useWarbowPodiumLiveInvalidation,
+} from "@/pages/timecurve/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
@@ -60,6 +67,159 @@ const SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS: { value: PayWithAsset; label: string; log
   { value: "usdm", label: "USDM", logo: USDM_TOKEN_LOGO },
 ];
 
+function TimecurveSimpleRatePayTokenPicker({
+  payWith,
+  setPayWith,
+}: {
+  payWith: PayWithAsset;
+  setPayWith: (p: PayWithAsset) => void;
+}) {
+  const listboxId = useId();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuSurfaceRef = useRef<HTMLDivElement>(null);
+  const [menuBox, setMenuBox] = useState<{ top: number; left: number; minWidth: number } | null>(null);
+
+  const active =
+    SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.find((o) => o.value === payWith) ?? SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS[0];
+
+  const syncMenuPosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const minWidth = Math.max(r.width, 148);
+    const margin = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = r.left;
+    if (left + minWidth > vw - margin) left = Math.max(margin, vw - margin - minWidth);
+    left = Math.max(margin, Math.min(left, vw - minWidth - margin));
+
+    const estimatedH = 140;
+    let top = r.bottom + 6;
+    if (top + estimatedH > vh - margin && r.top > estimatedH + margin) {
+      top = Math.max(margin, r.top - estimatedH - 6);
+    }
+
+    setMenuBox({ top, left, minWidth });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuBox(null);
+      return;
+    }
+    syncMenuPosition();
+    window.addEventListener("resize", syncMenuPosition);
+    window.addEventListener("scroll", syncMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", syncMenuPosition);
+      window.removeEventListener("scroll", syncMenuPosition, true);
+    };
+  }, [open, syncMenuPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t) || menuSurfaceRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="timecurve-simple__rate-pay-picker">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="timecurve-simple__rate-pay-picker-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
+        aria-label={
+          open
+            ? `${active.label} selected. Close pay token menu.`
+            : `Pay with ${active.label}. Open menu to change pay token.`
+        }
+        data-testid="timecurve-simple-rate-pay-picker-trigger"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <img
+          className="timecurve-simple__rate-pay-logo"
+          src={active.logo}
+          alt=""
+          width={28}
+          height={28}
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span className="timecurve-simple__rate-pay-picker-chevron" aria-hidden="true">
+          <svg width="9" height="9" viewBox="0 0 10 10" focusable="false">
+            <path
+              d="M2 3.5 5 6.5 8 3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+      {open && menuBox && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={menuSurfaceRef}
+              id={listboxId}
+              className="timecurve-simple__rate-pay-picker-menu"
+              role="listbox"
+              aria-label="Pay token"
+              style={{
+                position: "fixed",
+                top: menuBox.top,
+                left: menuBox.left,
+                minWidth: menuBox.minWidth,
+              }}
+            >
+              {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="option"
+                  aria-selected={payWith === o.value}
+                  className={
+                    payWith === o.value
+                      ? "timecurve-simple__rate-pay-picker-option timecurve-simple__rate-pay-picker-option--active"
+                      : "timecurve-simple__rate-pay-picker-option"
+                  }
+                  data-testid={`timecurve-simple-rate-pay-option-${o.value}`}
+                  onClick={() => {
+                    setPayWith(o.value);
+                    setOpen(false);
+                  }}
+                >
+                  <img src={o.logo} alt="" width={22} height={22} decoding="async" aria-hidden="true" />
+                  <span className="timecurve-simple__rate-pay-picker-label">{o.label}</span>
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+}
+
 function TimecurveSimpleAmountPayTokenSelect({
   payWith,
   setPayWith,
@@ -69,33 +229,127 @@ function TimecurveSimpleAmountPayTokenSelect({
   setPayWith: (p: PayWithAsset) => void;
   disabled: boolean;
 }) {
+  const listboxId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const comboboxRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+
   const active =
     SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.find((o) => o.value === payWith) ?? SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS[0];
+
+  useLayoutEffect(() => {
+    if (!open || disabled) return;
+    const root = rootRef.current;
+    if (!root) return;
+    requestAnimationFrame(() => {
+      const opt = root.querySelector<HTMLElement>(`[data-pay-token-value="${payWith}"]`);
+      (opt ?? root.querySelector<HTMLElement>("[data-pay-token-value]"))?.focus();
+    });
+  }, [open, disabled, payWith]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        comboboxRef.current?.focus();
+      }
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [open]);
+
   return (
-    <div className="timecurve-simple__amount-suffix timecurve-simple__amount-token-dropdown">
-      <img
-        className="timecurve-simple__amount-token-dropdown-icon"
-        src={active.logo}
-        alt=""
-        width={16}
-        height={16}
-        decoding="async"
-        aria-hidden="true"
-      />
-      <select
-        className="timecurve-simple__amount-token-select"
-        value={payWith}
+    <div ref={rootRef} className="timecurve-simple__amount-suffix timecurve-simple__amount-token-dropdown">
+      <button
+        ref={comboboxRef}
+        type="button"
+        className="timecurve-simple__amount-token-combobox"
         disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls={listboxId}
         aria-label={`Pay with ${active.label} (change spend token)`}
         data-testid="timecurve-simple-amount-pay-token"
-        onChange={(e) => setPayWith(e.target.value as PayWithAsset)}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (disabled) return;
+          if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
       >
-        {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        <img
+          className="timecurve-simple__amount-token-dropdown-icon"
+          src={active.logo}
+          alt=""
+          width={16}
+          height={16}
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span className="timecurve-simple__amount-token-combobox-label">{active.label}</span>
+        <span className="timecurve-simple__amount-token-combobox-chevron" aria-hidden="true">
+          <svg width="10" height="10" viewBox="0 0 10 10" focusable="false">
+            <path
+              d="M2 3.5 5 6.5 8 3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+      {open && !disabled ? (
+        <div id={listboxId} className="timecurve-simple__amount-token-list" role="listbox" aria-label="Spend token">
+          {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === payWith}
+              data-pay-token-value={o.value}
+              className={
+                o.value === payWith
+                  ? "timecurve-simple__amount-token-option timecurve-simple__amount-token-option--active"
+                  : "timecurve-simple__amount-token-option"
+              }
+              onClick={() => {
+                setPayWith(o.value);
+                setOpen(false);
+                comboboxRef.current?.focus();
+              }}
+            >
+              <img
+                className="timecurve-simple__amount-token-dropdown-icon"
+                src={o.logo}
+                alt=""
+                width={16}
+                height={16}
+                decoding="async"
+                aria-hidden="true"
+              />
+              <span>{o.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -150,6 +404,35 @@ export function TimeCurveSimplePage() {
     [session.warbowFlagClaimBp, session.warbowFlagSilenceSec],
   );
 
+  const buyProjectedEffects = useMemo(
+    () =>
+      buildTimeCurveBuyProjectedEffectLines({
+        charmWadSelected: session.charmWadSelected,
+        estimatedSpendWei: session.estimatedSpendWei,
+        decimals: session.decimals,
+        secondsRemaining: session.saleCountdownSec,
+        timerExtensionPreview: session.timerExtensionPreviewSec,
+        activeDefendedStreak: session.activeDefendedStreak,
+        plantWarBowFlag: session.plantWarBowFlag,
+        flagOwnerAddr: session.warbowPendingFlagOwner,
+        flagPlantAtSec: session.warbowPendingFlagPlantAt,
+        walletAddress: session.walletAddress,
+        formatRivalWallet: (addr) => shortAddress(addr),
+      }),
+    [
+      session.activeDefendedStreak,
+      session.charmWadSelected,
+      session.decimals,
+      session.estimatedSpendWei,
+      session.plantWarBowFlag,
+      session.saleCountdownSec,
+      session.timerExtensionPreviewSec,
+      session.walletAddress,
+      session.warbowPendingFlagOwner,
+      session.warbowPendingFlagPlantAt,
+    ],
+  );
+
   const podiumReads = usePodiumReads(tc);
   const { data: podiumAcceptedAsset } = useReadContract({
     address: tc,
@@ -187,18 +470,7 @@ export function TimeCurveSimplePage() {
   /** Wall clock for podium “time since buy” copy; decoupled from chain time. */
   const [tickerWallNowSec, setTickerWallNowSec] = useState(() => Math.floor(Date.now() / 1000));
 
-  useWatchContractEvent({
-    address: tc,
-    abi: timeCurveBuyEventAbi,
-    eventName: "Buy",
-    enabled: Boolean(tc),
-    onLogs: () => {
-      setBuyFeedRefreshNonce((n) => n + 1);
-      if (indexerBaseUrl()) {
-        void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
-      }
-    },
-  });
+  useWarbowPodiumLiveInvalidation(tc, queryClient, setBuyFeedRefreshNonce);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -475,24 +747,20 @@ export function TimeCurveSimplePage() {
       session.quotedPayInWei === undefined ||
       session.swapQuoteLoading);
 
+  const buyOnCooldown = session.walletCooldownRemainingSec > 0;
+
   const buyDisabled =
     session.phase !== "saleActive" ||
     session.isWriting ||
     !session.walletConnected ||
     chainMismatch ||
-    session.walletCooldownRemainingSec > 0 ||
+    buyOnCooldown ||
     session.charmWadSelected === undefined ||
     nonCl8yBlocked ||
     session.buyFeeRoutingEnabled === false;
 
-  const buyButtonMotion = prefersReducedMotion
-    ? {}
-    : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
-
-  const cooldownLine =
-    session.walletCooldownRemainingSec > 0
-      ? `Buy cooldown · ${formatCountdown(session.walletCooldownRemainingSec)} left`
-      : null;
+  const buyButtonMotion =
+    prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
 
   const stakePanelVisible =
     session.walletConnected &&
@@ -546,12 +814,6 @@ export function TimeCurveSimplePage() {
     session.perCharmPayQuoteLoading,
     session.quotedPerCharmPayInWei,
   ]);
-
-  const rateNowPayLogo = useMemo(() => {
-    if (session.payWith === "eth") return ETH_TOKEN_LOGO;
-    if (session.payWith === "usdm") return USDM_TOKEN_LOGO;
-    return CL8Y_TOKEN_LOGO;
-  }, [session.payWith]);
 
   const rateBoardPayOptions = (
     [
@@ -625,15 +887,7 @@ export function TimeCurveSimplePage() {
         >
           {rateNowDisplay.text}
         </strong>
-        <img
-          className="timecurve-simple__rate-pay-logo"
-          src={rateNowPayLogo}
-          alt=""
-          width={28}
-          height={28}
-          decoding="async"
-          aria-hidden="true"
-        />
+        <TimecurveSimpleRatePayTokenPicker payWith={session.payWith} setPayWith={session.setPayWith} />
         <span className="visually-hidden">{rateNowDisplay.unit.trim()}</span>
       </span>
     </div>
@@ -747,7 +1001,7 @@ export function TimeCurveSimplePage() {
           {!session.walletConnected && session.phase !== "loading" && (
             <div className="timecurve-simple__connect">
               <p className="timecurve-simple__connect-pitch">
-                Connect a wallet to mint CHARM and lock in your DOUB launch share.
+                Connect your Wallet to earn CHARM, reserve your DOUB, and win prizes!
               </p>
               <WalletConnectButton />
             </div>
@@ -798,8 +1052,14 @@ export function TimeCurveSimplePage() {
               )}
               <motion.button
                 type="button"
-                className="btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade"
+                className={[
+                  "btn-primary btn-primary--priority timecurve-simple__cta timecurve-simple__cta--arcade",
+                  buyOnCooldown ? "timecurve-simple__cta--cooldown" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 disabled={buyDisabled}
+                title={buyOnCooldown ? "Wallet buy cooldown (matches onchain pacing)" : undefined}
                 onClick={() => void session.submitBuy()}
                 {...buyButtonMotion}
               >
@@ -821,9 +1081,11 @@ export function TimeCurveSimplePage() {
                     ? "Submitting…"
                     : session.payWith !== "cl8y" && session.swapQuoteLoading
                       ? "Refreshing quote…"
-                      : session.charmWadSelected !== undefined
-                        ? `Buy ${formatBuyCtaCharmAmountLabel(session.charmWadSelected)} CHARM`
-                        : "Buy CHARM"}
+                      : buyOnCooldown
+                        ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
+                        : session.charmWadSelected !== undefined
+                          ? `Buy ${formatBuyCtaCharmAmountLabel(session.charmWadSelected)} CHARM`
+                          : "Buy CHARM"}
                 </span>
               </motion.button>
               {buyPreview}
@@ -866,7 +1128,10 @@ export function TimeCurveSimplePage() {
                   />
                 </div>
               </details>
-              {cooldownLine && <StatusMessage variant="muted">{cooldownLine}</StatusMessage>}
+              <TimeCurveBuyProjectedEffects
+                className="timecurve-simple__buy-projected-effects"
+                items={buyProjectedEffects}
+              />
               {session.buyError && (
                 <StatusMessage variant="error">
                   {session.buyError}{" "}

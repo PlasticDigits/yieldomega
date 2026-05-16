@@ -459,6 +459,12 @@ label:has(input[type="radio"]:disabled) {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack));
   }
 
+  /* TimeCurve routes: pull main (BUY / ARENA / AUDIT strip) closer to the pinned header; the
+     global stack leaves ~1rem slack under the dense bar — reclaim ~30px without touching mobile. */
+  .app-shell.app-shell--timecurve {
+    padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 30px);
+  }
+
   .app-header {
     position: fixed;
     top: max(1rem, env(safe-area-inset-top, 0px));
@@ -1473,6 +1479,16 @@ label:has(input[type="radio"]:disabled) {
   gap: 1.25rem;
 }
 
+/* Protocol audit: same TOTAL RAISE / TOTAL USD chrome as the former Arena hero, on a dark inset. */
+.timecurve-protocol-raise-card {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(180deg, #0f3d28, #0a2a1c);
+  border: 1px solid rgba(12, 64, 42, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 .page-hero__heading {
   display: grid;
   gap: 0.65rem;
@@ -2197,10 +2213,11 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .arcade-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
   gap: 1rem;
+  overflow: hidden;
   padding: 1rem 1.15rem;
   border: 4px solid var(--line);
   border-radius: 1.5rem;
@@ -2215,6 +2232,43 @@ label:has(input[type="radio"]:disabled) {
     filter 180ms ease;
 }
 
+.arcade-banner:has(> .arcade-banner__coin) {
+  grid-template-columns: auto 1fr;
+}
+
+.arcade-banner__coin {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: start;
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: contain;
+  filter: drop-shadow(3px 3px 0 var(--line));
+  animation: coin-wobble 4s ease-in-out infinite;
+}
+
+.arcade-banner:has(> .arcade-banner__coin) > .lede,
+.arcade-banner:has(> .arcade-banner__coin) > .page-hero__actions {
+  grid-column: 2;
+}
+
+.arcade-banner > .lede,
+.arcade-banner > .page-hero__actions {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Arena hero: `.page-hero__actions` is flex; a lone `.chain-write-gate` shrink-wraps so WarBow
+ * card grids read left-heavy inside the arcade plate — stretch children to the banner width. */
+.page--timecurve .arcade-banner > .page-hero__actions > * {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.page--timecurve .warbow-hero-actions {
+  width: 100%;
+}
+
 .arcade-banner:hover {
   transform: translateY(-2px);
   box-shadow: 7px 8px 0 var(--line);
@@ -2222,15 +2276,6 @@ label:has(input[type="radio"]:disabled) {
 
 .arcade-banner--with-sidekick {
   padding-right: min(7.5rem, 22vw);
-}
-
-.arcade-banner__coin {
-  width: 4.5rem;
-  height: 4.5rem;
-  object-fit: contain;
-  flex-shrink: 0;
-  filter: drop-shadow(3px 3px 0 var(--line));
-  animation: coin-wobble 4s ease-in-out infinite;
 }
 
 .arcade-banner__mascot {
@@ -2250,15 +2295,12 @@ label:has(input[type="radio"]:disabled) {
   }
 }
 
-.arcade-banner__text {
-  flex: 1 1 12rem;
-  min-width: 0;
-}
-
-.arcade-banner__text .lede {
+.arcade-banner > .lede {
   margin: 0;
+  border: 0;
   color: rgba(6, 61, 36, 0.8);
   line-height: 1.55;
+  text-shadow: none;
 }
 
 .under-construction-banner {
@@ -3606,26 +3648,22 @@ label:has(input[type="radio"]:disabled) {
   margin-top: 0.85rem;
 }
 
-.warbow-hero-actions__wallet {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 3px solid var(--line);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 4px 4px 0 var(--line);
+/* In-hero connect: compact padding + short label (header keeps full "Connect Wallet"); ~2× tap/read size vs the prior micro CTA. */
+.warbow-hero-actions > .wallet-action {
+  flex: 0 0 auto;
+  justify-self: center;
+  min-height: 4.1rem;
+  padding: 0.52rem 1.1rem;
+  font-size: 1.56rem;
+  border-width: 6px;
 }
 
-.warbow-hero-actions__eyebrow {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+.warbow-hero-actions > .wallet-action--connect .wallet-action__text-long {
+  display: none;
+}
+
+.warbow-hero-actions > .wallet-action--connect .wallet-action__text-short {
+  display: inline;
 }
 
 .warbow-hero-actions__grid {
@@ -3651,7 +3689,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .warbow-hero-card--steal {
-  grid-column: span 2;
+  grid-column: 1 / -1;
   background:
     radial-gradient(circle at top right, rgba(255, 111, 97, 0.26), transparent 42%),
     rgba(255, 255, 255, 0.84);
@@ -3663,6 +3701,47 @@ label:has(input[type="radio"]:disabled) {
     rgba(255, 255, 255, 0.84);
 }
 
+.warbow-hero-card--viewer-summary {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: min(100%, 22rem);
+  text-align: center;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.95rem;
+}
+
+.warbow-hero-viewer-summary__line {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+.warbow-hero-viewer-summary__line strong {
+  font-weight: 900;
+}
+
+/* Guard / Revenge: center copy + CTAs in the hero cards (steal keeps list alignment). */
+.warbow-hero-card:not(.warbow-hero-card--steal) {
+  text-align: center;
+  align-items: center;
+}
+
+.warbow-hero-card:not(.warbow-hero-card--steal) .warbow-hero-card__guard-inline {
+  justify-content: center;
+}
+
+.warbow-hero-card:not(.warbow-hero-card--steal) .warbow-hero-card__guard-inline > p.muted {
+  flex: 0 1 auto;
+  text-align: center;
+}
+
+.warbow-hero-card--steal > .warbow-hero-card__lede--tight {
+  text-align: center;
+}
+
 .warbow-hero-card__head {
   display: flex;
   align-items: baseline;
@@ -3670,6 +3749,41 @@ label:has(input[type="radio"]:disabled) {
   flex-wrap: wrap;
   gap: 0.75rem;
   min-width: 0;
+}
+
+.warbow-hero-card:not(.warbow-hero-card--steal) .warbow-hero-card__head {
+  justify-content: center;
+}
+
+.warbow-hero-card__guard-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.45rem 0.75rem;
+  min-width: 0;
+}
+
+.warbow-hero-card__guard-inline > p.muted {
+  margin: 0;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
+.warbow-hero-card__guard-inline .status-pill {
+  flex: 0 0 auto;
+}
+
+.warbow-hero-card__guard-timer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.warbow-hero-card__guard-inactive {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
 }
 
 .warbow-hero-card h3 {
@@ -3680,6 +3794,24 @@ label:has(input[type="radio"]:disabled) {
   overflow-wrap: anywhere;
 }
 
+/* Steal hero: single tight stack for eyebrow/title + two lede lines (avoids UA <p> margins + card gap doubling). */
+.warbow-hero-card__lede--tight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.warbow-hero-card__lede--tight .warbow-hero-card__head {
+  row-gap: 0.1rem;
+  column-gap: 0.75rem;
+}
+
+.warbow-hero-card__lede--tight > p.muted {
+  margin: 0;
+  line-height: 1.22;
+}
+
 .warbow-hero-card > * {
   min-width: 0;
 }
@@ -3687,6 +3819,24 @@ label:has(input[type="radio"]:disabled) {
 .warbow-hero-candidates {
   display: grid;
   gap: 0.45rem;
+}
+
+/* Steal targets: 1 col by default; 721–960px tablet 2 cols; 961px+ desktop 3 cols (aligns with 720px mobile + TimeCurve 960px). */
+@media (min-width: 721px) and (max-width: 960px) {
+  .warbow-hero-candidates.warbow-chasing-pack-scroll {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 961px) {
+  .warbow-hero-candidates.warbow-chasing-pack-scroll {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Guard + Revenge: ~2× the base 14rem min track so desktop cards match requested width (steal still spans full row). */
+  .page--timecurve .warbow-hero-actions__grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  }
 }
 
 .warbow-hero-candidate {
@@ -3714,6 +3864,105 @@ label:has(input[type="radio"]:disabled) {
   grid-column: 1 / -1;
   color: var(--text-muted);
   font-weight: 700;
+}
+
+.warbow-hero-candidate-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border: 3px solid var(--line);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 3px 3px 0 var(--line);
+  color: var(--text);
+  min-width: 0;
+}
+
+.warbow-hero-candidate-row__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.55rem;
+  align-items: start;
+}
+
+.warbow-hero-candidate-row__main {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.warbow-hero-candidate-row__guard-status {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.warbow-hero-candidate-row__guard-status--guarded {
+  color: #b42318;
+}
+
+.warbow-hero-candidate-row__guard-status--unguarded {
+  color: #137333;
+}
+
+.warbow-hero-candidate-row__bp-too-low {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #b42318;
+}
+
+.warbow-hero-candidate-row__guard-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.warbow-hero-candidate-row__guard-steals {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--text-muted);
+}
+
+.warbow-hero-candidate-row__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.45rem;
+}
+
+.warbow-hero-candidate-row__bypass {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.warbow-hero-candidate-row__steal {
+  flex: 0 0 auto;
+  min-width: 5.25rem;
+}
+
+/* Below 2× BP: muted static STEAL (no priority-bounce) */
+.warbow-hero-candidate-row__steal--prospect:disabled {
+  animation: none;
+  cursor: not-allowed;
+  background: linear-gradient(180deg, #e8e8e8, #cfcfcf);
+  color: #6b6b6b;
+  border-color: #9a9a9a;
+  box-shadow: 2px 2px 0 #9a9a9a;
+  opacity: 0.92;
+  filter: grayscale(0.35);
 }
 
 .warbow-hero-actions__mini-stats {
@@ -4285,14 +4534,6 @@ code {
     grid-template-columns: 1fr;
   }
 
-  .warbow-hero-card--steal {
-    grid-column: auto;
-  }
-
-  .warbow-hero-actions__wallet {
-    align-items: stretch;
-  }
-
   .warbow-hero-candidate {
     grid-template-columns: 1fr;
   }
@@ -4324,10 +4565,6 @@ code {
 
   .page--timecurve .warbow-hero-actions__grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
-  }
-
-  .page--timecurve .warbow-hero-card--steal {
-    grid-column: 1 / -1;
   }
 }
 
@@ -4454,17 +4691,13 @@ code {
   text-align: left;
 }
 
-/* Arena: Simple-style buy (left) · timer + live feed + CTA (right rail) */
-.timer-hero__split--arena-hub {
-  grid-template-columns: minmax(14rem, 1.1fr) minmax(12rem, 0.9fr);
-  align-items: stretch;
-}
-
-.timer-hero__arena-buy {
+/* Arena buy panel: page-level slot (outside timer-hero) */
+.timecurve-arena-buy-page {
   min-width: 0;
+  margin: 0 0 1.25rem;
 }
 
-.timer-hero__arena-buy .timecurve-panel--action {
+.timecurve-arena-buy-page .timecurve-panel--action {
   margin-bottom: 0;
 }
 
@@ -4582,7 +4815,7 @@ code {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
 }
 
-.timer-hero__arena-buy .timecurve-simple__rate-value--hero {
+.timecurve-arena-buy-page .timecurve-simple__rate-value--hero {
   font-size: clamp(2.05rem, 5vw, 3.25rem);
 }
 
@@ -4615,7 +4848,7 @@ code {
 }
 
 .timecurve-arena-buy-panel__checkout-head span,
-.timecurve-arena-buy-panel__effects-title {
+.timecurve-buy-projected-effects__title {
   display: block;
   margin: 0;
   font-size: 0.72rem;
@@ -4745,7 +4978,7 @@ input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   color: var(--arcade-green-900);
 }
 
-.timecurve-arena-buy-panel__effects {
+.timecurve-buy-projected-effects {
   display: grid;
   gap: 0.45rem;
   padding: 0.62rem 0.68rem;
@@ -4754,20 +4987,20 @@ input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.62);
 }
 
-.timecurve-arena-buy-panel__effects-title {
+.timecurve-buy-projected-effects__head {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 }
 
-.timecurve-arena-buy-panel__effects-title img {
+.timecurve-buy-projected-effects__head img {
   width: 1.1rem;
   height: 1.1rem;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-.timecurve-arena-buy-panel__effects ul {
+.timecurve-buy-projected-effects ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -4776,7 +5009,7 @@ input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   padding: 0;
 }
 
-.timecurve-arena-buy-panel__effects li {
+.timecurve-buy-projected-effects li {
   margin: 0;
   padding: 0.26rem 0.48rem;
   border: 2px solid rgba(11, 31, 20, 0.18);
@@ -4786,6 +5019,10 @@ input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.1;
+}
+
+.timecurve-simple__buy-projected-effects {
+  margin-top: 0.55rem;
 }
 
 @media (max-width: 720px) {
@@ -5251,9 +5488,6 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-columns: 1fr;
   }
 
-  .timer-hero__split--arena-hub {
-    grid-template-columns: 1fr;
-  }
 }
 .timer-hero__label {
   font-size: 0.875rem;
@@ -6291,6 +6525,13 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .timecurve-subnav {
   margin: 0 0 1rem;
+}
+
+@media (min-width: 721px) {
+  /* Tighter gap below the pinned dense header to the BUY / ARENA / AUDIT strip. */
+  .app-main.app-main--timecurve {
+    padding-top: 0.5rem;
+  }
 }
 
 .timecurve-subnav__list {
@@ -8355,6 +8596,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .timecurve-simple__amount-token-dropdown {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -8364,7 +8606,7 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-inline-start: auto;
 }
 
-.timecurve-simple__amount-token-dropdown:has(.timecurve-simple__amount-token-select:disabled) {
+.timecurve-simple__amount-token-dropdown:has(.timecurve-simple__amount-token-combobox:disabled) {
   cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
 }
 
@@ -8373,11 +8615,15 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
 }
 
-.timecurve-simple__amount-token-select {
-  max-width: 6.25rem;
+.timecurve-simple__amount-token-combobox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  max-width: 7.5rem;
   margin: 0;
   padding: 0.12rem 0.15rem;
   border: 0;
+  border-radius: 0.35rem;
   font: inherit;
   font-weight: 700;
   font-size: 0.85rem;
@@ -8387,9 +8633,62 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.2;
 }
 
-.timecurve-simple__amount-token-select:disabled {
+.timecurve-simple__amount-token-combobox-label {
+  flex-shrink: 0;
+}
+
+.timecurve-simple__amount-token-combobox-chevron {
+  display: flex;
+  align-items: center;
+  margin-inline-start: 0.05rem;
+  color: var(--text-main);
+  opacity: 0.72;
+}
+
+.timecurve-simple__amount-token-combobox:disabled {
   cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
   opacity: 0.62;
+}
+
+.timecurve-simple__amount-token-list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 3px);
+  right: 0;
+  min-width: 100%;
+  padding: 0.2rem;
+  margin: 0;
+  list-style: none;
+  border: 2px solid var(--arcade-green-700);
+  border-radius: 0.55rem;
+  background: #fff;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.12);
+}
+
+.timecurve-simple__amount-token-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.32rem 0.45rem;
+  border: 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  text-align: start;
+  background: transparent;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.timecurve-simple__amount-token-option:hover {
+  background: rgba(40, 90, 40, 0.08);
+}
+
+.timecurve-simple__amount-token-option--active {
+  background: rgba(40, 90, 40, 0.12);
 }
 
 .timecurve-simple__pay-balance {
@@ -8671,6 +8970,114 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.12));
   image-rendering: pixelated;
+}
+
+/* Rate row: pay token icon + chevron open a menu portaled to `document.body`
+   (buy panel uses overflow:hidden + isolation — in-tree fixed menus could clip
+   or stack oddly). */
+.timecurve-simple__rate-pay-picker {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.timecurve-simple__rate-pay-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  margin: 0;
+  padding: 0.08rem 0.12rem 0.08rem 0.06rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.timecurve-simple__rate-pay-picker-trigger:hover .timecurve-simple__rate-pay-logo {
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.22)) brightness(1.05);
+}
+
+.timecurve-simple__rate-pay-picker-chevron {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline-start: 0.02rem;
+  color: rgba(60, 40, 0, 0.55);
+  opacity: 0.88;
+  transition: transform 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.timecurve-simple__rate-pay-picker-trigger:hover .timecurve-simple__rate-pay-picker-chevron {
+  color: rgba(40, 28, 0, 0.72);
+  opacity: 1;
+}
+
+.timecurve-simple__rate-pay-picker-trigger[aria-expanded="true"] .timecurve-simple__rate-pay-picker-chevron {
+  transform: rotate(180deg);
+  color: rgba(40, 28, 0, 0.78);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timecurve-simple__rate-pay-picker-chevron {
+    transition: none;
+  }
+}
+
+.timecurve-simple__rate-pay-picker-menu {
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem;
+  margin: 0;
+  border: 2px solid rgba(40, 90, 40, 0.45);
+  border-radius: 0.55rem;
+  background: rgba(255, 253, 246, 0.98);
+  box-shadow:
+    4px 4px 0 rgba(40, 90, 40, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.timecurve-simple__rate-pay-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(60, 40, 0, 0.88);
+  cursor: pointer;
+  text-align: left;
+}
+
+.timecurve-simple__rate-pay-picker-option:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.timecurve-simple__rate-pay-picker-option--active {
+  background: rgba(241, 251, 233, 0.95);
+  color: var(--arcade-green-800, #166534);
+}
+
+.timecurve-simple__rate-pay-picker-option img {
+  flex-shrink: 0;
+  object-fit: contain;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.1));
+}
+
+.timecurve-simple__rate-pay-picker-label {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* Pay-asset toggle on the live rate row (CL8Y / ETH / USDM). */
@@ -9286,9 +9693,23 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: grayscale(0.45) brightness(0.96);
 }
 
+/* Simple BUY — wallet on buy cooldown: read as inert (no arcade lift / coin
+   wobble; stronger grey vs default disabled alone). */
+.timecurve-simple__cta--arcade.timecurve-simple__cta--cooldown:disabled {
+  opacity: 0.48;
+  filter: grayscale(0.78) brightness(0.88);
+  box-shadow: 3px 3px 0 var(--line);
+  text-shadow: none;
+}
+
+.timecurve-simple__cta--arcade.timecurve-simple__cta--cooldown:disabled .timecurve-simple__cta-glyph {
+  animation: none;
+  filter: drop-shadow(1px 1px 0 var(--line));
+}
+
 /* Arena BUY CHARM — GitLab #194: wrong-network must read as disabled (arcade
    lever + gold panel chrome stay high-contrast under the #95 barrier overlay). */
-.timer-hero__arena-buy .chain-write-gate__overlay {
+.timecurve-arena-buy-page .chain-write-gate__overlay {
   z-index: 40;
 }
 
@@ -9322,9 +9743,9 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Connect-wallet pitch box — lifts the "Connect a wallet to mint CHARM…"
-   prompt out of the regular paragraph rhythm so newbies see it as the
-   gate-keeper to the BUY action, not as quiet body copy. */
+/* Connect-wallet pitch box — lifts the connect pitch out of the regular
+   paragraph rhythm so newbies see it as the gate-keeper to the BUY action,
+   not as quiet body copy. */
 .timecurve-simple__connect-pitch {
   margin: 0;
   padding: 0.6rem 0.85rem;
@@ -9422,14 +9843,11 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-/* Scene backplate inside .arcade-banner (PageHero). The text overlay
- * (`.arcade-banner__text`) gets a subtle white scrim so the lede stays
- * readable against busy art (issue #45 scenes are vivid by design). */
-.arcade-banner {
-  overflow: hidden;
-}
+/* Scene backplate inside .arcade-banner (PageHero). A subtle white scrim
+ * on the whole banner keeps copy readable against busy art (issue #45). */
 .arcade-banner--with-scene {
   background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5)),
     var(--panel-gloss),
     linear-gradient(135deg, rgba(255, 229, 102, 0.55), rgba(31, 184, 106, 0.4));
 }
@@ -9449,15 +9867,276 @@ a.podium-address-explorer:hover .address-inline__label {
   position: relative;
   z-index: 1;
 }
-.arcade-banner--with-scene .arcade-banner__text {
+
+.arcade-banner--warbow-gradient {
+  /* Opaque animated color field; overlays below only tint this solid base. */
+  --warbow-banner-base: #ecfdf1;
   background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.78),
-    rgba(255, 255, 255, 0.62)
+    118deg,
+    rgb(0, 132, 75) 0%,
+    rgb(255, 204, 37) 16%,
+    rgb(255, 94, 150) 34%,
+    rgb(94, 200, 255) 52%,
+    rgb(255, 130, 60) 70%,
+    rgb(17, 214, 116) 86%,
+    rgb(183, 54, 27) 100%
   );
-  border: 2px solid rgba(11, 31, 20, 0.18);
-  border-radius: 0.75rem;
-  padding: 0.55rem 0.75rem;
+  background-size: 340% 340%;
+  animation: warbow-banner-gradient 18s ease-in-out infinite alternate;
+  isolation: isolate;
+}
+
+/* Animated mesh lighting over the opaque gradient. */
+.arcade-banner--warbow-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 78% 58% at 18% 16%, rgba(255, 232, 115, 0.78) 0%, rgba(250, 236, 190, 0.42) 38%, rgba(236, 253, 241, 0) 74%),
+    radial-gradient(ellipse 72% 56% at 84% 20%, rgba(42, 215, 140, 0.74) 0%, rgba(190, 246, 215, 0.38) 44%, rgba(236, 253, 241, 0) 78%),
+    radial-gradient(ellipse 62% 58% at 56% 90%, rgba(255, 118, 72, 0.62) 0%, rgba(255, 214, 195, 0.34) 40%, rgba(236, 253, 241, 0) 76%);
+  background-size:
+    130% 130%,
+    125% 125%,
+    120% 120%;
+  background-repeat: no-repeat;
+  animation: warbow-banner-mesh 22s ease-in-out infinite alternate;
+}
+
+/* WarBow arena plate: symmetric vertical inset — `.page-hero__actions` keeps the standard
+ * `PageHeroHeading` offset elsewhere; here only particles precede actions and they are
+ * absolutely positioned (empty first grid track), so row-gap + margin stacked as top air.
+ * `.warbow-hero-actions` repeats a top inset; the banner padding already frames the plate. */
+.arcade-banner--warbow-gradient > .page-hero__actions {
+  margin-top: 0;
+}
+
+.arcade-banner--warbow-gradient:not(:has(> .lede)):not(:has(> .arcade-banner__coin)) {
+  row-gap: 0;
+}
+
+.arcade-banner--warbow-gradient .warbow-hero-actions {
+  margin-top: 0;
+}
+
+.arcade-banner--warbow-gradient::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(236, 252, 232, 0.08)),
+    radial-gradient(circle at 50% 100%, rgba(0, 83, 46, 0.16), rgba(236, 253, 241, 0) 42%);
+  opacity: 1;
+}
+
+.arcade-banner--warbow-gradient > :not(.arcade-banner__particles) {
+  position: relative;
+  z-index: 2;
+}
+
+.arcade-banner__particles {
+  position: absolute;
+  inset: -4% -2%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.arcade-banner__particle {
+  position: absolute;
+  width: clamp(2rem, 4.6vw, 4.2rem);
+  height: auto;
+  opacity: 0.34;
+  filter: drop-shadow(0 0.32rem 0 rgba(6, 31, 28, 0.18)) saturate(1.08);
+  mix-blend-mode: multiply;
+  transform-origin: center;
+  animation: warbow-particle-float-a 14s ease-in-out infinite;
+}
+
+.arcade-banner__particle:nth-child(1) {
+  top: 3%;
+  left: 5%;
+  width: clamp(2.4rem, 5vw, 4.8rem);
+  animation-duration: 17s;
+  animation-delay: -3.5s;
+}
+
+.arcade-banner__particle:nth-child(2) {
+  top: 10%;
+  left: 42%;
+  opacity: 0.25;
+  animation-name: warbow-particle-float-b;
+  animation-duration: 22s;
+  animation-delay: -11s;
+}
+
+.arcade-banner__particle:nth-child(3) {
+  top: 4%;
+  right: 8%;
+  width: clamp(2.2rem, 4.8vw, 4.5rem);
+  opacity: 0.29;
+  animation-name: warbow-particle-float-c;
+  animation-duration: 19s;
+  animation-delay: -7s;
+}
+
+.arcade-banner__particle:nth-child(4) {
+  top: 26%;
+  left: 14%;
+  width: clamp(1.9rem, 3.8vw, 3.6rem);
+  opacity: 0.2;
+  animation-name: warbow-particle-float-c;
+  animation-duration: 24s;
+  animation-delay: -14s;
+}
+
+.arcade-banner__particle:nth-child(5) {
+  top: 31%;
+  right: 18%;
+  width: clamp(2.6rem, 5.2vw, 5rem);
+  opacity: 0.27;
+  animation-name: warbow-particle-float-b;
+  animation-duration: 16s;
+  animation-delay: -6s;
+}
+
+.arcade-banner__particle:nth-child(6) {
+  top: 48%;
+  left: 3%;
+  opacity: 0.22;
+  animation-duration: 21s;
+  animation-delay: -15s;
+}
+
+.arcade-banner__particle:nth-child(7) {
+  top: 58%;
+  right: 6%;
+  width: clamp(2rem, 4vw, 3.9rem);
+  opacity: 0.24;
+  animation-name: warbow-particle-float-c;
+  animation-duration: 18s;
+  animation-delay: -9s;
+}
+
+.arcade-banner__particle:nth-child(8) {
+  bottom: 11%;
+  left: 24%;
+  width: clamp(2.2rem, 4.4vw, 4.2rem);
+  opacity: 0.2;
+  animation-name: warbow-particle-float-b;
+  animation-duration: 27s;
+  animation-delay: -18s;
+}
+
+.arcade-banner__particle:nth-child(9) {
+  right: 33%;
+  bottom: 4%;
+  opacity: 0.23;
+  animation-duration: 20s;
+  animation-delay: -12s;
+}
+
+.arcade-banner__particle:nth-child(10) {
+  right: 2%;
+  bottom: 23%;
+  width: clamp(1.8rem, 3.6vw, 3.4rem);
+  opacity: 0.18;
+  animation-name: warbow-particle-float-b;
+  animation-duration: 25s;
+  animation-delay: -20s;
+}
+
+.arcade-banner__particle:nth-child(11) {
+  left: 48%;
+  bottom: 27%;
+  width: clamp(1.9rem, 3.8vw, 3.7rem);
+  opacity: 0.18;
+  animation-name: warbow-particle-float-c;
+  animation-duration: 23s;
+  animation-delay: -5s;
+}
+
+.arcade-banner__particle:nth-child(12) {
+  left: 7%;
+  bottom: 1%;
+  width: clamp(2rem, 4vw, 3.8rem);
+  opacity: 0.21;
+  animation-duration: 28s;
+  animation-delay: -16s;
+}
+
+/* WarBow arena plate: default `arcade-banner--with-sidekick` reserves a wide right gutter for
+ * floating mascots; the ladder sits low, so the steal grid read as a left-heavy strip with dead air. */
+.arcade-banner--warbow-gradient.arcade-banner--with-sidekick {
+  padding-right: 1.15rem;
+}
+
+@keyframes warbow-banner-gradient {
+  0% {
+    background-position: 3% 45%;
+  }
+  100% {
+    background-position: 97% 55%;
+  }
+}
+
+@keyframes warbow-banner-mesh {
+  0% {
+    background-position:
+      6% 4%,
+      94% 8%,
+      48% 96%;
+  }
+  100% {
+    background-position:
+      22% 28%,
+      72% 36%,
+      58% 72%;
+  }
+}
+
+@keyframes warbow-particle-float-a {
+  0%,
+  100% {
+    transform: translate3d(-0.35rem, 0.25rem, 0) rotate(-8deg) scale(0.96);
+  }
+  42% {
+    transform: translate3d(0.7rem, -0.85rem, 0) rotate(6deg) scale(1.05);
+  }
+  68% {
+    transform: translate3d(0.15rem, 0.5rem, 0) rotate(13deg) scale(1);
+  }
+}
+
+@keyframes warbow-particle-float-b {
+  0%,
+  100% {
+    transform: translate3d(0.45rem, 0.6rem, 0) rotate(10deg) scale(0.94);
+  }
+  36% {
+    transform: translate3d(-0.9rem, -0.45rem, 0) rotate(-12deg) scale(1.04);
+  }
+  74% {
+    transform: translate3d(0.25rem, -1rem, 0) rotate(4deg) scale(0.98);
+  }
+}
+
+@keyframes warbow-particle-float-c {
+  0%,
+  100% {
+    transform: translate3d(-0.15rem, -0.45rem, 0) rotate(4deg) scale(1);
+  }
+  48% {
+    transform: translate3d(0.95rem, 0.4rem, 0) rotate(-15deg) scale(0.92);
+  }
+  82% {
+    transform: translate3d(-0.55rem, 0.95rem, 0) rotate(9deg) scale(1.06);
+  }
 }
 
 /* Home hero <picture> wrapper keeps the existing .home-hero__art layout */
@@ -9559,6 +10238,12 @@ input[type="range"]:active {
   .arcade-banner__scene,
   .launch-countdown__scene {
     transition: none;
+  }
+
+  .arcade-banner--warbow-gradient,
+  .arcade-banner--warbow-gradient::before,
+  .arcade-banner__particle {
+    animation: none;
   }
 
   .loading-state img {

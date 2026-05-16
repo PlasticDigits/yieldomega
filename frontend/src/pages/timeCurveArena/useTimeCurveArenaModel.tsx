@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, parseUnits } from "viem";
@@ -11,14 +12,12 @@ import {
   useChainId,
   useReadContract,
   useReadContracts,
-  useWatchContractEvent,
   useWriteContract,
 } from "wagmi";
-import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
-import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
+import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
 import {
@@ -27,7 +26,6 @@ import {
   kumbayaQuoterV2Abi,
   kumbayaSwapRouterAbi,
   linearCharmPriceReadAbi,
-  timeCurveBuyEventAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
   weth9Abi,
@@ -61,7 +59,6 @@ import {
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
-import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
@@ -76,7 +73,6 @@ import {
 import {
   derivePhase,
   ledgerSecIntForPhase,
-  phaseBadge,
   phaseFlags,
   timecurveHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
@@ -84,7 +80,12 @@ import {
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
 import { PODIUM_HELP, PODIUM_LABELS } from "@/pages/timecurve/podiumCopy";
 import { type RankingRow } from "@/pages/timecurve/timecurveUi";
-import { usePodiumReads } from "@/pages/timecurve/usePodiumReads";
+import {
+  TIMECURVE_PODIUMS_QUERY_KEY,
+  usePodiumReads,
+  useWarbowBpMovingEventWatch,
+} from "@/pages/timecurve/usePodiumReads";
+import { useWarbowLeaderboardBpOverlay } from "@/pages/timecurve/warbowPodiumLive";
 import {
   kumbayaBandLowerWad,
   launchLiquidityAnchorWad,
@@ -97,12 +98,7 @@ import { wagmiConfig } from "@/wagmi-config";
 import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
 import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
-import {
-  buySpendEnvelopeFillRatio,
-  envelopeCurveParamsFromWire,
-  type EnvelopeCurveParamsWire,
-} from "@/lib/timeCurveBuyDisplay";
-import { buySizeColor } from "@/pages/timecurve/buySizeColor";
+import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   fetchTimecurveCharmRedemptions,
@@ -112,7 +108,7 @@ import {
   fetchTimecurvePrizePayouts,
   fetchReferralApplied,
   fetchTimecurveWarbowBattleFeed,
-  fetchTimecurveWarbowLeaderboard,
+  fetchTimecurveWarbowLeaderboardAll,
   fetchWarbowPendingRevenge,
   type CharmRedemptionItem,
   type BuyItem,
@@ -126,15 +122,13 @@ import {
 } from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import {
-  CL8Y_USD_PRICE_PLACEHOLDER,
   clampBigint,
-  describeBurstBand,
   formatPodiumLeaderboardValue,
   mergeBuysNewestFirst,
   type ContractReadRow,
 } from "./arenaPageHelpers";
 import { TimeCurveArenaWalletMono } from "./TimeCurveArenaWalletMono";
-import type { WarbowStealCandidate } from "./WarbowHeroActions";
+import type { WarbowStealCandidate, WarbowStealHeroRow } from "./WarbowHeroActions";
 import { warbowLeaderboardForChasingPackDisplay } from "./warbowChasingPackLeaderboard";
 import {
   WARBOW_STEAL_VICTIM_EMPTY_ATTEMPT,
@@ -150,6 +144,7 @@ export function useTimeCurveArenaModel() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const tc = addresses.timeCurve;
+  const queryClient = useQueryClient();
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
   const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
   const [indexerNote, setIndexerNote] = useState<string | null>(null);
@@ -171,6 +166,8 @@ export function useTimeCurveArenaModel() {
   const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
   const [stealVictimInput, setStealVictimInput] = useState("");
   const [stealBypass, setStealBypass] = useState(false);
+  /** Per-victim bypass opt-in for hero STEAL rows when that victim is at the UTC-day receive cap. */
+  const [stealBypassByVictimAddr, setStealBypassByVictimAddr] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setArenaWarbowStealFormErr(null);
@@ -201,18 +198,18 @@ export function useTimeCurveArenaModel() {
   const warbowIndexerFetchSeqRef = useRef(0);
   const refreshWarbowIndexerAggregates = useCallback(async () => {
     const seq = ++warbowIndexerFetchSeqRef.current;
-    const [lb, fd] = await Promise.all([
-      fetchTimecurveWarbowLeaderboard(12, 0),
+    const [lbItems, fd] = await Promise.all([
+      fetchTimecurveWarbowLeaderboardAll(),
       fetchTimecurveWarbowBattleFeed(20, 0),
     ]);
     if (seq !== warbowIndexerFetchSeqRef.current) {
       return;
     }
-    const ok = lb != null && fd != null;
+    const ok = lbItems != null && fd != null;
     if (indexerBaseUrl()) {
       reportIndexerFetchAttempt(ok);
     }
-    setWarbowLb(lb?.items ?? null);
+    setWarbowLb(lbItems);
     setWarbowFeed(fd?.items ?? null);
   }, []);
 
@@ -408,7 +405,7 @@ export function useTimeCurveArenaModel() {
         if (!cancelled && indexerBaseUrl()) {
           scheduleLoop();
         }
-      }, getIndexerBackoffPollMs(5000));
+      }, getIndexerBackoffPollMs(1500));
     };
 
     void (async () => {
@@ -592,17 +589,23 @@ export function useTimeCurveArenaModel() {
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
-  useWatchContractEvent({
-    address: tc,
-    abi: timeCurveBuyEventAbi,
-    eventName: "Buy",
-    enabled: Boolean(tc),
-    onLogs: () => {
-      void refetchCoreTc();
+  useEffect(() => {
+    if (tc && address && latestBlock?.number !== undefined) {
       void refetchUserSale();
-      void loadHeroTimer();
-    },
-  });
+    }
+  }, [tc, address, latestBlock?.number, latestBlock?.timestamp, refetchUserSale]);
+
+  const onWarbowBpMovingEvent = useCallback(() => {
+    void refetchCoreTc();
+    void refetchUserSale();
+    void loadHeroTimer();
+    void refreshWarbowIndexerAggregates();
+    if (indexerBaseUrl()) {
+      void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
+    }
+  }, [refetchCoreTc, refetchUserSale, loadHeroTimer, refreshWarbowIndexerAggregates, queryClient]);
+
+  useWarbowBpMovingEventWatch(tc, onWarbowBpMovingEvent);
 
   const stealVictim =
     stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
@@ -616,21 +619,21 @@ export function useTimeCurveArenaModel() {
 
   const utcDayId = BigInt(Math.floor(ledgerSecInt / 86_400));
 
-  const { data: victimStealsToday } = useReadContract({
+  const { data: victimStealsToday, refetch: refetchVictimStealsToday } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "stealsReceivedOnDay",
     args: stealVictim && tc ? [stealVictim, utcDayId] : undefined,
     query: { enabled: Boolean(tc && stealVictim) },
   });
-  const { data: attackerStealsToday } = useReadContract({
+  const { data: attackerStealsToday, refetch: refetchAttackerStealsToday } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "stealsCommittedByAttackerOnDay",
     args: address && tc ? [address, utcDayId] : undefined,
     query: { enabled: Boolean(tc && address) },
   });
-  const { data: victimBattlePoints } = useReadContract({
+  const { data: victimBattlePoints, refetch: refetchVictimBattlePoints } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "battlePoints",
@@ -1416,7 +1419,7 @@ export function useTimeCurveArenaModel() {
   }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
 
   const chainNowForCooldown =
-    heroChainNowSec !== undefined ? heroChainNowSec : Math.floor(blockChainSec);
+    heroChainNowSec === undefined ? ledgerSecInt : Math.min(heroChainNowSec, ledgerSecInt);
 
   const walletCooldownRemainingSec = useMemo(() => {
     if (!saleActive || !isConnected || nextBuyAllowedAtR?.status !== "success") {
@@ -1443,9 +1446,6 @@ export function useTimeCurveArenaModel() {
         )
       : undefined;
   const { saleEnded, timerExpiredAwaitingEnd } = arenaFlags;
-  // Single source of truth for the sale-phase badge: shared with the Simple
-  // and Protocol views so wording / tones / icons never drift between pages.
-  const arenaPhaseBadge = phaseBadge(arenaPhase);
 
   const warbowPodiumWalletList = useMemo((): readonly `0x${string}`[] | undefined => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -1492,9 +1492,11 @@ export function useTimeCurveArenaModel() {
   const dotMegaNameByAddress = useDotMegaNameMap(dotMegaAddressList);
   const formatWallet = useMemo(() => walletDisplayFromMap(dotMegaNameByAddress), [dotMegaNameByAddress]);
 
+  const warbowLbLive = useWarbowLeaderboardBpOverlay(tc, warbowLb);
+
   const warbowRank =
-    address && warbowLb
-      ? warbowLb.findIndex((row) => sameAddress(row.buyer, address)) + 1 || null
+    address && warbowLbLive
+      ? warbowLbLive.findIndex((row) => sameAddress(row.buyer, address)) + 1 || null
       : null;
   const warbowTopRows: RankingRow[] = useMemo(() => {
     if (warbowLadderPodiumR?.status !== "success") {
@@ -1516,7 +1518,7 @@ export function useTimeCurveArenaModel() {
 
   const warbowLeaderboardRows: RankingRow[] = useMemo(
     () =>
-      warbowLeaderboardForChasingPackDisplay(warbowLb).map((row, index) => ({
+      warbowLeaderboardForChasingPackDisplay(warbowLbLive).map((row, index) => ({
         key: `warbow-indexer-${row.buyer}`,
         rank: index + 1,
         label: <TimeCurveArenaWalletMono addr={row.buyer} formatWallet={formatWallet} />,
@@ -1526,7 +1528,7 @@ export function useTimeCurveArenaModel() {
         value: `${formatLocaleInteger(BigInt(row.battle_points_after))} BP`,
         highlight: sameAddress(row.buyer, address),
       })),
-    [warbowLb, formatWallet, address],
+    [warbowLbLive, formatWallet, address],
   );
   const warbowStealCandidates: WarbowStealCandidate[] = useMemo(() => {
     const candidates = new Map<string, WarbowStealCandidate>();
@@ -1571,7 +1573,7 @@ export function useTimeCurveArenaModel() {
       });
     }
 
-    (warbowLb ?? []).forEach((row, index) => {
+    (warbowLbLive ?? []).forEach((row, index) => {
       const bp = BigInt(row.battle_points_after);
       if (canSuggest(row.buyer, bp)) {
         addCandidate({
@@ -1583,25 +1585,163 @@ export function useTimeCurveArenaModel() {
       }
     });
 
-    return [...candidates.values()]
-      .sort((a, b) => {
-        const bpA = BigInt(a.battlePoints);
-        const bpB = BigInt(b.battlePoints);
-        if (bpA === bpB) return a.rank - b.rank;
-        return bpA > bpB ? -1 : 1;
-      })
-      .slice(0, 5);
-  }, [address, viewerBattlePoints, warbowLadderPodiumR, warbowLb]);
+    return [...candidates.values()].sort((a, b) => {
+      const bpA = BigInt(a.battlePoints);
+      const bpB = BigInt(b.battlePoints);
+      if (bpA === bpB) return a.rank - b.rank;
+      return bpA > bpB ? -1 : 1;
+    });
+  }, [address, viewerBattlePoints, warbowLadderPodiumR, warbowLbLive]);
 
-  const refetchAll = useCallback(() => {
-    void refetch();
-    void refetchUserSale();
+  /** Up to 10 leaderboard wallets below the 2× BP steal threshold (discovery-only hero rows). */
+  const warbowStealProspectCandidates: WarbowStealCandidate[] = useMemo(() => {
+    const viewerBp = viewerBattlePoints;
+    if (viewerBp === undefined || viewerBp <= 0n) {
+      return [];
+    }
+    const threshold = viewerBp * 2n;
+    const stealKeys = new Set(warbowStealCandidates.map((c) => c.address.toLowerCase()));
+    const seen = new Set<string>();
+    const out: WarbowStealCandidate[] = [];
+
+    function tryPush(row: {
+      address: string | undefined;
+      bp: bigint;
+      rank: number;
+      source: "contract" | "indexer";
+    }) {
+      if (out.length >= 10) {
+        return;
+      }
+      const addr = row.address;
+      if (!addr || !isAddress(addr as `0x${string}`) || sameAddress(addr, ZERO_ADDR) || sameAddress(addr, address)) {
+        return;
+      }
+      const k = addr.toLowerCase();
+      if (stealKeys.has(k) || seen.has(k)) {
+        return;
+      }
+      if (row.bp <= 0n || row.bp >= threshold) {
+        return;
+      }
+      seen.add(k);
+      out.push({
+        address: addr as `0x${string}`,
+        battlePoints: row.bp.toString(),
+        rank: row.rank,
+        source: row.source,
+      });
+    }
+
+    (warbowLbLive ?? []).forEach((row, index) => {
+      tryPush({
+        address: row.buyer,
+        bp: BigInt(row.battle_points_after),
+        rank: index + 1,
+        source: "indexer",
+      });
+    });
+
+    if (warbowLadderPodiumR?.status === "success") {
+      const [wallets, values] = warbowLadderPodiumR.result as readonly [
+        readonly `0x${string}`[],
+        readonly bigint[],
+      ];
+      wallets.forEach((wallet, index) => {
+        tryPush({
+          address: wallet,
+          bp: values[index] ?? 0n,
+          rank: index + 1,
+          source: "contract",
+        });
+      });
+    }
+
+    return out;
+  }, [address, viewerBattlePoints, warbowLbLive, warbowLadderPodiumR, warbowStealCandidates]);
+
+  const warbowStealHeroReadCandidates = useMemo(
+    () => [...warbowStealCandidates, ...warbowStealProspectCandidates],
+    [warbowStealCandidates, warbowStealProspectCandidates],
+  );
+
+  const stealCandidateContracts = useMemo(() => {
+    if (!tc || warbowStealHeroReadCandidates.length === 0) {
+      return [];
+    }
+    return warbowStealHeroReadCandidates.flatMap((c) => [
+      {
+        address: tc,
+        abi: timeCurveReadAbi,
+        functionName: "battlePoints" as const,
+        args: [c.address],
+      },
+      {
+        address: tc,
+        abi: timeCurveReadAbi,
+        functionName: "stealsReceivedOnDay" as const,
+        args: [c.address, utcDayId],
+      },
+      {
+        address: tc,
+        abi: timeCurveReadAbi,
+        functionName: "warbowGuardUntil" as const,
+        args: [c.address],
+      },
+    ]);
+  }, [tc, utcDayId, warbowStealHeroReadCandidates]);
+
+  const { data: stealCandidateReadsRaw } = useReadContracts({
+    contracts: stealCandidateContracts,
+    query: {
+      enabled: Boolean(tc && stealCandidateContracts.length > 0),
+      refetchInterval: 12_000,
+    },
+  });
+
+  const stealCandidateOnchainByAddr = useMemo(() => {
+    const m = new Map<string, { bp?: bigint; steals?: bigint; guardUntil?: bigint }>();
+    if (!stealCandidateReadsRaw?.length || !warbowStealHeroReadCandidates.length) {
+      return m;
+    }
+    warbowStealHeroReadCandidates.forEach((c, i) => {
+      const bpR = stealCandidateReadsRaw[i * 3];
+      const stR = stealCandidateReadsRaw[i * 3 + 1];
+      const gR = stealCandidateReadsRaw[i * 3 + 2];
+      const key = c.address.toLowerCase();
+      const bp = bpR?.status === "success" ? (bpR.result as bigint) : undefined;
+      const steals = stR?.status === "success" ? (stR.result as bigint) : undefined;
+      const guardUntil = gR?.status === "success" ? (gR.result as bigint) : undefined;
+      m.set(key, { bp, steals, guardUntil });
+    });
+    return m;
+  }, [stealCandidateReadsRaw, warbowStealHeroReadCandidates]);
+
+  const refetchAll = useCallback(async () => {
+    await Promise.all([
+      refetchCoreTc(),
+      refetchWarbowPolicy(),
+      refetchUserSale(),
+      refetchAttackerStealsToday(),
+      refetchVictimStealsToday(),
+      refetchVictimBattlePoints(),
+    ]);
     loadPendingRevenge();
     void refreshWarbowIndexerAggregates();
     if (address && indexerBaseUrl()) {
       void fetchTimecurveBuyerStats(address).then(setBuyerStats);
     }
-  }, [refetch, refetchUserSale, address, loadPendingRevenge, refreshWarbowIndexerAggregates]);
+  }, [
+    refetchCoreTc,
+    refetchWarbowPolicy,
+    refetchUserSale,
+    refetchAttackerStealsToday,
+    refetchVictimStealsToday,
+    refetchVictimBattlePoints,
+    address,
+    loadPendingRevenge,
+    refreshWarbowIndexerAggregates,
+  ]);
 
   const expectedTokenFromCharms = useMemo(() => {
     if (ended?.status !== "success" || !ended.result) {
@@ -1700,51 +1840,6 @@ export function useTimeCurveArenaModel() {
     [deadlineSecondsRemaining, timerExtensionPreview],
   );
 
-  const totalRaiseDisplay = useMemo(() => {
-    if (totalRaised?.status !== "success") {
-      return { cl8y: "—" as const, usd: "—" as const };
-    }
-    const raw = totalRaised.result as bigint;
-    const human = Number(formatUnits(raw, decimals));
-    if (!Number.isFinite(human)) {
-      return { cl8y: "—" as const, usd: "—" as const };
-    }
-    const cl8y = human.toLocaleString(undefined, { maximumFractionDigits: 6 });
-    const usd = (human * CL8Y_USD_PRICE_PLACEHOLDER).toLocaleString(undefined, {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    });
-    return { cl8y, usd };
-  }, [totalRaised, decimals]);
-
-  const totalRaiseSerialized =
-    totalRaised?.status === "success" ? String(totalRaised.result as bigint) : undefined;
-  const totalRaiseCl8yObservedAtMs = useLastObservedAtForSerializedDep(totalRaiseSerialized);
-
-  const confettiGuide = useMemo(() => {
-    const latestBuy = buys?.[0];
-    if (!latestBuy) {
-      return null;
-    }
-    const envParsed = buyEnvelopeParams ? envelopeCurveParamsFromWire(buyEnvelopeParams) : null;
-    const ratio = envParsed ? buySpendEnvelopeFillRatio(latestBuy, envParsed) : null;
-    const amountLabel = `${formatCompactFromRaw(latestBuy.amount, decimals, { sigfigs: 3 })} CL8Y`;
-    const color = ratio === null ? (timerNarrative.tone === "critical" ? "#ef4444" : "#fde68a") : buySizeColor(ratio);
-    const eventDetail =
-      latestBuy.timer_hard_reset === true
-        ? "hard reset burst"
-        : latestBuy.actual_seconds_added?.trim()
-          ? `+${latestBuy.actual_seconds_added.trim()}s burst`
-          : "new buy burst";
-    return {
-      color,
-      bandLabel: describeBurstBand(ratio),
-      latestLabel: `${amountLabel} · ${eventDetail}`,
-      help: "Confetti color tracks buy size from blue min-band buys to red near-max buys.",
-    };
-  }, [buys, buyEnvelopeParams, decimals, timerNarrative.tone]);
-
   const warbowPlacementGap = useMemo(() => {
     if (
       battlePtsR?.status !== "success" ||
@@ -1761,144 +1856,6 @@ export function useTimeCurveArenaModel() {
     }
     return third - currentBp + 1n;
   }, [address, battlePtsR, warbowLadderPodiumR]);
-
-  const whatMattersNowCards = useMemo(() => {
-    if (timerExpiredAwaitingEnd && !saleEnded) {
-      return [
-        {
-          label: "Round state",
-          value: "End sale first",
-          meta: "The live timer is past deadline, but `TimeCurve.ended()` is still false. Anyone can call endSale to unlock charm redemption and owner prize flows.",
-        },
-        {
-          label: "Your claim (preview)",
-          value:
-            expectedTokenFromCharms !== undefined ? (
-              <AmountDisplay raw={expectedTokenFromCharms.toString()} decimals={18} />
-            ) : (
-              "—"
-            ),
-          meta: "Projected DOUB from charm weight — Redeem charms works only after End sale succeeds onchain.",
-        },
-        {
-          label: "Podium pool",
-          value:
-            podiumPoolBal !== undefined ? (
-              <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
-            ) : (
-              "—"
-            ),
-          meta: distributeHint,
-        },
-      ];
-    }
-
-    if (saleEnded) {
-      return [
-        {
-          label: "Round state",
-          value: "Redeem and settle",
-          meta: claimHint ?? "Charm holders can redeem launched tokens while podium payouts get finalized.",
-        },
-        {
-          label: "Your claim",
-          value:
-            expectedTokenFromCharms !== undefined ? (
-              <AmountDisplay raw={expectedTokenFromCharms.toString()} decimals={18} />
-            ) : (
-              "—"
-            ),
-          meta: "Projected launched-token redemption from your current charm weight.",
-        },
-        {
-          label: "Podium pool",
-          value:
-            podiumPoolBal !== undefined ? (
-              <AmountDisplay raw={(podiumPoolBal as bigint).toString()} decimals={decimals} />
-            ) : (
-              "—"
-            ),
-          meta: distributeHint,
-        },
-      ];
-    }
-
-    return [
-      {
-        label: "What matters now",
-        value:
-          canClaimWarBowFlag
-            ? "Claim your flag"
-            : hasRevengeOpen
-              ? "Take revenge"
-              : saleActive &&
-                  deadlineSecondsRemaining !== undefined &&
-                  deadlineSecondsRemaining < 780
-                ? "Clutch reset window"
-                : "Make the next move",
-        meta:
-          canClaimWarBowFlag
-            ? "Silence has held long enough. Claiming now locks in a visible WarBow moment."
-            : hasRevengeOpen
-              ? "You have a live revenge window. Hit back before it expires."
-              : saleActive &&
-                  deadlineSecondsRemaining !== undefined &&
-                  deadlineSecondsRemaining < 780
-                ? "Buys now can hard-reset the timer toward 15 minutes and swing the room."
-                : "A buy can move timer, podiums, and WarBow status in one shot.",
-      },
-      {
-        label: "Timer pressure",
-        value: timerNarrative.label,
-        meta: timerNarrative.detail,
-      },
-      {
-        label: "Visible chase",
-        value:
-          warbowPlacementGap !== null
-            ? `${formatLocaleInteger(warbowPlacementGap)} BP to podium`
-            : warbowRank
-              ? `WarBow rank #${warbowRank}`
-              : "Break into the ladder",
-        meta:
-          warbowPlacementGap !== null
-            ? "A few good PvP swings can put you on the visible WarBow board."
-            : warbowRank
-              ? "Stay visible by defending your position or stealing momentum."
-              : "Even a smaller buy can start your status climb.",
-      },
-      {
-        label: "Why watch",
-        value:
-          saleActive &&
-          deadlineSecondsRemaining !== undefined &&
-          deadlineSecondsRemaining < 780
-            ? "Every buy is a swing"
-            : "Lurkers can still enjoy the race",
-        meta:
-          saleActive &&
-          deadlineSecondsRemaining !== undefined &&
-          deadlineSecondsRemaining < 780
-            ? "Under 13 minutes, resets, streak breaks, and clutch buys become the whole show."
-            : "Podiums, streaks, guards, and revenge make the page readable even before you buy.",
-      },
-    ];
-  }, [
-    saleEnded,
-    timerExpiredAwaitingEnd,
-    claimHint,
-    distributeHint,
-    expectedTokenFromCharms,
-    podiumPoolBal,
-    decimals,
-    canClaimWarBowFlag,
-    hasRevengeOpen,
-    deadlineSecondsRemaining,
-    saleActive,
-    timerNarrative,
-    warbowPlacementGap,
-    warbowRank,
-  ]);
 
   const buyPanelHighlights = useMemo(() => {
     if (saleEnded) {
@@ -1993,6 +1950,130 @@ export function useTimeCurveArenaModel() {
     victimBattlePoints !== undefined ? BigInt(victimBattlePoints as bigint | number) : undefined;
   const attackerStealsTodayBigInt =
     attackerStealsToday !== undefined ? BigInt(attackerStealsToday as bigint | number) : undefined;
+  const attackerAtDailyStealCap =
+    attackerStealsTodayBigInt !== undefined && attackerStealsTodayBigInt >= BigInt(warbowMaxSteals);
+
+  const setStealBypassForHeroVictim = useCallback((victim: `0x${string}`, value: boolean) => {
+    const k = victim.toLowerCase();
+    setStealBypassByVictimAddr((prev) => ({ ...prev, [k]: value }));
+  }, []);
+
+  const stealHeroRowsStealable = useMemo((): WarbowStealHeroRow[] => {
+    const max = BigInt(warbowMaxSteals);
+    return warbowStealCandidates.map((c) => {
+      const key = c.address.toLowerCase();
+      const onchain = stealCandidateOnchainByAddr.get(key);
+      const victimSteals = onchain?.steals;
+      const victimBp = onchain?.bp;
+      const victimAtDailyCap = victimSteals !== undefined && victimSteals >= max;
+      const bypassSelected =
+        stealBypass || (victimAtDailyCap && (stealBypassByVictimAddr[key] ?? false));
+      const victimGuardUntil = onchain?.guardUntil;
+      const victimGuardedActive =
+        victimGuardUntil !== undefined ? BigInt(ledgerSecInt) < victimGuardUntil : undefined;
+      const preflight = describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          saleEnded,
+          viewer: address,
+          victim: c.address,
+          viewerBattlePoints,
+          victimBattlePoints: victimBp,
+          victimStealsToday: victimSteals,
+          attackerStealsToday: attackerStealsTodayBigInt,
+          maxStealsPerDay: max,
+          bypassSelected,
+          guardActive: victimGuardedActive ?? false,
+        },
+        formatWallet,
+      );
+      return {
+        candidate: c,
+        preflight,
+        victimAtDailyCap,
+        victimStealsReceivedToday: victimSteals,
+        maxStealsPerDay: max,
+        victimGuardedActive,
+      };
+    });
+  }, [
+    warbowStealCandidates,
+    stealCandidateOnchainByAddr,
+    stealBypass,
+    stealBypassByVictimAddr,
+    attackerStealsTodayBigInt,
+    isConnected,
+    saleActive,
+    saleEnded,
+    address,
+    viewerBattlePoints,
+    warbowMaxSteals,
+    ledgerSecInt,
+    formatWallet,
+  ]);
+
+  const stealHeroRowsProspects = useMemo((): WarbowStealHeroRow[] => {
+    const max = BigInt(warbowMaxSteals);
+    return warbowStealProspectCandidates.map((c) => {
+      const key = c.address.toLowerCase();
+      const onchain = stealCandidateOnchainByAddr.get(key);
+      const victimSteals = onchain?.steals;
+      const victimBp = onchain?.bp;
+      const victimAtDailyCap = victimSteals !== undefined && victimSteals >= max;
+      const bypassSelected =
+        stealBypass || (victimAtDailyCap && (stealBypassByVictimAddr[key] ?? false));
+      const victimGuardUntil = onchain?.guardUntil;
+      const victimGuardedActive =
+        victimGuardUntil !== undefined ? BigInt(ledgerSecInt) < victimGuardUntil : undefined;
+      const preflight = describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          saleEnded,
+          viewer: address,
+          victim: c.address,
+          viewerBattlePoints,
+          victimBattlePoints: victimBp,
+          victimStealsToday: victimSteals,
+          attackerStealsToday: attackerStealsTodayBigInt,
+          maxStealsPerDay: max,
+          bypassSelected,
+          guardActive: victimGuardedActive ?? false,
+        },
+        formatWallet,
+      );
+      return {
+        candidate: c,
+        preflight,
+        victimAtDailyCap,
+        victimStealsReceivedToday: victimSteals,
+        maxStealsPerDay: max,
+        victimGuardedActive,
+        bpBelowStealThreshold: true,
+      };
+    });
+  }, [
+    warbowStealProspectCandidates,
+    stealCandidateOnchainByAddr,
+    stealBypass,
+    stealBypassByVictimAddr,
+    attackerStealsTodayBigInt,
+    isConnected,
+    saleActive,
+    saleEnded,
+    address,
+    viewerBattlePoints,
+    warbowMaxSteals,
+    ledgerSecInt,
+    formatWallet,
+  ]);
+
+  const stealHeroRows = useMemo(
+    () => [...stealHeroRowsStealable, ...stealHeroRowsProspects],
+    [stealHeroRowsStealable, stealHeroRowsProspects],
+  );
+
   const stealPreflight = useMemo(
     () =>
       describeStealPreflight(
@@ -2183,6 +2264,13 @@ export function useTimeCurveArenaModel() {
       setWarbowPreflightIssue(null);
       return;
     }
+    const victimKey = stealVictim.toLowerCase();
+    const fromMap = stealCandidateOnchainByAddr.get(victimKey);
+    const victimStealsForBypass =
+      victimStealsTodayBigInt !== undefined ? victimStealsTodayBigInt : fromMap?.steals;
+    const max = BigInt(warbowMaxSteals);
+    const victimCap = victimStealsForBypass !== undefined && victimStealsForBypass >= max;
+    const bypass = stealBypass || (victimCap && (stealBypassByVictimAddr[victimKey] ?? false));
     const timeout = setTimeout(() => {
       void (async () => {
         try {
@@ -2190,7 +2278,7 @@ export function useTimeCurveArenaModel() {
             address: tc,
             abi: timeCurveWriteAbi,
             functionName: "warbowSteal",
-            args: [stealVictim, stealBypass],
+            args: [stealVictim, bypass],
             account: address,
             chainId,
           });
@@ -2198,7 +2286,7 @@ export function useTimeCurveArenaModel() {
             address: tc,
             abi: timeCurveWriteAbi,
             functionName: "warbowSteal",
-            args: [stealVictim, stealBypass],
+            args: [stealVictim, bypass],
             account: address,
             chainId,
           });
@@ -2215,7 +2303,19 @@ export function useTimeCurveArenaModel() {
       })();
     }, 350);
     return () => clearTimeout(timeout);
-  }, [address, tc, saleActive, stealVictim, stealBypass, chainId, stealPreflight.tone]);
+  }, [
+    address,
+    tc,
+    saleActive,
+    stealVictim,
+    stealBypass,
+    stealBypassByVictimAddr,
+    stealCandidateOnchainByAddr,
+    victimStealsTodayBigInt,
+    warbowMaxSteals,
+    chainId,
+    stealPreflight.tone,
+  ]);
 
   useEffect(() => {
     if (!address || !tc || !saleActive) {
@@ -2412,7 +2512,7 @@ export function useTimeCurveArenaModel() {
             clearPendingReferralCode();
             setPendingRef(null);
           }
-          refetchAll();
+          await refetchAll();
           return;
         }
         const quote = await readContract(wagmiConfig, {
@@ -2556,7 +2656,7 @@ export function useTimeCurveArenaModel() {
         clearPendingReferralCode();
         setPendingRef(null);
       }
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e, { buySubmit: true }));
     }
@@ -2634,13 +2734,13 @@ export function useTimeCurveArenaModel() {
         functionName: "claimWarBowFlag",
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
     }
   }
 
-  async function runWarBowSteal() {
+  async function runWarBowSteal(overrides?: { victim?: `0x${string}` }) {
     setPvpErr(null);
     setArenaWarbowStealFormErr(null);
     if (failIfWrongChainForPvpWrites()) return;
@@ -2650,14 +2750,24 @@ export function useTimeCurveArenaModel() {
       );
       return;
     }
-    if (!tc || !address || !stealVictim) {
+    const victimResolved = overrides?.victim ?? stealVictim;
+    if (!tc || !address || !victimResolved) {
       const trimmed = stealVictimInput.trim();
       setArenaWarbowStealFormErr(
         trimmed.length > 0 ? WARBOW_STEAL_VICTIM_INVALID_ADDRESS : WARBOW_STEAL_VICTIM_EMPTY_ATTEMPT,
       );
       return;
     }
-    const need = warbowStealBurnWad + (stealBypass ? warbowBypassBurnWad : 0n);
+    const key = victimResolved.toLowerCase();
+    const fromMap = stealCandidateOnchainByAddr.get(key);
+    const victimStealsForBypass =
+      stealVictim && sameAddress(stealVictim, victimResolved) && victimStealsTodayBigInt !== undefined
+        ? victimStealsTodayBigInt
+        : fromMap?.steals;
+    const max = BigInt(warbowMaxSteals);
+    const victimCap = victimStealsForBypass !== undefined && victimStealsForBypass >= max;
+    const bypass = stealBypass || (victimCap && (stealBypassByVictimAddr[key] ?? false));
+    const need = warbowStealBurnWad + (bypass ? warbowBypassBurnWad : 0n);
     try {
       await ensureTcAllowance(need);
       const { hash } = await writeContractWithGasBuffer({
@@ -2668,10 +2778,10 @@ export function useTimeCurveArenaModel() {
         address: tc,
         abi: timeCurveWriteAbi,
         functionName: "warbowSteal",
-        args: [stealVictim, stealBypass],
+        args: [victimResolved, bypass],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
     }
@@ -2701,7 +2811,7 @@ export function useTimeCurveArenaModel() {
         functionName: "warbowActivateGuard",
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
     }
@@ -2733,7 +2843,7 @@ export function useTimeCurveArenaModel() {
         args: [stealer],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
     }
@@ -2760,7 +2870,7 @@ export function useTimeCurveArenaModel() {
           : {}),
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      refetchAll();
+      await refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e));
     }
@@ -2773,7 +2883,6 @@ export function useTimeCurveArenaModel() {
     arenaEnded,
     arenaFlags,
     arenaPhase,
-    arenaPhaseBadge,
     arenaSaleStartSec,
     arenaWarbowStealFormErr,
     basePriceWadR,
@@ -2812,7 +2921,6 @@ export function useTimeCurveArenaModel() {
     claimHint,
     claims,
     claimsNote,
-    confettiGuide,
     coreTcContracts,
     coreTcData,
     coreTcDataRaw,
@@ -2975,6 +3083,7 @@ export function useTimeCurveArenaModel() {
     setSpendInputStr,
     setSpendWei,
     setStealBypass,
+    setStealBypassForVictim: setStealBypassForHeroVictim,
     setStealVictimInput,
     setUseReferral,
     plantWarBowFlag,
@@ -2988,6 +3097,8 @@ export function useTimeCurveArenaModel() {
     spendSliderPermille,
     spendWei,
     stealBypass,
+    stealBypassByVictim: stealBypassByVictimAddr,
+    stealHeroRows,
     stealPreflight,
     stealVictim,
     stealVictimInput,
@@ -3005,8 +3116,6 @@ export function useTimeCurveArenaModel() {
     tokenAddr,
     tokenDecimals,
     totalCharmWeightR,
-    totalRaiseDisplay,
-    totalRaiseCl8yObservedAtMs,
     totalRaised,
     totalTokensForSaleR,
     useReferral,
@@ -3019,6 +3128,7 @@ export function useTimeCurveArenaModel() {
     victimStealsToday,
     victimStealsTodayBigInt,
     attackerStealsTodayBigInt,
+    attackerAtDailyStealCap,
     viewerBattlePoints,
     walletCl8yBal,
     walletCooldownRemainingSec,
@@ -3058,7 +3168,6 @@ export function useTimeCurveArenaModel() {
     warbowStealBurnR,
     warbowStealBurnWad,
     warbowTopRows,
-    whatMattersNowCards,
     writeContractAsync,
   };
 }
