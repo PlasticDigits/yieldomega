@@ -55,4 +55,15 @@ describe("TimeCurveSubnav (issue #40 progressive disclosure)", () => {
     expect(html).toContain('src="/art/icons/nav-arena.png"');
     expect(html).toContain('src="/art/icons/nav-protocol.png"');
   });
+
+  it("renders ABOUT TIMECURVE disclosure open by default with tab icons in the blurb", () => {
+    const html = renderSubnav("simple", "/timecurve");
+    expect(html).toContain('class="timecurve-subnav-about" open');
+    expect(html).toContain("ABOUT TIMECURVE");
+    expect(html).toContain("BattlePoints");
+    expect(html).toContain("audit the buy log");
+    /* Same pictograms appear in nav links and in the about lines (6 img total). */
+    const n = html.split('src="/art/icons/nav-simple.png"').length - 1;
+    expect(n).toBe(2);
+  });
 });

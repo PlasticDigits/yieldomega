@@ -448,7 +448,8 @@ label:has(input[type="radio"]:disabled) {
 
 /* Icon-only on mobile / fixed dock header; icon + short text from tablet up (header on top). */
 .app-header__nav-label,
-.app-header__network-label {
+.app-header__network-label,
+.app-header__connect-label {
   display: none;
 }
 
@@ -501,6 +502,25 @@ label:has(input[type="radio"]:disabled) {
   }
 
   .app-header--dense .header-network-btn .app-header__network-label {
+    display: inline;
+    font-weight: 800;
+    font-size: 0.68rem;
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.05em;
+    color: var(--arcade-green-900);
+    white-space: nowrap;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .app-header--dense .wallet-action--connect-dense {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.18rem;
+    line-height: 1;
+  }
+
+  .app-header--dense .wallet-action--connect-dense .app-header__connect-label {
     display: inline;
     font-weight: 800;
     font-size: 0.68rem;
@@ -6598,8 +6618,19 @@ a.podium-address-explorer:hover .address-inline__label {
  * Reuses palette tokens from the rest of the app (no new vars).
  * ============================================================= */
 
+.timecurve-subnav-stack {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  margin-block: 0 1rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
 .timecurve-subnav {
-  margin: 0 0 1rem;
+  margin: 0;
 }
 
 @media (min-width: 721px) {
@@ -6684,11 +6715,155 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
+  transform-origin: 50% 62%;
+}
+
+@keyframes timecurve-subnav-icon-bob-sway {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  28% {
+    transform: translate(0.4px, -1.5px) rotate(1.6deg);
+  }
+  52% {
+    transform: translate(-0.45px, 1px) rotate(-1.4deg);
+  }
+  76% {
+    transform: translate(0.25px, -0.4px) rotate(0.85deg);
+  }
+}
+
+.timecurve-subnav__item:nth-child(1) .timecurve-subnav__icon {
+  animation: timecurve-subnav-icon-bob-sway 4.05s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.timecurve-subnav__item:nth-child(2) .timecurve-subnav__icon {
+  animation: timecurve-subnav-icon-bob-sway 3.68s ease-in-out infinite;
+  animation-delay: 0.52s;
+}
+
+.timecurve-subnav__item:nth-child(3) .timecurve-subnav__icon {
+  animation: timecurve-subnav-icon-bob-sway 4.28s ease-in-out infinite;
+  animation-delay: 1.08s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .timecurve-subnav__link:hover {
     transform: none;
+  }
+}
+
+.timecurve-subnav-about {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: start;
+}
+
+.timecurve-subnav-about__summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow:
+    0 0 30px rgba(0, 45, 28, 0.95),
+    0 0 12px rgba(0, 55, 32, 0.9),
+    0 3px 6px rgba(0, 35, 20, 0.85);
+  user-select: none;
+}
+
+.timecurve-subnav-about__summary::-webkit-details-marker {
+  display: none;
+}
+
+.timecurve-subnav-about__summary::marker {
+  content: "";
+}
+
+.timecurve-subnav-about__summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.35em;
+  font-size: 0.75em;
+  transition: transform 0.12s ease;
+}
+
+.timecurve-subnav-about[open] > .timecurve-subnav-about__summary::before {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timecurve-subnav-about__summary::before {
+    transition: none;
+  }
+}
+
+.timecurve-subnav-about__body {
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
+
+.timecurve-subnav-about__p {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #fff;
+  text-shadow:
+    0 0 36px rgba(0, 45, 28, 0.95),
+    0 0 15px rgba(0, 55, 32, 0.88),
+    0 3px 6px rgba(0, 35, 20, 0.85);
+}
+
+.timecurve-subnav-about__p:last-child {
+  margin-bottom: 0;
+}
+
+.timecurve-subnav-about__lead {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timecurve-subnav-about__icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 rgba(0, 35, 20, 0.5));
+  transform-origin: 50% 62%;
+}
+
+.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(1) .timecurve-subnav-about__icon {
+  animation: timecurve-subnav-icon-bob-sway 3.82s ease-in-out infinite;
+  animation-delay: 0.22s;
+}
+
+.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(2) .timecurve-subnav-about__icon {
+  animation: timecurve-subnav-icon-bob-sway 4.38s ease-in-out infinite;
+  animation-delay: 0.88s;
+}
+
+.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(3) .timecurve-subnav-about__icon {
+  animation: timecurve-subnav-icon-bob-sway 3.55s ease-in-out infinite;
+  animation-delay: 1.42s;
+}
+
+.timecurve-subnav-about__label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timecurve-subnav__icon,
+  .timecurve-subnav-about__icon {
+    animation: none;
   }
 }
 

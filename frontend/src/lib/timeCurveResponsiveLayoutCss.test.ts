@@ -166,7 +166,9 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(rootLayout).toContain("app-shell--timecurve");
     expect(rootLayout).toContain("app-main--timecurve");
 
-    const phoneBlock = cssBlock(css, "@media (max-width: 720px)", 7_200);
+    const phoneMqAnchor =
+      "@media (max-width: 720px) {\n  @keyframes mobile-header-shimmer {";
+    const phoneBlock = cssBlock(css, phoneMqAnchor, 7_200);
     expect(phoneBlock).toContain(".app-main--timecurve");
     /* Mobile dock clears the fixed header + safe area (GitLab #103 / #68). */
     expect(phoneBlock).toContain("env(safe-area-inset-bottom, 0px)) + 3.95rem");
