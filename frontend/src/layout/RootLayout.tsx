@@ -172,6 +172,9 @@ export function RootLayout() {
                     title="Connect wallet"
                   >
                     <HeaderIcon src={HEADER_ICONS.walletConnect} />
+                    <span className="app-header__connect-label" aria-hidden="true">
+                      CONNECT
+                    </span>
                   </button>
                 </div>
               );

@@ -507,7 +507,7 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **Arena standings strip** | **`StandingsVisuals`** with **no** `buyHistoryPoints` renders **`data-testid="standings-visuals-empty"`** + muted explanation instead of returning **`null`**. |
 | **Arena rate board** | Live / launch hero prices use **Loading…** text (and **`aria-busy`**) while **`pricePerCharmWad` / `launchCl8yPerCharmWei`** are undefined; **DOUB-at-launch** uses **`EmptyDataPlaceholder`** until sale totals resolve. |
 | **Referrals earnings** | **`ReferralProgramEarningsSection`** shows a **zero-CHARM** banner when indexed totals are **0** (`data-testid="referrals-earnings-zero-banner"`). |
-| **Simple podium + stake** | Prize preview without indexer projection shows **Prize not projected yet**; stake tiles use **Loading…** / **loads with…** placeholders instead of **`—`**. |
+| **Simple podium + stake** | Prize preview without indexer projection shows **Prizes loading**; stake tiles use **Loading…** / **loads with…** placeholders instead of **`—`**. |
 | **Simple podiums — no dev status pill** | **`TimeCurveSimplePodiumSection`** does **not** render **`PageSection` `actions`** with **“Indexer-backed snapshot”** / **“Refreshing podiums…”** (removed per [GitLab #200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200) QA follow-up — **`INV-FRONTEND-200-NO-INDEXER-PILL`**). |
 
 **Automated:** [`statDisplayFromContractRead.test.tsx`](../../frontend/src/lib/statDisplayFromContractRead.test.tsx) · [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx).

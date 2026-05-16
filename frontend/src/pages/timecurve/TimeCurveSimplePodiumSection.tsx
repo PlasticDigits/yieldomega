@@ -92,7 +92,7 @@ function rankingRowsForPodium(
       prizeRaw !== undefined ? (
         formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })
       ) : (
-        <EmptyDataPlaceholder>Prize not projected yet</EmptyDataPlaceholder>
+        <EmptyDataPlaceholder>Prizes loading</EmptyDataPlaceholder>
       );
     const usdLabel =
       prizeRaw !== undefined
