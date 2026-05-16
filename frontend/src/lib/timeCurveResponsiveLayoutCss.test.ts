@@ -150,6 +150,18 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(mqBlock).toContain("var(--app-shell-fixed-header-stack) - 30px");
   });
 
+  it("tightens Referrals shell + main top padding on tablet/desktop for a shorter hero offset", () => {
+    const mqIdx = css.indexOf("@media (min-width: 721px) {\n  /* Pinned shell header on tablet/desktop only");
+    expect(mqIdx).toBeGreaterThanOrEqual(0);
+    const mqBlock = css.slice(mqIdx, mqIdx + 1200);
+    expect(mqBlock).toContain(".app-shell.app-shell--referrals");
+    expect(mqBlock).toContain("var(--app-shell-fixed-header-stack) - 60px");
+
+    expect(rootLayout).toContain("app-shell--referrals");
+    expect(rootLayout).toContain("app-main--referrals");
+    expect(css).toContain(".app-main.app-main--referrals");
+  });
+
   it("keeps mobile Arena content clear of the fixed audio dock and wraps long values", () => {
     expect(rootLayout).toContain("app-shell--timecurve");
     expect(rootLayout).toContain("app-main--timecurve");

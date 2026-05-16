@@ -9,6 +9,27 @@ const REF_STORAGE = "yieldomega.ref.v1";
 
 const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
 
+type MyRefCodeListener = () => void;
+const myRefCodeListeners = new Set<MyRefCodeListener>();
+
+/** Subscribe to `setStoredMyReferralCodeForWallet` writes (same-tab; for React `useSyncExternalStore`). */
+export function subscribeMyReferralCodeCache(callback: MyRefCodeListener): () => void {
+  myRefCodeListeners.add(callback);
+  return () => {
+    myRefCodeListeners.delete(callback);
+  };
+}
+
+function notifyMyReferralCodeCache(): void {
+  for (const cb of myRefCodeListeners) {
+    try {
+      cb();
+    } catch {
+      /* ignore listener errors */
+    }
+  }
+}
+
 /**
  * If only one of `localStorage` / `sessionStorage` still holds the pending payload
  * (some hard-reloads, devtools, or browser quirks), copy it into the other so reads
@@ -150,6 +171,7 @@ export function setStoredMyReferralCodeForWallet(address: `0x${string}`, code: s
       key,
       JSON.stringify({ code: normalizeReferralCode(code), ts: Date.now() }),
     );
+    notifyMyReferralCodeCache();
   } catch {
     /* ignore */
   }

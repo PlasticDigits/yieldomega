@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_referral_code_registered_owner_address;

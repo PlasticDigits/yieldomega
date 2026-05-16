@@ -78,9 +78,26 @@ export function RootLayout() {
   // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
   const showFooter = location.pathname !== "/timecurve";
   const isTimecurveRoute = location.pathname === "/timecurve" || location.pathname.startsWith("/timecurve/");
+  const isReferralsRoute = location.pathname === "/referrals";
+
+  const shellClassName = [
+    "app-shell",
+    isTimecurveRoute ? "app-shell--timecurve" : null,
+    isReferralsRoute ? "app-shell--referrals" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mainClassName = [
+    "app-main",
+    isTimecurveRoute ? "app-main--timecurve" : null,
+    isReferralsRoute ? "app-main--referrals" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className={isTimecurveRoute ? "app-shell app-shell--timecurve" : "app-shell"}>
+    <div className={shellClassName}>
       <ReferralPathSync />
       <header className="app-header app-header--dense">
         <ConnectButton.Custom>
@@ -230,7 +247,7 @@ export function RootLayout() {
         </ConnectButton.Custom>
       </header>
       <AlbumPlayerBar open={musicOpen} onOpenChange={setMusicOpen} />
-      <main className={isTimecurveRoute ? "app-main app-main--timecurve" : "app-main"}>
+      <main className={mainClassName}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}

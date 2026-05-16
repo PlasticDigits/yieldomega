@@ -15,8 +15,18 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
  * Use this anywhere a page or panel only needs the **disconnected → open
  * connect modal** action. Header surfaces that also render account / chain
  * pickers should keep their inline `<ConnectButton.Custom>` integration.
+ *
+ * Pass `label` to override the visible button text (e.g. uppercase panel CTAs).
  */
-export function WalletConnectButton() {
+type WalletConnectButtonProps = {
+  /**
+   * When set, this is the only visible label (no long/short responsive swap).
+   * For in-panel CTAs that need a fixed string (e.g. uppercase copy).
+   */
+  label?: string;
+};
+
+export function WalletConnectButton({ label }: WalletConnectButtonProps) {
   return (
     <ConnectButton.Custom>
       {({ openConnectModal, mounted, authenticationStatus }) => {
@@ -40,8 +50,14 @@ export function WalletConnectButton() {
             onClick={openConnectModal}
             aria-label="Connect wallet"
           >
-            <span className="wallet-action__text-long">Connect Wallet</span>
-            <span className="wallet-action__text-short">Connect</span>
+            {label ? (
+              <span>{label}</span>
+            ) : (
+              <>
+                <span className="wallet-action__text-long">Connect Wallet</span>
+                <span className="wallet-action__text-short">Connect</span>
+              </>
+            )}
           </button>
         );
       }}
