@@ -6,8 +6,8 @@ import { playGameSfxPeerBuyThrottled } from "@/audio/playGameSfx";
 import { peerBuyHeadSfxTick } from "@/pages/timecurve/peerBuyHeadSfxTick";
 
 /**
- * When the indexer-fed buy list gets a **new** head row (latest tx), play the
- * throttled peer-buy SFX. Skips the viewer's own buys when a wallet address is
+ * When the indexer-fed buy list gets a **new** head row (latest buy), play the
+ * exclusive peer-buy bell SFX. Skips the viewer's own buys when a wallet address is
  * known. Works without a connected wallet so the live strip still “ticks” for
  * spectators (TimerHero live buys, issue #68).
  */
@@ -17,21 +17,21 @@ export function usePeerBuyHeadSfx(opts: {
   reduceMotion: boolean;
 }): void {
   const { recentBuys, walletAddress, reduceMotion } = opts;
-  const lastHeadTx = useRef<string | null>(null);
+  const lastHeadId = useRef<string | null>(null);
 
   useEffect(() => {
     const tick = peerBuyHeadSfxTick({
-      previousHeadTx: lastHeadTx.current,
+      previousHeadId: lastHeadId.current,
       head: recentBuys?.[0],
       walletAddress,
       reduceMotion,
     });
     if (tick.kind === "noop") return;
     if (tick.kind === "seed") {
-      lastHeadTx.current = tick.nextHeadTx;
+      lastHeadId.current = tick.nextHeadId;
       return;
     }
-    lastHeadTx.current = tick.nextHeadTx;
+    lastHeadId.current = tick.nextHeadId;
     if (tick.play) playGameSfxPeerBuyThrottled();
   }, [recentBuys, walletAddress, reduceMotion]);
 }

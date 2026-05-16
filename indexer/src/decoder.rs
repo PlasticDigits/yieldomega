@@ -109,7 +109,9 @@ mod contracts {
                 address indexed avenger,
                 address indexed stealer,
                 uint256 amountBp,
-                uint256 burnPaidWad
+                uint256 burnPaidWad,
+                uint256 stealerBpAfter,
+                uint256 avengerBpAfter
             );
             event WarBowGuardActivated(
                 address indexed player,
@@ -148,6 +150,18 @@ mod contracts {
             event UnredeemedLaunchedTokenSwept(address indexed recipient, uint256 amount);
             /// Governance sink routing for orphaned podium residuals (audit M‑01 lineage).
             event PodiumResidualRecipientSet(address indexed recipient);
+        }
+    }
+
+    sol! {
+        /// Legacy `WarBowRevenge` topic — four data words only (no BP snapshots).
+        contract TimeCurveWarBowRevengeTopic0Legacy {
+            event WarBowRevenge(
+                address indexed avenger,
+                address indexed stealer,
+                uint256 amountBp,
+                uint256 burnPaidWad
+            );
         }
     }
 
@@ -289,7 +303,7 @@ mod contracts {
 use contracts::{
     DoubPresaleVestingEvents, FeeRouterEvents, FeeSinkEvents, LeprechaunEvents, PodiumPoolEvents,
     RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents,
-    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy,
+    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy, TimeCurveWarBowRevengeTopic0Legacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -398,6 +412,9 @@ pub enum DecodedEvent {
         stealer: Address,
         amount_bp: U256,
         burn_paid_wad: U256,
+        /// Present only for logs matching the extended ABI (post-upgrade deployments).
+        stealer_bp_after: Option<U256>,
+        avenger_bp_after: Option<U256>,
     },
     TimeCurveWarBowGuardActivated {
         player: Address,
@@ -824,6 +841,21 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 stealer: e.stealer,
                 amount_bp: e.amountBp,
                 burn_paid_wad: e.burnPaidWad,
+                stealer_bp_after: Some(e.stealerBpAfter),
+                avenger_bp_after: Some(e.avengerBpAfter),
+            };
+        }
+    }
+    if topic0 == TimeCurveWarBowRevengeTopic0Legacy::WarBowRevenge::SIGNATURE_HASH {
+        if let Ok(d) = TimeCurveWarBowRevengeTopic0Legacy::WarBowRevenge::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveWarBowRevenge {
+                avenger: e.avenger,
+                stealer: e.stealer,
+                amount_bp: e.amountBp,
+                burn_paid_wad: e.burnPaidWad,
+                stealer_bp_after: None,
+                avenger_bp_after: None,
             };
         }
     }
@@ -1277,6 +1309,7 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
 
 #[cfg(test)]
 mod tests {
+    use super::contracts::TimeCurveWarBowRevengeTopic0Legacy;
     use super::*;
     use alloy_primitives::{Log, U256};
 
@@ -1531,6 +1564,82 @@ mod tests {
                 assert_eq!(v, victim);
                 assert_eq!(amount_bp, U256::from(50u64));
                 assert!(bypassed_victim_daily_limit);
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_warbow_revenge_legacy_topic() {
+        let avenger = Address::repeat_byte(0xaa);
+        let stealer = Address::repeat_byte(0xbb);
+        let e = TimeCurveWarBowRevengeTopic0Legacy::WarBowRevenge {
+            avenger,
+            stealer,
+            amountBp: U256::from(40u64),
+            burnPaidWad: U256::from(1u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveWarBowRevenge {
+                avenger: a,
+                stealer: s,
+                amount_bp,
+                stealer_bp_after,
+                avenger_bp_after,
+                ..
+            } => {
+                assert_eq!(a, avenger);
+                assert_eq!(s, stealer);
+                assert_eq!(amount_bp, U256::from(40u64));
+                assert!(stealer_bp_after.is_none());
+                assert!(avenger_bp_after.is_none());
+            }
+            _ => panic!("wrong variant: {dec:?}"),
+        }
+    }
+
+    #[test]
+    fn roundtrip_warbow_revenge_with_bp_snapshot() {
+        let avenger = Address::repeat_byte(0xaa);
+        let stealer = Address::repeat_byte(0xbb);
+        let e = TimeCurveEvents::WarBowRevenge {
+            avenger,
+            stealer,
+            amountBp: U256::from(40u64),
+            burnPaidWad: U256::from(1u64),
+            stealerBpAfter: U256::from(60u64),
+            avengerBpAfter: U256::from(140u64),
+        };
+        let data = e.encode_log_data();
+        let log = Log::new_unchecked(
+            Address::repeat_byte(0xab),
+            data.topics().to_vec(),
+            data.data.clone(),
+        );
+        let topic0 = *log.topics().first().unwrap();
+        let dec = decode_primitive_log(&log, topic0);
+        match dec {
+            DecodedEvent::TimeCurveWarBowRevenge {
+                avenger: a,
+                stealer: s,
+                amount_bp,
+                stealer_bp_after,
+                avenger_bp_after,
+                ..
+            } => {
+                assert_eq!(a, avenger);
+                assert_eq!(s, stealer);
+                assert_eq!(amount_bp, U256::from(40u64));
+                assert_eq!(stealer_bp_after, Some(U256::from(60u64)));
+                assert_eq!(avenger_bp_after, Some(U256::from(140u64)));
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

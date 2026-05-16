@@ -3,13 +3,18 @@
 import type { MouseEvent } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { WalletBlockie } from "@/components/WalletBlockie";
-import { shortAddress, type WalletFormatShort } from "@/lib/addressFormat";
+import { addressTailHex, shortAddress, type WalletFormatShort } from "@/lib/addressFormat";
 import { explorerAddressUrl } from "@/lib/explorer";
 
 export type AddressInlineProps = {
   address: string | undefined;
   /** When set, used for the text beside the blockie; otherwise {@link shortAddress}. */
   formatWallet?: WalletFormatShort;
+  /**
+   * When set, label is the last `tailHexDigits` hex characters (no `0x`). Overrides `formatWallet`
+   * for valid 20-byte `0x` addresses (e.g. compact timer / podium chips).
+   */
+  tailHexDigits?: number;
   fallback?: string;
   /** Blockie canvas size in CSS pixels. */
   size?: number;
@@ -31,6 +36,7 @@ export type AddressInlineProps = {
 export function AddressInline({
   address,
   formatWallet,
+  tailHexDigits,
   fallback = "—",
   size = 20,
   className,
@@ -42,7 +48,14 @@ export function AddressInline({
   if (!raw || !isAddress(raw as `0x${string}`) || raw.toLowerCase() === zeroAddress.toLowerCase()) {
     return <span className={labelClassName ?? "mono"}>{fallback}</span>;
   }
-  const label = formatWallet ? formatWallet(raw, fallback) : shortAddress(raw, fallback);
+  const tailLabel =
+    tailHexDigits != null && tailHexDigits > 0 ? addressTailHex(raw, tailHexDigits) : "";
+  const label =
+    tailLabel !== ""
+      ? tailLabel
+      : formatWallet
+        ? formatWallet(raw, fallback)
+        : shortAddress(raw, fallback);
   const href = explorer ? explorerAddressUrl(raw) : undefined;
 
   const labelSpan = (

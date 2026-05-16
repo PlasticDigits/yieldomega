@@ -10,6 +10,11 @@ export type AudioPrefsV1 = {
   masterMuted: boolean;
   bgmMuted: boolean;
   sfxMuted: boolean;
+  /**
+   * When true, BGM should play whenever the engine can (after unlock / load).
+   * Persisted so returning visitors resume album playback; default false = dock starts paused.
+   */
+  bgmUserWantsPlaying: boolean;
 };
 
 const defaults: AudioPrefsV1 = {
@@ -18,6 +23,7 @@ const defaults: AudioPrefsV1 = {
   masterMuted: false,
   bgmMuted: false,
   sfxMuted: false,
+  bgmUserWantsPlaying: false,
 };
 
 function clampPermille(n: number): number {
@@ -37,6 +43,7 @@ export function loadAudioPrefs(): AudioPrefsV1 {
       masterMuted: Boolean(o.masterMuted),
       bgmMuted: Boolean(o.bgmMuted),
       sfxMuted: Boolean(o.sfxMuted),
+      bgmUserWantsPlaying: o.bgmUserWantsPlaying === true,
     };
   } catch {
     return { ...defaults };
@@ -54,6 +61,7 @@ export function saveAudioPrefs(p: AudioPrefsV1): void {
         masterMuted: p.masterMuted,
         bgmMuted: p.bgmMuted,
         sfxMuted: p.sfxMuted,
+        bgmUserWantsPlaying: p.bgmUserWantsPlaying,
       }),
     );
   } catch {

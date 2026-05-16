@@ -26,7 +26,7 @@ export const addresses = {
   referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
   feeRouter: parseAddr("VITE_FEE_ROUTER_ADDRESS"),
   doubPresaleVesting: parseAddr("VITE_DOUB_PRESALE_VESTING_ADDRESS"),
-  /** When set, header presale CHARM badge reads `isBeneficiary` here if `doubPresaleVesting` is unset (matches boost-only mainnet deploy). */
+  /** When set, TimeCurve presale CHARM +15% boost uses `isBeneficiary` here if `doubPresaleVesting` is unset (matches boost-only mainnet deploy). */
   presaleCharmBeneficiaryRegistry: parseAddr("VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY"),
 };
 

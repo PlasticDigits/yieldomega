@@ -36,6 +36,7 @@ import {
   resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
+import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import {
   fetchSwapDeadlineUnixSec,
   KUMBAYA_SWAP_SLIPPAGE_BPS,
@@ -146,6 +147,14 @@ export type UseTimeCurveSaleSession = {
    * zero rather than "—").
    */
   launchCl8yValueWei: bigint | undefined;
+  /**
+   * **Worth at launch** line in the stake panel: same CL8Y anchor as {@link launchCl8yValueWei},
+   * converted to the selected pay asset (CL8Y passthrough; ETH/USDM via Kumbaya launch quote
+   * scaled to the wallet’s CHARM weight, else static fallback rates).
+   */
+  stakeLaunchEquivPayWei: bigint | undefined;
+  /** ETH/USDM stake line: true while the launch leg quoter read is in flight during an active sale. */
+  stakeLaunchEquivQuoteLoading: boolean;
   /** Live per-CHARM price in CL8Y wei — exposed so the UX can show "1 CHARM ≈ X CL8Y at launch". */
   pricePerCharmWad: bigint | undefined;
   /** Envelope parameters for recent-buy min/max position displays; mirrors the Arena ticker math. */
@@ -169,6 +178,9 @@ export type UseTimeCurveSaleSession = {
   /** Opt-in: this tx sets `warbowPendingFlag*` onchain ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
   setPlantWarBowFlag: (next: boolean) => void;
+  /** WarBow flag silence + claim BP reads (ADVANCED panel copy); undefined until core reads succeed. */
+  warbowFlagClaimBp: bigint | undefined;
+  warbowFlagSilenceSec: bigint | undefined;
   isWriting: boolean;
   buyError: string | null;
   clearBuyError: () => void;
@@ -262,6 +274,8 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
       ]
     : [];
 
@@ -343,6 +357,8 @@ export function useTimeCurveSaleSession(
     charmRedemptionEnabledR,
     reservePodiumPayoutsEnabledR,
     timeCurveBuyRouterR,
+    warbowFlagClaimBpR,
+    warbowFlagSilenceSecR,
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR] = userData ?? [];
@@ -402,6 +418,11 @@ export function useTimeCurveSaleSession(
   const referralRegistryOn =
     referralRegistryR?.status === "success" &&
     (referralRegistryR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
+
+  const warbowFlagClaimBp =
+    warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
+  const warbowFlagSilenceSec =
+    warbowFlagSilenceSecR?.status === "success" ? (warbowFlagSilenceSecR.result as bigint) : undefined;
 
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
@@ -861,6 +882,32 @@ export function useTimeCurveSaleSession(
     [charmWeightR, pricePerCharmWad],
   );
 
+  const stakeLaunchEquivPayWei = useMemo(() => {
+    if (launchCl8yValueWei === undefined) return undefined;
+    if (payWith === "cl8y") return launchCl8yValueWei;
+    if (launchCl8yValueWei === 0n) return 0n;
+    if (
+      quotedLaunchPerCharmPayInWei !== undefined &&
+      launchCl8yPerCharmWei !== undefined &&
+      launchCl8yPerCharmWei > 0n
+    ) {
+      return (quotedLaunchPerCharmPayInWei * launchCl8yValueWei) / launchCl8yPerCharmWei;
+    }
+    return fallbackPayTokenWeiForCl8y(launchCl8yValueWei, payWith);
+  }, [
+    launchCl8yValueWei,
+    payWith,
+    quotedLaunchPerCharmPayInWei,
+    launchCl8yPerCharmWei,
+  ]);
+
+  const stakeLaunchEquivQuoteLoading =
+    payWith !== "cl8y" &&
+    launchCl8yValueWei !== undefined &&
+    launchCl8yValueWei > 0n &&
+    launchPayQuoteEnabled &&
+    launchPayQuoteLoading;
+
   const refetchAll = useCallback(() => {
     void refetchCore();
     void refetchUser();
@@ -1226,6 +1273,8 @@ export function useTimeCurveSaleSession(
       charmsRedeemedR?.status === "success" ? (charmsRedeemedR.result as boolean) : undefined,
     expectedTokenFromCharms,
     launchCl8yValueWei,
+    stakeLaunchEquivPayWei,
+    stakeLaunchEquivQuoteLoading,
     pricePerCharmWad,
     buyEnvelopeParams,
     launchCl8yPerCharmWei,
@@ -1235,6 +1284,8 @@ export function useTimeCurveSaleSession(
     setUseReferral,
     plantWarBowFlag,
     setPlantWarBowFlag,
+    warbowFlagClaimBp,
+    warbowFlagSilenceSec,
     isWriting,
     buyError,
     clearBuyError: () => setBuyError(null),

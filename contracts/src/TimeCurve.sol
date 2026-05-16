@@ -223,7 +223,14 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event WarBowRevengeWindowOpened(
         address indexed victim, address indexed stealer, uint256 expiryExclusive, uint256 stealSeq
     );
-    event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 amountBp, uint256 burnPaidWad);
+    event WarBowRevenge(
+        address indexed avenger,
+        address indexed stealer,
+        uint256 amountBp,
+        uint256 burnPaidWad,
+        uint256 stealerBpAfter,
+        uint256 avengerBpAfter
+    );
     event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad);
     event WarBowFlagClaimed(address indexed player, uint256 bonusBp, uint256 battlePointsAfter);
     event WarBowFlagPenalized(
@@ -710,7 +717,14 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
 
-        emit WarBowRevenge(msg.sender, stealer, take, WARBOW_REVENGE_BURN_WAD);
+        emit WarBowRevenge(
+            msg.sender,
+            stealer,
+            take,
+            WARBOW_REVENGE_BURN_WAD,
+            battlePoints[stealer],
+            battlePoints[msg.sender]
+        );
     }
 
     /// @notice Burn **10 CL8Y**; for **6h** incoming steals use **1%** instead of **10%**.

@@ -183,6 +183,40 @@ body,
   }
 }
 
+@keyframes app-header-icon-shimmer {
+  0%,
+  68%,
+  100% {
+    transform: translateX(-150%) skewX(-18deg);
+    opacity: 0;
+  }
+
+  76% {
+    opacity: 0.55;
+  }
+
+  92% {
+    transform: translateX(150%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+/* Dense header: playful bob + slight tilt while the chrome bar is hovered (RootLayout icons). */
+@keyframes app-header-icon-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  33% {
+    transform: translateY(-3px) rotate(-5deg);
+  }
+
+  66% {
+    transform: translateY(-1px) rotate(5deg);
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -253,6 +287,7 @@ label:has(input[type="radio"]:disabled) {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  padding-bottom: 5em;
 }
 
 /* Chunky floating “blocks” */
@@ -287,6 +322,7 @@ label:has(input[type="radio"]:disabled) {
 
 .app-header {
   --app-header-mascot-clearance: clamp(3.65rem, 7vw, 4.75rem);
+  --app-header-icon-size: 1.8125rem;
   position: relative;
   z-index: 1;
   display: flex;
@@ -304,6 +340,312 @@ label:has(input[type="radio"]:disabled) {
     var(--panel-gloss),
     linear-gradient(180deg, #fffef8 0%, var(--bg-cream) 100%);
   box-sizing: border-box;
+}
+
+/* Dense shell header — icon-only primary nav, network, wallet, and music controls (RootLayout). */
+.app-header--dense {
+  padding: 0.45rem 0.65rem;
+  gap: 0.35rem;
+  border-width: 2px;
+}
+
+.app-header--dense .app-header__top {
+  flex-wrap: nowrap;
+  gap: 0.28rem;
+  align-items: center;
+}
+
+.app-header--dense .app-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  padding-inline-end: 0;
+}
+
+.app-header--dense .brand-link--dense {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0.08rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0.35rem;
+  background: transparent;
+  font-family: "Bungee", cursive;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--arcade-green-900);
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.app-header--dense .brand-link--dense:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--arcade-gold-200) 45%, transparent);
+}
+
+.app-header--dense .brand-link--dense[aria-current="page"] {
+  border-bottom-color: var(--arcade-green-700);
+}
+
+.app-header--dense .app-nav--dense {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 0.12rem;
+}
+
+.app-header--dense .app-nav--dense .nav-link--dense {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0.08rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  font-size: 1.2rem;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.app-header--dense .app-nav--dense .nav-link--dense.nav-link--active {
+  background: transparent;
+  border-bottom-color: var(--arcade-green-700);
+}
+
+.app-header--dense .app-header__wallet--dense {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.app-header--dense .wallet-controls--dense {
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.header-network-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0.08rem;
+  margin: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  line-height: 0;
+}
+
+/* Icon-only on mobile / fixed dock header; icon + short text from tablet up (header on top). */
+.app-header__nav-label,
+.app-header__network-label {
+  display: none;
+}
+
+@media (min-width: 721px) {
+  /* Pinned shell header on tablet/desktop only; ≤720px keeps the bottom dock layout (GitLab #103). */
+  .app-shell {
+    --app-shell-fixed-header-stack: 5.5rem;
+    padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack));
+  }
+
+  .app-header {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    z-index: 1100;
+  }
+
+  .app-header--dense .app-nav--dense .nav-link--dense {
+    gap: 0.22rem;
+    padding-inline: 0.14rem 0.26rem;
+  }
+
+  .app-header--dense .app-nav--dense .nav-link--dense .app-header__nav-label {
+    display: inline;
+    font-weight: 800;
+    font-size: 0.74rem;
+    font-family: "IBM Plex Mono", monospace;
+    color: var(--arcade-green-900);
+    white-space: nowrap;
+    line-height: 1.1;
+  }
+
+  .app-header--dense .header-network-btn {
+    gap: 0.18rem;
+    padding-inline: 0.1rem 0.22rem;
+    line-height: 1;
+  }
+
+  .app-header--dense .header-network-btn .app-header__network-label {
+    display: inline;
+    font-weight: 800;
+    font-size: 0.68rem;
+    font-family: "IBM Plex Mono", monospace;
+    letter-spacing: 0.05em;
+    color: var(--arcade-green-900);
+    white-space: nowrap;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+}
+
+.app-header__music-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.08rem;
+  margin: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  line-height: 0;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.app-header__icon-wrap {
+  display: block;
+  width: var(--app-header-icon-size);
+  height: var(--app-header-icon-size);
+  flex: 0 0 auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.35rem;
+  line-height: 0;
+}
+
+.app-header__icon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  background: linear-gradient(105deg, transparent 26%, rgba(255, 255, 255, 0.72) 47%, transparent 68%);
+  pointer-events: none;
+  animation: app-header-icon-shimmer 3.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.app-header__icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.app-header .brand-link--dense:hover .app-header__icon-wrap,
+.app-header .nav-link--dense:hover .app-header__icon-wrap,
+.app-header .header-network-btn:hover .app-header__icon-wrap,
+.app-header .wallet-action--dense:hover .app-header__icon-wrap,
+.app-header .app-header__music-btn:hover .app-header__icon-wrap,
+.app-header .app-header__network-alert:hover .app-header__icon-wrap {
+  animation: app-header-icon-bob 1.15s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header__icon-wrap::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .app-header .brand-link--dense:hover .app-header__icon-wrap,
+  .app-header .nav-link--dense:hover .app-header__icon-wrap,
+  .app-header .header-network-btn:hover .app-header__icon-wrap,
+  .app-header .wallet-action--dense:hover .app-header__icon-wrap,
+  .app-header .app-header__music-btn:hover .app-header__icon-wrap,
+  .app-header .app-header__network-alert:hover .app-header__icon-wrap {
+    animation: none;
+  }
+}
+
+.app-header--dense :is(.brand-link--dense, .nav-link--dense, .header-network-btn, .wallet-action--dense, .app-header__music-btn):hover {
+  background: color-mix(in srgb, var(--arcade-gold-200) 45%, transparent);
+  transform: none;
+}
+
+.header-network-btn:focus-visible,
+.app-header__music-btn:focus-visible {
+  outline: 2px solid var(--yo-focus-ring, #1c6c9c);
+  outline-offset: 2px;
+}
+
+.header-network-btn__mega {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+}
+
+.header-network-btn__emoji {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.app-header--dense .wallet-action--dense {
+  min-height: 0;
+  padding: 0.08rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.app-header--dense .wallet-action--connect-dense {
+  font-size: 1.15rem;
+}
+
+.app-header--dense .wallet-action--account-dense {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-weight: 800;
+  font-size: 0.82rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--arcade-green-900);
+}
+
+.app-header--dense .wallet-action__blockie canvas {
+  border-radius: 0.2rem;
+  vertical-align: middle;
+  display: block;
+}
+
+.app-header--dense .wallet-action--loading {
+  font-weight: 800;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.app-header__network-alert {
+  width: 100%;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.4rem;
+  border-radius: 0.45rem;
+  border: 2px solid #c0392b;
+  background: linear-gradient(180deg, #ffecec, #ffd6d6);
+  color: #5c1010;
 }
 
 .app-header__top {
@@ -364,10 +706,6 @@ label:has(input[type="radio"]:disabled) {
   pointer-events: none;
 }
 
-.app-header__presale-charm-badge {
-  margin-top: 0.55rem;
-}
-
 .app-nav {
   display: flex;
   flex-wrap: wrap;
@@ -375,15 +713,14 @@ label:has(input[type="radio"]:disabled) {
   flex: 1 1 auto;
 }
 
-/* Album 1 BGM + mix bus — fixed top-right bubble (GitLab #68).
- * Above `.launch-countdown` (1000); below `.modal-overlay` (1100+) so dialogs stay on top.
- * Mobile clearance vs `.app-header`: INV-AUDIO-103 — see `mobileAlbumDockLayout.ts`, GitLab #103. */
+/* Album 1 BGM + mix bus — hidden until the shell header music button opens it (GitLab #68).
+ * It floats above the app chrome so the controls are reachable from the compact header dock. */
 .album-player-dock {
-  --album-dock-w: min(11.1rem, calc((100vw - 1.75rem) * 0.6));
+  --album-dock-w: min(18rem, calc(100vw - 1.5rem));
   position: fixed;
-  top: max(0.45rem, env(safe-area-inset-top, 0px));
+  top: max(4.85rem, calc(env(safe-area-inset-top, 0px) + 4.85rem));
   right: max(0.45rem, env(safe-area-inset-right, 0px));
-  z-index: 1050;
+  z-index: 1200;
   box-sizing: border-box;
   overflow: hidden;
   width: var(--album-dock-w);
@@ -926,7 +1263,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .home-hero__overlay .lede {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgba(255, 255, 255, 0.96);
   font-size: 1rem;
   max-width: 40rem;
 }
@@ -1162,6 +1499,12 @@ label:has(input[type="radio"]:disabled) {
   margin-bottom: 0.85rem;
 }
 
+/* Badge-only `PageSection` headers: replaces the `section-heading` row so inner
+   panels (e.g. Simple reserve podiums) are not wrapped in an extra inset card. */
+.page-section__standalone-badge {
+  margin-bottom: 0.85rem;
+}
+
 .section-heading__copy {
   display: grid;
   gap: 0.5rem;
@@ -1282,8 +1625,9 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 600;
 }
 
-.timecurve-simple__stake-tile-value .empty-data-placeholder {
+.timecurve-simple__stake-combined-line .empty-data-placeholder {
   font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  font-weight: 700;
 }
 
 .split-layout {
@@ -2037,7 +2381,27 @@ label:has(input[type="radio"]:disabled) {
   margin: 0;
 }
 
-.lede,
+.lede {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  /* Dark ring + deep drop + green glow — readable on busy backplates and scenes */
+  text-shadow:
+    -1px -1px 0 rgba(11, 31, 20, 0.92),
+    1px -1px 0 rgba(11, 31, 20, 0.92),
+    -1px 1px 0 rgba(11, 31, 20, 0.92),
+    1px 1px 0 rgba(11, 31, 20, 0.92),
+    0 -1px 0 rgba(11, 31, 20, 0.88),
+    0 1px 0 rgba(11, 31, 20, 0.88),
+    -1px 0 0 rgba(11, 31, 20, 0.88),
+    1px 0 0 rgba(11, 31, 20, 0.88),
+    0 0.1em 0.18em rgba(4, 28, 16, 0.98),
+    0 0.14em 0.42em rgba(6, 40, 22, 0.92),
+    0 0.22em 0.65em rgba(4, 24, 14, 0.88),
+    0 0 0.45em rgba(8, 72, 38, 0.98),
+    0 0 1em rgba(18, 110, 58, 0.88),
+    0 0 1.65em rgba(32, 150, 82, 0.62);
+}
+
 .muted {
   color: var(--text-muted);
   font-size: 0.92rem;
@@ -2131,6 +2495,130 @@ label:has(input[type="radio"]:disabled) {
 
 .app-footer a[target="_blank"] {
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.app-footer-agent {
+  margin: 0;
+  padding: 0;
+}
+
+.app-footer-agent__summary {
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--arcade-green-900);
+}
+
+.app-footer-agent__summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-footer-agent__summary::before {
+  content: "▸";
+  margin-right: 0.35rem;
+  font-size: 0.9rem;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.app-footer-agent[open] > .app-footer-agent__summary::before {
+  transform: rotate(90deg);
+}
+
+.app-footer-agent__summary-hint {
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.app-footer-agent__body {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 3px dashed color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.app-footer-agent__article {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+.app-footer-agent__h {
+  margin: 1rem 0 0.4rem;
+  font-size: 1rem;
+  color: var(--arcade-green-900);
+}
+
+.app-footer-agent__h:first-child {
+  margin-top: 0;
+}
+
+.app-footer-agent__p {
+  margin: 0.35rem 0 0.6rem;
+}
+
+.app-footer-agent__list {
+  margin: 0.25rem 0 0.5rem 1.1rem;
+  padding: 0;
+}
+
+.app-footer-agent__code-inline {
+  font-size: 0.84em;
+  padding: 0.05em 0.25em;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--bg-cream) 78%, #c8d8cc);
+}
+
+.app-footer-agent__route-block {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  overflow-x: auto;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 2px solid var(--line);
+  background: #f6faf7;
+  margin: 0.5rem 0 0;
+  white-space: pre;
+}
+
+.app-footer-agent__dl {
+  display: grid;
+  grid-template-columns: minmax(0, 11rem) 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.35rem 0;
+  font-size: 0.82rem;
+}
+
+.app-footer-agent__dl dt {
+  font-weight: 700;
+  color: var(--arcade-green-800);
+}
+
+.app-footer-agent__dl dd {
+  margin: 0;
+}
+
+.app-footer-agent__dd-break {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.app-footer-agent__dd-mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.app-footer__row--after-agent {
+  margin-top: 1rem;
 }
 
 .footer-link-pill {
@@ -3365,6 +3853,45 @@ code {
 }
 
 @media (max-width: 720px) {
+  @keyframes mobile-header-shimmer {
+    0%,
+    68%,
+    100% {
+      transform: translateX(-130%) skewX(-18deg);
+      opacity: 0;
+    }
+    76% {
+      opacity: 0.36;
+    }
+    92% {
+      transform: translateX(130%) skewX(-18deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes wallet-connect-pop-shake {
+    0%,
+    72%,
+    100% {
+      transform: translateX(0) scale(1);
+    }
+    76% {
+      transform: translateX(0) scale(1.34);
+    }
+    79% {
+      transform: translateX(-2px) scale(1.34) rotate(-4deg);
+    }
+    82% {
+      transform: translateX(2px) scale(1.3) rotate(4deg);
+    }
+    85% {
+      transform: translateX(-1px) scale(1.22) rotate(-2deg);
+    }
+    90% {
+      transform: translateX(0) scale(1.08) rotate(0deg);
+    }
+  }
+
   .app-header__mascot,
   .home-cutout-strip,
   .placeholder-cutout-layer,
@@ -3376,19 +3903,155 @@ code {
 
   .app-header {
     --app-header-mascot-clearance: 0rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: auto;
-    align-items: stretch;
-    width: calc(100% - 0.75rem);
-    max-width: min(72rem, 100vw - 0.75rem);
-    /* INV-AUDIO-103: Clear fixed `.album-player-dock` above this card (GitLab #103).
-     * 4.5rem tracks `MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM` in `mobileAlbumDockLayout.ts`. */
-    margin-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 4.5rem));
-    margin-left: auto;
-    margin-right: auto;
-    padding: 0.65rem 0.7rem;
-    gap: 0.55rem;
+    --app-header-icon-size: 2.71875rem;
+    position: fixed;
+    left: max(0.4rem, env(safe-area-inset-left, 0px));
+    right: max(0.4rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.4rem, env(safe-area-inset-bottom, 0px));
+    z-index: 1150;
+    display: flex;
+    align-items: center;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0.34rem 0.48rem;
+    gap: 0.2rem;
+    border-width: 2px;
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(110deg, rgba(255, 255, 255, 0.58), transparent 22%, transparent 78%, rgba(255, 229, 102, 0.34)),
+      var(--panel-gloss),
+      linear-gradient(180deg, rgba(255, 255, 248, 0.98) 0%, rgba(238, 252, 244, 0.98) 100%);
+    box-shadow:
+      3px 3px 0 var(--line),
+      0 10px 24px rgba(6, 61, 36, 0.22);
+    overflow: hidden;
+  }
+
+  .app-header::after {
+    content: "";
+    position: absolute;
+    inset: -40% auto -40% 0;
+    width: 45%;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.62) 42%,
+      rgba(255, 229, 102, 0.34) 52%,
+      transparent 100%
+    );
+    pointer-events: none;
+    animation: mobile-header-shimmer 3.5s ease-in-out infinite;
+    will-change: transform, opacity;
+  }
+
+  .app-header.app-header--dense {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.34rem 0.48rem;
+    gap: 0.2rem;
+  }
+
+  .app-header--dense .app-header__top {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.16rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-header--dense .app-header__brand {
+    grid-column: unset;
+    grid-row: unset;
+    width: auto;
+    max-width: none;
+  }
+
+  .app-header--dense .app-header__wallet,
+  .app-header--dense .app-header__wallet--dense {
+    grid-column: unset;
+    grid-row: unset;
+    width: auto;
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .app-header--dense .app-nav,
+  .app-header--dense .app-nav--dense {
+    grid-column: unset;
+    grid-row: unset;
+    display: flex;
+    width: auto;
+    grid-template-columns: none;
+    flex: 0 0 auto;
+    gap: 0.12rem;
+  }
+
+  .app-header--dense .brand-link {
+    width: auto;
+    min-height: 0;
+  }
+
+  .app-header--dense .brand-link--dense {
+    width: auto;
+    min-height: 0;
+    padding: 0.05rem;
+  }
+
+  .app-header--dense .nav-link--dense {
+    min-height: 0;
+    padding: 0.05rem;
+    font-size: 1rem;
+  }
+
+  .app-header__music-btn,
+  .header-network-btn,
+  .app-header--dense .wallet-action--dense {
+    min-height: 0;
+    padding: 0.05rem;
+    flex: 0 0 auto;
+  }
+
+  .app-header--dense .wallet-action--account-dense {
+    gap: 0.14rem;
+  }
+
+  .app-header--dense .wallet-action--connect-pulse {
+    transform-origin: center;
+    animation: wallet-connect-pop-shake 2.5s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-header::after,
+    .app-header--dense .wallet-action--connect-pulse {
+      animation: none;
+    }
+  }
+
+  .app-header--dense .wallet-action__addr-tail {
+    max-width: 3.4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-header__network-alert {
+    position: absolute;
+    left: 0.45rem;
+    right: 0.45rem;
+    bottom: calc(100% + 0.35rem);
+    width: auto;
+    padding: 0.22rem 0.35rem;
+    font-size: 0.62rem;
+    z-index: 2;
   }
 
   .app-header__brand {
@@ -3480,14 +4143,34 @@ code {
     flex: 1 1 auto;
   }
 
+  .app-header--dense .wallet-controls--dense {
+    width: auto;
+    flex-wrap: nowrap;
+    gap: 0.12rem;
+  }
+
+  .app-header--dense .wallet-controls--dense .wallet-action {
+    flex: 0 0 auto;
+  }
+
+  .album-player-dock {
+    --album-dock-w: calc(100vw - 1rem);
+    top: auto;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: calc(max(0.4rem, env(safe-area-inset-bottom, 0px)) + 3.95rem);
+    width: var(--album-dock-w);
+    min-width: 0;
+    max-width: var(--album-dock-w);
+    z-index: 1200;
+  }
+
   .app-main {
-    padding: 1rem 0.75rem 2.5rem;
+    padding: 1rem 0.75rem max(11rem, calc(env(safe-area-inset-bottom, 0px) + 10.8rem));
   }
 
   .app-main--timecurve {
-    /* INV-FRONTEND-201: keep mobile TimeCurve cards below the fixed audio dock
-     * when users jump or scroll to the Arena buy hub. */
-    padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 4.85rem));
+    padding-top: 1rem;
   }
 
   .page h1 {
@@ -3899,17 +4582,6 @@ code {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
 }
 
-.timer-hero__arena-buy .timecurve-simple__rate-board {
-  border-width: 4px;
-  border-radius: 1.15rem;
-  background:
-    radial-gradient(circle at 92% 10%, rgba(255, 255, 255, 0.76), transparent 34%),
-    linear-gradient(180deg, #ffefae 0%, #fff7d8 58%, #ffffff 100%);
-  box-shadow:
-    6px 6px 0 var(--line),
-    inset 0 -3px 0 rgba(212, 160, 18, 0.12);
-}
-
 .timer-hero__arena-buy .timecurve-simple__rate-value--hero {
   font-size: clamp(2.05rem, 5vw, 3.25rem);
 }
@@ -3961,7 +4633,8 @@ code {
   color: var(--arcade-green-900);
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input {
+/* TimeCurve buy hub: shared spend slider (Simple + Arena checkout). */
+input[type="range"].form-input.timecurve-buy-spend-range {
   appearance: none;
   width: 100%;
   max-width: none;
@@ -3970,7 +4643,7 @@ code {
   border: 3px solid var(--line);
   border-radius: 999px;
   background:
-    linear-gradient(90deg, var(--arcade-gold-500), var(--arcade-gold-300)) 0 / var(--arena-buy-slider-fill, 50%) 100% no-repeat,
+    linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500)) 0 / var(--timecurve-buy-spend-fill, 50%) 100% no-repeat,
     linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
   box-shadow:
     4px 4px 0 var(--line),
@@ -3979,17 +4652,22 @@ code {
   cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input:active {
+input[type="range"].form-input.timecurve-buy-spend-range:disabled {
+  opacity: 0.65;
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+}
+
+input[type="range"].form-input.timecurve-buy-spend-range:active:not(:disabled) {
   cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-webkit-slider-runnable-track {
+input[type="range"].form-input.timecurve-buy-spend-range::-webkit-slider-runnable-track {
   height: 1.15rem;
   border-radius: 999px;
   background: transparent;
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-webkit-slider-thumb {
+input[type="range"].form-input.timecurve-buy-spend-range::-webkit-slider-thumb {
   appearance: none;
   width: 2rem;
   height: 2rem;
@@ -4003,19 +4681,19 @@ code {
   image-rendering: auto;
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-track {
+input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-track {
   height: 1.15rem;
   border-radius: 999px;
   background: linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-progress {
+input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-progress {
   height: 1.15rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--arcade-gold-500), var(--arcade-gold-300));
+  background: linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500));
 }
 
-.timecurve-arena-buy-panel__checkout input[type="range"].form-input::-moz-range-thumb {
+input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   appearance: none;
   width: 2rem;
   height: 2rem;
@@ -5620,26 +6298,44 @@ a.podium-address-explorer:hover .address-inline__label {
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--line);
+  overflow: hidden;
 }
 
 .timecurve-subnav__item {
   margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.timecurve-subnav__item:not(:last-child) {
+  border-right: 2px solid var(--line);
 }
 
 .timecurve-subnav__link {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.55rem 0.95rem;
-  border: 3px solid var(--line);
-  border-radius: 999px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: 0;
   background: #fff;
-  box-shadow: 4px 4px 0 var(--line);
+  box-shadow: none;
   color: var(--text-main);
   text-decoration: none;
-  min-height: 3rem;
+  min-height: 2.75rem;
   justify-content: center;
 }
 
@@ -5648,22 +6344,30 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .timecurve-subnav__link--active {
-  background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
-  box-shadow: 4px 4px 0 var(--line), inset 0 -2px 0 rgba(212, 160, 18, 0.35);
+  background: #fff;
 }
 
 .timecurve-subnav__label {
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.04em;
+  flex: 0 1 auto;
 }
 
-.timecurve-subnav__hint {
-  font-size: 0.75rem;
-  color: var(--text-muted, #4d5e51);
+.timecurve-subnav__link--active .timecurve-subnav__label {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--arcade-green-500);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.18em;
 }
 
-.timecurve-subnav__link--active .timecurve-subnav__hint {
-  color: rgba(48, 32, 0, 0.7);
+.timecurve-subnav__icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 var(--line));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5678,6 +6382,14 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* In-page agent `<details>` — mirrors global footer card styling without occupying the shell footer. */
+.timecurve-simple-agent-card.app-footer-agent {
+  padding: 0.75rem 0.95rem;
+  border-radius: 0.9rem;
+  border: 2px solid color-mix(in srgb, var(--line) 85%, var(--arcade-green-700));
+  background: color-mix(in srgb, var(--bg-cream) 88%, #e8f4ec);
 }
 
 /* =============================================================
@@ -5717,6 +6429,10 @@ a.podium-address-explorer:hover .address-inline__label {
 .timecurve-simple__timer-panel.data-panel {
   position: relative;
   isolation: isolate;
+  /* Hub panels are column flex (`.timecurve-simple__hub > .data-panel`). The
+     timer stage sets a desktop `min-height` so it matches the buy column;
+     without this, the heading + clock hug the top above empty stage space. */
+  justify-content: center;
   /* `.data-panel--spotlight` reserves a wide right rail (for cutouts on the
      right). The timer mascot is bottom-left, so that extra `padding-right`
      only shoves the heading + clock left of centre. Use symmetric insets. */
@@ -5815,7 +6531,7 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  animation: timecurve-simple-extension-pop 0.45s var(--motion-bounce);
+  animation: timecurve-simple-extension-wiggle 0.58s ease-out both;
 }
 
 .timecurve-simple__last-extension-dot {
@@ -5845,17 +6561,33 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--arcade-green-900);
 }
 
-@keyframes timecurve-simple-extension-pop {
+@keyframes timecurve-simple-extension-wiggle {
   0% {
-    transform: translateY(6px) scale(0.92);
-    opacity: 0;
+    transform: translateY(5px) translateX(0) rotate(0deg) scale(0.94);
+    opacity: 0.7;
   }
-  60% {
-    transform: translateY(-1px) scale(1.02);
+  14% {
+    transform: translateY(-5px) translateX(-3px) rotate(-1.6deg) scale(1.02);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(2px) translateX(4px) rotate(1.2deg) scale(1);
+    opacity: 1;
+  }
+  46% {
+    transform: translateY(-3px) translateX(-2px) rotate(-0.95deg) scale(1);
+    opacity: 1;
+  }
+  62% {
+    transform: translateY(1px) translateX(2px) rotate(0.55deg) scale(1);
+    opacity: 1;
+  }
+  78% {
+    transform: translateY(-2px) translateX(-1px) rotate(-0.3deg) scale(1);
     opacity: 1;
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
     opacity: 1;
   }
 }
@@ -5877,31 +6609,23 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Pure-CSS clock glyph in front of the "TIME LEFT" H2 — no new asset
-   required, and no DOM coupling (the H2 text still comes from the
-   PageSection `title` prop). The pseudo-element is built from a gold
-   coin face plus two conic-gradient "hands" that share the same circle.
-   Decorative; aria-hidden via `::before`'s default behaviour. */
+/* Transparent TimeCurve stopwatch icon in front of the "TIME LEFT" H2.
+   Reuses the generated header icon so the timer panel reads as TimeCurve
+   instead of a generic coin, while keeping the PageSection title DOM intact. */
 .timecurve-simple__timer-panel .section-heading h2 {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
 .timecurve-simple__timer-panel .section-heading h2::before {
   content: "";
   display: inline-block;
-  width: 1.55rem;
-  height: 1.55rem;
-  border: 3px solid var(--arcade-gold-400);
-  border-radius: 999px;
-  background:
-    /* hour hand (pointing to ~10) */
-    linear-gradient(36deg, transparent 47%, var(--arcade-green-900) 47%, var(--arcade-green-900) 53%, transparent 53%) center/0.18rem 0.55rem no-repeat,
-    /* minute hand (pointing up) */
-    linear-gradient(0deg, transparent 47%, var(--arcade-green-900) 47%, var(--arcade-green-900) 53%, transparent 53%) center/0.16rem 0.7rem no-repeat,
-    radial-gradient(circle at 30% 30%, #fff 0%, var(--arcade-gold-200) 35%, var(--arcade-gold-400) 100%);
-  box-shadow: 2px 2px 0 var(--line), inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-block: -0.35rem;
+  background: url("/art/icons/header-timecurve.png") center/contain no-repeat;
+  filter: drop-shadow(2px 3px 0 rgba(6, 24, 14, 0.75));
   flex-shrink: 0;
 }
 
@@ -5919,13 +6643,15 @@ a.podium-address-explorer:hover .address-inline__label {
   color: #fff;
   text-shadow: 2px 3px 0 rgba(6, 24, 14, 0.55), 0 0 14px rgba(255, 215, 94, 0.18);
   font-size: 1.35rem;
+  /* Tight line box so the lede can sit close under the title despite the tall ::before glyph. */
+  line-height: 1;
 }
 
 .timecurve-simple__timer-panel .section-heading__lede,
 .timecurve-simple__timer-panel .section-heading__lede p {
   color: rgba(232, 252, 230, 0.9);
   font-size: 0.92rem;
-  line-height: 1.4;
+  line-height: 1.25;
 }
 
 .timecurve-simple__timer-panel .section-heading {
@@ -5934,7 +6660,7 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
   width: 100%;
   text-align: center;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0;
   gap: 0.5rem 0.85rem;
 }
 
@@ -5946,6 +6672,13 @@ a.podium-address-explorer:hover .address-inline__label {
   text-align: center;
   max-width: 28rem;
   margin: 0 auto;
+  /* Title + lede share one visual stack; row-gap near zero + lede nudge reads tighter than grid gap alone. */
+  gap: 0;
+  row-gap: 0;
+}
+
+.timecurve-simple__timer-panel .section-heading__lede {
+  margin-top: -0.2rem;
 }
 
 /* Inner timer hero: now that the OUTER panel is the stage, the inner
@@ -5955,7 +6688,9 @@ a.podium-address-explorer:hover .address-inline__label {
    panel itself. */
 .timecurve-simple__timer-panel .timer-hero {
   margin: 0;
-  padding: clamp(1.25rem, 2.4vw, 2rem) clamp(0.5rem, 1.6vw, 1.25rem);
+  /* No top inset — lede sits flush on the digit stage; keep breathing room below the clock. */
+  padding: 0 clamp(0.5rem, 1.6vw, 1.25rem) clamp(1.15rem, 2.2vw, 1.85rem)
+    clamp(0.5rem, 1.6vw, 1.25rem);
   isolation: isolate;
   background: transparent;
   border: 0;
@@ -6010,10 +6745,12 @@ a.podium-address-explorer:hover .address-inline__label {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Digits + days chip share a baseline so the `Nd` chip sits flush with the
-   `HH:MM:SS` digits. Wrap on tiny widths so the chip can drop above. */
+/* Days chip first in DOM, then digits — flex row keeps `Nd` to the left of
+   `HH:MM:SS`. `flex-wrap` can move the clock to the next line on very tight
+   widths without reversing order. */
 .timecurve-simple__timer-clock {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: center;
@@ -6025,11 +6762,21 @@ a.podium-address-explorer:hover .address-inline__label {
   font-variant-numeric: tabular-nums;
 }
 
+/* When the “last extension” chip is present (absolute bottom-right), add
+   ~1em air between the H:M:S line and the pill without affecting layouts
+   where the chip is hidden. */
+.timecurve-simple__timer-panel:has(.timecurve-simple__last-extension)
+  .timecurve-simple__timer-clock {
+  margin-bottom: 1em;
+}
+
 .timecurve-simple__timer-digits {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: clamp(2.5rem, 8vw, 5rem);
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   text-shadow:
     3px 4px 0 var(--line),
     0 0 22px rgba(0, 0, 0, 0.45);
@@ -6049,6 +6796,8 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-main);
   text-shadow: 2px 3px 0 rgba(11, 31, 20, 0.18);
   box-shadow: 4px 4px 0 var(--line);
+  /* Optical nudge: baseline alignment leaves the chip ~4px low vs HH:MM:SS. */
+  transform: translateY(-4px);
 }
 
 .timecurve-simple__timer-days-num {
@@ -6115,16 +6864,16 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Mobile rhythm — the digits dominate, the days chip stacks below if the
-   line gets too tight. */
+/* Mobile rhythm — keep the `Nd` chip inline to the left of `HH:MM:SS` (same
+   row as wider viewports); only tighten padding so the pair fits narrow cards. */
 @media (max-width: 540px) {
   .timecurve-simple__timer-panel .timer-hero {
-    padding: 1.4rem 0.85rem;
+    padding: 0.75rem 0.85rem 1.2rem;
   }
 
   .timecurve-simple__timer-clock {
-    flex-direction: column-reverse;
-    gap: 0.55rem;
+    flex-direction: row;
+    gap: clamp(0.35rem, 2.5vw, 0.75rem);
   }
 
   .timecurve-simple__timer-days {
@@ -6143,6 +6892,32 @@ a.podium-address-explorer:hover .address-inline__label {
 .timecurve-simple-page {
   container-type: inline-size;
   container-name: timecurveSimplePage;
+}
+
+/* Wider Simple page: keep the days chip + `HH:MM:SS` on one flex line. With
+   `flex-wrap: wrap`, the pair often stacked in the two-column hub because
+   each grid track is ~half the page while digit `font-size` still tracks
+   viewport `vw`. */
+@container timecurveSimplePage (min-width: 541px) {
+  .timecurve-simple__timer-clock {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .timecurve-simple__timer-clock .timecurve-simple__timer-days {
+    transform: none;
+  }
+}
+
+@media (min-width: 541px) {
+  .timecurve-simple__timer-clock {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .timecurve-simple__timer-clock .timecurve-simple__timer-days {
+    transform: none;
+  }
 }
 
 .timecurve-simple__hub {
@@ -6169,7 +6944,7 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .timecurve-simple__minmax {
+  .timecurve-simple__minmax:not(.timecurve-simple__minmax--rate-card) {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -6182,7 +6957,7 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .timecurve-simple__minmax {
+  .timecurve-simple__minmax:not(.timecurve-simple__minmax--rate-card) {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -6196,8 +6971,23 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-direction: column;
 }
 
+/* Timer column stays content-height: hub row still sizes to the taller BUY
+   panel, but the clock card must not stretch when that panel grows. */
+.timecurve-simple__hub > .timecurve-simple__timer-panel {
+  align-self: start;
+}
+
 .timecurve-simple__activity-panel {
   margin-top: 0;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Hide generic `.data-panel::after` gold dot — it sits on the badge header and adds no signal. */
+.timecurve-simple__activity-panel.data-panel::after {
+  display: none;
 }
 
 .timecurve-simple__podium-panel {
@@ -6278,6 +7068,11 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.72),
     0 0.8rem 1.8rem rgba(11, 31, 20, 0.08);
+}
+
+.timecurve-simple__podium-panel .page-section__standalone-badge {
+  position: relative;
+  z-index: 1;
 }
 
 .timecurve-simple__podium-panel .section-heading h2 {
@@ -6497,6 +7292,7 @@ a.podium-address-explorer:hover .address-inline__label {
   padding: 0.56rem 0.64rem;
   border-width: 2px;
   box-shadow: 2px 2px 0 rgba(11, 31, 20, 0.84);
+  align-items: start;
 }
 
 .timecurve-simple__podium-card .ranking-list__rank {
@@ -6573,7 +7369,10 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: saturate(1.14) brightness(1.06);
 }
 
-.timecurve-simple__podium-card .ranking-list__meta {
+.timecurve-simple__podium-card .ranking-list__item > .ranking-list__meta {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  text-align: left;
   font-size: 0.68rem;
   line-height: 1.25;
 }
@@ -6733,17 +7532,6 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-trophy-burst 0.82s ease-out;
 }
 
-.timecurve-simple__podium-footnote {
-  margin: 0.85rem 0 0;
-  font-size: 0.8rem;
-}
-
-.timecurve-simple__podium-usd-affordance {
-  margin-top: 0.4rem;
-  font-size: 0.72rem;
-  line-height: 1.38;
-}
-
 @keyframes podium-sparkle {
   0%,
   100% {
@@ -6874,10 +7662,6 @@ a.podium-address-explorer:hover .address-inline__label {
     max-width: 100%;
     white-space: normal;
   }
-
-  .timecurve-simple__podium-footnote {
-    font-size: 0.76rem;
-  }
 }
 
 .timecurve-simple__indexer-stale-hint {
@@ -6887,11 +7671,14 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Scroll the ticker; older rows load when the sentinel nears the viewport (Simple lazy feed). */
 .timecurve-simple__activity-scroll {
-  max-height: min(58vh, 32rem);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   padding-right: 0.35rem;
   margin-right: -0.15rem;
+  border-top: 4px solid grey;
+  border-bottom: 4px solid grey;
 }
 
 .timecurve-simple__activity-load-more {
@@ -6912,6 +7699,36 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+/* Live buys: two columns on desktop (row-major: 1+2, then 3+4). Matches the
+   hub’s 880px breakpoint family — tablet/phone stay a single column. */
+@container timecurveSimplePage (min-width: 881px) {
+  .timecurve-simple__activity-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 881px) {
+  .timecurve-simple__activity-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Desktop hub: give the arcade timer stage a stable vertical footprint so the
+   mascot + digits + extension chip layout does not feel vertically cramped. */
+@container timecurveSimplePage (min-width: 881px) {
+  .timecurve-simple__hub > .timecurve-simple__timer-panel {
+    min-height: 392px;
+  }
+}
+
+@media (min-width: 881px) {
+  .timecurve-simple__hub > .timecurve-simple__timer-panel {
+    min-height: 392px;
+  }
 }
 
 .timecurve-simple__ticker-row {
@@ -7333,6 +8150,11 @@ a.podium-address-explorer:hover .address-inline__label {
   isolation: isolate;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  /* Undo `.data-panel--spotlight`’s wide right rail (cutout reserve). This panel
+     hides `::after` and has no right mascot — extra `padding-right` only
+     shoves slider + amount bar + CTA left of centre (same fix as timer panel). */
+  padding: 1.1rem 1.15rem;
   border: 4px solid var(--arcade-gold-600);
   border-radius: 1.5rem;
   background:
@@ -7346,11 +8168,86 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-/* Slightly tighter heading rhythm + gold-tone H2 so the "BUY CHARM" title
-   feels like a stamped sign on the front of the vending machine. */
+/* Buy hub: column-align interactive chrome (rate, slider, CTA) on the vending
+   panel's centerline. Gate wrapper stays full width (overlay + E2E guardrail
+   in timeCurveResponsiveLayoutCss.test.ts forbids `.buy-panel .chain-write-gate`
+   as a substring — use `.buy-panel.data-panel > .chain-write-gate` only). */
+.timecurve-simple__buy-panel.data-panel > .chain-write-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.timecurve-simple__buy-panel.data-panel > .chain-write-gate > * {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.timecurve-simple__buy-panel.data-panel > .chain-write-gate > p {
+  text-align: center;
+}
+
+/* Slightly tighter heading rhythm + gold-tone H2 so the buy-panel title
+   feels like a stamped sign on the front of the vending machine.
+   Centred copy so the hub reads symmetric inside the gold frame. */
+.timecurve-simple__buy-panel .section-heading {
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.2rem 1rem;
+  /* Live rate stack sits directly under the heading (or flush to panel top
+     during active sale when the heading row is omitted). */
+  margin-bottom: 0.2rem;
+}
+
+.timecurve-simple__buy-panel .section-heading__copy {
+  justify-items: center;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__rate-board {
+  align-items: center;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__rate-now-line {
+  justify-content: center;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__pay-balance {
+  text-align: center;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__buy-preview {
+  align-items: center;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__buy-advanced > summary {
+  justify-content: center;
+  position: relative;
+  padding-inline: 2.85rem;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__buy-advanced > summary::after {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .timecurve-simple__buy-panel .section-heading h2 {
+  margin: 0;
   color: var(--arcade-green-900);
   text-shadow: 2px 3px 0 rgba(255, 255, 255, 0.55);
+}
+
+/* Pay-asset toggles: top of Simple buy hub ADVANCED accordion during active sale (no H2). */
+.timecurve-simple__buy-panel .timecurve-simple__rate-paywith--buy-heading {
+  margin: 0;
+  padding-bottom: 0;
 }
 
 .timecurve-simple__connect {
@@ -7358,6 +8255,10 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-direction: column;
   gap: 0.65rem;
   align-items: flex-start;
+}
+
+.timecurve-simple__buy-panel .timecurve-simple__connect {
+  align-items: center;
 }
 
 .timecurve-simple__balance-row {
@@ -7382,35 +8283,69 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.timecurve-simple__slider-row {
-  display: grid;
-  grid-template-columns: 1fr minmax(10rem, 14rem);
-  gap: 0.85rem;
-  align-items: center;
-  margin: 0.35rem 0 0.85rem;
+/* Buy limits as flat supporting copy inside the Simple buy panel ADVANCED accordion.
+   Flat text — no pill chrome — so it reads as supporting copy. */
+.timecurve-simple__minmax--rate-card {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(60, 40, 0, 0.78);
+  border-radius: 0;
+  flex-wrap: wrap;
+  align-self: stretch;
 }
 
-.timecurve-simple__slider {
-  width: 100%;
+.timecurve-simple__minmax--rate-card strong {
+  font-weight: 800;
+  color: var(--arcade-green-800, #166534);
+}
+
+/* Keep amount + min/max label visually tight; parent span uses flex gap for separation between pairs. */
+.timecurve-simple__minmax--rate-card .timecurve-simple__minmax-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.timecurve-simple__minmax--rate-card .timecurve-simple__minmax-suffix {
+  margin-left: 0.04em;
+  font-weight: inherit;
+}
+
+.timecurve-simple__slider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: stretch;
+  /* Buy limits moved under ADVANCED; keep a little air before balance + preview margins. */
+  margin: 0.35rem 0 0.12rem;
 }
 
 .timecurve-simple__amount-input {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.35rem;
+  width: 100%;
   padding: 0.25rem 0.55rem;
-  border: 2px solid var(--line);
+  border: 2px solid var(--arcade-green-700);
   border-radius: 0.65rem;
   background: #fff;
+  box-shadow: none;
 }
 
 .timecurve-simple__amount-field {
   font-family: monospace;
   font-size: 1rem;
   width: 100%;
+  min-width: 0;
   border: 0;
   padding: 0.35rem 0.4rem;
   background: transparent;
+  box-shadow: none;
 }
 
 .timecurve-simple__amount-suffix {
@@ -7419,114 +8354,184 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-main);
 }
 
+.timecurve-simple__amount-token-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  /* `.form-input` caps field width (20rem); pin token select to the input bar's right edge. */
+  margin-inline-start: auto;
+}
+
+.timecurve-simple__amount-token-dropdown:has(.timecurve-simple__amount-token-select:disabled) {
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+}
+
+.timecurve-simple__amount-token-dropdown-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.timecurve-simple__amount-token-select {
+  max-width: 6.25rem;
+  margin: 0;
+  padding: 0.12rem 0.15rem;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  background: transparent;
+  cursor: inherit;
+  line-height: 1.2;
+}
+
+.timecurve-simple__amount-token-select:disabled {
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  opacity: 0.62;
+}
+
 .timecurve-simple__pay-balance {
   margin: 0.15rem 0 0.35rem;
   font-size: 0.92rem;
 }
 
+/* Inline pay-token balance: `YOUR CL8Y:` (caption) + larger sans value; `display:flex` on `.amount-triple` is block-level and breaks `<p>` flow (GitLab #9). */
+.timecurve-simple__pay-balance .amount-triple {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: baseline;
+  max-width: 100%;
+}
+
+.timecurve-simple__pay-balance .amount-triple__row {
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+.timecurve-simple__pay-balance .amount-triple__label {
+  font-size: 0.78em;
+  min-width: 0;
+}
+
+.timecurve-simple__pay-balance .amount-triple__value {
+  font-size: 1.12em;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .timecurve-simple__amount-field--quoted {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
   min-height: 2.35rem;
   font-family: monospace;
   font-size: 1rem;
   color: var(--ink, #111);
 }
 
-.timecurve-simple__slider-row--pay-cl8y .timecurve-simple__slider {
+.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.timecurve-buy-spend-range,
+.timecurve-simple__slider-row--pay-cl8y .timecurve-buy-spend-range {
   accent-color: var(--arcade-green-600, #15803d);
 }
 
-.timecurve-simple__slider-row--pay-eth .timecurve-simple__slider {
+.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.timecurve-buy-spend-range,
+.timecurve-simple__slider-row--pay-eth .timecurve-buy-spend-range {
   accent-color: #627eea;
 }
 
-.timecurve-simple__slider-row--pay-usdm .timecurve-simple__slider {
+.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.timecurve-buy-spend-range,
+.timecurve-simple__slider-row--pay-usdm .timecurve-buy-spend-range {
   accent-color: #0d9488;
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input {
-  accent-color: var(--arcade-green-600, #15803d);
-}
-
-.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input {
-  accent-color: #627eea;
-}
-
-.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input {
-  accent-color: #0d9488;
-}
-
+/* CHARM / CL8Y preview under the Buy CTA: unboxed inline copy on the buy panel's
+   gold vending-machine surface (same intent as `.timecurve-simple__rate-board`). */
 .timecurve-simple__buy-preview {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.85rem 1.1rem;
-  border-radius: 0.85rem;
-  background: linear-gradient(180deg, var(--arcade-gold-200, #fde68a), #fff8df);
-  border: 3px solid var(--line);
-  box-shadow: 4px 4px 0 var(--line);
-  margin-bottom: 0.75rem;
+  gap: 0.2rem;
+  padding: 0;
+  margin: 10px 0 0.75rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
 }
 
 .timecurve-simple__buy-preview--loading {
-  background: rgba(245, 245, 240, 0.85);
-  padding: 0.85rem 1.1rem;
+  background: none;
+  color: rgba(60, 40, 0, 0.72);
+  font-weight: 700;
+  font-size: 0.85rem;
 }
 
-.timecurve-simple__buy-preview-row {
+.timecurve-simple__buy-preview-approx {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.55rem;
-}
-
-.timecurve-simple__buy-preview-row--launch {
-  border-top: 2px dashed rgba(60, 40, 0, 0.25);
-  padding-top: 0.4rem;
-}
-
-.timecurve-simple__buy-preview-label {
-  font-size: 0.85rem;
+  margin-top: 0;
+  font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  color: var(--arcade-green-800);
 }
 
-.timecurve-simple__buy-preview-value {
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  font-weight: 900;
+.timecurve-simple__buy-preview-approx-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.timecurve-simple__buy-preview-gain {
   font-family: monospace;
-  max-width: 100%;
-  overflow-wrap: anywhere;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--arcade-green-500);
+  white-space: nowrap;
 }
 
-.timecurve-simple__buy-preview-unit {
-  font-size: 0.95rem;
-  font-weight: 700;
+.timecurve-simple__buy-preview-approx-value {
+  font-family: monospace;
+  font-weight: 800;
 }
 
-/* Live rate board: top of the buy panel. The "current price" row is the
-   single most-important number on the page (ticks every block), so it gets
-   hero-sized type and a bold gold field; the "at launch" row underneath
-   shows the full chain `1 CHARM = N DOUB = M CL8Y` so users can see where
-   the launch CL8Y projection on the stake panel comes from. */
+.timecurve-simple__buy-preview-approx-unit {
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* Live rate board: column for the hero "now" row plus optional "at launch"
+   row (Arena). Intentionally unboxed — the buy panel chrome carries the
+   vending-machine frame; the live price reads as inline panel content. */
 .timecurve-simple__rate-board {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 1rem 1.15rem 1.1rem;
-  border-radius: 1rem;
-  background: linear-gradient(180deg, var(--arcade-gold-100, #fff4c4), #fff8df 60%, #fff);
-  border: 3px solid var(--line);
-  box-shadow: 6px 6px 0 var(--line);
-  margin-bottom: 1rem;
+  gap: 0.45rem;
+  padding: 0;
+  margin: 0 0 0.65rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
 }
 
 .timecurve-simple__rate-row {
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
+}
+
+/* Live "now" row: inline CHARM glyph + label + price + pay-token logo; Arena
+   stacks the pay-asset toggle on a second line below. */
+.timecurve-simple__rate-row--now {
+  gap: 0.45rem;
+}
+
+.timecurve-simple__rate-row--now > .timecurve-simple__rate-paywith {
+  margin-top: 0;
 }
 
 .timecurve-simple__rate-row--launch {
@@ -7586,22 +8591,10 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.timecurve-simple__rate-unit {
-  font-size: 0.7em;
-  margin-left: 0.18em;
-  font-weight: 800;
-  color: rgba(60, 40, 0, 0.85);
-}
-
 .timecurve-simple__rate-equals {
   font-size: 0.7em;
   margin: 0 0.25em;
   color: rgba(60, 40, 0, 0.65);
-}
-
-.timecurve-simple__rate-foot {
-  font-size: 0.78rem;
-  line-height: 1.3;
 }
 
 /* "1 CHARM AT LAUNCH" rate-pair tiles. Two equal tiles flank an `=`
@@ -7661,17 +8654,23 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(60, 40, 0, 0.6);
 }
 
-/* CHARM glyph next to the live "1 CHARM costs right now" label. The glyph
-   is `/tokens/charm.png` (canonical CHARM art). */
-.timecurve-simple__rate-label-row {
-  display: inline-flex;
+/* CHARM glyph + "1 CHARM =" + hero digits + selected pay-token logo on one
+   wrapping flex line (`/tokens/charm.png` + `/tokens/cl8y.png`, etc.). */
+.timecurve-simple__rate-now-line {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(60, 40, 0, 0.78);
+  gap: 0.35rem 0.55rem;
+  min-width: 0;
+}
+
+.timecurve-simple__rate-pay-logo {
+  width: clamp(1.65rem, 4.8vw, 2.15rem);
+  height: clamp(1.65rem, 4.8vw, 2.15rem);
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.12));
+  image-rendering: pixelated;
 }
 
 /* Pay-asset toggle on the live rate row (CL8Y / ETH / USDM). */
@@ -7708,11 +8707,59 @@ a.podium-address-explorer:hover .address-inline__label {
   border-color: rgba(40, 90, 40, 0.55);
 }
 
-.timecurve-simple__rate-value-row {
+/* Single horizontal segmented control (Simple buy heading + Arena live rate). */
+.timecurve-simple__rate-paywith--segmented {
   display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  max-width: 100%;
+  border: 2px solid rgba(40, 90, 40, 0.45);
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: rgba(255, 253, 246, 0.96);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-left: 2px solid rgba(60, 40, 0, 0.2);
+  padding: 0.26rem 0.35rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  background: transparent;
+  color: rgba(60, 40, 0, 0.55);
+  text-decoration: none;
+}
+
+.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn:first-of-type {
+  border-left: none;
+}
+
+.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn:hover {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn--active {
+  font-weight: 700;
+  color: var(--arcade-green-800, #166534);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--arcade-green-600, #15803d);
+  background: rgba(241, 251, 233, 0.88);
+}
+
+.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn--active:hover {
+  background: rgba(241, 251, 233, 1);
 }
 
 .timecurve-simple__kumbaya-route-warn {
@@ -7852,33 +8899,287 @@ a.podium-address-explorer:hover .address-inline__label {
   object-fit: contain;
 }
 
-/* "Your stake at launch" panel — two big-number tiles backed by the
-   `participantLaunchValueCl8yWei` invariant (1.275× per-CHARM clearing price). */
-.timecurve-simple__stake-panel {
+@keyframes timecurve-stake-gradient-drift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes timecurve-stake-particle-float {
+  0%,
+  100% {
+    opacity: 0.68;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translate3d(-0.35rem, -0.45rem, 0) rotate(10deg) scale(1.12);
+  }
+}
+
+/* "Your stake at launch" panel — combined CHARM ≈ CL8Y line (`participantLaunchValueCl8yWei`). */
+.timecurve-simple__stake-panel.data-panel {
+  position: relative;
+  isolation: isolate;
   margin-bottom: 0.5rem;
-}
-
-.timecurve-simple__stake-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 0.85rem;
-  margin: 0.4rem 0 0.6rem;
-}
-
-.timecurve-simple__stake-tile {
+  padding: clamp(1rem, 2.2vw, 1.35rem);
+  padding-right: clamp(7.8rem, 19vw, 11rem);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
-  padding: 0.95rem 1.1rem;
-  border: 3px solid var(--line);
-  border-radius: 0.85rem;
-  background: #fff;
-  box-shadow: 4px 4px 0 var(--line);
+  align-items: stretch;
+  text-align: start;
+  border-color: #123b25;
+  background:
+    radial-gradient(circle at 87% 15%, rgba(255, 229, 102, 0.52), transparent 18%),
+    radial-gradient(circle at 4% 18%, rgba(94, 232, 154, 0.34), transparent 24%),
+    linear-gradient(124deg, #fffef5 0%, #eaffef 36%, #fff2b8 68%, #dcf9ff 100%);
+  background-size: 100% 100%, 100% 100%, 220% 220%;
+  box-shadow: 8px 8px 0 var(--line), 0 16px 34px rgba(6, 61, 36, 0.26);
+  animation: timecurve-stake-gradient-drift 10s ease-in-out infinite;
 }
 
-.timecurve-simple__stake-tile--launch {
-  background: linear-gradient(180deg, #f1fbe9 0%, #fffbe5 100%);
+.timecurve-simple__stake-panel.data-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0.55rem;
+  z-index: 0;
+  border: 2px dashed rgba(6, 61, 36, 0.22);
+  border-radius: 1.05rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.62), transparent 32%),
+    radial-gradient(circle at 0 0, transparent 0 0.92rem, rgba(255, 255, 255, 0.62) 0.96rem 1.25rem, transparent 1.3rem),
+    radial-gradient(circle at 100% 100%, transparent 0 0.92rem, rgba(255, 255, 255, 0.5) 0.96rem 1.25rem, transparent 1.3rem);
+  pointer-events: none;
+}
+
+/* Same as timer/buy simple panels: hide generic `.data-panel::after` gold dot — it overlaps the inner stake card and adds no signal. */
+.timecurve-simple__stake-panel.data-panel::after {
+  display: none;
+}
+
+.timecurve-simple__stake-panel--has-charm.data-panel {
+  border-color: var(--arcade-gold-600);
+  background:
+    radial-gradient(circle at 84% 18%, rgba(255, 229, 102, 0.74), transparent 20%),
+    radial-gradient(circle at 10% 0%, rgba(255, 110, 180, 0.18), transparent 27%),
+    linear-gradient(124deg, #fffdf0 0%, #dfffee 34%, #fff0a8 66%, #e8fbff 100%);
+}
+
+.timecurve-simple__stake-panel--no-charm.data-panel {
+  border-color: #e28d0a;
+  background:
+    radial-gradient(circle at 85% 18%, rgba(255, 184, 55, 0.66), transparent 20%),
+    radial-gradient(circle at 5% 18%, rgba(255, 110, 180, 0.18), transparent 26%),
+    linear-gradient(124deg, #fff8df 0%, #fff0b7 40%, #ffe1c2 72%, #fffdf2 100%);
+}
+
+/* Mood, headings, CHARM card — above cutout/fx; keep copy left-aligned (desktop panel is narrowed + centered). */
+.timecurve-simple__stake-panel-main {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: start;
+  width: 100%;
+}
+
+.timecurve-simple__stake-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.timecurve-simple__stake-particle {
+  position: absolute;
+  width: 0.68rem;
+  height: 0.68rem;
+  border: 2px solid rgba(6, 61, 36, 0.34);
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #fff 0%, var(--arcade-gold-200) 36%, var(--arcade-gold-600) 100%);
+  box-shadow: 0 0 0 3px rgba(255, 229, 102, 0.18);
+  animation: timecurve-stake-particle-float 3.8s ease-in-out infinite;
+}
+
+.timecurve-simple__stake-particle--one {
+  top: 1rem;
+  right: clamp(7rem, 16vw, 9.5rem);
+}
+
+.timecurve-simple__stake-particle--two {
+  right: clamp(2.6rem, 7vw, 4.2rem);
+  bottom: 1rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  animation-delay: -1.2s;
+}
+
+.timecurve-simple__stake-particle--three {
+  top: 50%;
+  right: clamp(5rem, 11vw, 7rem);
+  width: 0.54rem;
+  height: 0.54rem;
+  background: radial-gradient(circle at 35% 30%, #fff 0%, #7fffb2 36%, #1fb86a 100%);
+  animation-delay: -2.1s;
+}
+
+.timecurve-simple__stake-cutout {
+  z-index: 1;
+  right: clamp(-1rem, -1.4vw, -0.25rem);
+  bottom: -1.35rem;
+  width: clamp(7rem, 16vw, 10rem);
+  height: auto;
+  filter: drop-shadow(5px 7px 0 rgba(11, 31, 20, 0.38));
+}
+
+.timecurve-simple__stake-mood {
+  margin: 0 0 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem 0.6rem;
+}
+
+.timecurve-simple__stake-mood-copy {
+  max-width: 42rem;
+  font-size: clamp(0.88rem, 1.9vw, 1rem);
+  font-weight: 800;
+  color: rgba(6, 61, 36, 0.86);
+}
+
+@media (max-width: 720px) {
+  .timecurve-simple__stake-panel.data-panel {
+    padding-right: clamp(4.55rem, 18vw, 5.8rem);
+  }
+
+  .timecurve-simple__stake-cutout {
+    right: -0.85rem;
+    bottom: -1.15rem;
+    width: clamp(4.9rem, 19vw, 6rem);
+    opacity: 0.94;
+  }
+
+  .timecurve-simple__stake-mood-copy {
+    max-width: 34rem;
+  }
+
+  .timecurve-simple__stake-combined-line {
+    font-size: clamp(1.25rem, 4.8vw, 1.8rem);
+  }
+}
+
+@media (min-width: 721px) {
+  /* Child of `.timecurve-simple-page` flex column: center the panel, keep copy flush start. */
+  .timecurve-simple-page > .timecurve-simple__stake-panel.data-panel {
+    align-self: center;
+    width: 50%;
+    max-width: 100%;
+    margin-inline: auto;
+    box-sizing: border-box;
+    text-align: start;
+    align-items: stretch;
+    /* Mascot is scaled down on desktop; keep text inset without oversized gutter. */
+    padding-right: clamp(4.7rem, 11.4vw, 6.6rem);
+  }
+
+  /* Leprechaun cutout: 40% smaller than default (60% of prior width / nudges). */
+  .timecurve-simple__stake-cutout {
+    right: clamp(-0.6rem, -0.84vw, -0.15rem);
+    bottom: -0.81rem;
+    width: clamp(4.2rem, 9.6vw, 6rem);
+  }
+
+  .timecurve-simple__stake-particle--one {
+    right: clamp(4.2rem, 9.6vw, 5.7rem);
+  }
+
+  .timecurve-simple__stake-particle--two {
+    right: clamp(1.56rem, 4.2vw, 2.52rem);
+  }
+
+  .timecurve-simple__stake-particle--three {
+    right: clamp(3rem, 6.6vw, 4.2rem);
+  }
+}
+
+.timecurve-simple__stake-combined {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.95rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 3px solid rgba(11, 31, 20, 0.85);
+  border-radius: 1.05rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 254, 245, 0.68)),
+    repeating-linear-gradient(90deg, rgba(31, 184, 106, 0.08) 0 0.7rem, transparent 0.7rem 1.4rem);
+  box-shadow: 4px 4px 0 rgba(11, 31, 20, 0.82), inset 0 0 0 2px rgba(255, 255, 255, 0.36);
+}
+
+.timecurve-simple__stake-combined--redeemed {
+  opacity: 0.92;
+}
+
+.timecurve-simple__stake-combined-line {
+  margin: 0;
+  font-size: clamp(1.35rem, 3.6vw, 2.15rem);
+  font-weight: 900;
+  line-height: 1.25;
+  color: var(--text-main);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.15rem 0.35rem;
+}
+
+.timecurve-simple__stake-combined-line--approx {
+  font-size: clamp(0.95rem, 2.4vw, 1.25rem);
+  font-weight: 800;
+  color: var(--arcade-green-800);
+}
+
+.timecurve-simple__stake-combined-label {
+  font-family: "Fredoka", system-ui, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* `AmountDisplay` → `.amount-triple` is block-level by default; keep the row inline in this sentence. */
+.timecurve-simple__stake-combined .amount-triple {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: baseline;
+}
+
+.timecurve-simple__stake-combined .amount-triple__value.mono {
+  font-size: 1em;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.timecurve-simple__stake-combined-token {
+  font-family: "Fredoka", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 0.72em;
+}
+
+.timecurve-simple__stake-combined-usd {
+  font-family: "Inter", sans-serif;
+  font-size: 0.88em;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--arcade-green-800) 68%, var(--text-muted, #4a5a4a));
+  white-space: nowrap;
 }
 
 .timecurve-simple__stake-tile-label {
@@ -7889,21 +9190,10 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-muted, #4a5a4a);
 }
 
-.timecurve-simple__stake-tile-value {
-  font-size: clamp(1.85rem, 4vw, 2.6rem);
-  font-weight: 900;
-  font-family: monospace;
-  line-height: 1;
-}
-
 .timecurve-simple__stake-tile-unit {
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-}
-
-.timecurve-simple__stake-panel.timecurve-simple__stake-panel--redeemed .section-heading__copy .ui-badge--info {
-  opacity: 0.82;
 }
 
 .timecurve-simple__stake-settled-actions {
@@ -7925,12 +9215,6 @@ a.podium-address-explorer:hover .address-inline__label {
   letter-spacing: 0.03em;
   color: var(--text-muted, #4a5a4a);
   font-size: 0.72rem;
-}
-
-.timecurve-simple__stake-tile--launch-redeemed {
-  opacity: 0.62;
-  background: linear-gradient(180deg, #eef3ea 0%, #f5f5f0 100%);
-  border-style: dashed;
 }
 
 .timecurve-simple__stake-tile-value--redeemed-struck {
@@ -7967,11 +9251,6 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .timecurve-simple__stake-redeemed-row .timecurve-simple__stake-tile-unit {
   grid-column: 3;
-}
-
-.timecurve-simple__stake-foot {
-  margin: 0;
-  font-size: 0.85rem;
 }
 
 .timecurve-simple__cta {
@@ -8072,6 +9351,23 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-top: 0.6rem;
 }
 
+/* Buy hub — WarBow plant + CL8Y approval prefs (collapsed by default).
+   Sits under the primary Buy CTA on Simple view. */
+.timecurve-simple__buy-advanced {
+  margin-top: 0.85rem;
+  border: 2px dashed rgba(11, 31, 20, 0.2);
+  border-radius: 0.75rem;
+  padding: calc(0.4rem + 3px) 0.6rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.timecurve-simple__buy-advanced > summary {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--arcade-green-900);
+}
+
 /* ---- "Want more?" explore tiles ---- */
 
 @media (max-width: 980px) {
@@ -8086,9 +9382,6 @@ a.podium-address-explorer:hover .address-inline__label {
   }
   .timecurve-simple__ticker-row {
     grid-template-columns: 1fr 1fr;
-  }
-  .timecurve-simple__stake-grid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -8127,29 +9420,6 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
-}
-
-/* TimeCurve sub-nav pictograms (issue #45 nav-*.png) */
-.timecurve-subnav__link {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 0.55rem;
-}
-.timecurve-subnav__icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  object-fit: contain;
-  flex-shrink: 0;
-  image-rendering: pixelated;
-  filter: drop-shadow(1px 1px 0 var(--line));
-}
-.timecurve-subnav__label {
-  flex: 1 1 auto;
-}
-.timecurve-subnav__hint {
-  flex-basis: 100%;
-  margin-left: 2.05rem;
 }
 
 /* Scene backplate inside .arcade-banner (PageHero). The text overlay

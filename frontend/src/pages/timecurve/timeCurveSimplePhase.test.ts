@@ -179,9 +179,8 @@ describe("phaseBadge / phaseNarrative copy contract (issue #40 A1/A2/A4)", () =>
     expect(phaseBadge("loading").iconSrc).toBe("/art/icons/status-cooldown.png");
   });
 
-  it("narratives are short and explain CL8Y → CHARM clearly when active", () => {
-    expect(phaseNarrative("saleActive")).toMatch(/timer/i);
-    expect(phaseNarrative("saleActive")).toMatch(/buys?/i);
+  it("narratives are short and phase-appropriate (issue #40 A1/A2/A4)", () => {
+    expect(phaseNarrative("saleActive")).toBe("Sale runs out in:");
     expect(phaseNarrative("saleStartPending")).toMatch(/CHARM/);
     expect(phaseNarrative("saleEnded")).toMatch(/redeem/i);
     expect(phaseNarrative("saleExpiredAwaitingEnd")).toMatch(/End Sale/i);

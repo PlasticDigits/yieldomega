@@ -13,6 +13,10 @@ export const ARENA_TOTAL_USD_EQUIV_TITLE =
 export const SIMPLE_PODIUM_USD_EQUIV_TITLE =
   "≈ USD uses the app’s static display-only CL8Y→USDM shape (0.98× per product default), not a live stablecoin price. CL8Y prize amounts follow onchain/indexer reads.";
 
+/** Simple “worth at launch” stake row parenthetical — same static shape as podium; CL8Y anchor is onchain. */
+export const SIMPLE_STAKE_LAUNCH_USD_EQUIV_TITLE =
+  "≈ USD uses the app’s static display-only CL8Y→USDM shape (0.98× per product default), not a live stablecoin price. CL8Y-at-launch follows onchain reads.";
+
 /**
  * Compact relative age for “last seen CL8Y basis” labels (P3 — non-alarming).
  * @param fromMs wall-clock when the underlying CL8Y read last changed

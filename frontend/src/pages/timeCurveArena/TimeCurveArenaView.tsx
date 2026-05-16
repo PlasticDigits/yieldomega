@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo, useRef, type CSSProperties } from "react";
+import { useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
-import { formatUnits } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
+import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ConversionArrow } from "@/components/ui/ConversionArrow";
@@ -21,7 +21,12 @@ import { indexerBaseUrl } from "@/lib/addresses";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
-import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
+import {
+  formatBuyCtaCharmAmountLabel,
+  formatBuyHubDerivedCompact,
+  formatBuyHubLaunchVsClearingGainPercentLabel,
+  formatHeroRateFromWad,
+} from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -37,9 +42,11 @@ import {
   ETH_TOKEN_LOGO,
   USDM_TOKEN_LOGO,
 } from "@/lib/tokenMedia";
+import { envelopeCurveParamsFromWire } from "@/lib/timeCurveBuyDisplay";
 import { doubPerCharmAtLaunchWad } from "@/lib/timeCurvePodiumMath";
 import { buildBuyBattlePointBreakdown } from "@/lib/timeCurveUx";
 import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
+import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiveBuysActivitySection";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { useArenaHeroCountdownSecondSfx } from "@/pages/timeCurveArena/useArenaHeroCountdownSecondSfx";
 import { useArenaWarbowRankSfx } from "@/pages/timeCurveArena/useArenaWarbowRankSfx";
@@ -47,6 +54,7 @@ import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { usePeerBuyHeadSfx } from "@/pages/timecurve/usePeerBuyHeadSfx";
 import { TimerHeroLiveBuys } from "@/pages/timecurve/TimerHeroLiveBuys";
 import { TimerHeroParticles } from "@/pages/timecurve/TimerHeroParticles";
+import { TimecurveBuySpendRangeInput } from "@/components/TimecurveBuySpendRangeInput";
 import { TimecurveBuyModals } from "@/pages/timecurve/TimecurveBuyModals";
 import { formatCountdown, timerUrgencyClass } from "@/pages/timecurve/formatTimer";
 import { WarbowHeroActions } from "./WarbowHeroActions";
@@ -62,6 +70,7 @@ import { RankingList, StatCard } from "@/pages/timecurve/timecurveUi";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { formatPodiumLeaderboardValue } from "./arenaPageHelpers";
 import { useTimeCurveArenaModel } from "./useTimeCurveArenaModel";
+import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 // Issue #80: the Arena buy panel is the sparse "predator in the pool" placement for sniper-shark art.
@@ -82,7 +91,7 @@ export function TimeCurveArenaView() {
     ended, estimatedSpend, expectedTokenFromCharms, flagOwnerAddr, flagPlantAtSec,
     flagSilenceEndSec, formatWallet, gasBuyIssue, gasClaim, gasDistribute, gasWarbowFlag,
     gasWarbowGuard, gasWarbowRevenge, gasWarbowSteal, growthRateWadR, guardUntilSec, guardedActive,
-    handleBuy, handleLoadMoreBuys, hasRevengeOpen, heroTimer, heroTimerBusy, iHoldPlantFlag,
+    handleBuy, handleLoadMoreBuys, hasExpandedBuyPages, hasRevengeOpen, heroTimer, heroTimerBusy, iHoldPlantFlag,
     indexerMismatch, indexerNote, initialMinBuyR, initialTimerSecR, isConnected, isError, isPending,
     isWriting, kumbayaRoutingBlocker, launchCl8yPerCharmWei, launchPayQuoteLoading, launchedDec,
     ledgerSecInt, liquidityAnchors, loadHeroTimer,
@@ -111,12 +120,28 @@ export function TimeCurveArenaView() {
     whatMattersNowCards
   } = props;
 
+  const { isOffline } = useIndexerConnectivity();
+  const tickerEnvelopeParams = useMemo(
+    () => (buyEnvelopeParams ? envelopeCurveParamsFromWire(buyEnvelopeParams) : null),
+    [buyEnvelopeParams],
+  );
+  const liveBuysPollLastOk = buys === null ? null : indexerNote === null;
+
   const onchainEnded = ended?.status === "success" && Boolean(ended.result);
   /** `saleEnded` OR `saleExpiredAwaitingEnd` — settlement CTAs must not hide behind the live-standings layout (GitLab #188). */
   const showPostRoundSettlementPanel = saleEnded || timerExpiredAwaitingEnd;
 
   const pricePerCharmWad =
     pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
+
+  const buyPreviewLaunchGainLabel = useMemo(
+    () =>
+      formatBuyHubLaunchVsClearingGainPercentLabel({
+        clearingSpendCl8yWei: estimatedSpend,
+        approxLaunchCl8yWei: buyAddsCl8yAtLaunch,
+      }),
+    [estimatedSpend, buyAddsCl8yAtLaunch],
+  );
 
   usePeerBuyHeadSfx({
     recentBuys: buys,
@@ -136,25 +161,13 @@ export function TimeCurveArenaView() {
     warbowRank,
   });
 
-  function formatPriceFixed6(raw: bigint): string {
-    const s = formatUnits(raw, 18);
-    const [intPart, fracPart = ""] = s.split(".");
-    return `${intPart}.${(fracPart + "000000").slice(0, 6)}`;
-  }
-
-  function formatEthRateHero(raw: bigint): string {
-    const s = formatUnits(raw, 18);
-    const [intPart, fracPart = ""] = s.split(".");
-    return `${intPart}.${(fracPart + "00000000").slice(0, 8)}`;
-  }
-
   const rateNowDisplay = useMemo(() => {
     if (pricePerCharmWad === undefined) {
       return { text: "Loading live price…" as const, unit: " CL8Y" as const, loading: true as const };
     }
     if (payWith === "cl8y") {
       return {
-        text: formatPriceFixed6(pricePerCharmWad),
+        text: formatHeroRateFromWad(pricePerCharmWad),
         unit: " CL8Y" as const,
         loading: false as const,
       };
@@ -170,17 +183,23 @@ export function TimeCurveArenaView() {
       quoted !== undefined ? quoted : fallbackPayTokenWeiForCl8y(pricePerCharmWad, payWith);
     if (payWith === "eth") {
       return {
-        text: formatEthRateHero(raw),
+        text: formatHeroRateFromWad(raw),
         unit: " ETH" as const,
         loading: false as const,
       };
     }
     return {
-      text: formatPriceFixed6(raw),
+      text: formatHeroRateFromWad(raw),
       unit: " USDM" as const,
       loading: false as const,
     };
   }, [pricePerCharmWad, payWith, perCharmPayQuoteLoading, quotedPerCharmPayInWei]);
+
+  const rateNowPayLogo = useMemo(() => {
+    if (payWith === "eth") return ETH_TOKEN_LOGO;
+    if (payWith === "usdm") return USDM_TOKEN_LOGO;
+    return CL8Y_TOKEN_LOGO;
+  }, [payWith]);
 
   const totalTokensForSaleWad =
     totalTokensForSaleR?.status === "success" ? (totalTokensForSaleR.result as bigint) : undefined;
@@ -202,7 +221,7 @@ export function TimeCurveArenaView() {
     }
     if (payWith === "cl8y") {
       return {
-        text: formatPriceFixed6(launchCl8yPerCharmWei),
+        text: formatHeroRateFromWad(launchCl8yPerCharmWei),
         unit: " CL8Y" as const,
         loading: false as const,
       };
@@ -218,13 +237,13 @@ export function TimeCurveArenaView() {
       quoted !== undefined ? quoted : fallbackPayTokenWeiForCl8y(launchCl8yPerCharmWei, payWith);
     if (payWith === "eth") {
       return {
-        text: formatEthRateHero(raw),
+        text: formatHeroRateFromWad(raw),
         unit: " ETH" as const,
         loading: false as const,
       };
     }
     return {
-      text: formatPriceFixed6(raw),
+      text: formatHeroRateFromWad(raw),
       unit: " USDM" as const,
       loading: false as const,
     };
@@ -542,7 +561,7 @@ export function TimeCurveArenaView() {
                     </div>
                     <div className="timecurve-simple__rate-board" aria-live="polite">
                       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--now">
-                        <span className="timecurve-simple__rate-label-row">
+                        <span className="timecurve-simple__rate-now-line">
                           <img
                             className="timecurve-simple__rate-glyph"
                             src={CHARM_TOKEN_LOGO}
@@ -552,12 +571,7 @@ export function TimeCurveArenaView() {
                             width={24}
                             height={24}
                           />
-                          <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
-                        </span>
-                        <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
-                          {rateBoardPayOptions}
-                        </div>
-                        <span className="timecurve-simple__rate-value-row">
+                          <span className="timecurve-simple__rate-label">1 CHARM =</span>
                           {payWith !== "cl8y" && rateBoardKumbayaWarning && (
                             <span
                               className="timecurve-simple__kumbaya-route-warn"
@@ -589,14 +603,25 @@ export function TimeCurveArenaView() {
                             aria-busy={rateNowDisplay.loading}
                           >
                             {rateNowDisplay.text}
-                            <span className="timecurve-simple__rate-unit">{rateNowDisplay.unit}</span>
                           </strong>
+                          <img
+                            className="timecurve-simple__rate-pay-logo"
+                            src={rateNowPayLogo}
+                            alt=""
+                            width={28}
+                            height={28}
+                            decoding="async"
+                            aria-hidden="true"
+                          />
+                          <span className="visually-hidden">{rateNowDisplay.unit.trim()}</span>
                         </span>
-                        <span className="timecurve-simple__rate-foot muted">
-                          {payWith === "cl8y"
-                            ? "Ticks up every block — waiting costs CL8Y."
-                            : "Underlying sale price is always CL8Y; ETH / USDM are Kumbaya routes into CL8Y."}
-                        </span>
+                        <div
+                          className="timecurve-simple__rate-paywith timecurve-simple__rate-paywith--segmented"
+                          role="group"
+                          aria-label="Show live price in"
+                        >
+                          {rateBoardPayOptions}
+                        </div>
                       </div>
                       <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
                         <span className="timecurve-simple__rate-label">1 CHARM at launch</span>
@@ -655,9 +680,6 @@ export function TimeCurveArenaView() {
                             </span>
                           </span>
                         </div>
-                        <span className="timecurve-simple__rate-foot muted">
-                          1.275× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
-                        </span>
                       </div>
                     </div>
                     <div className="timecurve-arena-buy-panel__checkout">
@@ -681,32 +703,33 @@ export function TimeCurveArenaView() {
                           <span className="timecurve-simple__minmax">
                             {payWith === "cl8y" ? (
                               <>
-                                Live band&nbsp;
+                                Buy Limits:&nbsp;
                                 <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
-                                &nbsp;–&nbsp;
+                                &nbsp;min,&nbsp;
                                 <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.maxS, decimals)}</strong>
-                                &nbsp;CL8Y
+                                &nbsp;max
                               </>
                             ) : bandBoundaryQuotesLoading ||
                               quotedBandMinPayInWei === undefined ||
                               quotedBandMaxPayInWei === undefined ? (
                               <>
-                                Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
+                                Buy Limits (≈{paySpendSuffix})&nbsp;…&nbsp;
                                 <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
-                                &nbsp;–&nbsp;
+                                &nbsp;min,&nbsp;
                                 <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.maxS, decimals)}</strong>
+                                &nbsp;max
                               </>
                             ) : (
                               <>
-                                Live band ≈&nbsp;
+                                Buy Limits:&nbsp;≈&nbsp;
                                 <strong>
                                   {formatBuyHubDerivedCompact(quotedBandMinPayInWei, payTokenDecimals)}
                                 </strong>
-                                &nbsp;–&nbsp;
+                                &nbsp;min,&nbsp;
                                 <strong>
                                   {formatBuyHubDerivedCompact(quotedBandMaxPayInWei, payTokenDecimals)}
                                 </strong>
-                                &nbsp;{paySpendSuffix}&nbsp;
+                                &nbsp;max&nbsp;{paySpendSuffix}&nbsp;
                                 <span className="muted">
                                   (CL8Y&nbsp;
                                   <strong>{formatBuyHubDerivedCompact(cl8ySpendBounds.minS, decimals)}</strong>
@@ -719,7 +742,7 @@ export function TimeCurveArenaView() {
                         </div>
                       ) : (
                         <div className="timecurve-simple__minmax-row">
-                          <span className="timecurve-simple__minmax">Loading live min – max…</span>
+                          <span className="timecurve-simple__minmax">Loading buy limits…</span>
                         </div>
                       )}
                       {payWith !== "cl8y" && kumbayaRoutingBlocker && (
@@ -756,16 +779,13 @@ export function TimeCurveArenaView() {
                             className={`form-label timecurve-cl8y-buy-controls__slider-label timecurve-cl8y-buy-controls__slider-label--pay-${payWith}`}
                           >
                             <span>{paySpendSuffix} spend</span>
-                            <input
-                              type="range"
-                              className="form-input"
+                            <TimecurveBuySpendRangeInput
                               min={0}
                               max={10000}
                               step={1}
                               value={spendSliderPermille}
                               onChange={(e) => onCl8ySpendSlider(Number(e.target.value))}
                               aria-label={`${paySpendSuffix} spend slider (targets CL8Y sale band)`}
-                              style={{ "--arena-buy-slider-fill": `${spendSliderPermille / 100}%` } as CSSProperties}
                             />
                             {payWith === "cl8y" ? (
                               <input
@@ -776,6 +796,11 @@ export function TimeCurveArenaView() {
                                 value={spendInputStr}
                                 onChange={(e) => setSpendInputStr(e.target.value)}
                                 onBlur={onCl8ySpendInputBlur}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                                  e.preventDefault();
+                                  e.currentTarget.blur();
+                                }}
                                 aria-label="CL8Y spend amount"
                               />
                             ) : (
@@ -800,30 +825,37 @@ export function TimeCurveArenaView() {
                           </StatusMessage>
                         )}
                       </div>
-                      {charmWadSelected !== undefined ? (
-                        <div className="timecurve-simple__buy-preview" data-testid="timecurve-arena-buy-preview">
-                          <div className="timecurve-simple__buy-preview-row">
-                            <span className="timecurve-simple__buy-preview-label">You add</span>
-                            <strong className="timecurve-simple__buy-preview-value">
-                              {formatBuyHubDerivedCompact(charmWadSelected, 18)}
-                            </strong>
-                            <span className="timecurve-simple__buy-preview-unit">CHARM</span>
-                          </div>
-                          {buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n && (
-                            <div className="timecurve-simple__buy-preview-row timecurve-simple__buy-preview-row--launch">
-                              <span className="timecurve-simple__buy-preview-label">Worth at launch ≈</span>
-                              <strong className="timecurve-simple__buy-preview-value">
-                                {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, decimals)}
-                              </strong>
-                              <span className="timecurve-simple__buy-preview-unit">CL8Y</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
+                      {charmWadSelected === undefined ? (
                         <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
                           Loading CHARM preview…
                         </div>
-                      )}
+                      ) : buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n ? (
+                        <div className="timecurve-simple__buy-preview" data-testid="timecurve-arena-buy-preview">
+                          <div
+                            className="timecurve-simple__buy-preview-approx"
+                            aria-label="Approximate CL8Y at launch"
+                          >
+                            <div className="timecurve-simple__buy-preview-approx-main">
+                              <span className="timecurve-simple__buy-preview-approx-symbol" aria-hidden>
+                                ≈
+                              </span>
+                              <span className="timecurve-simple__buy-preview-approx-value">
+                                {"Worth: "}
+                                {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, decimals)}
+                              </span>
+                              <span className="timecurve-simple__buy-preview-approx-unit">CL8Y</span>
+                              {buyPreviewLaunchGainLabel ? (
+                                <span
+                                  className="timecurve-simple__buy-preview-gain"
+                                  aria-label="Estimated percent gain: CL8Y at launch versus implied CL8Y spend for this CHARM size"
+                                >
+                                  ({buyPreviewLaunchGainLabel})
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
                       {referralRegistryOn && pendingRef && (
                         <div className="timecurve-simple__referral muted">
                           <label>
@@ -837,32 +869,46 @@ export function TimeCurveArenaView() {
                           </label>
                         </div>
                       )}
-                      <div className="timecurve-arena-buy-panel__warbow-plant">
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={plantWarBowFlag}
-                            onChange={(e) => setPlantWarBowFlag(e.target.checked)}
-                            disabled={!isConnected}
-                          />{" "}
-                          Plant WarBow flag
-                        </label>
-                        {plantWarBowFlag ? (
-                          <p className="muted">
-                            Opt-in: this buy can set you as the global pending flag holder. After the silence
-                            window, another buyer may cost you Battle Points if you do not claim in time — see{" "}
-                            <Link to="/timecurve?view=protocol">protocol copy</Link> and{" "}
-                            <a href="https://gitlab.com/PlasticDigits/yieldomega/-/issues/63">issue #63</a>.
-                          </p>
-                        ) : (
-                          <p className="muted">
-                            Global pending-flag slot: check → after silence, <strong>+1000 BP</strong> if you claim in
-                            time, or <strong>−2000 BP</strong> if another buy clears you after claim opens. Unchecked:
-                            CHARM only, slot unchanged.
-                          </p>
-                        )}
-                      </div>
-                      <Cl8yTimeCurveUnlimitedApprovalFieldset disabled={!isConnected} />
+                      <details
+                        className="timecurve-arena-buy-panel__advanced accordion-panel"
+                        data-testid="timecurve-arena-buy-advanced"
+                      >
+                        <summary>ADVANCED</summary>
+                        <div className="accordion-panel__content">
+                          <div className="timecurve-arena-buy-panel__warbow-plant">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={plantWarBowFlag}
+                                onChange={(e) => setPlantWarBowFlag(e.target.checked)}
+                                disabled={!isConnected}
+                              />{" "}
+                              Plant WarBow flag
+                            </label>
+                            <p className="muted" style={{ marginTop: "0.5rem" }}>
+                              {warbowFlagPlantMutedLine({
+                                claimBp: warbowFlagClaimBp,
+                                silenceSec: warbowFlagSilenceSec,
+                              })}
+                            </p>
+                            {plantWarBowFlag ? (
+                              <p className="muted">
+                                Opt-in: this buy can set you as the global pending flag holder. After the silence
+                                window, another buyer may cost you Battle Points if you do not claim in time — see{" "}
+                                <Link to="/timecurve?view=protocol">protocol copy</Link> and{" "}
+                                <a href="https://gitlab.com/PlasticDigits/yieldomega/-/issues/63">issue #63</a>.
+                              </p>
+                            ) : (
+                              <p className="muted">
+                                Global pending-flag slot: check → after silence, <strong>+1000 BP</strong> if you claim
+                                in time, or <strong>−2000 BP</strong> if another buy clears you after claim opens.
+                                Unchecked: CHARM only, slot unchanged.
+                              </p>
+                            )}
+                          </div>
+                          <Cl8yTimeCurveUnlimitedApprovalFieldset disabled={!isConnected} />
+                        </div>
+                      </details>
                       <div className="timecurve-arena-buy-panel__effects" aria-label="Projected effects of this buy">
                         <div className="timecurve-arena-buy-panel__effects-title">
                           <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
@@ -920,7 +966,9 @@ export function TimeCurveArenaView() {
                                 ? "Confirm in wallet…"
                                 : payWith !== "cl8y" && swapQuoteLoading
                                   ? "Refreshing quote…"
-                                  : "Buy CHARM"}
+                                  : charmWadSelected !== undefined
+                                    ? `Buy ${formatBuyCtaCharmAmountLabel(charmWadSelected)} CHARM`
+                                    : "Buy CHARM"}
                             </span>
                           </motion.button>
                           {walletCooldownRemainingSec > 0 && (
@@ -1449,6 +1497,19 @@ export function TimeCurveArenaView() {
         address={address}
         formatPodiumLeaderboardValue={formatPodiumLeaderboardValue}
         formatWallet={formatWallet}
+      />
+
+      <TimeCurveLiveBuysActivitySection
+        recentBuys={buys}
+        decimals={decimals}
+        tickerEnvelopeParams={tickerEnvelopeParams}
+        cl8ySpendBounds={cl8ySpendBounds}
+        isOffline={isOffline}
+        buyPollLastOk={liveBuysPollLastOk}
+        buysNextOffset={buysNextOffset}
+        loadingMoreBuys={loadingMoreBuys}
+        buyPagesExpanded={hasExpandedBuyPages}
+        onLoadMore={() => void handleLoadMoreBuys()}
       />
 
       <BattleFeedSection

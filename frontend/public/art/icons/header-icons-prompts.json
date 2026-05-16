@@ -1,0 +1,77 @@
+{
+  "model": "openai/gpt-image-2",
+  "output_dir": "frontend/public/art/icons",
+  "single_attempt_per_image": true,
+  "parallel": true,
+  "transparent_background": true,
+  "icon_size_px": 256,
+  "reference_images_used": true,
+  "jobs": [
+    {
+      "slug": "header-home",
+      "title": "YieldOmega home",
+      "output": "header-home.png",
+      "subject": "A compact YieldOmega home text icon: the exact glyphs YΩ centered inside a circular ring, crisp high-contrast arcade badge styling, transparent background, no extra words or symbols."
+    },
+    {
+      "slug": "header-timecurve",
+      "title": "TimeCurve",
+      "output": "header-timecurve.png",
+      "subject": "A clear TimeCurve icon: chunky magical stopwatch with emerald-gold rim, two bold clock hands, small sparkle and coin orbit, strong silhouette readable at tiny header size, no numerals, no words."
+    },
+    {
+      "slug": "header-referrals",
+      "title": "Referrals",
+      "output": "header-referrals.png",
+      "subject": "A clear referrals icon: three connected shiny hat-coins as a small network graph, one central coin linked to two smaller coins, cheerful green-gold palette, thick outline, no currency symbols, no words."
+    },
+    {
+      "slug": "header-network-mega",
+      "title": "MegaETH network",
+      "output": "header-network-mega.png",
+      "subject": "A clear MegaETH network icon: stylized emerald lightning bolt inside a rounded chain-link ring, glossy arcade finish, high contrast green and cyan accents, simple enough for a 20 pixel header button, no letters, no words."
+    },
+    {
+      "slug": "header-network-local",
+      "title": "Local Anvil network",
+      "output": "header-network-local.png",
+      "subject": "A clear local development network icon: chunky blacksmith anvil with a small golden spark and tiny chain-link accent, friendly arcade-cartoon style, readable silhouette, no emoji, no letters, no words."
+    },
+    {
+      "slug": "header-network-chain",
+      "title": "Generic chain network",
+      "output": "header-network-chain.png",
+      "subject": "A clear generic blockchain network icon: two interlocking rounded chain links with a small glowing node spark, blue-green-gold arcade palette, thick outline, no letters, no words."
+    },
+    {
+      "slug": "header-wallet-connect",
+      "title": "Connect wallet",
+      "output": "header-wallet-connect.png",
+      "subject": "A clear connect wallet icon: small glossy wallet with a clasp and one visible golden hat-coin peeking out, compact rounded silhouette, thick outline, no letters, no words."
+    },
+    {
+      "slug": "header-wallet-account",
+      "title": "Wallet account",
+      "output": "header-wallet-account.png",
+      "subject": "A clear wallet account icon: rounded wallet badge paired with a tiny pixel-blockie avatar tile, green-gold trim, friendly arcade style, no readable address, no letters, no words."
+    },
+    {
+      "slug": "header-wallet-loading",
+      "title": "Wallet loading",
+      "output": "header-wallet-loading.png",
+      "subject": "A clear wallet loading icon: small wallet with a circular sparkle spinner made from four chunky dots around it, readable as loading at header size, no ellipsis, no letters, no words."
+    },
+    {
+      "slug": "header-presale-charm",
+      "title": "Presale CHARM bonus",
+      "output": "header-presale-charm.png",
+      "subject": "A clear presale CHARM bonus icon: faceted charm gem with a small upward sparkle arrow and golden rim, premium reward badge feeling, no percentage sign, no plus sign, no letters, no words."
+    },
+    {
+      "slug": "header-wrong-network",
+      "title": "Wrong network alert",
+      "output": "header-wrong-network.png",
+      "subject": "A clear wrong-network alert icon: red-orange warning triangle wrapped around a broken chain link, bold high-contrast silhouette, arcade-polished edges, no exclamation mark, no letters, no words."
+    }
+  ]
+}

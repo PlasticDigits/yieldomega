@@ -2,6 +2,7 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { TimeCurveSimplePodiumSection, type TimeCurveSimplePodiumSectionProps } from "./TimeCurveSimplePodiumSection";
 
@@ -12,7 +13,7 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 function renderSimplePodiums(overrides: Partial<TimeCurveSimplePodiumSectionProps> = {}): string {
   return renderToStaticMarkup(
-    createElement(TimeCurveSimplePodiumSection, {
+    createElement(MemoryRouter, { initialEntries: ["/timecurve"] }, createElement(TimeCurveSimplePodiumSection, {
       podiumRows: [
         { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"] },
         { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"] },
@@ -28,8 +29,10 @@ function renderSimplePodiums(overrides: Partial<TimeCurveSimplePodiumSectionProp
       ],
       decimals: 18,
       address: undefined,
+      podiumNowUnixSec: 1_700_000_000,
+      recentBuys: null,
       ...overrides,
-    }),
+    })),
   );
 }
 
@@ -37,9 +40,10 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
   it("renders all four canonical podium categories and three placements", () => {
     const html = renderSimplePodiums();
     expect(html).toContain('data-testid="timecurve-simple-podiums"');
-    expect(html).toContain("Live reserve podiums");
+    expect(html).toContain("Prize podiums");
     expect(html).toContain("Last Buy");
     expect(html).toContain("WarBow");
+    expect(html).toContain('href="/timecurve/arena"');
     expect(html).toContain("Defended Streak");
     expect(html).toContain("Time Booster");
     expect(html.match(/class="ranking-list__item/g)?.length).toBe(12);
@@ -49,11 +53,16 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("1st prize");
     expect(html).toContain("CL8Y");
     expect(html).toContain("≈ $1.57 USD");
-    expect(html).toContain("static CL8Y→USDM");
     expect(html).toContain("1.6");
     expect(html).not.toContain("predicted leader");
     expect(html).not.toContain("Indexer-backed snapshot");
     expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
+    expect(html).toContain("Score: —");
+    expect(html).toContain("Score: 1200 Battle Points");
+    expect(html).toContain("Score: 4 sequential buys");
+    expect(html).toContain("Score: 300s added");
+    expect(html).toMatch(/address-inline__label">111111</);
+    expect(html).not.toMatch(/address-inline__label">0x/);
   });
 
   it("highlights placements that match the connected wallet", () => {
@@ -61,11 +70,12 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("ranking-list__item--you");
   });
 
-  it("keeps empty onchain slots visible without fabricating winners", () => {
+  it("shows a neutral em dash for empty winner slots (no wallet-connect wording)", () => {
     const html = renderSimplePodiums({
       podiumRows: [{ winners: [ZERO, ZERO, ZERO], values: ["0", "0", "0"] }],
     });
-    expect(html).toContain("Awaiting wallet");
+    expect(html).toContain("—");
+    expect(html).not.toContain("Awaiting wallet");
     expect(html).toContain("1.6");
     expect(html).toContain("CL8Y");
   });

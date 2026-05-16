@@ -3,9 +3,9 @@
 import { NavLink } from "react-router-dom";
 
 /**
- * Shared sub-navigation rendered at the top of every TimeCurve view (Simple,
- * Arena, Protocol). Tabs are mutually exclusive; the active tab is decided by
- * `react-router` so deep links land on the right surface.
+ * Shared sub-navigation at the top of every TimeCurve view: icon + short label
+ * only (BUY · ARENA · AUDIT). Tabs are mutually exclusive; the active tab is
+ * decided by `react-router` so deep links land on the right surface.
  *
  * Invariant: this component never owns or mirrors game state. It is purely
  * navigational so the contract remains the single source of truth across
@@ -18,7 +18,6 @@ const TABS: ReadonlyArray<{
   end?: boolean;
   key: TimeCurveSubnavTab;
   label: string;
-  hint: string;
   /** Sub-nav pictogram from issue #45. See `frontend/public/art/icons/`. */
   iconSrc: string;
 }> = [
@@ -26,22 +25,19 @@ const TABS: ReadonlyArray<{
     to: "/timecurve",
     end: true,
     key: "simple",
-    label: "Simple",
-    hint: "Time left + buy CHARM",
+    label: "BUY",
     iconSrc: "/art/icons/nav-simple.png",
   },
   {
     to: "/timecurve/arena",
     key: "arena",
-    label: "Arena",
-    hint: "WarBow PvP, podiums, battle feed",
+    label: "ARENA",
     iconSrc: "/art/icons/nav-arena.png",
   },
   {
     to: "/timecurve/protocol",
     key: "protocol",
-    label: "Protocol",
-    hint: "Raw onchain reads + fee routing",
+    label: "AUDIT",
     iconSrc: "/art/icons/nav-protocol.png",
   },
 ];
@@ -63,7 +59,6 @@ export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
                 `timecurve-subnav__link${isActive ? " timecurve-subnav__link--active" : ""}`
               }
               aria-current={tab.key === active ? "page" : undefined}
-              title={tab.hint}
             >
               <img
                 className="timecurve-subnav__icon"
@@ -76,7 +71,6 @@ export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
                 aria-hidden="true"
               />
               <span className="timecurve-subnav__label">{tab.label}</span>
-              <span className="timecurve-subnav__hint">{tab.hint}</span>
             </NavLink>
           </li>
         ))}

@@ -17,7 +17,8 @@ import { SFX_FILES, type SfxId } from "./sfxUrls";
 
 export type PlaySfxOptions = { gainMul?: number };
 
-const PEER_BUY_MIN_GAP_MS = 8500;
+/** Drop accidental double-triggers; head-row dedupe + exclusive bell handle real spacing. */
+const PEER_BUY_MIN_GAP_MS = 220;
 const TIMER_CALM_MIN_GAP_MS = 48_000;
 const TIMER_URGENT_MIN_GAP_MS = 26_000;
 
@@ -60,6 +61,9 @@ export class WebAudioMixer {
   private lastTimerUrgentAt = 0;
 
   private lastWarbowTwangAt = 0;
+
+  /** Stops overlapping peer-buy dings when the feed updates faster than one bell decay. */
+  private peerBuyVoiceStop: (() => void) | null = null;
 
   private onTrackChange: ((t: AlbumTrack, index: number) => void) | null = null;
 
@@ -317,7 +321,76 @@ export class WebAudioMixer {
     const now = performance.now();
     if (now - this.lastPeerBuySfxAt < PEER_BUY_MIN_GAP_MS) return;
     this.lastPeerBuySfxAt = now;
-    void this.playSfx("peer_buy_distant", { gainMul: 0.85 });
+    void this.unlock().then(() => this.playPeerBuyBellDing(0.82));
+  }
+
+  private stopPeerBuyBellVoice(): void {
+    const stop = this.peerBuyVoiceStop;
+    if (!stop) return;
+    this.peerBuyVoiceStop = null;
+    stop();
+  }
+
+  /** Short sine “service bell” — one voice; replaces stacked `peer_buy_distant` buffers. */
+  private playPeerBuyBellDing(gainMul: number): void {
+    if (!this.ctx || !this.sfxGain) return;
+    if (this.prefs.masterMuted || this.prefs.sfxMuted) return;
+    this.stopPeerBuyBellVoice();
+
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
+    const dur = 0.32;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "sine";
+    const f0 = 784; // G5
+    const f1 = 1175; // D6 (fifth above)
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(f1, t0 + 0.06);
+
+    const peak = Math.max(0.0002, Math.min(0.55, 0.22 * gainMul));
+    const tail = 0.0002;
+    g.gain.setValueAtTime(tail, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(tail, t0 + dur);
+
+    osc.connect(g);
+    g.connect(this.sfxGain);
+
+    const disconnect = (): void => {
+      try {
+        osc.disconnect();
+      } catch {
+        /* already torn down */
+      }
+      try {
+        g.disconnect();
+      } catch {
+        /* already torn down */
+      }
+    };
+
+    const stopNow = (): void => {
+      try {
+        osc.stop();
+      } catch {
+        /* already stopped */
+      }
+      disconnect();
+    };
+
+    this.peerBuyVoiceStop = stopNow;
+    osc.addEventListener(
+      "ended",
+      () => {
+        if (this.peerBuyVoiceStop === stopNow) this.peerBuyVoiceStop = null;
+        disconnect();
+      },
+      { once: true },
+    );
+
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
   }
 
   playTimerCalmThrottled(): void {

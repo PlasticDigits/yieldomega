@@ -138,6 +138,151 @@ export function formatCompactDecimalString(
   return neg ? `-${out}` : out;
 }
 
+/**
+ * Plain decimal string with `sigfigs` significant figures.
+ * Unlike {@link formatCompactDecimalString}, never inserts `k` / `m` / `b` / `t` suffixes
+ * (intended for hero rate tiles and similar “full” magnitudes below ~1e15).
+ */
+export function formatPlainDecimalSigfigsString(decimalStr: string, sigfigs: number): string {
+  const sf = Math.max(1, Math.floor(sigfigs));
+  const trimmed = decimalStr.trim();
+  if (trimmed === "" || trimmed === "-") {
+    return trimmed;
+  }
+  const neg = trimmed.startsWith("-");
+  const body = neg ? trimmed.slice(1) : trimmed;
+  const n = Number(body);
+  if (!Number.isFinite(n)) {
+    const out = formatCompactHugeDecimalString(body, sf);
+    return neg ? `-${out}` : out;
+  }
+  if (n === 0) {
+    return "0";
+  }
+  const av = Math.abs(n);
+  if (av >= SCIENTIFIC_THRESHOLD) {
+    const sci = normalizeScientificString(av.toPrecision(sf));
+    return neg ? `-${sci}` : sci;
+  }
+  const coef = trimFloatString(av.toPrecision(sf));
+  return neg ? `-${coef}` : coef;
+}
+
+function unsignedDecimalFromTruncatedCoef(
+  coefStr: string,
+  exp: number,
+  sf: number,
+  preserveTrailingSigfigZeros?: boolean,
+): string {
+  const coeff = BigInt(coefStr);
+  const scale = sf - 1;
+  const power = exp - scale;
+  if (power >= 0) {
+    return (coeff * 10n ** BigInt(power)).toString();
+  }
+  const den = 10n ** BigInt(-power);
+  const intPart = coeff / den;
+  const rem = coeff % den;
+  const denLen = Number(-power);
+  const fracRaw = rem.toString().padStart(denLen, "0");
+  const joined = intPart === 0n ? `0.${fracRaw}` : `${intPart}.${fracRaw}`;
+  return preserveTrailingSigfigZeros ? joined : trimFloatString(joined);
+}
+
+function absPlainDecimalMagnitudeGeSciThreshold(absUnsignedPlain: string): boolean {
+  const [ip] = absUnsignedPlain.split(".");
+  const intDigits = ip.replace(/^0+/, "") || "0";
+  if (intDigits === "0") {
+    return false;
+  }
+  try {
+    return BigInt(intDigits) >= 10n ** 15n;
+  } catch {
+    return intDigits.length > 16;
+  }
+}
+
+export type TruncatePlainDecimalSigfigsOptions = {
+  /**
+   * When true, keep trailing fractional zeros so the string always shows exactly `sigfigs`
+   * significant digits (for example `1.01000` at six figures from a short `formatUnits` tail).
+   * Default false trims insignificant trailing zeros (existing compact labels).
+   */
+  preserveTrailingSigfigZeros?: boolean;
+};
+
+/**
+ * Plain decimal string with `sigfigs` significant figures by **truncating** extra digits (toward zero),
+ * never rounding up. Uses exact digit logic on `[-]digits[.digits]` inputs (for example {@link formatUnits} output).
+ */
+export function truncatePlainDecimalSigfigsString(
+  decimalStr: string,
+  sigfigs: number,
+  options?: TruncatePlainDecimalSigfigsOptions,
+): string {
+  const preserveTrailingSigfigZeros = options?.preserveTrailingSigfigZeros === true;
+  const sf = Math.max(1, Math.floor(sigfigs));
+  const trimmed = decimalStr.trim();
+  if (trimmed === "" || trimmed === "-") {
+    return trimmed;
+  }
+  const neg = trimmed.startsWith("-");
+  const body = neg ? trimmed.slice(1) : trimmed;
+  const plainDec = /^(\d+)\.(\d+)$/.exec(body);
+  if (!plainDec) {
+    return formatPlainDecimalSigfigsString(decimalStr, sigfigs);
+  }
+  const intStr = plainDec[1];
+  const fracStr = plainDec[2];
+  const intLen = intStr.length;
+
+  let firstNz = -1;
+  for (let i = 0; i < intStr.length; i++) {
+    if (intStr[i] !== "0") {
+      firstNz = i;
+      break;
+    }
+  }
+  if (firstNz < 0) {
+    for (let j = 0; j < fracStr.length; j++) {
+      if (fracStr[j] !== "0") {
+        firstNz = intLen + j;
+        break;
+      }
+    }
+  }
+  if (firstNz < 0) {
+    return "0";
+  }
+
+  const digitAt = (pos: number): string => {
+    if (pos < intLen) {
+      return intStr[pos] ?? "0";
+    }
+    return fracStr[pos - intLen] ?? "0";
+  };
+
+  let coefDigits = "";
+  for (let k = 0; k < sf; k++) {
+    coefDigits += digitAt(firstNz + k);
+  }
+
+  const exp = intLen - 1 - firstNz;
+  let unsignedOut = unsignedDecimalFromTruncatedCoef(
+    coefDigits,
+    exp,
+    sf,
+    preserveTrailingSigfigZeros,
+  );
+  if (absPlainDecimalMagnitudeGeSciThreshold(unsignedOut)) {
+    const c0 = coefDigits[0];
+    const crest = coefDigits.slice(1);
+    const sci = normalizeScientificString(`${c0}.${crest}e+${exp}`);
+    unsignedOut = sci.replace(/e\+/i, "e");
+  }
+  return neg ? `-${unsignedOut}` : unsignedOut;
+}
+
 /** Coerce RPC / multicall values (sometimes serialized as decimal strings) for {@link formatUnits}. */
 export function rawToBigIntForFormat(raw: bigint | string | number): bigint {
   if (typeof raw === "bigint") {

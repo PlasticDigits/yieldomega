@@ -19,30 +19,30 @@ function renderSubnav(active: "simple" | "arena" | "protocol", route: string): s
 describe("TimeCurveSubnav (issue #40 progressive disclosure)", () => {
   it("renders the three TimeCurve tabs in order", () => {
     const html = renderSubnav("simple", "/timecurve");
-    const simpleIdx = html.indexOf("Simple");
-    const arenaIdx = html.indexOf("Arena");
-    const protocolIdx = html.indexOf("Protocol");
-    expect(simpleIdx).toBeGreaterThan(-1);
-    expect(arenaIdx).toBeGreaterThan(simpleIdx);
-    expect(protocolIdx).toBeGreaterThan(arenaIdx);
+    const buyIdx = html.indexOf("BUY");
+    const arenaIdx = html.indexOf("ARENA");
+    const auditIdx = html.indexOf("AUDIT");
+    expect(buyIdx).toBeGreaterThan(-1);
+    expect(arenaIdx).toBeGreaterThan(buyIdx);
+    expect(auditIdx).toBeGreaterThan(arenaIdx);
   });
 
   it("marks the active tab via aria-current on the matching link", () => {
     const simple = renderSubnav("simple", "/timecurve");
     expect(simple).toMatch(
-      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Simple</,
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">BUY</,
     );
     const arena = renderSubnav("arena", "/timecurve/arena");
     expect(arena).toMatch(
-      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Arena</,
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">ARENA</,
     );
     const protocol = renderSubnav("protocol", "/timecurve/protocol");
     expect(protocol).toMatch(
-      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">Protocol</,
+      /aria-current="page"[\s\S]*?<span class="timecurve-subnav__label">AUDIT</,
     );
   });
 
-  it("keeps `Simple` href as the bare /timecurve so Home → /timecurve does not 404", () => {
+  it("keeps the simple-tab href as the bare /timecurve so Home → /timecurve does not 404", () => {
     const html = renderSubnav("simple", "/timecurve");
     expect(html).toContain('href="/timecurve"');
     expect(html).toContain('href="/timecurve/arena"');

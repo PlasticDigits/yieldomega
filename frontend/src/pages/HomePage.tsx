@@ -56,10 +56,7 @@ export function HomePage() {
         />
         <div className="home-hero__overlay">
           <h1>YieldOmega</h1>
-          <p className="lede">
-            This milestone is the <strong>TimeCurve Doubloon (DOUB)</strong> launch — charms, timer,
-            and prizes per onchain rules. Connect a wallet and jump in.
-          </p>
+          <p className="lede">The Timed Launchpad Primitive</p>
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
               <Link to="/timecurve" className="btn-primary btn-primary--xl btn-primary--priority">

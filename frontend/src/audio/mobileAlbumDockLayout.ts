@@ -2,18 +2,17 @@
 
 /**
  * Mobile layout tokens for the Blockie Hills dock (`.album-player-dock`) vs the
- * bordered `.app-header` card ([GitLab #103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)).
+ * fixed bottom `.app-header` card ([GitLab #103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)).
  *
- * **Invariant (`INV-AUDIO-103`):** On viewports `≤720px`, `.app-header` uses a
- * `margin-top` of `max(0.75rem, calc(env(safe-area-inset-top, 0px) + N))`
- * where **N** is {@link MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM}. The
- * fixed dock stays at `top: max(0.45rem, env(safe-area-inset-top, 0px))`; the
- * larger header offset clears the dock bubble above the nav chrome without
- * changing tablet/desktop (`min-width: 721px`) rhythms.
+ * **Invariant (`INV-AUDIO-103`):** On viewports `≤720px`, `.album-player-dock`
+ * uses a bottom offset of `calc(max(0.4rem, env(safe-area-inset-bottom, 0px)) + Nrem)`
+ * where **N** is {@link MOBILE_ALBUM_DOCK_CLEARANCE_ABOVE_HEADER_REM}. The
+ * fixed bottom header stays below the dock so the music controls open above the
+ * icon without covering the nav chrome.
  *
- * Keep this file aligned with the `@media (max-width: 720px)` `.app-header`
+ * Keep this file aligned with the `@media (max-width: 720px)` `.album-player-dock`
  * rule in `frontend/src/index.css`. Vitest
  * [`mobileAlbumDockLayout.test.ts`](./mobileAlbumDockLayout.test.ts) asserts
  * bidirectional parity ([GitLab #107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107)).
  */
-export const MOBILE_HEADER_TOP_CLEARANCE_BELOW_SAFE_AREA_REM = 4.5 as const;
+export const MOBILE_ALBUM_DOCK_CLEARANCE_ABOVE_HEADER_REM = 3.95 as const;

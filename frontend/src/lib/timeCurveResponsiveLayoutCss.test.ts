@@ -27,6 +27,71 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(block).toContain("grid-template-columns: minmax(0, 1fr)");
   });
 
+  it("keeps the Simple hub timer column from stretching when the buy panel grows", () => {
+    const block = cssBlock(css, ".timecurve-simple__hub > .timecurve-simple__timer-panel", 220);
+    expect(block).toContain("align-self: start");
+  });
+
+  it("vertically centers Simple hub timer heading + countdown inside the min-height stage", () => {
+    const block = cssBlock(css, ".timecurve-simple__timer-panel.data-panel", 420);
+    expect(block).toContain("justify-content: center");
+  });
+
+  it("sets a desktop min-height on the Simple hub timer panel (881px+)", () => {
+    const anchor =
+      "/* Desktop hub: give the arcade timer stage a stable vertical footprint so the";
+    const idx = css.indexOf(anchor);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const block = css.slice(idx, idx + 520);
+    expect(block).toContain("@container timecurveSimplePage (min-width: 881px)");
+    expect(block).toContain(".timecurve-simple__hub > .timecurve-simple__timer-panel");
+    expect(block).toContain("min-height: 392px");
+    expect(block).toContain("@media (min-width: 881px)");
+  });
+
+  it("keeps Simple timer days chip + HH:MM:SS on one row from page width 541px up", () => {
+    const cqIdx = css.indexOf("@container timecurveSimplePage (min-width: 541px)");
+    expect(cqIdx).toBeGreaterThanOrEqual(0);
+    const cqBlock = css.slice(cqIdx, cqIdx + 380);
+    expect(cqBlock).toContain(".timecurve-simple__timer-clock");
+    expect(cqBlock).toContain("flex-wrap: nowrap");
+    expect(cqBlock).toContain("align-items: center");
+
+    const mqIdx = css.indexOf("@media (min-width: 541px)");
+    expect(mqIdx).toBeGreaterThanOrEqual(0);
+    const mqBlock = css.slice(mqIdx, mqIdx + 280);
+    expect(mqBlock).toContain(".timecurve-simple__timer-clock");
+    expect(mqBlock).toContain("flex-wrap: nowrap");
+  });
+
+  it("uses a two-column live-buys grid only above the Simple page desktop breakpoint", () => {
+    const base = cssBlock(css, ".timecurve-simple__activity-list {", 220);
+    expect(base).toContain("display: flex");
+    expect(base).toContain("flex-direction: column");
+
+    const cqIdx = css.indexOf("@container timecurveSimplePage (min-width: 881px)");
+    expect(cqIdx).toBeGreaterThanOrEqual(0);
+    const cqBlock = css.slice(cqIdx, cqIdx + 320);
+    expect(cqBlock).toContain(".timecurve-simple__activity-list");
+    expect(cqBlock).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+
+    const mqIdx = css.indexOf("@media (min-width: 881px)");
+    expect(mqIdx).toBeGreaterThanOrEqual(0);
+    const mqBlock = css.slice(mqIdx, mqIdx + 320);
+    expect(mqBlock).toContain(".timecurve-simple__activity-list");
+    expect(mqBlock).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+  });
+
+  it("stacks Simple buy slider + amount on all breakpoints (no side-by-side on tablet/desktop)", () => {
+    const anchor =
+      "/* Buy limits moved under ADVANCED; keep a little air before balance + preview margins. */";
+    const idx = css.indexOf(anchor);
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const block = css.slice(Math.max(0, idx - 220), idx + anchor.length);
+    expect(block).toContain("grid-template-columns: minmax(0, 1fr)");
+    expect(block).not.toContain("minmax(10rem, 14rem)");
+  });
+
   it("keeps tablet WarBow cards from overflowing squeezed tracks", () => {
     const tabletBlock = cssBlock(css, "@media (max-width: 960px)", 700);
     expect(tabletBlock).toContain(".page--timecurve .data-panel--spotlight");
@@ -47,10 +112,14 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
   });
 
   it("reflows the homepage card grid before iPad Mini width can overflow", () => {
-    const tabletHomeBlock = cssBlock(css, "@media (min-width: 721px)", 550);
+    const tabletStart = css.indexOf("@media (min-width: 721px) {\n  .home-cta-grid");
+    expect(tabletStart).toBeGreaterThanOrEqual(0);
+    const tabletHomeBlock = css.slice(tabletStart, tabletStart + 320);
     expect(tabletHomeBlock).toContain("grid-template-columns: repeat(2, minmax(0, 22rem))");
 
-    const desktopHomeBlock = cssBlock(css, "@media (min-width: 960px)", 300);
+    const desktopStart = css.indexOf("@media (min-width: 960px) {\n  .home-cta-grid");
+    expect(desktopStart).toBeGreaterThanOrEqual(0);
+    const desktopHomeBlock = css.slice(desktopStart, desktopStart + 220);
     expect(desktopHomeBlock).toContain("grid-template-columns: repeat(3, minmax(0, 22rem))");
   });
 
@@ -58,9 +127,10 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(rootLayout).toContain("app-shell--timecurve");
     expect(rootLayout).toContain("app-main--timecurve");
 
-    const phoneBlock = cssBlock(css, "@media (max-width: 720px)", 3_000);
+    const phoneBlock = cssBlock(css, "@media (max-width: 720px)", 7_200);
     expect(phoneBlock).toContain(".app-main--timecurve");
-    expect(phoneBlock).toContain("env(safe-area-inset-top, 0px) + 4.85rem");
+    /* Mobile dock clears the fixed header + safe area (GitLab #103 / #68). */
+    expect(phoneBlock).toContain("env(safe-area-inset-bottom, 0px)) + 3.95rem");
 
     const totalRaiseBlock = cssBlock(css, ".timer-hero__total-raise", 300);
     expect(totalRaiseBlock).toContain("overflow-wrap: anywhere");

@@ -14,6 +14,8 @@ const GLYPH = {
 } as const;
 
 const ALBUM_DISPLAY_NAME = "Blockie Hills";
+/** Collapsed ticker + details title when the audio graph is not yet running (BGM stays paused until ▶). */
+const LOCKED_PLAYER_HEADLINE = "Tap a control or ▶ to unlock (music starts paused)";
 /** Pause (ms) at the **start** of each cycle before scrolling (then again at end). */
 const TICKER_PAUSE_MS = 1500;
 /** Horizontal scroll speed for the collapsed ticker (px/s); lower = slower. */
@@ -150,20 +152,35 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 function buildTickerLine(unlocked: boolean, trackTitle: string): string {
   if (!unlocked) {
-    return `${ALBUM_DISPLAY_NAME} — Tap anywhere or ▶ if autoplay was blocked`;
+    return `${ALBUM_DISPLAY_NAME} — ${LOCKED_PLAYER_HEADLINE}`;
   }
   return `${ALBUM_DISPLAY_NAME} — ${trackTitle}`;
 }
 
+type AlbumPlayerBarProps = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
 /**
- * Floating BGM + mix dock (GitLab #68): fixed top-right bubble; header mute +
- * collapsible track / volume controls. Collapsed header shows a horizontal
- * album — track ticker (pauses at scroll ends) when the line overflows.
+ * Floating BGM + mix dock (GitLab #68): standalone by default; RootLayout can
+ * control visibility from the shell header music button.
  */
-export function AlbumPlayerBar() {
+export function AlbumPlayerBar({ open, onOpenChange }: AlbumPlayerBarProps = {}) {
   const a = useAudioEngine();
   const detailsId = useId();
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const controlled = open !== undefined;
+  const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = useState(false);
+  const visible = controlled ? open : true;
+  const detailsOpen = controlled ? Boolean(open) : uncontrolledDetailsOpen;
+  const setDetailsOpen = (next: boolean | ((value: boolean) => boolean)) => {
+    const resolved = typeof next === "function" ? next(detailsOpen) : next;
+    if (controlled) {
+      onOpenChange?.(resolved);
+      return;
+    }
+    setUncontrolledDetailsOpen(resolved);
+  };
 
   const tickerOuterRef = useRef<HTMLDivElement>(null);
   const tickerInnerRef = useRef<HTMLDivElement>(null);
@@ -172,6 +189,7 @@ export function AlbumPlayerBar() {
   const tickerText = buildTickerLine(a.unlocked, a.currentTrack.title);
 
   useLayoutEffect(() => {
+    if (!visible) return;
     if (detailsOpen) return;
     const outer = tickerOuterRef.current;
     const inner = tickerInnerRef.current;
@@ -184,9 +202,10 @@ export function AlbumPlayerBar() {
     void document.fonts?.ready?.then(() => {
       apply();
     });
-  }, [detailsOpen, tickerText]);
+  }, [detailsOpen, tickerText, visible]);
 
   useEffect(() => {
+    if (!visible) return;
     if (detailsOpen) return;
 
     const inner = tickerInnerRef.current;
@@ -288,10 +307,15 @@ export function AlbumPlayerBar() {
       outer.scrollLeft = 0;
       inner.style.transform = "";
     };
-  }, [detailsOpen, tickerText]);
+  }, [detailsOpen, tickerText, visible]);
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <aside
+      id="album-player-dock"
       className="album-player-dock"
       data-sfx-ignore="true"
       aria-label="Background music"
@@ -366,8 +390,8 @@ export function AlbumPlayerBar() {
                 {GLYPH.skip}
               </button>
             </div>
-            <span className="album-player__title" title={a.currentTrack.title}>
-              {a.unlocked ? a.currentTrack.title : "Tap anywhere or ▶ if autoplay was blocked"}
+            <span className="album-player__title" title={a.unlocked ? a.currentTrack.title : LOCKED_PLAYER_HEADLINE}>
+              {a.unlocked ? a.currentTrack.title : LOCKED_PLAYER_HEADLINE}
             </span>
           </div>
           <label className="album-player__vol">
