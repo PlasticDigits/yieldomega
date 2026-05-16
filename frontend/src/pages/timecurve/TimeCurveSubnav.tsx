@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useLayoutEffect, useState, type SyntheticEvent } from "react";
 import { NavLink } from "react-router-dom";
+
+/** Persisted disclosure state across reloads (`localStorage`). */
+const TIMECURVE_ABOUT_OPEN_STORAGE_KEY = "yieldomega.timecurve.aboutOpen.v1";
+
+function readTimecurveAboutOpenFromStorage(): boolean | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(TIMECURVE_ABOUT_OPEN_STORAGE_KEY);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTimecurveAboutOpenToStorage(open: boolean): void {
+  try {
+    window.localStorage.setItem(TIMECURVE_ABOUT_OPEN_STORAGE_KEY, open ? "1" : "0");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 /**
  * Shared sub-navigation at the top of every TimeCurve view: icon + short label
  * (BUY · ARENA · AUDIT) plus a collapsible “ABOUT TIMECURVE” blurb (open by
- * default). Tabs are mutually exclusive; the active tab is decided by
- * `react-router` so deep links land on the right surface.
+ * default on first visit; remembers open/closed in `localStorage`). Tabs are
+ * mutually exclusive; the active tab is decided by `react-router` so deep links
+ * land on the right surface.
  *
  * Invariant: tab links never own or mirror game state. Copy in the disclosure is
  * explanatory only — the contract remains the single source of truth across
@@ -53,6 +78,21 @@ const ABOUT_COPY: Record<TimeCurveSubnavTab, string> = {
 };
 
 export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
+  const [aboutOpen, setAboutOpen] = useState(true);
+
+  useLayoutEffect(() => {
+    const stored = readTimecurveAboutOpenFromStorage();
+    if (stored !== null) {
+      setAboutOpen(stored);
+    }
+  }, []);
+
+  function handleAboutToggle(e: SyntheticEvent<HTMLDetailsElement>) {
+    const next = e.currentTarget.open;
+    setAboutOpen(next);
+    writeTimecurveAboutOpenToStorage(next);
+  }
+
   return (
     <div className="timecurve-subnav-stack">
       <nav
@@ -88,7 +128,11 @@ export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
         </ul>
       </nav>
 
-      <details className="timecurve-subnav-about" open>
+      <details
+        className="timecurve-subnav-about"
+        open={aboutOpen}
+        onToggle={handleAboutToggle}
+      >
         <summary className="timecurve-subnav-about__summary">ABOUT TIMECURVE</summary>
         <div className="timecurve-subnav-about__body">
           {TABS.map((tab) => (
