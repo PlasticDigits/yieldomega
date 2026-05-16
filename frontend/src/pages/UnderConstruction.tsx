@@ -42,7 +42,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-l
       </div>
       <PageHero
         title={title}
-        badgeLabel="In queue"
+        badgeLabel="Coming soon"
         badgeTone="soon"
         coinSrc="/art/hat-coin-stack.png"
         lede={

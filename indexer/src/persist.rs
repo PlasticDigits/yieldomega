@@ -317,12 +317,15 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             stealer,
             amount_bp,
             burn_paid_wad,
+            stealer_bp_after,
+            avenger_bp_after,
         } => {
             sqlx::query(
                 r#"INSERT INTO idx_timecurve_warbow_revenge (
                     block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, avenger, stealer, amount_bp, burn_paid_wad
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric)
+                    block_timestamp, avenger, stealer, amount_bp, burn_paid_wad,
+                    stealer_bp_after, avenger_bp_after
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric, $12::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
@@ -335,6 +338,8 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .bind(addr_hex(*stealer))
             .bind(u256_dec(*amount_bp))
             .bind(u256_dec(*burn_paid_wad))
+            .bind(stealer_bp_after.map(|n| u256_dec(n)))
+            .bind(avenger_bp_after.map(|n| u256_dec(n)))
             .execute(&mut *conn)
             .await?;
         }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { AddressInline } from "@/components/AddressInline";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
@@ -9,14 +9,29 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
-import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
-import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
+import type { BuyItem } from "@/lib/indexerApi";
 import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
 import type { PodiumReadRow } from "./usePodiumReads";
+import { formatSimplePodiumScoreLine } from "./timeCurveSimplePodiumScore";
 import { PodiumRankingList, type RankingRow } from "./timecurveUi";
 
 const PODIUM_PLACE_LABELS = ["1st", "2nd", "3rd"] as const;
 const ZERO_ADDR = zeroAddress as `0x${string}`;
+
+/**
+ * Drives per-second score text (e.g. Last Buy “seconds ago”) without relying on the parent
+ * page to re-render on the same cadence.
+ */
+function usePodiumScoreClock(externalNowUnixSec: number | undefined): number {
+  const [liveUnixSec, setLiveUnixSec] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = () => setLiveUnixSec(Math.floor(Date.now() / 1000));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return liveUnixSec ?? externalNowUnixSec ?? Math.floor(Date.now() / 1000);
+}
 
 const SIMPLE_PODIUM_ART = [
   "/art/icons/timecurve-podium-last-buy.png",
@@ -37,9 +52,15 @@ export type TimeCurveSimplePodiumSectionProps = {
   podiumLoading: boolean;
   podiumPayoutPreview?: readonly { places: readonly [string, string, string] }[];
   decimals: number;
-  /** While the sale is live, Last Buy uses indexed buys as a running prediction (`GET /v1/timecurve/podiums`). */
-  lastBuyPredictionActive?: boolean;
   address: string | undefined;
+  /** Newest-first buy head (same order as indexer last-buy prediction); used only for Last Buy score ages. */
+  recentBuys?: BuyItem[] | null;
+  /**
+   * Optional wall-clock unix seconds from the parent (e.g. Simple `tickerWallNowSec`) for the
+   * first paint / SSR. On the client, the podium runs its own 1s clock so score lines still tick
+   * even if the parent does not re-render every second.
+   */
+  podiumNowUnixSec?: number;
 };
 
 function sameAddress(a: string | undefined, b: string | undefined): boolean {
@@ -51,23 +72,17 @@ function hasWinner(address: string | undefined): boolean {
   return Boolean(raw && isAddress(raw as `0x${string}`) && raw.toLowerCase() !== ZERO_ADDR);
 }
 
-function podiumPayoutPreviewSerialized(
-  preview: TimeCurveSimplePodiumSectionProps["podiumPayoutPreview"] | undefined,
-): string | undefined {
-  if (!preview?.length) {
-    return undefined;
-  }
-  return preview.map((row) => row.places.join(":")).join("|");
-}
-
 function rankingRowsForPodium(
   row: PodiumReadRow | undefined,
   categoryIndex: number,
   viewerAddress: string | undefined,
   podiumPayoutPreview: TimeCurveSimplePodiumSectionProps["podiumPayoutPreview"],
   decimals: number,
+  podiumNowUnixSec: number,
+  recentBuys: TimeCurveSimplePodiumSectionProps["recentBuys"],
 ): RankingRow[] {
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
+  const values = row?.values ?? ["0", "0", "0"];
 
   return PODIUM_PLACE_LABELS.map((placeLabel, placeIndex) => {
     const winner = winners[placeIndex] ?? ZERO_ADDR;
@@ -94,7 +109,8 @@ function rankingRowsForPodium(
       label: (
         <AddressInline
           address={winner}
-          fallback="Awaiting wallet"
+          tailHexDigits={6}
+          fallback="—"
           size={18}
           className="timecurve-simple__podium-address"
         />
@@ -113,6 +129,17 @@ function rankingRowsForPodium(
               ≈ ${usdLabel} USD
             </span>
           )}
+        </span>
+      ),
+      meta: (
+        <span className="muted">
+          {formatSimplePodiumScoreLine(categoryIndex, placeIndex, {
+            winner,
+            winnerReady,
+            valueRaw: values[placeIndex] ?? "0",
+            nowUnixSec: podiumNowUnixSec,
+            recentBuys,
+          })}
         </span>
       ),
       highlight: winnerReady && sameAddress(winner, viewerAddress),
@@ -142,16 +169,20 @@ function SimplePodiumCard({
   address,
   podiumPayoutPreview,
   decimals,
+  podiumNowUnixSec,
+  recentBuys,
 }: {
   label: string;
   categoryIndex: number;
-  help: string;
+  help: ReactNode;
   artSrc: string;
   toneClass: string;
   row: PodiumReadRow | undefined;
   address: string | undefined;
   podiumPayoutPreview: TimeCurveSimplePodiumSectionProps["podiumPayoutPreview"];
   decimals: number;
+  podiumNowUnixSec: number;
+  recentBuys: TimeCurveSimplePodiumSectionProps["recentBuys"];
 }) {
   const winnersSig = row?.winners.join(":") ?? "";
   const burstNonce = usePodiumBurstNonce(winnersSig);
@@ -161,6 +192,8 @@ function SimplePodiumCard({
     address,
     podiumPayoutPreview,
     decimals,
+    podiumNowUnixSec,
+    recentBuys,
   );
 
   return (
@@ -188,24 +221,17 @@ export function TimeCurveSimplePodiumSection({
   podiumLoading,
   podiumPayoutPreview,
   decimals,
-  lastBuyPredictionActive = false,
   address,
+  podiumNowUnixSec,
+  recentBuys = null,
 }: TimeCurveSimplePodiumSectionProps) {
-  const previewSerialized = useMemo(
-    () => podiumPayoutPreviewSerialized(podiumPayoutPreview),
-    [podiumPayoutPreview],
-  );
-  const podiumPrizeCl8yObservedAtMs = useLastObservedAtForSerializedDep(previewSerialized);
-  const podiumUsdFreshness = useRelativeFreshnessLabel(
-    previewSerialized === undefined ? undefined : podiumPrizeCl8yObservedAtMs,
-  );
+  const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
 
   return (
     <PageSection
-      title="Live reserve podiums"
       className="timecurve-simple__podium-panel"
       dataTestId="timecurve-simple-podiums"
-      badgeLabel="Reserve podiums"
+      badgeLabel="Prize podiums"
       badgeTone="warning"
       spotlight
       cutout={{
@@ -214,7 +240,6 @@ export function TimeCurveSimplePodiumSection({
         height: 223,
         className: "panel-cutout panel-cutout--simple-podium cutout-decoration--float",
       }}
-      lede="Four v1 prize races mirrored from the indexer (~1s head poll). Your wallet gets a magenta ring."
     >
       {podiumLoading && (
         <StatusMessage variant="loading">Loading the four onchain podium categories…</StatusMessage>
@@ -232,22 +257,11 @@ export function TimeCurveSimplePodiumSection({
             address={address}
             podiumPayoutPreview={podiumPayoutPreview}
             decimals={decimals}
+            podiumNowUnixSec={scoreNowUnixSec}
+            recentBuys={recentBuys}
           />
         ))}
       </div>
-      <p className="muted timecurve-simple__podium-footnote">
-        {lastBuyPredictionActive
-          ? "Last Buy shows a running prediction from indexed purchases until the sale ends"
-          : "Last Buy finalizes from the onchain end-sale snapshot"}
-        ; other tracks follow live onchain leaderboards. Animations respect reduced motion.
-      </p>
-      <p
-        className="muted timecurve-simple__podium-footnote timecurve-simple__podium-usd-affordance"
-        title={SIMPLE_PODIUM_USD_EQUIV_TITLE}
-      >
-        ≈ USD uses a static CL8Y→USDM display shape (0.98×; not a live oracle).
-        {podiumUsdFreshness ? <> Prize CL8Y preview seen {podiumUsdFreshness}.</> : null}
-      </p>
     </PageSection>
   );
 }

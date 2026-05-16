@@ -35,7 +35,9 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
     page.getByRole("heading", { name: /Time left|TimeCurve Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /(Buy CHARM|Redeem CHARM|Coming soon)/, level: 2 }),
+    page
+      .getByRole("heading", { name: /(Buy CHARM|Redeem CHARM|Coming soon)/, level: 2 })
+      .or(page.getByRole("group", { name: "Show live price in" })),
   ).toBeVisible();
   // Cross-page navigation to Arena / Protocol lives in the `TimeCurveSubnav`
   // at the top of the route — the redundant in-page "Want more?" tiles were
@@ -46,26 +48,26 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
 test("timecurve simple view shows compact podiums without dense Arena sections", async ({ page }) => {
   await ensurePostLaunch(page);
   const simplePodiums = page.getByTestId("timecurve-simple-podiums");
-  const liveTicker = page.getByTestId("timecurve-simple-live-ticker");
   await expect(simplePodiums).toBeVisible();
-  await expect(simplePodiums.getByRole("heading", { name: "Live reserve podiums", level: 2 })).toBeVisible();
+  await expect(simplePodiums.getByText(/Prize podiums/i)).toBeVisible();
   await expect(simplePodiums.getByRole("heading", { name: "Last Buy", level: 3 })).toBeVisible();
   await expect(simplePodiums.getByRole("heading", { name: "WarBow", level: 3 })).toBeVisible();
   await expect(simplePodiums.getByRole("heading", { name: "Defended Streak", level: 3 })).toBeVisible();
   await expect(simplePodiums.getByRole("heading", { name: "Time Booster", level: 3 })).toBeVisible();
-  await expect(liveTicker).toBeVisible();
-  const podiumBox = await simplePodiums.boundingBox();
-  const tickerBox = await liveTicker.boundingBox();
-  expect(podiumBox?.y ?? 0).toBeLessThan(tickerBox?.y ?? Number.POSITIVE_INFINITY);
+  await expect(page.getByTestId("timecurve-live-buys-activity")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "WarBow moves and rivalry", level: 2 })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Podiums and prizes", level: 2 })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Live battle feed", level: 2 })).toHaveCount(0);
+
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /ARENA/ }).click();
+  await expect(page).toHaveURL(/\/timecurve\/arena$/);
+  await expect(page.getByTestId("timecurve-live-buys-activity")).toBeVisible();
 });
 
 test("timecurve sub-nav routes to /timecurve/arena (PvP)", async ({ page }) => {
   await ensurePostLaunch(page);
   const subnav = page.getByRole("navigation", { name: "TimeCurve views" });
-  await subnav.getByRole("link", { name: /Arena/ }).click();
+  await subnav.getByRole("link", { name: /ARENA/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
   await expect(page.getByRole("heading", { name: /TimeCurve · Arena/, level: 1 })).toBeVisible();
 });
@@ -73,7 +75,7 @@ test("timecurve sub-nav routes to /timecurve/arena (PvP)", async ({ page }) => {
 test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ page }) => {
   await ensurePostLaunch(page);
   const subnav = page.getByRole("navigation", { name: "TimeCurve views" });
-  await subnav.getByRole("link", { name: /Protocol/ }).click();
+  await subnav.getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/protocol$/);
   await expect(page.getByRole("heading", { name: "Protocol view", level: 1 })).toBeVisible();
   const sale = page.getByRole("heading", { name: /Sale state/, level: 2 });
@@ -101,7 +103,7 @@ test("home product cards reflow without iPad Mini horizontal overflow", async ({
 test("timecurve Arena buy hub starts below the fixed mobile audio dock", async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 });
   await ensurePostLaunch(page);
-  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /Arena/ }).click();
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /ARENA/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
 
   const buyPanel = page.locator(".timecurve-arena-buy-panel").first();
@@ -127,7 +129,7 @@ test("timecurve Arena buy hub starts below the fixed mobile audio dock", async (
 test("timecurve Arena WarBow cards stay contained on an iPad Mini viewport", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await ensurePostLaunch(page);
-  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /Arena/ }).click();
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /ARENA/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
 
   const warbowHero = page.getByTestId("warbow-hero-actions");

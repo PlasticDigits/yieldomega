@@ -28,7 +28,7 @@ test.describe("Anvil wallet writes", () => {
       timeout: 60_000,
     });
 
-    const buyPanel = page.locator(".data-panel").filter({ hasText: /Buy CHARM/i });
+    const buyPanel = page.locator(".timecurve-simple__buy-panel");
     await expect(buyPanel.getByRole("button", { name: /buy/i })).toBeVisible({
       timeout: 60_000,
     });
@@ -54,7 +54,9 @@ test.describe("Anvil wallet writes", () => {
       timeout: 60_000,
     });
 
-    const buyPanel = page.locator(".data-panel").filter({ hasText: /Buy CHARM/i });
+    const buyPanel = page.locator(".timecurve-simple__buy-panel");
+    // Pay-with toggles live under ADVANCED (collapsed by default).
+    await buyPanel.locator('[data-testid="timecurve-simple-buy-advanced"] summary').click();
     // Toggle buttons (not legacy radio inputs) — `data-testid` + issue #87
     await buyPanel.getByTestId("timecurve-simple-paywith-eth").click();
     await expect(buyPanel.getByTestId("timecurve-simple-paywith-eth")).toHaveAttribute("aria-pressed", "true");
@@ -73,10 +75,10 @@ test.describe("Anvil wallet writes", () => {
     });
     // After slider moves, Kumbaya quote refetches; CTA shows "Refreshing quote…"
     // until the new quoter read settles (issue #56).
-    await expect(buyPanel.getByRole("button", { name: /^Buy CHARM$/i })).toBeEnabled({
+    await expect(buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i })).toBeEnabled({
       timeout: 120_000,
     });
-    await buyPanel.getByRole("button", { name: /^Buy CHARM$/i }).click();
+    await buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i }).click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: 180_000,
     });

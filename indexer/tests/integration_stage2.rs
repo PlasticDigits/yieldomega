@@ -674,6 +674,8 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             stealer: addr_byte(0xb2),
             amount_bp: u1,
             burn_paid_wad: u1,
+            stealer_bp_after: None,
+            avenger_bp_after: None,
         }),
         next(DecodedEvent::TimeCurveWarBowGuardActivated {
             player: alice,

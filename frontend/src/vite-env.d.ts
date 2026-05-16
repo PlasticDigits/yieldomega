@@ -14,7 +14,7 @@ interface ImportMetaEnv {
   readonly VITE_LEPRECHAUN_NFT_ADDRESS: string;
   /** `DoubPresaleVesting` ERC-1967 proxy for `/vesting` (GitLab #92). */
   readonly VITE_DOUB_PRESALE_VESTING_ADDRESS?: string;
-  /** Optional: `PresaleCharmBeneficiaryRegistry` for presale CHARM +15% badge when vesting is not deployed (mainnet boost-only). */
+  /** Optional: `PresaleCharmBeneficiaryRegistry` for presale CHARM +15% boost when vesting is not deployed (mainnet boost-only). */
   readonly VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY?: string;
   /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
   readonly VITE_E2E_MOCK_WALLET: string;

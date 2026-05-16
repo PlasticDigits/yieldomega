@@ -134,10 +134,8 @@ export function PodiumRankingList({
               <span className="visually-hidden">{row.rank}</span>
             </span>
             <strong>{row.value}</strong>
-            <div>
-              <div>{row.label}</div>
-              {row.meta && <div className="ranking-list__meta">{row.meta}</div>}
-            </div>
+            <div>{row.label}</div>
+            {row.meta && <div className="ranking-list__meta">{row.meta}</div>}
           </motion.li>
         );
       })}

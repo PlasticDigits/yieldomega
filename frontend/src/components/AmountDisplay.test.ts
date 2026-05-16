@@ -19,9 +19,38 @@ describe("AmountDisplay (DOM nesting / SSR)", () => {
     );
     assertPhrasingSafeUnderP(html);
     expect(html).toContain("amount-triple");
-    expect(html).toContain("1.953145177291660455");
-    expect(html).toContain("1.95");
+    expect(html).toContain("1.953");
     expect(html).not.toContain("1953145177291660455");
+  });
+
+  it("compact-formats very large balances with scientific notation (4 sigfigs)", () => {
+    const html = renderToStaticMarkup(
+      createElement(AmountDisplay, {
+        raw: "1001000099999960965960014708803254",
+        decimals: 18,
+      }),
+    );
+    expect(html).toContain("1.001e+15");
+    expect(html).not.toContain("1001000099999960");
+  });
+
+  it("optional leadingLabel stays phrasing-safe and can disable monospace value", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        "p",
+        null,
+        createElement(AmountDisplay, {
+          raw: "1001000099999960965960014708803254",
+          decimals: 18,
+          leadingLabel: "YOUR CL8Y:",
+          valueMono: false,
+        }),
+      ),
+    );
+    assertPhrasingSafeUnderP(html);
+    expect(html).toContain("YOUR CL8Y:");
+    expect(html).toContain("1.001e+15");
+    expect(html).not.toMatch(/class="[^"]*\bmono\b/);
   });
 });
 

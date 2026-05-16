@@ -65,7 +65,10 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   const rpc = useReadContracts({
     contracts: contracts as readonly unknown[],
-    query: { enabled: Boolean(tc) && !indexerOn },
+    query: {
+      enabled: Boolean(tc) && !indexerOn,
+      refetchInterval: 1000,
+    },
   });
 
   if (indexerOn) {
@@ -73,11 +76,8 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     const rows: PodiumReadRow[] = [0, 1, 2, 3].map((i) =>
       asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []),
     );
-    const lastBuyPredictionActive = indexerQuery.data ? !indexerQuery.data.sale_ended : false;
-
     return {
       data: rows,
-      lastBuyPredictionActive,
       isLoading: indexerQuery.isPending,
       isFetching: indexerQuery.isFetching,
       refetch: indexerQuery.refetch,
@@ -106,7 +106,6 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   return {
     data: rows,
-    lastBuyPredictionActive: false,
     isLoading: rpc.isPending,
     isFetching: rpc.isFetching,
     refetch: rpc.refetch,

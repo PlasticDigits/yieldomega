@@ -1,37 +1,80 @@
+import { useEffect, useState, type ReactNode } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useChainId, useChains } from "wagmi";
 import { ReferralPathSync } from "@/components/ReferralPathSync";
-import { CutoutDecoration } from "@/components/CutoutDecoration";
-import { FeeTransparency } from "@/components/FeeTransparency";
-import { IndexerStatusBar } from "@/components/IndexerStatusBar";
-import { ReferralsFooterPendingPill } from "@/components/ReferralsFooterPendingPill";
-import { governanceUrl } from "@/lib/addresses";
-import { MEGA_MARK, MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
+import { AgentFooterCard } from "@/components/AgentFooterCard";
+import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
+import { configuredTargetChainId } from "@/lib/chain";
+import { addressTailHex } from "@/lib/addressFormat";
+import { MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
-import { TimecurvePresaleCharmHeaderBadge } from "@/layout/TimecurvePresaleCharmHeaderBadge";
-
 // SPDX-License-Identifier: AGPL-3.0-only
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  isActive ? "nav-link nav-link--active" : "nav-link";
+  isActive ? "nav-link nav-link--dense nav-link--active" : "nav-link nav-link--dense";
+
+const TARGET_CHAIN_ID = configuredTargetChainId();
+
+const HEADER_ICONS = {
+  home: "/art/icons/header-home.png",
+  timecurve: "/art/icons/header-timecurve.png",
+  referrals: "/art/icons/header-referrals.png",
+  networkMega: "/art/icons/header-network-mega.png",
+  networkLocal: "/art/icons/header-network-local.png",
+  networkChain: "/art/icons/header-network-chain.png",
+  walletConnect: "/art/icons/header-wallet-connect.png",
+  walletAccount: "/art/icons/header-wallet-account.png",
+  walletLoading: "/art/icons/header-wallet-loading.png",
+  music: "/art/icons/header-music.png",
+  wrongNetwork: "/art/icons/header-wrong-network.png",
+} as const;
+
+function HeaderIcon({ src }: { src: string }) {
+  return (
+    <span className="app-header__icon-wrap" aria-hidden="true">
+      <img className="app-header__icon" src={src} alt="" width={24} height={24} decoding="async" />
+    </span>
+  );
+}
+
+/** Align with `@media (min-width: 721px)` dense header rules in `index.css`. */
+const DENSE_HEADER_MOBILE_MAX_PX = 720;
+
+function denseHeaderWalletAddrTail(address: string, digitCount: 4 | 6): string {
+  const strict = addressTailHex(address, digitCount);
+  if (strict) {
+    return strict;
+  }
+  const body = address.trim().replace(/^0x/i, "");
+  return body.slice(-digitCount);
+}
+
+/** Short label beside the dense header network icon (tablet/desktop, header on top). */
+function denseHeaderNetworkShortLabel(chainId: number): string {
+  if (MEGAETH_CHAIN_IDS.has(chainId)) return "MEGAETH";
+  if (chainId === 31_337) return "ANVIL";
+  return `#${chainId}`;
+}
 
 export function RootLayout() {
-  const chainId = useChainId();
-  const chains = useChains();
   const location = useLocation();
   const prefersReducedMotion = useReducedMotion();
-  const chainName = chains.find((c) => c.id === chainId)?.name ?? `chain ${chainId}`;
-  const gov = governanceUrl();
+  const [musicOpen, setMusicOpen] = useState(false);
+  const denseHeaderAddrTailDigits: 4 | 6 = useIsViewportAtMost(DENSE_HEADER_MOBILE_MAX_PX) ? 4 : 6;
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
 
   // The TimeCurve **Simple** view is a deliberately minimal first-run surface
-  // (timer + buy CTA + recent buys + nothing else). The global footer's
-  // indexer status pill + canonical-fee-sink table are valuable on operator
-  // / power-user surfaces (home, Arena, Protocol, etc.) but they swamp the
-  // Simple page with secondary information that distracts from the single
-  // primary action. We hide the footer **only** on `/timecurve` (exact);
-  // `/timecurve/arena` and `/timecurve/protocol` keep it. See
+  // (timer + buy CTA + podiums). The global footer's indexer status pill +
+  // canonical-fee-sink table are valuable on operator / power-user surfaces
+  // (home, Arena, Protocol, etc.) but they distract from the primary buy action
+  // when always visible. We hide the footer **only** on `/timecurve` (exact);
+  // `/timecurve/arena` and `/timecurve/protocol` keep it. Agents still get the
+  // collapsed `TimeCurveSimpleAgentCard` at the bottom of the Simple page (same
+  // skills + fee sinks when expanded). See
   // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
   const showFooter = location.pathname !== "/timecurve";
   const isTimecurveRoute = location.pathname === "/timecurve" || location.pathname.startsWith("/timecurve/");
@@ -39,140 +82,154 @@ export function RootLayout() {
   return (
     <div className={isTimecurveRoute ? "app-shell app-shell--timecurve" : "app-shell"}>
       <ReferralPathSync />
-      <header className="app-header">
-        <div className="app-header__top">
-        <div className="app-header__brand">
-          <NavLink to="/" className="brand-link">
-            <img
-              className="brand-link__mark"
-              src="/art/token-logo.png"
-              alt=""
-              width={40}
-              height={40}
-              decoding="async"
-            />
-            YieldOmega
-          </NavLink>
-          <TimecurvePresaleCharmHeaderBadge />
-          <CutoutDecoration
-            className="app-header__mascot cutout-decoration--sway"
-            src="/art/cutouts/loading-mascot-circle.png"
-            width={120}
-            height={120}
-          />
-        </div>
-        <nav className="app-nav" aria-label="Primary">
-          <NavLink to="/timecurve" className={navLinkClass}>
-            TimeCurve
-          </NavLink>
-          <NavLink to="/referrals" className={navLinkClass}>
-            Referrals
-          </NavLink>
-        </nav>
-        <div className="app-header__wallet">
-          <span className="chain-pill" title="Connected network">
-            {MEGAETH_CHAIN_IDS.has(chainId) ? (
-              <img
-                className="chain-pill__mega-mark"
-                src={MEGA_MARK}
-                alt=""
-                width={18}
-                height={18}
-                decoding="async"
-                aria-hidden="true"
-              />
-            ) : null}
-            <span className="chain-pill__label">network</span>
-            <span className="chain-pill__value">{chainName}</span>
-          </span>
-          <ConnectButton.Custom>
-            {({
-              account,
-              chain,
-              mounted,
-              authenticationStatus,
-              openAccountModal,
-              openChainModal,
-              openConnectModal,
-            }) => {
-              const ready = mounted && authenticationStatus !== "loading";
-              const connected =
-                ready &&
-                account !== undefined &&
-                chain !== undefined &&
-                (!authenticationStatus || authenticationStatus === "authenticated");
+      <header className="app-header app-header--dense">
+        <ConnectButton.Custom>
+          {({
+            account,
+            chain,
+            mounted,
+            authenticationStatus,
+            openAccountModal,
+            openChainModal,
+            openConnectModal,
+          }) => {
+            const ready = mounted && authenticationStatus !== "loading";
+            const connected =
+              ready &&
+              account !== undefined &&
+              chain !== undefined &&
+              (!authenticationStatus || authenticationStatus === "authenticated");
 
-              if (!ready) {
-                return (
-                  <div aria-hidden="true" className="wallet-controls wallet-controls--hidden">
-                    <button type="button" className="wallet-action wallet-action--connect">
-                      Loading wallet
-                    </button>
-                  </div>
-                );
-              }
+            const c = chain;
+            const wrongNetwork = Boolean(
+              ready && connected && c && (c.unsupported || c.id !== TARGET_CHAIN_ID),
+            );
 
-              if (!connected) {
-                return (
-                  <div className="wallet-controls">
-                    <button
-                      type="button"
-                      className="wallet-action wallet-action--connect wallet-action--priority"
-                      onClick={openConnectModal}
-                      aria-label="Connect wallet"
-                    >
-                      <span className="wallet-action__text-long">Connect Wallet</span>
-                      <span className="wallet-action__text-short">Connect</span>
-                    </button>
-                  </div>
-                );
-              }
+            const networkIconId = connected && c && !c.unsupported ? c.id : TARGET_CHAIN_ID;
 
-              if (chain.unsupported) {
-                return (
-                  <div className="wallet-controls">
-                    <button
-                      type="button"
-                      className="wallet-action wallet-action--warning"
-                      onClick={openChainModal}
-                    >
-                      Wrong Network
-                    </button>
-                    <button
-                      type="button"
-                      className="wallet-action wallet-action--account"
-                      onClick={openAccountModal}
-                    >
-                      {account.displayName}
-                    </button>
-                  </div>
-                );
-              }
+            const networkBtn = (
+              <button
+                type="button"
+                className="header-network-btn"
+                onClick={openChainModal}
+                title={`Switch network (now ${networkIconId})`}
+                aria-label={`Switch network, chain id ${networkIconId}`}
+              >
+                <HeaderIcon
+                  src={
+                    MEGAETH_CHAIN_IDS.has(networkIconId)
+                      ? HEADER_ICONS.networkMega
+                      : networkIconId === 31_337
+                        ? HEADER_ICONS.networkLocal
+                        : HEADER_ICONS.networkChain
+                  }
+                />
+                <span className="app-header__network-label" aria-hidden="true">
+                  {denseHeaderNetworkShortLabel(networkIconId)}
+                </span>
+              </button>
+            );
 
-              return (
-                <div className="wallet-controls">
+            let walletCluster: ReactNode;
+            if (!ready) {
+              walletCluster = (
+                <div className="wallet-controls wallet-controls--dense" aria-busy="true">
+                  {networkBtn}
+                  <span
+                    className="wallet-action wallet-action--dense wallet-action--loading"
+                    aria-label="Wallet loading"
+                    title="Wallet loading"
+                  >
+                    <HeaderIcon src={HEADER_ICONS.walletLoading} />
+                  </span>
+                </div>
+              );
+            } else if (!connected) {
+              walletCluster = (
+                <div className="wallet-controls wallet-controls--dense">
+                  {networkBtn}
                   <button
                     type="button"
-                    className="wallet-action wallet-action--chain"
-                    onClick={openChainModal}
+                    className="wallet-action wallet-action--dense wallet-action--connect-dense wallet-action--connect-pulse"
+                    onClick={openConnectModal}
+                    aria-label="Connect wallet"
+                    title="Connect wallet"
                   >
-                    {chain.name}
-                  </button>
-                  <button
-                    type="button"
-                    className="wallet-action wallet-action--account"
-                    onClick={openAccountModal}
-                  >
-                    {account.displayName}
+                    <HeaderIcon src={HEADER_ICONS.walletConnect} />
                   </button>
                 </div>
               );
-            }}
-          </ConnectButton.Custom>
-        </div>
-        </div>
+            } else {
+              walletCluster = (
+                <div className="wallet-controls wallet-controls--dense">
+                  {networkBtn}
+                  <button
+                    type="button"
+                    className="wallet-action wallet-action--dense wallet-action--account-dense"
+                    onClick={openAccountModal}
+                    aria-label={`Open wallet menu for ${account.address ?? ""}`}
+                    title={account.address ?? account.displayName}
+                  >
+                    <HeaderIcon src={HEADER_ICONS.walletAccount} />
+                    {account.address ? (
+                      <span className="wallet-action__addr-tail">
+                        {denseHeaderWalletAddrTail(account.address, denseHeaderAddrTailDigits)}
+                      </span>
+                    ) : (
+                      <span className="wallet-action__addr-tail">{account.displayName}</span>
+                    )}
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                <div className="app-header__top">
+                  <div className="app-header__brand">
+                    <NavLink to="/" className="brand-link brand-link--dense" title="YieldOmega home">
+                      <HeaderIcon src={HEADER_ICONS.home} />
+                    </NavLink>
+                  </div>
+                  <nav className="app-nav app-nav--dense" aria-label="Primary">
+                    <NavLink to="/timecurve" className={navLinkClass} aria-label="TimeCurve" title="TimeCurve">
+                      <HeaderIcon src={HEADER_ICONS.timecurve} />
+                      <span className="app-header__nav-label" aria-hidden="true">
+                        TimeCurve
+                      </span>
+                    </NavLink>
+                    <NavLink to="/referrals" className={navLinkClass} aria-label="Referrals" title="Referrals">
+                      <HeaderIcon src={HEADER_ICONS.referrals} />
+                      <span className="app-header__nav-label" aria-hidden="true">
+                        Referrals
+                      </span>
+                    </NavLink>
+                  </nav>
+                  <div className="app-header__wallet app-header__wallet--dense">{walletCluster}</div>
+                  <button
+                    type="button"
+                    className="app-header__music-btn"
+                    onClick={() => setMusicOpen((v) => !v)}
+                    aria-expanded={musicOpen}
+                    aria-controls="album-player-dock"
+                    aria-label={musicOpen ? "Hide music player" : "Show music player"}
+                    title={musicOpen ? "Hide music player" : "Show music player"}
+                  >
+                    <HeaderIcon src={HEADER_ICONS.music} />
+                  </button>
+                </div>
+                {wrongNetwork ? (
+                  <div className="app-header__network-alert" role="status">
+                    <HeaderIcon src={HEADER_ICONS.wrongNetwork} /> WRONG NETWORK: USE CHAIN ID{" "}
+                    {TARGET_CHAIN_ID}
+                  </div>
+                ) : null}
+              </>
+            );
+          }}
+        </ConnectButton.Custom>
       </header>
-      <AlbumPlayerBar />
+      <AlbumPlayerBar open={musicOpen} onOpenChange={setMusicOpen} />
       <main className={isTimecurveRoute ? "app-main app-main--timecurve" : "app-main"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -189,19 +246,7 @@ export function RootLayout() {
       </main>
       {showFooter && (
         <footer className="app-footer">
-          <div className="app-footer__row">
-            <IndexerStatusBar />
-            <ReferralsFooterPendingPill />
-            {gov && (
-              <a href={gov} target="_blank" rel="noreferrer" className="footer-link-pill">
-                Governance / CL8Y
-              </a>
-            )}
-          </div>
-          <div className="data-panel data-panel--footer">
-            <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
-            <FeeTransparency />
-          </div>
+          <AgentFooterCard />
         </footer>
       )}
     </div>

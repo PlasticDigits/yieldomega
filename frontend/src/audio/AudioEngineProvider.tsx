@@ -40,6 +40,8 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     typeof window !== "undefined" ? loadAudioPlaybackState(BLOCKIE_HILLS_PLAYLIST).trackIndex : 0,
   );
   const mixerRef = useRef<WebAudioMixer | null>(null);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   if (!mixerRef.current) {
     mixerRef.current = new WebAudioMixer(loadAudioPrefs());
@@ -75,33 +77,45 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       "ui_button_click",
       "charmed_confirm",
       "coin_hit_shallow",
-      "peer_buy_distant",
       "timer_heartbeat_calm",
       "timer_heartbeat_urgent",
       "warbow_twang",
     ]);
   }, [mixer]);
 
-  const unlockFromGesture = useCallback(async () => {
-    if (unlockedRef.current || unlockInFlight.current) return;
-    unlockInFlight.current = true;
-    try {
-      await mixer.unlock();
-      await prefetchCommonSfx();
-      if (!mixer.isBgmPlaying()) {
-        await mixer.playBgm();
+  /**
+   * @param playBgmOverride When set, forces whether to start BGM after unlock (used when the user taps ▶
+   * before prefs state has flushed). When omitted, uses persisted {@link AudioPrefsV1.bgmUserWantsPlaying}.
+   */
+  const unlockFromGesture = useCallback(
+    async (playBgmOverride?: boolean) => {
+      if (unlockedRef.current || unlockInFlight.current) return;
+      unlockInFlight.current = true;
+      try {
+        await mixer.unlock();
+        await prefetchCommonSfx();
+        const shouldPlay =
+          playBgmOverride === true ? true : playBgmOverride === false ? false : prefsRef.current.bgmUserWantsPlaying;
+        if (shouldPlay && !mixer.isBgmPlaying()) {
+          await mixer.playBgm();
+        }
+        unlockedRef.current = true;
+        setUnlocked(true);
+      } finally {
+        unlockInFlight.current = false;
       }
-      unlockedRef.current = true;
-      setUnlocked(true);
-    } finally {
-      unlockInFlight.current = false;
-    }
-  }, [mixer, prefetchCommonSfx]);
+    },
+    [mixer, prefetchCommonSfx],
+  );
 
-  /** Try BGM on load; browsers usually block until a gesture — then {@link unlockFromGesture} starts BGM. */
+  /** If the user left music on, try autoplay on load; otherwise stay paused until they press ▶. */
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (!prefs.bgmUserWantsPlaying) {
+        mixer.pauseBgm();
+        return;
+      }
       await mixer.playBgm();
       if (cancelled) return;
       if (mixer.isBgmPlaying() && !unlockedRef.current) {
@@ -113,7 +127,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [mixer, prefetchCommonSfx]);
+  }, [mixer, prefetchCommonSfx, prefs.bgmUserWantsPlaying]);
 
   useEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
@@ -154,13 +168,19 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
       sfxMuted: prefs.sfxMuted,
       toggleBgm: () => {
         void (async () => {
-          if (!unlockedRef.current) {
-            await unlockFromGesture();
-          }
           if (mixer.isBgmPlaying()) {
+            setPrefs((p) => ({ ...p, bgmUserWantsPlaying: false }));
             mixer.pauseBgm();
+            return;
+          }
+          setPrefs((p) => ({ ...p, bgmUserWantsPlaying: true }));
+          if (!unlockedRef.current) {
+            await unlockFromGesture(true);
           } else {
             await mixer.playBgm();
+          }
+          if (!mixer.isBgmPlaying()) {
+            setPrefs((p) => ({ ...p, bgmUserWantsPlaying: false }));
           }
         })();
       },

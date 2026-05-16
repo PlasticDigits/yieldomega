@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   formatCompactDecimalString,
   formatCompactFromRaw,
+  formatPlainDecimalSigfigsString,
   normalizeScientificString,
+  truncatePlainDecimalSigfigsString,
 } from "./compactNumberFormat";
 
 describe("normalizeScientificString", () => {
@@ -14,6 +16,38 @@ describe("normalizeScientificString", () => {
   });
   it("preserves negative exponent without plus", () => {
     expect(normalizeScientificString("4.00e-5")).toBe("4.00e-5");
+  });
+});
+
+describe("formatPlainDecimalSigfigsString", () => {
+  it("formats six significant figures without k/m compaction", () => {
+    expect(formatPlainDecimalSigfigsString("1.011420123456789012", 6)).toBe("1.01142");
+    expect(formatPlainDecimalSigfigsString("999.123456", 6)).toBe("999.123");
+  });
+  it("handles zero and negatives", () => {
+    expect(formatPlainDecimalSigfigsString("0", 6)).toBe("0");
+    expect(formatPlainDecimalSigfigsString("-1.2345678", 4)).toBe("-1.235");
+  });
+});
+
+describe("truncatePlainDecimalSigfigsString", () => {
+  it("truncates toward zero instead of rounding up", () => {
+    expect(truncatePlainDecimalSigfigsString("10.2699", 4)).toBe("10.26");
+    expect(truncatePlainDecimalSigfigsString("-10.2699", 4)).toBe("-10.26");
+  });
+  it("truncates hero-style rates instead of rounding (six figures)", () => {
+    expect(truncatePlainDecimalSigfigsString("1.011425", 6)).toBe("1.01142");
+    expect(truncatePlainDecimalSigfigsString("1.011425", 6, { preserveTrailingSigfigZeros: true })).toBe(
+      "1.01142",
+    );
+  });
+  it("pads trailing zeros to sigfig width when preserveTrailingSigfigZeros is true", () => {
+    expect(truncatePlainDecimalSigfigsString("1.01", 6, { preserveTrailingSigfigZeros: true })).toBe(
+      "1.01000",
+    );
+  });
+  it("uses scientific form at and above 1e15", () => {
+    expect(truncatePlainDecimalSigfigsString("1000000000000000.0", 4)).toBe("1.000e15");
   });
 });
 

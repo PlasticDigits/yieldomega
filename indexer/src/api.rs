@@ -21,7 +21,37 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.19.0";
+const SCHEMA_VERSION: &str = "1.21.0";
+
+/// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
+const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
+  SELECT lower(buyer::text) AS addr,
+         battle_points_after::numeric AS bp,
+         block_number,
+         log_index,
+         tx_hash
+  FROM idx_timecurve_buy
+  UNION ALL
+  SELECT lower(attacker::text), attacker_bp_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_steal
+  UNION ALL
+  SELECT lower(victim::text), victim_bp_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_steal
+  UNION ALL
+  SELECT lower(player::text), battle_points_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_flag_claimed
+  UNION ALL
+  SELECT lower(former_holder::text), battle_points_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_flag_penalized
+  UNION ALL
+  SELECT lower(stealer::text), stealer_bp_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_revenge
+  WHERE stealer_bp_after IS NOT NULL
+  UNION ALL
+  SELECT lower(avenger::text), avenger_bp_after, block_number, log_index, tx_hash
+  FROM idx_timecurve_warbow_revenge
+  WHERE avenger_bp_after IS NOT NULL
+"#;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -238,6 +268,144 @@ async fn fetch_last_buy_prediction_row(pool: &PgPool) -> Result<PodiumRpcRow, sq
     Ok(PodiumRpcRow { winners, values })
 }
 
+fn empty_podium_prediction_row() -> PodiumRpcRow {
+    let z = format!("{:#x}", Address::ZERO);
+    PodiumRpcRow {
+        winners: std::array::from_fn(|_| z.clone()),
+        values: std::array::from_fn(|_| String::from("0")),
+    }
+}
+
+fn normalize_podium_addr_hex(addr: &str) -> String {
+    let s = addr.trim().to_ascii_lowercase();
+    if s.is_empty() || s == format!("{:#x}", Address::ZERO) {
+        return format!("{:#x}", Address::ZERO);
+    }
+    if s.starts_with("0x") {
+        s
+    } else {
+        format!("0x{s}")
+    }
+}
+
+fn podium_row_pad_top3(pairs: Vec<(String, String)>) -> PodiumRpcRow {
+    let z = format!("{:#x}", Address::ZERO);
+    let mut winners = std::array::from_fn(|_| z.clone());
+    let mut values = std::array::from_fn(|_| String::from("0"));
+    for (i, (addr, val)) in pairs.into_iter().enumerate().take(3) {
+        winners[i] = normalize_podium_addr_hex(&addr);
+        values[i] = val;
+    }
+    PodiumRpcRow { winners, values }
+}
+
+async fn fetch_two_col_top3(
+    pool: &PgPool,
+    sql: &str,
+    kind: &'static str,
+) -> PodiumRpcRow {
+    let rows = sqlx::query(sql).fetch_all(pool).await;
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(?e, "timecurve_podiums: {kind} prediction query failed");
+            return empty_podium_prediction_row();
+        }
+    };
+    let mut pairs: Vec<(String, String)> = Vec::with_capacity(3);
+    for r in rows {
+        let addr: String = match r.try_get::<String, _>("addr") {
+            Ok(a) => a,
+            Err(_) => continue,
+        };
+        let val: String = match r.try_get::<String, _>("val") {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        pairs.push((addr, val));
+    }
+    podium_row_pad_top3(pairs)
+}
+
+/// Live WarBow top-3 by Battle Points: latest BP per wallet from indexed `Buy` + WarBow tables
+/// (steal victim/attacker, revenge stealer/avenger when snapshotted, flag claimed/penalized), ordered like `TimeCurve._betterRanked` (value desc, address asc).
+async fn fetch_warbow_bp_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
+    let sql = format!(
+        r#"WITH all_bp AS (
+{union}
+            ),
+            latest AS (
+              SELECT DISTINCT ON (addr) addr, bp
+              FROM all_bp
+              ORDER BY addr, block_number DESC, log_index DESC
+            )
+            SELECT addr, bp::text AS val
+            FROM latest
+            WHERE bp > 0
+            ORDER BY bp DESC, addr ASC
+            LIMIT 3"#,
+        union = WARBOW_BP_OBSERVATIONS_UNION
+    );
+    fetch_two_col_top3(pool, &sql, "warbow_bp").await
+}
+
+/// Defended-streak best per wallet from latest `Buy` snapshot + `WarBowDefendedStreakContinued` rows.
+async fn fetch_defended_streak_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
+    fetch_two_col_top3(
+        pool,
+        r#"WITH all_best AS (
+              SELECT lower(buyer::text) AS addr,
+                     buyer_best_defended_streak::numeric AS best,
+                     block_number,
+                     log_index
+              FROM idx_timecurve_buy
+              WHERE buyer_best_defended_streak IS NOT NULL
+              UNION ALL
+              SELECT lower(wallet::text), best_streak, block_number, log_index
+              FROM idx_timecurve_warbow_ds_continued
+            ),
+            latest AS (
+              SELECT DISTINCT ON (addr) addr, best
+              FROM all_best
+              ORDER BY addr, block_number DESC, log_index DESC
+            )
+            SELECT addr, best::text AS val
+            FROM latest
+            WHERE best > 0
+            ORDER BY best DESC, addr ASC
+            LIMIT 3"#,
+        "defended_streak",
+    )
+    .await
+}
+
+/// Time booster: latest `buyer_total_effective_timer_sec` per wallet from indexed buys.
+async fn fetch_time_booster_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
+    fetch_two_col_top3(
+        pool,
+        r#"WITH t AS (
+              SELECT lower(buyer::text) AS addr,
+                     buyer_total_effective_timer_sec::numeric AS secs,
+                     block_number,
+                     log_index
+              FROM idx_timecurve_buy
+              WHERE buyer_total_effective_timer_sec IS NOT NULL
+            ),
+            latest AS (
+              SELECT DISTINCT ON (addr) addr, secs
+              FROM t
+              ORDER BY addr, block_number DESC, log_index DESC
+            )
+            SELECT addr, secs::text AS val
+            FROM latest
+            WHERE secs > 0
+            ORDER BY secs DESC, addr ASC
+            LIMIT 3"#,
+        "time_booster",
+    )
+    .await
+}
+
 async fn timecurve_podiums(State(state): State<AppState>) -> Response {
     let guard = state.chain_timer.read().await;
     let Some(head) = guard.as_ref() else {
@@ -252,54 +420,73 @@ async fn timecurve_podiums(State(state): State<AppState>) -> Response {
         return res;
     };
 
-    let predicted = match fetch_last_buy_prediction_row(&state.pool).await {
-        Ok(p) => p,
-        Err(e) => {
-            tracing::warn!(?e, "timecurve_podiums: last-buy prediction query failed");
-            let z = format!("{:#x}", Address::ZERO);
-            PodiumRpcRow {
-                winners: std::array::from_fn(|_| z.clone()),
-                values: std::array::from_fn(|_| String::from("0")),
-            }
-        }
-    };
-
-    let last_row = if head.sale_ended {
-        json!({
-            "winners": head.podium_contract[0].winners,
-            "values": head.podium_contract[0].values,
-            "last_buy_prediction": false,
-        })
+    // While `sale_ended` is false, all four UX rows use indexer DB predictions (live indexed state).
+    // After the sale ends, rows mirror head `TimeCurve.podium(category)` at `read_block_number`.
+    let (last_row, warbow_row, def_row, time_row) = if head.sale_ended {
+        (
+            json!({
+                "winners": head.podium_contract[0].winners,
+                "values": head.podium_contract[0].values,
+                "podium_prediction": false,
+                "last_buy_prediction": false,
+            }),
+            json!({
+                "winners": head.podium_contract[3].winners,
+                "values": head.podium_contract[3].values,
+                "podium_prediction": false,
+            }),
+            json!({
+                "winners": head.podium_contract[2].winners,
+                "values": head.podium_contract[2].values,
+                "podium_prediction": false,
+            }),
+            json!({
+                "winners": head.podium_contract[1].winners,
+                "values": head.podium_contract[1].values,
+                "podium_prediction": false,
+            }),
+        )
     } else {
-        json!({
-            "winners": predicted.winners,
-            "values": predicted.values,
-            "last_buy_prediction": true,
-        })
+        let (predicted_res, wb, def, time) = tokio::join!(
+            fetch_last_buy_prediction_row(&state.pool),
+            fetch_warbow_bp_podium_prediction(&state.pool),
+            fetch_defended_streak_podium_prediction(&state.pool),
+            fetch_time_booster_podium_prediction(&state.pool),
+        );
+        let predicted = predicted_res.unwrap_or_else(|e| {
+            tracing::warn!(?e, "timecurve_podiums: last-buy prediction query failed");
+            empty_podium_prediction_row()
+        });
+        (
+            json!({
+                "winners": predicted.winners,
+                "values": predicted.values,
+                "podium_prediction": true,
+                "last_buy_prediction": true,
+            }),
+            json!({
+                "winners": wb.winners,
+                "values": wb.values,
+                "podium_prediction": true,
+            }),
+            json!({
+                "winners": def.winners,
+                "values": def.values,
+                "podium_prediction": true,
+            }),
+            json!({
+                "winners": time.winners,
+                "values": time.values,
+                "podium_prediction": true,
+            }),
+        )
     };
 
     let body = json!({
         "sale_ended": head.sale_ended,
         "read_block_number": head.timer.read_block_number,
         "polled_at_ms": head.timer.polled_at_ms,
-        "rows": [
-            last_row,
-            {
-                "winners": head.podium_contract[3].winners,
-                "values": head.podium_contract[3].values,
-                "last_buy_prediction": false,
-            },
-            {
-                "winners": head.podium_contract[2].winners,
-                "values": head.podium_contract[2].values,
-                "last_buy_prediction": false,
-            },
-            {
-                "winners": head.podium_contract[1].winners,
-                "values": head.podium_contract[1].values,
-                "last_buy_prediction": false,
-            },
-        ],
+        "rows": [last_row, warbow_row, def_row, time_row],
     });
 
     let mut res = Json(body).into_response();
@@ -547,12 +734,15 @@ async fn timecurve_warbow_battle_feed(
             UNION ALL
             SELECT 'revenge', block_number, log_index, tx_hash,
                    block_timestamp::text,
-                   jsonb_build_object(
+                   jsonb_strip_nulls(jsonb_build_object(
                      'avenger', avenger,
                      'stealer', stealer,
                      'amount_bp', amount_bp::text,
-                     'burn_paid_wad', burn_paid_wad::text
-                   )
+                     'burn_paid_wad', burn_paid_wad::text,
+                     'stealer_bp_after', stealer_bp_after::text,
+                     'avenger_bp_after', avenger_bp_after::text
+                   ))
+                   AS detail
             FROM idx_timecurve_warbow_revenge
             UNION ALL
             SELECT 'guard_activated', block_number, log_index, tx_hash,
@@ -682,20 +872,29 @@ async fn timecurve_warbow_leaderboard(
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
-    let rows = sqlx::query(
+    let sql = format!(
         r#"SELECT buyer,
                   battle_points_after::text AS battle_points_after,
                   block_number::text AS block_number,
                   tx_hash,
                   log_index
            FROM (
-             SELECT DISTINCT ON (buyer) buyer, battle_points_after, block_number, tx_hash, log_index
-             FROM idx_timecurve_buy
-             ORDER BY buyer, block_number DESC, log_index DESC
+             SELECT DISTINCT ON (addr) addr AS buyer,
+                    bp AS battle_points_after,
+                    block_number,
+                    tx_hash,
+                    log_index
+             FROM (
+{union}
+             ) obs
+             ORDER BY addr, block_number DESC, log_index DESC
            ) latest
-           ORDER BY battle_points_after::numeric DESC, block_number DESC, log_index ASC
+           WHERE battle_points_after::numeric > 0
+           ORDER BY battle_points_after::numeric DESC, buyer ASC, block_number DESC, log_index ASC
            LIMIT $1 OFFSET $2"#,
-    )
+        union = WARBOW_BP_OBSERVATIONS_UNION
+    );
+    let rows = sqlx::query(&sql)
     .bind(lim)
     .bind(off)
     .fetch_all(&state.pool)
@@ -732,7 +931,7 @@ async fn timecurve_warbow_leaderboard(
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
-        "note": "Per-wallet Battle Points are taken from the latest indexed Buy row for that buyer (matches onchain running total at last buy).",
+        "note": "Per-wallet Battle Points are the latest snapshot from indexed `Buy` plus WarBow evidence rows (steal, revenge with BP columns, flag claim/penalty), ordered like onchain ladder reads.",
     });
 
     let mut res = Json(body).into_response();

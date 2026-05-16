@@ -501,14 +501,12 @@ Below the hub:
 5. **Live reserve podiums ([issue #113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113))** —
    a compact Simple-only `PageSection` immediately above **Recent buys** shows
    all four fixed v1 reserve categories (`Last Buy`, `WarBow`,
-   `Defended Streak`, `Time Booster`) with 1st / 2nd / 3rd rows from
-   `TimeCurve.podium(category)` via the shared `PODIUM_CONTRACT_CATEGORY_INDEX`
-   mapping. It reuses the shared ranking row chrome, category copy, blockie +
+   `Defended Streak`, `Time Booster`) with 1st / 2nd / 3rd rows. With
+   **`VITE_INDEXER_URL`**, `usePodiumReads` consumes **`GET /v1/timecurve/podiums`**, which serves **Postgres-derived live predictions** for every category while **`sale_ended`** is **false** (**`INV-INDEXER-PODIUM-PREDICT-LIVE`**, schema **≥ 1.20.0**), then mirrors head **`podium(category)`** after the sale ends. Without the indexer URL, the hook falls back to direct **`podium()`** RPC (WarBow may stay empty until **`finalizeWarbowPodium`**). Prize CL8Y hints remain a client projection from **`PodiumPool`** balance. It reuses the shared ranking row chrome, category copy, blockie +
    explorer address display, and marks the connected wallet with the same
-   `ranking-list__item--you` treatment as Arena. A `Buy` log refetches the
-   podium reads immediately; a light RPC interval catches WarBow-only moves.
-   This is read-only UI: the contract remains authoritative for winners, while
-   the indexer remains only a discovery/cache layer.
+   `ranking-list__item--you` treatment as Arena. A `Buy` log refetches
+   podium reads immediately. **Empty winner slots** use a neutral **em dash**, not wallet-connect copy (**`INV-FRONTEND-113-PODIUM-FALLBACK`**).
+   This is read-only UI: **payout authority** stays onchain (`distributePrizes`); the indexer prediction is a **best-effort live leaderboard** for the sale window.
 6. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.
@@ -530,9 +528,9 @@ single primary action. The `showFooter` toggle in
 
 <a id="timecurve-presale-charm-header-hint"></a>
 
-### Root header — presale CHARM bonus (`/timecurve*`)
+### Presale CHARM +15% weight boost (`/timecurve*`)
 
-When **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** or **`VITE_DOUB_PRESALE_VESTING_ADDRESS`** resolves to a contract that returns **`isBeneficiary(connectedWallet) === true`**, the global header shows **`Presale +15% CHARM`**. **When both env vars are set**, the badge reads **`isBeneficiary`** from the **registry first** (same order as on-chain **`TimeCurve`** when both contracts are deployed). Authoritative weighting lives in **`TimeCurve`** (`doubPresaleVesting`, `PRESALE_CHARM_WEIGHT_BPS`, `setDoubPresaleVesting`). Map: [`INV-TC-PRESALE-CHARM-BOOST`](../testing/invariants-and-business-logic.md#timecurve-presale-charm-weight-boost). Contributor QA checklist: [manual-qa — GitLab #202](../testing/manual-qa-checklists.md#manual-qa-issue-202-presale-charm-registry).
+The **+15%** extra **`charmWeight`** line is **onchain only** (`TimeCurve.doubPresaleVesting`, `PRESALE_CHARM_WEIGHT_BPS`, `setDoubPresaleVesting`). **When both** **`PresaleCharmBeneficiaryRegistry`** and **`DoubPresaleVesting`** deploy, **`TimeCurve`** may point **`doubPresaleVesting`** at the **registry** for **`isBeneficiary`** while **`/vesting`** still uses the vesting proxy address. Players verify membership with **`isBeneficiary(connectedWallet)`** on the contract **`TimeCurve`** reads — not from a global header badge. Map: [`INV-TC-PRESALE-CHARM-BOOST`](../testing/invariants-and-business-logic.md#timecurve-presale-charm-weight-boost). Contributor QA checklist: [manual-qa — GitLab #202](../testing/manual-qa-checklists.md#manual-qa-issue-202-presale-charm-registry).
 
 <a id="global-footer-fee-sinks-mobile-issue-93"></a>
 

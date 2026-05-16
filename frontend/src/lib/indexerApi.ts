@@ -146,10 +146,13 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
   }
 }
 
-/** `GET /v1/timecurve/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. */
+/** `GET /v1/timecurve/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
 export type TimecurvePodiumApiRow = {
   winners: string[];
   values: string[];
+  /** True when the row is derived from indexed events (live sale); false when mirroring head `podium()` RPC (schema ≥ 1.20.0). */
+  podium_prediction?: boolean;
+  /** Last Buy row only: same sale-window semantics as `podium_prediction` (legacy field; schema ≥ 1.10.0). */
   last_buy_prediction?: boolean;
 };
 

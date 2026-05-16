@@ -1,6 +1,6 @@
 # Presale vesting (`/vesting`)
 
-**Contract:** [`DoubPresaleVesting`](../../contracts/src/vesting/DoubPresaleVesting.sol) (UUPS proxy address is canonical — [GitLab #54](https://gitlab.com/PlasticDigits/yieldomega/-/issues/54), [GitLab #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)). **Boost-only or split rows:** production may also deploy [`PresaleCharmBeneficiaryRegistry`](../../contracts/src/vesting/PresaleCharmBeneficiaryRegistry.sol) so **`TimeCurve`** presale CHARM weight can use a **different** wallet list than DOUB vesting allocations; set **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** for the header badge when that registry exists.
+**Contract:** [`DoubPresaleVesting`](../../contracts/src/vesting/DoubPresaleVesting.sol) (UUPS proxy address is canonical — [GitLab #54](https://gitlab.com/PlasticDigits/yieldomega/-/issues/54), [GitLab #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)). **Boost-only or split rows:** production may also deploy [`PresaleCharmBeneficiaryRegistry`](../../contracts/src/vesting/PresaleCharmBeneficiaryRegistry.sol) so **`TimeCurve`** presale CHARM weight can use a **different** wallet list than DOUB vesting allocations; set **`VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY`** so build-time tooling matches the registry when that contract exists (aligned with **`TimeCurve.doubPresaleVesting`**).
 
 **Route:** [`/vesting`](../../frontend/src/pages/PresaleVestingPage.tsx) — **intentionally omitted** from the global header nav; participants use a **direct link** ([GitLab #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)).
 
@@ -9,7 +9,7 @@
 | Variable | Role |
 |----------|------|
 | `VITE_DOUB_PRESALE_VESTING_ADDRESS` | ERC-1967 **proxy** for `DoubPresaleVesting` (powers `/vesting`) |
-| `VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY` | Optional: `PresaleCharmBeneficiaryRegistry` for header **Presale +15% CHARM** badge when vesting is not deployed ([`deployment-guide`](../operations/deployment-guide.md)) |
+| `VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY` | Optional: `PresaleCharmBeneficiaryRegistry` address for env parity / ops when vesting is not deployed ([`deployment-guide`](../operations/deployment-guide.md)) |
 
 Local one-shot stack: [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) parses **`DoubPresaleVesting:`** from the `DeployDev` log and writes the line into `frontend/.env.local` together with other `VITE_*` addresses.
 

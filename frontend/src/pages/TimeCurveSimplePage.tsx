@@ -1,29 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { formatUnits } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { useReadContract, useWatchContractEvent } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { TimecurveBuySpendRangeInput } from "@/components/TimecurveBuySpendRangeInput";
 import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
-import { TxHash } from "@/components/TxHash";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
 import { erc20Abi, timeCurveBuyEventAbi, timeCurveReadAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
-import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
-import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
+import {
+  formatBuyCtaCharmAmountLabel,
+  formatBuyHubDerivedCompact,
+  formatBuyHubLaunchVsClearingGainPercentLabel,
+  formatHeroRateFromWad,
+} from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
-import { formatLocaleInteger } from "@/lib/formatAmount";
 import {
   CHARM_TOKEN_LOGO,
   CL8Y_TOKEN_LOGO,
@@ -31,37 +33,72 @@ import {
   USDM_TOKEN_LOGO,
 } from "@/lib/tokenMedia";
 import {
-  doubPerCharmAtLaunchWad,
   participantLaunchValueCl8yWei,
   podiumCategorySlices,
   podiumPlacementShares,
 } from "@/lib/timeCurvePodiumMath";
-import {
-  displayMinGrossSpendAtFloat,
-  maxGrossSpendAtFloat,
-} from "@/lib/timeCurveMath";
-import {
-  buySpendEnvelopeFillRatio,
-  envelopeCurveParamsFromWire,
-  formatBuyAge,
-  type EnvelopeCurveParams,
-} from "@/lib/timeCurveBuyDisplay";
-import { listBuyImpactTicks, type BuyImpactTick } from "@/lib/timeCurveUx";
-import { buySizeColor } from "@/pages/timecurve/buySizeColor";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
-import { phaseBadge, phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
+import { phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
+import { TimeCurveSimpleAgentCard } from "@/pages/timecurve/TimeCurveSimpleAgentCard";
 import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
 import { TIMECURVE_PODIUMS_QUERY_KEY, usePodiumReads } from "@/pages/timecurve/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
-/** Indexer page size for Simple recent-buys poll (head) and scroll load-more chunks. */
+/** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
 const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
+
+const SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS: { value: PayWithAsset; label: string; logo: string }[] = [
+  { value: "cl8y", label: "CL8Y", logo: CL8Y_TOKEN_LOGO },
+  { value: "eth", label: "ETH", logo: ETH_TOKEN_LOGO },
+  { value: "usdm", label: "USDM", logo: USDM_TOKEN_LOGO },
+];
+
+function TimecurveSimpleAmountPayTokenSelect({
+  payWith,
+  setPayWith,
+  disabled,
+}: {
+  payWith: PayWithAsset;
+  setPayWith: (p: PayWithAsset) => void;
+  disabled: boolean;
+}) {
+  const active =
+    SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.find((o) => o.value === payWith) ?? SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS[0];
+  return (
+    <div className="timecurve-simple__amount-suffix timecurve-simple__amount-token-dropdown">
+      <img
+        className="timecurve-simple__amount-token-dropdown-icon"
+        src={active.logo}
+        alt=""
+        width={16}
+        height={16}
+        decoding="async"
+        aria-hidden="true"
+      />
+      <select
+        className="timecurve-simple__amount-token-select"
+        value={payWith}
+        disabled={disabled}
+        aria-label={`Pay with ${active.label} (change spend token)`}
+        data-testid="timecurve-simple-amount-pay-token"
+        onChange={(e) => setPayWith(e.target.value as PayWithAsset)}
+      >
+        {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 /**
  * Default `/timecurve` view — the **simple, first-run path** described in
@@ -86,200 +123,6 @@ const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
  * `TimeCurve` ABI used by the Arena view, so the contract remains the single
  * source of truth (see `docs/frontend/timecurve-views.md`).
  */
-function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean | undefined): string {
-  if (hardReset) return "ticker-event--reset";
-  if (!actualSecondsAdded) return "";
-  try {
-    const n = BigInt(actualSecondsAdded);
-    if (n >= 600n) return "ticker-event--big";
-    if (n >= 60n) return "ticker-event--mid";
-  } catch {
-    /* ignore */
-  }
-  return "";
-}
-
-function parseTickerBigInt(value: string | undefined | null): bigint | null {
-  if (!value?.trim()) return null;
-  try {
-    return BigInt(value);
-  } catch {
-    return null;
-  }
-}
-
-function buyBandPosition(
-  buy: BuyItem,
-  envelopeParams: EnvelopeCurveParams | null,
-  fallbackBounds: { minS: bigint; maxS: bigint } | null,
-  decimals: number,
-): {
-  fillPercent: number;
-  positionPercent: number;
-  minLabel: string;
-  maxLabel: string;
-  sizeLabel: string;
-  accentColor: string;
-  title: string;
-} | null {
-  const amount = parseTickerBigInt(buy.amount);
-  if (amount === null) return null;
-
-  let minSpend: bigint | undefined;
-  let maxSpend: bigint | undefined;
-  let arenaRatio: number | null = null;
-  if (envelopeParams && buy.block_timestamp?.trim()) {
-    try {
-      arenaRatio = buySpendEnvelopeFillRatio(buy, envelopeParams);
-      const elapsedSec = Math.max(
-        0,
-        Number(BigInt(buy.block_timestamp.trim())) - envelopeParams.saleStartSec,
-      );
-      minSpend = displayMinGrossSpendAtFloat(
-        envelopeParams.charmEnvelopeRefWad,
-        envelopeParams.growthRateWad,
-        envelopeParams.basePriceWad,
-        envelopeParams.dailyIncrementWad,
-        elapsedSec,
-      );
-      maxSpend = maxGrossSpendAtFloat(
-        envelopeParams.charmEnvelopeRefWad,
-        envelopeParams.growthRateWad,
-        envelopeParams.basePriceWad,
-        envelopeParams.dailyIncrementWad,
-        elapsedSec,
-      );
-    } catch {
-      minSpend = undefined;
-      maxSpend = undefined;
-    }
-  }
-
-  if ((minSpend === undefined || maxSpend === undefined) && fallbackBounds) {
-    minSpend = fallbackBounds.minS;
-    maxSpend = fallbackBounds.maxS;
-  }
-  if (minSpend === undefined || maxSpend === undefined || maxSpend <= minSpend) return null;
-  const fillRatio =
-    arenaRatio !== null
-      ? arenaRatio
-      : Math.max(0, Math.min(1, Number((amount * 10_000n) / maxSpend) / 10_000));
-  const fillPercent = Math.max(0, Math.min(100, fillRatio * 100));
-  let positionPercent = 0;
-  if (amount >= maxSpend) {
-    positionPercent = 100;
-  } else if (amount > minSpend) {
-    positionPercent = Number(((amount - minSpend) * 10_000n) / (maxSpend - minSpend)) / 100;
-  }
-  const sizeLabel =
-    fillPercent >= 80
-      ? "Max pressure"
-      : fillPercent >= 55
-        ? "Heavy buy"
-        : fillPercent >= 25
-          ? "Mid band"
-          : "Near minimum";
-  return {
-    fillPercent,
-    positionPercent,
-    minLabel: formatCompactFromRaw(minSpend, decimals, { sigfigs: 3 }),
-    maxLabel: formatCompactFromRaw(maxSpend, decimals, { sigfigs: 3 }),
-    sizeLabel,
-    accentColor: buySizeColor(fillRatio),
-    title: `${Math.round(fillPercent)}% of current max CL8Y band; ${Math.round(positionPercent)}% from min to max`,
-  };
-}
-
-function tickerImpactTicks(buy: BuyItem): BuyImpactTick[] {
-  const ticks = listBuyImpactTicks(buy, 6);
-  const out: BuyImpactTick[] = [];
-  if (buy.flag_planted === true) {
-    out.push({ id: "flag-plant", label: "Flag planted", tone: "warning" });
-  }
-  out.push(...ticks);
-  const activeStreak = parseTickerBigInt(buy.buyer_active_defended_streak);
-  if (activeStreak !== null && activeStreak > 0n && !out.some((tick) => tick.id === "def")) {
-    out.push({ id: "streak", label: "Streak", sub: `${activeStreak.toString()}x`, tone: "info" });
-  }
-  return out.slice(0, 6);
-}
-
-function tickerEffectDisplay(tick: BuyImpactTick): { label: string; sub?: string; glyph: string } {
-  switch (tick.id) {
-    case "flag-plant":
-      return { label: "Flag planted", sub: tick.sub, glyph: "WB" };
-    case "flag":
-      return { label: "Flag hit", sub: tick.sub ? `-${tick.sub} BP` : undefined, glyph: "WB" };
-    case "hreset":
-      return { label: "Clock reset", sub: tick.sub, glyph: "CLK" };
-    case "sbreak":
-      return { label: "Streak break", sub: tick.sub, glyph: "STK" };
-    case "ambush":
-      return { label: "Ambush", sub: tick.sub, glyph: "AMB" };
-    case "clutch":
-      return { label: "Clutch", sub: tick.sub, glyph: "CLT" };
-    case "tbp":
-      return { label: "Timer BP", sub: tick.sub, glyph: "BP" };
-    case "def":
-    case "streak":
-      return { label: "Defended streak", sub: tick.sub, glyph: "DEF" };
-    case "wb":
-      return { label: "Battle Points", sub: tick.sub, glyph: "BP" };
-    case "tadd":
-      return { label: "Clock added", sub: tick.sub, glyph: "+T" };
-    case "buy":
-      return { label: "On-chain buy", sub: tick.sub === "—" ? undefined : tick.sub, glyph: "YO" };
-    default:
-      return { label: tick.label, sub: tick.sub, glyph: "YO" };
-  }
-}
-
-function tickerCardTheme(buy: BuyItem, band: ReturnType<typeof buyBandPosition>) {
-  const flagPenalty = parseTickerBigInt(buy.bp_flag_penalty) ?? 0n;
-  const activeStreak = parseTickerBigInt(buy.buyer_active_defended_streak) ?? 0n;
-  const bandFill = band?.fillPercent ?? 0;
-  if (flagPenalty > 0n || buy.flag_planted === true) {
-    return {
-      className: "timecurve-simple__ticker-row--flag",
-      badge: "WarBow flag",
-      artSrc: "/art/icons/warbow-flag.png",
-    };
-  }
-  if (buy.timer_hard_reset) {
-    return {
-      className: "timecurve-simple__ticker-row--reset",
-      badge: "Clock reset",
-      artSrc: "/art/icons/status-cooldown.png",
-    };
-  }
-  if (activeStreak >= 2n) {
-    return {
-      className: "timecurve-simple__ticker-row--streak",
-      badge: "Streak",
-      artSrc: "/art/cutouts/bunny-guarding.png",
-    };
-  }
-  if (bandFill >= 75) {
-    return {
-      className: "timecurve-simple__ticker-row--max",
-      badge: "Big bite",
-      artSrc: "/art/cutouts/sniper-shark-coin-bandolier.png",
-    };
-  }
-  if (bandFill >= 35) {
-    return {
-      className: "timecurve-simple__ticker-row--mid",
-      badge: "Momentum",
-      artSrc: "/art/hat-coin-front.png",
-    };
-  }
-  return {
-    className: "timecurve-simple__ticker-row--min",
-    badge: "Fresh buy",
-    artSrc: CHARM_TOKEN_LOGO,
-  };
-}
-
 export function TimeCurveSimplePage() {
   const tc = addresses.timeCurve;
   const session = useTimeCurveSaleSession(tc);
@@ -288,8 +131,6 @@ export function TimeCurveSimplePage() {
   const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
   const queryClient = useQueryClient();
 
-  const phaseInfo = phaseBadge(session.phase);
-
   const timerSectionTitle =
     session.phase === "saleStartPending" ? "TimeCurve Opens In" : "Time left";
 
@@ -297,13 +138,17 @@ export function TimeCurveSimplePage() {
     session.phase === "saleActive" || session.phase === "saleExpiredAwaitingEnd"
       ? session.saleCountdownSec
       : session.preStartCountdownSec;
-  // Timer-panel badge label: reuse the sale-phase label so the badge adds
-  // information instead of repeating "Time remaining" alongside the
-  // section H2 "Time left" (Iteration 3 dedupe). The phase tone (live /
-  // soon / warning) stays driven by `phaseInfo.tone`.
-  const heroLabel = phaseInfo.label;
 
   const heroNarrative = phaseNarrative(session.phase);
+
+  const warbowFlagPlantLine = useMemo(
+    () =>
+      warbowFlagPlantMutedLine({
+        claimBp: session.warbowFlagClaimBp ?? 1000n,
+        silenceSec: session.warbowFlagSilenceSec ?? 300n,
+      }),
+    [session.warbowFlagClaimBp, session.warbowFlagSilenceSec],
+  );
 
   const podiumReads = usePodiumReads(tc);
   const { data: podiumAcceptedAsset } = useReadContract({
@@ -339,20 +184,7 @@ export function TimeCurveSimplePage() {
   }, [podiumPoolBalance]);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
-  /** After the user loads older pages, polls merge new head rows but leave this cursor frozen (Arena pattern). */
-  const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
-  const [buyPagesExpanded, setBuyPagesExpanded] = useState(false);
-  const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
-  /** `null` until the first indexer buys poll finishes; then tracks the latest poll. */
-  const [buyPollLastOk, setBuyPollLastOk] = useState<boolean | null>(null);
-  const activityScrollRef = useRef<HTMLDivElement>(null);
-  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
-  const buysNextOffsetRef = useRef<number | null>(null);
-  const loadingMoreBuysRef = useRef(false);
-  const buyPagesExpandedRef = useRef(false);
-  buysNextOffsetRef.current = buysNextOffset;
-  buyPagesExpandedRef.current = buyPagesExpanded;
-  const { isOffline } = useIndexerConnectivity();
+  /** Wall clock for podium “time since buy” copy; decoupled from chain time. */
   const [tickerWallNowSec, setTickerWallNowSec] = useState(() => Math.floor(Date.now() / 1000));
 
   useWatchContractEvent({
@@ -375,11 +207,6 @@ export function TimeCurveSimplePage() {
     return () => window.clearInterval(id);
   }, []);
 
-  const tickerEnvelopeParams = useMemo(
-    () => envelopeCurveParamsFromWire(session.buyEnvelopeParams),
-    [session.buyEnvelopeParams],
-  );
-
   useTimeCurveSimplePageSfx({
     recentBuys,
     walletAddress: session.walletAddress,
@@ -391,9 +218,6 @@ export function TimeCurveSimplePage() {
   useEffect(() => {
     if (!indexerBaseUrl()) {
       setRecentBuys(null);
-      setBuyPollLastOk(null);
-      setBuysNextOffset(null);
-      setBuyPagesExpanded(false);
       return;
     }
     let cancelled = false;
@@ -405,18 +229,12 @@ export function TimeCurveSimplePage() {
         if (cancelled) return;
         const ok = buys != null;
         reportIndexerFetchAttempt(ok);
-        setBuyPollLastOk(ok);
         if (ok) {
           setRecentBuys((prev) => mergeBuysNewestFirst(buys.items, prev));
-          setBuysNextOffset((cur) => {
-            if (buyPagesExpandedRef.current) return cur;
-            return buys.next_offset;
-          });
         }
       } catch {
         if (!cancelled) {
           reportIndexerFetchAttempt(false);
-          setBuyPollLastOk(false);
         }
       }
     };
@@ -434,45 +252,10 @@ export function TimeCurveSimplePage() {
     };
   }, [buyFeedRefreshNonce]);
 
-  const fetchOlderBuysPage = useCallback(async () => {
-    const offset = buysNextOffsetRef.current;
-    if (offset === null || loadingMoreBuysRef.current) return;
-    loadingMoreBuysRef.current = true;
-    setLoadingMoreBuys(true);
-    try {
-      const data = await fetchTimecurveBuys(SIMPLE_RECENT_BUYS_PAGE_LIMIT, offset);
-      if (!data) return;
-      setBuyPagesExpanded(true);
-      setRecentBuys((prev) => mergeBuysNewestFirst(data.items, prev ?? []));
-      setBuysNextOffset(data.next_offset);
-    } finally {
-      loadingMoreBuysRef.current = false;
-      setLoadingMoreBuys(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const root = activityScrollRef.current;
-    const target = loadMoreSentinelRef.current;
-    if (!root || !target || buysNextOffset === null) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (!entries[0]?.isIntersecting) return;
-        void fetchOlderBuysPage();
-      },
-      { root, rootMargin: "120px", threshold: 0 },
-    );
-    io.observe(target);
-    return () => io.disconnect();
-  }, [buysNextOffset, fetchOlderBuysPage, recentBuys?.length]);
-
   // Launch-anchor invariant (DoubLPIncentives policy): 1 CHARM is projected
-  // to be worth `1.275 × pricePerCharmWad` CL8Y at launch. We expose three
-  // derived numbers for the UI: the per-CHARM caption ("1 CHARM = X CL8Y at
-  // launch"), the buy-delta ("This buy adds ≈ Y CL8Y of launch value"), and
-  // the live DOUB-per-CHARM redemption rate ("1 CHARM = N DOUB at launch")
-  // so the rate board can show the full chain. All three reuse the shared
-  // helpers covered by `timeCurvePodiumMath.test.ts`.
+  // to be worth `1.275 × pricePerCharmWad` CL8Y at launch. We surface the
+  // buy-delta ("This buy adds ≈ Y CL8Y of launch value") and the stake-panel
+  // helper caption; math lives in `timeCurvePodiumMath` (see tests there).
   const buyAddsCl8yAtLaunch = useMemo(
     () =>
       participantLaunchValueCl8yWei({
@@ -481,13 +264,14 @@ export function TimeCurveSimplePage() {
       }),
     [session.charmWadSelected, session.pricePerCharmWad],
   );
-  const doubPerCharmAtLaunch = useMemo(
+
+  const buyPreviewLaunchGainLabel = useMemo(
     () =>
-      doubPerCharmAtLaunchWad({
-        totalTokensForSaleWad: session.totalTokensForSaleWad,
-        totalCharmWeightWad: session.totalCharmWeightWad,
+      formatBuyHubLaunchVsClearingGainPercentLabel({
+        clearingSpendCl8yWei: session.estimatedSpendWei,
+        approxLaunchCl8yWei: buyAddsCl8yAtLaunch,
       }),
-    [session.totalTokensForSaleWad, session.totalCharmWeightWad],
+    [session.estimatedSpendWei, buyAddsCl8yAtLaunch],
   );
 
   // Price-tick pulse: bump a key whenever the live per-CHARM price changes
@@ -521,7 +305,8 @@ export function TimeCurveSimplePage() {
         secs = 0;
       }
       if (reset || secs > 0) {
-        return { buyer: b.buyer, reset, secs };
+        const pulseKey = `${b.tx_hash}:${b.log_index}:${b.block_number}`;
+        return { buyer: b.buyer, reset, secs, pulseKey };
       }
     }
     return null;
@@ -534,15 +319,13 @@ export function TimeCurveSimplePage() {
     <div
       className={`timecurve-simple__slider-row timecurve-simple__slider-row--pay-${session.payWith}`}
     >
-      <input
-        type="range"
+      <TimecurveBuySpendRangeInput
         min={0}
         max={10000}
         step={1}
         value={session.spendSliderPermille}
         onChange={(e) => session.setSpendFromSliderPermille(Number(e.target.value))}
         aria-label={`${paySpendSuffix} spend slider (targets CL8Y sale band)`}
-        className="timecurve-simple__slider"
         disabled={session.phase !== "saleActive" || !session.walletConnected}
       />
       <div className="timecurve-simple__amount-input">
@@ -556,9 +339,18 @@ export function TimeCurveSimplePage() {
               value={session.spendInputStr}
               onChange={(e) => session.setSpendFromInput(e.target.value)}
               onBlur={() => session.setSpendFromInputBlur()}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                e.currentTarget.blur();
+              }}
               disabled={session.phase !== "saleActive" || !session.walletConnected}
             />
-            <span className="timecurve-simple__amount-suffix">{paySpendSuffix}</span>
+            <TimecurveSimpleAmountPayTokenSelect
+              payWith={session.payWith}
+              setPayWith={session.setPayWith}
+              disabled={session.phase !== "saleActive" || !session.walletConnected}
+            />
           </>
         ) : (
           <>
@@ -575,7 +367,11 @@ export function TimeCurveSimplePage() {
                 />
               )}
             </span>
-            <span className="timecurve-simple__amount-suffix">{paySpendSuffix}</span>
+            <TimecurveSimpleAmountPayTokenSelect
+              payWith={session.payWith}
+              setPayWith={session.setPayWith}
+              disabled={session.phase !== "saleActive" || !session.walletConnected}
+            />
           </>
         )}
       </div>
@@ -583,36 +379,50 @@ export function TimeCurveSimplePage() {
   ) : null;
 
   const minMaxPill = session.cl8ySpendBounds ? (
-    <span className="timecurve-simple__minmax">
+    <span className="timecurve-simple__minmax timecurve-simple__minmax--rate-card">
       {session.payWith === "cl8y" ? (
         <>
-          Live band&nbsp;
-          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
-          &nbsp;–&nbsp;
-          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
-          &nbsp;CL8Y
+          Buy Limits:&nbsp;
+          <span className="timecurve-simple__minmax-pair">
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+            <span className="timecurve-simple__minmax-suffix">min</span>
+          </span>
+          <span className="timecurve-simple__minmax-pair">
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+            <span className="timecurve-simple__minmax-suffix">max</span>
+          </span>
         </>
       ) : session.bandBoundaryQuotesLoading ||
         session.quotedBandMinPayInWei === undefined ||
         session.quotedBandMaxPayInWei === undefined ? (
         <>
-          Live band (≈{paySpendSuffix})&nbsp;…&nbsp;· CL8Y&nbsp;
-          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
-          &nbsp;–&nbsp;
-          <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+          Buy Limits:&nbsp;
+          <span className="timecurve-simple__minmax-pair">
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
+            <span className="timecurve-simple__minmax-suffix">min</span>
+          </span>
+          <span className="timecurve-simple__minmax-pair">
+            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
+            <span className="timecurve-simple__minmax-suffix">max</span>
+          </span>
         </>
       ) : (
         <>
-          Live band ≈&nbsp;
-          <strong>
-            {formatBuyHubDerivedCompact(session.quotedBandMinPayInWei, session.payTokenDecimals)}
-          </strong>
-          &nbsp;–&nbsp;
-          <strong>
-            {formatBuyHubDerivedCompact(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
-          </strong>
-          &nbsp;{paySpendSuffix}&nbsp;
+          Buy Limits:&nbsp;≈&nbsp;
+          <span className="timecurve-simple__minmax-pair">
+            <strong>
+              {formatBuyHubDerivedCompact(session.quotedBandMinPayInWei, session.payTokenDecimals)}
+            </strong>
+            <span className="timecurve-simple__minmax-suffix">min</span>
+          </span>
+          <span className="timecurve-simple__minmax-pair">
+            <strong>
+              {formatBuyHubDerivedCompact(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
+            </strong>
+            <span className="timecurve-simple__minmax-suffix">max</span>
+          </span>
           <span className="muted">
+            {" "}
             (CL8Y&nbsp;
             <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
             &nbsp;–&nbsp;
@@ -622,34 +432,41 @@ export function TimeCurveSimplePage() {
       )}
     </span>
   ) : (
-    <span className="timecurve-simple__minmax">Loading live min – max…</span>
+    <span className="timecurve-simple__minmax timecurve-simple__minmax--rate-card">Loading buy limits…</span>
   );
 
   const buyPreview =
-    session.charmWadSelected !== undefined ? (
-      <div className="timecurve-simple__buy-preview" data-testid="timecurve-simple-buy-preview">
-        <div className="timecurve-simple__buy-preview-row">
-          <span className="timecurve-simple__buy-preview-label">You add</span>
-          <strong className="timecurve-simple__buy-preview-value">
-            {formatBuyHubDerivedCompact(session.charmWadSelected, 18)}
-          </strong>
-          <span className="timecurve-simple__buy-preview-unit">CHARM</span>
-        </div>
-        {buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n && (
-          <div className="timecurve-simple__buy-preview-row timecurve-simple__buy-preview-row--launch">
-            <span className="timecurve-simple__buy-preview-label">Worth at launch ≈</span>
-            <strong className="timecurve-simple__buy-preview-value">
-              {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, session.decimals)}
-            </strong>
-            <span className="timecurve-simple__buy-preview-unit">CL8Y</span>
-          </div>
-        )}
-      </div>
-    ) : (
+    session.charmWadSelected === undefined ? (
       <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
         Loading CHARM preview…
       </div>
-    );
+    ) : buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n ? (
+      <div className="timecurve-simple__buy-preview" data-testid="timecurve-simple-buy-preview">
+        <div
+          className="timecurve-simple__buy-preview-approx"
+          aria-label="Approximate CL8Y at launch"
+        >
+          <div className="timecurve-simple__buy-preview-approx-main">
+            <span className="timecurve-simple__buy-preview-approx-symbol" aria-hidden>
+              ≈
+            </span>
+            <span className="timecurve-simple__buy-preview-approx-value">
+              {"Worth: "}
+              {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, session.decimals)}
+            </span>
+            <span className="timecurve-simple__buy-preview-approx-unit">CL8Y</span>
+            {buyPreviewLaunchGainLabel ? (
+              <span
+                className="timecurve-simple__buy-preview-gain"
+                aria-label="Estimated percent gain: CL8Y at launch versus implied CL8Y spend for this CHARM size"
+              >
+                ({buyPreviewLaunchGainLabel})
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    ) : null;
 
   const nonCl8yBlocked =
     session.payWith !== "cl8y" &&
@@ -684,45 +501,18 @@ export function TimeCurveSimplePage() {
       session.phase === "saleEnded" ||
       session.phase === "saleExpiredAwaitingEnd");
 
-  const launchHelperCopy =
-    session.launchCl8yPerCharmWei !== undefined
-      ? `1 CHARM ≈ ${formatBuyHubDerivedCompact(session.launchCl8yPerCharmWei, session.decimals)} CL8Y at launch`
-      : "Loading launch projection…";
-
   // Rate board (top of buy panel) — the **single most-important number on
-  // the page** is the live current per-CHARM CL8Y price (it ticks up every
-  // block; waiting costs money). We pair it with the at-launch chain so the
-  // user can see where the "your stake is worth Y CL8Y at launch" projection
-  // comes from: `1 CHARM = N DOUB = M CL8Y at launch`. The CL8Y projection
-  // is the canonical 1.275× anchor (`participantLaunchValueCl8yWei`); the DOUB
-  // figure is `totalTokensForSale / totalCharmWeight` (decreases as more
-  // CHARM mints). Live updates come for free because both inputs refresh on
-  // every block via the hook's wagmi reads.
-  // Hero price formatter: fixed 6 fractional digits so per-block ticks of
-  // ~1e-5 CL8Y are *visibly* obvious (compact / sigfigs=5 hides them when
-  // the integer portion is already large). This is intentionally NOT the
-  // same formatter used elsewhere — the "single most important number on
-  // the page" deserves precision, even if it means the trailing digits
-  // shimmer between blocks.
-  function formatPriceFixed6(raw: bigint): string {
-    const s = formatUnits(raw, 18); // e.g. "1.000023456789012345"
-    const [intPart, fracPart = ""] = s.split(".");
-    return `${intPart}.${(fracPart + "000000").slice(0, 6)}`;
-  }
-
-  function formatEthRateHero(raw: bigint): string {
-    const s = formatUnits(raw, 18);
-    const [intPart, fracPart = ""] = s.split(".");
-    return `${intPart}.${(fracPart + "00000000").slice(0, 8)}`;
-  }
-
+  // the page** is the live current per-CHARM price in the selected pay asset
+  // (it ticks up every block; waiting costs money). Live reads refresh on
+  // every block via the hook's wagmi reads. Display uses `formatHeroRateFromWad`
+  // (six significant figures, truncated toward zero, trailing zeros kept).
   const rateNowDisplay = useMemo(() => {
     if (session.pricePerCharmWad === undefined) {
       return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
     }
     if (session.payWith === "cl8y") {
       return {
-        text: formatPriceFixed6(session.pricePerCharmWad),
+        text: formatHeroRateFromWad(session.pricePerCharmWad),
         unit: " CL8Y" as const,
         loading: false as const,
       };
@@ -740,13 +530,13 @@ export function TimeCurveSimplePage() {
         : fallbackPayTokenWeiForCl8y(session.pricePerCharmWad, session.payWith);
     if (session.payWith === "eth") {
       return {
-        text: formatEthRateHero(raw),
+        text: formatHeroRateFromWad(raw),
         unit: " ETH" as const,
         loading: false as const,
       };
     }
     return {
-      text: formatPriceFixed6(raw),
+      text: formatHeroRateFromWad(raw),
       unit: " USDM" as const,
       loading: false as const,
     };
@@ -757,46 +547,11 @@ export function TimeCurveSimplePage() {
     session.quotedPerCharmPayInWei,
   ]);
 
-  const rateLaunchDisplay = useMemo(() => {
-    if (session.launchCl8yPerCharmWei === undefined) {
-      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
-    }
-    if (session.payWith === "cl8y") {
-      return {
-        text: formatPriceFixed6(session.launchCl8yPerCharmWei),
-        unit: " CL8Y" as const,
-        loading: false as const,
-      };
-    }
-    if (session.launchPayQuoteLoading) {
-      if (session.payWith === "eth") {
-        return { text: "…" as const, unit: " ETH" as const, loading: true as const };
-      }
-      return { text: "…" as const, unit: " USDM" as const, loading: true as const };
-    }
-    const quoted = session.quotedLaunchPerCharmPayInWei;
-    const raw =
-      quoted !== undefined
-        ? quoted
-        : fallbackPayTokenWeiForCl8y(session.launchCl8yPerCharmWei, session.payWith);
-    if (session.payWith === "eth") {
-      return {
-        text: formatEthRateHero(raw),
-        unit: " ETH" as const,
-        loading: false as const,
-      };
-    }
-    return {
-      text: formatPriceFixed6(raw),
-      unit: " USDM" as const,
-      loading: false as const,
-    };
-  }, [
-    session.launchCl8yPerCharmWei,
-    session.payWith,
-    session.launchPayQuoteLoading,
-    session.quotedLaunchPerCharmPayInWei,
-  ]);
+  const rateNowPayLogo = useMemo(() => {
+    if (session.payWith === "eth") return ETH_TOKEN_LOGO;
+    if (session.payWith === "usdm") return USDM_TOKEN_LOGO;
+    return CL8Y_TOKEN_LOGO;
+  }, [session.payWith]);
 
   const rateBoardPayOptions = (
     [
@@ -825,128 +580,75 @@ export function TimeCurveSimplePage() {
 
   const rateBoard = (
     <div
-      className="timecurve-simple__rate-board"
+      className="timecurve-simple__rate-board timecurve-simple__rate-row timecurve-simple__rate-row--now"
       data-testid="timecurve-simple-rate-board"
       aria-live="polite"
     >
-      <div className="timecurve-simple__rate-row timecurve-simple__rate-row--now">
-        <span className="timecurve-simple__rate-label-row">
-          {/* CHARM coin glyph makes "what you're buying" readable before the
-              user parses the label. Decorative; the label is the source of
-              truth for assistive tech. */}
-          <img
-            className="timecurve-simple__rate-glyph"
-            src={CHARM_TOKEN_LOGO}
-            alt=""
-            aria-hidden="true"
-            decoding="async"
-            width={24}
-            height={24}
-          />
-          <span className="timecurve-simple__rate-label">1 CHARM costs right now</span>
-        </span>
-        <div className="timecurve-simple__rate-paywith" role="group" aria-label="Show live price in">
-          {rateBoardPayOptions}
-        </div>
-        <span className="timecurve-simple__rate-value-row">
-          {session.payWith !== "cl8y" && session.rateBoardKumbayaWarning && (
-            <span
-              className="timecurve-simple__kumbaya-route-warn"
-              title="kumbaya route failed"
-              aria-label="kumbaya route failed"
-            >
-              <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
-                <path
-                  d="M10 2.5 17.5 16H2.5L10 2.5Z"
-                  fill="#e6c200"
-                  stroke="#8a7200"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                <path d="M10 7v4.2" stroke="#5c4a00" strokeWidth="1.4" strokeLinecap="round" />
-                <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
-              </svg>
-            </span>
-          )}
-          <strong
-            key={`${priceTickKey}-${session.payWith}-${rateNowDisplay.text}`}
-            className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
-            data-testid="timecurve-simple-rate-now"
-            aria-busy={rateNowDisplay.loading}
-          >
-            {rateNowDisplay.text}
-            <span className="timecurve-simple__rate-unit">{rateNowDisplay.unit}</span>
-          </strong>
-        </span>
-        <span className="timecurve-simple__rate-foot muted">
-          {session.payWith === "cl8y"
-            ? "Ticks up every block — waiting costs CL8Y."
-            : "Underlying sale price is always CL8Y; ETH / USDM are Kumbaya routes into CL8Y."}
-        </span>
-      </div>
-      <div className="timecurve-simple__rate-row timecurve-simple__rate-row--launch">
-        <span className="timecurve-simple__rate-label">1 CHARM at launch</span>
-        {/* Stack the DOUB and CL8Y values into two compact rate-pair tiles
-            so the equation never wraps mid-number. Iteration 3 fix: the
-            single-line "X DOUB = Y CL8Y" was wrapping awkwardly on
-            mid-width panels; tiling reads cleaner and keeps both numbers
-            equally readable. */}
-        <div className="timecurve-simple__rate-pair">
+      <span className="timecurve-simple__rate-now-line">
+        {/* CHARM coin glyph makes "what you're buying" readable before the
+            user parses the label. Decorative; the label is the source of
+            truth for assistive tech. */}
+        <img
+          className="timecurve-simple__rate-glyph"
+          src={CHARM_TOKEN_LOGO}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          width={24}
+          height={24}
+        />
+        <span className="timecurve-simple__rate-label">1 CHARM =</span>
+        {session.payWith !== "cl8y" && session.rateBoardKumbayaWarning && (
           <span
-            className="timecurve-simple__rate-pair-tile"
-            data-testid="timecurve-simple-rate-launch"
+            className="timecurve-simple__kumbaya-route-warn"
+            title="kumbaya route failed"
+            aria-label="kumbaya route failed"
           >
-            <span className="timecurve-simple__rate-pair-value">
-              {doubPerCharmAtLaunch !== undefined
-                ? formatCompactFromRaw(doubPerCharmAtLaunch, 18, { sigfigs: 5 })
-                : "—"}
-            </span>
-            <span className="timecurve-simple__rate-pair-unit">DOUB</span>
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false">
+              <path
+                d="M10 2.5 17.5 16H2.5L10 2.5Z"
+                fill="#e6c200"
+                stroke="#8a7200"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+              <path d="M10 7v4.2" stroke="#5c4a00" strokeWidth="1.4" strokeLinecap="round" />
+              <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
+            </svg>
           </span>
-          <span className="timecurve-simple__rate-pair-equals" aria-hidden="true">
-            =
-          </span>
-          <span
-            className={`timecurve-simple__rate-pair-tile timecurve-simple__rate-pair-tile--launch-pay-${session.payWith}`}
-          >
-            {session.payWith !== "cl8y" && session.rateBoardKumbayaWarning && (
-              <span
-                className="timecurve-simple__kumbaya-route-warn"
-                title="kumbaya route failed"
-                aria-label="kumbaya route failed"
-              >
-                <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false">
-                  <path
-                    d="M10 2.5 17.5 16H2.5L10 2.5Z"
-                    fill="#e6c200"
-                    stroke="#8a7200"
-                    strokeWidth="1.2"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M10 7v4.2"
-                    stroke="#5c4a00"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="10" cy="14.2" r="0.9" fill="#5c4a00" />
-                </svg>
-              </span>
-            )}
-            <span className="timecurve-simple__rate-pair-value">
-              {rateLaunchDisplay.text}
-            </span>
-            <span className="timecurve-simple__rate-pair-unit">
-              {rateLaunchDisplay.unit.trim()}
-            </span>
-          </span>
-        </div>
-        <span className="timecurve-simple__rate-foot muted">
-          1.275× per-CHARM clearing price (locked DOUB/CL8Y LP). CL8Y projection only goes up.
-        </span>
-      </div>
+        )}
+        <strong
+          key={`${priceTickKey}-${session.payWith}-${rateNowDisplay.text}`}
+          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
+          data-testid="timecurve-simple-rate-now"
+          aria-busy={rateNowDisplay.loading}
+        >
+          {rateNowDisplay.text}
+        </strong>
+        <img
+          className="timecurve-simple__rate-pay-logo"
+          src={rateNowPayLogo}
+          alt=""
+          width={28}
+          height={28}
+          decoding="async"
+          aria-hidden="true"
+        />
+        <span className="visually-hidden">{rateNowDisplay.unit.trim()}</span>
+      </span>
     </div>
   );
+
+  const timerHeroFoot =
+    session.phase === "saleEnded"
+      ? session.charmRedemptionEnabled === false
+        ? "Redemptions await onchain go-live (operator / governance signoff)."
+        : "Holders of CHARM can claim their DOUB share."
+      : session.phase === "saleStartPending"
+        ? "Stay on this page — it switches to Live automatically."
+        : session.phase === "saleExpiredAwaitingEnd"
+          ? "Anyone can call endSale() now — see the Arena view."
+          : undefined;
 
   return (
     <div className="page timecurve-simple-page">
@@ -958,27 +660,12 @@ export function TimeCurveSimplePage() {
           title={timerSectionTitle}
           spotlight
           className="timecurve-simple__timer-panel"
-          badgeLabel={heroLabel}
-          badgeTone={phaseInfo.tone}
           lede={heroNarrative}
         >
           <TimeCurveTimerHero
             secondsRemaining={heroSecondsRemaining}
             countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
-            foot={
-              <>
-                {session.phase === "saleActive" &&
-                  "Every buy adds 2 minutes; clutch buys hard-reset the clock."}
-                {session.phase === "saleEnded" &&
-                  (session.charmRedemptionEnabled === false
-                    ? "Redemptions await onchain go-live (operator / governance signoff)."
-                    : "Holders of CHARM can claim their DOUB share.")}
-                {session.phase === "saleStartPending" &&
-                  "Stay on this page — it switches to Live automatically."}
-                {session.phase === "saleExpiredAwaitingEnd" &&
-                  "Anyone can call endSale() now — see the Arena view."}
-              </>
-            }
+            foot={timerHeroFoot}
           />
           {/* Calm "fair-launch" sidekick. The art README (`frontend/public/art/
               README.md`) earmarks this cutout for the Simple-view timer panel
@@ -997,6 +684,7 @@ export function TimeCurveSimplePage() {
               the sale is active and the indexer has a qualifying buy. */}
           {session.phase === "saleActive" && lastExtension && (
             <span
+              key={lastExtension.pulseKey}
               className={
                 lastExtension.reset
                   ? "timecurve-simple__last-extension timecurve-simple__last-extension--reset"
@@ -1011,6 +699,7 @@ export function TimeCurveSimplePage() {
                   Hard reset by{" "}
                   <AddressInline
                     address={lastExtension.buyer}
+                    tailHexDigits={6}
                     size={14}
                     className="timecurve-simple__last-extension-addr"
                   />
@@ -1020,6 +709,7 @@ export function TimeCurveSimplePage() {
                   Just +{lastExtension.secs}s by{" "}
                   <AddressInline
                     address={lastExtension.buyer}
+                    tailHexDigits={6}
                     size={14}
                     className="timecurve-simple__last-extension-addr"
                   />
@@ -1030,31 +720,22 @@ export function TimeCurveSimplePage() {
         </PageSection>
 
         <PageSection
-          title={session.phase === "saleEnded" ? "Redeem CHARM" : "Buy CHARM"}
+          title={
+            session.phase === "saleEnded"
+              ? "Redeem CHARM"
+              : session.phase === "saleActive"
+                ? undefined
+                : "Buy CHARM"
+          }
           spotlight
           className="timecurve-simple__buy-panel"
-          badgeLabel={
-            session.phase === "saleActive"
-              ? "Primary action"
-              : session.phase === "saleEnded"
-                ? "Settlement"
-                : "Coming soon"
-          }
-          badgeTone={
-            // Iteration 3: gold "warning" tone for the live sale matches the
-            // honey vending-machine panel chrome (the green "live" tone
-            // clashed with the gold gradient). Semantics survive: UX-wise
-            // the badge still flags "this is the most actionable thing on
-            // the page".
-            session.phase === "saleActive" ? "warning" : "info"
-          }
           lede={
             session.phase === "saleEnded"
               ? session.charmRedemptionEnabled === false
                 ? "The sale is over. DOUB allocation redemptions are gated onchain until the owner enables them (issue #55)."
                 : "The sale is over. Redeem CHARM to mint your DOUB share onchain."
               : session.phase === "saleActive"
-                ? "Buy now or pay more later — every block, CHARM costs more CL8Y."
+                ? undefined
                 : "The sale will open here when the timer hits zero."
           }
         >
@@ -1074,7 +755,6 @@ export function TimeCurveSimplePage() {
 
           {session.phase === "saleActive" && session.walletConnected && (
             <>
-              <div className="timecurve-simple__minmax-row">{minMaxPill}</div>
               {session.payWith !== "cl8y" && session.kumbayaRoutingBlocker && (
                 <StatusMessage variant="error">{session.kumbayaRoutingBlocker}</StatusMessage>
               )}
@@ -1090,39 +770,27 @@ export function TimeCurveSimplePage() {
                   Kumbaya route uses a fixed <strong>3%</strong> max slippage cap on routed input.
                 </p>
               )}
+              {slider}
               <p className="muted timecurve-simple__pay-balance">
-                Your {session.payWalletBalance.symbol} balance:{" "}
                 {session.payWalletBalance.raw !== undefined ? (
                   <AmountDisplay
                     raw={String(session.payWalletBalance.raw)}
                     decimals={session.payWalletBalance.decimals}
+                    leadingLabel={`YOUR ${session.payWalletBalance.symbol.toUpperCase()}:`}
+                    valueMono={false}
                   />
                 ) : (
-                  "—"
+                  <AmountTripleStack
+                    rows={[
+                      {
+                        label: `YOUR ${session.payWalletBalance.symbol.toUpperCase()}:`,
+                        value: "—",
+                        monoValue: false,
+                      },
+                    ]}
+                  />
                 )}
               </p>
-              {slider}
-              {buyPreview}
-              <div className="timecurve-simple__referral muted">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={session.plantWarBowFlag}
-                    onChange={(e) => session.setPlantWarBowFlag(e.target.checked)}
-                  />{" "}
-                  Plant WarBow flag (opt-in)
-                </label>
-                {session.plantWarBowFlag ? (
-                  <p className="muted" style={{ marginTop: "0.5rem" }}>
-                    This buy can put you in the global pending-flag slot. Another buyer after the silence window
-                    may trigger Battle Point penalties if you do not claim in time. Leave unchecked for a plain
-                    CHARM purchase.
-                  </p>
-                ) : null}
-              </div>
-              <Cl8yTimeCurveUnlimitedApprovalFieldset
-                disabled={session.phase !== "saleActive" || !session.walletConnected}
-              />
               {session.buyFeeRoutingEnabled === false && (
                 <StatusMessage variant="muted">
                   Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable.
@@ -1153,9 +821,51 @@ export function TimeCurveSimplePage() {
                     ? "Submitting…"
                     : session.payWith !== "cl8y" && session.swapQuoteLoading
                       ? "Refreshing quote…"
-                      : "Buy CHARM"}
+                      : session.charmWadSelected !== undefined
+                        ? `Buy ${formatBuyCtaCharmAmountLabel(session.charmWadSelected)} CHARM`
+                        : "Buy CHARM"}
                 </span>
               </motion.button>
+              {buyPreview}
+              <details
+                className="timecurve-simple__buy-advanced accordion-panel"
+                data-testid="timecurve-simple-buy-advanced"
+              >
+                <summary>ADVANCED</summary>
+                <div className="accordion-panel__content">
+                  <div
+                    className="timecurve-simple__rate-paywith timecurve-simple__rate-paywith--buy-heading timecurve-simple__rate-paywith--segmented"
+                    role="group"
+                    aria-label="Show live price in"
+                  >
+                    {rateBoardPayOptions}
+                  </div>
+                  {minMaxPill}
+                  <div className="timecurve-simple__referral muted">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={session.plantWarBowFlag}
+                        onChange={(e) => session.setPlantWarBowFlag(e.target.checked)}
+                      />{" "}
+                      Plant WarBow flag (opt-in)
+                    </label>
+                    <p className="muted" style={{ marginTop: "0.5rem" }}>
+                      {warbowFlagPlantLine}
+                    </p>
+                    {session.plantWarBowFlag ? (
+                      <p className="muted" style={{ marginTop: "0.5rem" }}>
+                        This buy can put you in the global pending-flag slot. Another buyer after the silence window
+                        may trigger Battle Point penalties if you do not claim in time. Leave unchecked for a plain
+                        CHARM purchase.
+                      </p>
+                    ) : null}
+                  </div>
+                  <Cl8yTimeCurveUnlimitedApprovalFieldset
+                    disabled={session.phase !== "saleActive" || !session.walletConnected}
+                  />
+                </div>
+              </details>
               {cooldownLine && <StatusMessage variant="muted">{cooldownLine}</StatusMessage>}
               {session.buyError && (
                 <StatusMessage variant="error">
@@ -1239,10 +949,13 @@ export function TimeCurveSimplePage() {
         visible={stakePanelVisible}
         charmWeightWad={session.charmWeightWad}
         launchCl8yValueWei={session.launchCl8yValueWei}
+        payWith={session.payWith}
+        payTokenDecimals={session.payTokenDecimals}
+        stakeLaunchEquivPayWei={session.stakeLaunchEquivPayWei}
+        stakeLaunchEquivQuoteLoading={session.stakeLaunchEquivQuoteLoading}
         decimals={session.decimals}
         charmsRedeemed={session.charmsRedeemed}
         expectedTokenFromCharms={session.expectedTokenFromCharms}
-        launchHelperCopy={launchHelperCopy}
       />
 
       <TimeCurveSimplePodiumSection
@@ -1250,172 +963,12 @@ export function TimeCurveSimplePage() {
         podiumLoading={podiumReads.isLoading}
         podiumPayoutPreview={podiumPayoutPreview}
         decimals={session.decimals}
-        lastBuyPredictionActive={podiumReads.lastBuyPredictionActive}
         address={session.walletAddress}
+        recentBuys={recentBuys}
+        podiumNowUnixSec={tickerWallNowSec}
       />
 
-      {/* Recent buys — moved out of the timer panel and given its own slim
-          section so the spotlight row stays focused on the timer + buy CTA. */}
-      <PageSection
-        title="Recent buys"
-        className="timecurve-simple__activity-panel"
-        dataTestId="timecurve-simple-live-ticker"
-        badgeLabel="Live ticker"
-        badgeTone="info"
-      >
-        {recentBuys && recentBuys.length > 0 ? (
-          <>
-            {(isOffline || buyPollLastOk === false) && (
-              <p className="muted timecurve-simple__indexer-stale-hint">
-                Cannot reach indexer · cached data may be stale
-              </p>
-            )}
-            <div
-              ref={activityScrollRef}
-              className="timecurve-simple__activity-scroll"
-              role="region"
-              aria-label="Recent buys; scroll for older activity"
-            >
-              <ul className="timecurve-simple__activity-list">
-                {recentBuys.map((b) => {
-                  const band = buyBandPosition(
-                    b,
-                    tickerEnvelopeParams,
-                    session.cl8ySpendBounds,
-                    session.decimals,
-                  );
-                  const age = formatBuyAge(b.block_timestamp, tickerWallNowSec);
-                  const ticks = tickerImpactTicks(b);
-                  const theme = tickerCardTheme(b, band);
-                  const bandFillPercent = band ? Math.round(band.fillPercent) : null;
-                  const tickerStyle = {
-                    "--ticker-accent": band?.accentColor ?? "#1fb86a",
-                    "--ticker-band-fill": band
-                      ? `${Math.max(8, Math.min(100, band.fillPercent))}%`
-                      : "100%",
-                  } as CSSProperties;
-                  return (
-                    <li
-                      key={`${b.tx_hash}-${b.log_index}`}
-                      className={[
-                        "timecurve-simple__ticker-row",
-                        buyEventTone(b.actual_seconds_added, b.timer_hard_reset),
-                        theme.className,
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      style={tickerStyle}
-                    >
-                      <div className="timecurve-simple__ticker-art" aria-hidden="true">
-                        <img src={theme.artSrc} alt="" width={42} height={42} decoding="async" />
-                      </div>
-                      <div className="timecurve-simple__ticker-main">
-                        <span className="timecurve-simple__ticker-badge">{theme.badge}</span>
-                        <AddressInline
-                          address={b.buyer}
-                          size={22}
-                          className="timecurve-simple__ticker-buyer"
-                        />
-                        <span className="timecurve-simple__ticker-age">
-                          {age ?? `block ${formatLocaleInteger(b.block_number)}`}
-                        </span>
-                      </div>
-                      <div className="timecurve-simple__ticker-amounts">
-                        <span className="timecurve-simple__ticker-amount">
-                          <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                          <strong>{formatBuyHubDerivedCompact(b.amount, session.decimals)}</strong>
-                          <span> CL8Y spent</span>
-                        </span>
-                        <span className="timecurve-simple__ticker-amount timecurve-simple__ticker-amount--charm">
-                          <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
-                          <strong>{formatBuyHubDerivedCompact(b.charm_wad, 18)}</strong>
-                          <span> CHARM minted</span>
-                        </span>
-                      </div>
-                      <div
-                        className="timecurve-simple__ticker-band"
-                        title={band?.title ?? "Min/max band position unavailable for this indexed buy"}
-                      >
-                        <div className="timecurve-simple__ticker-band-head">
-                          <span>{band ? `Min ${band.minLabel}` : "Min"}</span>
-                          <strong>{bandFillPercent !== null ? `${bandFillPercent}% of max` : "Band pending"}</strong>
-                          <span>{band ? `Max ${band.maxLabel}` : "Max"}</span>
-                        </div>
-                        <div className="timecurve-simple__ticker-band-track" aria-hidden="true">
-                          <span className="timecurve-simple__ticker-band-min-marker" />
-                          <span
-                            className={
-                              bandFillPercent !== null
-                                ? "timecurve-simple__ticker-band-fill"
-                                : "timecurve-simple__ticker-band-fill timecurve-simple__ticker-band-fill--unknown"
-                            }
-                          />
-                        </div>
-                        <div className="timecurve-simple__ticker-band-foot">
-                          {band
-                            ? `${band.sizeLabel} · ${Math.round(band.positionPercent)}% through min-max`
-                            : "Waiting for band math"}
-                        </div>
-                      </div>
-                      <ul className="timecurve-simple__ticker-effects" aria-label="Buy effects">
-                        {ticks.map((tick) => {
-                          const effect = tickerEffectDisplay(tick);
-                          return (
-                            <li
-                              key={tick.id}
-                              className={`live-buy-tick live-buy-tick--${tick.tone} live-buy-tick--effect-${tick.id}`}
-                            >
-                              <span className="live-buy-tick__glyph" aria-hidden="true">
-                                {effect.glyph}
-                              </span>
-                              <span className="live-buy-tick__text">
-                                <span className="live-buy-tick__label">{effect.label}</span>
-                                {effect.sub ? <span className="live-buy-tick__sub">{effect.sub}</span> : null}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <div className="timecurve-simple__ticker-meta">
-                        {b.battle_points_after ? (
-                          <span>{formatLocaleInteger(BigInt(b.battle_points_after))} BP</span>
-                        ) : (
-                          <span>WarBow BP pending</span>
-                        )}
-                        <span>
-                          tx <TxHash hash={b.tx_hash} />
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              {loadingMoreBuys ? (
-                <p className="muted timecurve-simple__activity-load-more" aria-live="polite">
-                  Loading older buys…
-                </p>
-              ) : null}
-              {buysNextOffset !== null ? (
-                <div
-                  ref={loadMoreSentinelRef}
-                  className="timecurve-simple__activity-load-sentinel"
-                  data-testid="timecurve-simple-buys-scroll-sentinel"
-                  aria-hidden="true"
-                />
-              ) : buyPagesExpanded ? (
-                <p className="muted timecurve-simple__activity-load-more">End of loaded history</p>
-              ) : null}
-            </div>
-          </>
-        ) : buyPollLastOk === true && recentBuys && recentBuys.length === 0 && !isOffline ? (
-          <p className="muted">Waiting for the first buy of this round.</p>
-        ) : buyPollLastOk === false || isOffline ? (
-          <p className="muted">Cannot reach indexer · cached data may be stale</p>
-        ) : (
-          <p className="muted">Loading recent buys…</p>
-        )}
-      </PageSection>
-
+      <TimeCurveSimpleAgentCard />
     </div>
   );
 }
