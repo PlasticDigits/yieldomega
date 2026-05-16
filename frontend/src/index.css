@@ -8802,6 +8802,28 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
+.timecurve-simple__buy-preview-bonuses {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  width: 100%;
+  margin-top: 0.1rem;
+  font-family: monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(45, 90, 55, 0.92);
+}
+
+.timecurve-simple__buy-preview-bonus-line {
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
 /* Live rate board: column for the hero "now" row plus optional "at launch"
    row (Arena). Intentionally unboxed — the buy panel chrome carries the
    vending-machine frame; the live price reads as inline panel content. */

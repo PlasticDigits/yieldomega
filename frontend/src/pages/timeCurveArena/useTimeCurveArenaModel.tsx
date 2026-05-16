@@ -1419,7 +1419,7 @@ export function useTimeCurveArenaModel() {
   }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
 
   const chainNowForCooldown =
-    heroChainNowSec === undefined ? ledgerSecInt : Math.min(heroChainNowSec, ledgerSecInt);
+    heroChainNowSec !== undefined ? heroChainNowSec : ledgerSecInt;
 
   const walletCooldownRemainingSec = useMemo(() => {
     if (!saleActive || !isConnected || nextBuyAllowedAtR?.status !== "success") {
@@ -1920,7 +1920,7 @@ export function useTimeCurveArenaModel() {
       return gasBuyIssue;
     }
     if (walletCooldownRemainingSec > 0) {
-      return `Wallet buy cooldown: ${formatCountdown(walletCooldownRemainingSec)} left (onchain pacing; timer uses the same wall-vs-chain skew as the hero countdown).`;
+      return `Wallet buy cooldown: ${formatCountdown(walletCooldownRemainingSec)} left (same wall-skewed chain clock as the hero countdown).`;
     }
     if (charmBoundsR?.status === "success" && charmWadSelected !== undefined) {
       const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
