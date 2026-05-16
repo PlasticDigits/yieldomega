@@ -14,6 +14,7 @@ import {
 } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
+  doubPresaleVestingReadAbi,
   erc20Abi,
   kumbayaQuoterV2Abi,
   kumbayaSwapRouterAbi,
@@ -82,6 +83,14 @@ function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
   return x;
 }
 
+/** Display `bps / 100` as a compact percent magnitude (500 → `5`, 1500 → `15`). */
+function bpsToDisplayPercentMag(bps: number): string {
+  if (!Number.isFinite(bps) || bps < 0) return "0";
+  const n = bps / 100;
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2).replace(/\.?0+$/, "");
+}
+
 /**
  * Minimal sale-session reads + buy handler tailored for the **simple** TimeCurve view.
  *
@@ -121,6 +130,13 @@ export type UseTimeCurveSaleSession = {
   spendSliderPermille: number;
   charmWadSelected: bigint | undefined;
   estimatedSpendWei: bigint | undefined;
+  /**
+   * Total CHARM **weight** credited to the buyer for this checkout (`charmWadSelected` plus onchain referral
+   * buyer tranche and optional presale beneficiary bonus when `doubPresaleVesting` is wired).
+   */
+  buyCheckoutCharmWeightWad: bigint | undefined;
+  /** Bonus caption lines under the buy preview (referral code, presale). Empty when none apply. */
+  buyCharmBonusPreviewLines: readonly string[];
   /** Pre-start countdown — uses chain time for `saleStart - now`. */
   preStartCountdownSec: number | undefined;
   /** Live sale countdown — uses the shared `useTimecurveHeroTimer` skew. */
@@ -290,6 +306,9 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "doubPresaleVesting" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "REFERRAL_EACH_BPS" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "PRESALE_CHARM_WEIGHT_BPS" },
       ]
     : [];
 
@@ -379,6 +398,9 @@ export function useTimeCurveSaleSession(
     warbowPendingFlagPlantAtR,
     warbowFlagClaimBpR,
     warbowFlagSilenceSecR,
+    doubPresaleVestingR,
+    referralEachBpsR,
+    presaleCharmWeightBpsR,
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
@@ -438,6 +460,38 @@ export function useTimeCurveSaleSession(
   const referralRegistryOn =
     referralRegistryR?.status === "success" &&
     (referralRegistryR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
+
+  const doubPresaleVestingAddr =
+    doubPresaleVestingR?.status === "success"
+      ? (doubPresaleVestingR.result as HexAddress)
+      : undefined;
+  const doubPresaleBeneficiarySource: HexAddress | undefined =
+    doubPresaleVestingAddr &&
+    doubPresaleVestingAddr.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+      ? doubPresaleVestingAddr
+      : undefined;
+
+  const referralEachBpsOnchain =
+    referralEachBpsR?.status === "success" ? Number(referralEachBpsR.result as number) : undefined;
+  const presaleCharmWeightBpsOnchain =
+    presaleCharmWeightBpsR?.status === "success"
+      ? Number(presaleCharmWeightBpsR.result as number)
+      : undefined;
+
+  const presaleBeneficiaryRead = useReadContract({
+    address: doubPresaleBeneficiarySource,
+    abi: doubPresaleVestingReadAbi,
+    functionName: "isBeneficiary",
+    args:
+      doubPresaleBeneficiarySource && address
+        ? [address as `0x${string}`]
+        : undefined,
+    query: {
+      enabled: Boolean(doubPresaleBeneficiarySource && address && isConnected),
+    },
+  });
+  const isPresaleCharmBeneficiary =
+    presaleBeneficiaryRead.status === "success" && presaleBeneficiaryRead.data === true;
 
   const warbowFlagClaimBp =
     warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
@@ -567,6 +621,67 @@ export function useTimeCurveSaleSession(
 
   const charmWadSelected = buySizing?.charmWad;
   const estimatedSpendWei = buySizing?.spendWei;
+
+  const referralEachBpsResolved = Number.isFinite(referralEachBpsOnchain ?? NaN)
+    ? (referralEachBpsOnchain as number)
+    : 500;
+  const presaleCharmWeightBpsResolved = Number.isFinite(presaleCharmWeightBpsOnchain ?? NaN)
+    ? (presaleCharmWeightBpsOnchain as number)
+    : 1500;
+
+  const buyCharmReferralBonusWad = useMemo(() => {
+    if (charmWadSelected === undefined || charmWadSelected <= 0n) return 0n;
+    if (!useReferral || !referralRegistryOn) return 0n;
+    if (!pendingReferralCode?.trim()) return 0n;
+    const bps = BigInt(Math.max(0, Math.min(10_000, referralEachBpsResolved)));
+    return (charmWadSelected * bps) / 10_000n;
+  }, [
+    charmWadSelected,
+    useReferral,
+    referralRegistryOn,
+    pendingReferralCode,
+    referralEachBpsResolved,
+  ]);
+
+  const buyCharmPresaleBonusWad = useMemo(() => {
+    if (charmWadSelected === undefined || charmWadSelected <= 0n) return 0n;
+    if (!isPresaleCharmBeneficiary) return 0n;
+    const bps = BigInt(Math.max(0, Math.min(10_000, presaleCharmWeightBpsResolved)));
+    return (charmWadSelected * bps) / 10_000n;
+  }, [charmWadSelected, isPresaleCharmBeneficiary, presaleCharmWeightBpsResolved]);
+
+  const buyCheckoutCharmWeightWad = useMemo(() => {
+    if (charmWadSelected === undefined) return undefined;
+    return charmWadSelected + buyCharmReferralBonusWad + buyCharmPresaleBonusWad;
+  }, [charmWadSelected, buyCharmReferralBonusWad, buyCharmPresaleBonusWad]);
+
+  const buyCharmBonusPreviewLines = useMemo((): readonly string[] => {
+    const lines: string[] = [];
+    if (
+      charmWadSelected !== undefined &&
+      charmWadSelected > 0n &&
+      useReferral &&
+      referralRegistryOn &&
+      pendingReferralCode?.trim()
+    ) {
+      const pct = bpsToDisplayPercentMag(referralEachBpsResolved);
+      const raw = pendingReferralCode.trim();
+      const codeLabel = raw.length > 22 ? `${raw.slice(0, 20)}…` : raw;
+      lines.push(`+${pct}% Referral ${codeLabel}`);
+    }
+    if (charmWadSelected !== undefined && charmWadSelected > 0n && isPresaleCharmBeneficiary) {
+      lines.push(`+${bpsToDisplayPercentMag(presaleCharmWeightBpsResolved)}% Presale Beneficiary`);
+    }
+    return lines;
+  }, [
+    charmWadSelected,
+    useReferral,
+    referralRegistryOn,
+    pendingReferralCode,
+    referralEachBpsResolved,
+    isPresaleCharmBeneficiary,
+    presaleCharmWeightBpsResolved,
+  ]);
 
   const kumbayaResolved = useMemo(
     () => resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv),
@@ -859,15 +974,14 @@ export function useTimeCurveSaleSession(
   }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
 
   /**
-   * Buy cooldown uses onchain `block.timestamp` (only advances when blocks
-   * mine). The hero timer's `chainNowSec` extrapolates from wall clock for
-   * round UX — it can run **ahead** of the real head under automine / sparse
-   * blocks, which would falsely clear cooldown and allow submits that revert.
-   * Cap against the latest observed head timestamp.
+   * Buy cooldown countdown uses the same wall-skewed `chainNowSec` as the hero
+   * timer (`useTimecurveHeroTimer`), so the CTA ticks every second with the main
+   * countdown. When the hero snapshot is missing, fall back to the latest head
+   * timestamp (integer seconds).
    */
   const chainNowForCooldown = useMemo(() => {
-    if (heroChainNowSec === undefined) return ledgerSecInt;
-    return Math.min(heroChainNowSec, ledgerSecInt);
+    if (heroChainNowSec !== undefined) return heroChainNowSec;
+    return ledgerSecInt;
   }, [heroChainNowSec, ledgerSecInt]);
 
   const walletCooldownRemainingSec = useMemo(() => {
@@ -1309,7 +1423,9 @@ export function useTimeCurveSaleSession(
     setSpendFromSliderPermille,
     spendSliderPermille,
     charmWadSelected,
+    buyCheckoutCharmWeightWad,
     estimatedSpendWei,
+    buyCharmBonusPreviewLines,
     preStartCountdownSec,
     saleCountdownSec,
     chainNowSec: heroChainNowSec,

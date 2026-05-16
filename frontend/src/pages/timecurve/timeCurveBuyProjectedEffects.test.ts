@@ -42,6 +42,20 @@ describe("buildTimeCurveBuyProjectedEffectLines", () => {
     expect(lines).toContain("+250 BP + reset bonus");
   });
 
+  it("uses charmWeightTotalWad for the +CHARM chip when provided (referral / presale bonus weight)", () => {
+    const lines = buildTimeCurveBuyProjectedEffectLines({
+      charmWadSelected: 10n * 10n ** 18n,
+      charmWeightTotalWad: 12n * 10n ** 18n,
+      estimatedSpendWei: 1n,
+      decimals: 18,
+      secondsRemaining: 900,
+      timerExtensionPreview: 0,
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines[0]).toMatch(/\+12 CHARM/);
+  });
+
   it("adds replace-flag copy when planting over another holder", () => {
     const rival = "0x1111111111111111111111111111111111111111" as const;
     const lines = buildTimeCurveBuyProjectedEffectLines({

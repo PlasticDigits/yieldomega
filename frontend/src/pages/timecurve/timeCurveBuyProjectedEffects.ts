@@ -8,6 +8,11 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 export type BuildTimeCurveBuyProjectedEffectLinesArgs = {
   charmWadSelected?: bigint;
+  /**
+   * When set, used for the "+X CHARM" chip instead of {@link charmWadSelected}
+   * (e.g. cleared `charmWad` plus referral / presale CHARM-weight bonuses).
+   */
+  charmWeightTotalWad?: bigint;
   estimatedSpendWei?: bigint;
   decimals: number;
   secondsRemaining?: number;
@@ -32,6 +37,7 @@ export function buildTimeCurveBuyProjectedEffectLines(
 ): string[] {
   const {
     charmWadSelected,
+    charmWeightTotalWad,
     estimatedSpendWei,
     decimals,
     secondsRemaining,
@@ -46,8 +52,9 @@ export function buildTimeCurveBuyProjectedEffectLines(
 
   const items: string[] = [];
 
-  if (charmWadSelected !== undefined && charmWadSelected > 0n) {
-    items.push(`+${formatBuyHubDerivedCompact(charmWadSelected, 18)} CHARM`);
+  const charmLineWad = charmWeightTotalWad ?? charmWadSelected;
+  if (charmLineWad !== undefined && charmLineWad > 0n) {
+    items.push(`+${formatBuyHubDerivedCompact(charmLineWad, 18)} CHARM`);
   }
   if (estimatedSpendWei !== undefined && estimatedSpendWei > 0n) {
     items.push(`${formatBuyHubDerivedCompact(estimatedSpendWei, decimals)} CL8Y spend`);

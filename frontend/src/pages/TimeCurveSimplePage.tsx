@@ -408,6 +408,7 @@ export function TimeCurveSimplePage() {
     () =>
       buildTimeCurveBuyProjectedEffectLines({
         charmWadSelected: session.charmWadSelected,
+        charmWeightTotalWad: session.buyCheckoutCharmWeightWad,
         estimatedSpendWei: session.estimatedSpendWei,
         decimals: session.decimals,
         secondsRemaining: session.saleCountdownSec,
@@ -421,6 +422,7 @@ export function TimeCurveSimplePage() {
       }),
     [
       session.activeDefendedStreak,
+      session.buyCheckoutCharmWeightWad,
       session.charmWadSelected,
       session.decimals,
       session.estimatedSpendWei,
@@ -528,13 +530,14 @@ export function TimeCurveSimplePage() {
   // to be worth `1.275 × pricePerCharmWad` CL8Y at launch. We surface the
   // buy-delta ("This buy adds ≈ Y CL8Y of launch value") and the stake-panel
   // helper caption; math lives in `timeCurvePodiumMath` (see tests there).
+  const buyPreviewCharmWeightWad = session.buyCheckoutCharmWeightWad;
   const buyAddsCl8yAtLaunch = useMemo(
     () =>
       participantLaunchValueCl8yWei({
-        charmWeightWad: session.charmWadSelected,
+        charmWeightWad: buyPreviewCharmWeightWad,
         pricePerCharmWad: session.pricePerCharmWad,
       }),
-    [session.charmWadSelected, session.pricePerCharmWad],
+    [buyPreviewCharmWeightWad, session.pricePerCharmWad],
   );
 
   const buyPreviewLaunchGainLabel = useMemo(
@@ -736,6 +739,18 @@ export function TimeCurveSimplePage() {
               </span>
             ) : null}
           </div>
+          {session.buyCharmBonusPreviewLines.length > 0 ? (
+            <div
+              className="timecurve-simple__buy-preview-bonuses"
+              data-testid="timecurve-simple-buy-preview-bonuses"
+            >
+              {session.buyCharmBonusPreviewLines.map((line, i) => (
+                <div key={`${i}:${line}`} className="timecurve-simple__buy-preview-bonus-line">
+                  {line}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     ) : null;
@@ -1083,8 +1098,8 @@ export function TimeCurveSimplePage() {
                       ? "Refreshing quote…"
                       : buyOnCooldown
                         ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
-                        : session.charmWadSelected !== undefined
-                          ? `Buy ${formatBuyCtaCharmAmountLabel(session.charmWadSelected)} CHARM`
+                        : session.buyCheckoutCharmWeightWad !== undefined
+                          ? `Buy ${formatBuyCtaCharmAmountLabel(session.buyCheckoutCharmWeightWad)} CHARM`
                           : "Buy CHARM"}
                 </span>
               </motion.button>
