@@ -7,7 +7,7 @@ import { AgentFooterCard } from "@/components/AgentFooterCard";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
 import { addressTailHex } from "@/lib/addressFormat";
-import { MEGAETH_CHAIN_IDS } from "@/lib/tokenMedia";
+import { MEGAETH_CHAIN_IDS, MEGA_MARK } from "@/lib/tokenMedia";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -20,7 +20,6 @@ const HEADER_ICONS = {
   home: "/art/icons/header-home.png",
   timecurve: "/art/icons/header-timecurve.png",
   referrals: "/art/icons/header-referrals.png",
-  networkMega: "/art/icons/header-network-mega.png",
   networkLocal: "/art/icons/header-network-local.png",
   networkChain: "/art/icons/header-network-chain.png",
   walletConnect: "/art/icons/header-wallet-connect.png",
@@ -135,7 +134,7 @@ export function RootLayout() {
                 <HeaderIcon
                   src={
                     MEGAETH_CHAIN_IDS.has(networkIconId)
-                      ? HEADER_ICONS.networkMega
+                      ? MEGA_MARK
                       : networkIconId === 31_337
                         ? HEADER_ICONS.networkLocal
                         : HEADER_ICONS.networkChain
