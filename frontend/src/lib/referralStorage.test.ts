@@ -78,3 +78,37 @@ describe("referralStorage pending cross-store sync", () => {
     expect(window.sessionStorage.getItem(KEY)).toBe(payload);
   });
 });
+
+describe("subscribeMyReferralCodeCache", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", {
+      localStorage: memStorage(),
+      sessionStorage: memStorage(),
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("notifies listeners when setStoredMyReferralCodeForWallet writes", async () => {
+    const {
+      subscribeMyReferralCodeCache,
+      setStoredMyReferralCodeForWallet,
+      getStoredMyReferralCodeForWallet,
+    } = await import("./referralStorage");
+    const w = "0x0000000000000000000000000000000000000001" as `0x${string}`;
+    let n = 0;
+    const unsub = subscribeMyReferralCodeCache(() => {
+      n += 1;
+    });
+    expect(getStoredMyReferralCodeForWallet(w)).toBeNull();
+    setStoredMyReferralCodeForWallet(w, "abc12");
+    expect(n).toBe(1);
+    expect(getStoredMyReferralCodeForWallet(w)).toBe("abc12");
+    unsub();
+    setStoredMyReferralCodeForWallet(w, "def34");
+    expect(n).toBe(1);
+  });
+});

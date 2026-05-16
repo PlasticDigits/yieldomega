@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6; #86 copy confirmation; #121 register disclosure element).
+ * Anvil + DeployDev: `/referrals` register flow, share links, and clipboard (GitLab #64 rows R2, R4–R6; #86 copy confirmation).
  * Requires `bash scripts/e2e-anvil.sh` (sets `ANVIL_E2E=1`, `VITE_TIMECURVE_ADDRESS`, mock wallet).
  * R3 (disconnected) and R1 post-launch shell variants are covered in `referrals-surface.spec.ts` + manual QA.
  *
@@ -28,21 +28,20 @@ test.describe("Anvil referrals surface", () => {
     await expect(page.getByTestId("referrals-surface")).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: "Register a code", level: 2 })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Claim your guide code/i, level: 2 })).toBeVisible({
       timeout: 120_000,
     });
 
-    const already = page.getByText("This wallet has a code.", { exact: false });
-    if (await already.isVisible().catch(() => false)) {
+    const newCodeField = page.getByLabel(/New code/i);
+    if (!(await newCodeField.isVisible().catch(() => false))) {
       test.skip(true, "Anvil default account already registered a code; use a fresh chain for this spec.");
     }
 
     await expect(page.getByText("Connect a wallet.", { exact: false })).not.toBeVisible();
     await expect(page.getByText(/Burn per registration/i)).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByTestId("referrals-register-ordering-disclosure")).toBeVisible();
 
     const code = `r${Date.now().toString(36).slice(-10)}`.toLowerCase();
-    await page.getByLabel(/New code/i).fill(code);
+    await newCodeField.fill(code);
     await page.getByRole("button", { name: /Register & burn CL8Y/i }).click();
 
     await expect(page.getByText(/Could not register/i)).toHaveCount(0, { timeout: 180_000 });

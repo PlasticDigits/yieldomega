@@ -70,6 +70,13 @@ describe("referralRegistrationsApiPath", () => {
       "/v1/referrals/registrations?limit=20&offset=40",
     );
   });
+
+  it("encodes owner filter for query safety", () => {
+    const owner = "0xdddddddddddddddddddddddddddddddddddddddd";
+    expect(referralRegistrationsApiPath(10, 0, owner)).toBe(
+      `/v1/referrals/registrations?limit=10&offset=0&owner=${encodeURIComponent(owner)}`,
+    );
+  });
 });
 
 describe("referralAppliedApiPath", () => {

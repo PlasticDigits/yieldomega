@@ -358,9 +358,13 @@ export function timecurvePrizePayoutsApiPath(limit: number, offset = 0): string 
   return `/v1/timecurve/prize-payouts?limit=${limit}&offset=${offset}`;
 }
 
-/** `/v1/referrals/registrations` with limit/offset for safe query embedding. */
-export function referralRegistrationsApiPath(limit: number, offset = 0): string {
-  return `/v1/referrals/registrations?limit=${limit}&offset=${offset}`;
+/** `/v1/referrals/registrations` with limit/offset and optional `owner` wallet filter (schema ≥ 1.22.0). */
+export function referralRegistrationsApiPath(limit: number, offset = 0, owner?: string): string {
+  const base = `/v1/referrals/registrations?limit=${limit}&offset=${offset}`;
+  if (owner === undefined || owner === "") {
+    return base;
+  }
+  return `${base}&owner=${encodeURIComponent(owner)}`;
 }
 
 /** `/v1/referrals/applied` — encodes `referrer` when set. */
@@ -431,9 +435,9 @@ export type ReferralRegistrationItem = {
   normalized_code: string;
 };
 
-export async function fetchReferralRegistrations(limit = 30, offset = 0) {
+export async function fetchReferralRegistrations(limit = 30, offset = 0, owner?: string) {
   return getJson<{ items: ReferralRegistrationItem[] }>(
-    referralRegistrationsApiPath(limit, offset),
+    referralRegistrationsApiPath(limit, offset, owner),
   );
 }
 

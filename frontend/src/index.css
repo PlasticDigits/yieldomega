@@ -465,6 +465,11 @@ label:has(input[type="radio"]:disabled) {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 30px);
   }
 
+  /* Referrals hero: reclaim more slack than TimeCurve-simple so the `<h1>` sits ~100px below the viewport top. */
+  .app-shell.app-shell--referrals {
+    padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 60px);
+  }
+
   .app-header {
     position: fixed;
     top: max(1rem, env(safe-area-inset-top, 0px));
@@ -1184,6 +1189,11 @@ label:has(input[type="radio"]:disabled) {
   margin: 0 auto;
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* `/referrals`: pull hero heading closer to the viewport top (dense header + default main pad read ~170px+). */
+.app-main.app-main--referrals {
+  padding-top: 0.5rem;
 }
 
 .route-stage {
@@ -2674,6 +2684,38 @@ label:has(input[type="radio"]:disabled) {
   text-decoration: none;
 }
 
+/* Outbound anchor: underlined label + open-in-new glyph (not pill chrome). */
+.external-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  padding: 0;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: #1565c0;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.external-text-link:hover {
+  color: #0d47a1;
+}
+
+.external-text-link__label {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.external-text-link__icon {
+  flex-shrink: 0;
+}
+
 .home-cutout-strip {
   position: relative;
   min-height: 7.25rem;
@@ -2929,11 +2971,17 @@ label:has(input[type="radio"]:disabled) {
 .page--referrals {
   position: relative;
   gap: clamp(0.9rem, 2vw, 1.35rem);
+  /* Match guide-code (`PageSection` under `.referral-register`) and dashboard cards. */
+  --referrals-register-card-max-width: 500px;
 }
 
 .page--referrals > :not(.placeholder-cutout-layer) {
   position: relative;
   z-index: 1;
+}
+
+.page--referrals .page-hero__heading h1 {
+  padding-top: 25px;
 }
 
 .page--referrals .placeholder-cutout--left {
@@ -2956,78 +3004,6 @@ label:has(input[type="radio"]:disabled) {
   opacity: 0.86;
 }
 
-.referrals-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
-  gap: 0.85rem;
-  align-items: stretch;
-  margin-top: -0.25rem;
-}
-
-.referrals-overview-card {
-  position: relative;
-  height: 100%;
-  box-sizing: border-box;
-  min-width: 0;
-  min-height: 8.25rem;
-  padding: 1rem 1rem 1rem 4.15rem;
-  border: 4px solid var(--line);
-  border-radius: 1.35rem;
-  background:
-    radial-gradient(circle at 95% 10%, rgba(255, 229, 102, 0.38), transparent 28%),
-    linear-gradient(180deg, #ffffff 0%, #eafff3 100%);
-  box-shadow: 6px 6px 0 var(--line), var(--shadow-soft);
-  overflow: hidden;
-}
-
-.referrals-overview-card--gold {
-  background:
-    radial-gradient(circle at 95% 10%, rgba(31, 184, 106, 0.24), transparent 28%),
-    linear-gradient(180deg, #fff9d7 0%, #ffe885 100%);
-}
-
-.referrals-overview-card--blue {
-  background:
-    radial-gradient(circle at 95% 10%, rgba(245, 200, 66, 0.35), transparent 28%),
-    linear-gradient(180deg, #f2fdff 0%, #cfefff 100%);
-}
-
-.referrals-overview-card__step {
-  position: absolute;
-  top: 0.85rem;
-  left: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.65rem;
-  height: 2.65rem;
-  border: 3px solid var(--line);
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--arcade-green-300), var(--arcade-green-500));
-  box-shadow: 3px 3px 0 var(--line);
-  color: #fff;
-  font-family: "Bungee", cursive;
-  font-size: 0.78rem;
-}
-
-.referrals-overview-card h2 {
-  margin: 0 0 0.4rem;
-  font-family: "Bungee", cursive;
-  font-size: clamp(0.92rem, 1.5vw, 1.08rem);
-  line-height: 1.05;
-  color: var(--arcade-green-900);
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-.referrals-overview-card p {
-  margin: 0;
-  color: rgba(6, 61, 36, 0.82);
-  font-size: 0.92rem;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
 .referrals-quest-strip {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -3043,22 +3019,6 @@ label:has(input[type="radio"]:disabled) {
     linear-gradient(135deg, #f8fff2 0%, #dfffea 58%, #fff1b8 100%);
   box-shadow: 7px 7px 0 var(--line), var(--shadow-soft);
   overflow: hidden;
-}
-
-.referrals-quest-strip__eyebrow {
-  display: inline-flex;
-  width: fit-content;
-  margin-bottom: 0.45rem;
-  padding: 0.22rem 0.6rem;
-  border: 2px solid var(--line);
-  border-radius: 999px;
-  background: var(--arcade-green-300);
-  color: #fff;
-  font-family: "Bungee", cursive;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  box-shadow: 2px 2px 0 var(--line);
 }
 
 .referrals-quest-strip h2 {
@@ -3116,18 +3076,33 @@ label:has(input[type="radio"]:disabled) {
   display: none;
 }
 
-.referrals-panel--wallet.data-panel {
-  background:
-    radial-gradient(circle at 100% 0%, rgba(255, 229, 102, 0.28), transparent 30%),
-    var(--panel-gloss),
-    linear-gradient(180deg, #f8fff9 0%, #dff7e8 100%);
-}
-
 .referrals-panel--earnings.data-panel {
+  width: 100%;
+  max-width: var(--referrals-register-card-max-width);
+  min-width: min(100%, var(--referrals-register-card-max-width));
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
   background:
     radial-gradient(circle at 100% 0%, rgba(94, 200, 255, 0.26), transparent 30%),
     var(--panel-gloss),
     linear-gradient(180deg, #fffdf5 0%, #fff0c0 100%);
+}
+
+.referrals-panel--earnings .referrals-earnings-charm-line,
+.referrals-panel--earnings .referrals-earnings-recorded-buys-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.referrals-panel--earnings .referrals-earnings-charm-line {
+  margin: 0 0 0.35rem;
+}
+
+.referrals-panel--earnings .referrals-earnings-recorded-buys-line {
+  margin: 0;
 }
 
 .referrals-empty-state {
@@ -3318,26 +3293,90 @@ label:has(input[type="radio"]:disabled) {
   gap: 1rem;
 }
 
-.referral-register > .data-panel {
+.referral-register .chain-write-gate > .data-panel {
+  width: 100%;
+  max-width: var(--referrals-register-card-max-width);
+  min-width: min(100%, var(--referrals-register-card-max-width));
+  margin-left: auto;
+  margin-right: auto;
   border-width: 5px;
 }
 
-.referral-register > .data-panel::after {
+.referral-register .chain-write-gate > .data-panel::after {
   display: none;
 }
 
-.referrals-register-disclosure {
-  padding: 0.75rem 0.85rem;
-  border: 2px dashed rgba(11, 31, 20, 0.55);
-  border-radius: 0.95rem;
-  background: rgba(255, 255, 255, 0.62);
+/* Nested share-links card: default `.data-panel` top pad reads as excess air above the H4. */
+.referral-register .referrals-share-links-panel.data-panel {
+  padding-top: 0.5rem;
+}
+
+.referral-register .referrals-share-links-panel.data-panel .h-panel {
+  margin-top: 0;
+}
+
+/* Narrow viewports: full-width register + earnings cards; drop fixed min-width + soften 3D shadow
+   so panels + `box-shadow` offsets do not trigger horizontal scroll. */
+@media (max-width: 720px) {
+  .referral-register {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .referral-register .chain-write-gate {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .referral-register .chain-write-gate > .data-panel,
+  .referrals-panel--earnings.data-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-shadow: 5px 5px 0 var(--line), var(--shadow-soft);
+  }
+
+  .referral-register .chain-write-gate > .data-panel:hover,
+  .referrals-panel--earnings.data-panel:hover {
+    box-shadow: 6px 6px 0 var(--line), var(--shadow-soft);
+  }
+
+  .referral-register .referrals-share-links-panel .code-inline {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+}
+
+.referrals-register-write-stack {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.referrals-register-write-stack .form-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 100%;
+}
+
+.referrals-register-write-stack .form-row .form-label {
+  margin-bottom: 0;
 }
 
 .referrals-register-cost {
   display: grid;
   gap: 0.12rem;
-  width: fit-content;
-  max-width: 100%;
+  width: 100%;
+  max-width: 240px;
+  box-sizing: border-box;
   padding: 0.75rem 0.9rem;
   border: 3px solid var(--line);
   border-radius: 1rem;
@@ -3622,6 +3661,49 @@ label:has(input[type="radio"]:disabled) {
 .btn-secondary:active:not(:disabled) {
   transform: translate(2px, 2px) scale(0.98);
   box-shadow: 2px 2px 0 var(--line);
+}
+
+.btn-ghost {
+  font: inherit;
+  font-weight: 800;
+  min-width: 5.6rem;
+  padding: 0.46rem 0.85rem;
+  border: 3px solid var(--arcade-green-900);
+  border-radius: 999px;
+  background:
+    var(--panel-gloss),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, var(--bg-cream) 100%);
+  color: var(--arcade-green-900);
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  box-shadow: 4px 4px 0 var(--line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    filter 140ms ease,
+    background 140ms ease;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  background:
+    var(--panel-gloss),
+    linear-gradient(180deg, var(--arcade-gold-200) 0%, #fff7c7 100%);
+  box-shadow: 6px 6px 0 var(--line);
+}
+
+.btn-ghost:active:not(:disabled) {
+  transform: translate(2px, 2px) scale(0.98);
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.62;
+  filter: grayscale(0.25);
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
 }
 
 .btn-secondary--priority {
@@ -4479,7 +4561,6 @@ code {
     grid-column: 2;
   }
 
-  .referrals-overview-grid,
   .referrals-dashboard-grid,
   .referrals-leaderboard__summary {
     grid-template-columns: 1fr;
@@ -4493,12 +4574,6 @@ code {
     justify-content: flex-start;
     max-width: none;
     padding-right: 0;
-  }
-
-  .referrals-overview-card {
-    min-height: auto;
-    padding: 0.9rem 0.95rem 0.95rem 3.75rem;
-    box-shadow: 5px 5px 0 var(--line);
   }
 
   .referrals-panel--leaderboard .section-heading {

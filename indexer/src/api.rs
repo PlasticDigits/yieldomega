@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.21.0";
+const SCHEMA_VERSION: &str = "1.22.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -1917,6 +1917,16 @@ async fn timecurve_prize_payouts(
     res
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct ReferralRegistrationsQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+    /// When set, return only rows for this registry owner (0x-prefixed 20-byte address).
+    pub owner: Option<String>,
+}
+
 #[derive(Serialize)]
 struct ReferralRegistrationRow {
     block_number: String,
@@ -1929,21 +1939,47 @@ struct ReferralRegistrationRow {
 
 async fn referral_registrations(
     State(state): State<AppState>,
-    Query(p): Query<PageParams>,
+    Query(p): Query<ReferralRegistrationsQuery>,
 ) -> Response {
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
-    let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index, owner_address, code_hash, normalized_code
-           FROM idx_referral_code_registered
-           ORDER BY block_number DESC, log_index ASC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
+    if let Some(ref addr) = p.owner {
+        if !valid_0x_address20(addr) {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "owner must be a 0x-prefixed 20-byte address" })),
+            )
+                .into_response();
+        }
+    }
+
+    let rows = if let Some(ref addr) = p.owner {
+        let addr_l = addr.to_ascii_lowercase();
+        sqlx::query(
+            r#"SELECT block_number, tx_hash, log_index, owner_address, code_hash, normalized_code
+               FROM idx_referral_code_registered
+               WHERE owner_address = $3
+               ORDER BY block_number DESC, log_index ASC
+               LIMIT $1 OFFSET $2"#,
+        )
+        .bind(lim)
+        .bind(off)
+        .bind(addr_l)
+        .fetch_all(&state.pool)
+        .await
+    } else {
+        sqlx::query(
+            r#"SELECT block_number, tx_hash, log_index, owner_address, code_hash, normalized_code
+               FROM idx_referral_code_registered
+               ORDER BY block_number DESC, log_index ASC
+               LIMIT $1 OFFSET $2"#,
+        )
+        .bind(lim)
+        .bind(off)
+        .fetch_all(&state.pool)
+        .await
+    };
 
     let rows = match rows {
         Ok(r) => r,

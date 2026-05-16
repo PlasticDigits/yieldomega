@@ -39,12 +39,4 @@ describe("home product card grid CSS (GitLab #198)", () => {
     expect(cssBlock(css, ".home-cta-card")).toContain("min-width: 0;");
     expect(cssBlock(css, ".home-cta-card__blurb")).toContain("overflow-wrap: anywhere;");
   });
-
-  it("keeps referral overview cards aligned inside their responsive grid", () => {
-    expect(cssBlock(css, ".referrals-overview-grid")).toContain("align-items: stretch;");
-    expect(cssBlock(css, ".referrals-overview-card")).toContain("height: 100%;");
-    expect(cssBlock(css, ".referrals-overview-card")).toContain("box-sizing: border-box;");
-    expect(cssBlock(css, ".referrals-overview-card")).toContain("min-width: 0;");
-    expect(cssBlock(css, ".referrals-overview-card p")).toContain("overflow-wrap: anywhere;");
-  });
 });

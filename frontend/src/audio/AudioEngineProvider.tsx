@@ -27,7 +27,7 @@ function sfxUiTarget(el: EventTarget | null): boolean {
   if (el.closest("input, textarea, select")) return false;
   return Boolean(
     el.closest(
-      "button, [role='button'], a.nav-link, a.timecurve-subnav__link, a.brand-link, a.footer-link-pill",
+      "button, [role='button'], a.nav-link, a.timecurve-subnav__link, a.brand-link, a.footer-link-pill, a.external-text-link",
     ),
   );
 }

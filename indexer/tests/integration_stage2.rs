@@ -191,6 +191,18 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/registrations?limit=5&owner=0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
     for path in [
         "/v1/timecurve/buys?limit=2",
         "/v1/rabbit/deposits?limit=2",
@@ -1873,4 +1885,89 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
         .execute(&pool)
         .await
         .expect("cleanup referral applied table");
+}
+
+#[tokio::test]
+async fn postgres_referral_registrations_filters_by_owner() {
+    let Some(url) = pg_url() else {
+        eprintln!("integration_stage2: skip registrations owner filter (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("clear referral registry table");
+
+    sqlx::query(
+        r#"INSERT INTO idx_referral_code_registered (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              owner_address, code_hash, normalized_code
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+    )
+    .bind(900_i64)
+    .bind(format!("0x{:0>64}", 80))
+    .bind(format!("0x{:0>64}", 81))
+    .bind(0_i32)
+    .bind("0xcccccccccccccccccccccccccccccccccccccccc")
+    .bind("0x0000000000000000000000000000000000000f01")
+    .bind(format!("0x{:0>64}", 90))
+    .bind("alice9")
+    .execute(&pool)
+    .await
+    .expect("seed registry row alice");
+
+    sqlx::query(
+        r#"INSERT INTO idx_referral_code_registered (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              owner_address, code_hash, normalized_code
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+    )
+    .bind(901_i64)
+    .bind(format!("0x{:0>64}", 82))
+    .bind(format!("0x{:0>64}", 83))
+    .bind(0_i32)
+    .bind("0xcccccccccccccccccccccccccccccccccccccccc")
+    .bind("0x0000000000000000000000000000000000000f02")
+    .bind(format!("0x{:0>64}", 91))
+    .bind("bob9")
+    .execute(&pool)
+    .await
+    .expect("seed registry row bob");
+
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+
+    let owner = "0x0000000000000000000000000000000000000f01";
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/referrals/registrations?limit=10&offset=0&owner={}",
+                    owner
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = response_json(res).await;
+    let items = body["items"].as_array().expect("items");
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["owner_address"].as_str(), Some(owner));
+    assert_eq!(items[0]["normalized_code"].as_str(), Some("alice9"));
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral registry table");
 }
