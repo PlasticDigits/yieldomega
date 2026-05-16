@@ -15,7 +15,8 @@ type Props = {
    * `aria-hidden`). See [`frontend/public/art/icons/`](../../../public/art/icons/).
    */
   badgeIconSrc?: string;
-  coinSrc?: string;
+  /** Omit for default token art; pass `null` to hide the coin. */
+  coinSrc?: string | null;
   coinAlt?: string;
   mascot?: {
     src: string;
@@ -37,13 +38,13 @@ type Props = {
 };
 
 export type PageHeroHeadingProps = {
-  title: string;
+  title?: string;
   badgeLabel?: string;
   badgeTone?: PageBadgeTone;
   badgeIconSrc?: string;
 };
 
-/** Badge + `<h1>`; use alone or above other sections (e.g. arena: heading first, then timer, then `PageHeroArcadeBanner`). */
+/** Badge and optional `<h1>`; use alone or above other sections (e.g. arena: badge first, then timer, then `PageHeroArcadeBanner`). */
 export function PageHeroHeading({
   title,
   badgeLabel,
@@ -53,14 +54,16 @@ export function PageHeroHeading({
   return (
     <div className="page-hero__heading">
       {badgeLabel && <PageBadge label={badgeLabel} tone={badgeTone} iconSrc={badgeIconSrc} />}
-      <h1>{title}</h1>
+      {title ? <h1>{title}</h1> : null}
     </div>
   );
 }
 
 type PageHeroArcadeBannerProps = {
-  lede: ReactNode;
-  coinSrc?: string;
+  className?: string;
+  lede?: ReactNode;
+  /** Omit for default token art; pass `null` to hide the coin. */
+  coinSrc?: string | null;
   coinAlt?: string;
   mascot?: {
     src: string;
@@ -70,24 +73,34 @@ type PageHeroArcadeBannerProps = {
   };
   sceneSrc?: string;
   sceneAlt?: string;
+  /** Decorative foreground particles. Use empty alt text; banner content remains the accessible source. */
+  particleIcons?: Array<{
+    src: string;
+    alt?: string;
+  }>;
   children?: ReactNode;
 };
 
 /**
- * Lede, optional scene/coin/mascot, and optional `children` in the action strip
+ * Optional lede, optional scene and coin (omit coin with `coinSrc={null}`), optional mascot, and optional `children` in the action strip
  * (same layout as the lower half of a full `PageHero`).
  */
 export function PageHeroArcadeBanner({
+  className,
   lede,
-  coinSrc = "/art/token-logo.png",
+  coinSrc,
   coinAlt = "",
   mascot,
   sceneSrc,
   sceneAlt = "",
+  particleIcons,
   children,
 }: PageHeroArcadeBannerProps) {
-  const bannerClasses = ["arcade-banner", "arcade-banner--with-sidekick"];
+  const coinImageSrc = coinSrc === null ? null : (coinSrc ?? "/art/token-logo.png");
+  const bannerClasses = ["arcade-banner"];
+  if (mascot) bannerClasses.push("arcade-banner--with-sidekick");
   if (sceneSrc) bannerClasses.push("arcade-banner--with-scene");
+  if (className) bannerClasses.push(className);
   const bannerStyle: CSSProperties | undefined = sceneSrc
     ? ({ ["--scene-image" as string]: `url(${sceneSrc})` } as CSSProperties)
     : undefined;
@@ -103,18 +116,34 @@ export function PageHeroArcadeBanner({
           decoding="async"
         />
       )}
-      <img
-        className="arcade-banner__coin"
-        src={coinSrc}
-        alt={coinAlt}
-        width={72}
-        height={72}
-        decoding="async"
-      />
-      <div className="arcade-banner__text">
-        <p className="lede">{lede}</p>
-        {children && <div className="page-hero__actions">{children}</div>}
-      </div>
+      {coinImageSrc != null && (
+        <img
+          className="arcade-banner__coin"
+          src={coinImageSrc}
+          alt={coinAlt}
+          width={72}
+          height={72}
+          decoding="async"
+        />
+      )}
+      {lede != null && lede !== "" ? <p className="lede">{lede}</p> : null}
+      {particleIcons && particleIcons.length > 0 ? (
+        <div className="arcade-banner__particles" aria-hidden="true">
+          {particleIcons.map((icon, index) => (
+            <img
+              className="arcade-banner__particle"
+              src={icon.src}
+              alt={icon.alt ?? ""}
+              width={64}
+              height={64}
+              loading="lazy"
+              decoding="async"
+              key={`${icon.src}-${index}`}
+            />
+          ))}
+        </div>
+      ) : null}
+      {children ? <div className="page-hero__actions">{children}</div> : null}
       {mascot && (
         <CutoutDecoration
           className={["arcade-banner__mascot", mascot.className].filter(Boolean).join(" ")}
@@ -133,7 +162,7 @@ export function PageHero({
   badgeLabel,
   badgeTone = "info",
   badgeIconSrc,
-  coinSrc = "/art/token-logo.png",
+  coinSrc,
   coinAlt = "",
   mascot,
   sceneSrc,

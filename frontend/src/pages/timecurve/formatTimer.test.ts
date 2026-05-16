@@ -4,8 +4,21 @@ import { describe, expect, it } from "vitest";
 import {
   formatCountdown,
   formatLaunchCountdown,
+  formatMmSsCountdown,
   timerUrgencyClass,
 } from "./formatTimer";
+
+describe("formatMmSsCountdown", () => {
+  it("formats mm:ss for buy cooldown CTA (both segments zero-padded)", () => {
+    expect(formatMmSsCountdown(0)).toBe("00:00");
+    expect(formatMmSsCountdown(65)).toBe("01:05");
+    expect(formatMmSsCountdown(300)).toBe("05:00");
+  });
+
+  it("clamps negatives", () => {
+    expect(formatMmSsCountdown(-12)).toBe("00:00");
+  });
+});
 
 describe("formatCountdown", () => {
   it("formats seconds < 1 minute as 00:00:SS", () => {

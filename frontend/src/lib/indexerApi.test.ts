@@ -5,6 +5,7 @@ import {
   fetchIndexerStatus,
   fetchTimecurveBuys,
   fetchTimecurveChainTimer,
+  fetchTimecurveWarbowLeaderboardAll,
   rabbitDepositsApiPath,
   referralAppliedApiPath,
   referralReferrerLeaderboardApiPath,
@@ -202,5 +203,67 @@ describe("indexer JSON bodies (issue #111)", () => {
       json: () => Promise.reject(new SyntaxError("Unexpected token")),
     } as Response);
     await expect(fetchTimecurveChainTimer()).resolves.toBeNull();
+  });
+});
+
+describe("fetchTimecurveWarbowLeaderboardAll", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("concatenates pages until next_offset is null", async () => {
+    const row = (buyer: string, logIndex: number) => ({
+      buyer,
+      battle_points_after: String(1000 - logIndex),
+      block_number: "1",
+      tx_hash: `0x${"11".repeat(32)}`,
+      log_index: logIndex,
+    });
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
+      const u = String(input);
+      if (u.includes("limit=200&offset=0")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [row(`0x${"22".repeat(20)}`, 0)],
+              limit: 200,
+              offset: 0,
+              next_offset: 200,
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+        );
+      }
+      if (u.includes("limit=200&offset=200")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [row(`0x${"33".repeat(20)}`, 1)],
+              limit: 200,
+              offset: 200,
+              next_offset: null,
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+        );
+      }
+      return Promise.resolve(new Response(`unexpected ${u}`, { status: 500 }));
+    });
+
+    const all = await fetchTimecurveWarbowLeaderboardAll();
+    expect(all).toHaveLength(2);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns null when the first page fails", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
+    await expect(fetchTimecurveWarbowLeaderboardAll()).resolves.toBeNull();
   });
 });

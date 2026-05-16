@@ -5,6 +5,10 @@ import type { BuyItem } from "@/lib/indexerApi";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
+/** Shown under Defended Streak when the on-chain podium value is zero or the slot has no winner yet. */
+const SIMPLE_PODIUM_NO_DEFENDED_STREAK_SCORE_MSG =
+  "No buy streaks until timer under 15 minutes!";
+
 /**
  * Plain-text score line for Simple reserve podium rows (shown under the address).
  * Last Buy uses the first three `recentBuys` rows when buyer order matches the podium slot
@@ -21,6 +25,22 @@ export function formatSimplePodiumScoreLine(
     recentBuys?: readonly BuyItem[] | null;
   },
 ): string {
+  if (categoryIndex === 2) {
+    if (!opts.winnerReady) {
+      return SIMPLE_PODIUM_NO_DEFENDED_STREAK_SCORE_MSG;
+    }
+    let digits = "0";
+    try {
+      digits = rawToBigIntForFormat(opts.valueRaw || "0").toString();
+    } catch {
+      digits = "0";
+    }
+    if (digits === "0") {
+      return SIMPLE_PODIUM_NO_DEFENDED_STREAK_SCORE_MSG;
+    }
+    return `Score: ${digits} sequential buys`;
+  }
+
   if (!opts.winnerReady) {
     return "Score: —";
   }
@@ -58,9 +78,6 @@ export function formatSimplePodiumScoreLine(
 
   if (categoryIndex === 1) {
     return `Score: ${digits} Battle Points`;
-  }
-  if (categoryIndex === 2) {
-    return `Score: ${digits} sequential buys`;
   }
   if (categoryIndex === 3) {
     return `Score: ${digits}s added`;

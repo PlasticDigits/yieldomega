@@ -7,6 +7,25 @@ export const timeCurveBuyEventAbi = parseAbi([
   "event Buy(address indexed buyer, uint256 charmWad, uint256 amount, uint256 pricePerCharmWad, uint256 newDeadline, uint256 totalRaisedAfter, uint256 buyIndex, uint256 actualSecondsAdded, bool timerHardReset, uint256 battlePointsAfter, uint256 bpBaseBuy, uint256 bpTimerResetBonus, uint256 bpClutchBonus, uint256 bpStreakBreakBonus, uint256 bpAmbushBonus, uint256 bpFlagPenalty, bool flagPlanted, uint256 buyerTotalEffectiveTimerSecAdded, uint256 buyerActiveDefendedStreak, uint256 buyerBestDefendedStreak)",
 ]);
 
+/**
+ * WarBow events that should refresh live reads (podium / leaderboard / per-wallet `warbowGuardUntil`).
+ * Includes BP-moving txs plus **`WarBowGuardActivated`** (guard windows; GitLab #101 follow-up).
+ */
+export const timeCurveWarbowBpEventAbi = parseAbi([
+  "event WarBowSteal(address indexed attacker, address indexed victim, uint256 amountBp, uint256 burnPaidWad, bool bypassedVictimDailyLimit, uint256 victimBpAfter, uint256 attackerBpAfter)",
+  "event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 amountBp, uint256 burnPaidWad, uint256 stealerBpAfter, uint256 avengerBpAfter)",
+  "event WarBowFlagClaimed(address indexed player, uint256 bonusBp, uint256 battlePointsAfter)",
+  "event WarBowFlagPenalized(address indexed formerHolder, uint256 penaltyBp, address indexed triggeringBuyer, uint256 battlePointsAfter)",
+  "event WarBowGuardActivated(address indexed player, uint256 guardUntilTs, uint256 burnPaidWad)",
+]);
+
+export const WARBOW_BP_MOVING_EVENT_NAMES = [
+  "WarBowSteal",
+  "WarBowRevenge",
+  "WarBowFlagClaimed",
+  "WarBowFlagPenalized",
+] as const;
+
 export const timeCurveReadAbi = parseAbi([
   "function saleStart() view returns (uint256)",
   "function deadline() view returns (uint256)",

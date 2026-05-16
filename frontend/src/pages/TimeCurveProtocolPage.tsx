@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useReadContracts } from "wagmi";
+import { useEffect, useMemo, useState } from "react";
+import { useBlock, useReadContracts } from "wagmi";
+import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
+import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
+import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PageHero } from "@/components/ui/PageHero";
@@ -17,9 +21,19 @@ import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
+import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
+import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiveBuysActivitySection";
+import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
-import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
+import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
+import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
+import { useTimecurveProtocolRawAccordion } from "@/pages/timecurve/useTimecurveProtocolRawAccordion";
+import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
+import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
+import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
+import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
 
 /**
  * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
@@ -28,8 +42,10 @@ import { derivePhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase"
  * Invariant: every value rendered here is read directly from a public view
  * function on `TimeCurve`, `LinearCharmPrice`, or `FeeRouter`. We never derive
  * values that the contract does not expose, so this page can be used to
- * verify the simple / arena views. The WarBow refresh helper uses the indexer
- * only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
+ * verify the simple / arena views. **TOTAL RAISE / TOTAL USD** mirror the
+ * former Arena hero (same formatting on `totalRaised()` wei). **Live buys** use the indexer read-model
+ * (same cards as the former Arena rail) alongside these RPC reads. The WarBow
+ * refresh helper uses the indexer only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
  */
 type ContractReadRow = {
   status: "success" | "failure";
@@ -129,6 +145,112 @@ export function TimeCurveProtocolPage() {
     query: { enabled: Boolean(feeRouterAddr) },
   });
 
+  const { data: latestBlock } = useBlock({ watch: true });
+  const blockTimestampSec =
+    latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
+  const blockChainSec = blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;
+  const ledgerSecInt = Math.floor(blockChainSec);
+
+  const [displayTick, setDisplayTick] = useState(0);
+  const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (latestBlock?.timestamp !== undefined) {
+      setBlockSyncWallMs(Date.now());
+    }
+  }, [latestBlock?.number, latestBlock?.timestamp]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setDisplayTick((n) => n + 1), 100);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const effectiveLedgerSec = useMemo(() => {
+    void displayTick;
+    if (blockTimestampSec !== undefined) {
+      return blockTimestampSec + (Date.now() - blockSyncWallMs) / 1000;
+    }
+    return Date.now() / 1000;
+  }, [blockTimestampSec, blockSyncWallMs, displayTick]);
+
+  const { chainNowSec: heroChainNowSec } = useTimecurveHeroTimer(tc);
+
+  const phaseLedgerSecInt = useMemo(
+    () =>
+      ledgerSecIntForPhase({
+        blockLedgerSecInt: ledgerSecInt,
+        heroChainNowSec: heroChainNowSec,
+      }),
+    [ledgerSecInt, heroChainNowSec],
+  );
+
+  const liveBuys = useTimecurveProtocolLiveBuys();
+  const { isOffline } = useIndexerConnectivity();
+
+  const totalRaisedRow = get(3);
+  const totalRaiseSerialized =
+    totalRaisedRow?.status === "success" && totalRaisedRow.result !== undefined
+      ? String(totalRaisedRow.result as bigint)
+      : undefined;
+  const totalRaiseObservedAtMs = useLastObservedAtForSerializedDep(totalRaiseSerialized);
+  const totalRaiseUsdFreshness = useRelativeFreshnessLabel(totalRaiseObservedAtMs);
+
+  const totalRaiseHeroDisplay = useMemo(() => {
+    if (!totalRaiseSerialized) {
+      return { cl8y: "—" as const, usd: "—" as const };
+    }
+    return formatTotalRaiseHeroDisplayFromWei(BigInt(totalRaiseSerialized), 18);
+  }, [totalRaiseSerialized]);
+
+  const buyEnvelopeParamsWire = useMemo((): EnvelopeCurveParamsWire | null => {
+    const saleStartRow = get(0);
+    const initialMinBuyRow = get(9);
+    const growthRateRow = get(10);
+    if (
+      saleStartRow?.status !== "success" ||
+      initialMinBuyRow?.status !== "success" ||
+      growthRateRow?.status !== "success" ||
+      charmPriceParams?.[0]?.status !== "success" ||
+      charmPriceParams?.[1]?.status !== "success"
+    ) {
+      return null;
+    }
+    const start = Number(saleStartRow.result as bigint);
+    if (start <= 0) {
+      return null;
+    }
+    return {
+      saleStartSec: start,
+      charmEnvelopeRefWad: (initialMinBuyRow.result as bigint).toString(),
+      growthRateWad: (growthRateRow.result as bigint).toString(),
+      basePriceWad: (charmPriceParams[0].result as bigint).toString(),
+      dailyIncrementWad: (charmPriceParams[1].result as bigint).toString(),
+    };
+  }, [reading, charmPriceParams]);
+
+  const tickerEnvelopeParams = useMemo(
+    () => envelopeCurveParamsFromWire(buyEnvelopeParamsWire),
+    [buyEnvelopeParamsWire],
+  );
+
+  const cl8ySpendBounds = useMemo(() => {
+    const minBuy = get(6);
+    const maxBuy = get(7);
+    if (minBuy?.status !== "success" || maxBuy?.status !== "success") {
+      return null;
+    }
+    const minS = minCl8ySpendBroadcastHeadroom(minBuy.result as bigint);
+    const maxS = maxBuy.result as bigint;
+    if (minS > maxS) {
+      return null;
+    }
+    return { minS, maxS };
+  }, [reading]);
+
+  const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
+
+  const protocolRawAccordion = useTimecurveProtocolRawAccordion();
+
   if (!tc) {
     return (
       <div className="page timecurve-protocol-page">
@@ -185,10 +307,8 @@ export function TimeCurveProtocolPage() {
   };
 
   // Mirror the Simple/Arena hero badge so the three TimeCurve views share a
-  // single visual language for sale phase. We use wall-clock seconds because
-  // the Protocol view is intentionally indexer-free (every value is a direct
-  // RPC view-call); a few seconds of skew vs the chain block timestamp is
-  // acceptable for a status pictogram.
+  // single visual language for sale phase. Prefer the indexer-anchored hero
+  // clock when available so the badge matches Simple/Arena (issue #48).
   const saleStartRow = get(0);
   const deadlineRow = get(1);
   const endedRow = get(2);
@@ -199,12 +319,21 @@ export function TimeCurveProtocolPage() {
       saleStartRow?.status === "success" ? Number(saleStartRow.result as bigint) : undefined,
     deadlineSec:
       deadlineRow?.status === "success" ? Number(deadlineRow.result as bigint) : undefined,
-    ledgerSecInt: Math.floor(Date.now() / 1000),
+    ledgerSecInt: phaseLedgerSecInt,
   });
   const protocolPhaseBadge = phaseBadge(protocolPhase);
 
   const saleEnded =
     endedRow?.status === "success" ? (endedRow.result as boolean) : true;
+
+  const protocolLiveChartsReady =
+    protocolPhase === "saleActive" &&
+    deadlineRow?.status === "success" &&
+    saleStartRow?.status === "success" &&
+    get(9)?.status === "success" &&
+    get(10)?.status === "success" &&
+    charmPriceParams?.[0]?.status === "success" &&
+    charmPriceParams?.[1]?.status === "success";
 
   return (
     <div className="page timecurve-protocol-page">
@@ -221,6 +350,20 @@ export function TimeCurveProtocolPage() {
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
       />
 
+      {protocolLiveChartsReady && (
+        <TimeCurveLiveCharts
+          saleActive
+          saleStartSec={Number(saleStartRow!.result as bigint)}
+          deadlineSec={Number(deadlineRow!.result as bigint)}
+          nowSec={effectiveLedgerSec}
+          initialMinBuy={(get(9)!.result as bigint).toString()}
+          growthRateWad={(get(10)!.result as bigint).toString()}
+          basePriceWad={(charmPriceParams![0]!.result as bigint).toString()}
+          dailyIncrementWad={(charmPriceParams![1]!.result as bigint).toString()}
+          decimals={18}
+        />
+      )}
+
       <PageSection
         title="Sale state (live reads)"
         spotlight
@@ -228,6 +371,21 @@ export function TimeCurveProtocolPage() {
         badgeTone="info"
         lede="These match what the contract is returning right now. Refreshed every ~1.5s."
       >
+        <div className="timecurve-protocol-raise-card" aria-label="Total raised summary">
+          <div className="timer-hero__raise-lines">
+            <div className="timer-hero__total-raise">
+              TOTAL RAISE: {totalRaiseHeroDisplay.cl8y} CL8Y
+            </div>
+            <div className="timer-hero__total-usd-block" title={ARENA_TOTAL_USD_EQUIV_TITLE}>
+              <div className="timer-hero__total-usd">TOTAL USD: {totalRaiseHeroDisplay.usd}</div>
+              {totalRaiseUsdFreshness ? (
+                <div className="timer-hero__total-usd-affordance">
+                  CL8Y total seen {totalRaiseUsdFreshness} · USD is illustrative (1 CL8Y = $1)
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
         <dl className="kv">
           <dt>{humanizeKvLabel("saleStart")}</dt>
           <dd>{renderUnix(0)}</dd>
@@ -251,6 +409,19 @@ export function TimeCurveProtocolPage() {
           <dd>{renderBool(21)}</dd>
         </dl>
       </PageSection>
+
+      <TimeCurveLiveBuysActivitySection
+        recentBuys={liveBuys.buys}
+        decimals={18}
+        tickerEnvelopeParams={tickerEnvelopeParams}
+        cl8ySpendBounds={cl8ySpendBounds}
+        isOffline={isOffline}
+        buyPollLastOk={liveBuysPollLastOk}
+        buysNextOffset={liveBuys.buysNextOffset}
+        loadingMoreBuys={liveBuys.loadingMoreBuys}
+        buyPagesExpanded={liveBuys.hasExpandedBuyPages}
+        onLoadMore={() => void liveBuys.handleLoadMoreBuys()}
+      />
 
       <PageSection
         title="Immutable parameters"
@@ -396,6 +567,8 @@ export function TimeCurveProtocolPage() {
           </ul>
         )}
       </PageSection>
+
+      <RawDataAccordion {...protocolRawAccordion} />
     </div>
   );
 }

@@ -147,7 +147,7 @@ export function phaseNarrative(phase: SaleSessionPhase): string {
     case "saleStartPending":
       return "When this hits zero, the sale opens and you can buy CHARM with CL8Y.";
     case "saleActive":
-      return "Sale runs out in:";
+      return "You might win in:";
     case "saleExpiredAwaitingEnd":
       return "Timer expired. Anyone can call End Sale to settle the round.";
     case "saleEnded":

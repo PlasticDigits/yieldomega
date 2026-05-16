@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+/** Whole seconds — `mm:ss` (both segments zero-padded to 2 digits; minutes grow past 99 as needed). */
+export function formatMmSsCountdown(totalSec: number): string {
+  const totalWhole = Math.floor(Math.max(0, totalSec));
+  const m = Math.floor(totalWhole / 60);
+  const s = totalWhole % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 /** Whole seconds only — `HH:MM:SS` (no sub-second digits). */
 export function formatCountdown(totalSec: number): string {
   const totalWhole = Math.floor(Math.max(0, totalSec));

@@ -98,8 +98,27 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(tabletBlock).toContain("padding-right: 1.15rem");
     expect(tabletBlock).toContain(".page--timecurve .warbow-hero-actions__grid");
     expect(tabletBlock).toContain("grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr))");
-    expect(tabletBlock).toContain(".page--timecurve .warbow-hero-card--steal");
-    expect(tabletBlock).toContain("grid-column: 1 / -1");
+
+    const stealCardIdx = css.indexOf(".warbow-hero-card--steal {\n");
+    expect(stealCardIdx).toBeGreaterThanOrEqual(0);
+    expect(css.slice(stealCardIdx, stealCardIdx + 140)).toContain("grid-column: 1 / -1");
+
+    const stealTargetsTabletIdx = css.indexOf(
+      "@media (min-width: 721px) and (max-width: 960px) {\n  .warbow-hero-candidates.warbow-chasing-pack-scroll",
+    );
+    expect(stealTargetsTabletIdx).toBeGreaterThanOrEqual(0);
+    expect(css.slice(stealTargetsTabletIdx, stealTargetsTabletIdx + 220)).toContain(
+      "repeat(2, minmax(0, 1fr))",
+    );
+
+    const stealTargetsDesktopIdx = css.indexOf(
+      "@media (min-width: 961px) {\n  .warbow-hero-candidates.warbow-chasing-pack-scroll",
+    );
+    expect(stealTargetsDesktopIdx).toBeGreaterThanOrEqual(0);
+    const desktopWarbowMq = css.slice(stealTargetsDesktopIdx, stealTargetsDesktopIdx + 420);
+    expect(desktopWarbowMq).toContain("repeat(3, minmax(0, 1fr))");
+    expect(desktopWarbowMq).toContain(".page--timecurve .warbow-hero-actions__grid");
+    expect(desktopWarbowMq).toContain("minmax(min(100%, 28rem), 1fr)");
 
     const headBlock = cssBlock(css, ".warbow-hero-card__head", 500);
     expect(headBlock).toContain("flex-wrap: wrap");
@@ -121,6 +140,14 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(desktopStart).toBeGreaterThanOrEqual(0);
     const desktopHomeBlock = css.slice(desktopStart, desktopStart + 220);
     expect(desktopHomeBlock).toContain("grid-template-columns: repeat(3, minmax(0, 22rem))");
+  });
+
+  it("tightens TimeCurve shell top padding on tablet/desktop so the subnav sits closer to the pinned header", () => {
+    const mqIdx = css.indexOf("@media (min-width: 721px) {\n  /* Pinned shell header on tablet/desktop only");
+    expect(mqIdx).toBeGreaterThanOrEqual(0);
+    const mqBlock = css.slice(mqIdx, mqIdx + 900);
+    expect(mqBlock).toContain(".app-shell.app-shell--timecurve");
+    expect(mqBlock).toContain("var(--app-shell-fixed-header-stack) - 30px");
   });
 
   it("keeps mobile Arena content clear of the fixed audio dock and wraps long values", () => {

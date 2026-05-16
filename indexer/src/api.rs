@@ -349,28 +349,36 @@ async fn fetch_warbow_bp_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
     fetch_two_col_top3(pool, &sql, "warbow_bp").await
 }
 
-/// Defended-streak best per wallet from latest `Buy` snapshot + `WarBowDefendedStreakContinued` rows.
+/// Defended-streak leaderboard: per-wallet **max** best streak from indexed `Buy` rows (treat NULL
+/// legacy/partial rows as 0) merged with `WarBowDefendedStreakContinued` snapshots, then top-3
+/// by best (matches onchain `bestDefendedStreak` monotonic semantics; avoids empty podiums when
+/// the latest buy row omits streak columns but an earlier row carried the peak).
 async fn fetch_defended_streak_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
     fetch_two_col_top3(
         pool,
-        r#"WITH all_best AS (
+        r#"WITH buy_best AS (
               SELECT lower(buyer::text) AS addr,
-                     buyer_best_defended_streak::numeric AS best,
-                     block_number,
-                     log_index
+                     MAX(COALESCE(buyer_best_defended_streak::numeric, 0)) AS best
               FROM idx_timecurve_buy
-              WHERE buyer_best_defended_streak IS NOT NULL
-              UNION ALL
-              SELECT lower(wallet::text), best_streak, block_number, log_index
-              FROM idx_timecurve_warbow_ds_continued
+              GROUP BY lower(buyer::text)
             ),
-            latest AS (
-              SELECT DISTINCT ON (addr) addr, best
-              FROM all_best
-              ORDER BY addr, block_number DESC, log_index DESC
+            ds_best AS (
+              SELECT lower(wallet::text) AS addr,
+                     MAX(COALESCE(best_streak::numeric, 0)) AS best
+              FROM idx_timecurve_warbow_ds_continued
+              GROUP BY lower(wallet::text)
+            ),
+            merged AS (
+              SELECT addr, MAX(best) AS best
+              FROM (
+                  SELECT addr, best FROM buy_best
+                  UNION ALL
+                  SELECT addr, best FROM ds_best
+              ) s
+              GROUP BY addr
             )
-            SELECT addr, best::text AS val
-            FROM latest
+            SELECT addr::text AS addr, best::text AS val
+            FROM merged
             WHERE best > 0
             ORDER BY best DESC, addr ASC
             LIMIT 3"#,
@@ -379,25 +387,19 @@ async fn fetch_defended_streak_podium_prediction(pool: &PgPool) -> PodiumRpcRow 
     .await
 }
 
-/// Time booster: latest `buyer_total_effective_timer_sec` per wallet from indexed buys.
+/// Time booster: per-wallet **max** cumulative effective timer seconds from indexed buys (NULL
+/// treated as 0), matching monotonic `totalEffectiveTimerSecAdded` semantics for live prediction.
 async fn fetch_time_booster_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
     fetch_two_col_top3(
         pool,
-        r#"WITH t AS (
+        r#"WITH per_wallet AS (
               SELECT lower(buyer::text) AS addr,
-                     buyer_total_effective_timer_sec::numeric AS secs,
-                     block_number,
-                     log_index
+                     MAX(COALESCE(buyer_total_effective_timer_sec::numeric, 0)) AS secs
               FROM idx_timecurve_buy
-              WHERE buyer_total_effective_timer_sec IS NOT NULL
-            ),
-            latest AS (
-              SELECT DISTINCT ON (addr) addr, secs
-              FROM t
-              ORDER BY addr, block_number DESC, log_index DESC
+              GROUP BY lower(buyer::text)
             )
-            SELECT addr, secs::text AS val
-            FROM latest
+            SELECT addr::text AS addr, secs::text AS val
+            FROM per_wallet
             WHERE secs > 0
             ORDER BY secs DESC, addr ASC
             LIMIT 3"#,

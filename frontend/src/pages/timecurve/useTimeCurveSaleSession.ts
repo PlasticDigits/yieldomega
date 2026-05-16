@@ -127,6 +127,16 @@ export type UseTimeCurveSaleSession = {
   saleCountdownSec: number | undefined;
   /** Wall-vs-chain skewed `chain time` shared with the hero timer. */
   chainNowSec: number | undefined;
+  /**
+   * Capped timer extension preview (matches Arena `timerExtensionPreview`) for buy
+   * checkout chips during an active sale.
+   */
+  timerExtensionPreviewSec: number | undefined;
+  /** `activeDefendedStreak(wallet)` for projected-effects copy; undefined until read succeeds. */
+  activeDefendedStreak: bigint | undefined;
+  warbowPendingFlagOwner: HexAddress | undefined;
+  /** `0n` when unset or read pending — same semantics as Arena flag plant-at wiring. */
+  warbowPendingFlagPlantAt: bigint;
   /** Wallet buy cooldown remaining (seconds). 0 when not gated or not connected. */
   walletCooldownRemainingSec: number;
   totalRaisedWei: bigint | undefined;
@@ -268,12 +278,16 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
         { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
         { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
         { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
         { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
       ]
@@ -293,18 +307,13 @@ export function useTimeCurveSaleSession(
   });
   const coreData = coreDataRaw as readonly ContractReadRow[] | undefined;
 
-  useEffect(() => {
-    if (tc && latestBlock?.number !== undefined) {
-      void refetchCore();
-    }
-  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCore]);
-
   const userContracts =
     tc && address
       ? [
           { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt", args: [address] },
+          { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
         ]
       : [];
   const {
@@ -315,6 +324,13 @@ export function useTimeCurveSaleSession(
     query: { enabled: Boolean(tc && address) },
   });
   const userData = userDataRaw as readonly ContractReadRow[] | undefined;
+
+  useEffect(() => {
+    if (tc && latestBlock?.number !== undefined) {
+      void refetchCore();
+      void refetchUser();
+    }
+  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCore, refetchUser]);
 
   const {
     heroTimer,
@@ -351,17 +367,21 @@ export function useTimeCurveSaleSession(
     totalTokensForSaleR,
     initialMinBuyR,
     growthRateWadR,
+    timerExtensionSecR,
+    timerCapSecR,
     buyCooldownSecR,
     launchedTokenR,
     buyFeeRoutingEnabledR,
     charmRedemptionEnabledR,
     reservePodiumPayoutsEnabledR,
     timeCurveBuyRouterR,
+    warbowPendingFlagOwnerR,
+    warbowPendingFlagPlantAtR,
     warbowFlagClaimBpR,
     warbowFlagSilenceSecR,
   ] = coreData ?? [];
 
-  const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR] = userData ?? [];
+  const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
 
   const acceptedAsset =
     acceptedAssetR?.status === "success" ? (acceptedAssetR.result as HexAddress) : undefined;
@@ -838,8 +858,18 @@ export function useTimeCurveSaleSession(
     }
   }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
 
-  const chainNowForCooldown =
-    heroChainNowSec !== undefined ? heroChainNowSec : ledgerSecInt;
+  /**
+   * Buy cooldown uses onchain `block.timestamp` (only advances when blocks
+   * mine). The hero timer's `chainNowSec` extrapolates from wall clock for
+   * round UX — it can run **ahead** of the real head under automine / sparse
+   * blocks, which would falsely clear cooldown and allow submits that revert.
+   * Cap against the latest observed head timestamp.
+   */
+  const chainNowForCooldown = useMemo(() => {
+    if (heroChainNowSec === undefined) return ledgerSecInt;
+    return Math.min(heroChainNowSec, ledgerSecInt);
+  }, [heroChainNowSec, ledgerSecInt]);
+
   const walletCooldownRemainingSec = useMemo(() => {
     if (
       phase !== "saleActive" ||
@@ -852,6 +882,33 @@ export function useTimeCurveSaleSession(
     if (nextAllowed <= 0n) return 0;
     return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
   }, [phase, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
+
+  const timerExtensionPreviewSec = useMemo(() => {
+    if (
+      phase !== "saleActive" ||
+      saleCountdownSec === undefined ||
+      timerExtensionSecR?.status !== "success" ||
+      timerCapSecR?.status !== "success"
+    ) {
+      return undefined;
+    }
+    const timerCapSec = Number(timerCapSecR.result as bigint);
+    const rawExt = Number(timerExtensionSecR.result as bigint);
+    return Math.max(0, Math.min(rawExt, Math.max(0, timerCapSec - saleCountdownSec)));
+  }, [phase, saleCountdownSec, timerExtensionSecR, timerCapSecR]);
+
+  const activeDefendedStreak =
+    activeDefendedStreakR?.status === "success" ? (activeDefendedStreakR.result as bigint) : undefined;
+
+  const warbowPendingFlagOwner =
+    warbowPendingFlagOwnerR?.status === "success"
+      ? (warbowPendingFlagOwnerR.result as HexAddress)
+      : undefined;
+
+  const warbowPendingFlagPlantAt =
+    warbowPendingFlagPlantAtR?.status === "success"
+      ? (warbowPendingFlagPlantAtR.result as bigint)
+      : 0n;
 
   const expectedTokenFromCharms = useMemo(() => {
     if (phase !== "saleEnded") return undefined;
@@ -1256,6 +1313,10 @@ export function useTimeCurveSaleSession(
     preStartCountdownSec,
     saleCountdownSec,
     chainNowSec: heroChainNowSec,
+    timerExtensionPreviewSec,
+    activeDefendedStreak,
+    warbowPendingFlagOwner,
+    warbowPendingFlagPlantAt,
     walletCooldownRemainingSec,
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,

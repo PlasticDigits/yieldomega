@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
-import { isAddress } from "viem";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
 import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
@@ -16,7 +14,6 @@ import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
 import { formatBpsAsPercent, formatLocaleInteger, formatUnixSecIsoUtc } from "@/lib/formatAmount";
-import { megaEtherscanAddressUrl } from "@/lib/megaEtherscan";
 import type {
   BattlePointBreakdownRow,
   BuyHistoryPoint,
@@ -35,33 +32,11 @@ import type {
   WarbowBattleFeedItem,
   WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
-import { statFromContractRead, statFromOptionalString } from "@/lib/statDisplayFromContractRead";
-import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
 import { FeedCard, RankingList, type RankingRow, StatCard } from "./timecurveUi";
 
 type MotionProps = Record<string, unknown>;
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000" as const;
-
-function PodiumAddressExplorerInline(props: {
-  address: string | undefined;
-  formatWallet: WalletFormatShort;
-  size?: number;
-}) {
-  const { address: addr, formatWallet, size = 16 } = props;
-  const raw = addr?.trim();
-  const linked = Boolean(raw && isAddress(raw as `0x${string}`) && raw.toLowerCase() !== ZERO_ADDR);
-  const href = linked && raw ? megaEtherscanAddressUrl(raw) : undefined;
-  const body = <AddressInline address={addr} formatWallet={formatWallet} fallback="—" size={size} />;
-  if (!href) {
-    return body;
-  }
-  return (
-    <a href={href} target="_blank" rel="noreferrer" className="cursor-external-link podium-address-explorer">
-      {body}
-    </a>
-  );
-}
 
 function WarbowPendingFlagChainPanel(props: {
   readsReady: boolean;
@@ -138,149 +113,6 @@ function WarbowPendingFlagChainPanel(props: {
         </StatusMessage>
       )}
     </div>
-  );
-}
-
-export function WhatMattersSection(props: {
-  saleActive: boolean;
-  saleEnded: boolean;
-  /** True when round timer is past `deadline` but `TimeCurve.ended()` is still false (GitLab #188). */
-  timerExpiredAwaitingEnd?: boolean;
-  whatMattersNowCards: { label: string; value: ReactNode; meta: ReactNode }[];
-  minBuy: SerializableContractRead | undefined;
-  decimals: number;
-  expectedTokenFromCharms: string | undefined;
-  charmWeightResult: SerializableContractRead | undefined;
-  podiumPoolBal: string | undefined;
-  battlePointsResult: SerializableContractRead | undefined;
-  totalRaisedResult: SerializableContractRead | undefined;
-  isPending: boolean;
-  isError: boolean;
-  indexerMismatch: string | null;
-  claimHint: string | null;
-  distributeHint: string | null;
-  isConnected: boolean;
-}) {
-  const {
-    saleActive,
-    saleEnded,
-    timerExpiredAwaitingEnd = false,
-    whatMattersNowCards,
-    minBuy,
-    decimals,
-    expectedTokenFromCharms,
-    charmWeightResult,
-    podiumPoolBal,
-    battlePointsResult,
-    totalRaisedResult,
-    isPending,
-    isError,
-    indexerMismatch,
-    claimHint,
-    distributeHint,
-    isConnected,
-  } = props;
-
-  const settlementSurface = saleEnded || timerExpiredAwaitingEnd;
-  const statCtx = { isPending, isConnected };
-
-  return (
-    <PageSection
-      title="What matters now"
-      badgeLabel={saleActive ? "Player view" : settlementSurface ? "Settlement view" : "Live setup"}
-      badgeTone={saleActive ? "live" : settlementSurface ? "warning" : "info"}
-      spotlight
-      className="timecurve-panel timecurve-panel--summary"
-      cutout={{
-        src: "/art/cutouts/loading-mascot-circle.png",
-        width: 164,
-        height: 164,
-        className: "panel-cutout panel-cutout--summary-left cutout-decoration--float",
-      }}
-      lede="Start here for the room read: what matters most right now, what your wallet already has at stake, and which chase is still alive."
-    >
-      <div className="priority-grid">
-        {whatMattersNowCards.map((card) => (
-          <StatCard key={card.label} label={card.label} value={card.value} meta={card.meta} className="stat-card--priority" />
-        ))}
-      </div>
-      <div className="stats-grid timecurve-stats-grid">
-        <StatCard
-          label={saleActive ? "Current min buy" : "Minimum buy"}
-          value={statFromContractRead(minBuy, statCtx, {
-            mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
-            labels: { loading: "Loading minimum buy…", missing: "Minimum buy unavailable" },
-          })}
-          meta="Human-readable reserve spend floor"
-        />
-        <StatCard
-          label={settlementSurface ? "Expected redemption" : "Your charm weight"}
-          value={
-            settlementSurface ? (
-              statFromOptionalString(expectedTokenFromCharms, statCtx, {
-                mapSuccess: (r) => <AmountDisplay raw={r} decimals={18} />,
-                labels: {
-                  loading: "Loading redemption preview…",
-                  missing: "Redemption preview unavailable",
-                },
-              })
-            ) : (
-              statFromContractRead(charmWeightResult, statCtx, {
-                requireWallet: true,
-                mapSuccess: (r) => <AmountDisplay raw={r} decimals={18} />,
-                labels: {
-                  loading: "Loading CHARM weight…",
-                  missing: "CHARM weight unavailable",
-                  connect: "Connect a wallet to see your CHARM weight.",
-                },
-              })
-            )
-          }
-          meta={
-            settlementSurface
-              ? timerExpiredAwaitingEnd && !saleEnded
-                ? "Preview — redeem unlocks after End sale onchain"
-                : "Projected launched-token claim"
-              : "Onchain charm weight for your wallet"
-          }
-        />
-        <StatCard
-          label="Podium pool"
-          value={statFromOptionalString(podiumPoolBal, statCtx, {
-            mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
-            labels: { loading: "Loading podium pool…", missing: "Podium pool unavailable" },
-          })}
-          meta="Reserve pool for the four onchain prize categories"
-        />
-        <StatCard
-          label={saleActive ? "Battle Points" : "Total raised"}
-          value={
-            saleActive ? (
-              statFromContractRead(battlePointsResult, statCtx, {
-                requireWallet: true,
-                mapSuccess: (r) => formatLocaleInteger(BigInt(r)),
-                labels: {
-                  loading: "Loading Battle Points…",
-                  missing: "Battle Points unavailable",
-                  connect: "Connect a wallet to see Battle Points.",
-                },
-              })
-            ) : (
-              statFromContractRead(totalRaisedResult, statCtx, {
-                mapSuccess: (r) => <AmountDisplay raw={r} decimals={decimals} />,
-                labels: { loading: "Loading total raised…", missing: "Total raised unavailable" },
-              })
-            )
-          }
-          meta={saleActive ? "Your live WarBow PvP score" : "Authoritative sale total from contract reads"}
-        />
-      </div>
-      {isPending && <StatusMessage variant="loading">Loading contract reads...</StatusMessage>}
-      {isError && <StatusMessage variant="error">Could not read contract (check RPC / network).</StatusMessage>}
-      {indexerMismatch && <StatusMessage variant="error">{indexerMismatch}</StatusMessage>}
-      {claimHint && <StatusMessage variant="muted">{claimHint}</StatusMessage>}
-      {settlementSurface && distributeHint && <StatusMessage variant="muted">{distributeHint}</StatusMessage>}
-    </PageSection>
   );
 }
 
@@ -627,102 +459,6 @@ export function WarbowSection(props: {
           <StatusMessage variant="muted">No WarBow feed rows yet.</StatusMessage>
         )}
       </div>
-    </PageSection>
-  );
-}
-
-export function PodiumsSection(props: {
-  podiumPayoutPreview: { places: readonly [string, string, string] }[];
-  decimals: number;
-  podiumLoading: boolean;
-  podiumRows: { winners: [`0x${string}`, `0x${string}`, `0x${string}`]; values: readonly [string, string, string] }[];
-  address: string | undefined;
-  formatPodiumLeaderboardValue: (categoryIndex: number, raw: string) => string;
-  formatWallet: WalletFormatShort;
-}) {
-  const { podiumPayoutPreview, decimals, podiumLoading, podiumRows, address, formatPodiumLeaderboardValue, formatWallet } =
-    props;
-  return (
-    <PageSection
-      title="Podiums and prizes"
-      badgeLabel="Reserve prize podiums"
-      badgeTone="warning"
-      lede="Four reserve tracks: Last Buy, WarBow (top Battle Points), Defended Streak, and Time Booster. Each pays 1st / 2nd / 3rd in CL8Y from the podium pool."
-    >
-      <div className="podium-preview">
-        {podiumPayoutPreview.map((row, idx) => {
-          const onchainPodium = podiumRows[idx];
-          return (
-            <div key={idx} className="podium-block">
-              <h3>{PODIUM_LABELS[idx] ?? `Category ${idx}`}</h3>
-              <p className="muted">{PODIUM_HELP[idx]}</p>
-              <RankingList
-                rows={(["1st", "2nd", "3rd"] as const).map((lab, placeIndex) => ({
-                  key: `preview-${idx}-${lab}`,
-                  rank: placeIndex + 1,
-                  label: (
-                    <PodiumAddressExplorerInline
-                      address={onchainPodium?.winners[placeIndex]}
-                      formatWallet={formatWallet}
-                      size={16}
-                    />
-                  ),
-                  value: <AmountDisplay raw={row.places[placeIndex]} decimals={decimals} />,
-                  meta: placeIndex === 0 ? "Largest reserve slice in category" : "Reserve payout preview",
-                  highlight: Boolean(
-                    address &&
-                      onchainPodium?.winners[placeIndex]?.toLowerCase() === address.toLowerCase(),
-                  ),
-                }))}
-                emptyText="Waiting for podium pool balance."
-              />
-            </div>
-          );
-        })}
-      </div>
-      <details className="podium-block accordion-panel">
-        <summary>
-          <strong>Current winners and category rules</strong>
-        </summary>
-        <div className="accordion-panel__content">
-          <div className="split-layout">
-            <div>
-              <h3>How categories work</h3>
-              <ul className="accent-list">
-                {PODIUM_LABELS.map((title, index) => (
-                  <li key={title}>
-                    <strong>{title}</strong>
-                    <div className="muted">{PODIUM_HELP[index]}</div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3>Onchain podiums</h3>
-              {podiumLoading && <StatusMessage variant="loading">Loading podiums...</StatusMessage>}
-              {!podiumLoading &&
-                podiumRows.map((row, index) => (
-                  <div key={index} className="podium-block">
-                    <h3>{PODIUM_LABELS[index] ?? `Category ${index}`}</h3>
-                    <RankingList
-                      rows={row.winners.map((winner, placeIndex) => ({
-                        key: `podium-${index}-${winner}-${placeIndex}`,
-                        rank: placeIndex + 1,
-                        label: (
-                          <PodiumAddressExplorerInline address={winner} formatWallet={formatWallet} size={16} />
-                        ),
-                        value: formatPodiumLeaderboardValue(index, row.values[placeIndex] ?? "0"),
-                        meta: placeIndex === 0 ? "Current leader" : "Onchain snapshot",
-                        highlight: Boolean(address && winner.toLowerCase() === address.toLowerCase()),
-                      }))}
-                      emptyText="No onchain winners yet."
-                    />
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      </details>
     </PageSection>
   );
 }

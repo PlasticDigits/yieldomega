@@ -45,7 +45,7 @@ test("timecurve simple view shows the first-run path (timer + buy CHARM)", async
   await expect(page.getByRole("navigation", { name: "TimeCurve views" })).toBeVisible();
 });
 
-test("timecurve simple view shows compact podiums without dense Arena sections", async ({ page }) => {
+test("timecurve simple view shows compact podiums without dense Arena or Audit feed sections", async ({ page }) => {
   await ensurePostLaunch(page);
   const simplePodiums = page.getByTestId("timecurve-simple-podiums");
   await expect(simplePodiums).toBeVisible();
@@ -59,8 +59,8 @@ test("timecurve simple view shows compact podiums without dense Arena sections",
   await expect(page.getByRole("heading", { name: "Podiums and prizes", level: 2 })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Live battle feed", level: 2 })).toHaveCount(0);
 
-  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /ARENA/ }).click();
-  await expect(page).toHaveURL(/\/timecurve\/arena$/);
+  await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /AUDIT/ }).click();
+  await expect(page).toHaveURL(/\/timecurve\/protocol$/);
   await expect(page.getByTestId("timecurve-live-buys-activity")).toBeVisible();
 });
 
@@ -69,7 +69,12 @@ test("timecurve sub-nav routes to /timecurve/arena (PvP)", async ({ page }) => {
   const subnav = page.getByRole("navigation", { name: "TimeCurve views" });
   await subnav.getByRole("link", { name: /ARENA/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
-  await expect(page.getByRole("heading", { name: /TimeCurve · Arena/, level: 1 })).toBeVisible();
+  await expect(
+    page
+      .getByTestId("warbow-hero-actions")
+      .or(page.getByRole("heading", { name: "Configuration missing", level: 2 }))
+      .first(),
+  ).toBeVisible();
 });
 
 test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ page }) => {
@@ -81,6 +86,7 @@ test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ pag
   const sale = page.getByRole("heading", { name: /Sale state/, level: 2 });
   const noTc = page.getByRole("heading", { name: "Configuration missing", level: 2 });
   await expect(sale.or(noTc).first()).toBeVisible();
+  await expect(page.getByText(/^TOTAL RAISE:/).first()).toBeVisible();
 });
 
 test("timecurve simple view stays usable on a 390×844 mobile viewport", async ({ page }) => {
@@ -100,27 +106,27 @@ test("home product cards reflow without iPad Mini horizontal overflow", async ({
   await expectNoHorizontalViewportOverflow(page);
 });
 
-test("timecurve Arena buy hub starts below the fixed mobile audio dock", async ({ page }) => {
+test("timecurve Arena primary content clears the fixed mobile audio dock", async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 });
   await ensurePostLaunch(page);
   await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /ARENA/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/arena$/);
 
-  const buyPanel = page.locator(".timecurve-arena-buy-panel").first();
+  const warbowHero = page.getByTestId("warbow-hero-actions");
   const missingConfig = page.getByRole("heading", { name: "Configuration missing", level: 2 });
-  await expect(buyPanel.or(missingConfig).first()).toBeVisible();
+  await expect(warbowHero.or(missingConfig).first()).toBeVisible();
   test.skip(
-    (await buyPanel.count()) === 0,
-    "Arena buy hub requires a configured TimeCurve address; full-stack Anvil covers the rendered surface.",
+    (await warbowHero.count()) === 0,
+    "Arena WarBow hero requires a configured TimeCurve address; full-stack Anvil covers the rendered surface.",
   );
-  await expect(buyPanel).toBeVisible();
+  await expect(warbowHero).toBeVisible();
   await expect(page.locator(".album-player-dock")).toBeVisible();
 
   const overlapsDock = await page.evaluate(() => {
     const dock = document.querySelector(".album-player-dock")?.getBoundingClientRect();
-    const panel = document.querySelector(".timecurve-arena-buy-panel")?.getBoundingClientRect();
-    if (!dock || !panel) return false;
-    return dock.left < panel.right && dock.right > panel.left && dock.top < panel.bottom && dock.bottom > panel.top;
+    const box = document.querySelector("[data-testid=\"warbow-hero-actions\"]")?.getBoundingClientRect();
+    if (!dock || !box) return false;
+    return dock.left < box.right && dock.right > box.left && dock.top < box.bottom && dock.bottom > box.top;
   });
   expect(overlapsDock).toBe(false);
   await expectNoHorizontalViewportOverflow(page);

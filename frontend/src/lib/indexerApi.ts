@@ -181,6 +181,30 @@ export async function fetchTimecurveWarbowLeaderboard(limit = 20, offset = 0) {
   );
 }
 
+/** Max `limit` accepted by indexer `clamp_limit` for `/v1/timecurve/warbow/leaderboard`. */
+const WARBOW_LEADERBOARD_PAGE_MAX = 200;
+
+/**
+ * Full WarBow ladder from the indexer (all pages). Used by Arena PvP steal targets so the UI is
+ * not capped to the first few leaderboard rows ([GitLab #189](https://gitlab.com/PlasticDigits/yieldomega/-/issues/189) chasing-pack parity).
+ */
+export async function fetchTimecurveWarbowLeaderboardAll(): Promise<WarbowLeaderboardItem[] | null> {
+  const all: WarbowLeaderboardItem[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await fetchTimecurveWarbowLeaderboard(WARBOW_LEADERBOARD_PAGE_MAX, offset);
+    if (page == null) {
+      return offset === 0 ? null : all;
+    }
+    all.push(...page.items);
+    if (page.next_offset == null) {
+      break;
+    }
+    offset = page.next_offset;
+  }
+  return all;
+}
+
 export type WarbowBattleFeedItem = {
   kind: string;
   block_number: string;

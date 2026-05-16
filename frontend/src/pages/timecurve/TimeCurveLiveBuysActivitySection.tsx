@@ -232,8 +232,9 @@ export type TimeCurveLiveBuysActivitySectionProps = {
 };
 
 /**
- * Full-height “Live buys” ticker cards (formerly on `/timecurve` Simple).
- * Wired on Arena so activity stays beside competitive surfaces.
+ * Full-height “Live buys” ticker cards (formerly on `/timecurve` Simple, then Arena).
+ * Wired on the protocol / audit view (`/timecurve/protocol`) so operators can
+ * correlate indexed activity with raw onchain reads.
  */
 export function TimeCurveLiveBuysActivitySection({
   dataTestId = "timecurve-live-buys-activity",
