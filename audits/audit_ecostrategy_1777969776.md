@@ -119,7 +119,7 @@ Affected code and docs:
 - `docs/product/primitives.md`
 - `contracts/PARAMETERS.md`
 
-WarBow's 2x rule makes a victim stealable when `victimBP >= 2 * attackerBP`. That encourages low-BP or fresh attackers to target high-BP leaders. A normal steal burns 1 CL8Y and transfers 10% of the victim's BP to the attacker. Guard reduces the drain to 1%, but costs 10 CL8Y and lasts 6 hours. Revenge burns 1 CL8Y and takes 10% of the stealer's current BP, not the amount stolen.
+WarBow's onchain steal BP bracket requires `2 * attackerBP <= victimBP <= 10 * attackerBP` ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211); this audit paragraph predates the upper cap and described the older **≥ 2×**-only framing). That encourages **near-peer** attackers to target modestly higher-BP rivals. A normal steal burns 1 CL8Y and transfers 10% of the victim's BP to the attacker. Guard reduces the drain to 1%, but costs 10 CL8Y and lasts 6 hours. Revenge burns 1 CL8Y and takes 10% of the stealer's current BP, not the amount stolen.
 
 This creates an asymmetric surface around early believers who build BP honestly through early buys, reset plays, or flag claims. A small attacker can take a large absolute BP amount from a leader. The victim's revenge against a low-BP attacker may recover far less than was lost, especially if the attacker transfers or loses BP through subsequent PvP dynamics before revenge.
 

@@ -619,7 +619,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP, battlePoints[msg.sender]);
     }
 
-    /// @notice Burn **1 CL8Y** (accepted asset); steal **`_warbowStealDrainBp`** of victim’s BP (**10%** or **1%** if guarded). Requires **`battlePoints(attacker) > 0`** and **`battlePoints(victim) ≥ 2 × battlePoints(attacker)`**.
+    /// @notice Burn **1 CL8Y** (accepted asset); steal **`_warbowStealDrainBp`** of victim’s BP (**10%** or **1%** if guarded). Requires **`battlePoints(attacker) > 0`** and **`2 × battlePoints(attacker) ≤ battlePoints(victim) ≤ 10 × battlePoints(attacker)`** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
     /// @param payBypassBurn When **either** the victim **or** this attacker hit **3** steals on this UTC day before this tx, pass `true` and pay **+50 CL8Y** once to proceed ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
@@ -658,6 +658,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 vbp = battlePoints[victim];
         uint256 abp = battlePoints[msg.sender];
         require(abp > 0 && vbp >= 2 * abp, "TimeCurve: steal 2x rule");
+        require(vbp <= 10 * abp, "TimeCurve: steal 10x cap");
 
         uint16 bps =
             block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;

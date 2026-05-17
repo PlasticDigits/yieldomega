@@ -68,7 +68,11 @@ export function friendlyRevertMessage(raw: string): string {
     ],
     [
       "timecurve: steal 2x rule",
-      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points.",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
+    ],
+    [
+      "timecurve: steal 10x cap",
+      "That victim’s Battle Points are too far above yours for a steal under the onchain 2×–10× band.",
     ],
     ["timecurve: bad victim", "Choose a real rival address instead of zero or your own wallet."],
     ["timecurve: steal zero", "That steal would move zero Battle Points, so the contract rejected it."],

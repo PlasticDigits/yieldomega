@@ -229,9 +229,51 @@ describe("WarbowHeroActions", () => {
     expect(html).toContain("—/3");
   });
 
+  it("renders BP-too-high prospect rows with disabled STEAL chrome and Too high BP label", () => {
+    const max = 3n;
+    const viewer = "0x9999999999999999999999999999999999999999" as const;
+    const prospectAddr = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as const;
+    const prospect: WarbowStealHeroRow = {
+      candidate: {
+        address: prospectAddr,
+        battlePoints: "5000",
+        rank: 2,
+        source: "indexer",
+      },
+      victimAtDailyCap: false,
+      victimStealsReceivedToday: 0n,
+      maxStealsPerDay: max,
+      victimGuardedActive: false,
+      preflight: describeStealPreflight(
+        {
+          connected: true,
+          saleActive: true,
+          saleEnded: false,
+          viewer,
+          victim: prospectAddr,
+          viewerBattlePoints: 400n,
+          victimBattlePoints: 5000n,
+          victimStealsToday: 0n,
+          attackerStealsToday: 0n,
+          maxStealsPerDay: max,
+          bypassSelected: false,
+          guardActive: false,
+        },
+        fmt,
+      ),
+      bpAboveStealBand: true,
+    };
+    const html = renderHero({
+      stealHeroRows: [...stealHeroRowsFromCandidates(), prospect],
+    });
+    expect(html).toContain("data-testid=\"warbow-hero-steal-prospect\"");
+    expect(html).toContain("Too high BP");
+    expect(html).toContain("warbow-hero-candidate-row__bp-too-high");
+  });
+
   it("shows an explicit empty state when no candidate is available", () => {
     const html = renderHero({ stealHeroRows: [] });
-    expect(html).toContain("No indexed 2x BP steal target yet");
+    expect(html).toContain("No indexed in-band steal target yet");
   });
 
   it("does not repeat wallet-connect steal preflight under each row when disconnected", () => {

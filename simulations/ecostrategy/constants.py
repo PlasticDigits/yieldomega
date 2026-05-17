@@ -39,7 +39,7 @@ MIRRORED_FROM_CONTRACT = {
     "TimeCurve.WARBOW_GUARD_DURATION_SEC": WARBOW_GUARD_DURATION_SEC,
     "TimeCurve.WARBOW_FLAG_CLAIM_BP": WARBOW_FLAG_CLAIM_BP,
     "TimeCurve.WARBOW_FLAG_SILENCE_SEC": WARBOW_FLAG_SILENCE_SEC,
-    "TimeCurve — 2× steal eligibility": "victim_bp >= 2 * attacker_bp",
+    "TimeCurve — WarBow steal BP band (2×–10×)": "2 * attacker_bp <= victim_bp <= 10 * attacker_bp",
     "ReferralRegistry — CHARM weight add-ons (audit M-01 narrative)": (
         f"+{REFERRAL_REFEREE_BPS / 100:g}% referee + {REFERRAL_REFERRER_BPS / 100:g}% referrer"
     ),

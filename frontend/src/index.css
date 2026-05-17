@@ -4016,6 +4016,14 @@ label:has(input[type="radio"]:disabled) {
   color: #b42318;
 }
 
+.warbow-hero-candidate-row__bp-too-high {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: #b42318;
+}
+
 .warbow-hero-candidate-row__guard-stack {
   display: flex;
   flex-direction: column;
