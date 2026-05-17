@@ -183,6 +183,39 @@ def build_prompt(subject: str) -> str:
     )
 
 
+def build_airdrop_social_prompt() -> str:
+    """Marketing still with mandatory readable sign copy (overrides default no-text reference guidance)."""
+    ref = """
+Reference images are supplied as input_images in this exact order:
+(1) style.png — preserve its core character design language: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics.
+(2) token-logo.png — canonical hat + stylized D buckle for any DOUB / hat-token emblems on floating coins or small badges (the stylized D on coins is allowed and expected).
+
+IGNORE any generic “no text in the image” guidance for this job. This deliverable is a finished social promo poster, not silent key art.
+
+CRITICAL — readable typography on the sign (non-negotiable):
+- The adult bunny leprechaun girl mascot holds ONE large wooden parade sign on a post (two hands OK: one wave, one steadying the post).
+- The sign board must fill a large fraction of the frame width and use bold, high-contrast, legible English letters at poster scale (not tiny, not blurry, not faux-runes, not gibberish).
+- Exactly two lines of readable copy on the sign, spelled character-for-character as shown (including punctuation and spacing):
+  Line 1: YIELDOMEGA.COM AIRDROP!
+  Line 2: WIN up to 1000 $DOUB
+- A blank sign, unreadable microtext, wrong spelling, missing “$”, or paraphrased wording is WRONG.
+- Do not add any other readable words, URLs, hashtags, watermarks, captions, UI chrome, or extra sentences anywhere else in the image (decorative stars/sparkles without letters are fine).
+""".strip()
+    subject = """
+Wide 3:2 landscape. Center foreground: bunny leprechaun girl mascot smiling at the viewer, energetic pose, the sign clearly in front of her torso so both lines of copy read at a glance. Midground: confetti, floating glossy hat-coins echoing token-logo embossing, soft rainbow arc, voxel hills. Background: bright arcade sky and simple clouds; distant silhouettes only (no extra lettering on buildings). Warm celebratory lighting with the sign face evenly lit for OCR-clear readability.
+""".strip()
+    return (
+        f"{STYLE_GUIDE}\n\n"
+        f"{ref}\n\n"
+        f"Consistency requirement:\n"
+        f"Match the reference brand identity: same mascot type, same green-and-gold styling, same chunky arcade line art and glossy toy shading.\n\n"
+        f"Originality requirement:\n"
+        f"New camera angle and staging; not a repaint of the reference plates.\n\n"
+        f"Subject and composition:\n{subject}\n\n"
+        f"Strictly avoid:\n{NEGATIVE_GUIDE}"
+    )
+
+
 def build_partner_card_refresh_prompt(*, which: str, subject_notes: str = "") -> str:
     """Prompt for re-rendering partner-approved cards: same layout/characters, better pixels + DOUB emblem.
 
@@ -422,6 +455,13 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "opaque",
         "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Adult yet playful bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
     ),
+    (
+        "yieldomega-airdrop",
+        "3:2",
+        "jpeg",
+        "opaque",
+        "Airdrop announcement key art (prompt body is built by build_airdrop_social_prompt() in run_job).",
+    ),
 ]
 
 
@@ -479,6 +519,8 @@ def run_job(
     catalog_bg = background
     if custom_prompt is not None:
         prompt = custom_prompt
+    elif name == "yieldomega-airdrop":
+        prompt = build_airdrop_social_prompt()
     else:
         prompt = build_prompt(subject)
     if catalog_bg == "transparent":
