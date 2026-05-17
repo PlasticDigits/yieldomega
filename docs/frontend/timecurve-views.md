@@ -192,7 +192,7 @@ decision surface directly through
    state plus the viewer's live Battle Points before any PvP CTA.
 2. **Steal without typing:** suggested steal targets come from the contract
    WarBow podium and indexed leaderboard, deduped by address and filtered
-   client-side for the 2× BP rule when the viewer BP read is available. Selecting
+   client-side for the **2×–10×** BP band when the viewer BP read is available. Selecting
    a row writes the same `stealVictimInput` used by the detailed section, so the
    existing live contract reads (`battlePoints`, `stealsReceivedOnDay`) and
    `describeStealPreflight` remain the final eligibility preview.

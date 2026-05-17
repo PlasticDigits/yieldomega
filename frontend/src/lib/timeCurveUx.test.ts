@@ -241,7 +241,7 @@ describe("buildBuyHistoryPoints", () => {
 });
 
 describe("describeStealPreflight", () => {
-  it("flags the 2x rule before signing", () => {
+  it("flags the lower BP bound before signing", () => {
     expect(
       describeStealPreflight({
         connected: true,
@@ -259,7 +259,29 @@ describe("describeStealPreflight", () => {
       }),
     ).toMatchObject({
       tone: "error",
-      title: "2x rule not met",
+      title: "2× minimum not met",
+    });
+  });
+
+  it("flags the upper BP bound before signing", () => {
+    expect(
+      describeStealPreflight({
+        connected: true,
+        saleActive: true,
+        saleEnded: false,
+        viewer: "0x1111111111111111111111111111111111111111",
+        victim: "0x2222222222222222222222222222222222222222",
+        viewerBattlePoints: 400n,
+        victimBattlePoints: 5000n,
+        victimStealsToday: 0n,
+        attackerStealsToday: 0n,
+        maxStealsPerDay: 3n,
+        bypassSelected: false,
+        guardActive: false,
+      }),
+    ).toMatchObject({
+      tone: "error",
+      title: "Victim BP too far above yours",
     });
   });
 
@@ -282,6 +304,7 @@ describe("describeStealPreflight", () => {
     ).toMatchObject({
       tone: "success",
       title: "Steal looks eligible",
+      detail: expect.stringContaining("2×–10×"),
     });
   });
 });

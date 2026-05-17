@@ -70,6 +70,7 @@ import {
   describeStealPreflight,
   describeTimerPreview,
 } from "@/lib/timeCurveUx";
+import { isWarbowStealVictimBpInBand } from "@/lib/warbowStealBpBand";
 import {
   derivePhase,
   ledgerSecIntForPhase,
@@ -1544,7 +1545,10 @@ export function useTimeCurveArenaModel() {
       if (viewerBp !== undefined && viewerBp === 0n) {
         return false;
       }
-      return viewerBp === undefined || battlePoints >= viewerBp * 2n;
+      if (viewerBp === undefined) {
+        return battlePoints > 0n;
+      }
+      return isWarbowStealVictimBpInBand(viewerBp, battlePoints);
     }
 
     function addCandidate(candidate: WarbowStealCandidate) {
@@ -1593,7 +1597,7 @@ export function useTimeCurveArenaModel() {
     });
   }, [address, viewerBattlePoints, warbowLadderPodiumR, warbowLbLive]);
 
-  /** Up to 10 leaderboard wallets below the 2× BP steal threshold (discovery-only hero rows). */
+  /** Up to 10 leaderboard wallets below the 2× BP steal minimum (discovery-only hero rows). */
   const warbowStealProspectCandidates: WarbowStealCandidate[] = useMemo(() => {
     const viewerBp = viewerBattlePoints;
     if (viewerBp === undefined || viewerBp <= 0n) {
@@ -1660,9 +1664,76 @@ export function useTimeCurveArenaModel() {
     return out;
   }, [address, viewerBattlePoints, warbowLbLive, warbowLadderPodiumR, warbowStealCandidates]);
 
+  /** Up to 10 leaderboard wallets above the 10× BP steal band versus the viewer (discovery-only). */
+  const warbowStealAboveBandCandidates: WarbowStealCandidate[] = useMemo(() => {
+    const viewerBp = viewerBattlePoints;
+    if (viewerBp === undefined || viewerBp <= 0n) {
+      return [];
+    }
+    const maxInBand = viewerBp * 10n;
+    const stealKeys = new Set(warbowStealCandidates.map((c) => c.address.toLowerCase()));
+    const seen = new Set<string>();
+    const out: WarbowStealCandidate[] = [];
+
+    function tryPush(row: {
+      address: string | undefined;
+      bp: bigint;
+      rank: number;
+      source: "contract" | "indexer";
+    }) {
+      if (out.length >= 10) {
+        return;
+      }
+      const addr = row.address;
+      if (!addr || !isAddress(addr as `0x${string}`) || sameAddress(addr, ZERO_ADDR) || sameAddress(addr, address)) {
+        return;
+      }
+      const k = addr.toLowerCase();
+      if (stealKeys.has(k) || seen.has(k)) {
+        return;
+      }
+      if (row.bp <= maxInBand) {
+        return;
+      }
+      seen.add(k);
+      out.push({
+        address: addr as `0x${string}`,
+        battlePoints: row.bp.toString(),
+        rank: row.rank,
+        source: row.source,
+      });
+    }
+
+    (warbowLbLive ?? []).forEach((row, index) => {
+      tryPush({
+        address: row.buyer,
+        bp: BigInt(row.battle_points_after),
+        rank: index + 1,
+        source: "indexer",
+      });
+    });
+
+    if (warbowLadderPodiumR?.status === "success") {
+      const [wallets, values] = warbowLadderPodiumR.result as readonly [
+        readonly `0x${string}`[],
+        readonly bigint[],
+      ];
+      wallets.forEach((wallet, index) => {
+        tryPush({
+          address: wallet,
+          bp: values[index] ?? 0n,
+          rank: index + 1,
+          source: "contract",
+        });
+      });
+    }
+
+    return out;
+  }, [address, viewerBattlePoints, warbowLbLive, warbowLadderPodiumR, warbowStealCandidates]);
+
   const warbowStealHeroReadCandidates = useMemo(
-    () => [...warbowStealCandidates, ...warbowStealProspectCandidates],
-    [warbowStealCandidates, warbowStealProspectCandidates],
+    () => [...warbowStealCandidates, ...warbowStealProspectCandidates, ...warbowStealAboveBandCandidates],
+    [warbowStealCandidates, warbowStealProspectCandidates, warbowStealAboveBandCandidates],
   );
 
   const stealCandidateContracts = useMemo(() => {
@@ -2069,9 +2140,65 @@ export function useTimeCurveArenaModel() {
     formatWallet,
   ]);
 
+  const stealHeroRowsAboveBand = useMemo((): WarbowStealHeroRow[] => {
+    const max = BigInt(warbowMaxSteals);
+    return warbowStealAboveBandCandidates.map((c) => {
+      const key = c.address.toLowerCase();
+      const onchain = stealCandidateOnchainByAddr.get(key);
+      const victimSteals = onchain?.steals;
+      const victimBp = onchain?.bp;
+      const victimAtDailyCap = victimSteals !== undefined && victimSteals >= max;
+      const bypassSelected =
+        stealBypass || (victimAtDailyCap && (stealBypassByVictimAddr[key] ?? false));
+      const victimGuardUntil = onchain?.guardUntil;
+      const victimGuardedActive =
+        victimGuardUntil !== undefined ? BigInt(ledgerSecInt) < victimGuardUntil : undefined;
+      const preflight = describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          saleEnded,
+          viewer: address,
+          victim: c.address,
+          viewerBattlePoints,
+          victimBattlePoints: victimBp,
+          victimStealsToday: victimSteals,
+          attackerStealsToday: attackerStealsTodayBigInt,
+          maxStealsPerDay: max,
+          bypassSelected,
+          guardActive: victimGuardedActive ?? false,
+        },
+        formatWallet,
+      );
+      return {
+        candidate: c,
+        preflight,
+        victimAtDailyCap,
+        victimStealsReceivedToday: victimSteals,
+        maxStealsPerDay: max,
+        victimGuardedActive,
+        bpAboveStealBand: true,
+      };
+    });
+  }, [
+    warbowStealAboveBandCandidates,
+    stealCandidateOnchainByAddr,
+    stealBypass,
+    stealBypassByVictimAddr,
+    attackerStealsTodayBigInt,
+    isConnected,
+    saleActive,
+    saleEnded,
+    address,
+    viewerBattlePoints,
+    warbowMaxSteals,
+    ledgerSecInt,
+    formatWallet,
+  ]);
+
   const stealHeroRows = useMemo(
-    () => [...stealHeroRowsStealable, ...stealHeroRowsProspects],
-    [stealHeroRowsStealable, stealHeroRowsProspects],
+    () => [...stealHeroRowsStealable, ...stealHeroRowsProspects, ...stealHeroRowsAboveBand],
+    [stealHeroRowsStealable, stealHeroRowsProspects, stealHeroRowsAboveBand],
   );
 
   const stealPreflight = useMemo(
@@ -2130,7 +2257,7 @@ export function useTimeCurveArenaModel() {
     }
     return guardedActive
       ? "Your guard is already up. Use the live window to defend, steal, or buy for momentum."
-      : "Target rivals with at least 2× your Battle Points (you need positive BP yourself), or use guard to make yourself harder to drain.";
+      : "Target rivals whose Battle Points sit in the onchain 2×–10× band versus yours (you need positive BP yourself), or use guard to make yourself harder to drain.";
   }, [
     isConnected,
     saleActive,

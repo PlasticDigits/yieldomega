@@ -34,6 +34,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | WarBow steal limit bypass burn | **50e18** | When victim already hit 3 steals that UTC day | Fixed |
 | WarBow guard burn / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
+| WarBow steal BP bracket | **2×–10×** attacker BP | `warbowSteal`: **`victimBP ≥ 2 × attackerBP`** and **`victimBP ≤ 10 × attackerBP`** (reverts **`TimeCurve: steal 2x rule`** / **`TimeCurve: steal 10x cap`**) — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211) | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |
 | Total tokens for sale | **Production target:** **200M DOUB** on TimeCurve (`totalTokensForSale`); dev mocks may use smaller values | > 0 | **TODO** — confirm at deploy |
 | Launched token address | **TODO** — deploy or use existing ERC-20 | Must be valid ERC-20 | **TODO** |

@@ -139,7 +139,7 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
     }
 
     /// @dev Invariant: `warbowSteal` without bypass moves exactly `WARBOW_STEAL_BURN_WAD` to the burn sink.
-    ///      GitLab #134: **`abp > 0`** and **`vbp ≥ 2 × abp`** — stealer earns BP from one buy; victim from two.
+    ///      GitLab #134 / #211: **`abp > 0`** and **`2× ≤ victim/attacker BP ratio ≤ 10×`** — stealer earns BP from one buy; victim from two.
     function testFuzz_warbow_steal_burn_exact_to_sink(uint160 victim160, uint160 stealer160) public {
         vm.assume(victim160 != uint160(0) && stealer160 != uint160(0));
         vm.assume(victim160 != stealer160);

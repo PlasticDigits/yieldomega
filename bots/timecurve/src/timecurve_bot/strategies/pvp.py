@@ -94,8 +94,11 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
             abp = int(tc.functions.battlePoints(attacker.address).call())
             print(f"BP before steal: victim={vbp} attacker={abp}")
             if vbp < 2 * max(abp, 1):
-                print("Onchain 2x rule may revert steal; add more victim buys or reset Anvil.")
-                raise RuntimeError("2x rule not met")
+                print("Onchain 2× minimum may revert steal; add more victim buys or reset Anvil.")
+                raise RuntimeError("2x minimum not met")
+            if vbp > 10 * max(abp, 1):
+                print("Onchain 10× cap may revert steal; victim BP is too far above attacker for the band.")
+                raise RuntimeError("10x cap exceeded")
 
             approve_if_needed(w3, asset, attacker, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
             warbow_steal(

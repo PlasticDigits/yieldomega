@@ -66,7 +66,7 @@ Within each category, **1st : 2nd : 3rd** payouts use weights **4∶2∶1**. **D
 
 ### WarBow Ladder (Battle Points — PvP and reserve slice)
 
-WarBow is **adversarial PvP scoring** in **Battle Points**. It encourages **upward pressure** (e.g. steals require the victim to have **≥ 2×** the attacker’s BP). The **top-3 BP snapshot** (`warbowLadderPodium()`, mirrored by `podium(CAT_WARBOW)`) receives the **WarBow** slice of the podium pool in **`distributePrizes`**. **Tie-break:** higher BP ranks above; if BP equal, **lower `uint160(address)`** ranks above (deterministic).
+WarBow is **adversarial PvP scoring** in **Battle Points**. Steals require the victim’s BP to sit in a **finite band** versus the attacker (**2×–10×** attacker BP, inclusive — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)) so micro-wallets cannot farm distant leaders. The **top-3 BP snapshot** (`warbowLadderPodium()`, mirrored by `podium(CAT_WARBOW)`) receives the **WarBow** slice of the podium pool in **`distributePrizes`**. **Tie-break:** higher BP ranks above; if BP equal, **lower `uint160(address)`** ranks above (deterministic).
 
 #### BP from buys (defaults in `TimeCurve`)
 
@@ -91,7 +91,7 @@ Dedicated **`WarBowDefendedStreak*`** events (if enabled in bytecode) describe c
 
 - Attacker burns **`WARBOW_STEAL_BURN_WAD`** (**1e18** = 1 CL8Y at 18 decimals) of **accepted asset** to **dead** sink.
 - Transfers **`floor(victimBP × 1000 / 10_000)`** (10%) from victim to attacker, **unless** victim is guarded (`block.timestamp < warbowGuardUntil[victim]`), then **`floor(victimBP × 100 / 10_000)`** (1%).
-- **2× rule:** requires `victimBP >= 2 × attackerBP` (both at time of call, after any prior logic in the tx).
+- **BP bracket (steal ranking):** requires **`2 × attackerBP ≤ victimBP ≤ 10 × attackerBP`** (both at time of call, after CL8Y pulls in the tx). Lower bound failure: **`TimeCurve: steal 2x rule`**; upper bound: **`TimeCurve: steal 10x cap`** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
 - **Per-victim daily cap:** **`stealsReceivedOnDay[victim][dayId]`** with `dayId = block.timestamp / 86400` (**UTC day boundary**, Ethereum timestamp). Max **3** normal steals per victim per day; **4th+** in the same UTC day requires **`payBypassBurn == true`** and an extra burn of **50e18** CL8Y (`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`).
 - Each successful steal sets **revenge** pointers: victim may **`warbowRevenge(stealer)`** within **24 hours** (single pending stealer; overwritten if victim is stolen again).
 

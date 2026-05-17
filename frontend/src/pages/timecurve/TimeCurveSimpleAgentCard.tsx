@@ -272,7 +272,7 @@ while True:
     h = exec_timecurve_buy(tc, TIMECURVE, acct, w3, me, max_wad)
     print("last-buy sent", h); time.sleep(POLL)`;
 
-const PY_WARBOW = `# WarBow ladder — loop: prefer revenge vs BP #1 ("head") when a window is open; else steal head if 2× rule passes.
+const PY_WARBOW = `# WarBow ladder — loop: prefer revenge vs BP #1 ("head") when a window is open; else steal head if 2×–10× BP band passes.
 # Head: INDEXER_URL + /v1/timecurve/warbow/leaderboard?limit=1 (live) else warbowLadderPodium().
 # CL8Y approve to TimeCurve for each burn (revenge 1e18 / steal 1e18 + optional 50e18 bypass). buyFeeRoutingEnabled must be on for WarBow writes.
 # Daily steal caps: WARBOW_STEAL_BYPASS=true if needed.

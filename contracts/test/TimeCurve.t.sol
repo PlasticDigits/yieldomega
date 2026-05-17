@@ -906,7 +906,7 @@ contract TimeCurveTest is Test {
         }
     }
 
-    /// @dev GitLab #135 — fuzz cardinality **≥7** stealers; victim BP scaled so **`vbp ≥ 2 × abp`** holds through the sequence.
+    /// @dev GitLab #135 — fuzz cardinality **≥7** stealers; victim BP scaled so each attempted steal satisfies the onchain **2×–10×** band (`vm.assume` skips degenerate draws — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
     function testFuzz_warbow_revenge_distinct_stealer_slots_overlap(uint8 nStealersU8, uint256 entropy) public {
         uint256 n = uint256(nStealersU8);
         vm.assume(n >= 7 && n <= 14);
@@ -914,7 +914,7 @@ contract TimeCurveTest is Test {
         address victimV = address(uint160(uint256(keccak256(abi.encode("victim135fuzz", entropy)))));
         tc.startSaleAt(block.timestamp);
 
-        uint256 victimBuys = n <= 11 ? uint256(10) : uint256(18);
+        uint256 victimBuys = 6;
         _boostVictimBpForStealManyBuys(tc, victimV, victimBuys);
 
         address[] memory stealers = new address[](n);
@@ -931,12 +931,11 @@ contract TimeCurveTest is Test {
             bool bypass = i >= 3;
             uint256 extra = bypass ? tc.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() : 0;
             _fundAndApprove(s, 200e18 + tc.WARBOW_STEAL_BURN_WAD() + extra);
+            uint256 vbpBefore = tc.battlePoints(victimV);
+            uint256 abpBefore = tc.battlePoints(s);
+            vm.assume(vbpBefore >= 2 * abpBefore && vbpBefore <= 10 * abpBefore);
             vm.prank(s);
             tc.warbowSteal(victimV, bypass);
-
-            uint256 vbp = tc.battlePoints(victimV);
-            uint256 abp = tc.battlePoints(s);
-            assertGe(vbp, 2 * abp, "2x rule holds mid-sequence");
 
             assertGt(tc.warbowPendingRevengeExpiryExclusive(victimV, s), 0);
             for (uint256 j; j < i; ++j) {
@@ -1272,6 +1271,26 @@ contract TimeCurveTest is Test {
         vm.prank(carol);
         vm.expectRevert("TimeCurve: steal 2x rule");
         tc.warbowSteal(bob, false);
+    }
+
+    /// @dev GitLab #211 — victim BP above **10×** attacker BP reverts after the lower-bound `require` passes.
+    function test_warbow_steal_revert_10x_cap() public {
+        tc.startSaleAt(block.timestamp);
+
+        address victimV = makeAddr("v211high");
+        address stealer = makeAddr("s211low");
+
+        _fundAndApprove(stealer, 500e18);
+        vm.prank(stealer);
+        tc.buy(1e18);
+
+        _boostVictimBpForStealManyBuys(tc, victimV, 12);
+        assertGt(tc.battlePoints(victimV), 10 * tc.battlePoints(stealer), "setup: victim must exceed 10x attacker BP");
+
+        _fundAndApprove(stealer, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealer);
+        vm.expectRevert("TimeCurve: steal 10x cap");
+        tc.warbowSteal(victimV, false);
     }
 
     /// @dev GitLab #134 — zero-BP attackers cannot satisfy **`abp > 0`** arm of the 2× rule.

@@ -28,23 +28,25 @@ from timecurve_sim.model import canonical_timecurve_params
 
 
 class TestWarBowWorld(unittest.TestCase):
-    def test_two_x_rule_blocks_steal(self) -> None:
+    def test_steal_bp_band_blocks_steal(self) -> None:
         w = WarBowWorld(3)
         w.bp[0] = 100
         w.bp[1] = 150  # 150 < 2 * 100
         self.assertFalse(w.can_steal(0, 1, 0.0))
         w.bp[1] = 200
         self.assertTrue(w.can_steal(0, 1, 0.0))
+        w.bp[1] = 2500  # > 10 * 100
+        self.assertFalse(w.can_steal(0, 1, 0.0))
 
     def test_steal_drain_matches_bps(self) -> None:
         w = WarBowWorld(2)
         w.bp[0] = 50
-        w.bp[1] = 2000
-        take = warbow_steal_drain_bp(2000, guarded=False)
-        self.assertEqual(take, (2000 * WARBOW_STEAL_DRAIN_BPS) // 10_000)
+        w.bp[1] = 500
+        take = warbow_steal_drain_bp(500, guarded=False)
+        self.assertEqual(take, (500 * WARBOW_STEAL_DRAIN_BPS) // 10_000)
         ok = w.try_steal(0, 1, 1.0)
         self.assertTrue(ok)
-        self.assertEqual(w.bp[1], 2000 - take)
+        self.assertEqual(w.bp[1], 500 - take)
         self.assertEqual(w.bp[0], 50 + take)
 
     def test_guard_reduces_drain(self) -> None:
@@ -68,7 +70,7 @@ class TestWarBowWorld(unittest.TestCase):
     def test_revenge_moves_bp_from_stealer(self) -> None:
         w = WarBowWorld(2)
         w.bp[0] = 100
-        w.bp[1] = 5000
+        w.bp[1] = 800
         w.try_steal(0, 1, 100.0, pay_bypass_if_needed=True)
         sbp_before = w.bp[0]
         take_rev = warbow_revenge_drain_bp(sbp_before)
@@ -76,15 +78,18 @@ class TestWarBowWorld(unittest.TestCase):
         self.assertEqual(w.bp[0], max(0, sbp_before - take_rev))
 
     def test_utc_rollover_fourth_steal_without_bypass(self) -> None:
-        w = WarBowWorld(2)
-        w.bp[0] = 100
-        w.bp[1] = 10_000
+        """UTC-day counters reset at the day boundary; a fresh victim stays inside the 2×–10× band."""
+        w = WarBowWorld(3)
+        w.bp[0] = 1000
+        w.bp[1] = 5000
+        w.bp[2] = 8000
         t0 = float(SECONDS_PER_DAY) - 1.0
         for _ in range(3):
             self.assertTrue(w.try_steal(0, 1, t0, pay_bypass_if_needed=False))
         self.assertFalse(w.try_steal(0, 1, t0, pay_bypass_if_needed=False))
         t1 = float(SECONDS_PER_DAY)
-        self.assertTrue(w.try_steal(0, 1, t1, pay_bypass_if_needed=False))
+        self.assertTrue(w.can_steal(0, 2, t1))
+        self.assertTrue(w.try_steal(0, 2, t1, pay_bypass_if_needed=False))
 
     def test_flag_interrupt_after_silence_applies_penalty(self) -> None:
         w = WarBowWorld(3)

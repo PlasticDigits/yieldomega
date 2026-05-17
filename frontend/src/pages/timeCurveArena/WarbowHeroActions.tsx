@@ -31,6 +31,8 @@ export type WarbowStealHeroRow = {
   victimGuardedActive?: boolean;
   /** Discovery-only row: victim BP is below 2× yours; STEAL stays disabled in the hero list. */
   bpBelowStealThreshold?: boolean;
+  /** Discovery-only row: victim BP is above 10× yours (outside onchain steal band). */
+  bpAboveStealBand?: boolean;
 };
 
 type Props = {
@@ -204,7 +206,7 @@ export function WarbowHeroActions({
             <div className="warbow-hero-card__head">
               <h3>Steal</h3>
             </div>
-            <p className="muted">Steal 10% of BP from players with 2x your BP!</p>
+            <p className="muted">Steal 10% of BP from players in the 2×–10× Battle Points band versus you!</p>
             <p className="muted">You can only steal 1% from guarded players</p>
           </div>
           {attackerAtDailyStealCap && (
@@ -233,19 +235,19 @@ export function WarbowHeroActions({
                   victimStealsReceivedToday,
                   maxStealsPerDay,
                   bpBelowStealThreshold = false,
+                  bpAboveStealBand = false,
                 }) => {
                 const victimKey = candidate.address.toLowerCase();
                 const rowBypassChecked = stealBypassByVictim[victimKey] ?? false;
                 const stealCapBlocked =
                   preflight.tone === "warning" && preflight.title === "Daily steal limit";
+                const isProspect = bpBelowStealThreshold || bpAboveStealBand;
                 return (
                   <div
                     key={`${candidate.source}-${candidate.address}`}
                     className="warbow-hero-candidate-row"
                     role="listitem"
-                    data-testid={
-                      bpBelowStealThreshold ? "warbow-hero-steal-prospect" : "warbow-hero-steal-candidate"
-                    }
+                    data-testid={isProspect ? "warbow-hero-steal-prospect" : "warbow-hero-steal-candidate"}
                   >
                     <div className="warbow-hero-candidate-row__top">
                       <div className="warbow-hero-candidate-row__main">
@@ -266,6 +268,23 @@ export function WarbowHeroActions({
                               data-testid="warbow-hero-steal-candidate-bp-too-low"
                             >
                               Too low BP
+                            </span>
+                            <span
+                              className="warbow-hero-candidate-row__guard-steals"
+                              data-testid="warbow-hero-steal-candidate-steals-received"
+                            >
+                              {victimStealsReceivedToday !== undefined
+                                ? `${formatLocaleInteger(victimStealsReceivedToday)}/${formatLocaleInteger(maxStealsPerDay)} steals`
+                                : `—/${formatLocaleInteger(maxStealsPerDay)} steals`}
+                            </span>
+                          </span>
+                        ) : bpAboveStealBand ? (
+                          <span className="warbow-hero-candidate-row__guard-stack">
+                            <span
+                              className="warbow-hero-candidate-row__bp-too-high"
+                              data-testid="warbow-hero-steal-candidate-bp-too-high"
+                            >
+                              Too high BP
                             </span>
                             <span
                               className="warbow-hero-candidate-row__guard-steals"
@@ -300,7 +319,7 @@ export function WarbowHeroActions({
                         ) : null}
                       </div>
                       <div className="warbow-hero-candidate-row__controls">
-                        {!bpBelowStealThreshold && victimAtDailyCap && (
+                        {!isProspect && victimAtDailyCap && (
                           <label className="warbow-hero-candidate-row__bypass">
                             <input
                               type="checkbox"
@@ -314,18 +333,18 @@ export function WarbowHeroActions({
                         <button
                           type="button"
                           className={
-                            bpBelowStealThreshold
+                            isProspect
                               ? "btn-secondary btn-secondary--critical warbow-hero-candidate-row__steal warbow-hero-candidate-row__steal--prospect"
                               : "btn-secondary btn-secondary--critical warbow-hero-candidate-row__steal"
                           }
                           disabled={
-                            bpBelowStealThreshold ||
+                            isProspect ||
                             !canPressWarbow ||
                             preflight.tone === "error" ||
                             stealCapBlocked
                           }
                           onClick={() =>
-                            bpBelowStealThreshold ? undefined : void runWarBowSteal({ victim: candidate.address })
+                            isProspect ? undefined : void runWarBowSteal({ victim: candidate.address })
                           }
                           data-testid={`warbow-hero-steal-submit-${victimKey.slice(2, 10)}`}
                         >
@@ -339,7 +358,8 @@ export function WarbowHeroActions({
             </div>
           ) : (
             <StatusMessage variant="muted">
-              No indexed 2x BP steal target yet. The detailed WarBow section still accepts a manual address.
+              No indexed in-band steal target yet (2×–10× your BP). The detailed WarBow section still accepts a
+              manual address.
             </StatusMessage>
           )}
         </article>
