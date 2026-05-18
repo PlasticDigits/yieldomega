@@ -15,6 +15,10 @@ import {
   timecurvePrizeDistributionsApiPath,
   timecurvePrizePayoutsApiPath,
 } from "./indexerApi";
+import {
+  getIndexerBackoffPollMs,
+  resetIndexerConnectivityForTests,
+} from "./indexerConnectivity";
 
 describe("rabbitDepositsApiPath", () => {
   it("omits user query when undefined", () => {
@@ -181,6 +185,56 @@ describe("fetchIndexerStatus", () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
 
     await expect(fetchIndexerStatus()).resolves.toBeNull();
+  });
+});
+
+describe("HTTP 429 triggers shared indexer backoff", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
+    resetIndexerConnectivityForTests();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+    resetIndexerConnectivityForTests();
+  });
+
+  it("fetchTimecurveBuys bumps backoff immediately", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 429 }));
+    await expect(fetchTimecurveBuys(20, 0)).resolves.toBeNull();
+    expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
+  });
+
+  it("fetchTimecurveChainTimer bumps backoff immediately", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 429 }));
+    await expect(fetchTimecurveChainTimer()).resolves.toBeNull();
+    expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
+  });
+
+  it("fetchIndexerStatus bumps backoff on 429 from /v1/status", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 429 }));
+    await expect(fetchIndexerStatus()).resolves.toBeNull();
+    expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
+  });
+
+  it("fetchIndexerStatus bumps backoff on 429 from fees-distributed fallback", async () => {
+    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
+      const u = String(input);
+      if (u.includes("/v1/status")) {
+        return Promise.resolve(new Response("", { status: 404 }));
+      }
+      if (u.includes("/v1/fee-router/fees-distributed")) {
+        return Promise.resolve(new Response("", { status: 429 }));
+      }
+      return Promise.resolve(new Response("", { status: 500 }));
+    });
+
+    await expect(fetchIndexerStatus()).resolves.toBeNull();
+    expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 });
 

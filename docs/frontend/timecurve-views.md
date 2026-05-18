@@ -150,7 +150,7 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 **Reachability + backoff**
 
 - **`reportIndexerFetchAttempt(ok)`** (in [`indexerConnectivity.ts`](../../frontend/src/lib/indexerConnectivity.ts)) aggregates outcomes from **`IndexerConnectivityProvider`** (`fetchIndexerStatus`), **`useTimecurveHeroTimer`** (`/v1/timecurve/chain-timer`), **`fetchTimecurveBuys`** on Simple and Arena, and any future poll that opts in. Failures increment the streak **at most once per wall-clock second** so parallel pollers do not triple-count the same outage.
-- After **three** such seconds with failures, **`isOffline`** becomes true: **`IndexerStatusBar`** shows **Indexer offline · retrying** (error-styled pill). Poll intervals back off **30s → 60s → 120s** (per fast baseline: 1s hero refresh, 3s status, 5s Simple buys) until the next **`true`** report resets the streak.
+- After **three** such seconds with failures, **`isOffline`** becomes true: **`IndexerStatusBar`** shows **Indexer offline · retrying** (error-styled pill). Poll intervals back off **5s → 15s → 30s** (per fast baseline: 1s hero refresh, 3s status, 5s Simple buys) until the next **`true`** report resets the streak.
 - **`getJson`** / **`fetchTimecurveChainTimer`** swallow network errors and return **`null`** so pollers get a clean **`false`** outcome without unhandled rejections.
 - **Malformed JSON on HTTP 200:** both helpers **`await res.json()`** inside **`try`** so parse failures join the same **`null`** path as unreachable hosts — **`reportIndexerFetchAttempt(false)`** runs for buys / hero timer polls ([issue #111](https://gitlab.com/PlasticDigits/yieldomega/-/issues/111)).
 

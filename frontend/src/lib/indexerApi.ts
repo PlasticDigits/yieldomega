@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { indexerBaseUrl } from "./addresses";
+import { reportIndexerRateLimited } from "./indexerConnectivity";
 
 /** Builds `/v1/rabbit/deposits` query path; encodes `user` for safe query embedding. */
 export function rabbitDepositsApiPath(user: string | undefined, limit: number): string {
@@ -107,6 +108,9 @@ async function getJson<T>(path: string): Promise<T | null> {
   try {
     const res = await fetch(`${base}${path}`);
     if (!res.ok) {
+      if (res.status === 429) {
+        reportIndexerRateLimited();
+      }
       warnIndexerHttpOnce(res.status, path);
       return null;
     }
@@ -153,6 +157,9 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
   try {
     const res = await fetch(`${base}/v1/timecurve/chain-timer`);
     if (!res.ok) {
+      if (res.status === 429) {
+        reportIndexerRateLimited();
+      }
       return null;
     }
     return (await res.json()) as TimecurveChainTimer;
@@ -332,6 +339,9 @@ export async function fetchIndexerStatus() {
     return null;
   }
   if (!res.ok) {
+    if (res.status === 429) {
+      reportIndexerRateLimited();
+    }
     return null;
   }
   const ver = (res.headers.get(INDEXER_SCHEMA_HEADER) ?? "").trim() || "?";
