@@ -27,7 +27,9 @@ import {
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { serializeContractRead, type SerializableContractRead } from "@/lib/serializeContractRead";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import type { ContractReadRow } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 
@@ -92,7 +94,7 @@ export function useTimecurveProtocolRawAccordion() {
     contracts: tc ? [...coreTcContracts(tc)] : [],
     query: {
       enabled: Boolean(tc),
-      refetchInterval: 1000,
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });
@@ -149,7 +151,11 @@ export function useTimecurveProtocolRawAccordion() {
       : [];
   const { data: userSaleDataRaw } = useReadContracts({
     contracts: userSaleContracts as readonly unknown[],
-    query: { enabled: Boolean(tc && address) },
+    query: {
+      enabled: Boolean(tc && address),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -177,7 +183,11 @@ export function useTimecurveProtocolRawAccordion() {
           },
         ]
       : []) as readonly unknown[],
-    query: { enabled: Boolean(tc && linearCharmAddr) },
+    query: {
+      enabled: Boolean(tc && linearCharmAddr),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
   const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
   const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
@@ -187,7 +197,7 @@ export function useTimecurveProtocolRawAccordion() {
   const feeRouterAddr =
     feeRouterR?.status === "success" ? (feeRouterR.result as `0x${string}`) : undefined;
 
-  const { data: sinkReadsRaw } = useReadContracts({
+  const sinkReadsQuery = useReadContracts({
     contracts: (feeRouterAddr
       ? ([0, 1, 2, 3, 4] as const).map((i) => ({
           address: feeRouterAddr,
@@ -196,8 +206,20 @@ export function useTimecurveProtocolRawAccordion() {
           args: [BigInt(i)],
         }))
       : []) as readonly unknown[],
-    query: { enabled: Boolean(feeRouterAddr) },
+    query: {
+      enabled: Boolean(feeRouterAddr),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
+  useRpcQueryHealthForRefetch({
+    isFetched: sinkReadsQuery.isFetched,
+    isFetching: sinkReadsQuery.isFetching,
+    isError: sinkReadsQuery.isError,
+    isSuccess: sinkReadsQuery.isSuccess,
+    error: sinkReadsQuery.error,
+  });
+  const sinkReadsRaw = sinkReadsQuery.data;
   const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
 
   const tokenAddr =
