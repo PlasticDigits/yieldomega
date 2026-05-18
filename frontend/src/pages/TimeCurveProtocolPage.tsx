@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useReadContracts } from "wagmi";
 import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -37,6 +37,7 @@ import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
+import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStickyMulticallRows";
 
 /**
  * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
@@ -108,6 +109,19 @@ type ProtocolStickyChartsPayload = {
 
 export function TimeCurveProtocolPage() {
   const tc = addresses.timeCurve;
+  const tcReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
+  const charmReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
+  const sinksReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
+  const prevCharmPriceAddrRef = useRef<HexAddress | undefined>(undefined);
+  const prevFeeRouterAddrRef = useRef<HexAddress | undefined>(undefined);
+
+  useEffect(() => {
+    if (!tc) {
+      tcReadsStickyRef.current = [];
+      prevCharmPriceAddrRef.current = undefined;
+      prevFeeRouterAddrRef.current = undefined;
+    }
+  }, [tc]);
 
   const reads = useReadContracts({
     contracts: tc
@@ -132,13 +146,26 @@ export function TimeCurveProtocolPage() {
     error: reads.error,
   });
 
-  const reading = (reads.data ?? []) as readonly ContractReadRow[];
+  const readingLive = (reads.data ?? []) as readonly ContractReadRow[];
+  const reading = useMemo(() => {
+    const merged = mergeStickyMulticallRows(readingLive, tcReadsStickyRef.current);
+    tcReadsStickyRef.current = merged;
+    return merged as readonly ContractReadRow[];
+  }, [readingLive]);
   const get = (i: number) => reading[i];
 
   const charmPriceAddr =
     get(18)?.status === "success" ? (get(18)!.result as HexAddress) : undefined;
   const feeRouterAddr =
     get(16)?.status === "success" ? (get(16)!.result as HexAddress) : undefined;
+
+  useEffect(() => {
+    charmReadsStickyRef.current = [];
+  }, [charmPriceAddr]);
+
+  useEffect(() => {
+    sinksReadsStickyRef.current = [];
+  }, [feeRouterAddr]);
 
   const charmPriceReads = useReadContracts({
     contracts: charmPriceAddr
@@ -170,7 +197,12 @@ export function TimeCurveProtocolPage() {
     error: charmPriceReads.error,
   });
 
-  const charmPriceRows = charmPriceReads.data;
+  const charmPriceRowsLive = (charmPriceReads.data ?? []) as readonly ContractReadRow[];
+  const charmPriceRows = useMemo(() => {
+    const merged = mergeStickyMulticallRows(charmPriceRowsLive, charmReadsStickyRef.current);
+    charmReadsStickyRef.current = merged;
+    return merged as readonly ContractReadRow[];
+  }, [charmPriceRowsLive]);
 
   const sinks = useReadContracts({
     contracts: feeRouterAddr
@@ -195,6 +227,13 @@ export function TimeCurveProtocolPage() {
     isSuccess: sinks.isSuccess,
     error: sinks.error,
   });
+
+  const sinksRowsLive = (sinks.data ?? []) as readonly ContractReadRow[];
+  const sinksRows = useMemo(() => {
+    const merged = mergeStickyMulticallRows(sinksRowsLive, sinksReadsStickyRef.current);
+    sinksReadsStickyRef.current = merged;
+    return merged as readonly ContractReadRow[];
+  }, [sinksRowsLive]);
 
   const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
@@ -487,7 +526,7 @@ export function TimeCurveProtocolPage() {
         spotlight
         badgeLabel="contract reads"
         badgeTone="info"
-        lede='Onchain getters via JSON-RPC multicall (~1 s cadence while healthy). After transport errors or HTTP 429 the app backs off (~5 s → ~15 s → ~30 s, same tiers as indexer polling). Live charts reuse the last good inputs so intermittent failures do not blank the graphs.'
+        lede='Onchain getters via JSON-RPC multicall (~1 s cadence while healthy). After transport errors or HTTP 429 the app backs off (~5 s → ~15 s → ~30 s, same tiers as indexer polling). Intermittent per-call multicall failures keep displaying the last successful row so sale state, total raise, live charts, and FeeRouter sinks do not flicker.'
       >
         <div className="timecurve-protocol-raise-card" aria-label="Total raised summary">
           <div className="timer-hero__raise-lines">
@@ -666,7 +705,7 @@ export function TimeCurveProtocolPage() {
         {feeRouterAddr && (
           <ul className="event-list">
             {FEE_SINK_LABELS.map((label, i) => {
-              const row = sinks.data?.[i];
+              const row = sinksRows[i];
               if (row?.status !== "success" || row.result === undefined) {
                 return (
                   <li key={label}>
