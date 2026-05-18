@@ -16,7 +16,7 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
 import { erc20Abi, timeCurveReadAbi } from "@/lib/abis";
-import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
@@ -60,6 +60,32 @@ import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
 /** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
 const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
+
+/**
+ * Last good RPC/indexer inputs for projected-effects chips — avoids pill flicker when
+ * multicall rows briefly go missing between refetches (MegaETH throttling).
+ */
+type SimpleProjectedEffectsLatch = {
+  saleCountdownSec: number | undefined;
+  timerExtensionPreviewSec: number | undefined;
+  charmWadSelected: bigint | undefined;
+  buyCheckoutCharmWeightWad: bigint | undefined;
+  estimatedSpendWei: bigint | undefined;
+  activeDefendedStreak: bigint | undefined;
+  warbowPendingFlagOwner: HexAddress | undefined;
+};
+
+function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
+  return {
+    saleCountdownSec: undefined,
+    timerExtensionPreviewSec: undefined,
+    charmWadSelected: undefined,
+    buyCheckoutCharmWeightWad: undefined,
+    estimatedSpendWei: undefined,
+    activeDefendedStreak: undefined,
+    warbowPendingFlagOwner: undefined,
+  };
+}
 
 const SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS: { value: PayWithAsset; label: string; logo: string }[] = [
   { value: "cl8y", label: "CL8Y", logo: CL8Y_TOKEN_LOGO },
@@ -380,6 +406,9 @@ function TimecurveSimpleAmountPayTokenSelect({
 export function TimeCurveSimplePage() {
   const tc = addresses.timeCurve;
   const session = useTimeCurveSaleSession(tc);
+  const simpleProjectedEffectsLatchRef = useRef<SimpleProjectedEffectsLatch>(
+    emptySimpleProjectedEffectsLatch(),
+  );
   const { mismatch: chainMismatch } = useWalletTargetChainMismatch();
   const prefersReducedMotion = useReducedMotion();
   const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
@@ -404,36 +433,60 @@ export function TimeCurveSimplePage() {
     [session.warbowFlagClaimBp, session.warbowFlagSilenceSec],
   );
 
-  const buyProjectedEffects = useMemo(
-    () =>
-      buildTimeCurveBuyProjectedEffectLines({
-        charmWadSelected: session.charmWadSelected,
-        charmWeightTotalWad: session.buyCheckoutCharmWeightWad,
-        estimatedSpendWei: session.estimatedSpendWei,
-        decimals: session.decimals,
-        secondsRemaining: session.saleCountdownSec,
-        timerExtensionPreview: session.timerExtensionPreviewSec,
-        activeDefendedStreak: session.activeDefendedStreak,
-        plantWarBowFlag: session.plantWarBowFlag,
-        flagOwnerAddr: session.warbowPendingFlagOwner,
-        flagPlantAtSec: session.warbowPendingFlagPlantAt,
-        walletAddress: session.walletAddress,
-        formatRivalWallet: (addr) => shortAddress(addr),
-      }),
-    [
-      session.activeDefendedStreak,
-      session.buyCheckoutCharmWeightWad,
-      session.charmWadSelected,
-      session.decimals,
-      session.estimatedSpendWei,
-      session.plantWarBowFlag,
-      session.saleCountdownSec,
-      session.timerExtensionPreviewSec,
-      session.walletAddress,
-      session.warbowPendingFlagOwner,
-      session.warbowPendingFlagPlantAt,
-    ],
-  );
+  useEffect(() => {
+    if (session.phase !== "saleActive" || !session.walletConnected) {
+      simpleProjectedEffectsLatchRef.current = emptySimpleProjectedEffectsLatch();
+      return;
+    }
+    const c = simpleProjectedEffectsLatchRef.current;
+    if (session.saleCountdownSec !== undefined) c.saleCountdownSec = session.saleCountdownSec;
+    if (session.timerExtensionPreviewSec !== undefined) c.timerExtensionPreviewSec = session.timerExtensionPreviewSec;
+    if (session.charmWadSelected !== undefined) c.charmWadSelected = session.charmWadSelected;
+    if (session.buyCheckoutCharmWeightWad !== undefined) c.buyCheckoutCharmWeightWad = session.buyCheckoutCharmWeightWad;
+    if (session.estimatedSpendWei !== undefined) c.estimatedSpendWei = session.estimatedSpendWei;
+    if (session.activeDefendedStreak !== undefined) c.activeDefendedStreak = session.activeDefendedStreak;
+    if (session.warbowPendingFlagOwner !== undefined) c.warbowPendingFlagOwner = session.warbowPendingFlagOwner;
+  }, [
+    session.activeDefendedStreak,
+    session.buyCheckoutCharmWeightWad,
+    session.charmWadSelected,
+    session.estimatedSpendWei,
+    session.phase,
+    session.saleCountdownSec,
+    session.timerExtensionPreviewSec,
+    session.walletConnected,
+    session.warbowPendingFlagOwner,
+  ]);
+
+  const buyProjectedEffects = useMemo(() => {
+    const latch = simpleProjectedEffectsLatchRef.current;
+    return buildTimeCurveBuyProjectedEffectLines({
+      charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
+      charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
+      estimatedSpendWei: session.estimatedSpendWei ?? latch.estimatedSpendWei,
+      decimals: session.decimals,
+      secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
+      timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
+      activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
+      plantWarBowFlag: session.plantWarBowFlag,
+      flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
+      flagPlantAtSec: session.warbowPendingFlagPlantAt,
+      walletAddress: session.walletAddress,
+      formatRivalWallet: (addr) => shortAddress(addr),
+    });
+  }, [
+    session.activeDefendedStreak,
+    session.buyCheckoutCharmWeightWad,
+    session.charmWadSelected,
+    session.decimals,
+    session.estimatedSpendWei,
+    session.plantWarBowFlag,
+    session.saleCountdownSec,
+    session.timerExtensionPreviewSec,
+    session.walletAddress,
+    session.warbowPendingFlagOwner,
+    session.warbowPendingFlagPlantAt,
+  ]);
 
   const podiumReads = usePodiumReads(tc);
   const { data: podiumAcceptedAsset } = useReadContract({
@@ -779,9 +832,9 @@ export function TimeCurveSimplePage() {
   const buyButtonMotion =
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
 
+  /** Stay mounted while connected + in-range phase; `charmWeightWad` can be briefly undefined during RPC refetch. */
   const stakePanelVisible =
     session.walletConnected &&
-    session.charmWeightWad !== undefined &&
     (session.phase === "saleActive" ||
       session.phase === "saleEnded" ||
       session.phase === "saleExpiredAwaitingEnd");
