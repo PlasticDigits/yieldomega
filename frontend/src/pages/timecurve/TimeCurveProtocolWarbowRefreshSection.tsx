@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useState } from "react";
-import { useAccount, useChainId, useReadContracts, useWriteContract } from "wagmi";
+import { useEffect, useState } from "react";
+import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { getAddress, isAddress, type Hex, zeroAddress } from "viem";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { timeCurveReadAbi, timeCurveWriteAbi } from "@/lib/abis";
+import { timeCurveWriteAbi } from "@/lib/abis";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import type { HexAddress } from "@/lib/addresses";
 import { fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/warbowRefreshCandidatesPagination";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
+import { PROTOCOL_READING_INDICES, useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 import { wagmiConfig } from "@/wagmi-config";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
@@ -80,31 +81,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
   const [slot2, setSlot2] = useState("");
   const [slot3, setSlot3] = useState("");
 
-  const wbReads = useReadContracts({
-    contracts: [
-      {
-        address: timeCurve,
-        abi: timeCurveReadAbi,
-        functionName: "warbowPodiumFinalized",
-      },
-      {
-        address: timeCurve,
-        abi: timeCurveReadAbi,
-        functionName: "ended",
-      },
-      {
-        address: timeCurve,
-        abi: timeCurveReadAbi,
-        functionName: "prizesDistributed",
-      },
-      {
-        address: timeCurve,
-        abi: timeCurveReadAbi,
-        functionName: "owner",
-      },
-    ],
-    query: { enabled: Boolean(timeCurve) },
-  });
+  const { protocolReading } = useTimeCurveProtocolData();
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
@@ -113,8 +90,6 @@ export function TimeCurveProtocolWarbowRefreshSection({
       setTxErr(null);
     }
   }, [chainId]);
-
-  const refetchWarbowReads = useCallback(() => wbReads.refetch(), [wbReads]);
 
   const loadFromIndexer = async () => {
     setLoadErr(null);
@@ -192,19 +167,27 @@ export function TimeCurveProtocolWarbowRefreshSection({
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
       void refetchParentReads();
-      void refetchWarbowReads();
     } catch (e) {
       setTxErr(friendlyRevertFromUnknown(e));
     }
   };
 
+  const IX = PROTOCOL_READING_INDICES;
+  const warbowPodiumFinalizedRow = protocolReading[IX.warbowPodiumFinalized];
+  const endedRow = protocolReading[2];
+  const prizesDistributedRow = protocolReading[21];
+  const ownerRow = protocolReading[IX.owner];
+
   const warbowPodiumFinalized =
-    wbReads.data?.[0]?.status === "success" ? (wbReads.data[0]!.result as boolean) : undefined;
-  const onchainEnded = wbReads.data?.[1]?.status === "success" ? (wbReads.data[1]!.result as boolean) : undefined;
+    warbowPodiumFinalizedRow?.status === "success"
+      ? (warbowPodiumFinalizedRow.result as boolean)
+      : undefined;
+  const onchainEnded =
+    endedRow?.status === "success" ? (endedRow.result as boolean) : undefined;
   const prizesDistributed =
-    wbReads.data?.[2]?.status === "success" ? (wbReads.data[2]!.result as boolean) : undefined;
+    prizesDistributedRow?.status === "success" ? (prizesDistributedRow.result as boolean) : undefined;
   const tcOwner =
-    wbReads.data?.[3]?.status === "success" ? (wbReads.data[3]!.result as `0x${string}`) : undefined;
+    ownerRow?.status === "success" ? (ownerRow.result as `0x${string}`) : undefined;
   const isOwner =
     address && tcOwner && address.toLowerCase() === tcOwner.toLowerCase();
 

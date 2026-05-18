@@ -5,6 +5,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 import { RootLayout } from "@/layout/RootLayout";
 import { LaunchCountdownPage } from "@/pages/LaunchCountdownPage";
+import { TimeCurveProtocolDataProvider } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 import { launchTimestampSec, useLaunchCountdown } from "@/lib/launchCountdown";
 
 function lazyPage(
@@ -66,7 +67,11 @@ const TIMECURVE_ROUTES: Surface[] = [
   // Explicit arena/protocol before `timecurve/:segment` so `/timecurve` and
   // `/timecurve/arena` never compete ambiguously with a param-only match (fixes dead subnav).
   { path: "timecurve/arena", element: <TimeCurvePage /> },
-  { path: "timecurve/protocol", element: <TimeCurveProtocolPage /> },
+  { path: "timecurve/protocol", element: (
+      <TimeCurveProtocolDataProvider>
+        <TimeCurveProtocolPage />
+      </TimeCurveProtocolDataProvider>
+    ) },
   { path: "timecurve", element: <TimeCurveSimplePage /> },
   { path: "timecurve/:timecurveSegment", element: <TimeCurveBranchPage /> },
 ];

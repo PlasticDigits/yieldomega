@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useReadContracts } from "wagmi";
+import { useEffect, useMemo, useState } from "react";
 import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
@@ -11,11 +10,6 @@ import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
-import {
-  feeRouterReadAbi,
-  linearCharmPriceReadAbi,
-  timeCurveReadAbi,
-} from "@/lib/abis";
 import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
@@ -27,17 +21,14 @@ import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
-import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
 import { useTimecurveProtocolRawAccordion } from "@/pages/timecurve/useTimecurveProtocolRawAccordion";
 import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
-import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
-import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStickyMulticallRows";
+import { useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 
 /**
  * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
@@ -51,10 +42,6 @@ import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStic
  * (same cards as the former Arena rail) alongside these RPC reads. The WarBow
  * refresh helper uses the indexer only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
  */
-type ContractReadRow = {
-  status: "success" | "failure";
-  result?: unknown;
-};
 
 const FEE_SINK_LABELS = [
   "DOUB / CL8Y locked liquidity",
@@ -62,39 +49,6 @@ const FEE_SINK_LABELS = [
   "Podium pool",
   "Team / reserved",
   "Rabbit Treasury",
-] as const;
-
-const TC_READS = [
-  "saleStart",
-  "deadline",
-  "ended",
-  "totalRaised",
-  "totalCharmWeight",
-  "totalTokensForSale",
-  "currentMinBuyAmount",
-  "currentMaxBuyAmount",
-  "currentPricePerCharmWad",
-  "initialMinBuy",
-  "growthRateWad",
-  "timerExtensionSec",
-  "initialTimerSec",
-  "timerCapSec",
-  "buyCooldownSec",
-  "REFERRAL_EACH_BPS",
-  "feeRouter",
-  "podiumPool",
-  "charmPrice",
-  "acceptedAsset",
-  "launchedToken",
-  "prizesDistributed",
-  "warbowPendingFlagOwner",
-  "warbowPendingFlagPlantAt",
-  "WARBOW_FLAG_SILENCE_SEC",
-  "WARBOW_FLAG_CLAIM_BP",
-  "WARBOW_MAX_STEALS_PER_DAY",
-  "WARBOW_STEAL_BURN_WAD",
-  "WARBOW_GUARD_BURN_WAD",
-  "WARBOW_REVENGE_WINDOW_SEC",
 ] as const;
 
 /** Last good TimeCurveLiveCharts inputs — avoids mount/unmount flicker while RPC refetch errors. */
@@ -109,131 +63,18 @@ type ProtocolStickyChartsPayload = {
 
 export function TimeCurveProtocolPage() {
   const tc = addresses.timeCurve;
-  const tcReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const charmReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const sinksReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const prevCharmPriceAddrRef = useRef<HexAddress | undefined>(undefined);
-  const prevFeeRouterAddrRef = useRef<HexAddress | undefined>(undefined);
+  const {
+    protocolReading: reading,
+    charmPriceRows,
+    sinksRows,
+    latchedFeeRouterAddr,
+    heroChainNowSec,
+    refetchProtocolReads,
+  } = useTimeCurveProtocolData();
 
-  useEffect(() => {
-    if (!tc) {
-      tcReadsStickyRef.current = [];
-      prevCharmPriceAddrRef.current = undefined;
-      prevFeeRouterAddrRef.current = undefined;
-    }
-  }, [tc]);
-
-  const reads = useReadContracts({
-    contracts: tc
-      ? TC_READS.map((fn) => ({
-          address: tc,
-          abi: timeCurveReadAbi,
-          functionName: fn,
-        }))
-      : [],
-    query: {
-      enabled: Boolean(tc),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: reads.isFetched,
-    isFetching: reads.isFetching,
-    isError: reads.isError,
-    isSuccess: reads.isSuccess,
-    error: reads.error,
-  });
-
-  const readingLive = (reads.data ?? []) as readonly ContractReadRow[];
-  const reading = useMemo(() => {
-    const merged = mergeStickyMulticallRows(readingLive, tcReadsStickyRef.current);
-    tcReadsStickyRef.current = merged;
-    return merged as readonly ContractReadRow[];
-  }, [readingLive]);
   const get = (i: number) => reading[i];
-
-  const charmPriceAddr =
-    get(18)?.status === "success" ? (get(18)!.result as HexAddress) : undefined;
-  const feeRouterAddr =
-    get(16)?.status === "success" ? (get(16)!.result as HexAddress) : undefined;
-
-  useEffect(() => {
-    charmReadsStickyRef.current = [];
-  }, [charmPriceAddr]);
-
-  useEffect(() => {
-    sinksReadsStickyRef.current = [];
-  }, [feeRouterAddr]);
-
-  const charmPriceReads = useReadContracts({
-    contracts: charmPriceAddr
-      ? [
-          {
-            address: charmPriceAddr,
-            abi: linearCharmPriceReadAbi,
-            functionName: "basePriceWad",
-          },
-          {
-            address: charmPriceAddr,
-            abi: linearCharmPriceReadAbi,
-            functionName: "dailyIncrementWad",
-          },
-        ]
-      : [],
-    query: {
-      enabled: Boolean(charmPriceAddr),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: charmPriceReads.isFetched,
-    isFetching: charmPriceReads.isFetching,
-    isError: charmPriceReads.isError,
-    isSuccess: charmPriceReads.isSuccess,
-    error: charmPriceReads.error,
-  });
-
-  const charmPriceRowsLive = (charmPriceReads.data ?? []) as readonly ContractReadRow[];
-  const charmPriceRows = useMemo(() => {
-    const merged = mergeStickyMulticallRows(charmPriceRowsLive, charmReadsStickyRef.current);
-    charmReadsStickyRef.current = merged;
-    return merged as readonly ContractReadRow[];
-  }, [charmPriceRowsLive]);
-
-  const sinks = useReadContracts({
-    contracts: feeRouterAddr
-      ? FEE_SINK_LABELS.map((_, i) => ({
-          address: feeRouterAddr,
-          abi: feeRouterReadAbi,
-          functionName: "sinks" as const,
-          args: [BigInt(i)] as const,
-        }))
-      : [],
-    query: {
-      enabled: Boolean(feeRouterAddr),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: sinks.isFetched,
-    isFetching: sinks.isFetching,
-    isError: sinks.isError,
-    isSuccess: sinks.isSuccess,
-    error: sinks.error,
-  });
-
-  const sinksRowsLive = (sinks.data ?? []) as readonly ContractReadRow[];
-  const sinksRows = useMemo(() => {
-    const merged = mergeStickyMulticallRows(sinksRowsLive, sinksReadsStickyRef.current);
-    sinksReadsStickyRef.current = merged;
-    return merged as readonly ContractReadRow[];
-  }, [sinksRowsLive]);
+  const feeRouterAddrForUi =
+    get(16)?.status === "success" ? (get(16)!.result as HexAddress) : latchedFeeRouterAddr;
 
   const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
@@ -262,8 +103,6 @@ export function TimeCurveProtocolPage() {
     }
     return Date.now() / 1000;
   }, [blockTimestampSec, blockSyncWallMs, displayTick]);
-
-  const { chainNowSec: heroChainNowSec } = useTimecurveHeroTimer(tc);
 
   const phaseLedgerSecInt = useMemo(
     () =>
@@ -472,9 +311,6 @@ export function TimeCurveProtocolPage() {
     return "—";
   };
 
-  // Mirror the Simple/Arena hero badge so the three TimeCurve views share a
-  // single visual language for sale phase. Prefer the indexer-anchored hero
-  // clock when available so the badge matches Simple/Arena (issue #48).
   const saleStartRow = get(0);
   const deadlineRow = get(1);
   const endedRow = get(2);
@@ -669,7 +505,7 @@ export function TimeCurveProtocolPage() {
         <TimeCurveProtocolWarbowRefreshSection
           timeCurve={tc}
           saleEnded={saleEnded}
-          refetchParentReads={() => reads.refetch()}
+          refetchParentReads={() => void refetchProtocolReads()}
         />
       </PageSection>
 
@@ -699,10 +535,10 @@ export function TimeCurveProtocolPage() {
         badgeTone="info"
         lede="How CL8Y reserves move once a buy lands. Weights come straight from the FeeRouter."
       >
-        {!feeRouterAddr && (
+        {!feeRouterAddrForUi && (
           <StatusMessage variant="muted">Waiting for FeeRouter address…</StatusMessage>
         )}
-        {feeRouterAddr && (
+        {feeRouterAddrForUi && (
           <ul className="event-list">
             {FEE_SINK_LABELS.map((label, i) => {
               const row = sinksRows[i];
