@@ -25,7 +25,13 @@ async fn main() -> Result<()> {
         .init();
 
     let config = config::Config::from_env()?;
-    tracing::info!(chain_id = config.chain_id, rpc = %config.rpc_url, "loaded config");
+    tracing::info!(
+        chain_id = config.chain_id,
+        rpc_endpoints = config.rpc_urls.len(),
+        rpc_primary = config.rpc_urls.first().map(String::as_str),
+        "loaded config"
+    );
+    tracing::debug!(rpc_urls = ?config.rpc_urls, "RPC endpoint order");
 
     let pool = db::connect_and_migrate(&config.database_url).await?;
 
@@ -65,10 +71,10 @@ async fn main() -> Result<()> {
         }
         s.parse::<Address>().ok()
     }) {
-        let rpc = config.rpc_url.clone();
+        let rpc_urls = config.rpc_urls.clone();
         let cache = chain_timer_cache.clone();
         tokio::spawn(async move {
-            chain_timer::run_poll_loop(rpc, addr, cache, rpc_timeout).await;
+            chain_timer::run_poll_loop(&rpc_urls, addr, cache, rpc_timeout).await;
         });
     } else {
         tracing::warn!(

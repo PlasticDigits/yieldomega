@@ -4,7 +4,7 @@
 
 use alloy_primitives::B256;
 use alloy_provider::Provider;
-use eyre::{bail, Result};
+use eyre::{bail, Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
 use sqlx::{PgPool, Row};
@@ -199,17 +199,21 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
 /// Walk backward from `from_height` until RPC hash matches `indexed_blocks`, or limit exceeded.
 pub async fn find_common_ancestor(
     pool: &PgPool,
-    provider: &alloy_provider::ReqwestProvider,
+    providers: &[alloy_provider::ReqwestProvider],
     from_height: u64,
 ) -> Result<u64> {
     use alloy_rpc_types::BlockTransactionsKind;
 
+    use crate::rpc_http::rpc_first_ok;
+
     let mut n = from_height;
     for _ in 0..MAX_REORG_DEPTH {
-        let block = provider
-            .get_block_by_number(n.into(), BlockTransactionsKind::Hashes)
-            .await?
-            .ok_or_else(|| eyre::eyre!("missing block {n} from RPC during reorg"))?;
+        let block = rpc_first_ok(providers, |p| {
+            p.get_block_by_number(n.into(), BlockTransactionsKind::Hashes)
+        })
+        .await
+        .wrap_err("reorg walk RPC")?
+        .ok_or_else(|| eyre::eyre!("missing block {n} from RPC during reorg"))?;
 
         let rpc_b256: B256 = block.header.hash;
 

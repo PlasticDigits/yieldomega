@@ -9,7 +9,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use alloy_primitives::B256;
 use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockTransactionsKind, Filter};
-use eyre::{Result, WrapErr};
+use eyre::Result;
 use sqlx::PgPool;
 
 use crate::config::Config;
@@ -19,7 +19,11 @@ use crate::reorg::{
     find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer_conn,
     upsert_indexed_block_conn, ChainPointer,
 };
-use crate::rpc_http::reqwest_http_provider;
+use crate::rpc_http::{
+    build_reqwest_providers, error_chain_has_transport_rpc, error_chain_transport_http_status,
+    parse_http_rpc_urls, rpc_first_ok, transport_err_http_status,
+};
+use crate::rpc_poll_health::RpcPollHealth;
 
 /// Shared atomics for [`GET /v1/status`](crate::api::router) liveness
 /// ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
@@ -52,7 +56,7 @@ pub(crate) fn next_block_to_process(pointer: &ChainPointer, effective_start: u64
 /// Bootstrap chain pointer to `(effective_start - 1, rpc_hash)` when DB is still at genesis sentinel.
 async fn bootstrap_pointer(
     pool: &PgPool,
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     pointer: &mut ChainPointer,
     effective_start: u64,
 ) -> Result<()> {
@@ -64,10 +68,11 @@ async fn bootstrap_pointer(
     }
 
     let parent = effective_start.saturating_sub(1);
-    let block = provider
-        .get_block_by_number(parent.into(), BlockTransactionsKind::Hashes)
-        .await?
-        .ok_or_else(|| eyre::eyre!("bootstrap: missing block {parent}"))?;
+    let block = rpc_first_ok(providers, |p| {
+        p.get_block_by_number(parent.into(), BlockTransactionsKind::Hashes)
+    })
+    .await?
+    .ok_or_else(|| eyre::eyre!("bootstrap: missing block {parent}"))?;
 
     let hash: B256 = block.header.hash;
     *pointer = ChainPointer {
@@ -118,15 +123,14 @@ pub async fn run(
         }
     }
 
-    let url: reqwest::Url = config
-        .rpc_url
-        .parse()
-        .wrap_err("invalid RPC_URL (expected http/https URL)")?;
-    let provider = reqwest_http_provider(url, config.rpc_request_timeout)?;
+    let parsed = parse_http_rpc_urls(&config.rpc_urls)?;
+    let providers = build_reqwest_providers(&parsed, config.rpc_request_timeout)?;
+
+    let mut rpc_health = RpcPollHealth::new();
 
     let mut pointer = load_chain_pointer(pool).await?;
     let effective = config.effective_start_block();
-    bootstrap_pointer(pool, &provider, &mut pointer, effective).await?;
+    bootstrap_pointer(pool, &providers, &mut pointer, effective).await?;
 
     if let Some(p) = progress {
         p.ingestion_alive.store(true, Ordering::Release);
@@ -136,6 +140,7 @@ pub async fn run(
         addresses = addrs.len(),
         effective_start = effective,
         tip = pointer.block_number,
+        rpc_endpoints = providers.len(),
         "ingestion started"
     );
 
@@ -143,12 +148,27 @@ pub async fn run(
         loop {
             let next = next_block_to_process(&pointer, effective);
 
-            let Some(block) = provider
-                .get_block_by_number(next.into(), BlockTransactionsKind::Hashes)
-                .await?
-            else {
-                tokio::time::sleep(Duration::from_millis(500)).await;
-                continue;
+            let block = match rpc_first_ok(&providers, |p| {
+                p.get_block_by_number(next.into(), BlockTransactionsKind::Hashes)
+            })
+            .await
+            {
+                Ok(Some(b)) => b,
+                Ok(None) => {
+                    rpc_health.report_success();
+                    tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                    continue;
+                }
+                Err(e) => {
+                    if transport_err_http_status(&e) == Some(429) {
+                        rpc_health.report_rate_limited();
+                    } else {
+                        rpc_health.report_failure_debounced();
+                    }
+                    tracing::warn!(?e, "ingestion: JSON-RPC failed on all endpoints");
+                    tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                    continue;
+                }
             };
 
             let parent: B256 = block.header.inner.parent_hash;
@@ -159,11 +179,45 @@ pub async fn run(
                     actual_parent = %parent,
                     "reorg detected"
                 );
-                let anc = find_common_ancestor(pool, &provider, pointer.block_number).await?;
-                let ab = provider
-                    .get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
-                    .await?
-                    .ok_or_else(|| eyre::eyre!("missing ancestor block {anc}"))?;
+                let anc = match find_common_ancestor(pool, &providers, pointer.block_number).await {
+                    Ok(a) => a,
+                    Err(e) => {
+                        if error_chain_has_transport_rpc(&*e) {
+                            if error_chain_transport_http_status(&*e) == Some(429) {
+                                rpc_health.report_rate_limited();
+                            } else {
+                                rpc_health.report_failure_debounced();
+                            }
+                            tracing::warn!(?e, "ingestion: reorg walk RPC failed");
+                            tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                            continue;
+                        }
+                        return Err(e);
+                    }
+                };
+                let ab = match rpc_first_ok(&providers, |p| {
+                    p.get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
+                })
+                .await
+                {
+                    Ok(Some(b)) => b,
+                    Ok(None) => {
+                        rpc_health.report_failure_debounced();
+                        tracing::warn!(ancestor = anc, "ingestion: missing ancestor block after RPC");
+                        tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                        continue;
+                    }
+                    Err(e) => {
+                        if transport_err_http_status(&e) == Some(429) {
+                            rpc_health.report_rate_limited();
+                        } else {
+                            rpc_health.report_failure_debounced();
+                        }
+                        tracing::warn!(?e, "ingestion: ancestor fetch RPC failed");
+                        tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                        continue;
+                    }
+                };
                 let ah: B256 = ab.header.hash;
                 rollback_after(
                     pool,
@@ -182,7 +236,19 @@ pub async fn run(
             }
 
             let filter = Filter::new().select(next).address(addrs.clone());
-            let logs = provider.get_logs(&filter).await?;
+            let logs = match rpc_first_ok(&providers, |p| p.get_logs(&filter)).await {
+                Ok(logs) => logs,
+                Err(e) => {
+                    if transport_err_http_status(&e) == Some(429) {
+                        rpc_health.report_rate_limited();
+                    } else {
+                        rpc_health.report_failure_debounced();
+                    }
+                    tracing::warn!(?e, "ingestion: eth_getLogs failed on all endpoints");
+                    tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                    continue;
+                }
+            };
 
             let block_hash: B256 = block.header.hash;
             let pointer_next = ChainPointer {
@@ -210,6 +276,7 @@ pub async fn run(
                 Ok(()) => {
                     tx.commit().await?;
                     pointer = pointer_next;
+                    rpc_health.report_success();
                     if let Some(p) = progress {
                         p.mark_indexed_now();
                     }
