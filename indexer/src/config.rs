@@ -58,7 +58,9 @@ const FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS: &[&str] =
     &["change_me_before_deploy", ":password@"];
 
 /// Return the first forbidden substring found in `database_url` (lowercased match), if any.
-pub fn first_forbidden_production_database_url_substring(database_url: &str) -> Option<&'static str> {
+pub fn first_forbidden_production_database_url_substring(
+    database_url: &str,
+) -> Option<&'static str> {
     let lowered = database_url.to_lowercase();
     FORBIDDEN_PRODUCTION_DATABASE_URL_SUBSTRINGS
         .iter()
@@ -138,8 +140,10 @@ impl AddressRegistry {
 /// When **`ADDRESS_REGISTRY_PATH`** is unset or empty, [`Config::from_env`] loads this file **only
 /// if it exists** and its JSON **`chain_id`** equals **`CHAIN_ID`** from the environment (so local
 /// dev with another `CHAIN_ID` does not silently pick up mainnet addresses).
-const DEFAULT_ADDRESS_REGISTRY_FILE: &str =
-    concat!(env!("CARGO_MANIFEST_DIR"), "/address-registry.megaeth-mainnet.json");
+const DEFAULT_ADDRESS_REGISTRY_FILE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/address-registry.megaeth-mainnet.json"
+);
 
 fn load_address_registry_from_path(path: &PathBuf) -> Result<AddressRegistry> {
     let raw = std::fs::read_to_string(path)
@@ -201,9 +205,9 @@ pub fn validate_address_registry_for_production(
         if s.is_empty() {
             bail!("INDEXER_PRODUCTION: {field} is empty in ADDRESS_REGISTRY");
         }
-        let a: Address = s
-            .parse()
-            .wrap_err_with(|| format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}"))?;
+        let a: Address = s.parse().wrap_err_with(|| {
+            format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}")
+        })?;
         if a == Address::ZERO {
             bail!("INDEXER_PRODUCTION: {field} must not be the zero address");
         }
@@ -232,7 +236,10 @@ pub fn validate_address_registry_for_production(
     // Non-empty garbage in any field must not be silently skipped in production.
     for (field, raw) in [
         ("TimeCurve", reg.contracts.timecurve.as_str()),
-        ("TimeCurveBuyRouter", reg.contracts.timecurve_buy_router.as_str()),
+        (
+            "TimeCurveBuyRouter",
+            reg.contracts.timecurve_buy_router.as_str(),
+        ),
         ("RabbitTreasury", reg.contracts.rabbit_treasury.as_str()),
         ("LeprechaunNFT", reg.contracts.leprechaun_nft.as_str()),
         ("FeeRouter", reg.contracts.fee_router.as_str()),
@@ -243,9 +250,9 @@ pub fn validate_address_registry_for_production(
         if s.is_empty() {
             continue;
         }
-        let _: Address = s
-            .parse()
-            .wrap_err_with(|| format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}"))?;
+        let _: Address = s.parse().wrap_err_with(|| {
+            format!("INDEXER_PRODUCTION: {field} is not a valid address: {s:?}")
+        })?;
     }
 
     if !ingestion_enabled {

@@ -299,11 +299,7 @@ fn podium_row_pad_top3(pairs: Vec<(String, String)>) -> PodiumRpcRow {
     PodiumRpcRow { winners, values }
 }
 
-async fn fetch_two_col_top3(
-    pool: &PgPool,
-    sql: &str,
-    kind: &'static str,
-) -> PodiumRpcRow {
+async fn fetch_two_col_top3(pool: &PgPool, sql: &str, kind: &'static str) -> PodiumRpcRow {
     let rows = sqlx::query(sql).fetch_all(pool).await;
     let rows = match rows {
         Ok(r) => r,
@@ -897,10 +893,10 @@ async fn timecurve_warbow_leaderboard(
         union = WARBOW_BP_OBSERVATIONS_UNION
     );
     let rows = sqlx::query(&sql)
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
+        .bind(lim)
+        .bind(off)
+        .fetch_all(&state.pool)
+        .await;
 
     let rows = match rows {
         Ok(r) => r,

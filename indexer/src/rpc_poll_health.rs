@@ -74,6 +74,11 @@ impl RpcPollHealth {
         let tier = tier.min(BACKOFF_MS.len() - 1);
         Duration::from_millis(BACKOFF_MS[tier])
     }
+
+    /// Debounced transport failure count (for ingestion / operator logs).
+    pub fn failure_streak(&self) -> u32 {
+        self.failure_streak
+    }
 }
 
 #[cfg(test)]

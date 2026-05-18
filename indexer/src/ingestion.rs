@@ -4,7 +4,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use alloy_primitives::B256;
 use alloy_provider::{Provider, ReqwestProvider};
@@ -24,6 +24,20 @@ use crate::rpc_http::{
     parse_http_rpc_urls, rpc_first_ok, transport_err_http_status,
 };
 use crate::rpc_poll_health::RpcPollHealth;
+
+/// Best-effort `eth_blockNumber` across fallback RPCs — only for stalled-ingestion diagnostics.
+async fn rpc_tip_block_number_for_logs(providers: &[ReqwestProvider]) -> Option<u64> {
+    match rpc_first_ok(providers, |p| p.get_block_number()).await {
+        Ok(n) => n.try_into().ok(),
+        Err(e) => {
+            tracing::debug!(
+                ?e,
+                "ingestion: eth_blockNumber failed during stall diagnosis"
+            );
+            None
+        }
+    }
+}
 
 /// Shared atomics for [`GET /v1/status`](crate::api::router) liveness
 /// ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
@@ -145,6 +159,11 @@ pub async fn run(
     );
 
     let outcome: Result<()> = async {
+        // INFO cadence while `eth_getBlockByNumber(next)` returns null (ahead-of-tip or RPC mismatch).
+        let mut last_null_block_diag_at: Option<Instant> = None;
+        // INFO cadence while indexing normally — avoids silent long runs at default `info` filter.
+        let mut last_progress_info_at = Instant::now();
+
         loop {
             let next = next_block_to_process(&pointer, effective);
 
@@ -156,7 +175,24 @@ pub async fn run(
                 Ok(Some(b)) => b,
                 Ok(None) => {
                     rpc_health.report_success();
-                    tokio::time::sleep(rpc_health.backoff_sleep()).await;
+                    let sleep_for = rpc_health.backoff_sleep();
+                    let now = Instant::now();
+                    let due = last_null_block_diag_at.map_or(true, |t| now.duration_since(t) >= Duration::from_secs(15));
+                    if due {
+                        let rpc_tip = rpc_tip_block_number_for_logs(&providers).await;
+                        let tip_vs_next = rpc_tip.map(|tip| tip as i128 - next as i128);
+                        tracing::info!(
+                            next_block = next,
+                            chain_pointer_tip = pointer.block_number,
+                            rpc_eth_block_number = rpc_tip,
+                            rpc_tip_minus_next = tip_vs_next,
+                            sleep_ms = sleep_for.as_millis(),
+                            rpc_debounced_failure_streak = rpc_health.failure_streak(),
+                            "ingestion: eth_getBlockByNumber returned null — waiting for block (check RPC_URL chain vs indexer DB tip)"
+                        );
+                        last_null_block_diag_at = Some(now);
+                    }
+                    tokio::time::sleep(sleep_for).await;
                     continue;
                 }
                 Err(e) => {
@@ -165,7 +201,12 @@ pub async fn run(
                     } else {
                         rpc_health.report_failure_debounced();
                     }
-                    tracing::warn!(?e, "ingestion: JSON-RPC failed on all endpoints");
+                    tracing::warn!(
+                        next_block = next,
+                        rpc_debounced_failure_streak = rpc_health.failure_streak(),
+                        ?e,
+                        "ingestion: eth_getBlockByNumber failed on all RPC endpoints"
+                    );
                     tokio::time::sleep(rpc_health.backoff_sleep()).await;
                     continue;
                 }
@@ -244,11 +285,23 @@ pub async fn run(
                     } else {
                         rpc_health.report_failure_debounced();
                     }
-                    tracing::warn!(?e, "ingestion: eth_getLogs failed on all endpoints");
+                    tracing::warn!(
+                        next_block = next,
+                        rpc_debounced_failure_streak = rpc_health.failure_streak(),
+                        ?e,
+                        "ingestion: eth_getLogs failed on all RPC endpoints"
+                    );
                     tokio::time::sleep(rpc_health.backoff_sleep()).await;
                     continue;
                 }
             };
+
+            tracing::debug!(
+                block = next,
+                log_events = logs.len(),
+                block_hash = %block.header.hash,
+                "ingestion: fetched block + logs"
+            );
 
             let block_hash: B256 = block.header.hash;
             let pointer_next = ChainPointer {
@@ -277,18 +330,32 @@ pub async fn run(
                     tx.commit().await?;
                     pointer = pointer_next;
                     rpc_health.report_success();
+                    last_null_block_diag_at = None;
                     if let Some(p) = progress {
                         p.mark_indexed_now();
+                    }
+                    tracing::debug!(block = next, "ingestion: committed block");
+                    let now = Instant::now();
+                    if next.is_multiple_of(25)
+                        || now.duration_since(last_progress_info_at) >= Duration::from_secs(45)
+                    {
+                        tracing::info!(
+                            block = next,
+                            chain_pointer_tip = pointer.block_number,
+                            "ingestion: checkpoint — block committed"
+                        );
+                        last_progress_info_at = now;
                     }
                 }
                 Err(e) => {
                     tx.rollback().await.ok();
+                    tracing::warn!(
+                        block = next,
+                        ?e,
+                        "ingestion: block DB transaction failed — rolling back; supervised retry follows"
+                    );
                     return Err(e);
                 }
-            }
-
-            if next.is_multiple_of(100) {
-                tracing::debug!(block = next, "indexed block");
             }
         }
     }

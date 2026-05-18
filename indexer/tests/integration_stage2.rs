@@ -516,18 +516,27 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "{wb:?}"
     );
     assert_eq!(
-        wb["winners"][0].as_str().expect("warbow first winner").to_ascii_lowercase(),
+        wb["winners"][0]
+            .as_str()
+            .expect("warbow first winner")
+            .to_ascii_lowercase(),
         wb_carol.to_ascii_lowercase(),
         "{wb:?}"
     );
     assert_eq!(wb["values"][1].as_str().expect("warbow second bp"), "550");
     assert_eq!(
-        wb["winners"][1].as_str().expect("warbow second winner").to_ascii_lowercase(),
+        wb["winners"][1]
+            .as_str()
+            .expect("warbow second winner")
+            .to_ascii_lowercase(),
         wb_bob.to_ascii_lowercase()
     );
     assert_eq!(wb["values"][2].as_str().expect("warbow third bp"), "500");
     assert_eq!(
-        wb["winners"][2].as_str().expect("warbow third winner").to_ascii_lowercase(),
+        wb["winners"][2]
+            .as_str()
+            .expect("warbow third winner")
+            .to_ascii_lowercase(),
         wb_alice.to_ascii_lowercase()
     );
 
@@ -599,7 +608,9 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         wb_carol.to_ascii_lowercase()
     );
     assert_eq!(
-        wb_final["values"][1].as_str().expect("warbow second bp after revenge"),
+        wb_final["values"][1]
+            .as_str()
+            .expect("warbow second bp after revenge"),
         "920"
     );
 
@@ -1231,7 +1242,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     // Idempotency: same (tx_hash, log_index) again
     let first = &logs[1];
-    persist_decoded_log_autocommit(&pool, first).await.expect("replay");
+    persist_decoded_log_autocommit(&pool, first)
+        .await
+        .expect("replay");
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
     let k_last = logs.last().expect("kumbaya log");
     persist_decoded_log_autocommit(&pool, k_last)
@@ -1252,7 +1265,9 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         contract: CONTRACT,
         event: DecodedEvent::Unknown { topic0: B256::ZERO },
     };
-    persist_decoded_log_autocommit(&pool, &unknown).await.expect("unknown");
+    persist_decoded_log_autocommit(&pool, &unknown)
+        .await
+        .expect("unknown");
 
     let app = router(AppState {
         pool: pool.clone(),
@@ -1355,8 +1370,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             buyer_best_defended_streak: U256::ZERO,
         },
     );
-    persist_decoded_log_autocommit(&pool, &d5).await.expect("d5");
-    persist_decoded_log_autocommit(&pool, &d20).await.expect("d20");
+    persist_decoded_log_autocommit(&pool, &d5)
+        .await
+        .expect("d5");
+    persist_decoded_log_autocommit(&pool, &d20)
+        .await
+        .expect("d20");
 
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 5).await, 1);
     assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 1);
@@ -1508,12 +1527,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(p_after.block_number, ptr_before_d.block_number);
     assert_eq!(p_after.block_hash, ptr_before_d.block_hash);
     assert_eq!(
-        count_where(
-            &pool,
-            "idx_timecurve_sale_started",
-            GHOST_BLOCK as i64
-        )
-        .await,
+        count_where(&pool, "idx_timecurve_sale_started", GHOST_BLOCK as i64).await,
         0
     );
     let ib = sqlx::query("SELECT 1 FROM indexed_blocks WHERE block_number = $1")
@@ -1609,7 +1623,6 @@ async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash(
     assert_eq!(row.try_get::<i64, _>("c").unwrap(), 2);
 }
 
-
 #[tokio::test]
 async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
     // GitLab #177 — referrer leaderboard `rank` field must be dense-competitive (RANK() over SUM),
@@ -1639,10 +1652,26 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
     //   referrer C: 200 wad  -> rank 2 (tied with B)
     //   referrer D: 100 wad  -> rank 4 (skips 3)
     let seeds: &[(&str, &str, i64)] = &[
-        ("0x000000000000000000000000000000000000aaaa", "0x0000000000000000000000000000000000000001", 300),
-        ("0x000000000000000000000000000000000000bbbb", "0x0000000000000000000000000000000000000002", 200),
-        ("0x000000000000000000000000000000000000cccc", "0x0000000000000000000000000000000000000003", 200),
-        ("0x000000000000000000000000000000000000dddd", "0x0000000000000000000000000000000000000004", 100),
+        (
+            "0x000000000000000000000000000000000000aaaa",
+            "0x0000000000000000000000000000000000000001",
+            300,
+        ),
+        (
+            "0x000000000000000000000000000000000000bbbb",
+            "0x0000000000000000000000000000000000000002",
+            200,
+        ),
+        (
+            "0x000000000000000000000000000000000000cccc",
+            "0x0000000000000000000000000000000000000003",
+            200,
+        ),
+        (
+            "0x000000000000000000000000000000000000dddd",
+            "0x0000000000000000000000000000000000000004",
+            100,
+        ),
     ];
 
     for (i, (referrer, buyer, amount)) in seeds.iter().enumerate() {
@@ -1693,16 +1722,28 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
 
     // Rank assertions — dense-competitive (RANK()), 1, 2, 2, 4 with referrer ASC tiebreaker.
     assert_eq!(items[0]["rank"].as_i64(), Some(1));
-    assert_eq!(items[0]["referrer"].as_str(), Some("0x000000000000000000000000000000000000aaaa"));
+    assert_eq!(
+        items[0]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000aaaa")
+    );
 
     assert_eq!(items[1]["rank"].as_i64(), Some(2));
     assert_eq!(items[2]["rank"].as_i64(), Some(2));
     // Referrer ASC tiebreaker between bbbb and cccc: bbbb < cccc.
-    assert_eq!(items[1]["referrer"].as_str(), Some("0x000000000000000000000000000000000000bbbb"));
-    assert_eq!(items[2]["referrer"].as_str(), Some("0x000000000000000000000000000000000000cccc"));
+    assert_eq!(
+        items[1]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000bbbb")
+    );
+    assert_eq!(
+        items[2]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000cccc")
+    );
 
     assert_eq!(items[3]["rank"].as_i64(), Some(4));
-    assert_eq!(items[3]["referrer"].as_str(), Some("0x000000000000000000000000000000000000dddd"));
+    assert_eq!(
+        items[3]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000dddd")
+    );
 
     // Paginated request crossing the tie boundary — limit=2, offset=2 must return ranks [2, 4],
     // not [3, 4] (page ordinal would have given 3, 4). Confirms rank value is leaderboard-rank, not page-position.
@@ -1719,11 +1760,30 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
     assert_eq!(res2.status(), StatusCode::OK);
     let body2 = response_json(res2).await;
     let items2 = body2["items"].as_array().expect("items array page2");
-    assert_eq!(items2.len(), 2, "expected 2 rows on page 2, got {}", items2.len());
-    assert_eq!(items2[0]["rank"].as_i64(), Some(2), "first row of offset=2 should still be rank 2 (tied)");
-    assert_eq!(items2[0]["referrer"].as_str(), Some("0x000000000000000000000000000000000000cccc"));
-    assert_eq!(items2[1]["rank"].as_i64(), Some(4), "second row of offset=2 should be rank 4 (skips 3)");
-    assert_eq!(items2[1]["referrer"].as_str(), Some("0x000000000000000000000000000000000000dddd"));
+    assert_eq!(
+        items2.len(),
+        2,
+        "expected 2 rows on page 2, got {}",
+        items2.len()
+    );
+    assert_eq!(
+        items2[0]["rank"].as_i64(),
+        Some(2),
+        "first row of offset=2 should still be rank 2 (tied)"
+    );
+    assert_eq!(
+        items2[0]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000cccc")
+    );
+    assert_eq!(
+        items2[1]["rank"].as_i64(),
+        Some(4),
+        "second row of offset=2 should be rank 4 (skips 3)"
+    );
+    assert_eq!(
+        items2[1]["referrer"].as_str(),
+        Some("0x000000000000000000000000000000000000dddd")
+    );
 
     for row in items {
         assert_eq!(
@@ -1822,12 +1882,18 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
     let body = response_json(res).await;
     let items = body["items"].as_array().expect("items array");
     assert_eq!(items.len(), 2);
-    assert_eq!(items[0]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e01"));
+    assert_eq!(
+        items[0]["referrer"].as_str(),
+        Some("0x0000000000000000000000000000000000000e01")
+    );
     assert_eq!(items[0]["rank"].as_i64(), Some(1));
     assert_eq!(items[0]["codes_registered_count"].as_str(), Some("1"));
     assert_eq!(items[0]["referred_buy_count"].as_str(), Some("0"));
     assert_eq!(items[0]["total_referrer_charm_wad"].as_str(), Some("0"));
-    assert_eq!(items[1]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e02"));
+    assert_eq!(
+        items[1]["referrer"].as_str(),
+        Some("0x0000000000000000000000000000000000000e02")
+    );
     assert_eq!(items[1]["rank"].as_i64(), Some(1));
 
     sqlx::query(
@@ -1862,7 +1928,9 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
         .unwrap();
     assert_eq!(res2.status(), StatusCode::OK);
     let body2 = response_json(res2).await;
-    let items2 = body2["items"].as_array().expect("items array after applied insert");
+    let items2 = body2["items"]
+        .as_array()
+        .expect("items array after applied insert");
     assert_eq!(items2.len(), 3);
     assert_eq!(
         items2[0]["referrer"].as_str(),
@@ -1871,10 +1939,16 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
     assert_eq!(items2[0]["rank"].as_i64(), Some(1));
     assert_eq!(items2[0]["codes_registered_count"].as_str(), Some("0"));
     assert_eq!(items2[1]["rank"].as_i64(), Some(2));
-    assert_eq!(items2[1]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e01"));
+    assert_eq!(
+        items2[1]["referrer"].as_str(),
+        Some("0x0000000000000000000000000000000000000e01")
+    );
     assert_eq!(items2[1]["codes_registered_count"].as_str(), Some("1"));
     assert_eq!(items2[2]["rank"].as_i64(), Some(2));
-    assert_eq!(items2[2]["referrer"].as_str(), Some("0x0000000000000000000000000000000000000e02"));
+    assert_eq!(
+        items2[2]["referrer"].as_str(),
+        Some("0x0000000000000000000000000000000000000e02")
+    );
     assert_eq!(items2[2]["codes_registered_count"].as_str(), Some("1"));
 
     sqlx::query("DELETE FROM idx_referral_code_registered")
@@ -1890,7 +1964,9 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
 #[tokio::test]
 async fn postgres_referral_registrations_filters_by_owner() {
     let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip registrations owner filter (set YIELDOMEGA_PG_TEST_URL)");
+        eprintln!(
+            "integration_stage2: skip registrations owner filter (set YIELDOMEGA_PG_TEST_URL)"
+        );
         return;
     };
     let pool = connect_and_migrate(&url)

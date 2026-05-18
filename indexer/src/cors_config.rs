@@ -3,8 +3,8 @@
 //! CORS: permissive by default (local / staging). When **`INDEXER_PRODUCTION`** is truthy,
 //! only origins listed in **`CORS_ALLOWED_ORIGINS`** (comma-separated) are reflected.
 
-use eyre::{bail, Result, WrapErr};
 use axum::http::HeaderValue;
+use eyre::{bail, Result, WrapErr};
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 /// `INDEXER_PRODUCTION` truthy values (case-insensitive): `1`, `true`, `yes`.
@@ -20,9 +20,7 @@ pub fn parse_allowed_origins(raw: &str) -> Result<Vec<HeaderValue>> {
     raw.split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(|s| {
-            HeaderValue::from_str(s).wrap_err_with(|| format!("invalid CORS origin {s:?}"))
-        })
+        .map(|s| HeaderValue::from_str(s).wrap_err_with(|| format!("invalid CORS origin {s:?}")))
         .collect()
 }
 
