@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { formatUnits, parseUnits } from "viem";
 import {
   useAccount,
@@ -551,6 +552,54 @@ export function useTimeCurveSaleSession(
     [coreData, ended, saleStartSec, deadlineSec, phaseLedgerSecInt],
   );
 
+  /** Last good multicall rows during sale — avoids hero + CTA flicker when a refetch briefly drops a row. */
+  const checkoutReadLatchRef = useRef<{
+    pricePerCharmWad: bigint | undefined;
+    charmBounds: readonly [bigint, bigint] | undefined;
+    minBuy: bigint | undefined;
+    maxBuy: bigint | undefined;
+  }>({
+    pricePerCharmWad: undefined,
+    charmBounds: undefined,
+    minBuy: undefined,
+    maxBuy: undefined,
+  });
+
+  useEffect(() => {
+    if (phase !== "saleActive") {
+      checkoutReadLatchRef.current = {
+        pricePerCharmWad: undefined,
+        charmBounds: undefined,
+        minBuy: undefined,
+        maxBuy: undefined,
+      };
+      return;
+    }
+    const L = checkoutReadLatchRef.current;
+    if (pricePerCharmR?.status === "success") {
+      L.pricePerCharmWad = pricePerCharmR.result as bigint;
+    }
+    if (charmBoundsR?.status === "success") {
+      L.charmBounds = charmBoundsR.result as readonly [bigint, bigint];
+    }
+    if (minBuyR?.status === "success") {
+      L.minBuy = minBuyR.result as bigint;
+    }
+    if (maxBuyR?.status === "success") {
+      L.maxBuy = maxBuyR.result as bigint;
+    }
+  }, [phase, pricePerCharmR, charmBoundsR, minBuyR, maxBuyR]);
+
+  const pricePerCharmWad = useMemo((): bigint | undefined => {
+    if (pricePerCharmR?.status === "success") {
+      return pricePerCharmR.result as bigint;
+    }
+    if (phase === "saleActive") {
+      return checkoutReadLatchRef.current.pricePerCharmWad;
+    }
+    return undefined;
+  }, [phase, pricePerCharmR]);
+
   const buyEnvelopeParams = useMemo((): EnvelopeCurveParamsWire | null => {
     if (
       saleStartR?.status !== "success" ||
@@ -589,11 +638,16 @@ export function useTimeCurveSaleSession(
   }, [phase, heroTimer, saleStartSec, deadlineSec, heroChainNowSec]);
 
   const cl8ySpendBounds = useMemo(() => {
-    if (minBuyR?.status !== "success" || maxBuyR?.status !== "success") {
+    const L = checkoutReadLatchRef.current;
+    const minBuyVal =
+      minBuyR?.status === "success" ? (minBuyR.result as bigint) : L.minBuy;
+    const maxBuyVal =
+      maxBuyR?.status === "success" ? (maxBuyR.result as bigint) : L.maxBuy;
+    if (minBuyVal === undefined || maxBuyVal === undefined) {
       return null;
     }
-    const minS = minCl8ySpendBroadcastHeadroom(minBuyR.result as bigint);
-    let maxS = maxBuyR.result as bigint;
+    const minS = minCl8ySpendBroadcastHeadroom(minBuyVal);
+    let maxS = maxBuyVal;
     if (payWith === "cl8y" && walletBalanceWei !== undefined) {
       const b = BigInt(walletBalanceWei);
       if (b < maxS) maxS = b;
@@ -621,15 +675,22 @@ export function useTimeCurveSaleSession(
   }, [cl8ySpendBounds, spendWei, decimals]);
 
   const buySizing = useMemo(() => {
-    if (
-      !cl8ySpendBounds ||
-      pricePerCharmR?.status !== "success" ||
-      charmBoundsR?.status !== "success"
-    ) {
+    if (!cl8ySpendBounds) {
       return null;
     }
-    const price = pricePerCharmR.result as bigint;
-    const [minC, maxC] = charmBoundsR.result as readonly [bigint, bigint];
+    const L = checkoutReadLatchRef.current;
+    const price =
+      pricePerCharmR?.status === "success"
+        ? (pricePerCharmR.result as bigint)
+        : L.pricePerCharmWad;
+    const bounds =
+      charmBoundsR?.status === "success"
+        ? (charmBoundsR.result as readonly [bigint, bigint])
+        : L.charmBounds;
+    if (price === undefined || bounds === undefined) {
+      return null;
+    }
+    const [minC, maxC] = bounds;
     const { minS, maxS } = cl8ySpendBounds;
     const sw = clampBigint(spendWei, minS, maxS);
     try {
@@ -738,25 +799,22 @@ export function useTimeCurveSaleSession(
           ? swapRoute.message
           : null;
 
-  const pricePerCharmForQuote =
-    pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
-
   const launchCl8yPerCharmWei = useMemo(
     () =>
-      pricePerCharmForQuote !== undefined
+      pricePerCharmWad !== undefined
         ? participantLaunchValueCl8yWei({
             charmWeightWad: WAD_ONE_CHARM,
-            pricePerCharmWad: pricePerCharmForQuote,
+            pricePerCharmWad,
           })
         : undefined,
-    [pricePerCharmForQuote],
+    [pricePerCharmWad],
   );
 
   const charmPriceQuoteEnabled =
     payWith !== "cl8y" &&
     phase === "saleActive" &&
-    pricePerCharmForQuote !== undefined &&
-    pricePerCharmForQuote > 0n &&
+    pricePerCharmWad !== undefined &&
+    pricePerCharmWad > 0n &&
     swapRoute !== null &&
     swapRoute.ok &&
     kumbayaResolved.ok;
@@ -792,7 +850,7 @@ export function useTimeCurveSaleSession(
       quoteEnabled && swapRoute?.ok
         ? [swapRoute.path, estimatedSpendWei!]
         : undefined,
-    query: { enabled: quoteEnabled, placeholderData: (previous) => previous },
+    query: { enabled: quoteEnabled, placeholderData: keepPreviousData },
   });
 
   const {
@@ -806,9 +864,9 @@ export function useTimeCurveSaleSession(
     functionName: "quoteExactOutput",
     args:
       charmPriceQuoteEnabled && swapRoute?.ok
-        ? [swapRoute.path, pricePerCharmForQuote!]
+        ? [swapRoute.path, pricePerCharmWad!]
         : undefined,
-    query: { enabled: charmPriceQuoteEnabled, placeholderData: (previous) => previous },
+    query: { enabled: charmPriceQuoteEnabled, placeholderData: keepPreviousData },
   });
 
   const {
@@ -824,7 +882,7 @@ export function useTimeCurveSaleSession(
       launchPayQuoteEnabled && swapRoute?.ok
         ? [swapRoute.path, launchCl8yPerCharmWei!]
         : undefined,
-    query: { enabled: launchPayQuoteEnabled, placeholderData: (previous) => previous },
+    query: { enabled: launchPayQuoteEnabled, placeholderData: keepPreviousData },
   });
 
   const quotedPayInWei =
@@ -858,8 +916,8 @@ export function useTimeCurveSaleSession(
       swapRoute?.ok === false ||
       charmPriceQuoteIsError ||
       launchPayQuoteIsError ||
-      (pricePerCharmForQuote !== undefined &&
-        pricePerCharmForQuote > 0n &&
+      (pricePerCharmWad !== undefined &&
+        pricePerCharmWad > 0n &&
         !perCharmPayQuoteLoading &&
         charmPriceQuoteEnabled &&
         quotedPerCharmPayInWei === undefined) ||
@@ -902,7 +960,7 @@ export function useTimeCurveSaleSession(
         : undefined,
     query: {
       enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
-      placeholderData: (previous) => previous,
+      placeholderData: keepPreviousData,
     },
   });
 
@@ -920,7 +978,7 @@ export function useTimeCurveSaleSession(
         : undefined,
     query: {
       enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
-      placeholderData: (previous) => previous,
+      placeholderData: keepPreviousData,
     },
   });
 
@@ -1077,9 +1135,6 @@ export function useTimeCurveSaleSession(
     return (tts * us) / tcw;
   }, [phase, totalCharmWeightR, totalTokensForSaleR, charmWeightR]);
 
-  const pricePerCharmWad =
-    pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : undefined;
-
   // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.275× × per-CHARM
   // price). Recompute reactively against the live `currentPricePerCharmWad` so the
   // value rises through the sale (UX prop: "what your CHARM is worth in CL8Y at
@@ -1156,7 +1211,10 @@ export function useTimeCurveSaleSession(
       setBuyError("Pick a CL8Y amount inside the live min–max band (and your balance).");
       return;
     }
-    if (charmBoundsR?.status !== "success") {
+    if (
+      charmBoundsR?.status !== "success" &&
+      checkoutReadLatchRef.current.charmBounds === undefined
+    ) {
       setBuyError("Waiting for onchain CHARM bounds.");
       return;
     }
