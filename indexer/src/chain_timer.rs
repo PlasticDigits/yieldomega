@@ -2,6 +2,9 @@
 
 //! Polls `saleStart()`, `deadline()`, `timerCapSec()`, head `block.timestamp`, `ended()`, and
 //! `podium(category)` at the same block tag (hero timer + reserve podium reads).
+//!
+//! Uses the same comma-separated RPC fallback and adaptive poll backoff as the frontend
+//! (`rpcConnectivity` / `wagmi` transports).
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -11,9 +14,12 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, BlockTransactionsKind, TransactionRequest};
 use eyre::{Result, WrapErr};
 use tokio::sync::RwLock;
-use tokio::time::{interval, Duration, MissedTickBehavior};
+use tokio::time::Duration;
 
-use crate::rpc_http::reqwest_http_provider;
+use crate::rpc_http::{
+    build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
+};
+use crate::rpc_poll_health::RpcPollHealth;
 
 /// `saleStart()` selector (public getter)
 const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
@@ -124,41 +130,61 @@ fn empty_podium_row() -> PodiumRpcRow {
     }
 }
 
-/// Runs until process exit; updates `cache` every second on success.
+/// Runs until process exit; updates `cache` on success using **1s** healthy cadence and frontend-aligned backoff.
 pub async fn run_poll_loop(
-    rpc_url: String,
+    rpc_urls: &[String],
     timecurve: Address,
     cache: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
     rpc_request_timeout: Duration,
 ) {
-    let url: reqwest::Url = match rpc_url.parse() {
+    let parsed = match parse_http_rpc_urls(rpc_urls) {
         Ok(u) => u,
         Err(e) => {
-            tracing::error!(?e, "chain_timer: invalid RPC_URL");
+            tracing::error!(?e, "chain_timer: invalid RPC_URL list");
             return;
         }
     };
-    let provider = match reqwest_http_provider(url, rpc_request_timeout) {
+    let providers = match build_reqwest_providers(&parsed, rpc_request_timeout) {
         Ok(p) => p,
         Err(e) => {
-            tracing::error!(?e, "chain_timer: failed to build RPC client");
+            tracing::error!(?e, "chain_timer: failed to build RPC clients");
             return;
         }
     };
-    let mut ticker = interval(Duration::from_secs(1));
-    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    let mut health = RpcPollHealth::new();
 
     loop {
-        ticker.tick().await;
-        match poll_once(&provider, timecurve).await {
+        match poll_any_provider(&providers, timecurve).await {
             Ok(snap) => {
+                health.report_success();
                 *cache.write().await = Some(snap);
             }
             Err(e) => {
                 tracing::debug!(?e, "chain_timer: poll failed");
+                if error_chain_transport_http_status(&*e) == Some(429) {
+                    health.report_rate_limited();
+                } else {
+                    health.report_failure_debounced();
+                }
             }
         }
+        tokio::time::sleep(health.backoff_sleep()).await;
     }
+}
+
+async fn poll_any_provider(
+    providers: &[ReqwestProvider],
+    tc: Address,
+) -> Result<TimecurveHeadSnapshot> {
+    let mut last_err = None;
+    for p in providers {
+        match poll_once(p, tc).await {
+            Ok(s) => return Ok(s),
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.expect("chain_timer: non-empty RPC providers"))
 }
 
 async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveHeadSnapshot> {

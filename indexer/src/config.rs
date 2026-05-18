@@ -8,6 +8,35 @@ use eyre::{bail, Context, Result};
 use serde::Deserialize;
 use std::net::SocketAddr;
 
+use crate::rpc_http::split_comma_separated_urls;
+
+/// MegaETH mainnet — aligned with `frontend/src/lib/chain.ts` (`MEGAETH_MAINNET_CHAIN_ID`).
+const MEGAETH_MAINNET_CHAIN_ID: u64 = 4326;
+
+/// Extra public endpoints appended after env URLs for MegaETH mainnet (same order/dedup as frontend).
+const MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS: &[&str] = &[
+    "https://rpc-megaeth-mainnet.globalstake.io",
+    "https://carrot.megaeth.com/rpc",
+];
+
+fn megaeth_mainnet_ordered_rpc_urls(env_urls: &[String]) -> Vec<String> {
+    let mut ordered = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    for raw in env_urls
+        .iter()
+        .map(String::as_str)
+        .chain(MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS.iter().copied())
+    {
+        let u = raw.trim();
+        if u.is_empty() || seen.contains(u) {
+            continue;
+        }
+        seen.insert(u.to_string());
+        ordered.push(u.to_string());
+    }
+    ordered
+}
+
 /// Chains where **`deploy_block` may be zero** in production (local Anvil). All other chains
 /// require a positive **`deploy_block`** so **`effective_start_block`** is not silently wrong.
 ///
@@ -259,7 +288,8 @@ fn registry_require_buy_router_from_env() -> bool {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub database_url: String,
-    pub rpc_url: String,
+    /// Ordered JSON-RPC HTTP endpoints (`RPC_URL` comma-separated; MegaETH mainnet appends public fallbacks).
+    pub rpc_urls: Vec<String>,
     pub chain_id: u64,
     /// From `START_BLOCK` env (default 0).
     pub start_block: u64,
@@ -344,9 +374,18 @@ impl Config {
 
         let rpc_request_timeout = parse_rpc_request_timeout()?;
 
+        let rpc_raw = required("RPC_URL")?;
+        let mut rpc_urls: Vec<String> = split_comma_separated_urls(&rpc_raw);
+        if rpc_urls.is_empty() {
+            bail!("RPC_URL must list at least one http(s) endpoint (comma-separated allowed)");
+        }
+        if chain_id == MEGAETH_MAINNET_CHAIN_ID {
+            rpc_urls = megaeth_mainnet_ordered_rpc_urls(&rpc_urls);
+        }
+
         Ok(Self {
             database_url,
-            rpc_url: required("RPC_URL")?,
+            rpc_urls,
             chain_id,
             start_block,
             listen_addr: std::env::var("LISTEN_ADDR")
