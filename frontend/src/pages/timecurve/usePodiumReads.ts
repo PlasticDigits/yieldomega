@@ -161,6 +161,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     enabled: indexerOn && Boolean(tc),
     staleTime: 0,
     refetchInterval: 1000,
+    placeholderData: (previousData) => previousData,
   });
 
   const contracts = tc
@@ -177,6 +178,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     query: {
       enabled: Boolean(tc) && !indexerOn,
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
 
@@ -205,6 +207,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     query: {
       enabled: Boolean(tc) && warbowBpContracts.length === 3,
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
 
@@ -220,7 +223,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   if (indexerOn) {
     return {
       data: rows,
-      isLoading: indexerQuery.isPending,
+      isLoading: indexerQuery.isLoading,
       isFetching: indexerQuery.isFetching,
       refetch: indexerQuery.refetch,
       source: "indexer" as const,
@@ -229,7 +232,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   return {
     data: rows,
-    isLoading: rpc.isPending,
+    isLoading: rpc.isLoading,
     isFetching: rpc.isFetching,
     refetch: rpc.refetch,
     source: "rpc" as const,

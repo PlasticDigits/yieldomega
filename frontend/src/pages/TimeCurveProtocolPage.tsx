@@ -105,7 +105,11 @@ export function TimeCurveProtocolPage() {
           functionName: fn,
         }))
       : [],
-    query: { enabled: Boolean(tc), refetchInterval: 1500 },
+    query: {
+      enabled: Boolean(tc),
+      refetchInterval: 1500,
+      placeholderData: (previous) => previous,
+    },
   });
 
   const reading = (reads.data ?? []) as readonly ContractReadRow[];

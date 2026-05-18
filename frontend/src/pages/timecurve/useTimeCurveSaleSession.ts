@@ -198,7 +198,7 @@ export type UseTimeCurveSaleSession = {
    * Mirrors `quotedPerCharmPayInWei` but for the launch projection leg.
    */
   quotedLaunchPerCharmPayInWei: bigint | undefined;
-  /** True while the launch per-CHARM quoter read is in flight. */
+  /** True until the first launch per-CHARM quoter value exists; avoids stake-line flicker on refetch. */
   launchPayQuoteLoading: boolean;
   referralRegistryOn: boolean;
   pendingReferralCode: string | null;
@@ -220,18 +220,20 @@ export type UseTimeCurveSaleSession = {
   payTokenDecimals: number;
   /**
    * True while the Kumbaya quoter read is in flight for the current slider
-   * target (`isPending` **or** `isFetching`). Background refetches set
-   * `isFetching` without `isPending`; treating both as loading prevents a
-   * stale quoted amount with an enabled Buy CTA ([issue #56](https://gitlab.com/PlasticDigits/yieldomega/-/issues/56)).
+   * target — keep the Buy CTA disabled until the quote settles (GitLab #56).
+   * For **display**, use {@link swapQuoteDisplayLoading} so backgrounds refetches
+   * do not blank quoted amounts.
    */
   swapQuoteLoading: boolean;
+  /** First-load / no quoter result yet — for amount placeholders without flashing on refetch (GitLab #56). */
+  swapQuoteDisplayLoading: boolean;
   swapQuoteFailed: boolean;
   /**
    * Kumbaya `quoteExactOutput` for **one CHARM** (amount out = `pricePerCharmWad` CL8Y), for the rate board.
    * Undefined while loading, on error, or when pay mode is CL8Y / routing unavailable.
    */
   quotedPerCharmPayInWei: bigint | undefined;
-  /** True while the per-CHARM quoter read is in flight (rate board may show a placeholder). */
+  /** True until the first per-CHARM quoter value exists (rate board); avoids “…” on every background refetch. */
   perCharmPayQuoteLoading: boolean;
   perCharmPayQuoteFailed: boolean;
   /**
@@ -328,6 +330,7 @@ export function useTimeCurveSaleSession(
   const {
     data: coreDataRaw,
     isPending,
+    isLoading: coreReadsLoading,
     isError,
     refetch: refetchCore,
   } = useReadContracts({
@@ -335,6 +338,7 @@ export function useTimeCurveSaleSession(
     query: {
       enabled: Boolean(tc),
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
   const coreData = coreDataRaw as readonly ContractReadRow[] | undefined;
@@ -353,7 +357,11 @@ export function useTimeCurveSaleSession(
     refetch: refetchUser,
   } = useReadContracts({
     contracts: userContracts as readonly unknown[],
-    query: { enabled: Boolean(tc && address), refetchInterval: 1000 },
+    query: {
+      enabled: Boolean(tc && address),
+      refetchInterval: 1000,
+      placeholderData: (previous) => previous,
+    },
   });
   const userData = userDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -784,7 +792,7 @@ export function useTimeCurveSaleSession(
       quoteEnabled && swapRoute?.ok
         ? [swapRoute.path, estimatedSpendWei!]
         : undefined,
-    query: { enabled: quoteEnabled },
+    query: { enabled: quoteEnabled, placeholderData: (previous) => previous },
   });
 
   const {
@@ -800,7 +808,7 @@ export function useTimeCurveSaleSession(
       charmPriceQuoteEnabled && swapRoute?.ok
         ? [swapRoute.path, pricePerCharmForQuote!]
         : undefined,
-    query: { enabled: charmPriceQuoteEnabled },
+    query: { enabled: charmPriceQuoteEnabled, placeholderData: (previous) => previous },
   });
 
   const {
@@ -816,7 +824,7 @@ export function useTimeCurveSaleSession(
       launchPayQuoteEnabled && swapRoute?.ok
         ? [swapRoute.path, launchCl8yPerCharmWei!]
         : undefined,
-    query: { enabled: launchPayQuoteEnabled },
+    query: { enabled: launchPayQuoteEnabled, placeholderData: (previous) => previous },
   });
 
   const quotedPayInWei =
@@ -833,11 +841,15 @@ export function useTimeCurveSaleSession(
       : undefined;
 
   const perCharmPayQuoteLoading =
-    charmPriceQuoteEnabled && (charmPriceQuotePending || charmPriceQuoteFetching);
+    charmPriceQuoteEnabled &&
+    quotedPerCharmPayInWei === undefined &&
+    (charmPriceQuotePending || charmPriceQuoteFetching);
   const perCharmPayQuoteFailed = charmPriceQuoteIsError;
 
   const launchPayQuoteLoading =
-    launchPayQuoteEnabled && (launchPayQuotePending || launchPayQuoteFetching);
+    launchPayQuoteEnabled &&
+    quotedLaunchPerCharmPayInWei === undefined &&
+    (launchPayQuotePending || launchPayQuoteFetching);
 
   const rateBoardKumbayaWarning =
     payWith !== "cl8y" &&
@@ -888,7 +900,10 @@ export function useTimeCurveSaleSession(
       bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
         ? [swapRoute.path, cl8ySpendBounds.minS]
         : undefined,
-    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+    query: {
+      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+      placeholderData: (previous) => previous,
+    },
   });
 
   const {
@@ -903,7 +918,10 @@ export function useTimeCurveSaleSession(
       bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
         ? [swapRoute.path, cl8ySpendBounds.maxS]
         : undefined,
-    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+    query: {
+      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+      placeholderData: (previous) => previous,
+    },
   });
 
   const quotedBandMinPayInWei =
@@ -912,6 +930,7 @@ export function useTimeCurveSaleSession(
     bandMaxTuple !== undefined ? (bandMaxTuple as readonly [bigint, ...unknown[]])[0] : undefined;
   const bandBoundaryQuotesLoading =
     bandQuoteEnabled &&
+    (quotedBandMinPayInWei === undefined || quotedBandMaxPayInWei === undefined) &&
     (bandMinPending || bandMinFetching || bandMaxPending || bandMaxFetching);
 
   const { data: nativeEthBal } = useBalance({
@@ -1430,7 +1449,7 @@ export function useTimeCurveSaleSession(
     }
   }, [address, tc, chainId, writeContractAsync, refetchAll, charmRedemptionEnabledR]);
 
-  const ready = Boolean(coreData && coreData.length > 0 && !isPending);
+  const ready = Boolean(coreData && coreData.length > 0 && !coreReadsLoading);
 
   return {
     ready,
@@ -1502,7 +1521,14 @@ export function useTimeCurveSaleSession(
     kumbayaRoutingBlocker,
     quotedPayInWei,
     payTokenDecimals,
+    /** True while the primary checkout quote is in flight (disables Buy); see GitLab #56. */
     swapQuoteLoading: quoteEnabled && (quotePending || quoteFetching),
+    /**
+     * True only until the first quoter result is available — avoids flashing pay-token placeholders
+     * on every background refetch while keeping {@link swapQuoteLoading} strict for the CTA.
+     */
+    swapQuoteDisplayLoading:
+      quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching),
     swapQuoteFailed: quoteIsError,
     quotedPerCharmPayInWei,
     quotedLaunchPerCharmPayInWei,

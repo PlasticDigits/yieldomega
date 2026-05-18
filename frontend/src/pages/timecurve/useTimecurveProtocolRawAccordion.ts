@@ -93,6 +93,7 @@ export function useTimecurveProtocolRawAccordion() {
     query: {
       enabled: Boolean(tc),
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
   const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
