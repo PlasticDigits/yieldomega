@@ -84,6 +84,21 @@ export type CharmRedemptionItem = {
   token_amount: string;
 };
 
+/** Dedupes repeated HTTP status logs when rate limits spam the same route ([issue #96]). */
+let lastIndexerWarnKey = "";
+let lastIndexerWarnAtMs = 0;
+
+function warnIndexerHttpOnce(status: number, path: string): void {
+  const key = `${status}:${path}`;
+  const now = Date.now();
+  if (key === lastIndexerWarnKey && now - lastIndexerWarnAtMs < 5000) {
+    return;
+  }
+  lastIndexerWarnKey = key;
+  lastIndexerWarnAtMs = now;
+  console.warn("[indexer]", status, path);
+}
+
 async function getJson<T>(path: string): Promise<T | null> {
   const base = indexerBaseUrl();
   if (!base) {
@@ -92,7 +107,7 @@ async function getJson<T>(path: string): Promise<T | null> {
   try {
     const res = await fetch(`${base}${path}`);
     if (!res.ok) {
-      console.warn("[indexer]", res.status, path);
+      warnIndexerHttpOnce(res.status, path);
       return null;
     }
     return (await res.json()) as T;

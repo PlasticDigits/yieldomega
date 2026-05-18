@@ -53,7 +53,11 @@ import {
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
-import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
+import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
+import {
+  buyCooldownWallUntilMsFromNow,
+  chainSecondsAtReceiptBlock,
+} from "@/lib/timeCurveBuyCooldownUx";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
@@ -279,6 +283,10 @@ export function useTimeCurveSaleSession(
   const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
     null,
   );
+  /** Starts on mined buy (before `getBlock` / wagmi `nextBuyAllowedAt` refresh) so the CTA ticks immediately. */
+  const [buyCooldownUxWallUntilMs, setBuyCooldownUxWallUntilMs] = useState<number | null>(null);
+  /** Bumps once per second while `buyCooldownUxWallUntilMs` is set so wall-clock countdown recomputes. */
+  const [buyCooldownUxTick, setBuyCooldownUxTick] = useState(0);
   const [buySubmitBusy, setBuySubmitBusy] = useState(false);
 
   useEffect(() => {
@@ -288,6 +296,7 @@ export function useTimeCurveSaleSession(
   useEffect(() => {
     if (!isConnected || !address) {
       setPreemptiveCooldownUntilChainSec(null);
+      setBuyCooldownUxWallUntilMs(null);
     }
   }, [isConnected, address]);
 
@@ -371,6 +380,7 @@ export function useTimeCurveSaleSession(
     secondsRemaining: saleCountdownSec,
     chainNowSec: heroChainNowSec,
     refresh: refreshHeroTimer,
+    refreshSoft: refreshHeroTimerSoft,
   } = useTimecurveHeroTimer(tc);
 
   useWatchContractEvent({
@@ -381,7 +391,7 @@ export function useTimeCurveSaleSession(
     onLogs: () => {
       void refetchCore();
       void refetchUser();
-      void refreshHeroTimer();
+      refreshHeroTimerSoft();
     },
   });
 
@@ -419,6 +429,13 @@ export function useTimeCurveSaleSession(
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
+
+  /**
+   * Last successful `acceptedAsset()` for **this** `tc`. Core multicall refetches (~1 Hz) occasionally return a
+   * transient **failure** row; without this, `acceptedAsset` disappears, `balanceOf` disables briefly, and the
+   * buy panel flashes `YOUR CL8Y: —` even though that read already uses `placeholderData`.
+   */
+  const acceptedAssetLastGoodRef = useRef<{ tc: HexAddress; asset: HexAddress } | null>(null);
 
   /** Holds last successful RPC values that drive {@link derivePhase} so UX does not blink to loading on flaky multicalls. */
   const phaseCoreLatchRef = useRef<{
@@ -459,6 +476,12 @@ export function useTimeCurveSaleSession(
   }, [tc, saleStartR, deadlineR, endedR]);
 
   useEffect(() => {
+    if (!tc) {
+      acceptedAssetLastGoodRef.current = null;
+    }
+  }, [tc]);
+
+  useEffect(() => {
     if (!tc || !address) {
       userWalletLatchRef.current = {};
       return;
@@ -495,8 +518,16 @@ export function useTimeCurveSaleSession(
     return Number.isFinite(n) && n > 0 ? n : 300;
   }, [buyCooldownSecR]);
 
-  const acceptedAsset =
-    acceptedAssetR?.status === "success" ? (acceptedAssetR.result as HexAddress) : undefined;
+  const acceptedAsset = useMemo(() => {
+    if (!tc) return undefined;
+    if (acceptedAssetR?.status === "success") {
+      const asset = acceptedAssetR.result as HexAddress;
+      acceptedAssetLastGoodRef.current = { tc, asset };
+      return asset;
+    }
+    const L = acceptedAssetLastGoodRef.current;
+    return L?.tc === tc ? L.asset : undefined;
+  }, [tc, acceptedAssetR]);
   const charmPriceAddress =
     charmPriceR?.status === "success" ? (charmPriceR.result as HexAddress) : undefined;
   const launchedToken =
@@ -543,7 +574,11 @@ export function useTimeCurveSaleSession(
     abi: erc20Abi,
     functionName: "balanceOf",
     args: acceptedAsset && address ? [address] : undefined,
-    query: { enabled: Boolean(acceptedAsset && address && isConnected) },
+    query: {
+      enabled: Boolean(acceptedAsset && address && isConnected),
+      // Avoid buy-panel flicker: background refetches otherwise clear `data` briefly (`YOUR CL8Y: —`).
+      placeholderData: keepPreviousData,
+    },
   });
   const walletBalanceWei = walletBalance as bigint | undefined;
 
@@ -1098,7 +1133,10 @@ export function useTimeCurveSaleSession(
 
   const { data: nativeEthBal } = useBalance({
     address: address as `0x${string}` | undefined,
-    query: { enabled: Boolean(isConnected && address && payWith === "eth") },
+    query: {
+      enabled: Boolean(isConnected && address && payWith === "eth"),
+      placeholderData: keepPreviousData,
+    },
   });
 
   const { data: usdmWalletBal } = useReadContract({
@@ -1107,7 +1145,10 @@ export function useTimeCurveSaleSession(
     functionName: "balanceOf",
     args:
       payWith === "usdm" && payTokenInAddr && address ? [address] : undefined,
-    query: { enabled: Boolean(payWith === "usdm" && payTokenInAddr && address && isConnected) },
+    query: {
+      enabled: Boolean(payWith === "usdm" && payTokenInAddr && address && isConnected),
+      placeholderData: keepPreviousData,
+    },
   });
 
   const payWalletBalance = useMemo(() => {
@@ -1196,9 +1237,36 @@ export function useTimeCurveSaleSession(
     return Math.max(0, Math.ceil(preemptiveCooldownUntilChainSec - chainNowForCooldown));
   }, [preemptiveCooldownUntilChainSec, chainNowForCooldown]);
 
+  const buyCooldownUxWallRemainingSec = useMemo(() => {
+    void buyCooldownUxTick;
+    if (buyCooldownUxWallUntilMs === null) return 0;
+    return Math.max(0, Math.ceil((buyCooldownUxWallUntilMs - Date.now()) / 1000));
+  }, [buyCooldownUxWallUntilMs, buyCooldownUxTick]);
+
+  useEffect(() => {
+    if (buyCooldownUxWallUntilMs === null) return undefined;
+    const id = window.setInterval(() => setBuyCooldownUxTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [buyCooldownUxWallUntilMs]);
+
+  useEffect(() => {
+    if (buyCooldownUxWallUntilMs !== null && Date.now() >= buyCooldownUxWallUntilMs) {
+      setBuyCooldownUxWallUntilMs(null);
+    }
+  }, [buyCooldownUxWallUntilMs, buyCooldownUxTick]);
+
   const walletCooldownRemainingSec = useMemo(
-    () => Math.max(walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec),
-    [walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec],
+    () =>
+      Math.max(
+        walletCooldownRemainingFromReads,
+        preemptiveCooldownRemainingSec,
+        buyCooldownUxWallRemainingSec,
+      ),
+    [
+      walletCooldownRemainingFromReads,
+      preemptiveCooldownRemainingSec,
+      buyCooldownUxWallRemainingSec,
+    ],
   );
 
   const timerExtensionPreviewSec = useMemo(() => {
@@ -1396,6 +1464,9 @@ export function useTimeCurveSaleSession(
               codeHash,
               plantWarBowFlag,
               sessionSnapshot: buySessionSnapshot,
+              onBuyMinedBeforeChainTimestamp: () => {
+                setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
+              },
             });
             setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
             if (codeHash) {
@@ -1510,7 +1581,7 @@ export function useTimeCurveSaleSession(
           amount,
           readCl8yTimeCurveUnlimitedApproval(),
         );
-        if (allow < amount) {
+        if (allow < approveAmt) {
           const { hash: approveHash } = await writeContractWithGasBuffer({
             wagmiConfig,
             writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -1542,6 +1613,8 @@ export function useTimeCurveSaleSession(
         guardBuySession();
         playGameSfxCoinHitBuySubmit();
         const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+        assertSuccessfulBuyReceipt(receipt);
+        setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
         const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
         setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
         if (codeHash) {

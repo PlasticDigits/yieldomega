@@ -39,6 +39,9 @@ export function redactSensitiveUrlsInUserMessage(raw: string, opts?: RedactUserV
   return s;
 }
 
+/** OpenZeppelin IERC20Errors `ERC20InsufficientAllowance` selector — surfaced by CL8Y `safeTransferFrom` pulls. */
+export const ERC20_INSUFFICIENT_ALLOWANCE_SELECTOR = "0xfb8f41b2";
+
 /** Map common revert strings to short UI copy (still show raw tail if unknown). */
 export function friendlyRevertMessage(raw: string): string {
   const s = raw.toLowerCase();
@@ -89,6 +92,10 @@ export function friendlyRevertMessage(raw: string): string {
     ["burrow:", "Treasury rule rejected this transaction (see wallet details)."],
     ["user rejected", "Transaction was rejected in the wallet."],
     ["user denied", "Transaction was rejected in the wallet."],
+    [
+      "erc20insufficientallowance",
+      "CL8Y allowance was short at inclusion—the curve charges the live price when the transaction lands. Retry once.",
+    ],
   ];
   for (const [k, v] of map) {
     if (s.includes(k)) {
@@ -135,6 +142,13 @@ export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpt
     raw = String(err);
   }
   raw = redactSensitiveUrlsInUserMessage(raw);
+  const loweredFull = raw.toLowerCase();
+  if (
+    loweredFull.includes(ERC20_INSUFFICIENT_ALLOWANCE_SELECTOR.slice(2).toLowerCase()) ||
+    loweredFull.includes("erc20insufficientallowance")
+  ) {
+    return friendlyRevertMessage("ERC20InsufficientAllowance");
+  }
   if (opts?.buySubmit && looksLikeBareExecutionRevert(raw)) {
     return BARE_BUY_CHARM_SHIFT_HINT;
   }

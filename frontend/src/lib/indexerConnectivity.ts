@@ -18,6 +18,13 @@
 /** @internal */
 export const INDEXER_OFFLINE_FAILURE_STREAK = 3;
 
+/**
+ * Wall-clock gap for coalescing indexer-touching handlers wired from chain-event bursts (Buy / WarBow
+ * logs). Scheduled polls already respect ~1s (or backoff); without this, each log can trigger a full
+ * WarBow leaderboard pagination pass and other HTTP work, overwhelming rate limits ([issue #96]).
+ */
+export const INDEXER_EVENT_COALESCE_MS = 1000;
+
 const BACKOFF_MS = [30_000, 60_000, 120_000] as const;
 
 let failureStreak = 0;

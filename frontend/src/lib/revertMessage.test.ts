@@ -63,6 +63,15 @@ describe("redactSensitiveUrlsInUserMessage", () => {
 });
 
 describe("friendlyRevertFromUnknown", () => {
+  it("maps OZ ERC20InsufficientAllowance error blobs without extra RPC", () => {
+    const err = new Error(
+      `Transaction failed with error: execution reverted: 0xfb8f41b20000000000000000000000001b68bb6789baeba4bd28f53c10b52dbe1ef2bf71000000000000000000000000000000000000000000000000252d08ec796f83f6000000000000000000000000000000000000000000000000252d35aef9a06f49`,
+    );
+    const msg = friendlyRevertFromUnknown(err, { buySubmit: true });
+    expect(msg.toLowerCase()).toContain("cl8y");
+    expect(msg.toLowerCase()).toContain("allowance");
+  });
+
   it("uses buy-submit hint for bare execution reverted when buySubmit is set", () => {
     const err = new Error("Execution reverted for an unknown reason.");
     const msg = friendlyRevertFromUnknown(err, { buySubmit: true });
