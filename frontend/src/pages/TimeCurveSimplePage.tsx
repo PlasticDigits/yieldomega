@@ -15,7 +15,7 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
-import { erc20Abi, timeCurveReadAbi } from "@/lib/abis";
+import { erc20Abi } from "@/lib/abis";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
@@ -56,6 +56,7 @@ import {
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/timecurve/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
 /** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
@@ -489,26 +490,17 @@ export function TimeCurveSimplePage() {
   ]);
 
   const podiumReads = usePodiumReads(tc);
-  const { data: podiumAcceptedAsset } = useReadContract({
-    address: tc,
-    abi: timeCurveReadAbi,
-    functionName: "acceptedAsset",
-    query: { enabled: Boolean(tc) },
-  });
-  const { data: podiumPoolAddress } = useReadContract({
-    address: tc,
-    abi: timeCurveReadAbi,
-    functionName: "podiumPool",
-    query: { enabled: Boolean(tc) },
-  });
   const { data: podiumPoolBalance } = useReadContract({
-    address: podiumAcceptedAsset as `0x${string}` | undefined,
+    address: session.acceptedAsset,
     abi: erc20Abi,
     functionName: "balanceOf",
-    args: podiumPoolAddress ? [podiumPoolAddress as `0x${string}`] : undefined,
+    args:
+      session.acceptedAsset && session.podiumPoolAddress
+        ? [session.podiumPoolAddress]
+        : undefined,
     query: {
-      enabled: Boolean(podiumAcceptedAsset && podiumPoolAddress),
-      refetchInterval: 1000,
+      enabled: Boolean(session.acceptedAsset && session.podiumPoolAddress),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });

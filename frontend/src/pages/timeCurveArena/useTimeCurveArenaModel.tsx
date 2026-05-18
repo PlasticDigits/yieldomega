@@ -16,6 +16,7 @@ import {
 import { AddressInline } from "@/components/AddressInline";
 import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
@@ -502,90 +503,99 @@ export function useTimeCurveArenaModel() {
     };
   }, [address]);
 
-  const coreTcContracts = tc
-    ? [
-        { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
-      ]
-    : [];
+  const ARENA_CORE_TC_MULTICALL_LEN = 27;
+
+  const mergedArenaTcContracts = useMemo(() => {
+    if (!tc) {
+      return [] as const;
+    }
+    const core = [
+      { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
+    ];
+    const warbow = [
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_DAY" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowPodiumFinalized" },
+    ];
+    return [...core, ...warbow] as const;
+  }, [tc]);
+
   const {
-    data: coreTcDataRaw,
-    isPending: coreTcPending,
-    isError: coreTcError,
-    refetch: refetchCoreTc,
+    data: mergedArenaTcRaw,
+    isPending: mergedArenaTcPending,
+    isError: mergedArenaTcError,
+    refetch: refetchMergedArenaTc,
   } = useReadContracts({
-    contracts: coreTcContracts as readonly unknown[],
+    contracts: mergedArenaTcContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc),
-      refetchInterval: 1000,
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });
-  const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
+  const mergedArenaTcRowData = mergedArenaTcRaw as readonly ContractReadRow[] | undefined;
+  const coreTcData = mergedArenaTcRowData?.slice(0, ARENA_CORE_TC_MULTICALL_LEN);
+  const warbowPolicyData = mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN);
 
-  const warbowContracts = tc
-    ? [
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_DAY" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPodiumFinalized" },
-      ]
-    : [];
-  const {
-    data: warbowPolicyDataRaw,
-    isPending: warbowPolicyPending,
-    isError: warbowPolicyError,
-    refetch: refetchWarbowPolicy,
-  } = useReadContracts({
-    contracts: warbowContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc),
-      refetchInterval: 1000,
-      placeholderData: (previous) => previous,
-    },
-  });
-  const warbowPolicyData = warbowPolicyDataRaw as readonly ContractReadRow[] | undefined;
+  const coreTcContracts = useMemo(
+    () => mergedArenaTcContracts.slice(0, ARENA_CORE_TC_MULTICALL_LEN),
+    [mergedArenaTcContracts],
+  );
+  const warbowContracts = useMemo(
+    () => mergedArenaTcContracts.slice(ARENA_CORE_TC_MULTICALL_LEN),
+    [mergedArenaTcContracts],
+  );
+  const coreTcDataRaw = coreTcData;
+  const coreTcError = mergedArenaTcError;
+  const coreTcPending = mergedArenaTcPending;
+  const warbowPolicyDataRaw = warbowPolicyData;
+  const warbowPolicyError = mergedArenaTcError;
+  const warbowPolicyPending = mergedArenaTcPending;
 
-  const isPending = coreTcPending || warbowPolicyPending;
-  const isError = coreTcError || warbowPolicyError;
+  const isPending = mergedArenaTcPending;
+  const isError = mergedArenaTcError;
   const refetch = useCallback(() => {
-    void refetchCoreTc();
-    void refetchWarbowPolicy();
-  }, [refetchCoreTc, refetchWarbowPolicy]);
+    void refetchMergedArenaTc();
+  }, [refetchMergedArenaTc]);
+
+  const refetchCoreTc = refetchMergedArenaTc;
+  const refetchWarbowPolicy = refetchMergedArenaTc;
 
   const userSaleContracts =
     tc && address
@@ -608,7 +618,7 @@ export function useTimeCurveArenaModel() {
     contracts: userSaleContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc && address),
-      refetchInterval: 1000,
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });
@@ -620,24 +630,6 @@ export function useTimeCurveArenaModel() {
     wallet: HexAddress;
     nextAllowedSec: number;
   } | null>(null);
-
-  const warbowBpEventCoalesceWallMsRef = useRef(0);
-  const onWarbowBpMovingEvent = useCallback(() => {
-    const now = Date.now();
-    if (now - warbowBpEventCoalesceWallMsRef.current < INDEXER_EVENT_COALESCE_MS) {
-      return;
-    }
-    warbowBpEventCoalesceWallMsRef.current = now;
-    void refetchCoreTc();
-    void refetchUserSale();
-    void refreshHeroTimerSoft();
-    void refreshWarbowIndexerAggregates();
-    if (indexerBaseUrl()) {
-      void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
-    }
-  }, [refetchCoreTc, refetchUserSale, refreshHeroTimerSoft, refreshWarbowIndexerAggregates, queryClient]);
-
-  useWarbowBpMovingEventWatch(tc, onWarbowBpMovingEvent);
 
   const stealVictim =
     stealVictimInput.trim() && isAddress(stealVictimInput.trim() as `0x${string}`)
@@ -783,6 +775,44 @@ export function useTimeCurveArenaModel() {
   void secondsPerDayR;
   void warbowRevengeWindowR;
 
+  const [latchedArenaCharmPrice, setLatchedArenaCharmPrice] = useState<HexAddress | undefined>(undefined);
+  const [latchedArenaFeeRouter, setLatchedArenaFeeRouter] = useState<HexAddress | undefined>(undefined);
+
+  useEffect(() => {
+    setLatchedArenaCharmPrice(undefined);
+    setLatchedArenaFeeRouter(undefined);
+  }, [tc]);
+
+  useEffect(() => {
+    if (latchedArenaCharmPrice || charmPriceAddrR?.status !== "success") {
+      return;
+    }
+    const a = charmPriceAddrR.result as HexAddress;
+    if (
+      a &&
+      a.startsWith("0x") &&
+      a.length === 42 &&
+      a.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+    ) {
+      setLatchedArenaCharmPrice(a);
+    }
+  }, [charmPriceAddrR, latchedArenaCharmPrice]);
+
+  useEffect(() => {
+    if (latchedArenaFeeRouter || feeRouterR?.status !== "success") {
+      return;
+    }
+    const a = feeRouterR.result as HexAddress;
+    if (
+      a &&
+      a.startsWith("0x") &&
+      a.length === 42 &&
+      a.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+    ) {
+      setLatchedArenaFeeRouter(a);
+    }
+  }, [feeRouterR, latchedArenaFeeRouter]);
+
   const tokenAddr =
     acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
 
@@ -832,16 +862,20 @@ export function useTimeCurveArenaModel() {
   const podiumPoolAddr =
     podiumPoolR?.status === "success" ? (podiumPoolR.result as `0x${string}`) : undefined;
 
-  const { data: sinkReadsRaw } = useReadContracts({
-    contracts: (feeRouterAddr
+  const { data: sinkReadsRaw, refetch: refetchSinkReads } = useReadContracts({
+    contracts: (latchedArenaFeeRouter
       ? ([0, 1, 2, 3, 4] as const).map((i) => ({
-          address: feeRouterAddr,
+          address: latchedArenaFeeRouter,
           abi: feeRouterReadAbi,
           functionName: "sinks" as const,
           args: [BigInt(i)],
         }))
       : []) as readonly unknown[],
-    query: { enabled: Boolean(feeRouterAddr) },
+    query: {
+      enabled: Boolean(latchedArenaFeeRouter),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
   const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
 
@@ -892,31 +926,64 @@ export function useTimeCurveArenaModel() {
   const podiumReads = usePodiumReads(tc);
 
   const linearCharmAddr =
-    charmPriceAddrR?.status === "success" &&
+    latchedArenaCharmPrice ??
+    (charmPriceAddrR?.status === "success" &&
     (charmPriceAddrR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000"
       ? (charmPriceAddrR.result as `0x${string}`)
-      : undefined;
+      : undefined);
 
-  const { data: linearPriceReadsRaw } = useReadContracts({
-    contracts: (linearCharmAddr
+  const { data: linearPriceReadsRaw, refetch: refetchLinearPriceReads } = useReadContracts({
+    contracts: (latchedArenaCharmPrice
       ? [
           {
-            address: linearCharmAddr,
+            address: latchedArenaCharmPrice,
             abi: linearCharmPriceReadAbi,
             functionName: "basePriceWad",
           },
           {
-            address: linearCharmAddr,
+            address: latchedArenaCharmPrice,
             abi: linearCharmPriceReadAbi,
             functionName: "dailyIncrementWad",
           },
         ]
       : []) as readonly unknown[],
-    query: { enabled: Boolean(tc && linearCharmAddr) },
+    query: {
+      enabled: Boolean(tc && latchedArenaCharmPrice),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
   const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
 
   const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
+
+  const warbowBpEventCoalesceWallMsRef = useRef(0);
+  const onWarbowBpMovingEvent = useCallback(() => {
+    const now = Date.now();
+    if (now - warbowBpEventCoalesceWallMsRef.current < INDEXER_EVENT_COALESCE_MS) {
+      return;
+    }
+    warbowBpEventCoalesceWallMsRef.current = now;
+    void refetchMergedArenaTc();
+    void refetchUserSale();
+    void refetchLinearPriceReads();
+    void refetchSinkReads();
+    void refreshHeroTimerSoft();
+    void refreshWarbowIndexerAggregates();
+    if (indexerBaseUrl()) {
+      void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
+    }
+  }, [
+    refetchMergedArenaTc,
+    refetchUserSale,
+    refetchLinearPriceReads,
+    refetchSinkReads,
+    refreshHeroTimerSoft,
+    refreshWarbowIndexerAggregates,
+    queryClient,
+  ]);
+
+  useWarbowBpMovingEventWatch(tc, onWarbowBpMovingEvent);
 
   const arenaSaleStartSec =
     saleStart?.status === "success" ? Number(saleStart.result as bigint) : undefined;
@@ -1903,9 +1970,10 @@ export function useTimeCurveArenaModel() {
 
   const refetchAll = useCallback(async () => {
     await Promise.all([
-      refetchCoreTc(),
-      refetchWarbowPolicy(),
+      refetchMergedArenaTc(),
       refetchUserSale(),
+      refetchLinearPriceReads(),
+      refetchSinkReads(),
       refetchAttackerStealsToday(),
       refetchVictimStealsToday(),
       refetchVictimBattlePoints(),
@@ -1916,9 +1984,10 @@ export function useTimeCurveArenaModel() {
       void fetchTimecurveBuyerStats(address).then(setBuyerStats);
     }
   }, [
-    refetchCoreTc,
-    refetchWarbowPolicy,
+    refetchMergedArenaTc,
     refetchUserSale,
+    refetchLinearPriceReads,
+    refetchSinkReads,
     refetchAttackerStealsToday,
     refetchVictimStealsToday,
     refetchVictimBattlePoints,

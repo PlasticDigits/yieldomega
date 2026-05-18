@@ -2,6 +2,7 @@
 
 import { lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
+import { TimeCurveProtocolDataProvider } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 
 const TimeCurvePage = lazy(() => import("@/pages/TimeCurvePage").then((m) => ({ default: m.TimeCurvePage })));
 const TimeCurveProtocolPage = lazy(() =>
@@ -44,7 +45,9 @@ export function TimeCurveBranchPage() {
   if (s === "protocol") {
     return (
       <Suspense fallback={<TimeCurveRouteFallback />}>
-        <TimeCurveProtocolPage />
+        <TimeCurveProtocolDataProvider>
+          <TimeCurveProtocolPage />
+        </TimeCurveProtocolDataProvider>
       </Suspense>
     );
   }

@@ -47,6 +47,7 @@ import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referral
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import {
   assertWalletBuySessionUnchanged,
   captureWalletBuySession,
@@ -122,6 +123,10 @@ export type UseTimeCurveSaleSession = {
   ended: boolean | undefined;
   /** Decimals of the accepted asset (CL8Y at launch). 18 until reads land. */
   decimals: number;
+  /** Last-good `acceptedAsset()` address (latched across flaky multicall rows). */
+  acceptedAsset: HexAddress | undefined;
+  /** `podiumPool()` when read succeeds. */
+  podiumPoolAddress: HexAddress | undefined;
   /** Decimals of the launched token (DOUB at launch). 18 until reads land. */
   launchedDec: number;
   walletConnected: boolean;
@@ -327,6 +332,7 @@ export function useTimeCurveSaleSession(
         { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
         { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
+        { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
         { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
         { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
         { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
@@ -419,6 +425,7 @@ export function useTimeCurveSaleSession(
     charmRedemptionEnabledR,
     reservePodiumPayoutsEnabledR,
     timeCurveBuyRouterR,
+    podiumPoolR,
     warbowPendingFlagOwnerR,
     warbowPendingFlagPlantAtR,
     warbowFlagClaimBpR,
@@ -540,27 +547,60 @@ export function useTimeCurveSaleSession(
     const L = acceptedAssetLastGoodRef.current;
     return L?.tc === tc ? L.asset : undefined;
   }, [tc, acceptedAssetR]);
-  const charmPriceAddress =
-    charmPriceR?.status === "success" ? (charmPriceR.result as HexAddress) : undefined;
+  const [latchedLinearCharmAddr, setLatchedLinearCharmAddr] = useState<HexAddress | undefined>(undefined);
+
+  useEffect(() => {
+    setLatchedLinearCharmAddr(undefined);
+  }, [tc]);
+
+  useEffect(() => {
+    if (latchedLinearCharmAddr || charmPriceR?.status !== "success") {
+      return;
+    }
+    const a = charmPriceR.result as HexAddress;
+    if (
+      a &&
+      typeof a === "string" &&
+      a.length === 42 &&
+      a.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+    ) {
+      setLatchedLinearCharmAddr(a);
+    }
+  }, [charmPriceR, latchedLinearCharmAddr]);
+
   const launchedToken =
     launchedTokenR?.status === "success" ? (launchedTokenR.result as HexAddress) : undefined;
 
-  const { data: linearPriceReadsRaw } = useReadContracts({
-    contracts: charmPriceAddress
+  const podiumPoolAddress = useMemo((): HexAddress | undefined => {
+    if (podiumPoolR?.status === "success") {
+      return podiumPoolR.result as HexAddress;
+    }
+    return undefined;
+  }, [podiumPoolR]);
+
+  const {
+    data: linearPriceReadsRaw,
+    refetch: refetchLinearPriceReads,
+  } = useReadContracts({
+    contracts: latchedLinearCharmAddr
       ? [
           {
-            address: charmPriceAddress,
+            address: latchedLinearCharmAddr,
             abi: linearCharmPriceReadAbi,
             functionName: "basePriceWad",
           },
           {
-            address: charmPriceAddress,
+            address: latchedLinearCharmAddr,
             abi: linearCharmPriceReadAbi,
             functionName: "dailyIncrementWad",
           },
         ]
       : [],
-    query: { enabled: Boolean(charmPriceAddress) },
+    query: {
+      enabled: Boolean(latchedLinearCharmAddr),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
   const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
   const [basePriceWadR, dailyIncrementWadR] = linearPriceReads ?? [];
@@ -1366,8 +1406,9 @@ export function useTimeCurveSaleSession(
   const refetchAll = useCallback(() => {
     void refetchCore();
     void refetchUser();
+    void refetchLinearPriceReads();
     void refreshHeroTimer();
-  }, [refetchCore, refetchUser, refreshHeroTimer]);
+  }, [refetchCore, refetchUser, refetchLinearPriceReads, refreshHeroTimer]);
 
   const buyFeeRoutingEnabled =
     buyFeeRoutingEnabledR?.status === "success"
@@ -1714,6 +1755,8 @@ export function useTimeCurveSaleSession(
     deadlineSec,
     ended,
     decimals,
+    acceptedAsset,
+    podiumPoolAddress,
     launchedDec,
     walletConnected: Boolean(isConnected && address),
     walletAddress: (address as HexAddress | undefined) ?? undefined,

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { walletDisplayFromMap } from "@/lib/addressFormat";
-import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
-import { erc20Abi, feeRouterReadAbi, linearCharmPriceReadAbi, timeCurveReadAbi } from "@/lib/abis";
+import { indexerBaseUrl } from "@/lib/addresses";
+import { erc20Abi } from "@/lib/abis";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import {
   fetchTimecurveBuyerStats,
@@ -26,50 +26,18 @@ import {
   timecurveHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
-import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
-import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { serializeContractRead, type SerializableContractRead } from "@/lib/serializeContractRead";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
-import type { ContractReadRow } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
-
-const coreTcContracts = (tc: HexAddress) =>
-  [
-    { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "deadline" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "ended" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "initialTimerSec" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "prizesDistributed" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "feeRouter" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" as const },
-    { address: tc, abi: timeCurveReadAbi, functionName: "owner" as const },
-  ] as const;
+import {
+  useTimeCurveProtocolData,
+  useTimecurveProtocolAccordionTokenDecimals,
+} from "@/pages/timecurve/TimeCurveProtocolDataContext";
 
 /**
  * Contract + indexer mirrors for {@link RawDataAccordion} on the protocol / audit page.
- * Keeps the same read bundle semantics as the former Arena placement.
+ * RPC slices come from {@link TimeCurveProtocolDataProvider} (single multicall + latch).
  */
 export function useTimecurveProtocolRawAccordion() {
-  const tc = addresses.timeCurve;
   const { address, isConnected } = useAccount();
   const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
@@ -79,7 +47,14 @@ export function useTimecurveProtocolRawAccordion() {
   const ledgerSecIntRef = useRef(ledgerSecInt);
   ledgerSecIntRef.current = ledgerSecInt;
 
-  const { chainNowSec: heroChainNowSec, heroTimer } = useTimecurveHeroTimer(tc);
+  const {
+    coreTcDataForAccordion: coreTcData,
+    userSaleData: userSaleDataRaw,
+    heroTimer,
+    heroChainNowSec,
+    charmPriceRows,
+    sinksRows: sinkReads,
+  } = useTimeCurveProtocolData();
 
   const phaseLedgerSecInt = useMemo(
     () =>
@@ -90,16 +65,6 @@ export function useTimecurveProtocolRawAccordion() {
     [ledgerSecInt, heroChainNowSec],
   );
 
-  const { data: coreTcDataRaw } = useReadContracts({
-    contracts: tc ? [...coreTcContracts(tc)] : [],
-    query: {
-      enabled: Boolean(tc),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
-
   const [
     saleStart,
     deadline,
@@ -109,8 +74,8 @@ export function useTimecurveProtocolRawAccordion() {
     maxBuy,
     _charmBoundsR,
     _pricePerCharmR,
-    charmPriceAddrR,
-    acceptedAsset,
+    _charmPriceAddrR,
+    _acceptedAsset,
     _refRegAddr,
     initialMinBuyR,
     growthRateWadR,
@@ -121,7 +86,7 @@ export function useTimecurveProtocolRawAccordion() {
     launchedTokenR,
     prizesDistributedR,
     _buyFeeRoutingEnabledR,
-    feeRouterR,
+    _feeRouterR,
     _podiumPoolR,
     _totalCharmWeightR,
     _buyCooldownSecR,
@@ -130,108 +95,14 @@ export function useTimecurveProtocolRawAccordion() {
     _timeCurveOwnerR,
   ] = coreTcData ?? [];
 
-  const userSaleContracts =
-    tc && address
-      ? [
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "buyCount" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed" as const, args: [address] },
-          {
-            address: tc,
-            abi: timeCurveReadAbi,
-            functionName: "totalEffectiveTimerSecAdded" as const,
-            args: [address],
-          },
-          { address: tc, abi: timeCurveReadAbi, functionName: "battlePoints" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowGuardUntil" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt" as const, args: [address] },
-        ]
-      : [];
-  const { data: userSaleDataRaw } = useReadContracts({
-    contracts: userSaleContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc && address),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
-
   const [charmWeightR, buyCountR, _charmsRedeemedR, timerAddedR, battlePtsR, activeStreakR, bestStreakR] =
-    userSaleData ?? [];
+    userSaleDataRaw ?? [];
 
-  const linearCharmAddr =
-    charmPriceAddrR?.status === "success" &&
-    (charmPriceAddrR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000"
-      ? (charmPriceAddrR.result as `0x${string}`)
-      : undefined;
-
-  const { data: linearPriceReadsRaw } = useReadContracts({
-    contracts: (linearCharmAddr
-      ? [
-          {
-            address: linearCharmAddr,
-            abi: linearCharmPriceReadAbi,
-            functionName: "basePriceWad" as const,
-          },
-          {
-            address: linearCharmAddr,
-            abi: linearCharmPriceReadAbi,
-            functionName: "dailyIncrementWad" as const,
-          },
-        ]
-      : []) as readonly unknown[],
-    query: {
-      enabled: Boolean(tc && linearCharmAddr),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
-  const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
+  const [basePriceWadR, dailyIncWadR] = charmPriceRows ?? [];
 
   const maxBuyAmount = maxBuy?.status === "success" ? (maxBuy.result as bigint) : undefined;
 
-  const feeRouterAddr =
-    feeRouterR?.status === "success" ? (feeRouterR.result as `0x${string}`) : undefined;
-
-  const sinkReadsQuery = useReadContracts({
-    contracts: (feeRouterAddr
-      ? ([0, 1, 2, 3, 4] as const).map((i) => ({
-          address: feeRouterAddr,
-          abi: feeRouterReadAbi,
-          functionName: "sinks" as const,
-          args: [BigInt(i)],
-        }))
-      : []) as readonly unknown[],
-    query: {
-      enabled: Boolean(feeRouterAddr),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  useRpcQueryHealthForRefetch({
-    isFetched: sinkReadsQuery.isFetched,
-    isFetching: sinkReadsQuery.isFetching,
-    isError: sinkReadsQuery.isError,
-    isSuccess: sinkReadsQuery.isSuccess,
-    error: sinkReadsQuery.error,
-  });
-  const sinkReadsRaw = sinkReadsQuery.data;
-  const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
-
-  const tokenAddr =
-    acceptedAsset?.status === "success" ? (acceptedAsset.result as `0x${string}`) : undefined;
-
-  const { data: tokenDecimals } = useReadContract({
-    address: tokenAddr,
-    abi: erc20Abi,
-    functionName: "decimals",
-    query: { enabled: Boolean(tokenAddr) },
-  });
-  const decimals = tokenDecimals !== undefined ? Number(tokenDecimals) : 18;
+  const decimals = useTimecurveProtocolAccordionTokenDecimals();
 
   const launchedAddr =
     launchedTokenR?.status === "success"

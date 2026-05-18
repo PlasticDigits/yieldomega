@@ -10,7 +10,14 @@ import { LatestBlockProvider } from "@/providers/LatestBlockContext";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Fewer automatic retries reduces RPC 429 amplification when many reads share the same endpoint.
+      retry: 1,
+    },
+  },
+});
 
 const arcadeWalletTheme = lightTheme({
   accentColor: "#0f7a47",
