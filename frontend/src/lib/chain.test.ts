@@ -1,7 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { resolveChainRpcConfig } from "./chain";
+import { megaethMainnetOrderedRpcUrls, resolveChainRpcConfig } from "./chain";
+
+describe("megaethMainnetOrderedRpcUrls", () => {
+  it("puts the primary first and appends fallbacks without duplicates", () => {
+    expect(megaethMainnetOrderedRpcUrls("https://mainnet.megaeth.com/rpc")).toEqual([
+      "https://mainnet.megaeth.com/rpc",
+      "https://rpc-megaeth-mainnet.globalstake.io",
+      "https://carrot.megaeth.com/rpc",
+    ]);
+  });
+
+  it("does not repeat the primary when it matches a fallback entry", () => {
+    expect(
+      megaethMainnetOrderedRpcUrls("https://rpc-megaeth-mainnet.globalstake.io"),
+    ).toEqual([
+      "https://rpc-megaeth-mainnet.globalstake.io",
+      "https://carrot.megaeth.com/rpc",
+    ]);
+  });
+});
 
 describe("resolveChainRpcConfig", () => {
   it("defaults when env-like strings are empty", () => {
@@ -37,6 +56,13 @@ describe("resolveChainRpcConfig", () => {
     expect(resolveChainRpcConfig("not-a-number", "http://127.0.0.1:8545")).toEqual({
       id: 31337,
       defaultRpcHttp: "http://127.0.0.1:8545",
+    });
+  });
+
+  it("defaults MegaETH mainnet RPC to canonical public URL when chain id is set but RPC is empty", () => {
+    expect(resolveChainRpcConfig("4326", undefined)).toEqual({
+      id: 4326,
+      defaultRpcHttp: "https://mainnet.megaeth.com/rpc",
     });
   });
 });

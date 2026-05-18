@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import {
   baseAccount,
@@ -7,10 +9,15 @@ import {
   safepalWallet,
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
-import { createConfig, http, mock } from "wagmi";
-import { configuredChain } from "@/lib/chain";
-
-// SPDX-License-Identifier: AGPL-3.0-only
+import type { Transport } from "viem";
+import { fallback, http } from "viem";
+import { createConfig, mock } from "wagmi";
+import {
+  configuredChain,
+  megaethMainnetOrderedRpcUrls,
+  MEGAETH_MAINNET_CHAIN_ID,
+  resolveChainRpcConfig,
+} from "@/lib/chain";
 
 /** Anvil default account #0 — matches DeployDev when using the well-known Anvil private key. */
 const ANVIL_DEFAULT_ACCOUNT =
@@ -35,6 +42,17 @@ if (!projectId && !useE2EMockWallet) {
 }
 
 function transportFor(chain: (typeof chains)[number]) {
+  if (chain.id === MEGAETH_MAINNET_CHAIN_ID) {
+    const { defaultRpcHttp } = resolveChainRpcConfig(
+      import.meta.env.VITE_CHAIN_ID,
+      import.meta.env.VITE_RPC_URL,
+    );
+    const urls = megaethMainnetOrderedRpcUrls(defaultRpcHttp);
+    return fallback(
+      urls.map((url) => http(url)),
+      { rank: false },
+    );
+  }
   if (rpcOverride && chain.id === initialChain.id) {
     return http(rpcOverride);
   }
@@ -43,7 +61,7 @@ function transportFor(chain: (typeof chains)[number]) {
 
 const transports = Object.fromEntries(
   chains.map((c) => [c.id, transportFor(c)] as const),
-) as Record<(typeof chains)[number]["id"], ReturnType<typeof http>>;
+) as Record<(typeof chains)[number]["id"], Transport>;
 
 /** RainbowKit default “Popular” list omits SafePal; include it so extension + mobile WC flows match [issue #58](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58). */
 const rainbowKitWalletGroups = [
