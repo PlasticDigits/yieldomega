@@ -82,6 +82,7 @@ export function useWarbowLeaderboardBpOverlay<T extends { buyer: string; battle_
     query: {
       enabled: Boolean(tc) && itemCount > 0,
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
 

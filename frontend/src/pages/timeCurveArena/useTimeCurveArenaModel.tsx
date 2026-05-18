@@ -532,6 +532,7 @@ export function useTimeCurveArenaModel() {
     query: {
       enabled: Boolean(tc),
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
   const coreTcData = coreTcDataRaw as readonly ContractReadRow[] | undefined;
@@ -560,7 +561,11 @@ export function useTimeCurveArenaModel() {
     refetch: refetchWarbowPolicy,
   } = useReadContracts({
     contracts: warbowContracts as readonly unknown[],
-    query: { enabled: Boolean(tc), refetchInterval: 1000 },
+    query: {
+      enabled: Boolean(tc),
+      refetchInterval: 1000,
+      placeholderData: (previous) => previous,
+    },
   });
   const warbowPolicyData = warbowPolicyDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -590,7 +595,11 @@ export function useTimeCurveArenaModel() {
     refetch: refetchUserSale,
   } = useReadContracts({
     contracts: userSaleContracts as readonly unknown[],
-    query: { enabled: Boolean(tc && address), refetchInterval: 1000 },
+    query: {
+      enabled: Boolean(tc && address),
+      refetchInterval: 1000,
+      placeholderData: (previous) => previous,
+    },
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
@@ -1206,7 +1215,7 @@ export function useTimeCurveArenaModel() {
     functionName: "quoteExactOutput",
     args:
       quoteEnabled && swapRoute?.ok ? [swapRoute.path, estimatedSpend!] : undefined,
-    query: { enabled: quoteEnabled },
+    query: { enabled: quoteEnabled, placeholderData: (previous) => previous },
   });
 
   const {
@@ -1222,7 +1231,7 @@ export function useTimeCurveArenaModel() {
       charmPriceQuoteEnabled && swapRoute?.ok
         ? [swapRoute.path, pricePerCharmForQuote!]
         : undefined,
-    query: { enabled: charmPriceQuoteEnabled },
+    query: { enabled: charmPriceQuoteEnabled, placeholderData: (previous) => previous },
   });
 
   const {
@@ -1238,7 +1247,7 @@ export function useTimeCurveArenaModel() {
       launchPayQuoteEnabled && swapRoute?.ok
         ? [swapRoute.path, launchCl8yPerCharmWei!]
         : undefined,
-    query: { enabled: launchPayQuoteEnabled },
+    query: { enabled: launchPayQuoteEnabled, placeholderData: (previous) => previous },
   });
 
   const quotedPayInWei =
@@ -1255,10 +1264,14 @@ export function useTimeCurveArenaModel() {
       : undefined;
 
   const perCharmPayQuoteLoading =
-    charmPriceQuoteEnabled && (charmPriceQuotePending || charmPriceQuoteFetching);
+    charmPriceQuoteEnabled &&
+    quotedPerCharmPayInWei === undefined &&
+    (charmPriceQuotePending || charmPriceQuoteFetching);
 
   const launchPayQuoteLoading =
-    launchPayQuoteEnabled && (launchPayQuotePending || launchPayQuoteFetching);
+    launchPayQuoteEnabled &&
+    quotedLaunchPerCharmPayInWei === undefined &&
+    (launchPayQuotePending || launchPayQuoteFetching);
 
   const rateBoardKumbayaWarning =
     payWith !== "cl8y" &&
@@ -1309,7 +1322,10 @@ export function useTimeCurveArenaModel() {
       bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
         ? [swapRoute.path, cl8ySpendBounds.minS]
         : undefined,
-    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+    query: {
+      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+      placeholderData: (previous) => previous,
+    },
   });
 
   const {
@@ -1324,7 +1340,10 @@ export function useTimeCurveArenaModel() {
       bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
         ? [swapRoute.path, cl8ySpendBounds.maxS]
         : undefined,
-    query: { enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds) },
+    query: {
+      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+      placeholderData: (previous) => previous,
+    },
   });
 
   const quotedBandMinPayInWei =
@@ -1333,6 +1352,7 @@ export function useTimeCurveArenaModel() {
     bandMaxTuple !== undefined ? (bandMaxTuple as readonly [bigint, ...unknown[]])[0] : undefined;
   const bandBoundaryQuotesLoading =
     bandQuoteEnabled &&
+    (quotedBandMinPayInWei === undefined || quotedBandMaxPayInWei === undefined) &&
     (bandMinPending || bandMinFetching || bandMaxPending || bandMaxFetching);
 
   const { data: nativeEthBal } = useBalance({
@@ -1371,6 +1391,8 @@ export function useTimeCurveArenaModel() {
     };
   }, [payWith, walletCl8yBal, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
 
+  const swapQuoteDisplayLoading =
+    quoteEnabled && quotedPayInWei === undefined && (swapQuotePending || swapQuoteFetching);
   const swapQuoteLoading = quoteEnabled && (swapQuotePending || swapQuoteFetching);
   const swapQuoteFailed = swapQuoteIsError;
 
@@ -1993,7 +2015,7 @@ export function useTimeCurveArenaModel() {
     if (payWith !== "cl8y" && kumbayaRoutingBlocker) {
       return kumbayaRoutingBlocker;
     }
-    if (payWith !== "cl8y" && swapQuoteLoading) {
+    if (payWith !== "cl8y" && swapQuoteDisplayLoading) {
       return "Refreshing DEX quote for your CL8Y spend…";
     }
     if (payWith !== "cl8y" && swapQuoteFailed) {
@@ -2024,7 +2046,7 @@ export function useTimeCurveArenaModel() {
     saleActive,
     payWith,
     kumbayaRoutingBlocker,
-    swapQuoteLoading,
+    swapQuoteDisplayLoading,
     swapQuoteFailed,
     quotedPayInWei,
     gasBuyIssue,
@@ -3257,6 +3279,7 @@ export function useTimeCurveArenaModel() {
     stealVictimInput,
     stealVictimInputFormatError,
     swapQuoteFailed,
+    swapQuoteDisplayLoading,
     swapQuoteLoading,
     tc,
     timerAddedR,

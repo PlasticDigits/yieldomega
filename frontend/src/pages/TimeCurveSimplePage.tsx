@@ -456,6 +456,7 @@ export function TimeCurveSimplePage() {
     query: {
       enabled: Boolean(podiumAcceptedAsset && podiumPoolAddress),
       refetchInterval: 1000,
+      placeholderData: (previous) => previous,
     },
   });
   const podiumPayoutPreview = useMemo(() => {
@@ -633,7 +634,7 @@ export function TimeCurveSimplePage() {
               className="form-input timecurve-simple__amount-field timecurve-simple__amount-field--quoted"
               aria-label={`Quoted ${paySpendSuffix} spend for the selected CL8Y target`}
             >
-              {session.swapQuoteLoading || session.quotedPayInWei === undefined ? (
+              {session.swapQuoteDisplayLoading || session.quotedPayInWei === undefined ? (
                 "…"
               ) : (
                 <AmountDisplay
