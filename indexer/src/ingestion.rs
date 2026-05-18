@@ -21,7 +21,7 @@ use crate::reorg::{
 };
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_has_transport_rpc, error_chain_transport_http_status,
-    parse_http_rpc_urls, rpc_first_ok, transport_err_http_status,
+    parse_http_rpc_urls, rpc_first_ok, rpc_first_some, transport_err_http_status,
 };
 use crate::rpc_poll_health::RpcPollHealth;
 
@@ -82,7 +82,7 @@ async fn bootstrap_pointer(
     }
 
     let parent = effective_start.saturating_sub(1);
-    let block = rpc_first_ok(providers, |p| {
+    let block = rpc_first_some(providers, |p| {
         p.get_block_by_number(parent.into(), BlockTransactionsKind::Hashes)
     })
     .await?
@@ -167,7 +167,7 @@ pub async fn run(
         loop {
             let next = next_block_to_process(&pointer, effective);
 
-            let block = match rpc_first_ok(&providers, |p| {
+            let block = match rpc_first_some(&providers, |p| {
                 p.get_block_by_number(next.into(), BlockTransactionsKind::Hashes)
             })
             .await
@@ -188,7 +188,7 @@ pub async fn run(
                             rpc_tip_minus_next = tip_vs_next,
                             sleep_ms = sleep_for.as_millis(),
                             rpc_debounced_failure_streak = rpc_health.failure_streak(),
-                            "ingestion: eth_getBlockByNumber returned null — waiting for block (check RPC_URL chain vs indexer DB tip)"
+                            "ingestion: eth_getBlockByNumber returned null from every RPC_URL entry for this height (reorder fallbacks or use a full/archive endpoint; primary may omit older blocks)"
                         );
                         last_null_block_diag_at = Some(now);
                     }
@@ -205,7 +205,7 @@ pub async fn run(
                         next_block = next,
                         rpc_debounced_failure_streak = rpc_health.failure_streak(),
                         ?e,
-                        "ingestion: eth_getBlockByNumber failed on all RPC endpoints"
+                        "ingestion: eth_getBlockByNumber errors or null from every RPC_URL entry for this height"
                     );
                     tokio::time::sleep(rpc_health.backoff_sleep()).await;
                     continue;
@@ -236,7 +236,7 @@ pub async fn run(
                         return Err(e);
                     }
                 };
-                let ab = match rpc_first_ok(&providers, |p| {
+                let ab = match rpc_first_some(&providers, |p| {
                     p.get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
                 })
                 .await

@@ -208,11 +208,11 @@ pub async fn find_common_ancestor(
 ) -> Result<u64> {
     use alloy_rpc_types::BlockTransactionsKind;
 
-    use crate::rpc_http::rpc_first_ok;
+    use crate::rpc_http::rpc_first_some;
 
     let mut n = from_height;
     for _ in 0..MAX_REORG_DEPTH {
-        let block = rpc_first_ok(providers, |p| {
+        let block = rpc_first_some(providers, |p| {
             p.get_block_by_number(n.into(), BlockTransactionsKind::Hashes)
         })
         .await
