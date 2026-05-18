@@ -2,7 +2,11 @@
 
 import { describe, expect, it } from "vitest";
 import { WARBOW_BP_MOVING_EVENT_NAMES } from "@/lib/abis";
-import { overlayWarbowLeaderboardBp, overlayWarbowPodiumBpValues } from "./warbowPodiumLive";
+import {
+  mergeWarbowLeaderboardBpFromSortedReads,
+  overlayWarbowLeaderboardBp,
+  overlayWarbowPodiumBpValues,
+} from "./warbowPodiumLive";
 import type { PodiumReadRow } from "./usePodiumReads";
 
 const A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
@@ -62,6 +66,36 @@ describe("overlayWarbowLeaderboardBp", () => {
   it("returns original items when overlay reads are incomplete", () => {
     const items = [{ buyer: A, battle_points_after: "750" }];
     expect(overlayWarbowLeaderboardBp(items, [{ status: "failure" }])).toBe(items);
+  });
+});
+
+describe("mergeWarbowLeaderboardBpFromSortedReads", () => {
+  it("maps reads ordered by sorted buyer to indexer display order", () => {
+    const items = [
+      { buyer: B, battle_points_after: "500", block_number: "11", tx_hash: "0x2", log_index: 0 },
+      { buyer: A, battle_points_after: "750", block_number: "10", tx_hash: "0x1", log_index: 0 },
+    ];
+    const out = mergeWarbowLeaderboardBpFromSortedReads(items, [
+      { status: "success", result: 900n },
+      { status: "success", result: 480n },
+    ]);
+    expect(out[0]?.buyer).toBe(B);
+    expect(out[0]?.battle_points_after).toBe("480");
+    expect(out[1]?.buyer).toBe(A);
+    expect(out[1]?.battle_points_after).toBe("900");
+  });
+
+  it("keeps indexer rows when a read is missing or failed", () => {
+    const items = [
+      { buyer: B, battle_points_after: "500", block_number: "11", tx_hash: "0x2", log_index: 0 },
+      { buyer: A, battle_points_after: "750", block_number: "10", tx_hash: "0x1", log_index: 0 },
+    ];
+    expect(
+      mergeWarbowLeaderboardBpFromSortedReads(items, [
+        { status: "success", result: 900n },
+        { status: "failure" },
+      ]),
+    ).toBe(items);
   });
 });
 
