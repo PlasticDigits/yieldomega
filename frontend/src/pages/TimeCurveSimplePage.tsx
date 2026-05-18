@@ -603,6 +603,24 @@ export function TimeCurveSimplePage() {
     [session.estimatedSpendWei, buyAddsCl8yAtLaunch],
   );
 
+  /** Holds the last non-null gain label while checkout reads settle — avoids parentheses mount/unmount flicker. */
+  const [heldBuyPreviewGainLabel, setHeldBuyPreviewGainLabel] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    const previewOk =
+      session.charmWadSelected !== undefined &&
+      buyAddsCl8yAtLaunch !== undefined &&
+      buyAddsCl8yAtLaunch > 0n;
+    if (!previewOk) {
+      setHeldBuyPreviewGainLabel(null);
+      return;
+    }
+    if (buyPreviewLaunchGainLabel) {
+      setHeldBuyPreviewGainLabel(buyPreviewLaunchGainLabel);
+    }
+  }, [session.charmWadSelected, buyAddsCl8yAtLaunch, buyPreviewLaunchGainLabel]);
+
+  const buyPreviewGainLabelUi = buyPreviewLaunchGainLabel ?? heldBuyPreviewGainLabel;
+
   // Price-tick pulse: bump a key whenever the live per-CHARM price changes
   // so the rate row re-renders and the CSS animation re-runs. This keeps
   // the "ticks up every block" message visceral instead of just textual.
@@ -784,14 +802,21 @@ export function TimeCurveSimplePage() {
               {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, session.decimals)}
             </span>
             <span className="timecurve-simple__buy-preview-approx-unit">CL8Y</span>
-            {buyPreviewLaunchGainLabel ? (
-              <span
-                className="timecurve-simple__buy-preview-gain"
-                aria-label="Estimated percent gain: CL8Y at launch versus implied CL8Y spend for this CHARM size"
-              >
-                ({buyPreviewLaunchGainLabel})
-              </span>
-            ) : null}
+            <span
+              className={
+                buyPreviewGainLabelUi
+                  ? "timecurve-simple__buy-preview-gain"
+                  : "timecurve-simple__buy-preview-gain timecurve-simple__buy-preview-gain--reserved"
+              }
+              aria-hidden={!buyPreviewGainLabelUi}
+              aria-label={
+                buyPreviewGainLabelUi
+                  ? "Estimated percent gain: CL8Y at launch versus implied CL8Y spend for this CHARM size"
+                  : undefined
+              }
+            >
+              {buyPreviewGainLabelUi ? `(${buyPreviewGainLabelUi})` : "\u00A0"}
+            </span>
           </div>
           {session.buyCharmBonusPreviewLines.length > 0 ? (
             <div
@@ -949,14 +974,16 @@ export function TimeCurveSimplePage() {
             </svg>
           </span>
         )}
-        <strong
-          key={`${priceTickKey}-${session.payWith}-${rateNowDisplay.text}`}
-          className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
-          data-testid="timecurve-simple-rate-now"
-          aria-busy={rateNowDisplay.loading}
-        >
-          {rateNowDisplay.text}
-        </strong>
+        <span className="timecurve-simple__rate-hero-tick-isolate">
+          <strong
+            key={`${priceTickKey}-${session.payWith}-${rateNowDisplay.text}`}
+            className="timecurve-simple__rate-value timecurve-simple__rate-value--hero timecurve-simple__rate-value--tick"
+            data-testid="timecurve-simple-rate-now"
+            aria-busy={rateNowDisplay.loading}
+          >
+            {rateNowDisplay.text}
+          </strong>
+        </span>
         <TimecurveSimpleRatePayTokenPicker payWith={session.payWith} setPayWith={session.setPayWith} />
         <span className="visually-hidden">{rateNowDisplay.unit.trim()}</span>
       </span>

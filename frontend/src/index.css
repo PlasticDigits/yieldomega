@@ -9050,6 +9050,15 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
 }
 
+/* Reserve horizontal space when gain % is briefly unavailable so Worth / CL8Y row
+   does not reflow (parentheses used to mount/unmount; see held label in TSX). */
+.timecurve-simple__buy-preview-gain--reserved {
+  align-self: center;
+  min-width: 14ch;
+  min-height: 1em;
+  visibility: hidden;
+}
+
 .timecurve-simple__buy-preview-approx-value {
   font-family: monospace;
   font-weight: 800;
@@ -9252,6 +9261,13 @@ a.podium-address-explorer:hover .address-inline__label {
   image-rendering: pixelated;
 }
 
+/* Isolates the block animation + text-shadow on the hero price from sibling
+   compositing (pay-token trigger) to cut rare “whole row” shimmer in prod. */
+.timecurve-simple__rate-hero-tick-isolate {
+  display: inline-block;
+  isolation: isolate;
+}
+
 /* Rate row: pay token icon + chevron open a menu portaled to `document.body`
    (buy panel uses overflow:hidden + isolation — in-tree fixed menus could clip
    or stack oddly). */
@@ -9260,6 +9276,7 @@ a.podium-address-explorer:hover .address-inline__label {
   display: inline-flex;
   flex-shrink: 0;
   vertical-align: middle;
+  isolation: isolate;
 }
 
 .timecurve-simple__rate-pay-picker-trigger {
