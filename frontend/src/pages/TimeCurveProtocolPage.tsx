@@ -32,6 +32,8 @@ import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProt
 import { useTimecurveProtocolRawAccordion } from "@/pages/timecurve/useTimecurveProtocolRawAccordion";
 import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
@@ -94,6 +96,16 @@ const TC_READS = [
   "WARBOW_REVENGE_WINDOW_SEC",
 ] as const;
 
+/** Last good TimeCurveLiveCharts inputs — avoids mount/unmount flicker while RPC refetch errors. */
+type ProtocolStickyChartsPayload = {
+  saleStartSec: number;
+  deadlineSec: number;
+  initialMinBuy: string;
+  growthRateWad: string;
+  basePriceWad: string;
+  dailyIncrementWad: string;
+};
+
 export function TimeCurveProtocolPage() {
   const tc = addresses.timeCurve;
 
@@ -107,9 +119,17 @@ export function TimeCurveProtocolPage() {
       : [],
     query: {
       enabled: Boolean(tc),
-      refetchInterval: 1500,
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
+  });
+
+  useRpcQueryHealthForRefetch({
+    isFetched: reads.isFetched,
+    isFetching: reads.isFetching,
+    isError: reads.isError,
+    isSuccess: reads.isSuccess,
+    error: reads.error,
   });
 
   const reading = (reads.data ?? []) as readonly ContractReadRow[];
@@ -120,7 +140,7 @@ export function TimeCurveProtocolPage() {
   const feeRouterAddr =
     get(16)?.status === "success" ? (get(16)!.result as HexAddress) : undefined;
 
-  const { data: charmPriceParams } = useReadContracts({
+  const charmPriceReads = useReadContracts({
     contracts: charmPriceAddr
       ? [
           {
@@ -135,8 +155,22 @@ export function TimeCurveProtocolPage() {
           },
         ]
       : [],
-    query: { enabled: Boolean(charmPriceAddr) },
+    query: {
+      enabled: Boolean(charmPriceAddr),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
   });
+
+  useRpcQueryHealthForRefetch({
+    isFetched: charmPriceReads.isFetched,
+    isFetching: charmPriceReads.isFetching,
+    isError: charmPriceReads.isError,
+    isSuccess: charmPriceReads.isSuccess,
+    error: charmPriceReads.error,
+  });
+
+  const charmPriceRows = charmPriceReads.data;
 
   const sinks = useReadContracts({
     contracts: feeRouterAddr
@@ -147,7 +181,19 @@ export function TimeCurveProtocolPage() {
           args: [BigInt(i)] as const,
         }))
       : [],
-    query: { enabled: Boolean(feeRouterAddr) },
+    query: {
+      enabled: Boolean(feeRouterAddr),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
+  });
+
+  useRpcQueryHealthForRefetch({
+    isFetched: sinks.isFetched,
+    isFetching: sinks.isFetching,
+    isError: sinks.isError,
+    isSuccess: sinks.isSuccess,
+    error: sinks.error,
   });
 
   const { data: latestBlock } = useLatestBlock();
@@ -215,8 +261,8 @@ export function TimeCurveProtocolPage() {
       saleStartRow?.status !== "success" ||
       initialMinBuyRow?.status !== "success" ||
       growthRateRow?.status !== "success" ||
-      charmPriceParams?.[0]?.status !== "success" ||
-      charmPriceParams?.[1]?.status !== "success"
+      charmPriceRows?.[0]?.status !== "success" ||
+      charmPriceRows?.[1]?.status !== "success"
     ) {
       return null;
     }
@@ -228,10 +274,10 @@ export function TimeCurveProtocolPage() {
       saleStartSec: start,
       charmEnvelopeRefWad: (initialMinBuyRow.result as bigint).toString(),
       growthRateWad: (growthRateRow.result as bigint).toString(),
-      basePriceWad: (charmPriceParams[0].result as bigint).toString(),
-      dailyIncrementWad: (charmPriceParams[1].result as bigint).toString(),
+      basePriceWad: (charmPriceRows[0].result as bigint).toString(),
+      dailyIncrementWad: (charmPriceRows[1].result as bigint).toString(),
     };
-  }, [reading, charmPriceParams]);
+  }, [reading, charmPriceRows]);
 
   const tickerEnvelopeParams = useMemo(
     () => envelopeCurveParamsFromWire(buyEnvelopeParamsWire),
@@ -255,6 +301,82 @@ export function TimeCurveProtocolPage() {
   const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
 
   const protocolRawAccordion = useTimecurveProtocolRawAccordion();
+
+  const readingsForCharts = reading;
+  const chartsGateSaleStartRow = readingsForCharts[0];
+  const chartsGateDeadlineRow = readingsForCharts[1];
+  const chartsGateEndedRow = readingsForCharts[2];
+
+  const protocolChartsPhaseGate = derivePhase({
+    hasCoreData: readingsForCharts.length > 0 && Boolean(tc),
+    ended:
+      chartsGateEndedRow?.status === "success"
+        ? (chartsGateEndedRow.result as boolean)
+        : undefined,
+    saleStartSec:
+      chartsGateSaleStartRow?.status === "success"
+        ? Number(chartsGateSaleStartRow.result as bigint)
+        : undefined,
+    deadlineSec:
+      chartsGateDeadlineRow?.status === "success"
+        ? Number(chartsGateDeadlineRow.result as bigint)
+        : undefined,
+    ledgerSecInt: phaseLedgerSecInt,
+  });
+
+  const protocolLiveChartsFresh =
+    Boolean(tc) &&
+    protocolChartsPhaseGate === "saleActive" &&
+    chartsGateDeadlineRow?.status === "success" &&
+    chartsGateSaleStartRow?.status === "success" &&
+    readingsForCharts[9]?.status === "success" &&
+    readingsForCharts[10]?.status === "success" &&
+    charmPriceRows?.[0]?.status === "success" &&
+    charmPriceRows?.[1]?.status === "success";
+
+  const [protocolChartsSticky, setProtocolChartsSticky] = useState<
+    ProtocolStickyChartsPayload | null
+  >(null);
+
+  useEffect(() => {
+    if (!tc) {
+      setProtocolChartsSticky(null);
+    }
+  }, [tc]);
+
+  useEffect(() => {
+    if (!protocolLiveChartsFresh) {
+      return;
+    }
+    setProtocolChartsSticky({
+      saleStartSec: Number(chartsGateSaleStartRow!.result as bigint),
+      deadlineSec: Number(chartsGateDeadlineRow!.result as bigint),
+      initialMinBuy: (readingsForCharts[9]!.result as bigint).toString(),
+      growthRateWad: (readingsForCharts[10]!.result as bigint).toString(),
+      basePriceWad: (charmPriceRows![0]!.result as bigint).toString(),
+      dailyIncrementWad: (charmPriceRows![1]!.result as bigint).toString(),
+    });
+  }, [protocolLiveChartsFresh, chartsGateSaleStartRow, chartsGateDeadlineRow, charmPriceRows, readingsForCharts]);
+
+  useEffect(() => {
+    if (
+      chartsGateSaleStartRow?.status !== "success" ||
+      chartsGateDeadlineRow?.status !== "success" ||
+      chartsGateEndedRow?.status !== "success"
+    ) {
+      return;
+    }
+    const phase = derivePhase({
+      hasCoreData: true,
+      ended: chartsGateEndedRow.result as boolean,
+      saleStartSec: Number(chartsGateSaleStartRow.result as bigint),
+      deadlineSec: Number(chartsGateDeadlineRow.result as bigint),
+      ledgerSecInt: phaseLedgerSecInt,
+    });
+    if (phase !== "saleActive") {
+      setProtocolChartsSticky(null);
+    }
+  }, [chartsGateSaleStartRow, chartsGateDeadlineRow, chartsGateEndedRow, phaseLedgerSecInt]);
 
   if (!tc) {
     return (
@@ -331,15 +453,6 @@ export function TimeCurveProtocolPage() {
   const saleEnded =
     endedRow?.status === "success" ? (endedRow.result as boolean) : true;
 
-  const protocolLiveChartsReady =
-    protocolPhase === "saleActive" &&
-    deadlineRow?.status === "success" &&
-    saleStartRow?.status === "success" &&
-    get(9)?.status === "success" &&
-    get(10)?.status === "success" &&
-    charmPriceParams?.[0]?.status === "success" &&
-    charmPriceParams?.[1]?.status === "success";
-
   return (
     <div className="page timecurve-protocol-page">
       <TimeCurveSubnav active="protocol" />
@@ -355,26 +468,26 @@ export function TimeCurveProtocolPage() {
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
       />
 
-      {protocolLiveChartsReady && (
+      {protocolChartsSticky && protocolChartsPhaseGate === "saleActive" && (
         <TimeCurveLiveCharts
           saleActive
-          saleStartSec={Number(saleStartRow!.result as bigint)}
-          deadlineSec={Number(deadlineRow!.result as bigint)}
+          saleStartSec={protocolChartsSticky.saleStartSec}
+          deadlineSec={protocolChartsSticky.deadlineSec}
           nowSec={effectiveLedgerSec}
-          initialMinBuy={(get(9)!.result as bigint).toString()}
-          growthRateWad={(get(10)!.result as bigint).toString()}
-          basePriceWad={(charmPriceParams![0]!.result as bigint).toString()}
-          dailyIncrementWad={(charmPriceParams![1]!.result as bigint).toString()}
+          initialMinBuy={protocolChartsSticky.initialMinBuy}
+          growthRateWad={protocolChartsSticky.growthRateWad}
+          basePriceWad={protocolChartsSticky.basePriceWad}
+          dailyIncrementWad={protocolChartsSticky.dailyIncrementWad}
           decimals={18}
         />
       )}
 
       <PageSection
-        title="Sale state (live reads)"
+        title="Sale state (semilive reads)"
         spotlight
         badgeLabel="contract reads"
         badgeTone="info"
-        lede="These match what the contract is returning right now. Refreshed every ~1.5s."
+        lede='Onchain getters via JSON-RPC multicall (~1 s cadence while healthy). After transport errors or HTTP 429 the app backs off (~5 s → ~15 s → ~30 s, same tiers as indexer polling). Live charts reuse the last good inputs so intermittent failures do not blank the graphs.'
       >
         <div className="timecurve-protocol-raise-card" aria-label="Total raised summary">
           <div className="timer-hero__raise-lines">
@@ -465,16 +578,16 @@ export function TimeCurveProtocolPage() {
           </dd>
           <dt>{humanizeKvLabel("charmPrice basePriceWad")}</dt>
           <dd>
-            {charmPriceParams?.[0]?.status === "success" && charmPriceParams[0].result !== undefined ? (
-              <AmountDisplay raw={String(charmPriceParams[0].result)} decimals={18} />
+            {charmPriceRows?.[0]?.status === "success" && charmPriceRows[0].result !== undefined ? (
+              <AmountDisplay raw={String(charmPriceRows[0].result)} decimals={18} />
             ) : (
               "—"
             )}
           </dd>
           <dt>{humanizeKvLabel("charmPrice dailyIncrementWad")}</dt>
           <dd>
-            {charmPriceParams?.[1]?.status === "success" && charmPriceParams[1].result !== undefined ? (
-              <AmountDisplay raw={String(charmPriceParams[1].result)} decimals={18} />
+            {charmPriceRows?.[1]?.status === "success" && charmPriceRows[1].result !== undefined ? (
+              <AmountDisplay raw={String(charmPriceRows[1].result)} decimals={18} />
             ) : (
               "—"
             )}
