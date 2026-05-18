@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useReadContracts, useWatchContractEvent } from "wagmi";
@@ -13,7 +13,11 @@ import {
 import { indexerBaseUrl } from "@/lib/addresses";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fetchTimecurvePodiums } from "@/lib/indexerApi";
-import { reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
+import {
+  INDEXER_EVENT_COALESCE_MS,
+  getIndexerBackoffPollMs,
+  reportIndexerFetchAttempt,
+} from "@/lib/indexerConnectivity";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 import { overlayWarbowPodiumBpValues } from "./warbowPodiumLive";
@@ -136,7 +140,13 @@ export function useWarbowPodiumLiveInvalidation(
   queryClient: QueryClient,
   setBuyFeedRefreshNonce: Dispatch<SetStateAction<number>>,
 ) {
+  const lastCoalesceWallMsRef = useRef(0);
   const onBpMovingEvent = useCallback(() => {
+    const now = Date.now();
+    if (now - lastCoalesceWallMsRef.current < INDEXER_EVENT_COALESCE_MS) {
+      return;
+    }
+    lastCoalesceWallMsRef.current = now;
     setBuyFeedRefreshNonce((n) => n + 1);
     if (indexerBaseUrl()) {
       void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
@@ -160,7 +170,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     },
     enabled: indexerOn && Boolean(tc),
     staleTime: 0,
-    refetchInterval: 1000,
+    refetchInterval: () => getIndexerBackoffPollMs(1000),
     placeholderData: (previousData) => previousData,
   });
 

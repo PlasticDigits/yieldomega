@@ -15,3 +15,8 @@ export async function chainSecondsAtReceiptBlock(
   const blk = await getBlock(wagmiConfig, { blockNumber: receipt.blockNumber });
   return Number(blk.timestamp);
 }
+
+/** Wall-clock deadline for buy cooldown UX — starts as soon as the tx is mined (before `getBlock`). */
+export function buyCooldownWallUntilMsFromNow(cooldownSec: number): number {
+  return Date.now() + Math.max(0, cooldownSec) * 1000;
+}

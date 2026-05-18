@@ -7,6 +7,7 @@
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
+import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
 import type { Config } from "wagmi";
 import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
 import type { HexAddress } from "@/lib/addresses";
@@ -52,6 +53,9 @@ function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
  * chain drift across internal awaits ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
  *
  * Resolves to the inclusion block timestamp (seconds) after `buyViaKumbaya` mines.
+ *
+ * **`onBuyMinedBeforeChainTimestamp`** — optional hook after the receipt is available but before
+ * `getBlock` (wallet buy cooldown UI can start a wall-clock countdown immediately).
  */
 export async function submitKumbayaSingleTxBuy(params: {
   wagmiConfig: Config;
@@ -68,6 +72,7 @@ export async function submitKumbayaSingleTxBuy(params: {
   /** Same opt-in as `TimeCurve.buy` / `buyFor` ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
   sessionSnapshot: WalletBuySessionSnapshot;
+  onBuyMinedBeforeChainTimestamp?: () => void;
 }): Promise<number> {
   const {
     wagmiConfig: cfg,
@@ -83,6 +88,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     codeHash,
     plantWarBowFlag,
     sessionSnapshot,
+    onBuyMinedBeforeChainTimestamp,
   } = params;
   const router = timeCurveBuyRouter as `0x${string}`;
 
@@ -140,7 +146,9 @@ export async function submitKumbayaSingleTxBuy(params: {
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   playGameSfxCoinHitBuySubmit();
   const receipt = await waitForTransactionReceipt(cfg, { hash });
+  assertSuccessfulBuyReceipt(receipt);
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
+  onBuyMinedBeforeChainTimestamp?.();
   return chainSecondsAtReceiptBlock(cfg, receipt);
 }
 

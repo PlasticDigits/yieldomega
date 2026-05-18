@@ -52,7 +52,10 @@ export type UseTimecurveHeroTimerResult = {
    */
   chainNowSec: number | undefined;
   isBusy: boolean;
+  /** Full reload: resets skew (e.g. manual refetch). */
   refresh: () => void;
+  /** Light reload: keeps skew; throttled to match {@link getIndexerBackoffPollMs} so log bursts do not hammer the indexer. */
+  refreshSoft: () => void;
 };
 
 /**
@@ -70,6 +73,7 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
   const skewWallMinusChainRef = useRef<number | null>(null);
   const heroTimerRef = useRef<HeroTimerState | null>(null);
   heroTimerRef.current = heroTimer;
+  const lastSoftRefreshWallMsRef = useRef(0);
 
   /** Recompute from latest indexer snapshot + wall clock (never rely on a separate "tick" state that can desync). */
   const recomputeCountdown = useCallback(() => {
@@ -125,6 +129,16 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
 
   const refresh = useCallback(() => void loadSnapshot(true), [loadSnapshot]);
 
+  const refreshSoft = useCallback(() => {
+    const now = Date.now();
+    const minGap = getIndexerBackoffPollMs(1000);
+    if (now - lastSoftRefreshWallMsRef.current < minGap) {
+      return;
+    }
+    lastSoftRefreshWallMsRef.current = now;
+    void loadSnapshot(false);
+  }, [loadSnapshot]);
+
   useEffect(() => {
     if (!timeCurveAddress) {
       setHeroTimer(null);
@@ -176,5 +190,6 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
     chainNowSec,
     isBusy,
     refresh,
+    refreshSoft,
   };
 }

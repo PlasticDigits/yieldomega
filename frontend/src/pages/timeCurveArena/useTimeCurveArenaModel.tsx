@@ -40,6 +40,7 @@ import {
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
 } from "@/lib/walletBuySessionGuard";
 import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
+import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
 import { simulateWriteContract } from "@/lib/simulateContractWrite";
 import {
   type KumbayaEnv,
@@ -122,7 +123,11 @@ import {
   type WarbowLeaderboardItem,
   type WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
-import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
+import {
+  getIndexerBackoffPollMs,
+  INDEXER_EVENT_COALESCE_MS,
+  reportIndexerFetchAttempt,
+} from "@/lib/indexerConnectivity";
 import {
   clampBigint,
   formatPodiumLeaderboardValue,
@@ -278,6 +283,7 @@ export function useTimeCurveArenaModel() {
     chainNowSec: heroChainNowSec,
     isBusy: heroTimerBusy,
     refresh: loadHeroTimer,
+    refreshSoft: refreshHeroTimerSoft,
   } = useTimecurveHeroTimer(tc);
 
   const phaseLedgerSecInt = useMemo(
@@ -608,15 +614,21 @@ export function useTimeCurveArenaModel() {
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
+  const warbowBpEventCoalesceWallMsRef = useRef(0);
   const onWarbowBpMovingEvent = useCallback(() => {
+    const now = Date.now();
+    if (now - warbowBpEventCoalesceWallMsRef.current < INDEXER_EVENT_COALESCE_MS) {
+      return;
+    }
+    warbowBpEventCoalesceWallMsRef.current = now;
     void refetchCoreTc();
     void refetchUserSale();
-    void loadHeroTimer();
+    void refreshHeroTimerSoft();
     void refreshWarbowIndexerAggregates();
     if (indexerBaseUrl()) {
       void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
     }
-  }, [refetchCoreTc, refetchUserSale, loadHeroTimer, refreshWarbowIndexerAggregates, queryClient]);
+  }, [refetchCoreTc, refetchUserSale, refreshHeroTimerSoft, refreshWarbowIndexerAggregates, queryClient]);
 
   useWarbowBpMovingEventWatch(tc, onWarbowBpMovingEvent);
 
@@ -2824,7 +2836,7 @@ export function useTimeCurveArenaModel() {
         totalPull,
         readCl8yTimeCurveUnlimitedApproval(),
       );
-      if (allow < totalPull) {
+      if (allow < approveAmt) {
         const { hash: approveHash } = await writeContractWithGasBuffer({
           wagmiConfig,
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -2856,6 +2868,7 @@ export function useTimeCurveArenaModel() {
       guardBuySession();
       playGameSfxCoinHitBuySubmit();
       const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+      assertSuccessfulBuyReceipt(receipt);
       const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
       setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
       if (codeHash) {

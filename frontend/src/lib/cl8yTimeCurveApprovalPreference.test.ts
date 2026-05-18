@@ -42,8 +42,9 @@ describe("cl8yTimeCurveApprovalPreference", () => {
     vi.unstubAllGlobals();
   });
 
-  it("cl8yTimeCurveApprovalAmountWei: exact need when not unlimited", () => {
-    expect(cl8yTimeCurveApprovalAmountWei(1234n, false)).toBe(1234n);
+  it("cl8yTimeCurveApprovalAmountWei: needWei plus inclusion headroom when not unlimited", () => {
+    expect(cl8yTimeCurveApprovalAmountWei(10_000n, false)).toBe(10_050n);
+    expect(cl8yTimeCurveApprovalAmountWei(1234n, false)).toBe(1241n);
     expect(cl8yTimeCurveApprovalAmountWei(0n, false)).toBe(0n);
   });
 
