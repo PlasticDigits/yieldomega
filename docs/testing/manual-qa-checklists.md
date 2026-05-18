@@ -726,7 +726,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 1. **Baseline:** `/timecurve` pill **live**.
 2. **Stop indexer** or block **`127.0.0.1:3100`** — wait **~3–5 s**.
 3. Pill **Indexer offline · retrying** on Simple + footer routes.
-4. **Network:** polls **not** hammering at 1s indefinitely — backoff toward **30s+**.
+4. **Network:** polls **not** hammering at 1s indefinitely — backoff steps **5s → 15s → 30s** after failures.
 5. **Recent buys:** **Cannot reach indexer · cached data may be stale**, not **Waiting for the first buy** when empty/offline.
 6. **Recovery:** indexer back → pill **live**.
 

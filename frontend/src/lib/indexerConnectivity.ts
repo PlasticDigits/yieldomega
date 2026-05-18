@@ -11,8 +11,11 @@
  * {@link INDEXER_OFFLINE_FAILURE_STREAK} distinct failure seconds (≈ consecutive seconds with at
  * least one failed indexer request).
  *
- * **Backoff (circuit-style):** when offline, poll intervals step **30s → 60s → 120s** (capped) via
+ * **Backoff (circuit-style):** when offline, poll intervals step **5s → 15s → 30s** (capped) via
  * {@link indexerBackoffPollMsForStreak}; any successful fetch resets the streak.
+ *
+ * **HTTP 429:** {@link reportIndexerRateLimited} jumps the streak to the offline threshold immediately
+ * so all pollers back off together without waiting for debounced failure seconds.
  */
 
 /** @internal */
@@ -25,7 +28,7 @@ export const INDEXER_OFFLINE_FAILURE_STREAK = 3;
  */
 export const INDEXER_EVENT_COALESCE_MS = 1000;
 
-const BACKOFF_MS = [30_000, 60_000, 120_000] as const;
+const BACKOFF_MS = [5_000, 15_000, 30_000] as const;
 
 let failureStreak = 0;
 /** Last wall second bucket that incremented `failureStreak` (debounce duplicate failure reports). */
@@ -58,6 +61,16 @@ export function reportIndexerFetchAttempt(ok: boolean): void {
   }
   lastFailCountedSec = sec;
   failureStreak = Math.min(failureStreak + 1, 10_000);
+  notify();
+}
+
+/**
+ * HTTP 429 from the indexer: jump straight to offline-tier backoff so every poller backs off together
+ * instead of continuing at 1s until the debounced failure streak catches up ([issue #96]).
+ */
+export function reportIndexerRateLimited(): void {
+  failureStreak = Math.max(failureStreak, INDEXER_OFFLINE_FAILURE_STREAK);
+  lastFailCountedSec = Math.floor(Date.now() / 1000);
   notify();
 }
 
