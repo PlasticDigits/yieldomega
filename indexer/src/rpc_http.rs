@@ -104,6 +104,70 @@ where
     }
 }
 
+/// Like [`rpc_first_some`], but tries URLs in **sticky** order: start at `sticky_idx`, then wrap.
+///
+/// Updates `sticky_idx` to the provider that returned `Ok(Some(_))`. Ingestion uses this so
+/// consecutive `eth_getBlockByNumber` calls prefer the **same** RPC replica; otherwise comma-separated
+/// fallbacks can alternate between nodes with divergent parent hashes and spin forever on false reorgs.
+pub async fn rpc_first_some_sticky<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    sticky_idx: &mut usize,
+    mut f: F,
+) -> TransportResult<Option<T>>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<Option<T>>>,
+{
+    let n = providers.len();
+    if n == 0 {
+        return Ok(None);
+    }
+    let mut last_err: Option<TransportError> = None;
+    let base = *sticky_idx % n;
+    for off in 0..n {
+        let i = (base + off) % n;
+        match f(&providers[i]).await {
+            Ok(Some(v)) => {
+                *sticky_idx = i;
+                return Ok(Some(v));
+            }
+            Ok(None) => {}
+            Err(e) => last_err = Some(e),
+        }
+    }
+    match last_err {
+        Some(e) => Err(e),
+        None => Ok(None),
+    }
+}
+
+/// Like [`rpc_first_ok`], but prefers the same sticky URL ordering as [`rpc_first_some_sticky`].
+pub async fn rpc_first_ok_sticky<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    sticky_idx: &mut usize,
+    mut f: F,
+) -> TransportResult<T>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<T>>,
+{
+    let n = providers.len();
+    assert!(n > 0, "rpc_first_ok_sticky requires non-empty providers");
+    let mut last_err: Option<TransportError> = None;
+    let base = *sticky_idx % n;
+    for off in 0..n {
+        let i = (base + off) % n;
+        match f(&providers[i]).await {
+            Ok(v) => {
+                *sticky_idx = i;
+                return Ok(v);
+            }
+            Err(e) => last_err = Some(e),
+        }
+    }
+    Err(last_err.expect("rpc_first_ok_sticky: inner loop always tries ≥1 provider"))
+}
+
 pub fn transport_err_http_status(err: &TransportError) -> Option<u16> {
     match err {
         RpcError::Transport(TransportErrorKind::HttpError(HttpError { status, .. })) => {

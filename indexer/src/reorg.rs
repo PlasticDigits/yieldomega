@@ -201,18 +201,21 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
 }
 
 /// Walk backward from `from_height` until RPC hash matches `indexed_blocks`, or limit exceeded.
+///
+/// `rpc_sticky_idx` keeps block fetches on one comma-separated RPC replica where possible (same as ingestion).
 pub async fn find_common_ancestor(
     pool: &PgPool,
     providers: &[alloy_provider::ReqwestProvider],
     from_height: u64,
+    rpc_sticky_idx: &mut usize,
 ) -> Result<u64> {
     use alloy_rpc_types::BlockTransactionsKind;
 
-    use crate::rpc_http::rpc_first_some;
+    use crate::rpc_http::rpc_first_some_sticky;
 
     let mut n = from_height;
     for _ in 0..MAX_REORG_DEPTH {
-        let block = rpc_first_some(providers, |p| {
+        let block = rpc_first_some_sticky(providers, rpc_sticky_idx, |p| {
             p.get_block_by_number(n.into(), BlockTransactionsKind::Hashes)
         })
         .await
