@@ -14,7 +14,6 @@ export const MEGAETH_MAINNET_PRIMARY_RPC = "https://mainnet.megaeth.com/rpc";
  */
 const MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS: readonly string[] = [
   "https://rpc-megaeth-mainnet.globalstake.io",
-  "https://carrot.megaeth.com/rpc",
 ];
 
 /** Default when `VITE_CHAIN_ID` / `VITE_RPC_URL` are unset: local Anvil. */

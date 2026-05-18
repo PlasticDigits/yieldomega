@@ -31,7 +31,6 @@ describe("megaethMainnetOrderedRpcUrls", () => {
     expect(megaethMainnetOrderedRpcUrls([MEGAETH_MAINNET_PRIMARY_RPC])).toEqual([
       MEGAETH_MAINNET_PRIMARY_RPC,
       "https://rpc-megaeth-mainnet.globalstake.io",
-      "https://carrot.megaeth.com/rpc",
     ]);
   });
 
@@ -42,14 +41,12 @@ describe("megaethMainnetOrderedRpcUrls", () => {
       "https://primary.example",
       "https://secondary.example",
       "https://rpc-megaeth-mainnet.globalstake.io",
-      "https://carrot.megaeth.com/rpc",
     ]);
   });
 
   it("does not repeat a URL when it matches a fallback entry", () => {
     expect(megaethMainnetOrderedRpcUrls(["https://rpc-megaeth-mainnet.globalstake.io"])).toEqual([
       "https://rpc-megaeth-mainnet.globalstake.io",
-      "https://carrot.megaeth.com/rpc",
     ]);
   });
 });
