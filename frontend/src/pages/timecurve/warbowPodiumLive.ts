@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useReadContracts } from "wagmi";
 import { timeCurveReadAbi } from "@/lib/abis";
 import type { PodiumReadRow } from "./usePodiumReads";
@@ -57,25 +57,68 @@ export function overlayWarbowLeaderboardBp<T extends { buyer: string; battle_poi
   return merged;
 }
 
+/**
+ * Merge on-chain `battlePoints` into indexer leaderboard rows. `bpReads` must align with
+ * `items` sorted by `buyer` (case-insensitive), not the ladder display order — keeps batched
+ * reads keyed only by address set so indexer row reorder between polls does not reset wagmi.
+ */
+export function mergeWarbowLeaderboardBpFromSortedReads<
+  T extends { buyer: string; battle_points_after: string },
+>(items: readonly T[], bpReads: readonly ContractReadRow[] | undefined): readonly T[] {
+  if (!items.length || !bpReads?.length) {
+    return items;
+  }
+  const sorted = [...items].sort((a, b) => a.buyer.toLowerCase().localeCompare(b.buyer.toLowerCase()));
+  if (bpReads.length !== sorted.length) {
+    return items;
+  }
+  const byBuyer = new Map<string, bigint>();
+  for (let i = 0; i < sorted.length; i += 1) {
+    const read = bpReads[i];
+    if (read?.status !== "success" || typeof read.result !== "bigint") {
+      return items;
+    }
+    byBuyer.set(sorted[i]!.buyer.toLowerCase(), read.result);
+  }
+  return items.map((row) => {
+    const bp = byBuyer.get(row.buyer.toLowerCase());
+    return bp === undefined ? row : { ...row, battle_points_after: bp.toString() };
+  });
+}
+
 /** Overlay indexed WarBow leaderboard rows with live on-chain `battlePoints` reads. */
 export function useWarbowLeaderboardBpOverlay<T extends { buyer: string; battle_points_after: string }>(
   tc: `0x${string}` | undefined,
   items: readonly T[] | null | undefined,
 ): readonly T[] | null {
   const itemCount = items?.length ?? 0;
-  const buyerKey = items?.map((row) => row.buyer.toLowerCase()).join("|") ?? "";
+  const buyerReadKey = useMemo(
+    () =>
+      items?.length
+        ? [...items].map((row) => row.buyer.toLowerCase()).sort().join("|")
+        : "",
+    [items],
+  );
+
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const contracts = useMemo(() => {
-    if (!tc || !items?.length) {
+    if (!tc || !buyerReadKey) {
       return [];
     }
-    return items.map((row) => ({
+    const cur = itemsRef.current;
+    if (!cur?.length) {
+      return [];
+    }
+    const sorted = [...cur].sort((a, b) => a.buyer.toLowerCase().localeCompare(b.buyer.toLowerCase()));
+    return sorted.map((row) => ({
       address: tc,
       abi: timeCurveReadAbi,
       functionName: "battlePoints" as const,
       args: [row.buyer as `0x${string}`] as const,
     }));
-  }, [tc, buyerKey, itemCount, items]);
+  }, [tc, buyerReadKey]);
 
   const reads = useReadContracts({
     contracts: contracts as readonly unknown[],
@@ -86,8 +129,10 @@ export function useWarbowLeaderboardBpOverlay<T extends { buyer: string; battle_
     },
   });
 
-  return useMemo(
-    () => overlayWarbowLeaderboardBp(items, reads.data as readonly ContractReadRow[] | undefined),
-    [items, reads.data],
-  );
+  return useMemo(() => {
+    if (!items?.length) {
+      return items ?? null;
+    }
+    return mergeWarbowLeaderboardBpFromSortedReads(items, reads.data as readonly ContractReadRow[] | undefined);
+  }, [items, reads.data]);
 }
