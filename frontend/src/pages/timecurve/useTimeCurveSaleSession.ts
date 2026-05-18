@@ -445,7 +445,14 @@ export function useTimeCurveSaleSession(
   }>({});
 
   /** Last-good wallet-scoped multicall slices (MegaETH throttle / flaky rows). Same idea as checkoutReadLatchRef. */
-  const userWalletLatchRef = useRef<{ charmWeightWad?: bigint; charmsRedeemed?: boolean }>({});
+  const userWalletLatchRef = useRef<{
+    charmWeightWad?: bigint;
+    charmsRedeemed?: boolean;
+    /** Last successful chain `nextBuyAllowedAt(wallet)` unix sec — used when multicall rows flicker pending/failure mid-refetch. */
+    nextBuyAllowedAtChainSec?: number;
+    /** `address` snapshot for {@link nextBuyAllowedAtChainSec} (ref is not keyed by wallet elsewhere). */
+    nextBuyCooldownWallet?: HexAddress;
+  }>({});
 
   /** Holds last successful referral config reads so referral/presale bonus lines stay stable across refetches. */
   const referralMetaLatchRef = useRef<{
@@ -489,7 +496,12 @@ export function useTimeCurveSaleSession(
     const L = userWalletLatchRef.current;
     if (charmWeightR?.status === "success") L.charmWeightWad = charmWeightR.result as bigint;
     if (charmsRedeemedR?.status === "success") L.charmsRedeemed = charmsRedeemedR.result as boolean;
-  }, [tc, address, charmWeightR, charmsRedeemedR]);
+    if (nextBuyAllowedAtR?.status === "success") {
+      const v = Number(nextBuyAllowedAtR.result as bigint);
+      if (Number.isFinite(v)) L.nextBuyAllowedAtChainSec = v;
+      if (address) L.nextBuyCooldownWallet = address;
+    }
+  }, [tc, address, charmWeightR, charmsRedeemedR, nextBuyAllowedAtR]);
 
   useEffect(() => {
     if (!tc) {
@@ -1220,17 +1232,21 @@ export function useTimeCurveSaleSession(
   }, [heroChainNowSec, ledgerSecInt]);
 
   const walletCooldownRemainingFromReads = useMemo(() => {
-    if (
-      phase !== "saleActive" ||
-      !isConnected ||
-      nextBuyAllowedAtR?.status !== "success"
-    ) {
+    if (phase !== "saleActive" || !isConnected) {
       return 0;
     }
-    const nextAllowed = BigInt(nextBuyAllowedAtR.result as bigint);
+    let nextAllowed: bigint | undefined;
+    if (nextBuyAllowedAtR?.status === "success") {
+      nextAllowed = BigInt(nextBuyAllowedAtR.result as bigint);
+    } else {
+      const latchedWallet = userWalletLatchRef.current.nextBuyCooldownWallet;
+      const latched = userWalletLatchRef.current.nextBuyAllowedAtChainSec;
+      if (latchedWallet !== address || latched === undefined) return 0;
+      nextAllowed = BigInt(latched);
+    }
     if (nextAllowed <= 0n) return 0;
     return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
-  }, [phase, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
+  }, [phase, isConnected, nextBuyAllowedAtR, chainNowForCooldown, address]);
 
   const preemptiveCooldownRemainingSec = useMemo(() => {
     if (preemptiveCooldownUntilChainSec === null) return 0;

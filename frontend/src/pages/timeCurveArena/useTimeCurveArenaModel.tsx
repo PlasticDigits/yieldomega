@@ -614,6 +614,13 @@ export function useTimeCurveArenaModel() {
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
 
+  /** Last-good `nextBuyAllowedAt(wallet)` unix sec — keeps buy cooldown UX stable when user multicalls flicker pending/failure. */
+  const nextBuyCooldownLatchRef = useRef<{
+    tc: HexAddress;
+    wallet: HexAddress;
+    nextAllowedSec: number;
+  } | null>(null);
+
   const warbowBpEventCoalesceWallMsRef = useRef(0);
   const onWarbowBpMovingEvent = useCallback(() => {
     const now = Date.now();
@@ -729,6 +736,23 @@ export function useTimeCurveArenaModel() {
     warbowGuardUntilR,
     nextBuyAllowedAtR,
   ] = userSaleData ?? [];
+
+  useEffect(() => {
+    if (!tc || !address) {
+      nextBuyCooldownLatchRef.current = null;
+      return;
+    }
+    const cur = nextBuyCooldownLatchRef.current;
+    if (cur !== null && (cur.tc !== tc || cur.wallet !== address)) {
+      nextBuyCooldownLatchRef.current = null;
+    }
+    if (nextBuyAllowedAtR?.status === "success") {
+      const v = Number(nextBuyAllowedAtR.result as bigint);
+      if (Number.isFinite(v)) {
+        nextBuyCooldownLatchRef.current = { tc, wallet: address, nextAllowedSec: v };
+      }
+    }
+  }, [tc, address, nextBuyAllowedAtR]);
 
   const buyCooldownSecResolved = useMemo(() => {
     if (buyCooldownSecR?.status !== "success") return 300;
@@ -1467,15 +1491,21 @@ export function useTimeCurveArenaModel() {
     heroChainNowSec !== undefined ? heroChainNowSec : ledgerSecInt;
 
   const walletCooldownRemainingFromReads = useMemo(() => {
-    if (!saleActive || !isConnected || nextBuyAllowedAtR?.status !== "success") {
-      return 0;
+    if (!saleActive || !isConnected) return 0;
+    let nextAllowed: bigint | undefined;
+    if (nextBuyAllowedAtR?.status === "success") {
+      nextAllowed = BigInt(nextBuyAllowedAtR.result as bigint);
+    } else if (tc && address) {
+      const L = nextBuyCooldownLatchRef.current;
+      if (L?.tc !== tc || L.wallet !== address) return 0;
+      nextAllowed = BigInt(L.nextAllowedSec);
     }
-    const nextAllowed = BigInt(nextBuyAllowedAtR.result as bigint);
+    if (nextAllowed === undefined) return 0;
     if (nextAllowed <= 0n) {
       return 0;
     }
     return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
-  }, [saleActive, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
+  }, [saleActive, isConnected, nextBuyAllowedAtR, chainNowForCooldown, tc, address]);
 
   const preemptiveCooldownRemainingSec = useMemo(() => {
     if (preemptiveCooldownUntilChainSec === null) return 0;
