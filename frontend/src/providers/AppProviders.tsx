@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { wagmiConfig } from "@/wagmi-config";
 import { AudioEngineProvider } from "@/audio/AudioEngineProvider";
 import { IndexerConnectivityProvider } from "@/providers/IndexerConnectivityContext";
+import { LatestBlockProvider } from "@/providers/LatestBlockContext";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -23,11 +24,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={arcadeWalletTheme}>
-          <IndexerConnectivityProvider>
-            <AudioEngineProvider>{children}</AudioEngineProvider>
-          </IndexerConnectivityProvider>
-        </RainbowKitProvider>
+        <LatestBlockProvider>
+          <RainbowKitProvider theme={arcadeWalletTheme}>
+            <IndexerConnectivityProvider>
+              <AudioEngineProvider>{children}</AudioEngineProvider>
+            </IndexerConnectivityProvider>
+          </RainbowKitProvider>
+        </LatestBlockProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

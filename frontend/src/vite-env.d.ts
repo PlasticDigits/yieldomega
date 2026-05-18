@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_WALLETCONNECT_PROJECT_ID: string;
   readonly VITE_CHAIN_ID: string;
   readonly VITE_RPC_URL: string;
+  /** Set to "1" to log each JSON-RPC attempt and fallback switches in the browser console. */
+  readonly VITE_RPC_DEBUG?: string;
   readonly VITE_INDEXER_URL: string;
   readonly VITE_TIMECURVE_ADDRESS: string;
   readonly VITE_RABBIT_TREASURY_ADDRESS: string;

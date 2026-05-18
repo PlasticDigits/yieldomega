@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useMemo, useState } from "react";
-import { useBlock, useReadContracts } from "wagmi";
+import { useReadContracts } from "wagmi";
 import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
@@ -34,6 +34,7 @@ import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSer
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { useLatestBlock } from "@/providers/LatestBlockContext";
 
 /**
  * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
@@ -145,7 +146,7 @@ export function TimeCurveProtocolPage() {
     query: { enabled: Boolean(feeRouterAddr) },
   });
 
-  const { data: latestBlock } = useBlock({ watch: true });
+  const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
   const blockChainSec = blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;

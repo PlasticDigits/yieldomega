@@ -3,7 +3,7 @@
 import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { useBlock, useReadContracts, useWatchContractEvent } from "wagmi";
+import { useReadContracts, useWatchContractEvent } from "wagmi";
 import { zeroAddress } from "viem";
 import {
   timeCurveBuyEventAbi,
@@ -14,6 +14,7 @@ import { indexerBaseUrl } from "@/lib/addresses";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fetchTimecurvePodiums } from "@/lib/indexerApi";
 import { reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
+import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 import { overlayWarbowPodiumBpValues } from "./warbowPodiumLive";
 
@@ -148,7 +149,7 @@ export function useWarbowPodiumLiveInvalidation(
 /** Prefer indexer head cache (~1s RPC poll server-side); fall back to direct reads when `VITE_INDEXER_URL` is unset. */
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const indexerOn = Boolean(indexerBaseUrl());
-  const { data: latestBlock } = useBlock({ watch: true });
+  const { data: latestBlock } = useLatestBlock();
 
   const indexerQuery = useQuery({
     queryKey: TIMECURVE_PODIUMS_QUERY_KEY,

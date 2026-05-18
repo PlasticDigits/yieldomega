@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useBlock, useReadContract, useReadContracts } from "wagmi";
+import { useAccount, useReadContract, useReadContracts } from "wagmi";
 import { walletDisplayFromMap } from "@/lib/addressFormat";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { erc20Abi, feeRouterReadAbi, linearCharmPriceReadAbi, timeCurveReadAbi } from "@/lib/abis";
@@ -29,6 +29,7 @@ import {
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import { serializeContractRead, type SerializableContractRead } from "@/lib/serializeContractRead";
 import type { ContractReadRow } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { useLatestBlock } from "@/providers/LatestBlockContext";
 
 const coreTcContracts = (tc: HexAddress) =>
   [
@@ -68,7 +69,7 @@ const coreTcContracts = (tc: HexAddress) =>
 export function useTimecurveProtocolRawAccordion() {
   const tc = addresses.timeCurve;
   const { address, isConnected } = useAccount();
-  const { data: latestBlock } = useBlock({ watch: true });
+  const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
   const blockChainSec = blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;
