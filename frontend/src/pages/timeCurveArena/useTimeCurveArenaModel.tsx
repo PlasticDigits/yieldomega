@@ -60,7 +60,7 @@ import {
   cl8yTimeCurveApprovalAmountWei,
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
-import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
@@ -1183,17 +1183,22 @@ export function useTimeCurveArenaModel() {
     return { minS, maxS };
   }, [minBuy, maxBuy, walletCl8yBal, payWith]);
 
+  const cl8ySpendBoundsRef = useRef<{ minS: bigint; maxS: bigint } | null>(null);
+
   useEffect(() => {
     if (!cl8ySpendBounds) {
       return;
     }
     const { minS, maxS } = cl8ySpendBounds;
-    setSpendWei((prev) => {
-      if (prev === 0n || prev < minS || prev > maxS) {
-        return clampBigint(minS + (maxS - minS) / 2n, minS, maxS);
-      }
-      return clampBigint(prev, minS, maxS);
-    });
+    const prevBounds = cl8ySpendBoundsRef.current;
+    cl8ySpendBoundsRef.current = { minS, maxS };
+    setSpendWei((prev) =>
+      reconcileSpendWeiToCl8yBounds({
+        prevSpendWei: prev,
+        nextBounds: { minS, maxS },
+        prevBounds,
+      }),
+    );
   }, [cl8ySpendBounds]);
 
   useEffect(() => {
