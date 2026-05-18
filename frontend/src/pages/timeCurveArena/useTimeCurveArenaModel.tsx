@@ -215,8 +215,13 @@ export function useTimeCurveArenaModel() {
     if (indexerBaseUrl()) {
       reportIndexerFetchAttempt(ok);
     }
-    setWarbowLb(lbItems);
-    setWarbowFeed(fd?.items ?? null);
+    // Keep the last good ladder + feed on transient indexer failures — avoids rank / steal-row flicker during polls.
+    if (lbItems != null) {
+      setWarbowLb(lbItems);
+    }
+    if (fd != null) {
+      setWarbowFeed(fd.items ?? null);
+    }
   }, []);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
@@ -1773,11 +1778,24 @@ export function useTimeCurveArenaModel() {
     [warbowStealCandidates, warbowStealProspectCandidates, warbowStealAboveBandCandidates],
   );
 
+  /** Stable multicall read order for `useReadContracts` — BP-sorted discovery lists churn every poll and reset the batch query without this. */
+  const sortedStealHeroReadCandidates = useMemo(
+    () =>
+      [...warbowStealHeroReadCandidates].sort((a, b) =>
+        a.address.toLowerCase().localeCompare(b.address.toLowerCase()),
+      ),
+    [warbowStealHeroReadCandidates],
+  );
+
+  const stealCandidateOnchainByAddrRef = useRef(
+    new Map<string, { bp?: bigint; steals?: bigint; guardUntil?: bigint }>(),
+  );
+
   const stealCandidateContracts = useMemo(() => {
-    if (!tc || warbowStealHeroReadCandidates.length === 0) {
+    if (!tc || sortedStealHeroReadCandidates.length === 0) {
       return [];
     }
-    return warbowStealHeroReadCandidates.flatMap((c) => [
+    return sortedStealHeroReadCandidates.flatMap((c) => [
       {
         address: tc,
         abi: timeCurveReadAbi,
@@ -1797,33 +1815,49 @@ export function useTimeCurveArenaModel() {
         args: [c.address],
       },
     ]);
-  }, [tc, utcDayId, warbowStealHeroReadCandidates]);
+  }, [tc, utcDayId, sortedStealHeroReadCandidates]);
 
   const { data: stealCandidateReadsRaw } = useReadContracts({
     contracts: stealCandidateContracts,
     query: {
       enabled: Boolean(tc && stealCandidateContracts.length > 0),
       refetchInterval: 12_000,
+      placeholderData: (previousData) => previousData,
     },
   });
 
   const stealCandidateOnchainByAddr = useMemo(() => {
     const m = new Map<string, { bp?: bigint; steals?: bigint; guardUntil?: bigint }>();
-    if (!stealCandidateReadsRaw?.length || !warbowStealHeroReadCandidates.length) {
-      return m;
+    const allowed = new Set(sortedStealHeroReadCandidates.map((c) => c.address.toLowerCase()));
+    for (const [k, v] of stealCandidateOnchainByAddrRef.current) {
+      if (allowed.has(k)) {
+        m.set(k, { ...v });
+      }
     }
-    warbowStealHeroReadCandidates.forEach((c, i) => {
-      const bpR = stealCandidateReadsRaw[i * 3];
-      const stR = stealCandidateReadsRaw[i * 3 + 1];
-      const gR = stealCandidateReadsRaw[i * 3 + 2];
-      const key = c.address.toLowerCase();
-      const bp = bpR?.status === "success" ? (bpR.result as bigint) : undefined;
-      const steals = stR?.status === "success" ? (stR.result as bigint) : undefined;
-      const guardUntil = gR?.status === "success" ? (gR.result as bigint) : undefined;
-      m.set(key, { bp, steals, guardUntil });
-    });
+
+    const raw = stealCandidateReadsRaw;
+    const n = sortedStealHeroReadCandidates.length;
+    if (raw?.length && n > 0 && raw.length === n * 3) {
+      sortedStealHeroReadCandidates.forEach((c, i) => {
+        const bpR = raw[i * 3];
+        const stR = raw[i * 3 + 1];
+        const gR = raw[i * 3 + 2];
+        const key = c.address.toLowerCase();
+        const bp = bpR?.status === "success" ? (bpR.result as bigint) : undefined;
+        const steals = stR?.status === "success" ? (stR.result as bigint) : undefined;
+        const guardUntil = gR?.status === "success" ? (gR.result as bigint) : undefined;
+        const cur = m.get(key) ?? {};
+        m.set(key, {
+          bp: bp ?? cur.bp,
+          steals: steals ?? cur.steals,
+          guardUntil: guardUntil ?? cur.guardUntil,
+        });
+      });
+    }
+
+    stealCandidateOnchainByAddrRef.current = m;
     return m;
-  }, [stealCandidateReadsRaw, warbowStealHeroReadCandidates]);
+  }, [stealCandidateReadsRaw, sortedStealHeroReadCandidates]);
 
   const refetchAll = useCallback(async () => {
     await Promise.all([
