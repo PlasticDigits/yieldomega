@@ -48,12 +48,20 @@ pub fn parse_http_rpc_urls(strings: &[String]) -> Result<Vec<reqwest::Url>> {
     Ok(out)
 }
 
-pub fn build_reqwest_providers(urls: &[reqwest::Url], timeout: Duration) -> Result<Vec<ReqwestProvider>> {
-    urls.iter().map(|u| reqwest_http_provider(u.clone(), timeout)).collect()
+pub fn build_reqwest_providers(
+    urls: &[reqwest::Url],
+    timeout: Duration,
+) -> Result<Vec<ReqwestProvider>> {
+    urls.iter()
+        .map(|u| reqwest_http_provider(u.clone(), timeout))
+        .collect()
 }
 
 /// Try each provider in order (viem-style `fallback`, same order as frontend comma-separated RPC).
-pub async fn rpc_first_ok<'a, T, F, Fut>(providers: &'a [ReqwestProvider], mut f: F) -> TransportResult<T>
+pub async fn rpc_first_ok<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    mut f: F,
+) -> TransportResult<T>
 where
     F: FnMut(&'a ReqwestProvider) -> Fut,
     Fut: std::future::Future<Output = TransportResult<T>>,
@@ -70,7 +78,9 @@ where
 
 pub fn transport_err_http_status(err: &TransportError) -> Option<u16> {
     match err {
-        RpcError::Transport(TransportErrorKind::HttpError(HttpError { status, .. })) => Some(*status),
+        RpcError::Transport(TransportErrorKind::HttpError(HttpError { status, .. })) => {
+            Some(*status)
+        }
         _ => None,
     }
 }

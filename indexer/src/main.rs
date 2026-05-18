@@ -10,9 +10,7 @@ use alloy_primitives::Address;
 use eyre::Result;
 use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
-use yieldomega_indexer::{
-    api, chain_timer, config, cors_config, db, ingestion,
-};
+use yieldomega_indexer::{api, chain_timer, config, cors_config, db, ingestion};
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -303,7 +303,8 @@ mod contracts {
 use contracts::{
     DoubPresaleVestingEvents, FeeRouterEvents, FeeSinkEvents, LeprechaunEvents, PodiumPoolEvents,
     RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents,
-    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy, TimeCurveWarBowRevengeTopic0Legacy,
+    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy,
+    TimeCurveWarBowRevengeTopic0Legacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.

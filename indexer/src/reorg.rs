@@ -78,7 +78,11 @@ pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
 }
 
 /// Record a canonical block hash for reorg walk-back.
-pub async fn upsert_indexed_block_conn(conn: &mut PgConnection, number: u64, hash: B256) -> Result<()> {
+pub async fn upsert_indexed_block_conn(
+    conn: &mut PgConnection,
+    number: u64,
+    hash: B256,
+) -> Result<()> {
     let n = number as i64;
     let h = format!("{:#x}", hash);
     sqlx::query(
