@@ -16,7 +16,6 @@ const MEGAETH_MAINNET_CHAIN_ID: u64 = 4326;
 /// Extra public endpoints appended after env URLs for MegaETH mainnet (same order/dedup as frontend).
 const MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS: &[&str] = &[
     "https://rpc-megaeth-mainnet.globalstake.io",
-    "https://carrot.megaeth.com/rpc",
 ];
 
 fn megaeth_mainnet_ordered_rpc_urls(env_urls: &[String]) -> Vec<String> {
