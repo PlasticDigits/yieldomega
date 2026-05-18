@@ -6,6 +6,7 @@
 
 import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
+import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import type { Config } from "wagmi";
 import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
 import type { HexAddress } from "@/lib/addresses";
@@ -49,6 +50,8 @@ function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
  *
  * **`sessionSnapshot`** — latched wallet session after submit-time sizing; aborts if account or
  * chain drift across internal awaits ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
+ *
+ * Resolves to the inclusion block timestamp (seconds) after `buyViaKumbaya` mines.
  */
 export async function submitKumbayaSingleTxBuy(params: {
   wagmiConfig: Config;
@@ -65,7 +68,7 @@ export async function submitKumbayaSingleTxBuy(params: {
   /** Same opt-in as `TimeCurve.buy` / `buyFor` ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
   sessionSnapshot: WalletBuySessionSnapshot;
-}): Promise<void> {
+}): Promise<number> {
   const {
     wagmiConfig: cfg,
     writeContractAsync,
@@ -136,8 +139,9 @@ export async function submitKumbayaSingleTxBuy(params: {
   });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   playGameSfxCoinHitBuySubmit();
-  await waitForTransactionReceipt(cfg, { hash });
+  const receipt = await waitForTransactionReceipt(cfg, { hash });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
+  return chainSecondsAtReceiptBlock(cfg, receipt);
 }
 
 export { BYTES32_ZERO, PAY_ETH, PAY_STABLE };

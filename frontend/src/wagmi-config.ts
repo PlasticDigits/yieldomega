@@ -16,6 +16,7 @@ import {
   configuredChain,
   megaethMainnetOrderedRpcUrls,
   MEGAETH_MAINNET_CHAIN_ID,
+  parseCommaSeparatedRpcUrls,
   resolveChainRpcConfig,
 } from "@/lib/chain";
 
@@ -31,7 +32,7 @@ const chainId = Number.parseInt(import.meta.env.VITE_CHAIN_ID || "31337", 10);
 const initialChain =
   chains.find((c) => c.id === chainId) ?? targetChain;
 
-const rpcOverride = import.meta.env.VITE_RPC_URL?.trim();
+const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
 const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
@@ -47,16 +48,26 @@ function transportFor(chain: (typeof chains)[number]) {
       import.meta.env.VITE_CHAIN_ID,
       import.meta.env.VITE_RPC_URL,
     );
-    const urls = megaethMainnetOrderedRpcUrls(defaultRpcHttp);
+    const base = envRpcUrls.length > 0 ? envRpcUrls : [defaultRpcHttp];
+    const urls = megaethMainnetOrderedRpcUrls(base);
     return fallback(
       urls.map((url) => http(url)),
       { rank: false },
     );
   }
-  if (rpcOverride && chain.id === initialChain.id) {
-    return http(rpcOverride);
+  if (chain.id !== initialChain.id) {
+    return http();
   }
-  return http();
+  if (envRpcUrls.length === 0) {
+    return http();
+  }
+  if (envRpcUrls.length === 1) {
+    return http(envRpcUrls[0]);
+  }
+  return fallback(
+    envRpcUrls.map((url) => http(url)),
+    { rank: false },
+  );
 }
 
 const transports = Object.fromEntries(

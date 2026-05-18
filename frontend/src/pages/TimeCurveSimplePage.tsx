@@ -766,6 +766,7 @@ export function TimeCurveSimplePage() {
 
   const buyDisabled =
     session.phase !== "saleActive" ||
+    session.buySubmitBusy ||
     session.isWriting ||
     !session.walletConnected ||
     chainMismatch ||
@@ -1092,8 +1093,8 @@ export function TimeCurveSimplePage() {
                   decoding="async"
                 />
                 <span className="timecurve-simple__cta-label">
-                  {session.isWriting
-                    ? "Submitting…"
+                  {session.buySubmitBusy || session.isWriting
+                    ? "Processing transaction…"
                     : session.payWith !== "cl8y" && session.swapQuoteLoading
                       ? "Refreshing quote…"
                       : buyOnCooldown

@@ -128,6 +128,64 @@ scripts/deploy-megaeth-contracts.sh 1779105600 \
 - `RPC_URL`, `CHAIN_ID`, and `NETWORK_NAME` override the MegaETH defaults for staging or testnet rehearsals.
 - `YIELDOMEGA_SKIP_SIMULATION=1` passes `--skip-simulation` to Forge for MegaEVM tooling edge cases. Prefer normal simulation unless the target RPC/tooling requires the skip.
 
+## UUPS TimeCurve upgrade (MegaETH mainnet)
+
+<a id="uups-timecurve-upgrade-megaeth-mainnet"></a>
+
+Production **TimeCurve** is an **ERC-1967 / UUPS** proxy. Upgrades call **`upgradeToAndCall(address,bytes)`** on the **proxy** address (OpenZeppelin Contracts **5.x** — use **`upgradeToAndCall`**, not removed `upgradeTo`).
+
+**Canonical proxy (4326)** is recorded in [`indexer/address-registry.megaeth-mainnet.json`](../../indexer/address-registry.megaeth-mainnet.json) under **`contracts.TimeCurve`** (same value as the [root README](../../README.md) quick reference: **`0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71`**). Always re-read that registry before upgrading in case governance published a migration.
+
+**1 — Deploy a new TimeCurve implementation** (UUPS logic contract; **not** the proxy). From **`contracts/`**, the compiler profile comes from [`foundry.toml`](../../contracts/foundry.toml) (`via_ir`, optimizer, `0.8.24`, etc.). **`forge create` does not accept `--code-size-limit`** — that flag is for **`forge script`** / **`forge test`** simulation and for **`anvil`** ([`docs/contracts/foundry-and-megaeth.md`](../contracts/foundry-and-megaeth.md)).
+
+Use the same **Etherscan (multichain) API key** as production deploy ([`scripts/deploy-megaeth-contracts.sh`](../../scripts/deploy-megaeth-contracts.sh)); never commit it. MegaETH mainnet (**4326**) uses the **Etherscan API V2** base URL with **`chainid=4326`** (see [Etherscan — verify with Foundry](https://docs.etherscan.io/contract-verification/verify-with-foundry)):
+
+```bash
+cd contracts
+forge build
+export ETHERSCAN_API_KEY='…'   # same key as deploy-megaeth; never commit or echo it
+
+forge create src/TimeCurve.sol:TimeCurve \
+  --rpc-url https://mainnet.megaeth.com/rpc \
+  --chain 4326 \
+  --broadcast \
+  --verify \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=4326" \
+  --etherscan-api-key "$ETHERSCAN_API_KEY" \
+  --interactive
+```
+
+If **`--verify`** fails or you deployed without it, verify the **implementation** address manually (empty constructor; **`TimeCurve`** only **`_disableInitializers()`** in the constructor):
+
+```bash
+cd contracts
+forge verify-contract <NEW_IMPLEMENTATION_ADDRESS> src/TimeCurve.sol:TimeCurve \
+  --chain 4326 \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=4326" \
+  --etherscan-api-key "$ETHERSCAN_API_KEY" \
+  --watch
+```
+
+**2 — Point the live proxy at the new implementation** — use the wrapper (resolves the proxy from the registry, checks **`cast chain-id`**, prints **`owner()`**, then **`cast send --interactive`**):
+
+```bash
+# From repo root (implementation address = latest verified TimeCurve logic in root README):
+scripts/uups-upgrade-timecurve-mainnet.sh 0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C
+```
+
+Optional second argument: hex **calldata** for a post-upgrade call bundled into **`upgradeToAndCall`** (otherwise **`0x`**). Set **`CAST_GAS_LIMIT`** if MegaETH **`eth_estimateGas`** / local simulation is unreliable ([`docs/contracts/foundry-and-megaeth.md`](../contracts/foundry-and-megaeth.md)).
+
+**Manual `cast` equivalent** (same proxy and empty post-upgrade data):
+
+```bash
+cast send 0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71 \
+  "upgradeToAndCall(address,bytes)" 0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C 0x \
+  --rpc-url https://mainnet.megaeth.com/rpc \
+  --interactive
+```
+
 ## What The Script Deploys
 
 The wrapper calls `contracts/script/DeployProduction.s.sol`, not the dev-only `DeployDev.s.sol`.
@@ -292,6 +350,7 @@ After setting env, build and publish the frontend from the same git commit recor
 Minimum checks before announcing the deployment:
 
 - Confirm every proxy address in the registry is the proxy, not an implementation.
+- After a **`TimeCurve`** UUPS upgrade, confirm the **EIP-1967 implementation slot** on the **TimeCurve proxy** matches the [root README](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/README.md) **verified `TimeCurve` implementation** row; update that README line when you publish a newer verified impl. Quick check: `cast storage 0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url https://mainnet.megaeth.com/rpc` (last 20 bytes = implementation address).
 - After a **`DoubPresaleVesting`** UUPS upgrade, confirm the **verified implementation** on MegaETH Etherscan matches the [root README](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/README.md) reference (`0xFE4C7A3BadA9790dE52146D8fB05012c735B7247`); update that README line when you publish a newer verified impl.
 - Confirm explorer verification links for the deployed contracts.
 - Confirm `TimeCurve.saleStart()` equals the requested epoch.
