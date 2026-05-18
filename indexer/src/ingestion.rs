@@ -21,7 +21,8 @@ use crate::reorg::{
 };
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_has_transport_rpc, error_chain_transport_http_status,
-    parse_http_rpc_urls, rpc_first_ok, rpc_first_some, transport_err_http_status,
+    parse_http_rpc_urls, rpc_first_ok, rpc_first_ok_sticky, rpc_first_some_sticky,
+    transport_err_http_status,
 };
 use crate::rpc_poll_health::RpcPollHealth;
 
@@ -73,6 +74,7 @@ async fn bootstrap_pointer(
     providers: &[ReqwestProvider],
     pointer: &mut ChainPointer,
     effective_start: u64,
+    rpc_sticky_idx: &mut usize,
 ) -> Result<()> {
     if effective_start == 0 {
         return Ok(());
@@ -82,7 +84,7 @@ async fn bootstrap_pointer(
     }
 
     let parent = effective_start.saturating_sub(1);
-    let block = rpc_first_some(providers, |p| {
+    let block = rpc_first_some_sticky(providers, rpc_sticky_idx, |p| {
         p.get_block_by_number(parent.into(), BlockTransactionsKind::Hashes)
     })
     .await?
@@ -144,7 +146,15 @@ pub async fn run(
 
     let mut pointer = load_chain_pointer(pool).await?;
     let effective = config.effective_start_block();
-    bootstrap_pointer(pool, &providers, &mut pointer, effective).await?;
+    let mut rpc_sticky_idx = 0usize;
+    bootstrap_pointer(
+        pool,
+        &providers,
+        &mut pointer,
+        effective,
+        &mut rpc_sticky_idx,
+    )
+    .await?;
 
     if let Some(p) = progress {
         p.ingestion_alive.store(true, Ordering::Release);
@@ -167,7 +177,7 @@ pub async fn run(
         loop {
             let next = next_block_to_process(&pointer, effective);
 
-            let block = match rpc_first_some(&providers, |p| {
+            let block = match rpc_first_some_sticky(&providers, &mut rpc_sticky_idx, |p| {
                 p.get_block_by_number(next.into(), BlockTransactionsKind::Hashes)
             })
             .await
@@ -218,9 +228,17 @@ pub async fn run(
                     next,
                     expected_parent = %pointer.block_hash,
                     actual_parent = %parent,
-                    "reorg detected"
+                    rpc_sticky_idx,
+                    "reorg detected (parent hash mismatch — multi-RPC setups must agree on canonical blocks)"
                 );
-                let anc = match find_common_ancestor(pool, &providers, pointer.block_number).await {
+                let anc = match find_common_ancestor(
+                    pool,
+                    &providers,
+                    pointer.block_number,
+                    &mut rpc_sticky_idx,
+                )
+                .await
+                {
                     Ok(a) => a,
                     Err(e) => {
                         if error_chain_has_transport_rpc(&*e) {
@@ -236,7 +254,7 @@ pub async fn run(
                         return Err(e);
                     }
                 };
-                let ab = match rpc_first_some(&providers, |p| {
+                let ab = match rpc_first_some_sticky(&providers, &mut rpc_sticky_idx, |p| {
                     p.get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
                 })
                 .await
@@ -277,7 +295,11 @@ pub async fn run(
             }
 
             let filter = Filter::new().select(next).address(addrs.clone());
-            let logs = match rpc_first_ok(&providers, |p| p.get_logs(&filter)).await {
+            let logs = match rpc_first_ok_sticky(&providers, &mut rpc_sticky_idx, |p| {
+                p.get_logs(&filter)
+            })
+            .await
+            {
                 Ok(logs) => logs,
                 Err(e) => {
                     if transport_err_http_status(&e) == Some(429) {
