@@ -1398,7 +1398,7 @@ export function useTimeCurveArenaModel() {
 
   const swapQuoteDisplayLoading =
     quoteEnabled && quotedPayInWei === undefined && (swapQuotePending || swapQuoteFetching);
-  const swapQuoteLoading = quoteEnabled && (swapQuotePending || swapQuoteFetching);
+  const swapQuoteLoading = swapQuoteDisplayLoading;
   const swapQuoteFailed = swapQuoteIsError;
 
   const nonCl8yBuyBlocked =

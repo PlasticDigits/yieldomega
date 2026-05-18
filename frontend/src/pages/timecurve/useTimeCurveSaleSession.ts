@@ -220,13 +220,13 @@ export type UseTimeCurveSaleSession = {
   quotedPayInWei: bigint | undefined;
   payTokenDecimals: number;
   /**
-   * True while the Kumbaya quoter read is in flight for the current slider
-   * target — keep the Buy CTA disabled until the quote settles (GitLab #56).
-   * For **display**, use {@link swapQuoteDisplayLoading} so backgrounds refetches
-   * do not blank quoted amounts.
+   * True while we're waiting on the quoter **before we have any** pay-token quote
+   * for the current slider (`quotedPayInWei` still undefined). Keeps ETH/USDM
+   * buys disabled (#56). Background refetches that keep a prior quote mounted
+   * via `placeholderData` do **not** set this — see {@link swapQuoteDisplayLoading}.
    */
   swapQuoteLoading: boolean;
-  /** First-load / no quoter result yet — for amount placeholders without flashing on refetch (GitLab #56). */
+  /** Alias of {@link swapQuoteLoading} — same semantics; kept for readability at call sites (GitLab #56). */
   swapQuoteDisplayLoading: boolean;
   swapQuoteFailed: boolean;
   /**
@@ -420,6 +420,75 @@ export function useTimeCurveSaleSession(
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
 
+  /** Holds last successful RPC values that drive {@link derivePhase} so UX does not blink to loading on flaky multicalls. */
+  const phaseCoreLatchRef = useRef<{
+    saleStartSec?: number;
+    deadlineSec?: number;
+    ended?: boolean;
+  }>({});
+
+  /** Last-good wallet-scoped multicall slices (MegaETH throttle / flaky rows). Same idea as checkoutReadLatchRef. */
+  const userWalletLatchRef = useRef<{ charmWeightWad?: bigint; charmsRedeemed?: boolean }>({});
+
+  /** Holds last successful referral config reads so referral/presale bonus lines stay stable across refetches. */
+  const referralMetaLatchRef = useRef<{
+    referralRegistryOn?: boolean;
+    referralEachBps?: number;
+    presaleCharmWeightBps?: number;
+  }>({});
+
+  const presaleBeneficiaryLatchRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!tc) {
+      phaseCoreLatchRef.current = {};
+      return;
+    }
+    const L = phaseCoreLatchRef.current;
+    if (saleStartR?.status === "success") {
+      const v = Number(saleStartR.result as bigint);
+      if (Number.isFinite(v)) L.saleStartSec = v;
+    }
+    if (deadlineR?.status === "success") {
+      const v = Number(deadlineR.result as bigint);
+      if (Number.isFinite(v)) L.deadlineSec = v;
+    }
+    if (endedR?.status === "success") {
+      L.ended = endedR.result as boolean;
+    }
+  }, [tc, saleStartR, deadlineR, endedR]);
+
+  useEffect(() => {
+    if (!tc || !address) {
+      userWalletLatchRef.current = {};
+      return;
+    }
+    const L = userWalletLatchRef.current;
+    if (charmWeightR?.status === "success") L.charmWeightWad = charmWeightR.result as bigint;
+    if (charmsRedeemedR?.status === "success") L.charmsRedeemed = charmsRedeemedR.result as boolean;
+  }, [tc, address, charmWeightR, charmsRedeemedR]);
+
+  useEffect(() => {
+    if (!tc) {
+      referralMetaLatchRef.current = {};
+      return;
+    }
+    const L = referralMetaLatchRef.current;
+    const zeroRegistry = "0x0000000000000000000000000000000000000000" as const;
+    if (referralRegistryR?.status === "success") {
+      L.referralRegistryOn =
+        (referralRegistryR.result as `0x${string}`).toLowerCase() !== zeroRegistry;
+    }
+    if (referralEachBpsR?.status === "success") {
+      const v = Number(referralEachBpsR.result as number);
+      if (Number.isFinite(v)) L.referralEachBps = v;
+    }
+    if (presaleCharmWeightBpsR?.status === "success") {
+      const v = Number(presaleCharmWeightBpsR.result as number);
+      if (Number.isFinite(v)) L.presaleCharmWeightBps = v;
+    }
+  }, [tc, referralRegistryR, referralEachBpsR, presaleCharmWeightBpsR]);
+
   const buyCooldownSecResolved = useMemo(() => {
     if (buyCooldownSecR?.status !== "success") return 300;
     const n = Number(buyCooldownSecR.result as bigint);
@@ -478,9 +547,12 @@ export function useTimeCurveSaleSession(
   });
   const walletBalanceWei = walletBalance as bigint | undefined;
 
+  const zeroAddr = "0x0000000000000000000000000000000000000000" as const;
+
   const referralRegistryOn =
-    referralRegistryR?.status === "success" &&
-    (referralRegistryR.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
+    referralRegistryR?.status === "success"
+      ? (referralRegistryR.result as `0x${string}`).toLowerCase() !== zeroAddr
+      : (referralMetaLatchRef.current.referralRegistryOn ?? false);
 
   const doubPresaleVestingAddr =
     doubPresaleVestingR?.status === "success"
@@ -492,12 +564,18 @@ export function useTimeCurveSaleSession(
       ? doubPresaleVestingAddr
       : undefined;
 
+  useEffect(() => {
+    presaleBeneficiaryLatchRef.current = false;
+  }, [address, doubPresaleBeneficiarySource]);
+
   const referralEachBpsOnchain =
-    referralEachBpsR?.status === "success" ? Number(referralEachBpsR.result as number) : undefined;
+    referralEachBpsR?.status === "success"
+      ? Number(referralEachBpsR.result as number)
+      : referralMetaLatchRef.current.referralEachBps;
   const presaleCharmWeightBpsOnchain =
     presaleCharmWeightBpsR?.status === "success"
       ? Number(presaleCharmWeightBpsR.result as number)
-      : undefined;
+      : referralMetaLatchRef.current.presaleCharmWeightBps;
 
   const presaleBeneficiaryRead = useReadContract({
     address: doubPresaleBeneficiarySource,
@@ -509,10 +587,20 @@ export function useTimeCurveSaleSession(
         : undefined,
     query: {
       enabled: Boolean(doubPresaleBeneficiarySource && address && isConnected),
+      placeholderData: keepPreviousData,
     },
   });
+
+  useEffect(() => {
+    if (presaleBeneficiaryRead.status === "success") {
+      presaleBeneficiaryLatchRef.current = presaleBeneficiaryRead.data === true;
+    }
+  }, [presaleBeneficiaryRead.status, presaleBeneficiaryRead.data]);
+
   const isPresaleCharmBeneficiary =
-    presaleBeneficiaryRead.status === "success" && presaleBeneficiaryRead.data === true;
+    presaleBeneficiaryRead.status === "success"
+      ? presaleBeneficiaryRead.data === true
+      : presaleBeneficiaryLatchRef.current;
 
   const warbowFlagClaimBp =
     warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
@@ -526,10 +614,27 @@ export function useTimeCurveSaleSession(
   );
 
   const saleStartSec =
-    saleStartR?.status === "success" ? Number(saleStartR.result as bigint) : undefined;
+    saleStartR?.status === "success"
+      ? Number(saleStartR.result as bigint)
+      : phaseCoreLatchRef.current.saleStartSec;
   const deadlineSec =
-    deadlineR?.status === "success" ? Number(deadlineR.result as bigint) : undefined;
-  const ended = endedR?.status === "success" ? (endedR.result as boolean) : undefined;
+    deadlineR?.status === "success"
+      ? Number(deadlineR.result as bigint)
+      : phaseCoreLatchRef.current.deadlineSec;
+  const ended =
+    endedR?.status === "success" ? (endedR.result as boolean) : phaseCoreLatchRef.current.ended;
+
+  const charmWeightWadEffective = useMemo(() => {
+    if (charmWeightR?.status === "success") return charmWeightR.result as bigint;
+    if (isConnected && address) return userWalletLatchRef.current.charmWeightWad;
+    return undefined;
+  }, [charmWeightR, isConnected, address]);
+
+  const charmsRedeemedEffective = useMemo(() => {
+    if (charmsRedeemedR?.status === "success") return charmsRedeemedR.result as boolean;
+    if (isConnected && address) return userWalletLatchRef.current.charmsRedeemed;
+    return undefined;
+  }, [charmsRedeemedR, isConnected, address]);
 
   const phaseLedgerSecInt = useMemo(
     () =>
@@ -1126,14 +1231,14 @@ export function useTimeCurveSaleSession(
   const expectedTokenFromCharms = useMemo(() => {
     if (phase !== "saleEnded") return undefined;
     if (totalTokensForSaleR?.status !== "success") return undefined;
-    if (charmWeightR?.status !== "success") return undefined;
+    if (charmWeightWadEffective === undefined) return undefined;
     const tcw =
       totalCharmWeightR?.status === "success" ? (totalCharmWeightR.result as bigint) : 0n;
     if (tcw === 0n) return undefined;
-    const us = charmWeightR.result as bigint;
+    const us = charmWeightWadEffective;
     const tts = totalTokensForSaleR.result as bigint;
     return (tts * us) / tcw;
-  }, [phase, totalCharmWeightR, totalTokensForSaleR, charmWeightR]);
+  }, [phase, totalCharmWeightR, totalTokensForSaleR, charmWeightWadEffective]);
 
   // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.275× × per-CHARM
   // price). Recompute reactively against the live `currentPricePerCharmWad` so the
@@ -1142,11 +1247,10 @@ export function useTimeCurveSaleSession(
   const launchCl8yValueWei = useMemo(
     () =>
       participantLaunchValueCl8yWei({
-        charmWeightWad:
-          charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined,
+        charmWeightWad: charmWeightWadEffective,
         pricePerCharmWad,
       }),
-    [charmWeightR, pricePerCharmWad],
+    [charmWeightWadEffective, pricePerCharmWad],
   );
 
   const stakeLaunchEquivPayWei = useMemo(() => {
@@ -1507,6 +1611,9 @@ export function useTimeCurveSaleSession(
     }
   }, [address, tc, chainId, writeContractAsync, refetchAll, charmRedemptionEnabledR]);
 
+  const swapQuoteAwaitingFirstResult =
+    quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching);
+
   const ready = Boolean(coreData && coreData.length > 0 && !coreReadsLoading);
 
   return {
@@ -1552,10 +1659,8 @@ export function useTimeCurveSaleSession(
       totalTokensForSaleR?.status === "success"
         ? (totalTokensForSaleR.result as bigint)
         : undefined,
-    charmWeightWad:
-      charmWeightR?.status === "success" ? (charmWeightR.result as bigint) : undefined,
-    charmsRedeemed:
-      charmsRedeemedR?.status === "success" ? (charmsRedeemedR.result as boolean) : undefined,
+    charmWeightWad: charmWeightWadEffective,
+    charmsRedeemed: charmsRedeemedEffective,
     expectedTokenFromCharms,
     launchCl8yValueWei,
     stakeLaunchEquivPayWei,
@@ -1579,14 +1684,8 @@ export function useTimeCurveSaleSession(
     kumbayaRoutingBlocker,
     quotedPayInWei,
     payTokenDecimals,
-    /** True while the primary checkout quote is in flight (disables Buy); see GitLab #56. */
-    swapQuoteLoading: quoteEnabled && (quotePending || quoteFetching),
-    /**
-     * True only until the first quoter result is available — avoids flashing pay-token placeholders
-     * on every background refetch while keeping {@link swapQuoteLoading} strict for the CTA.
-     */
-    swapQuoteDisplayLoading:
-      quoteEnabled && quotedPayInWei === undefined && (quotePending || quoteFetching),
+    swapQuoteLoading: swapQuoteAwaitingFirstResult,
+    swapQuoteDisplayLoading: swapQuoteAwaitingFirstResult,
     swapQuoteFailed: quoteIsError,
     quotedPerCharmPayInWei,
     quotedLaunchPerCharmPayInWei,
