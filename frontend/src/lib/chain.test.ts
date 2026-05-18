@@ -1,21 +1,53 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { megaethMainnetOrderedRpcUrls, resolveChainRpcConfig } from "./chain";
+import {
+  MEGAETH_MAINNET_PRIMARY_RPC,
+  megaethMainnetOrderedRpcUrls,
+  parseCommaSeparatedRpcUrls,
+  resolveChainRpcConfig,
+} from "./chain";
+
+describe("parseCommaSeparatedRpcUrls", () => {
+  it("returns empty list for undefined or whitespace", () => {
+    expect(parseCommaSeparatedRpcUrls(undefined)).toEqual([]);
+    expect(parseCommaSeparatedRpcUrls("  \t  ")).toEqual([]);
+  });
+
+  it("splits on commas, trims, and drops empties", () => {
+    expect(parseCommaSeparatedRpcUrls(" https://a.example , https://b.example ")).toEqual([
+      "https://a.example",
+      "https://b.example",
+    ]);
+    expect(parseCommaSeparatedRpcUrls("https://one,,https://two")).toEqual([
+      "https://one",
+      "https://two",
+    ]);
+  });
+});
 
 describe("megaethMainnetOrderedRpcUrls", () => {
-  it("puts the primary first and appends fallbacks without duplicates", () => {
-    expect(megaethMainnetOrderedRpcUrls("https://mainnet.megaeth.com/rpc")).toEqual([
-      "https://mainnet.megaeth.com/rpc",
+  it("puts env URLs first and appends public fallbacks without duplicates", () => {
+    expect(megaethMainnetOrderedRpcUrls([MEGAETH_MAINNET_PRIMARY_RPC])).toEqual([
+      MEGAETH_MAINNET_PRIMARY_RPC,
       "https://rpc-megaeth-mainnet.globalstake.io",
       "https://carrot.megaeth.com/rpc",
     ]);
   });
 
-  it("does not repeat the primary when it matches a fallback entry", () => {
+  it("preserves several env URLs before fallbacks", () => {
     expect(
-      megaethMainnetOrderedRpcUrls("https://rpc-megaeth-mainnet.globalstake.io"),
+      megaethMainnetOrderedRpcUrls(["https://primary.example", "https://secondary.example"]),
     ).toEqual([
+      "https://primary.example",
+      "https://secondary.example",
+      "https://rpc-megaeth-mainnet.globalstake.io",
+      "https://carrot.megaeth.com/rpc",
+    ]);
+  });
+
+  it("does not repeat a URL when it matches a fallback entry", () => {
+    expect(megaethMainnetOrderedRpcUrls(["https://rpc-megaeth-mainnet.globalstake.io"])).toEqual([
       "https://rpc-megaeth-mainnet.globalstake.io",
       "https://carrot.megaeth.com/rpc",
     ]);
@@ -34,6 +66,15 @@ describe("resolveChainRpcConfig", () => {
     expect(resolveChainRpcConfig(" 31337 ", " https://rpc.example ")).toEqual({
       id: 31337,
       defaultRpcHttp: "https://rpc.example",
+    });
+  });
+
+  it("uses the first comma-separated URL as defaultRpcHttp", () => {
+    expect(
+      resolveChainRpcConfig("4326", "https://first.example/rpc,https://second.example/rpc"),
+    ).toEqual({
+      id: 4326,
+      defaultRpcHttp: "https://first.example/rpc",
     });
   });
 

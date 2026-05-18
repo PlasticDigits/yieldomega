@@ -34,6 +34,8 @@ MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**
 
 UUPS cores are deployed behind **proxies**; use the addresses in this table for RPC and wallet calls. Foundry `run-latest.json` may also list **implementation** deployments for the same logical name—do not treat those as the live protocol surface ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 
+**Verified `TimeCurve` implementation** (latest deployed logic contract; the **TimeCurve proxy** must receive **`upgradeToAndCall`** from **`owner()`** to point EIP-1967 at this address — after upgrading, confirm the live slot with `cast storage 0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url https://mainnet.megaeth.com/rpc`; last 20 bytes should match this address): [`0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C`](https://mega.etherscan.io/address/0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C#code).
+
 **Verified `DoubPresaleVesting` implementation** (logic behind the proxy above; upgrades replace this address): [`0xFE4C7A3BadA9790dE52146D8fB05012c735B7247`](https://mega.etherscan.io/address/0xFE4C7A3BadA9790dE52146D8fB05012c735B7247#code).
 
 ## Monorepo package directories

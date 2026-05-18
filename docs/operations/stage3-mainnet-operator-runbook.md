@@ -43,6 +43,7 @@ This document closes **implementation phases 11 and 12** from [`docs/agent-imple
 2. Publish **mainnet address registry JSON** + **ABI hashes** (same procedure as Stage 3).
 3. **Incident channel** and **rollback** note in the checklist (what to revert, who can pause, how to point frontend/indexer to last good registry).
 4. Post-deploy monitoring: gas anomalies, failed txs, indexer lag — minimal dashboards or log alerts as agreed with maintainers.
+5. **UUPS upgrades** (TimeCurve proxy, MegaETH mainnet): follow [deployment-guide — UUPS TimeCurve upgrade](deployment-guide.md#uups-timecurve-upgrade-megaeth-mainnet) and `scripts/uups-upgrade-timecurve-mainnet.sh` (canonical proxy from `indexer/address-registry.megaeth-mainnet.json`).
 
 ### Exit (100% per implementation phases doc)
 

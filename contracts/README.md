@@ -104,6 +104,8 @@ private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, a
 owner/admin/governance roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
 and writes an address registry under `.deploy/`.
 
+For **UUPS** implementation-only deploys (e.g. a new **`TimeCurve`** logic contract before `upgradeToAndCall` on the proxy), use **`forge create`** with **`--broadcast`**, **`--verify`**, and the MegaETH **Etherscan V2** `--verifier-url` from the same guide ([**UUPS TimeCurve upgrade**](../docs/operations/deployment-guide.md#uups-timecurve-upgrade-megaeth-mainnet)).
+
 ## Deploy (dev)
 
 Deploy all core contracts to a local or dev environment:

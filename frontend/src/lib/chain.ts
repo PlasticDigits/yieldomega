@@ -21,11 +21,26 @@ const MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS: readonly string[] = [
 const DEFAULT_CHAIN_ID = 31_337;
 const DEFAULT_RPC_HTTP = "http://127.0.0.1:8545";
 
-/** Ordered RPC list for MegaETH mainnet: env/primary first, then public fallbacks (deduped). */
-export function megaethMainnetOrderedRpcUrls(primary: string): string[] {
+/**
+ * Split `VITE_RPC_URL` when it lists several JSON-RPC endpoints (comma-separated).
+ * Order is preserved; empty entries are dropped.
+ */
+export function parseCommaSeparatedRpcUrls(rpcUrlRaw: string | undefined): string[] {
+  if (!rpcUrlRaw?.trim()) return [];
+  return rpcUrlRaw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Ordered RPC list for MegaETH mainnet: env URLs first (already parsed), then public fallbacks (deduped).
+ * Pass the env-derived list (possibly empty — callers substitute `[defaultRpcHttp]` first).
+ */
+export function megaethMainnetOrderedRpcUrls(envRpcUrls: string[]): string[] {
   const ordered: string[] = [];
   const seen = new Set<string>();
-  for (const raw of [primary, ...MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS]) {
+  for (const raw of [...envRpcUrls, ...MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS]) {
     const u = raw.trim();
     if (!u || seen.has(u)) continue;
     seen.add(u);
@@ -36,18 +51,20 @@ export function megaethMainnetOrderedRpcUrls(primary: string): string[] {
 
 /**
  * Resolve chain id and default RPC URL from env-like strings (unit-testable).
+ * `rpcUrlRaw` may list several endpoints separated by commas; the first URL is `defaultRpcHttp`.
  * Default chain id when unset or invalid is **31337** (local Anvil), consistent with `scripts/start-local-anvil-stack.sh`.
  */
 export function resolveChainRpcConfig(
   chainIdStr: string | undefined,
   rpcUrlRaw: string | undefined,
 ): { id: number; defaultRpcHttp: string } {
-  const rpc = rpcUrlRaw?.trim();
+  const urls = parseCommaSeparatedRpcUrls(rpcUrlRaw);
+  const firstRpc = urls[0];
   const raw = chainIdStr?.trim();
   const parsed =
     raw && raw.length > 0 ? Number.parseInt(raw, 10) : Number.NaN;
   const defaultAnvilLocal =
-    rpc === "http://127.0.0.1:8545" || rpc === "http://localhost:8545";
+    firstRpc === "http://127.0.0.1:8545" || firstRpc === "http://localhost:8545";
   let id: number;
   if (Number.isFinite(parsed) && parsed > 0 && parsed <= 0x7fff_ffff) {
     id = parsed;
@@ -57,8 +74,9 @@ export function resolveChainRpcConfig(
   } else {
     id = DEFAULT_CHAIN_ID;
   }
-  let defaultRpcHttp = rpc && rpc.length > 0 ? rpc : DEFAULT_RPC_HTTP;
-  if (id === MEGAETH_MAINNET_CHAIN_ID && (!rpc || rpc.length === 0)) {
+  let defaultRpcHttp =
+    firstRpc && firstRpc.length > 0 ? firstRpc : DEFAULT_RPC_HTTP;
+  if (id === MEGAETH_MAINNET_CHAIN_ID && urls.length === 0) {
     defaultRpcHttp = MEGAETH_MAINNET_PRIMARY_RPC;
   }
   return { id, defaultRpcHttp };
@@ -75,11 +93,13 @@ export function configuredChain() {
     import.meta.env.VITE_CHAIN_ID,
     import.meta.env.VITE_RPC_URL,
   );
+  const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
+  const envBase = envRpcUrls.length > 0 ? envRpcUrls : [defaultRpcHttp];
   const nameOverride = import.meta.env.VITE_CHAIN_NAME?.trim();
   const rpcHttpList =
     id === MEGAETH_MAINNET_CHAIN_ID
-      ? megaethMainnetOrderedRpcUrls(defaultRpcHttp)
-      : [defaultRpcHttp];
+      ? megaethMainnetOrderedRpcUrls(envBase)
+      : envBase;
   return defineChain({
     id,
     name: nameOverride && nameOverride.length > 0 ? nameOverride : `Chain ${id}`,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { BaseError } from "viem";
+import { parseCommaSeparatedRpcUrls } from "@/lib/chain";
 import { GasSoftCapExceededError } from "@/lib/writeContractWithGasBuffer";
 
 /** Placeholder when RPC URLs or hosted keys would otherwise appear in UI ([GitLab #145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145)). */
@@ -13,16 +14,15 @@ export type RedactUserVisibleRpcOpts = {
 
 /**
  * Removes embedded RPC URLs from user-visible error text so screenshots / DevTools do not leak keys.
- * Applies **`VITE_RPC_URL`** when defined plus generic **`*.alchemy.com/v2/*`**, **`*.infura.io/v3/*`**, **`*.quiknode.pro/*`** patterns.
+ * Applies each URL in comma-separated **`VITE_RPC_URL`** when defined, plus generic **`*.alchemy.com/v2/*`**, **`*.infura.io/v3/*`**, **`*.quiknode.pro/*`** patterns.
  */
 export function redactSensitiveUrlsInUserMessage(raw: string, opts?: RedactUserVisibleRpcOpts): string {
   let s = raw;
-  const fromEnv =
-    typeof import.meta.env.VITE_RPC_URL === "string" && import.meta.env.VITE_RPC_URL.length > 0
-      ? import.meta.env.VITE_RPC_URL
-      : "";
+  const fromEnv = parseCommaSeparatedRpcUrls(
+    typeof import.meta.env.VITE_RPC_URL === "string" ? import.meta.env.VITE_RPC_URL : undefined,
+  );
   const extras = opts?.extraKnownRpcUrlSubstrings ?? [];
-  const known = [...extras, ...(fromEnv ? [fromEnv] : [])].sort((a, b) => b.length - a.length);
+  const known = [...extras, ...fromEnv].sort((a, b) => b.length - a.length);
   for (const fragment of known) {
     if (!fragment.length || !s.includes(fragment)) continue;
     s = s.split(fragment).join(REDACTED_RPC_URL_MARKER);

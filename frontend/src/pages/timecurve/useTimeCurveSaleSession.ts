@@ -53,6 +53,7 @@ import {
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy } from "@/lib/timeCurveBuyAmount";
+import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
@@ -155,6 +156,8 @@ export type UseTimeCurveSaleSession = {
   warbowPendingFlagPlantAt: bigint;
   /** Wallet buy cooldown remaining (seconds). 0 when not gated or not connected. */
   walletCooldownRemainingSec: number;
+  /** True during the full purchase flow after validations pass (includes mempool confirmation waits). */
+  buySubmitBusy: boolean;
   totalRaisedWei: bigint | undefined;
   totalCharmWeightWad: bigint | undefined;
   /** Sale's `totalTokensForSale` (DOUB-WAD). Constant across the sale; used by the rate board to compute `1 CHARM → DOUB at launch`. */
@@ -270,10 +273,20 @@ export function useTimeCurveSaleSession(
   const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
+  const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
+    null,
+  );
+  const [buySubmitBusy, setBuySubmitBusy] = useState(false);
 
   useEffect(() => {
     setPendingReferralCode(getPendingReferralCode());
   }, []);
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setPreemptiveCooldownUntilChainSec(null);
+    }
+  }, [isConnected, address]);
 
   const tc = timeCurveAddress;
 
@@ -404,6 +417,12 @@ export function useTimeCurveSaleSession(
   ] = coreData ?? [];
 
   const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
+
+  const buyCooldownSecResolved = useMemo(() => {
+    if (buyCooldownSecR?.status !== "success") return 300;
+    const n = Number(buyCooldownSecR.result as bigint);
+    return Number.isFinite(n) && n > 0 ? n : 300;
+  }, [buyCooldownSecR]);
 
   const acceptedAsset =
     acceptedAssetR?.status === "success" ? (acceptedAssetR.result as HexAddress) : undefined;
@@ -984,7 +1003,7 @@ export function useTimeCurveSaleSession(
     return ledgerSecInt;
   }, [heroChainNowSec, ledgerSecInt]);
 
-  const walletCooldownRemainingSec = useMemo(() => {
+  const walletCooldownRemainingFromReads = useMemo(() => {
     if (
       phase !== "saleActive" ||
       !isConnected ||
@@ -996,6 +1015,16 @@ export function useTimeCurveSaleSession(
     if (nextAllowed <= 0n) return 0;
     return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
   }, [phase, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
+
+  const preemptiveCooldownRemainingSec = useMemo(() => {
+    if (preemptiveCooldownUntilChainSec === null) return 0;
+    return Math.max(0, Math.ceil(preemptiveCooldownUntilChainSec - chainNowForCooldown));
+  }, [preemptiveCooldownUntilChainSec, chainNowForCooldown]);
+
+  const walletCooldownRemainingSec = useMemo(
+    () => Math.max(walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec),
+    [walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec],
+  );
 
   const timerExtensionPreviewSec = useMemo(() => {
     if (
@@ -1085,8 +1114,6 @@ export function useTimeCurveSaleSession(
     void refreshHeroTimer();
   }, [refetchCore, refetchUser, refreshHeroTimer]);
 
-  void buyCooldownSecR;
-
   const buyFeeRoutingEnabled =
     buyFeeRoutingEnabledR?.status === "success"
       ? (buyFeeRoutingEnabledR.result as boolean)
@@ -1121,229 +1148,238 @@ export function useTimeCurveSaleSession(
       setBuyError("Waiting for onchain CHARM bounds.");
       return;
     }
-    const freshSizing = await readFreshTimeCurveBuySizing({
-      wagmiConfig,
-      timeCurveAddress: tc,
-      spendWeiIntent: spendWei,
-      walletCl8yCapWei: payWith === "cl8y" ? walletBalanceWei : undefined,
-    });
-    if (!freshSizing.ok) {
-      setBuyError(freshSizing.message);
-      return;
-    }
-    const buySessionSnapshot = captureWalletBuySession(wagmiConfig);
-    if (
-      !buySessionSnapshot ||
-      buySessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
-      buySessionSnapshot.chainId !== chainId
-    ) {
-      setBuyError(WALLET_BUY_SESSION_DRIFT_MESSAGE);
-      return;
-    }
-    const cw = freshSizing.charmWad;
-    const amount = freshSizing.spendWei;
 
-    let codeHash: `0x${string}` | undefined;
-    if (useReferral && referralRegistryOn && pendingReferralCode) {
-      try {
-        codeHash = hashReferralCode(pendingReferralCode);
-      } catch (e) {
-        setBuyError(e instanceof Error ? e.message : String(e));
+    setBuySubmitBusy(true);
+    try {
+      const freshSizing = await readFreshTimeCurveBuySizing({
+        wagmiConfig,
+        timeCurveAddress: tc,
+        spendWeiIntent: spendWei,
+        walletCl8yCapWei: payWith === "cl8y" ? walletBalanceWei : undefined,
+      });
+      if (!freshSizing.ok) {
+        setBuyError(freshSizing.message);
         return;
       }
-    }
+      const buySessionSnapshot = captureWalletBuySession(wagmiConfig);
+      if (
+        !buySessionSnapshot ||
+        buySessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
+        buySessionSnapshot.chainId !== chainId
+      ) {
+        setBuyError(WALLET_BUY_SESSION_DRIFT_MESSAGE);
+        return;
+      }
+      const cw = freshSizing.charmWad;
+      const amount = freshSizing.spendWei;
 
-    try {
-      const guardBuySession = () =>
-        assertWalletBuySessionUnchanged(wagmiConfig, buySessionSnapshot);
+      let codeHash: `0x${string}` | undefined;
+      if (useReferral && referralRegistryOn && pendingReferralCode) {
+        try {
+          codeHash = hashReferralCode(pendingReferralCode);
+        } catch (e) {
+          setBuyError(e instanceof Error ? e.message : String(e));
+          return;
+        }
+      }
 
-      if (payWith !== "cl8y") {
-        const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
-        if (!k.ok) {
-          setBuyError(k.message);
-          return;
-        }
-        const route = routingForPayAsset(payWith, acceptedAsset, k.config);
-        if (!route.ok) {
-          setBuyError(route.message);
-          return;
-        }
-        const singleRes = resolveTimeCurveBuyRouterForKumbayaSingleTx(
-          onchainTimeCurveBuyRouter,
-          import.meta.env as unknown as KumbayaEnv,
-        );
-        if (singleRes.kind === "mismatch") {
-          setBuyError(singleRes.message);
-          return;
-        }
-        if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
-          guardBuySession();
-          await submitKumbayaSingleTxBuy({
-            wagmiConfig,
-            writeContractAsync: writeContractAsync as WalletWriteAsync,
-            userAddress: address,
-            chainId,
-            timeCurveBuyRouter: singleRes.router,
-            payWith,
-            kConfig: k.config,
-            route,
-            cl8yOut: amount,
-            charmWad: cw,
-            codeHash,
-            plantWarBowFlag,
-            sessionSnapshot: buySessionSnapshot,
-          });
-          if (codeHash) {
-            clearPendingReferralCode();
-            setPendingReferralCode(null);
+      try {
+        const guardBuySession = () =>
+          assertWalletBuySessionUnchanged(wagmiConfig, buySessionSnapshot);
+
+        if (payWith !== "cl8y") {
+          const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
+          if (!k.ok) {
+            setBuyError(k.message);
+            return;
           }
-          refetchAll();
-          return;
-        }
-        const quote = await readContract(wagmiConfig, {
-          address: k.config.quoter,
-          abi: kumbayaQuoterV2Abi,
-          functionName: "quoteExactOutput",
-          args: [route.path, amount],
-        });
-        guardBuySession();
-        const qIn = (quote as readonly [bigint, ...unknown[]])[0];
-        const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
+          const route = routingForPayAsset(payWith, acceptedAsset, k.config);
+          if (!route.ok) {
+            setBuyError(route.message);
+            return;
+          }
+          const singleRes = resolveTimeCurveBuyRouterForKumbayaSingleTx(
+            onchainTimeCurveBuyRouter,
+            import.meta.env as unknown as KumbayaEnv,
+          );
+          if (singleRes.kind === "mismatch") {
+            setBuyError(singleRes.message);
+            return;
+          }
+          if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
+            guardBuySession();
+            const chainSec = await submitKumbayaSingleTxBuy({
+              wagmiConfig,
+              writeContractAsync: writeContractAsync as WalletWriteAsync,
+              userAddress: address,
+              chainId,
+              timeCurveBuyRouter: singleRes.router,
+              payWith,
+              kConfig: k.config,
+              route,
+              cl8yOut: amount,
+              charmWad: cw,
+              codeHash,
+              plantWarBowFlag,
+              sessionSnapshot: buySessionSnapshot,
+            });
+            setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+            if (codeHash) {
+              clearPendingReferralCode();
+              setPendingReferralCode(null);
+            }
+            refetchAll();
+            return;
+          }
+          const quote = await readContract(wagmiConfig, {
+            address: k.config.quoter,
+            abi: kumbayaQuoterV2Abi,
+            functionName: "quoteExactOutput",
+            args: [route.path, amount],
+          });
+          guardBuySession();
+          const qIn = (quote as readonly [bigint, ...unknown[]])[0];
+          const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
 
-        if (payWith === "eth") {
-          const { hash: wrapHash } = await writeContractWithGasBuffer({
-            wagmiConfig,
-            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-            account: address as `0x${string}`,
-            chainId,
-            address: k.config.weth,
-            abi: weth9Abi,
-            functionName: "deposit",
-            value: maxIn,
-          });
-          await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
-          guardBuySession();
-          const wAllow = await readContract(wagmiConfig, {
-            address: k.config.weth,
-            abi: weth9Abi,
-            functionName: "allowance",
-            args: [address, k.config.swapRouter],
-          });
-          guardBuySession();
-          if (wAllow < maxIn) {
-            const { hash: wAp } = await writeContractWithGasBuffer({
+          if (payWith === "eth") {
+            const { hash: wrapHash } = await writeContractWithGasBuffer({
               wagmiConfig,
               writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
               account: address as `0x${string}`,
               chainId,
               address: k.config.weth,
               abi: weth9Abi,
-              functionName: "approve",
-              args: [k.config.swapRouter, maxIn],
+              functionName: "deposit",
+              value: maxIn,
             });
-            await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+            await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
             guardBuySession();
-          }
-        } else if (payWith === "usdm") {
-          const uAllow = await readContract(wagmiConfig, {
-            address: route.tokenIn,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [address, k.config.swapRouter],
-          });
-          guardBuySession();
-          if (uAllow < maxIn) {
-            const { hash: uAp } = await writeContractWithGasBuffer({
-              wagmiConfig,
-              writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-              account: address as `0x${string}`,
-              chainId,
+            const wAllow = await readContract(wagmiConfig, {
+              address: k.config.weth,
+              abi: weth9Abi,
+              functionName: "allowance",
+              args: [address, k.config.swapRouter],
+            });
+            guardBuySession();
+            if (wAllow < maxIn) {
+              const { hash: wAp } = await writeContractWithGasBuffer({
+                wagmiConfig,
+                writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+                account: address as `0x${string}`,
+                chainId,
+                address: k.config.weth,
+                abi: weth9Abi,
+                functionName: "approve",
+                args: [k.config.swapRouter, maxIn],
+              });
+              await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+              guardBuySession();
+            }
+          } else if (payWith === "usdm") {
+            const uAllow = await readContract(wagmiConfig, {
               address: route.tokenIn,
               abi: erc20Abi,
-              functionName: "approve",
-              args: [k.config.swapRouter, maxIn],
+              functionName: "allowance",
+              args: [address, k.config.swapRouter],
             });
-            await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
             guardBuySession();
+            if (uAllow < maxIn) {
+              const { hash: uAp } = await writeContractWithGasBuffer({
+                wagmiConfig,
+                writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+                account: address as `0x${string}`,
+                chainId,
+                address: route.tokenIn,
+                abi: erc20Abi,
+                functionName: "approve",
+                args: [k.config.swapRouter, maxIn],
+              });
+              await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
+              guardBuySession();
+            }
           }
+
+          const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
+          guardBuySession();
+          const { hash: swapHash } = await writeContractWithGasBuffer({
+            wagmiConfig,
+            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+            account: address as `0x${string}`,
+            chainId,
+            address: k.config.swapRouter,
+            abi: kumbayaSwapRouterAbi,
+            functionName: "exactOutput",
+            args: [
+              {
+                path: route.path,
+                recipient: address,
+                deadline,
+                amountOut: amount,
+                amountInMaximum: maxIn,
+              },
+            ],
+            onEstimateRevert: "rethrow",
+            softCapGas: 6_000_000n,
+          });
+          await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
+          guardBuySession();
         }
 
-        const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
-        guardBuySession();
-        const { hash: swapHash } = await writeContractWithGasBuffer({
-          wagmiConfig,
-          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-          account: address as `0x${string}`,
-          chainId,
-          address: k.config.swapRouter,
-          abi: kumbayaSwapRouterAbi,
-          functionName: "exactOutput",
-          args: [
-            {
-              path: route.path,
-              recipient: address,
-              deadline,
-              amountOut: amount,
-              amountInMaximum: maxIn,
-            },
-          ],
-          onEstimateRevert: "rethrow",
-          softCapGas: 6_000_000n,
-        });
-        await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
-        guardBuySession();
-      }
-
-      const allow = await readContract(wagmiConfig, {
-        address: acceptedAsset,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [address, tc],
-      });
-      guardBuySession();
-      const approveAmt = cl8yTimeCurveApprovalAmountWei(
-        amount,
-        readCl8yTimeCurveUnlimitedApproval(),
-      );
-      if (allow < amount) {
-        const { hash: approveHash } = await writeContractWithGasBuffer({
-          wagmiConfig,
-          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-          account: address as `0x${string}`,
-          chainId,
+        const allow = await readContract(wagmiConfig, {
           address: acceptedAsset,
           abi: erc20Abi,
-          functionName: "approve",
-          args: [tc, approveAmt],
+          functionName: "allowance",
+          args: [address, tc],
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
         guardBuySession();
+        const approveAmt = cl8yTimeCurveApprovalAmountWei(
+          amount,
+          readCl8yTimeCurveUnlimitedApproval(),
+        );
+        if (allow < amount) {
+          const { hash: approveHash } = await writeContractWithGasBuffer({
+            wagmiConfig,
+            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+            account: address as `0x${string}`,
+            chainId,
+            address: acceptedAsset,
+            abi: erc20Abi,
+            functionName: "approve",
+            args: [tc, approveAmt],
+          });
+          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+          guardBuySession();
+        }
+        const buyArgs = codeHash
+          ? ([cw, codeHash, plantWarBowFlag] as const)
+          : plantWarBowFlag
+            ? ([cw, plantWarBowFlag] as const)
+            : ([cw] as const);
+        const { hash: buyHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
+          address: tc,
+          abi: timeCurveWriteAbi,
+          functionName: "buy",
+          args: buyArgs,
+        });
+        guardBuySession();
+        playGameSfxCoinHitBuySubmit();
+        const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+        const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
+        setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+        if (codeHash) {
+          clearPendingReferralCode();
+          setPendingReferralCode(null);
+        }
+        refetchAll();
+      } catch (e) {
+        setBuyError(friendlyRevertFromUnknown(e, { buySubmit: true }));
       }
-      const buyArgs = codeHash
-        ? ([cw, codeHash, plantWarBowFlag] as const)
-        : plantWarBowFlag
-          ? ([cw, plantWarBowFlag] as const)
-          : ([cw] as const);
-      const { hash: buyHash } = await writeContractWithGasBuffer({
-        wagmiConfig,
-        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-        account: address as `0x${string}`,
-        chainId,
-        address: tc,
-        abi: timeCurveWriteAbi,
-        functionName: "buy",
-        args: buyArgs,
-      });
-      guardBuySession();
-      playGameSfxCoinHitBuySubmit();
-      await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
-      if (codeHash) {
-        clearPendingReferralCode();
-        setPendingReferralCode(null);
-      }
-      refetchAll();
-    } catch (e) {
-      setBuyError(friendlyRevertFromUnknown(e, { buySubmit: true }));
+    } finally {
+      setBuySubmitBusy(false);
     }
   }, [
     address,
@@ -1364,6 +1400,7 @@ export function useTimeCurveSaleSession(
     chainId,
     buyFeeRoutingEnabled,
     onchainTimeCurveBuyRouter,
+    buyCooldownSecResolved,
   ]);
 
   const submitRedeem = useCallback(async () => {
@@ -1434,6 +1471,7 @@ export function useTimeCurveSaleSession(
     warbowPendingFlagOwner,
     warbowPendingFlagPlantAt,
     walletCooldownRemainingSec,
+    buySubmitBusy,
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,
     totalCharmWeightWad:

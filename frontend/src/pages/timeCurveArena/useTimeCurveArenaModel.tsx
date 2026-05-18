@@ -40,6 +40,7 @@ import {
   captureWalletBuySession,
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
 } from "@/lib/walletBuySessionGuard";
+import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { simulateWriteContract } from "@/lib/simulateContractWrite";
 import {
   type KumbayaEnv,
@@ -155,6 +156,10 @@ export function useTimeCurveArenaModel() {
   const [spendInputStr, setSpendInputStr] = useState("");
   const [buyErr, setBuyErr] = useState<string | null>(null);
   const [pvpErr, setPvpErr] = useState<string | null>(null);
+  const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
+    null,
+  );
+  const [buySubmitBusy, setBuySubmitBusy] = useState(false);
   /** Steal-victim empty / format feedback scoped to the detailed WarBow form (GitLab #195); never use for chain/revert banners. */
   const [arenaWarbowStealFormErr, setArenaWarbowStealFormErr] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
@@ -300,6 +305,12 @@ export function useTimeCurveArenaModel() {
   useEffect(() => {
     setPendingRef(getPendingReferralCode());
   }, []);
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      setPreemptiveCooldownUntilChainSec(null);
+    }
+  }, [isConnected, address]);
 
   useEffect(() => {
     let cancelled = false;
@@ -705,6 +716,13 @@ export function useTimeCurveArenaModel() {
     warbowGuardUntilR,
     nextBuyAllowedAtR,
   ] = userSaleData ?? [];
+
+  const buyCooldownSecResolved = useMemo(() => {
+    if (buyCooldownSecR?.status !== "success") return 300;
+    const n = Number(buyCooldownSecR.result as bigint);
+    return Number.isFinite(n) && n > 0 ? n : 300;
+  }, [buyCooldownSecR]);
+
   const viewerBattlePoints =
     battlePtsR?.status === "success" ? (battlePtsR.result as bigint) : undefined;
 
@@ -1422,7 +1440,7 @@ export function useTimeCurveArenaModel() {
   const chainNowForCooldown =
     heroChainNowSec !== undefined ? heroChainNowSec : ledgerSecInt;
 
-  const walletCooldownRemainingSec = useMemo(() => {
+  const walletCooldownRemainingFromReads = useMemo(() => {
     if (!saleActive || !isConnected || nextBuyAllowedAtR?.status !== "success") {
       return 0;
     }
@@ -1432,6 +1450,16 @@ export function useTimeCurveArenaModel() {
     }
     return Math.max(0, Math.ceil(Number(nextAllowed) - chainNowForCooldown));
   }, [saleActive, isConnected, nextBuyAllowedAtR, chainNowForCooldown]);
+
+  const preemptiveCooldownRemainingSec = useMemo(() => {
+    if (preemptiveCooldownUntilChainSec === null) return 0;
+    return Math.max(0, Math.ceil(preemptiveCooldownUntilChainSec - chainNowForCooldown));
+  }, [preemptiveCooldownUntilChainSec, chainNowForCooldown]);
+
+  const walletCooldownRemainingSec = useMemo(
+    () => Math.max(walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec),
+    [walletCooldownRemainingFromReads, preemptiveCooldownRemainingSec],
+  );
 
   const timerExtensionPreview =
     saleActive &&
@@ -1990,6 +2018,9 @@ export function useTimeCurveArenaModel() {
     if (gasBuyIssue) {
       return gasBuyIssue;
     }
+    if (buySubmitBusy) {
+      return "Processing purchase transaction…";
+    }
     if (walletCooldownRemainingSec > 0) {
       return `Wallet buy cooldown: ${formatCountdown(walletCooldownRemainingSec)} left (same wall-skewed chain clock as the hero countdown).`;
     }
@@ -2013,6 +2044,7 @@ export function useTimeCurveArenaModel() {
     charmBoundsR,
     charmWadSelected,
     walletCooldownRemainingSec,
+    buySubmitBusy,
   ]);
 
   const victimStealsTodayBigInt =
@@ -2595,6 +2627,7 @@ export function useTimeCurveArenaModel() {
 
     const totalPull = amount;
 
+    setBuySubmitBusy(true);
     try {
       const guardBuySession = () =>
         assertWalletBuySessionUnchanged(wagmiConfig, buySessionSnapshot);
@@ -2620,7 +2653,7 @@ export function useTimeCurveArenaModel() {
         }
         if (singleRes.kind === "ok" && (payWith === "eth" || payWith === "usdm")) {
           guardBuySession();
-          await submitKumbayaSingleTxBuy({
+          const chainSec = await submitKumbayaSingleTxBuy({
             wagmiConfig,
             writeContractAsync: writeContractAsync as WalletWriteAsync,
             userAddress: address,
@@ -2635,6 +2668,7 @@ export function useTimeCurveArenaModel() {
             plantWarBowFlag,
             sessionSnapshot: buySessionSnapshot,
           });
+          setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
           if (codeHash) {
             clearPendingReferralCode();
             setPendingRef(null);
@@ -2778,7 +2812,9 @@ export function useTimeCurveArenaModel() {
       });
       guardBuySession();
       playGameSfxCoinHitBuySubmit();
-      await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+      const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
+      setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
       if (codeHash) {
         clearPendingReferralCode();
         setPendingRef(null);
@@ -2786,6 +2822,8 @@ export function useTimeCurveArenaModel() {
       await refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e, { buySubmit: true }));
+    } finally {
+      setBuySubmitBusy(false);
     }
   }, [
     address,
@@ -2807,6 +2845,7 @@ export function useTimeCurveArenaModel() {
     onchainTimeCurveBuyRouter,
     plantWarBowFlag,
     failIfWrongChainForWrites,
+    buyCooldownSecResolved,
   ]);
 
   async function ensureTcAllowance(need: bigint) {
