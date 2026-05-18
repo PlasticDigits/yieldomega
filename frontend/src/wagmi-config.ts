@@ -10,7 +10,6 @@ import {
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import type { Transport } from "viem";
-import { fallback, http } from "viem";
 import { createConfig, mock } from "wagmi";
 import {
   configuredChain,
@@ -19,6 +18,7 @@ import {
   parseCommaSeparatedRpcUrls,
   resolveChainRpcConfig,
 } from "@/lib/chain";
+import { fallbackHttpUrls, httpWithOptionalRpcDebug, isRpcDebugEnabled } from "@/lib/rpcDebugTransport";
 
 /** Anvil default account #0 — matches DeployDev when using the well-known Anvil private key. */
 const ANVIL_DEFAULT_ACCOUNT =
@@ -36,6 +36,10 @@ const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
 const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
+if (isRpcDebugEnabled()) {
+  console.info("[yieldomega/rpc] VITE_RPC_DEBUG=1 — logging each JSON-RPC request and fallback switches");
+}
+
 if (!projectId && !useE2EMockWallet) {
   console.info(
     "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty — using injected-detection wallets only (no WalletConnect mobile flow). Set the env var to enable mobile WC. See GitLab #203.",
@@ -50,24 +54,15 @@ function transportFor(chain: (typeof chains)[number]) {
     );
     const base = envRpcUrls.length > 0 ? envRpcUrls : [defaultRpcHttp];
     const urls = megaethMainnetOrderedRpcUrls(base);
-    return fallback(
-      urls.map((url) => http(url)),
-      { rank: false },
-    );
+    return fallbackHttpUrls(urls);
   }
   if (chain.id !== initialChain.id) {
-    return http();
+    return httpWithOptionalRpcDebug(undefined, 0, 1);
   }
   if (envRpcUrls.length === 0) {
-    return http();
+    return httpWithOptionalRpcDebug(undefined, 0, 1);
   }
-  if (envRpcUrls.length === 1) {
-    return http(envRpcUrls[0]);
-  }
-  return fallback(
-    envRpcUrls.map((url) => http(url)),
-    { rank: false },
-  );
+  return fallbackHttpUrls(envRpcUrls);
 }
 
 const transports = Object.fromEntries(
@@ -105,6 +100,7 @@ export const wagmiConfig = useE2EMockWallet
       ],
       transports,
       ssr: false,
+      pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
     })
   : projectId
     ? getDefaultConfig({
@@ -115,6 +111,8 @@ export const wagmiConfig = useE2EMockWallet
         ssr: false,
         multiInjectedProviderDiscovery: true,
         wallets: rainbowKitWalletGroups,
+        /** Floors viem client polling on MegaETH so incidental `watch*` helpers do not outrun 1 req/s. */
+        pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
       })
     : getDefaultConfig({
         appName: "YieldOmega",
@@ -130,4 +128,5 @@ export const wagmiConfig = useE2EMockWallet
             wallets: [safeWallet, metaMaskWallet, safepalWallet],
           },
         ],
+        pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
       });

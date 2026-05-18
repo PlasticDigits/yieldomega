@@ -5,7 +5,6 @@ import { formatUnits, parseUnits } from "viem";
 import {
   useAccount,
   useBalance,
-  useBlock,
   useChainId,
   useReadContract,
   useReadContracts,
@@ -65,6 +64,7 @@ import {
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
 import { participantLaunchValueCl8yWei } from "@/lib/timeCurvePodiumMath";
+import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
 import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
@@ -264,7 +264,7 @@ export function useTimeCurveSaleSession(
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
-  const { data: latestBlock } = useBlock({ watch: true });
+  const { data: latestBlock } = useLatestBlock();
 
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
@@ -353,16 +353,9 @@ export function useTimeCurveSaleSession(
     refetch: refetchUser,
   } = useReadContracts({
     contracts: userContracts as readonly unknown[],
-    query: { enabled: Boolean(tc && address) },
+    query: { enabled: Boolean(tc && address), refetchInterval: 1000 },
   });
   const userData = userDataRaw as readonly ContractReadRow[] | undefined;
-
-  useEffect(() => {
-    if (tc && latestBlock?.number !== undefined) {
-      void refetchCore();
-      void refetchUser();
-    }
-  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCore, refetchUser]);
 
   const {
     heroTimer,

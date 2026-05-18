@@ -8,7 +8,6 @@ import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
   useBalance,
-  useBlock,
   useChainId,
   useReadContract,
   useReadContracts,
@@ -102,6 +101,7 @@ import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
 import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import { useLatestBlock } from "@/providers/LatestBlockContext";
 import {
   fetchTimecurveCharmRedemptions,
   fetchTimecurveBuyerStats,
@@ -220,7 +220,7 @@ export function useTimeCurveArenaModel() {
   }, []);
 
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
-  const { data: latestBlock } = useBlock({ watch: true });
+  const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
 
@@ -571,13 +571,6 @@ export function useTimeCurveArenaModel() {
     void refetchWarbowPolicy();
   }, [refetchCoreTc, refetchWarbowPolicy]);
 
-  useEffect(() => {
-    if (tc && latestBlock?.number !== undefined) {
-      void refetchCoreTc();
-      void refetchWarbowPolicy();
-    }
-  }, [tc, latestBlock?.number, latestBlock?.timestamp, refetchCoreTc, refetchWarbowPolicy]);
-
   const userSaleContracts =
     tc && address
       ? [
@@ -597,15 +590,9 @@ export function useTimeCurveArenaModel() {
     refetch: refetchUserSale,
   } = useReadContracts({
     contracts: userSaleContracts as readonly unknown[],
-    query: { enabled: Boolean(tc && address) },
+    query: { enabled: Boolean(tc && address), refetchInterval: 1000 },
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
-
-  useEffect(() => {
-    if (tc && address && latestBlock?.number !== undefined) {
-      void refetchUserSale();
-    }
-  }, [tc, address, latestBlock?.number, latestBlock?.timestamp, refetchUserSale]);
 
   const onWarbowBpMovingEvent = useCallback(() => {
     void refetchCoreTc();
