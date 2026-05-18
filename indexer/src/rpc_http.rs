@@ -76,6 +76,34 @@ where
     Err(last_err.expect("rpc_first_ok requires non-empty providers"))
 }
 
+/// Like [`rpc_first_ok`], but for RPC methods that return `Option<T>` (e.g. `eth_getBlockByNumber`).
+///
+/// **Important:** [`rpc_first_ok`] treats `Ok(None)` as success and stops — so the first URL that
+/// returns JSON-RPC `null` prevents trying comma-separated fallbacks. This helper keeps calling
+/// providers until one returns `Ok(Some(_))`, which fixes operators whose primary MegaETH endpoint
+/// omits historical blocks while a secondary URL serves them.
+pub async fn rpc_first_some<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    mut f: F,
+) -> TransportResult<Option<T>>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<Option<T>>>,
+{
+    let mut last_err: Option<TransportError> = None;
+    for p in providers {
+        match f(p).await {
+            Ok(Some(v)) => return Ok(Some(v)),
+            Ok(None) => {}
+            Err(e) => last_err = Some(e),
+        }
+    }
+    match last_err {
+        Some(e) => Err(e),
+        None => Ok(None),
+    }
+}
+
 pub fn transport_err_http_status(err: &TransportError) -> Option<u16> {
     match err {
         RpcError::Transport(TransportErrorKind::HttpError(HttpError { status, .. })) => {
