@@ -60,13 +60,11 @@ test.describe("Anvil wallet writes", () => {
     // Toggle buttons (not legacy radio inputs) — `data-testid` + issue #87
     await buyPanel.getByTestId("timecurve-simple-paywith-eth").click();
     await expect(buyPanel.getByTestId("timecurve-simple-paywith-eth")).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      buyPanel.getByLabel(/Quoted ETH spend for the selected CL8Y target/),
-    ).toBeVisible({ timeout: 120_000 });
-    // Resolves from "…" once the Kumbaya quoter read settles (issue #56)
-    await expect(buyPanel.locator(".timecurve-simple__amount-field--quoted")).not.toHaveText("…", {
-      timeout: 120_000,
-    });
+    const ethSpendInput = buyPanel.getByLabel(/Exact ETH spend/);
+    await expect(ethSpendInput).toBeVisible({ timeout: 120_000 });
+    // Populates once the Kumbaya quoter read settles (issue #56)
+    await expect(ethSpendInput).not.toHaveValue("", { timeout: 120_000 });
+    await expect(ethSpendInput).not.toHaveValue("…", { timeout: 120_000 });
     await buyPanel.locator('input[type="range"]').evaluate((input) => {
       const el = input as HTMLInputElement;
       el.value = "1";

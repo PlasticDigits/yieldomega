@@ -20,6 +20,12 @@ describe("friendlyRevertMessage", () => {
     );
   });
 
+  it("maps TimeCurveBuyRouter custom errors", () => {
+    expect(friendlyRevertMessage("TimeCurveBuyRouter__CharmBounds()")).toContain("min–max band");
+    expect(friendlyRevertMessage("0xa8130f38")).toContain("min–max band");
+    expect(friendlyRevertMessage("0x817275ab")).toContain("slippage");
+  });
+
   it("maps common WarBow eligibility failures", () => {
     expect(friendlyRevertMessage("TimeCurve: steal 2x rule")).toBe(
       "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",

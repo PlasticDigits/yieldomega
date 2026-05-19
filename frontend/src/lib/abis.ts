@@ -178,6 +178,15 @@ export const kumbayaSwapRouterAbi = parseAbi([
 /** [`TimeCurveBuyRouter.buyViaKumbaya`](../../contracts/src/TimeCurveBuyRouter.sol) — single-tx ETH / stable → Kumbaya → `buyFor` (issue #65 / #66). */
 export const timeCurveBuyRouterAbi = parseAbi([
   "function buyViaKumbaya(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag, uint8 payKind, uint256 swapDeadline, uint256 amountInMaximum, bytes path) payable",
+  "error TimeCurveBuyRouter__BadSalePhase()",
+  "error TimeCurveBuyRouter__BadPath()",
+  "error TimeCurveBuyRouter__CharmBounds()",
+  "error TimeCurveBuyRouter__EthMode()",
+  "error TimeCurveBuyRouter__StableMode()",
+  "error TimeCurveBuyRouter__StableNotConfigured()",
+  "error TimeCurveBuyRouter__StableIngressParity()",
+  "error TimeCurveBuyRouter__EthValue()",
+  "error TimeCurveBuyRouter__RefundInvariant()",
 ]);
 
 /** [`DoubPresaleVesting`](../../contracts/src/vesting/DoubPresaleVesting.sol) — presale DOUB cliff + linear vesting (GitLab #92). */

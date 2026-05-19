@@ -668,51 +668,29 @@ export function TimeCurveSimplePage() {
         disabled={session.phase !== "saleActive" || !session.walletConnected}
       />
       <div className="timecurve-simple__amount-input">
-        {session.payWith === "cl8y" ? (
-          <>
-            <input
-              type="text"
-              inputMode="decimal"
-              aria-label="Exact CL8Y spend"
-              className="form-input timecurve-simple__amount-field"
-              value={session.spendInputStr}
-              onChange={(e) => session.setSpendFromInput(e.target.value)}
-              onBlur={() => session.setSpendFromInputBlur()}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-                e.preventDefault();
-                e.currentTarget.blur();
-              }}
-              disabled={session.phase !== "saleActive" || !session.walletConnected}
-            />
-            <TimecurveSimpleAmountPayTokenSelect
-              payWith={session.payWith}
-              setPayWith={session.setPayWith}
-              disabled={session.phase !== "saleActive" || !session.walletConnected}
-            />
-          </>
-        ) : (
-          <>
-            <span
-              className="form-input timecurve-simple__amount-field timecurve-simple__amount-field--quoted"
-              aria-label={`Quoted ${paySpendSuffix} spend for the selected CL8Y target`}
-            >
-              {session.swapQuoteDisplayLoading || session.quotedPayInWei === undefined ? (
-                "…"
-              ) : (
-                <AmountDisplay
-                  raw={String(session.quotedPayInWei)}
-                  decimals={session.payTokenDecimals}
-                />
-              )}
-            </span>
-            <TimecurveSimpleAmountPayTokenSelect
-              payWith={session.payWith}
-              setPayWith={session.setPayWith}
-              disabled={session.phase !== "saleActive" || !session.walletConnected}
-            />
-          </>
-        )}
+        <input
+          type="text"
+          inputMode="decimal"
+          aria-label={`Exact ${paySpendSuffix} spend`}
+          className="form-input timecurve-simple__amount-field"
+          value={session.spendInputStr}
+          onChange={(e) => session.setSpendFromInput(e.target.value)}
+          onFocus={() => session.setSpendFromInputFocus()}
+          onBlur={() => {
+            void session.setSpendFromInputBlur();
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            e.currentTarget.blur();
+          }}
+          disabled={session.phase !== "saleActive" || !session.walletConnected}
+        />
+        <TimecurveSimpleAmountPayTokenSelect
+          payWith={session.payWith}
+          setPayWith={session.setPayWith}
+          disabled={session.phase !== "saleActive" || !session.walletConnected}
+        />
       </div>
     </div>
   ) : null;
@@ -1086,29 +1064,6 @@ export function TimeCurveSimplePage() {
           {/* Live rate board: current price (big, ticks every block) +
               at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.275× anchor). */}
           {session.phase === "saleActive" && rateBoard}
-
-          {session.phase === "saleActive" && session.pendingReferralCode && (
-            <motion.div
-              className="timecurve-simple__referral timecurve-simple__referral--locked muted"
-              data-testid="timecurve-simple-pending-referral"
-            >
-              {session.walletConnected ? (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={session.useReferral}
-                    onChange={(e) => session.setUseReferral(e.target.checked)}
-                  />{" "}
-                  Apply pending referral code <code>{session.pendingReferralCode}</code>
-                </label>
-              ) : (
-                <p className="timecurve-simple__referral-locked-copy">
-                  Referral code <code>{session.pendingReferralCode}</code> is saved in this browser.
-                  Connect your wallet to buy with it applied.
-                </p>
-              )}
-            </motion.div>
-          )}
 
           {!session.walletConnected && session.phase !== "loading" && (
             <div className="timecurve-simple__connect">

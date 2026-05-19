@@ -31,9 +31,14 @@ import {
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
+import {
+  cl8ySpendWeiFromPayTokenBudget,
+  cl8ySpendWeiFromPayTokenFallback,
+} from "@/lib/kumbayaCl8ySpendFromPayToken";
 import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
+import { assertReferralReadyForBuy } from "@/lib/referralBuyPreflight";
 import {
   type KumbayaEnv,
   type PayWithAsset,
@@ -147,8 +152,11 @@ export type UseTimeCurveSaleSession = {
   cl8ySpendBounds: { minS: bigint; maxS: bigint } | null;
   spendWei: bigint;
   spendInputStr: string;
+  /** Decimals for the spend amount text field (CL8Y or pay token). */
+  spendInputDecimals: number;
   setSpendFromInput: (raw: string) => void;
-  setSpendFromInputBlur: () => void;
+  setSpendFromInputFocus: () => void;
+  setSpendFromInputBlur: () => void | Promise<void>;
   setSpendFromSliderPermille: (permille: number) => void;
   spendSliderPermille: number;
   charmWadSelected: bigint | undefined;
@@ -292,6 +300,7 @@ export function useTimeCurveSaleSession(
 
   const [spendWei, setSpendWei] = useState(0n);
   const [spendInputStr, setSpendInputStr] = useState("");
+  const payInputFocusedRef = useRef(false);
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const pendingReferralCode = usePendingReferralCode();
@@ -706,6 +715,11 @@ export function useTimeCurveSaleSession(
       ? (referralRegistryR.result as `0x${string}`).toLowerCase() !== zeroAddr
       : (referralMetaLatchRef.current.referralRegistryOn ?? false);
 
+  const referralRegistryAddr =
+    referralRegistryR?.status === "success"
+      ? (referralRegistryR.result as `0x${string}`)
+      : undefined;
+
   const doubPresaleVestingAddr =
     doubPresaleVestingR?.status === "success"
       ? (doubPresaleVestingR.result as HexAddress)
@@ -928,13 +942,6 @@ export function useTimeCurveSaleSession(
       }),
     );
   }, [cl8ySpendBounds]);
-
-  useEffect(() => {
-    if (!cl8ySpendBounds) return;
-    const { minS, maxS } = cl8ySpendBounds;
-    const c = clampBigint(spendWei, minS, maxS);
-    setSpendInputStr(formatUnits(c, decimals));
-  }, [cl8ySpendBounds, spendWei, decimals]);
 
   const buySizing = useMemo(() => {
     if (!cl8ySpendBounds) {
@@ -1254,6 +1261,21 @@ export function useTimeCurveSaleSession(
     };
   }, [payWith, walletBalanceWei, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
 
+  const spendInputDecimals = payWith === "cl8y" ? decimals : payTokenDecimals;
+
+  useEffect(() => {
+    if (!cl8ySpendBounds || payInputFocusedRef.current) return;
+    const { minS, maxS } = cl8ySpendBounds;
+    const c = clampBigint(spendWei, minS, maxS);
+    if (payWith === "cl8y") {
+      setSpendInputStr(formatUnits(c, decimals));
+      return;
+    }
+    if (quotedPayInWei !== undefined) {
+      setSpendInputStr(formatUnits(quotedPayInWei, payTokenDecimals));
+    }
+  }, [cl8ySpendBounds, spendWei, decimals, payWith, quotedPayInWei, payTokenDecimals]);
+
   const spendSliderPermille = useMemo(() => {
     if (!cl8ySpendBounds) return 0;
     const { minS, maxS } = cl8ySpendBounds;
@@ -1266,32 +1288,88 @@ export function useTimeCurveSaleSession(
   const setSpendFromSliderPermille = useCallback(
     (permille: number) => {
       if (!cl8ySpendBounds) return;
+      payInputFocusedRef.current = false;
       const { minS, maxS } = cl8ySpendBounds;
       const p = clampBigint(BigInt(Math.round(permille)), 0n, 10000n);
       const spend = minS + ((maxS - minS) * p) / 10000n;
       setSpendWei(spend);
-      setSpendInputStr(formatUnits(spend, decimals));
+      if (payWith === "cl8y") {
+        setSpendInputStr(formatUnits(spend, decimals));
+      }
     },
-    [cl8ySpendBounds, decimals],
+    [cl8ySpendBounds, decimals, payWith],
   );
 
   const setSpendFromInput = useCallback((raw: string) => {
     setSpendInputStr(raw);
   }, []);
 
-  const setSpendFromInputBlur = useCallback(() => {
+  const setSpendFromInputFocus = useCallback(() => {
+    payInputFocusedRef.current = true;
+  }, []);
+
+  const setSpendFromInputBlur = useCallback(async () => {
+    payInputFocusedRef.current = false;
     if (!cl8ySpendBounds) return;
     const { minS, maxS } = cl8ySpendBounds;
+
+    if (payWith === "cl8y") {
+      try {
+        const raw = spendInputStr.trim() === "" ? "0" : spendInputStr.trim();
+        const p = parseUnits(raw, decimals);
+        const c = clampBigint(p, minS, maxS);
+        setSpendWei(c);
+        setSpendInputStr(formatUnits(c, decimals));
+      } catch {
+        setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+      }
+      return;
+    }
+
     try {
       const raw = spendInputStr.trim() === "" ? "0" : spendInputStr.trim();
-      const p = parseUnits(raw, decimals);
-      const c = clampBigint(p, minS, maxS);
-      setSpendWei(c);
-      setSpendInputStr(formatUnits(c, decimals));
+      let targetPay = parseUnits(raw, payTokenDecimals);
+      const walletCap = payWalletBalance.raw;
+      if (walletCap !== undefined && targetPay > walletCap) {
+        targetPay = walletCap;
+      }
+
+      let spend: bigint;
+      if (kumbayaResolved.ok && acceptedAsset && swapRoute?.ok) {
+        spend = await cl8ySpendWeiFromPayTokenBudget(wagmiConfig, {
+          quoter: kumbayaResolved.config.quoter,
+          kConfig: kumbayaResolved.config,
+          payWith,
+          acceptedCl8y: acceptedAsset,
+          targetPayInWei: targetPay,
+          minSpendWei: minS,
+          maxSpendWei: maxS,
+        });
+      } else {
+        spend = cl8ySpendWeiFromPayTokenFallback(targetPay, payWith, minS, maxS);
+      }
+      setSpendWei(spend);
+      setSpendInputStr(formatUnits(targetPay, payTokenDecimals));
     } catch {
-      setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+      if (quotedPayInWei !== undefined) {
+        setSpendInputStr(formatUnits(quotedPayInWei, payTokenDecimals));
+      } else {
+        setSpendInputStr(formatUnits(clampBigint(spendWei, minS, maxS), decimals));
+      }
     }
-  }, [cl8ySpendBounds, decimals, spendInputStr, spendWei]);
+  }, [
+    acceptedAsset,
+    cl8ySpendBounds,
+    decimals,
+    kumbayaResolved,
+    payTokenDecimals,
+    payWalletBalance.raw,
+    payWith,
+    quotedPayInWei,
+    spendInputStr,
+    spendWei,
+    swapRoute,
+  ]);
 
   /**
    * Buy cooldown countdown uses the same wall-skewed `chainNowSec` as the hero
@@ -1513,6 +1591,22 @@ export function useTimeCurveSaleSession(
           setBuyError(e instanceof Error ? e.message : String(e));
           return;
         }
+        if (
+          codeHash &&
+          referralRegistryAddr &&
+          referralRegistryAddr.toLowerCase() !== zeroAddr
+        ) {
+          const referralPreflight = await assertReferralReadyForBuy({
+            wagmiConfig,
+            referralRegistry: referralRegistryAddr,
+            buyer: address as `0x${string}`,
+            pendingCode: pendingReferralCode,
+          });
+          if (!referralPreflight.ok) {
+            setBuyError(referralPreflight.message);
+            return;
+          }
+        }
       }
 
       try {
@@ -1723,6 +1817,7 @@ export function useTimeCurveSaleSession(
     walletBalanceWei,
     useReferral,
     referralRegistryOn,
+    referralRegistryAddr,
     pendingReferralCode,
     plantWarBowFlag,
     writeContractAsync,
@@ -1795,7 +1890,9 @@ export function useTimeCurveSaleSession(
     cl8ySpendBounds,
     spendWei,
     spendInputStr,
+    spendInputDecimals,
     setSpendFromInput,
+    setSpendFromInputFocus,
     setSpendFromInputBlur,
     setSpendFromSliderPermille,
     spendSliderPermille,
