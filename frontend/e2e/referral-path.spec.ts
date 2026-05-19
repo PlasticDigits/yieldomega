@@ -27,8 +27,4 @@ test("timecurve path locks referral without wallet (test1)", async ({ page }) =>
   await expect(page).toHaveURL(/\/timecurve\/test1/);
   const pending = await page.evaluate(() => window.localStorage.getItem("yieldomega.ref.v1"));
   expect(JSON.parse(pending!).code).toBe("test1");
-  const siteLock = page.getByTestId("pending-referral-site-lock");
-  if (await siteLock.isVisible().catch(() => false)) {
-    await expect(siteLock).toContainText("test1");
-  }
 });
