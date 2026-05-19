@@ -12,8 +12,8 @@ single sub-nav (`<TimeCurveSubnav />`):
 
 | Route                  | Component                | Audience               | Reads from      | Writes from |
 |------------------------|--------------------------|------------------------|-----------------|-------------|
-| `/timecurve`           | `TimeCurveSimplePage`    | New users / first run  | `useTimeCurveSaleSession` (RPC) + `TimeCurve.podium(category)` (RPC) + `fetchTimecurveBuys` (indexer, latest 3) | `useTimeCurveSaleSession.buy()` |
-| `/timecurve/arena`     | `TimeCurvePage` (existing) | Power users / PvP    | Existing `wagmi` reads + indexer (battle feed, podiums, WarBow)             | Existing `TimeCurvePage` write paths (buy, claim, WarBow steal/guard/revenge/flag) |
+| `/timecurve`           | `TimeCurveSimplePage`    | New users / first run  | `useTimeCurveSaleSession` — global sale via **`GET /v1/timecurve/sale-state`** when indexer set (else RPC); podiums/buys indexer; wallet RPC load-once ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)) | `useTimeCurveSaleSession.buy()` |
+| `/timecurve/arena`     | `TimeCurvePage` (existing) | Power users / PvP    | Same **`sale-state`** for global core when indexer set; indexer WarBow/podiums/buys; wallet + FeeRouter/LinearCharmPrice RPC ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)) | Existing `TimeCurvePage` write paths (buy, claim, WarBow steal/guard/revenge/flag) |
 | `/timecurve/protocol`  | `TimeCurveProtocolPage`  | Operators / auditors   | `useReadContracts` against TimeCurve, `LinearCharmPrice`, `FeeRouter`; optional **`fetchTimecurveWarbowRefreshCandidates`** (indexer) for governance reference | **WarBow** post-end **`finalizeWarbowPodium(first, second, third)`** ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)) with indexer **`refresh-candidates`** as operator tooling ([#160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160) / [#170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)) |
 
 Every other primitive (timer reset rule, four reserve podiums, fee routing,

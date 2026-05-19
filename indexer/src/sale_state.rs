@@ -7,7 +7,14 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::{Result, WrapErr};
 
-/// JSON body for `GET /v1/timecurve/sale-state` (schema ≥ 1.23.0).
+/// One `FeeRouter.sinks(i)` row for `GET /v1/timecurve/sale-state` (schema ≥ 1.24.0).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FeeRouterSinkSnapshot {
+    pub destination: String,
+    pub weight_bps: u16,
+}
+
+/// JSON body for `GET /v1/timecurve/sale-state` (schema ≥ 1.24.0).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TimecurveSaleStateSnapshot {
     pub read_block_number: String,
@@ -45,6 +52,14 @@ pub struct TimecurveSaleStateSnapshot {
     pub warbow_pending_flag_plant_at: String,
     pub warbow_flag_claim_bp: String,
     pub warbow_flag_silence_sec: String,
+    pub initial_timer_sec: String,
+    pub prizes_distributed: bool,
+    pub fee_router: String,
+    pub owner: String,
+    pub linear_charm_base_price_wad: String,
+    pub linear_charm_daily_increment_wad: String,
+    /// `FeeRouter.sinks(0..5)` at `read_block_number`.
+    pub fee_router_sinks: [FeeRouterSinkSnapshot; 5],
 }
 
 fn u256_to_decimal_string(v: U256) -> String {
@@ -83,6 +98,44 @@ fn decode_return_address(data: &[u8]) -> Result<Address> {
 
 fn addr_word_hex(a: Address) -> String {
     format!("{:#x}", a)
+}
+
+fn encode_u256_arg_calldata(selector: [u8; 4], arg: U256) -> Vec<u8> {
+    let mut input = Vec::with_capacity(36);
+    input.extend_from_slice(&selector);
+    input.extend_from_slice(&arg.to_be_bytes::<32>());
+    input
+}
+
+fn decode_sink_return(data: &[u8]) -> Result<(Address, u16)> {
+    let destination = decode_return_address(data)?;
+    let weight_bps = if data.len() >= 64 {
+        let w = decode_return_u256(&data[32..64])?;
+        u16::try_from(w.to::<u64>()).unwrap_or(0)
+    } else {
+        0
+    };
+    Ok((destination, weight_bps))
+}
+
+async fn eth_call_sink(
+    provider: &ReqwestProvider,
+    fee_router: Address,
+    block_id: BlockId,
+    index: u8,
+    label: &str,
+) -> Result<(Address, u16)> {
+    const SEL_SINKS: [u8; 4] = [0x97, 0x76, 0x4a, 0x55];
+    let input = encode_u256_arg_calldata(SEL_SINKS, U256::from(index));
+    let req = TransactionRequest::default()
+        .to(fee_router)
+        .input(Bytes::from(input).into());
+    let raw = provider
+        .call(&req)
+        .block(block_id)
+        .await
+        .wrap_err_with(|| format!("{label} eth_call"))?;
+    decode_sink_return(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
 async fn eth_call_u256(
@@ -165,6 +218,12 @@ pub async fn poll_sale_state_at_block(
     const SEL_WARBOW_FLAG_CLAIM: [u8; 4] = [0xf0, 0xd7, 0x7b, 0x70];
     const SEL_WARBOW_FLAG_SILENCE: [u8; 4] = [0xfe, 0xbc, 0x02, 0x0f];
     const SEL_WARBOW_FLAG_PLANT_AT: [u8; 4] = [0x18, 0xf0, 0x57, 0x4d];
+    const SEL_INITIAL_TIMER: [u8; 4] = [0x12, 0x40, 0x7d, 0x45];
+    const SEL_PRIZES_DISTRIBUTED: [u8; 4] = [0x27, 0x77, 0x72, 0x4b];
+    const SEL_FEE_ROUTER: [u8; 4] = [0xf2, 0x9e, 0xbf, 0x61];
+    const SEL_OWNER: [u8; 4] = [0x8d, 0xa5, 0xcb, 0x5b];
+    const SEL_BASE_PRICE_WAD: [u8; 4] = [0x9a, 0x72, 0x2f, 0xfb];
+    const SEL_DAILY_INCREMENT_WAD: [u8; 4] = [0x03, 0xe4, 0x83, 0xd8];
 
     let sale_start = eth_call_u256(
         provider,
@@ -290,6 +349,55 @@ pub async fn poll_sale_state_at_block(
         ),
     )?;
 
+    let (
+        initial_timer,
+        prizes_distributed,
+        fee_router,
+        owner,
+        linear_base,
+        linear_daily,
+    ) = tokio::try_join!(
+        eth_call_u256(provider, tc, block_id, SEL_INITIAL_TIMER, "initialTimerSec"),
+        eth_call_bool(provider, tc, block_id, SEL_PRIZES_DISTRIBUTED, "prizesDistributed"),
+        eth_call_address(provider, tc, block_id, SEL_FEE_ROUTER, "feeRouter"),
+        eth_call_address(provider, tc, block_id, SEL_OWNER, "owner"),
+        eth_call_u256(
+            provider,
+            charm_price,
+            block_id,
+            SEL_BASE_PRICE_WAD,
+            "basePriceWad"
+        ),
+        eth_call_u256(
+            provider,
+            charm_price,
+            block_id,
+            SEL_DAILY_INCREMENT_WAD,
+            "dailyIncrementWad"
+        ),
+    )?;
+
+    let mut fee_router_sinks =
+        std::array::from_fn(|_| FeeRouterSinkSnapshot {
+            destination: addr_word_hex(Address::ZERO),
+            weight_bps: 0,
+        });
+    if fee_router != Address::ZERO {
+        let (s0, s1, s2, s3, s4) = tokio::try_join!(
+            eth_call_sink(provider, fee_router, block_id, 0, "sinks(0)"),
+            eth_call_sink(provider, fee_router, block_id, 1, "sinks(1)"),
+            eth_call_sink(provider, fee_router, block_id, 2, "sinks(2)"),
+            eth_call_sink(provider, fee_router, block_id, 3, "sinks(3)"),
+            eth_call_sink(provider, fee_router, block_id, 4, "sinks(4)"),
+        )?;
+        for (i, (dest, bps)) in [s0, s1, s2, s3, s4].into_iter().enumerate() {
+            fee_router_sinks[i] = FeeRouterSinkSnapshot {
+                destination: addr_word_hex(dest),
+                weight_bps: bps,
+            };
+        }
+    }
+
     Ok(TimecurveSaleStateSnapshot {
         read_block_number: read_block_number.to_string(),
         block_timestamp_sec: block_ts.to_string(),
@@ -326,5 +434,12 @@ pub async fn poll_sale_state_at_block(
         warbow_pending_flag_plant_at: u256_to_decimal_string(warbow_flag_plant_at),
         warbow_flag_claim_bp: u256_to_decimal_string(warbow_flag_claim),
         warbow_flag_silence_sec: u256_to_decimal_string(warbow_flag_silence),
+        initial_timer_sec: u256_to_decimal_string(initial_timer),
+        prizes_distributed,
+        fee_router: addr_word_hex(fee_router),
+        owner: addr_word_hex(owner),
+        linear_charm_base_price_wad: u256_to_decimal_string(linear_base),
+        linear_charm_daily_increment_wad: u256_to_decimal_string(linear_daily),
+        fee_router_sinks,
     })
 }

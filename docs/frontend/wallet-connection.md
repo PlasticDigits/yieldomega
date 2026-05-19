@@ -86,7 +86,17 @@ TimeCurve **Simple** ([`useTimeCurveSaleSession.ts`](../../frontend/src/pages/ti
 
 **CL8Y balance** loads once on connect; TimeCurve Simple exposes an inline **↻** control that triggers a single **`balanceOf`** refetch ([`refetchWalletBalance`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts)). **`nextBuyAllowedAt`** is not polled on a timer; after a successful buy the UI refreshes wallet reads and applies the cooldown wall from the receipt block.
 
-Global sale display uses **`GET /v1/timecurve/sale-state`** when **`VITE_INDEXER_URL`** is set; see [timecurve-views — display vs submit](timecurve-views.md) and [invariants §216](../testing/invariants-and-business-logic.md#timecurve-indexer-sale-state-gitlab-216).
+Global sale display uses **`GET /v1/timecurve/sale-state`** when **`VITE_INDEXER_URL`** is set (shared **`useTimecurveSaleStateQuery`** on Simple and Arena — no ~1 Hz **`mergedArenaTc`** / **`coreContracts`** poll for overlapping fields); see [timecurve-views — display vs submit](timecurve-views.md) and [invariants §216](../testing/invariants-and-business-logic.md#timecurve-indexer-sale-state-gitlab-216).
+
+<a id="rpc-filter-capability-probe"></a>
+
+### Multi-RPC filter capability probe
+
+Comma-separated **`VITE_RPC_URL`** entries use viem **`fallback`** ([`rpcDebugTransport.ts`](../../frontend/src/lib/rpcDebugTransport.ts)). Some providers (e.g. dRPC free tier) allow **`eth_newFilter`** but reject **`eth_getFilterChanges`** (JSON-RPC **code 35**), which breaks **`useWatchContractEvent`** polling.
+
+On startup, [`RpcFilterCapabilityBootstrap`](../../frontend/src/providers/RpcFilterCapabilityBootstrap.tsx) probes each URL with a block filter + **`getFilterChanges`** ([`rpcFilterCapability.ts`](../../frontend/src/lib/rpcFilterCapability.ts)). Results are cached in **`sessionStorage`** key **`yieldomega.rpc.filterCapability.v1`** for **4 hours**, then re-probed. Endpoints that fail the probe skip filter JSON-RPC locally so fallback can use a capable primary URL for event watches while the limited URL still serves **`eth_call`** / block reads.
+
+**Automated:** [`rpcFilterCapability.test.ts`](../../frontend/src/lib/rpcFilterCapability.test.ts).
 
 ## Manual verification (post-deploy)
 
