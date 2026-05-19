@@ -52,9 +52,18 @@ contract AnvilKumbayaRouter {
     struct ExactOutputParams {
         bytes path;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
+    }
+
+    struct ExactOutputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        uint160 sqrtPriceLimitX96;
     }
 
     error Expired();
@@ -118,26 +127,37 @@ contract AnvilKumbayaRouter {
         return (amt, new uint160[](0), new uint32[](0), 200_000);
     }
 
-    function exactOutput(ExactOutputParams calldata params) external returns (uint256 amountIn) {
-        if (block.timestamp > params.deadline) revert Expired();
-        uint256 n = hopCount(params.path);
+    function exactOutputSingle(ExactOutputSingleParams calldata params) external returns (uint256 amountIn) {
+        bytes memory path = abi.encodePacked(params.tokenOut, params.fee, params.tokenIn);
+        return _exactOutput(path, params.recipient, params.amountOut, params.amountInMaximum);
+    }
 
-        uint256 curOut = params.amountOut;
+    function exactOutput(ExactOutputParams calldata params) external returns (uint256 amountIn) {
+        return _exactOutput(params.path, params.recipient, params.amountOut, params.amountInMaximum);
+    }
+
+    function _exactOutput(bytes memory path, address recipient, uint256 amountOut, uint256 amountInMaximum)
+        internal
+        returns (uint256 amountIn)
+    {
+        uint256 n = hopCount(path);
+
+        uint256 curOut = amountOut;
         uint256[] memory needOut = new uint256[](n);
         for (uint256 hi = 0; hi < n; ++hi) {
             needOut[hi] = curOut;
-            (address tokenOut, address tokenIn) = hopAddresses(params.path, hi);
+            (address tokenOut, address tokenIn) = hopAddresses(path, hi);
             uint256 rIn = uint256(reserveIn[tokenIn][tokenOut]);
             uint256 rOut = uint256(reserveOut[tokenIn][tokenOut]);
             if (rIn == 0 || rOut == 0) revert BadPath();
             curOut = getAmountIn(curOut, rIn, rOut);
         }
         amountIn = curOut;
-        if (amountIn > params.amountInMaximum) revert SlippageIn();
+        if (amountIn > amountInMaximum) revert SlippageIn();
 
         for (uint256 h = n; h > 0; h--) {
             uint256 hi = h - 1;
-            (address tOut, address tIn) = hopAddresses(params.path, hi);
+            (address tOut, address tIn) = hopAddresses(path, hi);
             uint256 outAmt = needOut[hi];
             uint256 rIn = uint256(reserveIn[tIn][tOut]);
             uint256 rOut = uint256(reserveOut[tIn][tOut]);
@@ -152,7 +172,7 @@ contract AnvilKumbayaRouter {
             reserveIn[tIn][tOut] = newIn;
             reserveOut[tIn][tOut] = newOut;
 
-            address dest = hi == 0 ? params.recipient : address(this);
+            address dest = hi == 0 ? recipient : address(this);
             IERC20(tOut).safeTransfer(dest, outAmt);
         }
     }

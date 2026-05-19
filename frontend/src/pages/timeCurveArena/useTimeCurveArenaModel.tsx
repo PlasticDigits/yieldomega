@@ -52,11 +52,7 @@ import {
   resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
-import {
-  fetchSwapDeadlineUnixSec,
-  KUMBAYA_SWAP_SLIPPAGE_BPS,
-  swapMaxInputFromQuoted,
-} from "@/lib/timeCurveKumbayaSwap";
+import { KUMBAYA_SWAP_SLIPPAGE_BPS, swapMaxInputFromQuoted } from "@/lib/timeCurveKumbayaSwap";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
 import {
   cl8ySpendWeiFromPayTokenBudget,
@@ -3064,7 +3060,6 @@ export function useTimeCurveArenaModel() {
           }
         }
 
-        const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
         guardBuySession();
         const { hash: swapHash } = await writeContractWithGasBuffer({
           wagmiConfig,
@@ -3078,7 +3073,6 @@ export function useTimeCurveArenaModel() {
             {
               path: route.path,
               recipient: address,
-              deadline,
               amountOut: grossCl8y,
               amountInMaximum: maxIn,
             },

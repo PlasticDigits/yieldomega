@@ -29,7 +29,7 @@ MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**
 | TimeCurve | `0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71` |
 | DoubPresaleVesting | `0xB4128c9f52dC345aD13680973146b23f5383dda0` |
 | PresaleCharmBeneficiaryRegistry | `0x6bfe055e767bF777a963157a6AEdE2F1e3eE2107` |
-| TimeCurveBuyRouter | `0xB09542acae355C5Ea42345522D403c1742C75B61` |
+| TimeCurveBuyRouter | `0x9F7B0Fd3ed1cA730E37882aC3644b9991cdCaed9` |
 | LeprechaunNFT | `0x9591bA1347D8f79aF7622d3145F8B6026078C85B` |
 
 UUPS cores are deployed behind **proxies**; use the addresses in this table for RPC and wallet calls. Foundry `run-latest.json` may also list **implementation** deployments for the same logical name—do not treat those as the live protocol surface ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
