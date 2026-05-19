@@ -3,6 +3,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ReferralPathSync } from "@/components/ReferralPathSync";
+import { PendingReferralSiteLock } from "@/components/PendingReferralSiteLock";
 import { AgentFooterCard } from "@/components/AgentFooterCard";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
@@ -247,6 +248,7 @@ export function RootLayout() {
             );
           }}
         </ConnectButton.Custom>
+        <PendingReferralSiteLock />
       </header>
       <AlbumPlayerBar open={musicOpen} onOpenChange={setMusicOpen} />
       <main className={mainClassName}>

@@ -1087,6 +1087,29 @@ export function TimeCurveSimplePage() {
               at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.275× anchor). */}
           {session.phase === "saleActive" && rateBoard}
 
+          {session.phase === "saleActive" && session.pendingReferralCode && (
+            <motion.div
+              className="timecurve-simple__referral timecurve-simple__referral--locked muted"
+              data-testid="timecurve-simple-pending-referral"
+            >
+              {session.walletConnected ? (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={session.useReferral}
+                    onChange={(e) => session.setUseReferral(e.target.checked)}
+                  />{" "}
+                  Apply pending referral code <code>{session.pendingReferralCode}</code>
+                </label>
+              ) : (
+                <p className="timecurve-simple__referral-locked-copy">
+                  Referral code <code>{session.pendingReferralCode}</code> is saved in this browser.
+                  Connect your wallet to buy with it applied.
+                </p>
+              )}
+            </motion.div>
+          )}
+
           {!session.walletConnected && session.phase !== "loading" && (
             <div className="timecurve-simple__connect">
               <p className="timecurve-simple__connect-pitch">
@@ -1247,18 +1270,6 @@ export function TimeCurveSimplePage() {
                 </StatusMessage>
               )}
 
-              {session.referralRegistryOn && session.pendingReferralCode && (
-                <div className="timecurve-simple__referral muted">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={session.useReferral}
-                      onChange={(e) => session.setUseReferral(e.target.checked)}
-                    />{" "}
-                    Apply pending referral code <code>{session.pendingReferralCode}</code>
-                  </label>
-                </div>
-              )}
             </>
           )}
 

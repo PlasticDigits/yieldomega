@@ -25,7 +25,7 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 <a id="referral-browser-storage-keys"></a>
 
 - **Search:** `?ref={code}` — when present, must normalize to a valid code (3–16, `a-z0-9` after lowercasing) or it is ignored.
-- **Path (under TimeCurve):** `/timecurve/{code}` when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists).
+- **Path (under TimeCurve):** `/timecurve/{code}` (e.g. `https://yieldomega.com/timecurve/test1`) when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists). Same **`yieldomega.ref.v1`** persistence as `?ref=` — **no wallet required** to capture; the app shows a site-wide **Referral locked** pill and TimeCurve copy when disconnected.
 - **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/timecurve/{code}` instead.
 - **Precedence:** If both a valid `?ref=` and a path-based code are present, **`?ref=` wins** (query overrides path).
 - **Browser storage (two keys; implementation in `frontend/src/lib/referralStorage.ts`):** neither store is authoritative for code ownership — the chain is. Users can clear entries in devtools.

@@ -47,7 +47,7 @@ import {
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
-import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
+import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -294,7 +294,7 @@ export function useTimeCurveSaleSession(
   const [spendInputStr, setSpendInputStr] = useState("");
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
-  const [pendingReferralCode, setPendingReferralCode] = useState<string | null>(null);
+  const pendingReferralCode = usePendingReferralCode();
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
   const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
@@ -305,10 +305,6 @@ export function useTimeCurveSaleSession(
   /** Bumps once per second while `buyCooldownUxWallUntilMs` is set so wall-clock countdown recomputes. */
   const [buyCooldownUxTick, setBuyCooldownUxTick] = useState(0);
   const [buySubmitBusy, setBuySubmitBusy] = useState(false);
-
-  useEffect(() => {
-    setPendingReferralCode(getPendingReferralCode());
-  }, []);
 
   useEffect(() => {
     if (!isConnected || !address) {
@@ -1564,10 +1560,6 @@ export function useTimeCurveSaleSession(
               },
             });
             setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
-            if (codeHash) {
-              clearPendingReferralCode();
-              setPendingReferralCode(null);
-            }
             refetchAll();
             return;
           }

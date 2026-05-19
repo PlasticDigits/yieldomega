@@ -78,6 +78,25 @@ describe("referralStorage pending cross-store sync", () => {
     expect(window.sessionStorage.getItem(KEY)).toBe(payload);
   });
 
+  it("applyReferralUrlCapture locks path slug into both stores", async () => {
+    const { applyReferralUrlCapture, getPendingReferralCode } = await import("./referralStorage");
+    applyReferralUrlCapture("/timecurve/test1", "");
+    expect(getPendingReferralCode()).toBe("test1");
+    expect(window.localStorage.getItem(KEY)).toContain("test1");
+    expect(window.sessionStorage.getItem(KEY)).toContain("test1");
+  });
+
+  it("subscribePendingReferralCode fires when pending is written", async () => {
+    const { applyReferralUrlCapture, subscribePendingReferralCode } = await import("./referralStorage");
+    let n = 0;
+    const unsub = subscribePendingReferralCode(() => {
+      n += 1;
+    });
+    applyReferralUrlCapture("/timecurve/abc12", "");
+    unsub();
+    expect(n).toBe(1);
+  });
+
   it("pending code stays after capture until overwritten or clearPendingReferralCode", async () => {
     const { applyReferralUrlCapture, getPendingReferralCode, clearPendingReferralCode } =
       await import("./referralStorage");

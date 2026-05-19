@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { getPendingReferralCode, shouldShowPendingPill } from "@/lib/referralStorage";
+import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
+import { shouldShowPendingPill } from "@/lib/referralStorage";
 
 /**
  * Footer pill showing the browser-locked pending referral code on `/referrals`
@@ -17,22 +17,7 @@ import { getPendingReferralCode, shouldShowPendingPill } from "@/lib/referralSto
  */
 export function ReferralsFooterPendingPill() {
   const location = useLocation();
-  const [pendingCode, setPendingCode] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPendingCode(getPendingReferralCode());
-  }, [location.pathname, location.search]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === null || e.key === "yieldomega.ref.v1") {
-        setPendingCode(getPendingReferralCode());
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  const pendingCode = usePendingReferralCode();
 
   if (!shouldShowPendingPill(location.pathname, pendingCode)) {
     return null;
