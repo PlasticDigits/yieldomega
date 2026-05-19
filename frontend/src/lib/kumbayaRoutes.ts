@@ -77,7 +77,8 @@ const CHAIN_DEFAULTS: Partial<
   },
   /** MegaETH mainnet — integrator-kit `megaETH-mainnet.json`; USDm (MegaUSD) per default-token-list. */
   4326: {
-    cl8yWethFee: 3000,
+    /** CL8Y/WETH v3 pool on Kumbaya mainnet is 0.01% (100), not 0.3% (3000). */
+    cl8yWethFee: 100,
     usdmWethFee: 3000,
     weth: "0x4200000000000000000000000000000000000006",
     swapRouter: "0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e",

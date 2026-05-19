@@ -10,7 +10,8 @@ import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeC
 import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
 import type { Config } from "wagmi";
-import { erc20Abi, kumbayaQuoterV2Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
+import { erc20Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
+import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
 import type { HexAddress } from "@/lib/addresses";
 import type { KumbayaChainConfigResolved, RouteForPayOk } from "@/lib/kumbayaRoutes";
 import {
@@ -67,6 +68,8 @@ export async function submitKumbayaSingleTxBuy(params: {
   payWith: "eth" | "usdm";
   kConfig: KumbayaChainConfigResolved;
   route: RouteForPayOk;
+  /** TimeCurve `acceptedAsset` (CL8Y) — swap `exactOutput` target token. */
+  acceptedCl8y: HexAddress;
   cl8yOut: bigint;
   charmWad: bigint;
   codeHash: `0x${string}` | undefined;
@@ -84,6 +87,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     payWith,
     kConfig,
     route,
+    acceptedCl8y,
     cl8yOut,
     charmWad,
     codeHash,
@@ -93,14 +97,15 @@ export async function submitKumbayaSingleTxBuy(params: {
   } = params;
   const router = timeCurveBuyRouter as `0x${string}`;
 
-  const quote = await readContract(cfg, {
-    address: kConfig.quoter,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args: [route.path, cl8yOut],
+  const qIn = await quoteKumbayaExactOutputAmountIn(cfg, {
+    quoter: kConfig.quoter,
+    kConfig,
+    payWith,
+    acceptedCl8y,
+    path: route.path,
+    amountOut: cl8yOut,
   });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
-  const qIn = (quote as readonly [bigint, ...unknown[]])[0];
   const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
   const payKind = payWith === "eth" ? PAY_ETH : PAY_STABLE;
   const h = bytes32OrZero(codeHash);

@@ -78,6 +78,7 @@ Cross-links: [issue #75](https://gitlab.com/PlasticDigits/yieldomega/-/issues/75
 
 - Routing assumes **v3-style** `exactOutput` / `quoteExactOutput` and **packed paths** built in `kumbayaRoutes.ts`. **UniversalRouter** paths are **not** the same ABI surface as our local Anvil fixture; production uses **SwapRouter02 + QuoterV2** per integrator-kit.
 - **Pools must exist** for **CL8Y/WETH** and (for stable mode) **stable/WETH** at the configured **fee tiers** (`VITE_KUMBAYA_FEE_*` or defaults). Missing pools → failed quotes / swaps — **not** a protocol bug.
+- **MegaETH mainnet (4326) fee tiers:** Kumbaya’s live **CL8Y/WETH** pool is **0.01% (100)**; **USDm/WETH** is **0.3% (3000)**. Defaults in `kumbayaRoutes.ts` match those tiers. **USDM** pay mode quotes via two `quoteExactOutputSingle` hops because `quoteExactOutput(bytes)` reverts on USDm-involving packed paths on production QuoterV2.
 - **CHARM** is minted only via **`TimeCurve.buy`** after CL8Y is available to the contract; Kumbaya only supplies **CL8Y** to the user’s wallet.
 
 ---

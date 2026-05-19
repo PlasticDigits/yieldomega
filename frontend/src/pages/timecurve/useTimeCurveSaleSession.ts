@@ -19,7 +19,6 @@ import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   doubPresaleVestingReadAbi,
   erc20Abi,
-  kumbayaQuoterV2Abi,
   kumbayaSwapRouterAbi,
   linearCharmPriceReadAbi,
   timeCurveBuyEventAbi,
@@ -31,6 +30,8 @@ import {
   cl8yTimeCurveApprovalAmountWei,
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
+import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
+import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
 import {
@@ -1102,66 +1103,50 @@ export function useTimeCurveSaleSession(
     swapRoute.ok &&
     kumbayaResolved.ok;
 
+  const kumbayaQuoteKConfig = kumbayaResolved.ok ? kumbayaResolved.config : undefined;
+  const kumbayaQuotePath = swapRoute?.ok ? swapRoute.path : undefined;
+
   const {
-    data: quoteTuple,
+    data: quotedPayInWei,
     isPending: quotePending,
     isFetching: quoteFetching,
     isError: quoteIsError,
-  } = useReadContract({
-    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args:
-      quoteEnabled && swapRoute?.ok
-        ? [swapRoute.path, estimatedSpendWei!]
-        : undefined,
-    query: { enabled: quoteEnabled, placeholderData: keepPreviousData },
+  } = useKumbayaExactOutputQuote({
+    enabled: quoteEnabled,
+    payWith,
+    kConfig: kumbayaQuoteKConfig,
+    acceptedCl8y: acceptedAsset,
+    path: kumbayaQuotePath,
+    amountOut: estimatedSpendWei,
   });
 
   const {
-    data: charmPriceQuoteTuple,
+    data: quotedPerCharmPayInWei,
     isPending: charmPriceQuotePending,
     isFetching: charmPriceQuoteFetching,
     isError: charmPriceQuoteIsError,
-  } = useReadContract({
-    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args:
-      charmPriceQuoteEnabled && swapRoute?.ok
-        ? [swapRoute.path, pricePerCharmWad!]
-        : undefined,
-    query: { enabled: charmPriceQuoteEnabled, placeholderData: keepPreviousData },
+  } = useKumbayaExactOutputQuote({
+    enabled: charmPriceQuoteEnabled,
+    payWith,
+    kConfig: kumbayaQuoteKConfig,
+    acceptedCl8y: acceptedAsset,
+    path: kumbayaQuotePath,
+    amountOut: pricePerCharmWad,
   });
 
   const {
-    data: launchPayQuoteTuple,
+    data: quotedLaunchPerCharmPayInWei,
     isPending: launchPayQuotePending,
     isFetching: launchPayQuoteFetching,
     isError: launchPayQuoteIsError,
-  } = useReadContract({
-    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args:
-      launchPayQuoteEnabled && swapRoute?.ok
-        ? [swapRoute.path, launchCl8yPerCharmWei!]
-        : undefined,
-    query: { enabled: launchPayQuoteEnabled, placeholderData: keepPreviousData },
+  } = useKumbayaExactOutputQuote({
+    enabled: launchPayQuoteEnabled,
+    payWith,
+    kConfig: kumbayaQuoteKConfig,
+    acceptedCl8y: acceptedAsset,
+    path: kumbayaQuotePath,
+    amountOut: launchCl8yPerCharmWei,
   });
-
-  const quotedPayInWei =
-    quoteTuple !== undefined ? (quoteTuple as readonly [bigint, ...unknown[]])[0] : undefined;
-
-  const quotedPerCharmPayInWei =
-    charmPriceQuoteTuple !== undefined
-      ? (charmPriceQuoteTuple as readonly [bigint, ...unknown[]])[0]
-      : undefined;
-
-  const quotedLaunchPerCharmPayInWei =
-    launchPayQuoteTuple !== undefined
-      ? (launchPayQuoteTuple as readonly [bigint, ...unknown[]])[0]
-      : undefined;
 
   const perCharmPayQuoteLoading =
     charmPriceQuoteEnabled &&
@@ -1212,45 +1197,30 @@ export function useTimeCurveSaleSession(
     kumbayaResolved.ok;
 
   const {
-    data: bandMinTuple,
+    data: quotedBandMinPayInWei,
     isPending: bandMinPending,
     isFetching: bandMinFetching,
-  } = useReadContract({
-    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args:
-      bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
-        ? [swapRoute.path, cl8ySpendBounds.minS]
-        : undefined,
-    query: {
-      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
-      placeholderData: keepPreviousData,
-    },
+  } = useKumbayaExactOutputQuote({
+    enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+    payWith,
+    kConfig: kumbayaQuoteKConfig,
+    acceptedCl8y: acceptedAsset,
+    path: kumbayaQuotePath,
+    amountOut: cl8ySpendBounds?.minS,
   });
 
   const {
-    data: bandMaxTuple,
+    data: quotedBandMaxPayInWei,
     isPending: bandMaxPending,
     isFetching: bandMaxFetching,
-  } = useReadContract({
-    address: kumbayaResolved.ok ? kumbayaResolved.config.quoter : undefined,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args:
-      bandQuoteEnabled && swapRoute?.ok && cl8ySpendBounds
-        ? [swapRoute.path, cl8ySpendBounds.maxS]
-        : undefined,
-    query: {
-      enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
-      placeholderData: keepPreviousData,
-    },
+  } = useKumbayaExactOutputQuote({
+    enabled: bandQuoteEnabled && Boolean(cl8ySpendBounds),
+    payWith,
+    kConfig: kumbayaQuoteKConfig,
+    acceptedCl8y: acceptedAsset,
+    path: kumbayaQuotePath,
+    amountOut: cl8ySpendBounds?.maxS,
   });
-
-  const quotedBandMinPayInWei =
-    bandMinTuple !== undefined ? (bandMinTuple as readonly [bigint, ...unknown[]])[0] : undefined;
-  const quotedBandMaxPayInWei =
-    bandMaxTuple !== undefined ? (bandMaxTuple as readonly [bigint, ...unknown[]])[0] : undefined;
   const bandBoundaryQuotesLoading =
     bandQuoteEnabled &&
     (quotedBandMinPayInWei === undefined || quotedBandMaxPayInWei === undefined) &&
@@ -1589,6 +1559,7 @@ export function useTimeCurveSaleSession(
               payWith,
               kConfig: k.config,
               route,
+              acceptedCl8y: acceptedAsset,
               cl8yOut: amount,
               charmWad: cw,
               codeHash,
@@ -1606,14 +1577,15 @@ export function useTimeCurveSaleSession(
             refetchAll();
             return;
           }
-          const quote = await readContract(wagmiConfig, {
-            address: k.config.quoter,
-            abi: kumbayaQuoterV2Abi,
-            functionName: "quoteExactOutput",
-            args: [route.path, amount],
+          const qIn = await quoteKumbayaExactOutputAmountIn(wagmiConfig, {
+            quoter: k.config.quoter,
+            kConfig: k.config,
+            payWith,
+            acceptedCl8y: acceptedAsset,
+            path: route.path,
+            amountOut: amount,
           });
           guardBuySession();
-          const qIn = (quote as readonly [bigint, ...unknown[]])[0];
           const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
 
           if (payWith === "eth") {
