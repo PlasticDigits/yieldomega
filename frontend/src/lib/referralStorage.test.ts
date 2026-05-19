@@ -77,6 +77,18 @@ describe("referralStorage pending cross-store sync", () => {
     expect(getPendingReferralCode()).toBe("keepme");
     expect(window.sessionStorage.getItem(KEY)).toBe(payload);
   });
+
+  it("pending code stays after capture until overwritten or clearPendingReferralCode", async () => {
+    const { applyReferralUrlCapture, getPendingReferralCode, clearPendingReferralCode } =
+      await import("./referralStorage");
+    applyReferralUrlCapture("/", "?ref=yieldomega");
+    expect(getPendingReferralCode()).toBe("yieldomega");
+    expect(getPendingReferralCode()).toBe("yieldomega");
+    clearPendingReferralCode();
+    expect(getPendingReferralCode()).toBeNull();
+    applyReferralUrlCapture("/", "?ref=other12");
+    expect(getPendingReferralCode()).toBe("other12");
+  });
 });
 
 describe("subscribeMyReferralCodeCache", () => {

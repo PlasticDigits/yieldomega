@@ -931,7 +931,7 @@ When **Simple** or **Arena** pay mode is **ETH** or **USDM** and **`TimeCurve.ti
 
 **Launch-plan / F-11 (issue #91):** The **`YO-DOUB-Launch-UX-Flows`** **F-11** checklist and [`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend) must **not** classify **`/referrals`** as **`UnderConstruction`**. That route is a **first-class** shipping surface alongside TimeCurve; placeholders remain **`/rabbit-treasury`** and **`/collection`** until their milestones.
 
-**Browser storage (issue #85):** Pending capture (`?ref=` / path) uses **`yieldomega.ref.v1`** in **`localStorage` + `sessionStorage`**. Post-register “my code” cache for share-link UX uses **`yieldomega.myrefcode.v1.<walletLowercase>`** in **`localStorage` only** — do not conflate with R7 pending-key checks. Table + payloads: [product/referrals.md — referral browser storage keys](../product/referrals.md#referral-browser-storage-keys).
+**Browser storage (issue #85):** Pending capture (`?ref=` / path) uses **`yieldomega.ref.v1`** in **`localStorage` + `sessionStorage`**; **not** cleared after a successful referred buy (persists until overwrite or manual site-data clear — [product/referrals.md — referral browser storage keys](../product/referrals.md#referral-browser-storage-keys)). Post-register “my code” cache for share-link UX uses **`yieldomega.myrefcode.v1.<walletLowercase>`** in **`localStorage` only** — do not conflate with R7 pending-key checks.
 
 <a id="referral-registration-ordering-issue-121"></a>
 

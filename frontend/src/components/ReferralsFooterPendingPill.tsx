@@ -43,7 +43,7 @@ export function ReferralsFooterPendingPill() {
       className="footer-link-pill"
       data-testid="referrals-footer-pending-pill"
       aria-label={`Pending referral code: ${pendingCode}`}
-      title="This code will apply on your next qualifying buy"
+      title="Locked in this browser for future buys while “Apply pending referral” stays enabled"
     >
       Pending ref: <strong>{pendingCode}</strong>
     </span>

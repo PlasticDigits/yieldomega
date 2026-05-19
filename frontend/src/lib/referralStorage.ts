@@ -4,7 +4,11 @@ import { extractReferralCodeFromPathname } from "@/lib/referralPathCapture";
 import { normalizeReferralCode } from "@/lib/referralCode";
 import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 
-/** localStorage/sessionStorage key for captured referral (not a secret). */
+/**
+ * localStorage/sessionStorage key for captured referral (not a secret).
+ * Persists until overwritten by a new `?ref=` / path capture or manual site-data clear —
+ * successful TimeCurve buys do **not** remove this entry.
+ */
 const REF_STORAGE = "yieldomega.ref.v1";
 
 const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
@@ -149,6 +153,7 @@ export function getPendingReferralCode(): string | null {
   }
 }
 
+/** Manual / test helper only — buy flows keep pending codes locked in storage. */
 export function clearPendingReferralCode(): void {
   if (typeof window === "undefined") {
     return;

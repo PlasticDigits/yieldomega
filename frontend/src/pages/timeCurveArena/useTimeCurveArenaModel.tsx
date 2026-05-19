@@ -31,7 +31,7 @@ import {
   weth9Abi,
 } from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
-import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
+import { getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -2910,10 +2910,6 @@ export function useTimeCurveArenaModel() {
             sessionSnapshot: buySessionSnapshot,
           });
           setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
-          if (codeHash) {
-            clearPendingReferralCode();
-            setPendingRef(null);
-          }
           await refetchAll();
           return;
         }
@@ -3058,10 +3054,6 @@ export function useTimeCurveArenaModel() {
       assertSuccessfulBuyReceipt(receipt);
       const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
       setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
-      if (codeHash) {
-        clearPendingReferralCode();
-        setPendingRef(null);
-      }
       await refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e, { buySubmit: true }));
