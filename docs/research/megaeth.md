@@ -23,6 +23,12 @@ Do **not** treat numeric parameters in this file as authoritative if they drift;
 
 Repo workflow notes: [Foundry on MegaEVM](../contracts/foundry-and-megaeth.md).
 
+<a id="realtime-send-raw-transaction-gitlab-216"></a>
+
+### Frontend writes: `realtime_sendRawTransaction` ([GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216))
+
+MegaETH RPC exposes **`realtime_sendRawTransaction`** as a drop-in replacement for **`eth_sendRawTransaction`** that can return the transaction receipt in one round trip ([Realtime API](https://docs.megaeth.com/realtime-api)). The frontend HTTP transport rewrites outgoing sends in [`realtimeRpcTransport.ts`](../../frontend/src/lib/realtimeRpcTransport.ts); user flows call **`waitForWriteReceipt`** ([`realtimeTransaction.ts`](../../frontend/src/lib/realtimeTransaction.ts)), which waits on the realtime receipt when present and **falls back** to standard **`waitForTransactionReceipt`** polling after **10s**. Use MegaETH-hosted RPC (`mainnet.megaeth.com/rpc` and comma-separated fallbacks in **`VITE_RPC_URL`**) so the enhancement is available in production.
+
 ## Technical themes relevant to yieldomega
 
 1. **Compatibility** — Standard Solidity tooling (Foundry) and contract patterns are expected to work; still **validate** opcodes and precompiles against MegaETH’s current fork baseline (see MegaETH docs for hardfork / OP stack alignment).

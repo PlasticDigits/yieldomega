@@ -18,9 +18,9 @@ import {
   getIndexerBackoffPollMs,
   reportIndexerFetchAttempt,
 } from "@/lib/indexerConnectivity";
-import { useLatestBlock } from "@/providers/LatestBlockContext";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
-import { overlayWarbowPodiumBpValues } from "./warbowPodiumLive";
 
 export const TIMECURVE_PODIUMS_QUERY_KEY = ["timecurve-podiums"] as const;
 
@@ -159,7 +159,6 @@ export function useWarbowPodiumLiveInvalidation(
 /** Prefer indexer head cache (~1s RPC poll server-side); fall back to direct reads when `VITE_INDEXER_URL` is unset. */
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const indexerOn = Boolean(indexerBaseUrl());
-  const { data: latestBlock } = useLatestBlock();
 
   const indexerQuery = useQuery({
     queryKey: TIMECURVE_PODIUMS_QUERY_KEY,
@@ -187,48 +186,25 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     contracts: contracts as readonly unknown[],
     query: {
       enabled: Boolean(tc) && !indexerOn,
-      refetchInterval: 1000,
+      refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });
 
-  const baseRows: PodiumReadRow[] = useMemo(() => {
+  useRpcQueryHealthForRefetch({
+    isFetched: rpc.isFetched,
+    isFetching: rpc.isFetching,
+    isError: rpc.isError,
+    isSuccess: rpc.isSuccess,
+    error: rpc.error,
+  });
+
+  const rows: PodiumReadRow[] = useMemo(() => {
     if (indexerOn) {
       return rowsFromIndexerData(indexerQuery.data?.rows ?? []);
     }
     return rowsFromRpcData(rpc.data as readonly ContractReadRow[] | undefined);
   }, [indexerOn, indexerQuery.data, rpc.data]);
-
-  const warbowWinners = baseRows[1]?.winners;
-  const warbowBpContracts = useMemo(() => {
-    if (!tc || !warbowWinners) {
-      return [];
-    }
-    return warbowWinners.map((addr) => ({
-      address: tc,
-      abi: timeCurveReadAbi,
-      functionName: "battlePoints" as const,
-      args: [addr] as const,
-    }));
-  }, [tc, warbowWinners?.[0], warbowWinners?.[1], warbowWinners?.[2]]);
-
-  const warbowBpReads = useReadContracts({
-    contracts: warbowBpContracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc) && warbowBpContracts.length === 3,
-      refetchInterval: 1000,
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  const rows = useMemo(
-    () =>
-      overlayWarbowPodiumBpValues(
-        baseRows,
-        warbowBpReads.data as readonly ContractReadRow[] | undefined,
-      ),
-    [baseRows, warbowBpReads.data, latestBlock?.number],
-  );
 
   if (indexerOn) {
     return {

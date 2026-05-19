@@ -27,27 +27,24 @@ describe("parseCommaSeparatedRpcUrls", () => {
 });
 
 describe("megaethMainnetOrderedRpcUrls", () => {
-  it("puts env URLs first and appends public fallbacks without duplicates", () => {
+  it("returns deduped env URLs only (no built-in public fallbacks)", () => {
     expect(megaethMainnetOrderedRpcUrls([MEGAETH_MAINNET_PRIMARY_RPC])).toEqual([
       MEGAETH_MAINNET_PRIMARY_RPC,
-      "https://rpc-megaeth-mainnet.globalstake.io",
     ]);
   });
 
-  it("preserves several env URLs before fallbacks", () => {
+  it("preserves order and drops duplicate env entries", () => {
     expect(
-      megaethMainnetOrderedRpcUrls(["https://primary.example", "https://secondary.example"]),
-    ).toEqual([
-      "https://primary.example",
-      "https://secondary.example",
-      "https://rpc-megaeth-mainnet.globalstake.io",
-    ]);
+      megaethMainnetOrderedRpcUrls([
+        "https://primary.example",
+        "https://secondary.example",
+        "https://primary.example",
+      ]),
+    ).toEqual(["https://primary.example", "https://secondary.example"]);
   });
 
-  it("does not repeat a URL when it matches a fallback entry", () => {
-    expect(megaethMainnetOrderedRpcUrls(["https://rpc-megaeth-mainnet.globalstake.io"])).toEqual([
-      "https://rpc-megaeth-mainnet.globalstake.io",
-    ]);
+  it("returns empty when env list is empty", () => {
+    expect(megaethMainnetOrderedRpcUrls([])).toEqual([]);
   });
 });
 

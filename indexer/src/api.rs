@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.22.0";
+const SCHEMA_VERSION: &str = "1.23.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -120,6 +120,7 @@ pub fn router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
         .route("/v1/timecurve/chain-timer", get(timecurve_chain_timer))
+        .route("/v1/timecurve/sale-state", get(timecurve_sale_state))
         .route("/v1/timecurve/podiums", get(timecurve_podiums))
         .route("/v1/timecurve/buys", get(timecurve_buys))
         .route(
@@ -221,6 +222,36 @@ async fn timecurve_chain_timer(State(state): State<AppState>) -> Response {
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(json!({
                     "error": "chain timer not configured (set ADDRESS_REGISTRY with TimeCurve)"
+                })),
+            )
+                .into_response();
+            *res.headers_mut() = with_schema_version(res.headers().clone());
+            res
+        }
+    }
+}
+
+/// Head RPC snapshot for TimeCurve sale views at `read_block_number` ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
+async fn timecurve_sale_state(State(state): State<AppState>) -> Response {
+    let guard = state.chain_timer.read().await;
+    match &*guard {
+        Some(head) => {
+            let mut body = serde_json::to_value(&head.sale_state).unwrap_or(json!({}));
+            if let serde_json::Value::Object(ref mut map) = body {
+                map.insert(
+                    "note".to_string(),
+                    json!("Head RPC snapshot at read_block_number; refreshed on the indexer chain-timer poll cadence (~1s healthy, backoff on RPC errors)."),
+                );
+            }
+            let mut res = Json(body).into_response();
+            *res.headers_mut() = with_schema_version(res.headers().clone());
+            res
+        }
+        None => {
+            let mut res = (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({
+                    "error": "sale state not configured (set ADDRESS_REGISTRY with TimeCurve)"
                 })),
             )
                 .into_response();

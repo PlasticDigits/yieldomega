@@ -4,7 +4,8 @@
 // `TimeCurveBuyRouter.buyViaKumbaya` (issue #66). Two-step swap + `buy` remains when
 // `timeCurveBuyRouter` is zero onchain.
 
-import { readContract, waitForTransactionReceipt } from "wagmi/actions";
+import { readContract } from "wagmi/actions";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
@@ -123,7 +124,7 @@ export async function submitKumbayaSingleTxBuy(params: {
         functionName: "approve",
         args: [router, maxIn],
       });
-      await waitForTransactionReceipt(cfg, { hash: uAp });
+      await waitForWriteReceipt(cfg, { hash: uAp });
       assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     }
   }
@@ -145,7 +146,7 @@ export async function submitKumbayaSingleTxBuy(params: {
   });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   playGameSfxCoinHitBuySubmit();
-  const receipt = await waitForTransactionReceipt(cfg, { hash });
+  const receipt = await waitForWriteReceipt(cfg, { hash });
   assertSuccessfulBuyReceipt(receipt);
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   onBuyMinedBeforeChainTimestamp?.();

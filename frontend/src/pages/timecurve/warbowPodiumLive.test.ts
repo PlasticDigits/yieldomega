@@ -24,28 +24,10 @@ function sampleRows(warbowValues: [string, string, string]): PodiumReadRow[] {
 }
 
 describe("overlayWarbowPodiumBpValues", () => {
-  it("replaces WarBow BP digits when all three on-chain reads succeed", () => {
+  it("returns rows unchanged (indexer-primary WarBow BP — GitLab #216)", () => {
     const rows = sampleRows(["750", "500", "200"]);
-    const next = overlayWarbowPodiumBpValues(rows, [
-      { status: "success", result: 812n },
-      { status: "success", result: 490n },
-      { status: "success", result: 205n },
-    ]);
-    expect(next[1]?.values).toEqual(["812", "490", "205"]);
-    expect(next[0]?.values).toEqual(["1", "2", "3"]);
-    expect(next[2]?.values).toEqual(["4", "3", "2"]);
-  });
-
-  it("keeps indexer values when any on-chain read is missing or failed", () => {
-    const rows = sampleRows(["750", "500", "200"]);
-    expect(
-      overlayWarbowPodiumBpValues(rows, [
-        { status: "success", result: 812n },
-        { status: "failure" },
-        { status: "success", result: 205n },
-      ]),
-    ).toBe(rows);
     expect(overlayWarbowPodiumBpValues(rows, undefined)).toBe(rows);
+    expect(overlayWarbowPodiumBpValues(rows, [{ status: "success", result: 812n }])).toBe(rows);
   });
 });
 
@@ -111,19 +93,14 @@ describe("WARBOW_BP_MOVING_EVENT_NAMES", () => {
 });
 
 describe("warbow podium row shape", () => {
-  it("preserves zero-address slots while overlaying BP", () => {
+  it("passes through indexer row including zero-address slots", () => {
     const rows: PodiumReadRow[] = [
       { winners: [ZERO, ZERO, ZERO], values: ["0", "0", "0"] },
       { winners: [A, ZERO, ZERO], values: ["750", "0", "0"] },
       { winners: [ZERO, ZERO, ZERO], values: ["0", "0", "0"] },
       { winners: [ZERO, ZERO, ZERO], values: ["0", "0", "0"] },
     ];
-    const next = overlayWarbowPodiumBpValues(rows, [
-      { status: "success", result: 812n },
-      { status: "success", result: 0n },
-      { status: "success", result: 0n },
-    ]);
-    expect(next[1]?.values[0]).toBe("812");
-    expect(next[1]?.winners[0]).toBe(A);
+    expect(overlayWarbowPodiumBpValues(rows, undefined)).toBe(rows);
+    expect(rows[1]?.values[0]).toBe("750");
   });
 });

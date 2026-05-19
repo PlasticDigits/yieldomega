@@ -78,6 +78,16 @@ ETH/USDM paths run **`quoteExactOutput`**, wraps/approvals, **`exactOutput`** sw
 
 **Spec ↔ test:** [`INV-ERC20-APPROVAL-143`](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [timecurve-views §143](timecurve-views.md#erc20-approval-sizing-gitlab-143).
 
+<a id="wallet-scoped-rpc-load-once-gitlab-216"></a>
+
+### Wallet-scoped RPC reads: load once + account switch ([GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216))
+
+TimeCurve **Simple** ([`useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts)) and **Arena** ([`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx)) treat per-wallet sale reads (`charmWeight`, `charmsRedeemed`, `nextBuyAllowedAt`, defended streaks, WarBow guard, …) as **load-once** RPC: **`refetchInterval: false`**, initial fetch when the wallet connects, and an explicit **`refetch`** when the connected **`address`** changes. **Chain switches alone do not refetch** wallet rows — the target chain is already gated by [#95](#wrong-network-write-gating-issue-95).
+
+**CL8Y balance** loads once on connect; TimeCurve Simple exposes an inline **↻** control that triggers a single **`balanceOf`** refetch ([`refetchWalletBalance`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts)). **`nextBuyAllowedAt`** is not polled on a timer; after a successful buy the UI refreshes wallet reads and applies the cooldown wall from the receipt block.
+
+Global sale display uses **`GET /v1/timecurve/sale-state`** when **`VITE_INDEXER_URL`** is set; see [timecurve-views — display vs submit](timecurve-views.md) and [invariants §216](../testing/invariants-and-business-logic.md#timecurve-indexer-sale-state-gitlab-216).
+
 ## Manual verification (post-deploy)
 
 - **Extension:** SafePal browser extension installed → open connect modal → **SafePal Wallet** visible and connects on the target chain.

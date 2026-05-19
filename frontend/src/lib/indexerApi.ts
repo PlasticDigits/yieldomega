@@ -149,6 +149,85 @@ export type TimecurveChainTimer = {
  * Latest `deadline` / `timerCapSec` / head `block.timestamp` from indexer RPC poll (~1s).
  * Returns null if indexer is unset, unreachable, chain-timer is not configured (503), or the body is not valid JSON ([issue #111](https://gitlab.com/PlasticDigits/yieldomega/-/issues/111)).
  */
+/** Head RPC sale views at `read_block_number` (schema ≥ 1.23.0, [GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
+export type TimecurveSaleState = {
+  read_block_number: string;
+  block_timestamp_sec: string;
+  polled_at_ms: number;
+  sale_start_sec: string;
+  deadline_sec: string;
+  ended: boolean;
+  timer_extension_sec: string;
+  timer_cap_sec: string;
+  buy_cooldown_sec: string;
+  current_min_buy_amount: string;
+  current_max_buy_amount: string;
+  current_charm_bounds_min_wad: string;
+  current_charm_bounds_max_wad: string;
+  current_price_per_charm_wad: string;
+  charm_price: string;
+  total_raised: string;
+  total_charm_weight: string;
+  total_tokens_for_sale: string;
+  initial_min_buy: string;
+  growth_rate_wad: string;
+  accepted_asset: string;
+  referral_registry: string;
+  launched_token: string;
+  buy_fee_routing_enabled: boolean;
+  charm_redemption_enabled: boolean;
+  reserve_podium_payouts_enabled: boolean;
+  time_curve_buy_router: string;
+  podium_pool: string;
+  doub_presale_vesting: string;
+  referral_each_bps: string;
+  presale_charm_weight_bps: string;
+  warbow_pending_flag_owner: string;
+  warbow_pending_flag_plant_at: string;
+  warbow_flag_claim_bp: string;
+  warbow_flag_silence_sec: string;
+  note?: string;
+};
+
+export async function fetchTimecurveSaleState(): Promise<TimecurveSaleState | null> {
+  return getJson<TimecurveSaleState>("/v1/timecurve/sale-state");
+}
+
+export type WarbowStealsByVictimDayItem = {
+  utc_day: string;
+  steal_count: string;
+};
+
+export type WarbowStealsByVictimDayResponse = {
+  victim: string;
+  items: WarbowStealsByVictimDayItem[];
+};
+
+export async function fetchWarbowStealsByVictimDay(victim: string) {
+  return getJson<WarbowStealsByVictimDayResponse>(
+    `/v1/timecurve/warbow/steals-by-victim-day?victim=${encodeURIComponent(victim)}`,
+  );
+}
+
+export type WarbowGuardLatestResponse = {
+  player: string;
+  latest_guard_activation: {
+    player: string;
+    guard_until_ts: string;
+    burn_paid_wad: string;
+    block_number: string;
+    tx_hash: string;
+    log_index: number;
+    block_timestamp: string | null;
+  } | null;
+};
+
+export async function fetchWarbowGuardLatest(player: string) {
+  return getJson<WarbowGuardLatestResponse>(
+    `/v1/timecurve/warbow/guard-latest?player=${encodeURIComponent(player)}`,
+  );
+}
+
 export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | null> {
   const base = indexerBaseUrl();
   if (!base) {

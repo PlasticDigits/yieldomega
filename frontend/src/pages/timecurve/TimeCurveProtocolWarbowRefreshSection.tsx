@@ -17,8 +17,8 @@ import {
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { PROTOCOL_READING_INDICES, useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDataContext";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import { wagmiConfig } from "@/wagmi-config";
-import { waitForTransactionReceipt } from "wagmi/actions";
 
 function checksumCandidates(lowerOrMixed: readonly string[]): Hex[] {
   const out: Hex[] = [];
@@ -165,7 +165,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
         onEstimateRevert: "rethrow",
         softCapGas: 800_000n,
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       void refetchParentReads();
     } catch (e) {
       setTxErr(friendlyRevertFromUnknown(e));
