@@ -167,6 +167,7 @@ export const weth9Abi = parseAbi([
  */
 export const kumbayaQuoterV2Abi = parseAbi([
   "function quoteExactOutput(bytes path, uint256 amountOut) view returns (uint256 amountIn, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)",
+  "function quoteExactOutputSingle((address tokenIn, address tokenOut, uint256 amount, uint24 fee, uint160 sqrtPriceLimitX96) params) view returns (uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
 ]);
 
 /** SwapRouter-compatible `exactOutput` (issue #41). */

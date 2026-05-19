@@ -67,6 +67,8 @@ describe("resolveKumbayaRouting", () => {
     expect(r.config.swapRouter).toBe("0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e");
     expect(r.config.quoter).toBe("0x1F1a8dC7E138C34b503Ca080962aC10B75384a27");
     expect(r.config.usdm).toBe("0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7");
+    expect(r.config.cl8yWethFee).toBe(100);
+    expect(r.config.usdmWethFee).toBe(3000);
   });
 
   it("resolves MegaETH testnet (6343) router + quoter without env; stable via env only", () => {
