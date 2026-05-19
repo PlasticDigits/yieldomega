@@ -1,21 +1,41 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Kumbaya QuoterV2 reads for TimeCurve ETH / USDM entry. MegaETH mainnet `quoteExactOutput(bytes)`
-// reverts on paths that include USDm; USDM mode uses two `quoteExactOutputSingle` hops instead.
+// Kumbaya QuoterV2 reads for TimeCurve ETH / USDM entry. On MegaETH mainnet,
+// `quoteExactOutput(bytes)` reverts (`toAddress_outOfBounds`); use `quoteExactOutputSingle` hops.
 
 import type { Config } from "wagmi";
 import { readContract } from "wagmi/actions";
 import type { HexAddress } from "@/lib/addresses";
-import { kumbayaQuoterV2Abi } from "@/lib/abis";
+import { kumbayaQuoterV2Abi, timeCurveReadAbi } from "@/lib/abis";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
+import { WAD } from "@/lib/timeCurveMath";
 
 function amountInFromQuoteResult(result: unknown): bigint {
   return (result as readonly [bigint, ...unknown[]])[0];
 }
 
-/** USDM pay uses composite singles; ETH uses packed-path `quoteExactOutput`. */
-export function kumbayaQuoteUsesCompositeSingles(payWith: PayWithAsset): boolean {
-  return payWith === "usdm";
+/** Gross CL8Y the router will request at inclusion (`charmWad × price / WAD`). */
+export async function readGrossCl8yForCharmWad(
+  wagmiConfig: Config,
+  timeCurveAddress: HexAddress,
+  charmWad: bigint,
+): Promise<bigint> {
+  const price = (await readContract(wagmiConfig, {
+    address: timeCurveAddress,
+    abi: timeCurveReadAbi,
+    functionName: "currentPricePerCharmWad",
+  })) as bigint;
+  return (charmWad * price) / WAD;
+}
+
+/**
+ * Extra CL8Y out used only when sizing swap `maxIn` so a rising `LinearCharmPrice`
+ * between quote and inclusion is less likely to trip Uniswap `STF()`.
+ */
+export const KUMBAYA_GROSS_CL8Y_QUOTE_HEADROOM_BPS = 150;
+
+export function grossCl8yWithQuoteHeadroom(grossCl8y: bigint): bigint {
+  return (grossCl8y * (10_000n + BigInt(KUMBAYA_GROSS_CL8Y_QUOTE_HEADROOM_BPS))) / 10_000n;
 }
 
 async function quoteExactOutputSingleAmountIn(
@@ -41,6 +61,23 @@ async function quoteExactOutputSingleAmountIn(
     ],
   });
   return amountInFromQuoteResult(result);
+}
+
+async function quoteEthPathAmountIn(
+  wagmiConfig: Config,
+  quoter: HexAddress,
+  kConfig: KumbayaChainConfigResolved,
+  acceptedCl8y: HexAddress,
+  cl8yAmountOut: bigint,
+): Promise<bigint> {
+  return quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.weth,
+    acceptedCl8y,
+    cl8yAmountOut,
+    kConfig.cl8yWethFee,
+  );
 }
 
 async function quoteUsdmPathAmountIn(
@@ -69,8 +106,8 @@ async function quoteUsdmPathAmountIn(
 }
 
 /**
- * Gross pay-token input for an `exactOutput` swap that delivers `amountOut` CL8Y.
- * `path` is still required for ETH (bytes quoter) and for onchain `buyViaKumbaya` calldata.
+ * Pay-token input for the swap leg. `path` is still passed to `buyViaKumbaya` onchain.
+ * `amountOut` should be the router's gross CL8Y target (see `readGrossCl8yForCharmWad`).
  */
 export async function quoteKumbayaExactOutputAmountIn(
   wagmiConfig: Config,
@@ -79,19 +116,13 @@ export async function quoteKumbayaExactOutputAmountIn(
     kConfig: KumbayaChainConfigResolved;
     payWith: Exclude<PayWithAsset, "cl8y">;
     acceptedCl8y: HexAddress;
-    path: `0x${string}`;
     amountOut: bigint;
   },
 ): Promise<bigint> {
-  const { quoter, kConfig, payWith, acceptedCl8y, path, amountOut } = params;
-  if (kumbayaQuoteUsesCompositeSingles(payWith)) {
-    return quoteUsdmPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, amountOut);
+  const { quoter, kConfig, payWith, acceptedCl8y, amountOut } = params;
+  const outForQuote = grossCl8yWithQuoteHeadroom(amountOut);
+  if (payWith === "usdm") {
+    return quoteUsdmPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
   }
-  const result = await readContract(wagmiConfig, {
-    address: quoter,
-    abi: kumbayaQuoterV2Abi,
-    functionName: "quoteExactOutput",
-    args: [path, amountOut],
-  });
-  return amountInFromQuoteResult(result);
+  return quoteEthPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
 }

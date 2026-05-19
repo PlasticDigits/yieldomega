@@ -11,7 +11,7 @@ import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
 import type { Config } from "wagmi";
 import { erc20Abi, timeCurveBuyRouterAbi } from "@/lib/abis";
-import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
+import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
 import type { HexAddress } from "@/lib/addresses";
 import type { KumbayaChainConfigResolved, RouteForPayOk } from "@/lib/kumbayaRoutes";
 import {
@@ -65,12 +65,13 @@ export async function submitKumbayaSingleTxBuy(params: {
   userAddress: `0x${string}`;
   chainId: number;
   timeCurveBuyRouter: HexAddress;
+  /** TimeCurve proxy — used to match router gross CL8Y at inclusion. */
+  timeCurveAddress: HexAddress;
   payWith: "eth" | "usdm";
   kConfig: KumbayaChainConfigResolved;
   route: RouteForPayOk;
   /** TimeCurve `acceptedAsset` (CL8Y) — swap `exactOutput` target token. */
   acceptedCl8y: HexAddress;
-  cl8yOut: bigint;
   charmWad: bigint;
   codeHash: `0x${string}` | undefined;
   /** Same opt-in as `TimeCurve.buy` / `buyFor` ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
@@ -84,11 +85,11 @@ export async function submitKumbayaSingleTxBuy(params: {
     userAddress,
     chainId,
     timeCurveBuyRouter,
+    timeCurveAddress,
     payWith,
     kConfig,
     route,
     acceptedCl8y,
-    cl8yOut,
     charmWad,
     codeHash,
     plantWarBowFlag,
@@ -97,13 +98,14 @@ export async function submitKumbayaSingleTxBuy(params: {
   } = params;
   const router = timeCurveBuyRouter as `0x${string}`;
 
+  const grossCl8y = await readGrossCl8yForCharmWad(cfg, timeCurveAddress, charmWad);
+  assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   const qIn = await quoteKumbayaExactOutputAmountIn(cfg, {
     quoter: kConfig.quoter,
     kConfig,
     payWith,
     acceptedCl8y,
-    path: route.path,
-    amountOut: cl8yOut,
+    amountOut: grossCl8y,
   });
   assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
   const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);

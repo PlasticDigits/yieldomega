@@ -6,17 +6,16 @@ import type { HexAddress } from "@/lib/addresses";
 import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 
-/** Live quoter read for Kumbaya `exactOutput` (ETH bytes path; USDM composite singles). */
+/** Live quoter read for Kumbaya `exactOutput` via `quoteExactOutputSingle` hops (bytes path reverts on MegaETH). */
 export function useKumbayaExactOutputQuote(params: {
   enabled: boolean;
   payWith: PayWithAsset;
   kConfig: KumbayaChainConfigResolved | undefined;
   acceptedCl8y: HexAddress | undefined;
-  path: `0x${string}` | undefined;
   amountOut: bigint | undefined;
 }) {
   const wagmiConfig = useConfig();
-  const { enabled, payWith, kConfig, acceptedCl8y, path, amountOut } = params;
+  const { enabled, payWith, kConfig, acceptedCl8y, amountOut } = params;
   const quoter = kConfig?.quoter;
   const canRun =
     enabled &&
@@ -24,7 +23,6 @@ export function useKumbayaExactOutputQuote(params: {
     quoter !== undefined &&
     kConfig !== undefined &&
     acceptedCl8y !== undefined &&
-    path !== undefined &&
     amountOut !== undefined &&
     amountOut > 0n;
 
@@ -33,7 +31,6 @@ export function useKumbayaExactOutputQuote(params: {
       "kumbayaExactOutputQuote",
       payWith,
       quoter,
-      path,
       amountOut?.toString(),
       kConfig?.cl8yWethFee,
       kConfig?.usdmWethFee,
@@ -45,7 +42,6 @@ export function useKumbayaExactOutputQuote(params: {
         kConfig: kConfig!,
         payWith: payWith as Exclude<PayWithAsset, "cl8y">,
         acceptedCl8y: acceptedCl8y!,
-        path: path!,
         amountOut: amountOut!,
       }),
     enabled: canRun,

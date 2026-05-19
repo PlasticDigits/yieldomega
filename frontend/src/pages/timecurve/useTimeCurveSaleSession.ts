@@ -31,7 +31,7 @@ import {
   readCl8yTimeCurveUnlimitedApproval,
 } from "@/lib/cl8yTimeCurveApprovalPreference";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
-import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
+import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
 import {
@@ -47,7 +47,7 @@ import {
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
-import { getPendingReferralCode } from "@/lib/referralStorage";
+import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -1104,7 +1104,6 @@ export function useTimeCurveSaleSession(
     kumbayaResolved.ok;
 
   const kumbayaQuoteKConfig = kumbayaResolved.ok ? kumbayaResolved.config : undefined;
-  const kumbayaQuotePath = swapRoute?.ok ? swapRoute.path : undefined;
 
   const {
     data: quotedPayInWei,
@@ -1116,7 +1115,6 @@ export function useTimeCurveSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    path: kumbayaQuotePath,
     amountOut: estimatedSpendWei,
   });
 
@@ -1130,7 +1128,6 @@ export function useTimeCurveSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    path: kumbayaQuotePath,
     amountOut: pricePerCharmWad,
   });
 
@@ -1144,7 +1141,6 @@ export function useTimeCurveSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    path: kumbayaQuotePath,
     amountOut: launchCl8yPerCharmWei,
   });
 
@@ -1205,7 +1201,6 @@ export function useTimeCurveSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    path: kumbayaQuotePath,
     amountOut: cl8ySpendBounds?.minS,
   });
 
@@ -1218,7 +1213,6 @@ export function useTimeCurveSaleSession(
     payWith,
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
-    path: kumbayaQuotePath,
     amountOut: cl8ySpendBounds?.maxS,
   });
   const bandBoundaryQuotesLoading =
@@ -1556,11 +1550,11 @@ export function useTimeCurveSaleSession(
               userAddress: address,
               chainId,
               timeCurveBuyRouter: singleRes.router,
+              timeCurveAddress: tc,
               payWith,
               kConfig: k.config,
               route,
               acceptedCl8y: acceptedAsset,
-              cl8yOut: amount,
               charmWad: cw,
               codeHash,
               plantWarBowFlag,
@@ -1570,16 +1564,20 @@ export function useTimeCurveSaleSession(
               },
             });
             setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+            if (codeHash) {
+              clearPendingReferralCode();
+              setPendingReferralCode(null);
+            }
             refetchAll();
             return;
           }
+          const grossCl8y = await readGrossCl8yForCharmWad(wagmiConfig, tc, cw);
           const qIn = await quoteKumbayaExactOutputAmountIn(wagmiConfig, {
             quoter: k.config.quoter,
             kConfig: k.config,
             payWith,
             acceptedCl8y: acceptedAsset,
-            path: route.path,
-            amountOut: amount,
+            amountOut: grossCl8y,
           });
           guardBuySession();
           const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
@@ -1657,7 +1655,7 @@ export function useTimeCurveSaleSession(
                 path: route.path,
                 recipient: address,
                 deadline,
-                amountOut: amount,
+                amountOut: grossCl8y,
                 amountInMaximum: maxIn,
               },
             ],
