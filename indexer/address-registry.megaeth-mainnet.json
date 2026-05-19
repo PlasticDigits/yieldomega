@@ -16,7 +16,7 @@
     "LinearCharmPrice": "1ba4c757459df37cfb944d50b3f78d0e994e09c7e7458a4f457bb64cf45c2bdc",
     "DoubPresaleVesting": "3ca421e5975afc4926dd8bb7b300fc73442c267431acbc3e13b9f79089ab8b99",
     "PresaleCharmBeneficiaryRegistry": "3033fa3e58fb46a22ba83ac38e4987d1c99bc753afda1ba4247591062dd24f0e",
-    "TimeCurveBuyRouter": "02b3525ad1b163aec574f7300c99492fdf0a26c9a3674be88fd581b6674950e2"
+    "TimeCurveBuyRouter": "161b8e707b769e1f730963cd5b197648b45820fad61c7cb1a640feb57a40a5f5"
   },
   "contracts": {
     "CL8Y_reserve": "0xfBAa45A537cF07dC768c469FfaC4e88208B0098D",
@@ -30,7 +30,7 @@
     "RabbitTreasury": "0x2d21533f7d27ff22d6afe50f6e2accd711d209c6",
     "FeeRouter": "0x69269129257225decbf8340eefa72d98c1ca3a94",
     "TimeCurve": "0x1b68bb6789baeba4bd28f53c10b52dbe1ef2bf71",
-    "TimeCurveBuyRouter": "0xb09542acae355c5ea42345522d403c1742c75b61",
+    "TimeCurveBuyRouter": "0x9f7b0fd3ed1ca730e37882ac3644b9991cdcaed9",
     "LeprechaunNFT": "0x9591ba1347d8f79af7622d3145f8b6026078c85b",
     "LaunchedToken": "0xc3654b4f879937b767afbb64b7c230ff436d2342",
     "ReferralRegistry": "0xedebced146e85ce4a4b6f6be11877485766adaf7",

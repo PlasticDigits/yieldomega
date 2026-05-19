@@ -170,9 +170,10 @@ export const kumbayaQuoterV2Abi = parseAbi([
   "function quoteExactOutputSingle((address tokenIn, address tokenOut, uint256 amount, uint24 fee, uint160 sqrtPriceLimitX96) params) view returns (uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
 ]);
 
-/** SwapRouter-compatible `exactOutput` (issue #41). */
+/** Kumbaya IV3SwapRouter (`@kumbaya_xyz/swap-router-contracts`) — not legacy Uniswap SwapRouter02 (issue #41). */
 export const kumbayaSwapRouterAbi = parseAbi([
-  "function exactOutput((bytes path, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum)) returns (uint256 amountIn)",
+  "function exactOutput((bytes path, address recipient, uint256 amountOut, uint256 amountInMaximum)) returns (uint256 amountIn)",
+  "function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) returns (uint256 amountIn)",
 ]);
 
 /** [`TimeCurveBuyRouter.buyViaKumbaya`](../../contracts/src/TimeCurveBuyRouter.sol) — single-tx ETH / stable → Kumbaya → `buyFor` (issue #65 / #66). */
@@ -186,6 +187,7 @@ export const timeCurveBuyRouterAbi = parseAbi([
   "error TimeCurveBuyRouter__StableNotConfigured()",
   "error TimeCurveBuyRouter__StableIngressParity()",
   "error TimeCurveBuyRouter__EthValue()",
+  "error TimeCurveBuyRouter__SwapExpired()",
   "error TimeCurveBuyRouter__RefundInvariant()",
 ]);
 

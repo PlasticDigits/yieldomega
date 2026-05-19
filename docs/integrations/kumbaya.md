@@ -77,6 +77,7 @@ Cross-links: [issue #75](https://gitlab.com/PlasticDigits/yieldomega/-/issues/75
 **Hard limits (honest scope):**
 
 - Routing assumes **v3-style** `exactOutput` / `quoteExactOutput` and **packed paths** built in `kumbayaRoutes.ts`. **UniversalRouter** paths are **not** the same ABI surface as our local Anvil fixture; production uses **SwapRouter02 + QuoterV2** per integrator-kit.
+- **SwapRouter ABI (MegaETH):** Kumbaya’s deployed router implements **`IV3SwapRouter`** from `@kumbaya_xyz/swap-router-contracts` — swap calldata **does not** include a `deadline` field inside `exactOutput` / `exactOutputSingle` (unlike legacy Uniswap SwapRouter02). **`TimeCurveBuyRouter`** enforces **`swapDeadline`** before calling the router; single-hop ETH/USDM paths use **`exactOutputSingle`**, multi-hop stable paths use **`exactOutput`**. Wrong struct layout reverts immediately (~200 gas) with a generic `execution reverted`.
 - **Pools must exist** for **CL8Y/WETH** and (for stable mode) **stable/WETH** at the configured **fee tiers** (`VITE_KUMBAYA_FEE_*` or defaults). Missing pools → failed quotes / swaps — **not** a protocol bug.
 - **MegaETH mainnet (4326) fee tiers:** Kumbaya’s live **CL8Y/WETH** pool is **0.01% (100)**; **USDm/WETH** is **0.3% (3000)**. Defaults in `kumbayaRoutes.ts` match those tiers. **ETH and USDM** quotes use `quoteExactOutputSingle` hops only — production QuoterV2 `quoteExactOutput(bytes)` reverts (`toAddress_outOfBounds`). Submit paths re-read `currentPricePerCharmWad` for gross CL8Y and apply a small headroom BPS before quoting `maxIn`.
 - **CHARM** is minted only via **`TimeCurve.buy`** after CL8Y is available to the contract; Kumbaya only supplies **CL8Y** to the user’s wallet.
@@ -95,7 +96,7 @@ Cross-links: [issue #75](https://gitlab.com/PlasticDigits/yieldomega/-/issues/75
 | **Single-tx gross CL8Y** | `TimeCurveBuyRouter` recomputes gross spend from **`currentPricePerCharmWad`** × `charmWad` (same as `TimeCurve`) and sets **`exactOutput` amountOut** to that value so the swap cannot under-fill the subsequent `buyFor`. |
 | **Single-tx availability** | The UI uses **`timeCurveBuyRouter` onchain**; optional **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** (build-time) must **match** that address if set. Zero router → two-step Kumbaya + `buy` only. ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)) |
 | **Single-tx sale live** | **`buyViaKumbaya`** fails closed with **`BadSalePhase`** when **`block.timestamp < saleStart()`** (scheduled but not yet live — [#114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)) **before** touching **`kumbayaRouter`** ([#118](https://gitlab.com/PlasticDigits/yieldomega/-/issues/118)). |
-| **Swap deadline** | **`swapDeadline`** follows **latest head `block.timestamp` + 600s** (not wall clock) so Anvil time warps do not trip **`Expired()`** on the swap leg ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)). |
+| **Swap deadline** | **`swapDeadline`** on **`buyViaKumbaya`** follows **latest head `block.timestamp` + 600s** (not wall clock); the Kumbaya router swap leg has **no** in-struct deadline ([issue #83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)). |
 
 ---
 
@@ -115,6 +116,17 @@ Cross-links: [issue #75](https://gitlab.com/PlasticDigits/yieldomega/-/issues/75
 1. From integrator-kit **`megaETH-testnet.json`**: set **`VITE_KUMBAYA_WETH`**, **`VITE_KUMBAYA_SWAP_ROUTER`**, **`VITE_KUMBAYA_QUOTER`** (or rely on baked-in defaults in `kumbayaRoutes.ts`).
 2. Set **`VITE_KUMBAYA_USDM`** to a **stable that has v3 liquidity** to WETH and a path to **CL8Y** (deploy-specific). Confirm fee tiers with on-chain pool config or Kumbaya tooling.
 3. Smoke: **quote → swap → buy** on public RPC before enabling USDM mode in a hosted build.
+
+### Mainnet (MegaETH 4326) — `TimeCurveBuyRouter` upgrade
+
+If **`buyViaKumbaya`** reverts with generic `execution reverted` while quotes look correct, redeploy **`TimeCurveBuyRouter`** (IV3 swap ABI fix) and call **`TimeCurve.setTimeCurveBuyRouter(newRouter)`** as **`owner()`**:
+
+```bash
+# From repo root — interactive (deployer + admin keys + Etherscan API key)
+scripts/upgrade-timecurve-buy-router.sh
+```
+
+Deployer pays gas for **`new TimeCurveBuyRouter`**; admin **`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`** wires the proxy. Then set **`VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`** to the new address and update **`indexer/address-registry.megaeth-mainnet.json`** (`TimeCurveBuyRouter` + `abiHashesSha256`) before restarting the production indexer. **Current mainnet router (IV3 ABI fix, May 2026):** `0x9F7B0Fd3ed1cA730E37882aC3644b9991cdCaed9`. See [`scripts/upgrade-timecurve-buy-router.sh`](../../scripts/upgrade-timecurve-buy-router.sh).
 
 ### Mainnet (MegaETH 4326)
 

@@ -11,7 +11,6 @@ interface IAnvilKumbaya {
     struct ExactOutputParams {
         bytes path;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
     }
@@ -98,7 +97,7 @@ contract VerifyTimeCurveBuyRouterAnvilTest is Test {
         usdm.approve(address(kumbaya), type(uint256).max);
         kumbaya.exactOutput(
             IAnvilKumbaya.ExactOutputParams({
-                path: path, recipient: ALICE, deadline: block.timestamp + 600, amountOut: gross, amountInMaximum: maxIn
+                path: path, recipient: ALICE, amountOut: gross, amountInMaximum: maxIn
             })
         );
         vm.stopPrank();

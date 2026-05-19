@@ -47,11 +47,7 @@ import {
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
-import {
-  fetchSwapDeadlineUnixSec,
-  KUMBAYA_SWAP_SLIPPAGE_BPS,
-  swapMaxInputFromQuoted,
-} from "@/lib/timeCurveKumbayaSwap";
+import { KUMBAYA_SWAP_SLIPPAGE_BPS, swapMaxInputFromQuoted } from "@/lib/timeCurveKumbayaSwap";
 import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
 import { kumbayaBuyDebugError, logKumbayaBuyDebugHelpOnce } from "@/lib/kumbayaBuyDebug";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
@@ -1731,7 +1727,6 @@ export function useTimeCurveSaleSession(
             }
           }
 
-          const deadline = await fetchSwapDeadlineUnixSec(wagmiConfig, 600);
           guardBuySession();
           const { hash: swapHash } = await writeContractWithGasBuffer({
             wagmiConfig,
@@ -1745,7 +1740,6 @@ export function useTimeCurveSaleSession(
               {
                 path: route.path,
                 recipient: address,
-                deadline,
                 amountOut: grossCl8y,
                 amountInMaximum: maxIn,
               },

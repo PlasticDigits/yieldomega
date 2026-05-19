@@ -15,17 +15,32 @@ interface IWETH is IERC20 {
     function withdraw(uint256 amount) external;
 }
 
-/// @notice Kumbaya / Uniswap V3–style `exactOutput` on SwapRouter02 or Anvil fixture (GitLab #41 / #46).
-interface IKumbayaSwapRouter {
+/// @notice Kumbaya `@kumbaya_xyz/swap-router-contracts` IV3SwapRouter (MegaETH mainnet / testnet).
+/// @dev Differs from legacy Uniswap SwapRouter02: swap params omit `deadline` (use `swapDeadline` on `buyViaKumbaya` instead).
+interface IKumbayaV3SwapRouter {
     struct ExactOutputParams {
         bytes path;
         address recipient;
-        uint256 deadline;
         uint256 amountOut;
         uint256 amountInMaximum;
     }
 
+    struct ExactOutputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        uint160 sqrtPriceLimitX96;
+    }
+
     function exactOutput(ExactOutputParams calldata params) external payable returns (uint256 amountIn);
+
+    function exactOutputSingle(ExactOutputSingleParams calldata params)
+        external
+        payable
+        returns (uint256 amountIn);
 }
 
 /// @title TimeCurveBuyRouter — single transaction ETH or stable → Kumbaya `exactOutput` → `TimeCurve.buyFor`
@@ -41,7 +56,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     using SafeERC20 for IERC20;
 
     TimeCurve public immutable timeCurve;
-    IKumbayaSwapRouter public immutable kumbayaRouter;
+    IKumbayaV3SwapRouter public immutable kumbayaRouter;
     IWETH public immutable weth;
     /// @notice Set to Anvil USDM or MegaETH USDm; `address(0)` disables ERC20-stable entry (ETH-only).
     IERC20 public immutable stableToken;
@@ -58,6 +73,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     error TimeCurveBuyRouter__StableNotConfigured();
     error TimeCurveBuyRouter__StableIngressParity();
     error TimeCurveBuyRouter__EthValue();
+    error TimeCurveBuyRouter__SwapExpired();
     error TimeCurveBuyRouter__ZeroTreasury();
     error TimeCurveBuyRouter__RefundInvariant();
     error TimeCurveBuyRouter__RescueZeroRecipient();
@@ -82,7 +98,7 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
     ) Ownable(initialOwner_) {
         if (cl8yProtocolTreasury_ == address(0)) revert TimeCurveBuyRouter__ZeroTreasury();
         timeCurve = timeCurve_;
-        kumbayaRouter = IKumbayaSwapRouter(kumbayaRouter_);
+        kumbayaRouter = IKumbayaV3SwapRouter(kumbayaRouter_);
         weth = IWETH(weth_);
         stableToken = IERC20(stableToken_);
         cl8yProtocolTreasury = cl8yProtocolTreasury_;
@@ -141,15 +157,8 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
             stableToken.forceApprove(address(kumbayaRouter), amountInMaximum);
         }
 
-        kumbayaRouter.exactOutput(
-            IKumbayaSwapRouter.ExactOutputParams({
-                path: path,
-                recipient: address(this),
-                deadline: swapDeadline,
-                amountOut: grossCl8y,
-                amountInMaximum: amountInMaximum
-            })
-        );
+        if (block.timestamp > swapDeadline) revert TimeCurveBuyRouter__SwapExpired();
+        _kumbayaSwapExactOut(cl8y, path, grossCl8y, amountInMaximum);
 
         if (payKind == PAY_ETH) {
             wethErc.forceApprove(address(kumbayaRouter), 0);
@@ -212,6 +221,41 @@ contract TimeCurveBuyRouter is ReentrancyGuard, Ownable2Step {
         if (send > bal) revert TimeCurveBuyRouter__RescueExceedsBalance();
         token.safeTransfer(to, send);
         emit Erc20Rescued(address(token), to, send);
+    }
+
+    /// @dev Single-hop paths (43 bytes) use `exactOutputSingle`; multi-hop uses packed `exactOutput`.
+    function _kumbayaSwapExactOut(address cl8y, bytes calldata path, uint256 grossCl8y, uint256 amountInMaximum)
+        internal
+    {
+        if (path.length == 43) {
+            address tokenIn;
+            uint24 fee;
+            assembly {
+                fee := shr(232, calldataload(add(path.offset, 20)))
+                tokenIn := shr(96, calldataload(add(path.offset, 23)))
+            }
+            kumbayaRouter.exactOutputSingle(
+                IKumbayaV3SwapRouter.ExactOutputSingleParams({
+                    tokenIn: tokenIn,
+                    tokenOut: cl8y,
+                    fee: fee,
+                    recipient: address(this),
+                    amountOut: grossCl8y,
+                    amountInMaximum: amountInMaximum,
+                    sqrtPriceLimitX96: 0
+                })
+            );
+            return;
+        }
+
+        kumbayaRouter.exactOutput(
+            IKumbayaV3SwapRouter.ExactOutputParams({
+                path: path,
+                recipient: address(this),
+                amountOut: grossCl8y,
+                amountInMaximum: amountInMaximum
+            })
+        );
     }
 
     function _validatePath(bytes calldata path, address cl8y, uint8 payKind) internal view {
