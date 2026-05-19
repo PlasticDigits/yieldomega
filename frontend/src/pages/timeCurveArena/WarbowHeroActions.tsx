@@ -103,8 +103,8 @@ export function WarbowHeroActions({
 }: Props) {
   const writesPaused = buyFeeRoutingEnabled === false;
   const canPressWarbow = isConnected && saleActive && !writesPaused && !isWriting;
-  const guardBurnCl8y = formatCompactFromRaw(BigInt(warbowGuardBurnWad), 18);
-  const bypassBurnCl8y = formatCompactFromRaw(BigInt(warbowBypassBurnWad), 18);
+  const guardSpendCl8y = formatCompactFromRaw(BigInt(warbowGuardBurnWad), 18);
+  const bypassSpendCl8y = formatCompactFromRaw(BigInt(warbowBypassBurnWad), 18);
 
   const viewerBpDisplay = useMemo(() => {
     if (_viewerBattlePoints === undefined || _viewerBattlePoints.trim() === "") {
@@ -196,7 +196,7 @@ export function WarbowHeroActions({
       )}
       {writesPaused && (
         <StatusMessage variant="muted">
-          Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.
+          Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.
         </StatusMessage>
       )}
 
@@ -217,7 +217,7 @@ export function WarbowHeroActions({
                 onChange={(e) => setStealBypass(e.target.checked)}
                 disabled={!isConnected || !saleActive}
               />{" "}
-              Pay {bypassBurnCl8y} CL8Y to bypass your wallet&apos;s daily steal cap
+              Pay {bypassSpendCl8y} CL8Y to bypass your wallet&apos;s daily steal cap
             </label>
           )}
           {stealHeroRows.length > 0 ? (
@@ -327,7 +327,7 @@ export function WarbowHeroActions({
                               onChange={(e) => setStealBypassForVictim(candidate.address, e.target.checked)}
                               disabled={!isConnected || !saleActive}
                             />{" "}
-                            Pay {bypassBurnCl8y} CL8Y
+                            Pay {bypassSpendCl8y} CL8Y
                           </label>
                         )}
                         <button
@@ -370,7 +370,7 @@ export function WarbowHeroActions({
           </div>
           <div className="warbow-hero-card__guard-inline">
             <p className="muted">
-              Burn {guardBurnCl8y} CL8Y to reduce incoming steals by 90% for 6
+              Spend {guardSpendCl8y} CL8Y to reduce incoming steals by 90% for 6
               hours.
             </p>
             <span

@@ -89,20 +89,20 @@ Dedicated **`WarBowDefendedStreak*`** events (if enabled in bytecode) describe c
 
 #### Steal (`warbowSteal`)
 
-- Attacker burns **`WARBOW_STEAL_BURN_WAD`** (**1e18** = 1 CL8Y at 18 decimals) of **accepted asset** to **dead** sink.
+- Attacker spends **`WARBOW_STEAL_BURN_WAD`** (**1e18** = 1 CL8Y at 18 decimals) of **accepted asset**, routed via **`FeeRouter`** (same five-sink split as **`buy`**) and counted in **`totalRaised`**.
 - Transfers **`floor(victimBP × 1000 / 10_000)`** (10%) from victim to attacker, **unless** victim is guarded (`block.timestamp < warbowGuardUntil[victim]`), then **`floor(victimBP × 100 / 10_000)`** (1%).
 - **BP bracket (steal ranking):** requires **`2 × attackerBP ≤ victimBP ≤ 10 × attackerBP`** (both at time of call, after CL8Y pulls in the tx). Lower bound failure: **`TimeCurve: steal 2x rule`**; upper bound: **`TimeCurve: steal 10x cap`** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
-- **Per-victim daily cap:** **`stealsReceivedOnDay[victim][dayId]`** with `dayId = block.timestamp / 86400` (**UTC day boundary**, Ethereum timestamp). Max **3** normal steals per victim per day; **4th+** in the same UTC day requires **`payBypassBurn == true`** and an extra burn of **50e18** CL8Y (`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`).
+- **Per-victim daily cap:** **`stealsReceivedOnDay[victim][dayId]`** with `dayId = block.timestamp / 86400` (**UTC day boundary**, Ethereum timestamp). Max **3** normal steals per victim per day; **4th+** in the same UTC day requires **`payBypassBurn == true`** and an extra spend of **50e18** CL8Y (`WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD`), also via **`FeeRouter`**.
 - Each successful steal sets **revenge** pointers: victim may **`warbowRevenge(stealer)`** within **24 hours** (single pending stealer; overwritten if victim is stolen again).
 
 #### Revenge (`warbowRevenge`)
 
-- Victim burns **1e18** CL8Y; takes **`floor(stealerBP × 1000 / 10_000)`** from stealer to victim **once** per pending slot; clears pending stealer/expiry.
+- Victim spends **1e18** CL8Y (via **`FeeRouter`**); takes **`floor(stealerBP × 1000 / 10_000)`** from stealer to victim **once** per pending slot; clears pending stealer/expiry.
 - **Deterministic anti-loop:** only the **last stealer** recorded for that victim is eligible; revenge does not open a reciprocal automatic steal back-and-forth in one invariant — a **new** steal can occur in a later tx. No nested revenge chain in one call.
 
 #### Guard (`warbowActivateGuard`)
 
-- Burn **10e18** CL8Y; extends `warbowGuardUntil[msg.sender]` to **`max(existing, now + 6 hours)`**.
+- Spend **10e18** CL8Y (via **`FeeRouter`**); extends `warbowGuardUntil[msg.sender]` to **`max(existing, now + 6 hours)`**.
 
 #### Plant flag / claim flag
 
@@ -110,9 +110,20 @@ Dedicated **`WarBowDefendedStreak*`** events (if enabled in bytecode) describe c
 - **`claimWarBowFlag`:** after **`WARBOW_FLAG_SILENCE_SEC` (300s)** with **no other buyer** in between, holder may claim **`WARBOW_FLAG_CLAIM_BP` (1000)** BP.
 - **Invalidation:** if **another** buyer purchases **before** claim, pending flag is cleared. **Penalty `2 × WARBOW_FLAG_CLAIM_BP`** applies **only** if that intervening buy occurs **at or after** `plantAt + 300s` (claim was already possible); otherwise the holder loses the claim opportunity **without** the 2× BP penalty.
 
-### CL8Y burns — reasons and events
+### WarBow CL8Y spend — reasons and events
 
-All WarBow-related accepted-asset burns use **`WarBowCl8yBurned(address indexed payer, uint8 reason, uint256 amountWad)`** with **`WarBowBurnReason`**: e.g. **Steal**, **StealLimitBypass**, **Revenge**, **Guard** (exact numeric values are in Solidity). Specialized events (`WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, …) remain the source for amounts and participants; the burn-reason event is for uniform accounting.
+WarBow steal / revenge / guard pull fixed **accepted-asset** amounts from the payer, route them through **`FeeRouter.distributeFees`** (canonical buy split: 30% LP · 40% burn sink · 20% podium · 0% team · 10% Rabbit), and increment **`totalRaised`** by the gross credited amount.
+
+#### Historical: `WarBowCl8yBurned` event name (2026-05-19 upgrade)
+
+The onchain event **`WarBowCl8yBurned(address indexed payer, uint8 indexed reason, uint256 amountWad)`** and indexer table **`idx_timecurve_warbow_cl8y_burned`** / battle-feed kind **`cl8y_burned`** use the word **“burn”** for historical reasons only.
+
+| Period | Behavior |
+|--------|----------|
+| **Before 2026-05-19** | Pre-upgrade **`TimeCurve`** sent the full **`amountWad`** to **`0x…dEaD`** in the same transaction. |
+| **From 2026-05-19** | Same event is still emitted (one row per pull leg), but CL8Y is **`FeeRouter`**-split like **`buy`**; only **40%** of gross goes to the burn sink. |
+
+**Do not** interpret **`WarBowCl8yBurned`** or **`cl8y_burned`** as “100% burned to dead” after the upgrade. The name was **retained deliberately** to avoid Postgres / API schema migrations. **`WarBowBurnReason`** codes (**Steal**, **StealLimitBypass**, **Revenge**, **Guard**) are unchanged. Specialized events (`WarBowSteal`, `WarBowRevenge`, `WarBowGuardActivated`, …) still carry **`burnPaidWad`** = **gross CL8Y paid** by the payer (field name unchanged).
 
 ### Determinism and indexer reconstruction
 

@@ -64,10 +64,10 @@ export function friendlyRevertMessage(raw: string): string {
     ["timecurve: no charm weight", "This wallet has no charm weight to redeem."],
     ["timecurve: already redeemed", "This wallet already redeemed its charms."],
     ["timecurve: nothing to redeem", "There is nothing claimable for this wallet at current totals."],
-    ["timecurve: steal victim daily limit", "That victim already hit the daily steal cap unless you pay the bypass burn."],
+    ["timecurve: steal victim daily limit", "That victim already hit the daily steal cap unless you pay the bypass spend."],
     [
       "timecurve: steal attacker daily limit",
-      "You already landed three steals today from this wallet unless you pay the bypass burn.",
+      "You already landed three steals today from this wallet unless you pay the bypass spend.",
     ],
     [
       "timecurve: steal 2x rule",

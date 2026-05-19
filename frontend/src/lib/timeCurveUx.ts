@@ -507,10 +507,10 @@ export function describeStealPreflight(
     const victimPart = `${formatShort(victim, "Victim")} already hit ${maxStealsPerDay} steals received today`;
     const detail =
       victimCapped && attackerCapped
-        ? `${victimPart}, and you already landed ${maxStealsPerDay} steals today from this wallet (attacker UTC-day counter applies across victims). Enable bypass if you still want to burn for the hit.`
+        ? `${victimPart}, and you already landed ${maxStealsPerDay} steals today from this wallet (attacker UTC-day counter applies across victims). Enable bypass if you still want to spend for the hit.`
         : victimCapped
-          ? `${victimPart}. Enable bypass if you still want to burn for the hit.`
-          : `You already landed ${maxStealsPerDay} steals today from this wallet (UTC-day counter applies across any victims). Enable bypass if you still want to burn for the hit.`;
+          ? `${victimPart}. Enable bypass if you still want to spend for the hit.`
+          : `You already landed ${maxStealsPerDay} steals today from this wallet (UTC-day counter applies across any victims). Enable bypass if you still want to spend for the hit.`;
     return {
       tone: "warning",
       title: "Daily steal limit",
@@ -655,12 +655,12 @@ export function buildWarbowFeedNarrative(
       };
     case "cl8y_burned":
       if (burnPaidWad !== null) {
-        tags.push("CL8Y burn");
+        tags.push("CL8Y spend");
       }
       return {
-        eyebrow: "WarBow burn",
-        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You", formatShort)} paid the PvP burn`,
-        detail: "WarBow actions keep their risk visible by burning CL8Y onchain.",
+        eyebrow: "WarBow spend",
+        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You", formatShort)} spent CL8Y on WarBow`,
+        detail: "WarBow CL8Y is routed through the same FeeRouter split as buys (podium pool, LP, burn sink, Rabbit).",
         tags,
       };
     default:

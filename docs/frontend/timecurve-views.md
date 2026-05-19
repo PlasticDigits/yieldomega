@@ -196,7 +196,7 @@ decision surface directly through
    a row writes the same `stealVictimInput` used by the detailed section, so the
    existing live contract reads (`battlePoints`, `stealsReceivedOnDay`) and
    `describeStealPreflight` remain the final eligibility preview.
-3. **Guard + revenge are obvious:** guard is a visible hero CTA with burn and
+3. **Guard + revenge are obvious:** guard is a visible hero CTA with spend and
    active-until copy; **revenge lists every open stealer** when the indexer is
    configured (`GET /v1/timecurve/warbow/pending-revenge`, reconciled from
    **`WarBowRevengeWindowOpened`** vs **`WarBowRevenge`** — [GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135)). Onchain reads use

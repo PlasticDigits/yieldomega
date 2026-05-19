@@ -11,7 +11,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 | **DOUB presale vesting** | `claim()` | `setClaimsEnabled(bool)` (`onlyOwner`) | `claimsEnabled == false` |
 | **DOUB presale vesting** | — (ops / treasury) | `rescueERC20(token, to, amount)` (`onlyOwner`) — **excess** vesting DOUB and stray non-vesting ERC20 only ([GitLab #137](https://gitlab.com/PlasticDigits/yieldomega/-/issues/137); [invariants §137](../testing/invariants-and-business-logic.md#doub-presale-vesting-owner-rescue-gitlab-137)) | n/a |
 | **DOUB presale vesting** | — (ops / cap correction) | `reduceAllocationsUniformBps` / `burnDoubExcessAboveOutstanding` (`onlyOwner`) — uniform row shrink (floor) then **burn** DOUB above outstanding claim reserve; **token** must be **`ERC20Burnable`** (canonical **Doubloon**); reverts if any row would fall below `claimedOf` | n/a |
-| **TimeCurve** | `buy` → CL8Y → `FeeRouter`; WarBow **CL8Y** burns: `warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
+| **TimeCurve** | `buy` and WarBow **CL8Y** spend (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`) → `FeeRouter` | `setBuyFeeRoutingEnabled(bool)` (same storage flag) | `true` (live sale) |
 | **TimeCurve** | `redeemCharms()` (DOUB sale allocation) | `setCharmRedemptionEnabled(bool)` | `false` |
 | **TimeCurve** | `sweepUnredeemedLaunchedToken()` — remainder of **`launchedToken`** after **7-day** grace from **`saleEndedAt`** ([GitLab #128](https://gitlab.com/PlasticDigits/yieldomega/-/issues/128)) | **`setUnredeemedLaunchedTokenRecipient(address)`** (sink for sweep) + **`onlyOwner`** `sweep…` timing (not gated by `charmRedemptionEnabled`) | `unredeemedLaunchedTokenRecipient` unset until owner sets; no sweep until grace elapses |
 | **TimeCurve** | `distributePrizes()` — **CL8Y reserve** from `PodiumPool` → podium winners when pool **non-zero** (**`onlyOwner` execution** + `setReservePodiumPayoutsEnabled`; [issue #70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70)) **or** explicit **zero-pool** settlement ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)) | `setReservePodiumPayoutsEnabled(bool)` | `false` when CL8Y podium settlement would move funds |
@@ -27,11 +27,29 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 1. Complete testing and deploy **with gates in safe defaults** (`charmRedemptionEnabled` and `reservePodiumPayoutsEnabled` off; presale `claimsEnabled` off).
 2. **Presale:** fund vesting, `startVesting` if the schedule should run. If final allocations sit below the funded bucket, **`reduceAllocationsUniformBps` → `burnDoubExcessAboveOutstanding`** (owner). When legal/ops are ready for DOUB claims, **`setClaimsEnabled(true)`**.
 3. **TimeCurve (post timer):** `endSale()` as today; then **`setCharmRedemptionEnabled(true)`** for DOUB sale allocation to buyers and/or **`setReservePodiumPayoutsEnabled(true)`** for **CL8Y reserve** podium payouts — order may differ by checklist (redeem vs CL8Y allocation are separate signoffs).
-4. **Emergency halt of live sale:** `setBuyFeeRoutingEnabled(false)` stops **`buy` → `FeeRouter`** and **WarBow CL8Y** actions (`steal` / `revenge` / `guard`) in one switch (`TimeCurve: sale interactions disabled`). Flag claims (`claimWarBowFlag`) are unchanged.
+4. **Emergency halt of live sale:** `setBuyFeeRoutingEnabled(false)` stops **`buy` → `FeeRouter`** and **WarBow CL8Y spend** (`steal` / `revenge` / `guard`) in one switch (`TimeCurve: sale interactions disabled`). Flag claims (`claimWarBowFlag`) are unchanged.
 
 ## Upgrade notes (UUPS)
 
 New storage is **appended** before `__gap` in `TimeCurve` and `DoubPresaleVesting`. After upgrading an existing proxy, uninitialized booleans are **false**; explicitly set the flags and document the migration (or use a reinitializer in a future change if a batch migration is required).
+
+<a id="timecurve-warbow-feerouter-upgrade-2026-05-19"></a>
+
+### TimeCurve — WarBow CL8Y → FeeRouter (2026-05-19)
+
+**Deploy checklist:** upgrade the **`TimeCurve`** implementation (UUPS) so **`warbowSteal` / `warbowRevenge` / `warbowActivateGuard`** route gross CL8Y through **`FeeRouter`** (canonical buy split) and increment **`totalRaised`**, matching **`buy`**. **`claimWarBowFlag`** is unchanged (no CL8Y leg).
+
+**Recorded (MegaETH mainnet, 2026-05-26):**
+
+| Field | Value |
+|-------|--------|
+| **Upgrade tx hash** | [`0x53ac33e67ac5b26e7c0daf27abf12a70175b6d3ede4985b7deae06e76b43128e`](https://mega.etherscan.io/tx/0x53ac33e67ac5b26e7c0daf27abf12a70175b6d3ede4985b7deae06e76b43128e) |
+| **Upgrade block number** | **16409300** (2026-05-26 04:25:11 UTC) — **before** = legacy 100% to burn sink; **at/after** = FeeRouter split |
+| **New implementation** | [`0xd5c984E59C1482d63629532e8b1ebffaBf47029F`](https://mega.etherscan.io/address/0xd5c984E59C1482d63629532e8b1ebffaBf47029F#code) |
+| **Proxy address** | `0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71` (unchanged) |
+| **Impl deploy tx** | [`0x82f8bbc04f5e4622868c6052751862d71b9e9cb1920973965e79c1b7b9513f0f`](https://mega.etherscan.io/tx/0x82f8bbc04f5e4622868c6052751862d71b9e9cb1920973965e79c1b7b9513f0f) (block **16409248**) |
+
+**`WarBowCl8yBurned` / indexer `cl8y_burned`:** names are **historical** — **`amountWad`** / **`amount_wad`** is **nominal spend**, not burn-sink receipt. No Postgres migration. See [primitives — historical event](../product/primitives.md#historical-warbowcl8yburned-event-name-2026-05-19-upgrade) · [indexer design](../indexer/design.md#warbow-cl8y-burned-historical-name).
 
 ## Post-end gate live walkthrough (issues #55 / [GitLab #79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79))
 

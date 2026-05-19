@@ -278,7 +278,7 @@ export type UseTimeCurveSaleSession = {
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
   submitRedeem: () => Promise<void>;
-  /** Issue #55: `buy` → FeeRouter + WarBow CL8Y actions; same flag (default true in `initialize`). */
+  /** Issue #55: `buy` + WarBow CL8Y spend → FeeRouter; same flag (default true in `initialize`). */
   buyFeeRoutingEnabled: boolean | undefined;
   /** Issue #55: post-end `redeemCharms` (default false until owner signoff). */
   charmRedemptionEnabled: boolean | undefined;
@@ -1540,7 +1540,7 @@ export function useTimeCurveSaleSession(
     }
     if (buyFeeRoutingEnabled === false) {
       setBuyError(
-        "TimeCurve: sale interactions are disabled — buys and WarBow CL8Y actions are paused (awaiting operator / governance).",
+        "TimeCurve: sale interactions are disabled — buys and WarBow CL8Y spend are paused (awaiting operator / governance).",
       );
       return;
     }

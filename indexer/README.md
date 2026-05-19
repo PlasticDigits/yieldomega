@@ -76,6 +76,10 @@ If you are unsure of cwd, temporarily set the start command to `pwd; ls -la; …
 
 **Alternatives:** Render **Secret Files** (mount a file and point **`ADDRESS_REGISTRY_PATH`** at the mount path), or a **build step** that `curl`s the JSON from private storage — still ends as a filesystem path the binary can read.
 
+### WarBow battle feed — `cl8y_burned` (historical name, 2026-05-19)
+
+**`GET /v1/timecurve/warbow/battle-feed`** may include rows with **`kind: "cl8y_burned"`** decoded from **`WarBowCl8yBurned`**. **`amount_wad`** (and API **`burn_paid_wad`** on steal/revenge/guard rows) is the **nominal CL8Y gross** pulled from the payer, **not** “100% sent to `0x…dEaD`”. **Before** the **TimeCurve** UUPS upgrade that routes WarBow spend through **`FeeRouter`** (same five-sink split as **`buy`**), the full amount went to the burn sink; **from** that upgrade block onward, spend is split and **`totalRaised`** includes WarBow gross. Event / table / kind names were **kept** to avoid schema migrations — see [indexer design — `warbow-cl8y-burned-historical-name`](../docs/indexer/design.md#warbow-cl8y-burned-historical-name) and [primitives — historical event](../docs/product/primitives.md#historical-warbowcl8yburned-event-name-2026-05-19-upgrade). Record the **upgrade block height** in your deploy runbook when interpreting pre/post semantics.
+
 ## Build and test
 
 From `indexer/`:

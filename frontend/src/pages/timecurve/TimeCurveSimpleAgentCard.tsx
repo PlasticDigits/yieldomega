@@ -92,7 +92,7 @@ def load_timecurve_abi():
 
 TIME_CURVE_ABI = load_timecurve_abi()`;
 
-/** Shared Python: CL8Y approve → TimeCurve.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow CL8Y burns. */
+/** Shared Python: CL8Y approve → TimeCurve.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow CL8Y spend. */
 const PY_SKETCH_SHARED = `# --- approvals + routing (sketch; simulate on your fork first) ---
 # Contract addresses default to MegaETH mainnet production (see PY_ABI_BOOTSTRAP). Forks: ALLOW_CHAIN_MISMATCH=1.
 # PRIVATE_KEY required. RPC_URL defaults to MegaETH public JSON-RPC; override for other providers.
