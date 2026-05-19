@@ -2,7 +2,7 @@
   "chainId": 4326,
   "network": "megaeth_mainnet",
   "abiHashesSha256": {
-    "TimeCurve": "dfdbb99cfc31b570ea6331feeb568bc52a584730b0bc871494d84c6daac765ae",
+    "TimeCurve": "2bddd88b71cd774e628efc23197e3a2e9e1ecfd70a47401eb127cbf13d73a3f6",
     "RabbitTreasury": "e02e115af3eb04020741e48c798be78800babbda16bfd861221cbc8b22ac88c5",
     "LeprechaunNFT": "1c71e0c912c666382367e8b4f458a382a0a9a489f8d3078b443f89d631ea53f4",
     "FeeRouter": "c98b7306a2f2aa4a2eeccf9b7133fa1699cdb426fd70c25b1ed6a5bb9111409a",

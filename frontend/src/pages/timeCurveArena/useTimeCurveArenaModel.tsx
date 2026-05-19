@@ -2876,7 +2876,7 @@ export function useTimeCurveArenaModel() {
     }
     if (buyFeeRoutingEnabled === false) {
       setBuyErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3198,7 +3198,7 @@ export function useTimeCurveArenaModel() {
     if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3228,7 +3228,7 @@ export function useTimeCurveArenaModel() {
     if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3306,7 +3306,7 @@ export function useTimeCurveArenaModel() {
     if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3336,7 +3336,7 @@ export function useTimeCurveArenaModel() {
     if (failIfWrongChainForPvpWrites()) return;
     if (buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable fee routing.",
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }

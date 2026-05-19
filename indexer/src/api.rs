@@ -802,6 +802,8 @@ async fn timecurve_warbow_battle_feed(
                    )
             FROM idx_timecurve_warbow_flag_penalized
             UNION ALL
+            -- `cl8y_burned`: historical feed kind for `WarBowCl8yBurned` (nominal spend per leg).
+            -- Post-2026-05-19 onchain routes via FeeRouter; pre-upgrade sent 100% to 0x…dEaD — see docs/indexer/design.md.
             SELECT 'cl8y_burned', block_number, log_index, tx_hash,
                    block_timestamp::text,
                    jsonb_build_object(

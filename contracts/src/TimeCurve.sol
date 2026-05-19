@@ -77,7 +77,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint8 public constant WARBOW_MAX_STEALS_PER_DAY = 3;
 
     uint256 public constant SECONDS_PER_DAY = 86_400;
-    /// @notice Wall-clock upper bound (seconds) on **pricing elapsed** and on **`block.timestamp`** for buys & WarBow CL8Y burns (GitLab #124 / audit I-01).
+    /// @notice Wall-clock upper bound (seconds) on **pricing elapsed** and on **`block.timestamp`** for buys & WarBow CL8Y spend (GitLab #124 / audit I-01).
     /// @dev The cap check is **inclusive**: **`block.timestamp == saleStart + MAX_SALE_ELAPSED_SEC`** still passes so a buy can land on the last second of the 300-day window when the **round timer** is still live (**`block.timestamp <= deadline()`** — GitLab #136; typically **`deadline == saleStart + MAX_SALE_ELAPSED_SEC + 1`** after timer extension clamp — see `_buy` ordering).
     uint256 public constant MAX_SALE_ELAPSED_SEC = 300 * SECONDS_PER_DAY;
     /// @notice Governance may sweep unredeemed **launchedToken** (full ERC-20 balance here) only after this many
@@ -236,7 +236,10 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event WarBowFlagPenalized(
         address indexed formerHolder, uint256 penaltyBp, address indexed triggeringBuyer, uint256 battlePointsAfter
     );
-    /// @notice Accepted-asset burn to `BURN_SINK` for WarBow actions (uniform accounting).
+    /// @notice Nominal CL8Y **spent** per WarBow leg (`amountWad` pulled from `payer`). **Historical event name** — retained to avoid indexer schema migrations.
+    /// @dev **Before 2026-05-19:** pre-upgrade implementations sent the full `amountWad` to `BURN_SINK` (`0x…dEaD`).
+    ///      **From 2026-05-19:** same event is emitted, but CL8Y is routed via `FeeRouter.distributeFees` (canonical buy split) and increments `totalRaised`.
+    ///      Do not interpret this event as "100% burned to dead" post-upgrade — see `docs/product/primitives.md` and `docs/indexer/design.md`.
     event WarBowCl8yBurned(address indexed payer, uint8 indexed reason, uint256 amountWad);
     event WarBowDefendedStreakContinued(address indexed wallet, uint256 activeStreak, uint256 bestStreak);
     event WarBowDefendedStreakBroken(
@@ -244,7 +247,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     );
     event WarBowDefendedStreakWindowCleared(address indexed clearedWallet);
 
-    /// @notice Sale-time CL8Y from users: `buy` → `FeeRouter` and WarBow burn paths (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default true in `initialize`. See `docs/operations/final-signoff-and-value-movement.md` (issue #55).
+    /// @notice Sale-time CL8Y from users: `buy` and WarBow spend paths (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`) → `FeeRouter`. Default true in `initialize`. See `docs/operations/final-signoff-and-value-movement.md` (issue #55).
     event BuyFeeRoutingEnabled(bool enabled);
     /// @notice Gating for post-end `redeemCharms` (DOUB sale allocation to buyers).
     event CharmRedemptionEnabled(bool enabled);
@@ -446,6 +449,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         maxCharmWad = Math.mulDiv(CHARM_MAX_BASE_WAD, scale, ref);
     }
 
+    /// @dev Routes credited CL8Y through `FeeRouter` (canonical buy split) and increments `totalRaised`.
+    function _routeAcceptedAssetViaFeeRouter(uint256 amount) private {
+        acceptedAsset.safeTransfer(address(feeRouter), amount);
+        feeRouter.distributeFees(acceptedAsset, amount);
+        totalRaised += amount;
+    }
+
     /// @dev Ingress credit to this contract must match `expected` so accounting matches tokens moved ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
     function _pullAcceptedExact(address from, uint256 expected) private returns (uint256 received) {
         uint256 balBefore = acceptedAsset.balanceOf(address(this));
@@ -501,10 +511,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmWeight[buyer] += buyerCharmFromBuy;
         totalCharmWeight += buyerCharmFromBuy;
 
-        acceptedAsset.safeTransfer(address(feeRouter), received);
-        feeRouter.distributeFees(acceptedAsset, received);
-
-        totalRaised += received;
+        _routeAcceptedAssetViaFeeRouter(received);
         buyCount[buyer] += 1;
         _totalBuys += 1;
 
@@ -619,7 +626,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP, battlePoints[msg.sender]);
     }
 
-    /// @notice Burn **1 CL8Y** (accepted asset); steal **`_warbowStealDrainBp`** of victim’s BP (**10%** or **1%** if guarded). Requires **`battlePoints(attacker) > 0`** and **`2 × battlePoints(attacker) ≤ battlePoints(victim) ≤ 10 × battlePoints(attacker)`** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
+    /// @notice Spend **1 CL8Y** (accepted asset, routed via `FeeRouter`); steal **`_warbowStealDrainBp`** of victim’s BP (**10%** or **1%** if guarded). Requires **`battlePoints(attacker) > 0`** and **`2 × battlePoints(attacker) ≤ battlePoints(victim) ≤ 10 × battlePoints(attacker)`** ([GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211)).
     /// @param payBypassBurn When **either** the victim **or** this attacker hit **3** steals on this UTC day before this tx, pass `true` and pay **+50 CL8Y** once to proceed ([GitLab #134](https://gitlab.com/PlasticDigits/yieldomega/-/issues/134)).
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
@@ -636,9 +643,8 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         bool victimLimitBefore = victimStealsToday >= WARBOW_MAX_STEALS_PER_DAY;
         bool attackerLimitBefore = attackerStealsToday >= WARBOW_MAX_STEALS_PER_DAY;
 
-        _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
+        uint256 totalSpent = _pullAcceptedExact(msg.sender, WARBOW_STEAL_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Steal), WARBOW_STEAL_BURN_WAD);
-        uint256 totalBurn = WARBOW_STEAL_BURN_WAD;
         if (victimLimitBefore) {
             require(payBypassBurn, "TimeCurve: steal victim daily limit");
         } else if (attackerLimitBefore) {
@@ -646,14 +652,13 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         }
 
         if (victimLimitBefore || attackerLimitBefore) {
-            _pullAcceptedExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
+            totalSpent += _pullAcceptedExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD);
             emit WarBowCl8yBurned(
                 msg.sender, uint8(WarBowBurnReason.StealLimitBypass), WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD
             );
-            totalBurn += WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD;
         }
 
-        acceptedAsset.safeTransfer(BURN_SINK, totalBurn);
+        _routeAcceptedAssetViaFeeRouter(totalSpent);
 
         uint256 vbp = battlePoints[victim];
         uint256 abp = battlePoints[msg.sender];
@@ -685,14 +690,14 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             msg.sender,
             victim,
             take,
-            totalBurn,
+            totalSpent,
             payBypassBurn && limitBypassBurned,
             battlePoints[victim],
             battlePoints[msg.sender]
         );
     }
 
-    /// @notice Within **24h** of a `warbowSteal` **from `stealer` to you**, burn **1 CL8Y** and reclaim **floor(10%)** of **that stealer’s** BP once (per stealer slot).
+    /// @notice Within **24h** of a `warbowSteal` **from `stealer` to you**, spend **1 CL8Y** (via `FeeRouter`) and reclaim **floor(10%)** of **that stealer’s** BP once (per stealer slot).
     function warbowRevenge(address stealer) external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
@@ -705,9 +710,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(exp != 0, "TimeCurve: revenge not pending");
         require(block.timestamp < exp, "TimeCurve: revenge expired");
 
-        _pullAcceptedExact(msg.sender, WARBOW_REVENGE_BURN_WAD);
+        uint256 revengeSpent = _pullAcceptedExact(msg.sender, WARBOW_REVENGE_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Revenge), WARBOW_REVENGE_BURN_WAD);
-        acceptedAsset.safeTransfer(BURN_SINK, WARBOW_REVENGE_BURN_WAD);
+        _routeAcceptedAssetViaFeeRouter(revengeSpent);
 
         uint256 sbp = battlePoints[stealer];
         uint256 take = _warbowStealDrainBp(sbp, WARBOW_STEAL_DRAIN_BPS);
@@ -728,7 +733,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         );
     }
 
-    /// @notice Burn **10 CL8Y**; for **6h** incoming steals use **1%** instead of **10%**.
+    /// @notice Spend **10 CL8Y** (via `FeeRouter`); for **6h** incoming steals use **1%** instead of **10%**.
     function warbowActivateGuard() external nonReentrant {
         require(saleStart > 0 && !ended, "TimeCurve: bad phase");
         require(block.timestamp >= saleStart, "TimeCurve: sale not live");
@@ -736,9 +741,9 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _requireSaleRoundTimerStillLive();
         _requireSaleInteractionsEnabled();
         _requireWarbowParticipantCaller();
-        _pullAcceptedExact(msg.sender, WARBOW_GUARD_BURN_WAD);
+        uint256 guardSpent = _pullAcceptedExact(msg.sender, WARBOW_GUARD_BURN_WAD);
         emit WarBowCl8yBurned(msg.sender, uint8(WarBowBurnReason.Guard), WARBOW_GUARD_BURN_WAD);
-        acceptedAsset.safeTransfer(BURN_SINK, WARBOW_GUARD_BURN_WAD);
+        _routeAcceptedAssetViaFeeRouter(guardSpent);
 
         uint256 u = block.timestamp + WARBOW_GUARD_DURATION_SEC;
         if (u > warbowGuardUntil[msg.sender]) {
@@ -1051,7 +1056,7 @@ contract TimeCurve is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarbowPodiumFinalized(msg.sender, 3);
     }
 
-    /// @notice If false, reverts `buy` and WarBow CL8Y actions (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y burn.)
+    /// @notice If false, reverts `buy` and WarBow CL8Y spend (`warbowSteal`, `warbowRevenge`, `warbowActivateGuard`). Default: true in `initialize`. (`claimWarBowFlag` is unchanged — no CL8Y leg.)
     bool public buyFeeRoutingEnabled;
     /// @notice If false, `redeemCharms` reverts. Default: false until owner signoff.
     bool public charmRedemptionEnabled;

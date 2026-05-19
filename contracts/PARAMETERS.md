@@ -30,9 +30,9 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | WarBow streak-break mult | **100** BP per prior active streak count | `WARBOW_STREAK_BREAK_MULT_BP` | Fixed |
 | WarBow ambush bonus BP | **200** | With hard reset + streak break under window | Fixed |
 | WarBow flag claim BP | **1000** | `WARBOW_FLAG_CLAIM_BP`; silence **300s** | Fixed |
-| WarBow steal / revenge burn | **1e18** each | `WARBOW_STEAL_BURN_WAD`, `WARBOW_REVENGE_BURN_WAD` | Fixed |
-| WarBow steal limit bypass burn | **50e18** | When victim already hit 3 steals that UTC day | Fixed |
-| WarBow guard burn / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
+| WarBow steal / revenge spend (FeeRouter) | **1e18** each | `WARBOW_STEAL_BURN_WAD`, `WARBOW_REVENGE_BURN_WAD`; routed like **`buy`**; **`totalRaised +=` gross** | Fixed |
+| WarBow steal limit bypass spend | **50e18** | When victim already hit 3 steals that UTC day (`WARBOW_BYPASS_BURN_WAD`) | Fixed |
+| WarBow guard spend / duration | **10e18** / **6h** | `WARBOW_GUARD_BURN_WAD`, `WARBOW_GUARD_DURATION_SEC` | Fixed |
 | WarBow steal drain BPS | **1000** (10%) normal, **100** (1%) guarded | `WARBOW_STEAL_DRAIN_BPS`, `WARBOW_STEAL_DRAIN_GUARDED_BPS` | Fixed |
 | WarBow steal BP bracket | **2×–10×** attacker BP | `warbowSteal`: **`victimBP ≥ 2 × attackerBP`** and **`victimBP ≤ 10 × attackerBP`** (reverts **`TimeCurve: steal 2x rule`** / **`TimeCurve: steal 10x cap`**) — [GitLab #211](https://gitlab.com/PlasticDigits/yieldomega/-/issues/211) | Fixed |
 | Defended streak window | **900** seconds | `DEFENDED_STREAK_WINDOW_SEC` — remaining time **below** this before buy counts as “under 15 minutes” | Fixed |

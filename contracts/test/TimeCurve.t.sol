@@ -775,7 +775,7 @@ contract TimeCurveTest is Test {
         tc.buy(1e18);
     }
 
-    /// @dev WarBow CL8Y burns share `buyFeeRoutingEnabled` with `buy` (issue #55).
+    /// @dev WarBow CL8Y spend shares `buyFeeRoutingEnabled` with `buy` (issue #55).
     function test_warbow_cl8y_burns_revert_when_sale_interactions_disabled() public {
         tc.startSaleAt(block.timestamp);
         _fundAndApprove(alice, 100e18);
@@ -810,11 +810,14 @@ contract TimeCurveTest is Test {
         vm.prank(freshStealer);
         tc.buy(1e18);
 
-        uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        uint256 raisedBefore = tc.totalRaised();
+        uint256 burnSinkBefore = reserve.balanceOf(sinkBurn);
         _fundAndApprove(freshStealer, 200e18 + tc.WARBOW_STEAL_BURN_WAD());
         vm.prank(freshStealer);
         tc.warbowSteal(victimV, false);
-        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
+        uint256 spent = tc.WARBOW_STEAL_BURN_WAD();
+        assertEq(tc.totalRaised(), raisedBefore + spent);
+        assertEq(reserve.balanceOf(sinkBurn) - burnSinkBefore, (spent * 4000) / 10_000);
     }
 
     /// @dev GitLab #146 / #131 (finding 5) vs **#135**: per-(victim, stealer) revenge slots — victim may `warbowRevenge` **both** stealers; a second steal must not erase the first window.
@@ -1232,7 +1235,7 @@ contract TimeCurveTest is Test {
         assertEq(v[0], 0);
     }
 
-    function test_warbow_steal_drains_ten_percent_and_burns_one_reserve() public {
+    function test_warbow_steal_drains_ten_percent_and_routes_spend_via_fee_router() public {
         tc.startSaleAt(block.timestamp);
 
         _fundAndApprove(bob, 2e18);
@@ -1246,14 +1249,19 @@ contract TimeCurveTest is Test {
         tc.buy(1e18);
         uint256 a0 = tc.battlePoints(alice);
 
-        uint256 deadBefore = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        uint256 raisedBefore = tc.totalRaised();
+        uint256 burnSinkBefore = reserve.balanceOf(sinkBurn);
+        uint256 podiumBefore = reserve.balanceOf(address(podiumPool));
         _fundAndApprove(bob, 2e18 + tc.WARBOW_STEAL_BURN_WAD());
         vm.prank(bob);
         tc.warbowSteal(alice, false);
 
+        uint256 spent = tc.WARBOW_STEAL_BURN_WAD();
         assertEq(tc.battlePoints(alice), a0 - (a0 * 1000) / 10_000);
         assertEq(tc.battlePoints(bob), tc.WARBOW_BASE_BUY_BP() + (a0 * 1000) / 10_000);
-        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - deadBefore, tc.WARBOW_STEAL_BURN_WAD());
+        assertEq(tc.totalRaised(), raisedBefore + spent);
+        assertEq(reserve.balanceOf(sinkBurn) - burnSinkBefore, (spent * 4000) / 10_000);
+        assertEq(reserve.balanceOf(address(podiumPool)) - podiumBefore, (spent * 2000) / 10_000);
     }
 
     function test_warbow_steal_revert_2x_rule() public {
@@ -1338,11 +1346,14 @@ contract TimeCurveTest is Test {
         vm.expectRevert("TimeCurve: steal attacker daily limit");
         tc.warbowSteal(v3, false);
 
+        uint256 raisedBefore = tc.totalRaised();
+        uint256 burnSinkBefore = reserve.balanceOf(sinkBurn);
         vm.prank(stealer);
         tc.warbowSteal(v3, true);
 
-        uint256 dead = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
-        assertGe(dead, 4 * burnBase + burnBypass, "base + limit bypass burns");
+        uint256 grossFourth = burnBase + burnBypass;
+        assertEq(tc.totalRaised(), raisedBefore + grossFourth);
+        assertEq(reserve.balanceOf(sinkBurn) - burnSinkBefore, (grossFourth * 4000) / 10_000);
     }
 
     /// @dev Six qualifying buys ⇒ **1500 BP** so sequential steals still satisfy **`vbp >= 2 * abp`** (GitLab #134).
@@ -1372,14 +1383,17 @@ contract TimeCurveTest is Test {
         tc.warbowSteal(alice, false);
         uint256 bobBpAfterSteal = tc.battlePoints(bob);
 
-        uint256 dead0 = reserve.balanceOf(0x000000000000000000000000000000000000dEaD);
+        uint256 raisedBefore = tc.totalRaised();
+        uint256 burnSinkBefore = reserve.balanceOf(sinkBurn);
         _fundAndApprove(alice, 2e18 + tc.WARBOW_REVENGE_BURN_WAD());
         vm.prank(alice);
         tc.warbowRevenge(bob);
 
         uint256 revTake = (bobBpAfterSteal * 1000) / 10_000;
+        uint256 revengeSpent = tc.WARBOW_REVENGE_BURN_WAD();
         assertEq(tc.battlePoints(bob), bobBpAfterSteal - revTake);
-        assertEq(reserve.balanceOf(0x000000000000000000000000000000000000dEaD) - dead0, tc.WARBOW_REVENGE_BURN_WAD());
+        assertEq(tc.totalRaised(), raisedBefore + revengeSpent);
+        assertEq(reserve.balanceOf(sinkBurn) - burnSinkBefore, (revengeSpent * 4000) / 10_000);
     }
 
     /// @dev Revenge must not mutate WarBow ladder after `endSale()` (matches `warbowSteal` / guard / flag).

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.24;
 
-// Invariant ↔ test mapping: docs/testing/invariants-and-business-logic.md (GitLab #70 — WarBow CL8Y burns)
+// Invariant ↔ test mapping: docs/testing/invariants-and-business-logic.md (WarBow CL8Y → FeeRouter, 2026-05-19)
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -21,8 +21,7 @@ contract MockERC20 is ERC20 {
     }
 }
 
-/// @notice Fuzz + regression for **user-driven** WarBow CL8Y burns: every successful burn moves exactly the
-///         documented WAD from the payer into `TimeCurve` then to `BURN_SINK` (0xdEaD) in one atomic tx.
+/// @notice Fuzz + regression: WarBow CL8Y spend routes through `FeeRouter` (canonical buy split) and increments `totalRaised`.
 contract TimeCurveWarBowCl8yBurnsTest is Test {
     address internal constant BURN_SINK = 0x000000000000000000000000000000000000dEaD;
 
@@ -82,6 +81,18 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         reserve.approve(address(tc), amount);
     }
 
+    function _sinkBalances()
+        internal
+        view
+        returns (uint256 lp, uint256 burn, uint256 podium, uint256 team, uint256 rabbit)
+    {
+        lp = reserve.balanceOf(sinkLp);
+        burn = reserve.balanceOf(sinkBurn);
+        podium = reserve.balanceOf(address(podiumPool));
+        team = reserve.balanceOf(sinkTeam);
+        rabbit = reserve.balanceOf(sinkRabbit);
+    }
+
     function _warpPastBuyCooldown(address user) internal {
         uint256 until = tc.nextBuyAllowedAt(user);
         if (until > block.timestamp) {
@@ -89,8 +100,23 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         }
     }
 
-    /// @dev Invariant: each successful `warbowActivateGuard` increases dead-address CL8Y by exactly `WARBOW_GUARD_BURN_WAD`.
-    function testFuzz_warbow_guard_burn_exact_to_sink(uint160 callerRaw) public {
+    function _assertCanonicalFeeSplitDelta(
+        uint256 lpBefore,
+        uint256 burnBefore,
+        uint256 podiumBefore,
+        uint256 teamBefore,
+        uint256 rabbitBefore,
+        uint256 gross
+    ) internal view {
+        assertEq(reserve.balanceOf(sinkLp) - lpBefore, (gross * 3000) / 10_000);
+        assertEq(reserve.balanceOf(sinkBurn) - burnBefore, (gross * 4000) / 10_000);
+        assertEq(reserve.balanceOf(address(podiumPool)) - podiumBefore, (gross * 2000) / 10_000);
+        assertEq(reserve.balanceOf(sinkTeam) - teamBefore, 0);
+        assertEq(reserve.balanceOf(sinkRabbit) - rabbitBefore, gross - (gross * 9000) / 10_000);
+    }
+
+    /// @dev Invariant: `warbowActivateGuard` routes `WARBOW_GUARD_BURN_WAD` via FeeRouter and raises `totalRaised`.
+    function testFuzz_warbow_guard_routes_via_fee_router(uint160 callerRaw) public {
         vm.assume(callerRaw != uint160(0));
         address caller = address(callerRaw);
         vm.assume(caller != address(tc));
@@ -99,14 +125,17 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         tc.startSaleAt(block.timestamp);
         _fund(caller, 100e18);
 
-        uint256 sinkBefore = reserve.balanceOf(BURN_SINK);
+        uint256 raisedBefore = tc.totalRaised();
+        (uint256 lpB, uint256 burnB, uint256 podB, uint256 teamB, uint256 rabB) = _sinkBalances();
         vm.prank(caller);
         tc.warbowActivateGuard();
-        assertEq(reserve.balanceOf(BURN_SINK) - sinkBefore, tc.WARBOW_GUARD_BURN_WAD());
+        uint256 spent = tc.WARBOW_GUARD_BURN_WAD();
+        assertEq(tc.totalRaised(), raisedBefore + spent);
+        _assertCanonicalFeeSplitDelta(lpB, burnB, podB, teamB, rabB, spent);
     }
 
-    /// @dev Invariant: `warbowRevenge` burns exactly `WARBOW_REVENGE_BURN_WAD` after a qualifying steal setup.
-    function testFuzz_warbow_revenge_burn_exact_to_sink(uint160 victim160, uint160 stealer160) public {
+    /// @dev Invariant: `warbowRevenge` routes spend via FeeRouter after qualifying steal setup.
+    function testFuzz_warbow_revenge_routes_via_fee_router(uint160 victim160, uint160 stealer160) public {
         vm.assume(victim160 != uint160(0) && stealer160 != uint160(0));
         vm.assume(victim160 != stealer160);
         address victim = address(victim160);
@@ -131,16 +160,18 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.prank(stealer);
         tc.warbowSteal(victim, false);
 
-        uint256 sinkBefore = reserve.balanceOf(BURN_SINK);
+        uint256 raisedBefore = tc.totalRaised();
+        (uint256 lpB, uint256 burnB, uint256 podB, uint256 teamB, uint256 rabB) = _sinkBalances();
         _fund(victim, 50e18 + tc.WARBOW_REVENGE_BURN_WAD());
         vm.prank(victim);
         tc.warbowRevenge(stealer);
-        assertEq(reserve.balanceOf(BURN_SINK) - sinkBefore, tc.WARBOW_REVENGE_BURN_WAD());
+        uint256 spent = tc.WARBOW_REVENGE_BURN_WAD();
+        assertEq(tc.totalRaised(), raisedBefore + spent);
+        _assertCanonicalFeeSplitDelta(lpB, burnB, podB, teamB, rabB, spent);
     }
 
-    /// @dev Invariant: `warbowSteal` without bypass moves exactly `WARBOW_STEAL_BURN_WAD` to the burn sink.
-    ///      GitLab #134 / #211: **`abp > 0`** and **`2× ≤ victim/attacker BP ratio ≤ 10×`** — stealer earns BP from one buy; victim from two.
-    function testFuzz_warbow_steal_burn_exact_to_sink(uint160 victim160, uint160 stealer160) public {
+    /// @dev Invariant: `warbowSteal` without bypass routes `WARBOW_STEAL_BURN_WAD` via FeeRouter.
+    function testFuzz_warbow_steal_routes_via_fee_router(uint160 victim160, uint160 stealer160) public {
         vm.assume(victim160 != uint160(0) && stealer160 != uint160(0));
         vm.assume(victim160 != stealer160);
         address victim = address(victim160);
@@ -161,14 +192,40 @@ contract TimeCurveWarBowCl8yBurnsTest is Test {
         vm.prank(victim);
         tc.buy(1e18);
 
+        uint256 raisedBefore = tc.totalRaised();
+        (uint256 lpB, uint256 burnB, uint256 podB, uint256 teamB, uint256 rabB) = _sinkBalances();
         _fund(stealer, 50e18 + tc.WARBOW_STEAL_BURN_WAD());
-        uint256 sinkBefore = reserve.balanceOf(BURN_SINK);
         vm.prank(stealer);
         tc.warbowSteal(victim, false);
-        assertEq(reserve.balanceOf(BURN_SINK) - sinkBefore, tc.WARBOW_STEAL_BURN_WAD());
+        uint256 spent = tc.WARBOW_STEAL_BURN_WAD();
+        assertEq(tc.totalRaised(), raisedBefore + spent);
+        _assertCanonicalFeeSplitDelta(lpB, burnB, podB, teamB, rabB, spent);
     }
 
-    /// @dev GitLab #123 — forbids **`msg.sender == BURN_SINK`**: **`_pullAcceptedExact`** round-trips CL8Y with net zero ingress to sink while downstream checks could hypothetically diverge (`INV-WARBOW-123-BURN-CALLER`).
+    function test_warbow_steal_increases_podium_pool_by_twenty_percent() public {
+        tc.startSaleAt(block.timestamp);
+        address victim = makeAddr("victimPod");
+        address stealer = makeAddr("stealerPod");
+
+        _fund(stealer, 50e18);
+        vm.prank(stealer);
+        tc.buy(1e18);
+        _fund(victim, 50e18);
+        vm.prank(victim);
+        tc.buy(1e18);
+        _warpPastBuyCooldown(victim);
+        vm.prank(victim);
+        tc.buy(1e18);
+
+        uint256 podiumBefore = reserve.balanceOf(address(podiumPool));
+        _fund(stealer, 50e18 + tc.WARBOW_STEAL_BURN_WAD());
+        vm.prank(stealer);
+        tc.warbowSteal(victim, false);
+        uint256 spent = tc.WARBOW_STEAL_BURN_WAD();
+        assertEq(reserve.balanceOf(address(podiumPool)) - podiumBefore, (spent * 2000) / 10_000);
+    }
+
+    /// @dev GitLab #123 — forbids **`msg.sender == BURN_SINK`** (`INV-WARBOW-123-BURN-CALLER`).
     function test_warbow_steal_reverts_when_caller_is_burn_sink() public {
         tc.startSaleAt(block.timestamp);
         vm.prank(BURN_SINK);

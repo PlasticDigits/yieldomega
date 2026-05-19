@@ -172,7 +172,7 @@ forge verify-contract <NEW_IMPLEMENTATION_ADDRESS> src/TimeCurve.sol:TimeCurve \
 
 ```bash
 # From repo root (implementation address = latest verified TimeCurve logic in root README):
-scripts/uups-upgrade-timecurve-mainnet.sh 0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C
+scripts/uups-upgrade-timecurve-mainnet.sh 0xd5c984E59C1482d63629532e8b1ebffaBf47029F
 ```
 
 Optional second argument: hex **calldata** for a post-upgrade call bundled into **`upgradeToAndCall`** (otherwise **`0x`**). Set **`CAST_GAS_LIMIT`** if MegaETH **`eth_estimateGas`** / local simulation is unreliable ([`docs/contracts/foundry-and-megaeth.md`](../contracts/foundry-and-megaeth.md)).
@@ -181,7 +181,7 @@ Optional second argument: hex **calldata** for a post-upgrade call bundled into 
 
 ```bash
 cast send 0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71 \
-  "upgradeToAndCall(address,bytes)" 0x19C18e42257f5C65174D72f3C6dE07Ed0CD73c5C 0x \
+  "upgradeToAndCall(address,bytes)" 0xd5c984E59C1482d63629532e8b1ebffaBf47029F 0x \
   --rpc-url https://mainnet.megaeth.com/rpc \
   --interactive
 ```

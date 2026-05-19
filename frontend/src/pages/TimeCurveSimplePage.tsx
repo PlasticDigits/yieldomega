@@ -1127,7 +1127,7 @@ export function TimeCurveSimplePage() {
               </p>
               {session.buyFeeRoutingEnabled === false && (
                 <StatusMessage variant="muted">
-                  Sale interactions are paused onchain (buys + WarBow CL8Y) until operators re-enable.
+                  Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable.
                 </StatusMessage>
               )}
               <motion.button

@@ -228,10 +228,10 @@ export function WarbowSection(props: {
           Steal cap: {formatLocaleInteger(warbowMaxSteals)} per victim per UTC day
         </span>
         <span className="status-pill status-pill--warning">
-          Bypass burn <AmountDisplay raw={warbowBypassBurnWad} decimals={18} />
+          Bypass spend <AmountDisplay raw={warbowBypassBurnWad} decimals={18} />
         </span>
         <span className="status-pill status-pill--info">
-          Guard burn <AmountDisplay raw={warbowGuardBurnWad} decimals={18} />
+          Guard spend <AmountDisplay raw={warbowGuardBurnWad} decimals={18} />
         </span>
       </div>
       <StatusMessage variant="muted">{warbowActionHint}</StatusMessage>
@@ -242,7 +242,8 @@ export function WarbowSection(props: {
         <div className="accordion-panel__content">
           <StatusMessage variant="muted">
             Steals require the victim’s Battle Points to sit in the onchain **2×–10×** band versus yours. Each victim can be stolen from{" "}
-            {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass burn. Guard lasts
+            {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass spend. WarBow CL8Y
+            uses the same fee split as buys (podium pool, LP, burn sink, Rabbit). Guard lasts
             6h and reduces the next incoming steal to 1%. Revenge lets the victim hit the pending stealer once within
             the configured window. After a buy, silence for {formatLocaleInteger(BigInt(warbowFlagSilenceSec))}s lets the buyer
             claim +{formatLocaleInteger(BigInt(warbowFlagClaimBp))} BP.
@@ -333,7 +334,7 @@ export function WarbowSection(props: {
           )}
           <label>
             <input type="checkbox" checked={stealBypass} onChange={(e) => setStealBypass(e.target.checked)} /> Pay the
-            bypass burn if the victim already hit the UTC-day steal cap
+            bypass spend if the victim already hit the UTC-day steal cap
           </label>
           <div className="timecurve-action-row">
             <motion.button
