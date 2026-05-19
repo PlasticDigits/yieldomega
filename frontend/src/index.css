@@ -2663,10 +2663,15 @@ label:has(input[type="radio"]:disabled) {
 
 .app-footer-agent__dl {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: 1fr;
   gap: 0.25rem 0.75rem;
   margin: 0.35rem 0;
   font-size: 0.82rem;
+}
+@media (min-width: 768px) {
+  .app-footer-agent__dl {
+    grid-template-columns: max-content 1fr;
+  }
 }
 
 .app-footer-agent__dl dt {
