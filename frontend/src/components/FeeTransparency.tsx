@@ -16,6 +16,10 @@ import {
   type FeeRouterFeesDistributedItem,
   type FeeRouterSinksUpdateItem,
 } from "@/lib/indexerApi";
+import {
+  feeRouterSinkRowsFromSaleState,
+  useTimecurveSaleStateQuery,
+} from "@/pages/timecurve/useTimecurveSaleState";
 
 /** Optional pictograms for `FeeRouter` sink rows (issue #57). */
 const FEE_SINK_ICON: Partial<Record<number, string>> = {
@@ -35,6 +39,9 @@ const FEE_SINK_LABELS = [
 
 export function FeeTransparency() {
   const fr = addresses.feeRouter;
+  const tc = addresses.timeCurve;
+  const indexerOn = Boolean(indexerBaseUrl());
+  const saleStateQuery = useTimecurveSaleStateQuery(tc);
   const [sinksHistory, setSinksHistory] = useState<FeeRouterSinksUpdateItem[] | null>(null);
   const [feesDistributed, setFeesDistributed] = useState<FeeRouterFeesDistributedItem[] | null>(null);
   const [historyNote, setHistoryNote] = useState<string | null>(null);
@@ -60,7 +67,14 @@ export function FeeTransparency() {
     return map;
   }, [feeTokenDecimalsResults, feeTokenAddrs]);
 
-  const { data, isPending, isError } = useReadContracts({
+  const sinkRowsFromIndexer = useMemo(() => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    return feeRouterSinkRowsFromSaleState(saleStateQuery.data);
+  }, [indexerOn, saleStateQuery.data]);
+
+  const { data: sinkRowsRpc, isPending: sinksRpcPending, isError: sinksRpcError } = useReadContracts({
     contracts: fr
       ? ([0, 1, 2, 3, 4] as const).map((i) => ({
           address: fr,
@@ -69,8 +83,12 @@ export function FeeTransparency() {
           args: [BigInt(i)],
         }))
       : [],
-    query: { enabled: Boolean(fr) },
+    query: { enabled: Boolean(fr) && !indexerOn },
   });
+
+  const sinkRows = indexerOn ? sinkRowsFromIndexer : sinkRowsRpc;
+  const sinksPending = indexerOn ? saleStateQuery.isLoading : sinksRpcPending;
+  const sinksError = indexerOn ? saleStateQuery.isError : sinksRpcError;
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +129,10 @@ export function FeeTransparency() {
     );
   }
 
-  if (isPending) {
+  if (sinksPending) {
     return <StatusMessage variant="loading">Loading fee router...</StatusMessage>;
   }
-  if (isError || !data) {
+  if (sinksError || !sinkRows) {
     return <StatusMessage variant="error">Could not read fee router.</StatusMessage>;
   }
 
@@ -124,7 +142,7 @@ export function FeeTransparency() {
         <strong>Current onchain sinks</strong> (canonical for balances and routing)
       </p>
       <ul className="fee-sink-list">
-        {data.map((row, i) => {
+        {sinkRows.map((row, i) => {
           if (row.status !== "success" || row.result === undefined) {
             return null;
           }

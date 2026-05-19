@@ -106,6 +106,13 @@ import { useDotMegaNameMap } from "@/hooks/useDotMegaNameMap";
 import { collectTimecurveWalletAddressesForDotMega } from "@/lib/dotMega";
 import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import {
+  arenaCoreReadRowsFromSaleState,
+  arenaWarbowPolicyRowsFromSaleState,
+  feeRouterSinkRowsFromSaleState,
+  linearCharmPriceRowsFromSaleState,
+  useTimecurveSaleStateQuery,
+} from "@/pages/timecurve/useTimecurveSaleState";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import {
   fetchTimecurveCharmRedemptions,
@@ -155,6 +162,8 @@ export function useTimeCurveArenaModel() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const tc = addresses.timeCurve;
+  const indexerOn = Boolean(indexerBaseUrl());
+  const saleStateQuery = useTimecurveSaleStateQuery(tc);
   const queryClient = useQueryClient();
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
   const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
@@ -511,11 +520,11 @@ export function useTimeCurveArenaModel() {
 
   const ARENA_CORE_TC_MULTICALL_LEN = 27;
 
-  const mergedArenaTcContracts = useMemo(() => {
+  const arenaCoreTcContractsOnly = useMemo(() => {
     if (!tc) {
       return [] as const;
     }
-    const core = [
+    return [
       { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
       { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
       { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
@@ -543,8 +552,14 @@ export function useTimeCurveArenaModel() {
       { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
       { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
       { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
-    ];
-    const warbow = [
+    ] as const;
+  }, [tc]);
+
+  const arenaWarbowPolicyContractsAll = useMemo(() => {
+    if (!tc) {
+      return [] as const;
+    }
+    return [
       { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
       { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
       { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
@@ -558,8 +573,29 @@ export function useTimeCurveArenaModel() {
       { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
       { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
       { address: tc, abi: timeCurveReadAbi, functionName: "warbowPodiumFinalized" },
-    ];
-    return [...core, ...warbow] as const;
+    ] as const;
+  }, [tc]);
+
+  const mergedArenaTcContracts = useMemo(
+    () => [...arenaCoreTcContractsOnly, ...arenaWarbowPolicyContractsAll] as const,
+    [arenaCoreTcContractsOnly, arenaWarbowPolicyContractsAll],
+  );
+
+  const arenaWarbowPolicyRpcContracts = useMemo(() => {
+    if (!tc) {
+      return [] as const;
+    }
+    return [
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowLadderPodium" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_GUARD_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_MAX_STEALS_PER_DAY" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "SECONDS_PER_DAY" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_WINDOW_SEC" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_REVENGE_BURN_WAD" },
+      { address: tc, abi: timeCurveReadAbi, functionName: "warbowPodiumFinalized" },
+    ] as const;
   }, [tc]);
 
   const {
@@ -574,7 +610,7 @@ export function useTimeCurveArenaModel() {
   } = useReadContracts({
     contracts: mergedArenaTcContracts as readonly unknown[],
     query: {
-      enabled: Boolean(tc),
+      enabled: Boolean(tc) && !indexerOn,
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
@@ -587,33 +623,88 @@ export function useTimeCurveArenaModel() {
     error: mergedArenaTcQueryError,
   });
 
+  const {
+    data: arenaWarbowPolicyRpcRaw,
+    isPending: arenaWarbowPolicyRpcPending,
+    isError: arenaWarbowPolicyRpcError,
+    refetch: refetchArenaWarbowPolicyRpc,
+  } = useReadContracts({
+    contracts: arenaWarbowPolicyRpcContracts as readonly unknown[],
+    query: {
+      enabled: Boolean(tc) && indexerOn,
+      refetchInterval: false,
+      placeholderData: (previous) => previous,
+    },
+  });
+
+  const coreTcDataFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    return arenaCoreReadRowsFromSaleState(saleStateQuery.data);
+  }, [indexerOn, saleStateQuery.data]);
+
+  const sinkReadsFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    return feeRouterSinkRowsFromSaleState(saleStateQuery.data);
+  }, [indexerOn, saleStateQuery.data]);
+
+  const linearPriceReadsFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    return linearCharmPriceRowsFromSaleState(saleStateQuery.data);
+  }, [indexerOn, saleStateQuery.data]);
+
+  const warbowPolicyDataFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    const rpc = arenaWarbowPolicyRpcRaw as readonly ContractReadRow[] | undefined;
+    if (!rpc?.length) {
+      return undefined;
+    }
+    return arenaWarbowPolicyRowsFromSaleState(saleStateQuery.data, rpc);
+  }, [indexerOn, saleStateQuery.data, arenaWarbowPolicyRpcRaw]);
+
   const mergedArenaTcRowData = mergedArenaTcRaw as readonly ContractReadRow[] | undefined;
-  const coreTcData = mergedArenaTcRowData?.slice(0, ARENA_CORE_TC_MULTICALL_LEN);
-  const warbowPolicyData = mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN);
+  const coreTcData = indexerOn
+    ? coreTcDataFromIndexer
+    : mergedArenaTcRowData?.slice(0, ARENA_CORE_TC_MULTICALL_LEN);
+  const warbowPolicyData = indexerOn
+    ? warbowPolicyDataFromIndexer
+    : mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN);
 
-  const coreTcContracts = useMemo(
-    () => mergedArenaTcContracts.slice(0, ARENA_CORE_TC_MULTICALL_LEN),
-    [mergedArenaTcContracts],
-  );
-  const warbowContracts = useMemo(
-    () => mergedArenaTcContracts.slice(ARENA_CORE_TC_MULTICALL_LEN),
-    [mergedArenaTcContracts],
-  );
+  const coreTcContracts = arenaCoreTcContractsOnly;
+  const warbowContracts = arenaWarbowPolicyContractsAll;
   const coreTcDataRaw = coreTcData;
-  const coreTcError = mergedArenaTcError;
-  const coreTcPending = mergedArenaTcPending;
+  const coreTcError = indexerOn ? saleStateQuery.isError : mergedArenaTcError;
+  const coreTcPending = indexerOn ? saleStateQuery.isLoading : mergedArenaTcPending;
   const warbowPolicyDataRaw = warbowPolicyData;
-  const warbowPolicyError = mergedArenaTcError;
-  const warbowPolicyPending = mergedArenaTcPending;
+  const warbowPolicyError = indexerOn
+    ? saleStateQuery.isError || arenaWarbowPolicyRpcError
+    : mergedArenaTcError;
+  const warbowPolicyPending = indexerOn
+    ? saleStateQuery.isLoading || arenaWarbowPolicyRpcPending
+    : mergedArenaTcPending;
 
-  const isPending = mergedArenaTcPending;
-  const isError = mergedArenaTcError;
-  const refetch = useCallback(() => {
-    void refetchMergedArenaTc();
-  }, [refetchMergedArenaTc]);
+  const isPending = coreTcPending || warbowPolicyPending;
+  const isError = coreTcError || warbowPolicyError;
 
-  const refetchCoreTc = refetchMergedArenaTc;
-  const refetchWarbowPolicy = refetchMergedArenaTc;
+  const refetchArenaGlobalReads = useCallback(() => {
+    if (indexerOn) {
+      void saleStateQuery.refetch();
+      void refetchArenaWarbowPolicyRpc();
+    } else {
+      void refetchMergedArenaTc();
+    }
+  }, [indexerOn, saleStateQuery, refetchArenaWarbowPolicyRpc, refetchMergedArenaTc]);
+
+  const refetch = refetchArenaGlobalReads;
+  const refetchCoreTc = refetchArenaGlobalReads;
+  const refetchWarbowPolicy = refetchArenaGlobalReads;
 
   const userSaleContracts =
     tc && address
@@ -870,14 +961,29 @@ export function useTimeCurveArenaModel() {
     refRegAddr?.status === "success" &&
     (refRegAddr.result as `0x${string}`) !== "0x0000000000000000000000000000000000000000";
 
-  const { data: referralEachBps } = useReadContract({
+  const referralEachBpsFromSaleState = saleStateQuery.data?.referral_each_bps;
+  const { data: referralEachBpsRpc } = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "REFERRAL_EACH_BPS",
-    query: { enabled: Boolean(tc) },
+    query: { enabled: Boolean(tc) && !indexerOn },
   });
-  const referralEachSideLabel =
-    referralEachBps !== undefined ? formatBpsAsPercent(Number(referralEachBps)) : "5.00%";
+  const referralEachBps = useMemo(() => {
+    if (indexerOn && referralEachBpsFromSaleState !== undefined) {
+      const n = Number(referralEachBpsFromSaleState);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    if (referralEachBpsRpc !== undefined) {
+      return Number(referralEachBpsRpc);
+    }
+    return undefined;
+  }, [indexerOn, referralEachBpsFromSaleState, referralEachBpsRpc]);
+  const referralEachSideLabel = useMemo(() => {
+    if (referralEachBps !== undefined) {
+      return formatBpsAsPercent(referralEachBps);
+    }
+    return "5.00%";
+  }, [referralEachBps]);
 
   const buyFeeRoutingEnabled =
     buyFeeRoutingEnabledR?.status === "success"
@@ -907,7 +1013,7 @@ export function useTimeCurveArenaModel() {
         }))
       : []) as readonly unknown[],
     query: {
-      enabled: Boolean(latchedArenaFeeRouter),
+      enabled: Boolean(latchedArenaFeeRouter) && !indexerOn,
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
@@ -919,7 +1025,8 @@ export function useTimeCurveArenaModel() {
     isSuccess: sinkReadsSuccess,
     error: sinkReadsQueryError,
   });
-  const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
+  const sinkReadsRpc = sinkReadsRaw as readonly ContractReadRow[] | undefined;
+  const sinkReads = indexerOn ? sinkReadsFromIndexer : sinkReadsRpc;
 
   const { data: podiumPoolBal } = useReadContract({
     address: tokenAddr,
@@ -998,7 +1105,7 @@ export function useTimeCurveArenaModel() {
         ]
       : []) as readonly unknown[],
     query: {
-      enabled: Boolean(tc && latchedArenaCharmPrice),
+      enabled: Boolean(tc && latchedArenaCharmPrice) && !indexerOn,
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
@@ -1010,7 +1117,8 @@ export function useTimeCurveArenaModel() {
     isSuccess: linearPriceReadsSuccess,
     error: linearPriceReadsQueryError,
   });
-  const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
+  const linearPriceReadsRpc = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
+  const linearPriceReads = indexerOn ? linearPriceReadsFromIndexer : linearPriceReadsRpc;
 
   const [basePriceWadR, dailyIncWadR] = linearPriceReads ?? [];
 
@@ -1021,18 +1129,21 @@ export function useTimeCurveArenaModel() {
       return;
     }
     warbowBpEventCoalesceWallMsRef.current = now;
-    void refetchMergedArenaTc();
+    void refetchArenaGlobalReads();
     void refetchUserSale();
-    void refetchLinearPriceReads();
-    void refetchSinkReads();
+    if (!indexerOn) {
+      void refetchLinearPriceReads();
+      void refetchSinkReads();
+    }
     void refreshHeroTimerSoft();
     void refreshWarbowIndexerAggregates();
     if (indexerBaseUrl()) {
       void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
     }
   }, [
-    refetchMergedArenaTc,
+    refetchArenaGlobalReads,
     refetchUserSale,
+    indexerOn,
     refetchLinearPriceReads,
     refetchSinkReads,
     refreshHeroTimerSoft,
@@ -1967,10 +2078,13 @@ export function useTimeCurveArenaModel() {
 
   const refetchAll = useCallback(async () => {
     await Promise.all([
-      refetchMergedArenaTc(),
+      indexerOn
+        ? Promise.all([saleStateQuery.refetch(), refetchArenaWarbowPolicyRpc()])
+        : refetchMergedArenaTc(),
       refetchUserSale(),
-      refetchLinearPriceReads(),
-      refetchSinkReads(),
+      ...(indexerOn
+        ? []
+        : [refetchLinearPriceReads(), refetchSinkReads()]),
       refetchAttackerStealsToday(),
       refetchVictimStealsToday(),
       refetchVictimBattlePoints(),
@@ -1981,6 +2095,9 @@ export function useTimeCurveArenaModel() {
       void fetchTimecurveBuyerStats(address).then(setBuyerStats);
     }
   }, [
+    indexerOn,
+    saleStateQuery,
+    refetchArenaWarbowPolicyRpc,
     refetchMergedArenaTc,
     refetchUserSale,
     refetchLinearPriceReads,

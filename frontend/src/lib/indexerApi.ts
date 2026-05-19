@@ -149,7 +149,12 @@ export type TimecurveChainTimer = {
  * Latest `deadline` / `timerCapSec` / head `block.timestamp` from indexer RPC poll (~1s).
  * Returns null if indexer is unset, unreachable, chain-timer is not configured (503), or the body is not valid JSON ([issue #111](https://gitlab.com/PlasticDigits/yieldomega/-/issues/111)).
  */
-/** Head RPC sale views at `read_block_number` (schema ≥ 1.23.0, [GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
+export type FeeRouterSinkSnapshot = {
+  destination: string;
+  weight_bps: number;
+};
+
+/** Head RPC sale views at `read_block_number` (schema ≥ 1.24.0, [GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
 export type TimecurveSaleState = {
   read_block_number: string;
   block_timestamp_sec: string;
@@ -186,6 +191,13 @@ export type TimecurveSaleState = {
   warbow_pending_flag_plant_at: string;
   warbow_flag_claim_bp: string;
   warbow_flag_silence_sec: string;
+  initial_timer_sec: string;
+  prizes_distributed: boolean;
+  fee_router: string;
+  owner: string;
+  linear_charm_base_price_wad: string;
+  linear_charm_daily_increment_wad: string;
+  fee_router_sinks: readonly FeeRouterSinkSnapshot[];
   note?: string;
 };
 

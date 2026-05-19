@@ -13,7 +13,8 @@ import {
 
 export const TIMECURVE_SALE_STATE_QUERY_KEY = ["timecurve-sale-state"] as const;
 
-type ContractReadRow = {
+/** Wagmi multicall row shape shared by Simple and Arena sale-state mappers. */
+export type ContractReadRow = {
   status: "success" | "failure";
   result?: unknown;
 };
@@ -57,6 +58,96 @@ export function coreReadRowsFromSaleState(s: TimecurveSaleState): readonly Contr
     successRow(addr(s.doub_presale_vesting)),
     successRow(BigInt(s.referral_each_bps)),
     successRow(BigInt(s.presale_charm_weight_bps)),
+  ];
+}
+
+/**
+ * Maps indexer sale-state to Arena `coreTcData` row order (27 rows).
+ */
+export function arenaCoreReadRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+  const addr = (v: string) => v as `0x${string}`;
+  return [
+    successRow(BigInt(s.sale_start_sec)),
+    successRow(BigInt(s.deadline_sec)),
+    successRow(BigInt(s.total_raised)),
+    successRow(s.ended),
+    successRow(BigInt(s.current_min_buy_amount)),
+    successRow(BigInt(s.current_max_buy_amount)),
+    successRow([BigInt(s.current_charm_bounds_min_wad), BigInt(s.current_charm_bounds_max_wad)]),
+    successRow(BigInt(s.current_price_per_charm_wad)),
+    successRow(addr(s.charm_price)),
+    successRow(addr(s.accepted_asset)),
+    successRow(addr(s.referral_registry)),
+    successRow(BigInt(s.initial_min_buy)),
+    successRow(BigInt(s.growth_rate_wad)),
+    successRow(BigInt(s.timer_extension_sec)),
+    successRow(BigInt(s.initial_timer_sec)),
+    successRow(BigInt(s.timer_cap_sec)),
+    successRow(BigInt(s.total_tokens_for_sale)),
+    successRow(addr(s.launched_token)),
+    successRow(s.prizes_distributed),
+    successRow(s.buy_fee_routing_enabled),
+    successRow(addr(s.fee_router)),
+    successRow(addr(s.podium_pool)),
+    successRow(BigInt(s.total_charm_weight)),
+    successRow(BigInt(s.buy_cooldown_sec)),
+    successRow(addr(s.time_curve_buy_router)),
+    successRow(s.reserve_podium_payouts_enabled),
+    successRow(addr(s.owner)),
+  ];
+}
+
+/** Maps `fee_router_sinks` to wagmi `sinks(i)` multicall rows (5). */
+export function feeRouterSinkRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+  const addr = (v: string) => v as `0x${string}`;
+  return s.fee_router_sinks.map((sink) =>
+    successRow([addr(sink.destination), sink.weight_bps] as const),
+  );
+}
+
+/** Maps linear charm price fields to `basePriceWad` / `dailyIncrementWad` read rows. */
+export function linearCharmPriceRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+  return [
+    successRow(BigInt(s.linear_charm_base_price_wad)),
+    successRow(BigInt(s.linear_charm_daily_increment_wad)),
+  ];
+}
+
+/**
+ * Merges sale-state WarBow flag fields with supplement RPC policy rows (9 calls:
+ * ladder podium, burn constants, max steals, revenge window/burn, finalized).
+ */
+export function arenaWarbowPolicyRowsFromSaleState(
+  s: TimecurveSaleState,
+  rpcRows: readonly ContractReadRow[],
+): readonly ContractReadRow[] {
+  const addr = (v: string) => v as `0x${string}`;
+  const pending: ContractReadRow = { status: "failure" };
+  const [
+    ladder,
+    stealBurn,
+    guardBurn,
+    bypassBurn,
+    maxSteals,
+    secondsPerDay,
+    revengeWindow,
+    revengeBurn,
+    finalized,
+  ] = rpcRows;
+  return [
+    successRow(addr(s.warbow_pending_flag_owner)),
+    successRow(BigInt(s.warbow_pending_flag_plant_at)),
+    ladder ?? pending,
+    stealBurn ?? pending,
+    guardBurn ?? pending,
+    bypassBurn ?? pending,
+    successRow(BigInt(s.warbow_flag_silence_sec)),
+    successRow(BigInt(s.warbow_flag_claim_bp)),
+    maxSteals ?? pending,
+    secondsPerDay ?? pending,
+    revengeWindow ?? pending,
+    revengeBurn ?? pending,
+    finalized ?? pending,
   ];
 }
 
