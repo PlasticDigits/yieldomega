@@ -33,6 +33,7 @@ import {
 import { assertReferralReadyForBuy } from "@/lib/referralBuyPreflight";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
 import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
+import { kumbayaBuyDebugError } from "@/lib/kumbayaBuyDebug";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -3137,6 +3138,11 @@ export function useTimeCurveArenaModel() {
       setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
       await refetchAll();
     } catch (e) {
+      kumbayaBuyDebugError("arena:buy-submit-failed", e, {
+        payWith,
+        charmWad: cw?.toString(),
+        spendWei: amount?.toString(),
+      });
       setBuyErr(friendlyRevertFromUnknown(e, { buySubmit: true }));
     } finally {
       setBuySubmitBusy(false);

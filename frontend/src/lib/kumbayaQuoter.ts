@@ -9,6 +9,7 @@ import type { HexAddress } from "@/lib/addresses";
 import { kumbayaQuoterV2Abi, timeCurveReadAbi } from "@/lib/abis";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 import { WAD } from "@/lib/timeCurveMath";
+import { kumbayaBuyDebugLog } from "@/lib/kumbayaBuyDebug";
 
 function amountInFromQuoteResult(result: unknown): bigint {
   return (result as readonly [bigint, ...unknown[]])[0];
@@ -25,7 +26,14 @@ export async function readGrossCl8yForCharmWad(
     abi: timeCurveReadAbi,
     functionName: "currentPricePerCharmWad",
   })) as bigint;
-  return (charmWad * price) / WAD;
+  const gross = (charmWad * price) / WAD;
+  kumbayaBuyDebugLog("readGrossCl8yForCharmWad", {
+    timeCurve: timeCurveAddress,
+    charmWad: charmWad.toString(),
+    pricePerCharmWad: price.toString(),
+    grossCl8y: gross.toString(),
+  });
+  return gross;
 }
 
 /**
@@ -121,8 +129,25 @@ export async function quoteKumbayaExactOutputAmountIn(
 ): Promise<bigint> {
   const { quoter, kConfig, payWith, acceptedCl8y, amountOut } = params;
   const outForQuote = grossCl8yWithQuoteHeadroom(amountOut);
+  kumbayaBuyDebugLog("quoteKumbayaExactOutputAmountIn:start", {
+    payWith,
+    quoter,
+    acceptedCl8y,
+    grossCl8yTarget: amountOut.toString(),
+    quoteHeadroomBps: KUMBAYA_GROSS_CL8Y_QUOTE_HEADROOM_BPS,
+    amountOutWithHeadroom: outForQuote.toString(),
+    cl8yWethFee: kConfig.cl8yWethFee,
+    usdmWethFee: kConfig.usdmWethFee,
+  });
+  let amountIn: bigint;
   if (payWith === "usdm") {
-    return quoteUsdmPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
+    amountIn = await quoteUsdmPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
+  } else {
+    amountIn = await quoteEthPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
   }
-  return quoteEthPathAmountIn(wagmiConfig, quoter, kConfig, acceptedCl8y, outForQuote);
+  kumbayaBuyDebugLog("quoteKumbayaExactOutputAmountIn:done", {
+    payWith,
+    quotedAmountIn: amountIn.toString(),
+  });
+  return amountIn;
 }
