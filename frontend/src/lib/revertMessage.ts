@@ -100,7 +100,15 @@ export function friendlyRevertMessage(raw: string): string {
       "stf()",
       "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds.",
     ],
-    ["0xe5e8a567", "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds."],
+    ["0x817275ab", "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds."],
+    ["timecurvebuyrouter__badsalephase", "The sale is not open for Kumbaya buys right now (not started, ended, or past the timer)."],
+    ["timecurvebuyrouter__charmbounds", "CHARM size is outside the live min–max band. Nudge the amount or wait one block and retry."],
+    ["timecurvebuyrouter__badpath", "Kumbaya swap path is misconfigured for this chain. Contact support if this persists."],
+    ["timecurvebuyrouter__ethmode", "ETH pay mode requires a WETH-terminated swap path."],
+    ["timecurvebuyrouter__stablemode", "USDM pay mode requires a stable-terminated swap path."],
+    ["0x2be94f46", "The sale is not open for Kumbaya buys right now (not started, ended, or past the timer)."],
+    ["0xa8130f38", "CHARM size is outside the live min–max band. Nudge the amount or wait one block and retry."],
+    ["0xe5e8a567", "Kumbaya swap path is misconfigured for this chain. Contact support if this persists."],
   ];
   for (const [k, v] of map) {
     if (s.includes(k)) {
