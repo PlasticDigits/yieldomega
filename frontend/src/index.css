@@ -8954,6 +8954,30 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.92rem;
 }
 
+.timecurve-simple__pay-balance-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.timecurve-simple__balance-refresh {
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--yo-border, rgba(255, 255, 255, 0.2));
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.timecurve-simple__balance-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Inline pay-token balance: `YOUR CL8Y:` (caption) + larger sans value; `display:flex` on `.amount-triple` is block-level and breaks `<p>` flow (GitLab #9). */
 .timecurve-simple__pay-balance .amount-triple {
   display: inline-flex;

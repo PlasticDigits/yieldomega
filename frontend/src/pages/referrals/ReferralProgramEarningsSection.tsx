@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { timeCurveReadAbi } from "@/lib/abis";
@@ -22,11 +24,23 @@ export function ReferralProgramEarningsSection({ className }: Props) {
   const [summary, setSummary] = useState<ReferralWalletCharmSummary | null | undefined>(undefined);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
-  const { data: pricePerCharmWad } = useReadContract({
+  const priceQuery = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "currentPricePerCharmWad",
-    query: { enabled: Boolean(tc && isConnected && address), refetchInterval: 15_000 },
+    query: {
+      enabled: Boolean(tc && isConnected && address),
+      refetchInterval: () => getRpcBackoffPollMs(15_000),
+    },
+  });
+  const pricePerCharmWad = priceQuery.data;
+
+  useRpcQueryHealthForRefetch({
+    isFetched: priceQuery.isFetched,
+    isFetching: priceQuery.isFetching,
+    isError: priceQuery.isError,
+    isSuccess: priceQuery.isSuccess,
+    error: priceQuery.error,
   });
 
   useEffect(() => {

@@ -8,14 +8,6 @@ export const MEGAETH_MAINNET_CHAIN_ID = 4326;
 /** Canonical public RPC when none is set via env (ordered first before fallbacks). */
 export const MEGAETH_MAINNET_PRIMARY_RPC = "https://mainnet.megaeth.com/rpc";
 
-/**
- * Extra MegaETH mainnet JSON-RPC endpoints tried after the primary when the first
- * transport fails (429/502/503/504, etc. — viem `fallback` + `http` retry behavior).
- */
-const MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS: readonly string[] = [
-  "https://rpc-megaeth-mainnet.globalstake.io",
-];
-
 /** Default when `VITE_CHAIN_ID` / `VITE_RPC_URL` are unset: local Anvil. */
 const DEFAULT_CHAIN_ID = 31_337;
 const DEFAULT_RPC_HTTP = "http://127.0.0.1:8545";
@@ -33,13 +25,14 @@ export function parseCommaSeparatedRpcUrls(rpcUrlRaw: string | undefined): strin
 }
 
 /**
- * Ordered RPC list for MegaETH mainnet: env URLs first (already parsed), then public fallbacks (deduped).
+ * Ordered RPC list for MegaETH mainnet: env URLs only (deduped).
  * Pass the env-derived list (possibly empty — callers substitute `[defaultRpcHttp]` first).
+ * No built-in public fallbacks — dead endpoints (e.g. CORS-blocked hosts) waste fallback retries ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
  */
 export function megaethMainnetOrderedRpcUrls(envRpcUrls: string[]): string[] {
   const ordered: string[] = [];
   const seen = new Set<string>();
-  for (const raw of [...envRpcUrls, ...MEGAETH_MAINNET_PUBLIC_RPC_FALLBACKS]) {
+  for (const raw of envRpcUrls) {
     const u = raw.trim();
     if (!u || seen.has(u)) continue;
     seen.add(u);

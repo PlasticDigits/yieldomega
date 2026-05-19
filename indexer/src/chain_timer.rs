@@ -22,13 +22,13 @@ use crate::rpc_http::{
 use crate::rpc_poll_health::RpcPollHealth;
 
 /// `saleStart()` selector (public getter)
-const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
+pub const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
 /// `deadline()` selector
-const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
+pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
 /// `timerCapSec()` selector
-const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
+pub const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
 /// `ended()` selector
-const SEL_ENDED: [u8; 4] = [0x12, 0xfa, 0x6f, 0xeb];
+pub const SEL_ENDED: [u8; 4] = [0x12, 0xfa, 0x6f, 0xeb];
 /// `podium(uint8)` selector
 const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 
@@ -59,6 +59,8 @@ pub struct TimecurveHeadSnapshot {
     pub sale_ended: bool,
     /// Index = `TimeCurve` podium category: `0` last buy · `1` time booster · `2` defended streak · `3` WarBow.
     pub podium_contract: [PodiumRpcRow; 4],
+    /// Full sale-state views at the same `read_block_number` ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
+    pub sale_state: crate::sale_state::TimecurveSaleStateSnapshot,
 }
 
 fn u256_to_decimal_string(v: U256) -> String {
@@ -266,9 +268,20 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
         polled_at_ms,
     };
 
+    let sale_state = crate::sale_state::poll_sale_state_at_block(
+        provider,
+        tc,
+        block_id,
+        block_ts,
+        bn,
+        polled_at_ms,
+    )
+    .await?;
+
     Ok(TimecurveHeadSnapshot {
         timer,
         sale_ended,
         podium_contract: podium_rows,
+        sale_state,
     })
 }

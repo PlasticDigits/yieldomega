@@ -30,6 +30,7 @@ use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
+use yieldomega_indexer::sale_state::TimecurveSaleStateSnapshot;
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
@@ -38,6 +39,46 @@ use yieldomega_indexer::reorg::{
 };
 
 const CONTRACT: Address = address!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+
+fn test_sale_state_snapshot(read_block: &str, block_ts: &str) -> TimecurveSaleStateSnapshot {
+    TimecurveSaleStateSnapshot {
+        read_block_number: read_block.into(),
+        block_timestamp_sec: block_ts.into(),
+        polled_at_ms: 0,
+        sale_start_sec: "1".into(),
+        deadline_sec: "9999999999".into(),
+        ended: false,
+        timer_extension_sec: "0".into(),
+        timer_cap_sec: "86400".into(),
+        buy_cooldown_sec: "300".into(),
+        current_min_buy_amount: "0".into(),
+        current_max_buy_amount: "0".into(),
+        current_charm_bounds_min_wad: "0".into(),
+        current_charm_bounds_max_wad: "0".into(),
+        current_price_per_charm_wad: "0".into(),
+        charm_price: format!("{:#x}", Address::ZERO),
+        total_raised: "0".into(),
+        total_charm_weight: "0".into(),
+        total_tokens_for_sale: "0".into(),
+        initial_min_buy: "0".into(),
+        growth_rate_wad: "0".into(),
+        accepted_asset: format!("{:#x}", Address::ZERO),
+        referral_registry: format!("{:#x}", Address::ZERO),
+        launched_token: format!("{:#x}", Address::ZERO),
+        buy_fee_routing_enabled: true,
+        charm_redemption_enabled: false,
+        reserve_podium_payouts_enabled: false,
+        time_curve_buy_router: format!("{:#x}", Address::ZERO),
+        podium_pool: format!("{:#x}", Address::ZERO),
+        doub_presale_vesting: format!("{:#x}", Address::ZERO),
+        referral_each_bps: "0".into(),
+        presale_charm_weight_bps: "0".into(),
+        warbow_pending_flag_owner: format!("{:#x}", Address::ZERO),
+        warbow_pending_flag_plant_at: "0".into(),
+        warbow_flag_claim_bp: "0".into(),
+        warbow_flag_silence_sec: "0".into(),
+    }
+}
 
 fn b256_lo(n: u64) -> B256 {
     let mut b = [0u8; 32];
@@ -107,6 +148,18 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .oneshot(
             Request::builder()
                 .uri("/v1/timecurve/chain-timer")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/sale-state")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -402,6 +455,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
             empty_podium.clone(),
             empty_podium.clone(),
         ],
+        sale_state: test_sale_state_snapshot("99", "100"),
     };
     let app_podiums = router(AppState {
         pool: pool.clone(),

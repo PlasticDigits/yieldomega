@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, isAddress, parseUnits } from "viem";
-import { readContract, waitForTransactionReceipt } from "wagmi/actions";
+import { readContract } from "wagmi/actions";
 import {
   useAccount,
   useBalance,
@@ -16,6 +16,7 @@ import {
 import { AddressInline } from "@/components/AddressInline";
 import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
@@ -88,7 +89,9 @@ import {
   usePodiumReads,
   useWarbowBpMovingEventWatch,
 } from "@/pages/timecurve/usePodiumReads";
-import { useWarbowLeaderboardBpOverlay } from "@/pages/timecurve/warbowPodiumLive";
+import { useWarbowStealCandidateIndexerReads } from "@/hooks/useWarbowStealCandidateIndexerReads";
+import { readFreshWarbowStealPreflight } from "@/lib/timeCurveWarbowStealSubmitPreflight";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   kumbayaBandLowerWad,
   launchLiquidityAnchorWad,
@@ -175,6 +178,8 @@ export function useTimeCurveArenaModel() {
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
+  /** Bumps when indexer WarBow leaderboard refreshes so steal-hero reads re-fetch ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
+  const [warbowStealIndexerNonce, setWarbowStealIndexerNonce] = useState(0);
   const [warbowFeed, setWarbowFeed] = useState<WarbowBattleFeedItem[] | null>(null);
   const [stealVictimInput, setStealVictimInput] = useState("");
   const [stealBypass, setStealBypass] = useState(false);
@@ -224,6 +229,7 @@ export function useTimeCurveArenaModel() {
     // Keep the last good ladder + feed on transient indexer failures — avoids rank / steal-row flicker during polls.
     if (lbItems != null) {
       setWarbowLb(lbItems);
+      setWarbowStealIndexerNonce((n) => n + 1);
     }
     if (fd != null) {
       setWarbowFeed(fd.items ?? null);
@@ -560,6 +566,10 @@ export function useTimeCurveArenaModel() {
     data: mergedArenaTcRaw,
     isPending: mergedArenaTcPending,
     isError: mergedArenaTcError,
+    isFetched: mergedArenaTcFetched,
+    isFetching: mergedArenaTcFetching,
+    isSuccess: mergedArenaTcSuccess,
+    error: mergedArenaTcQueryError,
     refetch: refetchMergedArenaTc,
   } = useReadContracts({
     contracts: mergedArenaTcContracts as readonly unknown[],
@@ -569,6 +579,14 @@ export function useTimeCurveArenaModel() {
       placeholderData: (previous) => previous,
     },
   });
+  useRpcQueryHealthForRefetch({
+    isFetched: mergedArenaTcFetched,
+    isFetching: mergedArenaTcFetching,
+    isError: mergedArenaTcError,
+    isSuccess: mergedArenaTcSuccess,
+    error: mergedArenaTcQueryError,
+  });
+
   const mergedArenaTcRowData = mergedArenaTcRaw as readonly ContractReadRow[] | undefined;
   const coreTcData = mergedArenaTcRowData?.slice(0, ARENA_CORE_TC_MULTICALL_LEN);
   const warbowPolicyData = mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN);
@@ -618,11 +636,20 @@ export function useTimeCurveArenaModel() {
     contracts: userSaleContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc && address),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
+      refetchInterval: false,
       placeholderData: (previous) => previous,
     },
   });
   const userSaleData = userSaleDataRaw as readonly ContractReadRow[] | undefined;
+
+  const prevArenaWalletRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const cur = address?.toLowerCase();
+    if (cur && prevArenaWalletRef.current && prevArenaWalletRef.current !== cur) {
+      void refetchUserSale();
+    }
+    prevArenaWalletRef.current = cur;
+  }, [address, refetchUserSale]);
 
   /** Last-good `nextBuyAllowedAt(wallet)` unix sec — keeps buy cooldown UX stable when user multicalls flicker pending/failure. */
   const nextBuyCooldownLatchRef = useRef<{
@@ -862,7 +889,15 @@ export function useTimeCurveArenaModel() {
   const podiumPoolAddr =
     podiumPoolR?.status === "success" ? (podiumPoolR.result as `0x${string}`) : undefined;
 
-  const { data: sinkReadsRaw, refetch: refetchSinkReads } = useReadContracts({
+  const {
+    data: sinkReadsRaw,
+    isFetched: sinkReadsFetched,
+    isFetching: sinkReadsFetching,
+    isError: sinkReadsError,
+    isSuccess: sinkReadsSuccess,
+    error: sinkReadsQueryError,
+    refetch: refetchSinkReads,
+  } = useReadContracts({
     contracts: (latchedArenaFeeRouter
       ? ([0, 1, 2, 3, 4] as const).map((i) => ({
           address: latchedArenaFeeRouter,
@@ -876,6 +911,13 @@ export function useTimeCurveArenaModel() {
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
+  });
+  useRpcQueryHealthForRefetch({
+    isFetched: sinkReadsFetched,
+    isFetching: sinkReadsFetching,
+    isError: sinkReadsError,
+    isSuccess: sinkReadsSuccess,
+    error: sinkReadsQueryError,
   });
   const sinkReads = sinkReadsRaw as readonly ContractReadRow[] | undefined;
 
@@ -932,7 +974,15 @@ export function useTimeCurveArenaModel() {
       ? (charmPriceAddrR.result as `0x${string}`)
       : undefined);
 
-  const { data: linearPriceReadsRaw, refetch: refetchLinearPriceReads } = useReadContracts({
+  const {
+    data: linearPriceReadsRaw,
+    isFetched: linearPriceReadsFetched,
+    isFetching: linearPriceReadsFetching,
+    isError: linearPriceReadsError,
+    isSuccess: linearPriceReadsSuccess,
+    error: linearPriceReadsQueryError,
+    refetch: refetchLinearPriceReads,
+  } = useReadContracts({
     contracts: (latchedArenaCharmPrice
       ? [
           {
@@ -952,6 +1002,13 @@ export function useTimeCurveArenaModel() {
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
+  });
+  useRpcQueryHealthForRefetch({
+    isFetched: linearPriceReadsFetched,
+    isFetching: linearPriceReadsFetching,
+    isError: linearPriceReadsError,
+    isSuccess: linearPriceReadsSuccess,
+    error: linearPriceReadsQueryError,
   });
   const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
 
@@ -1649,7 +1706,7 @@ export function useTimeCurveArenaModel() {
   const dotMegaNameByAddress = useDotMegaNameMap(dotMegaAddressList);
   const formatWallet = useMemo(() => walletDisplayFromMap(dotMegaNameByAddress), [dotMegaNameByAddress]);
 
-  const warbowLbLive = useWarbowLeaderboardBpOverlay(tc, warbowLb);
+  const warbowLbLive = warbowLb;
 
   const warbowRank =
     address && warbowLbLive
@@ -1901,77 +1958,12 @@ export function useTimeCurveArenaModel() {
     [warbowStealHeroReadCandidates],
   );
 
-  const stealCandidateOnchainByAddrRef = useRef(
-    new Map<string, { bp?: bigint; steals?: bigint; guardUntil?: bigint }>(),
+  const stealCandidateOnchainByAddr = useWarbowStealCandidateIndexerReads(
+    sortedStealHeroReadCandidates,
+    warbowLb,
+    utcDayId,
+    warbowStealIndexerNonce,
   );
-
-  const stealCandidateContracts = useMemo(() => {
-    if (!tc || sortedStealHeroReadCandidates.length === 0) {
-      return [];
-    }
-    return sortedStealHeroReadCandidates.flatMap((c) => [
-      {
-        address: tc,
-        abi: timeCurveReadAbi,
-        functionName: "battlePoints" as const,
-        args: [c.address],
-      },
-      {
-        address: tc,
-        abi: timeCurveReadAbi,
-        functionName: "stealsReceivedOnDay" as const,
-        args: [c.address, utcDayId],
-      },
-      {
-        address: tc,
-        abi: timeCurveReadAbi,
-        functionName: "warbowGuardUntil" as const,
-        args: [c.address],
-      },
-    ]);
-  }, [tc, utcDayId, sortedStealHeroReadCandidates]);
-
-  const { data: stealCandidateReadsRaw } = useReadContracts({
-    contracts: stealCandidateContracts,
-    query: {
-      enabled: Boolean(tc && stealCandidateContracts.length > 0),
-      refetchInterval: 12_000,
-      placeholderData: (previousData) => previousData,
-    },
-  });
-
-  const stealCandidateOnchainByAddr = useMemo(() => {
-    const m = new Map<string, { bp?: bigint; steals?: bigint; guardUntil?: bigint }>();
-    const allowed = new Set(sortedStealHeroReadCandidates.map((c) => c.address.toLowerCase()));
-    for (const [k, v] of stealCandidateOnchainByAddrRef.current) {
-      if (allowed.has(k)) {
-        m.set(k, { ...v });
-      }
-    }
-
-    const raw = stealCandidateReadsRaw;
-    const n = sortedStealHeroReadCandidates.length;
-    if (raw?.length && n > 0 && raw.length === n * 3) {
-      sortedStealHeroReadCandidates.forEach((c, i) => {
-        const bpR = raw[i * 3];
-        const stR = raw[i * 3 + 1];
-        const gR = raw[i * 3 + 2];
-        const key = c.address.toLowerCase();
-        const bp = bpR?.status === "success" ? (bpR.result as bigint) : undefined;
-        const steals = stR?.status === "success" ? (stR.result as bigint) : undefined;
-        const guardUntil = gR?.status === "success" ? (gR.result as bigint) : undefined;
-        const cur = m.get(key) ?? {};
-        m.set(key, {
-          bp: bp ?? cur.bp,
-          steals: steals ?? cur.steals,
-          guardUntil: guardUntil ?? cur.guardUntil,
-        });
-      });
-    }
-
-    stealCandidateOnchainByAddrRef.current = m;
-    return m;
-  }, [stealCandidateReadsRaw, sortedStealHeroReadCandidates]);
 
   const refetchAll = useCallback(async () => {
     await Promise.all([
@@ -2856,7 +2848,7 @@ export function useTimeCurveArenaModel() {
             functionName: "deposit",
             value: maxIn,
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
+          await waitForWriteReceipt(wagmiConfig, { hash: wrapHash });
           guardBuySession();
           const wAllow = await readContract(wagmiConfig, {
             address: k.config.weth,
@@ -2876,7 +2868,7 @@ export function useTimeCurveArenaModel() {
               functionName: "approve",
               args: [k.config.swapRouter, maxIn],
             });
-            await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+            await waitForWriteReceipt(wagmiConfig, { hash: wAp });
             guardBuySession();
           }
         } else if (payWith === "usdm") {
@@ -2898,7 +2890,7 @@ export function useTimeCurveArenaModel() {
               functionName: "approve",
               args: [k.config.swapRouter, maxIn],
             });
-            await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
+            await waitForWriteReceipt(wagmiConfig, { hash: uAp });
             guardBuySession();
           }
         }
@@ -2925,7 +2917,7 @@ export function useTimeCurveArenaModel() {
           onEstimateRevert: "rethrow",
           softCapGas: 6_000_000n,
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
+        await waitForWriteReceipt(wagmiConfig, { hash: swapHash });
         guardBuySession();
       }
 
@@ -2951,7 +2943,7 @@ export function useTimeCurveArenaModel() {
           functionName: "approve",
           args: [tc, approveAmt],
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+        await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
         guardBuySession();
       }
       const buyArgs = codeHash
@@ -2971,7 +2963,7 @@ export function useTimeCurveArenaModel() {
       });
       guardBuySession();
       playGameSfxCoinHitBuySubmit();
-      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+      const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
       assertSuccessfulBuyReceipt(receipt);
       const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
       setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
@@ -3033,7 +3025,7 @@ export function useTimeCurveArenaModel() {
         functionName: "approve",
         args: [tc, approveAmt],
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+      await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
     }
   }
 
@@ -3059,7 +3051,7 @@ export function useTimeCurveArenaModel() {
         abi: timeCurveWriteAbi,
         functionName: "claimWarBowFlag",
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
@@ -3093,6 +3085,38 @@ export function useTimeCurveArenaModel() {
     const max = BigInt(warbowMaxSteals);
     const victimCap = victimStealsForBypass !== undefined && victimStealsForBypass >= max;
     const bypass = stealBypass || (victimCap && (stealBypassByVictimAddr[key] ?? false));
+    try {
+      const fresh = await readFreshWarbowStealPreflight({
+        tc,
+        victim: victimResolved,
+        utcDayId,
+      });
+      const victimGuardedActive = BigInt(ledgerSecInt) < fresh.victimGuardUntil;
+      const submitPreflight = describeStealPreflight(
+        {
+          connected: isConnected,
+          saleActive,
+          saleEnded,
+          viewer: address,
+          victim: victimResolved,
+          viewerBattlePoints,
+          victimBattlePoints: fresh.victimBattlePoints,
+          victimStealsToday: fresh.victimStealsToday,
+          attackerStealsToday: attackerStealsTodayBigInt,
+          maxStealsPerDay: max,
+          bypassSelected: bypass,
+          guardActive: victimGuardedActive,
+        },
+        formatWallet,
+      );
+      if (submitPreflight.tone === "error") {
+        setPvpErr(submitPreflight.detail ?? submitPreflight.title);
+        return;
+      }
+    } catch (e) {
+      setPvpErr(friendlyRevertFromUnknown(e));
+      return;
+    }
     const need = warbowStealBurnWad + (bypass ? warbowBypassBurnWad : 0n);
     try {
       await ensureTcAllowance(need);
@@ -3106,7 +3130,7 @@ export function useTimeCurveArenaModel() {
         functionName: "warbowSteal",
         args: [victimResolved, bypass],
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
@@ -3136,7 +3160,7 @@ export function useTimeCurveArenaModel() {
         abi: timeCurveWriteAbi,
         functionName: "warbowActivateGuard",
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
@@ -3168,7 +3192,7 @@ export function useTimeCurveArenaModel() {
         functionName: "warbowRevenge",
         args: [stealer],
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       await refetchAll();
     } catch (e) {
       setPvpErr(friendlyRevertFromUnknown(e));
@@ -3195,7 +3219,7 @@ export function useTimeCurveArenaModel() {
           ? { onEstimateRevert: "rethrow" as const, softCapGas: 18_000_000n }
           : {}),
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       await refetchAll();
     } catch (e) {
       setBuyErr(friendlyRevertFromUnknown(e));

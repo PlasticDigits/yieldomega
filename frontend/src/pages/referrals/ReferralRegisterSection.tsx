@@ -15,7 +15,10 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { readContract, waitForTransactionReceipt } from "wagmi/actions";
+import { readContract } from "wagmi/actions";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
+import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -124,11 +127,19 @@ export function ReferralRegisterSection({ className }: Props) {
   }, []);
 
   const tc = addresses.timeCurve;
-  const { data: pricePerCharmWad } = useReadContract({
+  const priceQuery = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,
     functionName: "currentPricePerCharmWad",
-    query: { enabled: Boolean(tc), refetchInterval: 20_000 },
+    query: { enabled: Boolean(tc), refetchInterval: () => getRpcBackoffPollMs(20_000) },
+  });
+  const pricePerCharmWad = priceQuery.data;
+  useRpcQueryHealthForRefetch({
+    isFetched: priceQuery.isFetched,
+    isFetching: priceQuery.isFetching,
+    isError: priceQuery.isError,
+    isSuccess: priceQuery.isSuccess,
+    error: priceQuery.error,
   });
   const { data: regFromTimeCurve } = useReadContract({
     address: tc,
@@ -151,7 +162,7 @@ export function ReferralRegisterSection({ className }: Props) {
     return undefined;
   }, [regFromTimeCurve]);
 
-  const { data: bundle } = useReadContracts({
+  const bundleQuery = useReadContracts({
     contracts: registry
       ? [
           {
@@ -166,7 +177,15 @@ export function ReferralRegisterSection({ className }: Props) {
           },
         ]
       : [],
-    query: { enabled: Boolean(registry), refetchInterval: 20_000 },
+    query: { enabled: Boolean(registry), refetchInterval: () => getRpcBackoffPollMs(20_000) },
+  });
+  const bundle = bundleQuery.data;
+  useRpcQueryHealthForRefetch({
+    isFetched: bundleQuery.isFetched,
+    isFetching: bundleQuery.isFetching,
+    isError: bundleQuery.isError,
+    isSuccess: bundleQuery.isSuccess,
+    error: bundleQuery.error,
   });
 
   const cl8yToken =
@@ -416,7 +435,7 @@ export function ReferralRegisterSection({ className }: Props) {
           functionName: "approve",
           args: [registry, need],
         });
-        await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+        await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
         guardSession();
       }
       guardSession();
@@ -430,7 +449,7 @@ export function ReferralRegisterSection({ className }: Props) {
         functionName: "registerCode",
         args: [normalized],
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash: regHash });
+      await waitForWriteReceipt(wagmiConfig, { hash: regHash });
       guardSession();
       setStoredMyReferralCodeForWallet(sessionSnapshot.address, normalized);
       setCodeInput("");

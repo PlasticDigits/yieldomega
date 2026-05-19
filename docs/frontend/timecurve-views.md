@@ -312,8 +312,9 @@ While **`sale_ended`** is **false**, the **Simple** reserve **WarBow** card and 
 
 1. **Ranking source:** **`GET /v1/timecurve/podiums`** (WarBow row) and **`GET /v1/timecurve/warbow/leaderboard`** — indexer **`WARBOW_BP_OBSERVATIONS_UNION`** (buys + steal + revenge + flag claim/penalty).
 2. **Immediate invalidation:** **`useWarbowBpMovingEventWatch`** watches **`Buy`**, **`WarBowSteal`**, **`WarBowRevenge`**, **`WarBowFlagClaimed`**, and **`WarBowFlagPenalized`** — invalidates **`TIMECURVE_PODIUMS_QUERY_KEY`** and refetches Arena WarBow aggregates on **every** BP-moving log (not **`WarBowGuardActivated`** — guard does not mutate BP).
-3. **Displayed BP digits:** overlay on-chain **`battlePoints(address)`** reads for the top-3 Simple WarBow winners and for Arena chasing-pack rows when all per-row reads succeed — ranking order stays indexer-driven; numbers match chain truth.
-4. **Poll cadence:** Simple podiums **~1s**; Arena WarBow leaderboard/feed **~1.5s** backoff while mounted.
+3. **Displayed BP digits:** trust indexer **`battle_points_after`** on podium and leaderboard rows — **no** parallel **`battlePoints` RPC overlay ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
+4. **Poll cadence:** Simple podiums **~1s** indexer backoff; Arena WarBow leaderboard/feed **~1.5s** backoff while mounted.
+5. **Submit-time safety:** **`readFreshWarbowStealPreflight`** and **`readFreshTimeCurveBuySizing`** still use fresh RPC immediately before writes ([#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82), [#101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101)).
 
 **Spec ↔ test:** [invariants § live WarBow podium](../testing/invariants-and-business-logic.md#live-warbow-podium-simple-arena-gitlab-warbow-podium-live) · [`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts) · [`warbowPodiumLive.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.ts) · [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts).
 

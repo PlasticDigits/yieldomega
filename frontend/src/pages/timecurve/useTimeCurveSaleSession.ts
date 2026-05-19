@@ -12,7 +12,10 @@ import {
   useWatchContractEvent,
   useWriteContract,
 } from "wagmi";
-import { readContract, waitForTransactionReceipt } from "wagmi/actions";
+import { readContract } from "wagmi/actions";
+import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
+import { indexerBaseUrl } from "@/lib/addresses";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   doubPresaleVestingReadAbi,
   erc20Abi,
@@ -62,6 +65,10 @@ import {
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
+import {
+  coreReadRowsFromSaleState,
+  useTimecurveSaleStateQuery,
+} from "@/pages/timecurve/useTimecurveSaleState";
 import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import {
   derivePhase,
@@ -107,8 +114,8 @@ function bpsToDisplayPercentMag(bps: number): string {
  *   `buy(charmWad, codeHash)` write paths used by the legacy/Arena page, or
  *   **`TimeCurveBuyRouter.buyViaKumbaya`** when `timeCurveBuyRouter` is set and pay mode is
  *   ETH/USDM (issue #66) — one tx replacing swap + `buy` while preserving sale semantics.
- * - This hook never speaks to the indexer; the simple view stays usable when
- *   only RPC is available.
+ * - With `VITE_INDEXER_URL`, global sale reads use `GET /v1/timecurve/sale-state`; RPC
+ *   multicall remains the fallback when the indexer is unset ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
  * - **`submitBuy`** latches **`getAccount(wagmi)`** after submit-time sizing and
  *   aborts when the wallet **disconnects**, **switches accounts**, or **changes
  *   chains** mid-flow ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
@@ -132,6 +139,9 @@ export type UseTimeCurveSaleSession = {
   walletConnected: boolean;
   walletAddress: HexAddress | undefined;
   walletBalanceWei: bigint | undefined;
+  /** Manual one-shot `balanceOf` refresh for the active pay asset ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
+  refetchWalletBalance: () => void;
+  walletBalanceRefreshing: boolean;
   cl8ySpendBounds: { minS: bigint; maxS: bigint } | null;
   spendWei: bigint;
   spendInputStr: string;
@@ -306,6 +316,8 @@ export function useTimeCurveSaleSession(
   }, [isConnected, address]);
 
   const tc = timeCurveAddress;
+  const indexerOn = Boolean(indexerBaseUrl());
+  const saleStateQuery = useTimecurveSaleStateQuery(tc);
 
   const coreContracts = tc
     ? [
@@ -345,19 +357,51 @@ export function useTimeCurveSaleSession(
 
   const {
     data: coreDataRaw,
-    isPending,
-    isLoading: coreReadsLoading,
-    isError,
-    refetch: refetchCore,
+    isPending: coreRpcPending,
+    isLoading: coreRpcLoading,
+    isError: coreRpcError,
+    isFetched: coreRpcFetched,
+    isFetching: coreRpcFetching,
+    isSuccess: coreRpcSuccess,
+    error: coreRpcQueryError,
+    refetch: refetchCoreRpc,
   } = useReadContracts({
     contracts: coreContracts as readonly unknown[],
     query: {
-      enabled: Boolean(tc),
-      refetchInterval: 1000,
+      enabled: Boolean(tc) && !indexerOn,
+      refetchInterval: false,
       placeholderData: (previous) => previous,
     },
   });
-  const coreData = coreDataRaw as readonly ContractReadRow[] | undefined;
+
+  useRpcQueryHealthForRefetch({
+    isFetched: coreRpcFetched,
+    isFetching: coreRpcFetching,
+    isError: coreRpcError,
+    isSuccess: coreRpcSuccess,
+    error: coreRpcQueryError,
+  });
+
+  const coreDataFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!saleStateQuery.data) {
+      return undefined;
+    }
+    return coreReadRowsFromSaleState(saleStateQuery.data);
+  }, [saleStateQuery.data]);
+
+  const coreData = (indexerOn ? coreDataFromIndexer : coreDataRaw) as
+    | readonly ContractReadRow[]
+    | undefined;
+  const coreReadsLoading = indexerOn ? saleStateQuery.isLoading : coreRpcLoading;
+  const isPending = indexerOn ? saleStateQuery.isLoading : coreRpcPending;
+  const isError = indexerOn ? saleStateQuery.isError : coreRpcError;
+  const refetchCore = useCallback(() => {
+    if (indexerOn) {
+      void saleStateQuery.refetch();
+    } else {
+      void refetchCoreRpc();
+    }
+  }, [indexerOn, saleStateQuery, refetchCoreRpc]);
 
   const userContracts =
     tc && address
@@ -375,7 +419,7 @@ export function useTimeCurveSaleSession(
     contracts: userContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc && address),
-      refetchInterval: 1000,
+      refetchInterval: false,
       placeholderData: (previous) => previous,
     },
   });
@@ -621,7 +665,11 @@ export function useTimeCurveSaleSession(
   });
   const launchedDec = launchedDecimals !== undefined ? Number(launchedDecimals) : 18;
 
-  const { data: walletBalance } = useReadContract({
+  const {
+    data: walletBalance,
+    refetch: refetchWalletBalance,
+    isFetching: walletBalanceFetching,
+  } = useReadContract({
     address: acceptedAsset,
     abi: erc20Abi,
     functionName: "balanceOf",
@@ -630,9 +678,20 @@ export function useTimeCurveSaleSession(
       enabled: Boolean(acceptedAsset && address && isConnected),
       // Avoid buy-panel flicker: background refetches otherwise clear `data` briefly (`YOUR CL8Y: —`).
       placeholderData: keepPreviousData,
+      refetchInterval: false,
     },
   });
   const walletBalanceWei = walletBalance as bigint | undefined;
+
+  const prevWalletRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const cur = address?.toLowerCase();
+    if (cur && prevWalletRef.current && prevWalletRef.current !== cur) {
+      void refetchUser();
+      void refetchWalletBalance();
+    }
+    prevWalletRef.current = cur;
+  }, [address, refetchUser, refetchWalletBalance]);
 
   const zeroAddr = "0x0000000000000000000000000000000000000000" as const;
 
@@ -1559,7 +1618,7 @@ export function useTimeCurveSaleSession(
               functionName: "deposit",
               value: maxIn,
             });
-            await waitForTransactionReceipt(wagmiConfig, { hash: wrapHash });
+            await waitForWriteReceipt(wagmiConfig, { hash: wrapHash });
             guardBuySession();
             const wAllow = await readContract(wagmiConfig, {
               address: k.config.weth,
@@ -1579,7 +1638,7 @@ export function useTimeCurveSaleSession(
                 functionName: "approve",
                 args: [k.config.swapRouter, maxIn],
               });
-              await waitForTransactionReceipt(wagmiConfig, { hash: wAp });
+              await waitForWriteReceipt(wagmiConfig, { hash: wAp });
               guardBuySession();
             }
           } else if (payWith === "usdm") {
@@ -1601,7 +1660,7 @@ export function useTimeCurveSaleSession(
                 functionName: "approve",
                 args: [k.config.swapRouter, maxIn],
               });
-              await waitForTransactionReceipt(wagmiConfig, { hash: uAp });
+              await waitForWriteReceipt(wagmiConfig, { hash: uAp });
               guardBuySession();
             }
           }
@@ -1628,7 +1687,7 @@ export function useTimeCurveSaleSession(
             onEstimateRevert: "rethrow",
             softCapGas: 6_000_000n,
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: swapHash });
+          await waitForWriteReceipt(wagmiConfig, { hash: swapHash });
           guardBuySession();
         }
 
@@ -1654,7 +1713,7 @@ export function useTimeCurveSaleSession(
             functionName: "approve",
             args: [tc, approveAmt],
           });
-          await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
+          await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
           guardBuySession();
         }
         const buyArgs = codeHash
@@ -1674,7 +1733,7 @@ export function useTimeCurveSaleSession(
         });
         guardBuySession();
         playGameSfxCoinHitBuySubmit();
-        const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: buyHash });
+        const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
         assertSuccessfulBuyReceipt(receipt);
         setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
         const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
@@ -1739,7 +1798,7 @@ export function useTimeCurveSaleSession(
         abi: timeCurveWriteAbi,
         functionName: "redeemCharms",
       });
-      await waitForTransactionReceipt(wagmiConfig, { hash });
+      await waitForWriteReceipt(wagmiConfig, { hash });
       refetchAll();
     } catch (e) {
       setBuyError(friendlyRevertFromUnknown(e));
@@ -1766,6 +1825,10 @@ export function useTimeCurveSaleSession(
     walletConnected: Boolean(isConnected && address),
     walletAddress: (address as HexAddress | undefined) ?? undefined,
     walletBalanceWei,
+    refetchWalletBalance: () => {
+      void refetchWalletBalance();
+    },
+    walletBalanceRefreshing: walletBalanceFetching,
     cl8ySpendBounds,
     spendWei,
     spendInputStr,

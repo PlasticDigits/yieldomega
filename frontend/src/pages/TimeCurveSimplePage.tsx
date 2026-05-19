@@ -1116,12 +1116,25 @@ export function TimeCurveSimplePage() {
               {slider}
               <p className="muted timecurve-simple__pay-balance">
                 {session.payWalletBalance.raw !== undefined ? (
-                  <AmountDisplay
-                    raw={String(session.payWalletBalance.raw)}
-                    decimals={session.payWalletBalance.decimals}
-                    leadingLabel={`YOUR ${session.payWalletBalance.symbol.toUpperCase()}:`}
-                    valueMono={false}
-                  />
+                  <span className="timecurve-simple__pay-balance-row">
+                    <AmountDisplay
+                      raw={String(session.payWalletBalance.raw)}
+                      decimals={session.payWalletBalance.decimals}
+                      leadingLabel={`YOUR ${session.payWalletBalance.symbol.toUpperCase()}:`}
+                      valueMono={false}
+                    />
+                    {session.payWith === "cl8y" && (
+                      <button
+                        type="button"
+                        className="timecurve-simple__balance-refresh"
+                        aria-label="Refresh CL8Y balance"
+                        disabled={session.walletBalanceRefreshing}
+                        onClick={() => session.refetchWalletBalance()}
+                      >
+                        {session.walletBalanceRefreshing ? "…" : "↻"}
+                      </button>
+                    )}
+                  </span>
                 ) : (
                   <AmountTripleStack
                     rows={[

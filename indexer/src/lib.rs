@@ -12,5 +12,6 @@ pub mod ingestion;
 pub mod persist;
 pub mod reorg;
 pub mod rpc_http;
+pub mod sale_state;
 
 mod rpc_poll_health;

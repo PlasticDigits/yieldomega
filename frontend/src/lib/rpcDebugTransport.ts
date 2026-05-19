@@ -2,6 +2,7 @@
 
 import type { Transport } from "viem";
 import { fallback, http } from "viem";
+import { wrapTransportWithRealtimeSendRaw } from "@/lib/realtimeRpcTransport";
 
 /** Opt-in: set `VITE_RPC_DEBUG=1` to log JSON-RPC attempts and fallback switches (browser console). */
 export function isRpcDebugEnabled(): boolean {
@@ -57,16 +58,16 @@ export function wrapTransportWithRpcDebug(
   }) as Transport;
 }
 
-/** Single `http()` transport, optionally wrapped for RPC debug logging. */
+/** Single `http()` transport with MegaETH realtime send + optional RPC debug logging. */
 export function httpWithOptionalRpcDebug(url: string | undefined, index: number, total: number): Transport {
-  const inner = url ? http(url) : http();
-  if (!isRpcDebugEnabled()) {
-    return inner;
+  let inner: Transport = wrapTransportWithRealtimeSendRaw(url ? http(url) : http());
+  if (isRpcDebugEnabled()) {
+    inner = wrapTransportWithRpcDebug(
+      { endpointLabel: url ?? "(chain default)", index, total },
+      inner,
+    );
   }
-  return wrapTransportWithRpcDebug(
-    { endpointLabel: url ?? "(chain default)", index, total },
-    inner,
-  );
+  return inner;
 }
 
 /** Ordered `http` transports with viem `fallback` (no ranking), each optionally wrapped for debug logs. */

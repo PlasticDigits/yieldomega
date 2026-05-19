@@ -414,10 +414,35 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **Event watch** | **`useWarbowBpMovingEventWatch`** registers **`useWatchContractEvent`** for **`Buy`** + **`WarBowSteal`**, **`WarBowRevenge`**, **`WarBowFlagClaimed`**, **`WarBowFlagPenalized`** (`timeCurveWarbowBpEventAbi`). |
 | **Simple invalidation** | **`useWarbowPodiumLiveInvalidation`** bumps buy-feed nonce + **`invalidateQueries(TIMECURVE_PODIUMS_QUERY_KEY)`** on every BP-moving log. |
 | **Arena refresh** | Same watch calls **`refreshWarbowIndexerAggregates`** + podium query invalidation; WarBow poll base **1500ms** (was 5000ms). |
-| **BP overlay** | **`overlayWarbowPodiumBpValues`** / **`useWarbowLeaderboardBpOverlay`** replace displayed BP with **`battlePoints(addr)`** when all per-slot reads succeed; ranking order stays indexer-driven. |
+| **Display BP** | Indexer **`battle_points_after`** on podium + leaderboard — **no** RPC **`battlePoints` overlay** ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). |
+| **Submit reads** | **`readFreshWarbowStealPreflight`** / **`readFreshTimeCurveBuySizing`** at click — fresh RPC for writes only. |
 | **Indexer SQL** | **`GET /v1/timecurve/podiums`** WarBow row uses **`fetch_warbow_bp_podium_prediction`** / **`WARBOW_BP_OBSERVATIONS_UNION`** — integration test seeds buy → steal → revenge → flag and asserts live top-3. |
 
 **Automated:** [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts) · [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) (WarBow podium prediction block). **Docs:** [timecurve-views — live WarBow podium](../frontend/timecurve-views.md#live-warbow-podium-simple-arena).
+
+<a id="timecurve-indexer-sale-state-gitlab-216"></a>
+
+### TimeCurve indexer sale state + RPC/indexer split (GitLab #216)
+
+**Intent:** [GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216) — cut redundant **~1 Hz** frontend RPC multicalls for global sale/WarBow **display**; keep fresh RPC only for wallet-scoped reads, manual balance refresh, and submit-time sizing/preflight.
+
+**Invariant (`INV-INDEXER-216-SALE-STATE`):**
+
+| Check | Detail |
+|-------|--------|
+| **Route** | **`GET /v1/timecurve/sale-state`** returns head-RPC snapshot at **`read_block_number`** (same poll as chain-timer); **503** when TimeCurve not in registry. |
+| **Schema** | API **`SCHEMA_VERSION` ≥ **1.23.0**. |
+
+**Invariant (`INV-FRONTEND-216-SALE-STATE`):**
+
+| Check | Detail |
+|-------|--------|
+| **Global sale** | With **`VITE_INDEXER_URL`**, **`useTimeCurveSaleSession`** uses **`useTimecurveSaleStateQuery`** — not **`coreContracts`** RPC poll. |
+| **Wallet** | **`charmWeight`**, **`nextBuyAllowedAt`**, etc. load once + refetch on **account switch** / **Buy** — no 1s poll. |
+| **CL8Y balance** | Load once + inline **↻** manual refresh. |
+| **Writes** | **`realtime_sendRawTransaction`** transport + **`waitForWriteReceipt`** for user txs. |
+
+**Automated:** [`useTimecurveSaleState.ts`](../../frontend/src/pages/timecurve/useTimecurveSaleState.ts) · [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) (503 without chain-timer). **Docs:** [timecurve-views — live WarBow](../frontend/timecurve-views.md#live-warbow-podium-simple-arena).
 
 <a id="timecurve-arena-warbow-chasing-pack-gitlab-189"></a>
 
