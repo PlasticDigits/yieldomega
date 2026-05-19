@@ -96,6 +96,11 @@ export function friendlyRevertMessage(raw: string): string {
       "erc20insufficientallowance",
       "CL8Y allowance was short at inclusion—the curve charges the live price when the transaction lands. Retry once.",
     ],
+    [
+      "stf()",
+      "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds.",
+    ],
+    ["0xe5e8a567", "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds."],
   ];
   for (const [k, v] of map) {
     if (s.includes(k)) {
