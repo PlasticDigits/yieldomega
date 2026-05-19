@@ -47,7 +47,7 @@ import {
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
-import { clearPendingReferralCode, getPendingReferralCode } from "@/lib/referralStorage";
+import { getPendingReferralCode } from "@/lib/referralStorage";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -1570,10 +1570,6 @@ export function useTimeCurveSaleSession(
               },
             });
             setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
-            if (codeHash) {
-              clearPendingReferralCode();
-              setPendingReferralCode(null);
-            }
             refetchAll();
             return;
           }
@@ -1719,10 +1715,6 @@ export function useTimeCurveSaleSession(
         setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
         const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
         setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
-        if (codeHash) {
-          clearPendingReferralCode();
-          setPendingReferralCode(null);
-        }
         refetchAll();
       } catch (e) {
         setBuyError(friendlyRevertFromUnknown(e, { buySubmit: true }));

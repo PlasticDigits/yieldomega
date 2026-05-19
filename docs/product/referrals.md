@@ -32,19 +32,19 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 | Purpose | Storage | Key | JSON payload |
 |---------|---------|-----|----------------|
-| **Pending** referral (captured from `?ref=` or allowed path before a buy) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. |
+| **Pending** referral (captured from `?ref=` or allowed path) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. **No TTL**; **not** cleared after a successful referred buy. Removed only when the user clears site data, or a **new** valid `?ref=` / path capture **overwrites** the entry. |
 | **Registered “my code”** UX cache (plaintext for share links after a successful `registerCode`) | **`localStorage` only** | `yieldomega.myrefcode.v1.<walletLowercase>` | `{ "code": "<normalized>", "ts": <ms> }` — one key per connected wallet (hex address lowercased). |
 
 Spec / QA alignment: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85) (do not assume a single `yieldomega.ref.v1` row covers post-register “my code”; that row is **pending capture** only).
 
-- The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled.
+- The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled. The same pending code is reused on **every** subsequent buy in that browser until overwritten or cleared manually.
 
 ## Attribution (TimeCurve buys)
 
 - The buyer calls **`buy(charmWad, codeHash, plantWarBowFlag)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** / **`buy(charmWad, plantWarBowFlag)`** (no referral split). `plantWarBowFlag` is the WarBow opt-in from [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
 - **Referrer** is `ReferralRegistry.ownerOfCode(codeHash)`. If `codeHash` is non-zero but unregistered, the transaction **reverts**.
 - **Self-referral** (`referrer == buyer`) **reverts**.
-- **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer (the UI may cache a pending code for UX only).
+- **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer. The frontend **does** keep the captured pending code in **`yieldomega.ref.v1`** across successful buys so repeat purchases in the same browser default to the same referrer without revisiting the share link (user may still uncheck “apply referral” for a single tx).
 
 ## Reward math (TimeCurve, canonical)
 
