@@ -53,6 +53,7 @@ import {
   swapMaxInputFromQuoted,
 } from "@/lib/timeCurveKumbayaSwap";
 import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
+import { kumbayaBuyDebugError, logKumbayaBuyDebugHelpOnce } from "@/lib/kumbayaBuyDebug";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -314,6 +315,10 @@ export function useTimeCurveSaleSession(
   /** Bumps once per second while `buyCooldownUxWallUntilMs` is set so wall-clock countdown recomputes. */
   const [buyCooldownUxTick, setBuyCooldownUxTick] = useState(0);
   const [buySubmitBusy, setBuySubmitBusy] = useState(false);
+
+  useEffect(() => {
+    logKumbayaBuyDebugHelpOnce();
+  }, []);
 
   useEffect(() => {
     if (!isConnected || !address) {
@@ -1801,6 +1806,11 @@ export function useTimeCurveSaleSession(
         setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
         refetchAll();
       } catch (e) {
+        kumbayaBuyDebugError("saleSession:buy-submit-failed", e, {
+          payWith,
+          charmWad: cw?.toString(),
+          spendWei: amount?.toString(),
+        });
         setBuyError(friendlyRevertFromUnknown(e, { buySubmit: true }));
       }
     } finally {
