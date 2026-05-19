@@ -2,7 +2,13 @@
 
 import { describe, expect, it } from "vitest";
 import type { TimecurveSaleState } from "@/lib/indexerApi";
-import { coreReadRowsFromSaleState } from "./useTimecurveSaleState";
+import {
+  arenaCoreReadRowsFromSaleState,
+  arenaWarbowPolicyRowsFromSaleState,
+  coreReadRowsFromSaleState,
+  feeRouterSinkRowsFromSaleState,
+  linearCharmPriceRowsFromSaleState,
+} from "./useTimecurveSaleState";
 
 const SAMPLE: TimecurveSaleState = {
   read_block_number: "100",
@@ -40,6 +46,19 @@ const SAMPLE: TimecurveSaleState = {
   warbow_pending_flag_plant_at: "0",
   warbow_flag_claim_bp: "0",
   warbow_flag_silence_sec: "0",
+  initial_timer_sec: "3600",
+  prizes_distributed: false,
+  fee_router: "0x9999999999999999999999999999999999999999",
+  owner: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  linear_charm_base_price_wad: "1000000000000000000",
+  linear_charm_daily_increment_wad: "100000000000000000",
+  fee_router_sinks: [
+    { destination: "0x1111111111111111111111111111111111111111", weight_bps: 2000 },
+    { destination: "0x2222222222222222222222222222222222222222", weight_bps: 1000 },
+    { destination: "0x3333333333333333333333333333333333333333", weight_bps: 3000 },
+    { destination: "0x4444444444444444444444444444444444444444", weight_bps: 0 },
+    { destination: "0x5555555555555555555555555555555555555555", weight_bps: 4000 },
+  ],
 };
 
 describe("coreReadRowsFromSaleState", () => {
@@ -53,5 +72,64 @@ describe("coreReadRowsFromSaleState", () => {
       990000000000000000n,
       10000000000000000000n,
     ]);
+  });
+});
+
+describe("arenaCoreReadRowsFromSaleState", () => {
+  it("maps 27 Arena core rows including supplement fields from sale-state", () => {
+    const rows = arenaCoreReadRowsFromSaleState(SAMPLE);
+    expect(rows).toHaveLength(27);
+    expect(rows[0]?.result).toBe(1000n);
+    expect(rows[2]?.result).toBe(0n);
+    expect(rows[3]?.result).toBe(false);
+    expect(rows[14]?.result).toBe(3600n);
+    expect(rows[18]?.result).toBe(false);
+    expect(rows[20]?.result).toBe("0x9999999999999999999999999999999999999999");
+    expect(rows[26]?.result).toBe("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  });
+});
+
+describe("feeRouterSinkRowsFromSaleState", () => {
+  it("maps five sink rows as destination + weightBps tuples", () => {
+    const rows = feeRouterSinkRowsFromSaleState(SAMPLE);
+    expect(rows).toHaveLength(5);
+    expect(rows[0]?.result).toEqual([
+      "0x1111111111111111111111111111111111111111",
+      2000,
+    ]);
+  });
+});
+
+describe("linearCharmPriceRowsFromSaleState", () => {
+  it("maps base and daily increment wad rows", () => {
+    const rows = linearCharmPriceRowsFromSaleState(SAMPLE);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.result).toBe(1000000000000000000n);
+    expect(rows[1]?.result).toBe(100000000000000000n);
+  });
+});
+
+describe("arenaWarbowPolicyRowsFromSaleState", () => {
+  const rpcRows = [
+    { status: "success" as const, result: [["0x01"], [1n]] },
+    { status: "success" as const, result: 1n },
+    { status: "success" as const, result: 2n },
+    { status: "success" as const, result: 3n },
+    { status: "success" as const, result: 3 },
+    { status: "success" as const, result: 86400n },
+    { status: "success" as const, result: 3600n },
+    { status: "success" as const, result: 4n },
+    { status: "success" as const, result: false },
+  ];
+
+  it("maps 13 WarBow policy rows from sale-state + 9 RPC rows", () => {
+    const rows = arenaWarbowPolicyRowsFromSaleState(SAMPLE, rpcRows);
+    expect(rows).toHaveLength(13);
+    expect(rows[0]?.result).toBe("0x8888888888888888888888888888888888888888");
+    expect(rows[1]?.result).toBe(0n);
+    expect(rows[2]?.result).toEqual([["0x01"], [1n]]);
+    expect(rows[6]?.result).toBe(0n);
+    expect(rows[7]?.result).toBe(0n);
+    expect(rows[12]?.result).toBe(false);
   });
 });

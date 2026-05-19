@@ -79,6 +79,19 @@ export function configuredTargetChainId(): number {
   return resolveChainRpcConfig(import.meta.env.VITE_CHAIN_ID, import.meta.env.VITE_RPC_URL).id;
 }
 
+/** Ordered HTTP RPC URLs used by wagmi/viem transports for the configured chain. */
+export function configuredRpcHttpUrls(): string[] {
+  const { id, defaultRpcHttp } = resolveChainRpcConfig(
+    import.meta.env.VITE_CHAIN_ID,
+    import.meta.env.VITE_RPC_URL,
+  );
+  const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
+  const envBase = envRpcUrls.length > 0 ? envRpcUrls : [defaultRpcHttp];
+  return id === MEGAETH_MAINNET_CHAIN_ID
+    ? megaethMainnetOrderedRpcUrls(envBase)
+    : envBase;
+}
+
 /** Target dev/test chain from `VITE_CHAIN_ID` + `VITE_RPC_URL` (MegaETH or local anvil). */
 export function configuredChain() {
   const { id, defaultRpcHttp } = resolveChainRpcConfig(

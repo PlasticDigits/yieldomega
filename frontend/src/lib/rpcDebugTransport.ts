@@ -2,6 +2,10 @@
 
 import type { Transport } from "viem";
 import { fallback, http } from "viem";
+import {
+  assertFilterRpcMethodAllowedForUrl,
+  getFilterMethodExcludesForRpcUrl,
+} from "@/lib/rpcFilterCapability";
 import { wrapTransportWithRealtimeSendRaw } from "@/lib/realtimeRpcTransport";
 
 /** Opt-in: set `VITE_RPC_DEBUG=1` to log JSON-RPC attempts and fallback switches (browser console). */
@@ -25,6 +29,43 @@ export function formatJsonRpcMethodLabel(body: unknown): string {
     return typeof m === "string" ? m : "?";
   }
   return "?";
+}
+
+function forEachJsonRpcMethod(body: unknown, fn: (method: string) => void): void {
+  if (Array.isArray(body)) {
+    for (const item of body) {
+      if (
+        item &&
+        typeof item === "object" &&
+        "method" in item &&
+        typeof (item as { method: unknown }).method === "string"
+      ) {
+        fn((item as { method: string }).method);
+      }
+    }
+    return;
+  }
+  if (body && typeof body === "object" && "method" in body) {
+    const m = (body as { method: unknown }).method;
+    if (typeof m === "string") fn(m);
+  }
+}
+
+/** Skips filter JSON-RPC on endpoints that failed the startup filter probe (viem fallback). */
+export function wrapTransportWithFilterCapabilityGate(
+  rpcUrl: string | undefined,
+  inner: Transport,
+): Transport {
+  return ((config) => {
+    const base = inner(config);
+    return {
+      ...base,
+      request: async (body, options) => {
+        forEachJsonRpcMethod(body, (method) => assertFilterRpcMethodAllowedForUrl(rpcUrl, method));
+        return base.request(body, options);
+      },
+    };
+  }) as Transport;
 }
 
 /**
@@ -60,7 +101,15 @@ export function wrapTransportWithRpcDebug(
 
 /** Single `http()` transport with MegaETH realtime send + optional RPC debug logging. */
 export function httpWithOptionalRpcDebug(url: string | undefined, index: number, total: number): Transport {
-  let inner: Transport = wrapTransportWithRealtimeSendRaw(url ? http(url) : http());
+  const filterExcludes = url ? getFilterMethodExcludesForRpcUrl(url) : [];
+  let inner: Transport = wrapTransportWithFilterCapabilityGate(
+    url,
+    wrapTransportWithRealtimeSendRaw(
+      url
+        ? http(url, { methods: { exclude: filterExcludes } })
+        : http(),
+    ),
+  );
   if (isRpcDebugEnabled()) {
     inner = wrapTransportWithRpcDebug(
       { endpointLabel: url ?? "(chain default)", index, total },

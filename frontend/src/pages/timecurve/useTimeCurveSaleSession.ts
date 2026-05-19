@@ -67,6 +67,7 @@ import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   coreReadRowsFromSaleState,
+  linearCharmPriceRowsFromSaleState,
   useTimecurveSaleStateQuery,
 } from "@/pages/timecurve/useTimecurveSaleState";
 import type { EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
@@ -622,6 +623,13 @@ export function useTimeCurveSaleSession(
     return undefined;
   }, [podiumPoolR]);
 
+  const linearPriceReadsFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (!indexerOn || !saleStateQuery.data) {
+      return undefined;
+    }
+    return linearCharmPriceRowsFromSaleState(saleStateQuery.data);
+  }, [indexerOn, saleStateQuery.data]);
+
   const {
     data: linearPriceReadsRaw,
     refetch: refetchLinearPriceReads,
@@ -641,12 +649,13 @@ export function useTimeCurveSaleSession(
         ]
       : [],
     query: {
-      enabled: Boolean(latchedLinearCharmAddr),
+      enabled: Boolean(latchedLinearCharmAddr) && !indexerOn,
       refetchInterval: () => getRpcBackoffPollMs(1000),
       placeholderData: (previous) => previous,
     },
   });
-  const linearPriceReads = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
+  const linearPriceReadsRpc = linearPriceReadsRaw as readonly ContractReadRow[] | undefined;
+  const linearPriceReads = indexerOn ? linearPriceReadsFromIndexer : linearPriceReadsRpc;
   const [basePriceWadR, dailyIncrementWadR] = linearPriceReads ?? [];
 
   const { data: tokenDecimals } = useReadContract({
