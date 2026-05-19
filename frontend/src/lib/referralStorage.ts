@@ -13,8 +13,29 @@ const REF_STORAGE = "yieldomega.ref.v1";
 
 const MY_REF_KEY_PREFIX = "yieldomega.myrefcode.v1." as const;
 
+type PendingReferralListener = () => void;
+const pendingReferralListeners = new Set<PendingReferralListener>();
+
 type MyRefCodeListener = () => void;
 const myRefCodeListeners = new Set<MyRefCodeListener>();
+
+/** Subscribe to pending referral writes (`applyReferralUrlCapture`, `clearPendingReferralCode`). */
+export function subscribePendingReferralCode(callback: PendingReferralListener): () => void {
+  pendingReferralListeners.add(callback);
+  return () => {
+    pendingReferralListeners.delete(callback);
+  };
+}
+
+function notifyPendingReferralCache(): void {
+  for (const cb of pendingReferralListeners) {
+    try {
+      cb();
+    } catch {
+      /* ignore listener errors */
+    }
+  }
+}
 
 /** Subscribe to `setStoredMyReferralCodeForWallet` writes (same-tab; for React `useSyncExternalStore`). */
 export function subscribeMyReferralCodeCache(callback: MyRefCodeListener): () => void {
@@ -83,6 +104,7 @@ function writePendingToStores(code: string): void {
     const payload = JSON.stringify({ code, ts: Date.now() });
     window.localStorage.setItem(REF_STORAGE, payload);
     window.sessionStorage.setItem(REF_STORAGE, payload);
+    notifyPendingReferralCache();
   } catch {
     /* ignore quota / private mode */
   }
@@ -161,6 +183,7 @@ export function clearPendingReferralCode(): void {
   try {
     window.localStorage.removeItem(REF_STORAGE);
     window.sessionStorage.removeItem(REF_STORAGE);
+    notifyPendingReferralCache();
   } catch {
     /* ignore */
   }

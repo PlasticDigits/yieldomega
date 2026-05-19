@@ -14,6 +14,7 @@ describe("extractReferralCodeFromPathname", () => {
 
   it("accepts a code under /timecurve when not a product sub-route", () => {
     expect(extractReferralCodeFromPathname("/timecurve/abc12")).toBe("abc12");
+    expect(extractReferralCodeFromPathname("/timecurve/test1")).toBe("test1");
   });
 
   it("returns null for arena and protocol", () => {

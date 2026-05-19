@@ -2704,6 +2704,28 @@ label:has(input[type="radio"]:disabled) {
   text-decoration: none;
 }
 
+.pending-referral-site-lock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.65rem;
+  width: 100%;
+  padding: 0.35rem 0.75rem 0;
+}
+
+.pending-referral-site-lock__hint {
+  font-size: 0.85rem;
+}
+
+.timecurve-simple__referral--locked {
+  margin-bottom: 0.75rem;
+}
+
+.timecurve-simple__referral-locked-copy {
+  margin: 0;
+}
+
 /* Outbound anchor: underlined label + open-in-new glyph (not pill chrome). */
 .external-text-link {
   display: inline-flex;

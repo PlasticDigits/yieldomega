@@ -31,7 +31,7 @@ import {
   weth9Abi,
 } from "@/lib/abis";
 import { hashReferralCode, normalizeReferralCode } from "@/lib/referralCode";
-import { getPendingReferralCode } from "@/lib/referralStorage";
+import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
@@ -186,7 +186,7 @@ export function useTimeCurveArenaModel() {
   const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
   const [useReferral, setUseReferral] = useState(true);
   const [plantWarBowFlag, setPlantWarBowFlag] = useState(false);
-  const [pendingRef, setPendingRef] = useState<string | null>(null);
+  const pendingRef = usePendingReferralCode();
   const [warbowLb, setWarbowLb] = useState<WarbowLeaderboardItem[] | null>(null);
   /** Bumps when indexer WarBow leaderboard refreshes so steal-hero reads re-fetch ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
   const [warbowStealIndexerNonce, setWarbowStealIndexerNonce] = useState(0);
@@ -329,10 +329,6 @@ export function useTimeCurveArenaModel() {
         whileHover: { scale: 1.015, y: -2 },
         whileTap: { scale: 0.985, y: 1 },
       };
-
-  useEffect(() => {
-    setPendingRef(getPendingReferralCode());
-  }, []);
 
   useEffect(() => {
     if (!isConnected || !address) {
@@ -3502,7 +3498,6 @@ export function useTimeCurveArenaModel() {
     setIndexerNote,
     setLoadingMoreBuys,
     setPayWith,
-    setPendingRef,
     setPrizeDist,
     setPrizePayouts,
     setPvpErr,
