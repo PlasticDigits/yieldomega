@@ -77,6 +77,16 @@ fn test_sale_state_snapshot(read_block: &str, block_ts: &str) -> TimecurveSaleSt
         warbow_pending_flag_plant_at: "0".into(),
         warbow_flag_claim_bp: "0".into(),
         warbow_flag_silence_sec: "0".into(),
+        initial_timer_sec: "0".into(),
+        prizes_distributed: false,
+        fee_router: format!("{:#x}", Address::ZERO),
+        owner: format!("{:#x}", Address::ZERO),
+        linear_charm_base_price_wad: "0".into(),
+        linear_charm_daily_increment_wad: "0".into(),
+        fee_router_sinks: std::array::from_fn(|_| yieldomega_indexer::sale_state::FeeRouterSinkSnapshot {
+            destination: format!("{:#x}", Address::ZERO),
+            weight_bps: 0,
+        }),
     }
 }
 

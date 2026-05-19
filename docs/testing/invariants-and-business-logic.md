@@ -431,13 +431,14 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | Check | Detail |
 |-------|--------|
 | **Route** | **`GET /v1/timecurve/sale-state`** returns head-RPC snapshot at **`read_block_number`** (same poll as chain-timer); **503** when TimeCurve not in registry. |
-| **Schema** | API **`SCHEMA_VERSION` ≥ **1.23.0**. |
+| **Schema** | API **`SCHEMA_VERSION` ≥ **1.24.0** (**`fee_router_sinks`**, **`linear_charm_*`**, Arena supplement fields on sale-state). |
 
 **Invariant (`INV-FRONTEND-216-SALE-STATE`):**
 
 | Check | Detail |
 |-------|--------|
-| **Global sale** | With **`VITE_INDEXER_URL`**, **`useTimeCurveSaleSession`** uses **`useTimecurveSaleStateQuery`** — not **`coreContracts`** RPC poll. |
+| **Global sale (Simple)** | With **`VITE_INDEXER_URL`**, **`useTimeCurveSaleSession`** uses **`useTimecurveSaleStateQuery`** — not **`coreContracts`** RPC poll. |
+| **Global sale (Arena)** | With **`VITE_INDEXER_URL`**, **`useTimeCurveArenaModel`** uses **`useTimecurveSaleStateQuery`** + **`arenaCoreReadRowsFromSaleState`** — not **`mergedArenaTc`** ~1 Hz core/policy RPC; **`feeRouterSinkRowsFromSaleState`** + **`linearCharmPriceRowsFromSaleState`** replace FeeRouter **`sinks(i)`** and **`LinearCharmPrice`** ~1 Hz polls; **9** WarBow policy constants load once (schema **≥ 1.24.0** adds **`fee_router_sinks`**, **`linear_charm_*`**, **`initial_timer_sec`**, **`prizes_distributed`**, **`fee_router`**, **`owner`** on sale-state). |
 | **Wallet** | **`charmWeight`**, **`nextBuyAllowedAt`**, etc. load once + refetch on **account switch** / **Buy** — no 1s poll. |
 | **CL8Y balance** | Load once + inline **↻** manual refresh. |
 | **Writes** | **`realtime_sendRawTransaction`** transport + **`waitForWriteReceipt`** for user txs. |
