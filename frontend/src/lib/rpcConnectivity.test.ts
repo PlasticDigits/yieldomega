@@ -5,6 +5,7 @@ import {
   RPC_OFFLINE_FAILURE_STREAK,
   getRpcBackoffPollMs,
   getRpcFailureStreak,
+  isRpcFailureStreakOffline,
   reportRpcFetchAttempt,
   reportRpcRateLimited,
   resetRpcConnectivityForTests,
@@ -85,5 +86,29 @@ describe("reportRpcRateLimited", () => {
     reportRpcRateLimited();
     expect(getRpcFailureStreak()).toBe(5);
     expect(getRpcBackoffPollMs(1000)).toBe(30_000);
+  });
+});
+
+describe("isRpcFailureStreakOffline", () => {
+  beforeEach(() => {
+    resetRpcConnectivityForTests();
+  });
+
+  afterEach(() => {
+    resetRpcConnectivityForTests();
+  });
+
+  it("is false below threshold and true at threshold", () => {
+    expect(isRpcFailureStreakOffline()).toBe(false);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-30T12:00:00Z"));
+    reportRpcFetchAttempt(false);
+    vi.setSystemTime(new Date("2026-04-30T12:00:01Z"));
+    reportRpcFetchAttempt(false);
+    expect(isRpcFailureStreakOffline()).toBe(false);
+    vi.setSystemTime(new Date("2026-04-30T12:00:02Z"));
+    reportRpcFetchAttempt(false);
+    expect(isRpcFailureStreakOffline()).toBe(true);
+    vi.useRealTimers();
   });
 });

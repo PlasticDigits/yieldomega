@@ -523,6 +523,27 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
+<a id="manual-qa-issue-221"></a>
+
+## Arena — RPC retry storm under degraded endpoints (GitLab #221)
+
+**Goal:** With **`VITE_INDEXER_URL`** set (production shape), **`/timecurve/arena`** must not hammer JSON-RPC at thousands of requests per second when one or more **`VITE_RPC_URL`** endpoints are slow or failing.
+
+### Preconditions
+
+- Production or staging build with **`VITE_INDEXER_URL`** and MegaETH **`VITE_CHAIN_ID`**.
+- Chrome DevTools → **Network** → **Fetch/XHR** filter.
+
+### Checklist
+
+1. Open **`/timecurve/arena`** in a fresh Incognito tab; clear the network log; wait **60 s**.
+2. Confirm total JSON-RPC-ish traffic stays **orders of magnitude below** Simple **`/timecurve`** on the same session (baseline from [#221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221): Simple ~6k/min vs broken Arena ~127k/min).
+3. Optionally block or throttle the **first** RPC host in **`VITE_RPC_URL`** (DevTools **Request blocking** or offline that host only): within **~3 s** of failures, confirm head/block polls **slow** (5s tier) rather than staying at ~1 Hz with endless **(pending)** / **(failed)** rows.
+4. With indexer set, confirm **no** sustained **`eth_getLogs`** / filter polling for WarBow events (log watches should be off — live WarBow comes from indexer HTTP).
+5. After RPC recovers, confirm Arena WarBow rank / feed still updates within **one or two** indexer poll intervals ([§182](#manual-qa-issue-182)).
+
+**Doc map:** [timecurve-views §221](../frontend/timecurve-views.md#arena-rpc-backoff-gitlab-221) · [invariants — **`INV-FRONTEND-221-ARENA-RPC`**](invariants-and-business-logic.md#arena-rpc-retry-storm-gitlab-221) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-182"></a>
 
 ## Arena — WarBow indexer rank + feed refresh (GitLab #182)

@@ -311,12 +311,27 @@ inside their card rather than forcing horizontal scroll.
 While **`sale_ended`** is **false**, the **Simple** reserve **WarBow** card and **Arena** chasing-pack ladder must stay aligned with **live Battle Points**, not only the most recent **`Buy`** row in the live feed:
 
 1. **Ranking source:** **`GET /v1/timecurve/podiums`** (WarBow row) and **`GET /v1/timecurve/warbow/leaderboard`** — indexer **`WARBOW_BP_OBSERVATIONS_UNION`** (buys + steal + revenge + flag claim/penalty).
-2. **Immediate invalidation:** **`useWarbowBpMovingEventWatch`** watches **`Buy`**, **`WarBowSteal`**, **`WarBowRevenge`**, **`WarBowFlagClaimed`**, and **`WarBowFlagPenalized`** — invalidates **`TIMECURVE_PODIUMS_QUERY_KEY`** and refetches Arena WarBow aggregates on **every** BP-moving log (not **`WarBowGuardActivated`** — guard does not mutate BP).
+2. **Immediate invalidation:** With **`VITE_INDEXER_URL` unset**, **`useWarbowBpMovingEventWatch`** watches **`Buy`**, **`WarBowSteal`**, **`WarBowRevenge`**, **`WarBowFlagClaimed`**, and **`WarBowFlagPenalized`** — invalidates **`TIMECURVE_PODIUMS_QUERY_KEY`** and refetches Arena WarBow aggregates on **every** BP-moving log (not **`WarBowGuardActivated`** — guard does not mutate BP). With the indexer set, those RPC log pollers stay **off** ([#221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221)) — **~1.5s** indexer WarBow polls + coalesced HTTP refresh cover live BP instead.
 3. **Displayed BP digits:** trust indexer **`battle_points_after`** on podium and leaderboard rows — **no** parallel **`battlePoints` RPC overlay ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
 4. **Poll cadence:** Simple podiums **~1s** indexer backoff; Arena WarBow leaderboard/feed **~1.5s** backoff while mounted.
 5. **Submit-time safety:** **`readFreshWarbowStealPreflight`** and **`readFreshTimeCurveBuySizing`** still use fresh RPC immediately before writes ([#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82), [#101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101)).
 
-**Spec ↔ test:** [invariants § live WarBow podium](../testing/invariants-and-business-logic.md#live-warbow-podium-simple-arena-gitlab-warbow-podium-live) · [`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts) · [`warbowPodiumLive.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.ts) · [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts).
+**Spec ↔ test:** [invariants § live WarBow podium](../testing/invariants-and-business-logic.md#live-warbow-podium-simple-arena-gitlab-warbow-podium-live) · [invariants §221](../testing/invariants-and-business-logic.md#arena-rpc-retry-storm-gitlab-221) · [`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts) · [`warbowPodiumLive.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.ts) · [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts).
+
+<a id="arena-rpc-backoff-gitlab-221"></a>
+
+## Arena RPC backoff under degraded endpoints (GitLab #221)
+
+Production **`/timecurve/arena`** with **`VITE_INDEXER_URL`** must not generate an uncontrolled JSON-RPC retry storm when wallet RPC endpoints degrade (viem **fallback** across **`VITE_RPC_URL`** × react-query **retry** × six **`useWatchContractEvent`** pollers × **`useBlock`** head reads).
+
+**Mitigations (`INV-FRONTEND-221-ARENA-RPC`):**
+
+1. **`LatestBlockProvider`** — single MegaETH **`useBlock`** poll reports health into **`rpcConnectivity`** and backs off **5s → 15s → 30s** via **`useRpcBackoffPollInterval`**.
+2. **`useWarbowBpMovingEventWatch`** — **disabled** when the indexer is configured; **disabled** while RPC health is offline-tier.
+3. **`rpcBackedReadQueryOptions`** — Arena no-indexer multicalls (`mergedArenaTc`, FeeRouter sinks, **`LinearCharmPrice`**) use reactive poll intervals and **`retry: 0`** during offline-tier backoff.
+4. **Submit-time reads** unchanged — **`readFreshWarbowStealPreflight`** / **`readFreshTimeCurveBuySizing`** still hit RPC at click.
+
+**Manual QA:** [manual-qa-checklists §221](../testing/manual-qa-checklists.md#manual-qa-issue-221).
 
 1. **Arena (sale live):** there is **no** public “refresh snapshot” write path — compare **`warbowLadderPodium()`** vs live **`battlePoints`** reads when interpreting standings.
 2. **Operators / post-end:** use **`/timecurve/protocol` → WarBow podium (governance)** to load **`GET /v1/timecurve/warbow/refresh-candidates`** (indexer, schema ≥ 1.15.1; post-end hint omission + **`sale_ended`** field — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170); **unbounded DISTINCT** — [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)) as a **reference** while composing **`finalizeWarbowPodium(first, second, third)`** calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)).

@@ -18,8 +18,9 @@ import {
   getIndexerBackoffPollMs,
   reportIndexerFetchAttempt,
 } from "@/lib/indexerConnectivity";
+import { useRpcBackoffPollInterval, useRpcConnectivity } from "@/hooks/useRpcConnectivity";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
+import { rpcBackedReadQueryOptions } from "@/lib/rpcReadQueryOptions";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 
 export const TIMECURVE_PODIUMS_QUERY_KEY = ["timecurve-podiums"] as const;
@@ -80,11 +81,18 @@ function rowsFromRpcData(rawData: readonly ContractReadRow[] | undefined): Podiu
 /**
  * Invalidate live reads when WarBow-related TimeCurve logs arrive (BP-moving txs, guard activations).
  * Shared by Simple (podium panel + buy feed) and Arena (WarBow leaderboard + battle feed).
+ *
+ * Skipped when **`VITE_INDEXER_URL`** is set (indexer polls + coalesced HTTP refresh cover live WarBow)
+ * or when shared RPC health is offline-tier ([#221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221)).
  */
 export function useWarbowBpMovingEventWatch(
   tc: `0x${string}` | undefined,
   onBpMovingEvent: () => void,
 ) {
+  const indexerOn = Boolean(indexerBaseUrl());
+  const { isOffline: isRpcOffline } = useRpcConnectivity();
+  const rpcEventsEnabled = Boolean(tc) && !indexerOn && !isRpcOffline;
+
   const handleLogs = useCallback(() => {
     onBpMovingEvent();
   }, [onBpMovingEvent]);
@@ -93,7 +101,7 @@ export function useWarbowBpMovingEventWatch(
     address: tc,
     abi: timeCurveBuyEventAbi,
     eventName: "Buy",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
 
@@ -101,35 +109,35 @@ export function useWarbowBpMovingEventWatch(
     address: tc,
     abi: timeCurveWarbowBpEventAbi,
     eventName: "WarBowSteal",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
     abi: timeCurveWarbowBpEventAbi,
     eventName: "WarBowRevenge",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
     abi: timeCurveWarbowBpEventAbi,
     eventName: "WarBowFlagClaimed",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
     abi: timeCurveWarbowBpEventAbi,
     eventName: "WarBowFlagPenalized",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
     abi: timeCurveWarbowBpEventAbi,
     eventName: "WarBowGuardActivated",
-    enabled: Boolean(tc),
+    enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
 }
@@ -159,6 +167,8 @@ export function useWarbowPodiumLiveInvalidation(
 /** Prefer indexer head cache (~1s RPC poll server-side); fall back to direct reads when `VITE_INDEXER_URL` is unset. */
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const indexerOn = Boolean(indexerBaseUrl());
+  const { isOffline: isRpcOffline } = useRpcConnectivity();
+  const rpcPollMs = useRpcBackoffPollInterval(1000);
 
   const indexerQuery = useQuery({
     queryKey: TIMECURVE_PODIUMS_QUERY_KEY,
@@ -186,7 +196,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     contracts: contracts as readonly unknown[],
     query: {
       enabled: Boolean(tc) && !indexerOn,
-      refetchInterval: () => getRpcBackoffPollMs(1000),
+      ...rpcBackedReadQueryOptions(rpcPollMs, isRpcOffline),
       placeholderData: (previous) => previous,
     },
   });

@@ -445,6 +445,24 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 
 **Automated:** [`useTimecurveSaleState.ts`](../../frontend/src/pages/timecurve/useTimecurveSaleState.ts) · [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) (503 without chain-timer). **Docs:** [timecurve-views — live WarBow](../frontend/timecurve-views.md#live-warbow-podium-simple-arena).
 
+<a id="arena-rpc-retry-storm-gitlab-221"></a>
+
+### Arena RPC retry storm under degraded endpoints (GitLab #221)
+
+**Intent:** [GitLab #221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221) — with **`VITE_INDEXER_URL`** set, Arena must not keep **six** **`useWatchContractEvent`** pollers + uncapped **`useBlock`** head reads hammering JSON-RPC when endpoints degrade (viem **fallback × react-query retry** amplification).
+
+**Invariant (`INV-FRONTEND-221-ARENA-RPC`):**
+
+| Check | Detail |
+|-------|--------|
+| **Health driver** | **`LatestBlockProvider`** reports **`useBlock`** outcomes via **`useRpcQueryHealthForRefetch`** → shared **`reportRpcFetchAttempt`** ([`rpcConnectivity.ts`](../../frontend/src/lib/rpcConnectivity.ts)). |
+| **Reactive backoff** | **`useRpcBackoffPollInterval`** / **`useRpcConnectivity`** subscribe to **`subscribeRpcConnectivity`** so MegaETH head poll and Arena no-indexer multicalls reschedule **5s → 15s → 30s** without waiting for an unrelated query to finish. |
+| **Indexer mode** | **`useWarbowBpMovingEventWatch`** is **off** when **`VITE_INDEXER_URL`** is set — indexer WarBow polls + coalesced HTTP refresh cover live BP ([`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts)). |
+| **Offline tier** | While **`isRpcFailureStreakOffline()`**, WarBow log watches stay **disabled**; **`rpcBackedReadQueryOptions`** sets **`retry: 0`** on RPC reads to avoid react-query doubling viem fallback fan-out. |
+| **Policy supplement** | Indexer-on Arena **`arenaWarbowPolicyRpc`** one-shot multicall reports health for streak accounting. |
+
+**Automated:** [`rpcConnectivity.test.ts`](../../frontend/src/lib/rpcConnectivity.test.ts) · [`rpcReadQueryOptions.test.ts`](../../frontend/src/lib/rpcReadQueryOptions.test.ts). **Manual QA:** [`manual-qa-checklists.md#manual-qa-issue-221`](manual-qa-checklists.md#manual-qa-issue-221). **Docs:** [timecurve-views §221](../frontend/timecurve-views.md#arena-rpc-backoff-gitlab-221).
+
 <a id="timecurve-arena-warbow-chasing-pack-gitlab-189"></a>
 
 ### TimeCurve Arena — WarBow Chasing pack (full indexed ladder) (GitLab #189)
