@@ -6,11 +6,13 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
 import { formatAmountTriple, formatLocaleInteger } from "@/lib/formatAmount";
+import { fetchReferralReferrerLeaderboard, type ReferralReferrerLeaderboardItem } from "@/lib/indexerApi";
 import {
-  fetchReferralReferrerLeaderboard,
-  type ReferralReferrerLeaderboardItem,
-  type ReferralReferrerLeaderboardPage,
-} from "@/lib/indexerApi";
+  aggregateReferralLeaderboardGlobalTotalsFromItems,
+  fetchReferralReferrerLeaderboardAllItems,
+  parseReferralLeaderboardGlobalTotals,
+  type ReferralLeaderboardGlobalTotals,
+} from "@/lib/referralLeaderboardGlobals";
 import {
   REFERRAL_LEADERBOARD_PAGE_SIZE,
   referralLeaderboardPageIndex,
@@ -22,28 +24,12 @@ import { ReferralLeaderboardPagination } from "@/pages/referrals/ReferralLeaderb
 
 const REF_CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
-type GlobalTotals = {
-  totalCodesRegistered: bigint;
-  totalBuys: bigint;
-  totalCharmWad: bigint;
-  totalReferrers: number;
-};
-
 type Props = { className?: string };
-
-function globalsFromPage(page: ReferralReferrerLeaderboardPage): GlobalTotals {
-  return {
-    totalCodesRegistered: BigInt(page.total_codes_registered ?? "0"),
-    totalBuys: BigInt(page.total_referred_buys ?? "0"),
-    totalCharmWad: BigInt(page.total_referrer_charm_wad ?? "0"),
-    totalReferrers: page.total ?? 0,
-  };
-}
 
 export function ReferralLeaderboardSection({ className }: Props) {
   const { address } = useAccount();
   const [items, setItems] = useState<ReferralReferrerLeaderboardItem[] | null>(null);
-  const [globals, setGlobals] = useState<GlobalTotals | null>(null);
+  const [globals, setGlobals] = useState<ReferralLeaderboardGlobalTotals | null>(null);
   const [offset, setOffset] = useState(0);
   const [pageLoading, setPageLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -66,7 +52,22 @@ export function ReferralLeaderboardSection({ className }: Props) {
         return;
       }
       setItems(page.items);
-      setGlobals(globalsFromPage(page));
+      const fromPage = parseReferralLeaderboardGlobalTotals(page);
+      if (fromPage) {
+        setGlobals(fromPage);
+      } else if (pageOffset === 0) {
+        const allItems = await fetchReferralReferrerLeaderboardAllItems();
+        if (!cancelled() && allItems) {
+          setGlobals(aggregateReferralLeaderboardGlobalTotalsFromItems(allItems));
+        } else if (!cancelled()) {
+          setGlobals({
+            totalCodesRegistered: 0n,
+            totalBuys: 0n,
+            totalCharmWad: 0n,
+            totalReferrers: 0,
+          });
+        }
+      }
     } catch {
       if (!cancelled()) {
         setItems([]);
@@ -111,7 +112,8 @@ export function ReferralLeaderboardSection({ className }: Props) {
 
   const topCharm = formatAmountTriple(globals?.totalCharmWad ?? 0n, 18);
   const showSummary = globals !== null && !initialLoading && !err;
-  const showEmpty = showSummary && globals.totalReferrers === 0;
+  const showEmpty =
+    showSummary && globals.totalReferrers === 0 && (items === null || items.length === 0);
   const showList = showSummary && items !== null && items.length > 0;
 
   const onPageChange = (page: number) => {
@@ -168,7 +170,7 @@ function LeaderboardSummary({
   globals,
   topCharmAbbrev,
 }: {
-  globals: GlobalTotals | null;
+  globals: ReferralLeaderboardGlobalTotals | null;
   topCharmAbbrev: string;
 }) {
   return (

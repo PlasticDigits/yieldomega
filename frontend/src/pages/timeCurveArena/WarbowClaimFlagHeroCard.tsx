@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { warbowClaimFlagHelperLines } from "@/lib/warbowClaimFlagCopy";
-import { formatCountdown } from "@/pages/timecurve/formatTimer";
+import { WarbowClaimFlagButton } from "./WarbowClaimFlagButton";
 
 type Props = {
   /** Viewer holds `warbowPendingFlagOwner` and `warbowPendingFlagPlantAt > 0`. */
@@ -32,25 +32,6 @@ export function WarbowClaimFlagHeroCard({
   isWriting,
   runWarBowClaimFlag,
 }: Props) {
-  const writesPaused = buyFeeRoutingEnabled === false;
-  const canPressClaim =
-    isConnected && saleActive && !writesPaused && !isWriting && canClaimWarBowFlag;
-
-  const silenceRemainingSec = useMemo(() => {
-    const nowFloor = BigInt(Math.floor(ledgerNowSec));
-    if (nowFloor >= flagSilenceEndSec) {
-      return 0;
-    }
-    return Number(flagSilenceEndSec - nowFloor);
-  }, [ledgerNowSec, flagSilenceEndSec]);
-
-  const claimButtonLabel = useMemo(() => {
-    if (canClaimWarBowFlag) {
-      return "Claim flag";
-    }
-    return `Claim flag ${formatCountdown(silenceRemainingSec)}`;
-  }, [canClaimWarBowFlag, silenceRemainingSec]);
-
   const helperLines = useMemo(
     () => warbowClaimFlagHelperLines({ claimBp: warbowFlagClaimBp }),
     [warbowFlagClaimBp],
@@ -73,16 +54,17 @@ export function WarbowClaimFlagHeroCard({
         You planted the WarBow flag. Wait out the silence window, then claim to bank{" "}
         {formatLocaleInteger(warbowFlagClaimBp)} Battle Points.
       </p>
-      <button
-        type="button"
-        className="btn-secondary btn-secondary--priority warbow-hero-card__claim-flag-cta"
-        disabled={!canPressClaim}
-        onClick={() => void runWarBowClaimFlag()}
-        aria-live={canClaimWarBowFlag ? undefined : "polite"}
-        data-testid="warbow-hero-claim-flag-submit"
-      >
-        <span className="warbow-hero-card__claim-flag-cta-label">{claimButtonLabel}</span>
-      </button>
+      <WarbowClaimFlagButton
+        canClaimWarBowFlag={canClaimWarBowFlag}
+        ledgerNowSec={ledgerNowSec}
+        flagSilenceEndSec={flagSilenceEndSec}
+        saleActive={saleActive}
+        buyFeeRoutingEnabled={buyFeeRoutingEnabled}
+        isConnected={isConnected}
+        isWriting={isWriting}
+        onClaim={runWarBowClaimFlag}
+        testId="warbow-hero-claim-flag-submit"
+      />
       <div className="warbow-hero-card__claim-flag-help" data-testid="warbow-hero-claim-flag-help">
         <p>{helperLines.rewardLine}</p>
         <p>{helperLines.penaltyLine}</p>

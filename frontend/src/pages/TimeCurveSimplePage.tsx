@@ -46,6 +46,7 @@ import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
+import { WarbowClaimFlagButton } from "@/pages/timeCurveArena/WarbowClaimFlagButton";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 import { TimeCurveSimpleAgentCard } from "@/pages/timecurve/TimeCurveSimpleAgentCard";
 import { TimeCurveBuyProjectedEffects } from "@/pages/timecurve/TimeCurveBuyProjectedEffects";
@@ -1223,6 +1224,21 @@ export function TimeCurveSimplePage() {
                     dismiss
                   </button>
                 </StatusMessage>
+              )}
+
+              {session.showWarbowClaimFlagButton && session.chainNowSec !== undefined && (
+                <WarbowClaimFlagButton
+                  canClaimWarBowFlag={session.canClaimWarBowFlag}
+                  ledgerNowSec={session.chainNowSec}
+                  flagSilenceEndSec={session.warbowFlagSilenceEndSec}
+                  saleActive={session.phase === "saleActive"}
+                  buyFeeRoutingEnabled={session.buyFeeRoutingEnabled}
+                  isConnected={session.walletConnected}
+                  isWriting={session.isWriting || session.buySubmitBusy}
+                  onClaim={() => void session.submitClaimWarBowFlag()}
+                  className="btn-secondary btn-secondary--priority timecurve-simple__claim-flag-cta"
+                  testId="timecurve-simple-claim-flag-submit"
+                />
               )}
 
             </>

@@ -58,6 +58,7 @@ import {
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeCurveBuyAmount";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
+import { deriveWarbowClaimFlagFields } from "@/lib/warbowClaimFlagState";
 import {
   buyCooldownWallUntilMsFromNow,
   chainSecondsAtReceiptBlock,
@@ -234,6 +235,11 @@ export type UseTimeCurveSaleSession = {
   /** WarBow flag silence + claim BP reads (ADVANCED panel copy); undefined until core reads succeed. */
   warbowFlagClaimBp: bigint | undefined;
   warbowFlagSilenceSec: bigint | undefined;
+  /** Pending flag holder with an active plant timestamp during a live sale. */
+  showWarbowClaimFlagButton: boolean;
+  canClaimWarBowFlag: boolean;
+  warbowFlagSilenceEndSec: bigint;
+  submitClaimWarBowFlag: () => Promise<void>;
   isWriting: boolean;
   buyError: string | null;
   clearBuyError: () => void;
@@ -1461,6 +1467,28 @@ export function useTimeCurveSaleSession(
       ? (warbowPendingFlagPlantAtR.result as bigint)
       : 0n;
 
+  const warbowFlagSilenceSecEffective = warbowFlagSilenceSec ?? 300n;
+
+  const warbowClaimFlagFields = useMemo(
+    () =>
+      deriveWarbowClaimFlagFields({
+        saleActive: phase === "saleActive",
+        walletAddress: address,
+        warbowPendingFlagOwner,
+        warbowPendingFlagPlantAt,
+        warbowFlagSilenceSec: warbowFlagSilenceSecEffective,
+        phaseLedgerSecInt,
+      }),
+    [
+      phase,
+      address,
+      warbowPendingFlagOwner,
+      warbowPendingFlagPlantAt,
+      warbowFlagSilenceSecEffective,
+      phaseLedgerSecInt,
+    ],
+  );
+
   const expectedTokenFromCharms = useMemo(() => {
     if (phase !== "saleEnded") return undefined;
     if (totalTokensForSaleR?.status !== "success") return undefined;
@@ -1816,6 +1844,47 @@ export function useTimeCurveSaleSession(
     buyCooldownSecResolved,
   ]);
 
+  const submitClaimWarBowFlag = useCallback(async () => {
+    setBuyError(null);
+    const netErr = chainMismatchWriteMessage(chainId);
+    if (netErr) {
+      setBuyError(netErr);
+      return;
+    }
+    if (buyFeeRoutingEnabled === false) {
+      setBuyError(
+        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+      );
+      return;
+    }
+    if (!tc || !address || !warbowClaimFlagFields.canClaimWarBowFlag) {
+      return;
+    }
+    try {
+      const { hash } = await writeContractWithGasBuffer({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
+        address: tc,
+        abi: timeCurveWriteAbi,
+        functionName: "claimWarBowFlag",
+      });
+      await waitForWriteReceipt(wagmiConfig, { hash });
+      await refetchAll();
+    } catch (e) {
+      setBuyError(friendlyRevertFromUnknown(e));
+    }
+  }, [
+    chainId,
+    buyFeeRoutingEnabled,
+    tc,
+    address,
+    warbowClaimFlagFields.canClaimWarBowFlag,
+    writeContractAsync,
+    refetchAll,
+  ]);
+
   const submitRedeem = useCallback(async () => {
     setBuyError(null);
     const netErr = chainMismatchWriteMessage(chainId);
@@ -1923,6 +1992,10 @@ export function useTimeCurveSaleSession(
     setPlantWarBowFlag,
     warbowFlagClaimBp,
     warbowFlagSilenceSec,
+    showWarbowClaimFlagButton: warbowClaimFlagFields.showClaimFlagControl,
+    canClaimWarBowFlag: warbowClaimFlagFields.canClaimWarBowFlag,
+    warbowFlagSilenceEndSec: warbowClaimFlagFields.flagSilenceEndSec,
+    submitClaimWarBowFlag,
     isWriting,
     buyError,
     clearBuyError: () => setBuyError(null),
