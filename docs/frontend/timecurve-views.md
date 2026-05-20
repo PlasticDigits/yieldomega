@@ -183,10 +183,11 @@ When **`VITE_INDEXER_URL`** points at an indexer that becomes unreachable mid-se
 
 ## Arena WarBow hero actions (issue #101)
 
-`/timecurve/arena` keeps the detailed [`WarbowSection`](../../frontend/src/pages/timecurve/TimeCurveSections.tsx)
-below the fold, but the `PageHeroArcadeBanner` now exposes the live WarBow
-decision surface directly through
-[`WarbowHeroActions`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.tsx):
+`/timecurve/arena` exposes the live WarBow decision surface through
+[`WarbowHeroActions`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.tsx)
+in the `PageHeroArcadeBanner`. The detailed [`WarbowSection`](../../frontend/src/pages/timecurve/TimeCurveSections.tsx)
+remains available for contributor / protocol tooling but is **not** mounted on the
+Arena page route — hero actions are the primary wallet path ([GitLab #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101), [GitLab #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218)).
 
 1. **Wallet context first:** the hero action area shows connect / connected
    state plus the viewer's live Battle Points before any PvP CTA.
@@ -203,17 +204,40 @@ decision surface directly through
    **`warbowPendingRevengeExpiryExclusive(victim, stealer)`** and
    **`warbowPendingRevengeStealSeq(victim, stealer)`** per pair; each **Take
    revenge** CTA passes the **stealer** address to **`warbowRevenge(stealer)`**.
-4. **Write barriers stay shared:** the hero WarBow cluster is inside the same
+4. **Claim flag when you hold the pending slot ([GitLab #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218)):** when the connected wallet matches **`warbowPendingFlagOwner`** and **`warbowPendingFlagPlantAt > 0`**, the hero grid renders [`WarbowClaimFlagHeroCard`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.tsx) with a **Claim flag** CTA. During **`WARBOW_FLAG_SILENCE_SEC`**, the button stays disabled and shows **`Claim flag HH:MM:SS`** using the same interpolated ledger **now** as guard / phase (`effectiveLedgerSec` / `ledgerSecIntForPhase`); after silence, **`canClaimWarBowFlag`** enables submit → existing **`runWarBowClaimFlag()`** → **`TimeCurve.claimWarBowFlag()`**. Helper copy below the CTA tracks onchain **`WARBOW_FLAG_CLAIM_BP`** and the **2×** interrupt penalty via [`warbowClaimFlagCopy.ts`](../../frontend/src/lib/warbowClaimFlagCopy.ts).
+5. **Write barriers stay shared:** the hero WarBow cluster is inside the same
    `ChainMismatchWriteBarrier` pattern as the lower WarBow section, and the
    submit functions still preflight `chainMismatchWriteMessage` plus
    `buyFeeRoutingEnabled` before approval / writes.
 
 Indexer rows are a discovery aid only. If candidate rows are stale, the selected
 target still has to pass live onchain reads and wallet simulation. Empty
-candidate state is explicit and points users to the detailed section's manual
-address path.
+candidate state is explicit (manual steal address entry lives in the unmounted
+`WarbowSection` component for tooling only).
 
-**Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101).
+**Spec ↔ test:** [invariants — Arena WarBow hero actions](../testing/invariants-and-business-logic.md#timecurve-arena-warbow-hero-actions-issue-101) · [invariants — claim flag hero (#218)](../testing/invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [invariants — per-stealer revenge (#135)](../testing/invariants-and-business-logic.md#warbow-per-stealer-revenge-windows-gitlab-135) · [product WarBow rules](../product/primitives.md#warbow-ladder-battle-points--pvp-and-reserve-slice) · [play skill](../../skills/play-timecurve-warbow/SKILL.md) · [issue #101](https://gitlab.com/PlasticDigits/yieldomega/-/issues/101) · [issue #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218).
+
+<a id="arena-warbow-claim-flag-hero-gitlab-218"></a>
+
+## Arena WarBow claim flag hero (GitLab #218)
+
+When the viewer holds the global pending flag (`warbowPendingFlagOwner` === wallet, `warbowPendingFlagPlantAt > 0`), **`WarbowClaimFlagHeroCard`** appears in the hero grid between **Guard** and **Revenge**:
+
+| State | UI |
+|-------|-----|
+| Silence active | Disabled **Claim flag `HH:MM:SS`** on the CTA; countdown uses **`effectiveLedgerSec`** (indexer hero timer when available). |
+| Silence elapsed + sale live | Enabled **Claim flag** → **`runWarBowClaimFlag()`** (existing Arena model; **`refetchAll`** on receipt). |
+| Not the holder | Card hidden entirely. |
+
+Helper lines under the CTA (from onchain constants via **`warbowClaimFlagHelperLines`**):
+
+- **+`WARBOW_FLAG_CLAIM_BP` BP** after silence with no interrupting buy.
+- **−2 × `WARBOW_FLAG_CLAIM_BP` BP** if another wallet buys **after** silence ends before claim.
+- Muted note: interrupt **before** silence ends clears the slot **without** the 2× penalty.
+
+Wrong-network and **`buyFeeRoutingEnabled === false`** barriers match steal / guard / revenge ( **`claimWarBowFlag`** has no CL8Y leg but still requires a live sale onchain).
+
+**Spec ↔ test:** [invariants §218](../testing/invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [`WarbowClaimFlagHeroCard.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.tsx) · [manual QA (#218)](../testing/manual-qa-checklists.md#manual-qa-issue-218) · [primitives — plant / claim flag](../product/primitives.md#plant-flag--claim-flag) · [issue #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218).
 
 <a id="arena-warbow-steal-victim-field-gitlab-195"></a>
 

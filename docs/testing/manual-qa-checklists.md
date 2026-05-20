@@ -544,6 +544,30 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 
 **Doc map:** [timecurve-views §221](../frontend/timecurve-views.md#arena-rpc-backoff-gitlab-221) · [invariants — **`INV-FRONTEND-221-ARENA-RPC`**](invariants-and-business-logic.md#arena-rpc-retry-storm-gitlab-221) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 
+<a id="manual-qa-issue-218"></a>
+
+## Arena — WarBow claim flag hero (GitLab #218)
+
+**Goal:** After planting a WarBow flag, the connected holder sees a **Claim flag** hero card on **`/timecurve/arena`** with a live silence countdown and can submit **`claimWarBowFlag`** when eligible.
+
+### Preconditions
+
+- Live sale with **`buyFeeRoutingEnabled === true`**.
+- Wallet on the build target chain.
+- Ability to plant a flag (**Simple → ADVANCED → Plant WarBow flag** on a buy, or router **`plantWarBowFlag`**).
+
+### Checklist
+
+1. Plant a flag as wallet **A**; open **`/timecurve/arena`** as **A**.
+2. Confirm **`data-testid="warbow-hero-claim-flag"`** appears; other wallets see **no** claim block.
+3. During silence (~5 min): CTA shows **`Claim flag HH:MM:SS`**, stays **disabled**, countdown ticks without manual refresh.
+4. After silence (wait or Anvil time advance): CTA enables as **Claim flag**; submit succeeds (+**`WARBOW_FLAG_CLAIM_BP`** BP); card hides or updates; rivalry feed shows **Flag won**.
+5. Helper copy under CTA shows **+1,000 BP** / **−2,000 BP** lines and muted early-interrupt note (values track onchain constants).
+6. Wrong chain: hero **`ChainMismatchWriteBarrier`** blocks write; no silent no-op.
+7. Optional penalty path: wallet **B** buys **after** silence before **A** claims → **A** penalized (−2× claim BP) / flag cleared.
+
+**Doc map:** [timecurve-views §218](../frontend/timecurve-views.md#arena-warbow-claim-flag-hero-gitlab-218) · [invariants — **`INV-FRONTEND-218-WARBOW-CLAIM-FLAG`**](invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-182"></a>
 
 ## Arena — WarBow indexer rank + feed refresh (GitLab #182)

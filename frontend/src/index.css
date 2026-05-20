@@ -3816,6 +3816,28 @@ label:has(input[type="radio"]:disabled) {
     rgba(255, 255, 255, 0.84);
 }
 
+.warbow-hero-card--claim-flag {
+  background:
+    radial-gradient(circle at top right, rgba(120, 210, 150, 0.38), transparent 42%),
+    rgba(255, 255, 255, 0.84);
+}
+
+.warbow-hero-card__claim-flag-cta-label {
+  font-variant-numeric: tabular-nums;
+}
+
+.warbow-hero-card__claim-flag-help {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.warbow-hero-card__claim-flag-help p {
+  margin: 0;
+}
+
 .warbow-hero-card--viewer-summary {
   grid-column: 1 / -1;
   justify-self: center;

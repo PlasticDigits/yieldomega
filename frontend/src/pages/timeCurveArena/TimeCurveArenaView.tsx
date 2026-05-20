@@ -42,10 +42,14 @@ export function TimeCurveArenaView() {
     buys,
     buysNextOffset,
     buysTotal,
+    canClaimWarBowFlag,
     canDistributePrizesAsOwner,
     decimals,
     detailBuy,
     effectiveLedgerSec,
+    flagPlantAtSec,
+    flagSilenceEndSec,
+    iHoldPlantFlag,
     ended,
     formatWallet,
     gasClaim,
@@ -65,6 +69,7 @@ export function TimeCurveArenaView() {
     revengeDeadlineSec,
     revengeIndexerConfigured,
     runVoid,
+    runWarBowClaimFlag,
     runWarBowGuard,
     runWarBowRevenge,
     runWarBowSteal,
@@ -85,6 +90,7 @@ export function TimeCurveArenaView() {
     timerExpiredAwaitingEnd,
     viewerBattlePoints,
     warbowBypassBurnWad,
+    warbowFlagClaimBp,
     warbowGuardBurnWad,
     warbowMaxSteals,
     warbowRank,
@@ -202,6 +208,11 @@ export function TimeCurveArenaView() {
               warbowBypassBurnWad={warbowBypassBurnWad.toString()}
               buyFeeRoutingEnabled={buyFeeRoutingEnabled}
               isWriting={isWriting}
+              showClaimFlagBlock={iHoldPlantFlag && flagPlantAtSec > 0n}
+              canClaimWarBowFlag={canClaimWarBowFlag}
+              flagSilenceEndSec={flagSilenceEndSec}
+              warbowFlagClaimBp={warbowFlagClaimBp}
+              runWarBowClaimFlag={runWarBowClaimFlag}
             />
           </ChainMismatchWriteBarrier>
           {pvpErr && <StatusMessage variant="error">{pvpErr}</StatusMessage>}
