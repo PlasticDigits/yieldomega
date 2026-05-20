@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.24.0";
+const SCHEMA_VERSION: &str = "1.25.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -2173,6 +2173,40 @@ async fn referral_referrer_leaderboard(
     let lim = clamp_limit(p.limit);
     let off = p.offset.max(0);
 
+    let totals = sqlx::query(
+        r#"SELECT
+              (SELECT COUNT(*)::bigint FROM idx_referral_code_registered) AS total_codes_registered,
+              (SELECT COUNT(*)::bigint FROM idx_timecurve_referral_applied) AS total_referred_buys,
+              (SELECT COALESCE(SUM(referrer_amount), 0)::text
+                 FROM idx_timecurve_referral_applied) AS total_referrer_charm_wad,
+              (SELECT COUNT(*)::bigint
+                 FROM (
+                        SELECT owner_address AS referrer
+                          FROM idx_referral_code_registered
+                        UNION
+                        SELECT referrer
+                          FROM idx_timecurve_referral_applied
+                      ) u) AS total"#,
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    let totals = match totals {
+        Ok(r) => r,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/referrals/referrer-leaderboard totals", e);
+        }
+    };
+
+    let total: i64 = totals.try_get::<i64, _>("total").unwrap_or(0);
+    let total_codes_registered: i64 = totals
+        .try_get::<i64, _>("total_codes_registered")
+        .unwrap_or(0);
+    let total_referred_buys: i64 = totals.try_get::<i64, _>("total_referred_buys").unwrap_or(0);
+    let total_referrer_charm_wad: String = totals
+        .try_get::<String, _>("total_referrer_charm_wad")
+        .unwrap_or_else(|_| "0".into());
+
     let rows = sqlx::query(
         r#"SELECT referrer,
                   total_referrer_charm_wad,
@@ -2249,6 +2283,10 @@ async fn referral_referrer_leaderboard(
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
+        "total": total,
+        "total_codes_registered": total_codes_registered.to_string(),
+        "total_referred_buys": total_referred_buys.to_string(),
+        "total_referrer_charm_wad": total_referrer_charm_wad,
     });
 
     let mut res = Json(body).into_response();

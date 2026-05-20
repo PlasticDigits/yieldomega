@@ -30,13 +30,13 @@ use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
-use yieldomega_indexer::sale_state::TimecurveSaleStateSnapshot;
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
 };
+use yieldomega_indexer::sale_state::TimecurveSaleStateSnapshot;
 
 const CONTRACT: Address = address!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
@@ -83,9 +83,11 @@ fn test_sale_state_snapshot(read_block: &str, block_ts: &str) -> TimecurveSaleSt
         owner: format!("{:#x}", Address::ZERO),
         linear_charm_base_price_wad: "0".into(),
         linear_charm_daily_increment_wad: "0".into(),
-        fee_router_sinks: std::array::from_fn(|_| yieldomega_indexer::sale_state::FeeRouterSinkSnapshot {
-            destination: format!("{:#x}", Address::ZERO),
-            weight_bps: 0,
+        fee_router_sinks: std::array::from_fn(|_| {
+            yieldomega_indexer::sale_state::FeeRouterSinkSnapshot {
+                destination: format!("{:#x}", Address::ZERO),
+                weight_bps: 0,
+            }
         }),
     }
 }
@@ -2014,6 +2016,128 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
         Some("0x0000000000000000000000000000000000000e02")
     );
     assert_eq!(items2[2]["codes_registered_count"].as_str(), Some("1"));
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral registry table");
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("cleanup referral applied table");
+}
+
+#[tokio::test]
+async fn postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination() {
+    // GitLab #225 — response includes network-wide summary fields and `total` for page math.
+    let Some(url) = pg_url() else {
+        eprintln!("integration_stage2: skip gitlab225 (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+    let pool = connect_and_migrate(&url)
+        .await
+        .expect("connect_and_migrate");
+
+    sqlx::query("DELETE FROM idx_referral_code_registered")
+        .execute(&pool)
+        .await
+        .expect("clear referral registry table");
+    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
+        .execute(&pool)
+        .await
+        .expect("clear referral applied table");
+
+    for (i, owner) in [
+        "0x0000000000000000000000000000000000000a01",
+        "0x0000000000000000000000000000000000000a02",
+        "0x0000000000000000000000000000000000000a03",
+    ]
+    .iter()
+    .enumerate()
+    {
+        sqlx::query(
+            r#"INSERT INTO idx_referral_code_registered (
+                  block_number, block_hash, tx_hash, log_index, contract_address,
+                  owner_address, code_hash, normalized_code
+               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+        )
+        .bind(1000_i64 + i as i64)
+        .bind(format!("0x{:0>64}", 300 + i))
+        .bind(format!("0x{:0>64}", 400 + i))
+        .bind(0_i32)
+        .bind("0xcccccccccccccccccccccccccccccccccccccccc")
+        .bind(*owner)
+        .bind(format!("0x{:0>64}", 500 + i))
+        .bind(format!("guide{i}"))
+        .execute(&pool)
+        .await
+        .expect("seed registry row");
+    }
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_referral_applied (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
+    )
+    .bind(1100_i64)
+    .bind(format!("0x{:0>64}", 600))
+    .bind(format!("0x{:0>64}", 601))
+    .bind(0_i32)
+    .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    .bind("0x0000000000000000000000000000000000000001")
+    .bind("0x0000000000000000000000000000000000000a01")
+    .bind(format!("0x{:0>64}", 700))
+    .bind("150")
+    .bind("0")
+    .bind("0")
+    .execute(&pool)
+    .await
+    .expect("seed referral applied row");
+
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=0")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = response_json(res).await;
+    assert_eq!(body["total"].as_i64(), Some(3));
+    assert_eq!(body["total_codes_registered"].as_str(), Some("3"));
+    assert_eq!(body["total_referred_buys"].as_str(), Some("1"));
+    assert_eq!(body["total_referrer_charm_wad"].as_str(), Some("150"));
+    assert_eq!(body["next_offset"].as_i64(), Some(2));
+    let items = body["items"].as_array().expect("items");
+    assert_eq!(items.len(), 2);
+
+    let res2 = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=2")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let body2 = response_json(res2).await;
+    assert_eq!(body2["total"].as_i64(), Some(3));
+    assert_eq!(body2["total_codes_registered"].as_str(), Some("3"));
+    assert!(body2["next_offset"].is_null());
+    let items2 = body2["items"].as_array().expect("items page 2");
+    assert_eq!(items2.len(), 1);
 
     sqlx::query("DELETE FROM idx_referral_code_registered")
         .execute(&pool)

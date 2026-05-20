@@ -13,11 +13,37 @@ test("referrals page shell renders when not behind launch countdown", async ({ p
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
+  await page.route("**/referrer-leaderboard?**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: [
+          {
+            rank: 1,
+            referrer: "0x0000000000000000000000000000000000000001",
+            total_referrer_charm_wad: "1000000000000000000",
+            referred_buy_count: "1",
+            codes_registered_count: "1",
+          },
+        ],
+        limit: 20,
+        offset: 0,
+        next_offset: null,
+        total: 1,
+        total_codes_registered: "1",
+        total_referred_buys: "1",
+        total_referrer_charm_wad: "1000000000000000000",
+      }),
+    });
+  });
+
   await page.goto("/referrals");
   await expect(page.getByTestId("referrals-surface")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Claim your guide code", level: 2 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Guide leaderboard", level: 2 })).toBeVisible();
+  await expect(page.getByText("Codes registered (global)", { exact: true })).toBeVisible();
 
   const gated =
     page.getByText("Connect a wallet", { exact: false }).or(page.getByText(/No registry address/i));
