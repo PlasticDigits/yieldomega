@@ -195,8 +195,9 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 - [ ] With indexer **schema ≥ 1.19.0** and at least one indexed **`ReferralCodeRegistered`** for wallet **W** and **zero** `ReferralApplied` rows, **`GET /v1/referrals/referrer-leaderboard`** returns a row for **W** with **`codes_registered_count ≥ 1`**, **`referred_buy_count == 0`**, **`total_referrer_charm_wad == 0`**.
 - [ ] `/referrals` **Guide leaderboard** shows **W** with sublines for **onchain codes registered** and **recorded buys** (may be zero buys).
 - [ ] After a qualifying referred buy indexes for **W**, **`referred_buy_count`** / CHARM increase while **`codes_registered_count`** stays consistent with registry rows.
+- [ ] When two referrers tie on Σ CHARM, JSON **`rank`** values match dense **`RANK()`** (**`1, 2, 2, 4`**, not page ordinal **`1, 2, 3, 4`**) — **`postgres_gitlab177_referrer_leaderboard_dense_rank`**.
 
-**Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** (requires **`YIELDOMEGA_PG_TEST_URL`**).
+**Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** · **`postgres_gitlab177_referrer_leaderboard_dense_rank`** (requires **`YIELDOMEGA_PG_TEST_URL`**).
 
 <a id="manual-qa-issue-121-referrals-register-disclosure"></a>
 
