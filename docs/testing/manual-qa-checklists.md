@@ -267,6 +267,24 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Doc map:** [`timecurve-views.md` — LaunchCountdown → Simple handoff](../frontend/timecurve-views.md#launchcountdown--simple-handoff) · [invariants — #199](invariants-and-business-logic.md#launchgate-home-route--no-env-parity-gitlab-199) · [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx)
 
+<a id="manual-qa-issue-223"></a>
+
+## Branded 404 for unknown routes (GitLab #223)
+
+**Why:** Unmatched paths should not leave an empty main outlet inside `RootLayout`.
+
+### Checklist
+
+1. Open **`/definitely-not-a-route`** → **`404`** heading, **`data-testid="not-found-page"`**, header/footer still visible.
+2. CTAs: **Open TimeCurve** → **`/timecurve`**; hub link → **`/`** (no-env) or **`/home`** (post-launch); **Referrals** → **`/referrals`**.
+3. **`/timecurve/abc12`** → TimeCurve Simple (or sale UI), **not** the 404 page.
+4. **`/timecurve/arena`**, **`/timecurve/protocol`**, bare **`/timecurve`** unchanged.
+5. **`/luck777`** → 404 (no bare `/{code}` route).
+6. **`/definitely-not-a-route?ref=test1`** → 404 UI **and** pending referral in devtools **`yieldomega.ref.v1`**.
+7. **`document.title`** includes **Page not found** on 404; navigates away restores default.
+
+**Doc map:** [invariants — #223](invariants-and-business-logic.md#branded-404-catch-all-gitlab-223) · [`referrals.md`](../product/referrals.md#client-link-capture-frontend) · [`NotFoundPage.tsx`](../../frontend/src/pages/NotFoundPage.tsx)
+
 <a id="manual-qa-issue-95"></a>
 
 ## Wrong-network write gating (GitLab #95)
