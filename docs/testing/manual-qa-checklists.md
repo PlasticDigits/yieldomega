@@ -10,6 +10,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev buy cooldown](#manual-qa-issue-88) |
 | [#99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99) | [Bot swarm + Anvil chain time](#manual-qa-issue-99) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals `/referrals` surface](#manual-qa-issue-64) |
+| [#222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222) | [Referrals — self-referral pending purge](#manual-qa-issue-222) |
 | [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
@@ -153,6 +154,30 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 - CI: `frontend/e2e/referrals-surface.spec.ts`
 - Anvil: `frontend/e2e/anvil-referrals.spec.ts`
 - Unit: `frontend/src/lib/referralPathCapture.test.ts`
+
+<a id="manual-qa-issue-222"></a>
+
+## Referrals — self-referral pending purge (GitLab #222)
+
+**Scope:** A wallet that already registered a code must not keep its **own** slug locked in **`yieldomega.ref.v1`** after visiting its share link — buys on `/timecurve` should not revert with **`TimeCurve: self-referral`**.
+
+### Authoritative docs
+
+- [product/referrals.md § #222](../product/referrals.md#referral-self-referral-pending-purge-issue-222)
+- [invariants — `INV-REFERRAL-222-PENDING-PURGE`](invariants-and-business-logic.md#referral-self-referral-pending-purge-gitlab-222)
+
+### Preconditions
+
+- Wallet **registered** on `/referrals` ( **`yieldomega.myrefcode.v1.<wallet>`** populated).
+- Same wallet **connected** when capturing the link.
+
+### Checklist
+
+- [ ] Open **`/timecurve/{yourCode}`** or **`/?ref={yourCode}`** while connected — DevTools: **`yieldomega.ref.v1`** is **absent** (or removed within one tick after capture).
+- [ ] On `/timecurve`, projected buy effects do **not** show **+5% Referral** for your own slug; **`buy`** succeeds without self-referral revert.
+- [ ] Capture a **third-party** `?ref=` — pending key **remains** until overwritten (regression vs [#85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)).
+
+**Automated:** `npm test -- referralSelfReferralPending` in `frontend/`.
 
 <a id="manual-qa-issue-204-referrer-leaderboard-registry-union"></a>
 

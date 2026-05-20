@@ -194,12 +194,23 @@ export function setStoredMyReferralCodeForWallet(address: `0x${string}`, code: s
     return;
   }
   try {
+    const normalized = normalizeReferralCode(code);
     const key = `${MY_REF_KEY_PREFIX}${address.toLowerCase()}`;
     window.localStorage.setItem(
       key,
-      JSON.stringify({ code: normalizeReferralCode(code), ts: Date.now() }),
+      JSON.stringify({ code: normalized, ts: Date.now() }),
     );
     notifyMyReferralCodeCache();
+    const pending = getPendingReferralCode();
+    if (pending) {
+      try {
+        if (normalizeReferralCode(pending) === normalized) {
+          clearPendingReferralCode();
+        }
+      } catch {
+        /* ignore invalid pending slug */
+      }
+    }
   } catch {
     /* ignore */
   }
