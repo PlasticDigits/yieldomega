@@ -61,10 +61,7 @@ import {
 } from "@/lib/kumbayaCl8ySpendFromPayToken";
 import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
-import {
-  cl8yTimeCurveApprovalAmountWei,
-  readCl8yTimeCurveUnlimitedApproval,
-} from "@/lib/cl8yTimeCurveApprovalPreference";
+import { ensureCl8yTimeCurveAllowance } from "@/lib/ensureCl8yTimeCurveAllowance";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -3099,31 +3096,17 @@ export function useTimeCurveArenaModel() {
         guardBuySession();
       }
 
-      const allow = await readContract(wagmiConfig, {
-        address: tokenAddr,
-        abi: erc20Abi,
-        functionName: "allowance",
-        args: [address, tc],
+      await ensureCl8yTimeCurveAllowance({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
+        tokenAddress: tokenAddr,
+        timeCurveAddress: tc,
+        needWei: totalPull,
+        debugContext: "arena:buy",
       });
       guardBuySession();
-      const approveAmt = cl8yTimeCurveApprovalAmountWei(
-        totalPull,
-        readCl8yTimeCurveUnlimitedApproval(),
-      );
-      if (allow < approveAmt) {
-        const { hash: approveHash } = await writeContractWithGasBuffer({
-          wagmiConfig,
-          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-          account: address as `0x${string}`,
-          chainId,
-          address: tokenAddr,
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [tc, approveAmt],
-        });
-        await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
-        guardBuySession();
-      }
       const buyArgs = codeHash
         ? ([cw, codeHash, plantWarBowFlag] as const)
         : plantWarBowFlag
@@ -3179,33 +3162,20 @@ export function useTimeCurveArenaModel() {
     buyCooldownSecResolved,
   ]);
 
-  async function ensureTcAllowance(need: bigint) {
-    if (!address || !tokenAddr || !tc || need <= 0n) {
+  async function ensureTcAllowance(need: bigint, debugContext: string) {
+    if (!address || !tokenAddr || !tc) {
       return;
     }
-    const allow = await readContract(wagmiConfig, {
-      address: tokenAddr,
-      abi: erc20Abi,
-      functionName: "allowance",
-      args: [address, tc],
+    await ensureCl8yTimeCurveAllowance({
+      wagmiConfig,
+      writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+      account: address as `0x${string}`,
+      chainId,
+      tokenAddress: tokenAddr,
+      timeCurveAddress: tc,
+      needWei: need,
+      debugContext,
     });
-    if (allow < need) {
-      const approveAmt = cl8yTimeCurveApprovalAmountWei(
-        need,
-        readCl8yTimeCurveUnlimitedApproval(),
-      );
-      const { hash: approveHash } = await writeContractWithGasBuffer({
-        wagmiConfig,
-        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-        account: address as `0x${string}`,
-        chainId,
-        address: tokenAddr,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [tc, approveAmt],
-      });
-      await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
-    }
   }
 
   async function runWarBowClaimFlag() {
@@ -3298,7 +3268,7 @@ export function useTimeCurveArenaModel() {
     }
     const need = warbowStealBurnWad + (bypass ? warbowBypassBurnWad : 0n);
     try {
-      await ensureTcAllowance(need);
+      await ensureTcAllowance(need, "arena:warbow-steal");
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
         writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -3329,7 +3299,7 @@ export function useTimeCurveArenaModel() {
       return;
     }
     try {
-      await ensureTcAllowance(warbowGuardBurnWad);
+      await ensureTcAllowance(warbowGuardBurnWad, "arena:warbow-guard");
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
         writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -3360,7 +3330,7 @@ export function useTimeCurveArenaModel() {
       return;
     }
     try {
-      await ensureTcAllowance(warbowRevengeBurnWad);
+      await ensureTcAllowance(warbowRevengeBurnWad, "arena:warbow-revenge");
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
         writeContractAsync: asWriteContractAsyncFn(writeContractAsync),

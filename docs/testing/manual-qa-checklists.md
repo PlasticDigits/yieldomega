@@ -524,6 +524,29 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
+<a id="manual-qa-issue-224"></a>
+
+## Arena / Simple — skip redundant CL8Y → TimeCurve approve (GitLab #224)
+
+**Goal:** When CL8Y allowance to the **TimeCurve proxy** is already sufficient (especially **`type(uint256).max`**), **Buy CHARM** and **WarBow** actions must not surface a second **`approve`** wallet prompt.
+
+### Preconditions
+
+- Wallet with CL8Y on the target chain; TimeCurve sale **live** (`buyFeeRoutingEnabled` true).
+- Note **`TimeCurve` proxy** from protocol accordion vs token approval spender ([#61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
+
+### Checklist
+
+1. Enable **unlimited CL8Y → TimeCurve** on Arena (`Cl8yTimeCurveUnlimitedApprovalFieldset`); approve once.
+2. **Buy CHARM** (CL8Y): wallet shows **`buy` only** — no **`approve`**.
+3. **WarBow Steal** (valid victim): **`warbowSteal` only** — no **`approve`**.
+4. **WarBow Guard** / **Revenge** when available: action tx only — no **`approve`**.
+5. Hard refresh; repeat steps 2–4 (guards against stale **`allowance == 0`** reads).
+6. Disable unlimited; approve **exact** gross + headroom for one buy; complete buy; run **WarBow Guard** with burn ≤ remaining allowance — **no** approve (or consistent headroom bump per [#143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143)).
+7. If **`approve` still appears:** capture tx hash, revert reason, `allowance(owner, TimeCurve)`, pay mode, and CTA; confirm **`chainId`** ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)) and spender is **proxy** ([#61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
+
+**Doc map:** [wallet-connection §143](../frontend/wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143) · [timecurve-views §224](../frontend/timecurve-views.md#arena-cl8y-approve-guard-gitlab-224) · [invariants — **`INV-FRONTEND-224-CL8Y-APPROVE`**](invariants-and-business-logic.md#arena-cl8y-approve-guard-gitlab-224) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
+
 <a id="manual-qa-issue-221"></a>
 
 ## Arena — RPC retry storm under degraded endpoints (GitLab #221)

@@ -447,7 +447,15 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 
 TimeCurve **Simple** and **Arena** buy panels include **`Cl8yTimeCurveUnlimitedApprovalFieldset`**: default **exact** **`approve(TimeCurve, grossCl8yForTx)`** for **`buy`** and shared WarBow CL8Y pulls; optional checkbox stores **`yieldomega.erc20.cl8yTimeCurveUnlimited.v1`** and restores **`type(uint256).max`** for fewer repeat approvals (disclosure links **H-01** + [wallet-connection §143](wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143)). Kumbaya legs approve **slippage-bounded `maxIn`** to routers only. **`/referrals`** register approves the onchain burn amount exactly.
 
-**Spec ↔ test:** [invariants — #143](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143).
+**Spec ↔ test:** [invariants — #143](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [`ensureCl8yTimeCurveAllowance.test.ts`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.test.ts) · [GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143) · [§224](#arena-cl8y-approve-guard-gitlab-224).
+
+<a id="arena-cl8y-approve-guard-gitlab-224"></a>
+
+## Arena / Simple — CL8Y approve only when allowance is low (GitLab #224)
+
+Arena **WarBow** steal / guard / revenge and both hubs’ **`buy`** paths share [`ensureCl8yTimeCurveAllowance`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.ts): read **`allowance(owner, TimeCurve)`**, compute **`approveAmt`** from [#143](#erc20-approval-sizing-gitlab-143) sizing, and **skip** the wallet **`approve`** step when **`allow >= approveAmt`** (including existing **`type(uint256).max`**). Fixes drift where WarBow used **`allow < need`** while buy used **`allow < approveAmt`**.
+
+**Spec ↔ test:** [invariants — **`INV-FRONTEND-224-CL8Y-APPROVE`**](../testing/invariants-and-business-logic.md#arena-cl8y-approve-guard-gitlab-224) · [manual QA #224](../testing/manual-qa-checklists.md#manual-qa-issue-224) · [GitLab #224](https://gitlab.com/PlasticDigits/yieldomega/-/issues/224).
 
 <a id="kumbaya-swap-deadline-chain-time-issue-83"></a>
 
