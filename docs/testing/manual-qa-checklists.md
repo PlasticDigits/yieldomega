@@ -12,6 +12,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals `/referrals` surface](#manual-qa-issue-64) |
 | [#222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222) | [Referrals — self-referral pending purge](#manual-qa-issue-222) |
 | [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
+| [#225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225) | [Referrals — guide leaderboard global totals + pagination](#manual-qa-issue-225) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
@@ -198,6 +199,26 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 - [ ] When two referrers tie on Σ CHARM, JSON **`rank`** values match dense **`RANK()`** (**`1, 2, 2, 4`**, not page ordinal **`1, 2, 3, 4`**) — **`postgres_gitlab177_referrer_leaderboard_dense_rank`**.
 
 **Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** · **`postgres_gitlab177_referrer_leaderboard_dense_rank`** (requires **`YIELDOMEGA_PG_TEST_URL`**).
+
+<a id="manual-qa-issue-225"></a>
+
+### Referrals — guide leaderboard global totals + pagination ([GitLab #225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225))
+
+**Scope:** Verify **`/referrals`** **Guide leaderboard** shows **network-wide** summary totals and numbered pagination backed by indexer aggregates.
+
+### Authoritative docs
+
+- [invariants — #225 global + pagination](invariants-and-business-logic.md#referrer-leaderboard-global-pagination-gitlab-225)
+- [product — dashboard table](../product/referrals.md#referrals-dashboard-issue-94)
+
+### Checklist
+
+- [ ] With indexer **schema ≥ 1.25.0**, **`GET /v1/referrals/referrer-leaderboard?limit=20&offset=0`** returns **`total`**, **`total_codes_registered`**, **`total_referred_buys`**, and **`total_referrer_charm_wad`** matching full-table counts (not sums of the current page **`items`**).
+- [ ] `/referrals` summary strip labels read **“(global)”** and stay stable when changing pages (no flicker back to page-local sums).
+- [ ] When **`total > 20`**, numbered page controls appear at the bottom; page **2** fetches **`offset=20`** and row **`rank`** values remain dense competitive ranks from JSON (not **`21, 22, …`** ordinals).
+- [ ] Connected wallet **“you”** row highlight still works when your address appears on the current page.
+
+**Automated:** `cargo test` **`postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination`** · `npm test -- referralLeaderboardPagination` · Playwright **`referrals-surface.spec.ts`** (mocked global label).
 
 <a id="manual-qa-issue-121-referrals-register-disclosure"></a>
 

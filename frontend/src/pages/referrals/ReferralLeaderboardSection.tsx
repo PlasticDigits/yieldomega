@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -9,78 +9,117 @@ import { formatAmountTriple, formatLocaleInteger } from "@/lib/formatAmount";
 import {
   fetchReferralReferrerLeaderboard,
   type ReferralReferrerLeaderboardItem,
+  type ReferralReferrerLeaderboardPage,
 } from "@/lib/indexerApi";
+import {
+  REFERRAL_LEADERBOARD_PAGE_SIZE,
+  referralLeaderboardPageIndex,
+  referralLeaderboardTotalPages,
+} from "@/lib/referralLeaderboardPagination";
 import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
 import { truncateHexAddress } from "@/pages/referrals/referralAddressDisplay";
+import { ReferralLeaderboardPagination } from "@/pages/referrals/ReferralLeaderboardPagination";
 
 const REF_CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
+type GlobalTotals = {
+  totalCodesRegistered: bigint;
+  totalBuys: bigint;
+  totalCharmWad: bigint;
+  totalReferrers: number;
+};
+
 type Props = { className?: string };
+
+function globalsFromPage(page: ReferralReferrerLeaderboardPage): GlobalTotals {
+  return {
+    totalCodesRegistered: BigInt(page.total_codes_registered ?? "0"),
+    totalBuys: BigInt(page.total_referred_buys ?? "0"),
+    totalCharmWad: BigInt(page.total_referrer_charm_wad ?? "0"),
+    totalReferrers: page.total ?? 0,
+  };
+}
 
 export function ReferralLeaderboardSection({ className }: Props) {
   const { address } = useAccount();
   const [items, setItems] = useState<ReferralReferrerLeaderboardItem[] | null>(null);
+  const [globals, setGlobals] = useState<GlobalTotals | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const loadPage = useCallback(async (pageOffset: number, cancelled: () => boolean) => {
+    setPageLoading(true);
+    setErr(null);
+    try {
+      const page = await fetchReferralReferrerLeaderboard(
+        REFERRAL_LEADERBOARD_PAGE_SIZE,
+        pageOffset,
+      );
+      if (cancelled()) {
+        return;
+      }
+      if (!page) {
+        setItems([]);
+        setErr("Leaderboard is unavailable right now. Try again in a moment.");
+        return;
+      }
+      setItems(page.items);
+      setGlobals(globalsFromPage(page));
+    } catch {
+      if (!cancelled()) {
+        setItems([]);
+        setErr("Could not load referral leaderboard.");
+      }
+    } finally {
+      if (!cancelled()) {
+        setPageLoading(false);
+        setInitialLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    setErr(null);
-    void fetchReferralReferrerLeaderboard(20, 0).then(
-      (page) => {
-        if (!cancelled) {
-          if (!page) {
-            setItems([]);
-            setErr("Leaderboard is unavailable right now. Try again in a moment.");
-          } else {
-            setItems(page.items);
-          }
-        }
-      },
-      () => {
-        if (!cancelled) {
-          setItems([]);
-          setErr("Could not load referral leaderboard.");
-        }
-      },
-    );
+    void loadPage(offset, () => cancelled);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [offset, loadPage]);
 
-  const leaderboard = useMemo(() => {
+  const currentPage = referralLeaderboardPageIndex(offset, REFERRAL_LEADERBOARD_PAGE_SIZE);
+  const totalPages = referralLeaderboardTotalPages(
+    globals?.totalReferrers ?? 0,
+    REFERRAL_LEADERBOARD_PAGE_SIZE,
+  );
+
+  const rows = useMemo(() => {
     if (!items) {
-      return { rows: [], totalBuys: 0n, totalCharmWad: 0n, totalCodesRegistered: 0n };
+      return [];
     }
-    return items.reduce(
-      (acc, it) => {
-        const codes = it.codes_registered_count ?? "0";
-        acc.rows.push({
-          ...it,
-          codes_registered_count: codes,
-          amount: formatAmountTriple(BigInt(it.total_referrer_charm_wad), 18),
-          isYou: address?.toLowerCase() === it.referrer.toLowerCase(),
-        });
-        acc.totalBuys += BigInt(it.referred_buy_count);
-        acc.totalCharmWad += BigInt(it.total_referrer_charm_wad);
-        acc.totalCodesRegistered += BigInt(codes);
-        return acc;
-      },
-      {
-        rows: [] as Array<
-          ReferralReferrerLeaderboardItem & {
-            amount: ReturnType<typeof formatAmountTriple>;
-            isYou: boolean;
-          }
-        >,
-        totalBuys: 0n,
-        totalCharmWad: 0n,
-        totalCodesRegistered: 0n,
-      },
-    );
+    return items.map((it) => {
+      const codes = it.codes_registered_count ?? "0";
+      return {
+        ...it,
+        codes_registered_count: codes,
+        amount: formatAmountTriple(BigInt(it.total_referrer_charm_wad), 18),
+        isYou: address?.toLowerCase() === it.referrer.toLowerCase(),
+      };
+    });
   }, [items, address]);
 
-  const topCharm = formatAmountTriple(leaderboard.totalCharmWad, 18);
+  const topCharm = formatAmountTriple(globals?.totalCharmWad ?? 0n, 18);
+  const showSummary = globals !== null && !initialLoading && !err;
+  const showEmpty = showSummary && globals.totalReferrers === 0;
+  const showList = showSummary && items !== null && items.length > 0;
+
+  const onPageChange = (page: number) => {
+    const nextOffset = (page - 1) * REFERRAL_LEADERBOARD_PAGE_SIZE;
+    if (nextOffset !== offset) {
+      setOffset(nextOffset);
+    }
+  };
 
   return (
     <PageSection
@@ -97,66 +136,129 @@ export function ReferralLeaderboardSection({ className }: Props) {
       }}
     >
       {err ? <StatusMessage variant="error">{err}</StatusMessage> : null}
-      {!items ? (
+      {initialLoading ? (
         <StatusMessage variant="muted">Loading leaderboard…</StatusMessage>
-      ) : items.length === 0 ? (
-        <StatusMessage variant="muted">
-          No indexed guide registrations or referral buys yet. Register a code (ReferralRegistry) or link
-          buys (TimeCurve ReferralApplied) to appear here.
-        </StatusMessage>
-      ) : (
+      ) : showSummary ? (
         <>
-          <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
-            <div>
-              <span>Codes registered (this page)</span>
-              <strong>{formatLocaleInteger(leaderboard.totalCodesRegistered)}</strong>
-            </div>
-            <div>
-              <span>Recorded referral buys</span>
-              <strong>{formatLocaleInteger(leaderboard.totalBuys)}</strong>
-            </div>
-            <div>
-              <span>Total guide CHARM</span>
-              <strong>{topCharm.abbrev}</strong>
-            </div>
-          </div>
-          <ol className="referrals-leaderboard-list">
-            {leaderboard.rows.map((row) => (
-              <li
-                key={row.referrer}
-                className={[
-                  "referrals-leaderboard-row",
-                  row.rank === 1 ? "referrals-leaderboard-row--first" : "",
-                  row.isYou ? "referrals-leaderboard-row--you" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <span className="referrals-leaderboard-row__rank">#{row.rank}</span>
-                <div className="referrals-leaderboard-row__identity">
-                  <AddressInline
-                    address={row.referrer}
-                    formatWallet={(addr, fb) => (addr ? truncateHexAddress(addr, 8, 6) : fb)}
-                    size={22}
-                  />
-                  <span>
-                    {formatLocaleInteger(row.codes_registered_count)} onchain{" "}
-                    {row.codes_registered_count === "1" ? "code" : "codes"} registered
-                    <br />
-                    {formatLocaleInteger(row.referred_buy_count)} recorded{" "}
-                    {row.referred_buy_count === "1" ? "buy" : "buys"} with this referrer code
-                  </span>
-                </div>
-                <div className="referrals-leaderboard-row__score">
-                  <strong>{row.amount.abbrev}</strong>
-                  <span>CHARM</span>
-                  <small>{row.amount.decimal}</small>
-                </div>
-              </li>
-            ))}
-          </ol>
+          <LeaderboardSummary globals={globals} topCharmAbbrev={topCharm.abbrev} />
+          {showEmpty ? (
+            <StatusMessage variant="muted">
+              No indexed guide registrations or referral buys yet. Register a code (ReferralRegistry) or
+              link buys (TimeCurve ReferralApplied) to appear here.
+            </StatusMessage>
+          ) : null}
+          {showList ? (
+            <>
+              <LeaderboardList pageLoading={pageLoading} rows={rows} currentPage={currentPage} />
+              <ReferralLeaderboardPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                disabled={pageLoading}
+                onPageChange={onPageChange}
+              />
+            </>
+          ) : null}
         </>
-      )}
+      ) : null}
     </PageSection>
+  );
+}
+
+function LeaderboardSummary({
+  globals,
+  topCharmAbbrev,
+}: {
+  globals: GlobalTotals | null;
+  topCharmAbbrev: string;
+}) {
+  return (
+    <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
+      <SummaryCell
+        label="Codes registered (global)"
+        value={formatLocaleInteger(globals?.totalCodesRegistered ?? 0n)}
+      />
+      <SummaryCell
+        label="Recorded referral buys (global)"
+        value={formatLocaleInteger(globals?.totalBuys ?? 0n)}
+      />
+      <SummaryCell label="Total guide CHARM (global)" value={topCharmAbbrev} />
+    </div>
+  );
+}
+
+function SummaryCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+type Row = ReferralReferrerLeaderboardItem & {
+  amount: ReturnType<typeof formatAmountTriple>;
+  isYou: boolean;
+};
+
+function LeaderboardList({
+  pageLoading,
+  rows,
+  currentPage,
+}: {
+  pageLoading: boolean;
+  rows: Row[];
+  currentPage: number;
+}) {
+  return (
+    <div
+      className={[
+        "referrals-leaderboard-list-wrap",
+        pageLoading ? "referrals-leaderboard-list-wrap--loading" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-busy={pageLoading}
+    >
+      {pageLoading ? (
+        <StatusMessage variant="muted" className="referrals-leaderboard-list-wrap__loading">
+          Loading page…
+        </StatusMessage>
+      ) : null}
+      <ol className="referrals-leaderboard-list">
+        {rows.map((row) => (
+          <li
+            key={row.referrer}
+            className={[
+              "referrals-leaderboard-row",
+              row.rank === 1 && currentPage === 1 ? "referrals-leaderboard-row--first" : "",
+              row.isYou ? "referrals-leaderboard-row--you" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <span className="referrals-leaderboard-row__rank">#{row.rank}</span>
+            <div className="referrals-leaderboard-row__identity">
+              <AddressInline
+                address={row.referrer}
+                formatWallet={(addr, fb) => (addr ? truncateHexAddress(addr, 8, 6) : fb)}
+                size={22}
+              />
+              <span>
+                {formatLocaleInteger(row.codes_registered_count)} onchain{" "}
+                {row.codes_registered_count === "1" ? "code" : "codes"} registered
+                <br />
+                {formatLocaleInteger(row.referred_buy_count)} recorded{" "}
+                {row.referred_buy_count === "1" ? "buy" : "buys"} with this referrer code
+              </span>
+            </div>
+            <div className="referrals-leaderboard-row__score">
+              <strong>{row.amount.abbrev}</strong>
+              <span>CHARM</span>
+              <small>{row.amount.decimal}</small>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }

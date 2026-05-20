@@ -587,8 +587,16 @@ export type ReferralReferrerLeaderboardItem = {
   codes_registered_count: string;
 };
 
+/** Guide leaderboard page + network-wide summary aggregates (schema ≥ 1.25.0, [GitLab #225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225)). */
+export type ReferralReferrerLeaderboardPage = PaginatedItems<ReferralReferrerLeaderboardItem> & {
+  total?: number;
+  total_codes_registered?: string;
+  total_referred_buys?: string;
+  total_referrer_charm_wad?: string;
+};
+
 export async function fetchReferralReferrerLeaderboard(limit = 25, offset = 0) {
-  return getJson<PaginatedItems<ReferralReferrerLeaderboardItem>>(
+  return getJson<ReferralReferrerLeaderboardPage>(
     referralReferrerLeaderboardApiPath(limit, offset),
   );
 }
