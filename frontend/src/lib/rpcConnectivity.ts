@@ -61,6 +61,10 @@ export function getRpcFailureStreak(): number {
   return failureStreak;
 }
 
+export function isRpcFailureStreakOffline(): boolean {
+  return failureStreak >= RPC_OFFLINE_FAILURE_STREAK;
+}
+
 export function rpcBackoffPollMsForStreak(streak: number, fastIntervalMs: number): number {
   if (streak < RPC_OFFLINE_FAILURE_STREAK) {
     return fastIntervalMs;

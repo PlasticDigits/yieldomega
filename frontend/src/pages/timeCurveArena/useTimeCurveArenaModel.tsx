@@ -17,7 +17,8 @@ import { AddressInline } from "@/components/AddressInline";
 import { sameAddress, walletDisplayFromMap } from "@/lib/addressFormat";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
+import { useRpcBackoffPollInterval, useRpcConnectivity } from "@/hooks/useRpcConnectivity";
+import { rpcBackedReadQueryOptions } from "@/lib/rpcReadQueryOptions";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
 import { estimateGasUnits } from "@/lib/estimateContractGas";
@@ -167,6 +168,8 @@ export function useTimeCurveArenaModel() {
   const tc = addresses.timeCurve;
   const indexerOn = Boolean(indexerBaseUrl());
   const saleStateQuery = useTimecurveSaleStateQuery(tc);
+  const { isOffline: isRpcOffline } = useRpcConnectivity();
+  const arenaRpcPollMs = useRpcBackoffPollInterval(1000);
   const queryClient = useQueryClient();
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
   const [claims, setClaims] = useState<CharmRedemptionItem[] | null>(null);
@@ -611,7 +614,7 @@ export function useTimeCurveArenaModel() {
     contracts: mergedArenaTcContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc) && !indexerOn,
-      refetchInterval: () => getRpcBackoffPollMs(1000),
+      ...rpcBackedReadQueryOptions(arenaRpcPollMs, isRpcOffline),
       placeholderData: (previous) => previous,
     },
   });
@@ -627,14 +630,26 @@ export function useTimeCurveArenaModel() {
     data: arenaWarbowPolicyRpcRaw,
     isPending: arenaWarbowPolicyRpcPending,
     isError: arenaWarbowPolicyRpcError,
+    isFetched: arenaWarbowPolicyRpcFetched,
+    isFetching: arenaWarbowPolicyRpcFetching,
+    isSuccess: arenaWarbowPolicyRpcSuccess,
+    error: arenaWarbowPolicyRpcQueryError,
     refetch: refetchArenaWarbowPolicyRpc,
   } = useReadContracts({
     contracts: arenaWarbowPolicyRpcContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc) && indexerOn,
       refetchInterval: false,
+      retry: isRpcOffline ? 0 : 1,
       placeholderData: (previous) => previous,
     },
+  });
+  useRpcQueryHealthForRefetch({
+    isFetched: arenaWarbowPolicyRpcFetched,
+    isFetching: arenaWarbowPolicyRpcFetching,
+    isError: arenaWarbowPolicyRpcError,
+    isSuccess: arenaWarbowPolicyRpcSuccess,
+    error: arenaWarbowPolicyRpcQueryError,
   });
 
   const coreTcDataFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
@@ -1017,7 +1032,7 @@ export function useTimeCurveArenaModel() {
       : []) as readonly unknown[],
     query: {
       enabled: Boolean(latchedArenaFeeRouter) && !indexerOn,
-      refetchInterval: () => getRpcBackoffPollMs(1000),
+      ...rpcBackedReadQueryOptions(arenaRpcPollMs, isRpcOffline),
       placeholderData: (previous) => previous,
     },
   });
@@ -1109,7 +1124,7 @@ export function useTimeCurveArenaModel() {
       : []) as readonly unknown[],
     query: {
       enabled: Boolean(tc && latchedArenaCharmPrice) && !indexerOn,
-      refetchInterval: () => getRpcBackoffPollMs(1000),
+      ...rpcBackedReadQueryOptions(arenaRpcPollMs, isRpcOffline),
       placeholderData: (previous) => previous,
     },
   });
