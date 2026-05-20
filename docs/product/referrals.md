@@ -32,10 +32,24 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 
 | Purpose | Storage | Key | JSON payload |
 |---------|---------|-----|----------------|
-| **Pending** referral (captured from `?ref=` or allowed path) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. **No TTL**; **not** cleared after a successful referred buy. Removed only when the user clears site data, or a **new** valid `?ref=` / path capture **overwrites** the entry. |
+| **Pending** referral (captured from `?ref=` or allowed path) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. **No TTL**; **not** cleared after a successful referred buy. Removed when the user clears site data, a **new** valid `?ref=` / path capture **overwrites** the entry, or [**self-referral purge**](#referral-self-referral-pending-purge-issue-222) drops a slug that matches the connected wallet’s registered code. |
 | **Registered “my code”** UX cache (plaintext for share links after a successful `registerCode`) | **`localStorage` only** | `yieldomega.myrefcode.v1.<walletLowercase>` | `{ "code": "<normalized>", "ts": <ms> }` — one key per connected wallet (hex address lowercased). |
 
 Spec / QA alignment: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85) (do not assume a single `yieldomega.ref.v1` row covers post-register “my code”; that row is **pending capture** only).
+
+<a id="referral-self-referral-pending-purge-issue-222"></a>
+
+### Self-referral pending purge ([GitLab #222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222))
+
+If a user captures **their own** registered referral slug into **`yieldomega.ref.v1`** (for example by opening their share link on `/timecurve/{code}` or `?ref=`), buys would otherwise auto-apply that code and revert onchain with **`TimeCurve: self-referral`**. The frontend **drops** the pending entry when it detects a match against **`yieldomega.myrefcode.v1.<walletLowercase>`** for the **connected** wallet:
+
+- on **wallet connect / account change**;
+- immediately after a new **`?ref=` / path** capture while that wallet is connected;
+- when **`setStoredMyReferralCodeForWallet`** writes the registered code (for example right after **`registerCode`**).
+
+Onchain self-referral reverts are unchanged. Successful referred buys still **do not** clear pending storage for third-party codes. **Out of scope for #222:** pending capture of a slug the wallet has **not** registered yet (no `myrefcode` row) — that case still relies on onchain preflight at submit time until a later enhancement.
+
+Implementation: [`referralSelfReferralPending.ts`](../../frontend/src/lib/referralSelfReferralPending.ts), [`ReferralSelfReferralPurge.tsx`](../../frontend/src/components/ReferralSelfReferralPurge.tsx). Invariant: [`INV-REFERRAL-222-PENDING-PURGE`](../testing/invariants-and-business-logic.md#referral-self-referral-pending-purge-gitlab-222).
 
 - The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled. The same pending code is reused on **every** subsequent buy in that browser until overwritten or cleared manually.
 

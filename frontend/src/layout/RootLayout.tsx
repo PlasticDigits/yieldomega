@@ -3,6 +3,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ReferralPathSync } from "@/components/ReferralPathSync";
+import { ReferralSelfReferralPurge } from "@/components/ReferralSelfReferralPurge";
 import { AgentFooterCard } from "@/components/AgentFooterCard";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
@@ -98,6 +99,7 @@ export function RootLayout() {
   return (
     <div className={shellClassName}>
       <ReferralPathSync />
+      <ReferralSelfReferralPurge />
       <header className="app-header app-header--dense">
         <ConnectButton.Custom>
           {({
