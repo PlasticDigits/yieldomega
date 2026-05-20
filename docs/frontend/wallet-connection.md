@@ -72,11 +72,13 @@ ETH/USDM paths run **`quoteExactOutput`**, wraps/approvals, **`exactOutput`** sw
 | Kumbaya **two-step** | `WETH` / **USDM** → **`swapRouter`** | Slippage-bounded **`maxIn`** for that swap leg ([`swapMaxInputFromQuoted`](../../frontend/src/lib/timeCurveKumbayaSwap.ts)) |
 | Kumbaya **single-tx** `buyViaKumbaya` | **USDM** → **`TimeCurveBuyRouter`** | Same **`maxIn`** for the quoted leg |
 | **`/referrals`** `registerCode` | **CL8Y** → **`ReferralRegistry`** | Onchain **`registrationBurnAmount`** exactly |
-| **`TimeCurve.buy`** / WarBow **CL8Y** pulls | **CL8Y** → **`TimeCurve` (proxy)** | **Exact** gross CL8Y needed for the pending tx |
+| **`TimeCurve.buy`** / WarBow **CL8Y** pulls | **CL8Y** → **`TimeCurve` (proxy)** | **Exact** gross CL8Y needed for the pending tx (+ **50 bps** inclusion headroom unless unlimited opt-in) |
+
+**Shared submit guard ([GitLab #224](https://gitlab.com/PlasticDigits/yieldomega/-/issues/224)):** Simple **`submitBuy`**, Arena **`handleBuy`**, and WarBow CL8Y pulls call [`ensureCl8yTimeCurveAllowance`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.ts) — **`approve`** is submitted only when **`allowance < cl8yTimeCurveApprovalAmountWei(need, pref)`**, so wallets with existing **`type(uint256).max`** (or sufficient exact allowance) are not prompted again.
 
 **Opt-in unlimited CL8Y → TimeCurve:** [`Cl8yTimeCurveUnlimitedApprovalFieldset`](../../frontend/src/components/Cl8yTimeCurveUnlimitedApprovalFieldset.tsx) on TimeCurve **Simple** and **Arena** buy panels stores **`yieldomega.erc20.cl8yTimeCurveUnlimited.v1`** in **`localStorage`** and, when enabled, uses **`type(uint256).max`** for that spender. Toggling off does **not** revoke an existing onchain allowance — participants revoke in their wallet if needed.
 
-**Spec ↔ test:** [`INV-ERC20-APPROVAL-143`](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [timecurve-views §143](timecurve-views.md#erc20-approval-sizing-gitlab-143).
+**Spec ↔ test:** [`INV-ERC20-APPROVAL-143`](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`INV-FRONTEND-224-CL8Y-APPROVE`](../testing/invariants-and-business-logic.md#arena-cl8y-approve-guard-gitlab-224) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [`ensureCl8yTimeCurveAllowance.test.ts`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.test.ts) · [timecurve-views §143](timecurve-views.md#erc20-approval-sizing-gitlab-143) · [timecurve-views §224](timecurve-views.md#arena-cl8y-approve-guard-gitlab-224).
 
 <a id="wallet-scoped-rpc-load-once-gitlab-216"></a>
 

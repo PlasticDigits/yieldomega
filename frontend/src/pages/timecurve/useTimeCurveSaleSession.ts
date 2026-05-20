@@ -26,10 +26,7 @@ import {
   timeCurveWriteAbi,
   weth9Abi,
 } from "@/lib/abis";
-import {
-  cl8yTimeCurveApprovalAmountWei,
-  readCl8yTimeCurveUnlimitedApproval,
-} from "@/lib/cl8yTimeCurveApprovalPreference";
+import { ensureCl8yTimeCurveAllowance } from "@/lib/ensureCl8yTimeCurveAllowance";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
 import {
   cl8ySpendWeiFromPayTokenBudget,
@@ -1751,31 +1748,17 @@ export function useTimeCurveSaleSession(
           guardBuySession();
         }
 
-        const allow = await readContract(wagmiConfig, {
-          address: acceptedAsset,
-          abi: erc20Abi,
-          functionName: "allowance",
-          args: [address, tc],
+        await ensureCl8yTimeCurveAllowance({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
+          tokenAddress: acceptedAsset,
+          timeCurveAddress: tc,
+          needWei: amount,
+          debugContext: "simple:buy",
         });
         guardBuySession();
-        const approveAmt = cl8yTimeCurveApprovalAmountWei(
-          amount,
-          readCl8yTimeCurveUnlimitedApproval(),
-        );
-        if (allow < approveAmt) {
-          const { hash: approveHash } = await writeContractWithGasBuffer({
-            wagmiConfig,
-            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
-            account: address as `0x${string}`,
-            chainId,
-            address: acceptedAsset,
-            abi: erc20Abi,
-            functionName: "approve",
-            args: [tc, approveAmt],
-          });
-          await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
-          guardBuySession();
-        }
         const buyArgs = codeHash
           ? ([cw, codeHash, plantWarBowFlag] as const)
           : plantWarBowFlag
