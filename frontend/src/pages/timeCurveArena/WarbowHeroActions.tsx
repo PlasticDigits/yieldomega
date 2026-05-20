@@ -12,6 +12,7 @@ import type { WarbowPendingRevengeItem } from "@/lib/indexerApi";
 import type { WarbowPreflightNarrative } from "@/lib/timeCurveUx";
 import { formatWarbowViewerBattlePointsDisplay } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
+import { WarbowClaimFlagHeroCard } from "./WarbowClaimFlagHeroCard";
 
 export type WarbowStealCandidate = {
   address: `0x${string}`;
@@ -69,6 +70,12 @@ type Props = {
   viewerStealsToday: bigint | undefined;
   /** Onchain `WARBOW_MAX_STEALS_PER_DAY` (typically 3). */
   warbowMaxStealsPerDay: number;
+  /** Viewer holds the global pending WarBow flag (`warbowPendingFlagPlantAt > 0`). */
+  showClaimFlagBlock: boolean;
+  canClaimWarBowFlag: boolean;
+  flagSilenceEndSec: bigint;
+  warbowFlagClaimBp: bigint;
+  runWarBowClaimFlag: () => Promise<void>;
 };
 
 export function WarbowHeroActions({
@@ -100,6 +107,11 @@ export function WarbowHeroActions({
   warbowRank,
   viewerStealsToday,
   warbowMaxStealsPerDay,
+  showClaimFlagBlock,
+  canClaimWarBowFlag,
+  flagSilenceEndSec,
+  warbowFlagClaimBp,
+  runWarBowClaimFlag,
 }: Props) {
   const writesPaused = buyFeeRoutingEnabled === false;
   const canPressWarbow = isConnected && saleActive && !writesPaused && !isWriting;
@@ -395,6 +407,19 @@ export function WarbowHeroActions({
             {guardedActive ? "Extend guard" : "Activate guard"}
           </button>
         </article>
+
+        <WarbowClaimFlagHeroCard
+          visible={showClaimFlagBlock}
+          canClaimWarBowFlag={canClaimWarBowFlag}
+          ledgerNowSec={guardChainNowSec}
+          flagSilenceEndSec={flagSilenceEndSec}
+          warbowFlagClaimBp={warbowFlagClaimBp}
+          saleActive={saleActive}
+          buyFeeRoutingEnabled={buyFeeRoutingEnabled}
+          isConnected={isConnected}
+          isWriting={isWriting}
+          runWarBowClaimFlag={runWarBowClaimFlag}
+        />
 
         <article className="warbow-hero-card warbow-hero-card--revenge">
           <div className="warbow-hero-card__head">

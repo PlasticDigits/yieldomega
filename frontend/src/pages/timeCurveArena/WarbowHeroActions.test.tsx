@@ -121,6 +121,11 @@ function renderHero(overrides: Partial<Parameters<typeof WarbowHeroActions>[0]> 
     warbowRank: 3,
     viewerStealsToday: 0n,
     warbowMaxStealsPerDay: 3,
+    showClaimFlagBlock: false,
+    canClaimWarBowFlag: false,
+    flagSilenceEndSec: 0n,
+    warbowFlagClaimBp: 1000n,
+    runWarBowClaimFlag: async () => {},
     ...overrides,
   };
   return renderToStaticMarkup(createElement(WarbowHeroActions, props));
@@ -363,5 +368,35 @@ describe("WarbowHeroActions", () => {
     const html = renderHero({ attackerAtDailyStealCap: true });
     expect(html).toContain("wallet");
     expect(html).toContain("daily steal cap");
+  });
+
+  it("hides the claim-flag hero card when the viewer does not hold the pending flag", () => {
+    const html = renderHero({ showClaimFlagBlock: false });
+    expect(html).not.toContain("data-testid=\"warbow-hero-claim-flag\"");
+  });
+
+  it("shows the claim-flag hero card with silence countdown when the viewer holds the pending flag", () => {
+    const html = renderHero({
+      showClaimFlagBlock: true,
+      canClaimWarBowFlag: false,
+      flagSilenceEndSec: 1_000_300n,
+      guardChainNowSec: 1_000_000,
+    });
+    expect(html).toContain("data-testid=\"warbow-hero-claim-flag\"");
+    expect(html).toContain("Claim flag 00:05:00");
+    expect(html).toContain("+1,000 BP if you claim after the silence window");
+  });
+
+  it("enables claim flag CTA after silence when canClaimWarBowFlag is true", () => {
+    const html = renderHero({
+      showClaimFlagBlock: true,
+      canClaimWarBowFlag: true,
+      flagSilenceEndSec: 1_000_000n,
+      guardChainNowSec: 1_000_400,
+    });
+    expect(html).toContain("data-testid=\"warbow-hero-claim-flag-submit\"");
+    const submitIdx = html.indexOf("data-testid=\"warbow-hero-claim-flag-submit\"");
+    expect(html.slice(submitIdx, submitIdx + 120)).not.toMatch(/disabled/);
+    expect(html).toContain(">Claim flag<");
   });
 });
