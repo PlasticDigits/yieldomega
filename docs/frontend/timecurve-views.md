@@ -237,7 +237,9 @@ Helper lines under the CTA (from onchain constants via **`warbowClaimFlagHelperL
 
 Wrong-network and **`buyFeeRoutingEnabled === false`** barriers match steal / guard / revenge ( **`claimWarBowFlag`** has no CL8Y leg but still requires a live sale onchain).
 
-**Spec ↔ test:** [invariants §218](../testing/invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [`WarbowClaimFlagHeroCard.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.tsx) · [manual QA (#218)](../testing/manual-qa-checklists.md#manual-qa-issue-218) · [primitives — plant / claim flag](../product/primitives.md#plant-flag--claim-flag) · [issue #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218).
+**Simple mirror:** When the connected wallet holds the pending flag during a live sale, **`/timecurve`** places the same compact **`WarbowClaimFlagButton`** (label + timer only, no helper card) at the bottom of the **Buy CHARM** panel — `data-testid="timecurve-simple-claim-flag-submit"`.
+
+**Spec ↔ test:** [invariants §218](../testing/invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [`WarbowClaimFlagHeroCard.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.tsx) · [`WarbowClaimFlagButton.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagButton.tsx) · [manual QA (#218)](../testing/manual-qa-checklists.md#manual-qa-issue-218) · [primitives — plant / claim flag](../product/primitives.md#plant-flag--claim-flag) · [issue #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218).
 
 <a id="arena-warbow-steal-victim-field-gitlab-195"></a>
 

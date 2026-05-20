@@ -628,6 +628,7 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 5. Helper copy under CTA shows **+1,000 BP** / **−2,000 BP** lines and muted early-interrupt note (values track onchain constants).
 6. Wrong chain: hero **`ChainMismatchWriteBarrier`** blocks write; no silent no-op.
 7. Optional penalty path: wallet **B** buys **after** silence before **A** claims → **A** penalized (−2× claim BP) / flag cleared.
+8. **Simple `/timecurve`:** same wallet sees compact **Claim flag** button at bottom of Buy CHARM panel (`timecurve-simple-claim-flag-submit`) with matching countdown / enable behavior — no helper card copy.
 
 **Doc map:** [timecurve-views §218](../frontend/timecurve-views.md#arena-warbow-claim-flag-hero-gitlab-218) · [invariants — **`INV-FRONTEND-218-WARBOW-CLAIM-FLAG`**](invariants-and-business-logic.md#arena-warbow-claim-flag-hero-gitlab-218) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md)
 

@@ -8827,6 +8827,12 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
 }
 
+.timecurve-simple__buy-panel .timecurve-simple__claim-flag-cta {
+  width: 100%;
+  margin-top: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .timecurve-simple__buy-panel .timecurve-simple__buy-advanced > summary {
   justify-content: center;
   position: relative;

@@ -413,8 +413,9 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **Claim enabled** | When **`canClaimWarBowFlag`** (sale live + holder + silence elapsed), CTA enables and submits **`runWarBowClaimFlag()`** → **`claimWarBowFlag`**. |
 | **Helper copy** | **+`WARBOW_FLAG_CLAIM_BP` BP** / **−2× claim BP** lines + muted early-interrupt note from [`warbowClaimFlagCopy.ts`](../../frontend/src/lib/warbowClaimFlagCopy.ts). |
 | **Write barriers** | Wrong-network **`ChainMismatchWriteBarrier`** wraps hero cluster; **`buyFeeRoutingEnabled === false`** disables claim CTA (matches existing **`runWarBowClaimFlag`** preflight). |
+| **Simple buy panel** | Same compact **`WarbowClaimFlagButton`** at the bottom of **`/timecurve`** Buy CHARM when the viewer holds the pending slot (`data-testid="timecurve-simple-claim-flag-submit"`). |
 
-**Automated:** [`WarbowClaimFlagHeroCard.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.test.tsx) · [`warbowClaimFlagCopy.test.ts`](../../frontend/src/lib/warbowClaimFlagCopy.test.ts) · [`WarbowHeroActions.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.test.tsx).
+**Automated:** [`WarbowClaimFlagHeroCard.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagHeroCard.test.tsx) · [`WarbowClaimFlagButton.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowClaimFlagButton.test.tsx) · [`warbowClaimFlagCopy.test.ts`](../../frontend/src/lib/warbowClaimFlagCopy.test.ts) · [`warbowClaimFlagState.test.ts`](../../frontend/src/lib/warbowClaimFlagState.test.ts) · [`WarbowHeroActions.test.tsx`](../../frontend/src/pages/timeCurveArena/WarbowHeroActions.test.tsx).
 
 **Docs / play:** [timecurve-views §218](../frontend/timecurve-views.md#arena-warbow-claim-flag-hero-gitlab-218) · [manual QA (#218)](manual-qa-checklists.md#manual-qa-issue-218) · [`play-timecurve-warbow/SKILL.md`](../../skills/play-timecurve-warbow/SKILL.md) · [GitLab #218](https://gitlab.com/PlasticDigits/yieldomega/-/issues/218).
 
