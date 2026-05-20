@@ -44,6 +44,7 @@ const PresaleVestingPage = lazyPage(
   () => import("@/pages/PresaleVestingPage"),
   "PresaleVestingPage",
 );
+const NotFoundPage = lazyPage(() => import("@/pages/NotFoundPage"), "NotFoundPage");
 
 type Surface = { path: string | undefined; element: ReactNode };
 
@@ -127,6 +128,8 @@ function ShellRoutes({ surfaces }: { surfaces: Surface[] }) {
               <Route key={route.path} path={route.path} element={lazyElement(route.element)} />
             ),
           )}
+          {/** Catch-all last so explicit routes win (GitLab #223). */}
+          <Route path="*" element={lazyElement(<NotFoundPage />)} />
         </Route>
       </Routes>
     </BrowserRouter>
