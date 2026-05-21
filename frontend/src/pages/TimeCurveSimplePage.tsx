@@ -18,6 +18,7 @@ import { AddressInline } from "@/components/AddressInline";
 import { erc20Abi } from "@/lib/abis";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import {
@@ -1025,27 +1026,13 @@ export function TimeCurveSimplePage() {
               data-testid="timecurve-simple-last-extension"
             >
               <span className="timecurve-simple__last-extension-dot" aria-hidden="true" />
-              {lastExtension.reset ? (
-                <>
-                  Hard reset by{" "}
-                  <AddressInline
-                    address={lastExtension.buyer}
-                    tailHexDigits={6}
-                    size={14}
-                    className="timecurve-simple__last-extension-addr"
-                  />
-                </>
-              ) : (
-                <>
-                  Just +{lastExtension.secs}s by{" "}
-                  <AddressInline
-                    address={lastExtension.buyer}
-                    tailHexDigits={6}
-                    size={14}
-                    className="timecurve-simple__last-extension-addr"
-                  />
-                </>
-              )}
+              Just +{formatLocaleInteger(lastExtension.secs)}s by{" "}
+              <AddressInline
+                address={lastExtension.buyer}
+                tailHexDigits={6}
+                size={14}
+                className="timecurve-simple__last-extension-addr"
+              />
             </span>
           )}
         </PageSection>

@@ -1052,7 +1052,7 @@ export function StandingsVisuals(props: {
               />
               <div className="timeline-strip__meta">
                 <strong>
-                  {point.hardReset ? "Hard reset" : `+${formatLocaleInteger(BigInt(point.secondsAdded))}s`}
+                  {`+${formatLocaleInteger(BigInt(point.secondsAdded))}s`}
                 </strong>
                 <span>{point.buyer}</span>
               </div>
