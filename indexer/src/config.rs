@@ -306,6 +306,8 @@ pub struct Config {
     /// HTTP JSON-RPC per-request timeout (ingestion + chain-timer poller), from
     /// `INDEXER_RPC_REQUEST_TIMEOUT_SEC` ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
     pub rpc_request_timeout: Duration,
+    /// sqlx Postgres pool size from `DATABASE_POOL_MAX` (default [`DEFAULT_DATABASE_POOL_MAX`]).
+    pub database_pool_max: u32,
 }
 
 impl Config {
@@ -379,6 +381,7 @@ impl Config {
         ensure_production_database_url(&database_url)?;
 
         let rpc_request_timeout = parse_rpc_request_timeout()?;
+        let database_pool_max = parse_database_pool_max()?;
 
         let rpc_raw = required("RPC_URL")?;
         let mut rpc_urls: Vec<String> = split_comma_separated_urls(&rpc_raw);
@@ -401,6 +404,7 @@ impl Config {
             address_registry,
             ingestion_enabled,
             rpc_request_timeout,
+            database_pool_max,
         })
     }
 
@@ -419,10 +423,28 @@ fn required(key: &str) -> Result<String> {
     std::env::var(key).wrap_err_with(|| format!("missing required env var: {key}"))
 }
 
+/// Default sqlx Postgres pool size when `DATABASE_POOL_MAX` is unset.
+pub const DEFAULT_DATABASE_POOL_MAX: u32 = 25;
+/// Maximum configurable pool size (keep `instances × DATABASE_POOL_MAX` under Postgres limits).
+const MAX_DATABASE_POOL_MAX: u32 = 100;
+
 /// Default HTTP RPC timeout (seconds). Bounds hung TCP/RPC calls ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
 const DEFAULT_RPC_REQUEST_TIMEOUT_SECS: u64 = 5;
 /// Maximum configurable HTTP RPC timeout (seconds).
 const MAX_RPC_REQUEST_TIMEOUT_SECS: u64 = 120;
+
+fn parse_database_pool_max() -> Result<u32> {
+    let n: u32 = match std::env::var("DATABASE_POOL_MAX") {
+        Ok(s) => s
+            .parse()
+            .wrap_err("DATABASE_POOL_MAX must be a base-10 u32")?,
+        Err(_) => DEFAULT_DATABASE_POOL_MAX,
+    };
+    if n == 0 {
+        bail!("DATABASE_POOL_MAX must be at least 1");
+    }
+    Ok(n.min(MAX_DATABASE_POOL_MAX))
+}
 
 fn parse_rpc_request_timeout() -> Result<Duration> {
     let secs: u64 = match std::env::var("INDEXER_RPC_REQUEST_TIMEOUT_SEC") {
@@ -436,6 +458,31 @@ fn parse_rpc_request_timeout() -> Result<Duration> {
     }
     let secs = secs.min(MAX_RPC_REQUEST_TIMEOUT_SECS);
     Ok(Duration::from_secs(secs))
+}
+
+#[cfg(test)]
+mod database_pool_max_tests {
+    use super::*;
+
+    #[test]
+    fn default_when_unset() {
+        std::env::remove_var("DATABASE_POOL_MAX");
+        assert_eq!(parse_database_pool_max().unwrap(), DEFAULT_DATABASE_POOL_MAX);
+    }
+
+    #[test]
+    fn parses_and_clamps_high() {
+        std::env::set_var("DATABASE_POOL_MAX", "200");
+        assert_eq!(parse_database_pool_max().unwrap(), MAX_DATABASE_POOL_MAX);
+        std::env::remove_var("DATABASE_POOL_MAX");
+    }
+
+    #[test]
+    fn rejects_zero() {
+        std::env::set_var("DATABASE_POOL_MAX", "0");
+        assert!(parse_database_pool_max().is_err());
+        std::env::remove_var("DATABASE_POOL_MAX");
+    }
 }
 
 #[cfg(test)]

@@ -30,6 +30,7 @@ use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
+use yieldomega_indexer::config::DEFAULT_DATABASE_POOL_MAX;
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
@@ -803,7 +804,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         return;
     };
 
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
@@ -1615,7 +1616,7 @@ async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash(
         return;
     };
 
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
@@ -1698,7 +1699,7 @@ async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
         eprintln!("integration_stage2: skip gitlab177 (set YIELDOMEGA_PG_TEST_URL)");
         return;
     };
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
@@ -1878,7 +1879,7 @@ async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations
         eprintln!("integration_stage2: skip gitlab204 (set YIELDOMEGA_PG_TEST_URL)");
         return;
     };
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
@@ -2034,7 +2035,7 @@ async fn postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination() 
         eprintln!("integration_stage2: skip gitlab225 (set YIELDOMEGA_PG_TEST_URL)");
         return;
     };
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
@@ -2157,7 +2158,7 @@ async fn postgres_referral_registrations_filters_by_owner() {
         );
         return;
     };
-    let pool = connect_and_migrate(&url)
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
