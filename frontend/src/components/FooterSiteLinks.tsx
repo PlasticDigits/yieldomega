@@ -14,19 +14,23 @@ export function FooterSiteLinks() {
       aria-label="YieldOmega and CL8Y links"
       data-testid="footer-site-links"
     >
-      {FOOTER_SITE_LINKS.map((link) => (
+      {FOOTER_SITE_LINKS.map((link) => {
+        const opensInNewTab = link.href.startsWith("http");
+        return (
         <a
           key={link.testId}
           href={link.href}
-          target="_blank"
-          rel="noreferrer noopener"
+          {...(opensInNewTab
+            ? { target: "_blank", rel: "noreferrer noopener" }
+            : {})}
           className="footer-link-pill footer-link-pill--with-icon"
           data-testid={link.testId}
         >
           <FooterSiteLinkIcon icon={link.icon} />
           <span className="footer-link-pill__label">{link.label}</span>
         </a>
-      ))}
+        );
+      })}
     </nav>
   );
 }
