@@ -478,6 +478,8 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 
 **Copy:** **`Become Last Buyer`** (not “latest buyer”).
 
+**Timer hero chip:** The live **“Just extended”** pill on the Simple timer panel uses the same **`Just +{actual_seconds_added}s by {buyer}`** copy for hard-reset and normal extension buys (indexer **`actual_seconds_added`**); **no** **“Hard reset by”** prose. Optional **`--reset`** styling remains for visual emphasis.
+
 **Spec ↔ test:** [invariants — #227](../testing/invariants-and-business-logic.md#timecurve-buy-projected-effects-gitlab-227) · [GitLab #227](https://gitlab.com/PlasticDigits/yieldomega/-/issues/227) · [manual QA (#227)](../testing/manual-qa-checklists.md#manual-qa-issue-227) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md).
 
 <a id="erc20-approval-sizing-gitlab-143"></a>
