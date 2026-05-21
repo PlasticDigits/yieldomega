@@ -618,10 +618,24 @@ When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/Pl
 
 **Spec ↔ test:** [invariants — stake panel redeemed](../testing/invariants-and-business-logic.md#timecurve-simple-stake-redeemed-issue-90) · [`TimeCurveStakeAtLaunchSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveStakeAtLaunchSection.test.tsx).
 
+<a id="timecurve-protocol-doub-projection-gitlab-229"></a>
+
+## Protocol AUDIT — DOUB projection card ([GitLab #229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229))
+
+**`/timecurve/protocol`** (subnav **AUDIT**) shows a **`DOUB projection`** `PageSection` (`data-testid="timecurve-protocol-doub-projection"`) **after** **Sale state** and **only when the sale is live** (`protocolPhase !== saleStartPending` — hidden during pre-open countdown per product sign-off).
+
+- **Math:** [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts) reuses [`timeCurvePodiumMath.ts`](../../frontend/src/lib/timeCurvePodiumMath.ts) (`doubPerCharmAtLaunchWad`, `projectedReservePerDoubWad`, `launchLiquidityAnchorWad`, `kumbayaBandLowerWad`). **Implied market cap** uses **launch-anchor** CL8Y/DOUB × **251M** policy supply (200M + 21.5M + 28.5M + **1M airdrops**); not external oracles.
+- **USD line:** same **1 CL8Y = $1** illustrative pattern as TOTAL USD ([#192](#usd-equivalent-staleness-gitlab-192)).
+- **Empty states:** CHARM→DOUB shows **`EmptyDataPlaceholder`** when `totalCharmWeight == 0` (**`INV-FRONTEND-200`**), not `0` or `Infinity`.
+- **Parity:** clearing / launch / Kumbaya rows match **Raw contract → Reserve routing and launch anchors** in the collapsed accordion.
+
+**Spec ↔ test:** [`INV-FRONTEND-229-DOUB-PROJECTION`](../testing/invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.test.ts`](../../frontend/src/lib/doubProjectionStats.test.ts) · [`manual-qa — #229`](../testing/manual-qa-checklists.md#manual-qa-issue-229) · Playwright [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts).
+
 ## `TimeCurveProtocolPage` layout
 
 A read-only surface for operators:
 
+- **DOUB projection** stat grid (live sale only — [#229](#timecurve-protocol-doub-projection-gitlab-229)).
 - Sale state: phase, deadline, current charm price, total CHARM minted,
   total reserve raised, ended flag.
 - Immutable parameters: launched token, accepted asset, min/max buy,

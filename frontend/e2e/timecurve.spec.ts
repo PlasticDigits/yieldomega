@@ -62,6 +62,7 @@ test("timecurve simple view shows compact podiums without dense Arena or Audit f
   await page.getByRole("navigation", { name: "TimeCurve views" }).getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/timecurve\/protocol$/);
   await expect(page.getByTestId("timecurve-live-buys-activity")).toBeVisible();
+  await expect(page.getByTestId("timecurve-protocol-doub-projection")).toBeVisible();
 });
 
 test("timecurve sub-nav routes to /timecurve/arena (PvP)", async ({ page }) => {
@@ -87,6 +88,7 @@ test("timecurve sub-nav routes to /timecurve/protocol (raw reads)", async ({ pag
   const noTc = page.getByRole("heading", { name: "Configuration missing", level: 2 });
   await expect(sale.or(noTc).first()).toBeVisible();
   await expect(page.getByText(/^TOTAL RAISE:/).first()).toBeVisible();
+  await expect(page.getByTestId("timecurve-protocol-doub-projection")).toBeVisible();
 });
 
 test("timecurve simple view stays usable on a 390×844 mobile viewport", async ({ page }) => {
