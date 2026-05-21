@@ -10,10 +10,11 @@ These files are for **agents (and humans)** who may **use** onchain **TimeCurve*
 
 **Entry point:** [Phase 20 in `docs/agent-phases.md`](../docs/agent-phases.md#phase-20). **Contributor** agents editing the codebase use [Phase 18](../docs/agent-phases.md#phase-18) and [`.cursor/skills/`](../.cursor/skills/README.md) — see [Agents: metadata and skills](../docs/agents/metadata-and-skills.md) for how play vs contributor skills fit together.
 
-## Index (six player-facing skills)
+## Index (seven player-facing skills)
 
 | Skill | Use when |
 |--------|----------|
+| [`play-active-timecurve/SKILL.md`](play-active-timecurve/SKILL.md) | **Start here for the live sale:** detect pre-open / live / post-end phase onchain (and indexer when set), then branch into the right playbook ([#232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232) ↔ [`INV-PLAY-232-ACTIVE-TIMECURVE`](../docs/testing/invariants-and-business-logic.md#global-footer-site-link-ribbon-gitlab-232)). |
 | [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing: voluntary participation, auditable rules, informed choice before other play skills. |
 | [`script-with-timecurve-local/SKILL.md`](script-with-timecurve-local/SKILL.md) | Author **local** TypeScript or Python scripts vs **deployed** contracts — env hygiene, proxies, reads before writes, timing-sensitive buys (process disclosure only). |
 | [`play-timecurve-doubloon/SKILL.md`](play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** fixed v1 reserve podium **categories**, **`PrizesDistributed`** vs **`PrizesSettledEmptyPodiumPool`** ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133) ↔ [`INV-INDEXER-112`](../docs/testing/invariants-and-business-logic.md#indexer-emitted-event-coverage-gitlab-112)), how **DOUB** / fee sinks connect ([`docs/product/primitives.md`](../docs/product/primitives.md)), **CL8Y-at-launch** (**1.275×** clearing anchor — [GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158) ↔ [`invariants — launch anchor`](../docs/testing/invariants-and-business-logic.md#timecurve-launch-anchor-gitlab-158)), and **USD-shaped UI hints** (**not** live oracle quotes — [GitLab #192](https://gitlab.com/PlasticDigits/yieldomega/-/issues/192) ↔ [`INV-FRONTEND-192-USD-AFFORDANCE`](../docs/testing/invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192), [`timecurve-views §192`](../docs/frontend/timecurve-views.md#usd-equivalent-staleness-gitlab-192)). |

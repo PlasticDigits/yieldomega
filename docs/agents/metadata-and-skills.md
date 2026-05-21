@@ -29,10 +29,11 @@ Cursor **skills** are typically small markdown instruction files (for example un
 
 Agents (and humans driving them) who want to **use** onchain games and treasuries—TimeCurve, Rabbit Treasury / DOUB, Leprechaun collections—need guidance that is **not** the same as contributor guardrails. Those play skills live at the repository root: [../../skills/README.md](../../skills/README.md).
 
-**Invariant ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100)):** `skills/` carries **six** player-facing Cursor skills **only**. Maintainer QA / harness prose lives under [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md)—not inside `skills/`.
+**Invariant ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100)):** `skills/` carries **seven** player-facing Cursor skills **only**. Maintainer QA / harness prose lives under [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md)—not inside `skills/`.
 
 | Play skill | Use when |
 |------------|----------|
+| [../../skills/play-active-timecurve/SKILL.md](../../skills/play-active-timecurve/SKILL.md) | Detect **live** TimeCurve sale phase and route into doubloon / WarBow / local-script playbooks ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232)). |
 | [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing before other play skills. |
 | [../../skills/script-with-timecurve-local/SKILL.md](../../skills/script-with-timecurve-local/SKILL.md) | Local TypeScript or Python scripts vs **deployed** contracts (reads, env, timing-sensitive buy **process**—not repo patches). |
 | [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** fixed v1 reserve podium **categories**, DOUB / fee sinks ([`primitives.md`](../product/primitives.md)), **CL8Y-at-launch** (**1.275×** clearing anchor — [GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158), [`invariants` anchor](../testing/invariants-and-business-logic.md#timecurve-launch-anchor-gitlab-158)). |
