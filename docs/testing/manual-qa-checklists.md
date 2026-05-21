@@ -27,6 +27,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79) | [Post-end owner gates](#manual-qa-issue-79) |
 | [#90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90) | [Simple stake panel after `redeemCharms`](#manual-qa-issue-90) |
 | [#113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113) | [Simple live reserve podiums](#manual-qa-issue-113) |
+| [#227](https://gitlab.com/PlasticDigits/yieldomega/-/issues/227) | [Simple buy projected-effects pills](#manual-qa-issue-227) |
 | [#228](https://gitlab.com/PlasticDigits/yieldomega/-/issues/228) | [Time Booster podium tiered duration](#manual-qa-issue-228) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting `/vesting`](#manual-qa-issue-92) |
 | [#202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202) | [Presale CHARM +15% registry vs vesting](#manual-qa-issue-202-presale-charm-registry) |
@@ -630,6 +631,26 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 **Automation:** [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx) · [`frontend/e2e/timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts)
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
+
+<a id="manual-qa-issue-227"></a>
+
+## Simple buy — projected-effects pills (GitLab #227)
+
+**Goal:** **`Projected effects`** on **`/timecurve`** show **one numeric timer pill**, **per-source BP** pills, distinct **defended-streak** chips, **negative 3-decimal spend**, and **Become Last Buyer** — aligned with [`INV-FRONTEND-227-BUY-PROJECTED`](invariants-and-business-logic.md#timecurve-buy-projected-effects-gitlab-227).
+
+### Checklist
+
+1. **Calm timer** (remaining **&gt; 13m**): single **`+120s`** (or cap-truncated) timer pill; **`+{base} BP Base`**; **no** **`time-booster credit`** duplicate; spend like **`-2.260 CL8Y`**.
+2. **Hard-reset band** (remaining **&lt; 13m**): timer pill **`+{900−remaining}s`** (e.g. **~207s** at **11:33** remaining); **no** **“Hard-reset timer toward 15m”** prose; pill **increments ~1s** with hero countdown.
+3. **BP decomposition** under hard-reset: separate **`Reset`** pill (not **`+250 BP + reset bonus`** combo).
+4. **Clutch** (remaining **&lt; 30s**): **`+{n} BP Clutch`** pill in addition to base/reset.
+5. **Defended streak window** (remaining **&lt; 15m**): same wallet → **`+1 streak (N)`**; rival with active streak → **`Break streak`** + **`Streak break`** BP pill; cold start → **`Start streak`** — never **`Start or break defended streak`**.
+6. **Timer cap:** at max remaining, **`Timer capped`** or no false **`+120s`**.
+7. **Offline / reduced motion:** rail renders without React errors (latch from [#82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82) still applies).
+
+**Automation:** [`timeCurveBuyPreview.test.ts`](../../frontend/src/lib/timeCurveBuyPreview.test.ts) · [`timeCurveBuyProjectedEffects.test.ts`](../../frontend/src/pages/timecurve/timeCurveBuyProjectedEffects.test.ts)
+
+**Doc map:** [timecurve-views §227](../frontend/timecurve-views.md#timecurve-buy-projected-effects-gitlab-227) · [invariants §227](invariants-and-business-logic.md#timecurve-buy-projected-effects-gitlab-227) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
 <a id="manual-qa-issue-228"></a>
 
