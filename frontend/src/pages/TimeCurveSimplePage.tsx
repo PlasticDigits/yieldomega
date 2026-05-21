@@ -49,6 +49,7 @@ import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeA
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { WarbowClaimFlagButton } from "@/pages/timeCurveArena/WarbowClaimFlagButton";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
+import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { TimeCurveSimpleAgentCard } from "@/pages/timecurve/TimeCurveSimpleAgentCard";
 import { TimeCurveBuyProjectedEffects } from "@/pages/timecurve/TimeCurveBuyProjectedEffects";
 import { TimeCurveSimplePodiumSection } from "@/pages/timecurve/TimeCurveSimplePodiumSection";
@@ -1314,6 +1315,7 @@ export function TimeCurveSimplePage() {
       />
 
       <TimeCurveSimpleAgentCard />
+      <FooterSiteLinksCard />
     </div>
   );
 }

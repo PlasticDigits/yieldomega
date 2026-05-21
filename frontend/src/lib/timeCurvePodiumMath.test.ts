@@ -55,9 +55,9 @@ describe("launch-anchor invariant: launch price = final per-CHARM price × 1.275
     expect(launchLiquidityAnchorWad(5n * WAD)).toBe((5n * WAD * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN);
   });
 
-  it("kumbayaBandLowerWad is 0.8× the launch anchor", () => {
+  it("kumbayaBandLowerWad is 0.25× the launch anchor", () => {
     const launch = (5n * WAD * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN;
-    expect(kumbayaBandLowerWad(launch)).toBe((launch * 8n) / 10n);
+    expect(kumbayaBandLowerWad(launch)).toBe((launch * 25n) / 100n);
   });
 
   it("spec example: 1 CHARM at 2 CL8Y/CHARM final price ⇒ 2.55 CL8Y at launch", () => {

@@ -1,27 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
+import { useAccount, useReadContract } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
-import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
-import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
+import { cl8yWeiToUsdDisplay } from "@/lib/cl8ySpotUsdPrice";
+import { PROTOCOL_CL8Y_USD_SPOT_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import {
   computeDoubProjectionStats,
   PROJECTED_DOUB_SUPPLY_WHOLE,
 } from "@/lib/doubProjectionStats";
 import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
-import { CL8Y_USD_PRICE_PLACEHOLDER } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { timeCurveReadAbi } from "@/lib/abis";
+import { addresses } from "@/lib/addresses";
+import type { ProtocolCl8yUsdSpotState } from "@/hooks/useProtocolCl8yUsdSpotPrice";
 import { StatCard } from "@/pages/timecurve/timecurveUi";
 import { statFromOptionalString } from "@/lib/statDisplayFromContractRead";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
-import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
+import { ProtocolInlineRefreshButton } from "@/pages/timecurve/ProtocolInlineRefreshButton";
 
 export type TimeCurveProtocolDoubProjectionSectionProps = {
   totalRaisedSerialized: string | undefined;
-  totalRaisedObservedAtMs: number | undefined;
   totalTokensForSaleSerialized: string | undefined;
   totalCharmWeightSerialized: string | undefined;
   currentPricePerCharmSerialized: string | undefined;
   readsPending: boolean;
+  cl8yUsd: ProtocolCl8yUsdSpotState;
 };
 
 function parseBigintOrUndefined(raw: string | undefined): bigint | undefined {
@@ -35,15 +40,50 @@ function parseBigintOrUndefined(raw: string | undefined): bigint | undefined {
   }
 }
 
+function StatValueRow({
+  children,
+  refresh,
+}: {
+  children: ReactNode;
+  refresh?: { ariaLabel: string; disabled?: boolean; onClick: () => void };
+}) {
+  if (!refresh) {
+    return <>{children}</>;
+  }
+  return (
+    <span className="timecurve-protocol__stat-value-row">
+      {children}
+      <ProtocolInlineRefreshButton
+        ariaLabel={refresh.ariaLabel}
+        disabled={refresh.disabled}
+        onClick={refresh.onClick}
+      />
+    </span>
+  );
+}
+
 export function TimeCurveProtocolDoubProjectionSection({
   totalRaisedSerialized,
-  totalRaisedObservedAtMs,
   totalTokensForSaleSerialized,
   totalCharmWeightSerialized,
   currentPricePerCharmSerialized,
   readsPending,
+  cl8yUsd,
 }: TimeCurveProtocolDoubProjectionSectionProps) {
-  const freshness = useRelativeFreshnessLabel(totalRaisedObservedAtMs);
+  const tc = addresses.timeCurve;
+  const { address, isConnected } = useAccount();
+
+  const {
+    data: walletCharmWeight,
+    isPending: walletCharmPending,
+    refetch: refetchWalletCharm,
+  } = useReadContract({
+    address: tc,
+    abi: timeCurveReadAbi,
+    functionName: "charmWeight",
+    args: address ? [address] : undefined,
+    query: { enabled: Boolean(tc && address) },
+  });
 
   const snapshot = useMemo(() => {
     const totalRaised = parseBigintOrUndefined(totalRaisedSerialized);
@@ -73,32 +113,58 @@ export function TimeCurveProtocolDoubProjectionSection({
 
   const statCtx = { isPending: readsPending };
 
-  const marketCapUsd =
-    snapshot !== null && Number.isFinite(snapshot.impliedMarketCapUsdPlaceholder)
-      ? (snapshot.impliedMarketCapUsdPlaceholder * CL8Y_USD_PRICE_PLACEHOLDER).toLocaleString(
-          undefined,
-          { style: "currency", currency: "USD", maximumFractionDigits: 0 },
-        )
-      : undefined;
+  const walletShareDisplay = useMemo(() => {
+    if (!isConnected || !address) {
+      return <EmptyDataPlaceholder>Connect wallet</EmptyDataPlaceholder>;
+    }
+    if (walletCharmPending) {
+      return <EmptyDataPlaceholder>Loading…</EmptyDataPlaceholder>;
+    }
+    const totalCw = parseBigintOrUndefined(totalCharmWeightSerialized);
+    const userCw =
+      walletCharmWeight !== undefined ? (walletCharmWeight as bigint) : undefined;
+    if (totalCw === undefined || userCw === undefined || totalCw === 0n) {
+      return <EmptyDataPlaceholder>No data yet</EmptyDataPlaceholder>;
+    }
+    const pct = Number((userCw * 10_000n) / totalCw) / 100;
+    if (!Number.isFinite(pct)) {
+      return <EmptyDataPlaceholder>No data yet</EmptyDataPlaceholder>;
+    }
+    return `${pct.toLocaleString(undefined, { maximumFractionDigits: 4 })}%`;
+  }, [
+    isConnected,
+    address,
+    walletCharmPending,
+    totalCharmWeightSerialized,
+    walletCharmWeight,
+  ]);
+
+  const marketCapUsd = useMemo(
+    () =>
+      snapshot !== null
+        ? cl8yWeiToUsdDisplay(snapshot.impliedMarketCapCl8yWei, cl8yUsd.usdPerCl8y)
+        : undefined,
+    [snapshot, cl8yUsd.usdPerCl8y],
+  );
+
+  const usdRefresh = {
+    ariaLabel: "Refresh CL8Y USD price",
+    disabled: cl8yUsd.loading,
+    onClick: cl8yUsd.refresh,
+  };
 
   return (
     <PageSection
       title="DOUB projection"
       badgeLabel="launch economics"
       badgeTone="info"
-      lede="Live redemption and launch-liquidity economics from onchain sale totals. Full-supply figure is the 251M policy constant (includes 1M airdrops)."
+      lede="Live redemption and launch-liquidity economics from onchain sale totals."
       data-testid="timecurve-protocol-doub-projection"
     >
       <div className="stats-grid">
         <StatCard
           label="Projected total supply"
           value={`${formatLocaleInteger(PROJECTED_DOUB_SUPPLY_WHOLE)} DOUB`}
-          meta={
-            <>
-              Policy constant (200M sale + 21.5M presale + 28.5M V3 LP + 1M airdrops); see
-              launchplan-timecurve.md §4 (+ 1M airdrops per GitLab #229).
-            </>
-          }
         />
         <StatCard
           label="Sale bucket (onchain)"
@@ -106,11 +172,6 @@ export function TimeCurveProtocolDoubProjectionSection({
             mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} DOUB`,
             labels: { loading: "Loading sale bucket…", missing: "Sale bucket unavailable" },
           })}
-          meta={
-            snapshot?.saleBucketMatchesPolicy === false
-              ? "Expected 200M when deploy follows launch plan."
-              : "Should read 200M when deploy follows launch plan."
-          }
         />
         <StatCard
           label="CHARM → DOUB at launch"
@@ -127,7 +188,7 @@ export function TimeCurveProtocolDoubProjectionSection({
               },
             },
           )}
-          meta="Redemption rate; decreases as the sale progresses."
+          meta="Decreases as sale progresses"
         />
         <StatCard
           label="Implied CL8Y / DOUB (clearing)"
@@ -151,7 +212,7 @@ export function TimeCurveProtocolDoubProjectionSection({
               labels: { loading: "Loading anchor…", missing: "Anchor unavailable" },
             },
           )}
-          meta="1.275× clearing — DoubLPIncentives seed (GitLab #158)."
+          meta="1.275x clearing"
         />
         <StatCard
           label="Kumbaya band floor"
@@ -163,7 +224,7 @@ export function TimeCurveProtocolDoubProjectionSection({
               labels: { loading: "Loading band…", missing: "Band unavailable" },
             },
           )}
-          meta="0.8× launch anchor."
+          meta="0.25x launch anchor"
         />
         <StatCard
           label="Implied market cap (CL8Y)"
@@ -175,23 +236,26 @@ export function TimeCurveProtocolDoubProjectionSection({
               labels: { loading: "Loading market cap…", missing: "Market cap unavailable" },
             },
           )}
-          meta={
-            <>
-              Uses launch-anchor CL8Y/DOUB × {formatLocaleInteger(PROJECTED_DOUB_SUPPLY_WHOLE)} DOUB
-              supply.
-              {freshness ? ` · totalRaised seen ${freshness}` : null}
-            </>
-          }
         />
         <StatCard
-          label="Implied market cap (USD illustrative)"
-          value={statFromOptionalString(marketCapUsd, statCtx, {
-            mapSuccess: (s) => s,
-            labels: { loading: "Loading USD…", missing: "USD unavailable" },
-          })}
+          label="Implied market cap (USD)"
+          value={
+            <StatValueRow refresh={usdRefresh}>
+              {statFromOptionalString(marketCapUsd, statCtx, {
+                mapSuccess: (s) => s,
+                labels: {
+                  loading: cl8yUsd.loading ? "Loading USD…" : "USD unavailable",
+                  missing: cl8yUsd.error ?? "USD unavailable",
+                },
+              })}
+            </StatValueRow>
+          }
           meta={
-            <span title={ARENA_TOTAL_USD_EQUIV_TITLE}>
-              1 CL8Y = $1 placeholder — not a live oracle (#192).
+            <span title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
+              Kumbaya USDM quote per 1 CL8Y
+              {cl8yUsd.usdPerCl8y !== undefined
+                ? ` ($${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })})`
+                : null}
             </span>
           }
         />
@@ -203,18 +267,23 @@ export function TimeCurveProtocolDoubProjectionSection({
           })}
         />
         <StatCard
-          label="Sale allocation"
-          value={statFromOptionalString(
-            snapshot?.saleAllocationBps !== null
-              ? snapshot?.saleAllocationBps?.toString()
-              : undefined,
-            statCtx,
-            {
-              mapSuccess: (raw) => formatBpsAsPercent(Number(raw)),
-              labels: { loading: "Loading allocation…", missing: "Allocation unavailable" },
-            },
-          )}
-          meta="totalCharmWeight ÷ totalTokensForSale (CHARM weight vs sale bucket)."
+          label="Your share of sale"
+          value={
+            <StatValueRow
+              refresh={
+                isConnected && address
+                  ? {
+                      ariaLabel: "Refresh wallet CHARM share",
+                      disabled: walletCharmPending,
+                      onClick: () => void refetchWalletCharm(),
+                    }
+                  : undefined
+              }
+            >
+              {walletShareDisplay}
+            </StatValueRow>
+          }
+          meta="Your percentage holding in connected wallet"
         />
       </div>
     </PageSection>

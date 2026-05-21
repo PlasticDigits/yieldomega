@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { FooterSiteLinkIcon } from "@/components/FooterSiteLinkIcon";
 import { FOOTER_SITE_LINKS } from "@/lib/footerSiteLinks";
 
 /**
- * Site-wide outbound link ribbon below the agent card body and above indexer /
- * fee-sink rows ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232)).
+ * Outbound link pills for the footer site-links card
+ * ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232)).
  */
 export function FooterSiteLinks() {
   return (
     <nav
-      className="app-footer__row app-footer__row--site-links"
+      className="footer-site-links-card__nav"
       aria-label="YieldOmega and CL8Y links"
       data-testid="footer-site-links"
     >
@@ -19,10 +20,11 @@ export function FooterSiteLinks() {
           href={link.href}
           target="_blank"
           rel="noreferrer noopener"
-          className="footer-link-pill"
+          className="footer-link-pill footer-link-pill--with-icon"
           data-testid={link.testId}
         >
-          {link.label}
+          <FooterSiteLinkIcon icon={link.icon} />
+          <span className="footer-link-pill__label">{link.label}</span>
         </a>
       ))}
     </nav>

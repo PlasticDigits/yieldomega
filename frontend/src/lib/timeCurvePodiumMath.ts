@@ -56,8 +56,12 @@ export function launchLiquidityAnchorWad(clearingWad: bigint): bigint {
   return (clearingWad * LAUNCH_LIQUIDITY_ANCHOR_NUM) / LAUNCH_LIQUIDITY_ANCHOR_DEN;
 }
 
+/** Kumbaya v3 band floor vs launch anchor — **0.25×** (product policy; was documented as 0.8× in older docs). */
+export const KUMBAYA_BAND_LOWER_NUM = 25n;
+export const KUMBAYA_BAND_LOWER_DEN = 100n;
+
 export function kumbayaBandLowerWad(launchAnchorWad: bigint): bigint {
-  return (launchAnchorWad * 8n) / 10n;
+  return (launchAnchorWad * KUMBAYA_BAND_LOWER_NUM) / KUMBAYA_BAND_LOWER_DEN;
 }
 
 /**

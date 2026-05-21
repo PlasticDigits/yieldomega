@@ -27,8 +27,11 @@ import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProt
 import { useTimecurveProtocolRawAccordion } from "@/pages/timecurve/useTimecurveProtocolRawAccordion";
 import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSerializedDep";
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
-import { ARENA_TOTAL_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
+import { cl8yWeiToUsdDisplay } from "@/lib/cl8ySpotUsdPrice";
+import { PROTOCOL_CL8Y_USD_SPOT_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { useProtocolCl8yUsdSpotPrice } from "@/hooks/useProtocolCl8yUsdSpotPrice";
+import { ProtocolInlineRefreshButton } from "@/pages/timecurve/ProtocolInlineRefreshButton";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 
@@ -70,9 +73,12 @@ export function TimeCurveProtocolPage() {
     charmPriceRows,
     sinksRows,
     latchedFeeRouterAddr,
+    latchedAcceptedAssetAddr,
     heroChainNowSec,
     refetchProtocolReads,
   } = useTimeCurveProtocolData();
+
+  const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
 
   const get = (i: number) => reading[i];
   const feeRouterAddrForUi =
@@ -130,8 +136,11 @@ export function TimeCurveProtocolPage() {
     if (!totalRaiseSerialized) {
       return { cl8y: "—" as const, usd: "—" as const };
     }
-    return formatTotalRaiseHeroDisplayFromWei(BigInt(totalRaiseSerialized), 18);
-  }, [totalRaiseSerialized]);
+    const cl8y = formatTotalRaiseHeroDisplayFromWei(BigInt(totalRaiseSerialized), 18).cl8y;
+    const usd =
+      cl8yWeiToUsdDisplay(BigInt(totalRaiseSerialized), cl8yUsd.usdPerCl8y) ?? "—";
+    return { cl8y, usd };
+  }, [totalRaiseSerialized, cl8yUsd.usdPerCl8y]);
 
   const buyEnvelopeParamsWire = useMemo((): EnvelopeCurveParamsWire | null => {
     const saleStartRow = get(0);
@@ -371,11 +380,23 @@ export function TimeCurveProtocolPage() {
             <div className="timer-hero__total-raise">
               TOTAL RAISE: {totalRaiseHeroDisplay.cl8y} CL8Y
             </div>
-            <div className="timer-hero__total-usd-block" title={ARENA_TOTAL_USD_EQUIV_TITLE}>
-              <div className="timer-hero__total-usd">TOTAL USD: {totalRaiseHeroDisplay.usd}</div>
+            <div className="timer-hero__total-usd-block" title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
+              <div className="timer-hero__total-usd timecurve-protocol__total-usd-row">
+                <span>TOTAL USD: {totalRaiseHeroDisplay.usd}</span>
+                <ProtocolInlineRefreshButton
+                  ariaLabel="Refresh CL8Y USD price"
+                  disabled={cl8yUsd.loading}
+                  onClick={cl8yUsd.refresh}
+                />
+              </div>
               {totalRaiseUsdFreshness ? (
                 <div className="timer-hero__total-usd-affordance">
-                  CL8Y total seen {totalRaiseUsdFreshness} · USD is illustrative (1 CL8Y = $1)
+                  CL8Y total seen {totalRaiseUsdFreshness}
+                  {cl8yUsd.usdPerCl8y !== undefined
+                    ? ` · 1 CL8Y ≈ $${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })} (Kumbaya)`
+                    : cl8yUsd.error
+                      ? ` · ${cl8yUsd.error}`
+                      : null}
                 </div>
               ) : null}
             </div>
@@ -408,7 +429,7 @@ export function TimeCurveProtocolPage() {
       {protocolPhase !== "saleStartPending" && (
         <TimeCurveProtocolDoubProjectionSection
           totalRaisedSerialized={totalRaiseSerialized}
-          totalRaisedObservedAtMs={totalRaiseObservedAtMs}
+          cl8yUsd={cl8yUsd}
           totalTokensForSaleSerialized={
             get(5)?.status === "success" && get(5)!.result !== undefined
               ? String(get(5)!.result as bigint)
