@@ -4,19 +4,24 @@
 
 Uses openai/gpt-image-2 with typography baked into the generation — no local text overlay.
 Runs all images in parallel with one Replicate create attempt per image (retry_max=1).
+Uses an exclusive batch lock and ``prediction-ids.json`` so a second concurrent or restarted
+run polls the same prediction instead of creating duplicates.
 
   cd scripts/replicate-art
   .venv/bin/python ecosystem_social_may21_batch.py --dry-run
   .venv/bin/python ecosystem_social_may21_batch.py
+  .venv/bin/python ecosystem_social_may21_batch.py --resume   # skip existing PNGs; reuse ledger ids
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +33,8 @@ import generate_assets as ga  # noqa: E402
 
 
 OUT_DIR = ga.DEFAULT_OUT / "gen_social" / "ecosystem-may21"
+PREDICTION_IDS_PATH = OUT_DIR / "prediction-ids.json"
+BATCH_LOCK_PATH = OUT_DIR / ".batch.lock"
 
 
 @dataclass(frozen=True)
@@ -88,10 +95,10 @@ Accuracy constraints:
 - Default buy timer branch: +120 seconds, capped by the remaining-time cap.
 - Hard-reset branch: when remaining time before the buy is below 13 minutes, the deadline snaps toward 15 minutes.
 - WarBow is Battle Points PvP: buys can earn BP, flag planting is opt-in, and steal/guard/revenge are distinct CL8Y-burn actions.
-- Reserve podium categories include last buy, WarBow top Battle Points, defended streak, and time booster.
+- Reserve podium categories: Last Buy, WarBow (top Battle Points), Defended Streak, Time Booster.
 - Do not imply guaranteed returns, guaranteed wins, legal advice, or offchain authority.
 - Characters must be adult mascots or adult player avatars.
-- Pump.fun / meme-launch comparisons are illustrative contrast only — no ticker spam, no real project logos.
+- Pump.fun / meme-launch comparisons are illustrative contrast only — no ticker spam, no real Pump.fun logo or branding.
 
 Concept brief:
 {job.concept.strip()}
@@ -122,7 +129,7 @@ Wide 3:2 finished infographic poster, split comparison layout. Top headline text
 Left column title: "QUICK LAUNCH". Show a stylized Pump.fun-like meme coin rocket launching from a conveyor,
 instantly exploding into scattered hat-tokens, empty charts, and adult trader silhouettes walking away bored or panicked.
 Right column title: "EVOLVING ARENA". Show Yieldomega's glowing green-gold onchain arena: visible countdown timers,
-WarBow energy arcs, podium pedestals with four small category badges (Last Buy, WarBow, Defended, Booster),
+WarBow energy arcs, podium pedestals with four small category badges (Last Buy, WarBow, Defended Streak, Time Booster),
 players strategizing around timer extensions and pressure waves. Footer micro-labels: "flash liquidity" left,
 "long-term gameplay loops" right. Clean modern infographic arrows between stages, chunky readable cartoon typography,
 high contrast, no fine print.
@@ -141,7 +148,7 @@ Wide 3:2 side-by-side infographic poster, clean modern layout. Left panel headli
 Show straight vertical buy and sell arrows, a price line spiking then cliff-dumping, bored or fleeing traders, and a
 small label "dump cycle". Right panel headline exactly: "TIMECURVE". Show an onchain arena timer with +120s extension
 callout, player interaction nodes (buy press, crowd reactions), four podium slots labeled "Last Buy", "WarBow",
-"Defended", "Booster", a glowing WarBow silhouette, defended streak shield icon, and concentric pressure-wave rings
+"Defended Streak", "Time Booster", a glowing WarBow silhouette, defended streak shield icon, and concentric pressure-wave rings
 with label "arena pressure". Use readable arrows, badges, and short callouts; integrated chunky arcade typography;
 lots of whitespace; green-gold Yieldomega palette on the right, muted gray-red stress on the left. No dates, prices,
 or guaranteed-win language.
@@ -169,6 +176,23 @@ bubbles; at most one small diegetic arena clock numerals if needed. No profit pr
     ]
 
 
+@contextmanager
+def _exclusive_batch_lock():
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    with open(BATCH_LOCK_PATH, "w", encoding="utf-8") as lock_fp:
+        try:
+            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise SystemExit(
+                "Another ecosystem_social_may21_batch.py run holds the batch lock. "
+                "Wait for it to finish or remove a stale lock only if no process is running."
+            ) from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_fp.fileno(), fcntl.LOCK_UN)
+
+
 def write_manifest(selected: list[EcosystemSocialJob], *, using_refs: bool) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     manifest = {
@@ -176,6 +200,7 @@ def write_manifest(selected: list[EcosystemSocialJob], *, using_refs: bool) -> N
         "output_dir": str(OUT_DIR.relative_to(ga.REPO_ROOT)),
         "text_in_image_only": True,
         "local_text_overlay": False,
+        "prediction_ids_path": str(PREDICTION_IDS_PATH.relative_to(ga.REPO_ROOT)),
         "retry_max": 1,
         "parallel_workers": len(selected),
         "reference_images_used": using_refs,
@@ -196,7 +221,8 @@ def write_manifest(selected: list[EcosystemSocialJob], *, using_refs: bool) -> N
     (OUT_DIR / "README.md").write_text(
         "# Ecosystem comparison social (May 21)\n\n"
         "Generated with `scripts/replicate-art/ecosystem_social_may21_batch.py` — "
-        "one Replicate create per image, parallel workers, typography from gpt-image-2 only "
+        "one Replicate create per image, parallel workers, exclusive batch lock, "
+        "`prediction-ids.json` ledger (no duplicate creates on re-run), typography from gpt-image-2 only "
         "(no local overlay). See `prompts.json`.\n",
         encoding="utf-8",
     )
@@ -205,6 +231,11 @@ def write_manifest(selected: list[EcosystemSocialJob], *, using_refs: bool) -> N
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true", help="Write manifest and print prompts; no API calls")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Skip slugs that already have a PNG; reuse prediction-ids.json for in-flight jobs",
+    )
     args = parser.parse_args()
 
     ga.load_env()
@@ -228,14 +259,30 @@ def main() -> int:
     os.environ["REPLICATE_API_TOKEN"] = token
 
     existing = [OUT_DIR / f"{job.slug}.png" for job in selected if (OUT_DIR / f"{job.slug}.png").exists()]
-    if existing:
-        print("Refusing to run with existing PNG outputs; remove them first for a fresh one-attempt set.", file=sys.stderr)
+    if existing and not args.resume:
+        print(
+            "Refusing to run with existing PNG outputs; remove them first for a fresh one-attempt set "
+            "or pass --resume to skip finished slugs.",
+            file=sys.stderr,
+        )
         for path in existing:
             print(f"  existing: {path}", file=sys.stderr)
         return 2
 
+    prefer_wait = ga.clamp_prefer_wait(1)
+    to_run: list[tuple[int, EcosystemSocialJob]] = []
+    for idx, job in enumerate(selected, start=1):
+        if (OUT_DIR / f"{job.slug}.png").is_file():
+            print(f"[{idx}/{len(selected)}] {job.slug} exists; --resume skipping create")
+            continue
+        to_run.append((idx, job))
+
+    if not to_run:
+        print("All outputs already present; nothing to generate.")
+        return 0
+
     def run_one(idx: int, job: EcosystemSocialJob) -> None:
-        print(f"[{idx}/{len(selected)}] {job.slug} ({job.kind})")
+        print(f"[{idx}/{len(selected)}] {job.slug} ({job.kind})", flush=True)
         ga.run_job(
             job.slug,
             "3:2",
@@ -248,7 +295,7 @@ def main() -> int:
             "high",
             "low",
             90,
-            1,
+            prefer_wait,
             1,
             20.0,
             False,
@@ -257,18 +304,21 @@ def main() -> int:
             max_wall_seconds=float(os.environ.get("REPLICATE_MAX_GENERATION_SECONDS", "900")),
             poll_progress=True,
             log_monitor=True,
+            ledger_path=PREDICTION_IDS_PATH,
+            ledger_key=job.slug,
         )
 
-    with ThreadPoolExecutor(max_workers=len(selected)) as executor:
-        futures = {executor.submit(run_one, idx, job): job.slug for idx, job in enumerate(selected, start=1)}
-        for future in as_completed(futures):
-            slug = futures[future]
-            try:
-                future.result()
-                print(f"[{slug}] complete")
-            except Exception as exc:
-                print(f"[{slug}] failed: {exc!s}", file=sys.stderr)
-                raise
+    with _exclusive_batch_lock():
+        with ThreadPoolExecutor(max_workers=len(to_run)) as executor:
+            futures = {executor.submit(run_one, idx, job): job.slug for idx, job in to_run}
+            for future in as_completed(futures):
+                slug = futures[future]
+                try:
+                    future.result()
+                    print(f"[{slug}] complete")
+                except Exception as exc:
+                    print(f"[{slug}] failed: {exc!s}", file=sys.stderr)
+                    raise
 
     print(f"Wrote images to {OUT_DIR}")
     return 0

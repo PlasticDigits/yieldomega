@@ -515,6 +515,8 @@ def run_job(
     max_wall_seconds: float | None = None,
     log_monitor: bool = False,
     poll_progress: bool = False,
+    ledger_path: Path | None = None,
+    ledger_key: str | None = None,
 ) -> Path | None:
     catalog_bg = background
     if custom_prompt is not None:
@@ -606,6 +608,8 @@ def run_job(
                     job_label=name,
                     log_monitor=log_monitor,
                     poll_progress=poll_progress,
+                    ledger_path=ledger_path,
+                    ledger_key=ledger_key or "",
                 )
             finally:
                 for handle in handles:
@@ -620,6 +624,8 @@ def run_job(
             job_label=name,
             log_monitor=log_monitor,
             poll_progress=poll_progress,
+            ledger_path=ledger_path,
+            ledger_key=ledger_key or "",
         )
 
     output = run_with_retries(
