@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     );
     tracing::debug!(rpc_urls = ?config.rpc_urls, "RPC endpoint order");
 
-    let pool = db::connect_and_migrate(&config.database_url).await?;
+    let pool = db::connect_and_migrate(&config.database_url, config.database_pool_max).await?;
 
     let ingest_pool = pool.clone();
     let ingest_config = config.clone();
