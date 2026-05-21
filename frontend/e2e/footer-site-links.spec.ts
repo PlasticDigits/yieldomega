@@ -12,6 +12,10 @@ test("footer site links card on footer-enabled routes (GitLab #232)", async ({ p
   const ribbon = card.getByTestId("footer-site-links");
   await expect(ribbon).toBeVisible();
   await expect(ribbon.getByRole("link", { name: "X" })).toHaveAttribute("href", "https://x.com/yieldomega");
+  await expect(ribbon.getByRole("link", { name: "contact@yieldomega.com" })).toHaveAttribute(
+    "href",
+    "mailto:contact@yieldomega.com",
+  );
   await expect(ribbon.getByRole("link", { name: "Agent SKILL.md" })).toHaveAttribute(
     "href",
     /github\.com\/PlasticDigits\/yieldomega\/blob\/main\/skills\/play-active-timecurve\/SKILL\.md/,

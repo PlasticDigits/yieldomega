@@ -9,7 +9,7 @@ export function ghMainBlob(path: string): string {
 
 export type FooterSiteLinkIcon =
   | { kind: "asset"; src: string; alt?: string }
-  | { kind: "brand"; brand: "x" | "telegram" | "gitlab" | "github" };
+  | { kind: "brand"; brand: "x" | "telegram" | "gitlab" | "github" | "mail" };
 
 export type FooterSiteLink = {
   label: string;
@@ -43,6 +43,12 @@ export const FOOTER_SITE_LINKS: readonly FooterSiteLink[] = [
     href: "https://github.com/PlasticDigits/yieldomega",
     testId: "footer-site-link-github",
     icon: { kind: "brand", brand: "github" },
+  },
+  {
+    label: "contact@yieldomega.com",
+    href: "mailto:contact@yieldomega.com",
+    testId: "footer-site-link-email",
+    icon: { kind: "brand", brand: "mail" },
   },
   {
     label: "Buy CL8Y (Kumbaya)",
