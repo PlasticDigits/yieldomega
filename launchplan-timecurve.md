@@ -91,6 +91,8 @@ This section fixes **how many DOUB are minted at launch** and **where they go**,
 
 **Checksum:** 200 + 21.5 + 28.5 = **250M** whole tokens.
 
+**UI policy (GitLab #229):** Operator **AUDIT** projection card uses **251M** whole DOUB = table above + **1M airdrops**; implied market cap uses **launch-anchor** CL8Y/DOUB (**1.275×** clearing). See [`docs/frontend/timecurve-views.md`](docs/frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229).
+
 ### 4.3 Wiring constraints
 
 - TimeCurve **`totalTokensForSale`** must equal **200M** (in wei) at deploy when following this table.

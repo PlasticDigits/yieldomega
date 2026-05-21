@@ -19,6 +19,7 @@ import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiveBuysActivitySection";
 import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
+import { TimeCurveProtocolDoubProjectionSection } from "@/pages/timecurve/TimeCurveProtocolDoubProjectionSection";
 import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
@@ -402,6 +403,29 @@ export function TimeCurveProtocolPage() {
           <dd>{renderBool(21)}</dd>
         </dl>
       </PageSection>
+
+      {protocolPhase !== "saleStartPending" && (
+        <TimeCurveProtocolDoubProjectionSection
+          totalRaisedSerialized={totalRaiseSerialized}
+          totalRaisedObservedAtMs={totalRaiseObservedAtMs}
+          totalTokensForSaleSerialized={
+            get(5)?.status === "success" && get(5)!.result !== undefined
+              ? String(get(5)!.result as bigint)
+              : undefined
+          }
+          totalCharmWeightSerialized={
+            get(4)?.status === "success" && get(4)!.result !== undefined
+              ? String(get(4)!.result as bigint)
+              : undefined
+          }
+          currentPricePerCharmSerialized={
+            get(8)?.status === "success" && get(8)!.result !== undefined
+              ? String(get(8)!.result as bigint)
+              : undefined
+          }
+          readsPending={reading.length === 0}
+        />
+      )}
 
       <TimeCurveLiveBuysActivitySection
         recentBuys={liveBuys.buys}

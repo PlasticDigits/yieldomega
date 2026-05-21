@@ -13,6 +13,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222) | [Referrals — self-referral pending purge](#manual-qa-issue-222) |
 | [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
 | [#225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225) | [Referrals — guide leaderboard global totals + pagination](#manual-qa-issue-225) |
+| [#229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229) | [Protocol AUDIT — DOUB projection card](#manual-qa-issue-229) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
@@ -305,6 +306,30 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 7. **`document.title`** includes **Page not found** on 404; navigates away restores default.
 
 **Doc map:** [invariants — #223](invariants-and-business-logic.md#branded-404-catch-all-gitlab-223) · [`referrals.md`](../product/referrals.md#client-link-capture-frontend) · [`NotFoundPage.tsx`](../../frontend/src/pages/NotFoundPage.tsx)
+
+<a id="manual-qa-issue-229"></a>
+
+## Protocol AUDIT — DOUB projection card (GitLab #229)
+
+**Why:** Operators need launch economics (supply, redemption rate, launch-anchor market cap) without opening the raw accordion.
+
+### Preconditions
+
+- `VITE_TIMECURVE_ADDRESS` set; sale **live** (`saleStart` reached, not pre-open pending).
+- Local Anvil or devnet with `totalTokensForSale` ≈ **200M** when deploy follows launch plan.
+
+### Checklist
+
+1. Open **`/timecurve/protocol`** → **`data-testid="timecurve-protocol-doub-projection"`** visible **without** expanding **Raw contract and operator context**.
+2. **Pre-open** (`saleStartPending`): section **absent**; re-check after sale goes live.
+3. **Projected total supply** reads **251M DOUB** with footnote to launch plan + 1M airdrops.
+4. Before first buy (`totalCharmWeight == 0`): **CHARM → DOUB** shows intentional empty placeholder, not `0` or `Infinity`.
+5. After buys: **CHARM → DOUB** decreases; **implied CL8Y / DOUB (clearing)** flat or rises; **launch anchor** = **1.275×** clearing.
+6. **Implied market cap (CL8Y)** uses launch anchor; **USD** line shows illustrative disclosure (#192).
+7. Expand accordion **Reserve routing and launch anchors** → clearing / launch / Kumbaya lower **match** the projection card.
+8. Mobile **≤479px**: `stats-grid` wraps; no horizontal overflow.
+
+**Doc map:** [invariants — #229](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts)
 
 <a id="manual-qa-issue-95"></a>
 
