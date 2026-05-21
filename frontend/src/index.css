@@ -3431,10 +3431,54 @@ label:has(input[type="radio"]:disabled) {
   margin-top: 1.25rem;
 }
 
+.platform-usage-wallets__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
 .platform-usage-wallets__title {
-  margin: 0 0 0.65rem;
+  margin: 0;
   font-family: "Bungee", cursive;
   font-size: 0.95rem;
+}
+
+.platform-usage-wallets__status {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.platform-usage-wallets__status--refresh {
+  display: inline-block;
+  animation: platform-usage-wallet-refresh-spin 0.9s linear infinite;
+}
+
+.platform-usage-wallets__status--ok {
+  color: var(--arcade-green-900, #1a5c2e);
+  font-weight: 700;
+}
+
+@keyframes platform-usage-wallet-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.platform-usage-wallets__rank {
+  font-family: "Bungee", cursive;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .platform-usage-wallets__status--refresh {
+    animation: none;
+  }
 }
 
 .platform-usage-wallets__scroll {

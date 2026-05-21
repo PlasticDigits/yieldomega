@@ -7,11 +7,17 @@ import {
   platformUsagePageIndex,
   platformUsageTotalPages,
   platformUsageVisiblePages,
+  platformUsageWalletRank,
 } from "./platformUsagePagination";
 
 describe("platformUsagePagination", () => {
-  it("uses page size 50", () => {
-    expect(PLATFORM_USAGE_WALLET_PAGE_SIZE).toBe(50);
+  it("uses page size 20", () => {
+    expect(PLATFORM_USAGE_WALLET_PAGE_SIZE).toBe(20);
+  });
+
+  it("computes global wallet rank from offset and row index", () => {
+    expect(platformUsageWalletRank(0, 0)).toBe(1);
+    expect(platformUsageWalletRank(20, 4)).toBe(25);
   });
 
   it("maps offset to page index", () => {

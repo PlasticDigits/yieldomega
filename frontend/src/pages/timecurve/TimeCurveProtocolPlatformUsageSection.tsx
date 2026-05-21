@@ -12,6 +12,7 @@ import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
 import {
   platformUsagePageIndex,
   platformUsageTotalPages,
+  platformUsageWalletRank,
 } from "@/lib/platformUsagePagination";
 import type { PlatformUsageVelocityWindow } from "@/lib/indexerApi";
 import { StatCard } from "@/pages/timecurve/timecurveUi";
@@ -104,7 +105,7 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
       title="Platform usage"
       badgeLabel="indexer-backed"
       badgeTone="info"
-      lede="Network-wide participation on the indexed chain: TimeCurve buys, WarBow CL8Y spend, and buy velocity. Reflects indexer history only (ingestion lag applies)."
+      lede="Network-wide participation on the indexed chain: TimeCurve buys, WarBow CL8Y spend, and buy velocity."
       data-testid="timecurve-protocol-platform-usage"
     >
       {showEmptyIndexer ? (
@@ -130,11 +131,7 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
           <div className="stats-grid">
             <StatCard label="Unique wallets" value={formatCount(data.unique_wallets)} />
             <StatCard label="Total buys" value={formatCount(data.total_buys)} />
-            <StatCard
-              label="Mean buys / wallet"
-              value={data.mean_buys_per_wallet}
-              meta={`Among ${formatCount(data.unique_buyers)} buyers with ≥1 buy`}
-            />
+            <StatCard label="Mean buys / wallet" value={data.mean_buys_per_wallet} />
             <StatCard label="Median buys / wallet" value={data.median_buys_per_wallet} />
           </div>
 
@@ -193,12 +190,28 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
           </div>
 
           <div className="platform-usage-wallets">
-            <h3 className="platform-usage-wallets__title">Wallets by CL8Y spent on buys</h3>
-            {pageLoading ? <p className="muted">Refreshing wallet table…</p> : null}
+            <div className="platform-usage-wallets__title-row">
+              <h3 className="platform-usage-wallets__title">Wallets by CL8Y spent on buys</h3>
+              <span
+                className={[
+                  "platform-usage-wallets__status",
+                  pageLoading
+                    ? "platform-usage-wallets__status--refresh"
+                    : "platform-usage-wallets__status--ok",
+                ].join(" ")}
+                role="status"
+                aria-live="polite"
+                aria-label={pageLoading ? "Refreshing wallet table" : "Wallet table up to date"}
+                data-testid="timecurve-protocol-platform-usage-wallet-status"
+              >
+                {pageLoading ? "↻" : "✓"}
+              </span>
+            </div>
             <div className="platform-usage-wallets__scroll">
               <table className="platform-usage-wallets__table">
                 <thead>
                   <tr>
+                    <th scope="col">Rank</th>
                     <th scope="col">Wallet</th>
                     <th scope="col">Buys</th>
                     <th scope="col">CL8Y spent</th>
@@ -207,13 +220,16 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
                 <tbody>
                   {data.wallets.items.length === 0 ? (
                     <tr>
-                      <td colSpan={3}>
+                      <td colSpan={4}>
                         <EmptyDataPlaceholder>No indexed buys yet</EmptyDataPlaceholder>
                       </td>
                     </tr>
                   ) : (
-                    data.wallets.items.map((row) => (
+                    data.wallets.items.map((row, rowIndex) => (
                       <tr key={row.wallet}>
+                        <td className="platform-usage-wallets__rank">
+                          {platformUsageWalletRank(offset, rowIndex)}
+                        </td>
                         <td>
                           <AddressInline address={row.wallet} />
                         </td>

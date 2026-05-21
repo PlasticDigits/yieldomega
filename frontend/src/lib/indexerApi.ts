@@ -449,7 +449,7 @@ export function timecurvePlatformUsageApiPath(
 }
 
 export async function fetchTimecurvePlatformUsage(
-  limit = 50,
+  limit = 20,
   offset = 0,
   velocityWindow: PlatformUsageVelocityWindow = "1h",
 ) {

@@ -352,7 +352,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 3. WarBow quadrants show **count + CL8Y** for steals, steal overrides, revenges, guards.
 4. Trigger a steal with **daily limit bypass** → **Steal overrides** increments separately from normal steals.
 5. **Buy velocity:** default **Last hour**; toggle **Last day** → avg buys/hr updates; zero-window shows **No buys in this window**.
-6. Wallet table: addresses link to explorer; pagination when **>50** buyers; sort favors highest **CL8Y spent**.
+6. Wallet table: **rank** column; **20** rows per page with pagination when more buyers; inline **↻** while refreshing and green **✓** when idle; sort favors highest **CL8Y spent** (ties → lowest address).
 7. Stop indexer → section shows offline/unset copy, **not** misleading zeros.
 8. Mobile: stats grid wraps; wallet table scrolls horizontally.
 
