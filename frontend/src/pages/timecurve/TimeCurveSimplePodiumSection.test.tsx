@@ -61,7 +61,9 @@ describe("TimeCurveSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Score: 1200 Battle Points");
     expect(html).toContain("Score: 900 Battle Points");
     expect(html).toContain("Score: 4 sequential buys");
-    expect(html).toContain("Score: 300s added");
+    expect(html).toContain("Score: 05:00 added");
+    expect(html).toContain("Score: 04:00 added");
+    expect(html).toContain("Score: 01:00 added");
     expect(html).toMatch(/address-inline__label">111111</);
     expect(html).not.toMatch(/address-inline__label">0x/);
   });

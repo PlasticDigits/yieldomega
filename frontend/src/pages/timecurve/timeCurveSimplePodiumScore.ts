@@ -2,6 +2,7 @@
 
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import type { BuyItem } from "@/lib/indexerApi";
+import { formatTimeBoosterPodiumSec } from "./timeBoosterPodiumFormat";
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
@@ -80,7 +81,10 @@ export function formatSimplePodiumScoreLine(
     return `Score: ${digits} Battle Points`;
   }
   if (categoryIndex === 3) {
-    return `Score: ${digits}s added`;
+    if (digits === "0") {
+      return "Score: —";
+    }
+    return `Score: ${formatTimeBoosterPodiumSec(rawToBigIntForFormat(digits))} added`;
   }
   return "Score: —";
 }
