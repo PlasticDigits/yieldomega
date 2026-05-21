@@ -20,6 +20,7 @@ import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiv
 import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveProtocolDoubProjectionSection } from "@/pages/timecurve/TimeCurveProtocolDoubProjectionSection";
+import { TimeCurveProtocolPlatformUsageSection } from "@/pages/timecurve/TimeCurveProtocolPlatformUsageSection";
 import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
@@ -439,6 +440,8 @@ export function TimeCurveProtocolPage() {
         buyPagesExpanded={liveBuys.hasExpandedBuyPages}
         onLoadMore={() => void liveBuys.handleLoadMoreBuys()}
       />
+
+      <TimeCurveProtocolPlatformUsageSection isOffline={isOffline} />
 
       <PageSection
         title="Immutable parameters"

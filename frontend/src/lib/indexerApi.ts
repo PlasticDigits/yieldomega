@@ -397,6 +397,67 @@ export async function fetchTimecurveBuyerStats(buyer: string) {
   return getJson<TimecurveBuyerStats>(timecurveBuyerStatsApiPath(buyer));
 }
 
+export type PlatformUsageWarbowAction = {
+  count: string;
+  cl8y_spent_wei: string;
+};
+
+export type PlatformUsageVelocity = {
+  window: "1h" | "24h";
+  anchor_timestamp_sec: string;
+  buy_count: string;
+  avg_buys_per_hour: string;
+};
+
+export type PlatformUsageWalletItem = {
+  wallet: string;
+  buy_count: string;
+  cl8y_spent_wei: string;
+};
+
+/** `GET /v1/timecurve/platform-usage` — network-wide sale + WarBow usage ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)). */
+export type TimecurvePlatformUsage = {
+  unique_wallets: string;
+  total_buys: string;
+  unique_buyers: string;
+  mean_buys_per_wallet: string;
+  median_buys_per_wallet: string;
+  warbow: {
+    steals: PlatformUsageWarbowAction;
+    steal_overrides: PlatformUsageWarbowAction;
+    revenges: PlatformUsageWarbowAction;
+    guards: PlatformUsageWarbowAction;
+  };
+  velocity: PlatformUsageVelocity;
+  wallets: {
+    total: string;
+    items: PlatformUsageWalletItem[];
+    limit: number;
+    offset: number;
+    next_offset: number | null;
+  };
+};
+
+export type PlatformUsageVelocityWindow = "1h" | "24h";
+
+export function timecurvePlatformUsageApiPath(
+  limit: number,
+  offset = 0,
+  velocityWindow: PlatformUsageVelocityWindow = "1h",
+): string {
+  return `/v1/timecurve/platform-usage?limit=${limit}&offset=${offset}&velocity_window=${velocityWindow}`;
+}
+
+export async function fetchTimecurvePlatformUsage(
+  limit = 50,
+  offset = 0,
+  velocityWindow: PlatformUsageVelocityWindow = "1h",
+) {
+  return getJson<TimecurvePlatformUsage>(
+    timecurvePlatformUsageApiPath(limit, offset, velocityWindow),
+  );
+}
+
 export async function fetchRabbitDeposits(user: string | undefined, limit = 20) {
   return getJson<{ items: DepositItem[] }>(rabbitDepositsApiPath(user, limit));
 }

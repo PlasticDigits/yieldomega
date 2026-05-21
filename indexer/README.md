@@ -97,6 +97,10 @@ Integration tests in `tests/integration_stage2.rs` run only when **`YIELDOMEGA_P
 
 **`INV-INDEXER-157`:** Unexpected **`sqlx`** errors on **`GET /v1/...`** routes return **`{ "error": "internal server error" }`** with HTTP **500**. Do not rely on the response body for diagnostics—use server logs (`RUST_LOG`, container logs) where the full error is recorded with a route **`context`** label. Implementation: [`src/api.rs`](src/api.rs) (`internal_db_error_response`). Map: [invariants §157](../docs/testing/invariants-and-business-logic.md#indexer-public-api-500-error-redaction-gitlab-157) · [indexer design](../docs/indexer/design.md#http-api-error-bodies-gitlab-157).
 
+### Platform usage (`GET /v1/timecurve/platform-usage`, GitLab [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231))
+
+Schema **≥ 1.26.0**. Network-wide sale + WarBow aggregates for **`/timecurve/protocol`**: unique wallets (buy + WarBow union), buy mean/median, WarBow **`burn_paid_wad`** totals, paginated wallet spend table, and buy **velocity** (`velocity_window=1h|24h`). Map: **`INV-INDEXER-231-PLATFORM-USAGE`** · [design — platform usage](../docs/indexer/design.md#timecurve-platform-usage-http-gitlab-231) · [invariants §231](../docs/testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231).
+
 ### SQLx migrations
 
 Migrations live under [`migrations/`](migrations/). Ship **paired** **`.up.sql`** and **`.down.sql`** per version so **`sqlx migrate revert`** can roll back a step and **`sqlx migrate run`** can re-apply it without hand-editing **`_sqlx_migrations`** ([GitLab #152](https://gitlab.com/PlasticDigits/yieldomega/-/issues/152) — unredeemed launched-token **`idx_*`** tables, [`invariants §128`](../docs/testing/invariants-and-business-logic.md#timecurve-unredeemed-launch-allocation-sweep-gitlab-128)).

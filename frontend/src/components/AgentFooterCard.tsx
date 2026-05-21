@@ -70,6 +70,7 @@ GET /v1/timecurve/warbow/guard-latest
 GET /v1/timecurve/warbow/pending-revenge
 GET /v1/timecurve/warbow/refresh-candidates
 GET /v1/timecurve/buyer-stats
+GET /v1/timecurve/platform-usage
 GET /v1/rabbit/deposits
 GET /v1/rabbit/withdrawals
 GET /v1/rabbit/health-epochs
