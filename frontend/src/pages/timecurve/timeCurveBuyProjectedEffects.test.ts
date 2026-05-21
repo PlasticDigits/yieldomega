@@ -1,12 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import { buildTimeCurveBuyProjectedEffectLines } from "./timeCurveBuyProjectedEffects";
+import {
+  buildTimeCurveBuyProjectedEffectLines,
+  formatBuyProjectedSpendLine,
+} from "./timeCurveBuyProjectedEffects";
 
 const fmt = (a: `0x${string}`) => `${a.slice(0, 6)}…`;
 
+describe("formatBuyProjectedSpendLine", () => {
+  it("formats spend as negative 3-decimal asset amount", () => {
+    expect(formatBuyProjectedSpendLine(2_260_000_000_000_000_000n, 18, "CL8Y")).toBe(
+      "-2.260 CL8Y",
+    );
+  });
+});
+
 describe("buildTimeCurveBuyProjectedEffectLines", () => {
-  it("includes CHARM, CL8Y spend, timer credit, BP base, and latest buyer for a calm-timer CL8Y buy", () => {
+  it("includes CHARM, spend, timer, BP base, and last buyer for a calm-timer CL8Y buy", () => {
     const lines = buildTimeCurveBuyProjectedEffectLines({
       charmWadSelected: 5_515_000_000_000_000_000n,
       estimatedSpendWei: 5_523_000_000_000_000_000n,
@@ -21,14 +32,15 @@ describe("buildTimeCurveBuyProjectedEffectLines", () => {
       formatRivalWallet: fmt,
     });
     expect(lines[0]).toMatch(/\+5\.515 CHARM/);
-    expect(lines[1]).toMatch(/5\.523 CL8Y spend/);
-    expect(lines).toContain("+120s timer");
-    expect(lines).toContain("+120s time-booster credit");
-    expect(lines).toContain("+250 BP base");
-    expect(lines[lines.length - 1]).toBe("Become latest buyer");
+    expect(lines[1]).toBe("-5.523 CL8Y");
+    expect(lines).toContain("+120s");
+    expect(lines).not.toContain("+120s timer");
+    expect(lines).not.toContain("time-booster");
+    expect(lines).toContain("+250 BP Base");
+    expect(lines[lines.length - 1]).toBe("Become Last Buyer");
   });
 
-  it("uses hard-reset copy when under 13 minutes remain", () => {
+  it("shows +{900-remaining}s under 13 minutes with separate Reset BP pill", () => {
     const lines = buildTimeCurveBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
       estimatedSpendWei: 1n,
@@ -38,8 +50,44 @@ describe("buildTimeCurveBuyProjectedEffectLines", () => {
       plantWarBowFlag: false,
       formatRivalWallet: fmt,
     });
-    expect(lines).toContain("Hard-reset timer toward 15m");
-    expect(lines).toContain("+250 BP + reset bonus");
+    expect(lines).toContain("+300s");
+    expect(lines).not.toContain("Hard-reset");
+    expect(lines).toContain("+250 BP Base");
+    expect(lines).toContain("+500 BP Reset");
+    expect(lines).not.toContain("+250 BP + reset");
+  });
+
+  it("shows +1 streak (N) when continuing own defended streak", () => {
+    const wallet = "0x1111111111111111111111111111111111111111" as const;
+    const lines = buildTimeCurveBuyProjectedEffectLines({
+      charmWadSelected: 1n * 10n ** 18n,
+      estimatedSpendWei: 1n,
+      decimals: 18,
+      secondsRemaining: 800,
+      activeDefendedStreak: 1n,
+      walletAddress: wallet,
+      recentBuys: [
+        {
+          buyer: wallet,
+          actual_seconds_added: "60",
+          buyer_active_defended_streak: "1",
+          block_number: "1",
+          tx_hash: "0xabc",
+          log_index: 0,
+          amount: "1",
+          charm_wad: "1",
+          price_per_charm_wad: "1",
+          new_deadline: "1",
+          total_raised_after: "1",
+          buy_index: "1",
+        },
+      ],
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain("+1 streak (2)");
+    expect(lines).not.toContain("Start or break");
+    expect(lines).not.toContain("Continue your streak");
   });
 
   it("uses charmWeightTotalWad for the +CHARM chip when provided (referral / presale bonus weight)", () => {

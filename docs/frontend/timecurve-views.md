@@ -359,7 +359,7 @@ While **`sale_ended`** is **false**, the **Simple** reserve **WarBow** card and 
 | **1 h – 23 h 59 m 59 s** | **`HH:MM:SS`** (`formatCountdown`) |
 | **≥ 24 h** | **`d:HH:MM:SS`** (day count + remainder clock) |
 
-**Wiring:** **`formatSimplePodiumScoreLine`** (category **3**) → **`Score: <formatted> added`**; zero → **`Score: —`**. **`formatPodiumLeaderboardValue`** (Arena spotlight) uses the same formatter without a trailing **` s`**. Buy projected-effects **`+Xs time-booster credit`** is **out of scope** unless product requests parity.
+**Wiring:** **`formatSimplePodiumScoreLine`** (category **3**) → **`Score: <formatted> added`**; zero → **`Score: —`**. **`formatPodiumLeaderboardValue`** (Arena spotlight) uses the same formatter without a trailing **` s`**. Buy **projected-effects** timer pills use **`+{x}s`** only ([#227](#timecurve-buy-projected-effects-gitlab-227)); no **`time-booster credit`** duplicate there.
 
 **Spec ↔ test:** [invariants §228](../testing/invariants-and-business-logic.md#time-booster-podium-tiered-duration-gitlab-228) · [`timeBoosterPodiumFormat.test.ts`](../../frontend/src/pages/timecurve/timeBoosterPodiumFormat.test.ts) · [manual QA #228](../testing/manual-qa-checklists.md#manual-qa-issue-228).
 
@@ -461,6 +461,24 @@ On a **live block clock**, `TimeCurve.currentCharmBoundsWad()` can **shift** (ma
 - **CL8Y spend** in **CL8Y** mode remains the participant’s **typed decimal string** (full precision while editing); **ETH / USDM** quoted spend uses **`AmountDisplay`**.
 
 **Spec ↔ test:** [invariants — #191](../testing/invariants-and-business-logic.md#timecurve-buy-hub-derived-numeric-display-gitlab-191) · [GitLab #191](https://gitlab.com/PlasticDigits/yieldomega/-/issues/191) · [manual QA (#191)](../testing/manual-qa-checklists.md#manual-qa-issue-191) · [skills index](../../skills/README.md).
+
+<a id="timecurve-buy-projected-effects-gitlab-227"></a>
+
+## TimeCurve Simple — buy projected-effects pills (GitLab #227)
+
+**Surface:** **`Projected effects`** chip rail on **`/timecurve`** (`TimeCurveBuyProjectedEffects`), built by [`buildTimeCurveBuyProjectedEffectLines`](../../frontend/src/pages/timecurve/timeCurveBuyProjectedEffects.ts) from pure helpers in [`timeCurveBuyPreview.ts`](../../frontend/src/lib/timeCurveBuyPreview.ts).
+
+**Timer:** Exactly **one** pill when extension &gt; 0, formatted **`+{x}s`** only — mirrors [`TimeMath.extendDeadlineOrResetBelowThreshold`](../../contracts/src/libraries/TimeMath.sol) using live **`secondsRemaining`** (hero timer, ~1s) and onchain **`timerExtensionSec` / `timerCapSec`** via **`buyPreviewPolicy`**. Under the **13m** band, **`x ≈ 900 − remaining`** and ticks up each second. **No** duplicate **`time-booster credit`** pill (Time Booster podium display stays [#228](#time-booster-podium-tiered-duration-gitlab-228)). At timer cap with no room: **`Timer capped`** (no false **`+120s`**).
+
+**Spend:** **`-{amount} {asset}`** with **three** fractional digits (e.g. **`-2.260 CL8Y`**) — distinct from [#191](#timecurve-buy-hub-numeric-display-gitlab-191) sig-fig CHARM preview.
+
+**WarBow BP:** **One pill per source** — **`+{n} BP Base`**, **`Reset`**, **`Clutch`**, **`Streak break`**, **`Ambush`** — amounts from deployment policy defaults / chain reads (not combined **`+250 BP + reset bonus`** prose).
+
+**Defended streak** (remaining &lt; 15m): **`+1 streak (N)`** (continue own streak), **`Break streak`** + streak-break BP pill, or **`Start streak`** — never **`Start or break defended streak`**. Holder inference uses indexer **`recentBuys`** head with **`actual_seconds_added > 0`** (may be stale vs **`_dsLastUnderWindowBuyer`**; see issue discussion).
+
+**Copy:** **`Become Last Buyer`** (not “latest buyer”).
+
+**Spec ↔ test:** [invariants — #227](../testing/invariants-and-business-logic.md#timecurve-buy-projected-effects-gitlab-227) · [GitLab #227](https://gitlab.com/PlasticDigits/yieldomega/-/issues/227) · [manual QA (#227)](../testing/manual-qa-checklists.md#manual-qa-issue-227) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md).
 
 <a id="erc20-approval-sizing-gitlab-143"></a>
 

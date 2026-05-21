@@ -460,36 +460,6 @@ export function TimeCurveSimplePage() {
     session.warbowPendingFlagOwner,
   ]);
 
-  const buyProjectedEffects = useMemo(() => {
-    const latch = simpleProjectedEffectsLatchRef.current;
-    return buildTimeCurveBuyProjectedEffectLines({
-      charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
-      charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
-      estimatedSpendWei: session.estimatedSpendWei ?? latch.estimatedSpendWei,
-      decimals: session.decimals,
-      secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
-      timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
-      activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
-      plantWarBowFlag: session.plantWarBowFlag,
-      flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
-      flagPlantAtSec: session.warbowPendingFlagPlantAt,
-      walletAddress: session.walletAddress,
-      formatRivalWallet: (addr) => shortAddress(addr),
-    });
-  }, [
-    session.activeDefendedStreak,
-    session.buyCheckoutCharmWeightWad,
-    session.charmWadSelected,
-    session.decimals,
-    session.estimatedSpendWei,
-    session.plantWarBowFlag,
-    session.saleCountdownSec,
-    session.timerExtensionPreviewSec,
-    session.walletAddress,
-    session.warbowPendingFlagOwner,
-    session.warbowPendingFlagPlantAt,
-  ]);
-
   const podiumReads = usePodiumReads(tc);
   const { data: podiumPoolBalance } = useReadContract({
     address: session.acceptedAsset,
@@ -535,6 +505,45 @@ export function TimeCurveSimplePage() {
     phase: session.phase,
     reduceMotion: Boolean(prefersReducedMotion),
   });
+
+  const spendAssetLabel =
+    session.payWith === "cl8y" ? "CL8Y" : session.payWith === "eth" ? "ETH" : "USDM";
+
+  const buyProjectedEffects = useMemo(() => {
+    const latch = simpleProjectedEffectsLatchRef.current;
+    return buildTimeCurveBuyProjectedEffectLines({
+      charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
+      charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
+      estimatedSpendWei: session.estimatedSpendWei ?? latch.estimatedSpendWei,
+      decimals: session.decimals,
+      spendAssetLabel,
+      secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
+      timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
+      activeDefendedStreak: session.activeDefendedStreak ?? latch.activeDefendedStreak,
+      recentBuys,
+      previewPolicy: session.buyPreviewPolicy,
+      plantWarBowFlag: session.plantWarBowFlag,
+      flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
+      flagPlantAtSec: session.warbowPendingFlagPlantAt,
+      walletAddress: session.walletAddress,
+      formatRivalWallet: (addr) => shortAddress(addr),
+    });
+  }, [
+    recentBuys,
+    session.activeDefendedStreak,
+    session.buyCheckoutCharmWeightWad,
+    session.buyPreviewPolicy,
+    session.charmWadSelected,
+    session.decimals,
+    session.estimatedSpendWei,
+    session.plantWarBowFlag,
+    session.saleCountdownSec,
+    session.timerExtensionPreviewSec,
+    session.walletAddress,
+    session.warbowPendingFlagOwner,
+    session.warbowPendingFlagPlantAt,
+    spendAssetLabel,
+  ]);
 
   useEffect(() => {
     if (!indexerBaseUrl()) {

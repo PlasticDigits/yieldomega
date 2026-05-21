@@ -83,6 +83,10 @@ import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
 import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
+import {
+  DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY,
+  type TimeCurveBuyPreviewPolicy,
+} from "@/lib/timeCurveBuyPreview";
 
 const WAD_ONE_CHARM = 10n ** 18n;
 
@@ -174,6 +178,11 @@ export type UseTimeCurveSaleSession = {
    * checkout chips during an active sale.
    */
   timerExtensionPreviewSec: number | undefined;
+  /**
+   * Onchain timer + WarBow constants for buy projected-effects preview (GitLab #227).
+   * `undefined` until `timerExtensionSec` / `timerCapSec` reads succeed.
+   */
+  buyPreviewPolicy: TimeCurveBuyPreviewPolicy | undefined;
   /** `activeDefendedStreak(wallet)` for projected-effects copy; undefined until read succeeds. */
   activeDefendedStreak: bigint | undefined;
   warbowPendingFlagOwner: HexAddress | undefined;
@@ -1454,6 +1463,17 @@ export function useTimeCurveSaleSession(
     return Math.max(0, Math.min(rawExt, Math.max(0, timerCapSec - saleCountdownSec)));
   }, [phase, saleCountdownSec, timerExtensionSecR, timerCapSecR]);
 
+  const buyPreviewPolicy = useMemo((): TimeCurveBuyPreviewPolicy | undefined => {
+    if (timerExtensionSecR?.status !== "success" || timerCapSecR?.status !== "success") {
+      return undefined;
+    }
+    return {
+      ...DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY,
+      timerExtensionSec: Number(timerExtensionSecR.result as bigint),
+      timerCapSec: Number(timerCapSecR.result as bigint),
+    };
+  }, [timerExtensionSecR, timerCapSecR]);
+
   const activeDefendedStreak =
     activeDefendedStreakR?.status === "success" ? (activeDefendedStreakR.result as bigint) : undefined;
 
@@ -1960,6 +1980,7 @@ export function useTimeCurveSaleSession(
     saleCountdownSec,
     chainNowSec: heroChainNowSec,
     timerExtensionPreviewSec,
+    buyPreviewPolicy,
     activeDefendedStreak,
     warbowPendingFlagOwner,
     warbowPendingFlagPlantAt,
