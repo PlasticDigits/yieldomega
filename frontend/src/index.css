@@ -3392,6 +3392,76 @@ label:has(input[type="radio"]:disabled) {
   font-size: 0.9rem;
 }
 
+/* Platform usage — protocol AUDIT ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)) */
+.platform-usage-velocity {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 2px dashed rgba(11, 31, 20, 0.25);
+}
+
+.platform-usage-velocity__label {
+  margin: 0;
+  font-family: "Bungee", cursive;
+  font-size: 0.95rem;
+}
+
+.platform-usage-velocity__toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.platform-usage-velocity__btn {
+  padding: 0.35rem 0.75rem;
+  border: 2px solid rgba(11, 31, 20, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  cursor: pointer;
+}
+
+.platform-usage-velocity__btn--active {
+  background: var(--arcade-green-200, #c8f5a0);
+  font-weight: 600;
+}
+
+.platform-usage-wallets {
+  margin-top: 1.25rem;
+}
+
+.platform-usage-wallets__title {
+  margin: 0 0 0.65rem;
+  font-family: "Bungee", cursive;
+  font-size: 0.95rem;
+}
+
+.platform-usage-wallets__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.platform-usage-wallets__table {
+  width: 100%;
+  min-width: 28rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.platform-usage-wallets__table th,
+.platform-usage-wallets__table td {
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(11, 31, 20, 0.15);
+  vertical-align: top;
+}
+
+.platform-usage-wallets__table th {
+  font-family: "Bungee", cursive;
+  font-size: 0.8rem;
+}
+
 .referral-register {
   display: grid;
   gap: 1rem;

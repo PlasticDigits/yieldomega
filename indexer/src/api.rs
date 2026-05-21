@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.25.0";
+const SCHEMA_VERSION: &str = "1.26.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -148,6 +148,10 @@ pub fn router(state: AppState) -> Router {
             get(timecurve_warbow_refresh_candidates),
         )
         .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
+        .route(
+            "/v1/timecurve/platform-usage",
+            get(timecurve_platform_usage),
+        )
         .route("/v1/rabbit/deposits", get(rabbit_deposits))
         .route("/v1/rabbit/withdrawals", get(rabbit_withdrawals))
         .route("/v1/rabbit/health-epochs", get(rabbit_health_epochs))
@@ -1371,6 +1375,320 @@ async fn timecurve_buyer_stats(
         "buyer": q.buyer,
         "indexed_charm_weight": indexed_charm_weight,
         "indexed_buy_count": indexed_buy_count,
+    });
+
+    let mut res = Json(body).into_response();
+    *res.headers_mut() = with_schema_version(res.headers().clone());
+    res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct PlatformUsageParams {
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+    #[serde(default = "default_velocity_window")]
+    pub velocity_window: String,
+}
+
+fn default_velocity_window() -> String {
+    "1h".to_string()
+}
+
+fn parse_velocity_window(s: &str) -> Result<(i64, i64, &'static str), &'static str> {
+    match s.trim().to_ascii_lowercase().as_str() {
+        "1h" => Ok((3600, 1, "1h")),
+        "24h" => Ok((86400, 24, "24h")),
+        _ => Err("velocity_window must be 1h or 24h"),
+    }
+}
+
+async fn platform_usage_anchor_timestamp_sec(state: &AppState) -> i64 {
+    let guard = state.chain_timer.read().await;
+    if let Some(snap) = guard.as_ref() {
+        if let Ok(ts) = snap.timer.block_timestamp_sec.parse::<i64>() {
+            if ts > 0 {
+                return ts;
+            }
+        }
+    }
+    let row = sqlx::query(
+        r#"SELECT COALESCE(MAX(block_timestamp), 0)::bigint AS anchor FROM idx_timecurve_buy"#,
+    )
+    .fetch_one(&state.pool)
+    .await;
+    match row {
+        Ok(r) => r.try_get::<i64, _>("anchor").unwrap_or(0),
+        Err(_) => 0,
+    }
+}
+
+async fn fetch_warbow_action_totals(
+    pool: &PgPool,
+    table: &'static str,
+    where_clause: Option<&'static str>,
+) -> Result<(String, String), sqlx::Error> {
+    let sql = match where_clause {
+        Some(wc) => format!(
+            "SELECT COUNT(*)::text AS cnt, COALESCE(SUM(burn_paid_wad), 0)::text AS cl8y FROM {table} WHERE {wc}"
+        ),
+        None => format!(
+            "SELECT COUNT(*)::text AS cnt, COALESCE(SUM(burn_paid_wad), 0)::text AS cl8y FROM {table}"
+        ),
+    };
+    let row = sqlx::query(&sql).fetch_one(pool).await?;
+    let count: String = row.try_get("cnt").unwrap_or_else(|_| "0".into());
+    let cl8y: String = row.try_get("cl8y").unwrap_or_else(|_| "0".into());
+    Ok((count, cl8y))
+}
+
+fn warbow_action_json(count: String, cl8y_spent_wei: String) -> serde_json::Value {
+    json!({
+        "count": count,
+        "cl8y_spent_wei": cl8y_spent_wei,
+    })
+}
+
+fn format_avg_buys_per_hour(buy_count: i64, window_hours: i64) -> String {
+    if window_hours <= 0 {
+        return "0".to_string();
+    }
+    let avg = buy_count as f64 / window_hours as f64;
+    if avg.fract() == 0.0 && avg >= 0.0 && avg <= i64::MAX as f64 {
+        format!("{}", avg as i64)
+    } else {
+        format!("{avg:.6}")
+    }
+}
+
+async fn timecurve_platform_usage(
+    State(state): State<AppState>,
+    Query(p): Query<PlatformUsageParams>,
+) -> Response {
+    let (window_sec, window_hours, window_label) = match parse_velocity_window(&p.velocity_window) {
+        Ok(v) => v,
+        Err(msg) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": msg })),
+            )
+                .into_response();
+        }
+    };
+
+    let lim = clamp_limit(p.limit);
+    let off = p.offset.max(0);
+
+    let summary = sqlx::query(
+        r#"SELECT
+              (SELECT COUNT(*)::bigint FROM (
+                 SELECT buyer AS addr FROM idx_timecurve_buy
+                 UNION
+                 SELECT attacker FROM idx_timecurve_warbow_steal
+                 UNION
+                 SELECT victim FROM idx_timecurve_warbow_steal
+                 UNION
+                 SELECT avenger FROM idx_timecurve_warbow_revenge
+                 UNION
+                 SELECT stealer FROM idx_timecurve_warbow_revenge
+                 UNION
+                 SELECT player FROM idx_timecurve_warbow_guard
+                 UNION
+                 SELECT player FROM idx_timecurve_warbow_flag_claimed
+               ) u) AS unique_wallets,
+              (SELECT COUNT(*)::bigint FROM idx_timecurve_buy) AS total_buys,
+              (SELECT COUNT(DISTINCT buyer)::bigint FROM idx_timecurve_buy) AS unique_buyers,
+              (SELECT COALESCE(
+                 (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt)
+                    FROM (
+                      SELECT COUNT(*)::numeric AS cnt
+                        FROM idx_timecurve_buy
+                       GROUP BY buyer
+                    ) per_buyer),
+                 0
+               )::text) AS median_buys_per_wallet"#,
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    let summary = match summary {
+        Ok(r) => r,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/timecurve/platform-usage summary", e);
+        }
+    };
+
+    let unique_wallets: i64 = summary.try_get("unique_wallets").unwrap_or(0);
+    let total_buys: i64 = summary.try_get("total_buys").unwrap_or(0);
+    let unique_buyers: i64 = summary.try_get("unique_buyers").unwrap_or(0);
+    let median_buys_per_wallet: String = summary
+        .try_get("median_buys_per_wallet")
+        .unwrap_or_else(|_| "0".into());
+
+    let mean_buys_per_wallet = if unique_buyers == 0 {
+        "0".to_string()
+    } else {
+        format!(
+            "{}",
+            total_buys as f64 / unique_buyers as f64
+        )
+    };
+
+    let steals = match fetch_warbow_action_totals(&state.pool, "idx_timecurve_warbow_steal", None)
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage warbow steals",
+                e,
+            );
+        }
+    };
+    let steal_overrides = match fetch_warbow_action_totals(
+        &state.pool,
+        "idx_timecurve_warbow_steal",
+        Some("bypassed_victim_daily_limit = true"),
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage warbow steal overrides",
+                e,
+            );
+        }
+    };
+    let revenges = match fetch_warbow_action_totals(
+        &state.pool,
+        "idx_timecurve_warbow_revenge",
+        None,
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage warbow revenges",
+                e,
+            );
+        }
+    };
+    let guards = match fetch_warbow_action_totals(&state.pool, "idx_timecurve_warbow_guard", None)
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return internal_db_error_response("GET /v1/timecurve/platform-usage warbow guards", e);
+        }
+    };
+
+    let anchor = platform_usage_anchor_timestamp_sec(&state).await;
+    let window_start = anchor.saturating_sub(window_sec);
+
+    let velocity_row = sqlx::query(
+        r#"SELECT COUNT(*)::bigint AS buy_count
+           FROM idx_timecurve_buy
+          WHERE block_timestamp IS NOT NULL
+            AND block_timestamp >= $1"#,
+    )
+    .bind(window_start)
+    .fetch_one(&state.pool)
+    .await;
+
+    let velocity_row = match velocity_row {
+        Ok(r) => r,
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage velocity",
+                e,
+            );
+        }
+    };
+    let velocity_buy_count: i64 = velocity_row.try_get("buy_count").unwrap_or(0);
+
+    let wallet_total_row = sqlx::query(
+        r#"SELECT COUNT(DISTINCT buyer)::bigint AS total FROM idx_timecurve_buy"#,
+    )
+    .fetch_one(&state.pool)
+    .await;
+
+    let wallet_total = match wallet_total_row {
+        Ok(r) => r.try_get::<i64, _>("total").unwrap_or(0),
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage wallet total",
+                e,
+            );
+        }
+    };
+
+    let wallet_rows = sqlx::query(
+        r#"SELECT buyer AS wallet,
+                  COUNT(*)::text AS buy_count,
+                  COALESCE(SUM(amount), 0)::text AS cl8y_spent_wei
+             FROM idx_timecurve_buy
+            GROUP BY buyer
+            ORDER BY SUM(amount) DESC, COUNT(*) DESC, buyer ASC
+            LIMIT $1 OFFSET $2"#,
+    )
+    .bind(lim)
+    .bind(off)
+    .fetch_all(&state.pool)
+    .await;
+
+    let wallet_rows = match wallet_rows {
+        Ok(r) => r,
+        Err(e) => {
+            return internal_db_error_response(
+                "GET /v1/timecurve/platform-usage wallets",
+                e,
+            );
+        }
+    };
+
+    let mut wallet_items = Vec::with_capacity(wallet_rows.len());
+    for r in wallet_rows {
+        wallet_items.push(json!({
+            "wallet": r.try_get::<String, _>("wallet").unwrap_or_default(),
+            "buy_count": r.try_get::<String, _>("buy_count").unwrap_or_else(|_| "0".into()),
+            "cl8y_spent_wei": r.try_get::<String, _>("cl8y_spent_wei").unwrap_or_else(|_| "0".into()),
+        }));
+    }
+
+    let next_offset = if wallet_items.len() as i64 == lim {
+        Some(off + lim)
+    } else {
+        None
+    };
+
+    let body = json!({
+        "unique_wallets": unique_wallets.to_string(),
+        "total_buys": total_buys.to_string(),
+        "unique_buyers": unique_buyers.to_string(),
+        "mean_buys_per_wallet": mean_buys_per_wallet,
+        "median_buys_per_wallet": median_buys_per_wallet,
+        "warbow": {
+            "steals": warbow_action_json(steals.0, steals.1),
+            "steal_overrides": warbow_action_json(steal_overrides.0, steal_overrides.1),
+            "revenges": warbow_action_json(revenges.0, revenges.1),
+            "guards": warbow_action_json(guards.0, guards.1),
+        },
+        "velocity": {
+            "window": window_label,
+            "anchor_timestamp_sec": anchor.to_string(),
+            "buy_count": velocity_buy_count.to_string(),
+            "avg_buys_per_hour": format_avg_buys_per_hour(velocity_buy_count, window_hours),
+        },
+        "wallets": {
+            "total": wallet_total.to_string(),
+            "items": wallet_items,
+            "limit": lim,
+            "offset": off,
+            "next_offset": next_offset,
+        },
     });
 
     let mut res = Json(body).into_response();

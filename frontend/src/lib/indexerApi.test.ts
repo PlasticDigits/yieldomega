@@ -12,6 +12,7 @@ import {
   referralRegistrationsApiPath,
   referralWalletCharmSummaryApiPath,
   timecurveBuyerStatsApiPath,
+  timecurvePlatformUsageApiPath,
   timecurvePrizeDistributionsApiPath,
   timecurvePrizePayoutsApiPath,
 } from "./indexerApi";
@@ -38,6 +39,20 @@ describe("timecurveBuyerStatsApiPath", () => {
     const buyer = "0xdddddddddddddddddddddddddddddddddddddddd";
     expect(timecurveBuyerStatsApiPath(buyer)).toBe(
       `/v1/timecurve/buyer-stats?buyer=${encodeURIComponent(buyer)}`,
+    );
+  });
+});
+
+describe("timecurvePlatformUsageApiPath", () => {
+  it("includes limit, offset, and default velocity window", () => {
+    expect(timecurvePlatformUsageApiPath(50, 0)).toBe(
+      "/v1/timecurve/platform-usage?limit=50&offset=0&velocity_window=1h",
+    );
+  });
+
+  it("supports 24h velocity window", () => {
+    expect(timecurvePlatformUsageApiPath(25, 50, "24h")).toBe(
+      "/v1/timecurve/platform-usage?limit=25&offset=50&velocity_window=24h",
     );
   });
 });

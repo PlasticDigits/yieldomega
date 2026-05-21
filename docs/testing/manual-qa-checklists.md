@@ -14,6 +14,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
 | [#225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225) | [Referrals — guide leaderboard global totals + pagination](#manual-qa-issue-225) |
 | [#229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229) | [Protocol AUDIT — DOUB projection card](#manual-qa-issue-229) |
+| [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231) | [Protocol AUDIT — Platform usage](#manual-qa-issue-231) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
@@ -331,6 +332,30 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 8. Mobile **≤479px**: `stats-grid` wraps; no horizontal overflow.
 
 **Doc map:** [invariants — #229](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts)
+
+<a id="manual-qa-issue-231"></a>
+
+## Protocol AUDIT — Platform usage (GitLab #231)
+
+**Why:** Operators need network-wide participation, WarBow CL8Y volume, buy velocity, and a spend-ranked wallet table without client-side aggregation.
+
+### Preconditions
+
+- Indexer running with **`VITE_INDEXER_URL`** set in **`frontend/.env.local`**.
+- Optional: local stack + bot swarm for non-zero stats.
+
+### Checklist
+
+1. Open **`/timecurve/protocol`** → **`data-testid="timecurve-protocol-platform-usage"`** visible **without** expanding **Raw contract and operator context**.
+2. Summary tiles show **unique wallets**, **total buys**, mean/median buys per wallet.
+3. WarBow quadrants show **count + CL8Y** for steals, steal overrides, revenges, guards.
+4. Trigger a steal with **daily limit bypass** → **Steal overrides** increments separately from normal steals.
+5. **Buy velocity:** default **Last hour**; toggle **Last day** → avg buys/hr updates; zero-window shows **No buys in this window**.
+6. Wallet table: addresses link to explorer; pagination when **>50** buyers; sort favors highest **CL8Y spent**.
+7. Stop indexer → section shows offline/unset copy, **not** misleading zeros.
+8. Mobile: stats grid wraps; wallet table scrolls horizontally.
+
+**Doc map:** [invariants — #231](invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [timecurve-views §231](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-gitlab-231) · [`GET /v1/timecurve/platform-usage`](../../indexer/src/api.rs)
 
 <a id="manual-qa-issue-232"></a>
 

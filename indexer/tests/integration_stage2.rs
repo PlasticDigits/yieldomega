@@ -286,6 +286,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         "/v1/rabbit/faction-stats",
         "/v1/timecurve/warbow/battle-feed?limit=2",
         "/v1/timecurve/warbow/leaderboard?limit=2",
+        "/v1/timecurve/platform-usage?limit=2&velocity_window=1h",
     ] {
         let res = app
             .clone()
@@ -294,7 +295,12 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK, "path {path}");
         let j = response_json(res).await;
-        assert!(j["items"].is_array(), "path {path}");
+        if path.contains("platform-usage") {
+            assert!(j["unique_wallets"].is_string(), "path {path}");
+            assert!(j["wallets"]["items"].is_array(), "path {path}");
+        } else {
+            assert!(j["items"].is_array(), "path {path}");
+        }
     }
 
     let res = app
@@ -2235,4 +2241,205 @@ async fn postgres_referral_registrations_filters_by_owner() {
         .execute(&pool)
         .await
         .expect("cleanup referral registry table");
+}
+
+#[tokio::test]
+async fn postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity() {
+    // GitLab #231 — platform usage aggregates, wallet pagination, WarBow CL8Y, buy velocity windows.
+    let Some(url) = pg_url() else {
+        eprintln!("integration_stage2: skip gitlab231 (set YIELDOMEGA_PG_TEST_URL)");
+        return;
+    };
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    for table in [
+        "idx_timecurve_warbow_guard",
+        "idx_timecurve_warbow_revenge",
+        "idx_timecurve_warbow_steal",
+        "idx_timecurve_buy",
+    ] {
+        sqlx::query(&format!("DELETE FROM {table}"))
+            .execute(&pool)
+            .await
+            .expect("clear table");
+    }
+
+    let tc = "0xcccccccccccccccccccccccccccccccccccccccc";
+    let buyer_a = "0x000000000000000000000000000000000000a101";
+    let buyer_b = "0x000000000000000000000000000000000000a102";
+    let warbow_only = "0x000000000000000000000000000000000000a103";
+    let anchor: i64 = 2_000_000;
+
+    for (block, buyer, amount, block_ts) in [
+        (9001_i64, buyer_a, 100_i64, anchor - 100),
+        (9002, buyer_a, 50, anchor - 200),
+        (9003, buyer_a, 50, anchor - 300),
+        (9004, buyer_b, 500, anchor - 400),
+        // Outside 1h window but inside 24h — velocity 1h should exclude.
+        (9005, buyer_b, 1, anchor - 7200),
+    ] {
+        sqlx::query(
+            r#"INSERT INTO idx_timecurve_buy (
+                  block_number, block_hash, tx_hash, log_index, contract_address,
+                  buyer, amount, current_min_buy, new_deadline, total_raised_after, buy_index,
+                  block_timestamp
+               ) VALUES ($1, $2, $3, 0, $4, $5, $6::numeric, 1, 1, 1, $7::numeric, $8)"#,
+        )
+        .bind(block)
+        .bind(format!("0x{:0>64}", block))
+        .bind(format!("0x{:0>64}", block + 1000))
+        .bind(tc)
+        .bind(buyer)
+        .bind(amount)
+        .bind(block)
+        .bind(block_ts)
+        .execute(&pool)
+        .await
+        .expect("insert buy");
+    }
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_steal (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
+              victim_bp_after, attacker_bp_after
+           ) VALUES (9101, $1, $2, 0, $3, $4, $5, 10, 10::numeric, false, 1, 2)"#,
+    )
+    .bind(format!("0x{:0>64}", 9101))
+    .bind(format!("0x{:0>64}", 9101 + 50))
+    .bind(tc)
+    .bind(warbow_only)
+    .bind(buyer_a)
+    .execute(&pool)
+    .await
+    .expect("insert steal");
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_steal (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
+              victim_bp_after, attacker_bp_after
+           ) VALUES (9102, $1, $2, 1, $3, $4, $5, 20, 20::numeric, true, 1, 2)"#,
+    )
+    .bind(format!("0x{:0>64}", 9102))
+    .bind(format!("0x{:0>64}", 9102 + 50))
+    .bind(tc)
+    .bind(buyer_b)
+    .bind(buyer_a)
+    .execute(&pool)
+    .await
+    .expect("insert steal override");
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_revenge (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              avenger, stealer, amount_bp, burn_paid_wad, stealer_bp_after, avenger_bp_after
+           ) VALUES (9103, $1, $2, 0, $3, $4, $5, 30, 30::numeric, 1, 2)"#,
+    )
+    .bind(format!("0x{:0>64}", 9103))
+    .bind(format!("0x{:0>64}", 9103 + 50))
+    .bind(tc)
+    .bind(buyer_a)
+    .bind(warbow_only)
+    .execute(&pool)
+    .await
+    .expect("insert revenge");
+
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_warbow_guard (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              player, guard_until_ts, burn_paid_wad
+           ) VALUES (9104, $1, $2, 0, $3, $4, 999, 40::numeric)"#,
+    )
+    .bind(format!("0x{:0>64}", 9104))
+    .bind(format!("0x{:0>64}", 9104 + 50))
+    .bind(tc)
+    .bind(warbow_only)
+    .execute(&pool)
+    .await
+    .expect("insert guard");
+
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/platform-usage?limit=10&offset=0&velocity_window=1h")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(j["total_buys"], "5");
+    assert_eq!(j["unique_buyers"], "2");
+    assert_eq!(j["unique_wallets"], "3");
+    assert_eq!(j["median_buys_per_wallet"], "2");
+    assert_eq!(j["warbow"]["steals"]["count"], "2");
+    assert_eq!(j["warbow"]["steals"]["cl8y_spent_wei"], "30");
+    assert_eq!(j["warbow"]["steal_overrides"]["count"], "1");
+    assert_eq!(j["warbow"]["steal_overrides"]["cl8y_spent_wei"], "20");
+    assert_eq!(j["warbow"]["revenges"]["count"], "1");
+    assert_eq!(j["warbow"]["revenges"]["cl8y_spent_wei"], "30");
+    assert_eq!(j["warbow"]["guards"]["count"], "1");
+    assert_eq!(j["warbow"]["guards"]["cl8y_spent_wei"], "40");
+    assert_eq!(j["velocity"]["window"], "1h");
+    assert_eq!(j["velocity"]["anchor_timestamp_sec"], anchor.to_string());
+    assert_eq!(j["velocity"]["buy_count"], "4");
+    assert_eq!(j["velocity"]["avg_buys_per_hour"], "4");
+
+    let wallets = j["wallets"]["items"].as_array().expect("wallet items");
+    assert_eq!(wallets.len(), 2);
+    assert_eq!(wallets[0]["wallet"].as_str(), Some(buyer_b));
+    assert_eq!(wallets[0]["cl8y_spent_wei"], "501");
+    assert_eq!(wallets[1]["wallet"].as_str(), Some(buyer_a));
+    assert_eq!(wallets[1]["buy_count"], "3");
+
+    let res24 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/platform-usage?limit=2&offset=0&velocity_window=24h")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res24.status(), StatusCode::OK);
+    let j24 = response_json(res24).await;
+    assert_eq!(j24["velocity"]["buy_count"], "5");
+    assert_eq!(j24["velocity"]["avg_buys_per_hour"], "0.208333");
+
+    let res_bad = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/platform-usage?velocity_window=7d")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res_bad.status(), StatusCode::BAD_REQUEST);
+
+    for table in [
+        "idx_timecurve_warbow_guard",
+        "idx_timecurve_warbow_revenge",
+        "idx_timecurve_warbow_steal",
+        "idx_timecurve_buy",
+    ] {
+        sqlx::query(&format!("DELETE FROM {table}"))
+            .execute(&pool)
+            .await
+            .expect("cleanup");
+    }
 }
