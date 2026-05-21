@@ -1380,6 +1380,18 @@ Align fee expectations with [post-update invariants](../onchain/fee-routing-and-
 
 **Manual QA checklist (3rd-party agents):** [`manual-qa-checklists.md#manual-qa-issue-93`](manual-qa-checklists.md#manual-qa-issue-93). **Spec:** [`timecurve-views.md` — global footer fee sinks](../frontend/timecurve-views.md#global-footer-fee-sinks-mobile-issue-93).
 
+<a id="global-footer-site-link-ribbon-gitlab-232"></a>
+
+### Global footer — site link ribbon + play-active-timecurve skill (GitLab [#232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232))
+
+| Invariant | Meaning | Evidence |
+|-----------|---------|----------|
+| **`INV-FRONTEND-232-FOOTER-SITE-LINKS`** | Routes that render **`.app-footer`** show a **`FooterSiteLinks`** row **below** the agent-card article and **above** indexer / governance pills. Outbound pills: X, Telegram, GitLab, GitHub, Buy CL8Y (Kumbaya), CL8Y Bridge, **Play active TimeCurve** (raw GitHub `skills/play-active-timecurve/SKILL.md`). All use **`target="_blank"`** + **`rel="noreferrer noopener"`** + **`.footer-link-pill`**. Container: **`data-testid="footer-site-links"`**. | [`FooterSiteLinks.tsx`](../../frontend/src/components/FooterSiteLinks.tsx), [`footerSiteLinks.ts`](../../frontend/src/lib/footerSiteLinks.ts), [`AgentFooterCard.tsx`](../../frontend/src/components/AgentFooterCard.tsx) |
+| **`INV-FRONTEND-232-SIMPLE-PARITY`** | **`/timecurve`** hides the global footer but **`TimeCurveSimpleAgentCard`** mirrors the same ribbon inside the collapsed agent card (expanded body). | [`TimeCurveSimpleAgentCard.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimpleAgentCard.tsx), [`RootLayout.tsx`](../../frontend/src/layout/RootLayout.tsx) |
+| **`INV-PLAY-232-ACTIVE-TIMECURVE`** | **`skills/play-active-timecurve/SKILL.md`** routes agents by **onchain** sale phase (pre-open / live / post-end) into existing play skills — no new game rules. Indexed in [`skills/README.md`](../../skills/README.md) and agent-card play-skill lists. | [`skills/play-active-timecurve/SKILL.md`](../../skills/play-active-timecurve/SKILL.md), [`footer-site-links.spec.ts`](../../frontend/e2e/footer-site-links.spec.ts) |
+
+**Manual QA checklist (3rd-party agents):** [`manual-qa-checklists.md#manual-qa-issue-232`](manual-qa-checklists.md#manual-qa-issue-232). **Spec:** [`timecurve-views.md` — global footer site links](../frontend/timecurve-views.md#global-footer-site-link-ribbon-gitlab-232). **Play skill:** [`skills/play-active-timecurve/SKILL.md`](../../skills/play-active-timecurve/SKILL.md).
+
 <a id="canonical-address-display-gitlab-98"></a>
 
 ### Canonical address display — blockie + explorer link (GitLab [#98](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98))

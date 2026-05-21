@@ -2694,6 +2694,12 @@ label:has(input[type="radio"]:disabled) {
   overflow-wrap: anywhere;
 }
 
+.app-footer__row--site-links {
+  margin-top: 1rem;
+  gap: 0.5rem 0.65rem;
+  justify-content: flex-start;
+}
+
 .app-footer__row--after-agent {
   margin-top: 1rem;
 }
