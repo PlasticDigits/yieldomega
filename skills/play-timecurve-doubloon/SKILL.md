@@ -60,6 +60,8 @@ When helping someone interpret standings, prefer **contract reads** (`podium(cat
 
 **USD-shaped hints in the app ([GitLab #192](https://gitlab.com/PlasticDigits/yieldomega/-/issues/192)):** Arena **TOTAL USD** and Simple podium **≈ $… USD** lines apply **fixed app constants** to **CL8Y** totals or previews — they are **not** live FX or oracle prices. Prefer interpreting **CL8Y** from chain/indexer; use USD lines only as rough, labeled context — [`INV-FRONTEND-192-USD-AFFORDANCE`](../../docs/testing/invariants-and-business-logic.md#usd-equivalent-staleness-affordance-gitlab-192), [`timecurve-views` §192](../../docs/frontend/timecurve-views.md#usd-equivalent-staleness-gitlab-192).
 
+**Time Booster podium score display ([GitLab #228](https://gitlab.com/PlasticDigits/yieldomega/-/issues/228)):** On Simple reserve podiums and Arena podium spotlights, **Time Booster** cumulative seconds render as tiered clocks (**`formatTimeBoosterPodiumSec`**) — not raw **`300s added`**. Onchain/indexer **`totalEffectiveTimerSecAdded`** semantics are unchanged — [`INV-FRONTEND-228-TIMEBOOSTER-FMT`](../../docs/testing/invariants-and-business-logic.md#time-booster-podium-tiered-duration-gitlab-228), [timecurve-views §228](../../docs/frontend/timecurve-views.md#time-booster-podium-tiered-duration-gitlab-228).
+
 ## Success function (non-financial)
 
 **Success** means the user understands **sale state**, **timing constraints**, **fee routing** as **documented and verified onchain**, and **risks**—with **honest uncertainty** where RPC, indexers, or docs disagree—so they can decide **whether** to act. Technical accuracy (correct addresses, parameters, reads) **supports** that outcome.

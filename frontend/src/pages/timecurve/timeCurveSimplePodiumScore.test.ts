@@ -66,7 +66,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "60",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: 60s added");
+    ).toBe("Score: 01:00 added");
   });
 
   it("uses recentBuys head + block_timestamp for Last Buy when buyers align", () => {
@@ -103,6 +103,17 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "3",
         nowUnixSec: 1_700_000_060,
         recentBuys: recent,
+      }),
+    ).toBe("Score: —");
+  });
+
+  it("returns em dash for zero time booster score", () => {
+    expect(
+      formatSimplePodiumScoreLine(3, 0, {
+        winner: ALICE,
+        winnerReady: true,
+        valueRaw: "0",
+        nowUnixSec: 0,
       }),
     ).toBe("Score: —");
   });

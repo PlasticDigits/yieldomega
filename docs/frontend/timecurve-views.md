@@ -344,6 +344,25 @@ While **`sale_ended`** is **false**, the **Simple** reserve **WarBow** card and 
 
 **Spec ↔ test:** [invariants § live WarBow podium](../testing/invariants-and-business-logic.md#live-warbow-podium-simple-arena-gitlab-warbow-podium-live) · [invariants §221](../testing/invariants-and-business-logic.md#arena-rpc-retry-storm-gitlab-221) · [`usePodiumReads.ts`](../../frontend/src/pages/timecurve/usePodiumReads.ts) · [`warbowPodiumLive.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.ts) · [`warbowPodiumLive.test.ts`](../../frontend/src/pages/timecurve/warbowPodiumLive.test.ts).
 
+<a id="time-booster-podium-tiered-duration-gitlab-228"></a>
+
+### Time Booster podium — tiered duration display (GitLab #228)
+
+**Time Booster** ranks wallets by cumulative **effective deadline seconds added** ([`docs/product/primitives.md`](../product/primitives.md)). On **`/timecurve`** reserve podiums and **`/timecurve/arena`** podium spotlights, score lines must not show raw **`300s added`** / **`300 s`** for large totals.
+
+**Formatter (`INV-FRONTEND-228-TIMEBOOSTER-FMT`):** shared **`formatTimeBoosterPodiumSec`** ([`timeBoosterPodiumFormat.ts`](../../frontend/src/pages/timecurve/timeBoosterPodiumFormat.ts)) — whole seconds only:
+
+| Range | Display |
+|-------|---------|
+| **0 – 59 s** | Locale integer, no **`s`** suffix |
+| **60 s – 59 m 59 s** | **`mm:ss`** (`formatMmSsCountdown`) |
+| **1 h – 23 h 59 m 59 s** | **`HH:MM:SS`** (`formatCountdown`) |
+| **≥ 24 h** | **`d:HH:MM:SS`** (day count + remainder clock) |
+
+**Wiring:** **`formatSimplePodiumScoreLine`** (category **3**) → **`Score: <formatted> added`**; zero → **`Score: —`**. **`formatPodiumLeaderboardValue`** (Arena spotlight) uses the same formatter without a trailing **` s`**. Buy projected-effects **`+Xs time-booster credit`** is **out of scope** unless product requests parity.
+
+**Spec ↔ test:** [invariants §228](../testing/invariants-and-business-logic.md#time-booster-podium-tiered-duration-gitlab-228) · [`timeBoosterPodiumFormat.test.ts`](../../frontend/src/pages/timecurve/timeBoosterPodiumFormat.test.ts) · [manual QA #228](../testing/manual-qa-checklists.md#manual-qa-issue-228).
+
 <a id="arena-rpc-backoff-gitlab-221"></a>
 
 ## Arena RPC backoff under degraded endpoints (GitLab #221)
@@ -570,6 +589,7 @@ Below the hub:
    `ranking-list__item--you` treatment as Arena. A `Buy` log refetches
    podium reads immediately. **Empty winner slots** use a neutral **em dash**, not wallet-connect copy (**`INV-FRONTEND-113-PODIUM-FALLBACK`**).
    This is read-only UI: **payout authority** stays onchain (`distributePrizes`); the indexer prediction is a **best-effort live leaderboard** for the sale window.
+   **Time Booster score lines** use tiered clock formatting (**`INV-FRONTEND-228-TIMEBOOSTER-FMT`**, [GitLab #228](https://gitlab.com/PlasticDigits/yieldomega/-/issues/228)) — [`formatTimeBoosterPodiumSec`](../../frontend/src/pages/timecurve/timeBoosterPodiumFormat.ts); see [§ Time Booster podium display](#time-booster-podium-tiered-duration-gitlab-228).
 6. **Recent buys** — last 3 buys (wallet · amount · `+Xs` extension or
    `hard reset`) sourced from `fetchTimecurveBuys` (indexer). Falls back to
    a calm placeholder if the indexer is offline; never blocks the buy CTA.

@@ -26,6 +26,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#79](https://gitlab.com/PlasticDigits/yieldomega/-/issues/79) | [Post-end owner gates](#manual-qa-issue-79) |
 | [#90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90) | [Simple stake panel after `redeemCharms`](#manual-qa-issue-90) |
 | [#113](https://gitlab.com/PlasticDigits/yieldomega/-/issues/113) | [Simple live reserve podiums](#manual-qa-issue-113) |
+| [#228](https://gitlab.com/PlasticDigits/yieldomega/-/issues/228) | [Time Booster podium tiered duration](#manual-qa-issue-228) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting `/vesting`](#manual-qa-issue-92) |
 | [#202](https://gitlab.com/PlasticDigits/yieldomega/-/issues/202) | [Presale CHARM +15% registry vs vesting](#manual-qa-issue-202-presale-charm-registry) |
 | [#93](https://gitlab.com/PlasticDigits/yieldomega/-/issues/93) | [Fee sinks mobile + protocol labels](#manual-qa-issue-93) |
@@ -587,6 +588,26 @@ Use **TimeCurve proxy** (not implementation row from `run-latest.json` — [issu
 **Automation:** [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx) · [`frontend/e2e/timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts)
 
 **Doc map:** [timecurve-views](../frontend/timecurve-views.md) · [invariants — #113](invariants-and-business-logic.md#timecurve-simple-live-reserve-podiums-issue-113) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
+
+<a id="manual-qa-issue-228"></a>
+
+## Time Booster podium — tiered duration (GitLab #228)
+
+**Goal:** **Time Booster** cumulative effective timer seconds on Simple reserve podiums and Arena podium spotlights use tiered clock formatting (**`INV-FRONTEND-228-TIMEBOOSTER-FMT`**) instead of raw **`Ns added`** / **`N s`**.
+
+### Checklist
+
+1. **Simple `/timecurve`:** Open **Prize podiums** → **Time Booster**; confirm score lines use tiered clocks (e.g. **300 s** cumulative → **`Score: 05:00 added`**, not **`300s added`**).
+2. **Sub-60 s:** With a leader under **60 s** cumulative, score shows **digits only** (no **`s`**, no colons) — e.g. **`Score: 45 added`**.
+3. **Hour band:** With cumulative **≥ 1 h** and **&lt; 24 h**, score uses **`HH:MM:SS`** (production leaders often land here).
+4. **Multi-day:** With cumulative **≥ 24 h**, score uses **`d:HH:MM:SS`** (e.g. **`2:03:13:07`**).
+5. **Arena `/timecurve/arena`:** Time Booster podium spotlight **leader value** matches the same formatting as Simple (no separate **` s`** suffix).
+6. **Regression:** Other categories unchanged — Last Buy **seconds ago**, WarBow **BP**, Defended Streak **sequential buys**.
+7. **Empty / zero:** Empty winner or zero-second slot shows **`Score: —`**, not **`Score: 0 added`**.
+
+**Automation:** [`timeBoosterPodiumFormat.test.ts`](../../frontend/src/pages/timecurve/timeBoosterPodiumFormat.test.ts) · [`timeCurveSimplePodiumScore.test.ts`](../../frontend/src/pages/timecurve/timeCurveSimplePodiumScore.test.ts) · [`TimeCurveSimplePodiumSection.test.tsx`](../../frontend/src/pages/timecurve/TimeCurveSimplePodiumSection.test.tsx)
+
+**Doc map:** [timecurve-views §228](../frontend/timecurve-views.md#time-booster-podium-tiered-duration-gitlab-228) · [invariants §228](invariants-and-business-logic.md#time-booster-podium-tiered-duration-gitlab-228) · [`play-timecurve-doubloon/SKILL.md`](../../skills/play-timecurve-doubloon/SKILL.md)
 
 <a id="manual-qa-issue-224"></a>
 
