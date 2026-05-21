@@ -332,6 +332,23 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Doc map:** [invariants — #229](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts)
 
+<a id="manual-qa-issue-232"></a>
+
+## Global footer site link ribbon (GitLab #232)
+
+**Why:** Humans and agents need one predictable place for YieldOmega socials, CL8Y infra, and the **play-active-timecurve** skill entry point.
+
+### Checklist
+
+1. Open **`/referrals`** (or **`/timecurve/arena`**) → expand **AGENT CARD** if collapsed → **`data-testid="footer-site-links"`** visible **below** agent prose and **above** indexer pill row.
+2. Each pill opens in a **new tab** (`target="_blank"`); Tab focus shows **`--yo-focus-ring`** on pills ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97)).
+3. **Play active TimeCurve** → GitHub `…/skills/play-active-timecurve/SKILL.md` on `main`.
+4. **Buy CL8Y (Kumbaya)** and **CL8Y Bridge** hrefs match [`footerSiteLinks.ts`](../../frontend/src/lib/footerSiteLinks.ts).
+5. **`/timecurve`:** global footer hidden; expand **AGENT CARD: TimeCurve Simple** → same ribbon present (`footer-site-links` inside card).
+6. Launch countdown route: footer still **out of scope** (no header/footer).
+
+**Doc map:** [invariants — #232](invariants-and-business-logic.md#global-footer-site-link-ribbon-gitlab-232) · [`skills/play-active-timecurve/SKILL.md`](../../skills/play-active-timecurve/SKILL.md) · [`timecurve-views.md`](../frontend/timecurve-views.md#global-footer-site-link-ribbon-gitlab-232)
+
 <a id="manual-qa-issue-95"></a>
 
 ## Wrong-network write gating (GitLab #95)
