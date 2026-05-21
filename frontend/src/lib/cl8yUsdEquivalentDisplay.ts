@@ -9,6 +9,10 @@
 export const ARENA_TOTAL_USD_EQUIV_TITLE =
   "Total USD multiplies onchain total CL8Y raised by a fixed placeholder (1 CL8Y = 1 USD). It is not a live FX or oracle quote. The CL8Y total refreshes with the same ~1s contract poll as the rest of the hero.";
 
+/** Protocol AUDIT — live Kumbaya USDM quote per 1 CL8Y ([GitLab #229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229)). */
+export const PROTOCOL_CL8Y_USD_SPOT_TITLE =
+  "USD figures on the protocol AUDIT page multiply CL8Y amounts by a Kumbaya quoter read (USDM required to buy 1 CL8Y on the CL8Y←WETH←USDM path). USDM is treated as ~$1. Refresh manually — not polled continuously.";
+
 /** Simple podium “≈ $… USD” uses {@link fallbackPayTokenWeiForCl8y} `usdm` shape (0.98×). */
 export const SIMPLE_PODIUM_USD_EQUIV_TITLE =
   "≈ USD uses the app’s static display-only CL8Y→USDM shape (0.98× per product default), not a live stablecoin price. CL8Y prize amounts follow onchain/indexer reads.";

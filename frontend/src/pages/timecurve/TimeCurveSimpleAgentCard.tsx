@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { FooterSiteLinks } from "@/components/FooterSiteLinks";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { ReferralsFooterPendingPill } from "@/components/ReferralsFooterPendingPill";
 import { FeeTransparency } from "@/components/FeeTransparency";
@@ -704,8 +703,6 @@ export function TimeCurveSimpleAgentCard() {
             </>
           ) : null}
         </article>
-
-        <FooterSiteLinks />
 
         <div className="app-footer__row app-footer__row--after-agent">
           <IndexerStatusBar />

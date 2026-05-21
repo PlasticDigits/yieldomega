@@ -1,4 +1,3 @@
-import { FooterSiteLinks } from "@/components/FooterSiteLinks";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { ReferralsFooterPendingPill } from "@/components/ReferralsFooterPendingPill";
 import { FeeTransparency } from "@/components/FeeTransparency";
@@ -225,8 +224,6 @@ export function AgentFooterCard() {
             </>
           ) : null}
         </article>
-
-        <FooterSiteLinks />
 
         <div className="app-footer__row app-footer__row--after-agent">
           <IndexerStatusBar />

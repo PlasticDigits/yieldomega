@@ -33,10 +33,6 @@ export type DoubProjectionComputed = {
   doubPerCharmAtLaunchWad: bigint | undefined;
   /** `projectedSupply × launch anchor` — market cap uses launch anchor per #229. */
   impliedMarketCapCl8yWei: bigint;
-  impliedMarketCapUsdPlaceholder: number;
-  saleBucketMatchesPolicy: boolean;
-  /** Basis points of sale bucket “allocated” via `totalCharmWeight / totalTokensForSale`. */
-  saleAllocationBps: bigint | null;
 };
 
 /**
@@ -63,15 +59,6 @@ export function computeDoubProjectionStats(
   });
 
   const impliedMarketCapCl8yWei = (projectedSupplyWad * launchAnchor) / WAD;
-  const impliedMarketCapUsdPlaceholder = Number(impliedMarketCapCl8yWei) / 1e18;
-
-  const saleBucketWhole = totalTokensForSaleWei / WAD;
-  const saleBucketMatchesPolicy = saleBucketWhole === 200_000_000n;
-
-  const saleAllocationBps =
-    totalTokensForSaleWei > 0n
-      ? (totalCharmWeightWei * 10_000n) / totalTokensForSaleWei
-      : null;
 
   return {
     clearingCl8yPerDoubWad: clearing,
@@ -79,8 +66,5 @@ export function computeDoubProjectionStats(
     kumbayaBandLowerCl8yPerDoubWad: kLo,
     doubPerCharmAtLaunchWad: doubPerCharm,
     impliedMarketCapCl8yWei,
-    impliedMarketCapUsdPlaceholder,
-    saleBucketMatchesPolicy,
-    saleAllocationBps,
   };
 }

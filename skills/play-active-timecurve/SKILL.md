@@ -76,5 +76,5 @@ Always state explicitly:
 - Product: [`docs/product/primitives.md`](../../docs/product/primitives.md)
 - UI phase: [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)
 - Invariants: [`INV-FRONTEND-232-FOOTER-SITE-LINKS`](../../docs/testing/invariants-and-business-logic.md#global-footer-site-link-ribbon-gitlab-232)
-- Footer discovery: [`FooterSiteLinks`](../../frontend/src/components/FooterSiteLinks.tsx) on routes with global footer; Simple page mirrors under agent card ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232))
+- Footer discovery: [`FooterSiteLinksCard`](../../frontend/src/components/FooterSiteLinksCard.tsx) below the agent card (global footer + `/timecurve` Simple) — **Agent SKILL.md** pill ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232))
 - Play index: [`skills/README.md`](../README.md)

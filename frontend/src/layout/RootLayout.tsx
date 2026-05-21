@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { ReferralPathSync } from "@/components/ReferralPathSync";
 import { ReferralSelfReferralPurge } from "@/components/ReferralSelfReferralPurge";
 import { AgentFooterCard } from "@/components/AgentFooterCard";
+import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { useIsViewportAtMost } from "@/hooks/useIsViewportAtMost";
 import { configuredTargetChainId } from "@/lib/chain";
 import { addressTailHex } from "@/lib/addressFormat";
@@ -268,6 +269,7 @@ export function RootLayout() {
       {showFooter && (
         <footer className="app-footer">
           <AgentFooterCard />
+          <FooterSiteLinksCard />
         </footer>
       )}
     </div>

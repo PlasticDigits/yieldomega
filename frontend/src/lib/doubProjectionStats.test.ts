@@ -37,8 +37,6 @@ describe("doubProjectionStats", () => {
     expect(stats!.impliedMarketCapCl8yWei).toBe(
       (PROJECTED_DOUB_SUPPLY_WAD * stats!.launchAnchorCl8yPerDoubWad) / WAD,
     );
-    expect(stats!.saleBucketMatchesPolicy).toBe(true);
-    expect(stats!.saleAllocationBps).toBe((totalCharmWeight * 10_000n) / SALE_BUCKET);
   });
 
   it("returns undefined doubPerCharm when totalCharmWeight is zero", () => {

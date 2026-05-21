@@ -328,9 +328,12 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 3. **Projected total supply** reads **251M DOUB** with footnote to launch plan + 1M airdrops.
 4. Before first buy (`totalCharmWeight == 0`): **CHARM → DOUB** shows intentional empty placeholder, not `0` or `Infinity`.
 5. After buys: **CHARM → DOUB** decreases; **implied CL8Y / DOUB (clearing)** flat or rises; **launch anchor** = **1.275×** clearing.
-6. **Implied market cap (CL8Y)** uses launch anchor; **USD** line shows illustrative disclosure (#192).
-7. Expand accordion **Reserve routing and launch anchors** → clearing / launch / Kumbaya lower **match** the projection card.
-8. Mobile **≤479px**: `stats-grid` wraps; no horizontal overflow.
+6. **Implied market cap (CL8Y)** uses launch anchor; **USD** uses live Kumbaya CL8Y price (↻ refresh).
+7. **Kumbaya band floor** = **0.25×** launch anchor (not 0.8×).
+8. Expand accordion **Reserve routing and launch anchors** → clearing / launch / Kumbaya lower **match** the projection card.
+9. **TOTAL USD** in sale state uses same CL8Y/USD quote; **↻** next to TOTAL USD refreshes quote.
+10. **Your share of sale** shows wallet % when connected; **↻** refreshes `charmWeight`.
+11. Mobile **≤479px**: `stats-grid` wraps; no horizontal overflow.
 
 **Doc map:** [invariants — #229](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts)
 
@@ -366,11 +369,11 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### Checklist
 
-1. Open **`/referrals`** (or **`/timecurve/arena`**) → expand **AGENT CARD** if collapsed → **`data-testid="footer-site-links"`** visible **below** agent prose and **above** indexer pill row.
-2. Each pill opens in a **new tab** (`target="_blank"`); Tab focus shows **`--yo-focus-ring`** on pills ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97)).
-3. **Play active TimeCurve** → GitHub `…/skills/play-active-timecurve/SKILL.md` on `main`.
+1. Open **`/referrals`** (or **`/timecurve/arena`**) → **`data-testid="footer-site-links-card"`** visible **below** the agent card (not inside it).
+2. Each pill shows an **icon + label**; opens in a **new tab** (`target="_blank"`); Tab focus shows **`--yo-focus-ring`** on pills ([issue #97](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97)).
+3. **Agent SKILL.md** → GitHub `…/skills/play-active-timecurve/SKILL.md` on `main`.
 4. **Buy CL8Y (Kumbaya)** and **CL8Y Bridge** hrefs match [`footerSiteLinks.ts`](../../frontend/src/lib/footerSiteLinks.ts).
-5. **`/timecurve`:** global footer hidden; expand **AGENT CARD: TimeCurve Simple** → same ribbon present (`footer-site-links` inside card).
+5. **`/timecurve`:** global footer hidden; **Community & tools** card still at page bottom (not inside agent card).
 6. Launch countdown route: footer still **out of scope** (no header/footer).
 
 **Doc map:** [invariants — #232](invariants-and-business-logic.md#global-footer-site-link-ribbon-gitlab-232) · [`skills/play-active-timecurve/SKILL.md`](../../skills/play-active-timecurve/SKILL.md) · [`timecurve-views.md`](../frontend/timecurve-views.md#global-footer-site-link-ribbon-gitlab-232)
