@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /** Default page size for protocol platform-usage wallet table ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)). */
-export const PLATFORM_USAGE_WALLET_PAGE_SIZE = 50;
+export const PLATFORM_USAGE_WALLET_PAGE_SIZE = 20;
+
+/** Global rank for a wallet row (1-based); ties break on lowest address via indexer sort. */
+export function platformUsageWalletRank(offset: number, rowIndex: number): number {
+  return offset + rowIndex + 1;
+}
 
 export function platformUsagePageIndex(offset: number, limit: number): number {
   if (limit <= 0) {

@@ -297,9 +297,9 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 
 | Rule | Detail |
 |------|--------|
-| **Route** | **`GET /v1/timecurve/platform-usage`**; query **`limit` / `offset`** (clamp **1–200**, default **50**), **`velocity_window`** **`1h`** (default) or **`24h`**. |
-| **Unique wallets** | Distinct addresses in **`idx_timecurve_buy.buyer`** ∪ WarBow **`attacker` / `victim` / `avenger` / `stealer` / `player`** (steal, revenge, guard, flag claimed). |
-| **Buy CL8Y** | Per-wallet **`SUM(amount)`** wei on **`idx_timecurve_buy`**; table sort spend desc, buys desc. |
+| **Route** | **`GET /v1/timecurve/platform-usage`**; query **`limit` / `offset`** (clamp **1–200**), **`velocity_window`** **`1h`** (default) or **`24h`**. |
+| **Unique wallets** | Distinct addresses in **`idx_timecurve_buy.buyer`** ∪ WarBow **`attacker` / `victim` / `stealer` / `player`** (steal, revenge, guard, flag claimed). |
+| **Buy CL8Y** | Per-wallet **`SUM(amount)`** wei on **`idx_timecurve_buy`**; table sort spend desc, buys desc, **`buyer` ASC** on ties (lowest address wins rank). |
 | **WarBow CL8Y** | **`SUM(burn_paid_wad)`** per action table; steal overrides filter **`bypassed_victim_daily_limit = true`**. Exclude legacy **`idx_timecurve_warbow_cl8y_burned`** from v1 totals. |
 | **Velocity** | Count buys with **`block_timestamp >= anchor - window`**; **`avg_buys_per_hour = count / window_hours`**. Anchor: head **`chain_timer.block_timestamp_sec`**, else **`MAX(block_timestamp)`** on buys. |
 
@@ -310,6 +310,7 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **Placement** | **`data-testid="timecurve-protocol-platform-usage"`** after **Live buys**, before **Immutable parameters**. |
 | **Indexer off** | No fabricated **0** stats; **`EmptyDataPlaceholder`** + muted **`VITE_INDEXER_URL`** / offline copy (**#200**, **#96**). |
 | **Velocity UI** | Toggle **`1h` / `24h`**; show **No buys in window** when count is zero. |
+| **Wallet table** | **20** rows per page; **Rank** column (**`offset + rowIndex + 1`**); inline **↻** / green **✓** refresh affordance on the table heading (no separate “refreshing…” line). |
 
 **Spec ↔ test:** [`postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity`](../../indexer/tests/integration_stage2.rs) · [`platformUsagePagination.test.ts`](../../frontend/src/lib/platformUsagePagination.test.ts) · [`indexerApi.test.ts`](../../frontend/src/lib/indexerApi.test.ts) · [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) · [timecurve-views §231](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-gitlab-231) · [manual QA (#231)](manual-qa-checklists.md#manual-qa-issue-231).
 

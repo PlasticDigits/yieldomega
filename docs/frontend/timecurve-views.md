@@ -684,7 +684,7 @@ When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/Pl
 - **Participation:** unique wallets (sale + WarBow union), total buys, mean/median buys per wallet.
 - **WarBow:** steals, steal overrides (`bypassed_victim_daily_limit`), revenges, guards — each **count + total CL8Y** (`burn_paid_wad`; legacy **`WarBowCl8yBurned`** excluded from v1 totals).
 - **Buy velocity:** toggle **Last hour** (default) / **Last day**; **avg buys per hour** in the selected window (`velocity_window=1h|24h`).
-- **Wallet table:** paginated (default **50**), sort **CL8Y spent** desc then buy count; **`AddressInline`** + explorer links ([#98](#canonical-address-display-gitlab-98)).
+- **Wallet table:** paginated (**20** per page), **rank** column (ties break on lowest address), sort **CL8Y spent** desc then buy count; inline **↻** / **✓** on the table heading while polling; **`AddressInline`** + explorer links ([#98](#canonical-address-display-gitlab-98)).
 - **Offline / unset indexer:** muted status + **`EmptyDataPlaceholder`** — no misleading zeros ([#200](#stats-charts-empty-states-gitlab-200), [#96](#indexer-offline-ux-issue-96)).
 
 **Spec ↔ test:** [`INV-INDEXER-231-PLATFORM-USAGE`](../testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [`INV-FRONTEND-231-PLATFORM-USAGE`](../testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [`manual-qa — #231`](../testing/manual-qa-checklists.md#manual-qa-issue-231) · Playwright [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts).

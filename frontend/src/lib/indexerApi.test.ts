@@ -45,8 +45,8 @@ describe("timecurveBuyerStatsApiPath", () => {
 
 describe("timecurvePlatformUsageApiPath", () => {
   it("includes limit, offset, and default velocity window", () => {
-    expect(timecurvePlatformUsageApiPath(50, 0)).toBe(
-      "/v1/timecurve/platform-usage?limit=50&offset=0&velocity_window=1h",
+    expect(timecurvePlatformUsageApiPath(20, 0)).toBe(
+      "/v1/timecurve/platform-usage?limit=20&offset=0&velocity_window=1h",
     );
   });
 
