@@ -1,3 +1,4 @@
+import { FooterSiteLinks } from "@/components/FooterSiteLinks";
 import { IndexerStatusBar } from "@/components/IndexerStatusBar";
 import { ReferralsFooterPendingPill } from "@/components/ReferralsFooterPendingPill";
 import { FeeTransparency } from "@/components/FeeTransparency";
@@ -10,6 +11,7 @@ import { resolveChainRpcConfig } from "@/lib/chain";
 const GH_MAIN = "https://github.com/PlasticDigits/yieldomega/blob/main";
 
 const PLAY_SKILLS: { label: string; path: string }[] = [
+  { label: "play-active-timecurve (detect live sale phase)", path: "skills/play-active-timecurve/SKILL.md" },
   { label: "skills index (play + contributor map)", path: "skills/README.md" },
   { label: "why-yieldomega-participation-matters", path: "skills/why-yieldomega-participation-matters/SKILL.md" },
   { label: "script-with-timecurve-local", path: "skills/script-with-timecurve-local/SKILL.md" },
@@ -132,7 +134,7 @@ export function AgentFooterCard() {
 
           <h4 className="app-footer-agent__h">Play skills (GitHub mirror, raw Markdown)</h4>
           <p className="app-footer-agent__p">
-            Six player-facing skills live under <code className="app-footer-agent__code-inline">skills/</code> (see
+            Seven player-facing skills live under <code className="app-footer-agent__code-inline">skills/</code> (see
             table in <a href={ghBlob("skills/README.md")}>skills/README.md</a>). Use these for wallet flows, buys,
             WarBow, treasury, and collection semantics — not for unsolicited repo patches unless the user asks.
           </p>
@@ -222,6 +224,8 @@ export function AgentFooterCard() {
             </>
           ) : null}
         </article>
+
+        <FooterSiteLinks />
 
         <div className="app-footer__row app-footer__row--after-agent">
           <IndexerStatusBar />
