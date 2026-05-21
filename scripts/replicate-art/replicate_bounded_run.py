@@ -10,9 +10,11 @@ Override with env ``REPLICATE_MAX_GENERATION_SECONDS`` (default ``600``).
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 DEFAULT_MAX_GENERATION_SECONDS = 600.0
@@ -65,6 +67,27 @@ def max_generation_seconds() -> float:
     if not raw:
         return DEFAULT_MAX_GENERATION_SECONDS
     return max(60.0, float(raw))
+
+
+def _load_ledger(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if isinstance(raw, dict):
+        return {str(k): str(v) for k, v in raw.items() if v}
+    return {}
+
+
+def _save_ledger_entry(path: Path, key: str, prediction_id: str) -> None:
+    data = _load_ledger(path)
+    data[key] = prediction_id
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def _reload_prediction_resilient(prediction: Any, *, job_label: str) -> None:
@@ -141,9 +164,14 @@ def run_model_bounded(
     use_file_output: bool = True,
     log_monitor: bool = True,
     poll_progress: bool = False,
+    ledger_path: Path | None = None,
+    ledger_key: str = "",
 ) -> Any:
     """
     Create a model prediction, poll with a wall-clock cap, return file output like ``replicate.run``.
+
+    When ``ledger_path`` and ``ledger_key`` are set, the prediction id is written immediately after
+    ``create`` (before polling). A later run reuses that id instead of creating a duplicate job.
     """
     from replicate import identifier
     from replicate.exceptions import ModelError
@@ -157,14 +185,31 @@ def run_model_bounded(
         )
 
     deadline = max_wall_seconds if max_wall_seconds is not None else max_generation_seconds()
-    prediction = client.models.predictions.create(
-        model=(owner, name),
-        input=inp,
-        wait=prefer_wait,
-    )
     label = job_label or model_ref
+    create_wait = _create_wait_seconds(prefer_wait)
+    prediction = None
+    if ledger_path is not None and ledger_key:
+        existing_id = _load_ledger(ledger_path).get(ledger_key)
+        if existing_id:
+            prediction = client.predictions.get(existing_id)
+            if prediction.status in ("failed", "canceled"):
+                prediction = None
+            elif log_monitor:
+                print(
+                    f"[{label}] reusing ledger prediction {existing_id} "
+                    f"(status={prediction.status!r}) — https://replicate.com/p/{existing_id}",
+                    file=sys.stderr,
+                )
+    if prediction is None:
+        prediction = client.models.predictions.create(
+            model=(owner, name),
+            input=inp,
+            wait=create_wait,
+        )
+        if ledger_path is not None and ledger_key:
+            _save_ledger_entry(ledger_path, ledger_key, str(prediction.id))
     pid = getattr(prediction, "id", "?")
-    if log_monitor:
+    if log_monitor and prediction is not None:
         print(
             f"[{label}] monitoring prediction {pid} (max {deadline:.0f}s) — https://replicate.com/p/{pid}",
             file=sys.stderr,
