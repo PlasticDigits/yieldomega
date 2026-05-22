@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.26.0";
+const SCHEMA_VERSION: &str = "1.27.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -1396,12 +1396,49 @@ fn default_velocity_window() -> String {
     "1h".to_string()
 }
 
-fn parse_velocity_window(s: &str) -> Result<(i64, i64, &'static str), &'static str> {
+/// Velocity-window discriminant for `GET /v1/timecurve/platform-usage`.
+/// Trailing windows carry static `(window_sec, window_hours, label)`; Sale resolves
+/// `window_start` and `window_hours` at request time from chain-timer state ([GitLab #233](https://gitlab.com/PlasticDigits/yieldomega/-/issues/233)).
+#[derive(Debug, Clone, Copy)]
+enum VelocityWindow {
+    Trailing {
+        window_sec: i64,
+        window_hours: i64,
+        label: &'static str,
+    },
+    Sale,
+}
+
+fn parse_velocity_window(s: &str) -> Result<VelocityWindow, &'static str> {
     match s.trim().to_ascii_lowercase().as_str() {
-        "1h" => Ok((3600, 1, "1h")),
-        "24h" => Ok((86400, 24, "24h")),
-        _ => Err("velocity_window must be 1h or 24h"),
+        "1h" => Ok(VelocityWindow::Trailing {
+            window_sec: 3600,
+            window_hours: 1,
+            label: "1h",
+        }),
+        "24h" => Ok(VelocityWindow::Trailing {
+            window_sec: 86400,
+            window_hours: 24,
+            label: "24h",
+        }),
+        "sale" => Ok(VelocityWindow::Sale),
+        _ => Err("velocity_window must be 1h, 24h, or sale"),
     }
+}
+
+/// Reads `saleStart()` (seconds) from the cached chain-timer head, mirroring
+/// `platform_usage_anchor_timestamp_sec`. Returns 0 when the snapshot is absent
+/// or sale_start is unset; callers must guard pre-open behavior.
+async fn platform_usage_sale_start_sec(state: &AppState) -> i64 {
+    let guard = state.chain_timer.read().await;
+    if let Some(snap) = guard.as_ref() {
+        if let Ok(ts) = snap.timer.sale_start_sec.parse::<i64>() {
+            if ts > 0 {
+                return ts;
+            }
+        }
+    }
+    0
 }
 
 async fn platform_usage_anchor_timestamp_sec(state: &AppState) -> i64 {
@@ -1466,7 +1503,7 @@ async fn timecurve_platform_usage(
     State(state): State<AppState>,
     Query(p): Query<PlatformUsageParams>,
 ) -> Response {
-    let (window_sec, window_hours, window_label) = match parse_velocity_window(&p.velocity_window) {
+    let velocity = match parse_velocity_window(&p.velocity_window) {
         Ok(v) => v,
         Err(msg) => {
             return (
@@ -1586,7 +1623,25 @@ async fn timecurve_platform_usage(
     };
 
     let anchor = platform_usage_anchor_timestamp_sec(&state).await;
-    let window_start = anchor.saturating_sub(window_sec);
+    let (window_start, window_hours, window_label) = match velocity {
+        VelocityWindow::Trailing {
+            window_sec,
+            window_hours,
+            label,
+        } => (anchor.saturating_sub(window_sec), window_hours, label),
+        VelocityWindow::Sale => {
+            let sale_start = platform_usage_sale_start_sec(&state).await;
+            if sale_start == 0 || anchor < sale_start {
+                // Pre-open: window_start > anchor guarantees zero rows match the SQL filter;
+                // hours = 1 prevents divide-by-zero in format_avg_buys_per_hour.
+                (anchor + 1, 1, "sale")
+            } else {
+                let elapsed = anchor - sale_start;
+                let hours = (elapsed / 3600).max(1);
+                (sale_start, hours, "sale")
+            }
+        }
+    };
 
     let velocity_row = sqlx::query(
         r#"SELECT COUNT(*)::bigint AS buy_count
