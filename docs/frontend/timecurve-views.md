@@ -670,14 +670,15 @@ When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/Pl
 
 ## Protocol AUDIT — DOUB projection card ([GitLab #229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229))
 
-**`/timecurve/protocol`** (subnav **AUDIT**) shows a **`DOUB projection`** `PageSection` (`data-testid="timecurve-protocol-doub-projection"`) **after** **Sale state** and **only when the sale is live** (`protocolPhase !== saleStartPending` — hidden during pre-open countdown per product sign-off).
+**`/timecurve/protocol`** (subnav **AUDIT**) shows a **`DOUB projection`** `PageSection` (`data-testid="timecurve-protocol-doub-projection"`) **after** **Sale state** and **only when the sale is live** (`protocolPhase !== saleStartPending` — hidden during pre-open countdown per product sign-off). GitLab [#235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235) keeps the section readable by grouping the same ten cards into **Supply and redemption**, **Price anchors**, and **Market and wallet lens**; that grouping is presentation-only and must not add new economics or reads.
 
 - **Math:** [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts) reuses [`timeCurvePodiumMath.ts`](../../frontend/src/lib/timeCurvePodiumMath.ts) (`doubPerCharmAtLaunchWad`, `projectedReservePerDoubWad`, `launchLiquidityAnchorWad`, `kumbayaBandLowerWad`). **Implied market cap** uses **launch-anchor** CL8Y/DOUB × **251M** policy supply (200M + 21.5M + 28.5M + **1M airdrops**); not external oracles.
 - **USD line:** **Kumbaya USDM quoter** per 1 CL8Y on page load; manual **↻** refresh only ([`useProtocolCl8yUsdSpotPrice`](../../frontend/src/hooks/useProtocolCl8yUsdSpotPrice.ts), [`cl8ySpotUsdPrice.ts`](../../frontend/src/lib/cl8ySpotUsdPrice.ts)). **Kumbaya band floor** = **0.25×** launch anchor (not 0.8×).
 - **Empty states:** CHARM→DOUB shows **`EmptyDataPlaceholder`** when `totalCharmWeight == 0` (**`INV-FRONTEND-200`**), not `0` or `Infinity`.
 - **Parity:** clearing / launch / Kumbaya rows match **Raw contract → Reserve routing and launch anchors** in the collapsed accordion.
+- **Design pass (#235):** preserve the grouped card structure and phone-safe wrapping so policy supply, clearing, launch anchor, Kumbaya floor, USD quote, and wallet share remain distinguishable on desktop and <=479px mobile.
 
-**Spec ↔ test:** [`INV-FRONTEND-229-DOUB-PROJECTION`](../testing/invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.test.ts`](../../frontend/src/lib/doubProjectionStats.test.ts) · [`manual-qa — #229`](../testing/manual-qa-checklists.md#manual-qa-issue-229) · Playwright [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts).
+**Spec ↔ test:** [`INV-FRONTEND-229-DOUB-PROJECTION`](../testing/invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.test.ts`](../../frontend/src/lib/doubProjectionStats.test.ts) · [`doubProjectionLayoutCss.test.ts`](../../frontend/src/lib/doubProjectionLayoutCss.test.ts) · [`manual-qa — #229/#235`](../testing/manual-qa-checklists.md#manual-qa-issue-229) · Playwright [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts).
 
 <a id="timecurve-protocol-platform-usage-gitlab-231"></a>
 
