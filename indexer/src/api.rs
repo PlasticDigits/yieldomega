@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 
 /// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.26.0";
+const SCHEMA_VERSION: &str = "1.27.0";
 
 /// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
 const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
@@ -1396,32 +1396,104 @@ fn default_velocity_window() -> String {
     "1h".to_string()
 }
 
-fn parse_velocity_window(s: &str) -> Result<(i64, i64, &'static str), &'static str> {
+/// Velocity-window discriminant for `GET /v1/timecurve/platform-usage`.
+/// Trailing windows carry static `(window_sec, window_hours, label)`; Sale resolves
+/// `window_start` and `window_hours` at request time from chain-timer state ([GitLab #233](https://gitlab.com/PlasticDigits/yieldomega/-/issues/233)).
+#[derive(Debug, Clone, Copy)]
+enum VelocityWindow {
+    Trailing {
+        window_sec: i64,
+        window_hours: i64,
+        label: &'static str,
+    },
+    Sale,
+}
+
+fn parse_velocity_window(s: &str) -> Result<VelocityWindow, &'static str> {
     match s.trim().to_ascii_lowercase().as_str() {
-        "1h" => Ok((3600, 1, "1h")),
-        "24h" => Ok((86400, 24, "24h")),
-        _ => Err("velocity_window must be 1h or 24h"),
+        "1h" => Ok(VelocityWindow::Trailing {
+            window_sec: 3600,
+            window_hours: 1,
+            label: "1h",
+        }),
+        "24h" => Ok(VelocityWindow::Trailing {
+            window_sec: 86400,
+            window_hours: 24,
+            label: "24h",
+        }),
+        "sale" => Ok(VelocityWindow::Sale),
+        _ => Err("velocity_window must be 1h, 24h, or sale"),
     }
 }
 
-async fn platform_usage_anchor_timestamp_sec(state: &AppState) -> i64 {
-    let guard = state.chain_timer.read().await;
-    if let Some(snap) = guard.as_ref() {
+/// Anchor + sale-start seconds for platform-usage velocity.
+/// Prefers head **`chain_timer`**. Anchor falls back to **`MAX(block_timestamp)`** on buys;
+/// **`sale_start`** falls back to latest **`idx_timecurve_sale_started.start_timestamp`** only when
+/// the snapshot is absent or **`sale_start_sec`** is unparseable — explicit **`0`** stays pre-open.
+async fn platform_usage_timer_secs(state: &AppState) -> (i64, i64) {
+    let snapshot = {
+        let guard = state.chain_timer.read().await;
+        guard.as_ref().cloned()
+    };
+
+    let mut anchor = None;
+    let mut sale_start = None;
+    let mut need_anchor_fallback = snapshot.is_none();
+    let mut need_sale_start_fallback = snapshot.is_none();
+
+    if let Some(snap) = snapshot {
         if let Ok(ts) = snap.timer.block_timestamp_sec.parse::<i64>() {
             if ts > 0 {
-                return ts;
+                anchor = Some(ts);
+            } else {
+                need_anchor_fallback = true;
+            }
+        } else {
+            need_anchor_fallback = true;
+        }
+
+        match snap.timer.sale_start_sec.parse::<i64>() {
+            Ok(ts) => sale_start = Some(ts),
+            Err(_) => need_sale_start_fallback = true,
+        }
+    }
+
+    if need_anchor_fallback || need_sale_start_fallback {
+        let row = sqlx::query(
+            r#"SELECT
+                  COALESCE(MAX(block_timestamp), 0)::bigint AS anchor,
+                  COALESCE((
+                    SELECT start_timestamp::bigint
+                      FROM idx_timecurve_sale_started
+                     ORDER BY block_number DESC
+                     LIMIT 1
+                  ), 0)::bigint AS sale_start
+                 FROM idx_timecurve_buy"#,
+        )
+        .fetch_one(&state.pool)
+        .await;
+
+        match row {
+            Ok(r) => {
+                if need_anchor_fallback {
+                    anchor = Some(r.try_get::<i64, _>("anchor").unwrap_or(0));
+                }
+                if need_sale_start_fallback {
+                    sale_start = Some(r.try_get::<i64, _>("sale_start").unwrap_or(0));
+                }
+            }
+            Err(_) => {
+                if need_anchor_fallback {
+                    anchor = Some(0);
+                }
+                if need_sale_start_fallback {
+                    sale_start = Some(0);
+                }
             }
         }
     }
-    let row = sqlx::query(
-        r#"SELECT COALESCE(MAX(block_timestamp), 0)::bigint AS anchor FROM idx_timecurve_buy"#,
-    )
-    .fetch_one(&state.pool)
-    .await;
-    match row {
-        Ok(r) => r.try_get::<i64, _>("anchor").unwrap_or(0),
-        Err(_) => 0,
-    }
+
+    (anchor.unwrap_or(0), sale_start.unwrap_or(0))
 }
 
 async fn fetch_warbow_action_totals(
@@ -1466,7 +1538,7 @@ async fn timecurve_platform_usage(
     State(state): State<AppState>,
     Query(p): Query<PlatformUsageParams>,
 ) -> Response {
-    let (window_sec, window_hours, window_label) = match parse_velocity_window(&p.velocity_window) {
+    let velocity = match parse_velocity_window(&p.velocity_window) {
         Ok(v) => v,
         Err(msg) => {
             return (
@@ -1585,8 +1657,25 @@ async fn timecurve_platform_usage(
         }
     };
 
-    let anchor = platform_usage_anchor_timestamp_sec(&state).await;
-    let window_start = anchor.saturating_sub(window_sec);
+    let (anchor, sale_start) = platform_usage_timer_secs(&state).await;
+    let (window_start, window_hours, window_label) = match velocity {
+        VelocityWindow::Trailing {
+            window_sec,
+            window_hours,
+            label,
+        } => (anchor.saturating_sub(window_sec), window_hours, label),
+        VelocityWindow::Sale => {
+            if sale_start == 0 || anchor < sale_start {
+                // Pre-open: window_start > anchor guarantees zero rows match the SQL filter;
+                // hours = 1 prevents divide-by-zero in format_avg_buys_per_hour.
+                (anchor + 1, 1, "sale")
+            } else {
+                let elapsed = anchor - sale_start;
+                let hours = (elapsed / 3600).max(1);
+                (sale_start, hours, "sale")
+            }
+        }
+    };
 
     let velocity_row = sqlx::query(
         r#"SELECT COUNT(*)::bigint AS buy_count
@@ -1608,22 +1697,6 @@ async fn timecurve_platform_usage(
         }
     };
     let velocity_buy_count: i64 = velocity_row.try_get("buy_count").unwrap_or(0);
-
-    let wallet_total_row = sqlx::query(
-        r#"SELECT COUNT(DISTINCT buyer)::bigint AS total FROM idx_timecurve_buy"#,
-    )
-    .fetch_one(&state.pool)
-    .await;
-
-    let wallet_total = match wallet_total_row {
-        Ok(r) => r.try_get::<i64, _>("total").unwrap_or(0),
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage wallet total",
-                e,
-            );
-        }
-    };
 
     let wallet_rows = sqlx::query(
         r#"SELECT buyer AS wallet,
@@ -1683,7 +1756,7 @@ async fn timecurve_platform_usage(
             "avg_buys_per_hour": format_avg_buys_per_hour(velocity_buy_count, window_hours),
         },
         "wallets": {
-            "total": wallet_total.to_string(),
+            "total": unique_buyers.to_string(),
             "items": wallet_items,
             "limit": lim,
             "offset": off,

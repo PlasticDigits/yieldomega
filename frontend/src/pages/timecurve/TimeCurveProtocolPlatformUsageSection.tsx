@@ -161,7 +161,7 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
           <div className="platform-usage-velocity" data-testid="timecurve-protocol-platform-usage-velocity">
             <p className="platform-usage-velocity__label">Buy velocity</p>
             <div className="platform-usage-velocity__toggle" role="group" aria-label="Velocity window">
-              {(["1h", "24h"] as const).map((w) => (
+              {(["1h", "24h", "sale"] as const).map((w) => (
                 <button
                   key={w}
                   type="button"
@@ -175,7 +175,7 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
                   data-testid={`timecurve-protocol-platform-usage-velocity-${w}`}
                   onClick={() => onVelocityWindowChange(w as PlatformUsageVelocityWindow)}
                 >
-                  {w === "1h" ? "Last hour" : "Last day"}
+                  {w === "1h" ? "Last hour" : w === "24h" ? "Last day" : "Whole sale"}
                 </button>
               ))}
             </div>
