@@ -66,7 +66,6 @@ export function TimeCurveArenaView() {
     pendingRevengeTargets,
     prefersReducedMotion,
     pvpErr,
-    revengeDeadlineSec,
     revengeIndexerConfigured,
     runVoid,
     runWarBowClaimFlag,
@@ -83,6 +82,7 @@ export function TimeCurveArenaView() {
     setStealBypassForVictim,
     stealBypass,
     stealBypassByVictim,
+    stealerBpByAddress,
     stealHeroRows,
     attackerAtDailyStealCap,
     attackerStealsTodayBigInt,
@@ -202,8 +202,9 @@ export function TimeCurveArenaView() {
               guardUntilSec={guardUntilSec.toString()}
               hasRevengeOpen={hasRevengeOpen}
               pendingRevengeTargets={pendingRevengeTargets}
+              stealerBpByAddress={stealerBpByAddress}
+              ledgerNowSec={effectiveLedgerSec}
               revengeIndexerConfigured={revengeIndexerConfigured}
-              revengeDeadlineSec={revengeDeadlineSec.toString()}
               warbowGuardBurnWad={warbowGuardBurnWad.toString()}
               warbowBypassBurnWad={warbowBypassBurnWad.toString()}
               buyFeeRoutingEnabled={buyFeeRoutingEnabled}

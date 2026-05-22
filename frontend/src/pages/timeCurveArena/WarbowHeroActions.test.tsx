@@ -112,8 +112,9 @@ function renderHero(overrides: Partial<Parameters<typeof WarbowHeroActions>[0]> 
         window_log_index: 0,
       },
     ],
+    stealerBpByAddress: new Map<string, bigint | undefined>(),
+    ledgerNowSec: 1_000_000,
     revengeIndexerConfigured: true,
-    revengeDeadlineSec: "1893456000",
     warbowGuardBurnWad: "10000000000000000000",
     warbowBypassBurnWad: "50000000000000000000",
     buyFeeRoutingEnabled: true,
@@ -398,5 +399,75 @@ describe("WarbowHeroActions", () => {
     const submitIdx = html.indexOf("data-testid=\"warbow-hero-claim-flag-submit\"");
     expect(html.slice(submitIdx, submitIdx + 120)).not.toMatch(/disabled/);
     expect(html).toContain(">Claim flag<");
+  });
+
+  // GitLab #236 — revenge hero card refactor
+  it("does not show the redundant 'You have N open counter-hits' summary paragraph (GitLab #236)", () => {
+    const html = renderHero();
+    expect(html).not.toContain("open counter-hit");
+    expect(html).not.toContain("Earliest expiry");
+  });
+
+  it("renders per-row Target BP and Gain when stealer BP is loaded (GitLab #236)", () => {
+    const stealerAddr = "0x3333333333333333333333333333333333333333";
+    const stealerBpByAddress = new Map<string, bigint | undefined>([
+      [stealerAddr.toLowerCase(), 12_400n],
+    ]);
+    const html = renderHero({ stealerBpByAddress });
+    expect(html).toContain("Target:");
+    expect(html).toContain("12,400 BP");
+    expect(html).toContain("Gain:");
+    // warbowRevengeDrainBp(12400) = 12400 / 10 = 1240 BP
+    expect(html).toContain("+1,240 BP");
+    expect(html).toContain("data-testid=\"warbow-hero-revenge-bp\"");
+  });
+
+  it("shows a loading hint when stealer BP is still in flight (GitLab #236)", () => {
+    // Default stealerBpByAddress is an empty Map -> undefined for every stealer
+    const html = renderHero();
+    expect(html).toContain("Loading BP…");
+    expect(html).toContain("data-testid=\"warbow-hero-revenge-bp\"");
+  });
+
+  it("shows 'Revenge zero' hint when drain math floors to 0 (GitLab #236)", () => {
+    const stealerAddr = "0x3333333333333333333333333333333333333333";
+    // stealerBp=5 -> drain = 5*1000/10000 = 0 (floor)
+    const stealerBpByAddress = new Map<string, bigint | undefined>([
+      [stealerAddr.toLowerCase(), 5n],
+    ]);
+    const html = renderHero({ stealerBpByAddress });
+    expect(html).toContain("Target:");
+    expect(html).toContain("5 BP");
+    expect(html).toContain("Revenge zero");
+    expect(html).not.toContain("Gain:");
+  });
+
+  it("renders a live Valid To countdown that reflects ledgerNowSec (GitLab #236)", () => {
+    // expiry_exclusive = 1893456000 (default fixture), use ledgerNowSec values 5 min and 4 min apart.
+    const expirySec = 1_893_456_000;
+    const fiveMinBefore = expirySec - 300; // remaining = 5 minutes
+    const fourMinBefore = expirySec - 240; // remaining = 4 minutes
+    const htmlAtFiveMin = renderHero({ ledgerNowSec: fiveMinBefore });
+    expect(htmlAtFiveMin).toContain("Valid To:");
+    expect(htmlAtFiveMin).toContain("00:05:00");
+    const htmlAtFourMin = renderHero({ ledgerNowSec: fourMinBefore });
+    expect(htmlAtFourMin).toContain("Valid To:");
+    expect(htmlAtFourMin).toContain("00:04:00");
+    // Confirm the countdown string actually changed (not a static label)
+    expect(htmlAtFiveMin).not.toBe(htmlAtFourMin);
+  });
+
+  it("clamps Valid To countdown to 00:00:00 when ledgerNowSec is past expiry (GitLab #236)", () => {
+    const expirySec = 1_893_456_000;
+    const html = renderHero({ ledgerNowSec: expirySec + 60 });
+    expect(html).toContain("Valid To:");
+    expect(html).toContain("00:00:00");
+  });
+
+  it("does not render UTC UnixTimestampDisplay in revenge rows (GitLab #236)", () => {
+    const html = renderHero();
+    // UnixTimestampDisplay renders with a UTC suffix or ISO timestamp pattern; ensure neither leaks in
+    expect(html).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    expect(html).not.toContain(" UTC");
   });
 });
