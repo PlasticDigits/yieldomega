@@ -438,7 +438,7 @@ export type TimecurvePlatformUsage = {
   };
 };
 
-export type PlatformUsageVelocityWindow = "1h" | "24h";
+export type PlatformUsageVelocityWindow = "1h" | "24h" | "sale";
 
 export function timecurvePlatformUsageApiPath(
   limit: number,
