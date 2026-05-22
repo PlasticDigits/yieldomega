@@ -13,7 +13,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222) | [Referrals — self-referral pending purge](#manual-qa-issue-222) |
 | [#204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204) | [Referrals — guide leaderboard registry union](#manual-qa-issue-204-referrer-leaderboard-registry-union) |
 | [#225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225) | [Referrals — guide leaderboard global totals + pagination](#manual-qa-issue-225) |
-| [#229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229) | [Protocol AUDIT — DOUB projection card](#manual-qa-issue-229) |
+| [#229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229), [#235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235) | [Protocol AUDIT — DOUB projection card](#manual-qa-issue-229) |
 | [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231) | [Protocol AUDIT — Platform usage](#manual-qa-issue-231) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
@@ -312,9 +312,9 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 <a id="manual-qa-issue-229"></a>
 
-## Protocol AUDIT — DOUB projection card (GitLab #229)
+## Protocol AUDIT — DOUB projection card (GitLab #229, design pass #235)
 
-**Why:** Operators need launch economics (supply, redemption rate, launch-anchor market cap) without opening the raw accordion.
+**Why:** Operators need launch economics (supply, redemption rate, launch-anchor market cap) without opening the raw accordion; the #235 design pass keeps the ten-card set readable instead of a flat wall of numbers.
 
 ### Preconditions
 
@@ -325,17 +325,18 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 1. Open **`/timecurve/protocol`** → **`data-testid="timecurve-protocol-doub-projection"`** visible **without** expanding **Raw contract and operator context**.
 2. **Pre-open** (`saleStartPending`): section **absent**; re-check after sale goes live.
-3. **Projected total supply** reads **251M DOUB** with footnote to launch plan + 1M airdrops.
-4. Before first buy (`totalCharmWeight == 0`): **CHARM → DOUB** shows intentional empty placeholder, not `0` or `Infinity`.
-5. After buys: **CHARM → DOUB** decreases; **implied CL8Y / DOUB (clearing)** flat or rises; **launch anchor** = **1.275×** clearing.
-6. **Implied market cap (CL8Y)** uses launch anchor; **USD** uses live Kumbaya CL8Y price (↻ refresh).
-7. **Kumbaya band floor** = **0.25×** launch anchor (not 0.8×).
-8. Expand accordion **Reserve routing and launch anchors** → clearing / launch / Kumbaya lower **match** the projection card.
-9. **TOTAL USD** in sale state uses same CL8Y/USD quote; **↻** next to TOTAL USD refreshes quote.
-10. **Your share of sale** shows wallet % when connected; **↻** refreshes `charmWeight`.
-11. Mobile **≤479px**: `stats-grid` wraps; no horizontal overflow.
+3. Cards are grouped as **Supply and redemption**, **Price anchors**, and **Market and wallet lens**; group labels are visible on desktop and mobile.
+4. **Projected total supply** reads **251M DOUB** with footnote to launch plan + 1M airdrops.
+5. Before first buy (`totalCharmWeight == 0`): **CHARM → DOUB** shows intentional empty placeholder, not `0` or `Infinity`.
+6. After buys: **CHARM → DOUB** decreases; **implied CL8Y / DOUB (clearing)** flat or rises; **launch anchor** = **1.275×** clearing.
+7. **Implied market cap (CL8Y)** uses launch anchor; **USD** uses live Kumbaya CL8Y price (↻ refresh).
+8. **Kumbaya band floor** = **0.25×** launch anchor (not 0.8×).
+9. Expand accordion **Reserve routing and launch anchors** → clearing / launch / Kumbaya lower **match** the projection card.
+10. **TOTAL USD** in sale state uses same CL8Y/USD quote; **↻** next to TOTAL USD refreshes quote.
+11. **Your share of sale** shows wallet % when connected; **↻** refreshes `charmWeight`.
+12. Mobile **≤479px**: grouped cards wrap with no horizontal overflow and long labels/meta remain legible.
 
-**Doc map:** [invariants — #229](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts)
+**Doc map:** [invariants — #229/#235](invariants-and-business-logic.md#timecurve-protocol-doub-projection-gitlab-229) · [timecurve-views §229](../frontend/timecurve-views.md#timecurve-protocol-doub-projection-gitlab-229) · [`doubProjectionStats.ts`](../../frontend/src/lib/doubProjectionStats.ts) · [`doubProjectionLayoutCss.test.ts`](../../frontend/src/lib/doubProjectionLayoutCss.test.ts)
 
 <a id="manual-qa-issue-231"></a>
 

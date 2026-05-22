@@ -62,6 +62,27 @@ function StatValueRow({
   );
 }
 
+function ProjectionGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  const headingId = `doub-projection-${title.toLowerCase().replaceAll(" ", "-")}`;
+  return (
+    <section className="doub-projection-group" aria-labelledby={headingId}>
+      <div className="doub-projection-group__header">
+        <h3 id={headingId}>{title}</h3>
+        <p>{description}</p>
+      </div>
+      <div className="stats-grid stats-grid--doub-projection">{children}</div>
+    </section>
+  );
+}
+
 export function TimeCurveProtocolDoubProjectionSection({
   totalRaisedSerialized,
   totalTokensForSaleSerialized,
@@ -158,133 +179,153 @@ export function TimeCurveProtocolDoubProjectionSection({
       title="DOUB projection"
       badgeLabel="launch economics"
       badgeTone="info"
-      lede="Live redemption and launch-liquidity economics from onchain sale totals."
+      lede="Live redemption and launch-liquidity economics from onchain sale totals, grouped by supply, price anchors, and market lens."
       data-testid="timecurve-protocol-doub-projection"
     >
-      <div className="stats-grid">
-        <StatCard
-          label="Projected total supply"
-          value={`${formatLocaleInteger(PROJECTED_DOUB_SUPPLY_WHOLE)} DOUB`}
-        />
-        <StatCard
-          label="Sale bucket (onchain)"
-          value={statFromOptionalString(totalTokensForSaleSerialized, statCtx, {
-            mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} DOUB`,
-            labels: { loading: "Loading sale bucket…", missing: "Sale bucket unavailable" },
-          })}
-        />
-        <StatCard
-          label="CHARM → DOUB at launch"
-          value={statFromOptionalString(
-            snapshot?.doubPerCharmAtLaunchWad !== undefined
-              ? snapshot.doubPerCharmAtLaunchWad.toString()
-              : undefined,
-            statCtx,
-            {
-              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} DOUB / CHARM`,
-              labels: {
-                loading: "Loading redemption rate…",
-                missing: "No CHARM minted yet",
-              },
-            },
-          )}
-          meta="Decreases as sale progresses"
-        />
-        <StatCard
-          label="Implied CL8Y / DOUB (clearing)"
-          value={statFromOptionalString(
-            snapshot?.clearingCl8yPerDoubWad.toString(),
-            statCtx,
-            {
-              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
-              labels: { loading: "Loading clearing…", missing: "Clearing unavailable" },
-            },
-          )}
-          meta="From totalRaised ÷ totalTokensForSale."
-        />
-        <StatCard
-          label="Launch anchor CL8Y / DOUB"
-          value={statFromOptionalString(
-            snapshot?.launchAnchorCl8yPerDoubWad.toString(),
-            statCtx,
-            {
-              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
-              labels: { loading: "Loading anchor…", missing: "Anchor unavailable" },
-            },
-          )}
-          meta="1.275x clearing"
-        />
-        <StatCard
-          label="Kumbaya band floor"
-          value={statFromOptionalString(
-            snapshot?.kumbayaBandLowerCl8yPerDoubWad.toString(),
-            statCtx,
-            {
-              mapSuccess: (raw) => `${formatCompactFromRaw(raw, 18)} CL8Y`,
-              labels: { loading: "Loading band…", missing: "Band unavailable" },
-            },
-          )}
-          meta="0.25x launch anchor"
-        />
-        <StatCard
-          label="Implied market cap (CL8Y)"
-          value={statFromOptionalString(
-            snapshot?.impliedMarketCapCl8yWei.toString(),
-            statCtx,
-            {
-              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
-              labels: { loading: "Loading market cap…", missing: "Market cap unavailable" },
-            },
-          )}
-        />
-        <StatCard
-          label="Implied market cap (USD)"
-          value={
-            <StatValueRow refresh={usdRefresh}>
-              {statFromOptionalString(marketCapUsd, statCtx, {
-                mapSuccess: (s) => s,
+      <div className="doub-projection-groups" aria-label="DOUB projection stat groups">
+        <ProjectionGroup
+          title="Supply and redemption"
+          description="Policy supply, the onchain sale bucket, and the current CHARM redemption rate."
+        >
+          <StatCard
+            label="Projected total supply"
+            value={`${formatLocaleInteger(PROJECTED_DOUB_SUPPLY_WHOLE)} DOUB`}
+            meta="Policy supply: 200M sale + reserves + 1M airdrops"
+            className="stat-card--priority"
+          />
+          <StatCard
+            label="Sale bucket (onchain)"
+            value={statFromOptionalString(totalTokensForSaleSerialized, statCtx, {
+              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} DOUB`,
+              labels: { loading: "Loading sale bucket…", missing: "Sale bucket unavailable" },
+            })}
+          />
+          <StatCard
+            label="CHARM → DOUB at launch"
+            value={statFromOptionalString(
+              snapshot?.doubPerCharmAtLaunchWad !== undefined
+                ? snapshot.doubPerCharmAtLaunchWad.toString()
+                : undefined,
+              statCtx,
+              {
+                mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} DOUB / CHARM`,
                 labels: {
-                  loading: cl8yUsd.loading ? "Loading USD…" : "USD unavailable",
-                  missing: cl8yUsd.error ?? "USD unavailable",
+                  loading: "Loading redemption rate…",
+                  missing: "No CHARM minted yet",
                 },
-              })}
-            </StatValueRow>
-          }
-          meta={
-            <span title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
-              Kumbaya USDM quote per 1 CL8Y
-              {cl8yUsd.usdPerCl8y !== undefined
-                ? ` ($${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })})`
-                : null}
-            </span>
-          }
-        />
-        <StatCard
-          label="Per-CHARM price (live)"
-          value={statFromOptionalString(currentPricePerCharmSerialized, statCtx, {
-            mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
-            labels: { loading: "Loading price…", missing: "Price unavailable" },
-          })}
-        />
-        <StatCard
-          label="Your share of sale"
-          value={
-            <StatValueRow
-              refresh={
-                isConnected && address
-                  ? {
-                      ariaLabel: "Refresh wallet CHARM share",
-                      disabled: walletCharmPending,
-                      onClick: () => void refetchWalletCharm(),
-                    }
-                  : undefined
-              }
-            >
-              {walletShareDisplay}
-            </StatValueRow>
-          }
-          meta="Your percentage holding in connected wallet"
-        />
+              },
+            )}
+            meta="Decreases as sale progresses"
+          />
+        </ProjectionGroup>
+
+        <ProjectionGroup
+          title="Price anchors"
+          description="Clearing, launch-anchor, Kumbaya floor, and live CHARM price stay visually distinct."
+        >
+          <StatCard
+            label="Implied CL8Y / DOUB (clearing)"
+            value={statFromOptionalString(
+              snapshot?.clearingCl8yPerDoubWad.toString(),
+              statCtx,
+              {
+                mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
+                labels: { loading: "Loading clearing…", missing: "Clearing unavailable" },
+              },
+            )}
+            meta="From totalRaised ÷ totalTokensForSale."
+          />
+          <StatCard
+            label="Launch anchor CL8Y / DOUB"
+            value={statFromOptionalString(
+              snapshot?.launchAnchorCl8yPerDoubWad.toString(),
+              statCtx,
+              {
+                mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
+                labels: { loading: "Loading anchor…", missing: "Anchor unavailable" },
+              },
+            )}
+            meta="1.275x clearing"
+          />
+          <StatCard
+            label="Kumbaya band floor"
+            value={statFromOptionalString(
+              snapshot?.kumbayaBandLowerCl8yPerDoubWad.toString(),
+              statCtx,
+              {
+                mapSuccess: (raw) => `${formatCompactFromRaw(raw, 18)} CL8Y`,
+                labels: { loading: "Loading band…", missing: "Band unavailable" },
+              },
+            )}
+            meta="0.25x launch anchor"
+          />
+          <StatCard
+            label="Per-CHARM price (live)"
+            value={statFromOptionalString(currentPricePerCharmSerialized, statCtx, {
+              mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
+              labels: { loading: "Loading price…", missing: "Price unavailable" },
+            })}
+          />
+        </ProjectionGroup>
+
+        <ProjectionGroup
+          title="Market and wallet lens"
+          description="Launch-anchor market cap pairs with Kumbaya USD quote and wallet-specific share."
+        >
+          <StatCard
+            label="Implied market cap (CL8Y)"
+            value={statFromOptionalString(
+              snapshot?.impliedMarketCapCl8yWei.toString(),
+              statCtx,
+              {
+                mapSuccess: (raw) => `${formatBuyHubDerivedCompact(raw, 18)} CL8Y`,
+                labels: { loading: "Loading market cap…", missing: "Market cap unavailable" },
+              },
+            )}
+            className="stat-card--priority"
+          />
+          <StatCard
+            label="Implied market cap (USD)"
+            value={
+              <StatValueRow refresh={usdRefresh}>
+                {statFromOptionalString(marketCapUsd, statCtx, {
+                  mapSuccess: (s) => s,
+                  labels: {
+                    loading: cl8yUsd.loading ? "Loading USD…" : "USD unavailable",
+                    missing: cl8yUsd.error ?? "USD unavailable",
+                  },
+                })}
+              </StatValueRow>
+            }
+            meta={
+              <span title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
+                Kumbaya USDM quote per 1 CL8Y
+                {cl8yUsd.usdPerCl8y !== undefined
+                  ? ` ($${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })})`
+                  : null}
+              </span>
+            }
+          />
+          <StatCard
+            label="Your share of sale"
+            value={
+              <StatValueRow
+                refresh={
+                  isConnected && address
+                    ? {
+                        ariaLabel: "Refresh wallet CHARM share",
+                        disabled: walletCharmPending,
+                        onClick: () => void refetchWalletCharm(),
+                      }
+                    : undefined
+                }
+              >
+                {walletShareDisplay}
+              </StatValueRow>
+            }
+            meta="Your percentage holding in connected wallet"
+          />
+        </ProjectionGroup>
       </div>
     </PageSection>
   );
