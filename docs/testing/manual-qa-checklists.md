@@ -15,6 +15,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225) | [Referrals — guide leaderboard global totals + pagination](#manual-qa-issue-225) |
 | [#229](https://gitlab.com/PlasticDigits/yieldomega/-/issues/229), [#235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235) | [Protocol AUDIT — DOUB projection card](#manual-qa-issue-229) |
 | [#231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231) | [Protocol AUDIT — Platform usage](#manual-qa-issue-231) |
+| [#234](https://gitlab.com/PlasticDigits/yieldomega/-/issues/234) | [Protocol AUDIT — Platform usage design pass](#manual-qa-issue-234) |
 | [#121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121) | [Referrals — register disclosure (ordering / mempool)](#manual-qa-issue-121-referrals-register-disclosure) |
 | [#80](https://gitlab.com/PlasticDigits/yieldomega/-/issues/80) | [Arena sniper-shark UI](#manual-qa-issue-80) |
 | [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81) | [Single-chain wagmi (no stray mainnet RPC)](#manual-qa-issue-81) |
@@ -361,6 +362,28 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 8. Mobile: stats grid wraps; wallet table scrolls horizontally.
 
 **Doc map:** [invariants — #231](invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [timecurve-views §231](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-gitlab-231) · [`GET /v1/timecurve/platform-usage`](../../indexer/src/api.rs)
+
+<a id="manual-qa-issue-234"></a>
+
+## Protocol AUDIT — Platform usage design pass (GitLab #234)
+
+**Why:** [#231](#manual-qa-issue-231) shipped metrics; this pass aligns readability and protocol-page patterns (no API changes).
+
+### Preconditions
+
+- Same as [#231](#manual-qa-issue-231) (indexer live + optional bot data).
+
+### Checklist
+
+1. **Participation** subheading → four stat cards; mean/median show **≤2** decimal places (not long float strings).
+2. **WarBow CL8Y volume** subheading → four cards; each shows **actions** on one line and **CL8Y** on the next (readable at **375px** / **479px**).
+3. **Buy velocity** uses a **segmented** three-way toggle (not loose pills); active window obvious; touch targets feel tappable.
+4. Velocity summary: **24h** window label says **(24h window)**; **Whole sale** says **(since sale start)** — not ambiguous “per hour” copy.
+5. Wallet block: **Refreshing…** / **Up to date** visible next to **↻** / **✓**; changing page or velocity **does not** flash an empty table.
+6. Compare side-by-side with **DOUB projection** and **Live buys** on the same scroll — badge tone and stat grid rhythm feel consistent.
+7. Indexer offline → same muted/warning copy as before ([#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)); no regression to fake zeros ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)).
+
+**Doc map:** [invariants — #234](invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [timecurve-views §234](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-design-gitlab-234) · [`platformUsageDisplay.ts`](../../frontend/src/lib/platformUsageDisplay.ts)
 
 <a id="manual-qa-issue-232"></a>
 
