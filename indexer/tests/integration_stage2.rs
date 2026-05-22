@@ -2259,6 +2259,7 @@ async fn postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity() {
         "idx_timecurve_warbow_revenge",
         "idx_timecurve_warbow_steal",
         "idx_timecurve_buy",
+        "idx_timecurve_sale_started",
     ] {
         sqlx::query(&format!("DELETE FROM {table}"))
             .execute(&pool)
@@ -2436,6 +2437,7 @@ async fn postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity() {
         "idx_timecurve_warbow_revenge",
         "idx_timecurve_warbow_steal",
         "idx_timecurve_buy",
+        "idx_timecurve_sale_started",
     ] {
         sqlx::query(&format!("DELETE FROM {table}"))
             .execute(&pool)
@@ -2461,6 +2463,7 @@ async fn postgres_gitlab233_platform_usage_velocity_window_sale() {
         "idx_timecurve_warbow_revenge",
         "idx_timecurve_warbow_steal",
         "idx_timecurve_buy",
+        "idx_timecurve_sale_started",
     ] {
         sqlx::query(&format!("DELETE FROM {table}"))
             .execute(&pool)
@@ -2558,7 +2561,7 @@ async fn postgres_gitlab233_platform_usage_velocity_window_sale() {
     // window_hours = floor(10000 / 3600) = 2 → avg = 3 / 2 = 1.5
     assert_eq!(j_sale["velocity"]["avg_buys_per_hour"], "1.500000");
 
-    // Pre-open path: chain_timer.timer.sale_start_sec == "0" → platform_usage_sale_start_sec returns 0
+    // Pre-open path: chain_timer.timer.sale_start_sec == "0" → explicit pre-open (no DB fallback)
     // → handler short-circuits to (anchor + 1, 1, "sale") → zero buys, avg = 0.
     let timer_head_pre = TimecurveHeadSnapshot {
         timer: ChainTimerSnapshot {
@@ -2600,6 +2603,49 @@ async fn postgres_gitlab233_platform_usage_velocity_window_sale() {
     assert_eq!(j_pre["velocity"]["buy_count"], "0");
     assert_eq!(j_pre["velocity"]["avg_buys_per_hour"], "0");
 
+    // sale_start DB fallback when chain_timer is unset.
+    sqlx::query("DELETE FROM idx_timecurve_sale_started")
+        .execute(&pool)
+        .await
+        .expect("clear sale started");
+    sqlx::query(
+        r#"INSERT INTO idx_timecurve_sale_started (
+              block_number, block_hash, tx_hash, log_index, contract_address,
+              start_timestamp, initial_deadline, total_tokens_for_sale
+           ) VALUES (9200, $1, $2, 0, $3, $4::numeric, 9999999999, 1000000)"#,
+    )
+    .bind(format!("0x{:0>64}", 9200))
+    .bind(format!("0x{:0>64}", 9200 + 1000))
+    .bind(tc)
+    .bind(sale_start)
+    .execute(&pool)
+    .await
+    .expect("insert sale started");
+
+    let app_fb = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(None)),
+        ingestion_alive: Arc::new(AtomicBool::new(false)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+    });
+    let res_fb = app_fb
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/timecurve/platform-usage?velocity_window=sale")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res_fb.status(), StatusCode::OK);
+    let j_fb = response_json(res_fb).await;
+    assert_eq!(j_fb["velocity"]["window"], "sale");
+    assert_eq!(j_fb["velocity"]["buy_count"], "3");
+    assert_eq!(j_fb["velocity"]["anchor_timestamp_sec"], (anchor - 100).to_string());
+    assert_eq!(j_fb["velocity"]["avg_buys_per_hour"], "1.500000");
+    assert_eq!(j_fb["wallets"]["total"], "1");
+
     // Bad velocity_window still rejected; "sale" is now accepted but "7d" remains invalid.
     let res_bad = app
         .clone()
@@ -2618,6 +2664,7 @@ async fn postgres_gitlab233_platform_usage_velocity_window_sale() {
         "idx_timecurve_warbow_revenge",
         "idx_timecurve_warbow_steal",
         "idx_timecurve_buy",
+        "idx_timecurve_sale_started",
     ] {
         sqlx::query(&format!("DELETE FROM {table}"))
             .execute(&pool)

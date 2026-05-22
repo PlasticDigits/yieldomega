@@ -1426,39 +1426,74 @@ fn parse_velocity_window(s: &str) -> Result<VelocityWindow, &'static str> {
     }
 }
 
-/// Reads `saleStart()` (seconds) from the cached chain-timer head, mirroring
-/// `platform_usage_anchor_timestamp_sec`. Returns 0 when the snapshot is absent
-/// or sale_start is unset; callers must guard pre-open behavior.
-async fn platform_usage_sale_start_sec(state: &AppState) -> i64 {
-    let guard = state.chain_timer.read().await;
-    if let Some(snap) = guard.as_ref() {
-        if let Ok(ts) = snap.timer.sale_start_sec.parse::<i64>() {
-            if ts > 0 {
-                return ts;
-            }
-        }
-    }
-    0
-}
+/// Anchor + sale-start seconds for platform-usage velocity.
+/// Prefers head **`chain_timer`**. Anchor falls back to **`MAX(block_timestamp)`** on buys;
+/// **`sale_start`** falls back to latest **`idx_timecurve_sale_started.start_timestamp`** only when
+/// the snapshot is absent or **`sale_start_sec`** is unparseable — explicit **`0`** stays pre-open.
+async fn platform_usage_timer_secs(state: &AppState) -> (i64, i64) {
+    let snapshot = {
+        let guard = state.chain_timer.read().await;
+        guard.as_ref().cloned()
+    };
 
-async fn platform_usage_anchor_timestamp_sec(state: &AppState) -> i64 {
-    let guard = state.chain_timer.read().await;
-    if let Some(snap) = guard.as_ref() {
+    let mut anchor = None;
+    let mut sale_start = None;
+    let mut need_anchor_fallback = snapshot.is_none();
+    let mut need_sale_start_fallback = snapshot.is_none();
+
+    if let Some(snap) = snapshot {
         if let Ok(ts) = snap.timer.block_timestamp_sec.parse::<i64>() {
             if ts > 0 {
-                return ts;
+                anchor = Some(ts);
+            } else {
+                need_anchor_fallback = true;
+            }
+        } else {
+            need_anchor_fallback = true;
+        }
+
+        match snap.timer.sale_start_sec.parse::<i64>() {
+            Ok(ts) => sale_start = Some(ts),
+            Err(_) => need_sale_start_fallback = true,
+        }
+    }
+
+    if need_anchor_fallback || need_sale_start_fallback {
+        let row = sqlx::query(
+            r#"SELECT
+                  COALESCE(MAX(block_timestamp), 0)::bigint AS anchor,
+                  COALESCE((
+                    SELECT start_timestamp::bigint
+                      FROM idx_timecurve_sale_started
+                     ORDER BY block_number DESC
+                     LIMIT 1
+                  ), 0)::bigint AS sale_start
+                 FROM idx_timecurve_buy"#,
+        )
+        .fetch_one(&state.pool)
+        .await;
+
+        match row {
+            Ok(r) => {
+                if need_anchor_fallback {
+                    anchor = Some(r.try_get::<i64, _>("anchor").unwrap_or(0));
+                }
+                if need_sale_start_fallback {
+                    sale_start = Some(r.try_get::<i64, _>("sale_start").unwrap_or(0));
+                }
+            }
+            Err(_) => {
+                if need_anchor_fallback {
+                    anchor = Some(0);
+                }
+                if need_sale_start_fallback {
+                    sale_start = Some(0);
+                }
             }
         }
     }
-    let row = sqlx::query(
-        r#"SELECT COALESCE(MAX(block_timestamp), 0)::bigint AS anchor FROM idx_timecurve_buy"#,
-    )
-    .fetch_one(&state.pool)
-    .await;
-    match row {
-        Ok(r) => r.try_get::<i64, _>("anchor").unwrap_or(0),
-        Err(_) => 0,
-    }
+
+    (anchor.unwrap_or(0), sale_start.unwrap_or(0))
 }
 
 async fn fetch_warbow_action_totals(
@@ -1622,7 +1657,7 @@ async fn timecurve_platform_usage(
         }
     };
 
-    let anchor = platform_usage_anchor_timestamp_sec(&state).await;
+    let (anchor, sale_start) = platform_usage_timer_secs(&state).await;
     let (window_start, window_hours, window_label) = match velocity {
         VelocityWindow::Trailing {
             window_sec,
@@ -1630,7 +1665,6 @@ async fn timecurve_platform_usage(
             label,
         } => (anchor.saturating_sub(window_sec), window_hours, label),
         VelocityWindow::Sale => {
-            let sale_start = platform_usage_sale_start_sec(&state).await;
             if sale_start == 0 || anchor < sale_start {
                 // Pre-open: window_start > anchor guarantees zero rows match the SQL filter;
                 // hours = 1 prevents divide-by-zero in format_avg_buys_per_hour.
@@ -1663,22 +1697,6 @@ async fn timecurve_platform_usage(
         }
     };
     let velocity_buy_count: i64 = velocity_row.try_get("buy_count").unwrap_or(0);
-
-    let wallet_total_row = sqlx::query(
-        r#"SELECT COUNT(DISTINCT buyer)::bigint AS total FROM idx_timecurve_buy"#,
-    )
-    .fetch_one(&state.pool)
-    .await;
-
-    let wallet_total = match wallet_total_row {
-        Ok(r) => r.try_get::<i64, _>("total").unwrap_or(0),
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage wallet total",
-                e,
-            );
-        }
-    };
 
     let wallet_rows = sqlx::query(
         r#"SELECT buyer AS wallet,
@@ -1738,7 +1756,7 @@ async fn timecurve_platform_usage(
             "avg_buys_per_hour": format_avg_buys_per_hour(velocity_buy_count, window_hours),
         },
         "wallets": {
-            "total": wallet_total.to_string(),
+            "total": unique_buyers.to_string(),
             "items": wallet_items,
             "limit": lim,
             "offset": off,
