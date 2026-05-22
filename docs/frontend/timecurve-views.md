@@ -685,7 +685,7 @@ When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/Pl
 
 - **Participation:** unique wallets (sale + WarBow union), total buys, mean/median buys per wallet.
 - **WarBow:** steals, steal overrides (`bypassed_victim_daily_limit`), revenges, guards — each **count + total CL8Y** (`burn_paid_wad`; legacy **`WarBowCl8yBurned`** excluded from v1 totals).
-- **Buy velocity:** toggle **Last hour** (default) / **Last day**; **avg buys per hour** in the selected window (`velocity_window=1h|24h`).
+- **Buy velocity:** toggle **Last hour** (default) / **Last day** / **Whole sale**; **avg buys per hour** in the selected window (`velocity_window=1h|24h|sale`). Whole-sale window uses `sale_start_sec` from chain-timer state with `window_hours = floor((anchor - sale_start) / 3600)`, minimum 1 ([GitLab #233](https://gitlab.com/PlasticDigits/yieldomega/-/issues/233)).
 - **Wallet table:** paginated (**20** per page), **rank** column (ties break on lowest address), sort **CL8Y spent** desc then buy count; inline **↻** / **✓** on the table heading while polling; **`AddressInline`** + explorer links ([#98](#canonical-address-display-gitlab-98)).
 - **Offline / unset indexer:** muted status + **`EmptyDataPlaceholder`** — no misleading zeros ([#200](#stats-charts-empty-states-gitlab-200), [#96](#indexer-offline-ux-issue-96)).
 

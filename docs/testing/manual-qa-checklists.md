@@ -354,7 +354,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 2. Summary tiles show **unique wallets**, **total buys**, mean/median buys per wallet.
 3. WarBow quadrants show **count + CL8Y** for steals, steal overrides, revenges, guards.
 4. Trigger a steal with **daily limit bypass** → **Steal overrides** increments separately from normal steals.
-5. **Buy velocity:** default **Last hour**; toggle **Last day** → avg buys/hr updates; zero-window shows **No buys in this window**.
+5. **Buy velocity:** default **Last hour**; toggle **Last day** → avg buys/hr updates; zero-window shows **No buys in this window**. Toggle **Whole sale** ([GitLab #233](https://gitlab.com/PlasticDigits/yieldomega/-/issues/233)) → counts all indexed buys from `sale_start` through anchor; pre-open sale (no `sale_start` or anchor < `sale_start`) shows **No buys in this window**.
 6. Wallet table: **rank** column; **20** rows per page with pagination when more buyers; inline **↻** while refreshing and green **✓** when idle; sort favors highest **CL8Y spent** (ties → lowest address).
 7. Stop indexer → section shows offline/unset copy, **not** misleading zeros.
 8. Mobile: stats grid wraps; wallet table scrolls horizontally.

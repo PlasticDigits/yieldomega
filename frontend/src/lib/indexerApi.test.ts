@@ -55,6 +55,11 @@ describe("timecurvePlatformUsageApiPath", () => {
       "/v1/timecurve/platform-usage?limit=25&offset=50&velocity_window=24h",
     );
   });
+  it("supports whole-sale velocity window (GitLab #233)", () => {
+    expect(timecurvePlatformUsageApiPath(50, 0, "sale")).toBe(
+      "/v1/timecurve/platform-usage?limit=50&offset=0&velocity_window=sale",
+    );
+  });
 });
 
 describe("timecurvePrizeDistributionsApiPath", () => {
