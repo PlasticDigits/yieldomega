@@ -1271,6 +1271,49 @@ export function useTimeCurveArenaModel() {
   }, [pendingRevengeTargets]);
   const hasRevengeOpen = pendingRevengeTargets.length > 0;
 
+  // GitLab #236 — batched stealer BP reads for the Arena revenge hero card.
+  // Stable contracts array keyed off pendingRevengeTargets (sorted, expiry-filtered).
+  // Pattern mirrors steal-discovery batching: useMemo with explicit deps so the
+  // useReadContracts call doesn't churn on every render. Empty array when no targets.
+  const stealerBpContracts = useMemo(() => {
+    if (!tc || pendingRevengeTargets.length === 0) {
+      return [] as const;
+    }
+    return pendingRevengeTargets.map((t) => ({
+      address: tc,
+      abi: timeCurveReadAbi,
+      functionName: "battlePoints" as const,
+      args: [t.stealer as `0x${string}`] as const,
+    }));
+  }, [tc, pendingRevengeTargets]);
+  const { data: stealerBpReadsRaw } = useReadContracts({
+    contracts: stealerBpContracts as readonly unknown[],
+    query: {
+      enabled: stealerBpContracts.length > 0,
+      refetchInterval: false,
+      placeholderData: (previous) => previous,
+    },
+  });
+  const stealerBpReads = stealerBpReadsRaw as readonly ContractReadRow[] | undefined;
+  /**
+   * Map of lowercased stealer address -> current battlePoints (live read).
+   * Value is undefined while the read is pending or if the row failed. Consumers
+   * should render a muted "Loading…" placeholder for undefined and a zero-drain hint
+   * when warbowRevengeDrainBp(bp) === 0n (see warbowRevengeRowPreview.ts).
+   */
+  const stealerBpByAddress = useMemo(() => {
+    const map = new Map<string, bigint | undefined>();
+    pendingRevengeTargets.forEach((t, i) => {
+      const row = stealerBpReads?.[i];
+      const bp =
+        row?.status === "success" && typeof row.result === "bigint"
+          ? (row.result as bigint)
+          : undefined;
+      map.set(t.stealer.toLowerCase(), bp);
+    });
+    return map;
+  }, [pendingRevengeTargets, stealerBpReads]);
+
   useEffect(() => {
     loadPendingRevenge();
   }, [loadPendingRevenge]);
@@ -3599,6 +3642,7 @@ export function useTimeCurveArenaModel() {
     spendWei,
     stealBypass,
     stealBypassByVictim: stealBypassByVictimAddr,
+    stealerBpByAddress,
     stealHeroRows,
     stealPreflight,
     stealVictim,

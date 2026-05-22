@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { AddressInline } from "@/components/AddressInline";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -12,6 +11,7 @@ import type { WarbowPendingRevengeItem } from "@/lib/indexerApi";
 import type { WarbowPreflightNarrative } from "@/lib/timeCurveUx";
 import { formatWarbowViewerBattlePointsDisplay } from "@/pages/timeCurveArena/arenaPageHelpers";
 import { formatCountdown } from "@/pages/timecurve/formatTimer";
+import { warbowRevengeDrainBp } from "@/lib/warbowRevengeRowPreview";
 import { WarbowClaimFlagHeroCard } from "./WarbowClaimFlagHeroCard";
 
 export type WarbowStealCandidate = {
@@ -58,8 +58,19 @@ type Props = {
   guardUntilSec: string;
   hasRevengeOpen: boolean;
   pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
+  /**
+   * GitLab #236 — live `battlePoints(stealer)` reads keyed by lowercased stealer address.
+   * Value is `undefined` while the read is pending or if the multicall row failed.
+   * Used by the revenge hero card to show Target BP + Gain preview per row.
+   */
+  stealerBpByAddress: ReadonlyMap<string, bigint | undefined>;
+  /**
+   * GitLab #236 — interpolated chain "now" (seconds) for the Valid To: HH:MM:SS countdown.
+   * Same basis as `guardChainNowSec` (`effectiveLedgerSec`) so the revenge ticker
+   * stays in lockstep with other Arena hero timers.
+   */
+  ledgerNowSec: number;
   revengeIndexerConfigured: boolean;
-  revengeDeadlineSec: string;
   warbowGuardBurnWad: string;
   warbowBypassBurnWad: string;
   buyFeeRoutingEnabled: boolean | undefined;
@@ -98,8 +109,9 @@ export function WarbowHeroActions({
   guardUntilSec,
   hasRevengeOpen,
   pendingRevengeTargets,
+  stealerBpByAddress,
+  ledgerNowSec,
   revengeIndexerConfigured,
-  revengeDeadlineSec,
   warbowGuardBurnWad,
   warbowBypassBurnWad,
   buyFeeRoutingEnabled,
@@ -426,20 +438,56 @@ export function WarbowHeroActions({
             <h3>Revenge</h3>
           </div>
           {hasRevengeOpen ? (
-            <>
-              <p className="muted">
-                You have {pendingRevengeTargets.length} open counter-hit
-                {pendingRevengeTargets.length === 1 ? "" : "s"}. Earliest expiry{" "}
-                <UnixTimestampDisplay raw={revengeDeadlineSec} />.
-              </p>
-              <ul className="warbow-hero-revenge-list">
-                {pendingRevengeTargets.map((row) => (
+            <ul className="warbow-hero-revenge-list" data-testid="warbow-hero-revenge-list">
+              {pendingRevengeTargets.map((row) => {
+                // GitLab #236 — per-row BP context + live Valid To countdown.
+                const stealerKey = row.stealer.toLowerCase();
+                const stealerBp = stealerBpByAddress.get(stealerKey);
+                const drainBp = stealerBp !== undefined ? warbowRevengeDrainBp(stealerBp) : undefined;
+                const expiryBn = BigInt(row.expiry_exclusive);
+                const nowFloor = BigInt(Math.floor(ledgerNowSec));
+                const remainingSec =
+                  expiryBn > nowFloor ? Number(expiryBn - nowFloor) : 0;
+                const validToLabel = formatCountdown(remainingSec);
+                return (
                   <li key={`${row.stealer}-${row.expiry_exclusive}`}>
-                    <AddressInline address={row.stealer} formatWallet={formatWallet} tailHexDigits={6} size={16} />
-                    <span className="muted">
-                      {" "}
-                      · until <UnixTimestampDisplay raw={row.expiry_exclusive} />
-                    </span>
+                    <div className="warbow-hero-revenge-row__main">
+                      <AddressInline
+                        address={row.stealer}
+                        formatWallet={formatWallet}
+                        tailHexDigits={6}
+                        size={16}
+                      />
+                      <span
+                        className="warbow-hero-revenge-row__bp"
+                        data-testid="warbow-hero-revenge-bp"
+                      >
+                        {stealerBp === undefined ? (
+                          <span className="muted">Loading BP…</span>
+                        ) : drainBp === 0n ? (
+                          <>
+                            Target:{" "}
+                            <strong>{formatLocaleInteger(stealerBp)} BP</strong>
+                            {" · "}
+                            <span className="muted">Revenge zero (no BP to drain)</span>
+                          </>
+                        ) : (
+                          <>
+                            Target:{" "}
+                            <strong>{formatLocaleInteger(stealerBp)} BP</strong>
+                            {" · "}Gain:{" "}
+                            <strong>+{formatLocaleInteger(drainBp ?? 0n)} BP</strong>
+                          </>
+                        )}
+                      </span>
+                      <span
+                        className="warbow-hero-revenge-row__valid-to"
+                        aria-live="polite"
+                        data-testid="warbow-hero-revenge-valid-to"
+                      >
+                        Valid To: <strong>{validToLabel}</strong>
+                      </span>
+                    </div>
                     <button
                       type="button"
                       className="btn-secondary btn-secondary--priority"
@@ -450,9 +498,9 @@ export function WarbowHeroActions({
                       Take revenge
                     </button>
                   </li>
-                ))}
-              </ul>
-            </>
+                );
+              })}
+            </ul>
           ) : (
             <StatusMessage variant="muted">
               {revengeIndexerConfigured
