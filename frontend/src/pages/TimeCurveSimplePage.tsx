@@ -10,6 +10,7 @@ import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { TimecurveBuySpendRangeInput } from "@/components/TimecurveBuySpendRangeInput";
 import { Cl8yTimeCurveUnlimitedApprovalFieldset } from "@/components/Cl8yTimeCurveUnlimitedApprovalFieldset";
+import { Cl8yAcquireExternalLinks } from "@/components/Cl8yAcquireExternalLinks";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
@@ -707,6 +708,13 @@ export function TimeCurveSimplePage() {
     </div>
   ) : null;
 
+  const insufficientCl8yGate =
+    session.cl8yCheckoutBoundsGate.kind === "insufficient_cl8y"
+      ? session.cl8yCheckoutBoundsGate
+      : null;
+  const insufficientCl8yForBuy =
+    session.payWith === "cl8y" && insufficientCl8yGate !== null;
+
   const minMaxPill = session.cl8ySpendBounds ? (
     <span className="timecurve-simple__minmax timecurve-simple__minmax--rate-card">
       {session.payWith === "cl8y" ? (
@@ -760,12 +768,56 @@ export function TimeCurveSimplePage() {
         </>
       )}
     </span>
+  ) : insufficientCl8yForBuy ? (
+    <span
+      className="timecurve-simple__minmax timecurve-simple__minmax--rate-card timecurve-simple__minmax--blocked"
+      data-testid="timecurve-simple-buy-limits-insufficient-cl8y"
+    >
+      Buy Limits:&nbsp;
+      <strong>
+        {formatBuyHubDerivedCompact(
+          insufficientCl8yGate.minSpendWei,
+          session.decimals,
+        )}
+      </strong>
+      <span className="timecurve-simple__minmax-suffix">min</span>
+      <span className="muted"> (not enough CL8Y in wallet)</span>
+    </span>
   ) : (
     <span className="timecurve-simple__minmax timecurve-simple__minmax--rate-card">Loading buy limits…</span>
   );
 
-  const buyPreview =
-    session.charmWadSelected === undefined ? (
+  const buyPreview = insufficientCl8yForBuy ? (
+    <div
+      className="timecurve-simple__buy-preview timecurve-simple__buy-preview--blocked"
+      data-testid="timecurve-simple-buy-preview-insufficient-cl8y"
+    >
+      <p className="timecurve-simple__buy-preview-blocked-lede">
+        Not enough CL8Y in your wallet to buy. The live minimum is{" "}
+        <strong>
+          {formatBuyHubDerivedCompact(
+            insufficientCl8yGate.minSpendWei,
+            session.decimals,
+          )}{" "}
+          CL8Y
+        </strong>
+        ; you have{" "}
+        <strong>
+          {formatBuyHubDerivedCompact(
+            insufficientCl8yGate.walletBalanceWei,
+            session.decimals,
+          )}{" "}
+          CL8Y
+        </strong>
+        .
+      </p>
+      <Cl8yAcquireExternalLinks
+        cl8yToken={session.acceptedAsset}
+        buyTestId="timecurve-simple-buy-cl8y-kumbaya-link"
+        bridgeTestId="timecurve-simple-bridge-cl8y-link"
+      />
+    </div>
+  ) : session.charmWadSelected === undefined ? (
       <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
         Loading CHARM preview…
       </div>

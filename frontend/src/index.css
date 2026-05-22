@@ -9458,6 +9458,28 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.85rem;
 }
 
+.timecurve-simple__buy-preview--blocked {
+  color: rgba(60, 40, 0, 0.88);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.timecurve-simple__buy-preview-blocked-lede {
+  margin: 0 0 0.55rem;
+  line-height: 1.45;
+}
+
+.timecurve-simple__minmax--blocked {
+  color: rgba(60, 40, 0, 0.88);
+}
+
+.cl8y-acquire-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  align-items: center;
+}
+
 .timecurve-simple__buy-preview-approx {
   display: flex;
   flex-wrap: wrap;
