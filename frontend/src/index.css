@@ -3452,13 +3452,58 @@ label:has(input[type="radio"]:disabled) {
   font-size: 0.9rem;
 }
 
-/* Platform usage — protocol AUDIT ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)) */
+/* Platform usage — protocol AUDIT ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231), design [#234](https://gitlab.com/PlasticDigits/yieldomega/-/issues/234)) */
+.platform-usage-body {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.platform-usage-block {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.platform-usage-block__title {
+  margin: 0;
+  font-family: "Bungee", cursive;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+.platform-usage-warbow-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+}
+
+.platform-usage-warbow-card .stat-card__value {
+  font-size: 1rem;
+}
+
+.platform-usage-warbow-stat {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.platform-usage-warbow-stat__line {
+  display: block;
+}
+
+.platform-usage-warbow-stat__line--cl8y {
+  font-size: 0.95rem;
+}
+
+.platform-usage-warbow-stat__unit {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .platform-usage-velocity {
   display: grid;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.65rem;
   padding-top: 0.85rem;
-  border-top: 2px dashed rgba(11, 31, 20, 0.25);
+  border-top: 2px dashed rgba(11, 31, 20, 0.22);
 }
 
 .platform-usage-velocity__label {
@@ -3468,49 +3513,54 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .platform-usage-velocity__toggle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  max-width: 28rem;
 }
 
-.platform-usage-velocity__btn {
-  padding: 0.35rem 0.75rem;
-  border: 2px solid rgba(11, 31, 20, 0.55);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  font: inherit;
-  cursor: pointer;
+.platform-usage-velocity__toggle .timecurve-simple__rate-paywith-btn {
+  min-height: 2.75rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.72rem;
 }
 
-.platform-usage-velocity__btn--active {
-  background: var(--arcade-green-200, #c8f5a0);
-  font-weight: 600;
+.platform-usage-velocity__empty {
+  margin: 0;
 }
 
-.platform-usage-wallets {
-  margin-top: 1.25rem;
+.platform-usage-velocity__summary {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.platform-usage-wallets .platform-usage-block__title {
+  margin-bottom: 0.15rem;
 }
 
 .platform-usage-wallets__title-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem 0.65rem;
-  margin-bottom: 0.65rem;
-}
-
-.platform-usage-wallets__title {
-  margin: 0;
-  font-family: "Bungee", cursive;
-  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
 }
 
 .platform-usage-wallets__status {
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.platform-usage-wallets__status-icon {
+  font-size: 1.05rem;
   line-height: 1;
 }
 
-.platform-usage-wallets__status--refresh {
+.platform-usage-wallets__status--refresh .platform-usage-wallets__status-icon {
   display: inline-block;
   animation: platform-usage-wallet-refresh-spin 0.9s linear infinite;
 }
@@ -3544,6 +3594,13 @@ label:has(input[type="radio"]:disabled) {
 .platform-usage-wallets__scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  min-height: 6.5rem;
+  transition: opacity 0.15s ease;
+}
+
+.platform-usage-wallets__scroll--loading {
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .platform-usage-wallets__table {

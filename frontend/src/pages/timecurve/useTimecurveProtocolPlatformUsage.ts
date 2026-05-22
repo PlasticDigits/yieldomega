@@ -28,9 +28,7 @@ export function useTimecurveProtocolPlatformUsage() {
 
     const load = async () => {
       const id = ++requestSeq;
-      if (offset === 0) {
-        setPageLoading(true);
-      }
+      setPageLoading(true);
       setErr(null);
       try {
         const page = await fetchTimecurvePlatformUsage(
