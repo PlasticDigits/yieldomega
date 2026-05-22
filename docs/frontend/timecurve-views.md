@@ -693,6 +693,20 @@ When **`charmsRedeemed(wallet)`** is **true** ([issue #90](https://gitlab.com/Pl
 
 **Spec ↔ test:** [`INV-INDEXER-231-PLATFORM-USAGE`](../testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [`INV-FRONTEND-231-PLATFORM-USAGE`](../testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [`manual-qa — #231`](../testing/manual-qa-checklists.md#manual-qa-issue-231) · Playwright [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts).
 
+<a id="timecurve-protocol-platform-usage-design-gitlab-234"></a>
+
+## Protocol AUDIT — Platform usage design pass ([GitLab #234](https://gitlab.com/PlasticDigits/yieldomega/-/issues/234))
+
+Visual/UX polish on the [#231](#timecurve-protocol-platform-usage-gitlab-231) section — **no** new indexer fields or sort rules.
+
+- **Subsections:** `PlatformUsageSubsection` groups **Participation**, **WarBow CL8Y volume**, velocity, and the wallet table under distinct **`h3`** headings.
+- **Participation stats:** mean/median use [`formatPlatformUsageDecimalStat`](../../frontend/src/lib/platformUsageDisplay.ts) (locale, ≤2 decimals).
+- **WarBow:** stacked count + CL8Y lines per card (`.platform-usage-warbow-stat`).
+- **Velocity:** segmented toggle (shared Simple/Arena control classes, min **44px** height); avg line suffix clarifies window (**last hour** / **24h window** / **since sale start**).
+- **Wallet table:** **Refreshing…** / **Up to date** beside status icon; prior page rows stay visible with reduced opacity during pagination/velocity refetch.
+
+**Spec ↔ test:** [`INV-FRONTEND-234-PLATFORM-USAGE-UX`](../testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231) · [`platformUsageDisplay.test.ts`](../../frontend/src/lib/platformUsageDisplay.test.ts) · [manual QA — #234](../testing/manual-qa-checklists.md#manual-qa-issue-234).
+
 ## `TimeCurveProtocolPage` layout
 
 A read-only surface for operators:

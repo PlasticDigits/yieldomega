@@ -10,6 +10,10 @@ import { indexerBaseUrl } from "@/lib/addresses";
 import { formatAmountTriple, formatLocaleInteger } from "@/lib/formatAmount";
 import { formatBuyHubDerivedCompact } from "@/lib/timeCurveBuyHubFormat";
 import {
+  formatPlatformUsageDecimalStat,
+  platformUsageVelocityAvgSuffix,
+} from "@/lib/platformUsageDisplay";
+import {
   platformUsagePageIndex,
   platformUsageTotalPages,
   platformUsageWalletRank,
@@ -17,6 +21,7 @@ import {
 import type { PlatformUsageVelocityWindow } from "@/lib/indexerApi";
 import { StatCard } from "@/pages/timecurve/timecurveUi";
 import { PlatformUsagePagination } from "@/pages/timecurve/PlatformUsagePagination";
+import { PlatformUsageSubsection } from "@/pages/timecurve/PlatformUsageSubsection";
 import { useTimecurveProtocolPlatformUsage } from "@/pages/timecurve/useTimecurveProtocolPlatformUsage";
 
 type Props = {
@@ -45,6 +50,14 @@ function formatCl8yWei(raw: string | undefined): ReactNode {
   }
 }
 
+function formatDecimalStat(raw: string | undefined): ReactNode {
+  const formatted = formatPlatformUsageDecimalStat(raw);
+  if (formatted === undefined) {
+    return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+  }
+  return formatted;
+}
+
 function WarbowStatPair({
   label,
   count,
@@ -57,13 +70,31 @@ function WarbowStatPair({
   return (
     <StatCard
       label={label}
+      className="platform-usage-warbow-card"
       value={
-        <>
-          {formatCount(count)} actions · {formatCl8yWei(cl8yWei)} CL8Y
-        </>
+        <span className="platform-usage-warbow-stat">
+          <span className="platform-usage-warbow-stat__line">
+            {formatCount(count)} <span className="platform-usage-warbow-stat__unit">actions</span>
+          </span>
+          <span className="platform-usage-warbow-stat__line platform-usage-warbow-stat__line--cl8y">
+            {formatCl8yWei(cl8yWei)} <span className="platform-usage-warbow-stat__unit">CL8Y</span>
+          </span>
+        </span>
       }
     />
   );
+}
+
+const VELOCITY_WINDOWS: readonly PlatformUsageVelocityWindow[] = ["1h", "24h", "sale"];
+
+function velocityWindowLabel(w: PlatformUsageVelocityWindow): string {
+  if (w === "1h") {
+    return "Last hour";
+  }
+  if (w === "24h") {
+    return "Last day";
+  }
+  return "Whole sale";
 }
 
 export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
@@ -100,6 +131,8 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
   const velocityEmpty =
     showData && (velocityBuyCount === "0" || BigInt(velocityBuyCount) === 0n);
 
+  const tableRefreshing = showData && pageLoading && !initialLoading;
+
   return (
     <PageSection
       title="Platform usage"
@@ -127,87 +160,130 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
       ) : null}
 
       {showData ? (
-        <>
-          <div className="stats-grid">
-            <StatCard label="Unique wallets" value={formatCount(data.unique_wallets)} />
-            <StatCard label="Total buys" value={formatCount(data.total_buys)} />
-            <StatCard label="Mean buys / wallet" value={data.mean_buys_per_wallet} />
-            <StatCard label="Median buys / wallet" value={data.median_buys_per_wallet} />
-          </div>
+        <div className="platform-usage-body">
+          <PlatformUsageSubsection
+            title="Participation"
+            dataTestId="timecurve-protocol-platform-usage-participation"
+          >
+            <div className="stats-grid">
+              <StatCard label="Unique wallets" value={formatCount(data.unique_wallets)} />
+              <StatCard label="Total buys" value={formatCount(data.total_buys)} />
+              <StatCard
+                label="Mean buys / wallet"
+                value={formatDecimalStat(data.mean_buys_per_wallet)}
+              />
+              <StatCard
+                label="Median buys / wallet"
+                value={formatDecimalStat(data.median_buys_per_wallet)}
+              />
+            </div>
+          </PlatformUsageSubsection>
 
-          <div className="stats-grid" aria-label="WarBow action volume">
-            <WarbowStatPair
-              label="Steals"
-              count={data.warbow.steals.count}
-              cl8yWei={data.warbow.steals.cl8y_spent_wei}
-            />
-            <WarbowStatPair
-              label="Steal overrides"
-              count={data.warbow.steal_overrides.count}
-              cl8yWei={data.warbow.steal_overrides.cl8y_spent_wei}
-            />
-            <WarbowStatPair
-              label="Revenges"
-              count={data.warbow.revenges.count}
-              cl8yWei={data.warbow.revenges.cl8y_spent_wei}
-            />
-            <WarbowStatPair
-              label="Guards"
-              count={data.warbow.guards.count}
-              cl8yWei={data.warbow.guards.cl8y_spent_wei}
-            />
-          </div>
+          <PlatformUsageSubsection
+            title="WarBow CL8Y volume"
+            dataTestId="timecurve-protocol-platform-usage-warbow"
+          >
+            <div className="stats-grid platform-usage-warbow-grid" aria-label="WarBow action volume">
+              <WarbowStatPair
+                label="Steals"
+                count={data.warbow.steals.count}
+                cl8yWei={data.warbow.steals.cl8y_spent_wei}
+              />
+              <WarbowStatPair
+                label="Steal overrides"
+                count={data.warbow.steal_overrides.count}
+                cl8yWei={data.warbow.steal_overrides.cl8y_spent_wei}
+              />
+              <WarbowStatPair
+                label="Revenges"
+                count={data.warbow.revenges.count}
+                cl8yWei={data.warbow.revenges.cl8y_spent_wei}
+              />
+              <WarbowStatPair
+                label="Guards"
+                count={data.warbow.guards.count}
+                cl8yWei={data.warbow.guards.cl8y_spent_wei}
+              />
+            </div>
+          </PlatformUsageSubsection>
 
-          <div className="platform-usage-velocity" data-testid="timecurve-protocol-platform-usage-velocity">
+          <div
+            className="platform-usage-velocity"
+            data-testid="timecurve-protocol-platform-usage-velocity"
+          >
             <p className="platform-usage-velocity__label">Buy velocity</p>
-            <div className="platform-usage-velocity__toggle" role="group" aria-label="Velocity window">
-              {(["1h", "24h", "sale"] as const).map((w) => (
+            <div
+              className="platform-usage-velocity__toggle timecurve-simple__rate-paywith timecurve-simple__rate-paywith--segmented"
+              role="group"
+              aria-label="Velocity window"
+            >
+              {VELOCITY_WINDOWS.map((w) => (
                 <button
                   key={w}
                   type="button"
                   className={[
-                    "platform-usage-velocity__btn",
-                    velocityWindow === w ? "platform-usage-velocity__btn--active" : "",
+                    "timecurve-simple__rate-paywith-btn",
+                    velocityWindow === w ? "timecurve-simple__rate-paywith-btn--active" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   aria-pressed={velocityWindow === w}
                   data-testid={`timecurve-protocol-platform-usage-velocity-${w}`}
-                  onClick={() => onVelocityWindowChange(w as PlatformUsageVelocityWindow)}
+                  onClick={() => onVelocityWindowChange(w)}
                 >
-                  {w === "1h" ? "Last hour" : w === "24h" ? "Last day" : "Whole sale"}
+                  {velocityWindowLabel(w)}
                 </button>
               ))}
             </div>
             {velocityEmpty ? (
-              <p className="muted">No buys in this window.</p>
+              <p className="platform-usage-velocity__empty muted">No buys in this window.</p>
             ) : (
-              <p>
+              <p className="platform-usage-velocity__summary">
                 <strong>{formatCount(velocityBuyCount)}</strong> buys · avg{" "}
-                <strong>{velocityAvg ?? "—"}</strong> buys / hour
+                <strong>{velocityAvg ?? "—"}</strong> {platformUsageVelocityAvgSuffix(velocityWindow)}
               </p>
             )}
           </div>
 
-          <div className="platform-usage-wallets">
+          <PlatformUsageSubsection
+            title="Wallets by CL8Y spent on buys"
+            className="platform-usage-wallets"
+            dataTestId="timecurve-protocol-platform-usage-wallets"
+          >
             <div className="platform-usage-wallets__title-row">
-              <h3 className="platform-usage-wallets__title">Wallets by CL8Y spent on buys</h3>
               <span
                 className={[
                   "platform-usage-wallets__status",
-                  pageLoading
+                  tableRefreshing
                     ? "platform-usage-wallets__status--refresh"
                     : "platform-usage-wallets__status--ok",
                 ].join(" ")}
                 role="status"
                 aria-live="polite"
-                aria-label={pageLoading ? "Refreshing wallet table" : "Wallet table up to date"}
+                aria-label={
+                  tableRefreshing ? "Refreshing wallet table" : "Wallet table up to date"
+                }
+                title={
+                  tableRefreshing ? "Refreshing wallet table" : "Wallet table up to date"
+                }
                 data-testid="timecurve-protocol-platform-usage-wallet-status"
               >
-                {pageLoading ? "↻" : "✓"}
+                <span className="platform-usage-wallets__status-icon" aria-hidden>
+                  {tableRefreshing ? "↻" : "✓"}
+                </span>
+                <span className="platform-usage-wallets__status-label">
+                  {tableRefreshing ? "Refreshing…" : "Up to date"}
+                </span>
               </span>
             </div>
-            <div className="platform-usage-wallets__scroll">
+            <div
+              className={[
+                "platform-usage-wallets__scroll",
+                tableRefreshing ? "platform-usage-wallets__scroll--loading" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
               <table className="platform-usage-wallets__table">
                 <thead>
                   <tr>
@@ -218,7 +294,7 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.wallets.items.length === 0 ? (
+                  {data.wallets.items.length === 0 && !tableRefreshing ? (
                     <tr>
                       <td colSpan={4}>
                         <EmptyDataPlaceholder>No indexed buys yet</EmptyDataPlaceholder>
@@ -253,8 +329,8 @@ export function TimeCurveProtocolPlatformUsageSection({ isOffline }: Props) {
               disabled={pageLoading}
               onPageChange={onPageChange}
             />
-          </div>
-        </>
+          </PlatformUsageSubsection>
+        </div>
       ) : null}
     </PageSection>
   );

@@ -313,7 +313,17 @@ Same intent as the **Frontend — wallet modal** table row: production hosts sho
 | **Velocity UI** | Toggle **Last hour** / **Last day** / **Whole sale**; show **No buys in window** when count is zero. |
 | **Wallet table** | **20** rows per page; **Rank** column (**`offset + rowIndex + 1`**); inline **↻** / green **✓** refresh affordance on the table heading (no separate “refreshing…” line). |
 
-**Spec ↔ test:** [`postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity`](../../indexer/tests/integration_stage2.rs) · [`platformUsagePagination.test.ts`](../../frontend/src/lib/platformUsagePagination.test.ts) · [`indexerApi.test.ts`](../../frontend/src/lib/indexerApi.test.ts) · [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) · [timecurve-views §231](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-gitlab-231) · [manual QA (#231)](manual-qa-checklists.md#manual-qa-issue-231).
+**Design pass ([GitLab #234](https://gitlab.com/PlasticDigits/yieldomega/-/issues/234)) — `INV-FRONTEND-234-PLATFORM-USAGE-UX`:**
+
+| Rule | Detail |
+|------|--------|
+| **Hierarchy** | Subsections **Participation**, **WarBow CL8Y volume**, **Buy velocity**, **Wallets by CL8Y spent on buys** (`PlatformUsageSubsection`); participation + WarBow use **`stats-grid`** rhythm matching DOUB projection / Sale state. |
+| **Decimals** | Mean/median buys per wallet via **`formatPlatformUsageDecimalStat`** (≤2 fraction digits) — no raw indexer float strings in UI. |
+| **WarBow cards** | Stacked **actions** + **CL8Y** lines (not one cramped inline sentence). |
+| **Velocity toggle** | Segmented control (Simple/Arena **`timecurve-simple__rate-paywith--segmented`**), **≥44px** touch height; window-specific avg label via **`platformUsageVelocityAvgSuffix`**. |
+| **Wallet refresh** | Sighted **Refreshing…** / **Up to date** beside **↻** / **✓**; table keeps prior rows with reduced opacity while **`pageLoading`** (no empty flash). |
+
+**Spec ↔ test:** [`postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity`](../../indexer/tests/integration_stage2.rs) · [`platformUsagePagination.test.ts`](../../frontend/src/lib/platformUsagePagination.test.ts) · [`platformUsageDisplay.test.ts`](../../frontend/src/lib/platformUsageDisplay.test.ts) · [`indexerApi.test.ts`](../../frontend/src/lib/indexerApi.test.ts) · [`timecurve.spec.ts`](../../frontend/e2e/timecurve.spec.ts) · [timecurve-views §231](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-gitlab-231) · [timecurve-views §234](../frontend/timecurve-views.md#timecurve-protocol-platform-usage-design-gitlab-234) · [manual QA (#231)](manual-qa-checklists.md#manual-qa-issue-231) · [manual QA (#234)](manual-qa-checklists.md#manual-qa-issue-234).
 
 ### Branded 404 catch-all (GitLab #223)
 
