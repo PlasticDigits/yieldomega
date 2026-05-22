@@ -65,6 +65,10 @@ import {
 } from "@/lib/timeCurveBuyCooldownUx";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
+import {
+  resolveCl8yCheckoutBoundsGate,
+  type Cl8yCheckoutBoundsGate,
+} from "@/lib/timeCurveCl8yCheckoutBounds";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   coreReadRowsFromSaleState,
@@ -149,6 +153,8 @@ export type UseTimeCurveSaleSession = {
   refetchWalletBalance: () => void;
   walletBalanceRefreshing: boolean;
   cl8ySpendBounds: { minS: bigint; maxS: bigint } | null;
+  /** Distinguishes live bounds loading from insufficient CL8Y when paying with CL8Y. */
+  cl8yCheckoutBoundsGate: Cl8yCheckoutBoundsGate;
   spendWei: bigint;
   spendInputStr: string;
   /** Decimals for the spend amount text field (CL8Y or pay token). */
@@ -921,24 +927,41 @@ export function useTimeCurveSaleSession(
     });
   }, [phase, heroTimer, saleStartSec, deadlineSec, heroChainNowSec]);
 
-  const cl8ySpendBounds = useMemo(() => {
+  const liveMinBuyWei = useMemo((): bigint | undefined => {
     const L = checkoutReadLatchRef.current;
-    const minBuyVal =
-      minBuyR?.status === "success" ? (minBuyR.result as bigint) : L.minBuy;
-    const maxBuyVal =
-      maxBuyR?.status === "success" ? (maxBuyR.result as bigint) : L.maxBuy;
-    if (minBuyVal === undefined || maxBuyVal === undefined) {
+    return minBuyR?.status === "success" ? (minBuyR.result as bigint) : L.minBuy;
+  }, [minBuyR]);
+
+  const liveMaxBuyWei = useMemo((): bigint | undefined => {
+    const L = checkoutReadLatchRef.current;
+    return maxBuyR?.status === "success" ? (maxBuyR.result as bigint) : L.maxBuy;
+  }, [maxBuyR]);
+
+  const cl8yCheckoutBoundsGate = useMemo(
+    (): Cl8yCheckoutBoundsGate =>
+      resolveCl8yCheckoutBoundsGate({
+        minBuyWei: liveMinBuyWei,
+        maxBuyWei: liveMaxBuyWei,
+        walletBalanceWei:
+          walletBalanceWei !== undefined ? BigInt(walletBalanceWei) : undefined,
+        payWith,
+      }),
+    [liveMinBuyWei, liveMaxBuyWei, walletBalanceWei, payWith],
+  );
+
+  const cl8ySpendBounds = useMemo(() => {
+    if (liveMinBuyWei === undefined || liveMaxBuyWei === undefined) {
       return null;
     }
-    const minS = minCl8ySpendBroadcastHeadroom(minBuyVal);
-    let maxS = maxBuyVal;
+    const minS = minCl8ySpendBroadcastHeadroom(liveMinBuyWei);
+    let maxS = liveMaxBuyWei;
     if (payWith === "cl8y" && walletBalanceWei !== undefined) {
       const b = BigInt(walletBalanceWei);
       if (b < maxS) maxS = b;
     }
     if (minS > maxS) return null;
     return { minS, maxS };
-  }, [minBuyR, maxBuyR, walletBalanceWei, payWith]);
+  }, [liveMinBuyWei, liveMaxBuyWei, walletBalanceWei, payWith]);
 
   const cl8ySpendBoundsRef = useRef<{ minS: bigint; maxS: bigint } | null>(null);
 
@@ -1964,6 +1987,7 @@ export function useTimeCurveSaleSession(
     },
     walletBalanceRefreshing: walletBalanceFetching,
     cl8ySpendBounds,
+    cl8yCheckoutBoundsGate,
     spendWei,
     spendInputStr,
     spendInputDecimals,
