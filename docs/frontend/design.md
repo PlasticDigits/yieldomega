@@ -23,7 +23,10 @@
     changes vs the previous `/timecurve`.**
   - **`/timecurve/protocol`** — read-only operator view of `TimeCurve`,
     `LinearCharmPrice`, and `FeeRouter` reads (sale state, immutable parameters,
-    sink configuration). No write surface.
+    sink configuration). No write surface. The AUDIT **DOUB projection** cards
+    group launch economics into supply/redemption, price anchors, and
+    market/wallet lens so operators do not conflate clearing, launch-anchor,
+    Kumbaya floor, USD quote, or wallet-share values ([GitLab #235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235)).
   - See [`docs/frontend/timecurve-views.md`](./timecurve-views.md) for the
     layout contract, single-source-of-truth invariants, and the
     LaunchCountdown → Simple handoff.
