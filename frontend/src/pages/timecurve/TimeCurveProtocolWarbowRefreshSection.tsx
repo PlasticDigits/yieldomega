@@ -4,11 +4,19 @@ import { useEffect, useState } from "react";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { getAddress, isAddress, type Hex, zeroAddress } from "viem";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { timeCurveWriteAbi } from "@/lib/abis";
 import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import type { HexAddress } from "@/lib/addresses";
-import { fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
+import { formatLocaleInteger } from "@/lib/formatAmount";
+import { fetchTimecurveWarbowLeaderboard, fetchTimecurveWarbowRefreshCandidates } from "@/lib/indexerApi";
+import {
+  parseWarbowLeaderboardTop,
+  warbowFinalizeSlotsFromLeaderboard,
+  WARBOW_PROTOCOL_TOP_DISPLAY,
+  type WarbowLeaderboardRankedRow,
+} from "@/lib/warbowLeaderboardFinalizeAutofill";
 import {
   WARBOW_REFRESH_CANDIDATES_MAX_PAGES,
   WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT,
@@ -69,6 +77,7 @@ export function TimeCurveProtocolWarbowRefreshSection({
   const { address } = useAccount();
   const chainId = useChainId();
   const [loadedCandidates, setLoadedCandidates] = useState<Hex[]>([]);
+  const [topByBp, setTopByBp] = useState<WarbowLeaderboardRankedRow[]>([]);
   const [idxExtras, setIdxExtras] = useState<{
     apiTotal: number;
     podium_warbow_hint_count: number;
@@ -94,9 +103,13 @@ export function TimeCurveProtocolWarbowRefreshSection({
   const loadFromIndexer = async () => {
     setLoadErr(null);
     setLoadWarning(null);
+    setTopByBp([]);
     setLoadingIdx(true);
     try {
-      const acc = await accumulateWarbowRefreshCandidatePages(fetchTimecurveWarbowRefreshCandidates);
+      const [acc, lbPage] = await Promise.all([
+        accumulateWarbowRefreshCandidatePages(fetchTimecurveWarbowRefreshCandidates),
+        fetchTimecurveWarbowLeaderboard(WARBOW_PROTOCOL_TOP_DISPLAY, 0),
+      ]);
       if (!acc.ok) {
         setLoadErr(
           "Indexer returned nothing — check VITE_INDEXER_URL and that the stack exposes GET /v1/timecurve/warbow/refresh-candidates (schema ≥ 1.18.0).",
@@ -105,21 +118,37 @@ export function TimeCurveProtocolWarbowRefreshSection({
         setIdxExtras(null);
         return;
       }
+      const warnings: string[] = [];
       if (acc.truncatedByGuard) {
-        setLoadWarning(
+        warnings.push(
           `Reference wallet list was truncated at the UI paging ceiling (${WARBOW_REFRESH_CANDIDATES_MAX_PAGES} pages × ${WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT} rows per request). More candidates may exist on the indexer — continue with GET /v1/timecurve/warbow/refresh-candidates using higher offsets, or raise the client page limit in code before relying on this set for finalizeWarbowPodium. https://gitlab.com/PlasticDigits/yieldomega/-/issues/174`,
         );
       }
+      if (!lbPage) {
+        warnings.push(
+          "Could not load WarBow leaderboard for BP ordering — check GET /v1/timecurve/warbow/leaderboard.",
+        );
+      }
+      setLoadWarning(warnings.length ? warnings.join(" ") : null);
+
       const checksumPage = checksumCandidates(acc.pages);
       setLoadedCandidates(checksumPage);
       setIdxExtras({
         apiTotal: acc.apiTotal,
         podium_warbow_hint_count: acc.podiumWarbowHintCount,
       });
+
+      const ranked = lbPage ? parseWarbowLeaderboardTop(lbPage.items) : [];
+      setTopByBp(ranked);
+      const [first, second, third] = warbowFinalizeSlotsFromLeaderboard(ranked);
+      setSlot1(first);
+      setSlot2(second);
+      setSlot3(third);
     } catch (e) {
       setLoadErr(friendlyRevertFromUnknown(e));
       setLoadedCandidates([]);
       setIdxExtras(null);
+      setTopByBp([]);
       setLoadWarning(null);
     } finally {
       setLoadingIdx(false);
@@ -231,9 +260,29 @@ export function TimeCurveProtocolWarbowRefreshSection({
       <ChainMismatchWriteBarrier testId="timecurve-protocol-warbow-refresh-chain-gate">
         <div className="cluster-row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
           <button type="button" className="yo-btn-secondary" disabled={loadingIdx} onClick={() => void loadFromIndexer()}>
-            {loadingIdx ? "Loading…" : "Load reference candidates from indexer"}
+            {loadingIdx ? "Loading…" : "Load reference candidates"}
           </button>
         </div>
+        {topByBp.length > 0 && (
+          <div style={{ marginTop: "1rem" }} data-testid="warbow-protocol-top-bp">
+            <h4 className="text-muted" style={{ marginTop: 0 }}>
+              Top {topByBp.length} by Battle Points (indexer)
+            </h4>
+            <ol className="event-list" style={{ margin: 0, paddingLeft: "1.25rem" }}>
+              {topByBp.map((row) => (
+                <li key={row.address}>
+                  <strong>#{row.rank}</strong>{" "}
+                  <MegaScannerAddressLink address={row.address as HexAddress} /> ·{" "}
+                  <strong>{formatLocaleInteger(row.battlePoints)} BP</strong>
+                </li>
+              ))}
+            </ol>
+            <p className="text-muted" style={{ marginBottom: 0, fontSize: "0.9rem" }}>
+              First, second, and third finalize slots were filled from this ordering. Verify onchain{" "}
+              <span className="mono">battlePoints</span> before submitting.
+            </p>
+          </div>
+        )}
         <div style={{ marginTop: "1rem" }}>
           <h4 className="text-muted" style={{ marginTop: 0 }}>
             Owner finalize (post-sale)
