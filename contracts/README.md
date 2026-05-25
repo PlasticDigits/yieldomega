@@ -148,6 +148,7 @@ need human decisions before mainnet.
 | `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |
 | `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
 | `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
+| `DoubAirdrop` | Permissionless batch ERC-20 sender (disperse.app-style); CSV workflow in [`../airdrop/`](../airdrop/). **MegaETH mainnet:** `0x3CAf127624d8b81F4aa00aD1cCBbc9242B502e5d` |
 
 ## Libraries
 

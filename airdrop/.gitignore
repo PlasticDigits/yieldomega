@@ -1,0 +1,5 @@
+# Operator lists (keep examples only)
+*.csv
+!*.example.csv
+
+.venv/
