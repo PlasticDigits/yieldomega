@@ -12,8 +12,9 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title DoubPresaleVesting — DOUB presale allocations with cliff + linear vesting
-/// @notice Immutable beneficiary set and per-address allocations fixed at deploy. The owner starts vesting once;
-///         each beneficiary may claim according to the schedule below.
+/// @notice Immutable beneficiary set and per-address allocations fixed at deploy. The owner may either start
+///         cliff + linear vesting (`startVesting` + beneficiary `claim`) or **`sendNow()`** to transfer each
+///         beneficiary's full remaining allocation in one owner transaction (no schedule).
 ///
 ///         **Post-deploy cap adjustment (rare):** `onlyOwner` may **`reduceAllocationsUniformBps`** to scale every
 ///         beneficiary row down by the same basis points (floor per row), then **`burnDoubExcessAboveOutstanding`**
@@ -69,7 +70,11 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     /// @notice When `false`, `claim` reverts even if `vestingStart` is set and the beneficiary has a balance (see issue #55).
     bool public claimsEnabled;
 
+    /// @notice Set `true` after `sendNow()` pays all outstanding allocation rows (disables `startVesting` and scheduled `claim`).
+    bool public presaleDistributed;
+
     event VestingStarted(uint256 startTimestamp, uint256 durationSec, uint256 totalAllocated_);
+    event PresaleDistributedNow(uint256 totalSent, uint256 recipientsPaid);
     event Claimed(address indexed beneficiary, uint256 amount);
     event ClaimsEnabled(bool enabled);
     event AllocationsReducedUniformBps(uint16 reductionBps, uint256 oldTotalAllocated, uint256 newTotalAllocated);
@@ -100,6 +105,9 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     error DoubVesting__ReductionUndercollateralizesBeneficiary(address beneficiary, uint256 newAllocation, uint256 claimed);
     error DoubVesting__ReductionZeroNewTotal();
     error DoubVesting__NoExcessDoubToBurn();
+    error DoubVesting__AlreadyDistributed();
+    error DoubVesting__SendNowUnderfunded(uint256 balance, uint256 needed);
+    error DoubVesting__SendNowNothingOutstanding();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -157,6 +165,7 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     ///         multiple times; each call applies to **current** rows. Reverts if any row would fall below `claimedOf`.
     /// @param reductionBps Basis points removed (must be in `(0, 10_000)`).
     function reduceAllocationsUniformBps(uint16 reductionBps) external onlyOwner nonReentrant {
+        if (presaleDistributed) revert DoubVesting__AlreadyDistributed();
         if (reductionBps == 0 || reductionBps >= 10_000) revert DoubVesting__InvalidReductionBps(reductionBps);
         uint256 n = _beneficiarySet.length();
         uint256 factor = 10_000 - uint256(reductionBps);
@@ -182,6 +191,7 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
     /// @dev Requires **`token`** to be **`ERC20Burnable`** (canonical **Doubloon**). After **`reduceAllocationsUniformBps`**,
     ///      run this to destroy supply for freed balance. Does **not** replace **`rescueERC20`** for non-burnable tokens.
     function burnDoubExcessAboveOutstanding() external onlyOwner nonReentrant {
+        if (presaleDistributed) revert DoubVesting__AlreadyDistributed();
         uint256 bal = token.balanceOf(address(this));
         uint256 reserve = reserveDoubForOutstandingClaimsWad();
         if (bal <= reserve) revert DoubVesting__NoExcessDoubToBurn();
@@ -247,8 +257,47 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
         return claimableAt(account, block.timestamp);
     }
 
+    /// @notice Owner pays each beneficiary `allocation − claimed` in full (no cliff/linear). Callable once.
+    /// @dev Emits `Claimed` per transfer for indexer parity. Sets `presaleDistributed`; `startVesting` is blocked afterward.
+    function sendNow() external onlyOwner nonReentrant {
+        if (presaleDistributed) revert DoubVesting__AlreadyDistributed();
+
+        uint256 n = _beneficiarySet.length();
+        uint256 totalSend;
+        for (uint256 i; i < n; ++i) {
+            address b = _beneficiarySet.at(i);
+            uint256 alloc = allocationOf[b];
+            uint256 claimed = claimedOf[b];
+            if (claimed < alloc) {
+                totalSend += alloc - claimed;
+            }
+        }
+        if (totalSend == 0) revert DoubVesting__SendNowNothingOutstanding();
+
+        uint256 bal = token.balanceOf(address(this));
+        if (bal < totalSend) revert DoubVesting__SendNowUnderfunded(bal, totalSend);
+
+        uint256 recipientsPaid;
+        for (uint256 j; j < n; ++j) {
+            address beneficiary = _beneficiarySet.at(j);
+            uint256 allocation = allocationOf[beneficiary];
+            uint256 alreadyClaimed = claimedOf[beneficiary];
+            if (alreadyClaimed >= allocation) continue;
+
+            uint256 amount = allocation - alreadyClaimed;
+            claimedOf[beneficiary] = allocation;
+            token.safeTransfer(beneficiary, amount);
+            emit Claimed(beneficiary, amount);
+            recipientsPaid++;
+        }
+
+        presaleDistributed = true;
+        emit PresaleDistributedNow(totalSend, recipientsPaid);
+    }
+
     /// @notice Sets `vestingStart` to `block.timestamp` and requires full funding. Callable once by owner.
     function startVesting() external onlyOwner {
+        if (presaleDistributed) revert DoubVesting__AlreadyDistributed();
         if (vestingStart != 0) revert DoubVesting__AlreadyStarted();
         uint256 bal = token.balanceOf(address(this));
         if (bal < totalAllocated) revert DoubVesting__Underfunded(bal, totalAllocated);
@@ -258,6 +307,7 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
 
     /// @notice Claim all currently claimable DOUB for the caller.
     function claim() external nonReentrant {
+        if (presaleDistributed) revert DoubVesting__AlreadyDistributed();
         if (vestingStart == 0) revert DoubVesting__NotStarted();
         if (!claimsEnabled) revert DoubVesting__ClaimsNotEnabled();
         if (!_beneficiarySet.contains(msg.sender)) revert DoubVesting__NotBeneficiary();
@@ -300,5 +350,5 @@ contract DoubPresaleVesting is Initializable, OwnableUpgradeable, ReentrancyGuar
         emit RescueERC20(address(t), to, send, kind);
     }
 
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }

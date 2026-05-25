@@ -640,6 +640,165 @@ contract DoubPresaleVestingTest is Test {
         v.burnDoubExcessAboveOutstanding();
     }
 
+    function test_sendNow_pays_all_beneficiaries() public {
+        address[] memory ben = new address[](3);
+        ben[0] = alice;
+        ben[1] = bob;
+        ben[2] = carol;
+        uint256[] memory amts = new uint256[](3);
+        amts[0] = 10_000_000e18;
+        amts[1] = 4_000_000e18;
+        amts[2] = 500_000e18;
+        uint256 total = 14_500_000e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, total);
+        doub.mint(address(v), total);
+
+        vm.prank(owner);
+        v.sendNow();
+
+        assertTrue(v.presaleDistributed());
+        assertEq(doub.balanceOf(alice), 10_000_000e18);
+        assertEq(doub.balanceOf(bob), 4_000_000e18);
+        assertEq(doub.balanceOf(carol), 500_000e18);
+        assertEq(doub.balanceOf(address(v)), 0);
+        assertEq(v.claimedOf(alice), 10_000_000e18);
+        assertEq(v.reserveDoubForOutstandingClaimsWad(), 0);
+    }
+
+    function test_sendNow_without_startVesting() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        assertEq(v.vestingStart(), 0);
+
+        vm.prank(owner);
+        v.sendNow();
+
+        assertEq(doub.balanceOf(alice), 100e18);
+        assertTrue(v.presaleDistributed());
+    }
+
+    function test_sendNow_twice_reverts() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.sendNow();
+        vm.prank(owner);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__AlreadyDistributed.selector);
+        v.sendNow();
+    }
+
+    function test_sendNow_blocks_startVesting_and_claim() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 100e18);
+        vm.prank(owner);
+        v.sendNow();
+
+        vm.prank(owner);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__AlreadyDistributed.selector);
+        v.startVesting();
+
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
+        vm.prank(alice);
+        vm.expectRevert(DoubPresaleVesting.DoubVesting__AlreadyDistributed.selector);
+        v.claim();
+    }
+
+    function test_sendNow_underfunded_reverts() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 100e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 100e18);
+        doub.mint(address(v), 99e18);
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(DoubPresaleVesting.DoubVesting__SendNowUnderfunded.selector, 99e18, 100e18));
+        v.sendNow();
+    }
+
+    function test_sendNow_after_partial_claim_pays_remainder() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 1000e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, 1000e18);
+        doub.mint(address(v), 1000e18);
+        vm.prank(owner);
+        v.startVesting();
+        vm.prank(owner);
+        v.setClaimsEnabled(true);
+        vm.prank(alice);
+        v.claim();
+        assertEq(doub.balanceOf(alice), 300e18);
+
+        vm.prank(owner);
+        v.sendNow();
+
+        assertEq(doub.balanceOf(alice), 1000e18);
+        assertEq(doub.balanceOf(address(v)), 0);
+    }
+
+    function test_uups_upgrade_then_sendNow() public {
+        address[] memory ben = new address[](1);
+        ben[0] = alice;
+        uint256[] memory amts = new uint256[](1);
+        amts[0] = 50e18;
+        DoubPresaleVesting implV1 = new DoubPresaleVesting();
+        bytes memory initData = abi.encodeCall(
+            DoubPresaleVesting.initialize,
+            (IERC20(address(doub)), owner, ben, amts, 50e18, DURATION)
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implV1), initData);
+        DoubPresaleVesting v = DoubPresaleVesting(address(proxy));
+        doub.mint(address(v), 50e18);
+
+        DoubPresaleVesting implV2 = new DoubPresaleVesting();
+        vm.prank(owner);
+        v.upgradeToAndCall(address(implV2), "");
+
+        vm.prank(owner);
+        v.sendNow();
+        assertEq(doub.balanceOf(alice), 50e18);
+        assertTrue(v.presaleDistributed());
+    }
+
+    function test_canonical_mainnet_presale_row_sendNow() public {
+        uint256 presale = 21_500_000e18;
+        address[] memory ben = new address[](5);
+        ben[0] = 0x0965a4Ce0e6eDDd87eA8F6cF73a8462b8B47fc7D;
+        ben[1] = 0x7fb70BC1d5D30945f64a91B4a9C84792dfA9403b;
+        ben[2] = 0x45999a8Dd96b4df3AadBC395669b2b0928a7aF17;
+        ben[3] = 0x6186290B28D511bFF971631c916244A9fC539cfE;
+        ben[4] = 0x212D17402321BD15D092A3444766649d00c5A9F4;
+        uint256[] memory amts = new uint256[](5);
+        amts[0] = 10_000_000e18;
+        amts[1] = 4_000_000e18;
+        amts[2] = 5_000_000e18;
+        amts[3] = 2_000_000e18;
+        amts[4] = 500_000e18;
+        DoubPresaleVesting v = _deployVesting(ben, amts, presale);
+        doub.mint(address(v), presale);
+        vm.prank(owner);
+        v.sendNow();
+        assertEq(doub.balanceOf(ben[0]), amts[0]);
+        assertEq(doub.balanceOf(ben[1]), amts[1]);
+        assertEq(doub.balanceOf(ben[2]), amts[2]);
+        assertEq(doub.balanceOf(ben[3]), amts[3]);
+        assertEq(doub.balanceOf(ben[4]), amts[4]);
+    }
+
     function test_reduceAllocationsUniformBps_reverts_when_claimed_exceeds_new_row() public {
         address[] memory ben = new address[](1);
         ben[0] = alice;
