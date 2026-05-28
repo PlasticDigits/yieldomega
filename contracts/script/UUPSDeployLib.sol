@@ -8,6 +8,7 @@ import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
+import {PlayCred} from "../src/PlayCred.sol";
 
 /// @notice Shared **implementation → ERC1967Proxy + initialize** helpers for Arena v2 UUPS contracts.
 library UUPSDeployLib {
@@ -20,11 +21,16 @@ library UUPSDeployLib {
         return ReferralRegistry(payable(address(new ERC1967Proxy(address(impl), data))));
     }
 
+    function deployPlayCred(address admin) internal returns (PlayCred) {
+        return new PlayCred(admin);
+    }
+
     function deployTimeArena(
         IERC20 _doub,
         PodiumVaults _podiumVaults,
         AdminSellVault _adminSellVault,
         address _referralRegistry,
+        address _playCred,
         uint256 _charmPriceWad,
         uint256 _timerExtensionSec,
         uint256 _initialTimerSec,
@@ -40,6 +46,7 @@ library UUPSDeployLib {
                 _podiumVaults,
                 _adminSellVault,
                 _referralRegistry,
+                _playCred,
                 _charmPriceWad,
                 _timerExtensionSec,
                 _initialTimerSec,

@@ -22,6 +22,7 @@ import {
   kumbayaSwapRouterAbi,
   linearCharmPriceReadAbi,
   timeCurveBuyEventAbi,
+  timeArenaReadAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
   weth9Abi,
@@ -69,6 +70,13 @@ import {
   resolveCl8yCheckoutBoundsGate,
   type Cl8yCheckoutBoundsGate,
 } from "@/lib/timeCurveCl8yCheckoutBounds";
+import {
+  arenaV2CoreContracts,
+  arenaV2UserContracts,
+  isArenaV2TimeCurve,
+  mapArenaV2CoreRows,
+  mapArenaV2UserRows,
+} from "@/pages/timecurve/arenaV2SaleSessionBridge";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
 import {
   coreReadRowsFromSaleState,
@@ -342,11 +350,14 @@ export function useTimeCurveSaleSession(
   }, [isConnected, address]);
 
   const tc = timeCurveAddress;
-  const indexerOn = Boolean(indexerBaseUrl());
+  const isArenaV2 = isArenaV2TimeCurve(tc);
+  const indexerOn = Boolean(indexerBaseUrl()) && !isArenaV2;
   const saleStateQuery = useTimecurveSaleStateQuery(tc);
 
   const coreContracts = tc
-    ? [
+    ? isArenaV2
+      ? [...arenaV2CoreContracts(tc)]
+      : [
         { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
         { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
         { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
@@ -415,7 +426,10 @@ export function useTimeCurveSaleSession(
     return coreReadRowsFromSaleState(saleStateQuery.data);
   }, [saleStateQuery.data]);
 
-  const coreData = (indexerOn ? coreDataFromIndexer : coreDataRaw) as
+  const coreDataRpc = isArenaV2
+    ? mapArenaV2CoreRows(coreDataRaw as readonly { status: string; result?: unknown }[] | undefined)
+    : coreDataRaw;
+  const coreData = (indexerOn ? coreDataFromIndexer : coreDataRpc) as
     | readonly ContractReadRow[]
     | undefined;
   const coreReadsLoading = indexerOn ? saleStateQuery.isLoading : coreRpcLoading;
@@ -431,7 +445,9 @@ export function useTimeCurveSaleSession(
 
   const userContracts =
     tc && address
-      ? [
+      ? isArenaV2
+        ? [...arenaV2UserContracts(tc, address)]
+        : [
           { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
           { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt", args: [address] },
@@ -449,7 +465,11 @@ export function useTimeCurveSaleSession(
       placeholderData: (previous) => previous,
     },
   });
-  const userData = userDataRaw as readonly ContractReadRow[] | undefined;
+  const userData = (
+    isArenaV2
+      ? mapArenaV2UserRows(userDataRaw as readonly { status: string; result?: unknown }[] | undefined)
+      : userDataRaw
+  ) as readonly ContractReadRow[] | undefined;
 
   const {
     heroTimer,
@@ -1606,10 +1626,14 @@ export function useTimeCurveSaleSession(
       setBuyError("Connect a wallet and wait for contract reads.");
       return;
     }
-    if (buyFeeRoutingEnabled === false) {
+    if (!isArenaV2 && buyFeeRoutingEnabled === false) {
       setBuyError(
         "TimeCurve: sale interactions are disabled — buys and WarBow CL8Y spend are paused (awaiting operator / governance).",
       );
+      return;
+    }
+    if (isArenaV2 && payWith !== "cl8y") {
+      setBuyError("Arena v2 buys on this panel use DOUB (CL8Y pay mode). ETH/USDM routes need the buy router (#251).");
       return;
     }
     if (walletCooldownRemainingSec > 0) {
@@ -1630,6 +1654,45 @@ export function useTimeCurveSaleSession(
 
     setBuySubmitBusy(true);
     try {
+      if (isArenaV2) {
+        const cw =
+          charmWadSelected && charmWadSelected > 0n
+            ? charmWadSelected
+            : parseUnits("1", 18);
+        const priceWad =
+          pricePerCharmR?.status === "success"
+            ? (pricePerCharmR.result as bigint)
+            : parseUnits("1000", 18);
+        const needDoub = (cw * priceWad) / parseUnits("1", 18);
+        await ensureCl8yTimeCurveAllowance({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
+          tokenAddress: acceptedAsset,
+          timeCurveAddress: tc,
+          needWei: needDoub,
+          debugContext: "arena:buy-doub",
+        });
+        const { hash: buyHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address as `0x${string}`,
+          chainId,
+          address: tc,
+          abi: timeArenaReadAbi,
+          functionName: "buy",
+          args: [cw],
+        });
+        const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
+        assertSuccessfulBuyReceipt(receipt);
+        setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
+        const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
+        setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+        refetchAll();
+        return;
+      }
+
       const freshSizing = await readFreshTimeCurveBuySizing({
         wagmiConfig,
         timeCurveAddress: tc,
@@ -1885,6 +1948,8 @@ export function useTimeCurveSaleSession(
     buyFeeRoutingEnabled,
     onchainTimeCurveBuyRouter,
     buyCooldownSecResolved,
+    isArenaV2,
+    pricePerCharmR,
   ]);
 
   const submitClaimWarBowFlag = useCallback(async () => {

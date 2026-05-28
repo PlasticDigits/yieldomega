@@ -27,6 +27,8 @@ export type AddressInlineProps = {
   explorer?: boolean;
   /** Use on parent click surfaces so explorer navigation does not bubble (e.g. live-buy row). */
   onExplorerLinkClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  /** When set, click opens wallet profile instead of explorer (#258). */
+  onOpenProfile?: (address: string) => void;
 };
 
 /**
@@ -43,6 +45,7 @@ export function AddressInline({
   labelClassName,
   explorer = true,
   onExplorerLinkClick,
+  onOpenProfile,
 }: AddressInlineProps) {
   const raw = address?.trim();
   if (!raw || !isAddress(raw as `0x${string}`) || raw.toLowerCase() === zeroAddress.toLowerCase()) {
@@ -56,7 +59,7 @@ export function AddressInline({
       : formatWallet
         ? formatWallet(raw, fallback)
         : shortAddress(raw, fallback);
-  const href = explorer ? explorerAddressUrl(raw) : undefined;
+  const href = explorer && !onOpenProfile ? explorerAddressUrl(raw) : undefined;
 
   const labelSpan = (
     <span className={["mono", "address-inline__label", labelClassName].filter(Boolean).join(" ")}>{label}</span>
@@ -70,6 +73,21 @@ export function AddressInline({
   );
 
   const wrapClass = ["address-inline", className].filter(Boolean).join(" ");
+
+  if (onOpenProfile) {
+    return (
+      <span className={wrapClass}>
+        <button
+          type="button"
+          className="address-inline__link address-inline__profile-btn"
+          aria-label={`Open wallet profile for ${raw}`}
+          onClick={() => onOpenProfile(raw)}
+        >
+          {cluster}
+        </button>
+      </span>
+    );
+  }
 
   if (href) {
     return (

@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS idx_referral_code_registered;
+DROP TABLE IF EXISTS idx_warbow_epoch_score;
+DROP TABLE IF EXISTS idx_arena_warbow_guard;
+DROP TABLE IF EXISTS idx_arena_warbow_steal;
+DROP TABLE IF EXISTS idx_arena_referral_applied;
+DROP TABLE IF EXISTS idx_arena_referral_cred;
+DROP TABLE IF EXISTS idx_player_xp;
+DROP TABLE IF EXISTS idx_play_cred_claim;
+DROP TABLE IF EXISTS idx_arena_podium_epoch;
+DROP TABLE IF EXISTS idx_arena_started;
+DROP TABLE IF EXISTS idx_arena_buy;

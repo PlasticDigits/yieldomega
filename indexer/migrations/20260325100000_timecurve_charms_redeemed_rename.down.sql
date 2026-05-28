@@ -1,2 +1,0 @@
-ALTER INDEX IF EXISTS idx_timecurve_charms_redeemed_block RENAME TO idx_timecurve_allocation_claimed_block;
-ALTER TABLE IF EXISTS idx_timecurve_charms_redeemed RENAME TO idx_timecurve_allocation_claimed;

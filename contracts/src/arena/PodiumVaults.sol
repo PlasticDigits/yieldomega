@@ -51,6 +51,32 @@ contract PodiumVaults is Ownable {
         emit SeedFunded(podiumId, amount, pool);
     }
 
+    /// @notice Pay 4:2:1 from active pool and roll seed → active (caller settles accounting).
+    function payPodiumWinners(
+        uint8 podiumId,
+        address first,
+        address second,
+        address third,
+        uint256 amtFirst,
+        uint256 amtSecond,
+        uint256 amtThird
+    ) external {
+        require(msg.sender == arena, "PodiumVaults: not arena");
+        if (amtFirst > 0 && first != address(0)) doub.transfer(first, amtFirst);
+        if (amtSecond > 0 && second != address(0)) doub.transfer(second, amtSecond);
+        if (amtThird > 0 && third != address(0)) doub.transfer(third, amtThird);
+    }
+
+    function rollSeedToActive(uint8 podiumId) external returns (uint256 moved) {
+        require(msg.sender == arena, "PodiumVaults: not arena");
+        address seed = seedPools[podiumId];
+        address active = activePools[podiumId];
+        moved = doub.balanceOf(seed);
+        if (moved > 0) {
+            doub.transfer(active, moved);
+        }
+    }
+
     function activePoolBalance(uint8 podiumId) external view returns (uint256) {
         return doub.balanceOf(activePools[podiumId]);
     }

@@ -638,3 +638,65 @@ export async function fetchFeeRouterFeesDistributed(limit = 20, offset = 0) {
   );
 }
 
+export type ArenaBuyItem = {
+  buyer: string;
+  charm_wad: string;
+  doub_paid: string;
+  block_number: number;
+  tx_hash: string;
+  timer_hard_reset: boolean;
+  paid_with_cred: boolean;
+};
+
+export type ArenaTimersResponse = {
+  read_block_number: string;
+  block_timestamp_sec: string;
+  last_buy_deadline_sec: string;
+  timer_cap_sec: string;
+  arena_start_sec: string;
+  paused: boolean;
+  total_doub_raised: string;
+  podium_deadlines_sec: string[];
+};
+
+export type ArenaWalletStats = {
+  address: string;
+  epochs_participated: number;
+  buy_count: number;
+  total_spent_doub: string;
+  average_buy_doub: string;
+  max_single_buy_doub: string;
+  first_buy_at: string | null;
+  xp: string;
+  level: string;
+  prizes_won: unknown[];
+  total_won_doub: string;
+  highest_scores: unknown[];
+  warbow_steals: number;
+  cred_claimed: string;
+  referral_cred_earned: string;
+};
+
+export async function fetchArenaBuys(limit = 20, offset = 0) {
+  return getJson<{ items: ArenaBuyItem[]; limit: number; offset: number }>(
+    `/v1/arena/buys?limit=${limit}&offset=${offset}`,
+  );
+}
+
+export async function fetchArenaTimers() {
+  return getJson<ArenaTimersResponse>("/v1/arena/timers");
+}
+
+export async function fetchArenaPodiums() {
+  return getJson<{ rows: unknown[]; read_block_number: string }>("/v1/arena/podiums");
+}
+
+export function arenaWalletStatsPath(address: string) {
+  const w = address.trim().toLowerCase();
+  return `/v1/arena/wallet/${w}/stats`;
+}
+
+export async function fetchArenaWalletStats(address: string) {
+  return getJson<ArenaWalletStats>(arenaWalletStatsPath(address));
+}
+

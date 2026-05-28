@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Insert decoded events (idempotent via ON CONFLICT).
+//! Insert decoded Arena v2 events (idempotent via ON CONFLICT).
 
 use alloy_primitives::{Address, U256};
 use eyre::Result;
@@ -21,488 +21,225 @@ fn b256_hex(h: alloy_primitives::B256) -> String {
     format!("{:#x}", h)
 }
 
-/// Persist a decoded log on an existing Postgres connection or transaction. Unknown events are skipped.
 pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -> Result<()> {
     let block = d.block_number as i64;
-    let block_h = b256_hex(d.block_hash);
     let tx_h = b256_hex(d.tx_hash);
     let log_i = d.log_index as i32;
-    let contract = addr_hex(d.contract);
     let block_ts: Option<i64> = d.block_timestamp.map(|t| t as i64);
 
     match &d.event {
-        DecodedEvent::TimeCurveSaleStarted {
+        DecodedEvent::ArenaStarted {
             start_timestamp,
             initial_deadline,
-            total_tokens_for_sale,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_sale_started (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    start_timestamp, initial_deadline, total_tokens_for_sale
-                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric)
+                r#"INSERT INTO idx_arena_started (
+                    block_number, tx_hash, log_index, start_timestamp, initial_deadline
+                ) VALUES ($1, $2, $3, $4::numeric, $5::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
             .bind(u256_dec(*start_timestamp))
             .bind(u256_dec(*initial_deadline))
-            .bind(u256_dec(*total_tokens_for_sale))
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::TimeCurveBuy {
+        DecodedEvent::ArenaBuy {
             buyer,
             charm_wad,
-            amount,
-            price_per_charm_wad,
+            doub_paid,
             new_deadline,
-            total_raised_after,
+            total_doub_raised_after,
             buy_index,
             actual_seconds_added,
             timer_hard_reset,
-            battle_points_after,
-            bp_base_buy,
-            bp_timer_reset_bonus,
-            bp_clutch_bonus,
-            bp_streak_break_bonus,
-            bp_ambush_bonus,
-            bp_flag_penalty,
-            flag_planted,
-            buyer_total_effective_timer_sec,
-            buyer_active_defended_streak,
-            buyer_best_defended_streak,
+            paid_with_cred,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp,
-                    buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
-                    new_deadline, total_raised_after, buy_index,
-                    actual_seconds_added, timer_hard_reset, battle_points_after,
-                    bp_base_buy, bp_timer_reset_bonus, bp_clutch_bonus, bp_streak_break_bonus,
-                    bp_ambush_bonus, bp_flag_penalty, flag_planted,
-                    buyer_total_effective_timer_sec,
-                    buyer_active_defended_streak, buyer_best_defended_streak
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric, $14::numeric,
-                    $15::numeric, $16, $17::numeric, $18::numeric, $19::numeric, $20::numeric, $21::numeric, $22::numeric, $23::numeric, $24,
-                    $25::numeric, $26::numeric, $27::numeric)
+                r#"INSERT INTO idx_arena_buy (
+                    block_number, block_timestamp, tx_hash, log_index, buyer,
+                    charm_wad, doub_paid, new_deadline, total_doub_raised_after, buy_index,
+                    actual_seconds_added, timer_hard_reset, paid_with_cred
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric, $7::numeric, $8::numeric,
+                    $9::numeric, $10::numeric, $11::numeric, $12, $13)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
+            .bind(block_ts)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
             .bind(addr_hex(*buyer))
-            .bind(u256_dec(*amount))
-            .bind("0")
             .bind(u256_dec(*charm_wad))
-            .bind(u256_dec(*price_per_charm_wad))
+            .bind(u256_dec(*doub_paid))
             .bind(u256_dec(*new_deadline))
-            .bind(u256_dec(*total_raised_after))
+            .bind(u256_dec(*total_doub_raised_after))
             .bind(u256_dec(*buy_index))
             .bind(u256_dec(*actual_seconds_added))
             .bind(*timer_hard_reset)
-            .bind(u256_dec(*battle_points_after))
-            .bind(u256_dec(*bp_base_buy))
-            .bind(u256_dec(*bp_timer_reset_bonus))
-            .bind(u256_dec(*bp_clutch_bonus))
-            .bind(u256_dec(*bp_streak_break_bonus))
-            .bind(u256_dec(*bp_ambush_bonus))
-            .bind(u256_dec(*bp_flag_penalty))
-            .bind(*flag_planted)
-            .bind(u256_dec(*buyer_total_effective_timer_sec))
-            .bind(u256_dec(*buyer_active_defended_streak))
-            .bind(u256_dec(*buyer_best_defended_streak))
+            .bind(*paid_with_cred)
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
-            buyer,
-            charm_wad,
-            gross_cl8y,
-            pay_kind,
-        } => {
-            let pk = *pay_kind as i16;
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_router_kumbaya (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    buyer, charm_wad, gross_cl8y, pay_kind
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*buyer))
-            .bind(u256_dec(*charm_wad))
-            .bind(u256_dec(*gross_cl8y))
-            .bind(pk)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveSaleEnded {
-            end_timestamp,
-            total_raised,
-            total_buys,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_sale_ended (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    end_timestamp, total_raised, total_buys
-                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(u256_dec(*end_timestamp))
-            .bind(u256_dec(*total_raised))
-            .bind(u256_dec(*total_buys))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveCharmsRedeemed {
-            buyer,
-            token_amount,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_charms_redeemed (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    buyer, token_amount
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*buyer))
-            .bind(u256_dec(*token_amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurvePrizesDistributed => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_prizes_distributed (
-                    block_number, block_hash, tx_hash, log_index, contract_address
-                ) VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool { podium_pool } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_prizes_settled_empty_podium_pool (
-                    block_number, block_hash, tx_hash, log_index, contract_address, podium_pool
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*podium_pool))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveReferralApplied {
+        DecodedEvent::ArenaReferralCred {
             buyer,
             referrer,
             code_hash,
-            referrer_amount,
-            referee_amount,
-            amount_to_fee_router,
+            referrer_cred,
+            buyer_cred,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_referral_applied (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)
+                r#"INSERT INTO idx_arena_referral_cred (
+                    block_number, tx_hash, log_index, buyer, referrer, code_hash,
+                    referrer_cred, buyer_cred
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
             .bind(addr_hex(*buyer))
             .bind(addr_hex(*referrer))
             .bind(b256_hex(*code_hash))
-            .bind(u256_dec(*referrer_amount))
-            .bind(u256_dec(*referee_amount))
-            .bind(u256_dec(*amount_to_fee_router))
+            .bind(u256_dec(*referrer_cred))
+            .bind(u256_dec(*buyer_cred))
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::TimeCurveWarBowSteal {
+        DecodedEvent::ArenaXpGained {
+            player,
+            amount,
+            new_level,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_player_xp (
+                    block_number, tx_hash, log_index, player, xp_gained, new_level
+                ) VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*player))
+            .bind(u256_dec(*amount))
+            .bind(u256_dec(*new_level))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaCredClaimed { user, epoch, amount } => {
+            sqlx::query(
+                r#"INSERT INTO idx_play_cred_claim (
+                    block_number, tx_hash, log_index, claimer, epoch, amount
+                ) VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*user))
+            .bind(u256_dec(*epoch))
+            .bind(u256_dec(*amount))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaPodiumEpochRolled {
+            category,
+            epoch,
+            first,
+            second,
+            third,
+            pool_paid,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_podium_epoch (
+                    block_number, tx_hash, log_index, category, epoch,
+                    first_place, second_place, third_place, pool_paid
+                ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $9::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(*category as i16)
+            .bind(u256_dec(*epoch))
+            .bind(addr_hex(*first))
+            .bind(addr_hex(*second))
+            .bind(addr_hex(*third))
+            .bind(u256_dec(*pool_paid))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaWarbowSteal {
             attacker,
             victim,
-            amount_bp,
-            burn_paid_wad,
-            bypassed_victim_daily_limit,
-            victim_bp_after,
-            attacker_bp_after,
+            bp_taken,
+            doub_spent,
+            limit_bypass,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_steal (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, attacker, victim, amount_bp, burn_paid_wad,
-                    bypassed_victim_daily_limit, victim_bp_after, attacker_bp_after
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11, $12::numeric, $13::numeric)
+                r#"INSERT INTO idx_arena_warbow_steal (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    attacker, victim, bp_taken, doub_spent, limit_bypass
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6, $7::numeric, $8::numeric, $9)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
+            .bind(block_ts)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
             .bind(addr_hex(*attacker))
             .bind(addr_hex(*victim))
-            .bind(u256_dec(*amount_bp))
-            .bind(u256_dec(*burn_paid_wad))
-            .bind(*bypassed_victim_daily_limit)
-            .bind(u256_dec(*victim_bp_after))
-            .bind(u256_dec(*attacker_bp_after))
+            .bind(u256_dec(*bp_taken))
+            .bind(u256_dec(*doub_spent))
+            .bind(*limit_bypass)
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
-            victim,
-            stealer,
-            expiry_exclusive,
-            steal_seq,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_revenge_window (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, victim, stealer, expiry_exclusive, steal_seq
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*victim))
-            .bind(addr_hex(*stealer))
-            .bind(u256_dec(*expiry_exclusive))
-            .bind(u256_dec(*steal_seq))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowRevenge {
-            avenger,
-            stealer,
-            amount_bp,
-            burn_paid_wad,
-            stealer_bp_after,
-            avenger_bp_after,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_revenge (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, avenger, stealer, amount_bp, burn_paid_wad,
-                    stealer_bp_after, avenger_bp_after
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric, $12::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*avenger))
-            .bind(addr_hex(*stealer))
-            .bind(u256_dec(*amount_bp))
-            .bind(u256_dec(*burn_paid_wad))
-            .bind(stealer_bp_after.map(|n| u256_dec(n)))
-            .bind(avenger_bp_after.map(|n| u256_dec(n)))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowGuardActivated {
+        DecodedEvent::ArenaWarbowGuard {
             player,
-            guard_until_ts,
-            burn_paid_wad,
+            doub_spent,
+            guard_until,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_guard (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, player, guard_until_ts, burn_paid_wad
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
+                r#"INSERT INTO idx_arena_warbow_guard (
+                    block_number, tx_hash, log_index, player, doub_spent, guard_until
+                ) VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
             .bind(addr_hex(*player))
-            .bind(u256_dec(*guard_until_ts))
-            .bind(u256_dec(*burn_paid_wad))
+            .bind(u256_dec(*doub_spent))
+            .bind(u256_dec(*guard_until))
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::TimeCurveWarBowFlagClaimed {
-            player,
-            bonus_bp,
-            battle_points_after,
+        DecodedEvent::ArenaReferralApplied {
+            buyer,
+            referrer,
+            code_hash,
+            referrer_charm,
+            buyer_charm,
+            doub_paid,
         } => {
             sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_flag_claimed (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, player, bonus_bp, battle_points_after
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
+                r#"INSERT INTO idx_arena_referral_applied (
+                    block_number, tx_hash, log_index, buyer, referrer, code_hash,
+                    referrer_amount, referee_amount, doub_paid
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*player))
-            .bind(u256_dec(*bonus_bp))
-            .bind(u256_dec(*battle_points_after))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowFlagPenalized {
-            former_holder,
-            penalty_bp,
-            triggering_buyer,
-            battle_points_after,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_flag_penalized (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, former_holder, penalty_bp, triggering_buyer, battle_points_after
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*former_holder))
-            .bind(u256_dec(*penalty_bp))
-            .bind(addr_hex(*triggering_buyer))
-            .bind(u256_dec(*battle_points_after))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowCl8yBurned {
-            payer,
-            reason,
-            amount_wad,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_cl8y_burned (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, payer, reason, amount_wad
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*payer))
-            .bind(i16::from(*reason))
-            .bind(u256_dec(*amount_wad))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
-            wallet,
-            active_streak,
-            best_streak,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_ds_continued (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, wallet, active_streak, best_streak
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*wallet))
-            .bind(u256_dec(*active_streak))
-            .bind(u256_dec(*best_streak))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
-            former_holder,
-            interrupter,
-            broken_active_length,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_ds_broken (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, former_holder, interrupter, broken_active_length
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*former_holder))
-            .bind(addr_hex(*interrupter))
-            .bind(u256_dec(*broken_active_length))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared { cleared_wallet } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_warbow_ds_window_cleared (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    block_timestamp, cleared_wallet
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(block_ts)
-            .bind(addr_hex(*cleared_wallet))
+            .bind(addr_hex(*buyer))
+            .bind(addr_hex(*referrer))
+            .bind(b256_hex(*code_hash))
+            .bind(u256_dec(*referrer_charm))
+            .bind(u256_dec(*buyer_charm))
+            .bind(u256_dec(*doub_paid))
             .execute(&mut *conn)
             .await?;
         }
@@ -513,394 +250,26 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
         } => {
             sqlx::query(
                 r#"INSERT INTO idx_referral_code_registered (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    owner_address, code_hash, normalized_code
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    block_number, tx_hash, log_index, owner_address, code_hash, normalized_code
+                ) VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
-            .bind(&block_h)
             .bind(&tx_h)
             .bind(log_i)
-            .bind(&contract)
             .bind(addr_hex(*owner))
             .bind(b256_hex(*code_hash))
-            .bind(normalized_code.as_str())
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::PodiumPoolPaid {
-            winner,
-            token,
-            amount,
-            category,
-            placement,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_podium_pool_paid (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    winner, token, amount, category, placement
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9, $10)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*winner))
-            .bind(addr_hex(*token))
-            .bind(u256_dec(*amount))
-            .bind(i16::from(*category))
-            .bind(i16::from(*placement))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::PodiumPoolResidualForwarded {
-            token,
-            recipient,
-            amount,
-            category,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_podium_pool_residual_forwarded (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    token_address, recipient_address, amount, category
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*token))
-            .bind(addr_hex(*recipient))
-            .bind(u256_dec(*amount))
-            .bind(i16::from(*category))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_fee_routing_enabled (
-                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(*enabled)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_charm_redemption_enabled (
-                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(*enabled)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_reserve_podium_payouts_enabled (
-                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(*enabled)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveBuyRouterSet { router } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_router_set (
-                    block_number, block_hash, tx_hash, log_index, contract_address, router_address
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*router))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveDoubPresaleVestingSet { vesting } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_presale_vesting_set (
-                    block_number, block_hash, tx_hash, log_index, contract_address, vesting_address
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*vesting))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet { recipient } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_unredeemed_launched_token_recipient_set (
-                    block_number, block_hash, tx_hash, log_index, contract_address, recipient
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*recipient))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept { recipient, amount } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_unredeemed_launched_token_swept (
-                    block_number, block_hash, tx_hash, log_index, contract_address, recipient, amount
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*recipient))
-            .bind(u256_dec(*amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurvePodiumResidualRecipientSet { recipient } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_podium_residual_recipient_set (
-                    block_number, block_hash, tx_hash, log_index, contract_address, recipient
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*recipient))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_router_cl8y_surplus (
-                    block_number, block_hash, tx_hash, log_index, contract_address, amount
-                ) VALUES ($1, $2, $3, $4, $5, $6::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(u256_dec(*amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveBuyRouterEthRescued { to, amount } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_router_eth_rescued (
-                    block_number, block_hash, tx_hash, log_index, contract_address, to_address, amount
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*to))
-            .bind(u256_dec(*amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::TimeCurveBuyRouterErc20Rescued { token, to, amount } => {
-            sqlx::query(
-                r#"INSERT INTO idx_timecurve_buy_router_erc20_rescued (
-                    block_number, block_hash, tx_hash, log_index, contract_address, token, to_address, amount
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*token))
-            .bind(addr_hex(*to))
-            .bind(u256_dec(*amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::PodiumPoolPrizePusherSet { pusher } => {
-            sqlx::query(
-                r#"INSERT INTO idx_podium_pool_prize_pusher_set (
-                    block_number, block_hash, tx_hash, log_index, contract_address, pusher
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*pusher))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::DoubVestingStarted {
-            start_timestamp,
-            duration_sec,
-            total_allocated,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_doub_vesting_started (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    start_timestamp, duration_sec, total_allocated
-                ) VALUES ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(u256_dec(*start_timestamp))
-            .bind(u256_dec(*duration_sec))
-            .bind(u256_dec(*total_allocated))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::DoubVestingClaimed {
-            beneficiary,
-            amount,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_doub_vesting_claimed (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    beneficiary, amount
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7::numeric)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*beneficiary))
-            .bind(u256_dec(*amount))
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::DoubVestingClaimsEnabled { enabled } => {
-            sqlx::query(
-                r#"INSERT INTO idx_doub_vesting_claims_enabled (
-                    block_number, block_hash, tx_hash, log_index, contract_address, enabled
-                ) VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(*enabled)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::DoubVestingRescueErc20 {
-            token,
-            recipient,
-            amount,
-            kind,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_doub_vesting_rescue_erc20 (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    token, recipient, amount, kind
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*token))
-            .bind(addr_hex(*recipient))
-            .bind(u256_dec(*amount))
-            .bind(*kind as i16)
-            .execute(&mut *conn)
-            .await?;
-        }
-        DecodedEvent::FeeSinkWithdrawn {
-            token,
-            recipient,
-            amount,
-            actor,
-        } => {
-            sqlx::query(
-                r#"INSERT INTO idx_fee_sink_withdrawn (
-                    block_number, block_hash, tx_hash, log_index, contract_address,
-                    token, recipient, amount, actor
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::numeric, $9)
-                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
-            )
-            .bind(block)
-            .bind(&block_h)
-            .bind(&tx_h)
-            .bind(log_i)
-            .bind(&contract)
-            .bind(addr_hex(*token))
-            .bind(addr_hex(*recipient))
-            .bind(u256_dec(*amount))
-            .bind(addr_hex(*actor))
+            .bind(normalized_code)
             .execute(&mut *conn)
             .await?;
         }
         DecodedEvent::Unknown { .. } => {}
     }
-
     Ok(())
 }
 
-/// Pool wrapper that **autocommits** one decoded log per call (`acquire` → insert → implicit `COMMIT`).
-///
-/// Hot-path block ingestion uses [`persist_decoded_log_conn`] inside a single SQL transaction per block
-/// (GitLab #140 — **`INV-INDEXER-140`** in repo `docs/testing/invariants-and-business-logic.md`). Use this
-/// only when **single-event** persistence is intentional (integration tests, one-off tools). For atomic
-/// multi-log batches, open a SQL transaction on the pool and call [`persist_decoded_log_conn`] on that
-/// connection (GitLab #148).
 pub async fn persist_decoded_log_autocommit(pool: &PgPool, d: &DecodedLog) -> Result<()> {
     let mut conn = pool.acquire().await?;
-    persist_decoded_log_conn(&mut conn, d).await
+    persist_decoded_log_conn(&mut conn, d).await?;
+    Ok(())
 }

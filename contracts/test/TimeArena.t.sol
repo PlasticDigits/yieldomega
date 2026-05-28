@@ -4,39 +4,51 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
+import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
+import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 
 contract TimeArenaTest is Test {
     Doubloon doub;
+    PlayCred cred;
     PodiumVaults vaults;
     AdminSellVault adminVault;
     TimeArena arena;
 
     address alice = address(0xA11CE);
+    address bob = address(0xB0B);
     address admin = address(this);
 
     function setUp() public {
         doub = new Doubloon(admin);
+        cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
         adminVault = new AdminSellVault(doub, admin);
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+            (doub, vaults, adminVault, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
         adminVault.setArena(address(arena));
+        cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
         doub.grantRole(doub.MINTER_ROLE(), admin);
         doub.mint(alice, 1_000_000e18);
+        doub.mint(bob, 1_000_000e18);
         vm.prank(alice);
         doub.approve(address(arena), type(uint256).max);
+        vm.prank(bob);
+        doub.approve(address(arena), type(uint256).max);
+        cred.grantRole(cred.MINTER_ROLE(), admin);
+        cred.mint(alice, 1000e18);
+        cred.mint(bob, 1000e18);
     }
 
     function test_buy_routes_doub_split() public {
@@ -46,7 +58,6 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(charm);
 
-        // Default pools all point at PodiumVaults — combined active+seed = 70% of buy.
         assertEq(doub.balanceOf(address(vaults)), 700e18);
         assertEq(doub.balanceOf(address(adminVault)), 300e18);
         assertEq(doub.balanceOf(address(arena)), 0);
@@ -58,5 +69,89 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
+    }
+
+    function test_timer_extension_without_hard_reset() public {
+        uint256 dl0 = arena.deadline();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.deadline(), dl0 + 120);
+        assertEq(arena.lastBuyEpoch(), 0);
+    }
+
+    /// INV-TIME-ARENA-TIMER-MULTI: one buy extends all four podium deadlines together.
+    function test_multi_podium_deadline_extend() public {
+        uint256[] memory before = new uint256[](4);
+        for (uint8 c = 0; c < 4; c++) {
+            before[c] = arena.podiumDeadline(c);
+        }
+        vm.prank(alice);
+        arena.buy(1e18);
+        for (uint8 c = 0; c < 4; c++) {
+            assertEq(arena.podiumDeadline(c), before[c] + 120, "category mismatch");
+        }
+    }
+
+    /// INV-TIME-ARENA-CRED-ACCRUE: DOUB buy adds 35 CRED (18 dec) to the active epoch pool.
+    function test_cred_accrue_on_doub_buy() public {
+        uint256 ep = arena.lastBuyEpoch();
+        uint256 poolBefore = arena.epochCredPool(ep);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.epochCredPool(ep), poolBefore + 35e18);
+    }
+
+    function test_cred_pro_rata_claim() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.prank(bob);
+        arena.buy(2e18);
+
+        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        uint256 ep = 0;
+        assertEq(arena.epochCharmTotal(ep), 4e18);
+
+        vm.prank(alice);
+        arena.claimCred(ep);
+        assertEq(arena.epochCharmWad(ep, alice), 0);
+        assertGt(cred.balanceOf(alice), 0);
+    }
+
+    function test_buy_with_cred() public {
+        vm.prank(alice);
+        arena.buyWithCred(1e18);
+        assertEq(cred.balanceOf(alice), 1000e18 - 70e18);
+    }
+
+    function test_xp_levels() public {
+        assertEq(ArenaXp.xpForCharm(99e16), 1);
+        assertEq(ArenaXp.xpForCharm(10e18), 10);
+        assertEq(ArenaXp.levelFromXp(20), 2);
+        assertEq(ArenaXp.xpToAdvance(10), 65);
+        assertEq(ArenaXp.xpToAdvance(20), 100);
+    }
+
+    function test_roll_podium_after_expiry() public {
+        vm.warp(arena.podiumDeadline(1) + 1);
+        vm.prank(alice);
+        arena.rollPodiumEpoch(1);
+        assertEq(arena.podiumEpoch(1), 1);
+    }
+
+    function test_warbow_steal_pulls_doub() public {
+        vm.startPrank(bob);
+        arena.buy(10e18);
+        vm.warp(block.timestamp + 301);
+        arena.buy(10e18);
+        vm.stopPrank();
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 balBefore = doub.balanceOf(address(arena));
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
     }
 }

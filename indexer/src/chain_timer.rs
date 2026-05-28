@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Polls `saleStart()`, `deadline()`, `timerCapSec()`, head `block.timestamp`, `ended()`, and
-//! `podium(category)` at the same block tag (hero timer + reserve podium reads).
-//!
-//! Uses the same comma-separated RPC fallback and adaptive poll backoff as the frontend
-//! (`rpcConnectivity` / `wagmi` transports).
+//! Polls `TimeArena` head state for `GET /v1/arena/timers` and podium reads.
 
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,47 +16,38 @@ use crate::rpc_http::{
     build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
 };
 use crate::rpc_poll_health::RpcPollHealth;
+use crate::sale_state::TimecurveSaleStateSnapshot;
 
-/// `saleStart()` selector (public getter)
-pub const SEL_SALE_START: [u8; 4] = [0xab, 0x0b, 0xcc, 0x41];
-/// `deadline()` selector
+pub const SEL_ARENA_START: [u8; 4] = [0x07, 0xf2, 0x87, 0x15];
 pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
-/// `timerCapSec()` selector
 pub const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
-/// `ended()` selector
-pub const SEL_ENDED: [u8; 4] = [0x12, 0xfa, 0x6f, 0xeb];
-/// `podium(uint8)` selector
+pub const SEL_PODIUM_DEADLINE: [u8; 4] = [0x89, 0x5b, 0x4a, 0xa0];
 const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 
-/// Cached JSON shape for `GET /v1/timecurve/chain-timer` (matches frontend `TimerChainSnapshot` fields).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainTimerSnapshot {
-    /// `TimeCurve.saleStart()` at `read_block_number` (`"0"` when not scheduled).
     pub sale_start_sec: String,
     pub deadline_sec: String,
     pub block_timestamp_sec: String,
     pub timer_cap_sec: String,
     pub read_block_number: String,
-    /// Millis since Unix epoch when this snapshot was successfully polled.
     pub polled_at_ms: u64,
+    pub last_buy_epoch: String,
+    pub podium_deadlines_sec: [String; 4],
 }
 
-/// One `TimeCurve.podium(category)` row (`address[3]`, `uint256[3]`).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct PodiumRpcRow {
     pub winners: [String; 3],
     pub values: [String; 3],
 }
 
-/// Head RPC snapshot at a single block: timer fields plus onchain podium reads (contract category order 0..=3).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TimecurveHeadSnapshot {
     pub timer: ChainTimerSnapshot,
     pub sale_ended: bool,
-    /// Index = `TimeCurve` podium category: `0` last buy · `1` time booster · `2` defended streak · `3` WarBow.
     pub podium_contract: [PodiumRpcRow; 4],
-    /// Full sale-state views at the same `read_block_number` ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
-    pub sale_state: crate::sale_state::TimecurveSaleStateSnapshot,
+    pub sale_state: TimecurveSaleStateSnapshot,
 }
 
 fn u256_to_decimal_string(v: U256) -> String {
@@ -74,12 +61,7 @@ fn decode_return_u256(data: &[u8]) -> Result<U256> {
             data.len()
         ));
     }
-    let slice = &data[data.len() - 32..];
-    Ok(U256::from_be_slice(slice))
-}
-
-fn decode_return_bool(data: &[u8]) -> Result<bool> {
-    Ok(!decode_return_u256(data)?.is_zero())
+    Ok(U256::from_be_slice(&data[data.len() - 32..]))
 }
 
 fn addr_word_hex(a: Address) -> String {
@@ -101,26 +83,21 @@ fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
     let mut values = [String::from("0"), String::from("0"), String::from("0")];
     for (i, winner) in winners.iter_mut().enumerate() {
         let off = i * 32;
-        let w = Address::from_word(
-            data[off..off + 32]
-                .try_into()
-                .map_err(|_| eyre::eyre!("podium winner word"))?,
-        );
+        let w = Address::from_word(data[off..off + 32].try_into()?);
         *winner = addr_word_hex(w);
     }
     for (i, value) in values.iter_mut().enumerate() {
         let off = (3 + i) * 32;
-        let v = U256::from_be_slice(&data[off..off + 32]);
-        *value = u256_to_decimal_string(v);
+        *value = u256_to_decimal_string(U256::from_be_slice(&data[off..off + 32]));
     }
     Ok(PodiumRpcRow { winners, values })
 }
 
-fn encode_podium_call(category: u8) -> Bytes {
+fn encode_u8_call(selector: [u8; 4], arg: u8) -> Bytes {
     let mut buf = Vec::with_capacity(36);
-    buf.extend_from_slice(&SEL_PODIUM);
+    buf.extend_from_slice(&selector);
     let mut word = [0u8; 32];
-    word[31] = category;
+    word[31] = arg;
     buf.extend_from_slice(&word);
     Bytes::from(buf)
 }
@@ -132,10 +109,9 @@ fn empty_podium_row() -> PodiumRpcRow {
     }
 }
 
-/// Runs until process exit; updates `cache` on success using **1s** healthy cadence and frontend-aligned backoff.
 pub async fn run_poll_loop(
     rpc_urls: &[String],
-    timecurve: Address,
+    time_arena: Address,
     cache: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
     rpc_request_timeout: Duration,
 ) {
@@ -155,9 +131,8 @@ pub async fn run_poll_loop(
     };
 
     let mut health = RpcPollHealth::new();
-
     loop {
-        match poll_any_provider(&providers, timecurve).await {
+        match poll_any_provider(&providers, time_arena).await {
             Ok(snap) => {
                 health.report_success();
                 *cache.write().await = Some(snap);
@@ -177,11 +152,11 @@ pub async fn run_poll_loop(
 
 async fn poll_any_provider(
     providers: &[ReqwestProvider],
-    tc: Address,
+    arena: Address,
 ) -> Result<TimecurveHeadSnapshot> {
     let mut last_err = None;
     for p in providers {
-        match poll_once(p, tc).await {
+        match poll_once(p, arena).await {
             Ok(s) => return Ok(s),
             Err(e) => last_err = Some(e),
         }
@@ -189,7 +164,25 @@ async fn poll_any_provider(
     Err(last_err.expect("chain_timer: non-empty RPC providers"))
 }
 
-async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveHeadSnapshot> {
+async fn eth_call_u256(
+    provider: &ReqwestProvider,
+    contract: Address,
+    block_id: BlockId,
+    input: Bytes,
+    label: &str,
+) -> Result<U256> {
+    let req = TransactionRequest::default()
+        .to(contract)
+        .input(input.into());
+    let raw = provider
+        .call(&req)
+        .block(block_id)
+        .await
+        .wrap_err_with(|| format!("{label} eth_call"))?;
+    decode_return_u256(&raw).wrap_err_with(|| format!("decode {label}"))
+}
+
+async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<TimecurveHeadSnapshot> {
     let bn = provider.get_block_number().await?;
     let block = provider
         .get_block_by_number(bn.into(), BlockTransactionsKind::Hashes)
@@ -199,52 +192,49 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
     let block_ts = block.header.timestamp;
     let block_id = BlockId::Number(bn.into());
 
-    let s_req = TransactionRequest::default()
-        .to(tc)
-        .input(Bytes::copy_from_slice(&SEL_SALE_START).into());
-    let s_raw = provider
-        .call(&s_req)
-        .block(block_id)
-        .await
-        .wrap_err("saleStart eth_call")?;
-    let sale_start = decode_return_u256(&s_raw).wrap_err("decode saleStart")?;
+    let arena_start = eth_call_u256(
+        provider,
+        arena,
+        block_id,
+        Bytes::copy_from_slice(&SEL_ARENA_START),
+        "arenaStart",
+    )
+    .await?;
+    let deadline = eth_call_u256(
+        provider,
+        arena,
+        block_id,
+        Bytes::copy_from_slice(&SEL_DEADLINE),
+        "deadline",
+    )
+    .await?;
+    let cap = eth_call_u256(
+        provider,
+        arena,
+        block_id,
+        Bytes::copy_from_slice(&SEL_TIMER_CAP),
+        "timerCapSec",
+    )
+    .await?;
 
-    let d_req = TransactionRequest::default()
-        .to(tc)
-        .input(Bytes::copy_from_slice(&SEL_DEADLINE).into());
-    let d_raw = provider
-        .call(&d_req)
-        .block(block_id)
-        .await
-        .wrap_err("deadline eth_call")?;
-    let deadline = decode_return_u256(&d_raw).wrap_err("decode deadline")?;
-
-    let c_req = TransactionRequest::default()
-        .to(tc)
-        .input(Bytes::copy_from_slice(&SEL_TIMER_CAP).into());
-    let c_raw = provider
-        .call(&c_req)
-        .block(block_id)
-        .await
-        .wrap_err("timerCapSec eth_call")?;
-    let cap = decode_return_u256(&c_raw).wrap_err("decode timerCapSec")?;
-
-    let e_req = TransactionRequest::default()
-        .to(tc)
-        .input(Bytes::copy_from_slice(&SEL_ENDED).into());
-    let e_raw = provider
-        .call(&e_req)
-        .block(block_id)
-        .await
-        .wrap_err("ended eth_call")?;
-    let sale_ended = decode_return_bool(&e_raw).wrap_err("decode ended")?;
+    let mut podium_deadlines = std::array::from_fn(|_| String::new());
+    for cat in 0u8..=3 {
+        let dl = eth_call_u256(
+            provider,
+            arena,
+            block_id,
+            encode_u8_call(SEL_PODIUM_DEADLINE, cat),
+            &format!("podiumDeadline({cat})"),
+        )
+        .await?;
+        podium_deadlines[cat as usize] = u256_to_decimal_string(dl);
+    }
 
     let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
-
     for cat in 0u8..=3 {
         let p_req = TransactionRequest::default()
-            .to(tc)
-            .input(encode_podium_call(cat).into());
+            .to(arena)
+            .input(encode_u8_call(SEL_PODIUM, cat).into());
         let p_raw = provider
             .call(&p_req)
             .block(block_id)
@@ -260,17 +250,19 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
         .unwrap_or(0);
 
     let timer = ChainTimerSnapshot {
-        sale_start_sec: u256_to_decimal_string(sale_start),
+        sale_start_sec: u256_to_decimal_string(arena_start),
         deadline_sec: u256_to_decimal_string(deadline),
         block_timestamp_sec: block_ts.to_string(),
         timer_cap_sec: u256_to_decimal_string(cap),
         read_block_number: bn.to_string(),
         polled_at_ms,
+        last_buy_epoch: "0".into(),
+        podium_deadlines_sec: podium_deadlines,
     };
 
     let sale_state = crate::sale_state::poll_sale_state_at_block(
         provider,
-        tc,
+        arena,
         block_id,
         block_ts,
         bn,
@@ -280,7 +272,7 @@ async fn poll_once(provider: &ReqwestProvider, tc: Address) -> Result<TimecurveH
 
     Ok(TimecurveHeadSnapshot {
         timer,
-        sale_ended,
+        sale_ended: false,
         podium_contract: podium_rows,
         sale_state,
     })

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePublicClient } from "wagmi";
 import { fetchTimecurveChainTimer, type TimecurveChainTimer } from "@/lib/indexerApi";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { timeArenaReadAbi } from "@/lib/abis";
+import { isArenaV2TimeCurve } from "@/pages/timecurve/arenaV2SaleSessionBridge";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
 export type HeroTimerState = {
@@ -65,6 +68,7 @@ export type UseTimecurveHeroTimerResult = {
  * Poll cadence backs off when the shared indexer health streak is open ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
  */
 export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefined): UseTimecurveHeroTimerResult {
+  const publicClient = usePublicClient();
   const [heroTimer, setHeroTimer] = useState<HeroTimerState | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState<number | undefined>(undefined);
@@ -101,8 +105,41 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
       if (resetSkew) setIsBusy(true);
       try {
         const fetchedAtSec = Math.floor(Date.now() / 1000);
+        let base: Omit<HeroTimerState, "fetchedAtSec"> | null = null;
         const data = await fetchTimecurveChainTimer();
-        const base = data ? snapshotFromIndexerChainTimer(data) : null;
+        if (data) {
+          const fromIdx = snapshotFromIndexerChainTimer(data);
+          if (isFiniteHeroBase(fromIdx)) {
+            base = fromIdx;
+          }
+        }
+        if (!base && isArenaV2TimeCurve(timeCurveAddress) && publicClient) {
+          const [saleStart, deadline, timerCap, block] = await Promise.all([
+            publicClient.readContract({
+              address: timeCurveAddress,
+              abi: timeArenaReadAbi,
+              functionName: "arenaStart",
+            }),
+            publicClient.readContract({
+              address: timeCurveAddress,
+              abi: timeArenaReadAbi,
+              functionName: "deadline",
+            }),
+            publicClient.readContract({
+              address: timeCurveAddress,
+              abi: timeArenaReadAbi,
+              functionName: "timerCapSec",
+            }),
+            publicClient.getBlock(),
+          ]);
+          base = {
+            saleStartSec: Number(saleStart),
+            deadlineSec: Number(deadline),
+            blockTimestampSec: Number(block.timestamp),
+            timerCapSec: Number(timerCap),
+            readBlockNumber: block.number,
+          };
+        }
         const ok = Boolean(base && isFiniteHeroBase(base));
         if (indexerBaseUrl()) {
           reportIndexerFetchAttempt(ok);
@@ -124,7 +161,7 @@ export function useTimecurveHeroTimer(timeCurveAddress: `0x${string}` | undefine
         if (resetSkew) setIsBusy(false);
       }
     },
-    [timeCurveAddress],
+    [timeCurveAddress, publicClient],
   );
 
   const refresh = useCallback(() => void loadSnapshot(true), [loadSnapshot]);

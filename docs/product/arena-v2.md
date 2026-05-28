@@ -6,16 +6,38 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 
 ## Spend asset and buy
 
-- Participants **`buy(charmWad)`** on **`TimeArena`**.
-- Payment is **DOUB** (`Doubloon`): `doubOwed = charmWad × charmPriceWad / 1e18`.
+- Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **70 CRED**).
+- DOUB payment: `doubOwed = charmWad × charmPriceWad / 1e18`.
 - Default **`charmPriceWad = 1000e18`** (1000 DOUB per 1e18 CHARM). Governance may **`setCharmPriceWad`**.
-- Ingress uses ERC-20 **balance-delta parity** ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
+- CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
+- **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`**.
 
-## Last Buy timer
+## Timers (Last Buy + four podiums)
 
-- Reuses [`TimeMath`](../../contracts/src/libraries/TimeMath.sol): **+120s** extension per buy, **13m → 15m** hard-reset band, **24h** initial deadline, **96h** cap (deploy-configurable).
-- **`lastBuyEpoch`** increments on each hard reset; emits **`LastBuyEpochStarted`**.
-- Arena is **always live** when not **`paused`** — no `endSale`, `redeemCharms`, or linear CL8Y price schedule.
+| Category | Index | Timer storage | Extension / reset |
+|----------|-------|---------------|-------------------|
+| Last Buy | 0 | `deadline` (= `podiumDeadline[0]`) | `TimeMath`: **+120s**, **780s → 900s** hard reset, **24h** initial, **96h** cap |
+| Time Booster | 1 | `podiumDeadline[1]` | Same params (deploy-configurable) |
+| Defended Streak | 2 | `podiumDeadline[2]` | Same |
+| WarBow | 3 | `podiumDeadline[3]` | Same |
+
+Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge** when categories roll on different schedules.
+
+- **`lastBuyEpoch`** increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**.
+- **`podiumEpoch[cat]`** increments on **`rollPodiumEpoch(cat)`** when `block.timestamp > podiumDeadline[cat]`.
+- Arena is **always live** when not **`paused`** — no `endSale` or `redeemCharms`.
+
+## Podium settlement
+
+On **`rollPodiumEpoch(category)`** (permissionless after deadline):
+
+1. Snapshot top-3 (Last Buy: last-three buyers; others: live leaderboard).
+2. Pay **4∶2∶1** from that category’s **active** DOUB pool.
+3. Transfer **seed** pool balance → **active** pool for that category.
+4. Increment **`podiumEpoch[cat]`**; clear live scores for that category only.
+5. Emit **`PodiumEpochRolled`**.
+
+WarBow: live BP resets on WarBow epoch roll; admin **`finalizeWarbowPodium(epoch, …)`** pays from that epoch’s pool.
 
 ## DOUB prize routing (per buy)
 
@@ -23,25 +45,38 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 |-------------|-----|--------|
 | Each of 4 **active** podium pools | 1000 (10% each) | 40% total |
 | Each of 4 **seed** podium pools | 750 (7.5% each) | 30% total |
-| **`AdminSellVault`** | 3000 (30%) | Remainder from integer split |
+| **`AdminSellVault`** | 3000 (30%) | Integer remainder |
 
 Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**.
 
-## Four podium categories
+## Play CRED + epoch CHARM
 
-Same v1 reserve categories (last buy, WarBow BP leader, defended streak, time booster). **WarBow PvP on DOUB** returns in [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252); removed in the #241–#245 removal batch.
+- **`PlayCred`**: non-transferable; **`MINTER_ROLE`** for TimeArena (+ optional **`CredGrantor`**).
+- Each DOUB buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
+- **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED.
+- Referred buy: **5% + 5%** of the **35 CRED** tranche minted to referrer and buyer (not CHARM weight).
 
-## Out of scope in this doc (follow-up issues)
+## XP
 
-- Play CRED ledger, epoch CHARM, claim ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248))
-- XP levels ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250))
-- **`TimeArenaBuyRouter`** pay rails ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251))
-- Indexer arena schema ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
-- Unified frontend ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
+- Per buy: `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor; **1–10** at band ends).
+- Level **L** requires cumulative XP; step **L→L+1**: `min(20 + (L-1)*5, 100)` XP (**L1 = 20** total to reach level 2).
+- Uncapped level; views **`xp`**, **`level`**, **`xpToNextLevel`**.
+
+## WarBow (DOUB)
+
+| Action | DOUB cost |
+|--------|-----------|
+| Steal | 1000e18 |
+| Guard | 10000e18 |
+| Steal-limit override | 50000e18 |
+| Revenge | 1000e18 |
+| Flag claim | 0 |
+
+BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
 
 ## Retired surfaces
 
 - Leprechaun NFT — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
 - Rabbit Treasury / Burrow — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)
-- TimeCurve sale-end / redemption / presale / LP seed — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
+- TimeCurve sale-end / redemption / presale — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
 - FeeRouter CL8Y sinks — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)

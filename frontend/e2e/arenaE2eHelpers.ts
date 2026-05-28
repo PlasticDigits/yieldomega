@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+import { expect, type Page } from "@playwright/test";
+import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
+
+export async function gotoArena(page: Page): Promise<void> {
+  await page.goto("/arena");
+  await expect(page.getByTestId("time-arena-page-mounted")).toBeAttached();
+}
+
+export async function connectArenaWallet(page: Page): Promise<void> {
+  await connectMockWalletIfPlaceholderVisible(
+    page,
+    "Connect a wallet to preview and buy charms.",
+  );
+  await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
+    timeout: 60_000,
+  });
+}
+
+export function arenaBuyPanel(page: Page) {
+  return page.locator(".timecurve-simple__buy-panel");
+}
+
+export async function openBuyAdvanced(page: Page): Promise<void> {
+  const buyPanel = arenaBuyPanel(page);
+  await buyPanel.locator('[data-testid="timecurve-simple-buy-advanced"] summary').click();
+}
+
+export async function selectPayWith(page: Page, asset: "cl8y" | "eth" | "usdm"): Promise<void> {
+  const buyPanel = arenaBuyPanel(page);
+  await openBuyAdvanced(page);
+  await buyPanel.getByTestId(`arena-paywith-${asset}`).click();
+  await expect(buyPanel.getByTestId(`arena-paywith-${asset}`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+}
+
+export async function setCharmSliderMin(page: Page): Promise<void> {
+  const buyPanel = arenaBuyPanel(page);
+  await buyPanel.locator('input[type="range"]').evaluate((input) => {
+    const el = input as HTMLInputElement;
+    el.value = "1";
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}

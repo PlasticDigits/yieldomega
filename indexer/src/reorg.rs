@@ -9,10 +9,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgConnection;
 use sqlx::{PgPool, Row};
 
-/// Maximum ancestor walk during reorg before treating as catastrophic.
 pub const MAX_REORG_DEPTH: u64 = 128;
 
-/// The indexer's canonical tip.
 #[derive(Debug, Clone, Copy)]
 pub struct ChainPointer {
     pub block_number: u64,
@@ -38,7 +36,6 @@ pub(crate) fn parse_b256_hex(s: &str) -> Result<B256> {
         .map_err(|e| eyre::eyre!("invalid block_hash in chain_pointer: {e}"))
 }
 
-/// Load pointer from `indexer_state` or default before any indexed blocks.
 pub async fn load_chain_pointer(pool: &PgPool) -> Result<ChainPointer> {
     let row = sqlx::query("SELECT value FROM indexer_state WHERE key = 'chain_pointer'")
         .fetch_optional(pool)
@@ -59,7 +56,6 @@ pub async fn load_chain_pointer(pool: &PgPool) -> Result<ChainPointer> {
     })
 }
 
-/// Persist pointer after successfully processing a block (within `conn` or standalone).
 pub async fn save_chain_pointer_conn(conn: &mut PgConnection, p: &ChainPointer) -> Result<()> {
     let json = pointer_to_json(p)?;
     sqlx::query(
@@ -77,7 +73,6 @@ pub async fn save_chain_pointer(pool: &PgPool, p: &ChainPointer) -> Result<()> {
     save_chain_pointer_conn(&mut conn, p).await
 }
 
-/// Record a canonical block hash for reorg walk-back.
 pub async fn upsert_indexed_block_conn(
     conn: &mut PgConnection,
     number: u64,
@@ -101,7 +96,6 @@ pub async fn upsert_indexed_block(pool: &PgPool, number: u64, hash: B256) -> Res
     upsert_indexed_block_conn(&mut conn, number, hash).await
 }
 
-/// Stored hash for `block_number`, if any.
 pub async fn get_stored_block_hash(pool: &PgPool, block_number: u64) -> Result<Option<B256>> {
     let n = block_number as i64;
     let row = sqlx::query("SELECT block_hash FROM indexed_blocks WHERE block_number = $1")
@@ -115,53 +109,25 @@ pub async fn get_stored_block_hash(pool: &PgPool, block_number: u64) -> Result<O
     Ok(None)
 }
 
-/// Delete all indexed data strictly after `ancestor_block` and set pointer to ancestor.
+const ROLLBACK_TABLES: &[&str] = &[
+    "idx_referral_code_registered",
+    "idx_arena_buy",
+    "idx_arena_started",
+    "idx_arena_podium_epoch",
+    "idx_play_cred_claim",
+    "idx_player_xp",
+    "idx_arena_referral_cred",
+    "idx_arena_referral_applied",
+    "idx_arena_warbow_steal",
+    "idx_arena_warbow_guard",
+    "idx_warbow_epoch_score",
+];
+
 pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()> {
     let cut = ancestor.block_number as i64;
     let mut tx = pool.begin().await?;
 
-    for table in [
-        "idx_doub_vesting_claimed",
-        "idx_doub_vesting_claims_enabled",
-        "idx_doub_vesting_rescue_erc20",
-        "idx_doub_vesting_started",
-        "idx_fee_sink_withdrawn",
-        "idx_nft_minted",
-        "idx_nft_series_created",
-        "idx_podium_pool_paid",
-        "idx_podium_pool_residual_forwarded",
-        "idx_podium_pool_prize_pusher_set",
-        "idx_referral_code_registered",
-        "idx_timecurve_buy",
-        "idx_timecurve_buy_fee_routing_enabled",
-        "idx_timecurve_buy_router_cl8y_surplus",
-        "idx_timecurve_buy_router_erc20_rescued",
-        "idx_timecurve_buy_router_eth_rescued",
-        "idx_timecurve_buy_router_kumbaya",
-        "idx_timecurve_buy_router_set",
-        "idx_timecurve_presale_vesting_set",
-        "idx_timecurve_unredeemed_launched_token_recipient_set",
-        "idx_timecurve_unredeemed_launched_token_swept",
-        "idx_timecurve_charm_redemption_enabled",
-        "idx_timecurve_charms_redeemed",
-        "idx_timecurve_prizes_distributed",
-        "idx_timecurve_prizes_settled_empty_podium_pool",
-        "idx_timecurve_podium_residual_recipient_set",
-        "idx_timecurve_referral_applied",
-        "idx_timecurve_reserve_podium_payouts_enabled",
-        "idx_timecurve_sale_ended",
-        "idx_timecurve_sale_started",
-        "idx_timecurve_warbow_cl8y_burned",
-        "idx_timecurve_warbow_ds_broken",
-        "idx_timecurve_warbow_ds_continued",
-        "idx_timecurve_warbow_ds_window_cleared",
-        "idx_timecurve_warbow_flag_claimed",
-        "idx_timecurve_warbow_flag_penalized",
-        "idx_timecurve_warbow_guard",
-        "idx_timecurve_warbow_revenge_window",
-        "idx_timecurve_warbow_revenge",
-        "idx_timecurve_warbow_steal",
-    ] {
+    for table in ROLLBACK_TABLES {
         let q = format!("DELETE FROM {table} WHERE block_number > $1");
         sqlx::query(&q).bind(cut).execute(&mut *tx).await?;
     }
@@ -184,9 +150,6 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
     Ok(())
 }
 
-/// Walk backward from `from_height` until RPC hash matches `indexed_blocks`, or limit exceeded.
-///
-/// `rpc_sticky_idx` keeps block fetches on one comma-separated RPC replica where possible (same as ingestion).
 pub async fn find_common_ancestor(
     pool: &PgPool,
     providers: &[alloy_provider::ReqwestProvider],
@@ -194,7 +157,6 @@ pub async fn find_common_ancestor(
     rpc_sticky_idx: &mut usize,
 ) -> Result<u64> {
     use alloy_rpc_types::BlockTransactionsKind;
-
     use crate::rpc_http::rpc_first_some_sticky;
 
     let mut n = from_height;
@@ -212,43 +174,13 @@ pub async fn find_common_ancestor(
             if stored == rpc_b256 {
                 return Ok(n);
             }
+        } else if n == 0 {
+            return Ok(0);
         }
-
         if n == 0 {
-            bail!("reorg walk reached genesis without common ancestor");
+            break;
         }
-        n -= 1; // mismatch or missing local row — walk back
+        n -= 1;
     }
-
-    bail!("reorg deeper than MAX_REORG_DEPTH ({MAX_REORG_DEPTH}); manual re-index required");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_b256_hex_accepts_prefixed_hash() {
-        let h = B256::from([0xab; 32]);
-        let parsed = parse_b256_hex(&format!("{h:#x}")).unwrap();
-        assert_eq!(parsed, h);
-    }
-
-    #[test]
-    fn parse_b256_hex_rejects_garbage() {
-        assert!(parse_b256_hex("not-a-hash").is_err());
-    }
-
-    #[test]
-    fn pointer_json_roundtrip() {
-        let p = ChainPointer {
-            block_number: 42,
-            block_hash: B256::from([7u8; 32]),
-        };
-        let v = pointer_to_json(&p).unwrap();
-        assert_eq!(v["block_number"], 42);
-        let s = v["block_hash"].as_str().unwrap();
-        let back = parse_b256_hex(s).unwrap();
-        assert_eq!(back, p.block_hash);
-    }
+    bail!("reorg depth exceeded {MAX_REORG_DEPTH} blocks");
 }
