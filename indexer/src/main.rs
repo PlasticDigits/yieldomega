@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
 
     let rpc_timeout = config.rpc_request_timeout;
     if let Some(addr) = config.address_registry.as_ref().and_then(|r| {
-        let s = r.contracts.timecurve.trim();
+        let s = r.contracts.time_arena.trim();
         if s.is_empty() {
             return None;
         }
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
         });
     } else {
         tracing::warn!(
-            "ADDRESS_REGISTRY missing TimeCurve — /v1/timecurve/chain-timer will return 503"
+            "ADDRESS_REGISTRY missing TimeArena — /v1/timecurve/chain-timer will return 503"
         );
     }
 

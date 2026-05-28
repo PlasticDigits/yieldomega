@@ -6,7 +6,6 @@ import {
   fetchTimecurveBuys,
   fetchTimecurveChainTimer,
   fetchTimecurveWarbowLeaderboardAll,
-  rabbitDepositsApiPath,
   referralAppliedApiPath,
   referralReferrerLeaderboardApiPath,
   referralRegistrationsApiPath,
@@ -20,19 +19,6 @@ import {
   getIndexerBackoffPollMs,
   resetIndexerConnectivityForTests,
 } from "./indexerConnectivity";
-
-describe("rabbitDepositsApiPath", () => {
-  it("omits user query when undefined", () => {
-    expect(rabbitDepositsApiPath(undefined, 20)).toBe("/v1/rabbit/deposits?limit=20");
-  });
-
-  it("encodes user for query injection safety", () => {
-    const malicious = "0xabc&limit=999";
-    expect(rabbitDepositsApiPath(malicious, 20)).toBe(
-      `/v1/rabbit/deposits?limit=20&user=${encodeURIComponent(malicious)}`,
-    );
-  });
-});
 
 describe("timecurveBuyerStatsApiPath", () => {
   it("encodes buyer address", () => {

@@ -6,11 +6,6 @@ test("placeholder and third-party routes use the shared branded shell", async ({
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  await page.goto("/rabbit-treasury");
-  await expect(page.getByRole("heading", { name: "Rabbit Treasury", level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open TimeCurve" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Launch Track", level: 2 })).toBeVisible();
-
   await page.goto("/kumbaya");
   await expect(page.getByRole("heading", { name: "Kumbaya", level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Venue Snapshot", level: 2 })).toBeVisible();

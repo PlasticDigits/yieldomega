@@ -18,10 +18,10 @@ export type HomeSurfaceCard = {
 export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
   {
     to: "/timecurve",
-    title: "TimeCurve",
-    blurb: "The timed launchpad for DOUB & more",
+    title: "Time Arena",
+    blurb: "Timed DOUB launchpad — buy CHARM, compete on podiums, extend the clock",
     image: "/art/scenes/timecurve-simple.jpg",
-    imageAlt: "TimeCurve fair-launch arcade scene with mascots and coins",
+    imageAlt: "Time Arena fair-launch arcade scene with mascots and coins",
     badgeLabel: "Live",
     badgeTone: "live",
   },
@@ -56,37 +56,9 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
     badgeLabel: "External",
     badgeTone: "external",
   },
-  {
-    to: "/rabbit-treasury",
-    title: "Rabbit Treasury",
-    blurb: "Gamified ROI dapp on MegaETH using DOUB",
-    image: "/art/scenes/rabbit-treasury.jpg",
-    imageAlt: "Rabbit burrow reserve scene with charts adjacent",
-    badgeLabel: "Coming soon",
-    badgeTone: "soon",
-  },
-  {
-    to: "/collection",
-    title: "Collection",
-    blurb: "Collect sets to gain boosts on other dapps",
-    image: "/art/scenes/collection-gallery.jpg",
-    imageAlt: "Collection gallery scene with display shelves",
-    badgeLabel: "Coming soon",
-    badgeTone: "soon",
-  },
 ];
 
 export const PLACEHOLDER_CUTOUTS_BY_SLUG = {
-  "rabbit-treasury": {
-    primary: "/art/cutouts/mascot-leprechaun-with-bag-cutout.png",
-    secondary: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
-    tertiary: "/art/cutouts/loading-mascot-circle.png",
-  },
-  collection: {
-    primary: "/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png",
-    secondary: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
-    tertiary: "/art/cutouts/bunny-cutout.png",
-  },
   referrals: {
     primary: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
     secondary: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",

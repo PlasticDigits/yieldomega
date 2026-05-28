@@ -86,7 +86,7 @@ contracts/.venv-slither/
 
 # Python simulations
 simulations/.venv/
-bots/timecurve/.venv/
+bots/timearena/.venv/
 scripts/replicate-art/.venv/
 scripts/sound-effects/.venv/
 # Manual art review drops (binaries/logs); checklist may be committed

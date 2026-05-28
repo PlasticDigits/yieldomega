@@ -10,19 +10,17 @@ import {
   participantLaunchValueCl8yWei,
   podiumCategorySlices,
   podiumPlacementShares,
-  RESERVE_FEE_ROUTING_BPS,
+  ARENA_DOUB_ROUTING_BPS,
 } from "./timeCurvePodiumMath";
 
 const WAD = 10n ** 18n;
 
 describe("timeCurvePodiumMath", () => {
-  it("fee bps sum to 10_000", () => {
+  it("arena DOUB routing bps sum to 10_000", () => {
     const s =
-      RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity +
-      RESERVE_FEE_ROUTING_BPS.cl8yBurned +
-      RESERVE_FEE_ROUTING_BPS.podiumPool +
-      RESERVE_FEE_ROUTING_BPS.team +
-      RESERVE_FEE_ROUTING_BPS.rabbitTreasury;
+      ARENA_DOUB_ROUTING_BPS.activePodium +
+      ARENA_DOUB_ROUTING_BPS.seedPodium +
+      ARENA_DOUB_ROUTING_BPS.adminVault;
     expect(s).toBe(10_000);
   });
 

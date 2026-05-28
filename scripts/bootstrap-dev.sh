@@ -12,7 +12,7 @@
 #   git clone --recurse-submodules <url>
 #
 # GitLab #162 — onboarding / QA prerequisites
-# See also: contracts/README.md (Setup), bots/timecurve/README.md (venv + web3).
+# See also: contracts/README.md (Setup), bots/timearena/README.md (venv + web3).
 
 set -euo pipefail
 
@@ -31,5 +31,5 @@ echo "==> Frontend (npm ci)"
 (cd frontend && npm ci)
 
 echo "==> Bootstrap finished."
-echo "    Optional — bot swarm deps: cd bots/timecurve && python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[dev]'"
+echo "    Optional — bot swarm deps: cd bots/timearena && python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[dev]'"
 echo "    Contracts: cd contracts && forge test   (see contracts/README.md)"

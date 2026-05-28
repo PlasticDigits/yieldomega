@@ -1,257 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useState } from "react";
-import { ConversionArrow } from "@/components/ui/ConversionArrow";
+import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { useReadContracts } from "wagmi";
-import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
-import { TxHash } from "@/components/TxHash";
-import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { formatBpsAsPercent, formatLocaleInteger } from "@/lib/formatAmount";
-import { erc20Abi, feeRouterReadAbi } from "@/lib/abis";
-import {
-  fetchFeeRouterFeesDistributed,
-  fetchFeeRouterSinksUpdates,
-  type FeeRouterFeesDistributedItem,
-  type FeeRouterSinksUpdateItem,
-} from "@/lib/indexerApi";
-import {
-  feeRouterSinkRowsFromSaleState,
-  useTimecurveSaleStateQuery,
-} from "@/pages/timecurve/useTimecurveSaleState";
+import { addresses } from "@/lib/addresses";
 
-/** Optional pictograms for `FeeRouter` sink rows (issue #57). */
-const FEE_SINK_ICON: Partial<Record<number, string>> = {
-  1: "/art/icons/fee-burn.png",
-  2: "/art/icons/fee-referral.png",
-  4: "/art/icons/fee-treasury.png",
-};
-
-/** Matches `FeeRouter` sink order: DOUB/CL8Y LP · CL8Y burned · podium · team · Rabbit. */
-const FEE_SINK_LABELS = [
-  "DOUB/CL8Y LP (locked)",
-  "CL8Y burned (sale proceeds)",
-  "Podium pool",
-  "Team / reserved (0% default)",
-  "Rabbit Treasury",
-] as const;
-
+/** DOUB buy routing targets (40% active · 30% seed · 30% admin) — replaces legacy FeeRouter sinks. */
 export function FeeTransparency() {
-  const fr = addresses.feeRouter;
-  const tc = addresses.timeCurve;
-  const indexerOn = Boolean(indexerBaseUrl());
-  const saleStateQuery = useTimecurveSaleStateQuery(tc);
-  const [sinksHistory, setSinksHistory] = useState<FeeRouterSinksUpdateItem[] | null>(null);
-  const [feesDistributed, setFeesDistributed] = useState<FeeRouterFeesDistributedItem[] | null>(null);
-  const [historyNote, setHistoryNote] = useState<string | null>(null);
-  const feeTokenAddrs = useMemo(
-    () => Array.from(new Set(feesDistributed?.map((r) => r.token) ?? [])),
-    [feesDistributed],
-  );
-  const { data: feeTokenDecimalsResults } = useReadContracts({
-    contracts: feeTokenAddrs.map((addr) => ({
-      address: addr as `0x${string}`,
-      abi: erc20Abi,
-      functionName: "decimals" as const,
-    })),
-    query: { enabled: feeTokenAddrs.length > 0 },
-  });
-  const feeTokenDecimalsByAddr = useMemo(() => {
-    const map = new Map<string, number>();
-    feeTokenDecimalsResults?.forEach((r, i) => {
-      if (r.status === "success" && typeof r.result === "number") {
-        map.set(feeTokenAddrs[i], r.result);
-      }
-    });
-    return map;
-  }, [feeTokenDecimalsResults, feeTokenAddrs]);
-
-  const sinkRowsFromIndexer = useMemo(() => {
-    if (!indexerOn || !saleStateQuery.data) {
-      return undefined;
-    }
-    return feeRouterSinkRowsFromSaleState(saleStateQuery.data);
-  }, [indexerOn, saleStateQuery.data]);
-
-  const { data: sinkRowsRpc, isPending: sinksRpcPending, isError: sinksRpcError } = useReadContracts({
-    contracts: fr
-      ? ([0, 1, 2, 3, 4] as const).map((i) => ({
-          address: fr,
-          abi: feeRouterReadAbi,
-          functionName: "sinks" as const,
-          args: [BigInt(i)],
-        }))
-      : [],
-    query: { enabled: Boolean(fr) && !indexerOn },
-  });
-
-  const sinkRows = indexerOn ? sinkRowsFromIndexer : sinkRowsRpc;
-  const sinksPending = indexerOn ? saleStateQuery.isLoading : sinksRpcPending;
-  const sinksError = indexerOn ? saleStateQuery.isError : sinksRpcError;
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (!indexerBaseUrl()) {
-        setHistoryNote(null);
-        setSinksHistory(null);
-        setFeesDistributed(null);
-        return;
-      }
-      const [res, fd] = await Promise.all([
-        fetchFeeRouterSinksUpdates(8, 0),
-        fetchFeeRouterFeesDistributed(8, 0),
-      ]);
-      if (cancelled) {
-        return;
-      }
-      if (!res) {
-        setHistoryNote("Indexer unreachable for history.");
-        setSinksHistory([]);
-        setFeesDistributed(fd?.items ?? []);
-        return;
-      }
-      setHistoryNote(null);
-      setSinksHistory(res.items);
-      setFeesDistributed(fd?.items ?? []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!fr) {
+  if (!addresses.timeArena) {
     return (
-      <StatusMessage variant="muted">
-        Fee router: set <code>VITE_FEE_ROUTER_ADDRESS</code> to show sink destinations.
-      </StatusMessage>
+      <div className="fee-transparency">
+        <StatusMessage variant="muted">
+          Set <code>VITE_TIME_ARENA_ADDRESS</code> (and vault env vars) to show Arena prize routing.
+        </StatusMessage>
+      </div>
     );
-  }
-
-  if (sinksPending) {
-    return <StatusMessage variant="loading">Loading fee router...</StatusMessage>;
-  }
-  if (sinksError || !sinkRows) {
-    return <StatusMessage variant="error">Could not read fee router.</StatusMessage>;
   }
 
   return (
     <div className="fee-transparency">
       <p className="muted">
-        <strong>Current onchain sinks</strong> (canonical for balances and routing)
+        <strong>Arena v2 prize vaults</strong> — each DOUB buy splits 40% active podium, 30% seed
+        podium, 30% admin sell vault per onchain <code>ArenaBuyRouting</code>.
       </p>
-      <ul className="fee-sink-list">
-        {sinkRows.map((row, i) => {
-          if (row.status !== "success" || row.result === undefined) {
-            return null;
-          }
-          const [dest, bps] = row.result as readonly [`0x${string}`, number];
-          return (
-            <li key={i}>
-              {FEE_SINK_ICON[i] !== undefined ?
-                <img
-                  className="fee-sink-list__icon"
-                  src={FEE_SINK_ICON[i]}
-                  alt=""
-                  width={20}
-                  height={20}
-                  decoding="async"
-                />
-              : null}
-              <strong>{FEE_SINK_LABELS[i] ?? `Sink ${i}`}</strong>: {formatBpsAsPercent(bps)}{" "}
-              <ConversionArrow size={12} className="fee-sink-list__conversion-arrow" />{" "}
-              <MegaScannerAddressLink address={dest} />
-            </li>
-          );
-        })}
-      </ul>
-      {sinksHistory && sinksHistory.length > 0 && (
-        <>
-          <p className="muted" style={{ marginTop: "0.75rem" }}>
-            <strong>Recent SinksUpdated events</strong> (indexer mirror)
-          </p>
-          <ul className="fee-sink-list fee-sink-list--compact">
-            {sinksHistory.map((row) => (
-              <li key={`${row.tx_hash}-${row.log_index}`}>
-                block {formatLocaleInteger(row.block_number)} — actor{" "}
-                <MegaScannerAddressLink address={row.actor} /> —{" "}
-                new routing {formatSinksJsonForDisplay(row.new_sinks_json)} — tx{" "}
-                <TxHash hash={row.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {feesDistributed && feesDistributed.length > 0 && (
-        <>
-          <p className="muted" style={{ marginTop: "0.75rem" }}>
-            <strong>Recent fee distributions</strong> (indexer mirror)
-          </p>
-          <ul className="fee-sink-list fee-sink-list--compact">
-            {/* `amount` is uint256 from indexer; decimals resolved from `row.token` via `erc20Abi.decimals()` reads, falling back to 18 (GitLab #110). */}
-            {feesDistributed.map((row) => (
-              <li key={`${row.tx_hash}-${row.log_index}`}>
-                block {formatLocaleInteger(row.block_number)} — token{" "}
-                <MegaScannerAddressLink address={row.token} /> — amount{" "}
-                <span className="mono">
-                  {formatCompactFromRaw(rawToBigIntForFormat(row.amount), feeTokenDecimalsByAddr.get(row.token) ?? 18)}
-                </span>{" "}
-                — per sink {formatFeeSharesJsonForDisplay(row.shares_json, feeTokenDecimalsByAddr.get(row.token) ?? 18)} — tx{" "}
-                <TxHash hash={row.tx_hash} />
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {historyNote && <StatusMessage variant="muted">{historyNote}</StatusMessage>}
-      {!indexerBaseUrl() && (
-        <StatusMessage variant="muted">
-          Set <code>VITE_INDEXER_URL</code> for historical sink updates.
-        </StatusMessage>
-      )}
+      <ArenaVaultAddressesPanel />
     </div>
   );
-}
-
-function formatSinksJsonForDisplay(json: string): string {
-  try {
-    const p = JSON.parse(json) as { weights?: unknown };
-    const w = p.weights;
-    if (!Array.isArray(w)) {
-      return "—";
-    }
-    const parts: string[] = [];
-    for (let i = 0; i < w.length; i++) {
-      const bps = Number(w[i]);
-      if (!Number.isFinite(bps)) {
-        continue;
-      }
-      const label = FEE_SINK_LABELS[i] ?? `Sink ${i}`;
-      parts.push(`${label} ${formatBpsAsPercent(bps)}`);
-    }
-    return parts.length > 0 ? parts.join(" · ") : "—";
-  } catch {
-    return "—";
-  }
-}
-
-/** `shares` from indexer are per-sink token amounts (wei); decimals threaded from caller. */
-function formatFeeSharesJsonForDisplay(json: string, decimals: number): string {
-  try {
-    const p = JSON.parse(json) as { shares?: unknown };
-    const s = p.shares;
-    if (!Array.isArray(s)) {
-      return "—";
-    }
-    const parts: string[] = [];
-    for (let i = 0; i < s.length; i++) {
-      const label = FEE_SINK_LABELS[i] ?? `Sink ${i}`;
-      const amt = formatCompactFromRaw(rawToBigIntForFormat(String(s[i])), decimals);
-      parts.push(`${label} ${amt}`);
-    }
-    return parts.length > 0 ? parts.join(" · ") : "—";
-  } catch {
-    return "—";
-  }
 }

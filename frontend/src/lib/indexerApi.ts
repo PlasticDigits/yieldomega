@@ -3,13 +3,6 @@
 import { indexerBaseUrl } from "./addresses";
 import { reportIndexerRateLimited } from "./indexerConnectivity";
 
-/** Builds `/v1/rabbit/deposits` query path; encodes `user` for safe query embedding. */
-export function rabbitDepositsApiPath(user: string | undefined, limit: number): string {
-  return user
-    ? `/v1/rabbit/deposits?limit=${limit}&user=${encodeURIComponent(user)}`
-    : `/v1/rabbit/deposits?limit=${limit}`;
-}
-
 export type BuyItem = {
   block_number: string;
   /** Present when the indexer serves the extended buy row (v2+). */
@@ -41,40 +34,6 @@ export type BuyItem = {
   buyer_total_effective_timer_sec?: string;
   buyer_active_defended_streak?: string;
   buyer_best_defended_streak?: string;
-};
-
-export type DepositItem = {
-  block_number: string;
-  tx_hash: string;
-  log_index: number;
-  user_address: string;
-  reserve_asset: string;
-  amount: string;
-  doub_out: string;
-  epoch_id: string;
-  faction_id: string;
-};
-
-export type MintItem = {
-  block_number: string;
-  tx_hash: string;
-  log_index: number;
-  token_id: string;
-  series_id: string;
-  to_address: string;
-};
-
-export type HealthEpochItem = {
-  block_number: string;
-  tx_hash: string;
-  log_index: number;
-  epoch_id: string;
-  finalized_at: string;
-  reserve_ratio_wad: string;
-  doub_total_supply: string;
-  repricing_factor_wad: string;
-  backing_per_doubloon_wad: string;
-  internal_state_e_wad: string;
 };
 
 export type CharmRedemptionItem = {
@@ -458,10 +417,6 @@ export async function fetchTimecurvePlatformUsage(
   );
 }
 
-export async function fetchRabbitDeposits(user: string | undefined, limit = 20) {
-  return getJson<{ items: DepositItem[] }>(rabbitDepositsApiPath(user, limit));
-}
-
 /** Response header for indexer API schema; present on v1 JSON routes. */
 const INDEXER_SCHEMA_HEADER = "x-schema-version";
 
@@ -511,14 +466,6 @@ export async function fetchIndexerStatus() {
   } as Record<string, unknown>;
 }
 
-export async function fetchLeprechaunMints(limit = 20) {
-  return getJson<{ items: MintItem[] }>(`/v1/leprechauns/mints?limit=${limit}`);
-}
-
-export async function fetchRabbitHealthEpochs(limit = 10) {
-  return getJson<{ items: HealthEpochItem[] }>(`/v1/rabbit/health-epochs?limit=${limit}`);
-}
-
 export async function fetchTimecurveCharmRedemptions(limit = 20) {
   return getJson<{ items: CharmRedemptionItem[] }>(
     `/v1/timecurve/charm-redemptions?limit=${limit}`,
@@ -549,26 +496,6 @@ export function referralAppliedApiPath(referrer: string | undefined, limit: numb
   return referrer
     ? `/v1/referrals/applied?limit=${limit}&referrer=${encodeURIComponent(referrer)}`
     : `/v1/referrals/applied?limit=${limit}`;
-}
-
-export type WithdrawalItem = {
-  block_number: string;
-  tx_hash: string;
-  log_index: number;
-  user_address: string;
-  reserve_asset: string;
-  amount: string;
-  doub_in: string;
-  epoch_id: string;
-  faction_id: string;
-};
-
-export async function fetchRabbitWithdrawals(user: string | undefined, limit = 20) {
-  const q =
-    user !== undefined
-      ? `/v1/rabbit/withdrawals?limit=${limit}&user=${encodeURIComponent(user)}`
-      : `/v1/rabbit/withdrawals?limit=${limit}`;
-  return getJson<{ items: WithdrawalItem[] }>(q);
 }
 
 export type PrizePayoutItem = {
@@ -711,13 +638,3 @@ export async function fetchFeeRouterFeesDistributed(limit = 20, offset = 0) {
   );
 }
 
-export type FactionStatItem = {
-  faction_id: string;
-  net_deposits: string;
-  deposit_count: string;
-  withdrawal_count: string;
-};
-
-export async function fetchRabbitFactionStats() {
-  return getJson<{ items: FactionStatItem[] }>("/v1/rabbit/faction-stats");
-}
