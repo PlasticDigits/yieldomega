@@ -16,8 +16,6 @@ const PLAY_SKILLS: { label: string; path: string }[] = [
   { label: "script-with-timecurve-local", path: "skills/script-with-timecurve-local/SKILL.md" },
   { label: "play-timecurve-doubloon", path: "skills/play-timecurve-doubloon/SKILL.md" },
   { label: "play-timecurve-warbow", path: "skills/play-timecurve-warbow/SKILL.md" },
-  { label: "play-rabbit-treasury", path: "skills/play-rabbit-treasury/SKILL.md" },
-  { label: "collect-leprechaun-sets", path: "skills/collect-leprechaun-sets/SKILL.md" },
 ];
 
 const CONTRIBUTOR_SKILL = {
@@ -32,6 +30,7 @@ const DOCS_LINKS: { label: string; path: string }[] = [
   { label: "Indexer design + HTTP error redaction (#157)", path: "docs/indexer/design.md" },
   { label: "Invariants & business logic (indexer INV-* index)", path: "docs/testing/invariants-and-business-logic.md" },
   { label: "TimeCurve product primitives", path: "docs/product/primitives.md" },
+  { label: "Arena v2 product primitives", path: "docs/product/arena-v2.md" },
 ];
 
 const TIMECURVE_SCRIPTING_SNIPPET = `# pip install web3 — sketch only: set RPC_URL, PRIVATE_KEY, TIMECURVE, TIME_CURVE_ABI (proxy).
@@ -70,11 +69,7 @@ GET /v1/timecurve/warbow/pending-revenge
 GET /v1/timecurve/warbow/refresh-candidates
 GET /v1/timecurve/buyer-stats
 GET /v1/timecurve/platform-usage
-GET /v1/rabbit/deposits
-GET /v1/rabbit/withdrawals
-GET /v1/rabbit/health-epochs
 GET /v1/timecurve/charm-redemptions
-GET /v1/leprechauns/mints
 GET /v1/timecurve/prize-distributions
 GET /v1/timecurve/prize-payouts
 GET /v1/referrals/registrations
@@ -82,8 +77,7 @@ GET /v1/referrals/applied
 GET /v1/referrals/referrer-leaderboard
 GET /v1/referrals/wallet-charm-summary
 GET /v1/fee-router/sinks-updates
-GET /v1/fee-router/fees-distributed
-GET /v1/rabbit/faction-stats`;
+GET /v1/fee-router/fees-distributed`;
 
 function ghBlob(path: string) {
   return `${GH_MAIN}/${path}`;
@@ -92,13 +86,11 @@ function ghBlob(path: string) {
 function envAddresses(): { key: string; value: string }[] {
   const entries: { key: string; value: string }[] = [];
   const map: Record<string, `0x${string}` | undefined> = {
-    "VITE_TIMECURVE_ADDRESS (TimeCurve proxy)": addresses.timeCurve,
-    "VITE_RABBIT_TREASURY_ADDRESS": addresses.rabbitTreasury,
-    "VITE_LEPRECHAUN_NFT_ADDRESS": addresses.leprechaunNft,
+    "VITE_TIMECURVE_ADDRESS (TimeCurve / Arena proxy)": addresses.timeCurve,
+    "VITE_TIME_ARENA_ADDRESS": addresses.timeArena,
+    "VITE_PODIUM_VAULTS_ADDRESS": addresses.podiumVaults,
+    "VITE_ADMIN_SELL_VAULT_ADDRESS": addresses.adminSellVault,
     "VITE_REFERRAL_REGISTRY_ADDRESS": addresses.referralRegistry,
-    "VITE_FEE_ROUTER_ADDRESS": addresses.feeRouter,
-    "VITE_DOUB_PRESALE_VESTING_ADDRESS": addresses.doubPresaleVesting,
-    "VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY": addresses.presaleCharmBeneficiaryRegistry,
   };
   for (const [key, v] of Object.entries(map)) {
     if (v) entries.push({ key, value: v });
@@ -123,8 +115,8 @@ export function AgentFooterCard() {
         <article className="app-footer-agent__article" lang="en">
           <h3 className="app-footer-agent__h">YieldOmega — machine-readable orientation</h3>
           <p className="app-footer-agent__p">
-            YieldOmega ships onchain games and treasuries (TimeCurve DOUB sale, Rabbit Treasury / Burrow, Leprechaun
-            NFTs, referrals, fee routing).{" "}
+            YieldOmega ships onchain games and treasuries (Time Arena / TimeCurve DOUB sale, referrals, fee
+            routing).{" "}
             <strong>Authoritative rules and balances live in contracts</strong>; the indexer and this UI are{" "}
             <strong>derived read models</strong> built from decoded logs and JSON-RPC (see architecture doc). Agents
             helping <em>users participate</em> should follow{" "}
@@ -134,9 +126,9 @@ export function AgentFooterCard() {
 
           <h4 className="app-footer-agent__h">Play skills (GitHub mirror, raw Markdown)</h4>
           <p className="app-footer-agent__p">
-            Seven player-facing skills live under <code className="app-footer-agent__code-inline">skills/</code> (see
+            Player-facing skills live under <code className="app-footer-agent__code-inline">skills/</code> (see
             table in <a href={ghBlob("skills/README.md")}>skills/README.md</a>). Use these for wallet flows, buys,
-            WarBow, treasury, and collection semantics — not for unsolicited repo patches unless the user asks.
+            and WarBow — not for unsolicited repo patches unless the user asks.
           </p>
           <ul className="app-footer-agent__list">
             {PLAY_SKILLS.map((s) => (
@@ -235,7 +227,9 @@ export function AgentFooterCard() {
           ) : null}
         </div>
         <div className="data-panel data-panel--footer">
-          <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
+          <h3 className="h-footer">
+            {addresses.timeArena ? "Arena prize vaults (read-only)" : "Canonical fee sinks (read-only)"}
+          </h3>
           <FeeTransparency />
         </div>
       </div>

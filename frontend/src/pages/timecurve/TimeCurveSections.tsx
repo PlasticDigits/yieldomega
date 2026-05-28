@@ -20,7 +20,7 @@ import type {
   FeedNarrative,
   WarbowPreflightNarrative,
 } from "@/lib/timeCurveUx";
-import { RESERVE_FEE_ROUTING_BPS } from "@/lib/timeCurvePodiumMath";
+import { ARENA_DOUB_ROUTING_BPS } from "@/lib/timeCurvePodiumMath";
 import type { WalletFormatShort } from "@/lib/addressFormat";
 import type {
   BuyItem,
@@ -928,11 +928,9 @@ export function RawDataAccordion(props: {
             <ul className="event-list">
               {(
                 [
-                  ["DOUB/CL8Y LP (locked SIR / Kumbaya)", RESERVE_FEE_ROUTING_BPS.doubLpLockedLiquidity],
-                  ["CL8Y burned (sale proceeds)", RESERVE_FEE_ROUTING_BPS.cl8yBurned],
-                  ["Podium pool", RESERVE_FEE_ROUTING_BPS.podiumPool],
-                  ["Team / reserved", RESERVE_FEE_ROUTING_BPS.team],
-                  ["Rabbit Treasury", RESERVE_FEE_ROUTING_BPS.rabbitTreasury],
+                  ["Active podium vault", ARENA_DOUB_ROUTING_BPS.activePodium],
+                  ["Seed podium vault", ARENA_DOUB_ROUTING_BPS.seedPodium],
+                  ["Admin sell vault", ARENA_DOUB_ROUTING_BPS.adminVault],
                 ] as const
               ).map(([label, bps], index) => {
                 const row = sinkReads?.[index];

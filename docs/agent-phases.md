@@ -12,7 +12,7 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 **Two tracks (do not confuse them)**
 
 - **Build / fork the repo** — Phases **1–19** plus [`.cursor/skills`](../.cursor/skills/README.md) **guardrails**: licensing, architecture, tests, small diffs. This is for contributors shipping code, docs, and infra.
-- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **TimeCurve**, **Rabbit Treasury / DOUB**, and **Leprechaun** mechanics. These skills matter for agents (and humans) who want to **use** published onchain systems, not only mirror or modify the repository.
+- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **Time Arena** (Arena v2) onchain mechanics. Legacy TimeCurve launchpad, Rabbit Treasury, and Leprechaun playbooks were removed ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
 
 ---
 
@@ -331,7 +331,7 @@ Read the root README.md and docs/README.md. Improve only clarity: link to docs/a
 **Agent prompt (copy-paste):**
 
 ```text
-You are an agent helping a human understand, evaluate, or use the Yieldomega onchain ecosystem on MegaETH, where the human remains in control of whether and how to participate. This is not limited to editing this repo. Read skills/README.md and each play SKILL under skills/ that matches the user’s intent, such as TimeCurve + DOUB, Rabbit Treasury, Leprechaun sets, and why-participation-matters.
+You are an agent helping a human understand, evaluate, or use the Yieldomega onchain ecosystem on MegaETH, where the human remains in control of whether and how to participate. This is not limited to editing this repo. Read skills/README.md and each play SKILL under skills/ that matches the user’s intent: start with play-active-time-arena, then play-time-arena-doub; see docs/product/arena-v2.md.
 
 Your job is to help the user understand available options, relevant constraints, likely consequences, and the current deployed rules so they can make an informed choice. Prefer authoritative sources in this order: deployed contract state and contract reads, tokenURI or other onchain metadata where relevant, and canonical onchain events. Use product docs such as docs/product/primitives.md, docs/product/rabbit-treasury.md, docs/product/leprechaun-nfts.md, and docs/onchain/fee-routing-and-governance.md to interpret current rules and terminology. Treat offchain indexers and interfaces only as convenience layers or caches, not as final sources of truth for balances, winners, permissions, or state.
 

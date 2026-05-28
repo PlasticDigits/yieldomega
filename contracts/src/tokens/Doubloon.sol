@@ -7,7 +7,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title Doubloon (DOUB)
 /// @notice Fungible Burrow receipt token.
-/// @dev **Minting** is restricted to `MINTER_ROLE` (expected holder: `RabbitTreasury`). **Burning** uses OpenZeppelin
+/// @dev **Minting** is restricted to `MINTER_ROLE` (governance / protocol). **Burning** uses OpenZeppelin
 ///      `ERC20Burnable`: holders may `burn` their own balance; third parties (including `RabbitTreasury` on withdraw)
 ///      must use `burnFrom` with a standard ERC-20 allowance from the holder. There is **no** separate burner role and
 ///      **`MINTER_ROLE` does not authorize burning another account’s tokens** ([GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)).

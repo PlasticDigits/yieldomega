@@ -19,15 +19,15 @@ function parseAddr(key: string): HexAddress | undefined {
   return parseHexAddress(import.meta.env[key]);
 }
 
+// TODO(Arena v2 #256): swap TimeCurve ABI reads for TimeArena when the unified frontend lands.
 export const addresses = {
-  timeCurve: parseAddr("VITE_TIMECURVE_ADDRESS"),
-  rabbitTreasury: parseAddr("VITE_RABBIT_TREASURY_ADDRESS"),
-  leprechaunNft: parseAddr("VITE_LEPRECHAUN_NFT_ADDRESS"),
+  /** Legacy TimeCurve proxy, or Arena proxy via `VITE_TIME_ARENA_ADDRESS` alias. */
+  timeCurve: parseAddr("VITE_TIMECURVE_ADDRESS") ?? parseAddr("VITE_TIME_ARENA_ADDRESS"),
+  /** When set, fee / protocol panels show Arena vault addresses instead of FeeRouter sinks (#244). */
+  timeArena: parseAddr("VITE_TIME_ARENA_ADDRESS"),
+  podiumVaults: parseAddr("VITE_PODIUM_VAULTS_ADDRESS"),
+  adminSellVault: parseAddr("VITE_ADMIN_SELL_VAULT_ADDRESS"),
   referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
-  feeRouter: parseAddr("VITE_FEE_ROUTER_ADDRESS"),
-  doubPresaleVesting: parseAddr("VITE_DOUB_PRESALE_VESTING_ADDRESS"),
-  /** When set, TimeCurve presale CHARM +15% boost uses `isBeneficiary` here if `doubPresaleVesting` is unset (matches boost-only mainnet deploy). */
-  presaleCharmBeneficiaryRegistry: parseAddr("VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY"),
 };
 
 /** Optional public URL for CL8Y / governance (footer link). */

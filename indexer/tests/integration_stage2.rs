@@ -46,50 +46,9 @@ fn test_sale_state_snapshot(read_block: &str, block_ts: &str) -> TimecurveSaleSt
         read_block_number: read_block.into(),
         block_timestamp_sec: block_ts.into(),
         polled_at_ms: 0,
-        sale_start_sec: "1".into(),
         deadline_sec: "9999999999".into(),
-        ended: false,
-        timer_extension_sec: "0".into(),
-        timer_cap_sec: "86400".into(),
-        buy_cooldown_sec: "300".into(),
-        current_min_buy_amount: "0".into(),
-        current_max_buy_amount: "0".into(),
-        current_charm_bounds_min_wad: "0".into(),
-        current_charm_bounds_max_wad: "0".into(),
-        current_price_per_charm_wad: "0".into(),
-        charm_price: format!("{:#x}", Address::ZERO),
-        total_raised: "0".into(),
-        total_charm_weight: "0".into(),
-        total_tokens_for_sale: "0".into(),
-        initial_min_buy: "0".into(),
-        growth_rate_wad: "0".into(),
-        accepted_asset: format!("{:#x}", Address::ZERO),
-        referral_registry: format!("{:#x}", Address::ZERO),
-        launched_token: format!("{:#x}", Address::ZERO),
-        buy_fee_routing_enabled: true,
-        charm_redemption_enabled: false,
-        reserve_podium_payouts_enabled: false,
-        time_curve_buy_router: format!("{:#x}", Address::ZERO),
-        podium_pool: format!("{:#x}", Address::ZERO),
-        doub_presale_vesting: format!("{:#x}", Address::ZERO),
-        referral_each_bps: "0".into(),
-        presale_charm_weight_bps: "0".into(),
-        warbow_pending_flag_owner: format!("{:#x}", Address::ZERO),
-        warbow_pending_flag_plant_at: "0".into(),
-        warbow_flag_claim_bp: "0".into(),
-        warbow_flag_silence_sec: "0".into(),
-        initial_timer_sec: "0".into(),
-        prizes_distributed: false,
-        fee_router: format!("{:#x}", Address::ZERO),
-        owner: format!("{:#x}", Address::ZERO),
-        linear_charm_base_price_wad: "0".into(),
-        linear_charm_daily_increment_wad: "0".into(),
-        fee_router_sinks: std::array::from_fn(|_| {
-            yieldomega_indexer::sale_state::FeeRouterSinkSnapshot {
-                destination: format!("{:#x}", Address::ZERO),
-                weight_bps: 0,
-            }
-        }),
+        total_doub_raised: "0".into(),
+        paused: false,
     }
 }
 
@@ -201,37 +160,17 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/v1/rabbit/deposits?limit=5&user=not-an-address")
+                .uri("/v1/rabbit/deposits?limit=2")
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/rabbit/deposits?limit=5&user=0xgggggggggggggggggggggggggggggggggggggg")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/rabbit/withdrawals?limit=5&user=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(
+        res.status(),
+        StatusCode::NOT_FOUND,
+        "retired rabbit routes return 404 (arena v2 #242)"
+    );
 
     let res = app
         .clone()
@@ -271,19 +210,12 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
 
     for path in [
         "/v1/timecurve/buys?limit=2",
-        "/v1/rabbit/deposits?limit=2",
-        "/v1/rabbit/withdrawals?limit=2",
-        "/v1/rabbit/health-epochs?limit=2",
         "/v1/timecurve/charm-redemptions?limit=2",
         "/v1/timecurve/prize-distributions?limit=2",
         "/v1/timecurve/prize-payouts?limit=2",
         "/v1/referrals/registrations?limit=2",
         "/v1/referrals/applied?limit=2",
         "/v1/referrals/referrer-leaderboard?limit=2",
-        "/v1/leprechauns/mints?limit=2",
-        "/v1/fee-router/sinks-updates?limit=2",
-        "/v1/fee-router/fees-distributed?limit=2",
-        "/v1/rabbit/faction-stats",
         "/v1/timecurve/warbow/battle-feed?limit=2",
         "/v1/timecurve/warbow/leaderboard?limit=2",
         "/v1/timecurve/platform-usage?limit=2&velocity_window=1h",
@@ -890,97 +822,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             category: 0,
             placement: 1,
         }),
-        next(DecodedEvent::RabbitEpochOpened {
-            epoch_id: u1,
-            start_timestamp: u1,
-            end_timestamp: u2,
-        }),
-        next(DecodedEvent::RabbitHealthEpochFinalized {
-            epoch_id: u1,
-            finalized_at: u1,
-            reserve_ratio_wad: u1,
-            doub_total_supply: u2,
-            repricing_factor_wad: u1,
-            backing_per_doubloon_wad: u1,
-            internal_state_e_wad: u1,
-        }),
-        next(DecodedEvent::RabbitEpochReserveSnapshot {
-            epoch_id: u1,
-            reserve_asset: reserve,
-            balance: u2,
-        }),
-        next(DecodedEvent::RabbitReserveBalanceUpdated {
-            reserve_asset: reserve,
-            balance_after: u2,
-            delta: "-1000".to_string(),
-            reason_code: 1,
-        }),
-        next(DecodedEvent::RabbitDeposit {
-            user: alice,
-            reserve_asset: reserve,
-            amount: u1,
-            doub_out: u1,
-            epoch_id: u1,
-            faction_id: U256::ZERO,
-        }),
-        next(DecodedEvent::RabbitWithdrawal {
-            user: alice,
-            reserve_asset: reserve,
-            amount: u1,
-            doub_in: u1,
-            epoch_id: u1,
-            faction_id: U256::ZERO,
-        }),
-        next(DecodedEvent::RabbitFeeAccrued {
-            asset: reserve,
-            amount: u1,
-            cumulative_in_asset: u2,
-            epoch_id: u1,
-        }),
-        next(DecodedEvent::RabbitRepricingApplied {
-            epoch_id: u1,
-            repricing_factor_wad: u1,
-            prior_internal_price_wad: u1,
-            new_internal_price_wad: u2,
-        }),
-        next(DecodedEvent::RabbitParamsUpdated {
-            actor: alice,
-            param_name: "test_param".to_string(),
-            old_value: u1,
-            new_value: u2,
-        }),
-        next(DecodedEvent::NftSeriesCreated {
-            series_id: u1,
-            max_supply: u2,
-        }),
-        next(DecodedEvent::NftMinted {
-            token_id: u1,
-            series_id: u1,
-            to: alice,
-        }),
-        next(DecodedEvent::FeeRouterSinksUpdated {
-            actor: alice,
-            old_destinations: [addr_byte(1); 5],
-            old_weights: [3000, 4000, 2000, 0, 1000],
-            new_destinations: [addr_byte(2); 5],
-            new_weights: [2000, 2000, 2000, 2000, 2000],
-        }),
-        next(DecodedEvent::FeeRouterFeesDistributed {
-            token: reserve,
-            amount: u2,
-            shares: [u1, u1, u1, u1, u2],
-        }),
-        next(DecodedEvent::FeeRouterDistributableTokenUpdated {
-            token: reserve,
-            allowed: true,
-            actor: alice,
-        }),
-        next(DecodedEvent::FeeRouterERC20Rescued {
-            token: reserve,
-            recipient: alice,
-            amount: u1,
-            actor: alice,
-        }),
         next(DecodedEvent::TimeCurveWarBowSteal {
             attacker: alice,
             victim: addr_byte(0xb2),
@@ -1070,23 +911,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::PodiumPoolPrizePusherSet {
             pusher: addr_byte(0x55),
         }),
-        next(DecodedEvent::RabbitBurrowReserveBuckets {
-            epoch_id: u1,
-            redeemable_backing: u1,
-            protocol_owned_backing: u2,
-            total_backing: u2,
-        }),
-        next(DecodedEvent::RabbitProtocolRevenueSplit {
-            epoch_id: u1,
-            gross_amount: u2,
-            to_protocol_bucket: u1,
-            burned_amount: U256::ZERO,
-        }),
-        next(DecodedEvent::RabbitWithdrawalFeeAccrued {
-            asset: reserve,
-            fee_amount: u1,
-            cumulative_withdraw_fees: u2,
-        }),
         next(DecodedEvent::DoubVestingStarted {
             start_timestamp: u1,
             duration_sec: U256::from(86_400u64),
@@ -1154,48 +978,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         1
     );
     assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 1);
-    assert_eq!(count_where(&pool, "idx_rabbit_epoch_opened", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_health_epoch_finalized", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_epoch_reserve_snapshot", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_reserve_balance_updated", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 1);
-    assert_eq!(count_where(&pool, "idx_rabbit_withdrawal", 100).await, 1);
-    assert_eq!(count_where(&pool, "idx_rabbit_fee_accrued", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_repricing_applied", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_params_updated", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_nft_series_created", 100).await, 1);
-    assert_eq!(count_where(&pool, "idx_nft_minted", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_sinks_updated", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_fees_distributed", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
-        1
-    );
     assert_eq!(
         count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
         1
@@ -1287,18 +1069,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
     assert_eq!(
         count_where(&pool, "idx_podium_pool_prize_pusher_set", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_burrow_reserve_buckets", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_protocol_revenue_split", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_rabbit_withdrawal_fee_accrued", 100).await,
         1
     );
     assert_eq!(count_where(&pool, "idx_doub_vesting_started", 100).await, 1);
@@ -1538,15 +1308,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         0
     );
     assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 0);
-    assert_eq!(count_where(&pool, "idx_rabbit_deposit", 100).await, 0);
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_distributable_token_updated", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_fee_router_erc20_rescued", 100).await,
-        0
-    );
 
     let row = sqlx::query("SELECT block_number FROM indexed_blocks WHERE block_number = 20")
         .fetch_optional(&pool)

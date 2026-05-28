@@ -1,0 +1,1 @@
+-- Irreversible: legacy Rabbit / FeeRouter tables were removed in arena v2 (#241–#244).

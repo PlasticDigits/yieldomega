@@ -15,7 +15,7 @@
 # Bot swarm (3× fun/shark/pvp/defender/seed-local + 3× rando): one-shot CL8Y + ETH via YIELDOMEGA_ALLOW_ANVIL_FUNDING=1:
 #   When SKIP_ANVIL_RICH_STATE=1, START_BOT_SWARM defaults to 1 (set START_BOT_SWARM=0 to skip).
 #   When rich state runs (sale ended), START_BOT_SWARM defaults to 0.
-#   Requires Python deps (import web3): venv install in bots/timecurve/README.md, or PEP 668 fallback there.
+#   Requires Python deps (import web3): venv install in bots/timearena/README.md, or PEP 668 fallback there.
 #   Optional: export YIELDOMEGA_SWARM_REFERRALS=0 before this script to skip shared referral registration /
 #   YIELDOMEGA_REFERRAL_CODE on workers (non-referral buys — [GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102)).
 #
@@ -90,7 +90,7 @@ die() {
   exit 1
 }
 
-# Bot swarm imports web3 via bots/timecurve; fail fast with copy-paste fixes (PEP 668 / missing venv).
+# Bot swarm imports web3 via bots/timearena; fail fast with copy-paste fixes (PEP 668 / missing venv).
 ensure_timecurve_bot_deps() {
   local py="$1"
   if "${py}" -c "import web3" >/dev/null 2>&1; then
@@ -99,12 +99,12 @@ ensure_timecurve_bot_deps() {
   echo "Bot swarm: Python cannot import 'web3' (install timecurve-bot deps first)." >&2
   echo "" >&2
   echo "  Recommended (venv):" >&2
-  echo "    cd ${ROOT}/bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e \".[dev]\"" >&2
+  echo "    cd ${ROOT}/bots/timearena && python3 -m venv .venv && .venv/bin/pip install -e \".[dev]\"" >&2
   echo "" >&2
   echo "  PEP 668 / bare QA host (user site):" >&2
-  echo "    cd ${ROOT}/bots/timecurve && pip install -e \".[dev]\" --user --break-system-packages" >&2
+  echo "    cd ${ROOT}/bots/timearena && pip install -e \".[dev]\" --user --break-system-packages" >&2
   echo "" >&2
-  echo "Then re-run this script, or set START_BOT_SWARM=0 to skip the swarm. See bots/timecurve/README.md (PEP 668)." >&2
+  echo "Then re-run this script, or set START_BOT_SWARM=0 to skip the swarm. See bots/timearena/README.md (PEP 668)." >&2
   exit 1
 }
 
@@ -213,46 +213,30 @@ block_ts_dec() {
   cast block latest --rpc-url "${RPC_URL}" --json | jq -r '.timestamp' | head -1 | cast to-dec
 }
 
-warp_to_timecurve_sale_start() {
-  local tc="$1"
-  local sale_start
-  local now
-  sale_start="$(cast call "${tc}" "saleStart()(uint256)" --rpc-url "${RPC_URL}" | awk '{print $1}' | cast to-dec)"
-  now="$(block_ts_dec)"
-  if [[ "${sale_start}" -le "${now}" ]]; then
-    echo "TimeCurve saleStart ${sale_start} already live at chain time ${now}."
-    return 0
-  fi
-  local delta=$((sale_start - now))
-  echo "Advancing Anvil ${delta}s to TimeCurve saleStart ${sale_start} (GitLab #114)."
-  cast rpc --rpc-url "${RPC_URL}" anvil_increaseTime "$(printf '0x%x' "${delta}")" >/dev/null
-  cast rpc --rpc-url "${RPC_URL}" anvil_mine 1 >/dev/null
-}
-
-TC="$(extract_addr_from_log "TimeCurve")"
-[[ -n "${TC}" ]] || die "Could not parse TimeCurve from ${DEPLOY_LOG}."
-warp_to_timecurve_sale_start "${TC}"
+TA="$(extract_addr_from_log "TimeArena")"
+[[ -n "${TA}" ]] || die "Could not parse TimeArena from ${DEPLOY_LOG}."
+DOUB="$(extract_addr_from_log "Doubloon")"
+PV="$(extract_addr_from_log "PodiumVaults")"
+AV="$(extract_addr_from_log "AdminSellVault")"
+RR="$(extract_addr_from_log "ReferralRegistry")"
+for var_name in TA DOUB PV AV RR; do
+  [[ -n "${!var_name}" ]] || die "Could not parse ${var_name} from ${DEPLOY_LOG}."
+done
 
 if [[ "${SKIP_ANVIL_RICH_STATE:-}" == "1" ]]; then
-  echo "=== Simulate (rich state) === SKIPPED (SKIP_ANVIL_RICH_STATE=1)"
+  echo "=== Simulate (rich state) === SKIPPED (legacy TimeCurve rich state removed — Arena v2)"
 else
-  echo "=== Simulate (rich state) ==="
-  bash "${CONTRACTS}/script/anvil_rich_state.sh"
+  echo "=== Simulate (rich state) === SKIPPED (anvil_rich_state.sh retired with TimeCurve launchpad)"
 fi
 
 echo "=== Write ${REGISTRY_OUT} ==="
-# Most contracts (TimeCurve, RabbitTreasury, FeeRouter, ReferralRegistry,
-# PodiumPool, …) live behind ERC1967 proxies. The broadcast JSON's `contractName`
-# labels the impl, not the proxy, so we grep the `console.log` lines emitted by
-# `DeployDev.s.sol` instead (same approach as `scripts/lib/anvil_deploy_dev.sh`).
-TC="$(extract_addr_from_log "TimeCurve")"
-RT="$(extract_addr_from_log "RabbitTreasury")"
-FR="$(extract_addr_from_log "FeeRouter")"
+# Arena v2: grep `console.log` lines from `DeployDev.s.sol` (proxy addresses, not impl rows in broadcast JSON).
+TA="$(extract_addr_from_log "TimeArena")"
+DOUB="$(extract_addr_from_log "Doubloon")"
+PV="$(extract_addr_from_log "PodiumVaults")"
+AV="$(extract_addr_from_log "AdminSellVault")"
 RR="$(extract_addr_from_log "ReferralRegistry")"
-PP="$(extract_addr_from_log "PodiumPool")"
-NFT="$(extract_addr_from_log "LeprechaunNFT")"
-DPV="$(extract_addr_from_log "DoubPresaleVesting")"
-for var_name in TC RT FR RR PP NFT DPV; do
+for var_name in TA DOUB PV AV RR; do
   [[ -n "${!var_name}" ]] || die "Could not parse ${var_name} from ${DEPLOY_LOG}."
 done
 MIN_HEX="$(jq -r '[.receipts[] | .blockNumber] | min' "${RUN_JSON}")"
@@ -267,7 +251,8 @@ if [[ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" == "1" ]]; then
   KUMBAYA_LOG="$(mktemp)"
   export PRIVATE_KEY="${DEPLOYER_PK:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
   forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
-    --rpc-url "${RPC_URL}" --optimizer-runs 1 --code-size-limit 524288 --sig "run(address)" "${TC}" 2>&1 | tee "${KUMBAYA_LOG}"
+    --rpc-url "${RPC_URL}" --optimizer-runs 1 --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}" \
+    || echo "  WARN: DeployKumbayaAnvilFixtures skipped or failed (TimeCurveBuyRouter retired until #251)."
   yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"
   rm -f "${KUMBAYA_LOG}"
   [[ -n "${KUMBAYA_BUY_ROUTER}" ]] || die "DeployKumbayaAnvilFixtures: could not parse TimeCurveBuyRouter from log."
@@ -276,20 +261,17 @@ fi
 
 jq -n \
   --argjson chainId 31337 \
-  --arg tc "${TC}" \
-  --arg rt "${RT}" \
-  --arg nft "${NFT}" \
-  --arg fr "${FR}" \
-  --arg pp "${PP}" \
+  --arg ta "${TA}" \
+  --arg pv "${PV}" \
+  --arg av "${AV}" \
   --arg rr "${RR}" \
-  --arg dpv "${DPV}" \
   --arg tcbr "${KUMBAYA_BUY_ROUTER:-}" \
   --argjson deployBlock "${DEPLOY_BLOCK}" \
   '{
     _comment: "Generated by scripts/start-local-anvil-stack.sh — do not commit secrets.",
     chainId: $chainId,
     contracts: (
-      { TimeCurve: $tc, RabbitTreasury: $rt, LeprechaunNFT: $nft, FeeRouter: $fr, PodiumPool: $pp, ReferralRegistry: $rr, DoubPresaleVesting: $dpv }
+      { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr }
       + (if $tcbr != "" then {TimeCurveBuyRouter: $tcbr} else {} end)
     ),
     deployBlock: $deployBlock
@@ -334,12 +316,11 @@ cat > "${FRONTEND}/.env.local" << EOF
 # VITE_CHAIN_ID matches frontend dev default when env is unset (GitLab #81).
 VITE_CHAIN_ID=31337
 VITE_RPC_URL=${RPC_URL}
-VITE_TIMECURVE_ADDRESS=${TC}
-VITE_RABBIT_TREASURY_ADDRESS=${RT}
-VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}
-VITE_FEE_ROUTER_ADDRESS=${FR}
+VITE_TIME_ARENA_ADDRESS=${TA}
+VITE_TIMECURVE_ADDRESS=${TA}
+VITE_PODIUM_VAULTS_ADDRESS=${PV}
+VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}
 VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
-VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}
 VITE_INDEXER_URL=http://127.0.0.1:${INDEXER_PORT}
 EOF
 
@@ -371,7 +352,7 @@ echo ""
 echo "Next:"
 echo "  Alternative — stack + Vite one entrypoint: bash scripts/start-qa-local-full-stack.sh (docs/testing/qa-local-full-stack.md, GitLab #104)"
 echo "  make check-frontend-env   # optional: verify VITE_* in frontend/.env.local"
-echo "  bash scripts/sync-bot-env-from-frontend.sh   # bots/timecurve/.env.local (no redeploy)"
+echo "  bash scripts/sync-bot-env-from-frontend.sh   # bots/timearena/.env.local (no redeploy)"
 echo "  cd frontend && npm run dev"
 echo "  Open http://127.0.0.1:5173"
 echo ""
@@ -389,11 +370,11 @@ if [[ "${START_BOT_SWARM}" == "1" ]]; then
   chmod +x "${ROOT}/scripts/sync-bot-env-from-frontend.sh" 2>/dev/null || true
   bash "${ROOT}/scripts/sync-bot-env-from-frontend.sh"
   BOT_PY="python3"
-  if [[ -x "${ROOT}/bots/timecurve/.venv/bin/python" ]]; then
-    BOT_PY="${ROOT}/bots/timecurve/.venv/bin/python"
+  if [[ -x "${ROOT}/bots/timearena/.venv/bin/python" ]]; then
+    BOT_PY="${ROOT}/bots/timearena/.venv/bin/python"
   fi
   ensure_timecurve_bot_deps "${BOT_PY}"
-  ( cd "${ROOT}" && export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 && PYTHONPATH="${ROOT}/bots/timecurve/src" "${BOT_PY}" -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()" ) \
+  ( cd "${ROOT}" && export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1 && PYTHONPATH="${ROOT}/bots/timearena/src" "${BOT_PY}" -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()" ) \
     || die "Bot swarm failed (unexpected error after deps check; see /tmp/yieldomega_swarm_*.log)."
   echo "  Logs: /tmp/yieldomega_swarm_*.log   PIDs: /tmp/yieldomega_bot_swarm.pids"
 fi

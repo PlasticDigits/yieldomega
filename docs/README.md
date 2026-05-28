@@ -10,11 +10,11 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 
 1. Start with [product/vision.md](product/vision.md) for mission and boundaries.
 2. Read [architecture/overview.md](architecture/overview.md) for trust model and data flow.
-3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeCurve, Rabbit Treasury, Doubloons / DOUB, reserve asset, agents).
+3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeArena, DOUB, prize vaults, agents).
 4. Use [agent-phases.md](agent-phases.md) when executing the roadmap in order or by task: each phase links one doc section and includes a **copy-paste prompt**.
 5. For **Leprechaun NFT onchain metadata** (JSON Schema drafts, semver, changelog), see [schemas/README.md](schemas/README.md) and [schemas/CHANGELOG.md](schemas/CHANGELOG.md).
 6. For **contributor** Cursor skills (code and licensing guardrails), see [../.cursor/skills/README.md](../.cursor/skills/README.md).
-7. For **play** skills (TimeCurve, Rabbit Treasury, Leprechaun collections — agents as participants), see [../skills/README.md](../skills/README.md) and [agent-phases.md](agent-phases.md#phase-20).
+7. For **play** skills (TimeArena — agents as participants), see [../skills/README.md](../skills/README.md) and [agent-phases.md](agent-phases.md#phase-20).
 
 ## Document map
 
@@ -26,10 +26,9 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Architecture overview | [architecture/overview.md](architecture/overview.md) |
 | Repository layout | [architecture/repository-layout.md](architecture/repository-layout.md) |
 | Product vision | [product/vision.md](product/vision.md) |
-| TimeCurve primitive (incl. **WarBow Ladder** / Battle Points vs reserve podium) | [product/primitives.md](product/primitives.md) |
-| Rabbit Treasury (incl. **`Burrow*`** indexer events) | [product/rabbit-treasury.md](product/rabbit-treasury.md) |
-| Leprechaun NFTs | [product/leprechaun-nfts.md](product/leprechaun-nfts.md) |
-| Referrals (TimeCurve) | [product/referrals.md](product/referrals.md) |
+| Arena v2 (TimeArena, DOUB buys, prize vaults) | [product/arena-v2.md](product/arena-v2.md) |
+| TimeCurve / launchpad (retired — historical) | [product/primitives.md](product/primitives.md) |
+| Referrals | [product/referrals.md](product/referrals.md) |
 | DOUB launch plan + **F-10 / F-11** UX flows ([issue #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92), [issue #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)) | [launchplan-timecurve.md](../launchplan-timecurve.md) · [YO-DOUB-Launch-UX-Flows.md](../YO-DOUB-Launch-UX-Flows.md) |
 | JSON schemas (metadata drafts, changelog) | [schemas/README.md](schemas/README.md) · [schemas/CHANGELOG.md](schemas/CHANGELOG.md) |
 | Fee routing and governance | [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) ([sinks](onchain/fee-routing-and-governance.md#fee-sinks), [governance](onchain/fee-routing-and-governance.md#governance-actors), [invariants](onchain/fee-routing-and-governance.md#post-update-invariants)) |
@@ -38,7 +37,6 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Foundry and MegaETH | [contracts/foundry-and-megaeth.md](contracts/foundry-and-megaeth.md) |
 | Indexer (Rust + Postgres) | [indexer/design.md](indexer/design.md) |
 | Frontend (Vite static) | [frontend/design.md](frontend/design.md) |
-| Presale vesting `/vesting` (DoubPresaleVesting; GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92); claim wrong-chain UI [#106](https://gitlab.com/PlasticDigits/yieldomega/-/issues/106)) | [frontend/presale-vesting.md](frontend/presale-vesting.md) |
 | Testing strategy (3 stages) | [testing/strategy.md](testing/strategy.md) |
 | CI (workflows vs stages) | [testing/ci.md](testing/ci.md) |
 | Anvil-backed E2E (Playwright + local chain) | [testing/e2e-anvil.md](testing/e2e-anvil.md) |

@@ -182,105 +182,36 @@ mod contracts {
     }
 
     sol! {
+        contract TimeArenaEvents {
+            event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
+            event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
+            event Buy(
+                address indexed buyer,
+                uint256 charmWad,
+                uint256 doubPaid,
+                uint256 newDeadline,
+                uint256 totalDoubRaisedAfter,
+                uint256 buyIndex,
+                uint256 actualSecondsAdded,
+                bool timerHardReset
+            );
+            event ReferralApplied(
+                address indexed buyer,
+                address indexed referrer,
+                bytes32 indexed codeHash,
+                uint256 referrerCharm,
+                uint256 buyerCharm,
+                uint256 doubPaid
+            );
+            event PausedSet(bool paused);
+        }
+    }
+
+    sol! {
         contract PodiumPoolEvents {
             event PodiumPaid(address indexed winner, address indexed token, uint256 amount, uint8 category, uint8 placement);
             event PodiumResidualForwarded(address indexed token, address indexed recipient, uint256 amount, uint8 category);
             event PrizePusherSet(address indexed pusher);
-        }
-    }
-
-    sol! {
-        contract RabbitTreasuryEvents {
-            event BurrowEpochOpened(uint256 indexed epochId, uint256 startTimestamp, uint256 endTimestamp);
-            event BurrowHealthEpochFinalized(
-                uint256 indexed epochId,
-                uint256 finalizedAt,
-                uint256 reserveRatioWad,
-                uint256 doubTotalSupply,
-                uint256 repricingFactorWad,
-                uint256 backingPerDoubloonWad,
-                uint256 internalStateEWad
-            );
-            event BurrowEpochReserveSnapshot(uint256 indexed epochId, address indexed reserveAsset, uint256 balance);
-            event BurrowReserveBalanceUpdated(
-                address indexed reserveAsset,
-                uint256 balanceAfter,
-                int256 delta,
-                uint8 reasonCode
-            );
-            event BurrowDeposited(
-                address indexed user,
-                address indexed reserveAsset,
-                uint256 amount,
-                uint256 doubOut,
-                uint256 indexed epochId,
-                uint256 factionId
-            );
-            event BurrowWithdrawn(
-                address indexed user,
-                address indexed reserveAsset,
-                uint256 amount,
-                uint256 doubIn,
-                uint256 indexed epochId,
-                uint256 factionId
-            );
-            event BurrowFeeAccrued(
-                address indexed asset,
-                uint256 amount,
-                uint256 cumulativeInAsset,
-                uint256 indexed epochId
-            );
-            event BurrowReserveBuckets(
-                uint256 indexed epochId,
-                uint256 redeemableBacking,
-                uint256 protocolOwnedBacking,
-                uint256 totalBacking
-            );
-            event BurrowProtocolRevenueSplit(
-                uint256 indexed epochId,
-                uint256 grossAmount,
-                uint256 toProtocolBucket,
-                uint256 burnedAmount
-            );
-            event BurrowWithdrawalFeeAccrued(
-                address indexed asset,
-                uint256 feeAmount,
-                uint256 cumulativeWithdrawFees
-            );
-            event BurrowRepricingApplied(
-                uint256 indexed epochId,
-                uint256 repricingFactorWad,
-                uint256 priorInternalPriceWad,
-                uint256 newInternalPriceWad
-            );
-            event ParamsUpdated(address indexed actor, string paramName, uint256 oldValue, uint256 newValue);
-        }
-    }
-
-    sol! {
-        contract LeprechaunEvents {
-            event SeriesCreated(uint256 indexed seriesId, uint256 maxSupply);
-            event Minted(uint256 indexed tokenId, uint256 indexed seriesId, address indexed to);
-        }
-    }
-
-    sol! {
-        contract FeeRouterEvents {
-            event SinksUpdated(
-                address indexed actor,
-                address[5] oldDestinations,
-                uint16[5] oldWeights,
-                address[5] newDestinations,
-                uint16[5] newWeights
-            );
-            event FeesDistributed(address indexed token, uint256 amount, uint256[5] shares);
-            event DistributableTokenUpdated(address indexed token, bool allowed, address indexed actor);
-            event ERC20Rescued(
-                address indexed token,
-                address indexed to,
-                uint256 amount,
-                address indexed actor
-            );
         }
     }
 
@@ -301,10 +232,9 @@ mod contracts {
 }
 
 use contracts::{
-    DoubPresaleVestingEvents, FeeRouterEvents, FeeSinkEvents, LeprechaunEvents, PodiumPoolEvents,
-    RabbitTreasuryEvents, ReferralRegistryEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents,
-    TimeCurveBuyV2Activity, TimeCurveEvents, TimeCurveEventsLegacy,
-    TimeCurveWarBowRevengeTopic0Legacy,
+    DoubPresaleVestingEvents, FeeSinkEvents, PodiumPoolEvents, ReferralRegistryEvents,
+    TimeArenaEvents, TimeCurveBuyLegacy, TimeCurveBuyRouterEvents, TimeCurveBuyV2Activity,
+    TimeCurveEvents, TimeCurveEventsLegacy, TimeCurveWarBowRevengeTopic0Legacy,
 };
 
 /// Fully decoded log plus block metadata for persistence.
@@ -498,116 +428,6 @@ pub enum DecodedEvent {
     PodiumPoolPrizePusherSet {
         pusher: Address,
     },
-    RabbitEpochOpened {
-        epoch_id: U256,
-        start_timestamp: U256,
-        end_timestamp: U256,
-    },
-    RabbitHealthEpochFinalized {
-        epoch_id: U256,
-        finalized_at: U256,
-        reserve_ratio_wad: U256,
-        doub_total_supply: U256,
-        repricing_factor_wad: U256,
-        backing_per_doubloon_wad: U256,
-        internal_state_e_wad: U256,
-    },
-    RabbitEpochReserveSnapshot {
-        epoch_id: U256,
-        reserve_asset: Address,
-        balance: U256,
-    },
-    RabbitReserveBalanceUpdated {
-        reserve_asset: Address,
-        balance_after: U256,
-        delta: String,
-        reason_code: u8,
-    },
-    RabbitDeposit {
-        user: Address,
-        reserve_asset: Address,
-        amount: U256,
-        doub_out: U256,
-        epoch_id: U256,
-        faction_id: U256,
-    },
-    RabbitWithdrawal {
-        user: Address,
-        reserve_asset: Address,
-        amount: U256,
-        doub_in: U256,
-        epoch_id: U256,
-        faction_id: U256,
-    },
-    RabbitFeeAccrued {
-        asset: Address,
-        amount: U256,
-        cumulative_in_asset: U256,
-        epoch_id: U256,
-    },
-    RabbitBurrowReserveBuckets {
-        epoch_id: U256,
-        redeemable_backing: U256,
-        protocol_owned_backing: U256,
-        total_backing: U256,
-    },
-    RabbitProtocolRevenueSplit {
-        epoch_id: U256,
-        gross_amount: U256,
-        to_protocol_bucket: U256,
-        burned_amount: U256,
-    },
-    RabbitWithdrawalFeeAccrued {
-        asset: Address,
-        fee_amount: U256,
-        cumulative_withdraw_fees: U256,
-    },
-    RabbitRepricingApplied {
-        epoch_id: U256,
-        repricing_factor_wad: U256,
-        prior_internal_price_wad: U256,
-        new_internal_price_wad: U256,
-    },
-    RabbitParamsUpdated {
-        actor: Address,
-        param_name: String,
-        old_value: U256,
-        new_value: U256,
-    },
-    NftSeriesCreated {
-        series_id: U256,
-        max_supply: U256,
-    },
-    NftMinted {
-        token_id: U256,
-        series_id: U256,
-        to: Address,
-    },
-    FeeRouterSinksUpdated {
-        actor: Address,
-        old_destinations: [Address; 5],
-        old_weights: [u16; 5],
-        new_destinations: [Address; 5],
-        new_weights: [u16; 5],
-    },
-    FeeRouterFeesDistributed {
-        token: Address,
-        amount: U256,
-        shares: [U256; 5],
-    },
-    /// @dev GitLab #122 — `setDistributableToken`
-    FeeRouterDistributableTokenUpdated {
-        token: Address,
-        allowed: bool,
-        actor: Address,
-    },
-    /// @dev GitLab #122 — `rescueERC20`
-    FeeRouterERC20Rescued {
-        token: Address,
-        recipient: Address,
-        amount: U256,
-        actor: Address,
-    },
     DoubVestingStarted {
         start_timestamp: U256,
         duration_sec: U256,
@@ -663,6 +483,56 @@ pub fn decode_rpc_log(rlog: &RpcLog) -> Option<DecodedLog> {
 }
 
 fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
+    if topic0 == TimeArenaEvents::Buy::SIGNATURE_HASH {
+        if let Ok(d) = TimeArenaEvents::Buy::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveBuy {
+                buyer: e.buyer,
+                charm_wad: e.charmWad,
+                amount: e.doubPaid,
+                price_per_charm_wad: U256::ZERO,
+                new_deadline: e.newDeadline,
+                total_raised_after: e.totalDoubRaisedAfter,
+                buy_index: e.buyIndex,
+                actual_seconds_added: e.actualSecondsAdded,
+                timer_hard_reset: e.timerHardReset,
+                battle_points_after: U256::ZERO,
+                bp_base_buy: U256::ZERO,
+                bp_timer_reset_bonus: U256::ZERO,
+                bp_clutch_bonus: U256::ZERO,
+                bp_streak_break_bonus: U256::ZERO,
+                bp_ambush_bonus: U256::ZERO,
+                bp_flag_penalty: U256::ZERO,
+                flag_planted: false,
+                buyer_total_effective_timer_sec: U256::ZERO,
+                buyer_active_defended_streak: U256::ZERO,
+                buyer_best_defended_streak: U256::ZERO,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::ReferralApplied::SIGNATURE_HASH {
+        if let Ok(d) = TimeArenaEvents::ReferralApplied::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveReferralApplied {
+                buyer: e.buyer,
+                referrer: e.referrer,
+                code_hash: e.codeHash,
+                referrer_amount: e.referrerCharm,
+                referee_amount: e.buyerCharm,
+                amount_to_fee_router: e.doubPaid,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::ArenaStarted::SIGNATURE_HASH {
+        if let Ok(d) = TimeArenaEvents::ArenaStarted::decode_log(log, true) {
+            let e = d.data;
+            return DecodedEvent::TimeCurveSaleStarted {
+                start_timestamp: e.startTimestamp,
+                initial_deadline: e.initialDeadline,
+                total_tokens_for_sale: U256::ZERO,
+            };
+        }
+    }
     if topic0 == TimeCurveEvents::SaleStarted::SIGNATURE_HASH {
         if let Ok(d) = TimeCurveEvents::SaleStarted::decode_log(log, true) {
             let e = d.data;
@@ -1059,204 +929,6 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::PodiumPoolPrizePusherSet { pusher: e.pusher };
         }
     }
-    if topic0 == RabbitTreasuryEvents::BurrowEpochOpened::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowEpochOpened::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitEpochOpened {
-                epoch_id: e.epochId,
-                start_timestamp: e.startTimestamp,
-                end_timestamp: e.endTimestamp,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowHealthEpochFinalized::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowHealthEpochFinalized::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitHealthEpochFinalized {
-                epoch_id: e.epochId,
-                finalized_at: e.finalizedAt,
-                reserve_ratio_wad: e.reserveRatioWad,
-                doub_total_supply: e.doubTotalSupply,
-                repricing_factor_wad: e.repricingFactorWad,
-                backing_per_doubloon_wad: e.backingPerDoubloonWad,
-                internal_state_e_wad: e.internalStateEWad,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowEpochReserveSnapshot::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowEpochReserveSnapshot::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitEpochReserveSnapshot {
-                epoch_id: e.epochId,
-                reserve_asset: e.reserveAsset,
-                balance: e.balance,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowReserveBalanceUpdated::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowReserveBalanceUpdated::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitReserveBalanceUpdated {
-                reserve_asset: e.reserveAsset,
-                balance_after: e.balanceAfter,
-                delta: e.delta.to_string(),
-                reason_code: e.reasonCode,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowDeposited::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowDeposited::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitDeposit {
-                user: e.user,
-                reserve_asset: e.reserveAsset,
-                amount: e.amount,
-                doub_out: e.doubOut,
-                epoch_id: e.epochId,
-                faction_id: e.factionId,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowWithdrawn::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowWithdrawn::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitWithdrawal {
-                user: e.user,
-                reserve_asset: e.reserveAsset,
-                amount: e.amount,
-                doub_in: e.doubIn,
-                epoch_id: e.epochId,
-                faction_id: e.factionId,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowFeeAccrued::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowFeeAccrued::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitFeeAccrued {
-                asset: e.asset,
-                amount: e.amount,
-                cumulative_in_asset: e.cumulativeInAsset,
-                epoch_id: e.epochId,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowReserveBuckets::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowReserveBuckets::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitBurrowReserveBuckets {
-                epoch_id: e.epochId,
-                redeemable_backing: e.redeemableBacking,
-                protocol_owned_backing: e.protocolOwnedBacking,
-                total_backing: e.totalBacking,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowProtocolRevenueSplit::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowProtocolRevenueSplit::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitProtocolRevenueSplit {
-                epoch_id: e.epochId,
-                gross_amount: e.grossAmount,
-                to_protocol_bucket: e.toProtocolBucket,
-                burned_amount: e.burnedAmount,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowWithdrawalFeeAccrued::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowWithdrawalFeeAccrued::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitWithdrawalFeeAccrued {
-                asset: e.asset,
-                fee_amount: e.feeAmount,
-                cumulative_withdraw_fees: e.cumulativeWithdrawFees,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::BurrowRepricingApplied::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::BurrowRepricingApplied::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitRepricingApplied {
-                epoch_id: e.epochId,
-                repricing_factor_wad: e.repricingFactorWad,
-                prior_internal_price_wad: e.priorInternalPriceWad,
-                new_internal_price_wad: e.newInternalPriceWad,
-            };
-        }
-    }
-    if topic0 == RabbitTreasuryEvents::ParamsUpdated::SIGNATURE_HASH {
-        if let Ok(d) = RabbitTreasuryEvents::ParamsUpdated::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::RabbitParamsUpdated {
-                actor: e.actor,
-                param_name: e.paramName,
-                old_value: e.oldValue,
-                new_value: e.newValue,
-            };
-        }
-    }
-    if topic0 == LeprechaunEvents::SeriesCreated::SIGNATURE_HASH {
-        if let Ok(d) = LeprechaunEvents::SeriesCreated::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::NftSeriesCreated {
-                series_id: e.seriesId,
-                max_supply: e.maxSupply,
-            };
-        }
-    }
-    if topic0 == LeprechaunEvents::Minted::SIGNATURE_HASH {
-        if let Ok(d) = LeprechaunEvents::Minted::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::NftMinted {
-                token_id: e.tokenId,
-                series_id: e.seriesId,
-                to: e.to,
-            };
-        }
-    }
-    if topic0 == FeeRouterEvents::SinksUpdated::SIGNATURE_HASH {
-        if let Ok(d) = FeeRouterEvents::SinksUpdated::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::FeeRouterSinksUpdated {
-                actor: e.actor,
-                old_destinations: e.oldDestinations,
-                old_weights: e.oldWeights,
-                new_destinations: e.newDestinations,
-                new_weights: e.newWeights,
-            };
-        }
-    }
-    if topic0 == FeeRouterEvents::FeesDistributed::SIGNATURE_HASH {
-        if let Ok(d) = FeeRouterEvents::FeesDistributed::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::FeeRouterFeesDistributed {
-                token: e.token,
-                amount: e.amount,
-                shares: e.shares,
-            };
-        }
-    }
-    if topic0 == FeeRouterEvents::DistributableTokenUpdated::SIGNATURE_HASH {
-        if let Ok(d) = FeeRouterEvents::DistributableTokenUpdated::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::FeeRouterDistributableTokenUpdated {
-                token: e.token,
-                allowed: e.allowed,
-                actor: e.actor,
-            };
-        }
-    }
-    if topic0 == FeeRouterEvents::ERC20Rescued::SIGNATURE_HASH {
-        if let Ok(d) = FeeRouterEvents::ERC20Rescued::decode_log(log, true) {
-            let e = d.data;
-            return DecodedEvent::FeeRouterERC20Rescued {
-                token: e.token,
-                recipient: e.to,
-                amount: e.amount,
-                actor: e.actor,
-            };
-        }
-    }
     if topic0 == DoubPresaleVestingEvents::VestingStarted::SIGNATURE_HASH {
         if let Ok(d) = DoubPresaleVestingEvents::VestingStarted::decode_log(log, true) {
             let e = d.data;
@@ -1442,61 +1114,6 @@ mod tests {
         match dec {
             DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool { podium_pool } => {
                 assert_eq!(podium_pool, pool_addr);
-            }
-            _ => panic!("wrong variant: {dec:?}"),
-        }
-    }
-
-    #[test]
-    fn roundtrip_health_epoch_finalized() {
-        let e = RabbitTreasuryEvents::BurrowHealthEpochFinalized {
-            epochId: U256::from(3u64),
-            finalizedAt: U256::from(100u64),
-            reserveRatioWad: U256::from(5u64),
-            doubTotalSupply: U256::from(6u64),
-            repricingFactorWad: U256::from(7u64),
-            backingPerDoubloonWad: U256::from(8u64),
-            internalStateEWad: U256::from(9u64),
-        };
-        let data = e.encode_log_data();
-        let log = Log::new_unchecked(
-            Address::repeat_byte(3),
-            data.topics().to_vec(),
-            data.data.clone(),
-        );
-        let topic0 = *log.topics().first().unwrap();
-        let dec = decode_primitive_log(&log, topic0);
-        match dec {
-            DecodedEvent::RabbitHealthEpochFinalized { epoch_id, .. } => {
-                assert_eq!(epoch_id, U256::from(3u64));
-            }
-            _ => panic!("wrong variant: {dec:?}"),
-        }
-    }
-
-    #[test]
-    fn roundtrip_reserve_balance_negative_delta() {
-        use alloy_primitives::I256;
-        let e = RabbitTreasuryEvents::BurrowReserveBalanceUpdated {
-            reserveAsset: Address::repeat_byte(0x11),
-            balanceAfter: U256::from(1000u64),
-            delta: I256::try_from(-50i32).expect("delta"),
-            reasonCode: 2,
-        };
-        let data = e.encode_log_data();
-        let log = Log::new_unchecked(
-            Address::repeat_byte(4),
-            data.topics().to_vec(),
-            data.data.clone(),
-        );
-        let topic0 = *log.topics().first().unwrap();
-        let dec = decode_primitive_log(&log, topic0);
-        match dec {
-            DecodedEvent::RabbitReserveBalanceUpdated {
-                delta, reason_code, ..
-            } => {
-                assert_eq!(delta, "-50");
-                assert_eq!(reason_code, 2);
             }
             _ => panic!("wrong variant: {dec:?}"),
         }
@@ -1837,7 +1454,7 @@ mod tests {
     }
 
     #[test]
-    fn roundtrip_buy_router_erc20_rescued_distinct_from_fee_router() {
+    fn roundtrip_buy_router_erc20_rescued() {
         let token = Address::repeat_byte(0x11);
         let to = Address::repeat_byte(0x22);
         let e = TimeCurveBuyRouterEvents::Erc20Rescued {
@@ -1852,11 +1469,6 @@ mod tests {
             data.data.clone(),
         );
         let topic0 = *log.topics().first().unwrap();
-        assert_ne!(
-            topic0,
-            FeeRouterEvents::ERC20Rescued::SIGNATURE_HASH,
-            "buy-router rescue must not alias FeeRouter.ERC20Rescued topic0"
-        );
         let dec = decode_primitive_log(&log, topic0);
         match dec {
             DecodedEvent::TimeCurveBuyRouterErc20Rescued {
@@ -1867,35 +1479,6 @@ mod tests {
                 assert_eq!(t, token);
                 assert_eq!(recipient, to);
                 assert_eq!(amount, U256::from(789u64));
-            }
-            _ => panic!("wrong variant: {dec:?}"),
-        }
-    }
-
-    #[test]
-    fn roundtrip_minted() {
-        let e = LeprechaunEvents::Minted {
-            tokenId: U256::from(7u64),
-            seriesId: U256::from(1u64),
-            to: Address::repeat_byte(0xee),
-        };
-        let data = e.encode_log_data();
-        let log = Log::new_unchecked(
-            Address::repeat_byte(2),
-            data.topics().to_vec(),
-            data.data.clone(),
-        );
-        let topic0 = *log.topics().first().unwrap();
-        let dec = decode_primitive_log(&log, topic0);
-        match dec {
-            DecodedEvent::NftMinted {
-                token_id,
-                series_id,
-                to,
-            } => {
-                assert_eq!(token_id, U256::from(7u64));
-                assert_eq!(series_id, U256::from(1u64));
-                assert_eq!(to, Address::repeat_byte(0xee));
             }
             _ => panic!("wrong variant: {dec:?}"),
         }

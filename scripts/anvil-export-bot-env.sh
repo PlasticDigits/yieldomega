@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Deploy DeployDev to Anvil (or an existing RPC) and write bots/timecurve/.env.local for the TimeCurve bot.
+# Deploy DeployDev to Anvil (or an existing RPC) and write bots/timearena/.env.local for the TimeCurve bot.
 #
 # Usage (from repo root):
 #   bash scripts/anvil-export-bot-env.sh              # start Anvil, deploy, write .env.local
@@ -8,7 +8,7 @@
 #
 # Options:
 #   --no-anvil          Do not start Anvil; use RPC at http://127.0.0.1:${ANVIL_PORT:-8545}
-#   --output PATH       Write env file here (default: bots/timecurve/.env.local)
+#   --output PATH       Write env file here (default: bots/timearena/.env.local)
 #   --port PORT         Anvil port (default: 8545 or ANVIL_PORT)
 #
 # Anvil is left running when this script starts it (stop manually: kill <pid>).
@@ -18,7 +18,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 START_ANVIL=1
-OUT_FILE="${ROOT}/bots/timecurve/.env.local"
+OUT_FILE="${ROOT}/bots/timearena/.env.local"
 PORT="${ANVIL_PORT:-8545}"
 
 while [ $# -gt 0 ]; do
@@ -91,4 +91,4 @@ EOF
 
 echo "Wrote ${OUT_FILE}"
 echo "Load with: set -a && source ${OUT_FILE} && set +a"
-echo "Or from bots/timecurve: export \$(grep -v '^#' .env.local | xargs)"
+echo "Or from bots/timearena: export \$(grep -v '^#' .env.local | xargs)"

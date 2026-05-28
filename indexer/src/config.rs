@@ -92,21 +92,17 @@ pub struct AddressRegistry {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RegistryContracts {
-    #[serde(rename = "TimeCurve", default)]
-    pub timecurve: String,
-    /// Optional `TimeCurveBuyRouter` for `BuyViaKumbaya` logs (GitLab #67).
+    #[serde(rename = "TimeArena", default)]
+    pub time_arena: String,
+    /// Optional `TimeCurveBuyRouter` for legacy `BuyViaKumbaya` logs (GitLab #67).
     #[serde(rename = "TimeCurveBuyRouter", default)]
     pub timecurve_buy_router: String,
-    #[serde(rename = "RabbitTreasury", default)]
-    pub rabbit_treasury: String,
-    #[serde(rename = "LeprechaunNFT", default)]
-    pub leprechaun_nft: String,
-    #[serde(rename = "FeeRouter", default)]
-    pub fee_router: String,
+    #[serde(rename = "PodiumVaults", default)]
+    pub podium_vaults: String,
+    #[serde(rename = "AdminSellVault", default)]
+    pub admin_sell_vault: String,
     #[serde(rename = "ReferralRegistry", default)]
     pub referral_registry: String,
-    #[serde(rename = "PodiumPool", alias = "PrizeVault", default)]
-    pub podium_pool: String,
 }
 
 impl AddressRegistry {
@@ -114,13 +110,11 @@ impl AddressRegistry {
     pub fn index_addresses(&self) -> Vec<Address> {
         let mut v = Vec::new();
         for s in [
-            self.contracts.timecurve.trim(),
+            self.contracts.time_arena.trim(),
             self.contracts.timecurve_buy_router.trim(),
-            self.contracts.rabbit_treasury.trim(),
-            self.contracts.leprechaun_nft.trim(),
-            self.contracts.fee_router.trim(),
+            self.contracts.podium_vaults.trim(),
+            self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
-            self.contracts.podium_pool.trim(),
         ] {
             if s.is_empty() {
                 continue;
@@ -234,16 +228,14 @@ pub fn validate_address_registry_for_production(
 
     // Non-empty garbage in any field must not be silently skipped in production.
     for (field, raw) in [
-        ("TimeCurve", reg.contracts.timecurve.as_str()),
+        ("TimeArena", reg.contracts.time_arena.as_str()),
         (
             "TimeCurveBuyRouter",
             reg.contracts.timecurve_buy_router.as_str(),
         ),
-        ("RabbitTreasury", reg.contracts.rabbit_treasury.as_str()),
-        ("LeprechaunNFT", reg.contracts.leprechaun_nft.as_str()),
-        ("FeeRouter", reg.contracts.fee_router.as_str()),
+        ("PodiumVaults", reg.contracts.podium_vaults.as_str()),
+        ("AdminSellVault", reg.contracts.admin_sell_vault.as_str()),
         ("ReferralRegistry", reg.contracts.referral_registry.as_str()),
-        ("PodiumPool", reg.contracts.podium_pool.as_str()),
     ] {
         let s = raw.trim();
         if s.is_empty() {
@@ -258,12 +250,10 @@ pub fn validate_address_registry_for_production(
         return Ok(());
     }
 
-    let _ = strict_parse("TimeCurve", &reg.contracts.timecurve)?;
-    let _ = strict_parse("RabbitTreasury", &reg.contracts.rabbit_treasury)?;
-    let _ = strict_parse("LeprechaunNFT", &reg.contracts.leprechaun_nft)?;
-    let _ = strict_parse("FeeRouter", &reg.contracts.fee_router)?;
+    let _ = strict_parse("TimeArena", &reg.contracts.time_arena)?;
+    let _ = strict_parse("PodiumVaults", &reg.contracts.podium_vaults)?;
+    let _ = strict_parse("AdminSellVault", &reg.contracts.admin_sell_vault)?;
     let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
-    let _ = strict_parse("PodiumPool", &reg.contracts.podium_pool)?;
     let _ = parse_optional_buy_router(&reg.contracts.timecurve_buy_router)?;
 
     if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {
@@ -529,13 +519,11 @@ mod production_registry_validation_tests {
 
     fn filled_contracts(buy_router: &str) -> RegistryContracts {
         RegistryContracts {
-            timecurve: ADDR_A.into(),
+            time_arena: ADDR_A.into(),
             timecurve_buy_router: buy_router.into(),
-            rabbit_treasury: ADDR_A.into(),
-            leprechaun_nft: ADDR_A.into(),
-            fee_router: ADDR_A.into(),
+            podium_vaults: ADDR_A.into(),
+            admin_sell_vault: ADDR_A.into(),
             referral_registry: ADDR_A.into(),
-            podium_pool: ADDR_A.into(),
         }
     }
 
@@ -560,7 +548,7 @@ mod production_registry_validation_tests {
     #[test]
     fn rejects_invalid_address_when_non_empty() {
         let mut c = filled_contracts("");
-        c.timecurve = "not-an-address".into();
+        c.time_arena = "not-an-address".into();
         let r = reg(1, 100, c);
         assert!(validate_address_registry_for_production(&r, 1, false, false).is_err());
     }
@@ -568,16 +556,16 @@ mod production_registry_validation_tests {
     #[test]
     fn rejects_empty_mandatory_when_ingestion() {
         let mut c = filled_contracts("");
-        c.fee_router = "  ".into();
+        c.podium_vaults = "  ".into();
         let r = reg(1, 100, c);
         let e = validate_address_registry_for_production(&r, 1, true, false).unwrap_err();
-        assert!(e.to_string().contains("FeeRouter"), "{e:?}");
+        assert!(e.to_string().contains("PodiumVaults"), "{e:?}");
     }
 
     #[test]
     fn rejects_zero_mandatory_when_ingestion() {
         let mut c = filled_contracts("");
-        c.podium_pool = Address::ZERO.to_string();
+        c.time_arena = Address::ZERO.to_string();
         let r = reg(1, 100, c);
         assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
     }
@@ -598,13 +586,11 @@ mod production_registry_validation_tests {
     #[test]
     fn rejects_empty_index_set_when_all_mandatory_unparseable_ingestion() {
         let c = RegistryContracts {
-            timecurve: "nope".into(),
+            time_arena: "nope".into(),
             timecurve_buy_router: String::new(),
-            rabbit_treasury: "nope2".into(),
-            leprechaun_nft: String::new(),
-            fee_router: String::new(),
+            podium_vaults: "nope2".into(),
+            admin_sell_vault: String::new(),
             referral_registry: String::new(),
-            podium_pool: String::new(),
         };
         let r = reg(1, 1, c);
         assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
@@ -629,15 +615,13 @@ mod production_registry_validation_tests {
     #[test]
     fn api_only_skips_mandatory_addresses_but_still_validates_nonempty_fields() {
         let mut c = RegistryContracts {
-            timecurve: String::new(),
+            time_arena: String::new(),
             timecurve_buy_router: String::new(),
-            rabbit_treasury: String::new(),
-            leprechaun_nft: String::new(),
-            fee_router: String::new(),
+            podium_vaults: String::new(),
+            admin_sell_vault: String::new(),
             referral_registry: String::new(),
-            podium_pool: String::new(),
         };
-        c.timecurve = "bogus".into();
+        c.time_arena = "bogus".into();
         let r = reg(5, 0, c);
         assert!(validate_address_registry_for_production(&r, 5, false, false).is_err());
     }

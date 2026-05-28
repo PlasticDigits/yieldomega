@@ -1,6 +1,8 @@
 # TimeCurve — Doubloon (DOUB) launch plan
 
-**Goal:** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with most **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only). **`/referrals`** is explicitly **not** under construction — it ships the full referrals UX at TGE ([§6](#6-under-construction-frontend), [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
+> **Superseded by Arena v2** — [`docs/product/arena-v2.md`](docs/product/arena-v2.md) · epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retained for history only.
+
+**Goal (legacy):** Get from the current repo state to **first MegaETH devnet end-to-end**: official **CL8Y** as the **reserve / accepted asset**, DOUB as the **launched token** on TimeCurve, full sale lifecycle, **continuous simulations**, and **contract fuzzing** — with most **non–TimeCurve** product surfaces treated as **under construction** in the frontend (short placeholder copy only). **`/referrals`** is explicitly **not** under construction — it ships the full referrals UX at TGE ([§6](#6-under-construction-frontend), [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
 
 **Authoritative policy elsewhere:** Runtime fee **weights** (**30%** LP · **40%** CL8Y burned · **20%** podium · **0%** team · **10%** Rabbit) and governance intent are in [`docs/onchain/fee-routing-and-governance.md`](docs/onchain/fee-routing-and-governance.md). Parameter checklist: [`contracts/PARAMETERS.md`](contracts/PARAMETERS.md). Stage 2 smoke criteria: [`docs/testing/strategy.md`](docs/testing/strategy.md) and [`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md).
 

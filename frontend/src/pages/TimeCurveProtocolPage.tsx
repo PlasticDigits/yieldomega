@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
+import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
 import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PageHero } from "@/components/ui/PageHero";
@@ -40,7 +41,8 @@ import { useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDat
  * onchain reads + reserve fee routing for operators / power users.
  *
  * Invariant: every value rendered here is read directly from a public view
- * function on `TimeCurve`, `LinearCharmPrice`, or `FeeRouter`. We never derive
+ * function on `TimeArena` / vault contracts (legacy `TimeCurve` ABI where env aliases).
+ * We never derive
  * values that the contract does not expose, so this page can be used to
  * verify the simple / arena views. **TOTAL RAISE / TOTAL USD** mirror the
  * former Arena hero (same formatting on `totalRaised()` wei). **Live buys** use the indexer read-model
@@ -48,12 +50,10 @@ import { useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDat
  * refresh helper uses the indexer only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
  */
 
-const FEE_SINK_LABELS = [
-  "DOUB / CL8Y locked liquidity",
-  "CL8Y burned (sale proceeds)",
-  "Podium pool",
-  "Team / reserved",
-  "Rabbit Treasury",
+const ARENA_VAULT_LABELS = [
+  "Active podium (40%)",
+  "Seed podium (30%)",
+  "Admin sell vault (30%)",
 ] as const;
 
 /** Last good TimeCurveLiveCharts inputs — avoids mount/unmount flicker while RPC refetch errors. */
@@ -71,8 +71,6 @@ export function TimeCurveProtocolPage() {
   const {
     protocolReading: reading,
     charmPriceRows,
-    sinksRows,
-    latchedFeeRouterAddr,
     latchedAcceptedAssetAddr,
     heroChainNowSec,
     refetchProtocolReads,
@@ -81,8 +79,6 @@ export function TimeCurveProtocolPage() {
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
 
   const get = (i: number) => reading[i];
-  const feeRouterAddrForUi =
-    get(16)?.status === "success" ? (get(16)!.result as HexAddress) : latchedFeeRouterAddr;
 
   const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
@@ -578,35 +574,19 @@ export function TimeCurveProtocolPage() {
       </PageSection>
 
       <PageSection
-        title="Reserve fee routing"
-        badgeLabel="FeeRouter sinks"
+        title="Arena prize vaults"
+        badgeLabel="Arena v2"
         badgeTone="info"
-        lede="How CL8Y reserves move once a buy lands. Weights come straight from the FeeRouter."
+        lede="DOUB from each buy routes 40% active podium · 30% seed podium · 30% admin sell vault (onchain ArenaBuyRouting)."
       >
-        {!feeRouterAddrForUi && (
-          <StatusMessage variant="muted">Waiting for FeeRouter address…</StatusMessage>
-        )}
-        {feeRouterAddrForUi && (
-          <ul className="event-list">
-            {FEE_SINK_LABELS.map((label, i) => {
-              const row = sinksRows[i];
-              if (row?.status !== "success" || row.result === undefined) {
-                return (
-                  <li key={label}>
-                    <strong>{label}</strong> · loading…
-                  </li>
-                );
-              }
-              const [destination, weightBps] = row.result as readonly [HexAddress, number];
-              return (
-                <li key={label}>
-                  <strong>{label}</strong> · weight {formatBpsAsPercent(Number(weightBps))} ·{" "}
-                  <MegaScannerAddressLink address={destination} />
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <ul className="event-list">
+          {ARENA_VAULT_LABELS.map((label) => (
+            <li key={label}>
+              <strong>{label}</strong>
+            </li>
+          ))}
+        </ul>
+        <ArenaVaultAddressesPanel />
       </PageSection>
 
       <RawDataAccordion {...protocolRawAccordion} />

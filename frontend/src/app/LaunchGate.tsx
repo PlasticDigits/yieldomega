@@ -32,30 +32,17 @@ const TimeCurveProtocolPage = lazyPage(
   () => import("@/pages/TimeCurveProtocolPage"),
   "TimeCurveProtocolPage",
 );
-const RabbitTreasuryPage = lazyPage(
-  () => import("@/pages/RabbitTreasuryPage"),
-  "RabbitTreasuryPage",
-);
-const CollectionPage = lazyPage(() => import("@/pages/CollectionPage"), "CollectionPage");
 const ReferralsPage = lazyPage(() => import("@/pages/ReferralsPage"), "ReferralsPage");
 const KumbayaPage = lazyPage(() => import("@/pages/KumbayaPage"), "KumbayaPage");
 const SirPage = lazyPage(() => import("@/pages/SirPage"), "SirPage");
-const PresaleVestingPage = lazyPage(
-  () => import("@/pages/PresaleVestingPage"),
-  "PresaleVestingPage",
-);
 const NotFoundPage = lazyPage(() => import("@/pages/NotFoundPage"), "NotFoundPage");
 
 type Surface = { path: string | undefined; element: ReactNode };
 
 const SECONDARY_ROUTES: Surface[] = [
-  { path: "rabbit-treasury", element: <RabbitTreasuryPage /> },
-  { path: "collection", element: <CollectionPage /> },
   { path: "referrals", element: <ReferralsPage /> },
   { path: "kumbaya", element: <KumbayaPage /> },
   { path: "sir", element: <SirPage /> },
-  /** Presale vesting: intentionally omitted from RootLayout nav — direct URL / share only (GitLab #92). */
-  { path: "vesting", element: <PresaleVestingPage /> },
 ];
 
 /**

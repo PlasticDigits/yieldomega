@@ -46,7 +46,6 @@ import { formatMmSsCountdown } from "@/pages/timecurve/formatTimer";
 import { phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
-import { TimeCurveStakeAtLaunchSection } from "@/pages/timecurve/TimeCurveStakeAtLaunchSection";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
 import { WarbowClaimFlagButton } from "@/pages/timeCurveArena/WarbowClaimFlagButton";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
@@ -891,13 +890,6 @@ export function TimeCurveSimplePage() {
   const buyButtonMotion =
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
 
-  /** Stay mounted while connected + in-range phase; `charmWeightWad` can be briefly undefined during RPC refetch. */
-  const stakePanelVisible =
-    session.walletConnected &&
-    (session.phase === "saleActive" ||
-      session.phase === "saleEnded" ||
-      session.phase === "saleExpiredAwaitingEnd");
-
   // Rate board (top of buy panel) — the **single most-important number on
   // the page** is the live current per-CHARM price in the selected pay asset
   // (it ticks up every block; waiting costs money). Live reads refresh on
@@ -1342,19 +1334,6 @@ export function TimeCurveSimplePage() {
           </ChainMismatchWriteBarrier>
         </PageSection>
       </div>
-
-      <TimeCurveStakeAtLaunchSection
-        visible={stakePanelVisible}
-        charmWeightWad={session.charmWeightWad}
-        launchCl8yValueWei={session.launchCl8yValueWei}
-        payWith={session.payWith}
-        payTokenDecimals={session.payTokenDecimals}
-        stakeLaunchEquivPayWei={session.stakeLaunchEquivPayWei}
-        stakeLaunchEquivQuoteLoading={session.stakeLaunchEquivQuoteLoading}
-        decimals={session.decimals}
-        charmsRedeemed={session.charmsRedeemed}
-        expectedTokenFromCharms={session.expectedTokenFromCharms}
-      />
 
       <TimeCurveSimplePodiumSection
         podiumRows={podiumReads.data}
