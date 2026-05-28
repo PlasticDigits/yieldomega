@@ -94,7 +94,7 @@ pub struct AddressRegistry {
 pub struct RegistryContracts {
     #[serde(rename = "TimeArena", default)]
     pub time_arena: String,
-    /// Optional `TimeCurveBuyRouter` for legacy `BuyViaKumbaya` logs (GitLab #67).
+    /// Legacy JSON field (ignored for Arena v2 ingestion).
     #[serde(rename = "TimeCurveBuyRouter", default)]
     pub timecurve_buy_router: String,
     #[serde(rename = "PodiumVaults", default)]
@@ -111,7 +111,6 @@ impl AddressRegistry {
         let mut v = Vec::new();
         for s in [
             self.contracts.time_arena.trim(),
-            self.contracts.timecurve_buy_router.trim(),
             self.contracts.podium_vaults.trim(),
             self.contracts.admin_sell_vault.trim(),
             self.contracts.referral_registry.trim(),
@@ -151,7 +150,7 @@ pub fn ensure_production_address_registry(
     chain_id: u64,
     ingestion_enabled: bool,
     address_registry: &Option<AddressRegistry>,
-    require_buy_router: bool,
+    _require_buy_router: bool,
 ) -> Result<()> {
     if !crate::cors_config::indexer_production_enabled() {
         return Ok(());
@@ -169,21 +168,20 @@ pub fn ensure_production_address_registry(
         return Ok(());
     };
 
-    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, require_buy_router)
+    validate_address_registry_for_production(reg, chain_id, ingestion_enabled, false)
 }
 
 /// Fail closed on misconfigured **`ADDRESS_REGISTRY`** JSON when **`INDEXER_PRODUCTION`** is on.
 ///
 /// - **`ingestion_enabled`:** mandatory protocol fields must be non-empty, parseable **ERC-20
 ///   sized** addresses, and **non-zero**; resolved log filter set must be non-empty; optional
-///   **`TimeCurveBuyRouter`** is required when **`require_buy_router`** is true.
 /// - **Always (when this is called for a `Some` registry):** `registry.chain_id` must match
 ///   **`CHAIN_ID`**; any **non-empty** contract string must parse (no silent skip).
 pub fn validate_address_registry_for_production(
     reg: &AddressRegistry,
     chain_id: u64,
     ingestion_enabled: bool,
-    require_buy_router: bool,
+    _require_buy_router: bool,
 ) -> Result<()> {
     if reg.chain_id != chain_id {
         bail!(
@@ -207,32 +205,9 @@ pub fn validate_address_registry_for_production(
         Ok(a)
     };
 
-    let parse_optional_buy_router = |raw: &str| -> Result<Option<Address>> {
-        let s = raw.trim();
-        if s.is_empty() {
-            if require_buy_router {
-                bail!(
-                    "INDEXER_PRODUCTION: TimeCurveBuyRouter is required — set INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=0 to allow omission, or add the router proxy to ADDRESS_REGISTRY (GitLab #156, GitLab #67)"
-                );
-            }
-            return Ok(None);
-        }
-        let a: Address = s.parse().wrap_err_with(|| {
-            format!("INDEXER_PRODUCTION: TimeCurveBuyRouter is not a valid address: {s:?}")
-        })?;
-        if a == Address::ZERO {
-            bail!("INDEXER_PRODUCTION: TimeCurveBuyRouter must not be the zero address");
-        }
-        Ok(Some(a))
-    };
-
     // Non-empty garbage in any field must not be silently skipped in production.
     for (field, raw) in [
         ("TimeArena", reg.contracts.time_arena.as_str()),
-        (
-            "TimeCurveBuyRouter",
-            reg.contracts.timecurve_buy_router.as_str(),
-        ),
         ("PodiumVaults", reg.contracts.podium_vaults.as_str()),
         ("AdminSellVault", reg.contracts.admin_sell_vault.as_str()),
         ("ReferralRegistry", reg.contracts.referral_registry.as_str()),
@@ -254,7 +229,6 @@ pub fn validate_address_registry_for_production(
     let _ = strict_parse("PodiumVaults", &reg.contracts.podium_vaults)?;
     let _ = strict_parse("AdminSellVault", &reg.contracts.admin_sell_vault)?;
     let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
-    let _ = parse_optional_buy_router(&reg.contracts.timecurve_buy_router)?;
 
     if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {
         bail!(
@@ -271,13 +245,6 @@ pub fn validate_address_registry_for_production(
     }
 
     Ok(())
-}
-
-fn registry_require_buy_router_from_env() -> bool {
-    match std::env::var("INDEXER_REGISTRY_REQUIRE_BUY_ROUTER") {
-        Ok(s) => matches!(s.to_lowercase().as_str(), "1" | "true" | "yes"),
-        Err(_) => false,
-    }
 }
 
 /// Runtime configuration loaded from environment (and optional registry file).
@@ -349,12 +316,11 @@ impl Config {
             Err(_) => true,
         };
 
-        let require_buy_router = registry_require_buy_router_from_env();
         ensure_production_address_registry(
             chain_id,
             ingestion_enabled,
             &address_registry,
-            require_buy_router,
+            false,
         )?;
 
         if let Some(ref reg) = address_registry {
@@ -594,22 +560,6 @@ mod production_registry_validation_tests {
         };
         let r = reg(1, 1, c);
         assert!(validate_address_registry_for_production(&r, 1, true, false).is_err());
-    }
-
-    #[test]
-    fn require_buy_router_missing_fails() {
-        let r = reg(1, 1, filled_contracts(""));
-        let e = validate_address_registry_for_production(&r, 1, true, true).unwrap_err();
-        assert!(
-            e.to_string().contains("TimeCurveBuyRouter"),
-            "unexpected: {e:?}"
-        );
-    }
-
-    #[test]
-    fn require_buy_router_present_ok() {
-        let r = reg(1, 1, filled_contracts(ADDR_B));
-        validate_address_registry_for_production(&r, 1, true, true).unwrap();
     }
 
     #[test]

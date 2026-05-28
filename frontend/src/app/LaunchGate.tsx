@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { Suspense, lazy, type ComponentType, type ReactNode } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 import { RootLayout } from "@/layout/RootLayout";
 import { LaunchCountdownPage } from "@/pages/LaunchCountdownPage";
@@ -19,15 +19,12 @@ function lazyPage(
 }
 
 const HomePage = lazyPage(() => import("@/pages/HomePage"), "HomePage");
-const TimeCurveSimplePage = lazyPage(
-  () => import("@/pages/TimeCurveSimplePage"),
-  "TimeCurveSimplePage",
-);
 const TimeCurveBranchPage = lazyPage(
   () => import("@/pages/TimeCurveBranchPage"),
   "TimeCurveBranchPage",
 );
 const TimeCurvePage = lazyPage(() => import("@/pages/TimeCurvePage"), "TimeCurvePage");
+const TimeArenaPage = lazyPage(() => import("@/pages/TimeArenaPage"), "TimeArenaPage");
 const TimeCurveProtocolPage = lazyPage(
   () => import("@/pages/TimeCurveProtocolPage"),
   "TimeCurveProtocolPage",
@@ -52,15 +49,14 @@ const SECONDARY_ROUTES: Surface[] = [
  * → Simple handoff feels gentle.
  */
 const TIMECURVE_ROUTES: Surface[] = [
-  // Explicit arena/protocol before `timecurve/:segment` so `/timecurve` and
-  // `/timecurve/arena` never compete ambiguously with a param-only match (fixes dead subnav).
+  { path: "arena", element: <TimeArenaPage /> },
   { path: "timecurve/arena", element: <TimeCurvePage /> },
   { path: "timecurve/protocol", element: (
       <TimeCurveProtocolDataProvider>
         <TimeCurveProtocolPage />
       </TimeCurveProtocolDataProvider>
     ) },
-  { path: "timecurve", element: <TimeCurveSimplePage /> },
+  { path: "timecurve", element: <Navigate to="/arena" replace /> },
   { path: "timecurve/:timecurveSegment", element: <TimeCurveBranchPage /> },
 ];
 
@@ -78,7 +74,7 @@ const ROUTES_NO_ENV: Surface[] = [
 ];
 
 const ROUTES_POST_LAUNCH: Surface[] = [
-  { path: undefined, element: <TimeCurveSimplePage /> },
+  { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
   ...TIMECURVE_ROUTES,
   ...SECONDARY_ROUTES,

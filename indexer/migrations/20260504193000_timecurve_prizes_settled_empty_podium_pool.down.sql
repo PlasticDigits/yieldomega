@@ -1,1 +1,0 @@
-DROP TABLE IF EXISTS idx_timecurve_prizes_settled_empty_podium_pool;

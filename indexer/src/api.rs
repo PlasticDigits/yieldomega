@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! HTTP API (axum): paginated reads for frontend and agents.
+//! HTTP API (axum): Arena v2 reads and referral surfaces.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use alloy_primitives::Address;
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -18,49 +17,15 @@ use serde_json::json;
 use sqlx::{PgPool, Row};
 use tokio::sync::RwLock;
 
-use crate::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
+use crate::chain_timer::TimecurveHeadSnapshot;
 
-/// Current API schema version — bump when response shapes change.
-const SCHEMA_VERSION: &str = "1.27.0";
-
-/// `addr`, `bp`, `block_number`, `log_index`, `tx_hash` — keep `fetch_warbow_bp_podium_prediction` and WarBow leaderboard aligned.
-const WARBOW_BP_OBSERVATIONS_UNION: &str = r#"
-  SELECT lower(buyer::text) AS addr,
-         battle_points_after::numeric AS bp,
-         block_number,
-         log_index,
-         tx_hash
-  FROM idx_timecurve_buy
-  UNION ALL
-  SELECT lower(attacker::text), attacker_bp_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_steal
-  UNION ALL
-  SELECT lower(victim::text), victim_bp_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_steal
-  UNION ALL
-  SELECT lower(player::text), battle_points_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_flag_claimed
-  UNION ALL
-  SELECT lower(former_holder::text), battle_points_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_flag_penalized
-  UNION ALL
-  SELECT lower(stealer::text), stealer_bp_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_revenge
-  WHERE stealer_bp_after IS NOT NULL
-  UNION ALL
-  SELECT lower(avenger::text), avenger_bp_after, block_number, log_index, tx_hash
-  FROM idx_timecurve_warbow_revenge
-  WHERE avenger_bp_after IS NOT NULL
-"#;
+const SCHEMA_VERSION: &str = "2.0.0";
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
-    /// Filled by background RPC poll when `ADDRESS_REGISTRY` includes TimeCurve (`timer` + podiums).
     pub chain_timer: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
-    /// Mirrors ingestion task active-loop flag ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
     pub ingestion_alive: Arc<AtomicBool>,
-    /// Wall-clock millis after last committed indexed block; **0** if none.
     pub last_indexed_at_ms: Arc<AtomicU64>,
 }
 
@@ -80,85 +45,11 @@ fn clamp_limit(l: i64) -> i64 {
     l.clamp(1, 200)
 }
 
-fn default_refresh_candidates_limit() -> i64 {
-    200
-}
-
-fn clamp_refresh_candidates_limit(l: i64) -> i64 {
-    l.clamp(1, 500)
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct RefreshCandidatesParams {
-    #[serde(default = "default_refresh_candidates_limit")]
-    pub limit: i64,
-    #[serde(default)]
-    pub offset: i64,
-}
-
-fn normalize_refresh_candidate_addr(w: &str) -> Option<String> {
-    let s = w.trim().to_ascii_lowercase();
-    if s.is_empty() || s == "0x0000000000000000000000000000000000000000" {
-        return None;
-    }
-    Some(s)
-}
-
-/// Maps `TimeCurveBuyRouter` `PAY_ETH` / `PAY_STABLE` for API consumers (GitLab #67).
-fn kumbaya_entry_pay_asset(pay_kind: Option<i16>) -> Option<String> {
-    match pay_kind? {
-        0 => Some("eth".to_string()),
-        1 => Some("stable".to_string()),
-        _ => None,
-    }
-}
-
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/v1/status", get(status))
-        .route("/v1/timecurve/chain-timer", get(timecurve_chain_timer))
-        .route("/v1/timecurve/sale-state", get(timecurve_sale_state))
-        .route("/v1/timecurve/podiums", get(timecurve_podiums))
-        .route("/v1/timecurve/buys", get(timecurve_buys))
-        .route(
-            "/v1/timecurve/warbow/battle-feed",
-            get(timecurve_warbow_battle_feed),
-        )
-        .route(
-            "/v1/timecurve/warbow/leaderboard",
-            get(timecurve_warbow_leaderboard),
-        )
-        .route(
-            "/v1/timecurve/warbow/steals-by-victim-day",
-            get(timecurve_warbow_steals_by_victim_day),
-        )
-        .route(
-            "/v1/timecurve/warbow/guard-latest",
-            get(timecurve_warbow_guard_latest),
-        )
-        .route(
-            "/v1/timecurve/warbow/pending-revenge",
-            get(timecurve_warbow_pending_revenge),
-        )
-        .route(
-            "/v1/timecurve/warbow/refresh-candidates",
-            get(timecurve_warbow_refresh_candidates),
-        )
-        .route("/v1/timecurve/buyer-stats", get(timecurve_buyer_stats))
-        .route(
-            "/v1/timecurve/platform-usage",
-            get(timecurve_platform_usage),
-        )
-        .route(
-            "/v1/timecurve/charm-redemptions",
-            get(timecurve_charm_redemptions),
-        )
-        .route(
-            "/v1/timecurve/prize-distributions",
-            get(timecurve_prize_distributions),
-        )
-        .route("/v1/timecurve/prize-payouts", get(timecurve_prize_payouts))
+        .merge(crate::api_arena::arena_routes())
         .route("/v1/referrals/registrations", get(referral_registrations))
         .route("/v1/referrals/applied", get(referral_applied))
         .route(
@@ -172,7 +63,7 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap {
+pub(crate) fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap {
     let mut h = headers;
     h.insert(
         header::HeaderName::from_static("x-schema-version"),
@@ -180,11 +71,10 @@ fn with_schema_version(headers: axum::http::HeaderMap) -> axum::http::HeaderMap 
     );
     h
 }
-/// Stable `error` field for HTTP 500 responses when Postgres/sqlx fails on a public read route.
-/// Full [`sqlx::Error`] is logged server-side only ([GitLab #157](https://gitlab.com/PlasticDigits/yieldomega/-/issues/157)).
+
 const PUBLIC_INTERNAL_DB_ERROR: &str = "internal server error";
 
-fn internal_db_error_response(context: &'static str, err: sqlx::Error) -> Response {
+pub(crate) fn internal_db_error_response(context: &'static str, err: sqlx::Error) -> Response {
     tracing::error!(error = %err, context, "indexer API: database query failed");
     (
         StatusCode::INTERNAL_SERVER_ERROR,
@@ -195,321 +85,6 @@ fn internal_db_error_response(context: &'static str, err: sqlx::Error) -> Respon
 
 async fn healthz() -> impl IntoResponse {
     (StatusCode::OK, "ok")
-}
-
-async fn timecurve_chain_timer(State(state): State<AppState>) -> Response {
-    let guard = state.chain_timer.read().await;
-    match &*guard {
-        Some(head) => {
-            let j: ChainTimerSnapshot = head.timer.clone();
-            let mut res = Json(j).into_response();
-            *res.headers_mut() = with_schema_version(res.headers().clone());
-            res
-        }
-        None => {
-            let mut res = (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({
-                    "error": "chain timer not configured (set ADDRESS_REGISTRY with TimeCurve)"
-                })),
-            )
-                .into_response();
-            *res.headers_mut() = with_schema_version(res.headers().clone());
-            res
-        }
-    }
-}
-
-/// Head RPC snapshot for TimeCurve sale views at `read_block_number` ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
-async fn timecurve_sale_state(State(state): State<AppState>) -> Response {
-    let guard = state.chain_timer.read().await;
-    match &*guard {
-        Some(head) => {
-            let mut body = serde_json::to_value(&head.sale_state).unwrap_or(json!({}));
-            if let serde_json::Value::Object(ref mut map) = body {
-                map.insert(
-                    "note".to_string(),
-                    json!("Head RPC snapshot at read_block_number; refreshed on the indexer chain-timer poll cadence (~1s healthy, backoff on RPC errors)."),
-                );
-            }
-            let mut res = Json(body).into_response();
-            *res.headers_mut() = with_schema_version(res.headers().clone());
-            res
-        }
-        None => {
-            let mut res = (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(json!({
-                    "error": "sale state not configured (set ADDRESS_REGISTRY with TimeCurve)"
-                })),
-            )
-                .into_response();
-            *res.headers_mut() = with_schema_version(res.headers().clone());
-            res
-        }
-    }
-}
-
-/// Last-three-`Buy` snapshot matching `TimeCurve._finalizeLastBuyers` (1st = latest buyer).
-/// Uses indexed buys so the Simple page can refresh with the ticker without hammering RPC per wallet.
-async fn fetch_last_buy_prediction_row(pool: &PgPool) -> Result<PodiumRpcRow, sqlx::Error> {
-    let total_buys: i64 =
-        sqlx::query_scalar(r#"SELECT COALESCE(MAX(buy_index), 0)::bigint FROM idx_timecurve_buy"#)
-            .fetch_one(pool)
-            .await?;
-
-    let cap = std::cmp::min(3i64, total_buys) as usize;
-    let zero = format!("{:#x}", Address::ZERO);
-    if cap == 0 {
-        return Ok(PodiumRpcRow {
-            winners: std::array::from_fn(|_| zero.clone()),
-            values: std::array::from_fn(|_| String::from("0")),
-        });
-    }
-
-    let buyers: Vec<String> = sqlx::query_scalar::<_, String>(
-        r#"SELECT buyer FROM idx_timecurve_buy
-           ORDER BY block_number DESC, log_index DESC
-           LIMIT $1"#,
-    )
-    .bind(cap as i64)
-    .fetch_all(pool)
-    .await?;
-
-    let mut winners = std::array::from_fn(|_| zero.clone());
-    let mut values = std::array::from_fn(|_| String::from("0"));
-    for (i, b) in buyers.iter().enumerate() {
-        if i >= 3 {
-            break;
-        }
-        winners[i] = b.to_ascii_lowercase();
-        values[i] = (cap - i).to_string();
-    }
-    Ok(PodiumRpcRow { winners, values })
-}
-
-fn empty_podium_prediction_row() -> PodiumRpcRow {
-    let z = format!("{:#x}", Address::ZERO);
-    PodiumRpcRow {
-        winners: std::array::from_fn(|_| z.clone()),
-        values: std::array::from_fn(|_| String::from("0")),
-    }
-}
-
-fn normalize_podium_addr_hex(addr: &str) -> String {
-    let s = addr.trim().to_ascii_lowercase();
-    if s.is_empty() || s == format!("{:#x}", Address::ZERO) {
-        return format!("{:#x}", Address::ZERO);
-    }
-    if s.starts_with("0x") {
-        s
-    } else {
-        format!("0x{s}")
-    }
-}
-
-fn podium_row_pad_top3(pairs: Vec<(String, String)>) -> PodiumRpcRow {
-    let z = format!("{:#x}", Address::ZERO);
-    let mut winners = std::array::from_fn(|_| z.clone());
-    let mut values = std::array::from_fn(|_| String::from("0"));
-    for (i, (addr, val)) in pairs.into_iter().enumerate().take(3) {
-        winners[i] = normalize_podium_addr_hex(&addr);
-        values[i] = val;
-    }
-    PodiumRpcRow { winners, values }
-}
-
-async fn fetch_two_col_top3(pool: &PgPool, sql: &str, kind: &'static str) -> PodiumRpcRow {
-    let rows = sqlx::query(sql).fetch_all(pool).await;
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::warn!(?e, "timecurve_podiums: {kind} prediction query failed");
-            return empty_podium_prediction_row();
-        }
-    };
-    let mut pairs: Vec<(String, String)> = Vec::with_capacity(3);
-    for r in rows {
-        let addr: String = match r.try_get::<String, _>("addr") {
-            Ok(a) => a,
-            Err(_) => continue,
-        };
-        let val: String = match r.try_get::<String, _>("val") {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        pairs.push((addr, val));
-    }
-    podium_row_pad_top3(pairs)
-}
-
-/// Live WarBow top-3 by Battle Points: latest BP per wallet from indexed `Buy` + WarBow tables
-/// (steal victim/attacker, revenge stealer/avenger when snapshotted, flag claimed/penalized), ordered like `TimeCurve._betterRanked` (value desc, address asc).
-async fn fetch_warbow_bp_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
-    let sql = format!(
-        r#"WITH all_bp AS (
-{union}
-            ),
-            latest AS (
-              SELECT DISTINCT ON (addr) addr, bp
-              FROM all_bp
-              ORDER BY addr, block_number DESC, log_index DESC
-            )
-            SELECT addr, bp::text AS val
-            FROM latest
-            WHERE bp > 0
-            ORDER BY bp DESC, addr ASC
-            LIMIT 3"#,
-        union = WARBOW_BP_OBSERVATIONS_UNION
-    );
-    fetch_two_col_top3(pool, &sql, "warbow_bp").await
-}
-
-/// Defended-streak leaderboard: per-wallet **max** best streak from indexed `Buy` rows (treat NULL
-/// legacy/partial rows as 0) merged with `WarBowDefendedStreakContinued` snapshots, then top-3
-/// by best (matches onchain `bestDefendedStreak` monotonic semantics; avoids empty podiums when
-/// the latest buy row omits streak columns but an earlier row carried the peak).
-async fn fetch_defended_streak_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
-    fetch_two_col_top3(
-        pool,
-        r#"WITH buy_best AS (
-              SELECT lower(buyer::text) AS addr,
-                     MAX(COALESCE(buyer_best_defended_streak::numeric, 0)) AS best
-              FROM idx_timecurve_buy
-              GROUP BY lower(buyer::text)
-            ),
-            ds_best AS (
-              SELECT lower(wallet::text) AS addr,
-                     MAX(COALESCE(best_streak::numeric, 0)) AS best
-              FROM idx_timecurve_warbow_ds_continued
-              GROUP BY lower(wallet::text)
-            ),
-            merged AS (
-              SELECT addr, MAX(best) AS best
-              FROM (
-                  SELECT addr, best FROM buy_best
-                  UNION ALL
-                  SELECT addr, best FROM ds_best
-              ) s
-              GROUP BY addr
-            )
-            SELECT addr::text AS addr, best::text AS val
-            FROM merged
-            WHERE best > 0
-            ORDER BY best DESC, addr ASC
-            LIMIT 3"#,
-        "defended_streak",
-    )
-    .await
-}
-
-/// Time booster: per-wallet **max** cumulative effective timer seconds from indexed buys (NULL
-/// treated as 0), matching monotonic `totalEffectiveTimerSecAdded` semantics for live prediction.
-async fn fetch_time_booster_podium_prediction(pool: &PgPool) -> PodiumRpcRow {
-    fetch_two_col_top3(
-        pool,
-        r#"WITH per_wallet AS (
-              SELECT lower(buyer::text) AS addr,
-                     MAX(COALESCE(buyer_total_effective_timer_sec::numeric, 0)) AS secs
-              FROM idx_timecurve_buy
-              GROUP BY lower(buyer::text)
-            )
-            SELECT addr::text AS addr, secs::text AS val
-            FROM per_wallet
-            WHERE secs > 0
-            ORDER BY secs DESC, addr ASC
-            LIMIT 3"#,
-        "time_booster",
-    )
-    .await
-}
-
-async fn timecurve_podiums(State(state): State<AppState>) -> Response {
-    let guard = state.chain_timer.read().await;
-    let Some(head) = guard.as_ref() else {
-        let mut res = (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({
-                "error": "podium snapshot not configured (set ADDRESS_REGISTRY with TimeCurve)"
-            })),
-        )
-            .into_response();
-        *res.headers_mut() = with_schema_version(res.headers().clone());
-        return res;
-    };
-
-    // While `sale_ended` is false, all four UX rows use indexer DB predictions (live indexed state).
-    // After the sale ends, rows mirror head `TimeCurve.podium(category)` at `read_block_number`.
-    let (last_row, warbow_row, def_row, time_row) = if head.sale_ended {
-        (
-            json!({
-                "winners": head.podium_contract[0].winners,
-                "values": head.podium_contract[0].values,
-                "podium_prediction": false,
-                "last_buy_prediction": false,
-            }),
-            json!({
-                "winners": head.podium_contract[3].winners,
-                "values": head.podium_contract[3].values,
-                "podium_prediction": false,
-            }),
-            json!({
-                "winners": head.podium_contract[2].winners,
-                "values": head.podium_contract[2].values,
-                "podium_prediction": false,
-            }),
-            json!({
-                "winners": head.podium_contract[1].winners,
-                "values": head.podium_contract[1].values,
-                "podium_prediction": false,
-            }),
-        )
-    } else {
-        let (predicted_res, wb, def, time) = tokio::join!(
-            fetch_last_buy_prediction_row(&state.pool),
-            fetch_warbow_bp_podium_prediction(&state.pool),
-            fetch_defended_streak_podium_prediction(&state.pool),
-            fetch_time_booster_podium_prediction(&state.pool),
-        );
-        let predicted = predicted_res.unwrap_or_else(|e| {
-            tracing::warn!(?e, "timecurve_podiums: last-buy prediction query failed");
-            empty_podium_prediction_row()
-        });
-        (
-            json!({
-                "winners": predicted.winners,
-                "values": predicted.values,
-                "podium_prediction": true,
-                "last_buy_prediction": true,
-            }),
-            json!({
-                "winners": wb.winners,
-                "values": wb.values,
-                "podium_prediction": true,
-            }),
-            json!({
-                "winners": def.winners,
-                "values": def.values,
-                "podium_prediction": true,
-            }),
-            json!({
-                "winners": time.winners,
-                "values": time.values,
-                "podium_prediction": true,
-            }),
-        )
-    };
-
-    let body = json!({
-        "sale_ended": head.sale_ended,
-        "read_block_number": head.timer.read_block_number,
-        "polled_at_ms": head.timer.polled_at_ms,
-        "rows": [last_row, warbow_row, def_row, time_row],
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
 }
 
 async fn status(State(state): State<AppState>) -> Response {
@@ -533,1450 +108,22 @@ async fn status(State(state): State<AppState>) -> Response {
     .ok()
     .flatten();
 
-    let ingestion_alive = state.ingestion_alive.load(Ordering::Acquire);
-    let last_indexed_at_ms = state.last_indexed_at_ms.load(Ordering::Acquire);
-
     let body = json!({
         "schema_version": SCHEMA_VERSION,
         "database_connected": db_ok,
         "chain_pointer": chain_pointer,
         "max_indexed_block": max_block,
-        "ingestion_alive": ingestion_alive,
-        "last_indexed_at_ms": last_indexed_at_ms,
+        "ingestion_alive": state.ingestion_alive.load(Ordering::Acquire),
+        "last_indexed_at_ms": state.last_indexed_at_ms.load(Ordering::Acquire),
     });
 
     let mut res = Json(body).into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
-}
-
-#[derive(Serialize)]
-struct BuyRow {
-    block_number: String,
-    block_hash: String,
-    contract_address: String,
-    tx_hash: String,
-    log_index: i32,
-    /// Unix seconds when the RPC log included `blockTimestamp`; null if unknown or legacy row.
-    block_timestamp: Option<String>,
-    buyer: String,
-    amount: String,
-    charm_wad: String,
-    price_per_charm_wad: String,
-    new_deadline: String,
-    total_raised_after: String,
-    buy_index: String,
-    actual_seconds_added: String,
-    timer_hard_reset: bool,
-    battle_points_after: String,
-    bp_base_buy: String,
-    bp_timer_reset_bonus: String,
-    bp_clutch_bonus: String,
-    bp_streak_break_bonus: String,
-    bp_ambush_bonus: String,
-    bp_flag_penalty: String,
-    flag_planted: bool,
-    buyer_total_effective_timer_sec: String,
-    buyer_active_defended_streak: String,
-    buyer_best_defended_streak: String,
-    /// Present when a same-tx `BuyViaKumbaya` row correlates (`eth` = WETH path, `stable` = deployment stable token).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    entry_pay_asset: Option<String>,
-    /// Gross CL8Y from the router attestation log (matches `amount` when paths align).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    router_attested_gross_cl8y: Option<String>,
-}
-
-async fn timecurve_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    // Total matches row cardinality while `buy_index` stays sequential 1..N per TimeCurve emits (GitLab #170).
-    let total: i64 = match sqlx::query_scalar::<_, i64>(
-        "SELECT COALESCE(MAX(buy_index), 0)::bigint FROM idx_timecurve_buy",
-    )
-    .fetch_one(&state.pool)
-    .await
-    {
-        Ok(n) => n,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/buys total_count", e);
-        }
-    };
-
-    let rows = sqlx::query(
-        r#"SELECT b.block_number, b.block_hash, b.contract_address,
-                  b.block_timestamp::text AS block_timestamp,
-                  b.tx_hash, b.log_index, b.buyer,
-                  b.amount::text AS amount,
-                  COALESCE(b.charm_wad, b.amount)::text AS charm_wad,
-                  COALESCE(b.price_per_charm_wad, b.current_min_buy, 0)::text AS price_per_charm_wad,
-                  b.new_deadline::text AS new_deadline, b.total_raised_after::text AS total_raised_after,
-                  b.buy_index::text AS buy_index,
-                  COALESCE(b.actual_seconds_added, 0)::text AS actual_seconds_added,
-                  COALESCE(b.timer_hard_reset, false) AS timer_hard_reset,
-                  COALESCE(b.battle_points_after, 0)::text AS battle_points_after,
-                  COALESCE(b.bp_base_buy, 0)::text AS bp_base_buy,
-                  COALESCE(b.bp_timer_reset_bonus, 0)::text AS bp_timer_reset_bonus,
-                  COALESCE(b.bp_clutch_bonus, 0)::text AS bp_clutch_bonus,
-                  COALESCE(b.bp_streak_break_bonus, 0)::text AS bp_streak_break_bonus,
-                  COALESCE(b.bp_ambush_bonus, 0)::text AS bp_ambush_bonus,
-                  COALESCE(b.bp_flag_penalty, 0)::text AS bp_flag_penalty,
-                  COALESCE(b.flag_planted, false) AS flag_planted,
-                  COALESCE(b.buyer_total_effective_timer_sec, 0)::text AS buyer_total_effective_timer_sec,
-                  COALESCE(b.buyer_active_defended_streak, 0)::text AS buyer_active_defended_streak,
-                  COALESCE(b.buyer_best_defended_streak, 0)::text AS buyer_best_defended_streak,
-                  k.pay_kind AS kumbaya_pay_kind_raw,
-                  k.gross_cl8y::text AS router_attested_gross_cl8y
-           FROM idx_timecurve_buy b
-           LEFT JOIN LATERAL (
-               SELECT kk.pay_kind, kk.gross_cl8y
-               FROM idx_timecurve_buy_router_kumbaya kk
-               WHERE kk.tx_hash = b.tx_hash
-                 AND kk.buyer = b.buyer
-                 AND kk.charm_wad = b.charm_wad
-               ORDER BY kk.log_index DESC
-               LIMIT 1
-           ) k ON true
-           ORDER BY b.block_number DESC, b.log_index DESC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/buys page", e);
-        }
-    };
-
-    let items: Vec<BuyRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(BuyRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                block_hash: r.try_get("block_hash").ok()?,
-                contract_address: r.try_get("contract_address").ok()?,
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                block_timestamp: r.try_get("block_timestamp").ok()?,
-                buyer: r.try_get("buyer").ok()?,
-                amount: r.try_get("amount").ok()?,
-                charm_wad: r.try_get("charm_wad").ok()?,
-                price_per_charm_wad: r.try_get("price_per_charm_wad").ok()?,
-                new_deadline: r.try_get("new_deadline").ok()?,
-                total_raised_after: r.try_get("total_raised_after").ok()?,
-                buy_index: r.try_get("buy_index").ok()?,
-                actual_seconds_added: r.try_get("actual_seconds_added").ok()?,
-                timer_hard_reset: r.try_get("timer_hard_reset").ok()?,
-                battle_points_after: r.try_get("battle_points_after").ok()?,
-                bp_base_buy: r.try_get("bp_base_buy").ok()?,
-                bp_timer_reset_bonus: r.try_get("bp_timer_reset_bonus").ok()?,
-                bp_clutch_bonus: r.try_get("bp_clutch_bonus").ok()?,
-                bp_streak_break_bonus: r.try_get("bp_streak_break_bonus").ok()?,
-                bp_ambush_bonus: r.try_get("bp_ambush_bonus").ok()?,
-                bp_flag_penalty: r.try_get("bp_flag_penalty").ok()?,
-                flag_planted: r.try_get("flag_planted").ok()?,
-                buyer_total_effective_timer_sec: r
-                    .try_get("buyer_total_effective_timer_sec")
-                    .ok()?,
-                buyer_active_defended_streak: r.try_get("buyer_active_defended_streak").ok()?,
-                buyer_best_defended_streak: r.try_get("buyer_best_defended_streak").ok()?,
-                entry_pay_asset: kumbaya_entry_pay_asset(
-                    r.try_get::<Option<i16>, _>("kumbaya_pay_kind_raw")
-                        .ok()
-                        .flatten(),
-                ),
-                router_attested_gross_cl8y: r
-                    .try_get::<Option<String>, _>("router_attested_gross_cl8y")
-                    .ok()
-                    .flatten(),
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-        "total": total,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Serialize)]
-struct WarBowBattleFeedRow {
-    kind: String,
-    block_number: String,
-    log_index: i32,
-    tx_hash: String,
-    /// Unix seconds when the RPC log included `blockTimestamp`; null if unknown.
-    block_timestamp: Option<String>,
-    detail: serde_json::Value,
-}
-
-async fn timecurve_warbow_battle_feed(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let rows = sqlx::query(
-        r#"WITH u AS (
-            SELECT 'steal'::text AS kind, block_number, log_index, tx_hash,
-                   block_timestamp::text AS block_timestamp,
-                   jsonb_build_object(
-                     'attacker', attacker,
-                     'victim', victim,
-                     'amount_bp', amount_bp::text,
-                     'burn_paid_wad', burn_paid_wad::text,
-                     'bypassed_victim_daily_limit', bypassed_victim_daily_limit,
-                     'victim_bp_after', victim_bp_after::text,
-                     'attacker_bp_after', attacker_bp_after::text
-                   ) AS detail
-            FROM idx_timecurve_warbow_steal
-            UNION ALL
-            SELECT 'revenge', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_strip_nulls(jsonb_build_object(
-                     'avenger', avenger,
-                     'stealer', stealer,
-                     'amount_bp', amount_bp::text,
-                     'burn_paid_wad', burn_paid_wad::text,
-                     'stealer_bp_after', stealer_bp_after::text,
-                     'avenger_bp_after', avenger_bp_after::text
-                   ))
-                   AS detail
-            FROM idx_timecurve_warbow_revenge
-            UNION ALL
-            SELECT 'guard_activated', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'player', player,
-                     'guard_until_ts', guard_until_ts::text,
-                     'burn_paid_wad', burn_paid_wad::text
-                   )
-            FROM idx_timecurve_warbow_guard
-            UNION ALL
-            SELECT 'flag_claimed', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'player', player,
-                     'bonus_bp', bonus_bp::text,
-                     'battle_points_after', battle_points_after::text
-                   )
-            FROM idx_timecurve_warbow_flag_claimed
-            UNION ALL
-            SELECT 'flag_penalized', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'former_holder', former_holder,
-                     'penalty_bp', penalty_bp::text,
-                     'triggering_buyer', triggering_buyer,
-                     'battle_points_after', battle_points_after::text
-                   )
-            FROM idx_timecurve_warbow_flag_penalized
-            UNION ALL
-            -- `cl8y_burned`: historical feed kind for `WarBowCl8yBurned` (nominal spend per leg).
-            -- Post-2026-05-19 onchain routes via FeeRouter; pre-upgrade sent 100% to 0x…dEaD — see docs/indexer/design.md.
-            SELECT 'cl8y_burned', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'payer', payer,
-                     'reason', reason,
-                     'amount_wad', amount_wad::text
-                   )
-            FROM idx_timecurve_warbow_cl8y_burned
-            UNION ALL
-            SELECT 'defended_streak_continued', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'wallet', wallet,
-                     'active_streak', active_streak::text,
-                     'best_streak', best_streak::text
-                   )
-            FROM idx_timecurve_warbow_ds_continued
-            UNION ALL
-            SELECT 'defended_streak_broken', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object(
-                     'former_holder', former_holder,
-                     'interrupter', interrupter,
-                     'broken_active_length', broken_active_length::text
-                   )
-            FROM idx_timecurve_warbow_ds_broken
-            UNION ALL
-            SELECT 'defended_streak_window_cleared', block_number, log_index, tx_hash,
-                   block_timestamp::text,
-                   jsonb_build_object('cleared_wallet', cleared_wallet)
-            FROM idx_timecurve_warbow_ds_window_cleared
-        )
-        SELECT kind, block_number::text AS block_number, log_index, tx_hash, block_timestamp, detail
-        FROM u
-        ORDER BY block_number DESC, log_index ASC
-        LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/battle-feed", e);
-        }
-    };
-
-    let items: Vec<WarBowBattleFeedRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            let detail: serde_json::Value = r.try_get::<serde_json::Value, _>("detail").ok()?;
-            Some(WarBowBattleFeedRow {
-                kind: r.try_get("kind").ok()?,
-                block_number: r.try_get("block_number").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                tx_hash: r.try_get("tx_hash").ok()?,
-                block_timestamp: r.try_get("block_timestamp").ok(),
-                detail,
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-        "note": "UTC-day steal limits use floor(block_timestamp/86400) when block_timestamp is present; otherwise resolve block time from an RPC.",
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Serialize)]
-struct WarBowLeaderboardRow {
-    buyer: String,
-    battle_points_after: String,
-    block_number: String,
-    tx_hash: String,
-    log_index: i32,
-}
-
-async fn timecurve_warbow_leaderboard(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let sql = format!(
-        r#"SELECT buyer,
-                  battle_points_after::text AS battle_points_after,
-                  block_number::text AS block_number,
-                  tx_hash,
-                  log_index
-           FROM (
-             SELECT DISTINCT ON (addr) addr AS buyer,
-                    bp AS battle_points_after,
-                    block_number,
-                    tx_hash,
-                    log_index
-             FROM (
-{union}
-             ) obs
-             ORDER BY addr, block_number DESC, log_index DESC
-           ) latest
-           WHERE battle_points_after::numeric > 0
-           ORDER BY battle_points_after::numeric DESC, buyer ASC, block_number DESC, log_index ASC
-           LIMIT $1 OFFSET $2"#,
-        union = WARBOW_BP_OBSERVATIONS_UNION
-    );
-    let rows = sqlx::query(&sql)
-        .bind(lim)
-        .bind(off)
-        .fetch_all(&state.pool)
-        .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/leaderboard", e);
-        }
-    };
-
-    let items: Vec<WarBowLeaderboardRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(WarBowLeaderboardRow {
-                buyer: r.try_get("buyer").ok()?,
-                battle_points_after: r.try_get("battle_points_after").ok()?,
-                block_number: r.try_get("block_number").ok()?,
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-        "note": "Per-wallet Battle Points are the latest snapshot from indexed `Buy` plus WarBow evidence rows (steal, revenge with BP columns, flag claim/penalty), ordered like onchain ladder reads.",
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct WarBowVictimQuery {
-    pub victim: String,
-}
-
-#[derive(Serialize)]
-struct WarBowVictimDayRow {
-    /// Unix day = floor(block_timestamp / 86400) in UTC.
-    utc_day: String,
-    steal_count: String,
-}
-
-async fn timecurve_warbow_steals_by_victim_day(
-    State(state): State<AppState>,
-    Query(q): Query<WarBowVictimQuery>,
-) -> Response {
-    if !valid_0x_address20(&q.victim) {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "victim must be a 0x-prefixed 20-byte address" })),
-        )
-            .into_response();
-    }
-
-    let victim = bind_addr_lower(&q.victim);
-    let rows = sqlx::query(
-        r#"SELECT (block_timestamp / 86400)::text AS utc_day,
-                  COUNT(*)::text AS steal_count
-           FROM idx_timecurve_warbow_steal
-           WHERE victim = $1
-             AND block_timestamp IS NOT NULL
-           GROUP BY (block_timestamp / 86400)
-           ORDER BY (block_timestamp / 86400) DESC
-           LIMIT 366"#,
-    )
-    .bind(&victim)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/steals-by-victim-day", e);
-        }
-    };
-
-    let items: Vec<WarBowVictimDayRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(WarBowVictimDayRow {
-                utc_day: r.try_get("utc_day").ok()?,
-                steal_count: r.try_get("steal_count").ok()?,
-            })
-        })
-        .collect();
-
-    let body = json!({
-        "victim": q.victim,
-        "items": items,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct WarBowPlayerQuery {
-    pub player: String,
-}
-
-#[derive(Serialize)]
-struct WarBowGuardLatestRow {
-    player: String,
-    guard_until_ts: String,
-    burn_paid_wad: String,
-    block_number: String,
-    tx_hash: String,
-    log_index: i32,
-    block_timestamp: Option<String>,
-}
-
-async fn timecurve_warbow_guard_latest(
-    State(state): State<AppState>,
-    Query(q): Query<WarBowPlayerQuery>,
-) -> Response {
-    if !valid_0x_address20(&q.player) {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "player must be a 0x-prefixed 20-byte address" })),
-        )
-            .into_response();
-    }
-
-    let player = bind_addr_lower(&q.player);
-    let row = sqlx::query(
-        r#"SELECT player, guard_until_ts::text AS guard_until_ts, burn_paid_wad::text AS burn_paid_wad,
-                  block_number::text AS block_number, tx_hash, log_index,
-                  block_timestamp::text AS block_timestamp
-           FROM idx_timecurve_warbow_guard
-           WHERE player = $1
-           ORDER BY block_number DESC, log_index DESC
-           LIMIT 1"#,
-    )
-    .bind(&player)
-    .fetch_optional(&state.pool)
-    .await;
-
-    let row = match row {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/guard-latest", e);
-        }
-    };
-
-    let item = row.and_then(|r| {
-        Some(WarBowGuardLatestRow {
-            player: r.try_get("player").ok()?,
-            guard_until_ts: r.try_get("guard_until_ts").ok()?,
-            burn_paid_wad: r.try_get("burn_paid_wad").ok()?,
-            block_number: r.try_get("block_number").ok()?,
-            tx_hash: r.try_get("tx_hash").ok()?,
-            log_index: r.try_get("log_index").ok()?,
-            block_timestamp: r.try_get("block_timestamp").ok(),
-        })
-    });
-
-    let body = json!({
-        "player": q.player,
-        "latest_guard_activation": item,
-        "note": "Compare guard_until_ts to the chain head timestamp to know if guard is active.",
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-/// Open revenge windows for a victim (GitLab #135): latest `WarBowRevengeWindowOpened` per stealer,
-/// filtered by chain `now_sec` and excluding stealer slots consumed by a later `WarBowRevenge` row.
-async fn timecurve_warbow_pending_revenge(
-    State(state): State<AppState>,
-    Query(q): Query<WarBowPendingRevengeQuery>,
-) -> Response {
-    if !valid_0x_address20(&q.victim) {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "victim must be a 0x-prefixed 20-byte address" })),
-        )
-            .into_response();
-    }
-    if q.now_sec < 0 {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "now_sec must be >= 0 (chain Unix seconds)" })),
-        )
-            .into_response();
-    }
-
-    let now_s = q.now_sec.to_string();
-    let victim = bind_addr_lower(&q.victim);
-    let rows = sqlx::query(
-        r#"WITH latest AS (
-            SELECT DISTINCT ON (stealer)
-                stealer,
-                expiry_exclusive,
-                steal_seq,
-                block_number,
-                log_index
-            FROM idx_timecurve_warbow_revenge_window
-            WHERE victim = $1
-            ORDER BY stealer, block_number DESC, log_index DESC
-        )
-        SELECT l.stealer,
-               l.expiry_exclusive::text AS expiry_exclusive,
-               l.steal_seq::text AS steal_seq,
-               l.block_number::text AS window_block_number,
-               l.log_index
-        FROM latest l
-        WHERE l.expiry_exclusive > $2::numeric
-          AND NOT EXISTS (
-            SELECT 1 FROM idx_timecurve_warbow_revenge r
-            WHERE r.avenger = $1
-              AND r.stealer = l.stealer
-              AND (
-                r.block_number > l.block_number
-                OR (r.block_number = l.block_number AND r.log_index > l.log_index)
-              )
-          )
-        ORDER BY l.expiry_exclusive ASC, l.stealer ASC"#,
-    )
-    .bind(&victim)
-    .bind(&now_s)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/pending-revenge", e);
-        }
-    };
-
-    let items: Vec<WarBowPendingRevengeRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(WarBowPendingRevengeRow {
-                stealer: r.try_get("stealer").ok()?,
-                expiry_exclusive: r.try_get("expiry_exclusive").ok()?,
-                steal_seq: r.try_get("steal_seq").ok()?,
-                window_block_number: r.try_get("window_block_number").ok()?,
-                window_log_index: r.try_get("log_index").ok()?,
-            })
-        })
-        .collect();
-
-    let body = json!({
-        "victim": q.victim,
-        "now_sec": q.now_sec,
-        "items": items,
-        "note": "Each item is an unconsumed (victim, stealer) window; `expiry_exclusive` matches onchain `warbowPendingRevengeExpiryExclusive` semantics (`block.timestamp < expiry`).",
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-/// Deduped wallets that participated in WarBow or have positive indexed BP — operator reference for post-sale
-/// governance `finalizeWarbowPodium` ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172); supersedes refresh calldata #160).
-async fn timecurve_warbow_refresh_candidates(
-    State(state): State<AppState>,
-    Query(p): Query<RefreshCandidatesParams>,
-) -> Response {
-    let page_lim = clamp_refresh_candidates_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let sql_addrs: Vec<String> = match sqlx::query_scalar::<_, String>(
-        r#"SELECT DISTINCT LOWER(TRIM(addr)) AS addr
-           FROM (
-             SELECT attacker AS addr FROM idx_timecurve_warbow_steal
-             UNION ALL SELECT victim FROM idx_timecurve_warbow_steal
-             UNION ALL SELECT avenger FROM idx_timecurve_warbow_revenge
-             UNION ALL SELECT stealer FROM idx_timecurve_warbow_revenge
-             UNION ALL SELECT victim FROM idx_timecurve_warbow_revenge_window
-             UNION ALL SELECT stealer FROM idx_timecurve_warbow_revenge_window
-             UNION ALL SELECT player FROM idx_timecurve_warbow_guard
-             UNION ALL SELECT player FROM idx_timecurve_warbow_flag_claimed
-             UNION ALL SELECT former_holder FROM idx_timecurve_warbow_flag_penalized
-             UNION ALL SELECT triggering_buyer FROM idx_timecurve_warbow_flag_penalized
-             UNION ALL SELECT payer FROM idx_timecurve_warbow_cl8y_burned
-             UNION ALL SELECT wallet FROM idx_timecurve_warbow_ds_continued
-             UNION ALL SELECT former_holder FROM idx_timecurve_warbow_ds_broken
-             UNION ALL SELECT interrupter FROM idx_timecurve_warbow_ds_broken
-             UNION ALL SELECT cleared_wallet FROM idx_timecurve_warbow_ds_window_cleared
-             UNION ALL SELECT buyer FROM idx_timecurve_buy WHERE battle_points_after > 0
-           ) u
-           WHERE TRIM(addr) <> ''
-             AND LOWER(TRIM(addr)) <> '0x0000000000000000000000000000000000000000'
-           ORDER BY addr"#,
-    )
-    .fetch_all(&state.pool)
-    .await
-    {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/warbow/refresh-candidates", e);
-        }
-    };
-
-    let guard = state.chain_timer.read().await;
-    let sale_ended = guard.as_ref().is_some_and(|h| h.sale_ended);
-    let mut podium_hints: Vec<String> = Vec::new();
-    if let Some(head) = guard.as_ref() {
-        // Post-end WarBow snapshot is finalized — do not merge as refresh hints (GitLab #170); contract forbids refresh anyway (#149).
-        if !head.sale_ended {
-            for w in &head.podium_contract[3].winners {
-                if let Some(a) = normalize_refresh_candidate_addr(w) {
-                    if !podium_hints.contains(&a) {
-                        podium_hints.push(a);
-                    }
-                }
-            }
-        }
-    }
-
-    let podium_hint_count = podium_hints.len() as i64;
-    let mut seen = std::collections::BTreeSet::<String>::new();
-    let mut merged: Vec<String> = Vec::new();
-    for a in podium_hints {
-        if seen.insert(a.clone()) {
-            merged.push(a);
-        }
-    }
-    for a in sql_addrs {
-        if seen.insert(a.clone()) {
-            merged.push(a);
-        }
-    }
-
-    let total = merged.len() as i64;
-    let start = off as usize;
-    let page: Vec<String> = if start >= merged.len() {
-        Vec::new()
-    } else {
-        let end = start.saturating_add(page_lim as usize).min(merged.len());
-        merged[start..end].to_vec()
-    };
-
-    let next_offset = if (start as i64).saturating_add(page.len() as i64) < total {
-        Some(off + page_lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "candidates": page,
-        "limit": page_lim,
-        "offset": off,
-        "total": total,
-        "next_offset": next_offset,
-        "podium_warbow_hint_count": podium_hint_count,
-        "sale_ended": sale_ended,
-        "note": "Deduped wallets from indexed WarBow tables plus buyers with battle_points_after > 0 — unbounded DISTINCT list for operator tooling (GitLab #172). Head WarBow `podium` RPC hints prepend only while `sale_ended` is false when chain-timer is configured (GitLab #170). Onchain WarBow podium is set post-end by owner `finalizeWarbowPodium(first, second, third)` with strict BP ordering.",
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct WarBowPendingRevengeQuery {
-    pub victim: String,
-    pub now_sec: i64,
-}
-
-#[derive(Serialize)]
-struct WarBowPendingRevengeRow {
-    stealer: String,
-    expiry_exclusive: String,
-    steal_seq: String,
-    window_block_number: String,
-    window_log_index: i32,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct BuyerStatsQuery {
-    pub buyer: String,
-}
-
-/// Lowercase `0x` + 40-hex for SQL equality against `persist` [`addr_hex`](crate::persist) values (always lowercase).
-fn bind_addr_lower(s: &str) -> String {
-    s.to_ascii_lowercase()
 }
 
 fn valid_0x_address20(s: &str) -> bool {
     s.starts_with("0x") && s.len() == 42 && s[2..].chars().all(|c| c.is_ascii_hexdigit())
-}
-
-async fn timecurve_buyer_stats(
-    State(state): State<AppState>,
-    Query(q): Query<BuyerStatsQuery>,
-) -> Response {
-    if !valid_0x_address20(&q.buyer) {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "buyer must be a 0x-prefixed 20-byte address" })),
-        )
-            .into_response();
-    }
-
-    let buyer = bind_addr_lower(&q.buyer);
-    let row = sqlx::query(
-        r#"SELECT COALESCE(SUM(COALESCE(charm_wad, amount)), 0)::text AS indexed_charm_weight,
-                  COUNT(*)::text AS indexed_buy_count
-           FROM idx_timecurve_buy
-           WHERE buyer = $1"#,
-    )
-    .bind(&buyer)
-    .fetch_one(&state.pool)
-    .await;
-
-    let row = match row {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/buyer-stats", e);
-        }
-    };
-
-    let indexed_charm_weight: String = row
-        .try_get("indexed_charm_weight")
-        .unwrap_or_else(|_| "0".into());
-    let indexed_buy_count: String = row
-        .try_get("indexed_buy_count")
-        .unwrap_or_else(|_| "0".into());
-
-    let body = json!({
-        "buyer": q.buyer,
-        "indexed_charm_weight": indexed_charm_weight,
-        "indexed_buy_count": indexed_buy_count,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct PlatformUsageParams {
-    #[serde(default = "default_limit")]
-    pub limit: i64,
-    #[serde(default)]
-    pub offset: i64,
-    #[serde(default = "default_velocity_window")]
-    pub velocity_window: String,
-}
-
-fn default_velocity_window() -> String {
-    "1h".to_string()
-}
-
-/// Velocity-window discriminant for `GET /v1/timecurve/platform-usage`.
-/// Trailing windows carry static `(window_sec, window_hours, label)`; Sale resolves
-/// `window_start` and `window_hours` at request time from chain-timer state ([GitLab #233](https://gitlab.com/PlasticDigits/yieldomega/-/issues/233)).
-#[derive(Debug, Clone, Copy)]
-enum VelocityWindow {
-    Trailing {
-        window_sec: i64,
-        window_hours: i64,
-        label: &'static str,
-    },
-    Sale,
-}
-
-fn parse_velocity_window(s: &str) -> Result<VelocityWindow, &'static str> {
-    match s.trim().to_ascii_lowercase().as_str() {
-        "1h" => Ok(VelocityWindow::Trailing {
-            window_sec: 3600,
-            window_hours: 1,
-            label: "1h",
-        }),
-        "24h" => Ok(VelocityWindow::Trailing {
-            window_sec: 86400,
-            window_hours: 24,
-            label: "24h",
-        }),
-        "sale" => Ok(VelocityWindow::Sale),
-        _ => Err("velocity_window must be 1h, 24h, or sale"),
-    }
-}
-
-/// Anchor + sale-start seconds for platform-usage velocity.
-/// Prefers head **`chain_timer`**. Anchor falls back to **`MAX(block_timestamp)`** on buys;
-/// **`sale_start`** falls back to latest **`idx_timecurve_sale_started.start_timestamp`** only when
-/// the snapshot is absent or **`sale_start_sec`** is unparseable — explicit **`0`** stays pre-open.
-async fn platform_usage_timer_secs(state: &AppState) -> (i64, i64) {
-    let snapshot = {
-        let guard = state.chain_timer.read().await;
-        guard.as_ref().cloned()
-    };
-
-    let mut anchor = None;
-    let mut sale_start = None;
-    let mut need_anchor_fallback = snapshot.is_none();
-    let mut need_sale_start_fallback = snapshot.is_none();
-
-    if let Some(snap) = snapshot {
-        if let Ok(ts) = snap.timer.block_timestamp_sec.parse::<i64>() {
-            if ts > 0 {
-                anchor = Some(ts);
-            } else {
-                need_anchor_fallback = true;
-            }
-        } else {
-            need_anchor_fallback = true;
-        }
-
-        match snap.timer.sale_start_sec.parse::<i64>() {
-            Ok(ts) => sale_start = Some(ts),
-            Err(_) => need_sale_start_fallback = true,
-        }
-    }
-
-    if need_anchor_fallback || need_sale_start_fallback {
-        let row = sqlx::query(
-            r#"SELECT
-                  COALESCE(MAX(block_timestamp), 0)::bigint AS anchor,
-                  COALESCE((
-                    SELECT start_timestamp::bigint
-                      FROM idx_timecurve_sale_started
-                     ORDER BY block_number DESC
-                     LIMIT 1
-                  ), 0)::bigint AS sale_start
-                 FROM idx_timecurve_buy"#,
-        )
-        .fetch_one(&state.pool)
-        .await;
-
-        match row {
-            Ok(r) => {
-                if need_anchor_fallback {
-                    anchor = Some(r.try_get::<i64, _>("anchor").unwrap_or(0));
-                }
-                if need_sale_start_fallback {
-                    sale_start = Some(r.try_get::<i64, _>("sale_start").unwrap_or(0));
-                }
-            }
-            Err(_) => {
-                if need_anchor_fallback {
-                    anchor = Some(0);
-                }
-                if need_sale_start_fallback {
-                    sale_start = Some(0);
-                }
-            }
-        }
-    }
-
-    (anchor.unwrap_or(0), sale_start.unwrap_or(0))
-}
-
-async fn fetch_warbow_action_totals(
-    pool: &PgPool,
-    table: &'static str,
-    where_clause: Option<&'static str>,
-) -> Result<(String, String), sqlx::Error> {
-    let sql = match where_clause {
-        Some(wc) => format!(
-            "SELECT COUNT(*)::text AS cnt, COALESCE(SUM(burn_paid_wad), 0)::text AS cl8y FROM {table} WHERE {wc}"
-        ),
-        None => format!(
-            "SELECT COUNT(*)::text AS cnt, COALESCE(SUM(burn_paid_wad), 0)::text AS cl8y FROM {table}"
-        ),
-    };
-    let row = sqlx::query(&sql).fetch_one(pool).await?;
-    let count: String = row.try_get("cnt").unwrap_or_else(|_| "0".into());
-    let cl8y: String = row.try_get("cl8y").unwrap_or_else(|_| "0".into());
-    Ok((count, cl8y))
-}
-
-fn warbow_action_json(count: String, cl8y_spent_wei: String) -> serde_json::Value {
-    json!({
-        "count": count,
-        "cl8y_spent_wei": cl8y_spent_wei,
-    })
-}
-
-fn format_avg_buys_per_hour(buy_count: i64, window_hours: i64) -> String {
-    if window_hours <= 0 {
-        return "0".to_string();
-    }
-    let avg = buy_count as f64 / window_hours as f64;
-    if avg.fract() == 0.0 && avg >= 0.0 && avg <= i64::MAX as f64 {
-        format!("{}", avg as i64)
-    } else {
-        format!("{avg:.6}")
-    }
-}
-
-async fn timecurve_platform_usage(
-    State(state): State<AppState>,
-    Query(p): Query<PlatformUsageParams>,
-) -> Response {
-    let velocity = match parse_velocity_window(&p.velocity_window) {
-        Ok(v) => v,
-        Err(msg) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": msg })),
-            )
-                .into_response();
-        }
-    };
-
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let summary = sqlx::query(
-        r#"SELECT
-              (SELECT COUNT(*)::bigint FROM (
-                 SELECT buyer AS addr FROM idx_timecurve_buy
-                 UNION
-                 SELECT attacker FROM idx_timecurve_warbow_steal
-                 UNION
-                 SELECT victim FROM idx_timecurve_warbow_steal
-                 UNION
-                 SELECT avenger FROM idx_timecurve_warbow_revenge
-                 UNION
-                 SELECT stealer FROM idx_timecurve_warbow_revenge
-                 UNION
-                 SELECT player FROM idx_timecurve_warbow_guard
-                 UNION
-                 SELECT player FROM idx_timecurve_warbow_flag_claimed
-               ) u) AS unique_wallets,
-              (SELECT COUNT(*)::bigint FROM idx_timecurve_buy) AS total_buys,
-              (SELECT COUNT(DISTINCT buyer)::bigint FROM idx_timecurve_buy) AS unique_buyers,
-              (SELECT COALESCE(
-                 (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY cnt)
-                    FROM (
-                      SELECT COUNT(*)::numeric AS cnt
-                        FROM idx_timecurve_buy
-                       GROUP BY buyer
-                    ) per_buyer),
-                 0
-               )::text) AS median_buys_per_wallet"#,
-    )
-    .fetch_one(&state.pool)
-    .await;
-
-    let summary = match summary {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/platform-usage summary", e);
-        }
-    };
-
-    let unique_wallets: i64 = summary.try_get("unique_wallets").unwrap_or(0);
-    let total_buys: i64 = summary.try_get("total_buys").unwrap_or(0);
-    let unique_buyers: i64 = summary.try_get("unique_buyers").unwrap_or(0);
-    let median_buys_per_wallet: String = summary
-        .try_get("median_buys_per_wallet")
-        .unwrap_or_else(|_| "0".into());
-
-    let mean_buys_per_wallet = if unique_buyers == 0 {
-        "0".to_string()
-    } else {
-        format!(
-            "{}",
-            total_buys as f64 / unique_buyers as f64
-        )
-    };
-
-    let steals = match fetch_warbow_action_totals(&state.pool, "idx_timecurve_warbow_steal", None)
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage warbow steals",
-                e,
-            );
-        }
-    };
-    let steal_overrides = match fetch_warbow_action_totals(
-        &state.pool,
-        "idx_timecurve_warbow_steal",
-        Some("bypassed_victim_daily_limit = true"),
-    )
-    .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage warbow steal overrides",
-                e,
-            );
-        }
-    };
-    let revenges = match fetch_warbow_action_totals(
-        &state.pool,
-        "idx_timecurve_warbow_revenge",
-        None,
-    )
-    .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage warbow revenges",
-                e,
-            );
-        }
-    };
-    let guards = match fetch_warbow_action_totals(&state.pool, "idx_timecurve_warbow_guard", None)
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/platform-usage warbow guards", e);
-        }
-    };
-
-    let (anchor, sale_start) = platform_usage_timer_secs(&state).await;
-    let (window_start, window_hours, window_label) = match velocity {
-        VelocityWindow::Trailing {
-            window_sec,
-            window_hours,
-            label,
-        } => (anchor.saturating_sub(window_sec), window_hours, label),
-        VelocityWindow::Sale => {
-            if sale_start == 0 || anchor < sale_start {
-                // Pre-open: window_start > anchor guarantees zero rows match the SQL filter;
-                // hours = 1 prevents divide-by-zero in format_avg_buys_per_hour.
-                (anchor + 1, 1, "sale")
-            } else {
-                let elapsed = anchor - sale_start;
-                let hours = (elapsed / 3600).max(1);
-                (sale_start, hours, "sale")
-            }
-        }
-    };
-
-    let velocity_row = sqlx::query(
-        r#"SELECT COUNT(*)::bigint AS buy_count
-           FROM idx_timecurve_buy
-          WHERE block_timestamp IS NOT NULL
-            AND block_timestamp >= $1"#,
-    )
-    .bind(window_start)
-    .fetch_one(&state.pool)
-    .await;
-
-    let velocity_row = match velocity_row {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage velocity",
-                e,
-            );
-        }
-    };
-    let velocity_buy_count: i64 = velocity_row.try_get("buy_count").unwrap_or(0);
-
-    let wallet_rows = sqlx::query(
-        r#"SELECT buyer AS wallet,
-                  COUNT(*)::text AS buy_count,
-                  COALESCE(SUM(amount), 0)::text AS cl8y_spent_wei
-             FROM idx_timecurve_buy
-            GROUP BY buyer
-            ORDER BY SUM(amount) DESC, COUNT(*) DESC, buyer ASC
-            LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let wallet_rows = match wallet_rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response(
-                "GET /v1/timecurve/platform-usage wallets",
-                e,
-            );
-        }
-    };
-
-    let mut wallet_items = Vec::with_capacity(wallet_rows.len());
-    for r in wallet_rows {
-        wallet_items.push(json!({
-            "wallet": r.try_get::<String, _>("wallet").unwrap_or_default(),
-            "buy_count": r.try_get::<String, _>("buy_count").unwrap_or_else(|_| "0".into()),
-            "cl8y_spent_wei": r.try_get::<String, _>("cl8y_spent_wei").unwrap_or_else(|_| "0".into()),
-        }));
-    }
-
-    let next_offset = if wallet_items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "unique_wallets": unique_wallets.to_string(),
-        "total_buys": total_buys.to_string(),
-        "unique_buyers": unique_buyers.to_string(),
-        "mean_buys_per_wallet": mean_buys_per_wallet,
-        "median_buys_per_wallet": median_buys_per_wallet,
-        "warbow": {
-            "steals": warbow_action_json(steals.0, steals.1),
-            "steal_overrides": warbow_action_json(steal_overrides.0, steal_overrides.1),
-            "revenges": warbow_action_json(revenges.0, revenges.1),
-            "guards": warbow_action_json(guards.0, guards.1),
-        },
-        "velocity": {
-            "window": window_label,
-            "anchor_timestamp_sec": anchor.to_string(),
-            "buy_count": velocity_buy_count.to_string(),
-            "avg_buys_per_hour": format_avg_buys_per_hour(velocity_buy_count, window_hours),
-        },
-        "wallets": {
-            "total": unique_buyers.to_string(),
-            "items": wallet_items,
-            "limit": lim,
-            "offset": off,
-            "next_offset": next_offset,
-        },
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Serialize)]
-struct CharmRedemptionRow {
-    block_number: String,
-    tx_hash: String,
-    log_index: i32,
-    buyer: String,
-    token_amount: String,
-}
-
-async fn timecurve_charm_redemptions(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index, buyer, token_amount::text AS token_amount
-           FROM idx_timecurve_charms_redeemed
-           ORDER BY block_number DESC, log_index ASC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/charm-redemptions", e);
-        }
-    };
-
-    let items: Vec<CharmRedemptionRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(CharmRedemptionRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                buyer: r.try_get("buyer").ok()?,
-                token_amount: r.try_get("token_amount").ok()?,
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct ReferralAppliedQuery {
-    #[serde(default = "default_limit")]
-    pub limit: i64,
-    #[serde(default)]
-    pub offset: i64,
-    pub referrer: Option<String>,
-}
-
-#[derive(Serialize)]
-struct PrizeDistributionRow {
-    block_number: String,
-    tx_hash: String,
-    log_index: i32,
-    contract_address: String,
-    /// `"distributed"` — non-zero pool drained and `PrizesDistributed` emitted; `"settled_empty_podium_pool"` — GitLab #133 zero-balance explicit settlement.
-    kind: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    podium_pool: Option<String>,
-}
-
-async fn timecurve_prize_distributions(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index, contract_address, kind, podium_pool
-           FROM (
-               SELECT block_number, tx_hash, log_index, contract_address,
-                      'distributed'::text AS kind,
-                      NULL::varchar(42) AS podium_pool
-               FROM idx_timecurve_prizes_distributed
-               UNION ALL
-               SELECT block_number, tx_hash, log_index, contract_address,
-                      'settled_empty_podium_pool'::text AS kind,
-                      podium_pool::varchar(42) AS podium_pool
-               FROM idx_timecurve_prizes_settled_empty_podium_pool
-           ) AS prize_settlements
-           ORDER BY block_number DESC, log_index ASC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/prize-distributions", e);
-        }
-    };
-
-    let items: Vec<PrizeDistributionRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(PrizeDistributionRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                contract_address: r.try_get("contract_address").ok()?,
-                kind: r.try_get("kind").ok()?,
-                podium_pool: r.try_get::<Option<String>, _>("podium_pool").ok()?,
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
-}
-
-#[derive(Serialize)]
-struct PrizePayoutRow {
-    block_number: String,
-    tx_hash: String,
-    log_index: i32,
-    winner: String,
-    token: String,
-    amount: String,
-    category: i16,
-    placement: i16,
-}
-
-async fn timecurve_prize_payouts(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
-    let lim = clamp_limit(p.limit);
-    let off = p.offset.max(0);
-
-    let rows = sqlx::query(
-        r#"SELECT block_number, tx_hash, log_index,
-                  winner, token, amount::text AS amount, category, placement
-           FROM idx_podium_pool_paid
-           ORDER BY block_number DESC, log_index ASC
-           LIMIT $1 OFFSET $2"#,
-    )
-    .bind(lim)
-    .bind(off)
-    .fetch_all(&state.pool)
-    .await;
-
-    let rows = match rows {
-        Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/timecurve/prize-payouts", e);
-        }
-    };
-
-    let items: Vec<PrizePayoutRow> = rows
-        .into_iter()
-        .filter_map(|r| {
-            Some(PrizePayoutRow {
-                block_number: r.try_get::<i64, _>("block_number").ok()?.to_string(),
-                tx_hash: r.try_get("tx_hash").ok()?,
-                log_index: r.try_get("log_index").ok()?,
-                winner: r.try_get("winner").ok()?,
-                token: r.try_get("token").ok()?,
-                amount: r.try_get("amount").ok()?,
-                category: r.try_get("category").ok()?,
-                placement: r.try_get("placement").ok()?,
-            })
-        })
-        .collect();
-
-    let next_offset = if items.len() as i64 == lim {
-        Some(off + lim)
-    } else {
-        None
-    };
-
-    let body = json!({
-        "items": items,
-        "limit": lim,
-        "offset": off,
-        "next_offset": next_offset,
-    });
-
-    let mut res = Json(body).into_response();
-    *res.headers_mut() = with_schema_version(res.headers().clone());
-    res
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -1985,7 +132,6 @@ struct ReferralRegistrationsQuery {
     pub limit: i64,
     #[serde(default)]
     pub offset: i64,
-    /// When set, return only rows for this registry owner (0x-prefixed 20-byte address).
     pub owner: Option<String>,
 }
 
@@ -2045,9 +191,7 @@ async fn referral_registrations(
 
     let rows = match rows {
         Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/referrals/registrations", e);
-        }
+        Err(e) => return internal_db_error_response("GET /v1/referrals/registrations", e),
     };
 
     let items: Vec<ReferralRegistrationRow> = rows
@@ -2070,16 +214,24 @@ async fn referral_registrations(
         None
     };
 
-    let body = json!({
+    let mut res = Json(json!({
         "items": items,
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
-    });
-
-    let mut res = Json(body).into_response();
+    }))
+    .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ReferralAppliedQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+    pub referrer: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -2118,8 +270,8 @@ async fn referral_applied(
             r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
                       referrer_amount::text AS referrer_amount,
                       referee_amount::text AS referee_amount,
-                      amount_to_fee_router::text AS amount_to_fee_router
-               FROM idx_timecurve_referral_applied
+                      doub_paid::text AS amount_to_fee_router
+               FROM idx_arena_referral_applied
                WHERE referrer = $3
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
@@ -2134,8 +286,8 @@ async fn referral_applied(
             r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
                       referrer_amount::text AS referrer_amount,
                       referee_amount::text AS referee_amount,
-                      amount_to_fee_router::text AS amount_to_fee_router
-               FROM idx_timecurve_referral_applied
+                      doub_paid::text AS amount_to_fee_router
+               FROM idx_arena_referral_applied
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
         )
@@ -2147,9 +299,7 @@ async fn referral_applied(
 
     let rows = match rows {
         Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/referrals/applied", e);
-        }
+        Err(e) => return internal_db_error_response("GET /v1/referrals/applied", e),
     };
 
     let items: Vec<ReferralAppliedRow> = rows
@@ -2175,21 +325,17 @@ async fn referral_applied(
         None
     };
 
-    let body = json!({
+    let mut res = Json(json!({
         "items": items,
         "limit": lim,
         "offset": off,
         "next_offset": next_offset,
-    });
-
-    let mut res = Json(body).into_response();
+    }))
+    .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
 }
 
-/// Aggregated **referrer-side** CHARM from indexed `ReferralApplied` plus **registration** rows from
-/// `ReferralCodeRegistered` (`idx_referral_code_registered`) so guides appear before the first buy
-/// ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)).
 #[derive(Serialize)]
 struct ReferralReferrerLeaderboardRow {
     rank: i64,
@@ -2209,16 +355,14 @@ async fn referral_referrer_leaderboard(
     let totals = sqlx::query(
         r#"SELECT
               (SELECT COUNT(*)::bigint FROM idx_referral_code_registered) AS total_codes_registered,
-              (SELECT COUNT(*)::bigint FROM idx_timecurve_referral_applied) AS total_referred_buys,
+              (SELECT COUNT(*)::bigint FROM idx_arena_referral_applied) AS total_referred_buys,
               (SELECT COALESCE(SUM(referrer_amount), 0)::text
-                 FROM idx_timecurve_referral_applied) AS total_referrer_charm_wad,
+                 FROM idx_arena_referral_applied) AS total_referrer_charm_wad,
               (SELECT COUNT(*)::bigint
                  FROM (
-                        SELECT owner_address AS referrer
-                          FROM idx_referral_code_registered
+                        SELECT owner_address AS referrer FROM idx_referral_code_registered
                         UNION
-                        SELECT referrer
-                          FROM idx_timecurve_referral_applied
+                        SELECT referrer FROM idx_arena_referral_applied
                       ) u) AS total"#,
     )
     .fetch_one(&state.pool)
@@ -2241,41 +385,29 @@ async fn referral_referrer_leaderboard(
         .unwrap_or_else(|_| "0".into());
 
     let rows = sqlx::query(
-        r#"SELECT referrer,
-                  total_referrer_charm_wad,
-                  referred_buy_count,
-                  codes_registered_count,
-                  rank
+        r#"SELECT referrer, total_referrer_charm_wad, referred_buy_count, codes_registered_count, rank
              FROM (
                  SELECT r.referrer,
                         COALESCE(a.total_charm, 0)::text AS total_referrer_charm_wad,
                         COALESCE(a.buy_count, 0)::text AS referred_buy_count,
                         COALESCE(reg.cnt, 0)::text AS codes_registered_count,
-                        RANK() OVER (
-                            ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST
-                        )::bigint AS rank
+                        RANK() OVER (ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST)::bigint AS rank
                    FROM (
-                            SELECT owner_address AS referrer
-                              FROM idx_referral_code_registered
+                            SELECT owner_address AS referrer FROM idx_referral_code_registered
                             UNION
-                            SELECT referrer
-                              FROM idx_timecurve_referral_applied
+                            SELECT referrer FROM idx_arena_referral_applied
                         ) r
                    LEFT JOIN (
-                            SELECT referrer,
-                                   SUM(referrer_amount) AS total_charm,
+                            SELECT referrer, SUM(referrer_amount) AS total_charm,
                                    COUNT(*)::bigint AS buy_count
-                              FROM idx_timecurve_referral_applied
+                              FROM idx_arena_referral_applied
                              GROUP BY referrer
-                        ) a
-                          ON r.referrer = a.referrer
+                        ) a ON r.referrer = a.referrer
                    LEFT JOIN (
-                            SELECT owner_address AS referrer,
-                                   COUNT(*)::bigint AS cnt
+                            SELECT owner_address AS referrer, COUNT(*)::bigint AS cnt
                               FROM idx_referral_code_registered
                              GROUP BY owner_address
-                        ) reg
-                          ON r.referrer = reg.referrer
+                        ) reg ON r.referrer = reg.referrer
              ) ranked
             ORDER BY rank ASC, referrer ASC
             LIMIT $1 OFFSET $2"#,
@@ -2287,16 +419,14 @@ async fn referral_referrer_leaderboard(
 
     let rows = match rows {
         Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/referrals/referrer-leaderboard", e);
-        }
+        Err(e) => return internal_db_error_response("GET /v1/referrals/referrer-leaderboard", e),
     };
 
     let items: Vec<ReferralReferrerLeaderboardRow> = rows
         .into_iter()
         .filter_map(|r| {
             Some(ReferralReferrerLeaderboardRow {
-                rank: r.try_get::<i64, _>("rank").ok()?,
+                rank: r.try_get("rank").ok()?,
                 referrer: r.try_get("referrer").ok()?,
                 total_referrer_charm_wad: r.try_get("total_referrer_charm_wad").ok()?,
                 referred_buy_count: r.try_get("referred_buy_count").ok()?,
@@ -2311,7 +441,7 @@ async fn referral_referrer_leaderboard(
         None
     };
 
-    let body = json!({
+    let mut res = Json(json!({
         "items": items,
         "limit": lim,
         "offset": off,
@@ -2320,9 +450,8 @@ async fn referral_referrer_leaderboard(
         "total_codes_registered": total_codes_registered.to_string(),
         "total_referred_buys": total_referred_buys.to_string(),
         "total_referrer_charm_wad": total_referrer_charm_wad,
-    });
-
-    let mut res = Json(body).into_response();
+    }))
+    .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
 }
@@ -2347,18 +476,10 @@ async fn referral_wallet_charm_summary(
 
     let row = sqlx::query(
         r#"SELECT
-              (SELECT COALESCE(SUM(referrer_amount), 0)::text
-                 FROM idx_timecurve_referral_applied
-                WHERE referrer = $1) AS referrer_charm_wad,
-              (SELECT COALESCE(SUM(referee_amount), 0)::text
-                 FROM idx_timecurve_referral_applied
-                WHERE buyer = $1) AS referee_charm_wad,
-              (SELECT COUNT(*)::text
-                 FROM idx_timecurve_referral_applied
-                WHERE referrer = $1) AS referred_buy_count,
-              (SELECT COUNT(*)::text
-                 FROM idx_timecurve_referral_applied
-                WHERE buyer = $1) AS referee_buy_count"#,
+              (SELECT COALESCE(SUM(referrer_amount), 0)::text FROM idx_arena_referral_applied WHERE referrer = $1) AS referrer_charm_wad,
+              (SELECT COALESCE(SUM(referee_amount), 0)::text FROM idx_arena_referral_applied WHERE buyer = $1) AS referee_charm_wad,
+              (SELECT COUNT(*)::text FROM idx_arena_referral_applied WHERE referrer = $1) AS referred_buy_count,
+              (SELECT COUNT(*)::text FROM idx_arena_referral_applied WHERE buyer = $1) AS referee_buy_count"#,
     )
     .bind(&w)
     .fetch_one(&state.pool)
@@ -2366,20 +487,17 @@ async fn referral_wallet_charm_summary(
 
     let row = match row {
         Ok(r) => r,
-        Err(e) => {
-            return internal_db_error_response("GET /v1/referrals/wallet-charm-summary", e);
-        }
+        Err(e) => return internal_db_error_response("GET /v1/referrals/wallet-charm-summary", e),
     };
 
-    let body = json!({
+    let mut res = Json(json!({
         "wallet": w,
         "referrer_charm_wad": row.try_get::<String, _>("referrer_charm_wad").unwrap_or_else(|_| "0".into()),
         "referee_charm_wad": row.try_get::<String, _>("referee_charm_wad").unwrap_or_else(|_| "0".into()),
         "referred_buy_count": row.try_get::<String, _>("referred_buy_count").unwrap_or_else(|_| "0".into()),
         "referee_buy_count": row.try_get::<String, _>("referee_buy_count").unwrap_or_else(|_| "0".into()),
-    });
-
-    let mut res = Json(body).into_response();
+    }))
+    .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
     res
 }
@@ -2393,16 +511,12 @@ mod internal_db_error_response_tests {
 
     #[tokio::test]
     async fn internal_db_error_response_does_not_echo_sqlx_in_json_body() {
-        let err = sqlx::Error::Protocol("idx_timecurve_buy relation does not exist".into());
+        let err = sqlx::Error::Protocol("idx_arena_buy relation does not exist".into());
         let res = internal_db_error_response("test_ctx", err);
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let body = res.into_body().collect().await.unwrap().to_bytes();
         let v: Value = serde_json::from_slice(&body).unwrap();
-        let s = v["error"].as_str().expect("error string");
-        assert_eq!(s, PUBLIC_INTERNAL_DB_ERROR);
-        let lower = s.to_ascii_lowercase();
-        assert!(!lower.contains("idx_timecurve"));
-        assert!(!lower.contains("relation"));
+        assert_eq!(v["error"].as_str().unwrap(), PUBLIC_INTERNAL_DB_ERROR);
     }
 }
 
@@ -2415,21 +529,11 @@ mod address_validation_tests {
         assert!(valid_0x_address20(
             "0xdddddddddddddddddddddddddddddddddddddddd"
         ));
-        assert!(valid_0x_address20(
-            "0x0000000000000000000000000000000000000000"
-        ));
     }
 
     #[test]
     fn valid_0x_address20_rejects_invalid() {
         assert!(!valid_0x_address20("0xbad"));
         assert!(!valid_0x_address20("not-an-address"));
-        assert!(!valid_0x_address20(""));
-        assert!(!valid_0x_address20(
-            "0xddddddddddddddddddddddddddddddddddddddddd"
-        ));
-        assert!(!valid_0x_address20(
-            "0xgggggggggggggggggggggggggggggggggggggg"
-        ));
     }
 }

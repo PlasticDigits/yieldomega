@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Fail fast if frontend Vite env is missing contract addresses needed for TimeCurve reads
-# and fee-router (FeeTransparency). Merges frontend/.env then frontend/.env.local (local wins),
+# Fail fast if frontend Vite env is missing Arena v2 contract addresses.
+# Merges frontend/.env then frontend/.env.local (local wins),
 # matching Vite’s usual precedence for dev.
 #
 # Usage (repo root): bash scripts/check-frontend-vite-env.sh
@@ -77,12 +77,16 @@ check_nonempty() {
 
 ok=1
 
-for key in VITE_TIMECURVE_ADDRESS VITE_FEE_ROUTER_ADDRESS VITE_RABBIT_TREASURY_ADDRESS \
-  VITE_LEPRECHAUN_NFT_ADDRESS VITE_REFERRAL_REGISTRY_ADDRESS; do
+for key in VITE_TIME_ARENA_ADDRESS VITE_PODIUM_VAULTS_ADDRESS VITE_ADMIN_SELL_VAULT_ADDRESS \
+  VITE_REFERRAL_REGISTRY_ADDRESS; do
   if ! check_addr "$key"; then
     ok=0
   fi
 done
+# Legacy alias still used by Simple buy reads until #256 ABI migration completes.
+if ! check_addr VITE_TIMECURVE_ADDRESS; then
+  ok=0
+fi
 
 for key in VITE_RPC_URL VITE_CHAIN_ID; do
   if ! check_nonempty "$key"; then
@@ -98,4 +102,4 @@ if [[ "$ok" != 1 ]]; then
   exit 1
 fi
 
-echo "[check-frontend-vite-env] OK — ${ENV_LOCAL} (merged with .env if present) has required VITE_* for TimeCurve + fee router."
+echo "[check-frontend-vite-env] OK — ${ENV_LOCAL} (merged with .env if present) has required VITE_* for Arena v2."

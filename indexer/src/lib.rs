@@ -3,6 +3,7 @@
 //! YieldOmega indexer library — shared by the `yieldomega-indexer` binary and integration tests.
 
 pub mod api;
+pub mod api_arena;
 pub mod chain_timer;
 pub mod config;
 pub mod cors_config;

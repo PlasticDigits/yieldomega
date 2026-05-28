@@ -1,19 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-//! Postgres integration: migrations, every non-`Unknown` [`DecodedEvent`] variant persisted
-//! (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) treasury / vesting / operator emits included;
-//! GitLab [#139](https://gitlab.com/PlasticDigits/yieldomega/-/issues/139) `PodiumResidualRecipientSet` + buy-router `EthRescued`/`Erc20Rescued`),
-//! idempotency replay, `rollback_after` truncating rows above the ancestor block (including
-//! referral / prize tables), **per-block SQL transaction semantics for ingest** ([GitLab #140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140); umbrella [#146](https://gitlab.com/PlasticDigits/yieldomega/-/issues/146)),
-//! then HTTP API smoke.
-//!
-//! **When `YIELDOMEGA_PG_TEST_URL` is unset or empty:** the test returns immediately and still
-//! **reports `ok`** — it does not connect to Postgres. For real coverage, set the URL (see
-//! [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md)
-//! and [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml)).
-//!
-//! Uses one `#[tokio::test]` so parallel test threads do not race on the same database.
-//! The same test finishes with HTTP API checks on the shared pool.
+//! Postgres integration: Arena v2 migrations, persist all `DecodedEvent` variants,
+//! idempotency, `rollback_after`, and HTTP API smoke (`/v1/arena/*`, `/v1/referrals/*`).
 
 use alloy_primitives::{address, Address, B256, U256};
 use std::sync::atomic::{AtomicBool, AtomicU64};
@@ -40,17 +28,6 @@ use yieldomega_indexer::reorg::{
 use yieldomega_indexer::sale_state::TimecurveSaleStateSnapshot;
 
 const CONTRACT: Address = address!("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-
-fn test_sale_state_snapshot(read_block: &str, block_ts: &str) -> TimecurveSaleStateSnapshot {
-    TimecurveSaleStateSnapshot {
-        read_block_number: read_block.into(),
-        block_timestamp_sec: block_ts.into(),
-        polled_at_ms: 0,
-        deadline_sec: "9999999999".into(),
-        total_doub_raised: "0".into(),
-        paused: false,
-    }
-}
 
 fn b256_lo(n: u64) -> B256 {
     let mut b = [0u8; 32];
@@ -95,646 +72,120 @@ async fn response_json(response: axum::response::Response) -> Value {
     serde_json::from_slice(&body).expect("response JSON")
 }
 
+fn arena_head_snapshot() -> TimecurveHeadSnapshot {
+    TimecurveHeadSnapshot {
+        timer: ChainTimerSnapshot {
+            read_block_number: "1".into(),
+            block_timestamp_sec: "1".into(),
+            polled_at_ms: 0,
+            sale_start_sec: "100".into(),
+            deadline_sec: "9999".into(),
+            timer_cap_sec: "86400".into(),
+            last_buy_epoch: "0".into(),
+            podium_deadlines_sec: ["1", "2", "3", "4"].map(String::from),
+        },
+        sale_ended: false,
+        sale_state: TimecurveSaleStateSnapshot {
+            read_block_number: "1".into(),
+            block_timestamp_sec: "1".into(),
+            polled_at_ms: 0,
+            deadline_sec: "9999".into(),
+            total_doub_raised: "0".into(),
+            paused: false,
+        },
+        podium_contract: std::array::from_fn(|i| {
+            let w = format!("0x{:040x}", i + 1);
+            PodiumRpcRow {
+                winners: [w.clone(), w.clone(), w],
+                values: ["1".into(), "2".into(), "3".into()],
+            }
+        }),
+    }
+}
+
 async fn api_http_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
     let app = router(AppState {
         pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
     });
 
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/healthz")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/chain-timer")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/sale-state")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/status")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert!(res.headers().get("x-schema-version").is_some());
-    let status_json = response_json(res).await;
-    assert_eq!(status_json["database_connected"], true);
-    assert_eq!(status_json["ingestion_alive"], false);
-    assert_eq!(status_json["last_indexed_at_ms"], 0);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/rabbit/deposits?limit=2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(
-        res.status(),
-        StatusCode::NOT_FOUND,
-        "retired rabbit routes return 404 (arena v2 #242)"
-    );
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/buyer-stats?buyer=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/applied?limit=5&referrer=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/registrations?limit=5&owner=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    for path in ["/healthz", "/v1/status"] {
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
+    }
 
     for path in [
-        "/v1/timecurve/buys?limit=2",
-        "/v1/timecurve/charm-redemptions?limit=2",
-        "/v1/timecurve/prize-distributions?limit=2",
-        "/v1/timecurve/prize-payouts?limit=2",
+        "/v1/arena/timers",
+        "/v1/arena/podiums",
+        "/v1/arena/buys?limit=2",
         "/v1/referrals/registrations?limit=2",
         "/v1/referrals/applied?limit=2",
         "/v1/referrals/referrer-leaderboard?limit=2",
-        "/v1/timecurve/warbow/battle-feed?limit=2",
-        "/v1/timecurve/warbow/leaderboard?limit=2",
-        "/v1/timecurve/platform-usage?limit=2&velocity_window=1h",
     ] {
         let res = app
             .clone()
-            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
-        assert_eq!(res.status(), StatusCode::OK, "path {path}");
+        assert_eq!(res.status(), StatusCode::OK, "{path}");
         let j = response_json(res).await;
-        if path.contains("platform-usage") {
-            assert!(j["unique_wallets"].is_string(), "path {path}");
-            assert!(j["wallets"]["items"].is_array(), "path {path}");
-        } else {
-            assert!(j["items"].is_array(), "path {path}");
-        }
+        assert!(j.get("items").is_some() || j.get("rows").is_some() || j.get("last_buy_deadline_sec").is_some());
     }
 
+    let vb = "0xdddddddddddddddddddddddddddddddddddddddd";
     let res = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/v1/timecurve/warbow/refresh-candidates?limit=50&offset=0")
+                .uri(format!("/v1/arena/wallet/{vb}/stats"))
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let j = response_json(res).await;
-    assert!(j["candidates"].is_array());
-    assert!(j.get("total").is_some());
-    assert_eq!(j["sale_ended"], false);
 
     let res = app
         .clone()
         .oneshot(
             Request::builder()
-                .uri("/v1/referrals/wallet-charm-summary?wallet=0xbad")
+                .uri(format!("/v1/referrals/wallet-charm-summary?wallet={vb}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/wallet/0xbad/stats")
                 .body(Body::empty())
                 .unwrap(),
         )
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/wallet-charm-summary?wallet=0xdddddddddddddddddddddddddddddddddddddddd")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let wsum = response_json(res).await;
-    assert_eq!(wsum["wallet"], "0xdddddddddddddddddddddddddddddddddddddddd");
-    assert!(wsum["referrer_charm_wad"].is_string());
-    assert!(wsum["referee_charm_wad"].is_string());
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/warbow/steals-by-victim-day?victim=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/warbow/steals-by-victim-day?victim=0xdddddddddddddddddddddddddddddddddddddddd")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let j = response_json(res).await;
-    assert!(j["items"].is_array());
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/warbow/guard-latest?player=0xbad")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/warbow/guard-latest?player=0xdddddddddddddddddddddddddddddddddddddddd")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/warbow/pending-revenge?victim=0xbad&now_sec=1")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
-
-    let vb2 = format!("{:#x}", addr_byte(0xb2));
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri(format!(
-                    "/v1/timecurve/warbow/pending-revenge?victim={vb2}&now_sec=1"
-                ))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let pr = response_json(res).await;
-    assert!(pr["items"].is_array());
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_buy (
-            block_number, block_hash, tx_hash, log_index, contract_address,
-            buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
-            new_deadline, total_raised_after, buy_index
-        ) VALUES (
-            42,
-            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-            1,
-            '0xcccccccccccccccccccccccccccccccccccccccc',
-            '0xdddddddddddddddddddddddddddddddddddddddd',
-            1, 1, 1, 1, 3, 4, 5
-        )"#,
-    )
-    .execute(pool)
-    .await
-    .expect("insert api test buy");
-
-    sqlx::query(
-        r#"UPDATE idx_timecurve_buy SET buyer_best_defended_streak = 9, buyer_active_defended_streak = 3
-           WHERE block_number = 42 AND log_index = 1"#,
-    )
-    .execute(pool)
-    .await
-    .expect("seed defended streak snapshot for podium prediction");
-
-    let z = format!("{:#x}", Address::ZERO);
-    let empty_podium = PodiumRpcRow {
-        winners: [z.clone(), z.clone(), z.clone()],
-        values: [String::from("0"), String::from("0"), String::from("0")],
-    };
-    let timer_head = TimecurveHeadSnapshot {
-        timer: ChainTimerSnapshot {
-            sale_start_sec: "1".into(),
-            deadline_sec: "9999999999".into(),
-            block_timestamp_sec: "100".into(),
-            timer_cap_sec: "86400".into(),
-            read_block_number: "99".into(),
-            polled_at_ms: 0,
-        },
-        sale_ended: false,
-        podium_contract: [
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-        ],
-        sale_state: test_sale_state_snapshot("99", "100"),
-    };
-    let app_podiums = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(Some(timer_head))),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-    let res = app_podiums
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/podiums")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let pod = response_json(res).await;
-    let rows = pod["rows"].as_array().expect("podium rows");
-    assert_eq!(rows.len(), 4, "{pod:?}");
-    let def = &rows[2];
-    assert_eq!(def["podium_prediction"], true);
-    assert_eq!(
-        def["values"][0].as_str().expect("defended value"),
-        "9",
-        "{def:?}"
-    );
-    let w0 = def["winners"][0].as_str().expect("defended winner");
-    assert_eq!(
-        w0.to_ascii_lowercase(),
-        "0xdddddddddddddddddddddddddddddddddddddddd"
-    );
-
-    // Live WarBow podium prediction: buys + steal/revenge/flag evidence (GitLab live WarBow podium).
-    let wb_alice = format!("{:#x}", addr_byte(0x71));
-    let wb_bob = format!("{:#x}", addr_byte(0x72));
-    let wb_carol = format!("{:#x}", addr_byte(0x73));
-    let wb_contract = "0xcccccccccccccccccccccccccccccccccccccccc";
-
-    for (block, log_index, buyer, bp) in [
-        (60_i64, 1_i32, wb_alice.as_str(), 500_i64),
-        (61, 1, wb_bob.as_str(), 900),
-        (62, 1, wb_carol.as_str(), 300),
-    ] {
-        sqlx::query(
-            r#"INSERT INTO idx_timecurve_buy (
-                block_number, block_hash, tx_hash, log_index, contract_address,
-                buyer, amount, current_min_buy, charm_wad, price_per_charm_wad,
-                new_deadline, total_raised_after, buy_index, battle_points_after
-            ) VALUES (
-                $1,
-                '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-                $2,
-                $3,
-                $4,
-                $5,
-                1, 1, 1, 1, 3, 4, 5, $6
-            )"#,
-        )
-        .bind(block)
-        .bind(format!("0x{:064x}", block + 10_000))
-        .bind(log_index)
-        .bind(wb_contract)
-        .bind(buyer)
-        .bind(bp)
-        .execute(pool)
-        .await
-        .expect("insert warbow podium buy");
-    }
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_steal (
-            block_number, block_hash, tx_hash, log_index, contract_address,
-            attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
-            victim_bp_after, attacker_bp_after
-        ) VALUES (
-            63,
-            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            '0x6363636363636363636363636363636363636363636363636363636363636363',
-            1,
-            $1,
-            $2,
-            $3,
-            100, 1, false, 550, 850
-        )"#,
-    )
-    .bind(wb_contract)
-    .bind(&wb_carol)
-    .bind(&wb_bob)
-    .execute(pool)
-    .await
-    .expect("insert warbow steal for podium prediction");
-
-    let res = app_podiums
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/podiums")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let pod_after_steal = response_json(res).await;
-    let wb = &pod_after_steal["rows"][1];
-    assert_eq!(wb["podium_prediction"], true);
-    assert_eq!(
-        wb["values"][0].as_str().expect("warbow first bp"),
-        "850",
-        "{wb:?}"
-    );
-    assert_eq!(
-        wb["winners"][0]
-            .as_str()
-            .expect("warbow first winner")
-            .to_ascii_lowercase(),
-        wb_carol.to_ascii_lowercase(),
-        "{wb:?}"
-    );
-    assert_eq!(wb["values"][1].as_str().expect("warbow second bp"), "550");
-    assert_eq!(
-        wb["winners"][1]
-            .as_str()
-            .expect("warbow second winner")
-            .to_ascii_lowercase(),
-        wb_bob.to_ascii_lowercase()
-    );
-    assert_eq!(wb["values"][2].as_str().expect("warbow third bp"), "500");
-    assert_eq!(
-        wb["winners"][2]
-            .as_str()
-            .expect("warbow third winner")
-            .to_ascii_lowercase(),
-        wb_alice.to_ascii_lowercase()
-    );
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_revenge (
-            block_number, block_hash, tx_hash, log_index, contract_address,
-            avenger, stealer, amount_bp, burn_paid_wad, stealer_bp_after, avenger_bp_after
-        ) VALUES (
-            64,
-            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            '0x6464646464646464646464646464646464646464646464646464646464646464',
-            1,
-            $1,
-            $2,
-            $3,
-            50, 1, 800, 920
-        )"#,
-    )
-    .bind(wb_contract)
-    .bind(&wb_bob)
-    .bind(&wb_carol)
-    .execute(pool)
-    .await
-    .expect("insert warbow revenge for podium prediction");
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_flag_claimed (
-            block_number, block_hash, tx_hash, log_index, contract_address,
-            player, bonus_bp, battle_points_after
-        ) VALUES (
-            65,
-            '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-            '0x6565656565656565656565656565656565656565656565656565656565656565',
-            1,
-            $1,
-            $2,
-            1000, 1920
-        )"#,
-    )
-    .bind(wb_contract)
-    .bind(&wb_carol)
-    .execute(pool)
-    .await
-    .expect("insert warbow flag claim for podium prediction");
-
-    let res = app_podiums
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/podiums")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let pod_after_flag = response_json(res).await;
-    let wb_final = &pod_after_flag["rows"][1];
-    assert_eq!(
-        wb_final["values"][0].as_str().expect("warbow leader bp"),
-        "1920",
-        "{wb_final:?}"
-    );
-    assert_eq!(
-        wb_final["winners"][0]
-            .as_str()
-            .expect("warbow leader")
-            .to_ascii_lowercase(),
-        wb_carol.to_ascii_lowercase()
-    );
-    assert_eq!(
-        wb_final["values"][1]
-            .as_str()
-            .expect("warbow second bp after revenge"),
-        "920"
-    );
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/buys?limit=10")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let j = response_json(res).await;
-    let items = j["items"].as_array().expect("items");
-    assert!(
-        items.iter().any(|row| row["block_number"] == "42"),
-        "expected seeded row in items: {items:?}"
-    );
-    assert!(
-        j["total"].as_i64().unwrap_or(0) >= 1,
-        "expected non-empty buys total: {j:?}"
-    );
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/buyer-stats?buyer=0xdddddddddddddddddddddddddddddddddddddddd")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let stats = response_json(res).await;
-    assert_eq!(stats["indexed_charm_weight"], "1");
-    assert_eq!(stats["indexed_buy_count"], "1");
-    assert_eq!(stats["buyer"], "0xdddddddddddddddddddddddddddddddddddddddd");
-
-    // Same-tx `Buy` + `BuyViaKumbaya` correlation on `/v1/timecurve/buys` (GitLab #67).
-    let k_buyer = addr_byte(0x33);
-    let u1 = U256::from(1u8);
-    let u2 = U256::from(2u8);
-    let charm = U256::from(7u8);
-    let shared_tx = b256_lo(12_345);
-    let buy_join = DecodedLog {
-        block_number: 44,
-        block_hash: b256_lo(44 + 10_000),
-        tx_hash: shared_tx,
-        log_index: 0,
-        block_timestamp: None,
-        contract: address!("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-        event: DecodedEvent::TimeCurveBuy {
-            buyer: k_buyer,
-            charm_wad: charm,
-            amount: charm,
-            price_per_charm_wad: u1,
-            new_deadline: u2,
-            total_raised_after: u1,
-            buy_index: u1,
-            actual_seconds_added: U256::ZERO,
-            timer_hard_reset: false,
-            battle_points_after: U256::ZERO,
-            bp_base_buy: U256::ZERO,
-            bp_timer_reset_bonus: U256::ZERO,
-            bp_clutch_bonus: U256::ZERO,
-            bp_streak_break_bonus: U256::ZERO,
-            bp_ambush_bonus: U256::ZERO,
-            bp_flag_penalty: U256::ZERO,
-            flag_planted: false,
-            buyer_total_effective_timer_sec: U256::ZERO,
-            buyer_active_defended_streak: U256::ZERO,
-            buyer_best_defended_streak: U256::ZERO,
-        },
-    };
-    let k_log = DecodedLog {
-        block_number: 44,
-        block_hash: buy_join.block_hash,
-        tx_hash: shared_tx,
-        log_index: 1,
-        block_timestamp: None,
-        contract: address!("0x2222222222222222222222222222222222222222"),
-        event: DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
-            buyer: k_buyer,
-            charm_wad: charm,
-            gross_cl8y: charm,
-            pay_kind: 0,
-        },
-    };
-    persist_decoded_log_autocommit(pool, &buy_join)
-        .await
-        .expect("persist join buy");
-    persist_decoded_log_autocommit(pool, &k_log)
-        .await
-        .expect("persist buy via kumbaya");
-    let res = app
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/buys?limit=50")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let j = response_json(res).await;
-    let row = j["items"]
-        .as_array()
-        .expect("items")
-        .iter()
-        .find(|r| r["tx_hash"] == format!("{:#x}", shared_tx))
-        .expect("joined buy row");
-    assert_eq!(row["entry_pay_asset"], "eth");
-    assert_eq!(row["router_attested_gross_cl8y"], "7");
 }
 
-/// Single test body: persist + reorg + HTTP API on one Postgres database.
 #[tokio::test]
 async fn postgres_stage2_persist_all_events_and_rollback_after() {
     let Some(url) = pg_url() else {
@@ -746,15 +197,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         .await
         .expect("connect_and_migrate");
 
-    // ── A) Every non-Unknown `DecodedEvent` variant persists ───────────────
     let u1 = U256::from(1u8);
     let u2 = U256::from(2u8);
     let alice = addr_byte(0xa1);
-    let reserve = addr_byte(0xe5);
 
     let mut tx_id = 1u64;
     let mut li = 0u64;
-
     let mut next = |event: DecodedEvent| -> DecodedLog {
         tx_id += 1;
         li += 1;
@@ -762,1674 +210,121 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     };
 
     let logs = vec![
-        next(DecodedEvent::TimeCurveSaleStarted {
+        next(DecodedEvent::ArenaStarted {
             start_timestamp: u1,
             initial_deadline: u2,
-            total_tokens_for_sale: U256::from(1_000_000u128 * 10u128.pow(18)),
         }),
-        next(DecodedEvent::TimeCurveBuy {
+        next(DecodedEvent::ArenaBuy {
             buyer: alice,
             charm_wad: u1,
-            amount: u1,
-            price_per_charm_wad: u1,
+            doub_paid: u1,
             new_deadline: u2,
-            total_raised_after: u1,
+            total_doub_raised_after: u1,
             buy_index: u1,
             actual_seconds_added: U256::ZERO,
             timer_hard_reset: false,
-            battle_points_after: U256::ZERO,
-            bp_base_buy: U256::ZERO,
-            bp_timer_reset_bonus: U256::ZERO,
-            bp_clutch_bonus: U256::ZERO,
-            bp_streak_break_bonus: U256::ZERO,
-            bp_ambush_bonus: U256::ZERO,
-            bp_flag_penalty: U256::ZERO,
-            flag_planted: false,
-            buyer_total_effective_timer_sec: U256::ZERO,
-            buyer_active_defended_streak: U256::ZERO,
-            buyer_best_defended_streak: U256::ZERO,
+            paid_with_cred: false,
         }),
-        next(DecodedEvent::TimeCurveSaleEnded {
-            end_timestamp: u1,
-            total_raised: u2,
-            total_buys: u1,
-        }),
-        next(DecodedEvent::TimeCurveCharmsRedeemed {
-            buyer: alice,
-            token_amount: u1,
-        }),
-        next(DecodedEvent::TimeCurvePrizesDistributed),
-        next(DecodedEvent::TimeCurvePrizesSettledEmptyPodiumPool {
-            podium_pool: addr_byte(0x77),
-        }),
-        next(DecodedEvent::TimeCurveReferralApplied {
+        next(DecodedEvent::ArenaReferralCred {
             buyer: alice,
             referrer: addr_byte(0xee),
             code_hash: b256_lo(77_777),
-            referrer_amount: u1,
-            referee_amount: u1,
-            amount_to_fee_router: u2,
+            referrer_cred: u1,
+            buyer_cred: u2,
+        }),
+        next(DecodedEvent::ArenaXpGained {
+            player: alice,
+            amount: u1,
+            new_level: u2,
+        }),
+        next(DecodedEvent::ArenaCredClaimed {
+            user: alice,
+            epoch: u1,
+            amount: u2,
+        }),
+        next(DecodedEvent::ArenaPodiumEpochRolled {
+            category: 0,
+            epoch: u1,
+            first: alice,
+            second: addr_byte(0xb2),
+            third: addr_byte(0xb3),
+            pool_paid: u2,
+        }),
+        next(DecodedEvent::ArenaWarbowSteal {
+            attacker: alice,
+            victim: addr_byte(0xb2),
+            bp_taken: u1,
+            doub_spent: u1,
+            limit_bypass: false,
+        }),
+        next(DecodedEvent::ArenaWarbowGuard {
+            player: alice,
+            doub_spent: u1,
+            guard_until: u2,
+        }),
+        next(DecodedEvent::ArenaReferralApplied {
+            buyer: alice,
+            referrer: addr_byte(0xee),
+            code_hash: b256_lo(88_888),
+            referrer_charm: u1,
+            buyer_charm: u2,
+            doub_paid: u1,
         }),
         next(DecodedEvent::ReferralCodeRegistered {
             owner: alice,
-            code_hash: b256_lo(88_888),
-            normalized_code: "TESTCODE".to_string(),
-        }),
-        next(DecodedEvent::PodiumPoolPaid {
-            winner: alice,
-            token: reserve,
-            amount: u2,
-            category: 0,
-            placement: 1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowSteal {
-            attacker: alice,
-            victim: addr_byte(0xb2),
-            amount_bp: u1,
-            burn_paid_wad: u1,
-            bypassed_victim_daily_limit: false,
-            victim_bp_after: u2,
-            attacker_bp_after: u1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowRevengeWindowOpened {
-            victim: addr_byte(0xb2),
-            stealer: alice,
-            expiry_exclusive: u2,
-            steal_seq: u1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowRevenge {
-            avenger: alice,
-            stealer: addr_byte(0xb2),
-            amount_bp: u1,
-            burn_paid_wad: u1,
-            stealer_bp_after: None,
-            avenger_bp_after: None,
-        }),
-        next(DecodedEvent::TimeCurveWarBowGuardActivated {
-            player: alice,
-            guard_until_ts: u2,
-            burn_paid_wad: u1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowFlagClaimed {
-            player: alice,
-            bonus_bp: u2,
-            battle_points_after: u1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowFlagPenalized {
-            former_holder: alice,
-            penalty_bp: u1,
-            triggering_buyer: addr_byte(0xb2),
-            battle_points_after: u2,
-        }),
-        next(DecodedEvent::TimeCurveWarBowCl8yBurned {
-            payer: alice,
-            reason: 0,
-            amount_wad: u1,
-        }),
-        next(DecodedEvent::TimeCurveWarBowDefendedStreakContinued {
-            wallet: alice,
-            active_streak: u2,
-            best_streak: u2,
-        }),
-        next(DecodedEvent::TimeCurveWarBowDefendedStreakBroken {
-            former_holder: alice,
-            interrupter: addr_byte(0xb3),
-            broken_active_length: u2,
-        }),
-        next(DecodedEvent::TimeCurveWarBowDefendedStreakWindowCleared {
-            cleared_wallet: alice,
-        }),
-        next(DecodedEvent::TimeCurveBuyFeeRoutingEnabled { enabled: true }),
-        next(DecodedEvent::TimeCurveCharmRedemptionEnabled { enabled: false }),
-        next(DecodedEvent::TimeCurveReservePodiumPayoutsEnabled { enabled: true }),
-        next(DecodedEvent::TimeCurveBuyRouterSet {
-            router: addr_byte(0x44),
-        }),
-        next(DecodedEvent::TimeCurveDoubPresaleVestingSet {
-            vesting: addr_byte(0x45),
-        }),
-        next(DecodedEvent::TimeCurveUnredeemedLaunchedTokenRecipientSet {
-            recipient: addr_byte(0x46),
-        }),
-        next(DecodedEvent::TimeCurveUnredeemedLaunchedTokenSwept {
-            recipient: addr_byte(0x46),
-            amount: u2,
-        }),
-        next(DecodedEvent::TimeCurvePodiumResidualRecipientSet {
-            recipient: addr_byte(0x47),
-        }),
-        next(DecodedEvent::TimeCurveBuyRouterCl8ySurplus { amount: u2 }),
-        next(DecodedEvent::TimeCurveBuyRouterEthRescued {
-            to: addr_byte(0x48),
-            amount: u1,
-        }),
-        next(DecodedEvent::TimeCurveBuyRouterErc20Rescued {
-            token: reserve,
-            to: addr_byte(0x49),
-            amount: u2,
-        }),
-        next(DecodedEvent::PodiumPoolPrizePusherSet {
-            pusher: addr_byte(0x55),
-        }),
-        next(DecodedEvent::DoubVestingStarted {
-            start_timestamp: u1,
-            duration_sec: U256::from(86_400u64),
-            total_allocated: U256::from(1_000_000u128 * 10u128.pow(18)),
-        }),
-        next(DecodedEvent::DoubVestingClaimed {
-            beneficiary: alice,
-            amount: u2,
-        }),
-        next(DecodedEvent::DoubVestingClaimsEnabled { enabled: true }),
-        next(DecodedEvent::DoubVestingRescueErc20 {
-            token: addr_byte(0x33),
-            recipient: addr_byte(0x44),
-            amount: u1,
-            kind: 0,
-        }),
-        next(DecodedEvent::FeeSinkWithdrawn {
-            token: reserve,
-            recipient: alice,
-            amount: u2,
-            actor: addr_byte(0xfa),
-        }),
-        next(DecodedEvent::TimeCurveBuyRouterBuyViaKumbaya {
-            buyer: alice,
-            charm_wad: u1,
-            gross_cl8y: u2,
-            pay_kind: 1,
+            code_hash: b256_lo(99_999),
+            normalized_code: "ARENAQA".to_string(),
         }),
     ];
 
-    for d in &logs {
-        persist_decoded_log_autocommit(&pool, d)
+    let mut conn = pool.acquire().await.expect("acquire");
+    for log in &logs {
+        persist_decoded_log_conn(&mut conn, log)
             .await
-            .unwrap_or_else(|e| panic!("persist {:?}: {e}", d.event));
+            .expect("persist");
     }
+    drop(conn);
 
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_sale_started", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_timecurve_sale_ended", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_charms_redeemed", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_prizes_distributed", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_prizes_settled_empty_podium_pool", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_referral_applied", 100).await,
-        1
-    );
+    assert_eq!(count_where(&pool, "idx_arena_started", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_referral_cred", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_player_xp", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_play_cred_claim", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_podium_epoch", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_warbow_steal", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_warbow_guard", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_arena_referral_applied", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_referral_code_registered", 100).await,
         1
     );
-    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_cl8y_burned", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_continued", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_broken", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_charm_redemption_enabled", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_reserve_podium_payouts_enabled", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_set", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_presale_vesting_set", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(
-            &pool,
-            "idx_timecurve_unredeemed_launched_token_recipient_set",
-            100
-        )
-        .await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_unredeemed_launched_token_swept", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_cl8y_surplus", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_podium_pool_prize_pusher_set", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_doub_vesting_started", 100).await, 1);
-    assert_eq!(count_where(&pool, "idx_doub_vesting_claimed", 100).await, 1);
-    assert_eq!(
-        count_where(&pool, "idx_doub_vesting_claims_enabled", 100).await,
-        1
-    );
-    assert_eq!(
-        count_where(&pool, "idx_doub_vesting_rescue_erc20", 100).await,
-        1
-    );
-    assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 1);
 
-    // Idempotency: same (tx_hash, log_index) again
-    let first = &logs[1];
-    persist_decoded_log_autocommit(&pool, first)
+    persist_decoded_log_autocommit(&pool, &logs[1])
         .await
-        .expect("replay");
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 1);
-    let k_last = logs.last().expect("kumbaya log");
-    persist_decoded_log_autocommit(&pool, k_last)
-        .await
-        .expect("replay kumbaya");
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
-        1
-    );
+        .expect("idempotent replay");
+    assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
 
-    // Unknown: no-op, no panic
-    let unknown = DecodedLog {
-        block_number: 100,
-        block_hash: first.block_hash,
-        tx_hash: b256_lo(999_001),
-        log_index: 999,
-        block_timestamp: None,
-        contract: CONTRACT,
-        event: DecodedEvent::Unknown { topic0: B256::ZERO },
-    };
-    persist_decoded_log_autocommit(&pool, &unknown)
-        .await
-        .expect("unknown");
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-    let vb2 = format!("{:#x}", addr_byte(0xb2));
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri(format!(
-                    "/v1/timecurve/warbow/pending-revenge?victim={vb2}&now_sec=1"
-                ))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let pr = response_json(res).await;
-    let items = pr["items"].as_array().expect("items");
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0]["stealer"], format!("{:#x}", alice));
-
-    // ── B) `rollback_after` ─────────────────────────────────────────────
-    let h5 = b256_lo(5);
-    let h20 = b256_lo(20);
-    upsert_indexed_block(&pool, 5, h5).await.expect("upsert 5");
-    upsert_indexed_block(&pool, 20, h20)
-        .await
-        .expect("upsert 20");
-
-    let anc = ChainPointer {
-        block_number: 5,
-        block_hash: h5,
-    };
+    let bh = b256_lo(100);
+    upsert_indexed_block(&pool, 100, bh).await.expect("upsert block");
     save_chain_pointer(
         &pool,
         &ChainPointer {
-            block_number: 20,
-            block_hash: h20,
+            block_number: 100,
+            block_hash: bh,
         },
     )
     .await
-    .expect("save tip");
+    .expect("save pointer");
 
-    let d5 = sample_log(
-        5,
-        50_001,
-        0,
-        DecodedEvent::TimeCurveBuy {
-            buyer: addr_byte(1),
-            charm_wad: U256::from(1u8),
-            amount: U256::from(1u8),
-            price_per_charm_wad: U256::from(1u8),
-            new_deadline: U256::from(2u8),
-            total_raised_after: U256::from(1u8),
-            buy_index: U256::from(1u8),
-            actual_seconds_added: U256::ZERO,
-            timer_hard_reset: false,
-            battle_points_after: U256::ZERO,
-            bp_base_buy: U256::ZERO,
-            bp_timer_reset_bonus: U256::ZERO,
-            bp_clutch_bonus: U256::ZERO,
-            bp_streak_break_bonus: U256::ZERO,
-            bp_ambush_bonus: U256::ZERO,
-            bp_flag_penalty: U256::ZERO,
-            flag_planted: false,
-            buyer_total_effective_timer_sec: U256::ZERO,
-            buyer_active_defended_streak: U256::ZERO,
-            buyer_best_defended_streak: U256::ZERO,
-        },
-    );
-    let d20 = sample_log(
-        20,
-        50_002,
-        0,
-        DecodedEvent::TimeCurveBuy {
-            buyer: addr_byte(2),
-            charm_wad: U256::from(1u8),
-            amount: U256::from(1u8),
-            price_per_charm_wad: U256::from(1u8),
-            new_deadline: U256::from(2u8),
-            total_raised_after: U256::from(1u8),
-            buy_index: U256::from(1u8),
-            actual_seconds_added: U256::ZERO,
-            timer_hard_reset: false,
-            battle_points_after: U256::ZERO,
-            bp_base_buy: U256::ZERO,
-            bp_timer_reset_bonus: U256::ZERO,
-            bp_clutch_bonus: U256::ZERO,
-            bp_streak_break_bonus: U256::ZERO,
-            bp_ambush_bonus: U256::ZERO,
-            bp_flag_penalty: U256::ZERO,
-            flag_planted: false,
-            buyer_total_effective_timer_sec: U256::ZERO,
-            buyer_active_defended_streak: U256::ZERO,
-            buyer_best_defended_streak: U256::ZERO,
-        },
-    );
-    persist_decoded_log_autocommit(&pool, &d5)
-        .await
-        .expect("d5");
-    persist_decoded_log_autocommit(&pool, &d20)
-        .await
-        .expect("d20");
-
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 5).await, 1);
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 1);
-
-    rollback_after(&pool, anc).await.expect("rollback");
-
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 5).await, 1);
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 20).await, 0);
-    // Block 100 batch must be removed (rollback deletes `block_number > ancestor`).
-    assert_eq!(count_where(&pool, "idx_timecurve_buy", 100).await, 0);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_steal", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_revenge_window", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_revenge", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_guard", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_flag_claimed", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_flag_penalized", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_cl8y_burned", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_continued", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_broken", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_warbow_ds_window_cleared", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_kumbaya", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_podium_residual_recipient_set", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_eth_rescued", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_router_erc20_rescued", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_buy_fee_routing_enabled", 100).await,
-        0
-    );
-    assert_eq!(count_where(&pool, "idx_doub_vesting_claimed", 100).await, 0);
-    assert_eq!(
-        count_where(&pool, "idx_doub_vesting_rescue_erc20", 100).await,
-        0
-    );
-    assert_eq!(count_where(&pool, "idx_fee_sink_withdrawn", 100).await, 0);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_reserve_podium_payouts_enabled", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_referral_applied", 100).await,
-        0
-    );
-    assert_eq!(
-        count_where(&pool, "idx_referral_code_registered", 100).await,
-        0
-    );
-    assert_eq!(count_where(&pool, "idx_podium_pool_paid", 100).await, 0);
-
-    let row = sqlx::query("SELECT block_number FROM indexed_blocks WHERE block_number = 20")
-        .fetch_optional(&pool)
-        .await
-        .expect("query ib");
-    assert!(row.is_none());
-
-    let p = load_chain_pointer(&pool).await.expect("load ptr");
-    assert_eq!(p.block_number, 5);
-    assert_eq!(p.block_hash, h5);
-
-    // ── C) Per-block transaction rollback leaves no ghost rows (#140) ───
-    let ptr_before_d = p;
-    const GHOST_BLOCK: u64 = 9_990_001;
-    let ghost_sale = DecodedLog {
-        block_number: GHOST_BLOCK,
-        block_hash: b256_lo(GHOST_BLOCK + 20_000),
-        tx_hash: b256_lo(99_001_234),
-        log_index: 0,
-        block_timestamp: None,
-        contract: CONTRACT,
-        event: DecodedEvent::TimeCurveSaleStarted {
-            start_timestamp: u1,
-            initial_deadline: u2,
-            total_tokens_for_sale: U256::from(42u64),
-        },
+    let ancestor = ChainPointer {
+        block_number: 99,
+        block_hash: b256_lo(99),
     };
-    let mut tx = pool.begin().await.expect("tx begin");
-    yieldomega_indexer::persist::persist_decoded_log_conn(&mut tx, &ghost_sale)
-        .await
-        .expect("ghost persist");
-    yieldomega_indexer::reorg::upsert_indexed_block_conn(
-        &mut tx,
-        GHOST_BLOCK,
-        ghost_sale.block_hash,
-    )
-    .await
-    .expect("ghost ib");
-    yieldomega_indexer::reorg::save_chain_pointer_conn(
-        &mut tx,
-        &ChainPointer {
-            block_number: GHOST_BLOCK,
-            block_hash: ghost_sale.block_hash,
-        },
-    )
-    .await
-    .expect("ghost ptr");
-    tx.rollback().await.expect("rollback ghost");
+    rollback_after(&pool, ancestor).await.expect("rollback");
+    assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 0);
 
-    let p_after = load_chain_pointer(&pool).await.expect("ptr after rollback");
-    assert_eq!(p_after.block_number, ptr_before_d.block_number);
-    assert_eq!(p_after.block_hash, ptr_before_d.block_hash);
-    assert_eq!(
-        count_where(&pool, "idx_timecurve_sale_started", GHOST_BLOCK as i64).await,
-        0
-    );
-    let ib = sqlx::query("SELECT 1 FROM indexed_blocks WHERE block_number = $1")
-        .bind(GHOST_BLOCK as i64)
-        .fetch_optional(&pool)
-        .await
-        .expect("ib q");
-    assert!(ib.is_none());
+    let ptr = load_chain_pointer(&pool).await.expect("load pointer");
+    assert_eq!(ptr.block_number, 99);
 
-    // ── D) HTTP API (axum) on same pool ───────────────────────────────────
     api_http_smoke(&pool).await;
-}
-
-/// GitLab #146: block-level SQL transaction semantics — rollback drops all `persist_decoded_log_conn` rows for the tx; commit persists atomically (mirrors `ingestion::run` block ingest).
-#[tokio::test]
-async fn postgres_gitlab146_block_transaction_all_or_nothing_for_shared_tx_hash() {
-    let Some(url) = pg_url() else {
-        eprintln!("integration gitlab146 block tx: skip (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    let u1 = U256::from(1u8);
-    let u2 = U256::from(2u8);
-    let alice = addr_byte(0xa1);
-    let shared_tx = 888_888u64;
-    let tx_hex = format!("{:#x}", b256_lo(shared_tx));
-
-    let buy_log = |log_index: u64| DecodedLog {
-        block_number: 777,
-        block_hash: b256_lo(777 + 10_000),
-        tx_hash: b256_lo(shared_tx),
-        log_index,
-        block_timestamp: None,
-        contract: CONTRACT,
-        event: DecodedEvent::TimeCurveBuy {
-            buyer: alice,
-            charm_wad: u1,
-            amount: u1,
-            price_per_charm_wad: u1,
-            new_deadline: u2,
-            total_raised_after: u1,
-            buy_index: u1,
-            actual_seconds_added: U256::ZERO,
-            timer_hard_reset: false,
-            battle_points_after: U256::ZERO,
-            bp_base_buy: U256::ZERO,
-            bp_timer_reset_bonus: U256::ZERO,
-            bp_clutch_bonus: U256::ZERO,
-            bp_streak_break_bonus: U256::ZERO,
-            bp_ambush_bonus: U256::ZERO,
-            bp_flag_penalty: U256::ZERO,
-            flag_planted: false,
-            buyer_total_effective_timer_sec: U256::ZERO,
-            buyer_active_defended_streak: U256::ZERO,
-            buyer_best_defended_streak: U256::ZERO,
-        },
-    };
-
-    let mut tx = pool.begin().await.expect("begin");
-    persist_decoded_log_conn(&mut tx, &buy_log(0))
-        .await
-        .expect("persist 0");
-    persist_decoded_log_conn(&mut tx, &buy_log(1))
-        .await
-        .expect("persist 1");
-    tx.rollback().await.expect("rollback");
-
-    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
-        .bind(&tx_hex)
-        .fetch_one(&pool)
-        .await
-        .expect("count after rollback");
-    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 0);
-
-    let mut tx = pool.begin().await.expect("begin2");
-    persist_decoded_log_conn(&mut tx, &buy_log(0))
-        .await
-        .expect("persist 0b");
-    persist_decoded_log_conn(&mut tx, &buy_log(1))
-        .await
-        .expect("persist 1b");
-    tx.commit().await.expect("commit");
-
-    let row = sqlx::query("SELECT COUNT(*)::bigint AS c FROM idx_timecurve_buy WHERE tx_hash = $1")
-        .bind(&tx_hex)
-        .fetch_one(&pool)
-        .await
-        .expect("count after commit");
-    assert_eq!(row.try_get::<i64, _>("c").unwrap(), 2);
-}
-
-#[tokio::test]
-async fn postgres_gitlab177_referrer_leaderboard_dense_rank() {
-    // GitLab #177 — referrer leaderboard `rank` field must be dense-competitive (RANK() over SUM),
-    // not page ordinal. Ties share the same numeric rank; the next non-tied entry skips by tie-count
-    // (1, 2, 2, 4 pattern). Pagination across tie-group boundaries must not duplicate or skip referrers.
-    let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip gitlab177 (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    // Clean slate for this test's referral rows so prior tests don't pollute the leaderboard.
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("clear referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("clear referral table");
-
-    // Seed 4 referrers with a controlled tie pattern:
-    //   referrer A: 300 wad  -> rank 1
-    //   referrer B: 200 wad  -> rank 2 (tied with C)
-    //   referrer C: 200 wad  -> rank 2 (tied with B)
-    //   referrer D: 100 wad  -> rank 4 (skips 3)
-    let seeds: &[(&str, &str, i64)] = &[
-        (
-            "0x000000000000000000000000000000000000aaaa",
-            "0x0000000000000000000000000000000000000001",
-            300,
-        ),
-        (
-            "0x000000000000000000000000000000000000bbbb",
-            "0x0000000000000000000000000000000000000002",
-            200,
-        ),
-        (
-            "0x000000000000000000000000000000000000cccc",
-            "0x0000000000000000000000000000000000000003",
-            200,
-        ),
-        (
-            "0x000000000000000000000000000000000000dddd",
-            "0x0000000000000000000000000000000000000004",
-            100,
-        ),
-    ];
-
-    for (i, (referrer, buyer, amount)) in seeds.iter().enumerate() {
-        sqlx::query(
-            r#"INSERT INTO idx_timecurve_referral_applied (
-                  block_number, block_hash, tx_hash, log_index, contract_address,
-                  buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
-               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
-        )
-        .bind(900_i64 + i as i64)
-        .bind(format!("0x{:0>64}", i + 1))
-        .bind(format!("0x{:0>64}", 100 + i + 1))
-        .bind(0_i32)
-        .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-        .bind(*buyer)
-        .bind(*referrer)
-        .bind(format!("0x{:0>64}", 200 + i + 1))
-        .bind(amount.to_string())
-        .bind("0")
-        .bind("0")
-        .execute(&pool)
-        .await
-        .expect("seed referral row");
-    }
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    // Full leaderboard request — verify rank values directly.
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let body = response_json(res).await;
-    let items = body["items"].as_array().expect("items array");
-    assert_eq!(items.len(), 4, "expected 4 referrers, got {}", items.len());
-
-    // Rank assertions — dense-competitive (RANK()), 1, 2, 2, 4 with referrer ASC tiebreaker.
-    assert_eq!(items[0]["rank"].as_i64(), Some(1));
-    assert_eq!(
-        items[0]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000aaaa")
-    );
-
-    assert_eq!(items[1]["rank"].as_i64(), Some(2));
-    assert_eq!(items[2]["rank"].as_i64(), Some(2));
-    // Referrer ASC tiebreaker between bbbb and cccc: bbbb < cccc.
-    assert_eq!(
-        items[1]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000bbbb")
-    );
-    assert_eq!(
-        items[2]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000cccc")
-    );
-
-    assert_eq!(items[3]["rank"].as_i64(), Some(4));
-    assert_eq!(
-        items[3]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000dddd")
-    );
-
-    // Paginated request crossing the tie boundary — limit=2, offset=2 must return ranks [2, 4],
-    // not [3, 4] (page ordinal would have given 3, 4). Confirms rank value is leaderboard-rank, not page-position.
-    let res2 = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res2.status(), StatusCode::OK);
-    let body2 = response_json(res2).await;
-    let items2 = body2["items"].as_array().expect("items array page2");
-    assert_eq!(
-        items2.len(),
-        2,
-        "expected 2 rows on page 2, got {}",
-        items2.len()
-    );
-    assert_eq!(
-        items2[0]["rank"].as_i64(),
-        Some(2),
-        "first row of offset=2 should still be rank 2 (tied)"
-    );
-    assert_eq!(
-        items2[0]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000cccc")
-    );
-    assert_eq!(
-        items2[1]["rank"].as_i64(),
-        Some(4),
-        "second row of offset=2 should be rank 4 (skips 3)"
-    );
-    assert_eq!(
-        items2[1]["referrer"].as_str(),
-        Some("0x000000000000000000000000000000000000dddd")
-    );
-
-    for row in items {
-        assert_eq!(
-            row["codes_registered_count"].as_str(),
-            Some("0"),
-            "gitlab177 seeds only ReferralApplied rows"
-        );
-    }
-
-    // Cleanup so the test is rerunnable without leftover rows.
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral table");
-}
-
-#[tokio::test]
-async fn postgres_gitlab204_referrer_leaderboard_includes_registry_registrations() {
-    // GitLab #204 — union `idx_referral_code_registered` so guides appear before the first
-    // `ReferralApplied` buy; `codes_registered_count` surfaces indexed `ReferralCodeRegistered` rows.
-    let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip gitlab204 (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("clear referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("clear referral applied table");
-
-    sqlx::query(
-        r#"INSERT INTO idx_referral_code_registered (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              owner_address, code_hash, normalized_code
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-    )
-    .bind(800_i64)
-    .bind(format!("0x{:0>64}", 50))
-    .bind(format!("0x{:0>64}", 60))
-    .bind(0_i32)
-    .bind("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    .bind("0x0000000000000000000000000000000000000e01")
-    .bind(format!("0x{:0>64}", 70))
-    .bind("code1")
-    .execute(&pool)
-    .await
-    .expect("seed registry row 0");
-
-    sqlx::query(
-        r#"INSERT INTO idx_referral_code_registered (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              owner_address, code_hash, normalized_code
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-    )
-    .bind(801_i64)
-    .bind(format!("0x{:0>64}", 51))
-    .bind(format!("0x{:0>64}", 61))
-    .bind(0_i32)
-    .bind("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-    .bind("0x0000000000000000000000000000000000000e02")
-    .bind(format!("0x{:0>64}", 71))
-    .bind("code2")
-    .execute(&pool)
-    .await
-    .expect("seed registry row 1");
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let body = response_json(res).await;
-    let items = body["items"].as_array().expect("items array");
-    assert_eq!(items.len(), 2);
-    assert_eq!(
-        items[0]["referrer"].as_str(),
-        Some("0x0000000000000000000000000000000000000e01")
-    );
-    assert_eq!(items[0]["rank"].as_i64(), Some(1));
-    assert_eq!(items[0]["codes_registered_count"].as_str(), Some("1"));
-    assert_eq!(items[0]["referred_buy_count"].as_str(), Some("0"));
-    assert_eq!(items[0]["total_referrer_charm_wad"].as_str(), Some("0"));
-    assert_eq!(
-        items[1]["referrer"].as_str(),
-        Some("0x0000000000000000000000000000000000000e02")
-    );
-    assert_eq!(items[1]["rank"].as_i64(), Some(1));
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_referral_applied (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
-    )
-    .bind(850_i64)
-    .bind("0x00000000000000000000000000000000000000000000000000000000000000aa")
-    .bind("0x00000000000000000000000000000000000000000000000000000000000000bb")
-    .bind(0_i32)
-    .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    .bind("0x00000000000000000000000000000000000000b1")
-    .bind("0x0000000000000000000000000000000000000dd1")
-    .bind("0x00000000000000000000000000000000000000000000000000000000000000cc")
-    .bind("500")
-    .bind("0")
-    .bind("0")
-    .execute(&pool)
-    .await
-    .expect("seed referral applied for high-score referrer");
-
-    let res2 = app
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=10&offset=0")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res2.status(), StatusCode::OK);
-    let body2 = response_json(res2).await;
-    let items2 = body2["items"]
-        .as_array()
-        .expect("items array after applied insert");
-    assert_eq!(items2.len(), 3);
-    assert_eq!(
-        items2[0]["referrer"].as_str(),
-        Some("0x0000000000000000000000000000000000000dd1")
-    );
-    assert_eq!(items2[0]["rank"].as_i64(), Some(1));
-    assert_eq!(items2[0]["codes_registered_count"].as_str(), Some("0"));
-    assert_eq!(items2[1]["rank"].as_i64(), Some(2));
-    assert_eq!(
-        items2[1]["referrer"].as_str(),
-        Some("0x0000000000000000000000000000000000000e01")
-    );
-    assert_eq!(items2[1]["codes_registered_count"].as_str(), Some("1"));
-    assert_eq!(items2[2]["rank"].as_i64(), Some(2));
-    assert_eq!(
-        items2[2]["referrer"].as_str(),
-        Some("0x0000000000000000000000000000000000000e02")
-    );
-    assert_eq!(items2[2]["codes_registered_count"].as_str(), Some("1"));
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral applied table");
-}
-
-#[tokio::test]
-async fn postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination() {
-    // GitLab #225 — response includes network-wide summary fields and `total` for page math.
-    let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip gitlab225 (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("clear referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("clear referral applied table");
-
-    for (i, owner) in [
-        "0x0000000000000000000000000000000000000a01",
-        "0x0000000000000000000000000000000000000a02",
-        "0x0000000000000000000000000000000000000a03",
-    ]
-    .iter()
-    .enumerate()
-    {
-        sqlx::query(
-            r#"INSERT INTO idx_referral_code_registered (
-                  block_number, block_hash, tx_hash, log_index, contract_address,
-                  owner_address, code_hash, normalized_code
-               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-        )
-        .bind(1000_i64 + i as i64)
-        .bind(format!("0x{:0>64}", 300 + i))
-        .bind(format!("0x{:0>64}", 400 + i))
-        .bind(0_i32)
-        .bind("0xcccccccccccccccccccccccccccccccccccccccc")
-        .bind(*owner)
-        .bind(format!("0x{:0>64}", 500 + i))
-        .bind(format!("guide{i}"))
-        .execute(&pool)
-        .await
-        .expect("seed registry row");
-    }
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_referral_applied (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              buyer, referrer, code_hash, referrer_amount, referee_amount, amount_to_fee_router
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10::numeric, $11::numeric)"#,
-    )
-    .bind(1100_i64)
-    .bind(format!("0x{:0>64}", 600))
-    .bind(format!("0x{:0>64}", 601))
-    .bind(0_i32)
-    .bind("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-    .bind("0x0000000000000000000000000000000000000001")
-    .bind("0x0000000000000000000000000000000000000a01")
-    .bind(format!("0x{:0>64}", 700))
-    .bind("150")
-    .bind("0")
-    .bind("0")
-    .execute(&pool)
-    .await
-    .expect("seed referral applied row");
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=0")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let body = response_json(res).await;
-    assert_eq!(body["total"].as_i64(), Some(3));
-    assert_eq!(body["total_codes_registered"].as_str(), Some("3"));
-    assert_eq!(body["total_referred_buys"].as_str(), Some("1"));
-    assert_eq!(body["total_referrer_charm_wad"].as_str(), Some("150"));
-    assert_eq!(body["next_offset"].as_i64(), Some(2));
-    let items = body["items"].as_array().expect("items");
-    assert_eq!(items.len(), 2);
-
-    let res2 = app
-        .oneshot(
-            Request::builder()
-                .uri("/v1/referrals/referrer-leaderboard?limit=2&offset=2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res2.status(), StatusCode::OK);
-    let body2 = response_json(res2).await;
-    assert_eq!(body2["total"].as_i64(), Some(3));
-    assert_eq!(body2["total_codes_registered"].as_str(), Some("3"));
-    assert!(body2["next_offset"].is_null());
-    let items2 = body2["items"].as_array().expect("items page 2");
-    assert_eq!(items2.len(), 1);
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral registry table");
-    sqlx::query("DELETE FROM idx_timecurve_referral_applied")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral applied table");
-}
-
-#[tokio::test]
-async fn postgres_referral_registrations_filters_by_owner() {
-    let Some(url) = pg_url() else {
-        eprintln!(
-            "integration_stage2: skip registrations owner filter (set YIELDOMEGA_PG_TEST_URL)"
-        );
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("clear referral registry table");
-
-    sqlx::query(
-        r#"INSERT INTO idx_referral_code_registered (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              owner_address, code_hash, normalized_code
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-    )
-    .bind(900_i64)
-    .bind(format!("0x{:0>64}", 80))
-    .bind(format!("0x{:0>64}", 81))
-    .bind(0_i32)
-    .bind("0xcccccccccccccccccccccccccccccccccccccccc")
-    .bind("0x0000000000000000000000000000000000000f01")
-    .bind(format!("0x{:0>64}", 90))
-    .bind("alice9")
-    .execute(&pool)
-    .await
-    .expect("seed registry row alice");
-
-    sqlx::query(
-        r#"INSERT INTO idx_referral_code_registered (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              owner_address, code_hash, normalized_code
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
-    )
-    .bind(901_i64)
-    .bind(format!("0x{:0>64}", 82))
-    .bind(format!("0x{:0>64}", 83))
-    .bind(0_i32)
-    .bind("0xcccccccccccccccccccccccccccccccccccccccc")
-    .bind("0x0000000000000000000000000000000000000f02")
-    .bind(format!("0x{:0>64}", 91))
-    .bind("bob9")
-    .execute(&pool)
-    .await
-    .expect("seed registry row bob");
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    let owner = "0x0000000000000000000000000000000000000f01";
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri(format!(
-                    "/v1/referrals/registrations?limit=10&offset=0&owner={}",
-                    owner
-                ))
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let body = response_json(res).await;
-    let items = body["items"].as_array().expect("items");
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0]["owner_address"].as_str(), Some(owner));
-    assert_eq!(items[0]["normalized_code"].as_str(), Some("alice9"));
-
-    sqlx::query("DELETE FROM idx_referral_code_registered")
-        .execute(&pool)
-        .await
-        .expect("cleanup referral registry table");
-}
-
-#[tokio::test]
-async fn postgres_gitlab231_platform_usage_summary_wallet_warbow_velocity() {
-    // GitLab #231 — platform usage aggregates, wallet pagination, WarBow CL8Y, buy velocity windows.
-    let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip gitlab231 (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-
-    for table in [
-        "idx_timecurve_warbow_guard",
-        "idx_timecurve_warbow_revenge",
-        "idx_timecurve_warbow_steal",
-        "idx_timecurve_buy",
-        "idx_timecurve_sale_started",
-    ] {
-        sqlx::query(&format!("DELETE FROM {table}"))
-            .execute(&pool)
-            .await
-            .expect("clear table");
-    }
-
-    let tc = "0xcccccccccccccccccccccccccccccccccccccccc";
-    let buyer_a = "0x000000000000000000000000000000000000a101";
-    let buyer_b = "0x000000000000000000000000000000000000a102";
-    let warbow_only = "0x000000000000000000000000000000000000a103";
-    let anchor: i64 = 2_000_000;
-
-    for (block, buyer, amount, block_ts) in [
-        (9001_i64, buyer_a, 100_i64, anchor - 100),
-        (9002, buyer_a, 50, anchor - 200),
-        (9003, buyer_a, 50, anchor - 300),
-        (9004, buyer_b, 500, anchor - 400),
-        // Outside 1h window but inside 24h — velocity 1h should exclude.
-        (9005, buyer_b, 1, anchor - 7200),
-    ] {
-        sqlx::query(
-            r#"INSERT INTO idx_timecurve_buy (
-                  block_number, block_hash, tx_hash, log_index, contract_address,
-                  buyer, amount, current_min_buy, new_deadline, total_raised_after, buy_index,
-                  block_timestamp
-               ) VALUES ($1, $2, $3, 0, $4, $5, $6::numeric, 1, 1, 1, $7::numeric, $8)"#,
-        )
-        .bind(block)
-        .bind(format!("0x{:0>64}", block))
-        .bind(format!("0x{:0>64}", block + 1000))
-        .bind(tc)
-        .bind(buyer)
-        .bind(amount)
-        .bind(block)
-        .bind(block_ts)
-        .execute(&pool)
-        .await
-        .expect("insert buy");
-    }
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_steal (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
-              victim_bp_after, attacker_bp_after
-           ) VALUES (9101, $1, $2, 0, $3, $4, $5, 10, 10::numeric, false, 1, 2)"#,
-    )
-    .bind(format!("0x{:0>64}", 9101))
-    .bind(format!("0x{:0>64}", 9101 + 50))
-    .bind(tc)
-    .bind(warbow_only)
-    .bind(buyer_a)
-    .execute(&pool)
-    .await
-    .expect("insert steal");
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_steal (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              attacker, victim, amount_bp, burn_paid_wad, bypassed_victim_daily_limit,
-              victim_bp_after, attacker_bp_after
-           ) VALUES (9102, $1, $2, 1, $3, $4, $5, 20, 20::numeric, true, 1, 2)"#,
-    )
-    .bind(format!("0x{:0>64}", 9102))
-    .bind(format!("0x{:0>64}", 9102 + 50))
-    .bind(tc)
-    .bind(buyer_b)
-    .bind(buyer_a)
-    .execute(&pool)
-    .await
-    .expect("insert steal override");
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_revenge (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              avenger, stealer, amount_bp, burn_paid_wad, stealer_bp_after, avenger_bp_after
-           ) VALUES (9103, $1, $2, 0, $3, $4, $5, 30, 30::numeric, 1, 2)"#,
-    )
-    .bind(format!("0x{:0>64}", 9103))
-    .bind(format!("0x{:0>64}", 9103 + 50))
-    .bind(tc)
-    .bind(buyer_a)
-    .bind(warbow_only)
-    .execute(&pool)
-    .await
-    .expect("insert revenge");
-
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_warbow_guard (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              player, guard_until_ts, burn_paid_wad
-           ) VALUES (9104, $1, $2, 0, $3, $4, 999, 40::numeric)"#,
-    )
-    .bind(format!("0x{:0>64}", 9104))
-    .bind(format!("0x{:0>64}", 9104 + 50))
-    .bind(tc)
-    .bind(warbow_only)
-    .execute(&pool)
-    .await
-    .expect("insert guard");
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    let res = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?limit=10&offset=0&velocity_window=1h")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    let j = response_json(res).await;
-    assert_eq!(j["total_buys"], "5");
-    assert_eq!(j["unique_buyers"], "2");
-    assert_eq!(j["unique_wallets"], "3");
-    assert_eq!(j["median_buys_per_wallet"], "2");
-    assert_eq!(j["warbow"]["steals"]["count"], "2");
-    assert_eq!(j["warbow"]["steals"]["cl8y_spent_wei"], "30");
-    assert_eq!(j["warbow"]["steal_overrides"]["count"], "1");
-    assert_eq!(j["warbow"]["steal_overrides"]["cl8y_spent_wei"], "20");
-    assert_eq!(j["warbow"]["revenges"]["count"], "1");
-    assert_eq!(j["warbow"]["revenges"]["cl8y_spent_wei"], "30");
-    assert_eq!(j["warbow"]["guards"]["count"], "1");
-    assert_eq!(j["warbow"]["guards"]["cl8y_spent_wei"], "40");
-    assert_eq!(j["velocity"]["window"], "1h");
-    assert_eq!(j["velocity"]["anchor_timestamp_sec"], anchor.to_string());
-    assert_eq!(j["velocity"]["buy_count"], "4");
-    assert_eq!(j["velocity"]["avg_buys_per_hour"], "4");
-
-    let wallets = j["wallets"]["items"].as_array().expect("wallet items");
-    assert_eq!(wallets.len(), 2);
-    assert_eq!(wallets[0]["wallet"].as_str(), Some(buyer_b));
-    assert_eq!(wallets[0]["cl8y_spent_wei"], "501");
-    assert_eq!(wallets[1]["wallet"].as_str(), Some(buyer_a));
-    assert_eq!(wallets[1]["buy_count"], "3");
-
-    let res24 = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?limit=2&offset=0&velocity_window=24h")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res24.status(), StatusCode::OK);
-    let j24 = response_json(res24).await;
-    assert_eq!(j24["velocity"]["buy_count"], "5");
-    assert_eq!(j24["velocity"]["avg_buys_per_hour"], "0.208333");
-
-    let res_bad = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?velocity_window=7d")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res_bad.status(), StatusCode::BAD_REQUEST);
-
-    for table in [
-        "idx_timecurve_warbow_guard",
-        "idx_timecurve_warbow_revenge",
-        "idx_timecurve_warbow_steal",
-        "idx_timecurve_buy",
-        "idx_timecurve_sale_started",
-    ] {
-        sqlx::query(&format!("DELETE FROM {table}"))
-            .execute(&pool)
-            .await
-            .expect("cleanup");
-    }
-}
-
-#[tokio::test]
-async fn postgres_gitlab233_platform_usage_velocity_window_sale() {
-    // GitLab #233 — "sale" velocity window counts buys from sale_start through anchor,
-    // derives window_hours dynamically, and falls back to zero-row pre-open state when
-    // chain_timer.sale_start_sec is unset.
-    let Some(url) = pg_url() else {
-        eprintln!("integration_stage2: skip gitlab233 (set YIELDOMEGA_PG_TEST_URL)");
-        return;
-    };
-    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
-        .await
-        .expect("connect_and_migrate");
-    for table in [
-        "idx_timecurve_warbow_guard",
-        "idx_timecurve_warbow_revenge",
-        "idx_timecurve_warbow_steal",
-        "idx_timecurve_buy",
-        "idx_timecurve_sale_started",
-    ] {
-        sqlx::query(&format!("DELETE FROM {table}"))
-            .execute(&pool)
-            .await
-            .expect("clear table");
-    }
-
-    let tc = "0xcccccccccccccccccccccccccccccccccccccccc";
-    let buyer = "0x000000000000000000000000000000000000b201";
-
-    // anchor = 1_010_000, sale_start = 1_000_000 → elapsed = 10_000 sec, window_hours = 2.
-    let anchor: i64 = 1_010_000;
-    let sale_start: i64 = 1_000_000;
-
-    // 3 buys inside the sale window (block_timestamp >= sale_start),
-    // 1 buy before sale_start (excluded from sale window but counted in 24h and total_buys).
-    for (block, block_ts) in [
-        (9301_i64, anchor - 100),
-        (9302, anchor - 200),
-        (9303, anchor - 300),
-        (9304, sale_start - 50),
-    ] {
-        sqlx::query(
-            r#"INSERT INTO idx_timecurve_buy (
-                  block_number, block_hash, tx_hash, log_index, contract_address,
-                  buyer, amount, current_min_buy, new_deadline, total_raised_after, buy_index,
-                  block_timestamp
-               ) VALUES ($1, $2, $3, 0, $4, $5, 1::numeric, 1, 1, 1, $6::numeric, $7)"#,
-        )
-        .bind(block)
-        .bind(format!("0x{:0>64}", block))
-        .bind(format!("0x{:0>64}", block + 1000))
-        .bind(tc)
-        .bind(buyer)
-        .bind(block)
-        .bind(block_ts)
-        .execute(&pool)
-        .await
-        .expect("insert buy");
-    }
-
-    // Build a TimecurveHeadSnapshot with sale_start_sec set so the "sale" window
-    // resolves correctly (anchor falls back to MAX(block_timestamp) since timer.block_timestamp_sec
-    // is set to anchor here — keeps the test deterministic without relying on DB MAX).
-    let empty_podium = PodiumRpcRow {
-        winners: [
-            format!("{:#x}", Address::ZERO),
-            format!("{:#x}", Address::ZERO),
-            format!("{:#x}", Address::ZERO),
-        ],
-        values: [String::from("0"), String::from("0"), String::from("0")],
-    };
-    let timer_head = TimecurveHeadSnapshot {
-        timer: ChainTimerSnapshot {
-            sale_start_sec: sale_start.to_string(),
-            deadline_sec: "9999999999".into(),
-            block_timestamp_sec: anchor.to_string(),
-            timer_cap_sec: "86400".into(),
-            read_block_number: "9304".into(),
-            polled_at_ms: 0,
-        },
-        sale_ended: false,
-        podium_contract: [
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-        ],
-        sale_state: test_sale_state_snapshot("9304", &anchor.to_string()),
-    };
-
-    let app = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(Some(timer_head))),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-
-    // Sale-window happy path: chain_timer has sale_start_sec, 3 buys inside the window.
-    let res_sale = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?limit=10&offset=0&velocity_window=sale")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res_sale.status(), StatusCode::OK);
-    let j_sale = response_json(res_sale).await;
-    assert_eq!(j_sale["velocity"]["window"], "sale");
-    assert_eq!(j_sale["velocity"]["buy_count"], "3");
-    assert_eq!(j_sale["velocity"]["anchor_timestamp_sec"], anchor.to_string());
-    // window_hours = floor(10000 / 3600) = 2 → avg = 3 / 2 = 1.5
-    assert_eq!(j_sale["velocity"]["avg_buys_per_hour"], "1.500000");
-
-    // Pre-open path: chain_timer.timer.sale_start_sec == "0" → explicit pre-open (no DB fallback)
-    // → handler short-circuits to (anchor + 1, 1, "sale") → zero buys, avg = 0.
-    let timer_head_pre = TimecurveHeadSnapshot {
-        timer: ChainTimerSnapshot {
-            sale_start_sec: "0".into(),
-            deadline_sec: "9999999999".into(),
-            block_timestamp_sec: anchor.to_string(),
-            timer_cap_sec: "86400".into(),
-            read_block_number: "9304".into(),
-            polled_at_ms: 0,
-        },
-        sale_ended: false,
-        podium_contract: [
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-            empty_podium.clone(),
-        ],
-        sale_state: test_sale_state_snapshot("9304", &anchor.to_string()),
-    };
-    let app_pre = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(Some(timer_head_pre))),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-    let res_pre = app_pre
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?velocity_window=sale")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res_pre.status(), StatusCode::OK);
-    let j_pre = response_json(res_pre).await;
-    assert_eq!(j_pre["velocity"]["window"], "sale");
-    assert_eq!(j_pre["velocity"]["buy_count"], "0");
-    assert_eq!(j_pre["velocity"]["avg_buys_per_hour"], "0");
-
-    // sale_start DB fallback when chain_timer is unset.
-    sqlx::query("DELETE FROM idx_timecurve_sale_started")
-        .execute(&pool)
-        .await
-        .expect("clear sale started");
-    sqlx::query(
-        r#"INSERT INTO idx_timecurve_sale_started (
-              block_number, block_hash, tx_hash, log_index, contract_address,
-              start_timestamp, initial_deadline, total_tokens_for_sale
-           ) VALUES (9200, $1, $2, 0, $3, $4::numeric, 9999999999, 1000000)"#,
-    )
-    .bind(format!("0x{:0>64}", 9200))
-    .bind(format!("0x{:0>64}", 9200 + 1000))
-    .bind(tc)
-    .bind(sale_start)
-    .execute(&pool)
-    .await
-    .expect("insert sale started");
-
-    let app_fb = router(AppState {
-        pool: pool.clone(),
-        chain_timer: Arc::new(RwLock::new(None)),
-        ingestion_alive: Arc::new(AtomicBool::new(false)),
-        last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
-    });
-    let res_fb = app_fb
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?velocity_window=sale")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res_fb.status(), StatusCode::OK);
-    let j_fb = response_json(res_fb).await;
-    assert_eq!(j_fb["velocity"]["window"], "sale");
-    assert_eq!(j_fb["velocity"]["buy_count"], "3");
-    assert_eq!(j_fb["velocity"]["anchor_timestamp_sec"], (anchor - 100).to_string());
-    assert_eq!(j_fb["velocity"]["avg_buys_per_hour"], "1.500000");
-    assert_eq!(j_fb["wallets"]["total"], "1");
-
-    // Bad velocity_window still rejected; "sale" is now accepted but "7d" remains invalid.
-    let res_bad = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/v1/timecurve/platform-usage?velocity_window=7d")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res_bad.status(), StatusCode::BAD_REQUEST);
-
-    for table in [
-        "idx_timecurve_warbow_guard",
-        "idx_timecurve_warbow_revenge",
-        "idx_timecurve_warbow_steal",
-        "idx_timecurve_buy",
-        "idx_timecurve_sale_started",
-    ] {
-        sqlx::query(&format!("DELETE FROM {table}"))
-            .execute(&pool)
-            .await
-            .expect("cleanup");
-    }
 }

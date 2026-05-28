@@ -26,6 +26,31 @@ export const WARBOW_BP_MOVING_EVENT_NAMES = [
   "WarBowFlagPenalized",
 ] as const;
 
+/** TimeArena v2 onchain reads (GitLab #256). */
+export const timeArenaReadAbi = parseAbi([
+  "function arenaStart() view returns (uint256)",
+  "function deadline() view returns (uint256)",
+  "function lastBuyEpoch() view returns (uint256)",
+  "function podiumDeadline(uint8) view returns (uint256)",
+  "function podiumEpoch(uint8) view returns (uint256)",
+  "function charmPriceWad() view returns (uint256)",
+  "function paused() view returns (bool)",
+  "function doub() view returns (address)",
+  "function referralRegistry() view returns (address)",
+  "function totalDoubRaised() view returns (uint256)",
+  "function buyCooldownSec() view returns (uint256)",
+  "function timerExtensionSec() view returns (uint256)",
+  "function timerCapSec() view returns (uint256)",
+  "function nextBuyAllowedAt(address) view returns (uint256)",
+  "function epochCharmWad(uint256 epoch, address user) view returns (uint256)",
+  "function pendingCred(address user, uint256 epoch) view returns (uint256)",
+  "function claimCred(uint256 epoch)",
+  "function buyWithCred(uint256 charmWad)",
+  "function buy(uint256 charmWad)",
+  "function xp(address) view returns (uint256)",
+  "function level(address) view returns (uint256)",
+]);
+
 export const timeCurveReadAbi = parseAbi([
   "function saleStart() view returns (uint256)",
   "function deadline() view returns (uint256)",

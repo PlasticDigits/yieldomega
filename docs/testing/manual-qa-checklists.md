@@ -6,6 +6,8 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 
 | Issue | Topic |
 |-------|--------|
+| [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA — multi-timer, CRED, wallet modal](#manual-qa-issue-260) |
+| [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA — multi-timer, CRED, wallet](#manual-qa-issue-260) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E Playwright](#manual-qa-issue-87) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev buy cooldown](#manual-qa-issue-88) |
 | [#99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99) | [Bot swarm + Anvil chain time](#manual-qa-issue-99) |
@@ -51,17 +53,42 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`qa-local-full-stack.md`](qa-local-full-stack.md), [`anvil-rich-state.md`](anvil-rich-state.md), [`../integrations/kumbaya.md`](../integrations/kumbaya.md), [`../frontend/timecurve-views.md`](../frontend/timecurve-views.md), [`../frontend/wallet-connection.md`](../frontend/wallet-connection.md).
 
+<a id="manual-qa-issue-260"></a>
+
+## Arena v2 QA — multi-timer, CRED, wallet (GitLab #260)
+
+**Scope:** Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Product: [`arena-v2.md`](../product/arena-v2.md).
+
+### Preconditions
+
+- Local stack or `bash scripts/e2e-anvil.sh` with `VITE_TIME_ARENA_ADDRESS`, `VITE_PODIUM_VAULTS_ADDRESS`, `VITE_ADMIN_SELL_VAULT_ADDRESS`, indexer optional for timer chips.
+- Wallet on configured chain (Anvil: mock connector).
+
+### Checklist
+
+| Step | Pass criteria |
+|------|----------------|
+| Open **`/arena`** | `arena-timer-chips` shows four labels (Last Buy, Time Booster, Streak, WarBow); `arena-charm-cred-card` visible. |
+| Indexer running | Timer chips show non-`—` deadlines from `GET /v1/arena/timers` (four `podium_deadlines_sec`). |
+| DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move 40/30/30 (Forge / explorer). |
+| CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
+| Wallet profile | Open profile modal from address control when wired; XP / buy count plausible. |
+| Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
+| WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
+
+**Automated:** `TimeArena.t.sol`, `ArenaPrizeRouting.t.sol`, `e2e/anvil-arena-*.spec.ts`, `indexer` `integration_stage2`.
+
 <a id="manual-qa-issue-87"></a>
 
 ## Anvil E2E Playwright (GitLab #87)
 
-**Why:** [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts **one** Anvil, deploys `DeployDev`, builds the app with `VITE_*`, and runs `e2e/anvil-*.spec.ts` with **`ANVIL_E2E=1`**. Specs share **one chain** and the wagmi **mock** account — multi-worker Playwright can **race** unrelated files.
+**Why:** [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) starts **one** Anvil, deploys Arena v2 `DeployDev`, builds the app with `VITE_*`, and runs `e2e/anvil-arena-*.spec.ts` with **`ANVIL_E2E=1`**. Specs share **one chain** and the wagmi **mock** account — multi-worker Playwright can **race** unrelated files.
 
 ### Invariants (do not regress)
 
 1. With **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) uses **`workers: 1`** and **`fullyParallel: false`**. Do not raise Anvil E2E workers without **isolation** (separate Anvil per worker or per project), or document why and get sign-off.
 2. **Pay mode** on TimeCurve **Simple** and **Arena** is **toggle buttons**, not `<input name="timecurve-pay-with">`. Stable hooks: **`data-testid="timecurve-simple-paywith-cl8y"`**, **`…-eth`**, **`…-usdm`** on [`TimeCurveSimplePage`](../../frontend/src/pages/TimeCurveSimplePage.tsx) and [`TimeCurveArenaView`](../../frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx).
-3. Wallet-write E2E ([`anvil-wallet-writes.spec.ts`](../../frontend/e2e/anvil-wallet-writes.spec.ts)) must select ETH (or other assets) via **`getByTestId`** inside the **Buy CHARM** `.data-panel` scope, not dead CSS for removed radios.
+3. Wallet-write E2E ([`anvil-arena-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts)) must select pay assets via **`getByTestId("arena-paywith-…")`** inside the buy panel on **`/arena`**, not dead CSS for removed radios.
 
 ### Checklist
 

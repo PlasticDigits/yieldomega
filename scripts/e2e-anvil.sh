@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Run Anvil, deploy contracts, build the frontend with VITE_* for chain 31337, then Playwright Anvil E2E.
-# Prerequisites: Foundry (anvil, forge, cast), Node/npm in frontend/ (run `npm ci` once).
-# Usage: from repo root — bash scripts/e2e-anvil.sh
+# Run Anvil, deploy Arena v2 (DeployDev), build frontend, Playwright anvil-arena-* E2E.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,7 +22,7 @@ if [ ! -d "${ROOT}/frontend/node_modules" ]; then
   exit 1
 fi
 
-echo "Starting anvil on ${RPC} (MegaEVM-sized code: --code-size-limit 524288 = 512 KiB)..."
+echo "Starting anvil on ${RPC}..."
 anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 524288 >/tmp/yieldomega_anvil_e2e.log 2>&1 &
 ANVIL_PID=$!
 
@@ -43,24 +41,26 @@ yieldomega_anvil_deploy_dev
 
 export VITE_CHAIN_ID=31337
 export VITE_RPC_URL="${RPC}"
-export VITE_TIMECURVE_ADDRESS="${TC}"
-export VITE_RABBIT_TREASURY_ADDRESS="${RT}"
-export VITE_LEPRECHAUN_NFT_ADDRESS="${NFT}"
-export VITE_DOUB_PRESALE_VESTING_ADDRESS="${DPV}"
-export VITE_KUMBAYA_WETH="${KUMBAYA_WETH}"
-export VITE_KUMBAYA_USDM="${KUMBAYA_USDM}"
-export VITE_KUMBAYA_SWAP_ROUTER="${KUMBAYA_ROUTER}"
-export VITE_KUMBAYA_QUOTER="${KUMBAYA_ROUTER}"
+export VITE_TIME_ARENA_ADDRESS="${TA}"
+export VITE_TIMECURVE_ADDRESS="${TA}"
+export VITE_PODIUM_VAULTS_ADDRESS="${PV}"
+export VITE_ADMIN_SELL_VAULT_ADDRESS="${AV}"
+export VITE_REFERRAL_REGISTRY_ADDRESS="${RR}"
+if [ -n "${KUMBAYA_WETH:-}" ]; then
+  export VITE_KUMBAYA_WETH="${KUMBAYA_WETH}"
+  export VITE_KUMBAYA_USDM="${KUMBAYA_USDM}"
+  export VITE_KUMBAYA_SWAP_ROUTER="${KUMBAYA_ROUTER}"
+  export VITE_KUMBAYA_QUOTER="${KUMBAYA_ROUTER}"
+fi
 if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
   export VITE_KUMBAYA_TIMECURVE_BUY_ROUTER="${KUMBAYA_BUY_ROUTER}"
 fi
 export VITE_E2E_MOCK_WALLET=1
+export VITE_INDEXER_URL=
 export ANVIL_E2E=1
 
 cd "${ROOT}/frontend"
 npm run build
-# ANVIL_E2E=1 (exported above) → playwright.config uses workers:1; single Anvil + shared
-# mock account must not run cross-file wallet txs in parallel (gitlab #87).
-npx playwright test e2e/anvil-*.spec.ts
+npx playwright test e2e/anvil-arena-*.spec.ts
 
 echo "Done."

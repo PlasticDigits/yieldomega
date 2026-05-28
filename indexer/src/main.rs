@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
         });
     } else {
         tracing::warn!(
-            "ADDRESS_REGISTRY missing TimeArena — /v1/timecurve/chain-timer will return 503"
+            "ADDRESS_REGISTRY missing TimeArena — /v1/arena/timers will return 503"
         );
     }
 
