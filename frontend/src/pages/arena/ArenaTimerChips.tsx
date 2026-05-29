@@ -46,19 +46,20 @@ export function ArenaTimerChips() {
     };
   })();
 
-  if (!data) return null;
-
-  const now = Number(data.block_timestamp_sec);
-  const deadlines = data.podium_deadlines_sec ?? [];
+  const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
+  const deadlines = data?.podium_deadlines_sec ?? [];
+  const lastBuy = data?.last_buy_deadline_sec;
 
   return (
     <div className="arena-timer-chips" data-testid="arena-timer-chips" aria-label="Podium timers">
       {LABELS.map((label, i) => {
-        const dl = Number(deadlines[i] ?? data.last_buy_deadline_sec);
-        const rem = Math.max(0, dl - now);
+        const dl = data
+          ? Number(deadlines[i] ?? lastBuy)
+          : undefined;
+        const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
         return (
           <span key={label} className="arena-timer-chips__chip">
-            {label}: {formatMmSsCountdown(rem)}
+            {label}: {rem !== undefined ? formatMmSsCountdown(rem) : "—"}
           </span>
         );
       })}

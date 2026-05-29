@@ -12,12 +12,12 @@ export function TimeArenaPage() {
 
   return (
     <>
+      <span className="visually-hidden" data-testid="time-arena-page-mounted" />
       <ArenaTimerChips />
       <ArenaCharmCredCard />
       <TimeCurveSimplePage />
       <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
       {/* Profile modal opened via future AddressInline `onOpenProfile` wiring (#258). */}
-      <span className="visually-hidden" data-testid="time-arena-page-mounted" />
     </>
   );
 }

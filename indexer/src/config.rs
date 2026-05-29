@@ -481,8 +481,6 @@ mod production_registry_validation_tests {
     use super::*;
 
     const ADDR_A: &str = "0x1111111111111111111111111111111111111111";
-    const ADDR_B: &str = "0x2222222222222222222222222222222222222222";
-
     fn filled_contracts(buy_router: &str) -> RegistryContracts {
         RegistryContracts {
             time_arena: ADDR_A.into(),

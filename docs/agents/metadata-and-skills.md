@@ -2,12 +2,11 @@
 
 ## Why this matters
 
-The ecosystem is designed to **enable voluntary participation through transparent, auditable rules and reduced dependence on opaque intermediaries.** **Onchain metadata** encodes traits, bonuses, and **agent skill flags** ([../product/leprechaun-nfts.md](../product/leprechaun-nfts.md)). **Repository agent skills** encode how coding agents should behave so they do not violate architecture or licensing.
+The ecosystem is designed to **enable voluntary participation through transparent, auditable rules and reduced dependence on opaque intermediaries.** **Repository agent skills** encode how coding agents should behave so they do not violate architecture or licensing.
 
 ## Onchain metadata (product side)
 
-- Traits should be **complete** enough for an agent to simulate **moves permitted under deployed contracts and published rules** (contract calls) without hidden server rules.
-- **Agent skill flags** are not a substitute for law or platform ToS; they are **machine-readable hints** (for example “soulbound” prevents naive listing strategies).
+- Arena v2 rules live in **`TimeArena`** and published docs ([`arena-v2.md`](../product/arena-v2.md)); agents should read **onchain** state, not retired launchpad docs.
 
 ## Contributor skills (Cursor / IDE — **fork and build**)
 
@@ -27,23 +26,21 @@ Cursor **skills** are typically small markdown instruction files (for example un
 
 ## Play skills (root **`skills/`** — **participate, not fork**)
 
-Agents (and humans driving them) who want to **use** onchain games and treasuries—TimeCurve, Rabbit Treasury / DOUB, Leprechaun collections—need guidance that is **not** the same as contributor guardrails. Those play skills live at the repository root: [../../skills/README.md](../../skills/README.md).
+Agents (and humans driving them) who want to **use** **Time Arena** (Arena v2) need guidance that is **not** the same as contributor guardrails. Play skills live at the repository root: [../../skills/README.md](../../skills/README.md).
 
-**Invariant ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100)):** `skills/` carries **seven** player-facing Cursor skills **only**. Maintainer QA / harness prose lives under [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md)—not inside `skills/`.
+**Invariant ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100)):** `skills/` carries **player-facing** Cursor skills **only**. Maintainer QA lives under [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md).
 
 | Play skill | Use when |
 |------------|----------|
-| [../../skills/play-active-timecurve/SKILL.md](../../skills/play-active-timecurve/SKILL.md) | Detect **live** TimeCurve sale phase and route into doubloon / WarBow / local-script playbooks ([GitLab #232](https://gitlab.com/PlasticDigits/yieldomega/-/issues/232)). |
-| [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics-and-governance framing before other play skills. |
-| [../../skills/script-with-timecurve-local/SKILL.md](../../skills/script-with-timecurve-local/SKILL.md) | Local TypeScript or Python scripts vs **deployed** contracts (reads, env, timing-sensitive buy **process**—not repo patches). |
-| [../../skills/play-timecurve-doubloon/SKILL.md](../../skills/play-timecurve-doubloon/SKILL.md) | Buys, timer, charms, **four** fixed v1 reserve podium **categories**, DOUB / fee sinks ([`primitives.md`](../product/primitives.md)), **CL8Y-at-launch** (**1.275×** clearing anchor — [GitLab #158](https://gitlab.com/PlasticDigits/yieldomega/-/issues/158), [`invariants` anchor](../testing/invariants-and-business-logic.md#timecurve-launch-anchor-gitlab-158)). |
-| [../../skills/play-timecurve-warbow/SKILL.md](../../skills/play-timecurve-warbow/SKILL.md) | WarBow Ladder PvP: Battle Points, steal / guard / revenge / flag. |
-| [../../skills/play-rabbit-treasury/SKILL.md](../../skills/play-rabbit-treasury/SKILL.md) | Burrow deposits, epochs, withdraws, reserve-linked behavior. |
-| [../../skills/collect-leprechaun-sets/SKILL.md](../../skills/collect-leprechaun-sets/SKILL.md) | Leprechaun sets, traits, and collecting onchain. |
+| [../../skills/play-active-time-arena/SKILL.md](../../skills/play-active-time-arena/SKILL.md) | Route by live / paused Arena timers on `TimeArena`. |
+| [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics framing before other play skills. |
+| [../../skills/script-with-timecurve-local/SKILL.md](../../skills/script-with-timecurve-local/SKILL.md) | Local scripts vs deployed contracts (env, Anvil stack). |
+| [../../skills/play-time-arena-doub/SKILL.md](../../skills/play-time-arena-doub/SKILL.md) | DOUB buys, Last Buy timer, 40/30/30 podium routing. |
+| [../../skills/play-time-arena-warbow/SKILL.md](../../skills/play-time-arena-warbow/SKILL.md) | DOUB WarBow (stub until [#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). |
 
 ### Contributor manual QA (not play skills)
 
-Row-by-row Anvil, Playwright, wallet, and UI verification checklists: [../testing/manual-qa-checklists.md](../testing/manual-qa-checklists.md) (table of contents + GitLab cross-links). Examples: [Arena sniper-shark (#80)](../testing/manual-qa-checklists.md#manual-qa-issue-80), [Album 1 BGM resume (#71)](../testing/manual-qa-checklists.md#manual-qa-issue-71), [post-end gates (#79)](../testing/manual-qa-checklists.md#manual-qa-issue-79).
+Row-by-row Anvil, Playwright, wallet, and UI verification checklists: [../testing/manual-qa-checklists.md](../testing/manual-qa-checklists.md). Examples: [Arena v2 (#260)](../testing/manual-qa-checklists.md#manual-qa-issue-260), [Anvil E2E (#87)](../testing/manual-qa-checklists.md#manual-qa-issue-87).
 
 - **Issue #71 / stale bookmarks:** Older references to **`skills/verify-yo-album-bgm-resume/SKILL.md`** should be updated to **[Album 1 BGM resume (#71)](../testing/manual-qa-checklists.md#manual-qa-issue-71)** ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100) consolidation).
 

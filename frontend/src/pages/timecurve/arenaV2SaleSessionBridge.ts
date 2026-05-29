@@ -9,10 +9,17 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const CHARM_MIN_WAD = parseUnits("0.99", 18);
 const CHARM_MAX_WAD = parseUnits("10", 18);
 
+function lowerHex(v: unknown): string | undefined {
+  if (typeof v !== "string" || !v.startsWith("0x")) return undefined;
+  return v.toLowerCase();
+}
+
 export function isArenaV2TimeCurve(tc: HexAddress | undefined): boolean {
   const arena = addresses.timeArena;
-  if (!tc || !arena) return false;
-  return tc.toLowerCase() === arena.toLowerCase();
+  const a = lowerHex(tc);
+  const b = lowerHex(arena);
+  if (!a || !b) return false;
+  return a === b;
 }
 
 /** Multicall shape aligned with `useTimeCurveSaleSession` core row destructuring. */
@@ -82,10 +89,10 @@ export function mapArenaV2CoreRows(
     row(ZERO),
     row(0n),
     row(0n),
+    row(0n),
     row(ZERO),
     row(500n),
     row(0n),
-    row(ZERO),
   ];
 }
 

@@ -2,7 +2,7 @@
 
 **Issues:** [GitLab #58 — SafePal / WalletConnect](https://gitlab.com/PlasticDigits/yieldomega/-/issues/58), [GitLab #81 — single-chain wagmi (no incidental mainnet RPC)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81), [GitLab #95 — wrong-chain write gating (`VITE_CHAIN_ID` match)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95), [GitLab #120 — AccessControl zero admin (deploy vs derived UX layers)](https://gitlab.com/PlasticDigits/yieldomega/-/issues/120), [GitLab #144 — wallet session continuity during multi-step buy](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144), [GitLab #155 — wallet session continuity during referral `registerCode`](https://gitlab.com/PlasticDigits/yieldomega/-/issues/155), [GitLab #143 — ERC-20 approval sizing vs H-01](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143), [GitLab #97 — `:focus-visible` / WCAG 2.4.7](https://gitlab.com/PlasticDigits/yieldomega/-/issues/97), [GitLab #98 — canonical address display + explorer base](https://gitlab.com/PlasticDigits/yieldomega/-/issues/98)
 
-The app uses **RainbowKit** + **wagmi** (`frontend/src/wagmi-config.ts`). Participant-facing connect surfaces use `<ConnectButton.Custom>` in the header and [`WalletConnectButton`](../../frontend/src/components/WalletConnectButton.tsx) on pages such as TimeCurve Simple ([`timecurve-views.md`](timecurve-views.md)).
+The app uses **RainbowKit** + **wagmi** (`frontend/src/wagmi-config.ts`). Participant-facing connect surfaces use `<ConnectButton.Custom>` in the header and [`WalletConnectButton`](../../frontend/src/components/WalletConnectButton.tsx) on **`/arena`** ([`arena-views.md`](arena-views.md)).
 
 ## Configuration invariants
 
@@ -78,7 +78,7 @@ ETH/USDM paths run **`quoteExactOutput`**, wraps/approvals, **`exactOutput`** sw
 
 **Opt-in unlimited CL8Y → TimeCurve:** [`Cl8yTimeCurveUnlimitedApprovalFieldset`](../../frontend/src/components/Cl8yTimeCurveUnlimitedApprovalFieldset.tsx) on TimeCurve **Simple** and **Arena** buy panels stores **`yieldomega.erc20.cl8yTimeCurveUnlimited.v1`** in **`localStorage`** and, when enabled, uses **`type(uint256).max`** for that spender. Toggling off does **not** revoke an existing onchain allowance — participants revoke in their wallet if needed.
 
-**Spec ↔ test:** [`INV-ERC20-APPROVAL-143`](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`INV-FRONTEND-224-CL8Y-APPROVE`](../testing/invariants-and-business-logic.md#arena-cl8y-approve-guard-gitlab-224) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [`ensureCl8yTimeCurveAllowance.test.ts`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.test.ts) · [timecurve-views §143](timecurve-views.md#erc20-approval-sizing-gitlab-143) · [timecurve-views §224](timecurve-views.md#arena-cl8y-approve-guard-gitlab-224).
+**Spec ↔ test:** [`INV-ERC20-APPROVAL-143`](../testing/invariants-and-business-logic.md#frontend-erc20-approval-sizing-gitlab-143) · [`INV-FRONTEND-224-CL8Y-APPROVE`](../testing/invariants-and-business-logic.md#arena-cl8y-approve-guard-gitlab-224) · [`cl8yTimeCurveApprovalPreference.test.ts`](../../frontend/src/lib/cl8yTimeCurveApprovalPreference.test.ts) · [`ensureCl8yTimeCurveAllowance.test.ts`](../../frontend/src/lib/ensureCl8yTimeCurveAllowance.test.ts) · [arena-views](arena-views.md).
 
 <a id="wallet-scoped-rpc-load-once-gitlab-216"></a>
 
@@ -88,7 +88,7 @@ TimeCurve **Simple** ([`useTimeCurveSaleSession.ts`](../../frontend/src/pages/ti
 
 **CL8Y balance** loads once on connect; TimeCurve Simple exposes an inline **↻** control that triggers a single **`balanceOf`** refetch ([`refetchWalletBalance`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts)). **`nextBuyAllowedAt`** is not polled on a timer; after a successful buy the UI refreshes wallet reads and applies the cooldown wall from the receipt block.
 
-Global sale display uses **`GET /v1/timecurve/sale-state`** when **`VITE_INDEXER_URL`** is set (shared **`useTimecurveSaleStateQuery`** on Simple and Arena — no ~1 Hz **`mergedArenaTc`** / **`coreContracts`** poll for overlapping fields); see [timecurve-views — display vs submit](timecurve-views.md) and [invariants §216](../testing/invariants-and-business-logic.md#timecurve-indexer-sale-state-gitlab-216).
+Arena timer and buy surfaces use **`GET /v1/arena/*`** when **`VITE_INDEXER_URL`** is set; see [arena-views.md](arena-views.md) and [invariants §260](../testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
 
 <a id="rpc-filter-capability-probe"></a>
 

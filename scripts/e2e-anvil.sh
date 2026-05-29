@@ -57,6 +57,7 @@ if [ -n "${KUMBAYA_BUY_ROUTER:-}" ]; then
 fi
 export VITE_E2E_MOCK_WALLET=1
 export VITE_INDEXER_URL=
+unset VITE_LAUNCH_TIMESTAMP
 export ANVIL_E2E=1
 
 cd "${ROOT}/frontend"

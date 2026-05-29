@@ -42,7 +42,7 @@ export function ArenaCharmCredCard() {
   return (
     <PageSection
       title="CHARM & Play CRED"
-      data-testid="arena-charm-cred-card"
+      dataTestId="arena-charm-cred-card"
       className="arena-charm-cred-card"
     >
       <p>

@@ -44,7 +44,7 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 | **Input focus** | **Optional** 1 kHz, 20 ms blip at low level or **silent** | Reduces sound fatigue for keyboard users |
 | **Error / invalid action** | **Short detuned** pair of tones (minor 2nd) 150–250 ms, low-mid, **no** buzzer; respect reduced-motion | Inclusive, not a casino “wrong” |
 | **Success (generic)** | **Major 3rd or 5th** arpeggio, 0.2–0.4 s, soft brass or chime | Aligns with *Lucky Run* / charm feeling |
-| **Long operation started** (quote fetch, submit) | **Very subtle 2–3 Hz “breath”** or one soft swell at start; pair with on-screen *Refreshing quote…* | Ties to Kumbaya in-flight state ([issue 56](timecurve-views.md#buy-quote-refresh-kumbaya-issue-56)) |
+| **Long operation started** (quote fetch, submit) | **Very subtle 2–3 Hz “breath”** or one soft swell at start; pair with on-screen *Refreshing quote…* | Ties to Kumbaya in-flight state on `/arena` ([arena-views.md](arena-views.md)) |
 | **Copy to clipboard** | **Single coin-tap** variant, 80 ms | Quick confirmation |
 | **External link** | 100 ms whoosh (same as route family, shorter than Kumbaya full whoosh) | “Leaving the tavern for a path” |
 
@@ -133,7 +133,7 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 | `warbow_twang.wav` | WarBow **highlight** (§3) |
 | `kumbaya_whoosh.wav` | **Route / swap** motion (§2) |
 
-**Agent phase (repo):** this file is product/UX; no onchain rules change. For TimeCurve view contracts and timers, see [timecurve-views.md](timecurve-views.md) and the phase guide in [agent-phases.md](../agent-phases.md).
+**Agent phase (repo):** this file is product/UX; no onchain rules change. For Arena UI and timers, see [arena-views.md](arena-views.md) and [agent-phases.md](../agent-phases.md).
 
 ---
 
