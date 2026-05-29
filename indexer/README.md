@@ -105,6 +105,10 @@ Schema **≥ 1.26.0**. Network-wide sale + WarBow aggregates for **`/timecurve/p
 
 Schema **≥ 2.1.0** (`x-schema-version`). Ingests **`PodiumPoolsToppedUp`** into **`idx_arena_podium_pool_top_up`**. Returns network **`total_donated_doub_wad`**, **`unique_donors_count`**, **`recent[]`**, and optional **`donor_summary`** when **`?donor=0x…`**. Empty DB → zeros / empty arrays (not 404). Map: **`INV-INDEXER-262-DONATE-POOLS`** · [design — donate pools](../docs/indexer/design.md#arena-podium-pool-donations-http-gitlab-262) · [invariants §262](../docs/testing/invariants-and-business-logic.md#arena-podium-pool-donations-gitlab-262) · [AUDIT card](../docs/frontend/arena-views.md#protocol-donate-pools-gitlab-262).
 
+### Buy vault funding (`GET /v1/arena/vault-funding/*`, GitLab [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
+
+Schema **≥ 2.2.0** (`x-schema-version`). Ingests **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** into **`idx_arena_vault_funding`**. Routes: **`/recent`**, **`/by-tx/{tx_hash}`**, **`/totals`**. Empty DB → zeros / empty arrays (not 404). Map: **`INV-INDEXER-267-VAULT-FUNDING`** · [design — vault funding](../docs/indexer/design.md#arena-vault-funding-http-gitlab-267) · [invariants §267](../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267) · [onchain events](../docs/onchain/fee-routing-and-governance.md#events).
+
 ### SQLx migrations
 
 Migrations live under [`migrations/`](migrations/). Ship **paired** **`.up.sql`** and **`.down.sql`** per version so **`sqlx migrate revert`** can roll back a step and **`sqlx migrate run`** can re-apply it without hand-editing **`_sqlx_migrations`** ([GitLab #152](https://gitlab.com/PlasticDigits/yieldomega/-/issues/152) — unredeemed launched-token **`idx_*`** tables, [`invariants §128`](../docs/testing/invariants-and-business-logic.md#timecurve-unredeemed-launch-allocation-sweep-gitlab-128)).

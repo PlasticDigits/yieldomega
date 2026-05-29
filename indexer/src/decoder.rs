@@ -16,6 +16,19 @@ mod contracts {
     }
 
     sol! {
+        contract PodiumVaultsEvents {
+            event PodiumFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
+            event SeedFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
+        }
+    }
+
+    sol! {
+        contract AdminSellVaultEvents {
+            event AdminVaultFunded(uint256 amount);
+        }
+    }
+
+    sol! {
         contract TimeArenaEvents {
             event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
             event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -69,7 +82,27 @@ mod contracts {
     }
 }
 
-use contracts::{ReferralRegistryEvents, TimeArenaEvents};
+use contracts::{
+    AdminSellVaultEvents, PodiumVaultsEvents, ReferralRegistryEvents, TimeArenaEvents,
+};
+
+/// Buy-sourced DOUB prize routing row kind (maps to `idx_arena_vault_funding.kind`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VaultFundingKind {
+    PodiumActive,
+    PodiumSeed,
+    Admin,
+}
+
+impl VaultFundingKind {
+    pub fn as_db_str(self) -> &'static str {
+        match self {
+            Self::PodiumActive => "podium_active",
+            Self::PodiumSeed => "podium_seed",
+            Self::Admin => "admin",
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DecodedLog {
@@ -152,6 +185,12 @@ pub enum DecodedEvent {
     ArenaPodiumPoolTopUp {
         donor: Address,
         amount_doub_wad: U256,
+    },
+    ArenaVaultFunding {
+        kind: VaultFundingKind,
+        podium_id: Option<u8>,
+        amount_doub_wad: U256,
+        pool_address: Option<Address>,
     },
     Unknown {
         #[allow(dead_code)]
@@ -288,6 +327,36 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::ArenaPodiumPoolTopUp {
                 donor: e.donor,
                 amount_doub_wad: e.amountDoubWad,
+            };
+        }
+    }
+    if topic0 == PodiumVaultsEvents::PodiumFunded::SIGNATURE_HASH {
+        if let Ok(e) = PodiumVaultsEvents::PodiumFunded::decode_log(log, true) {
+            return DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::PodiumActive,
+                podium_id: Some(e.podiumId),
+                amount_doub_wad: e.amount,
+                pool_address: Some(e.pool),
+            };
+        }
+    }
+    if topic0 == PodiumVaultsEvents::SeedFunded::SIGNATURE_HASH {
+        if let Ok(e) = PodiumVaultsEvents::SeedFunded::decode_log(log, true) {
+            return DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::PodiumSeed,
+                podium_id: Some(e.podiumId),
+                amount_doub_wad: e.amount,
+                pool_address: Some(e.pool),
+            };
+        }
+    }
+    if topic0 == AdminSellVaultEvents::AdminVaultFunded::SIGNATURE_HASH {
+        if let Ok(e) = AdminSellVaultEvents::AdminVaultFunded::decode_log(log, true) {
+            return DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::Admin,
+                podium_id: None,
+                amount_doub_wad: e.amount,
+                pool_address: None,
             };
         }
     }

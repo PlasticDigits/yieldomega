@@ -12,6 +12,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - `buy(charmWad)` or `buy(charmWad, codeHash)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18` (default **1000 DOUB** per 1 CHARM).
 - **ETH / USDM:** `TimeArenaBuyRouter.buyViaKumbaya` → Kumbaya `exactOutput` → DOUB → `buyFor` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), UI [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)).
 - Each buy routes DOUB: **40%** active podium pools, **30%** seed pools, **30%** `AdminSellVault`.
+- Onchain: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** per buy. Indexer history + per-tx breakdown: [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`GET /v1/arena/vault-funding/*`** · [invariants §267](../../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267).
 - **First buy ever** (this wallet): schedules **150 CRED** for the **next** `lastBuyEpoch` (DOUB or CRED path); one-time — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - **Pause:** `TimeArena.paused` — not legacy `buyFeeRoutingEnabled`.
 
