@@ -24,11 +24,11 @@ test.describe("Anvil Arena wallet writes", () => {
     await connectArenaWallet(page);
 
     const buyPanel = arenaBuyPanel(page);
-    await expect(buyPanel.getByRole("button", { name: /buy/i })).toBeVisible({
-      timeout: 60_000,
-    });
+    const buyCharm = buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i });
+    await expect(buyCharm).toBeVisible({ timeout: 60_000 });
     await setCharmSliderMin(page);
-    await buyPanel.getByRole("button", { name: /buy/i }).click();
+    await expect(buyCharm).toBeEnabled({ timeout: 120_000 });
+    await buyCharm.click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: 120_000,
     });

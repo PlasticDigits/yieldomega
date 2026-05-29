@@ -62,6 +62,17 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 
 Onchain: **`TimeArena.topUpPodiumPools`** · routing: **`ArenaBuyRouting.splitPrizeTopUpAmount`** · **`INV-TIME-ARENA-PODIUM-TOPUP`**. Product: [arena-v2 § manual top-up](../product/arena-v2.md#manual-podium-pool-top-up-gitlab-261) · onchain: [fee-routing § top-up](../onchain/fee-routing-and-governance.md#manual-podium-pool-top-up-gitlab-261). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*`.
 
+<a id="dev-kumbaya-anvil-deploy-gitlab-270"></a>
+
+### Dev Kumbaya deploy + ETH E2E (GitLab #270)
+
+| ID | Rule | Enforcement |
+|----|------|-------------|
+| **`INV-DEV-KUMBAYA-270-DEPLOY`** | `DeployKumbayaAnvilFixtures` calls `DevOnlyChainGuard`; seeds DOUB↔WETH and USDM↔WETH↔DOUB pools; `setTimeArenaBuyRouter` matches logged router | `DeployKumbayaAnvilFixtures.s.sol`, `scripts/lib/anvil_deploy_dev.sh` cast check |
+| **`INV-DEV-KUMBAYA-270-E2E`** | Default `bash scripts/e2e-anvil.sh` sets `YIELDOMEGA_DEPLOY_KUMBAYA=1` and exports `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | `scripts/e2e-anvil.sh`, `e2e/anvil-arena-wallet-writes.spec.ts` ETH case |
+| **`INV-TIME-ARENA-BUY-ROUTER`** | `buyViaKumbaya` ETH/USDM happy path; stable ingress parity; charm bounds; paused arena; router-only `buyFor` | `TimeArenaBuyRouter.t.sol` |
+| **`INV-TIME-ARENA-BUYFOR-PULL`** | `buyFor` pulls DOUB from `timeArenaBuyRouter`, not the participant wallet | `TimeArena.sol` `_buyDoub`; `TimeArenaBuyRouter.t.sol` |
+
 <a id="arena-podium-pool-donations-gitlab-262"></a>
 
 ### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))

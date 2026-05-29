@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Helpers for local Anvil: merge TimeCurveBuyRouter into contracts/deployments/local-anvil-registry.json
-# and sync Kumbaya VITE_* lines into frontend/.env.local (GitLab #84).
+# Helpers for local Anvil: merge TimeArenaBuyRouter into contracts/deployments/local-anvil-registry.json
+# and sync Kumbaya VITE_* lines into frontend/.env.local (GitLab #84, Arena v2 #270).
 #
-# Indexer: empty or missing TimeCurveBuyRouter skips BuyViaKumbaya ingestion; zero address should not
+# Indexer: optional legacy TimeCurveBuyRouter field is ignored for Arena v2 ingestion; zero address should not
 # be written — match ADDRESS_REGISTRY semantics (indexer/src/config.rs index_addresses skips invalid/empty).
 
 # Parse DeployKumbayaAnvilFixtures forge log (same line anchors as scripts/lib/anvil_deploy_dev.sh).
@@ -16,11 +16,14 @@ yieldomega_kumbaya_extract_from_deploy_log() {
   KUMBAYA_WETH="$(_yieldomega_k_line "AnvilWETH9:")"
   KUMBAYA_USDM="$(_yieldomega_k_line "AnvilMockUSDM:")"
   KUMBAYA_ROUTER="$(_yieldomega_k_line "AnvilKumbayaRouter")"
-  KUMBAYA_BUY_ROUTER="$(_yieldomega_k_line "TimeCurveBuyRouter (single-tx")"
+  KUMBAYA_BUY_ROUTER="$(_yieldomega_k_line "TimeArenaBuyRouter (single-tx")"
+  if [[ -z "${KUMBAYA_BUY_ROUTER}" ]]; then
+    KUMBAYA_BUY_ROUTER="$(_yieldomega_k_line "TimeCurveBuyRouter (single-tx")"
+  fi
 }
 
 # Merge checksum router address into registry JSON; no-op if file missing or router empty/zero.
-yieldomega_registry_merge_timecurve_buy_router() {
+yieldomega_registry_merge_timearena_buy_router() {
   local registry_json="$1"
   local router="$2"
   if [[ ! -f "${registry_json}" ]]; then
@@ -31,8 +34,13 @@ yieldomega_registry_merge_timecurve_buy_router() {
   fi
   local tmp
   tmp="$(mktemp)"
-  jq --arg br "${router}" '.contracts.TimeCurveBuyRouter = $br' "${registry_json}" > "${tmp}"
+  jq --arg br "${router}" '.contracts.TimeArenaBuyRouter = $br' "${registry_json}" > "${tmp}"
   mv "${tmp}" "${registry_json}"
+}
+
+# @deprecated Use yieldomega_registry_merge_timearena_buy_router (TimeCurve key retained for legacy tooling).
+yieldomega_registry_merge_timecurve_buy_router() {
+  yieldomega_registry_merge_timearena_buy_router "$@"
 }
 
 # Idempotent: set or replace KEY=value with literal semantics (GitLab #154).
@@ -60,6 +68,7 @@ yieldomega_frontend_merge_kumbaya_vite_full() {
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_USDM" "${usdm}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_SWAP_ROUTER" "${swap_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_QUOTER" "${swap_router}"
+  _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER" "${buy_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER" "${buy_router}"
 }
 
@@ -71,5 +80,6 @@ yieldomega_frontend_merge_vite_kumbaya_buy_router_only() {
   if [[ -z "${buy_router}" || "${buy_router}" == "0x0000000000000000000000000000000000000000" ]]; then
     return 0
   fi
+  _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER" "${buy_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER" "${buy_router}"
 }
