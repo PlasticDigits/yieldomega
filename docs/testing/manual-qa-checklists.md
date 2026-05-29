@@ -52,7 +52,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 ### Invariants (do not regress)
 
 1. With **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) uses **`workers: 1`** and **`fullyParallel: false`**. Do not raise Anvil E2E workers without **isolation** (separate Anvil per worker or per project), or document why and get sign-off.
-2. **Pay mode** on TimeCurve **Simple** and **Arena** is **toggle buttons**, not `<input name="timecurve-pay-with">`. Stable hooks: **`data-testid="arena-paywith-cl8y"`**, **`…-eth`**, **`…-usdm`** on [`TimeCurveSimplePage`](../../frontend/src/pages/TimeCurveSimplePage.tsx) and [`TimeArenaPage`](../../frontend/src/pages/timeCurveArena/TimeArenaPage.tsx).
+2. **Pay mode** on **`/arena`** is **toggle buttons** with stable hooks: **`data-testid="arena-paywith-cl8y"`**, **`…-eth`**, **`…-usdm`** on [`TimeArenaPage`](../../frontend/src/pages/TimeArenaPage.tsx).
 3. Wallet-write E2E ([`anvil-arena-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts)) must select pay assets via **`getByTestId("arena-paywith-…")`** inside the buy panel on **`/arena`**, not dead CSS for removed radios.
 
 ### Checklist
@@ -68,12 +68,12 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 ## DeployDev buy cooldown (GitLab #88)
 
-**Why:** Default **`DeployDev`** sets **`TimeCurve.buyCooldownSec = 300`**. Manual checklists that need **several buys from the same wallet** are impractical without lowering the initializer argument.
+**Why:** Default **`DeployDev`** sets **`TimeArena.buyCooldownSec = 300`**. Manual checklists that need **several buys from the same wallet** are impractical without lowering the initializer argument.
 
 ### Invariants
 
 1. **Default unchanged:** With no flags, **`buyCooldownSec`** stays **300** on fresh **`DeployDev`**.
-2. **Never zero:** Resolver and **`TimeCurve.initialize`** require **`buyCooldownSec > 0`**. **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** fails **`DeployDev`** before broadcast.
+2. **Never zero:** **`TimeArena`** init requires **`buyCooldownSec > 0`**. **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** fails **`DeployDev`** before broadcast.
 3. **Single source:** Env logic lives only in [`contracts/script/DeployDevBuyCooldown.sol`](../../contracts/script/DeployDevBuyCooldown.sol); Forge coverage in [`DeployDevBuyCooldown.t.sol`](../../contracts/test/DeployDevBuyCooldown.t.sol) (`test_readBuyCooldownSec_env_resolution_matrix`).
 
 ### Flags
@@ -85,13 +85,13 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 ### Checklist
 
-- [ ] **`cast call <TimeCurveProxy> "buyCooldownSec()(uint256)" --rpc-url …`** returns **300** without flags, or your chosen override after a flagged deploy.
+- [ ] **`cast call <TimeArenaProxy> "buyCooldownSec()(uint256)" --rpc-url …`** returns **300** without flags, or your chosen override after a flagged deploy.
 - [ ] After two quick buys from the same wallet (with **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`**), second buy succeeds once **`block.timestamp >= nextBuyAllowedAt`** (1 s pacing).
 - [ ] Production / unattended CI: **do not** export these flags unless the job intentionally tests short cooldowns.
 
 **Bot swarm demos:** Prefer short cooldown alongside stack **[`--block-time`](e2e-anvil.md#bot-swarm-anvil-chain-time-gitlab-99)** defaults ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)) — [Bot swarm + Anvil chain time](#manual-qa-issue-99).
 
-**Doc map:** [e2e-anvil — DeployDev buy cooldown](e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88) · [invariants — #88](invariants-and-business-logic.md#deploydev-buy-cooldown-env-issue-88) · [primitives — Per-wallet buy cooldown](../product/primitives.md)
+**Doc map:** [e2e-anvil — DeployDev buy cooldown](e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88) · [primitives — Per-wallet buy cooldown](../product/primitives.md)
 
 <a id="manual-qa-issue-99"></a>
 
@@ -109,11 +109,11 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 ### Checklist
 
 - [ ] Fresh stack: **`SKIP_ANVIL_RICH_STATE=1 bash scripts/start-local-anvil-stack.sh`** — startup log mentions **`Anvil interval mining`** (unless **`YIELDOMEGA_ANVIL_BLOCK_TIME_SEC=0`**).
-- [ ] With default swarm + default cooldown, wait **~2–5 minutes** after the initial burst: **Recent buys** / indexer **`/v1/timecurve/buys`** should still show **new** rows (chain time advances during sleeps).
+- [ ] With default swarm + default cooldown, wait **~2–5 minutes** after the initial burst: indexer **`GET /v1/arena/buys`** should still show **new** rows (chain time advances during sleeps).
 - [ ] Optional dense traffic: re-run with **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** — buys should arrive much more frequently.
 - [ ] **`cast block-number`** / **`eth_getBlockByNumber(latest)`** `timestamp`: after **30–60** s idle, timestamps should increase (interval mining).
 
-**Doc map:** [e2e-anvil — Bot swarm + chain time](e2e-anvil.md#bot-swarm-anvil-chain-time-gitlab-99) · [invariants — #99](invariants-and-business-logic.md#bot-swarm-anvil-interval-mining-issue-99) · [`bots/timecurve/README.md`](../../bots/timecurve/README.md)
+**Doc map:** [e2e-anvil — Bot swarm + chain time](e2e-anvil.md#bot-swarm-anvil-chain-time-gitlab-99) · [`bots/timearena/README.md`](../../bots/timearena/README.md)
 
 <a id="manual-qa-issue-64"></a>
 
@@ -125,13 +125,13 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 - [`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend) — **`/referrals`** is **not** in the **`UnderConstruction`** set at TGE (**F-11** / [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)); [`YO-DOUB-Launch-UX-Flows.md`](../../YO-DOUB-Launch-UX-Flows.md).
 - [`docs/product/referrals.md`](../product/referrals.md) — code rules, link capture, **registration ordering / mempool fairness** ([GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121), [§ ordering](../product/referrals.md#referral-registration-ordering-issue-121)), **browser storage key table** (pending vs my-code — [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)).
-- [invariants — Referrals page](invariants-and-business-logic.md#referrals-page-visual-issue-64) · [invariants — **#121** registration ordering](invariants-and-business-logic.md#referral-registration-ordering-issue-121).
+- [referrals.md — registration ordering](../product/referrals.md#referral-registration-ordering-issue-121).
 - Contributor Anvil runbook: [e2e-anvil.md](e2e-anvil.md) (`bash scripts/e2e-anvil.sh`).
 
 ### Preconditions
 
 - Frontend built with **`VITE_LAUNCH_TIMESTAMP` in the past** if you need the **post-launch** route tree.
-- **`VITE_REFERRAL_REGISTRY_ADDRESS`** set **or** **`VITE_TIMECURVE_ADDRESS`** pointing at a TimeCurve whose **`referralRegistry()`** is non-zero.
+- **`VITE_REFERRAL_REGISTRY_ADDRESS`** set (from **`DeployDev`**).
 - Wallet with **gas + CL8Y** for `registerCode` when exercising R4.
 - **Leaderboard + indexed earnings:** [GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94) — verify indexer + `/referrals` panels when the stack has referral buys.
 
@@ -157,12 +157,12 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ## Referrals — self-referral pending purge (GitLab #222)
 
-**Scope:** A wallet that already registered a code must not keep its **own** slug locked in **`yieldomega.ref.v1`** after visiting its share link — buys on `/timecurve` should not revert with **`TimeCurve: self-referral`**.
+**Scope:** A registered wallet must not keep its **own** slug in **`yieldomega.ref.v1`** after visiting its share link — **`/arena`** buys must not self-refer.
 
 ### Authoritative docs
 
 - [product/referrals.md § #222](../product/referrals.md#referral-self-referral-pending-purge-issue-222)
-- [invariants — `INV-REFERRAL-222-PENDING-PURGE`](invariants-and-business-logic.md#referral-self-referral-pending-purge-gitlab-222)
+- [referrals.md — #222](../product/referrals.md#referral-self-referral-pending-purge-issue-222)
 
 ### Preconditions
 
@@ -171,8 +171,8 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ### Checklist
 
-- [ ] Open **`/timecurve/{yourCode}`** or **`/?ref={yourCode}`** while connected — DevTools: **`yieldomega.ref.v1`** is **absent** (or removed within one tick after capture).
-- [ ] On `/timecurve`, projected buy effects do **not** show **+5% Referral** for your own slug; **`buy`** succeeds without self-referral revert.
+- [ ] Open **`/?ref={yourCode}`** while connected — DevTools: **`yieldomega.ref.v1`** is **absent** (or removed within one tick after capture).
+- [ ] On **`/arena`**, buys succeed without self-referral revert when using your own slug.
 - [ ] Capture a **third-party** `?ref=` — pending key **remains** until overwritten (regression vs [#85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85)).
 
 **Automated:** `npm test -- referralSelfReferralPending` in `frontend/`.
@@ -185,7 +185,7 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ### Authoritative docs
 
-- [invariants — #204 union + `INV-INDEXER-204-REFERRAL-LB-REGISTRY`](invariants-and-business-logic.md#referrer-leaderboard-registry-union-gitlab-204)
+- [referrals.md — dashboard](../product/referrals.md#referrals-dashboard-issue-94)
 - [product — dashboard table](../product/referrals.md#referrals-dashboard-issue-94)
 
 ### Checklist
@@ -205,7 +205,7 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ### Authoritative docs
 
-- [invariants — #225 global + pagination](invariants-and-business-logic.md#referrer-leaderboard-global-pagination-gitlab-225)
+- [referrals.md — dashboard](../product/referrals.md#referrals-dashboard-issue-94)
 - [product — dashboard table](../product/referrals.md#referrals-dashboard-issue-94)
 
 ### Checklist
@@ -246,7 +246,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] Open `/arena` on desktop width.
 - [ ] Confirm the **only** shark is `sniper-shark-peek-scope.png` on the Arena **Buy CHARM** panel.
 - [ ] Shark does not cover the buy CTA, pay mode controls, WarBow flag option, rate board, or error text.
-- [ ] Home, Simple, `/timecurve/protocol`, header/footer do **not** gain shark cutouts.
+- [ ] Home and header/footer do **not** gain shark cutouts outside **`/arena`** buy panel.
 - [ ] Decorative: no spoken label; headings/buttons remain a11y source of truth.
 - [ ] `prefers-reduced-motion`: page usable without shark animation.
 - [ ] Mobile 390×844: cutouts hidden; buy panel readable.
@@ -298,10 +298,9 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 
 ### Manual steps
 
-1. Connect on the **correct** target chain → **`/timecurve`**, **`/arena`**: buys work when sale active.
+1. Connect on the **correct** target chain → **`/arena`**: buys work when not **`paused`**.
 2. Switch wallet to a **wrong** chain:
-   - **`/timecurve`:** **Wrong network** overlay, **`data-testid="switch-to-target-chain"`**, **`timecurve-simple-chain-write-gate`**.
-   - **`/arena`:** **`timecurve-arena-buy-chain-write-gate`**, standings/WarBow gates as documented.
+   - **`/arena`:** **`timecurve-arena-buy-chain-write-gate`**, **`data-testid="switch-to-target-chain"`**, WarBow gates as documented.
    - **`/referrals`:** **`referrals-register-chain-write-gate`**.
    - **`/vesting`:** **`presale-vesting-chain-write-gate`**.
 3. **Switch to …** → return to **`VITE_CHAIN_ID`** → overlays clear.
@@ -326,40 +325,38 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 
 ### Manual steps
 
-1. Open **`/arena`** during **`saleActive`** with the wallet on the **correct** target chain — **Buy CHARM** shows the normal **arcade** styling and hover lift (unless reduced motion).
-2. Switch the wallet to a **wrong** chain — confirm **`timecurve-arena-buy-chain-write-gate`** overlay still appears, and the **`Buy CHARM`** control (**`data-testid="timecurve-arena-buy-charm-cta"`**) is **dimmed / muted** (not the same “live gold lever” read as step 1), **`disabled`**, and exposes **`chainMismatchWriteMessage`** as a native **`title`** tooltip on hover / long-press.
-3. Confirm **End sale** / **Redeem charms** / **Distribute prizes** (when the settlement row is visible) still match prior wrong-network expectations.
-4. Switch back to the build target chain **without** a full page reload — **Buy CHARM** regains normal arcade styling and hover motion.
+1. Open **`/arena`** with the wallet on the **correct** target chain — **Buy CHARM** shows normal **arcade** styling and hover lift (unless reduced motion).
+2. Switch to a **wrong** chain — **`timecurve-arena-buy-chain-write-gate`** overlay; **`data-testid="timecurve-arena-buy-charm-cta"`** is **dimmed**, **`disabled`**, with **`chainMismatchWriteMessage`** as native **`title`**.
+3. Switch back to the build target chain — **Buy CHARM** regains normal styling.
 
 ### Code references
 
-- [`TimeArenaPage.tsx`](../../frontend/src/pages/timeCurveArena/TimeArenaPage.tsx) · [`index.css`](../../frontend/src/index.css) (`timecurve-simple__cta--wrong-network`, `.timer-hero__arena-buy .chain-write-gate__overlay`)
+- [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) · [`index.css`](../../frontend/src/index.css) (`timecurve-simple__cta--wrong-network`)
 - [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts)
 
 **Doc map:** [`arena-views.md` §194](../frontend/arena-views.md#arena-buy-charm-wrong-chain-visual-gitlab-194) · [invariants — `INV-FRONTEND-194-ARENA-BUY-CHAIN`](invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194)
 
 <a id="manual-qa-issue-144-wallet-session-drift-on-buy"></a>
 
-## TimeCurve buy — wallet session drift mid-flow (GitLab #144)
+## Arena buy — wallet session drift mid-flow (GitLab #144)
 
-**Why:** ETH/USDM entry paths issue **multiple** signed txs / receipts before **`TimeCurve.buy`**. Switching wallet accounts or chains mid-flow must **abort** with explicit copy (**`Wallet or network changed during purchase — please retry from the beginning.`**), not mixed-recipient swaps or opaque reverts.
+**Why:** Multi-step pay paths on **`/arena`** may issue several signed txs before the final buy. Switching wallet accounts or chains mid-flow must **abort** with **`Wallet or network changed during purchase — please retry from the beginning.`**
 
 ### Preconditions
 
-1. Local stack or testnet where **Arena** and **Arena** buys work (sale live, `buyFeeRoutingEnabled`, Kumbaya env if testing ETH/USDM).
+1. Local stack or testnet where **`/arena`** buys work (not **`paused`**; Kumbaya env if testing ETH/USDM).
 2. A wallet with **two accounts** on the **same** target **`VITE_CHAIN_ID`** (e.g. MetaMask / Rabby).
 
 ### Manual steps
 
-1. **Happy path:** Complete one **CL8Y** buy on **`/timecurve`** without switching accounts — no regression.
+1. **Happy path:** Complete one **DOUB** (or CL8Y) buy on **`/arena`** without switching accounts — no regression.
 2. **Account switch (two-step ETH/USDM or CL8Y if multi-step):** Start a buy that pauses between steps (e.g. after wrap or after **first** confirmation). Switch to **another account** in the extension before the next signature — expect **aborted** flow and the **#144** error string in buy error state (`buyError` / `buyErr`); **no** successful buy attributed to the original account without user retry from scratch.
 3. **Network switch:** On target chain, begin a multi-step buy, then switch the wallet to **another chain** before the next step — expect the same **#144** message (or **#95** wrong-network preflight if the switch happens before guarded steps; either is acceptable UX as long as the user is not led through a mixed-wallet success).
-4. **Single-tx router:** When **`timeCurveBuyRouter` ≠ 0** and **`buyViaKumbaya`** path is active, switching account between **USDM approve** and **router** tx (if two steps) should still **abort** per internal guards.
+4. **Kumbaya / ETH path:** When enabled, switching account between approve and router steps should still **abort** per guards.
 
 ### Code references
 
-- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`walletBuySessionGuard.test.ts`](../../frontend/src/lib/walletBuySessionGuard.test.ts)
-- [`useTimeCurveSaleSession.ts`](../../frontend/src/pages/timecurve/useTimeCurveSaleSession.ts) · [`useTimeCurveArenaModel.tsx`](../../frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx) · [`timeCurveKumbayaSingleTx.ts`](../../frontend/src/lib/timeCurveKumbayaSingleTx.ts)
+- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`arenaV2SaleSessionBridge.ts`](../../frontend/src/pages/timecurve/arenaV2SaleSessionBridge.ts)
 
 **Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144)
 
@@ -371,7 +368,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 
 ### Preconditions
 
-1. Local stack or testnet with **`ReferralRegistry`** configured (`VITE_REFERRAL_REGISTRY_ADDRESS` or **`TimeCurve.referralRegistry()`**).
+1. Local stack with **`VITE_REFERRAL_REGISTRY_ADDRESS`** from **`DeployDev`**.
 2. Wallet **A** with CL8Y balance ≥ **`registrationBurnAmount`** on the target chain (and same wallet **B** if testing account switch).
 
 ### Manual steps
@@ -393,7 +390,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 
 This is **checklist item 4** under [§ #106 — claim chain mismatch](#manual-qa-issue-106). **Why:** wagmi's **`useWriteContract` `error`** could persist after switching back to **`VITE_CHAIN_ID`**; **`reset()`** runs only on a **wrong-chain → target** transition so same-chain rejects still surface until retry or success.
 
-**Invariant:** [`INV-FRONTEND-166` — § #166](invariants-and-business-logic.md#presale-vesting-claim-wagmi-error-clear-on-target-gitlab-166) · **Vitest:** [`presaleVestingWriteErrorChainReset.test.ts`](../../frontend/src/pages/presaleVesting/presaleVestingWriteErrorChainReset.test.ts)
+**Vitest:** [`presaleVestingWriteErrorChainReset.test.ts`](../../frontend/src/pages/presaleVesting/presaleVestingWriteErrorChainReset.test.ts)
 
 <a id="manual-qa-issue-145"></a>
 
@@ -424,11 +421,11 @@ This is **checklist item 4** under [§ #106 — claim chain mismatch](#manual-qa
 
 ## Indexer offline UX (GitLab #96)
 
-Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`useTimecurveHeroTimer`**, or **`fetchTimecurveBuys`**.
+Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, or arena timer / buy fetch hooks.
 
 ### Checklist
 
-1. **Baseline:** `/timecurve` pill **live**.
+1. **Baseline:** **`/arena`** indexer pill **live** (when indexer configured).
 2. **Stop indexer** or block **`127.0.0.1:3100`** — wait **~3–5 s**.
 3. Pill **Indexer offline · retrying** on Simple + footer routes.
 4. **Network:** polls **not** hammering at 1s indefinitely — backoff steps **5s → 15s → 30s** after failures.
@@ -443,7 +440,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 ### Checklist
 
-1. **`/timecurve`:** **Tab** through controls — visible **`:focus-visible`** ring (`--yo-focus-ring`); mouse click without sticky wrong focus.
+1. **`/arena`:** **Tab** through controls — visible **`:focus-visible`** ring (`--yo-focus-ring`).
 2. **Connect modal:** Tab through **`[data-rk]`** controls — same focus family.
 3. **Contrast:** Ring visible on light and green chrome.
 
@@ -453,7 +450,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 
 ## Placeholder split-layout hero figure — wide / landscape (GitLab #163)
 
-**Why:** [`UnderConstruction`](../../frontend/src/pages/UnderConstruction.tsx) (e.g. **`/rabbit-treasury`**, **`/collection`**) and [`ThirdPartyDexPage`](../../frontend/src/components/ThirdPartyDexPage.tsx) (**`/kumbaya`**, **`/sir`**) render a bordered **`.placeholder-figure`** beside **`PageSection`** inside **`.split-layout`**. Without **`align-self: start`**, the figure stretched to the taller column and showed **empty panel** below the image ([`INV-FRONTEND-163`](invariants-and-business-logic.md#placeholder-split-layout-figure-gitlab-163)).
+**Why:** [`UnderConstruction`](../../frontend/src/pages/UnderConstruction.tsx) and [`ThirdPartyDexPage`](../../frontend/src/components/ThirdPartyDexPage.tsx) render **`.placeholder-figure`** beside **`PageSection`** inside **`.split-layout`**. Without **`align-self: start`**, the figure stretches with empty panel below the image.
 
 ### Checklist
 
@@ -461,7 +458,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, **`
 2. **Landscape phone / narrow-tall viewport** where the layout still uses **two columns:** same check — no interior gap between image bottom and card border.
 3. **Narrow / stacked (`max-width: 720px`):** layout stacks to one column; image card still looks coherent (no overflow clipping).
 
-**Doc map:** [design — Placeholder split panels](../frontend/design.md#placeholder-split-panels-gitlab-163) · [invariants — #163](invariants-and-business-logic.md#placeholder-split-layout-figure-gitlab-163) · [`placeholderSplitLayoutCss.test.ts`](../../frontend/src/lib/placeholderSplitLayoutCss.test.ts)
+**Doc map:** [design — Placeholder split panels](../frontend/design.md#placeholder-split-panels-gitlab-163) · [`placeholderSplitLayoutCss.test.ts`](../../frontend/src/lib/placeholderSplitLayoutCss.test.ts)
 
 <a id="manual-qa-issue-198"></a>
 
@@ -471,12 +468,12 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 
 ### Checklist
 
-1. **Simple + Arena — CL8Y path:** After signing **`TimeCurve.buy`**, a **shallow coin** plays **before** the receipt lands; **charmed** still plays on success.
+1. **`/arena` — DOUB/CL8Y path:** After signing the buy tx, a **shallow coin** plays **before** the receipt lands; **charmed** on success.
 2. **ETH / USDM — single-tx router:** After signing **`buyViaKumbaya`**, the same **coin** fires once (not on wrap/approve-only steps in the two‑step fallback).
 3. **Arena — WarBow podium:** **`warbow_twang`** fires only when the indexed ladder shows **top‑3 entry** (from unranked/deep) **or** a move **among ranks ≤3** (see `warbowRankSfxPolicy` — **no** stinger on e.g. **10 → 4**); **≤1** hit per **~18 s** throttle.
 4. **Kumbaya whoosh:** Confirm **no** whoosh on mere **quote refresh** (still **unwired**).
 
-**Spec:** [`INV-AUDIO-68-WIRE`](invariants-and-business-logic.md#timecurve-sfx-buy-warbow-issue-108) · [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
+**Spec:** [sound-effects §8](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
 
 **Automation:** [`warbowRankSfxPolicy.test.ts`](../../frontend/src/audio/warbowRankSfxPolicy.test.ts)
 
@@ -498,13 +495,13 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] **Tablet / desktop** (`≥721px`): header vertical rhythm matches pre-change (no unexpected extra top gap vs production baseline).
 - [ ] **Optional:** `cd frontend && npm run test -- src/audio/mobileAlbumDockLayout.test.ts` (Vitest asserts **`index.css`** **`+ Nrem`** ↔ TS constant — [GitLab #107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107))
 
-**Doc map:** [invariants — #103](invariants-and-business-logic.md#mobile-album-dock-layout-issue-103) · [sound-effects §8 — mobile dock bullet](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
+**Doc map:** [sound-effects §8 — mobile dock](../frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
 
 <a id="manual-qa-issue-171"></a>
 
-## Header mascot vs TimeCurve nav clearance (GitLab #171)
+## Header mascot vs nav clearance (GitLab #171)
 
-**Goal:** On desktop and landscape widths, the decorative circular mascot in the global header must not overlap the **TimeCurve** nav button or any other primary nav hit target.
+**Goal:** On desktop and landscape widths, the decorative header mascot must not overlap primary nav hit targets (including **Arena**).
 
 ### Invariants
 
@@ -514,13 +511,13 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 
 ### Checklist
 
-- [ ] Desktop width (`≥1024px`): **YieldOmega**, status badges, **TimeCurve**, and the wallet controls are aligned with a visible gap between the mascot and **TimeCurve**.
+- [ ] Desktop width (`≥1024px`): **YieldOmega**, status badges, **Arena** nav, and wallet controls have a visible gap from the mascot.
 - [ ] Landscape tablet width (`721–1023px`): if the header wraps, the mascot does not cover nav text, focus rings, or pointer hit areas.
 - [ ] Narrow width (`≤720px`): mascot is hidden; nav stays a three-column grid with no empty mascot gutter.
-- [ ] Keyboard Tab through the header: focus ring on **TimeCurve** is fully visible and not covered by the mascot.
+- [ ] Keyboard Tab through the header: focus ring on **Arena** nav is fully visible and not covered by the mascot.
 - [ ] Optional: `cd frontend && npm run test -- src/layout/headerLayoutCss.test.ts`.
 
-**Doc map:** [invariants — #171](invariants-and-business-logic.md#frontend-header-mascot-nav-clearance-gitlab-171) · [frontend design — global header layout](../frontend/design.md#accessibility-and-ux)
+**Doc map:** [frontend design — global header layout](../frontend/design.md#accessibility-and-ux)
 
 <a id="manual-qa-issue-104"></a>
 
@@ -539,7 +536,7 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] From repo root: `bash scripts/start-qa-local-full-stack.sh` completes without error (or your chosen flags: `--no-frontend`, `--live-sale`, `--kumbaya`, `--no-swarm`).
 - [ ] `cast block-number --rpc-url "$(grep '^VITE_RPC_URL=' frontend/.env.local | tail -1 | cut -d= -f2-)"` succeeds.
 - [ ] `grep '^VITE_INDEXER_URL=' frontend/.env.local` — `curl -sf "<url>/v1/status"` returns OK.
-- [ ] `curl -s "$(grep '^VITE_INDEXER_URL=' frontend/.env.local | tail -1 | cut -d= -f2-)/v1/timecurve/buys?limit=5" | jq .` — valid JSON array.
+- [ ] `curl -s "$(grep '^VITE_INDEXER_URL=' frontend/.env.local | tail -1 | cut -d= -f2-)/v1/arena/buys?limit=5" | jq .` — valid JSON array.
 - [ ] With default frontend start: `http://127.0.0.1:${FRONTEND_DEV_PORT:-5173}/` responds (or run Vite manually after `--no-frontend`).
 - [ ] Optional: `make check-frontend-env` passes.
 - [ ] `bash scripts/verify-qa-orchestrator-frontend-trap.sh` prints **`OK:`** (hermetic trap + PID kill smoke for [GitLab #153](https://gitlab.com/PlasticDigits/yieldomega/-/issues/153)).
@@ -564,7 +561,7 @@ Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **
 - [ ] Read [`indexer/README.md` — #120](../../indexer/README.md#accesscontrol-zero-admin-gitlab-120) and [`docs/indexer/design.md`](../indexer/design.md#accesscontrol-zero-admin-gitlab-120): confirm deploy-boundary wording matches **no-log** reality.
 - [ ] Read [`docs/frontend/wallet-connection.md` — #120](../frontend/wallet-connection.md#accesscontrol-zero-admin-deployment-gitlab-120): confirm frontend **does not** claim indexer-backed detection of zero admin.
 
-**Doc map:** [invariants — #120 + derived IDs](invariants-and-business-logic.md#accesscontrol-zero-admin-deployments-gitlab-120) · [fee-routing — deployer boundary](../onchain/fee-routing-and-governance.md#deployer-evm-boundary-gitlab-120) · [skills README — contributor #120](../../skills/README.md)
+**Doc map:** [indexer README — #120](../../indexer/README.md) · [wallet-connection — #120](../frontend/wallet-connection.md) · [skills README](../../skills/README.md)
 
 <a id="manual-qa-issue-142"></a>
 

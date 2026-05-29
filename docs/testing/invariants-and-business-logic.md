@@ -6,7 +6,7 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
 
-**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
+**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) · verify links: `bash scripts/check-doc-anchors.sh`.
 
 ---
 
@@ -21,6 +21,8 @@ Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%*
 | Reorg / rollback path | `indexer/tests/integration_stage2.rs` + CI Postgres + `YIELDOMEGA_PG_TEST_URL`. |
 
 ---
+
+<a id="timearena-v2-gitlab-260"></a>
 
 ## TimeArena v2 (GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 

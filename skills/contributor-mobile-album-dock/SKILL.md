@@ -23,10 +23,10 @@ Do **not** raise **`AlbumPlayerBar`** above dialogs (`z-index` stays below modal
 
 ## Doc map
 
-- [Invariants — mobile dock §103](../../docs/testing/invariants-and-business-logic.md#mobile-album-dock-layout-issue-103) (bidirectional TS/CSS Vitest — [#107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107))
+- [Manual QA — mobile dock §103](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-103) (bidirectional TS/CSS Vitest — [#107](https://gitlab.com/PlasticDigits/yieldomega/-/issues/107))
 - [Manual QA — #103](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-103)
 - [Sound effects §8 — bullet](../../docs/frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68)
-- [Invariants — **INV-AUDIO-68-WIRE** (SFX hook map)](../../docs/testing/invariants-and-business-logic.md#timecurve-sfx-buy-warbow-issue-108) — when adding new **prefetch** entries in **`AudioEngineProvider`**, keep **Kumbaya whoosh** off hot paths until product wires it.
+- [Sound effects §8](../../docs/frontend/sound-effects-recommendations.md#8-in-app-implementation-album-1--sfx-bus-issue-68) — when adding **prefetch** entries in **`AudioEngineProvider`**, keep **Kumbaya whoosh** off hot paths until product wires it.
 - [Arena views](../../docs/frontend/arena-views.md)
 - Maintainer guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 

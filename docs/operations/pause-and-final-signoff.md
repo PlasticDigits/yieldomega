@@ -55,7 +55,7 @@ This is a **template** for operators; **actual** multisig names and block height
 
 | Area | Likely work | Tests / docs to extend |
 |------|-------------|-------------------------|
-| `DoubPresaleVesting` | Pause/flag on `claim` only, or `claimsEnabled` + role | `DoubPresaleVesting.t.sol`, [invariants](../testing/invariants-and-business-logic.md#doubpresalevesting) |
+| `DoubPresaleVesting` | Pause/flag on `claim` only, or `claimsEnabled` + role | `DoubPresaleVesting.t.sol`, invariants |
 | `TimeCurve` | Scoped `Pausable` or latches for `buy` / `redeemCharms` / `distributePrizes` | `TimeCurve.t.sol`, `TimeCurveInvariant.t.sol` |
 | `FeeRouter` + sinks | Only if “pause routing without pausing all of TimeCurve” | `FeeRouter*.t.sol`, security review for bypass |
 | Indexer / frontend | New events/fields | `decoder.rs`, `persist.rs`, `useTimeCurveSaleSession`, ABIs |
@@ -75,7 +75,7 @@ When implementation starts, split work so each MR has clear ownership:
 
 ## 5) Invariants (design time)
 
-These **must** hold after implementation; they are also listed in [testing invariants — pause / signoff](../testing/invariants-and-business-logic.md#pause-and-final-signoff-design-gitlab-55).
+These **must** hold after implementation; they are also listed in testing invariants — pause / signoff.
 
 - **G1 (explicit gate):** No gated function completes user-facing token transfer without the designed **signoff** state (revert or zero payout).
 - **G2 (no shadow mint):** Pausing `claim` / `redeemCharms` / prize payout does **not** create alternate user pulls of the same DOUB/CL8Y in-repo without a documented path.

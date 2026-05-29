@@ -34,11 +34,11 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Phase B (wallet writes)** — [`frontend/e2e/anvil-arena-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts): **`/arena`** DOUB **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). The **ETH pay** case selects **`data-testid="arena-paywith-eth"`** only when `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` is set (deferred until [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251)). This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
 
-**Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts the placeholder **under construction** state during the TimeCurve launch milestone (not NFT reads).
+**Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts placeholder **under construction** routes (not NFT reads).
 
-**Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): connected mock wallet registers a code, surfaces **Your share links**, and asserts **Copy** → clipboard for path + `?ref=` URLs. Complements CI-only [`referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts). See [invariants — Referrals page visual](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64).
+**Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): mock wallet registers a code and asserts share-link copy UX. See [`referrals.md`](../product/referrals.md) and [manual QA — #64](manual-qa-checklists.md#manual-qa-issue-64).
 
-**Presale vesting `/vesting` (issue #92)** — [`frontend/e2e/anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts): mock wallet (Anvil #0) asserts **`PresaleVestingPage`** beneficiary panel + enabled **Claim DOUB** after `DeployDev`. See [presale-vesting.md](../frontend/presale-vesting.md), [invariants — § #92](../testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92).
+**Presale vesting `/vesting` (issue #92)** — [`frontend/e2e/anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts): **`PresaleVestingPage`** after `DeployDev`. See [presale-vesting.md](../frontend/presale-vesting.md).
 
 ## Environment contract (build time)
 
@@ -48,19 +48,18 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 |----------|-----------------|
 | `VITE_CHAIN_ID` | `31337` (Anvil default) |
 | `VITE_RPC_URL` | `http://127.0.0.1:8545` (or your port) |
-| `VITE_TIMECURVE_ADDRESS` | From `forge script` deploy output (required for TimeCurve page reads) |
-| `VITE_RABBIT_TREASURY_ADDRESS` | Same |
-| `VITE_LEPRECHAUN_NFT_ADDRESS` | Same |
-| `VITE_FEE_ROUTER_ADDRESS` | Same — required for **fee sink / FeeRouter** UI (`FeeTransparency`) |
-| `VITE_REFERRAL_REGISTRY_ADDRESS` | Same — referral flows that read the registry |
-| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | **`DoubPresaleVesting`** ERC-1967 **proxy** — hidden **`/vesting`** route (GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)); set by `DeployDev` log parse in [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) and [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh). |
+| `VITE_TIME_ARENA_ADDRESS` | **`TimeArena`** proxy from `DeployDev` (required for **`/arena`**) |
+| `VITE_PODIUM_VAULTS_ADDRESS` | Podium vaults proxy |
+| `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault proxy |
+| `VITE_TIMECURVE_ADDRESS` | **Legacy alias** — `e2e-anvil.sh` sets this to the same proxy as **`VITE_TIME_ARENA_ADDRESS`** for reads still keyed on the old env name |
+| `VITE_REFERRAL_REGISTRY_ADDRESS` | Referral registry proxy |
+| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | **`DoubPresaleVesting`** proxy — **`/vesting`** ([#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)) |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
-| `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Set by `scripts/e2e-anvil.sh` after `DeployKumbayaAnvilFixtures` (issue #41); see [local-swap-testing.md](local-swap-testing.md) and [integrations/kumbaya.md](../integrations/kumbaya.md) (issue #46, MegaETH vs Anvil). |
-| `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` | **Optional** copy of onchain `TimeCurve.timeCurveBuyRouter` (from **TimeCurveBuyRouter** in `DeployKumbayaAnvilFixtures`); set by `e2e-anvil.sh` when the address is parsed. Used only for **env vs onchain parity**; single-tx routing is driven by the onchain read ([issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)). |
-| `timeCurveBuyRouter` on Anvil (not `e2e-anvil.sh`) | For a stack that only ran **`DeployDev`**, `timeCurveBuyRouter` is **0** until **`DeployKumbayaAnvilFixtures`**; automated fork verification: **`bash scripts/verify-timecurve-buy-router-anvil.sh`** (issue #78) — [invariants](../testing/invariants-and-business-logic.md#timecurvebuyrouter-anvil-verification-issue-78). |
-| **`DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))** | Default remains **300** s per wallet. For **multi-buy QA** on one wallet (checklists #38 / #39 / #82), set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** before **`forge script … DeployDev`** / **`start-local-anvil-stack.sh`** / **`e2e-anvil.sh`** so the initializer uses **1** s (or set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** explicitly, **&gt; 0**). Invariants: [§ DeployDev buy cooldown env](../testing/invariants-and-business-logic.md#deploydev-buy-cooldown-env-issue-88); play checklist: [`manual-qa-checklists.md#manual-qa-issue-88`](manual-qa-checklists.md#manual-qa-issue-88). |
-| **Bot swarm + Anvil interval mining ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99))** | When [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) **launches** Anvil with **`START_BOT_SWARM=1`**, it adds **`--block-time`** (default **`YIELDOMEGA_ANVIL_BLOCK_TIME_SEC=12`**, **`0`** = off). For a **dense** `Buy` feed, also set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** ([§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88)). Details: [§ Bot swarm + chain time](#bot-swarm-anvil-chain-time-gitlab-99); [`manual-qa-checklists.md#manual-qa-issue-99`](manual-qa-checklists.md#manual-qa-issue-99). |
-| **Swarm referrals + standalone `run_swarm` ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102))** | Export **`YIELDOMEGA_SWARM_REFERRALS=0`** before the stack or a manual swarm to skip shared referral bootstrap. **Without** `start-local-anvil-stack.sh`: use **repo-root** `cwd`, **`bash scripts/sync-bot-env-from-frontend.sh`**, **`YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`**, **`PYTHONPATH=bots/timecurve/src`** — full checklist in [`bots/timecurve/README.md`](../../bots/timecurve/README.md). The stack prints whether referrals are on or off when **`START_BOT_SWARM=1`**. See [§ Standalone bot swarm](#standalone-bot-swarm-run_swarm-without-the-full-stack-gitlab-102). |
+| `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Optional — set when Kumbaya fixtures run ([#41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41)) |
+| `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` | Optional — ETH pay-mode E2E on **`/arena`** until [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251) |
+| **`DeployDev` buy cooldown ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88))** | Default **300** s on **`TimeArena`**. For multi-buy QA: **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** and/or **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (**&gt; 0**). See [§ Buy cooldown](#anvil-deploydev-buy-cooldown-gitlab-88) and [`manual-qa-checklists.md#manual-qa-issue-88`](manual-qa-checklists.md#manual-qa-issue-88). |
+| **Bot swarm + interval mining ([GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99))** | **`start-local-anvil-stack.sh`** may pass **`anvil --block-time`** when **`START_BOT_SWARM=1`**. Pair with short cooldown for dense **`TimeArena`** buys. [§ Bot swarm](#bot-swarm-anvil-chain-time-gitlab-99). |
+| **Standalone `run_swarm` ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102))** | [`bots/timearena/README.md`](../../bots/timearena/README.md) — sync env from `frontend/.env.local`, **`YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`**, optional **`YIELDOMEGA_SWARM_REFERRALS=0`**. |
 
 <a id="anvil-deploydev-buy-cooldown-gitlab-88"></a>
 
@@ -73,7 +72,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | Variable | Effect |
 |----------|--------|
 | *(unset)* | **`buyCooldownSec = 300`** (unchanged production-like dev default). |
-| **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** | Defaults **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** to **1** when that var is unset (still **&gt; 0** for `TimeCurve.initialize`). |
+| **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** | Defaults **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** to **1** when unset (still **&gt; 0** for **`TimeArena`** init). |
 | **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`** (numeric) | Explicit seconds (**must be &gt; 0**). When **`YIELDOMEGA_DEPLOY_NO_COOLDOWN` ≠ 1**, unset behavior defaults to **300**; when **`= 1`**, unset defaults to **1**. |
 
 **Examples:**
@@ -83,7 +82,7 @@ YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-local-anvil-stack.sh
 YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/e2e-anvil.sh
 ```
 
-**Do not** set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** — `DeployDev` reverts before broadcast; **`TimeCurve`** also rejects zero cooldown at init.
+**Do not** set **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=0`** — `DeployDev` and **`TimeArena`** reject zero cooldown.
 
 <a id="bot-swarm-anvil-chain-time-gitlab-99"></a>
 
@@ -101,21 +100,21 @@ YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC=2 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts
 
 **Scope:** **No** change to bot Python on **non-31337** chains or production — issue **C** (`evm_increaseTime` in bots) was **not** implemented.
 
-**Play checklist:** [`manual-qa-checklists.md#manual-qa-issue-99`](manual-qa-checklists.md#manual-qa-issue-99). **Invariants:** [§ #99 — Bot swarm + Anvil timing](invariants-and-business-logic.md#bot-swarm-anvil-interval-mining-issue-99).
+**Play checklist:** [`manual-qa-checklists.md#manual-qa-issue-99`](manual-qa-checklists.md#manual-qa-issue-99).
 
 <a id="standalone-bot-swarm-run_swarm-without-the-full-stack-gitlab-102"></a>
 
 ### Standalone bot swarm — `run_swarm()` without the full stack ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102))
 
-**Checklist:** [`bots/timecurve/README.md`](../../bots/timecurve/README.md) (§ *Run `run_swarm()` without `start-local-anvil-stack.sh`*): **`frontend/.env.local`** → **`sync-bot-env-from-frontend.sh`** → repo-root **`cwd`** → **`YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`** → optional **`YIELDOMEGA_SWARM_REFERRALS=0`** → `python -c "… run_swarm()"` or **`timecurve-bot --allow-anvil-funding swarm`**. On **`load_config`** failure, `run_swarm()` prints a short hint (RPC / TimeCurve / dotenv paths).
+**Checklist:** [`bots/timearena/README.md`](../../bots/timearena/README.md): **`frontend/.env.local`** → **`sync-bot-env-from-frontend.sh`** → repo-root **`cwd`** → **`YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`** → optional **`YIELDOMEGA_SWARM_REFERRALS=0`** → swarm entrypoint documented in the bot README.
 
 **Wrapper:** [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) with **`START_BOT_SWARM=1`** summarizes referral bootstrap **on vs off** and passes through **`YIELDOMEGA_SWARM_REFERRALS`** from the shell.
 
-Set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack. With `START_BOT_SWARM=1` (default when `SKIP_ANVIL_RICH_STATE=1`), install **`bots/timecurve`** deps first; on **PEP 668** systems see [`bots/timecurve/README.md`](../../bots/timecurve/README.md) (PEP 668 section) — the stack script preflights `import web3` before spawning the swarm. For **continuous buys** over time, set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** (and see [§ Bot swarm + Anvil chain time](#bot-swarm-anvil-chain-time-gitlab-99)).
+Set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) writes this into `frontend/.env.local` when you use the one-shot stack. With `START_BOT_SWARM=1` (default when `SKIP_ANVIL_RICH_STATE=1`), install **`bots/timearena`** deps per [`bots/timearena/README.md`](../../bots/timearena/README.md) (PEP 668 section). For **continuous buys**, set **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** ([§ Bot swarm](#bot-swarm-anvil-chain-time-gitlab-99)).
 
 For **minimal** Anvil Playwright only, `VITE_INDEXER_URL` can be omitted; the automated Anvil specs do **not** assert indexer responses.
 
-**Sanity check:** from repo root, `make check-frontend-env` (or `bash scripts/check-frontend-vite-env.sh`) verifies that merged `frontend/.env` + `frontend/.env.local` contain non-empty `VITE_TIMECURVE_ADDRESS`, `VITE_FEE_ROUTER_ADDRESS`, sibling deploy addresses, `VITE_RPC_URL`, and `VITE_CHAIN_ID`. Restart `npm run dev` after creating or changing `.env.local` so Vite reloads inlined vars.
+**Sanity check:** `make check-frontend-env` (or `bash scripts/check-frontend-vite-env.sh`) verifies Arena v2 addresses (`VITE_TIME_ARENA_ADDRESS`, vaults, admin vault, referral registry), legacy `VITE_TIMECURVE_ADDRESS` alias, `VITE_RPC_URL`, and `VITE_CHAIN_ID`. Restart `npm run dev` after changing `.env.local`.
 
 Deterministic example addresses from a previous deploy (regenerate if deploy order changes): [`contracts/deployments/stage2-anvil-registry.json`](../../contracts/deployments/stage2-anvil-registry.json).
 
@@ -133,7 +132,7 @@ This starts Anvil, deploys with `DeployDev`, builds the frontend with the right 
 
 <a id="anvil-e2e-concurrency-gitlab-87"></a>
 
-`scripts/e2e-anvil.sh` uses **one** Anvil and **one** JSON-RPC account for the wagmi **mock** connector. The repo’s **`e2e/anvil-*.spec.ts`** files (TimeCurve, referrals, wallet writes) **mutate chain state** (buys, registrations, copy flows). **Playwright’s default multi-worker** schedule can run **different** spec **files** in parallel even when a file uses `test.describe.configure({ mode: "serial" })` — that setting only serializes **within** the file — which risks **nonce ordering**, **sale state**, and **referral** races unrelated to the code under test.
+`scripts/e2e-anvil.sh` uses **one** Anvil and **one** mock wallet. **`e2e/anvil-*.spec.ts`** files **mutate chain state** (arena buys, referrals, vesting). **Playwright multi-worker** can run different spec **files** in parallel and cause nonce / state races.
 
 When **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) sets **`workers: 1`** and **`fullyParallel: false`**. The default **CI** Playwright job (`npm run test:e2e` **without** `ANVIL_E2E`) is UI-only and may use **5** workers for speed.
 
@@ -165,7 +164,7 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 
 ## Related
 
-- [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — same `DeployDev` deploy as this flow; writes `bots/timecurve/.env.local` for the `timecurve-bot` CLI ([`bots/timecurve/README.md`](../../bots/timecurve/README.md)). For manual QA on the same Anvil stack, add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES`** (comma-separated `0x` addresses only) so `timecurve-bot swarm` one-shot funding includes your browser wallet alongside bot keys.
+- [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — writes bot env from the same `DeployDev` deploy ([`bots/timearena/README.md`](../../bots/timearena/README.md)).
 - [Anvil same-block drill](anvil-same-block-drill.md) — ordering tests with `anvil_mine`, not Playwright.
 - [operations/stage2-run-log.md](../operations/stage2-run-log.md) — full-stack smoke checklist.
 

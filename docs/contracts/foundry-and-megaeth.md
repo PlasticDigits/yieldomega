@@ -42,7 +42,7 @@ This project should still favor **clear modules** for audits and upgrade clarity
 
 Convenience scripts under [`contracts/script/`](../contracts/script/) — including **`DeployDev`**, **`DeployKumbayaAnvilFixtures`**, **`AnvilSameBlockDrill`**, and **`SimulateAnvilRichState*`** — are intended for **Anvil** and **MegaETH testnet** experimentation only. Each calls **`DevOnlyChainGuard.assertDevScriptChain()`** at the start of **`run()`**, allowing **`block.chainid`** **31337**, **6343**, or **6342** (legacy testnet id). **MegaETH mainnet (4326)** and all other chain IDs **revert immediately**, so a mistaken **`--rpc-url`** cannot deploy mocks or flip dev operator gates against a production key. Do **not** use these script names for production mainnet releases; follow [deployment-stages.md](../operations/deployment-stages.md) and dedicated production deploy tooling.
 
-**Verification:** [`DevOnlyChainGuard.t.sol`](../contracts/test/DevOnlyChainGuard.t.sol). **Invariant map:** [§ `INV-DEVSCRIPT-141`](../testing/invariants-and-business-logic.md#forge-dev-scripts-chain-allowlist-gitlab-141).
+**Verification:** [`DevOnlyChainGuard.t.sol`](../contracts/test/DevOnlyChainGuard.t.sol). **Invariant map:** § `INV-DEVSCRIPT-141`.
 
 ## Networks and workflow
 

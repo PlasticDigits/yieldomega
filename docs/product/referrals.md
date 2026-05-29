@@ -50,7 +50,7 @@ If a user captures **their own** registered referral slug into **`yieldomega.ref
 
 Onchain self-referral reverts are unchanged. Successful referred buys still **do not** clear pending storage for third-party codes. **Out of scope for #222:** pending capture of a slug the wallet has **not** registered yet (no `myrefcode` row) — that case still relies on onchain preflight at submit time until a later enhancement.
 
-Implementation: [`referralSelfReferralPending.ts`](../../frontend/src/lib/referralSelfReferralPending.ts), [`ReferralSelfReferralPurge.tsx`](../../frontend/src/components/ReferralSelfReferralPurge.tsx). Invariant: [`INV-REFERRAL-222-PENDING-PURGE`](../testing/invariants-and-business-logic.md#referral-self-referral-pending-purge-gitlab-222).
+Implementation: [`referralSelfReferralPending.ts`](../../frontend/src/lib/referralSelfReferralPending.ts), [`ReferralSelfReferralPurge.tsx`](../../frontend/src/components/ReferralSelfReferralPurge.tsx). Manual QA: [checklist § #222](../testing/manual-qa-checklists.md#manual-qa-issue-222).
 
 - The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled. The same pending code is reused on **every** subsequent buy in that browser until overwritten or cleared manually.
 
@@ -90,7 +90,7 @@ On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and 
 - **Burn as an economic barrier, not FIFO fairness:** **`registrationBurnAmount`** CL8Y is transferred **only after** uniqueness checks succeed ([CL8Y token §](#cl8y-token)). The **successful** claimant pays the burn to the irreversible sink; **failed / reverted** attempts **do not** spend that registration burn ([`ReferralRegistry.sol`](../../contracts/src/ReferralRegistry.sol)).
 - **Product stance (v1):** Treat ordering as **transparent and onchain** — disclosure in product docs + register UX; **no** commit‑reveal, signed offchain reservations, or private‑mempool‑only flows in this work item ([issue #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121)).
 
-Invariant + test-strategy notes: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referral-registration-ordering-issue-121) · Contributor checklist: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-121-referrals-register-disclosure).
+Contributor checklist: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-121-referrals-register-disclosure).
 
 ## Related contracts
 
@@ -109,13 +109,13 @@ The frontend may surface **derived** referral metrics for UX. They must map to *
 | **Wallet CHARM summary** | Same log fields, filtered by wallet | `GET /v1/referrals/wallet-charm-summary?wallet=0x…` — **`referrer_charm_wad`** = Σ `referrer_amount` where `referrer = wallet`; **`referee_charm_wad`** = Σ `referee_amount` where `buyer = wallet`; counts are indexed referral buy rows (not total sale CHARM weight). |
 | **CL8Y / pay-asset “notional” on `/referrals`** | Illustrative only | Uses live **`currentPricePerCharmWad`** × combined indexed referral CHARM for **spot CL8Y** at the current sale curve; **USDM** / **ETH** hints reuse the same **static fallback** multipliers as other pay-mode labels (`frontend/src/lib/kumbayaDisplayFallback.ts`), not live DEX quotes. |
 
-Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at insert; HTTP handlers bind lowercase addresses and use **bare equality** in SQL so btree indexes apply (**[`INV-INDEXER-165`](../testing/invariants-and-business-logic.md#indexer-referral-applied-address-predicates-gitlab-165)**, [GitLab #165](https://gitlab.com/PlasticDigits/yieldomega/-/issues/165)).
+Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at insert; HTTP handlers bind lowercase addresses and use **bare equality** in SQL so btree indexes apply ([GitLab #165](https://gitlab.com/PlasticDigits/yieldomega/-/issues/165)).
 
 **Wagmi** currently exposes **one active address**; the “Connected wallet” panel documents that multi-account wallets still switch one address at a time.
 
 ## Automated checks (frontend)
 
-Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-charm-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Invariant table: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md#referrals-page-visual-issue-64). Third-party agents walking the checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-64`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-charm-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Manual QA: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Third-party agents walking the checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-64`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
 
 ---
 
