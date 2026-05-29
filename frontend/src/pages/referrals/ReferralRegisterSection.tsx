@@ -54,7 +54,7 @@ import {
   assertWalletBuySessionUnchanged,
   captureWalletBuySession,
 } from "@/lib/walletBuySessionGuard";
-import { CL8Y_USD_PRICE_PLACEHOLDER } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { CL8Y_USD_PRICE_PLACEHOLDER } from "@/lib/arenaPageHelpers";
 import { wagmiConfig } from "@/wagmi-config";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import {
@@ -126,7 +126,7 @@ export function ReferralRegisterSection({ className }: Props) {
     };
   }, []);
 
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const priceQuery = useReadContract({
     address: tc,
     abi: timeCurveReadAbi,

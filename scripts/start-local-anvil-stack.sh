@@ -317,7 +317,6 @@ cat > "${FRONTEND}/.env.local" << EOF
 VITE_CHAIN_ID=31337
 VITE_RPC_URL=${RPC_URL}
 VITE_TIME_ARENA_ADDRESS=${TA}
-VITE_TIMECURVE_ADDRESS=${TA}
 VITE_PODIUM_VAULTS_ADDRESS=${PV}
 VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}
 VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
@@ -357,7 +356,7 @@ echo "  cd frontend && npm run dev"
 echo "  Open http://127.0.0.1:5173"
 echo ""
 echo "Smoke (indexer):"
-echo "  curl -s http://127.0.0.1:${INDEXER_PORT}/v1/timecurve/buys?limit=5 | jq ."
+echo "  curl -s http://127.0.0.1:${INDEXER_PORT}/v1/arena/buys?limit=5 | jq ."
 
 if [[ "${START_BOT_SWARM}" == "1" ]]; then
   echo ""

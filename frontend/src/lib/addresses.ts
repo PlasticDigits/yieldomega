@@ -19,16 +19,18 @@ function parseAddr(key: string): HexAddress | undefined {
   return parseHexAddress(import.meta.env[key]);
 }
 
-// TODO(Arena v2 #256): swap TimeCurve ABI reads for TimeArena when the unified frontend lands.
+/** Arena v2 contract addresses — required for play and protocol surfaces (GitLab #266). */
 export const addresses = {
-  /** Legacy TimeCurve proxy, or Arena proxy via `VITE_TIME_ARENA_ADDRESS` alias. */
-  timeCurve: parseAddr("VITE_TIMECURVE_ADDRESS") ?? parseAddr("VITE_TIME_ARENA_ADDRESS"),
-  /** When set, fee / protocol panels show Arena vault addresses instead of FeeRouter sinks (#244). */
   timeArena: parseAddr("VITE_TIME_ARENA_ADDRESS"),
   podiumVaults: parseAddr("VITE_PODIUM_VAULTS_ADDRESS"),
   adminSellVault: parseAddr("VITE_ADMIN_SELL_VAULT_ADDRESS"),
   referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
 };
+
+/** Primary Time Arena proxy for reads and writes. */
+export function timeArenaAddress(): HexAddress | undefined {
+  return addresses.timeArena;
+}
 
 /** Optional public URL for CL8Y / governance (footer link). */
 export function governanceUrl(): string | undefined {
