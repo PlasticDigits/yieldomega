@@ -31,7 +31,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant TIMER_RESET_BELOW_REMAINING_SEC = 780;
     uint256 public constant TIMER_RESET_TO_REMAINING_SEC = 900;
     uint256 public constant CRED_PER_BUY = 35e18;
-    uint256 public constant CRED_BUY_BURN = 70e18;
+    /// @dev CRED burned per 1e18 CHARM on `buyWithCred` (GitLab #268).
+    uint256 public constant CRED_PER_CHARM_WAD = 100e18;
+    /// @dev One-time CRED credited to the next Last Buy epoch on a wallet's first buy (#268).
+    uint256 public constant FIRST_BUY_CRED_BONUS = 150e18;
     uint16 public constant REFERRAL_CRED_BPS = 500;
     uint256 public constant SECONDS_PER_DAY = 86_400;
 
@@ -90,6 +93,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     mapping(uint256 => mapping(address => uint256)) public epochCharmWad;
     mapping(uint256 => uint256) public epochCharmTotal;
     mapping(uint256 => uint256) public epochCredPool;
+    /// @dev Fixed CRED claimable in `epoch` (first-buy bonus); append-only for UUPS (#268).
+    mapping(uint256 => mapping(address => uint256)) public epochFixedCredBonus;
 
     mapping(address => uint256) public warbowGuardUntil;
     address public warbowPendingFlagOwner;
@@ -146,6 +151,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         uint256 buyerCred
     );
     event CredClaimed(address indexed user, uint256 indexed epoch, uint256 amount);
+    event FirstBuyCredScheduled(address indexed buyer, uint256 indexed targetEpoch, uint256 amount);
     event XpGained(address indexed player, uint256 amount, uint256 newLevel);
     event PausedSet(bool paused);
     event WarBowSteal(
@@ -261,11 +267,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(address(playCred) != address(0), "TimeArena: no cred");
         require(epoch < lastBuyEpoch, "TimeArena: epoch active");
         uint256 weight = epochCharmWad[epoch][msg.sender];
-        require(weight > 0, "TimeArena: nothing to claim");
+        uint256 bonus = epochFixedCredBonus[epoch][msg.sender];
+        require(weight > 0 || bonus > 0, "TimeArena: nothing to claim");
+        uint256 amount = bonus;
         uint256 total = epochCharmTotal[epoch];
-        uint256 pool = epochCredPool[epoch];
-        uint256 amount = Math.mulDiv(pool, weight, total);
+        if (weight > 0 && total > 0) {
+            amount += Math.mulDiv(epochCredPool[epoch], weight, total);
+        }
         epochCharmWad[epoch][msg.sender] = 0;
+        epochFixedCredBonus[epoch][msg.sender] = 0;
         playCred.mint(msg.sender, amount);
         emit CredClaimed(msg.sender, epoch, amount);
     }
@@ -409,10 +419,14 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function pendingCred(address user, uint256 epoch) external view returns (uint256) {
+        uint256 bonus = epochFixedCredBonus[epoch][user];
         uint256 weight = epochCharmWad[epoch][user];
         uint256 total = epochCharmTotal[epoch];
-        if (weight == 0 || total == 0) return 0;
-        return Math.mulDiv(epochCredPool[epoch], weight, total);
+        uint256 proRata;
+        if (weight > 0 && total > 0) {
+            proRata = Math.mulDiv(epochCredPool[epoch], weight, total);
+        }
+        return proRata + bonus;
     }
 
     function podium(uint8 category) external view returns (address[3] memory winners, uint256[3] memory values) {
@@ -448,12 +462,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
         require(address(playCred) != address(0), "TimeArena: no cred");
-        playCred.burn(buyer, CRED_BUY_BURN);
+        uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
+        require(credBurn > 0, "TimeArena: zero cred burn");
+        playCred.burn(buyer, credBurn);
         _accrueCharmOnly(buyer, charmWad);
         _finishBuy(buyer, charmWad, 0, true);
     }
 
     function _finishBuy(address buyer, uint256 charmWad, uint256 received, bool paidWithCred) internal {
+        bool isFirstBuy = buyCount[buyer] == 0;
         buyCount[buyer] += 1;
         _totalBuys += 1;
         nextBuyAllowedAt[buyer] = block.timestamp + buyCooldownSec;
@@ -474,6 +491,12 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         if (hardReset) {
             lastBuyEpoch += 1;
             emit LastBuyEpochStarted(lastBuyEpoch, deadline);
+        }
+
+        if (isFirstBuy && address(playCred) != address(0)) {
+            uint256 targetEpoch = lastBuyEpoch + 1;
+            epochFixedCredBonus[targetEpoch][buyer] += FIRST_BUY_CRED_BONUS;
+            emit FirstBuyCredScheduled(buyer, targetEpoch, FIRST_BUY_CRED_BONUS);
         }
 
         _extendOtherPodiumTimers();

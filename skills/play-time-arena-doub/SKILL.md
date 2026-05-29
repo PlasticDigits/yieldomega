@@ -11,6 +11,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 - `buy(charmWad)` or `buy(charmWad, codeHash)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18` (default **1000 DOUB** per 1 CHARM).
 - Each buy routes DOUB: **40%** active podium pools, **30%** seed pools, **30%** `AdminSellVault`.
+- **First buy ever** (this wallet): schedules **150 CRED** for the **next** `lastBuyEpoch` (DOUB or CRED path); one-time — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 
 ## Donate to pools (optional sponsorship)
 
@@ -25,7 +26,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 ## Not in v1 removal batch
 
 - **WarBow** — returns on DOUB in [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252).
-- **Play CRED / claim** — [GitLab #248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248).
+- **Play CRED / claim** — [GitLab #248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248); CRED buys burn **100 CRED / 1e18 CHARM** via `buyWithCred` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
 
 ## Retired
 

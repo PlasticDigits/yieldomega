@@ -6,7 +6,7 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 
 ## Spend asset and buy
 
-- Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **70 CRED**).
+- Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **100 CRED per 1e18 CHARM** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
 - DOUB payment: `doubOwed = charmWad × charmPriceWad / 1e18`.
 - Default **`charmPriceWad = 1000e18`** (1000 DOUB per 1e18 CHARM). Governance may **`setCharmPriceWad`**.
 - CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
@@ -57,7 +57,9 @@ Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**.
 
 - **`PlayCred`**: non-transferable; **`MINTER_ROLE`** for TimeArena (+ optional **`CredGrantor`**).
 - Each DOUB buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
-- **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED.
+- **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED (pro-rata plus any **`epochFixedCredBonus`** for that epoch).
+- **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing, no epoch pool accrual) — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
+- **First buy ever** (DOUB or CRED, per wallet, not reset on timer hard-reset): schedules **150 CRED** claimable in **`lastBuyEpoch + 1`** after that buy completes (including same-tx hard-reset). Emits **`FirstBuyCredScheduled`**. **`buyCount`** tracks buys for podiums only; first-buy consumption is **`buyCount == 0`** before increment — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - Referred buy: **5% + 5%** of the **35 CRED** tranche minted to referrer and buyer (not CHARM weight).
 
 ## XP
