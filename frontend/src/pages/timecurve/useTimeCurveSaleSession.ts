@@ -14,7 +14,7 @@ import {
 } from "wagmi";
 import { readContract } from "wagmi/actions";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { indexerBaseUrl } from "@/lib/addresses";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   erc20Abi,
@@ -76,6 +76,12 @@ import {
   resolveCl8yCheckoutBoundsGate,
   type Cl8yCheckoutBoundsGate,
 } from "@/lib/timeCurveCl8yCheckoutBounds";
+import {
+  credBurnForCharmWad,
+  resolveCredCheckoutBoundsGate,
+  type CredCheckoutBoundsGate,
+} from "@/lib/arenaCredBurn";
+import { useArenaPlayCred } from "@/hooks/useArenaPlayCred";
 import {
   arenaV2CoreContracts,
   arenaV2UserContracts,
@@ -286,6 +292,13 @@ export type UseTimeCurveSaleSession = {
   clearBuyError: () => void;
   payWith: PayWithAsset;
   setPayWith: (p: PayWithAsset) => void;
+  /** Arena v2 mount — enables Play CRED pay (#269). */
+  isArenaV2: boolean;
+  /** `TimeArena.playCred()` or env override; unset when CRED buys unavailable. */
+  playCredAddress: HexAddress | undefined;
+  credBalanceWei: bigint | undefined;
+  requiredCredBurnWei: bigint | undefined;
+  credCheckoutBoundsGate: CredCheckoutBoundsGate;
   kumbayaRoutingBlocker: string | null;
   quotedPayInWei: bigint | undefined;
   payTokenDecimals: number;
@@ -336,6 +349,7 @@ export type UseTimeCurveSaleSession = {
 
 export function useTimeCurveSaleSession(
   timeCurveAddress: HexAddress | undefined,
+  options?: { forceArenaV2?: boolean },
 ): UseTimeCurveSaleSession {
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
@@ -350,6 +364,7 @@ export function useTimeCurveSaleSession(
   const pendingReferralCode = usePendingReferralCode();
   const [buyError, setBuyError] = useState<string | null>(null);
   const [payWith, setPayWith] = useState<PayWithAsset>("cl8y");
+  const payUsesKumbaya = payWith === "eth" || payWith === "usdm";
   const [preemptiveCooldownUntilChainSec, setPreemptiveCooldownUntilChainSec] = useState<number | null>(
     null,
   );
@@ -371,7 +386,7 @@ export function useTimeCurveSaleSession(
   }, [isConnected, address]);
 
   const tc = timeCurveAddress;
-  const isArenaV2 = isArenaV2TimeCurve(tc);
+  const isArenaV2 = Boolean(options?.forceArenaV2) || isArenaV2TimeCurve(tc);
   const indexerOn = Boolean(indexerBaseUrl()) && !isArenaV2;
   const saleStateQuery = useTimecurveSaleStateQuery(tc);
 
@@ -953,6 +968,38 @@ export function useTimeCurveSaleSession(
   const charmWadSelected = buySizing?.charmWad;
   const estimatedSpendWei = buySizing?.spendWei;
 
+  const {
+    playCredAddress: playCredFromArena,
+    burnParams: credBurnParams,
+    credBalanceWei,
+    requiredCredBurnWei,
+    refetchCred,
+  } = useArenaPlayCred({
+    arenaAddress: isArenaV2 ? tc : undefined,
+    charmWad: charmWadSelected,
+    enabled: isArenaV2,
+  });
+
+  const playCredAddress = addresses.playCred ?? playCredFromArena;
+  const playCredConfigured = playCredAddress !== undefined;
+
+  useEffect(() => {
+    if (payWith === "cred" && isArenaV2 && !playCredConfigured) {
+      setPayWith("cl8y");
+    }
+  }, [payWith, isArenaV2, playCredConfigured]);
+
+  const credCheckoutBoundsGate = useMemo(
+    (): CredCheckoutBoundsGate =>
+      resolveCredCheckoutBoundsGate({
+        payWith,
+        playCredConfigured,
+        requiredCredWei: requiredCredBurnWei,
+        walletBalanceWei: credBalanceWei,
+      }),
+    [payWith, playCredConfigured, requiredCredBurnWei, credBalanceWei],
+  );
+
   const referralEachBpsResolved = Number.isFinite(referralEachBpsOnchain ?? NaN)
     ? (referralEachBpsOnchain as number)
     : 500;
@@ -1026,18 +1073,18 @@ export function useTimeCurveSaleSession(
   }, [isArenaV2, onchainTimeArenaBuyRouter, onchainTimeCurveBuyRouter]);
 
   const swapRoute = useMemo(() => {
-    if (payWith === "cl8y" || !acceptedAsset || !kumbayaResolved.ok) return null;
+    if (!payUsesKumbaya || !acceptedAsset || !kumbayaResolved.ok) return null;
     return isArenaV2
       ? routingForArenaPayAsset(payWith, acceptedAsset, kumbayaResolved.config)
       : routingForPayAsset(payWith, acceptedAsset, kumbayaResolved.config);
-  }, [payWith, acceptedAsset, kumbayaResolved, isArenaV2]);
+  }, [payWith, acceptedAsset, kumbayaResolved, isArenaV2, payUsesKumbaya]);
 
   const kumbayaRoutingBlocker =
-    payWith !== "cl8y" && singleTxBuyRouterRes.kind === "mismatch"
+    payUsesKumbaya && singleTxBuyRouterRes.kind === "mismatch"
       ? singleTxBuyRouterRes.message
-      : payWith !== "cl8y" && !kumbayaResolved.ok
+      : payUsesKumbaya && !kumbayaResolved.ok
         ? kumbayaResolved.message
-        : payWith !== "cl8y" && swapRoute !== null && !swapRoute.ok
+        : payUsesKumbaya && swapRoute !== null && !swapRoute.ok
           ? swapRoute.message
           : null;
 
@@ -1053,7 +1100,7 @@ export function useTimeCurveSaleSession(
   );
 
   const charmPriceQuoteEnabled =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     phase === "saleActive" &&
     pricePerCharmWad !== undefined &&
     pricePerCharmWad > 0n &&
@@ -1062,7 +1109,7 @@ export function useTimeCurveSaleSession(
     kumbayaResolved.ok;
 
   const launchPayQuoteEnabled =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     phase === "saleActive" &&
     launchCl8yPerCharmWei !== undefined &&
     launchCl8yPerCharmWei > 0n &&
@@ -1071,7 +1118,7 @@ export function useTimeCurveSaleSession(
     kumbayaResolved.ok;
 
   const quoteEnabled =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     phase === "saleActive" &&
     estimatedSpendWei !== undefined &&
     estimatedSpendWei > 0n &&
@@ -1135,7 +1182,7 @@ export function useTimeCurveSaleSession(
     (launchPayQuotePending || launchPayQuoteFetching);
 
   const rateBoardKumbayaWarning =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     phase === "saleActive" &&
     (kumbayaRoutingBlocker !== null ||
       swapRoute?.ok === false ||
@@ -1153,18 +1200,18 @@ export function useTimeCurveSaleSession(
         quotedLaunchPerCharmPayInWei === undefined));
 
   const payTokenInAddr =
-    payWith !== "cl8y" && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
+    payUsesKumbaya && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
 
   const { data: payTokDec } = useReadContract({
     address: payTokenInAddr,
     abi: erc20Abi,
     functionName: "decimals",
-    query: { enabled: Boolean(payTokenInAddr && payWith !== "cl8y") },
+    query: { enabled: Boolean(payTokenInAddr && payUsesKumbaya) },
   });
   const payTokenDecimals = payTokDec !== undefined ? Number(payTokDec) : 18;
 
   const bandQuoteEnabled =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     phase === "saleActive" &&
     cl8ySpendBounds !== null &&
     swapRoute !== null &&
@@ -1225,6 +1272,9 @@ export function useTimeCurveSaleSession(
     if (payWith === "cl8y") {
       return { raw: walletBalanceWei, decimals, symbol: "CL8Y" };
     }
+    if (payWith === "cred") {
+      return { raw: credBalanceWei, decimals: 18, symbol: "CRED" };
+    }
     if (payWith === "eth") {
       return {
         raw: nativeEthBal?.value !== undefined ? BigInt(nativeEthBal.value) : undefined,
@@ -1237,9 +1287,10 @@ export function useTimeCurveSaleSession(
       decimals: payTokenDecimals,
       symbol: "USDM",
     };
-  }, [payWith, walletBalanceWei, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
+  }, [payWith, walletBalanceWei, credBalanceWei, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
 
-  const spendInputDecimals = payWith === "cl8y" ? decimals : payTokenDecimals;
+  const spendInputDecimals =
+    payWith === "cl8y" ? decimals : payWith === "cred" ? 18 : payTokenDecimals;
 
   useEffect(() => {
     if (!cl8ySpendBounds || payInputFocusedRef.current) return;
@@ -1313,7 +1364,7 @@ export function useTimeCurveSaleSession(
       }
 
       let spend: bigint;
-      if (kumbayaResolved.ok && acceptedAsset && swapRoute?.ok) {
+      if (payUsesKumbaya && kumbayaResolved.ok && acceptedAsset && swapRoute?.ok) {
         spend = await cl8ySpendWeiFromPayTokenBudget(wagmiConfig, {
           quoter: kumbayaResolved.config.quoter,
           kConfig: kumbayaResolved.config,
@@ -1323,8 +1374,10 @@ export function useTimeCurveSaleSession(
           minSpendWei: minS,
           maxSpendWei: maxS,
         });
-      } else {
+      } else if (payUsesKumbaya) {
         spend = cl8ySpendWeiFromPayTokenFallback(targetPay, payWith, minS, maxS);
+      } else {
+        spend = clampBigint(spendWei, minS, maxS);
       }
       setSpendWei(spend);
       setSpendInputStr(formatUnits(targetPay, payTokenDecimals));
@@ -1501,7 +1554,7 @@ export function useTimeCurveSaleSession(
 
   const stakeLaunchEquivPayWei = useMemo(() => {
     if (launchCl8yValueWei === undefined) return undefined;
-    if (payWith === "cl8y") return launchCl8yValueWei;
+    if (payWith === "cl8y" || payWith === "cred") return launchCl8yValueWei;
     if (launchCl8yValueWei === 0n) return 0n;
     if (
       quotedLaunchPerCharmPayInWei !== undefined &&
@@ -1519,7 +1572,7 @@ export function useTimeCurveSaleSession(
   ]);
 
   const stakeLaunchEquivQuoteLoading =
-    payWith !== "cl8y" &&
+    payUsesKumbaya &&
     launchCl8yValueWei !== undefined &&
     launchCl8yValueWei > 0n &&
     launchPayQuoteEnabled &&
@@ -1530,7 +1583,8 @@ export function useTimeCurveSaleSession(
     void refetchUser();
     void refetchLinearPriceReads();
     void refreshHeroTimer();
-  }, [refetchCore, refetchUser, refetchLinearPriceReads, refreshHeroTimer]);
+    refetchCred();
+  }, [refetchCore, refetchUser, refetchLinearPriceReads, refreshHeroTimer, refetchCred]);
 
   const buyFeeRoutingEnabled =
     buyFeeRoutingEnabledR?.status === "success"
@@ -1558,6 +1612,22 @@ export function useTimeCurveSaleSession(
       setBuyError("Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause.");
       return;
     }
+    if (isArenaV2 && payUsesKumbaya) {
+      setBuyError(
+        "Arena v2 buys on this panel use DOUB (CL8Y) or Play CRED. ETH/USDM routes need the buy router (#251).",
+      );
+      return;
+    }
+    if (isArenaV2 && payWith === "cred") {
+      if (!playCredConfigured || !playCredAddress) {
+        setBuyError("Play CRED is not configured on this arena.");
+        return;
+      }
+      if (credCheckoutBoundsGate.kind === "insufficient_cred") {
+        setBuyError("Not enough Play CRED in your wallet for this CHARM amount.");
+        return;
+      }
+    }
     if (walletCooldownRemainingSec > 0) {
       setBuyError("TimeCurve: buy cooldown");
       return;
@@ -1581,6 +1651,42 @@ export function useTimeCurveSaleSession(
           charmWadSelected && charmWadSelected > 0n
             ? charmWadSelected
             : parseUnits("1", 18);
+
+        if (payWith === "cred") {
+          if (!credBurnParams || !playCredAddress) {
+            setBuyError("Play CRED burn parameters are not loaded yet.");
+            return;
+          }
+          const burnWei = credBurnForCharmWad(cw, credBurnParams);
+          const freshBal = await readContract(wagmiConfig, {
+            address: playCredAddress,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address as `0x${string}`],
+          });
+          if (freshBal < burnWei) {
+            setBuyError("Not enough Play CRED in your wallet for this CHARM amount.");
+            return;
+          }
+          const { hash: buyHash } = await writeContractWithGasBuffer({
+            wagmiConfig,
+            writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+            account: address as `0x${string}`,
+            chainId,
+            address: tc,
+            abi: timeArenaReadAbi,
+            functionName: "buyWithCred",
+            args: [cw],
+          });
+          const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
+          assertSuccessfulBuyReceipt(receipt);
+          setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
+          const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
+          setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+          refetchAll();
+          return;
+        }
+
         const priceWad =
           pricePerCharmR?.status === "success"
             ? (pricePerCharmR.result as bigint)
@@ -1951,6 +2057,10 @@ export function useTimeCurveSaleSession(
     referralRegistryOn,
     pendingReferralCode,
     useReferral,
+    playCredAddress,
+    playCredConfigured,
+    credBurnParams,
+    credCheckoutBoundsGate,
   ]);
 
   const submitClaimWarBowFlag = useCallback(async () => {
@@ -2115,6 +2225,11 @@ export function useTimeCurveSaleSession(
     clearBuyError: () => setBuyError(null),
     payWith,
     setPayWith,
+    isArenaV2,
+    playCredAddress,
+    credBalanceWei,
+    requiredCredBurnWei,
+    credCheckoutBoundsGate,
     kumbayaRoutingBlocker,
     quotedPayInWei,
     payTokenDecimals,

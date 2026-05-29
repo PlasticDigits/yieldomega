@@ -30,12 +30,11 @@ import {
 } from "@/lib/timeCurveBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { PayWithAsset } from "@/lib/kumbayaRoutes";
-import {
-  CHARM_TOKEN_LOGO,
-  CL8Y_TOKEN_LOGO,
-  ETH_TOKEN_LOGO,
-  USDM_TOKEN_LOGO,
-} from "@/lib/tokenMedia";
+import { payTokenOptionsForSimpleBuy } from "@/lib/arenaPayTokenOptions";
+import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
+import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
+import { formatUnits } from "viem";
+import { ARENA_CRED_WAD } from "@/lib/arenaCredBurn";
 import {
   participantLaunchValueCl8yWei,
   podiumCategorySlices,
@@ -91,18 +90,14 @@ function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
   };
 }
 
-const SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS: { value: PayWithAsset; label: string; logo: string }[] = [
-  { value: "cl8y", label: "CL8Y", logo: CL8Y_TOKEN_LOGO },
-  { value: "eth", label: "ETH", logo: ETH_TOKEN_LOGO },
-  { value: "usdm", label: "USDM", logo: USDM_TOKEN_LOGO },
-];
-
 function TimecurveSimpleRatePayTokenPicker({
   payWith,
   setPayWith,
+  options,
 }: {
   payWith: PayWithAsset;
   setPayWith: (p: PayWithAsset) => void;
+  options: readonly PayTokenOption[];
 }) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
@@ -111,8 +106,7 @@ function TimecurveSimpleRatePayTokenPicker({
   const menuSurfaceRef = useRef<HTMLDivElement>(null);
   const [menuBox, setMenuBox] = useState<{ top: number; left: number; minWidth: number } | null>(null);
 
-  const active =
-    SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.find((o) => o.value === payWith) ?? SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS[0];
+  const active = options.find((o) => o.value === payWith) ?? options[0]!;
 
   const syncMenuPosition = useCallback(() => {
     const el = triggerRef.current;
@@ -221,7 +215,7 @@ function TimecurveSimpleRatePayTokenPicker({
                 minWidth: menuBox.minWidth,
               }}
             >
-              {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
+              {options.map((o) => (
                 <button
                   key={o.value}
                   type="button"
@@ -254,18 +248,19 @@ function TimecurveSimpleAmountPayTokenSelect({
   payWith,
   setPayWith,
   disabled,
+  options,
 }: {
   payWith: PayWithAsset;
   setPayWith: (p: PayWithAsset) => void;
   disabled: boolean;
+  options: readonly PayTokenOption[];
 }) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const comboboxRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
 
-  const active =
-    SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.find((o) => o.value === payWith) ?? SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS[0];
+  const active = options.find((o) => o.value === payWith) ?? options[0]!;
 
   useLayoutEffect(() => {
     if (!open || disabled) return;
@@ -348,7 +343,7 @@ function TimecurveSimpleAmountPayTokenSelect({
       </button>
       {open && !disabled ? (
         <div id={listboxId} className="timecurve-simple__amount-token-list" role="listbox" aria-label="Spend token">
-          {SIMPLE_AMOUNT_PAY_TOKEN_OPTIONS.map((o) => (
+          {options.map((o) => (
             <button
               key={o.value}
               type="button"
@@ -407,9 +402,13 @@ function TimecurveSimpleAmountPayTokenSelect({
  * `TimeCurve` ABI used by the Arena view, so the contract remains the single
  * source of truth (see `docs/frontend/timecurve-views.md`).
  */
-export function TimeCurveSimplePage() {
+export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: boolean }) {
   const tc = addresses.timeArena;
-  const session = useTimeCurveSaleSession(tc);
+  const session = useTimeCurveSaleSession(tc, { forceArenaV2: mountAsArenaV2 });
+  const payTokenOptions = useMemo(
+    () => payTokenOptionsForSimpleBuy({ isArenaV2: session.isArenaV2 }),
+    [session.isArenaV2],
+  );
   const simpleProjectedEffectsLatchRef = useRef<SimpleProjectedEffectsLatch>(
     emptySimpleProjectedEffectsLatch(),
   );
@@ -509,7 +508,13 @@ export function TimeCurveSimplePage() {
   });
 
   const spendAssetLabel =
-    session.payWith === "cl8y" ? "CL8Y" : session.payWith === "eth" ? "ETH" : "USDM";
+    session.payWith === "cl8y"
+      ? "CL8Y"
+      : session.payWith === "cred"
+        ? "CRED"
+        : session.payWith === "eth"
+          ? "ETH"
+          : "USDM";
 
   const buyProjectedEffects = useMemo(() => {
     const latch = simpleProjectedEffectsLatchRef.current;
@@ -664,7 +669,13 @@ export function TimeCurveSimplePage() {
   }, [recentBuys]);
 
   const paySpendSuffix =
-    session.payWith === "cl8y" ? "CL8Y" : session.payWith === "eth" ? "ETH" : "USDM";
+    session.payWith === "cl8y"
+      ? "CL8Y"
+      : session.payWith === "cred"
+        ? "CRED"
+        : session.payWith === "eth"
+          ? "ETH"
+          : "USDM";
 
   const slider = session.cl8ySpendBounds ? (
     <div
@@ -702,6 +713,7 @@ export function TimeCurveSimplePage() {
           payWith={session.payWith}
           setPayWith={session.setPayWith}
           disabled={session.phase !== "saleActive" || !session.walletConnected}
+          options={payTokenOptions}
         />
       </div>
     </div>
@@ -713,6 +725,13 @@ export function TimeCurveSimplePage() {
       : null;
   const insufficientCl8yForBuy =
     session.payWith === "cl8y" && insufficientCl8yGate !== null;
+
+  const insufficientCredGate =
+    session.credCheckoutBoundsGate.kind === "insufficient_cred"
+      ? session.credCheckoutBoundsGate
+      : null;
+  const insufficientCredForBuy =
+    session.payWith === "cred" && insufficientCredGate !== null;
 
   const minMaxPill = session.cl8ySpendBounds ? (
     <span className="timecurve-simple__minmax timecurve-simple__minmax--rate-card">
@@ -816,6 +835,35 @@ export function TimeCurveSimplePage() {
         bridgeTestId="timecurve-simple-bridge-cl8y-link"
       />
     </div>
+  ) : insufficientCredForBuy ? (
+    <div
+      className="timecurve-simple__buy-preview timecurve-simple__buy-preview--blocked"
+      data-testid="timecurve-simple-buy-preview-insufficient-cred"
+    >
+      <p className="timecurve-simple__buy-preview-blocked-lede">
+        Not enough Play CRED to burn for this CHARM. This buy needs{" "}
+        <strong>
+          {formatUnits(insufficientCredGate.requiredCredWei, 18)} CRED
+        </strong>
+        ; you have{" "}
+        <strong>{formatUnits(insufficientCredGate.walletBalanceWei, 18)} CRED</strong>.
+      </p>
+    </div>
+  ) : session.payWith === "cred" && session.credBalanceWei !== undefined ? (
+    <div className="timecurve-simple__buy-preview" data-testid="timecurve-simple-buy-preview-cred">
+      <p className="muted">
+        Wallet CRED: <strong>{formatUnits(session.credBalanceWei, 18)}</strong>
+        {session.requiredCredBurnWei !== undefined ? (
+          <>
+            {" · "}
+            Burn for this buy:{" "}
+            <strong>{formatUnits(session.requiredCredBurnWei, 18)} CRED</strong>
+          </>
+        ) : (
+          " · Pick a CHARM amount to see burn."
+        )}
+      </p>
+    </div>
   ) : session.charmWadSelected === undefined ? (
       <div className="timecurve-simple__buy-preview timecurve-simple__buy-preview--loading">
         Loading CHARM preview…
@@ -867,8 +915,9 @@ export function TimeCurveSimplePage() {
       </div>
     ) : null;
 
+  const payUsesKumbaya = session.payWith === "eth" || session.payWith === "usdm";
   const nonCl8yBlocked =
-    session.payWith !== "cl8y" &&
+    payUsesKumbaya &&
     (session.kumbayaRoutingBlocker !== null ||
       session.swapQuoteFailed ||
       session.quotedPayInWei === undefined ||
@@ -885,6 +934,8 @@ export function TimeCurveSimplePage() {
     buyOnCooldown ||
     session.charmWadSelected === undefined ||
     nonCl8yBlocked ||
+    insufficientCredForBuy ||
+    (session.payWith === "cred" && session.credCheckoutBoundsGate.kind === "unavailable") ||
     (session.arenaPaused ?? session.buyFeeRoutingEnabled === false);
 
   const buyButtonMotion =
@@ -903,6 +954,22 @@ export function TimeCurveSimplePage() {
       return {
         text: formatHeroRateFromWad(session.pricePerCharmWad),
         unit: " CL8Y" as const,
+        loading: false as const,
+      };
+    }
+    if (session.payWith === "cred") {
+      if (
+        session.requiredCredBurnWei === undefined ||
+        session.charmWadSelected === undefined ||
+        session.charmWadSelected <= 0n
+      ) {
+        return { text: "…" as const, unit: " CRED" as const, loading: true as const };
+      }
+      const perCharm =
+        (session.requiredCredBurnWei * ARENA_CRED_WAD) / session.charmWadSelected;
+      return {
+        text: formatHeroRateFromWad(perCharm),
+        unit: " CRED" as const,
         loading: false as const,
       };
     }
@@ -934,30 +1001,26 @@ export function TimeCurveSimplePage() {
     session.payWith,
     session.perCharmPayQuoteLoading,
     session.quotedPerCharmPayInWei,
+    session.requiredCredBurnWei,
+    session.charmWadSelected,
   ]);
 
-  const rateBoardPayOptions = (
-    [
-      ["cl8y", "CL8Y", CL8Y_TOKEN_LOGO],
-      ["eth", "ETH", ETH_TOKEN_LOGO],
-      ["usdm", "USDM", USDM_TOKEN_LOGO],
-    ] as const
-  ).map(([key, label, logo]) => (
+  const rateBoardPayOptions = payTokenOptions.map((o) => (
     <button
-      key={key}
+      key={o.value}
       type="button"
-      data-testid={`arena-paywith-${key}`}
+      data-testid={`arena-paywith-${o.value}`}
       className={
-        session.payWith === key
+        session.payWith === o.value
           ? "timecurve-simple__rate-paywith-btn timecurve-simple__rate-paywith-btn--active"
           : "timecurve-simple__rate-paywith-btn"
       }
-      aria-pressed={session.payWith === key}
-      aria-label={`Show price in ${label}`}
-      onClick={() => session.setPayWith(key as PayWithAsset)}
+      aria-pressed={session.payWith === o.value}
+      aria-label={`Show price in ${o.label}`}
+      onClick={() => session.setPayWith(o.value)}
     >
-      <img src={logo} alt="" width={16} height={16} decoding="async" aria-hidden="true" />
-      {label}
+      <img src={o.logo} alt="" width={16} height={16} decoding="async" aria-hidden="true" />
+      {o.label}
     </button>
   ));
 
@@ -1010,7 +1073,11 @@ export function TimeCurveSimplePage() {
             {rateNowDisplay.text}
           </strong>
         </span>
-        <TimecurveSimpleRatePayTokenPicker payWith={session.payWith} setPayWith={session.setPayWith} />
+        <TimecurveSimpleRatePayTokenPicker
+          payWith={session.payWith}
+          setPayWith={session.setPayWith}
+          options={payTokenOptions}
+        />
         <span className="visually-hidden">{rateNowDisplay.unit.trim()}</span>
       </span>
     </div>
@@ -1203,7 +1270,7 @@ export function TimeCurveSimplePage() {
                 <span className="timecurve-simple__cta-label">
                   {session.buySubmitBusy || session.isWriting
                     ? "Processing transaction…"
-                    : session.payWith !== "cl8y" && session.swapQuoteLoading
+                    : payUsesKumbaya && session.swapQuoteLoading
                       ? "Refreshing quote…"
                       : buyOnCooldown
                         ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
@@ -1247,9 +1314,11 @@ export function TimeCurveSimplePage() {
                       </p>
                     ) : null}
                   </div>
-                  <Cl8yTimeCurveUnlimitedApprovalFieldset
-                    disabled={session.phase !== "saleActive" || !session.walletConnected}
-                  />
+                  {session.payWith !== "cred" ? (
+                    <Cl8yTimeCurveUnlimitedApprovalFieldset
+                      disabled={session.phase !== "saleActive" || !session.walletConnected}
+                    />
+                  ) : null}
                 </div>
               </details>
               <TimeCurveBuyProjectedEffects

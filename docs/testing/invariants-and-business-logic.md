@@ -44,6 +44,7 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls | `test_warbow_steal_pulls_doub` |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
 | **`INV-FRONTEND-260-ARENA-MOUNT`** | `/arena` mounts timer chips + CRED card | `e2e/anvil-arena-mount.spec.ts` |
+| **`INV-FRONTEND-269-CRED-BUY`** | Arena buy picker includes CRED when `playCred` set; burn preview from onchain constants; submit `buyWithCred` | `arenaCredBurn.test.ts`, `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | **`INV-INDEXER-260-ARENA-TIMERS`** | `GET /v1/arena/timers` (+ buys, wallet stats) | `integration_stage2.rs` HTTP smoke |
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `cargo test` |
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
@@ -53,7 +54,7 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/timecurve/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/timecurve/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
 
-**Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). **DOUB** direct `buy`; **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
+**Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`TimeCurveSimplePage.tsx`](../../frontend/src/pages/TimeCurveSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
 <a id="arena-podium-pool-topup-gitlab-261"></a>
 

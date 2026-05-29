@@ -65,6 +65,9 @@ contract DeployDev is Script {
         podiumVaults.setArena(address(arena));
         adminVault.setArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
+        // Anvil default account #0 — Playwright mock wallet (E2E #269).
+        playCred.grantRole(playCred.MINTER_ROLE(), deployer);
+        playCred.mint(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, 1000e18);
         arena.startArena();
         console.log("TimeArena:", address(arena));
         console.log("TimeArena buyCooldownSec (dev deploy):", buyCooldownSecDev);

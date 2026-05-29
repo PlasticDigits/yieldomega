@@ -27,14 +27,18 @@ export async function openBuyAdvanced(page: Page): Promise<void> {
   await buyPanel.locator('[data-testid="timecurve-simple-buy-advanced"] summary').click();
 }
 
-export async function selectPayWith(page: Page, asset: "cl8y" | "eth" | "usdm"): Promise<void> {
+export async function selectPayWith(
+  page: Page,
+  asset: "cl8y" | "eth" | "usdm" | "cred",
+): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  await openBuyAdvanced(page);
-  await buyPanel.getByTestId(`arena-paywith-${asset}`).click();
-  await expect(buyPanel.getByTestId(`arena-paywith-${asset}`)).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  const btn = buyPanel.getByTestId(`arena-paywith-${asset}`);
+  if (!(await btn.isVisible().catch(() => false))) {
+    await openBuyAdvanced(page);
+  }
+  await btn.scrollIntoViewIfNeeded();
+  await btn.click({ force: true });
+  await expect(btn).toHaveAttribute("aria-pressed", "true");
 }
 
 export async function setCharmSliderMin(page: Page): Promise<void> {

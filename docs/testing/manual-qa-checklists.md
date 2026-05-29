@@ -37,6 +37,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | Indexer running | Timer chips show non-`—` deadlines from `GET /v1/arena/timers` (four `podium_deadlines_sec`). |
 | DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move 40/30/30 (Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
+| CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
 | Wallet profile | Open profile modal from address control when wired; XP / buy count plausible. |
 | Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
 | WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |

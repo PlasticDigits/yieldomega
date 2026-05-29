@@ -24,7 +24,7 @@ export function useKumbayaExactOutputQuote(params: {
   const quoter = kConfig?.quoter;
   const canRun =
     enabled &&
-    payWith !== "cl8y" &&
+    (payWith === "eth" || payWith === "usdm") &&
     quoter !== undefined &&
     kConfig !== undefined &&
     acceptedCl8y !== undefined &&
