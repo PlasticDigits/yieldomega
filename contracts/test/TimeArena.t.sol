@@ -134,6 +134,82 @@ contract TimeArenaTest is Test {
         assertEq(ArenaXp.xpToAdvance(20), 100);
     }
 
+    function _warpPastBuyCooldown() internal {
+        vm.warp(block.timestamp + arena.buyCooldownSec() + 1);
+    }
+
+    /// INV-TIME-ARENA-XP-GAS: incremental onchain state matches lifetime reference after buys.
+    function test_xp_incremental_matches_reference_many_buys() public {
+        uint256 charm = 10e18;
+        for (uint256 i = 0; i < 40; ++i) {
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(charm);
+            assertEq(arena.level(alice), ArenaXp.levelFromXp(arena.xp(alice)));
+            assertEq(arena.xpToNextLevel(alice), ArenaXp.xpRemainingToNextLevel(arena.level(alice), arena.xpTowardNext(alice)));
+        }
+    }
+
+    function test_xp_max_charm_first_buy() public {
+        vm.prank(alice);
+        arena.buy(10e18);
+        assertEq(arena.level(alice), 1);
+        assertEq(arena.xpTowardNext(alice), 10);
+        assertEq(arena.xpToNextLevel(alice), 10);
+    }
+
+    function test_xp_buy_with_cred_same_as_doub() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 lvlDoub = arena.level(alice);
+        uint256 towardDoub = arena.xpTowardNext(alice);
+
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+        assertEq(arena.level(bob), lvlDoub);
+        assertEq(arena.xpTowardNext(bob), towardDoub);
+    }
+
+    /// INV-TIME-ARENA-XP-GAS: timer hard-reset does not clear progression.
+    function test_xp_survives_timer_hard_reset() public {
+        vm.prank(alice);
+        arena.buy(10e18);
+        uint256 lvlBefore = arena.level(alice);
+        uint256 towardBefore = arena.xpTowardNext(alice);
+        uint256 xpBefore = arena.xp(alice);
+
+        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.level(alice), lvlBefore);
+        assertGe(arena.xpTowardNext(alice), towardBefore);
+        assertGt(arena.xp(alice), xpBefore);
+    }
+
+    function test_xp_high_level_buy_gas_bounded_no_level_up() public {
+        uint256 charm = 99e16;
+        for (uint256 i = 0; i < 500; ++i) {
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(charm);
+        }
+        assertGt(arena.level(alice), 10);
+
+        _warpPastBuyCooldown();
+        uint256 gasBefore = gasleft();
+        vm.prank(alice);
+        arena.buy(charm);
+        uint256 gasWhale = gasBefore - gasleft();
+
+        _warpPastBuyCooldown();
+        gasBefore = gasleft();
+        vm.prank(bob);
+        arena.buy(charm);
+        uint256 gasFresh = gasBefore - gasleft();
+        assertLt(gasWhale, gasFresh + 80_000, "high-level non-level-up buy should not scale vs fresh wallet");
+    }
+
     function test_roll_podium_after_expiry() public {
         vm.warp(arena.podiumDeadline(1) + 1);
         vm.prank(alice);

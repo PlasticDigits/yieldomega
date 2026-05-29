@@ -64,7 +64,9 @@ Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**.
 
 - Per buy: `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor; **1–10** at band ends).
 - Level **L** requires cumulative XP; step **L→L+1**: `min(20 + (L-1)*5, 100)` XP (**L1 = 20** total to reach level 2).
-- Uncapped level; views **`xp`**, **`level`**, **`xpToNextLevel`**.
+- Uncapped level; views **`xp`** (lifetime cumulative), **`level`** (cached, O(1)), **`xpTowardNext`** (progress within current level), **`xpToNextLevel`** (O(1)).
+- **Buy path ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)):** each buy adds charm XP to **`xpTowardNext`**, subtracts threshold XP on level-up, and applies **at most five** level-ups per buy; surplus progress carries to the next buy. **`levelFromXp` full recompute is not used on the hot path.**
+- **Timer hard-reset / `lastBuyEpoch` roll** does **not** reset **`level`**, **`xpTowardNext`**, or lifetime **`xp`** — progression is independent of podium/timer state ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)).
 
 ## WarBow (DOUB)
 

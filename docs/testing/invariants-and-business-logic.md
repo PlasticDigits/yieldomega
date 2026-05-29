@@ -39,6 +39,7 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-TIME-ARENA-CRED-CLAIM`** | `claimCred(epoch)` pro-rata by `epochCharmWad` | `test_cred_pro_rata_claim` |
 | **`INV-TIME-ARENA-CRED-BURN-BUY`** | `buyWithCred` burns **70 CRED** per 1e18 CHARM | `test_buy_with_cred` |
 | **`INV-TIME-ARENA-XP`** | XP 1–10 linear in CHARM band; level steps per `ArenaXp` | `test_xp_levels` |
+| **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls | `test_warbow_steal_pulls_doub` |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
 | **`INV-FRONTEND-260-ARENA-MOUNT`** | `/arena` mounts timer chips + CRED card | `e2e/anvil-arena-mount.spec.ts` |

@@ -113,6 +113,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 internal _totalBuys;
     address internal _dsLastUnderWindowBuyer;
 
+    /// @dev Cached progression (#265); 0 means level 1. Append-only for UUPS upgrades.
+    mapping(address => uint256) internal _cachedLevel;
+    mapping(address => uint256) public xpTowardNext;
+
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
     event PodiumEpochRolled(
@@ -394,11 +398,14 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function level(address user) external view returns (uint256) {
-        return ArenaXp.levelFromXp(xp[user]);
+        uint256 cached = _cachedLevel[user];
+        return cached == 0 ? 1 : cached;
     }
 
     function xpToNextLevel(address user) external view returns (uint256) {
-        return ArenaXp.xpToNextLevel(xp[user]);
+        uint256 cached = _cachedLevel[user];
+        uint256 lvl = cached == 0 ? 1 : cached;
+        return ArenaXp.xpRemainingToNextLevel(lvl, xpTowardNext[user]);
     }
 
     function pendingCred(address user, uint256 epoch) external view returns (uint256) {
@@ -483,7 +490,13 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         uint256 xpGain = ArenaXp.xpForCharm(charmWad);
         xp[buyer] += xpGain;
-        emit XpGained(buyer, xpGain, ArenaXp.levelFromXp(xp[buyer]));
+        uint256 lvl = _cachedLevel[buyer];
+        if (lvl == 0) lvl = 1;
+        uint256 toward = xpTowardNext[buyer];
+        (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, xpGain);
+        _cachedLevel[buyer] = lvl;
+        xpTowardNext[buyer] = toward;
+        emit XpGained(buyer, xpGain, lvl);
 
         emit Buy(
             buyer,
