@@ -43,6 +43,7 @@ MegaETH RPC exposes **`realtime_sendRawTransaction`** as a drop-in replacement f
 
 - Confirm **chain ID** for target network.
 - Use **official RPC** for gas estimation and deployment.
+- Compare RPC latency from your host: `bash scripts/rpc-latency-check.sh` (defaults: `mainnet.megaeth.com/rpc` and GlobalStake mainnet fallback). **You cannot see the sequencer datacenter through Cloudflare** — `cf-ray` is your edge PoP only; MegaETH documents RPC in **Miami, FL** ([FAQ](https://docs.megaeth.com/developer-docs/faq)). Colocate by **measuring submit latency from candidate regions**, not by origin IP discovery.
 - Record **deployed addresses** and **verification** URLs per [../operations/deployment-stages.md](../operations/deployment-stages.md).
 
 ---
