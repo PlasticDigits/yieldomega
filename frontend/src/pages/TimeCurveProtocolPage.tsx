@@ -21,10 +21,8 @@ import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiv
 import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveProtocolDoubProjectionSection } from "@/pages/timecurve/TimeCurveProtocolDoubProjectionSection";
-import { TimeCurveProtocolPlatformUsageSection } from "@/pages/timecurve/TimeCurveProtocolPlatformUsageSection";
 import { TimeCurveProtocolDonatePoolsSection } from "@/pages/timecurve/TimeCurveProtocolDonatePoolsSection";
 import { WalletProfileModal } from "@/components/WalletProfileModal";
-import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
 import { useTimecurveProtocolRawAccordion } from "@/pages/timecurve/useTimecurveProtocolRawAccordion";
@@ -32,7 +30,7 @@ import { useLastObservedAtForSerializedDep } from "@/lib/useLastObservedAtForSer
 import { useRelativeFreshnessLabel } from "@/lib/useRelativeFreshnessLabel";
 import { cl8yWeiToUsdDisplay } from "@/lib/cl8ySpotUsdPrice";
 import { PROTOCOL_CL8Y_USD_SPOT_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
-import { formatTotalRaiseHeroDisplayFromWei } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { formatTotalRaiseHeroDisplayFromWei } from "@/lib/arenaPageHelpers";
 import { useProtocolCl8yUsdSpotPrice } from "@/hooks/useProtocolCl8yUsdSpotPrice";
 import { ProtocolInlineRefreshButton } from "@/pages/timecurve/ProtocolInlineRefreshButton";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
@@ -72,13 +70,12 @@ export function TimeCurveProtocolPage() {
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
   const onOpenWalletProfile = useCallback((addr: string) => setProfileAddress(addr), []);
 
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const {
     protocolReading: reading,
     charmPriceRows,
     latchedAcceptedAssetAddr,
     heroChainNowSec,
-    refetchProtocolReads,
   } = useTimeCurveProtocolData();
 
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
@@ -280,7 +277,7 @@ export function TimeCurveProtocolPage() {
         />
         <PageSection title="Configuration missing">
           <StatusMessage variant="error">
-            VITE_TIMECURVE_ADDRESS is not configured. Update <code>frontend/.env.local</code>.
+            VITE_TIME_ARENA_ADDRESS is not configured. Update <code>frontend/.env.local</code>.
           </StatusMessage>
         </PageSection>
       </div>
@@ -336,9 +333,6 @@ export function TimeCurveProtocolPage() {
     ledgerSecInt: phaseLedgerSecInt,
   });
   const protocolPhaseBadge = phaseBadge(protocolPhase);
-
-  const saleEnded =
-    endedRow?.status === "success" ? (endedRow.result as boolean) : true;
 
   return (
     <div className="page timecurve-protocol-page">
@@ -463,8 +457,6 @@ export function TimeCurveProtocolPage() {
         onLoadMore={() => void liveBuys.handleLoadMoreBuys()}
       />
 
-      <TimeCurveProtocolPlatformUsageSection isOffline={isOffline} />
-
       <TimeCurveProtocolDonatePoolsSection
         isOffline={isOffline}
         onOpenWalletProfile={onOpenWalletProfile}
@@ -522,45 +514,6 @@ export function TimeCurveProtocolPage() {
             )}
           </dd>
         </dl>
-      </PageSection>
-
-      <PageSection
-        title="WarBow rule constants"
-        badgeLabel="PvP rules"
-        badgeTone="info"
-        lede="Onchain caps that bound steal / guard / flag mechanics."
-      >
-        <dl className="kv">
-          <dt>{humanizeKvLabel("WARBOW_FLAG_SILENCE_SEC")}</dt>
-          <dd>{renderInt(24)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_FLAG_CLAIM_BP")}</dt>
-          <dd>{renderInt(25)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_MAX_STEALS_PER_DAY")}</dt>
-          <dd>{renderInt(26)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_STEAL_BURN_WAD")}</dt>
-          <dd>{renderAmount(27, 18)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_GUARD_BURN_WAD")}</dt>
-          <dd>{renderAmount(28, 18)}</dd>
-          <dt>{humanizeKvLabel("WARBOW_REVENGE_WINDOW_SEC")}</dt>
-          <dd>{renderInt(29)}</dd>
-          <dt>{humanizeKvLabel("warbowPendingFlagOwner")}</dt>
-          <dd>{renderAddress(22)}</dd>
-          <dt>{humanizeKvLabel("warbowPendingFlagPlantAt")}</dt>
-          <dd>{renderUnix(23)}</dd>
-        </dl>
-      </PageSection>
-
-      <PageSection
-        title="WarBow podium (governance)"
-        badgeLabel="indexer + owner"
-        badgeTone="info"
-        lede="After `endSale`, the owner calls `finalizeWarbowPodium(first, second, third)` with live `battlePoints` ordering (GitLab #172). Load indexer reference candidates here; requires `VITE_INDEXER_URL` and a connected wallet on the build target chain for writes."
-      >
-        <TimeCurveProtocolWarbowRefreshSection
-          timeCurve={tc}
-          saleEnded={saleEnded}
-          refetchParentReads={() => void refetchProtocolReads()}
-        />
       </PageSection>
 
       <PageSection

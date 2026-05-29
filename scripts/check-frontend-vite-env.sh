@@ -83,11 +83,6 @@ for key in VITE_TIME_ARENA_ADDRESS VITE_PODIUM_VAULTS_ADDRESS VITE_ADMIN_SELL_VA
     ok=0
   fi
 done
-# Legacy alias still used by Simple buy reads until #256 ABI migration completes.
-if ! check_addr VITE_TIMECURVE_ADDRESS; then
-  ok=0
-fi
-
 for key in VITE_RPC_URL VITE_CHAIN_ID; do
   if ! check_nonempty "$key"; then
     ok=0

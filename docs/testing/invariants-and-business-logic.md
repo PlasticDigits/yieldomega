@@ -49,6 +49,8 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `TimeCurveProtocolDonatePoolsSection.test.tsx`, `e2e/timecurve.spec.ts` |
+| **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/timecurve/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
+| **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/timecurve/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`) and Advanced [`/timecurve/arena`](../../frontend/src/pages/TimeCurvePage.tsx). **DOUB** direct `buy`; **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 

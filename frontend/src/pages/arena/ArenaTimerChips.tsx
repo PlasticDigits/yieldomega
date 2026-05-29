@@ -10,7 +10,7 @@ import { formatMmSsCountdown } from "@/pages/timecurve/formatTimer";
 const LABELS = ["Last Buy", "Time Booster", "Streak", "WarBow"] as const;
 
 export function ArenaTimerChips() {
-  const arena = addresses.timeArena ?? addresses.timeCurve;
+  const arena = addresses.timeArena ?? addresses.timeArena;
   const indexerOn = Boolean(indexerBaseUrl());
 
   const { data: indexerData } = useQuery({

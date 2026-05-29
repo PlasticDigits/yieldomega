@@ -4,12 +4,12 @@ import { useLayoutEffect, useState, type SyntheticEvent } from "react";
 import { NavLink } from "react-router-dom";
 
 /** Persisted disclosure state across reloads (`localStorage`). */
-const TIMECURVE_ABOUT_OPEN_STORAGE_KEY = "yieldomega.timecurve.aboutOpen.v1";
+const ARENA_ABOUT_OPEN_STORAGE_KEY = "yieldomega.arena.aboutOpen.v1";
 
-function readTimecurveAboutOpenFromStorage(): boolean | null {
+function readArenaAboutOpenFromStorage(): boolean | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(TIMECURVE_ABOUT_OPEN_STORAGE_KEY);
+    const raw = window.localStorage.getItem(ARENA_ABOUT_OPEN_STORAGE_KEY);
     if (raw === "0") return false;
     if (raw === "1") return true;
     return null;
@@ -18,50 +18,36 @@ function readTimecurveAboutOpenFromStorage(): boolean | null {
   }
 }
 
-function writeTimecurveAboutOpenToStorage(open: boolean): void {
+function writeArenaAboutOpenToStorage(open: boolean): void {
   try {
-    window.localStorage.setItem(TIMECURVE_ABOUT_OPEN_STORAGE_KEY, open ? "1" : "0");
+    window.localStorage.setItem(ARENA_ABOUT_OPEN_STORAGE_KEY, open ? "1" : "0");
   } catch {
     /* ignore quota / private mode */
   }
 }
 
 /**
- * Shared sub-navigation at the top of every TimeCurve view: icon + short label
- * (BUY · ARENA · AUDIT) plus a collapsible “ABOUT TIMECURVE” blurb (open by
- * default on first visit; remembers open/closed in `localStorage`). Tabs are
- * mutually exclusive; the active tab is decided by `react-router` so deep links
- * land on the right surface.
- *
- * Invariant: tab links never own or mirror game state. Copy in the disclosure is
- * explanatory only — the contract remains the single source of truth across
- * surfaces (see `docs/frontend/timecurve-views.md`).
+ * Shared sub-navigation for Time Arena: BUY (play) and AUDIT (protocol).
+ * Legacy `/timecurve/*` routes redirect to these paths (GitLab #266).
  */
-export type TimeCurveSubnavTab = "simple" | "arena" | "protocol";
+export type TimeCurveSubnavTab = "simple" | "protocol";
 
 const TABS: ReadonlyArray<{
   to: string;
   end?: boolean;
   key: TimeCurveSubnavTab;
   label: string;
-  /** Sub-nav pictogram from issue #45. See `frontend/public/art/icons/`. */
   iconSrc: string;
 }> = [
   {
-    to: "/timecurve",
+    to: "/arena",
     end: true,
     key: "simple",
     label: "BUY",
     iconSrc: "/art/icons/nav-simple.png",
   },
   {
-    to: "/timecurve/arena",
-    key: "arena",
-    label: "ARENA",
-    iconSrc: "/art/icons/nav-arena.png",
-  },
-  {
-    to: "/timecurve/protocol",
+    to: "/arena/protocol",
     key: "protocol",
     label: "AUDIT",
     iconSrc: "/art/icons/nav-protocol.png",
@@ -70,91 +56,52 @@ const TABS: ReadonlyArray<{
 
 const ABOUT_COPY: Record<TimeCurveSubnavTab, string> = {
   simple:
-    "Get Charm & Win Prizes! Charm converts to $DOUB when the sale ends. Win prizes in CL8Y by timing your buys carefully.",
-  arena:
-    "Battle other players to climb the WarBow leaderboard. Every buy earns BattlePoints, but you can earn more by planting flags, timing buys, stealing, and revenge!",
+    "Buy Charm with DOUB on Time Arena. Timer extensions and podium prizes follow onchain rules in Arena v2.",
   protocol:
-    "Check the onchain & indexer data, audit the buy log, and more. Useful for detailed information.",
+    "Check onchain reads, indexer tables, and donate-pools activity. Useful for operators and auditors.",
 };
 
 export function TimeCurveSubnav({ active }: { active: TimeCurveSubnavTab }) {
-  const [aboutOpen, setAboutOpen] = useState(true);
+  const [aboutOpen, setAboutOpen] = useState(() => readArenaAboutOpenFromStorage() ?? true);
 
   useLayoutEffect(() => {
-    const stored = readTimecurveAboutOpenFromStorage();
-    if (stored !== null) {
-      setAboutOpen(stored);
-    }
-  }, []);
+    writeArenaAboutOpenToStorage(aboutOpen);
+  }, [aboutOpen]);
 
-  function handleAboutToggle(e: SyntheticEvent<HTMLDetailsElement>) {
-    const next = e.currentTarget.open;
-    setAboutOpen(next);
-    writeTimecurveAboutOpenToStorage(next);
-  }
+  const toggleAbout = (e: SyntheticEvent) => {
+    e.preventDefault();
+    setAboutOpen((v) => !v);
+  };
 
   return (
-    <div className="timecurve-subnav-stack">
-      <nav
-        className="timecurve-subnav"
-        aria-label="TimeCurve views"
-        data-active={active}
+    <nav className="timecurve-subnav" aria-label="Time Arena views">
+      <ul className="timecurve-subnav__tabs">
+        {TABS.map((tab) => (
+          <li key={tab.key}>
+            <NavLink
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                `timecurve-subnav__tab${isActive || active === tab.key ? " timecurve-subnav__tab--active" : ""}`
+              }
+            >
+              <img src={tab.iconSrc} alt="" width={28} height={28} decoding="async" />
+              <span>{tab.label}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="timecurve-subnav__about-toggle"
+        aria-expanded={aboutOpen}
+        onClick={toggleAbout}
       >
-        <ul className="timecurve-subnav__list">
-          {TABS.map((tab) => (
-            <li key={tab.key} className="timecurve-subnav__item">
-              <NavLink
-                to={tab.to}
-                end={tab.end}
-                className={({ isActive }) =>
-                  `timecurve-subnav__link${isActive ? " timecurve-subnav__link--active" : ""}`
-                }
-                aria-current={tab.key === active ? "page" : undefined}
-              >
-                <img
-                  className="timecurve-subnav__icon"
-                  src={tab.iconSrc}
-                  alt=""
-                  width={28}
-                  height={28}
-                  loading="lazy"
-                  decoding="async"
-                  aria-hidden="true"
-                />
-                <span className="timecurve-subnav__label">{tab.label}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <details
-        className="timecurve-subnav-about"
-        open={aboutOpen}
-        onToggle={handleAboutToggle}
-      >
-        <summary className="timecurve-subnav-about__summary">ABOUT TIMECURVE</summary>
-        <div className="timecurve-subnav-about__body">
-          {TABS.map((tab) => (
-            <p key={tab.key} className="timecurve-subnav-about__p">
-              <span className="timecurve-subnav-about__lead">
-                <img
-                  className="timecurve-subnav-about__icon"
-                  src={tab.iconSrc}
-                  alt=""
-                  width={24}
-                  height={24}
-                  loading="lazy"
-                  decoding="async"
-                  aria-hidden="true"
-                />
-                <strong className="timecurve-subnav-about__label">{tab.label}:</strong>
-              </span>{" "}
-              {ABOUT_COPY[tab.key]}
-            </p>
-          ))}
-        </div>
-      </details>
-    </div>
+        ABOUT TIME ARENA
+      </button>
+      {aboutOpen ? (
+        <p className="timecurve-subnav__about-copy">{ABOUT_COPY[active]}</p>
+      ) : null}
+    </nav>
   );
 }

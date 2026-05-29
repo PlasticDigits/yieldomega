@@ -14,12 +14,13 @@ function lowerHex(v: unknown): string | undefined {
   return v.toLowerCase();
 }
 
+/** True when `tc` is the configured Time Arena proxy (Arena v2 only — #266). */
 export function isArenaV2TimeCurve(tc: HexAddress | undefined): boolean {
   const arena = addresses.timeArena;
+  if (!tc || !arena) return false;
   const a = lowerHex(tc);
   const b = lowerHex(arena);
-  if (!a || !b) return false;
-  return a === b;
+  return Boolean(a && b && a === b);
 }
 
 /** Multicall shape aligned with `useTimeCurveSaleSession` core row destructuring. */

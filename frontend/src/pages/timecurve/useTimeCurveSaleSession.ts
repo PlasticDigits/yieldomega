@@ -17,14 +17,12 @@ import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
-  doubPresaleVestingReadAbi,
   erc20Abi,
   kumbayaSwapRouterAbi,
   linearCharmPriceReadAbi,
   timeCurveBuyEventAbi,
   timeArenaReadAbi,
   timeArenaWriteAbi,
-  timeCurveReadAbi,
   timeCurveWriteAbi,
   weth9Abi,
 } from "@/lib/abis";
@@ -377,43 +375,7 @@ export function useTimeCurveSaleSession(
   const indexerOn = Boolean(indexerBaseUrl()) && !isArenaV2;
   const saleStateQuery = useTimecurveSaleStateQuery(tc);
 
-  const coreContracts = tc
-    ? isArenaV2
-      ? [...arenaV2CoreContracts(tc)]
-      : [
-        { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "deadline" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "ended" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentMinBuyAmount" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentMaxBuyAmount" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentCharmBoundsWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "currentPricePerCharmWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "charmPrice" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "acceptedAsset" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "referralRegistry" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalRaised" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalCharmWeight" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "totalTokensForSale" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "initialMinBuy" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "growthRateWad" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timerExtensionSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timerCapSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "buyCooldownSec" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "launchedToken" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "buyFeeRoutingEnabled" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "charmRedemptionEnabled" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "timeCurveBuyRouter" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "podiumPool" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagPlantAt" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_CLAIM_BP" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "WARBOW_FLAG_SILENCE_SEC" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "doubPresaleVesting" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "REFERRAL_EACH_BPS" },
-        { address: tc, abi: timeCurveReadAbi, functionName: "PRESALE_CHARM_WEIGHT_BPS" },
-      ]
-    : [];
+  const coreContracts = tc ? [...arenaV2CoreContracts(tc)] : [];
 
   const {
     data: coreDataRaw,
@@ -449,9 +411,9 @@ export function useTimeCurveSaleSession(
     return coreReadRowsFromSaleState(saleStateQuery.data);
   }, [saleStateQuery.data]);
 
-  const coreDataRpc = isArenaV2
-    ? mapArenaV2CoreRows(coreDataRaw as readonly { status: string; result?: unknown }[] | undefined)
-    : coreDataRaw;
+  const coreDataRpc = mapArenaV2CoreRows(
+    coreDataRaw as readonly { status: string; result?: unknown }[] | undefined,
+  );
   const coreData = (indexerOn ? coreDataFromIndexer : coreDataRpc) as
     | readonly ContractReadRow[]
     | undefined;
@@ -466,17 +428,7 @@ export function useTimeCurveSaleSession(
     }
   }, [indexerOn, saleStateQuery, refetchCoreRpc]);
 
-  const userContracts =
-    tc && address
-      ? isArenaV2
-        ? [...arenaV2UserContracts(tc, address)]
-        : [
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight", args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed", args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt", args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak", args: [address] },
-        ]
-      : [];
+  const userContracts = tc && address ? [...arenaV2UserContracts(tc, address)] : [];
   const {
     data: userDataRaw,
     refetch: refetchUser,
@@ -488,10 +440,8 @@ export function useTimeCurveSaleSession(
       placeholderData: (previous) => previous,
     },
   });
-  const userData = (
-    isArenaV2
-      ? mapArenaV2UserRows(userDataRaw as readonly { status: string; result?: unknown }[] | undefined)
-      : userDataRaw
+  const userData = mapArenaV2UserRows(
+    userDataRaw as readonly { status: string; result?: unknown }[] | undefined,
   ) as readonly ContractReadRow[] | undefined;
 
   const {
@@ -543,7 +493,6 @@ export function useTimeCurveSaleSession(
     warbowPendingFlagPlantAtR,
     warbowFlagClaimBpR,
     warbowFlagSilenceSecR,
-    doubPresaleVestingR,
     referralEachBpsR,
     presaleCharmWeightBpsR,
   ] = coreData ?? [];
@@ -580,8 +529,6 @@ export function useTimeCurveSaleSession(
     referralEachBps?: number;
     presaleCharmWeightBps?: number;
   }>({});
-
-  const presaleBeneficiaryLatchRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!tc) {
@@ -780,53 +727,10 @@ export function useTimeCurveSaleSession(
       ? hexAddressFromRead(referralRegistryR.result)
       : undefined;
 
-  const doubPresaleVestingAddr =
-    doubPresaleVestingR?.status === "success"
-      ? hexAddressFromRead(doubPresaleVestingR.result)
-      : undefined;
-  const doubPresaleBeneficiarySource: HexAddress | undefined = isNonZeroHexAddress(
-    doubPresaleVestingAddr,
-  )
-    ? doubPresaleVestingAddr
-    : undefined;
-
-  useEffect(() => {
-    presaleBeneficiaryLatchRef.current = false;
-  }, [address, doubPresaleBeneficiarySource]);
-
   const referralEachBpsOnchain =
     referralEachBpsR?.status === "success"
       ? Number(referralEachBpsR.result as number)
       : referralMetaLatchRef.current.referralEachBps;
-  const presaleCharmWeightBpsOnchain =
-    presaleCharmWeightBpsR?.status === "success"
-      ? Number(presaleCharmWeightBpsR.result as number)
-      : referralMetaLatchRef.current.presaleCharmWeightBps;
-
-  const presaleBeneficiaryRead = useReadContract({
-    address: doubPresaleBeneficiarySource,
-    abi: doubPresaleVestingReadAbi,
-    functionName: "isBeneficiary",
-    args:
-      doubPresaleBeneficiarySource && address
-        ? [address as `0x${string}`]
-        : undefined,
-    query: {
-      enabled: Boolean(doubPresaleBeneficiarySource && address && isConnected),
-      placeholderData: keepPreviousData,
-    },
-  });
-
-  useEffect(() => {
-    if (presaleBeneficiaryRead.status === "success") {
-      presaleBeneficiaryLatchRef.current = presaleBeneficiaryRead.data === true;
-    }
-  }, [presaleBeneficiaryRead.status, presaleBeneficiaryRead.data]);
-
-  const isPresaleCharmBeneficiary =
-    presaleBeneficiaryRead.status === "success"
-      ? presaleBeneficiaryRead.data === true
-      : presaleBeneficiaryLatchRef.current;
 
   const warbowFlagClaimBp =
     warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
@@ -1052,10 +956,6 @@ export function useTimeCurveSaleSession(
   const referralEachBpsResolved = Number.isFinite(referralEachBpsOnchain ?? NaN)
     ? (referralEachBpsOnchain as number)
     : 500;
-  const presaleCharmWeightBpsResolved = Number.isFinite(presaleCharmWeightBpsOnchain ?? NaN)
-    ? (presaleCharmWeightBpsOnchain as number)
-    : 1500;
-
   const buyCharmReferralBonusWad = useMemo(() => {
     if (charmWadSelected === undefined || charmWadSelected <= 0n) return 0n;
     if (!useReferral || !referralRegistryOn) return 0n;
@@ -1070,17 +970,10 @@ export function useTimeCurveSaleSession(
     referralEachBpsResolved,
   ]);
 
-  const buyCharmPresaleBonusWad = useMemo(() => {
-    if (charmWadSelected === undefined || charmWadSelected <= 0n) return 0n;
-    if (!isPresaleCharmBeneficiary) return 0n;
-    const bps = BigInt(Math.max(0, Math.min(10_000, presaleCharmWeightBpsResolved)));
-    return (charmWadSelected * bps) / 10_000n;
-  }, [charmWadSelected, isPresaleCharmBeneficiary, presaleCharmWeightBpsResolved]);
-
   const buyCheckoutCharmWeightWad = useMemo(() => {
     if (charmWadSelected === undefined) return undefined;
-    return charmWadSelected + buyCharmReferralBonusWad + buyCharmPresaleBonusWad;
-  }, [charmWadSelected, buyCharmReferralBonusWad, buyCharmPresaleBonusWad]);
+    return charmWadSelected + buyCharmReferralBonusWad;
+  }, [charmWadSelected, buyCharmReferralBonusWad]);
 
   const buyCharmBonusPreviewLines = useMemo((): readonly string[] => {
     const lines: string[] = [];
@@ -1096,9 +989,6 @@ export function useTimeCurveSaleSession(
       const codeLabel = raw.length > 22 ? `${raw.slice(0, 20)}…` : raw;
       lines.push(`+${pct}% Referral ${codeLabel}`);
     }
-    if (charmWadSelected !== undefined && charmWadSelected > 0n && isPresaleCharmBeneficiary) {
-      lines.push(`+${bpsToDisplayPercentMag(presaleCharmWeightBpsResolved)}% Presale Beneficiary`);
-    }
     return lines;
   }, [
     charmWadSelected,
@@ -1106,8 +996,6 @@ export function useTimeCurveSaleSession(
     referralRegistryOn,
     pendingReferralCode,
     referralEachBpsResolved,
-    isPresaleCharmBeneficiary,
-    presaleCharmWeightBpsResolved,
   ]);
 
   const kumbayaResolved = useMemo(

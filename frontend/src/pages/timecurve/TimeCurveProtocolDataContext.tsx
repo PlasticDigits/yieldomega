@@ -22,7 +22,7 @@ import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStickyMulticallRows";
 import { useTimecurveHeroTimer } from "@/pages/timecurve/useTimecurveHeroTimer";
-import type { ContractReadRow } from "@/pages/timeCurveArena/arenaPageHelpers";
+import type { ContractReadRow } from "@/lib/arenaPageHelpers";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
@@ -153,7 +153,7 @@ export type TimeCurveProtocolDataContextValue = {
 const TimeCurveProtocolDataContext = createContext<TimeCurveProtocolDataContextValue | null>(null);
 
 export function TimeCurveProtocolDataProvider({ children }: { children: ReactNode }) {
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const { address } = useAccount();
 
   const tcReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
