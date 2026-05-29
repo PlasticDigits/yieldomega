@@ -120,10 +120,154 @@ contract TimeArenaTest is Test {
         assertGt(cred.balanceOf(alice), 0);
     }
 
+    /// INV-TIME-ARENA-CRED-BURN-BUY: `buyWithCred` burns 100 CRED per 1e18 CHARM (#268).
     function test_buy_with_cred() public {
         vm.prank(alice);
         arena.buyWithCred(1e18);
-        assertEq(cred.balanceOf(alice), 1000e18 - 70e18);
+        assertEq(cred.balanceOf(alice), 1000e18 - 100e18);
+    }
+
+    function test_buyWithCred_10charm_burns_1000_cred() public {
+        cred.mint(alice, 2000e18);
+        vm.prank(alice);
+        arena.buyWithCred(10e18);
+        assertEq(cred.balanceOf(alice), 3000e18 - 1000e18);
+    }
+
+    function test_buyWithCred_min_charm_burns_scaled() public {
+        cred.mint(alice, 2000e18);
+        vm.prank(alice);
+        arena.buyWithCred(99e16);
+        assertEq(cred.balanceOf(alice), 3000e18 - 99e18);
+    }
+
+    function test_buyWithCred_reverts_insufficient_cred() public {
+        vm.prank(bob);
+        cred.burn(bob, cred.balanceOf(bob) - 50e18);
+        vm.prank(bob);
+        vm.expectRevert();
+        arena.buyWithCred(1e18);
+    }
+
+    /// INV-TIME-ARENA-FIRST-BUY-CRED-BONUS: first DOUB buy schedules 150 CRED for next epoch (#268).
+    function test_first_buy_doub_schedules_bonus() public {
+        uint256 target = arena.lastBuyEpoch() + 1;
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.epochFixedCredBonus(target, alice), 150e18);
+        assertEq(arena.pendingCred(alice, target), 150e18);
+        assertEq(arena.buyCount(alice), 1);
+    }
+
+    function test_first_buy_cred_schedules_bonus_once() public {
+        uint256 target = arena.lastBuyEpoch() + 1;
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochFixedCredBonus(target, bob), 150e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buyWithCred(1e18);
+        assertEq(arena.epochFixedCredBonus(target, bob), 150e18);
+    }
+
+    function test_second_buy_no_additional_bonus() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 target = arena.lastBuyEpoch() + 1;
+        assertEq(arena.epochFixedCredBonus(target, alice), 150e18);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.epochFixedCredBonus(target, alice), 150e18);
+    }
+
+    function test_claim_cred_bonus_only_no_charm() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 bonusEpoch = 1;
+
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        _warpNearHardReset();
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        assertEq(arena.epochCharmWad(bonusEpoch, alice), 0);
+        assertGt(arena.lastBuyEpoch(), bonusEpoch);
+        assertEq(arena.pendingCred(alice, bonusEpoch), 150e18);
+
+        vm.prank(alice);
+        arena.claimCred(bonusEpoch);
+        assertEq(cred.balanceOf(alice), 1000e18 + 150e18);
+        assertEq(arena.pendingCred(alice, bonusEpoch), 0);
+    }
+
+    function test_claim_cred_pro_rata_plus_bonus() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 bonusEpoch = 1;
+        assertEq(arena.epochFixedCredBonus(bonusEpoch, alice), 150e18);
+
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        assertGt(arena.lastBuyEpoch(), bonusEpoch);
+        uint256 expected = 35e18 + 150e18;
+
+        vm.prank(alice);
+        arena.claimCred(bonusEpoch);
+        assertEq(cred.balanceOf(alice), 1000e18 + expected);
+        assertEq(arena.pendingCred(alice, bonusEpoch), 0);
+    }
+
+    function test_claimCred_reverts_active_epoch() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 future = arena.lastBuyEpoch() + 1;
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: epoch active");
+        arena.claimCred(future);
+    }
+
+    function test_first_buy_hard_reset_targets_post_epoch() public {
+        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.epochFixedCredBonus(2, alice), 150e18);
+    }
+
+    function test_first_buy_flag_survives_epoch_roll() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 target = arena.lastBuyEpoch() + 1;
+        assertEq(arena.epochFixedCredBonus(target, alice), 150e18);
+
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(1e18);
+        assertEq(arena.epochFixedCredBonus(target, alice), 150e18);
+        assertEq(arena.buyCount(alice), 1);
+    }
+
+    function _warpNearHardReset() internal {
+        uint256 dl = arena.deadline();
+        uint256 remaining = dl > block.timestamp ? dl - block.timestamp : 0;
+        if (remaining > 600) {
+            vm.warp(block.timestamp + remaining - 600);
+        }
     }
 
     function test_xp_levels() public {
