@@ -885,7 +885,7 @@ export function TimeCurveSimplePage() {
     buyOnCooldown ||
     session.charmWadSelected === undefined ||
     nonCl8yBlocked ||
-    session.buyFeeRoutingEnabled === false;
+    (session.arenaPaused ?? session.buyFeeRoutingEnabled === false);
 
   const buyButtonMotion =
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
@@ -1167,9 +1167,11 @@ export function TimeCurveSimplePage() {
                   />
                 )}
               </p>
-              {session.buyFeeRoutingEnabled === false && (
+              {(session.arenaPaused ?? session.buyFeeRoutingEnabled === false) && (
                 <StatusMessage variant="muted">
-                  Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable.
+                  {session.arenaPaused
+                    ? "Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause."
+                    : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable."}
                 </StatusMessage>
               )}
               <motion.button
@@ -1274,6 +1276,7 @@ export function TimeCurveSimplePage() {
                   flagSilenceEndSec={session.warbowFlagSilenceEndSec}
                   saleActive={session.phase === "saleActive"}
                   buyFeeRoutingEnabled={session.buyFeeRoutingEnabled}
+                  arenaPaused={session.arenaPaused}
                   isConnected={session.walletConnected}
                   isWriting={session.isWriting || session.buySubmitBusy}
                   onClaim={() => void session.submitClaimWarBowFlag()}

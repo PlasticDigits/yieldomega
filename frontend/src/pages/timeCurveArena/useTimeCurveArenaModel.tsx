@@ -27,6 +27,8 @@ import {
   feeRouterReadAbi,
   kumbayaSwapRouterAbi,
   linearCharmPriceReadAbi,
+  timeArenaReadAbi,
+  timeArenaWriteAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
   weth9Abi,
@@ -50,7 +52,9 @@ import {
   type KumbayaEnv,
   type PayWithAsset,
   resolveKumbayaRouting,
+  resolveTimeArenaBuyRouterForKumbayaSingleTx,
   resolveTimeCurveBuyRouterForKumbayaSingleTx,
+  routingForArenaPayAsset,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import { KUMBAYA_SWAP_SLIPPAGE_BPS, swapMaxInputFromQuoted } from "@/lib/timeCurveKumbayaSwap";
@@ -59,9 +63,21 @@ import {
   cl8ySpendWeiFromPayTokenBudget,
   cl8ySpendWeiFromPayTokenFallback,
 } from "@/lib/kumbayaCl8ySpendFromPayToken";
-import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
+import {
+  quoteKumbayaExactOutputAmountIn,
+  readGrossCl8yForCharmWad,
+} from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
+import { submitArenaKumbayaSingleTxBuy } from "@/lib/timeArenaKumbayaSingleTx";
 import { ensureCl8yTimeCurveAllowance } from "@/lib/ensureCl8yTimeCurveAllowance";
+import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
+import {
+  arenaV2AdvancedCoreContracts,
+  arenaV2AdvancedWarbowContracts,
+  isArenaV2TimeCurve,
+  mapArenaV2AdvancedCoreRows,
+  mapArenaV2AdvancedWarbowRows,
+} from "@/pages/timecurve/arenaV2AdvancedSessionBridge";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeCurveBuyAmount";
 import { readFreshTimeCurveBuySizing } from "@/lib/timeCurveBuySubmitSizing";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
@@ -162,8 +178,10 @@ export function useTimeCurveArenaModel() {
   const prefersReducedMotion = useReducedMotion();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const tc = addresses.timeCurve;
-  const indexerOn = Boolean(indexerBaseUrl());
+  const tc = addresses.timeArena ?? addresses.timeCurve;
+  const isArenaV2 = isArenaV2TimeCurve(tc);
+  const indexerOn = Boolean(indexerBaseUrl()) && !isArenaV2;
+  const arenaWriteAbi = isArenaV2 ? timeArenaWriteAbi : timeCurveWriteAbi;
   const saleStateQuery = useTimecurveSaleStateQuery(tc);
   const { isOffline: isRpcOffline } = useRpcConnectivity();
   const arenaRpcPollMs = useRpcBackoffPollInterval(1000);
@@ -518,11 +536,14 @@ export function useTimeCurveArenaModel() {
     };
   }, [address]);
 
-  const ARENA_CORE_TC_MULTICALL_LEN = 27;
+  const ARENA_CORE_TC_MULTICALL_LEN = isArenaV2 ? 12 : 27;
 
   const arenaCoreTcContractsOnly = useMemo(() => {
     if (!tc) {
       return [] as const;
+    }
+    if (isArenaV2) {
+      return [...arenaV2AdvancedCoreContracts(tc)] as const;
     }
     return [
       { address: tc, abi: timeCurveReadAbi, functionName: "saleStart" },
@@ -553,11 +574,14 @@ export function useTimeCurveArenaModel() {
       { address: tc, abi: timeCurveReadAbi, functionName: "reservePodiumPayoutsEnabled" },
       { address: tc, abi: timeCurveReadAbi, functionName: "owner" },
     ] as const;
-  }, [tc]);
+  }, [tc, isArenaV2]);
 
   const arenaWarbowPolicyContractsAll = useMemo(() => {
     if (!tc) {
       return [] as const;
+    }
+    if (isArenaV2) {
+      return [...arenaV2AdvancedWarbowContracts(tc)] as const;
     }
     return [
       { address: tc, abi: timeCurveReadAbi, functionName: "warbowPendingFlagOwner" },
@@ -681,13 +705,26 @@ export function useTimeCurveArenaModel() {
     return arenaWarbowPolicyRowsFromSaleState(saleStateQuery.data, rpc);
   }, [indexerOn, saleStateQuery.data, arenaWarbowPolicyRpcRaw]);
 
-  const mergedArenaTcRowData = mergedArenaTcRaw as readonly ContractReadRow[] | undefined;
+  const mergedArenaTcRowData = mergedArenaTcRaw as
+    | readonly { status: string; result?: unknown }[]
+    | undefined;
   const coreTcData = indexerOn
     ? coreTcDataFromIndexer
-    : mergedArenaTcRowData?.slice(0, ARENA_CORE_TC_MULTICALL_LEN);
+    : isArenaV2
+      ? mapArenaV2AdvancedCoreRows(mergedArenaTcRowData)
+      : (mergedArenaTcRowData as readonly ContractReadRow[] | undefined)?.slice(
+          0,
+          ARENA_CORE_TC_MULTICALL_LEN,
+        );
   const warbowPolicyData = indexerOn
     ? warbowPolicyDataFromIndexer
-    : mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN);
+    : isArenaV2
+      ? mapArenaV2AdvancedWarbowRows(
+          mergedArenaTcRowData?.slice(ARENA_CORE_TC_MULTICALL_LEN),
+        )
+      : (mergedArenaTcRowData as readonly ContractReadRow[] | undefined)?.slice(
+          ARENA_CORE_TC_MULTICALL_LEN,
+        );
 
   const coreTcContracts = arenaCoreTcContractsOnly;
   const warbowContracts = arenaWarbowPolicyContractsAll;
@@ -1000,10 +1037,16 @@ export function useTimeCurveArenaModel() {
     return "5.00%";
   }, [referralEachBps]);
 
-  const buyFeeRoutingEnabled =
-    buyFeeRoutingEnabledR?.status === "success"
+  const buyFeeRoutingEnabled = isArenaV2
+    ? undefined
+    : buyFeeRoutingEnabledR?.status === "success"
       ? (buyFeeRoutingEnabledR.result as boolean)
       : undefined;
+  const arenaPaused = isArenaV2
+    ? buyFeeRoutingEnabledR?.status === "success"
+      ? !(buyFeeRoutingEnabledR.result as boolean)
+      : undefined
+    : undefined;
 
   const feeRouterAddr =
     feeRouterR?.status === "success" ? (feeRouterR.result as `0x${string}`) : undefined;
@@ -2741,7 +2784,7 @@ export function useTimeCurveArenaModel() {
             : ([cw] as const);
         const g = await estimateGasUnits({
           address: tc,
-          abi: timeCurveWriteAbi,
+          abi: arenaWriteAbi,
           functionName: "buy",
           args,
           account: address,
@@ -2792,7 +2835,7 @@ export function useTimeCurveArenaModel() {
         try {
           await simulateWriteContract({
             address: tc,
-            abi: timeCurveWriteAbi,
+            abi: arenaWriteAbi,
             functionName: "warbowSteal",
             args: [stealVictim, bypass],
             account: address,
@@ -2800,7 +2843,7 @@ export function useTimeCurveArenaModel() {
           });
           const gas = await estimateGasUnits({
             address: tc,
-            abi: timeCurveWriteAbi,
+            abi: arenaWriteAbi,
             functionName: "warbowSteal",
             args: [stealVictim, bypass],
             account: address,
@@ -2840,7 +2883,7 @@ export function useTimeCurveArenaModel() {
     }
     void estimateGasUnits({
       address: tc,
-      abi: timeCurveWriteAbi,
+      abi: arenaWriteAbi,
       functionName: "warbowActivateGuard",
       account: address,
       chainId,
@@ -2854,7 +2897,7 @@ export function useTimeCurveArenaModel() {
     }
     void estimateGasUnits({
       address: tc,
-      abi: timeCurveWriteAbi,
+      abi: arenaWriteAbi,
       functionName: "claimWarBowFlag",
       account: address,
       chainId,
@@ -2868,7 +2911,7 @@ export function useTimeCurveArenaModel() {
     }
     void estimateGasUnits({
       address: tc,
-      abi: timeCurveWriteAbi,
+      abi: arenaWriteAbi,
       functionName: "warbowRevenge",
       args: [pendingRevengeStealer],
       account: address,
@@ -2883,7 +2926,7 @@ export function useTimeCurveArenaModel() {
     }
     void estimateGasUnits({
       address: tc,
-      abi: timeCurveWriteAbi,
+      abi: arenaWriteAbi,
       functionName: "redeemCharms",
       account: address,
       chainId,
@@ -2897,7 +2940,7 @@ export function useTimeCurveArenaModel() {
     }
     void estimateGasUnits({
       address: tc,
-      abi: timeCurveWriteAbi,
+      abi: arenaWriteAbi,
       functionName: "distributePrizes",
       account: address,
       chainId,
@@ -2929,9 +2972,11 @@ export function useTimeCurveArenaModel() {
       setBuyErr("Connect a wallet and ensure contract reads succeeded.");
       return;
     }
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true || buyFeeRoutingEnabled === false) {
       setBuyErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -2940,13 +2985,124 @@ export function useTimeCurveArenaModel() {
       return;
     }
     if (charmWadSelected === undefined || charmWadSelected <= 0n) {
-      setBuyErr("Choose a CL8Y amount inside the live min–max band (and your balance).");
+      setBuyErr(
+        isArenaV2
+          ? "Choose a DOUB amount inside the live CHARM band (and your balance)."
+          : "Choose a CL8Y amount inside the live min–max band (and your balance).",
+      );
       return;
     }
     if (charmBoundsR?.status !== "success") {
       setBuyErr("Waiting for onchain CHARM bounds.");
       return;
     }
+
+    if (isArenaV2 && tokenAddr) {
+      const cw = charmWadSelected;
+      setBuySubmitBusy(true);
+      try {
+        const priceWad =
+          pricePerCharmR?.status === "success" ? (pricePerCharmR.result as bigint) : 0n;
+        const needDoub = (cw * priceWad) / WAD_ONE_CHARM;
+        if (payWith !== "cl8y") {
+          const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
+          if (!k.ok) {
+            setBuyErr(k.message);
+            return;
+          }
+          const route = routingForArenaPayAsset(payWith, tokenAddr, k.config);
+          if (!route.ok) {
+            setBuyErr(route.message);
+            return;
+          }
+          const onchainRouter =
+            timeCurveBuyRouterR?.status === "success"
+              ? (timeCurveBuyRouterR.result as HexAddress)
+              : undefined;
+          const singleRes = resolveTimeArenaBuyRouterForKumbayaSingleTx(
+            onchainRouter,
+            import.meta.env as unknown as KumbayaEnv,
+          );
+          if (singleRes.kind === "mismatch") {
+            setBuyErr(singleRes.message);
+            return;
+          }
+          if (singleRes.kind !== "ok") {
+            setBuyErr("Time Arena buy router is not configured onchain.");
+            return;
+          }
+          const buySessionSnapshot = captureWalletBuySession(wagmiConfig);
+          if (
+            !buySessionSnapshot ||
+            buySessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
+            buySessionSnapshot.chainId !== chainId
+          ) {
+            setBuyErr(WALLET_BUY_SESSION_DRIFT_MESSAGE);
+            return;
+          }
+          let codeHash: `0x${string}` | undefined;
+          if (useReferral && referralRegistryOn && pendingRef) {
+            try {
+              codeHash = hashReferralCode(pendingRef);
+            } catch (e) {
+              setBuyErr(e instanceof Error ? e.message : String(e));
+              return;
+            }
+          }
+          const chainSec = await submitArenaKumbayaSingleTxBuy({
+            wagmiConfig,
+            writeContractAsync: writeContractAsync as WalletWriteAsync,
+            userAddress: address,
+            chainId,
+            timeArenaBuyRouter: singleRes.router,
+            timeArenaAddress: tc,
+            doubAddress: tokenAddr,
+            payWith,
+            kConfig: k.config,
+            route,
+            charmWad: cw,
+            codeHash,
+            plantWarBowFlag,
+            sessionSnapshot: buySessionSnapshot,
+          });
+          setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+          await refetchAll();
+          return;
+        }
+        await ensureDoubTimeArenaAllowance({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address,
+          chainId,
+          doubAddress: tokenAddr,
+          timeArenaAddress: tc,
+          needWei: needDoub,
+        });
+        let codeHash: `0x${string}` | undefined;
+        if (useReferral && referralRegistryOn && pendingRef) {
+          codeHash = hashReferralCode(pendingRef);
+        }
+        const { hash: buyHash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+          account: address,
+          chainId,
+          address: tc,
+          abi: timeArenaReadAbi,
+          functionName: "buy",
+          args: codeHash ? ([cw, codeHash] as const) : ([cw] as const),
+        });
+        const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
+        assertSuccessfulBuyReceipt(receipt);
+        const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
+        setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+        await refetchAll();
+        return;
+      } finally {
+        setBuySubmitBusy(false);
+      }
+    }
+
     const freshSizing = await readFreshTimeCurveBuySizing({
       wagmiConfig,
       timeCurveAddress: tc,
@@ -3161,7 +3317,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: "buy",
         args: buyArgs,
       });
@@ -3209,6 +3365,18 @@ export function useTimeCurveArenaModel() {
     if (!address || !tokenAddr || !tc) {
       return;
     }
+    if (isArenaV2) {
+      await ensureDoubTimeArenaAllowance({
+        wagmiConfig,
+        writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
+        account: address as `0x${string}`,
+        chainId,
+        doubAddress: tokenAddr,
+        timeArenaAddress: tc,
+        needWei: need,
+      });
+      return;
+    }
     await ensureCl8yTimeCurveAllowance({
       wagmiConfig,
       writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -3224,9 +3392,11 @@ export function useTimeCurveArenaModel() {
   async function runWarBowClaimFlag() {
     setPvpErr(null);
     if (failIfWrongChainForPvpWrites()) return;
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true || buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — WarBow actions are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3240,7 +3410,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: "claimWarBowFlag",
       });
       await waitForWriteReceipt(wagmiConfig, { hash });
@@ -3254,9 +3424,11 @@ export function useTimeCurveArenaModel() {
     setPvpErr(null);
     setArenaWarbowStealFormErr(null);
     if (failIfWrongChainForPvpWrites()) return;
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true || buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — WarBow actions are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3318,7 +3490,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: "warbowSteal",
         args: [victimResolved, bypass],
       });
@@ -3332,9 +3504,11 @@ export function useTimeCurveArenaModel() {
   async function runWarBowGuard() {
     setPvpErr(null);
     if (failIfWrongChainForPvpWrites()) return;
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true || buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — WarBow actions are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3349,7 +3523,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: "warbowActivateGuard",
       });
       await waitForWriteReceipt(wagmiConfig, { hash });
@@ -3362,9 +3536,11 @@ export function useTimeCurveArenaModel() {
   async function runWarBowRevenge(stealerArg?: `0x${string}`) {
     setPvpErr(null);
     if (failIfWrongChainForPvpWrites()) return;
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true || buyFeeRoutingEnabled === false) {
       setPvpErr(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — WarBow actions are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -3380,7 +3556,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: "warbowRevenge",
         args: [stealer],
       });
@@ -3405,7 +3581,7 @@ export function useTimeCurveArenaModel() {
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: arenaWriteAbi,
         functionName: fn,
         ...(isDistribute
           ? { onEstimateRevert: "rethrow" as const, softCapGas: 18_000_000n }
@@ -3441,6 +3617,7 @@ export function useTimeCurveArenaModel() {
     buyEnvelopeParams,
     buyErr,
     buyFeeRoutingEnabled,
+    arenaPaused,
     buyHistoryPoints,
     buyListModalOpen,
     buyPanelHighlights,

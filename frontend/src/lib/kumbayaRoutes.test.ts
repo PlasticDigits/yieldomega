@@ -5,6 +5,7 @@ import {
   buildV3PathExactOutput,
   minOutFromSlippage,
   resolveKumbayaRouting,
+  resolveTimeArenaBuyRouterForKumbayaSingleTx,
   resolveTimeCurveBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
   type KumbayaChainConfigResolved,
@@ -175,5 +176,14 @@ describe("resolveTimeCurveBuyRouterForKumbayaSingleTx (issue #66)", () => {
       VITE_KUMBAYA_TIMECURVE_BUY_ROUTER: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
     expect(r.kind).toBe("mismatch");
+  });
+});
+
+describe("resolveTimeArenaBuyRouterForKumbayaSingleTx (#264)", () => {
+  it("accepts VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER when onchain matches", () => {
+    const r = resolveTimeArenaBuyRouterForKumbayaSingleTx(BUY_R, {
+      VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER: BUY_R,
+    });
+    expect(r).toEqual({ kind: "ok", router: BUY_R });
   });
 });

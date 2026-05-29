@@ -26,11 +26,15 @@ export function warbowClaimFlagButtonLabel(opts: {
 export function warbowClaimFlagCanPress(opts: {
   isConnected: boolean;
   saleActive: boolean;
-  buyFeeRoutingEnabled: boolean | undefined;
+  /** Legacy TimeCurve fee-routing flag; prefer {@link arenaPaused} on Arena v2 (#264). */
+  buyFeeRoutingEnabled?: boolean | undefined;
+  /** When true, operator pause blocks WarBow writes (Arena v2). */
+  arenaPaused?: boolean | undefined;
   isWriting: boolean;
   canClaimWarBowFlag: boolean;
 }): boolean {
-  const writesPaused = opts.buyFeeRoutingEnabled === false;
+  const writesPaused =
+    opts.arenaPaused === true || opts.buyFeeRoutingEnabled === false;
   return (
     opts.isConnected &&
     opts.saleActive &&

@@ -3,7 +3,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useConfig } from "wagmi";
 import type { HexAddress } from "@/lib/addresses";
-import { quoteKumbayaExactOutputAmountIn } from "@/lib/kumbayaQuoter";
+import {
+  quoteKumbayaArenaExactOutputAmountIn,
+  quoteKumbayaExactOutputAmountIn,
+} from "@/lib/kumbayaQuoter";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 
 /** Live quoter read for Kumbaya `exactOutput` via `quoteExactOutputSingle` hops (bytes path reverts on MegaETH). */
@@ -13,9 +16,11 @@ export function useKumbayaExactOutputQuote(params: {
   kConfig: KumbayaChainConfigResolved | undefined;
   acceptedCl8y: HexAddress | undefined;
   amountOut: bigint | undefined;
+  /** When `doub`, quotes ETH/USDM → DOUB hops for TimeArena buy router (#264). */
+  swapOutToken?: "cl8y" | "doub";
 }) {
   const wagmiConfig = useConfig();
-  const { enabled, payWith, kConfig, acceptedCl8y, amountOut } = params;
+  const { enabled, payWith, kConfig, acceptedCl8y, amountOut, swapOutToken = "cl8y" } = params;
   const quoter = kConfig?.quoter;
   const canRun =
     enabled &&
@@ -35,15 +40,24 @@ export function useKumbayaExactOutputQuote(params: {
       kConfig?.cl8yWethFee,
       kConfig?.usdmWethFee,
       acceptedCl8y,
+      swapOutToken,
     ],
     queryFn: () =>
-      quoteKumbayaExactOutputAmountIn(wagmiConfig, {
-        quoter: quoter!,
-        kConfig: kConfig!,
-        payWith: payWith as Exclude<PayWithAsset, "cl8y">,
-        acceptedCl8y: acceptedCl8y!,
-        amountOut: amountOut!,
-      }),
+      swapOutToken === "doub"
+        ? quoteKumbayaArenaExactOutputAmountIn(wagmiConfig, {
+            quoter: quoter!,
+            kConfig: kConfig!,
+            payWith: payWith as Exclude<PayWithAsset, "cl8y">,
+            doubAddress: acceptedCl8y!,
+            amountOut: amountOut!,
+          })
+        : quoteKumbayaExactOutputAmountIn(wagmiConfig, {
+            quoter: quoter!,
+            kConfig: kConfig!,
+            payWith: payWith as Exclude<PayWithAsset, "cl8y">,
+            acceptedCl8y: acceptedCl8y!,
+            amountOut: amountOut!,
+          }),
     enabled: canRun,
     placeholderData: keepPreviousData,
   });

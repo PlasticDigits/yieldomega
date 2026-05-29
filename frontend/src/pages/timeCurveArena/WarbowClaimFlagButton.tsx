@@ -13,7 +13,8 @@ type Props = {
   ledgerNowSec: number;
   flagSilenceEndSec: bigint;
   saleActive: boolean;
-  buyFeeRoutingEnabled: boolean | undefined;
+  buyFeeRoutingEnabled?: boolean | undefined;
+  arenaPaused?: boolean | undefined;
   isConnected: boolean;
   isWriting: boolean;
   onClaim: () => void | Promise<void>;
@@ -27,6 +28,7 @@ export function WarbowClaimFlagButton({
   flagSilenceEndSec,
   saleActive,
   buyFeeRoutingEnabled,
+  arenaPaused,
   isConnected,
   isWriting,
   onClaim,
@@ -47,6 +49,7 @@ export function WarbowClaimFlagButton({
     isConnected,
     saleActive,
     buyFeeRoutingEnabled,
+    arenaPaused,
     isWriting,
     canClaimWarBowFlag,
   });

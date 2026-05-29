@@ -14,7 +14,8 @@ type Props = {
   flagSilenceEndSec: bigint;
   warbowFlagClaimBp: bigint;
   saleActive: boolean;
-  buyFeeRoutingEnabled: boolean | undefined;
+  buyFeeRoutingEnabled?: boolean | undefined;
+  arenaPaused?: boolean | undefined;
   isConnected: boolean;
   isWriting: boolean;
   runWarBowClaimFlag: () => Promise<void>;
@@ -28,6 +29,7 @@ export function WarbowClaimFlagHeroCard({
   warbowFlagClaimBp,
   saleActive,
   buyFeeRoutingEnabled,
+  arenaPaused,
   isConnected,
   isWriting,
   runWarBowClaimFlag,
@@ -60,6 +62,7 @@ export function WarbowClaimFlagHeroCard({
         flagSilenceEndSec={flagSilenceEndSec}
         saleActive={saleActive}
         buyFeeRoutingEnabled={buyFeeRoutingEnabled}
+        arenaPaused={arenaPaused}
         isConnected={isConnected}
         isWriting={isWriting}
         onClaim={runWarBowClaimFlag}

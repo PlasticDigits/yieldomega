@@ -48,7 +48,7 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `TimeCurveProtocolDonatePoolsSection.test.tsx`, `e2e/timecurve.spec.ts` |
 
-**Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). ETH route E2E gates on `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` until [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251).
+**Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`) and Advanced [`/timecurve/arena`](../../frontend/src/pages/TimeCurvePage.tsx). **DOUB** direct `buy`; **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
 <a id="arena-podium-pool-donations-gitlab-262"></a>
 
