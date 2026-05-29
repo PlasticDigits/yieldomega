@@ -222,7 +222,7 @@ Some assets are still at the top level either because they are **shared by many 
 - **Issue #45 catalog (historic):** [`issue45/README.md`](./issue45/README.md)
 - **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py), [`scripts/replicate-art/issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py), [`scripts/replicate-art/cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py)
 - **Frontend design doc:** [`docs/frontend/design.md`](../../../docs/frontend/design.md)
-- **TimeCurve view contract:** [`docs/frontend/timecurve-views.md`](../../../docs/frontend/timecurve-views.md)
+- **Arena UI:** [`docs/frontend/arena-views.md`](../../../docs/frontend/arena-views.md)
 - **Missing assets brief:** [`docs/frontend/missing-art-assets.md`](../../../docs/frontend/missing-art-assets.md)
 - **Repo guardrails:** [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 - **Phase guide:** [`docs/agent-phases.md` Phase 13](../../../docs/agent-phases.md#phase-13)

@@ -2,7 +2,7 @@
 
 **Status:** Design and inventory (GitLab [#55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)) — this document records **gated operations**, **proposed** policy defaults for implementation planning, and **order-of-operations** checklists. **Onchain code changes** are tracked via follow-up issues/MRs, not in #55.
 
-**See also:** [Fee routing and governance — authority](../onchain/fee-routing-and-governance.md) · [PARAMETERS.md](../../contracts/PARAMETERS.md) · [Testing invariants — pause / signoff](../testing/invariants-and-business-logic.md#pause-and-final-signoff-design-gitlab-55) · [play-timecurve-doubloon — participant messaging](../../skills/README.md)
+**See also:** [Arena v2 DOUB routing](../onchain/fee-routing-and-governance.md) · [PARAMETERS.md](../../contracts/PARAMETERS.md) · [invariants](../testing/invariants-and-business-logic.md) · [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md)
 
 ---
 
@@ -87,4 +87,4 @@ These **must** hold after implementation; they are also listed in [testing invar
 
 **Agent / contributor link:** [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) (pause/signoff and testing expectations).
 
-**Participant agents:** [skills index](../../skills/README.md) and [`play-timecurve-doubloon`](../../skills/play-timecurve-doubloon/SKILL.md) — use chain reads for pause/signoff; do not treat docs as a substitute for deployment state.
+**Participant agents:** [skills index](../../skills/README.md) and [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md) — use chain reads for `paused` on `TimeArena`; do not treat docs as a substitute for deployment state.

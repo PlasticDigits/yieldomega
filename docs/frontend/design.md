@@ -27,7 +27,7 @@
     group launch economics into supply/redemption, price anchors, and
     market/wallet lens so operators do not conflate clearing, launch-anchor,
     Kumbaya floor, USD quote, or wallet-share values ([GitLab #235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235)).
-  - See [`docs/frontend/timecurve-views.md`](./timecurve-views.md) for the
+  - See [`docs/frontend/arena-views.md`](./arena-views.md) for the
     layout contract, single-source-of-truth invariants, and the
     LaunchCountdown → Simple handoff.
 - **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.

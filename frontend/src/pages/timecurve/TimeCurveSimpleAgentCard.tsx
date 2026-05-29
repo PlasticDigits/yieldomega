@@ -36,7 +36,7 @@ const CONTRIBUTOR_SKILL = {
 
 const DOCS_SIMPLE: { label: string; path: string }[] = [
   { label: "TimeCurve primitives (four podiums, timer, WarBow)", path: "docs/product/primitives.md" },
-  { label: "TimeCurve frontend views (phase, Kumbaya, audio)", path: "docs/frontend/timecurve-views.md" },
+  { label: "Arena frontend views (/arena, Kumbaya)", path: "docs/frontend/arena-views.md" },
   { label: "Kumbaya single-tx buy + router", path: "docs/integrations/kumbaya.md" },
   { label: "Invariants index (INV-*)", path: "docs/testing/invariants-and-business-logic.md" },
 ];
@@ -517,8 +517,8 @@ export function TimeCurveSimpleAgentCard() {
             <strong>Timer + phase</strong> follow <code className="app-footer-agent__code-inline">saleStart</code>,{" "}
             <code className="app-footer-agent__code-inline">deadline</code>, <code className="app-footer-agent__code-inline">ended</code>{" "}
             and the indexer <code className="app-footer-agent__code-inline">chain-timer</code> when configured (
-            <a href={ghBlob("docs/frontend/timecurve-views.md")} target="_blank" rel="noreferrer">
-              timecurve-views
+            <a href={ghBlob("docs/frontend/arena-views.md")} target="_blank" rel="noreferrer">
+              arena-views
             </a>
             , issue 48). <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeCurve.buy</code> /
             referral hash variant, or <code className="app-footer-agent__code-inline">TimeCurveBuyRouter.buyViaKumbaya</code> for

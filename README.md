@@ -1,6 +1,6 @@
 # Yieldomega
 
-MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**, and **Leprechaun NFTs**, with ecosystem expansion governed via **CL8Y** (see [`docs/product/vision.md`](docs/product/vision.md)).
+MegaETH-oriented monorepo for onchain gamefi: **Time Arena** (Arena v2) — **`TimeArena`**, podium vaults, DOUB prize routing, and **Play CRED** (see [`docs/product/arena-v2.md`](docs/product/arena-v2.md) and [`docs/product/vision.md`](docs/product/vision.md)).
 
 **Status:** **Stage 2 complete in-repo** — contracts, indexer, and frontend implement the core stack with Stage 1 CI and a recorded Stage 2 devnet smoke ([`docs/operations/stage2-run-log.md`](docs/operations/stage2-run-log.md)). **~90% / 100%** (public testnet verification, soak, mainnet, audit) are **operator gates**: [`docs/operations/stage3-mainnet-operator-runbook.md`](docs/operations/stage3-mainnet-operator-runbook.md), [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md).
 
@@ -10,7 +10,7 @@ MegaETH-oriented monorepo for onchain gamefi: **TimeCurve**, **Rabbit Treasury**
 
 ## MegaETH mainnet production contracts
 
-**Network:** MegaETH mainnet (**chain id 4326**). **Launched token** for TimeCurve is **Doubloon** (same address as the row below). When wiring indexer or frontend, prefer your deploy **registry JSON** as the source of truth; this table is the public quick reference.
+**Network:** MegaETH mainnet (**chain id 4326**). The table below is the **legacy v1** deployment snapshot until Arena v2 mainnet redeploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). For new work, use your **registry JSON** from **`DeployDev`** / production deploy — **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**.
 
 | Contract | Address |
 |----------|---------|

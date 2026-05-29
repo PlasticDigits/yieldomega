@@ -25,7 +25,7 @@ description: Author local TypeScript or Python scripts against deployed TimeCurv
 
 Poll or call **before** each write (or on a tight loop for time-sensitive flows):
 
-- **Sale phase / timer / `ended`** — match your intent to the **onchain** deadline, not indexer/UI alone ([`docs/product/primitives.md`](../../docs/product/primitives.md), [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md#chain-time-and-sale-phase-issue-48)).
+- **Arena timers / `paused`** — match your intent to **onchain** `TimeArena` podium deadlines, not UI alone ([`docs/product/arena-v2.md`](../../docs/product/arena-v2.md), [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md)).
 - **`currentCharmBoundsWad()`** (or the deployment’s documented ABI) — size CHARM inside **[min, max]** inclusive; mind submit-time drift near band edges ([issue #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82), [`docs/testing/manual-qa-checklists.md`](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-82)).
 - **Per-wallet buy cooldown** — `buyCooldownSec`, `nextBuyAllowedAt(account)` when applicable.
 - **Token balances and allowances** for accepted asset, wrappers, and **Kumbaya** router paths if used ([`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md)).

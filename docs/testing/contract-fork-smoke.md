@@ -1,6 +1,6 @@
 # Contract fork smoke (optional MegaETH / public RPC)
 
-**Maintainer policy (issue #6):** Live RPC fork checks are **opt-in** only. Default **push/PR** CI runs `forge test` **without** any fork URL, so [`contracts/test/TimeCurveFork.t.sol`](../../contracts/test/TimeCurveFork.t.sol) **no-ops** (passes immediately). That keeps the default branch **deterministic** and avoids **rate limits**, **RPC outages**, and **nondeterministic** failures.
+**Maintainer policy (issue #6):** Live RPC fork checks are **opt-in** only. Default **push/PR** CI runs `forge test` **without** any fork URL. Legacy [`TimeCurveFork.t.sol`](../../contracts/test/TimeCurveFork.t.sol) (if present) **no-ops** when `FORK_URL` is unset. Prefer Arena-focused fork tests when added. This keeps the default branch **deterministic** and avoids **rate limits**, **RPC outages**, and **nondeterministic** failures.
 
 ## What the test does
 

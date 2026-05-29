@@ -4,7 +4,8 @@ import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
-  await expect(page.getByTestId("time-arena-page-mounted")).toBeAttached();
+  await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({ timeout: 120_000 });
+  await expect(page.locator(".timecurve-simple-page")).toBeVisible({ timeout: 120_000 });
 }
 
 export async function connectArenaWallet(page: Page): Promise<void> {

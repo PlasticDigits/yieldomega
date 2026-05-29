@@ -59,7 +59,13 @@ export function normalizeIndexerBaseUrl(u: string | undefined | null): string | 
 const DEVNET_INDEXER_URL = "http://127.0.0.1:3100";
 
 export function indexerBaseUrl(): string | undefined {
-  const explicit = normalizeIndexerBaseUrl(import.meta.env.VITE_INDEXER_URL);
+  const rawIndexer = import.meta.env.VITE_INDEXER_URL;
+  // `VITE_INDEXER_URL=` (empty) disables indexer on devnet — used by Anvil E2E.
+  if (rawIndexer !== undefined && String(rawIndexer).trim() === "") {
+    return undefined;
+  }
+
+  const explicit = normalizeIndexerBaseUrl(rawIndexer);
   if (explicit) return explicit;
 
   const { id } = resolveChainRpcConfig(

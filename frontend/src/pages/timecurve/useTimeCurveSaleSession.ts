@@ -115,6 +115,18 @@ function clampBigint(x: bigint, lo: bigint, hi: bigint): bigint {
   return x;
 }
 
+function hexAddressFromRead(v: unknown): HexAddress | undefined {
+  if (typeof v !== "string" || !v.startsWith("0x") || v.length !== 42) {
+    return undefined;
+  }
+  return v as HexAddress;
+}
+
+function isNonZeroHexAddress(v: unknown): boolean {
+  const a = hexAddressFromRead(v);
+  return Boolean(a && a.toLowerCase() !== "0x0000000000000000000000000000000000000000");
+}
+
 /** Display `bps / 100` as a compact percent magnitude (500 → `5`, 1500 → `15`). */
 function bpsToDisplayPercentMag(bps: number): string {
   if (!Number.isFinite(bps) || bps < 0) return "0";
@@ -606,10 +618,8 @@ export function useTimeCurveSaleSession(
       return;
     }
     const L = referralMetaLatchRef.current;
-    const zeroRegistry = "0x0000000000000000000000000000000000000000" as const;
     if (referralRegistryR?.status === "success") {
-      L.referralRegistryOn =
-        (referralRegistryR.result as `0x${string}`).toLowerCase() !== zeroRegistry;
+      L.referralRegistryOn = isNonZeroHexAddress(referralRegistryR.result);
     }
     if (referralEachBpsR?.status === "success") {
       const v = Number(referralEachBpsR.result as number);
@@ -751,23 +761,23 @@ export function useTimeCurveSaleSession(
 
   const referralRegistryOn =
     referralRegistryR?.status === "success"
-      ? (referralRegistryR.result as `0x${string}`).toLowerCase() !== zeroAddr
+      ? isNonZeroHexAddress(referralRegistryR.result)
       : (referralMetaLatchRef.current.referralRegistryOn ?? false);
 
   const referralRegistryAddr =
     referralRegistryR?.status === "success"
-      ? (referralRegistryR.result as `0x${string}`)
+      ? hexAddressFromRead(referralRegistryR.result)
       : undefined;
 
   const doubPresaleVestingAddr =
     doubPresaleVestingR?.status === "success"
-      ? (doubPresaleVestingR.result as HexAddress)
+      ? hexAddressFromRead(doubPresaleVestingR.result)
       : undefined;
-  const doubPresaleBeneficiarySource: HexAddress | undefined =
-    doubPresaleVestingAddr &&
-    doubPresaleVestingAddr.toLowerCase() !== "0x0000000000000000000000000000000000000000"
-      ? doubPresaleVestingAddr
-      : undefined;
+  const doubPresaleBeneficiarySource: HexAddress | undefined = isNonZeroHexAddress(
+    doubPresaleVestingAddr,
+  )
+    ? doubPresaleVestingAddr
+    : undefined;
 
   useEffect(() => {
     presaleBeneficiaryLatchRef.current = false;
