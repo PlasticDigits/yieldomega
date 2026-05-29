@@ -55,11 +55,17 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). **DOUB** direct `buy`; **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
+<a id="arena-podium-pool-topup-gitlab-261"></a>
+
+### Manual podium pool top-up (GitLab [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
+
+Onchain: **`TimeArena.topUpPodiumPools`** · routing: **`ArenaBuyRouting.splitPrizeTopUpAmount`** · **`INV-TIME-ARENA-PODIUM-TOPUP`**. Product: [arena-v2 § manual top-up](../product/arena-v2.md#manual-podium-pool-top-up-gitlab-261) · onchain: [fee-routing § top-up](../onchain/fee-routing-and-governance.md#manual-podium-pool-top-up-gitlab-261). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*`.
+
 <a id="arena-podium-pool-donations-gitlab-262"></a>
 
 ### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
-Onchain entry: **`TimeArena.topUpPodiumPools`** ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)). Indexer HTTP: **`GET /v1/arena/podium-pool-donations`**. Frontend: protocol AUDIT card — [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262). Play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
+Indexer HTTP: **`GET /v1/arena/podium-pool-donations`** (ingests **`PodiumPoolsToppedUp`** from [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)). Frontend: protocol AUDIT card — [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262). Play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
 
 <a id="arena-vault-funding-gitlab-267"></a>
 

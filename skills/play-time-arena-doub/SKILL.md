@@ -19,7 +19,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 ## Donate to pools (optional sponsorship)
 
 - `topUpPodiumPools(amountDoubWad)` — permissionless DOUB **`transferFrom`**; **100%** to the eight prize vaults using the same **10% : 7.5%** active:seed ratio per category as the buy prize slice, **no** admin take ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
-- Does **not** mint CRED/XP, extend timers, or count toward buy stats. AUDIT UI + indexer history: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) · [arena-views § donate-pools](../../docs/frontend/arena-views.md#protocol-donate-pools-gitlab-262).
+- Does **not** mint CRED/XP, extend timers, or count toward buy stats. Invariants: [**§261**](../../docs/testing/invariants-and-business-logic.md#arena-podium-pool-topup-gitlab-261). AUDIT UI + indexer history: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) · [arena-views § donate-pools](../../docs/frontend/arena-views.md#protocol-donate-pools-gitlab-262).
 
 ## Timer
 
