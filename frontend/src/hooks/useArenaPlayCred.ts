@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useAccount, useReadContracts } from "wagmi";
 import { erc20Abi, timeArenaReadAbi } from "@/lib/abis";
 import type { HexAddress } from "@/lib/addresses";
-import { credBurnForCharmWad, type ArenaCredBurnParams } from "@/lib/arenaCredBurn";
+import { credBurnForCharmWad } from "@/lib/arenaCredBurn";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as HexAddress;
 
@@ -22,7 +22,11 @@ export function useArenaPlayCred({ arenaAddress, charmWad, enabled = true }: Use
     contracts: on
       ? ([
           { address: arenaAddress!, abi: timeArenaReadAbi, functionName: "playCred" as const },
-          { address: arenaAddress!, abi: timeArenaReadAbi, functionName: "CRED_BUY_BURN" as const },
+          {
+            address: arenaAddress!,
+            abi: timeArenaReadAbi,
+            functionName: "CRED_PER_CHARM_WAD" as const,
+          },
         ] as const)
       : [],
     query: { enabled: on },
@@ -36,13 +40,11 @@ export function useArenaPlayCred({ arenaAddress, charmWad, enabled = true }: Use
     return addr;
   }, [data]);
 
-  const burnParams = useMemo((): ArenaCredBurnParams | undefined => {
-    const burnRow = data?.[1];
-    if (burnRow?.status !== "success") return undefined;
-    return {
-      credBuyBurn: burnRow.result as bigint,
-      credPerCharmWad: 0n,
-    };
+  const credPerCharmWad = useMemo((): bigint | undefined => {
+    const row = data?.[1];
+    if (row?.status !== "success") return undefined;
+    const rate = row.result as bigint;
+    return rate > 0n ? rate : undefined;
   }, [data]);
 
   const { data: balanceData, refetch: refetchBalance } = useReadContracts({
@@ -67,11 +69,11 @@ export function useArenaPlayCred({ arenaAddress, charmWad, enabled = true }: Use
   }, [balanceData]);
 
   const requiredCredBurnWei = useMemo((): bigint | undefined => {
-    if (burnParams === undefined || charmWad === undefined || charmWad <= 0n) {
+    if (credPerCharmWad === undefined || charmWad === undefined || charmWad <= 0n) {
       return undefined;
     }
-    return credBurnForCharmWad(charmWad, burnParams);
-  }, [burnParams, charmWad]);
+    return credBurnForCharmWad(charmWad, credPerCharmWad);
+  }, [credPerCharmWad, charmWad]);
 
   const refetchCred = () => {
     void refetch();
@@ -81,7 +83,7 @@ export function useArenaPlayCred({ arenaAddress, charmWad, enabled = true }: Use
   return {
     playCredAddress,
     playCredConfigured: playCredAddress !== undefined,
-    burnParams,
+    credPerCharmWad,
     credBalanceWei,
     requiredCredBurnWei,
     refetchCred,

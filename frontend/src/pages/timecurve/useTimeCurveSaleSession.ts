@@ -970,7 +970,7 @@ export function useTimeCurveSaleSession(
 
   const {
     playCredAddress: playCredFromArena,
-    burnParams: credBurnParams,
+    credPerCharmWad,
     credBalanceWei,
     requiredCredBurnWei,
     refetchCred,
@@ -1653,11 +1653,11 @@ export function useTimeCurveSaleSession(
             : parseUnits("1", 18);
 
         if (payWith === "cred") {
-          if (!credBurnParams || !playCredAddress) {
+          if (credPerCharmWad === undefined || !playCredAddress) {
             setBuyError("Play CRED burn parameters are not loaded yet.");
             return;
           }
-          const burnWei = credBurnForCharmWad(cw, credBurnParams);
+          const burnWei = credBurnForCharmWad(cw, credPerCharmWad);
           const freshBal = await readContract(wagmiConfig, {
             address: playCredAddress,
             abi: erc20Abi,
@@ -2059,7 +2059,7 @@ export function useTimeCurveSaleSession(
     useReferral,
     playCredAddress,
     playCredConfigured,
-    credBurnParams,
+    credPerCharmWad,
     credCheckoutBoundsGate,
   ]);
 

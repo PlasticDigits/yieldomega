@@ -8,20 +8,20 @@ import {
 } from "@/lib/arenaCredBurn";
 
 describe("credBurnForCharmWad", () => {
-  it("uses flat CRED_BUY_BURN when per-CHARM rate is zero", () => {
-    expect(
-      credBurnForCharmWad(10n ** 18n, { credBuyBurn: 70n * ARENA_CRED_WAD, credPerCharmWad: 0n }),
-    ).toBe(70n * ARENA_CRED_WAD);
+  const rate = 100n * ARENA_CRED_WAD;
+
+  it("scales burn with CHARM (TimeArena.CRED_PER_CHARM_WAD)", () => {
+    expect(credBurnForCharmWad(10n ** 18n, rate)).toBe(100n * ARENA_CRED_WAD);
   });
 
-  it("scales with CHARM when CRED_PER_CHARM_WAD is set (#268)", () => {
+  it("scales linearly for multi-CHARM buys", () => {
     const charm = 2n * ARENA_CRED_WAD;
-    expect(
-      credBurnForCharmWad(charm, {
-        credBuyBurn: 70n * ARENA_CRED_WAD,
-        credPerCharmWad: 100n * ARENA_CRED_WAD,
-      }),
-    ).toBe(200n * ARENA_CRED_WAD);
+    expect(credBurnForCharmWad(charm, rate)).toBe(200n * ARENA_CRED_WAD);
+  });
+
+  it("returns zero for zero CHARM or zero rate", () => {
+    expect(credBurnForCharmWad(0n, rate)).toBe(0n);
+    expect(credBurnForCharmWad(10n ** 18n, 0n)).toBe(0n);
   });
 });
 

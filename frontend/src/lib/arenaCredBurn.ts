@@ -3,23 +3,13 @@
 /** 1e18 — matches `TimeArena` internal `WAD`. */
 export const ARENA_CRED_WAD = 10n ** 18n;
 
-export type ArenaCredBurnParams = {
-  /** Onchain `TimeArena.CRED_BUY_BURN` (flat burn when per-CHARM rate is zero). */
-  credBuyBurn: bigint;
-  /** Onchain `TimeArena.CRED_PER_CHARM_WAD` when deployed (#268); `0n` = use flat burn. */
-  credPerCharmWad: bigint;
-};
-
 /**
- * CRED burn for a CHARM-sized buy — mirrors `TimeArena._buyCred` (GitLab #268 / #269).
- * Prefer onchain constants over hardcoded UI math.
+ * CRED burn for a CHARM-sized buy — mirrors `TimeArena._buyCred` (GitLab #268).
+ * `credPerCharmWad` is onchain `TimeArena.CRED_PER_CHARM_WAD` (100e18 per 1e18 CHARM).
  */
-export function credBurnForCharmWad(charmWad: bigint, params: ArenaCredBurnParams): bigint {
-  if (charmWad <= 0n) return 0n;
-  if (params.credPerCharmWad > 0n) {
-    return (charmWad * params.credPerCharmWad) / ARENA_CRED_WAD;
-  }
-  return params.credBuyBurn;
+export function credBurnForCharmWad(charmWad: bigint, credPerCharmWad: bigint): bigint {
+  if (charmWad <= 0n || credPerCharmWad <= 0n) return 0n;
+  return (charmWad * credPerCharmWad) / ARENA_CRED_WAD;
 }
 
 export type CredCheckoutBoundsGate =
