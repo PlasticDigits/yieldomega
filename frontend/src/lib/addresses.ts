@@ -25,6 +25,8 @@ export const addresses = {
   podiumVaults: parseAddr("VITE_PODIUM_VAULTS_ADDRESS"),
   adminSellVault: parseAddr("VITE_ADMIN_SELL_VAULT_ADDRESS"),
   referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
+  /** Optional override when `TimeArena.playCred()` read is unavailable (#269). */
+  playCred: parseAddr("VITE_PLAY_CRED_ADDRESS"),
 };
 
 /** Primary Time Arena proxy for reads and writes. */

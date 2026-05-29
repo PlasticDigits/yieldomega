@@ -6,8 +6,8 @@
 import type { HexAddress } from "@/lib/addresses";
 import { parseHexAddress } from "@/lib/addresses";
 
-/** User-selected spend asset for TimeCurve entry (issue #41). */
-export type PayWithAsset = "cl8y" | "eth" | "usdm";
+/** User-selected spend asset for TimeCurve entry (issue #41). Arena v2 adds `cred` (#269). */
+export type PayWithAsset = "cl8y" | "eth" | "usdm" | "cred";
 
 export type KumbayaResolveErrorReason =
   | "unsupported_chain"
@@ -218,6 +218,9 @@ export function routingForPayAsset(
     } catch {
       return { ok: false, reason: "no_route", message: "Could not build USDM routing path." };
     }
+  }
+  if (payWith === "cred") {
+    return { ok: false, reason: "no_route", message: "CRED pays via TimeArena.buyWithCred." };
   }
   return { ok: false, reason: "no_route", message: "Unsupported pay asset." };
 }

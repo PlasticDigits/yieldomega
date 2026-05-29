@@ -11,6 +11,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault |
 | `VITE_INDEXER_URL` | Optional `GET /v1/arena/*` reads (no `/v1/timecurve/*` — [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | Optional — must match `TimeArena.timeArenaBuyRouter()` when set ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)); legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` |
+| `VITE_PLAY_CRED_ADDRESS` | Optional PlayCred override when `TimeArena.playCred()` read fails ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | `VITE_CHAIN_ID` / `VITE_RPC_URL` | Wagmi target chain |
 
 ## Indexer reads
@@ -35,7 +36,7 @@ Invariants: **`INV-FRONTEND-262-DONATE-POOLS`** · **`INV-INDEXER-262-DONATE-POO
 
 ## Pay modes
 
-Toggle buttons: **`data-testid="arena-paywith-cl8y"`** (DOUB wallet balance), **`arena-paywith-eth`**, **`arena-paywith-usdm`**. ETH/USDM single-tx **`buyViaKumbaya`** when **`timeArenaBuyRouter`** is non-zero ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Operator pause: **`TimeArena.paused`** only (no `buyFeeRoutingEnabled`). Advanced Arena: **`/timecurve/arena`** shares the same TimeArena session reads as **`/arena`**.
+Toggle buttons: **`data-testid="arena-paywith-cl8y"`** (DOUB), **`arena-paywith-cred`** (Play CRED burn — [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)), **`arena-paywith-eth`**, **`arena-paywith-usdm`**. CRED: read **`playCred()`** + **`CRED_BUY_BURN`** / **`CRED_PER_CHARM_WAD`** ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)), wallet **`balanceOf`**, submit **`buyWithCred(charmWad)`** — burn helper [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts). ETH/USDM single-tx **`buyViaKumbaya`** when **`timeArenaBuyRouter`** is non-zero ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Operator pause: **`TimeArena.paused`** only (no `buyFeeRoutingEnabled`).
 
 ## Wallet / chain
 

@@ -23,6 +23,6 @@ export function fallbackPayTokenWeiForCl8yPayWith(
   cl8yWei: bigint,
   payWith: PayWithAsset,
 ): bigint | undefined {
-  if (payWith === "cl8y") return undefined;
+  if (payWith === "cl8y" || payWith === "cred") return undefined;
   return fallbackPayTokenWeiForCl8y(cl8yWei, payWith);
 }

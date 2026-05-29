@@ -15,7 +15,7 @@ export function TimeArenaPage() {
       <span className="visually-hidden" data-testid="time-arena-page-mounted" />
       <ArenaTimerChips />
       <ArenaCharmCredCard />
-      <TimeCurveSimplePage />
+      <TimeCurveSimplePage mountAsArenaV2 />
       <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
       {/* Profile modal opened via future AddressInline `onOpenProfile` wiring (#258). */}
     </>
