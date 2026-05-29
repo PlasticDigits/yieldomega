@@ -55,6 +55,17 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). **DOUB** direct `buy`; **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
+<a id="dev-kumbaya-anvil-deploy-gitlab-270"></a>
+
+### Dev Kumbaya deploy + ETH E2E (GitLab #270)
+
+| ID | Rule | Enforcement |
+|----|------|-------------|
+| **`INV-DEV-KUMBAYA-270-DEPLOY`** | `DeployKumbayaAnvilFixtures` calls `DevOnlyChainGuard`; seeds DOUB↔WETH and USDM↔WETH↔DOUB pools; `setTimeArenaBuyRouter` matches logged router | `DeployKumbayaAnvilFixtures.s.sol`, `scripts/lib/anvil_deploy_dev.sh` cast check |
+| **`INV-DEV-KUMBAYA-270-E2E`** | Default `bash scripts/e2e-anvil.sh` sets `YIELDOMEGA_DEPLOY_KUMBAYA=1` and exports `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | `scripts/e2e-anvil.sh`, `e2e/anvil-arena-wallet-writes.spec.ts` ETH case |
+| **`INV-TIME-ARENA-BUY-ROUTER`** | `buyViaKumbaya` ETH/USDM happy path; stable ingress parity; charm bounds; paused arena; router-only `buyFor` | `TimeArenaBuyRouter.t.sol` |
+| **`INV-TIME-ARENA-BUYFOR-PULL`** | `buyFor` pulls DOUB from `timeArenaBuyRouter`, not the participant wallet | `TimeArena.sol` `_buyDoub`; `TimeArenaBuyRouter.t.sol` |
+
 <a id="arena-podium-pool-donations-gitlab-262"></a>
 
 ### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))

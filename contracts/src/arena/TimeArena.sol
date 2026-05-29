@@ -448,7 +448,9 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _validateCharm(charmWad);
 
         uint256 doubOwed = Math.mulDiv(charmWad, charmPriceWad, WAD);
-        uint256 received = _pullDoubExact(buyer, doubOwed);
+        // `buyFor` is router-only: DOUB was swapped onto `timeArenaBuyRouter`, not the participant wallet (#251 / #270).
+        address doubPayer = msg.sender == timeArenaBuyRouter ? msg.sender : buyer;
+        uint256 received = _pullDoubExact(doubPayer, doubOwed);
 
         _accrueCharmAndCred(buyer, charmWad, codeHash);
         _routeDoubPrizeSplit(received);

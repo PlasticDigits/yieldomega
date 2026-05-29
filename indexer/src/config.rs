@@ -97,6 +97,9 @@ pub struct RegistryContracts {
     /// Legacy JSON field (ignored for Arena v2 ingestion).
     #[serde(rename = "TimeCurveBuyRouter", default)]
     pub timecurve_buy_router: String,
+    /// Optional local Anvil buy router ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); not yet used for log filters.
+    #[serde(rename = "TimeArenaBuyRouter", default)]
+    pub time_arena_buy_router: String,
     #[serde(rename = "PodiumVaults", default)]
     pub podium_vaults: String,
     #[serde(rename = "AdminSellVault", default)]
