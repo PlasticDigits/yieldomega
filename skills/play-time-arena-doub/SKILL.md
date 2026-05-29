@@ -12,6 +12,11 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - `buy(charmWad)` or `buy(charmWad, codeHash)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18` (default **1000 DOUB** per 1 CHARM).
 - Each buy routes DOUB: **40%** active podium pools, **30%** seed pools, **30%** `AdminSellVault`.
 
+## Donate to pools (optional sponsorship)
+
+- `topUpPodiumPools(amountDoubWad)` — permissionless DOUB **`transferFrom`**; **100%** to the eight prize vaults using the same **10% : 7.5%** active:seed ratio per category as the buy prize slice, **no** admin take ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
+- Does **not** mint CRED/XP, extend timers, or count toward buy stats. AUDIT UI + indexer history: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) · [arena-views § donate-pools](../../docs/frontend/arena-views.md#protocol-donate-pools-gitlab-262).
+
 ## Timer
 
 - Last Buy deadline extends **+120s** per buy; **13m → 15m** hard-reset band (see `TimeMath`).

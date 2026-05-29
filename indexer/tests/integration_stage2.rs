@@ -275,6 +275,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             code_hash: b256_lo(99_999),
             normalized_code: "ARENAQA".to_string(),
         }),
+        next(DecodedEvent::ArenaPodiumPoolTopUp {
+            donor: alice,
+            amount_doub_wad: U256::from(700_000_000_000_000_000_000u128),
+        }),
     ];
 
     let mut conn = pool.acquire().await.expect("acquire");
@@ -296,6 +300,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_referral_applied", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_referral_code_registered", 100).await,
+        1
+    );
+    assert_eq!(
+        count_where(&pool, "idx_arena_podium_pool_top_up", 100).await,
         1
     );
 
@@ -327,4 +335,59 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(ptr.block_number, 99);
 
     api_http_smoke(&pool).await;
+    api_podium_pool_donations_smoke(&pool).await;
+}
+
+async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/podium-pool-donations")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(
+        j.get("total_donated_doub_wad").and_then(|v| v.as_str()),
+        Some("700000000000000000000")
+    );
+    assert_eq!(
+        j.get("unique_donors_count").and_then(|v| v.as_str()),
+        Some("1")
+    );
+    let recent = j.get("recent").and_then(|v| v.as_array()).expect("recent");
+    assert_eq!(recent.len(), 1);
+
+    let alice = format!("{:#x}", addr_byte(0xa1));
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/podium-pool-donations?donor={}",
+                    alice
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let summary = j.get("donor_summary").expect("donor_summary");
+    assert_eq!(
+        summary.get("donation_count").and_then(|v| v.as_str()),
+        Some("1")
+    );
 }

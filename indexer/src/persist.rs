@@ -263,6 +263,26 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaPodiumPoolTopUp {
+            donor,
+            amount_doub_wad,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_podium_pool_top_up (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    donor_address, amount_doub_wad
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*donor))
+            .bind(u256_dec(*amount_doub_wad))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())

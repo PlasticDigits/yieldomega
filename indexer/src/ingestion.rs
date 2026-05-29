@@ -29,7 +29,7 @@ use crate::rpc_poll_health::RpcPollHealth;
 /// Best-effort `eth_blockNumber` across fallback RPCs — only for stalled-ingestion diagnostics.
 async fn rpc_tip_block_number_for_logs(providers: &[ReqwestProvider]) -> Option<u64> {
     match rpc_first_ok(providers, |p| p.get_block_number()).await {
-        Ok(n) => n.try_into().ok(),
+        Ok(n) => Some(n),
         Err(e) => {
             tracing::debug!(
                 ?e,
@@ -187,7 +187,8 @@ pub async fn run(
                     rpc_health.report_success();
                     let sleep_for = rpc_health.backoff_sleep();
                     let now = Instant::now();
-                    let due = last_null_block_diag_at.map_or(true, |t| now.duration_since(t) >= Duration::from_secs(15));
+                    let due = last_null_block_diag_at
+                        .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(15));
                     if due {
                         let rpc_tip = rpc_tip_block_number_for_logs(&providers).await;
                         let tip_vs_next = rpc_tip.map(|tip| tip as i128 - next as i128);

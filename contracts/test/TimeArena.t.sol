@@ -154,4 +154,22 @@ contract TimeArenaTest is Test {
         arena.warbowSteal(bob, false);
         assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
     }
+
+    function test_topUpPodiumPools_700_matches_buy_prize_vaults() public {
+        uint256 adminBefore = doub.balanceOf(address(adminVault));
+        vm.prank(alice);
+        arena.topUpPodiumPools(700e18);
+        assertEq(doub.balanceOf(address(vaults)), 700e18);
+        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
+        assertEq(doub.balanceOf(address(arena)), 0);
+        assertEq(arena.totalDoubRaised(), 0);
+    }
+
+    function test_topUpPodiumPools_reverts_without_allowance() public {
+        vm.prank(bob);
+        doub.approve(address(arena), 0);
+        vm.prank(bob);
+        vm.expectRevert();
+        arena.topUpPodiumPools(1e18);
+    }
 }

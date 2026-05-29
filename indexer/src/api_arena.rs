@@ -22,6 +22,105 @@ pub fn arena_routes() -> axum::Router<AppState> {
             "/v1/arena/wallet/{address}/stats",
             axum::routing::get(arena_wallet_stats),
         )
+        .route(
+            "/v1/arena/podium-pool-donations",
+            axum::routing::get(arena_podium_pool_donations),
+        )
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PodiumPoolDonationsQuery {
+    #[serde(default = "default_donate_recent_limit")]
+    limit: i64,
+    donor: Option<String>,
+}
+
+fn default_donate_recent_limit() -> i64 {
+    10
+}
+
+async fn arena_podium_pool_donations(
+    State(state): State<AppState>,
+    Query(p): Query<PodiumPoolDonationsQuery>,
+) -> Response {
+    let limit = p.limit.clamp(1, 100);
+
+    let totals = match sqlx::query(
+        r#"SELECT COALESCE(SUM(amount_doub_wad), 0)::text AS total,
+                  COUNT(DISTINCT donor_address)::bigint AS unique_donors
+           FROM idx_arena_podium_pool_top_up"#,
+    )
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/podium-pool-donations", e),
+    };
+
+    let recent_rows = match sqlx::query(
+        r#"SELECT donor_address, amount_doub_wad::text AS amount,
+                  EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec,
+                  tx_hash
+           FROM idx_arena_podium_pool_top_up
+           ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
+           LIMIT $1"#,
+    )
+    .bind(limit)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/podium-pool-donations", e),
+    };
+
+    let recent: Vec<_> = recent_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "donor": r.get::<String, _>("donor_address"),
+                "amount_doub_wad": r.get::<String, _>("amount"),
+                "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
+                "tx_hash": r.get::<String, _>("tx_hash"),
+            })
+        })
+        .collect();
+
+    let mut body = json!({
+        "total_donated_doub_wad": totals.get::<String, _>("total"),
+        "unique_donors_count": totals.get::<i64, _>("unique_donors").to_string(),
+        "recent": recent,
+    });
+
+    if let Some(donor) = p.donor.as_deref() {
+        let w = donor.trim().to_ascii_lowercase();
+        if !w.starts_with("0x") || w.len() != 42 {
+            return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_address" }))).into_response();
+        }
+        let donor_row = match sqlx::query(
+            r#"SELECT COALESCE(SUM(amount_doub_wad), 0)::text AS total,
+                      COUNT(*)::bigint AS donation_count
+               FROM idx_arena_podium_pool_top_up
+               WHERE donor_address = $1"#,
+        )
+        .bind(&w)
+        .fetch_one(&state.pool)
+        .await
+        {
+            Ok(r) => r,
+            Err(e) => return internal_db_error_response("GET /v1/arena/podium-pool-donations", e),
+        };
+        body["donor_summary"] = json!({
+            "total_donated_doub_wad": donor_row.get::<String, _>("total"),
+            "donation_count": donor_row.get::<i64, _>("donation_count").to_string(),
+        });
+    }
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(body),
+    )
+        .into_response()
 }
 
 async fn arena_timers(State(state): State<AppState>) -> Response {

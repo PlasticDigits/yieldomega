@@ -17,6 +17,20 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 - `GET /v1/arena/timers` — four podium deadlines + Last Buy epoch
 - `GET /v1/arena/buys` — recent buys
 - `GET /v1/arena/wallet-stats` — XP, buy count (when wired)
+- `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+
+<a id="protocol-donate-pools-gitlab-262"></a>
+
+## Protocol — donate pools (AUDIT)
+
+Route: **`/timecurve/protocol`** (AUDIT sub-nav). Component: [`TimeCurveProtocolDonatePoolsSection.tsx`](../../frontend/src/pages/timecurve/TimeCurveProtocolDonatePoolsSection.tsx) · **`data-testid="timecurve-protocol-donate-pools"`**.
+
+- Required disclosure (always visible, non-dismissible): donating boosts prizes but **does not** benefit the donor.
+- Write path: DOUB **`approve`** + **`topUpPodiumPools(amount)`** on `TimeArena` ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)), gated by **`ChainMismatchWriteBarrier`**.
+- Read path: indexer totals, per-wallet summary when connected, recent donations list (wallet profile modal [#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)).
+- Indexer unset/offline: **`EmptyDataPlaceholder`** — no fake zeros ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)).
+
+Invariants: **`INV-FRONTEND-262-DONATE-POOLS`** · **`INV-INDEXER-262-DONATE-POOLS`** in [invariants](../testing/invariants-and-business-logic.md#arena-podium-pool-donations-gitlab-262).
 
 ## Pay modes
 
