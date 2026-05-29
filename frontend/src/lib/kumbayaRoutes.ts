@@ -256,6 +256,81 @@ export function resolveTimeCurveBuyRouterForKumbayaSingleTx(
   return { kind: "ok", router: onchain! };
 }
 
+export type TimeArenaBuyRouterForSingleTxResult =
+  | { kind: "none" }
+  | { kind: "mismatch"; message: string }
+  | { kind: "ok"; router: HexAddress };
+
+/**
+ * Onchain `TimeArena.timeArenaBuyRouter` is authoritative for Arena single-tx Kumbaya entry (#251 / #264).
+ * `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (fail closed).
+ */
+export function resolveTimeArenaBuyRouterForKumbayaSingleTx(
+  onchain: HexAddress | undefined,
+  env: KumbayaEnv,
+): TimeArenaBuyRouterForSingleTxResult {
+  const fromEnv =
+    envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER") ??
+    envAddr(env, "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER");
+  if (isZeroAddr(onchain)) {
+    if (fromEnv && !isZeroAddr(fromEnv)) {
+      return {
+        kind: "mismatch",
+        message:
+          "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER is set but onchain timeArenaBuyRouter is zero — remove the env var or call setTimeArenaBuyRouter on TimeArena.",
+      };
+    }
+    return { kind: "none" };
+  }
+  if (fromEnv && !isZeroAddr(fromEnv) && fromEnv.toLowerCase() !== onchain!.toLowerCase()) {
+    return {
+      kind: "mismatch",
+      message: "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER does not match onchain timeArenaBuyRouter.",
+    };
+  }
+  return { kind: "ok", router: onchain! };
+}
+
+/**
+ * Build `exactOutput` path for Arena v2: paths end in **DOUB** (not CL8Y).
+ */
+export function routingForArenaPayAsset(
+  payWith: PayWithAsset,
+  doubAddress: HexAddress,
+  config: KumbayaChainConfigResolved,
+): RouteForPayResult {
+  if (payWith === "cl8y") {
+    return { ok: true, path: "0x" as `0x${string}`, tokenIn: doubAddress };
+  }
+  if (payWith === "eth") {
+    try {
+      const path = buildV3PathExactOutput([doubAddress, config.weth], [config.cl8yWethFee]);
+      return { ok: true, path, tokenIn: config.weth };
+    } catch {
+      return { ok: false, reason: "no_route", message: "Could not build ETH → DOUB routing path." };
+    }
+  }
+  if (payWith === "usdm") {
+    if (isZeroAddr(config.usdm)) {
+      return {
+        ok: false,
+        reason: "missing_usdm",
+        message: "USDM is not configured for this chain.",
+      };
+    }
+    try {
+      const path = buildV3PathExactOutput(
+        [doubAddress, config.weth, config.usdm],
+        [config.cl8yWethFee, config.usdmWethFee],
+      );
+      return { ok: true, path, tokenIn: config.usdm };
+    } catch {
+      return { ok: false, reason: "no_route", message: "Could not build USDM → DOUB routing path." };
+    }
+  }
+  return { ok: false, reason: "no_route", message: "Unsupported pay asset." };
+}
+
 /** Minimum CL8Y out after slippage (BPS). */
 export function minOutFromSlippage(amountOut: bigint, slippageBps: number): bigint {
   if (slippageBps < 0 || slippageBps > 10_000) {

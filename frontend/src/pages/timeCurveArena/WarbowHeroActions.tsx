@@ -73,7 +73,8 @@ type Props = {
   revengeIndexerConfigured: boolean;
   warbowGuardBurnWad: string;
   warbowBypassBurnWad: string;
-  buyFeeRoutingEnabled: boolean | undefined;
+  buyFeeRoutingEnabled?: boolean | undefined;
+  arenaPaused?: boolean | undefined;
   isWriting: boolean;
   /** Indexer ladder rank (1-based) when this wallet appears in the live overlay list; otherwise `null`. */
   warbowRank: number | null;
@@ -115,6 +116,7 @@ export function WarbowHeroActions({
   warbowGuardBurnWad,
   warbowBypassBurnWad,
   buyFeeRoutingEnabled,
+  arenaPaused,
   isWriting,
   warbowRank,
   viewerStealsToday,
@@ -125,7 +127,7 @@ export function WarbowHeroActions({
   warbowFlagClaimBp,
   runWarBowClaimFlag,
 }: Props) {
-  const writesPaused = buyFeeRoutingEnabled === false;
+  const writesPaused = arenaPaused === true || buyFeeRoutingEnabled === false;
   const canPressWarbow = isConnected && saleActive && !writesPaused && !isWriting;
   const guardSpendCl8y = formatCompactFromRaw(BigInt(warbowGuardBurnWad), 18);
   const bypassSpendCl8y = formatCompactFromRaw(BigInt(warbowBypassBurnWad), 18);

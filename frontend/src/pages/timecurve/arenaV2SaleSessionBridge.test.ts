@@ -19,6 +19,7 @@ describe("mapArenaV2CoreRows", () => {
       { status: "success", result: 300n },
       { status: "success", result: 120n },
       { status: "success", result: 86_400n },
+      { status: "success", result: "0x" + "3".repeat(40) },
     ] as const;
 
     const rows = mapArenaV2CoreRows(raw);

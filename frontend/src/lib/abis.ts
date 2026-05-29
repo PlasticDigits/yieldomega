@@ -41,19 +41,53 @@ export const timeArenaReadAbi = parseAbi([
   "function buyCooldownSec() view returns (uint256)",
   "function timerExtensionSec() view returns (uint256)",
   "function timerCapSec() view returns (uint256)",
+  "function timeArenaBuyRouter() view returns (address)",
+  "function owner() view returns (address)",
   "function nextBuyAllowedAt(address) view returns (uint256)",
   "function epochCharmWad(uint256 epoch, address user) view returns (uint256)",
   "function pendingCred(address user, uint256 epoch) view returns (uint256)",
   "function claimCred(uint256 epoch)",
   "function buyWithCred(uint256 charmWad)",
   "function buy(uint256 charmWad)",
+  "function buy(uint256 charmWad, bytes32 codeHash)",
   "function xp(address) view returns (uint256)",
   "function xpTowardNext(address) view returns (uint256)",
   "function level(address) view returns (uint256)",
+  "function battlePoints(address) view returns (uint256)",
+  "function warbowPendingFlagOwner() view returns (address)",
+  "function warbowPendingFlagPlantAt() view returns (uint256)",
+  "function warbowGuardUntil(address) view returns (uint256)",
+  "function podium(uint8 category) view returns (address[3] winners, uint256[3] values)",
+  "function stealsReceivedOnDay(address victim, uint256 day) view returns (uint8)",
+  "function stealsCommittedByAttackerOnDay(address attacker, uint256 day) view returns (uint8)",
+  "function WARBOW_STEAL_DOUB() view returns (uint256)",
+  "function WARBOW_GUARD_DOUB() view returns (uint256)",
+  "function WARBOW_STEAL_LIMIT_BYPASS_DOUB() view returns (uint256)",
+  "function WARBOW_FLAG_SILENCE_SEC() view returns (uint256)",
+  "function WARBOW_FLAG_CLAIM_BP() view returns (uint256)",
+  "function WARBOW_MAX_STEALS_PER_DAY() view returns (uint8)",
+  "function SECONDS_PER_DAY() view returns (uint256)",
+  "function WARBOW_REVENGE_WINDOW_SEC() view returns (uint256)",
+  "function WARBOW_REVENGE_DOUB() view returns (uint256)",
 ]);
 
 export const timeArenaWriteAbi = parseAbi([
   "function topUpPodiumPools(uint256 amountDoubWad)",
+  "function claimWarBowFlag()",
+  "function warbowSteal(address victim, bool payBypassBurn)",
+  "function warbowRevenge(address stealer)",
+  "function warbowActivateGuard()",
+]);
+
+/** [`TimeArenaBuyRouter.buyViaKumbaya`](../../contracts/src/arena/TimeArenaBuyRouter.sol) — #251 / #264. */
+export const timeArenaBuyRouterAbi = parseAbi([
+  "function buyViaKumbaya(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag, uint8 payKind, uint256 swapDeadline, uint256 amountInMaximum, bytes path) payable",
+  "error TimeArenaBuyRouter__BadPhase()",
+  "error TimeArenaBuyRouter__BadPath()",
+  "error TimeArenaBuyRouter__CharmBounds()",
+  "error TimeArenaBuyRouter__StableNotConfigured()",
+  "error TimeArenaBuyRouter__StableIngressParity()",
+  "error TimeArenaBuyRouter__SwapExpired()",
 ]);
 
 export const timeCurveReadAbi = parseAbi([

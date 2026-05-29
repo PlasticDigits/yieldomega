@@ -34,10 +34,11 @@ test.describe("Anvil Arena wallet writes", () => {
     });
   });
 
-  test("ETH pay route deferred until TimeArena buy router (#251)", async ({ page }) => {
+  test("ETH pay via TimeArena buy router (single-tx buyViaKumbaya)", async ({ page }) => {
     test.skip(
-      !process.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER,
-      "Kumbaya buy router not deployed — skip ETH pay E2E until #251.",
+      !process.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER &&
+        !process.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER,
+      "TimeArena buy router not deployed — set VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER after Kumbaya fixtures.",
     );
     await gotoArena(page);
     await connectArenaWallet(page);
