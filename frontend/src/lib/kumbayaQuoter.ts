@@ -6,7 +6,7 @@
 import type { Config } from "wagmi";
 import { readContract } from "wagmi/actions";
 import type { HexAddress } from "@/lib/addresses";
-import { kumbayaQuoterV2Abi, timeCurveReadAbi } from "@/lib/abis";
+import { kumbayaQuoterV2Abi, timeArenaReadAbi, timeCurveReadAbi } from "@/lib/abis";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 import { WAD } from "@/lib/timeCurveMath";
 import { kumbayaBuyDebugLog } from "@/lib/kumbayaBuyDebug";
@@ -32,6 +32,27 @@ export async function readGrossCl8yForCharmWad(
     charmWad: charmWad.toString(),
     pricePerCharmWad: price.toString(),
     grossCl8y: gross.toString(),
+  });
+  return gross;
+}
+
+/** Gross DOUB the TimeArena buy router requests at inclusion (`charmWad × charmPriceWad / WAD`). */
+export async function readGrossDoubForCharmWad(
+  wagmiConfig: Config,
+  timeArenaAddress: HexAddress,
+  charmWad: bigint,
+): Promise<bigint> {
+  const price = (await readContract(wagmiConfig, {
+    address: timeArenaAddress,
+    abi: timeArenaReadAbi,
+    functionName: "charmPriceWad",
+  })) as bigint;
+  const gross = (charmWad * price) / WAD;
+  kumbayaBuyDebugLog("readGrossDoubForCharmWad", {
+    timeArena: timeArenaAddress,
+    charmWad: charmWad.toString(),
+    charmPriceWad: price.toString(),
+    grossDoub: gross.toString(),
   });
   return gross;
 }
@@ -150,4 +171,65 @@ export async function quoteKumbayaExactOutputAmountIn(
     quotedAmountIn: amountIn.toString(),
   });
   return amountIn;
+}
+
+async function quoteArenaEthPathAmountIn(
+  wagmiConfig: Config,
+  quoter: HexAddress,
+  kConfig: KumbayaChainConfigResolved,
+  doubAddress: HexAddress,
+  doubAmountOut: bigint,
+): Promise<bigint> {
+  return quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.weth,
+    doubAddress,
+    doubAmountOut,
+    kConfig.cl8yWethFee,
+  );
+}
+
+async function quoteArenaUsdmPathAmountIn(
+  wagmiConfig: Config,
+  quoter: HexAddress,
+  kConfig: KumbayaChainConfigResolved,
+  doubAddress: HexAddress,
+  doubAmountOut: bigint,
+): Promise<bigint> {
+  const wethIn = await quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.weth,
+    doubAddress,
+    doubAmountOut,
+    kConfig.cl8yWethFee,
+  );
+  return quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.usdm,
+    kConfig.weth,
+    wethIn,
+    kConfig.usdmWethFee,
+  );
+}
+
+/** Pay-token input for Arena `buyViaKumbaya`; `amountOut` is gross DOUB. */
+export async function quoteKumbayaArenaExactOutputAmountIn(
+  wagmiConfig: Config,
+  params: {
+    quoter: HexAddress;
+    kConfig: KumbayaChainConfigResolved;
+    payWith: Exclude<PayWithAsset, "cl8y">;
+    doubAddress: HexAddress;
+    amountOut: bigint;
+  },
+): Promise<bigint> {
+  const { quoter, kConfig, payWith, doubAddress, amountOut } = params;
+  const outForQuote = grossCl8yWithQuoteHeadroom(amountOut);
+  if (payWith === "usdm") {
+    return quoteArenaUsdmPathAmountIn(wagmiConfig, quoter, kConfig, doubAddress, outForQuote);
+  }
+  return quoteArenaEthPathAmountIn(wagmiConfig, quoter, kConfig, doubAddress, outForQuote);
 }

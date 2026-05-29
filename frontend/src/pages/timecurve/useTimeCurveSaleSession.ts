@@ -23,25 +23,33 @@ import {
   linearCharmPriceReadAbi,
   timeCurveBuyEventAbi,
   timeArenaReadAbi,
+  timeArenaWriteAbi,
   timeCurveReadAbi,
   timeCurveWriteAbi,
   weth9Abi,
 } from "@/lib/abis";
 import { ensureCl8yTimeCurveAllowance } from "@/lib/ensureCl8yTimeCurveAllowance";
+import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
 import {
   cl8ySpendWeiFromPayTokenBudget,
   cl8ySpendWeiFromPayTokenFallback,
 } from "@/lib/kumbayaCl8ySpendFromPayToken";
-import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
+import {
+  quoteKumbayaExactOutputAmountIn,
+  readGrossCl8yForCharmWad,
+} from "@/lib/kumbayaQuoter";
 import { submitKumbayaSingleTxBuy, type WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
+import { submitArenaKumbayaSingleTxBuy } from "@/lib/timeArenaKumbayaSingleTx";
 import { hashReferralCode } from "@/lib/referralCode";
 import { assertReferralReadyForBuy } from "@/lib/referralBuyPreflight";
 import {
   type KumbayaEnv,
   type PayWithAsset,
   resolveKumbayaRouting,
+  resolveTimeArenaBuyRouterForKumbayaSingleTx,
   resolveTimeCurveBuyRouterForKumbayaSingleTx,
+  routingForArenaPayAsset,
   routingForPayAsset,
 } from "@/lib/kumbayaRoutes";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
@@ -316,8 +324,11 @@ export type UseTimeCurveSaleSession = {
   submitBuy: () => Promise<void>;
   /** Submits `redeemCharms()` — only meaningful after `saleEnded`. */
   submitRedeem: () => Promise<void>;
-  /** Issue #55: `buy` + WarBow CL8Y spend → FeeRouter; same flag (default true in `initialize`). */
+  /** Legacy TimeCurve only — Arena v2 uses {@link arenaPaused} instead (#264). */
   buyFeeRoutingEnabled: boolean | undefined;
+  /** TimeArena operator pause — undefined when not on Arena v2. */
+  arenaPaused: boolean | undefined;
+  onchainTimeArenaBuyRouter: HexAddress | undefined;
   /** Issue #55: post-end `redeemCharms` (default false until owner signoff). */
   charmRedemptionEnabled: boolean | undefined;
   /** Issue #55: post-end `distributePrizes` with non-zero pool (default false). */
@@ -1111,19 +1122,27 @@ export function useTimeCurveSaleSession(
     return undefined;
   }, [timeCurveBuyRouterR]);
 
-  const singleTxBuyRouterRes = useMemo(
-    () =>
-      resolveTimeCurveBuyRouterForKumbayaSingleTx(
-        onchainTimeCurveBuyRouter,
+  const onchainTimeArenaBuyRouter = isArenaV2 ? onchainTimeCurveBuyRouter : undefined;
+
+  const singleTxBuyRouterRes = useMemo(() => {
+    if (isArenaV2) {
+      return resolveTimeArenaBuyRouterForKumbayaSingleTx(
+        onchainTimeArenaBuyRouter,
         import.meta.env as unknown as KumbayaEnv,
-      ),
-    [onchainTimeCurveBuyRouter],
-  );
+      );
+    }
+    return resolveTimeCurveBuyRouterForKumbayaSingleTx(
+      onchainTimeCurveBuyRouter,
+      import.meta.env as unknown as KumbayaEnv,
+    );
+  }, [isArenaV2, onchainTimeArenaBuyRouter, onchainTimeCurveBuyRouter]);
 
   const swapRoute = useMemo(() => {
     if (payWith === "cl8y" || !acceptedAsset || !kumbayaResolved.ok) return null;
-    return routingForPayAsset(payWith, acceptedAsset, kumbayaResolved.config);
-  }, [payWith, acceptedAsset, kumbayaResolved]);
+    return isArenaV2
+      ? routingForArenaPayAsset(payWith, acceptedAsset, kumbayaResolved.config)
+      : routingForPayAsset(payWith, acceptedAsset, kumbayaResolved.config);
+  }, [payWith, acceptedAsset, kumbayaResolved, isArenaV2]);
 
   const kumbayaRoutingBlocker =
     payWith !== "cl8y" && singleTxBuyRouterRes.kind === "mismatch"
@@ -1185,6 +1204,7 @@ export function useTimeCurveSaleSession(
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
     amountOut: estimatedSpendWei,
+    swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
 
   const {
@@ -1198,6 +1218,7 @@ export function useTimeCurveSaleSession(
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
     amountOut: pricePerCharmWad,
+    swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
 
   const {
@@ -1211,6 +1232,7 @@ export function useTimeCurveSaleSession(
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
     amountOut: launchCl8yPerCharmWei,
+    swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
 
   const perCharmPayQuoteLoading =
@@ -1271,6 +1293,7 @@ export function useTimeCurveSaleSession(
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
     amountOut: cl8ySpendBounds?.minS,
+    swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
 
   const {
@@ -1283,6 +1306,7 @@ export function useTimeCurveSaleSession(
     kConfig: kumbayaQuoteKConfig,
     acceptedCl8y: acceptedAsset,
     amountOut: cl8ySpendBounds?.maxS,
+    swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
   const bandBoundaryQuotesLoading =
     bandQuoteEnabled &&
@@ -1642,8 +1666,8 @@ export function useTimeCurveSaleSession(
       );
       return;
     }
-    if (isArenaV2 && payWith !== "cl8y") {
-      setBuyError("Arena v2 buys on this panel use DOUB (CL8Y pay mode). ETH/USDM routes need the buy router (#251).");
+    if (isArenaV2 && buyFeeRoutingEnabled === false) {
+      setBuyError("Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause.");
       return;
     }
     if (walletCooldownRemainingSec > 0) {
@@ -1674,16 +1698,90 @@ export function useTimeCurveSaleSession(
             ? (pricePerCharmR.result as bigint)
             : parseUnits("1000", 18);
         const needDoub = (cw * priceWad) / parseUnits("1", 18);
-        await ensureCl8yTimeCurveAllowance({
+
+        if (payWith !== "cl8y") {
+          const k = resolveKumbayaRouting(chainId, import.meta.env as unknown as KumbayaEnv);
+          if (!k.ok) {
+            setBuyError(k.message);
+            return;
+          }
+          const route = routingForArenaPayAsset(payWith, acceptedAsset, k.config);
+          if (!route.ok) {
+            setBuyError(route.message);
+            return;
+          }
+          const singleRes = resolveTimeArenaBuyRouterForKumbayaSingleTx(
+            onchainTimeArenaBuyRouter,
+            import.meta.env as unknown as KumbayaEnv,
+          );
+          if (singleRes.kind === "mismatch") {
+            setBuyError(singleRes.message);
+            return;
+          }
+          if (singleRes.kind !== "ok") {
+            setBuyError("Time Arena buy router is not configured onchain — use DOUB pay or deploy the router.");
+            return;
+          }
+          const buySessionSnapshot = captureWalletBuySession(wagmiConfig);
+          if (
+            !buySessionSnapshot ||
+            buySessionSnapshot.address.toLowerCase() !== address.toLowerCase() ||
+            buySessionSnapshot.chainId !== chainId
+          ) {
+            setBuyError(WALLET_BUY_SESSION_DRIFT_MESSAGE);
+            return;
+          }
+          let codeHash: `0x${string}` | undefined;
+          if (useReferral && referralRegistryOn && pendingReferralCode) {
+            try {
+              codeHash = hashReferralCode(pendingReferralCode);
+            } catch (e) {
+              setBuyError(e instanceof Error ? e.message : String(e));
+              return;
+            }
+          }
+          const chainSec = await submitArenaKumbayaSingleTxBuy({
+            wagmiConfig,
+            writeContractAsync: writeContractAsync as WalletWriteAsync,
+            userAddress: address as `0x${string}`,
+            chainId,
+            timeArenaBuyRouter: singleRes.router,
+            timeArenaAddress: tc,
+            doubAddress: acceptedAsset,
+            payWith,
+            kConfig: k.config,
+            route,
+            charmWad: cw,
+            codeHash,
+            plantWarBowFlag,
+            sessionSnapshot: buySessionSnapshot,
+            onBuyMinedBeforeChainTimestamp: () => {
+              setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
+            },
+          });
+          setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
+          refetchAll();
+          return;
+        }
+
+        await ensureDoubTimeArenaAllowance({
           wagmiConfig,
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
           account: address as `0x${string}`,
           chainId,
-          tokenAddress: acceptedAsset,
-          timeCurveAddress: tc,
+          doubAddress: acceptedAsset,
+          timeArenaAddress: tc,
           needWei: needDoub,
-          debugContext: "arena:buy-doub",
         });
+        let codeHash: `0x${string}` | undefined;
+        if (useReferral && referralRegistryOn && pendingReferralCode) {
+          try {
+            codeHash = hashReferralCode(pendingReferralCode);
+          } catch (e) {
+            setBuyError(e instanceof Error ? e.message : String(e));
+            return;
+          }
+        }
         const { hash: buyHash } = await writeContractWithGasBuffer({
           wagmiConfig,
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -1692,7 +1790,7 @@ export function useTimeCurveSaleSession(
           address: tc,
           abi: timeArenaReadAbi,
           functionName: "buy",
-          args: [cw],
+          args: codeHash ? ([cw, codeHash] as const) : ([cw] as const),
         });
         const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
         assertSuccessfulBuyReceipt(receipt);
@@ -1957,9 +2055,14 @@ export function useTimeCurveSaleSession(
     chainId,
     buyFeeRoutingEnabled,
     onchainTimeCurveBuyRouter,
+    onchainTimeArenaBuyRouter,
     buyCooldownSecResolved,
     isArenaV2,
     pricePerCharmR,
+    plantWarBowFlag,
+    referralRegistryOn,
+    pendingReferralCode,
+    useReferral,
   ]);
 
   const submitClaimWarBowFlag = useCallback(async () => {
@@ -1969,9 +2072,11 @@ export function useTimeCurveSaleSession(
       setBuyError(netErr);
       return;
     }
-    if (buyFeeRoutingEnabled === false) {
+    if (isArenaV2 ? buyFeeRoutingEnabled === false : buyFeeRoutingEnabled === false) {
       setBuyError(
-        "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
+        isArenaV2
+          ? "Time Arena is paused — WarBow actions are disabled until operators unpause."
+          : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable fee routing.",
       );
       return;
     }
@@ -1985,7 +2090,7 @@ export function useTimeCurveSaleSession(
         account: address as `0x${string}`,
         chainId,
         address: tc,
-        abi: timeCurveWriteAbi,
+        abi: isArenaV2 ? timeArenaWriteAbi : timeCurveWriteAbi,
         functionName: "claimWarBowFlag",
       });
       await waitForWriteReceipt(wagmiConfig, { hash });
@@ -1996,6 +2101,7 @@ export function useTimeCurveSaleSession(
   }, [
     chainId,
     buyFeeRoutingEnabled,
+    isArenaV2,
     tc,
     address,
     warbowClaimFlagFields.canClaimWarBowFlag,
@@ -2139,7 +2245,9 @@ export function useTimeCurveSaleSession(
     payWalletBalance,
     submitBuy,
     submitRedeem,
-    buyFeeRoutingEnabled,
+    buyFeeRoutingEnabled: isArenaV2 ? undefined : buyFeeRoutingEnabled,
+    arenaPaused: isArenaV2 ? buyFeeRoutingEnabled === false : undefined,
+    onchainTimeArenaBuyRouter,
     charmRedemptionEnabled:
       charmRedemptionEnabledR?.status === "success"
         ? (charmRedemptionEnabledR.result as boolean)
