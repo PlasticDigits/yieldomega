@@ -92,30 +92,30 @@ MegaEVM uses **512 KiB** max **deployed** bytecode and **536 KiB** max **initcod
 ## Deploy (production / MegaETH)
 
 For the contracts-only MegaETH quickstart and the indexer/frontend handoff, see
-[`../docs/operations/deployment-guide.md`](../docs/operations/deployment-guide.md).
+[`../docs/operations/deployment-guide.md`](../docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259).
 The production wrapper is:
 
 ```bash
-scripts/deploy-megaeth-contracts.sh [SALE_START_EPOCH]
+scripts/deploy-megaeth-contracts.sh
 ```
 
-Omit the argument (and `SALE_START_EPOCH` env) to use the default **1779105600** (2026-05-18 12:00:00 UTC). It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol), prompts for the
+It uses [`script/DeployProduction.s.sol`](./script/DeployProduction.s.sol) (Arena v2 — [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)), prompts for the
 private key and Etherscan API key, defaults to MegaETH mainnet RPC / chain ID, assigns
-owner/admin/governance roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
+owner/admin roles to the CL8Y manager (`0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`),
 and writes an address registry under `.deploy/`.
-
-For **UUPS** implementation-only deploys (e.g. a new **`TimeCurve`** logic contract before `upgradeToAndCall` on the proxy), use **`forge create`** with **`--broadcast`**, **`--verify`**, and the MegaETH **Etherscan V2** `--verifier-url` from the same guide ([**UUPS TimeCurve upgrade**](../docs/operations/deployment-guide.md#uups-timecurve-upgrade-megaeth-mainnet)).
 
 ## Deploy (dev)
 
-Deploy all core contracts to a local or dev environment:
+Deploy Arena v2 core contracts to a local or dev environment:
 
 ```bash
 forge script script/DeployDev.s.sol --broadcast --rpc-url <RPC> --code-size-limit 524288
 ```
 
-The script deploys mock tokens (**CL8Y** reserve + launched token) when neither `RESERVE_ASSET_ADDRESS` nor legacy `USDM_ADDRESS` is set.
+The script deploys mock **CL8Y** when neither `RESERVE_ASSET_ADDRESS` nor legacy `USDM_ADDRESS` is set.
 To use a real testnet CL8Y address, export `RESERVE_ASSET_ADDRESS` (or `USDM_ADDRESS`) before running.
+
+**Wires:** `TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon`. Calls **`startArena()`** and seeds test DOUB/CL8Y/CRED. **`TimeArenaBuyRouter`:** deploy via `DeployKumbayaAnvilFixtures` when `YIELDOMEGA_DEPLOY_KUMBAYA=1` ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)).
 
 Addresses are printed to console — copy them into
 [`deployments/dev-addresses.example.json`](./deployments/dev-addresses.example.json).
@@ -123,7 +123,7 @@ ABIs live in `out/` after `forge build`. Registry templates and **ABI hash expor
 [`docs/operations/deployment-stages.md`](../docs/operations/deployment-stages.md),
 [`docs/operations/deployment-checklist.md`](../docs/operations/deployment-checklist.md),
 [`docs/operations/stage3-mainnet-operator-runbook.md`](../docs/operations/stage3-mainnet-operator-runbook.md), and
-[`docs/operations/pause-and-final-signoff.md`](../docs/operations/pause-and-final-signoff.md) (design inventory for gating user-facing DOUB/CL8Y — [GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
+[`docs/operations/pause-and-final-signoff.md`](../docs/operations/pause-and-final-signoff.md).
 
 ## Parameters
 

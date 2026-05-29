@@ -6,10 +6,12 @@
   "contracts": {
     "CL8Y_reserve": "",
     "Doubloon": "",
+    "PlayCred": "",
     "PodiumVaults": "",
     "AdminSellVault": "",
     "TimeArena": "",
-    "ReferralRegistry": ""
+    "ReferralRegistry": "",
+    "TimeArenaBuyRouter": ""
   },
   "deployer": "",
   "deployBlock": 0,

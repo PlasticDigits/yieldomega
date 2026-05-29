@@ -4,6 +4,67 @@ This guide is the contracts-to-production handoff for YieldOmega. The quickstart
 
 Authoritative game rules and balances remain onchain. The indexer and frontend only consume the contract addresses and public chain settings emitted by the deploy.
 
+<a id="arena-v2-deploy-gitlab-259"></a>
+
+## Arena v2 deploy (GitLab [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259))
+
+**Production** uses [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) via [`scripts/deploy-megaeth-contracts.sh`](../../scripts/deploy-megaeth-contracts.sh). **Local / Anvil** uses [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) (see [e2e-anvil.md](../testing/e2e-anvil.md)).
+
+### What deploys
+
+| Contract | Role |
+|----------|------|
+| `Doubloon` | DOUB ERC-20 |
+| `PlayCred` | Non-transferable arena CRED |
+| `PodiumVaults` | Eight podium prize pools |
+| `AdminSellVault` | 30% admin take per buy |
+| `ReferralRegistry` | UUPS — CL8Y burn to register codes |
+| `TimeArena` | UUPS — timers, buys, CRED, XP, WarBow |
+
+**Not deployed:** Leprechaun, Rabbit, Presale, TimeCurve, FeeRouter ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+
+**`TimeArenaBuyRouter`** (ETH/USDM entry) is **not** in `DeployProduction`; deploy separately with Kumbaya fixtures on Anvil ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) or wire post-mainnet.
+
+### DeployDev (Anvil)
+
+[`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) wires all core contracts, calls **`startArena()`**, seeds **DOUB / mock CL8Y / CRED** for the Playwright mock wallet, and logs proxy addresses. Buy router: set **`YIELDOMEGA_DEPLOY_KUMBAYA=1`** in [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh).
+
+```bash
+bash scripts/start-local-anvil-stack.sh
+# or full E2E:
+bash scripts/e2e-anvil.sh
+```
+
+### DeployProduction (MegaETH)
+
+```bash
+scripts/deploy-megaeth-contracts.sh
+```
+
+**Env (optional — defaults match [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)):**
+
+```bash
+export RESERVE_ASSET_ADDRESS='0xfBAa45A537cF07dC768c469FfaC4e88208B0098D'  # CL8Y on 4326
+export DEPLOY_ADMIN_ADDRESS='0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c'
+export ARENA_CHARM_PRICE_WAD='1000000000000000000000'
+export ARENA_TIMER_EXTENSION_SEC='120'
+export ARENA_INITIAL_TIMER_SEC='86400'
+export ARENA_TIMER_CAP_SEC='345600'
+export ARENA_BUY_COOLDOWN_SEC='300'
+export REFERRAL_REGISTRATION_BURN_WAD='1000000000000000000'
+export START_ARENA='0'   # set 1 to call startArena() in-script; else owner calls after deploy
+```
+
+Registry JSON keys: **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`PlayCred`**, **`ReferralRegistry`**, **`Doubloon`**, optional **`TimeArenaBuyRouter`**. Frontend: **`VITE_TIME_ARENA_ADDRESS`**, **`VITE_PODIUM_VAULTS_ADDRESS`**, **`VITE_ADMIN_SELL_VAULT_ADDRESS`**, **`VITE_REFERRAL_REGISTRY_ADDRESS`**.
+
+**Invariants:** [`INV-DEPLOY-259`](../testing/invariants-and-business-logic.md#arena-v2-deploy-gitlab-259) · Forge: [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol).
+
+---
+
+## Legacy v1 quickstart (pre–Arena v2 mainnet redeploy)
+
+The sections below describe the **retired v1** TimeCurve launchpad deploy path. They remain for the existing MegaETH mainnet snapshot until governance runs an Arena v2 redeploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
+
 ## Quickstart: MegaETH Mainnet Contracts
 
 Run from the repository root. The script defaults to:
@@ -188,9 +249,24 @@ cast send 0x1B68bb6789baEBa4bD28F53C10b52DBe1eF2bF71 \
 
 ## What The Script Deploys
 
-The wrapper calls `contracts/script/DeployProduction.s.sol`, not the dev-only `DeployDev.s.sol`.
+The wrapper calls `contracts/script/DeployProduction.s.sol` (Arena v2 — [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)), not the dev-only `DeployDev.s.sol`.
 
-The production script deploys:
+The **Arena v2** production script deploys:
+
+- `Doubloon` (`DOUB`)
+- `PlayCred` (`CRED`)
+- `PodiumVaults`
+- `AdminSellVault`
+- `ReferralRegistry` proxy
+- `TimeArena` proxy
+
+It wires `PodiumVaults.setArena`, `AdminSellVault.setArena`, and `PlayCred.MINTER_ROLE` for `TimeArena`. Optional **`START_ARENA=1`** calls `TimeArena.startArena()`; otherwise the owner must start the arena before buys.
+
+It does **not** deploy Leprechaun, Rabbit, Presale, TimeCurve, FeeRouter, or `TimeArenaBuyRouter`.
+
+### Legacy v1 production script (historical)
+
+The **retired v1** script deployed:
 
 - `Doubloon` (`DOUB`)
 - `PodiumPool` proxy

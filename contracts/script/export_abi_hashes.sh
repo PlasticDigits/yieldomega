@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Emit abiHashesSha256 for address registry JSON (Stage 3 / mainnet consumers).
 # Prereq: forge, jq. Run from repo root: contracts/script/export_abi_hashes.sh
+# Arena v2 contract set — GitLab #259.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -26,21 +27,13 @@ fi
 
 # Path: out/<SourceFile>.sol/<ContractName>.json
 declare -a PAIRS=(
-  "TimeCurve.sol:TimeCurve"
-  "RabbitTreasury.sol:RabbitTreasury"
-  "LeprechaunNFT.sol:LeprechaunNFT"
-  "FeeRouter.sol:FeeRouter"
+  "TimeArena.sol:TimeArena"
+  "PodiumVaults.sol:PodiumVaults"
+  "AdminSellVault.sol:AdminSellVault"
+  "TimeArenaBuyRouter.sol:TimeArenaBuyRouter"
   "Doubloon.sol:Doubloon"
-  "PodiumPool.sol:PodiumPool"
-  "CL8YProtocolTreasury.sol:CL8YProtocolTreasury"
-  "DoubLPIncentives.sol:DoubLPIncentives"
-  "EcosystemTreasury.sol:EcosystemTreasury"
-  "RabbitTreasuryVault.sol:RabbitTreasuryVault"
+  "PlayCred.sol:PlayCred"
   "ReferralRegistry.sol:ReferralRegistry"
-  "LinearCharmPrice.sol:LinearCharmPrice"
-  "DoubPresaleVesting.sol:DoubPresaleVesting"
-  "PresaleCharmBeneficiaryRegistry.sol:PresaleCharmBeneficiaryRegistry"
-  "TimeCurveBuyRouter.sol:TimeCurveBuyRouter"
 )
 
 echo "  \"abiHashesSha256\": {"
