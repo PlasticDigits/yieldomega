@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
-import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
 
 /**
  * Indexer-backed recent buys for read-only surfaces (e.g. protocol / audit view).

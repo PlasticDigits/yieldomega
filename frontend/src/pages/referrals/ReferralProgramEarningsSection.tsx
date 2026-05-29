@@ -20,7 +20,7 @@ type Props = { className?: string };
 
 export function ReferralProgramEarningsSection({ className }: Props) {
   const { address, isConnected } = useAccount();
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const [summary, setSummary] = useState<ReferralWalletCharmSummary | null | undefined>(undefined);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import { walletDisplayFromMap } from "@/lib/addressFormat";
 import { indexerBaseUrl } from "@/lib/addresses";
@@ -8,11 +8,8 @@ import { erc20Abi } from "@/lib/abis";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import {
   fetchTimecurveBuyerStats,
-  fetchWarbowPendingRevenge,
   type TimecurveBuyerStats,
-  type WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
-import { reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import {
   kumbayaBandLowerWad,
   launchLiquidityAnchorWad,
@@ -22,7 +19,6 @@ import { sampleMinSpendCurve } from "@/lib/timeCurveMath";
 import {
   derivePhase,
   ledgerSecIntForPhase,
-  phaseFlags,
   timecurveHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -182,8 +178,6 @@ export function useTimecurveProtocolRawAccordion() {
     [coreTcData, arenaEnded, arenaSaleStartSec, arenaDeadlineSec, phaseLedgerSecInt],
   );
 
-  const saleActive = phaseFlags(arenaPhase).saleActive;
-
   const heroDisplaySecondsRemaining = useMemo(
     () =>
       timecurveHeroDisplaySecondsRemaining({
@@ -220,51 +214,7 @@ export function useTimecurveProtocolRawAccordion() {
     };
   }, [address]);
 
-  const [pendingRevengeRows, setPendingRevengeRows] = useState<WarbowPendingRevengeItem[]>([]);
-
-  const loadPendingRevenge = useCallback(() => {
-    if (!address || !indexerBaseUrl() || !saleActive) {
-      setPendingRevengeRows([]);
-      return;
-    }
-    void fetchWarbowPendingRevenge(address, ledgerSecIntRef.current).then((page) => {
-      if (page?.items) {
-        setPendingRevengeRows(page.items);
-        reportIndexerFetchAttempt(true);
-      } else {
-        setPendingRevengeRows([]);
-        if (indexerBaseUrl()) {
-          reportIndexerFetchAttempt(false);
-        }
-      }
-    });
-  }, [address, saleActive]);
-
-  const pendingRevengeTargets = useMemo(() => {
-    const now = BigInt(ledgerSecInt);
-    const rows = pendingRevengeRows.filter((r) => BigInt(r.expiry_exclusive) > now);
-    return [...rows].sort((a, b) => {
-      const ea = BigInt(a.expiry_exclusive);
-      const eb = BigInt(b.expiry_exclusive);
-      if (ea < eb) return -1;
-      if (ea > eb) return 1;
-      return a.stealer.localeCompare(b.stealer);
-    });
-  }, [pendingRevengeRows, ledgerSecInt]);
-
-  useEffect(() => {
-    loadPendingRevenge();
-  }, [loadPendingRevenge]);
-
-  useEffect(() => {
-    if (!address || !indexerBaseUrl() || !saleActive) {
-      return undefined;
-    }
-    const id = window.setInterval(() => {
-      loadPendingRevenge();
-    }, 8000);
-    return () => window.clearInterval(id);
-  }, [address, saleActive, loadPendingRevenge]);
+  const pendingRevengeTargets = useMemo(() => [] as const, []);
 
   const formatWallet = useMemo(() => walletDisplayFromMap(new Map()), []);
 

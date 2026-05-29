@@ -91,7 +91,7 @@ export function TimeCurveProtocolDoubProjectionSection({
   readsPending,
   cl8yUsd,
 }: TimeCurveProtocolDoubProjectionSectionProps) {
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const { address, isConnected } = useAccount();
 
   const {

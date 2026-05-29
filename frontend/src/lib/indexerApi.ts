@@ -89,8 +89,34 @@ export type PaginatedItems<T> = {
 /** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
 export type TimecurveBuysPage = PaginatedItems<BuyItem> & { total?: number };
 
+function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
+  return {
+    block_number: String(item.block_number),
+    tx_hash: item.tx_hash,
+    log_index: 0,
+    buyer: item.buyer,
+    amount: item.doub_paid,
+    charm_wad: item.charm_wad,
+    price_per_charm_wad: "0",
+    new_deadline: "0",
+    total_raised_after: "0",
+    buy_index: "0",
+    timer_hard_reset: item.timer_hard_reset,
+  };
+}
+
+/** @deprecated Use `fetchArenaBuys` — maps arena rows for legacy callers (#266). */
 export async function fetchTimecurveBuys(limit = 20, offset = 0) {
-  return getJson<TimecurveBuysPage>(`/v1/timecurve/buys?limit=${limit}&offset=${offset}`);
+  const page = await fetchArenaBuys(limit, offset);
+  if (!page) {
+    return null;
+  }
+  return {
+    items: page.items.map(mapArenaBuyToBuyItem),
+    limit: page.limit,
+    offset: page.offset,
+    next_offset: null,
+  } satisfies TimecurveBuysPage;
 }
 
 /** Indexer-polled head snapshot for hero timer (schema ≥ 1.11.0 adds `sale_start_sec`). */
@@ -160,8 +186,60 @@ export type TimecurveSaleState = {
   note?: string;
 };
 
+const ZERO_DEC = "0";
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+
+/** Builds legacy sale-state shape from `GET /v1/arena/timers` for RPC row mappers (#266). */
 export async function fetchTimecurveSaleState(): Promise<TimecurveSaleState | null> {
-  return getJson<TimecurveSaleState>("/v1/timecurve/sale-state");
+  const t = await fetchArenaTimers();
+  if (!t) {
+    return null;
+  }
+  return {
+    read_block_number: t.read_block_number,
+    block_timestamp_sec: t.block_timestamp_sec,
+    polled_at_ms: Date.now(),
+    sale_start_sec: t.arena_start_sec,
+    deadline_sec: t.last_buy_deadline_sec,
+    ended: false,
+    timer_extension_sec: ZERO_DEC,
+    timer_cap_sec: t.timer_cap_sec,
+    buy_cooldown_sec: ZERO_DEC,
+    current_min_buy_amount: ZERO_DEC,
+    current_max_buy_amount: ZERO_DEC,
+    current_charm_bounds_min_wad: ZERO_DEC,
+    current_charm_bounds_max_wad: ZERO_DEC,
+    current_price_per_charm_wad: ZERO_DEC,
+    charm_price: ZERO_ADDR,
+    total_raised: t.total_doub_raised,
+    total_charm_weight: ZERO_DEC,
+    total_tokens_for_sale: ZERO_DEC,
+    initial_min_buy: ZERO_DEC,
+    growth_rate_wad: ZERO_DEC,
+    accepted_asset: ZERO_ADDR,
+    referral_registry: ZERO_ADDR,
+    launched_token: ZERO_ADDR,
+    buy_fee_routing_enabled: !t.paused,
+    charm_redemption_enabled: false,
+    reserve_podium_payouts_enabled: false,
+    time_curve_buy_router: ZERO_ADDR,
+    podium_pool: ZERO_ADDR,
+    doub_presale_vesting: ZERO_ADDR,
+    referral_each_bps: ZERO_DEC,
+    presale_charm_weight_bps: ZERO_DEC,
+    warbow_pending_flag_owner: ZERO_ADDR,
+    warbow_pending_flag_plant_at: ZERO_DEC,
+    warbow_flag_claim_bp: ZERO_DEC,
+    warbow_flag_silence_sec: ZERO_DEC,
+    initial_timer_sec: ZERO_DEC,
+    prizes_distributed: false,
+    fee_router: ZERO_ADDR,
+    owner: ZERO_ADDR,
+    linear_charm_base_price_wad: ZERO_DEC,
+    linear_charm_daily_increment_wad: ZERO_DEC,
+    fee_router_sinks: [],
+    note: "arena_v2_timers",
+  };
 }
 
 export type WarbowStealsByVictimDayItem = {
@@ -174,10 +252,9 @@ export type WarbowStealsByVictimDayResponse = {
   items: WarbowStealsByVictimDayItem[];
 };
 
-export async function fetchWarbowStealsByVictimDay(victim: string) {
-  return getJson<WarbowStealsByVictimDayResponse>(
-    `/v1/timecurve/warbow/steals-by-victim-day?victim=${encodeURIComponent(victim)}`,
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchWarbowStealsByVictimDay(_victim: string) {
+  return null;
 }
 
 export type WarbowGuardLatestResponse = {
@@ -193,29 +270,24 @@ export type WarbowGuardLatestResponse = {
   } | null;
 };
 
-export async function fetchWarbowGuardLatest(player: string) {
-  return getJson<WarbowGuardLatestResponse>(
-    `/v1/timecurve/warbow/guard-latest?player=${encodeURIComponent(player)}`,
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchWarbowGuardLatest(_player: string) {
+  return null;
 }
 
 export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | null> {
-  const base = indexerBaseUrl();
-  if (!base) {
+  const t = await fetchArenaTimers();
+  if (!t) {
     return null;
   }
-  try {
-    const res = await fetch(`${base}/v1/timecurve/chain-timer`);
-    if (!res.ok) {
-      if (res.status === 429) {
-        reportIndexerRateLimited();
-      }
-      return null;
-    }
-    return (await res.json()) as TimecurveChainTimer;
-  } catch {
-    return null;
-  }
+  return {
+    sale_start_sec: t.arena_start_sec,
+    deadline_sec: t.last_buy_deadline_sec,
+    block_timestamp_sec: t.block_timestamp_sec,
+    timer_cap_sec: t.timer_cap_sec,
+    read_block_number: t.read_block_number,
+    polled_at_ms: Date.now(),
+  };
 }
 
 /** `GET /v1/timecurve/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
@@ -236,7 +308,16 @@ export type TimecurvePodiumsResponse = {
 };
 
 export async function fetchTimecurvePodiums(): Promise<TimecurvePodiumsResponse | null> {
-  return getJson<TimecurvePodiumsResponse>("/v1/timecurve/podiums");
+  const arena = await fetchArenaPodiums();
+  if (!arena) {
+    return null;
+  }
+  return {
+    sale_ended: false,
+    read_block_number: arena.read_block_number,
+    polled_at_ms: Date.now(),
+    rows: (arena.rows as TimecurvePodiumApiRow[]) ?? [],
+  };
 }
 
 export type WarbowLeaderboardItem = {
@@ -247,34 +328,14 @@ export type WarbowLeaderboardItem = {
   log_index: number;
 };
 
-export async function fetchTimecurveWarbowLeaderboard(limit = 20, offset = 0) {
-  return getJson<PaginatedItems<WarbowLeaderboardItem>>(
-    `/v1/timecurve/warbow/leaderboard?limit=${limit}&offset=${offset}`,
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchTimecurveWarbowLeaderboard(_limit = 20, _offset = 0) {
+  return null;
 }
 
-/** Max `limit` accepted by indexer `clamp_limit` for `/v1/timecurve/warbow/leaderboard`. */
-const WARBOW_LEADERBOARD_PAGE_MAX = 200;
-
-/**
- * Full WarBow ladder from the indexer (all pages). Used by Arena PvP steal targets so the UI is
- * not capped to the first few leaderboard rows ([GitLab #189](https://gitlab.com/PlasticDigits/yieldomega/-/issues/189) chasing-pack parity).
- */
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
 export async function fetchTimecurveWarbowLeaderboardAll(): Promise<WarbowLeaderboardItem[] | null> {
-  const all: WarbowLeaderboardItem[] = [];
-  let offset = 0;
-  for (;;) {
-    const page = await fetchTimecurveWarbowLeaderboard(WARBOW_LEADERBOARD_PAGE_MAX, offset);
-    if (page == null) {
-      return offset === 0 ? null : all;
-    }
-    all.push(...page.items);
-    if (page.next_offset == null) {
-      break;
-    }
-    offset = page.next_offset;
-  }
-  return all;
+  return null;
 }
 
 export type WarbowBattleFeedItem = {
@@ -286,10 +347,9 @@ export type WarbowBattleFeedItem = {
   detail: Record<string, unknown>;
 };
 
-export async function fetchTimecurveWarbowBattleFeed(limit = 25, offset = 0) {
-  return getJson<PaginatedItems<WarbowBattleFeedItem>>(
-    `/v1/timecurve/warbow/battle-feed?limit=${limit}&offset=${offset}`,
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchTimecurveWarbowBattleFeed(_limit = 25, _offset = 0) {
+  return null;
 }
 
 /** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)); DISTINCT list unbounded from 1.18.0 ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)). */
@@ -310,15 +370,12 @@ export type WarbowRefreshCandidatesResponse = {
  * merged with head WarBow podium hints while `!sale_ended` ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)).
  * Paginate with `offset` when `next_offset` is set. Uses `VITE_INDEXER_URL`.
  */
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
 export async function fetchTimecurveWarbowRefreshCandidates(
-  limit = 200,
-  offset = 0,
+  _limit = 200,
+  _offset = 0,
 ): Promise<WarbowRefreshCandidatesResponse | null> {
-  const lim = Math.min(500, Math.max(1, Math.floor(limit)));
-  const off = Math.max(0, Math.floor(offset));
-  return getJson<WarbowRefreshCandidatesResponse>(
-    `/v1/timecurve/warbow/refresh-candidates?limit=${lim}&offset=${off}`,
-  );
+  return null;
 }
 
 export type WarbowPendingRevengeItem = {
@@ -337,9 +394,9 @@ export type WarbowPendingRevengeResponse = {
 };
 
 /** GitLab #135: open (victim, stealer) windows reconciled from `WarBowRevengeWindowOpened` + `WarBowRevenge`. */
-export async function fetchWarbowPendingRevenge(victim: string, nowSec: number) {
-  const path = `/v1/timecurve/warbow/pending-revenge?victim=${encodeURIComponent(victim)}&now_sec=${nowSec}`;
-  return getJson<WarbowPendingRevengeResponse>(path);
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchWarbowPendingRevenge(_victim: string, _nowSec: number) {
+  return null;
 }
 
 export type TimecurveBuyerStats = {
@@ -349,11 +406,19 @@ export type TimecurveBuyerStats = {
 };
 
 export function timecurveBuyerStatsApiPath(buyer: string): string {
-  return `/v1/timecurve/buyer-stats?buyer=${encodeURIComponent(buyer)}`;
+  return arenaWalletStatsPath(buyer);
 }
 
 export async function fetchTimecurveBuyerStats(buyer: string) {
-  return getJson<TimecurveBuyerStats>(timecurveBuyerStatsApiPath(buyer));
+  const stats = await fetchArenaWalletStats(buyer);
+  if (!stats) {
+    return null;
+  }
+  return {
+    buyer: stats.address,
+    indexed_charm_weight: stats.xp,
+    indexed_buy_count: String(stats.buy_count),
+  } satisfies TimecurveBuyerStats;
 }
 
 export type PlatformUsageWarbowAction = {
@@ -400,21 +465,20 @@ export type TimecurvePlatformUsage = {
 export type PlatformUsageVelocityWindow = "1h" | "24h" | "sale";
 
 export function timecurvePlatformUsageApiPath(
-  limit: number,
-  offset = 0,
-  velocityWindow: PlatformUsageVelocityWindow = "1h",
+  _limit: number,
+  _offset = 0,
+  _velocityWindow: PlatformUsageVelocityWindow = "1h",
 ): string {
-  return `/v1/timecurve/platform-usage?limit=${limit}&offset=${offset}&velocity_window=${velocityWindow}`;
+  return "/v1/arena/timers";
 }
 
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
 export async function fetchTimecurvePlatformUsage(
-  limit = 20,
-  offset = 0,
-  velocityWindow: PlatformUsageVelocityWindow = "1h",
+  _limit = 20,
+  _offset = 0,
+  _velocityWindow: PlatformUsageVelocityWindow = "1h",
 ) {
-  return getJson<TimecurvePlatformUsage>(
-    timecurvePlatformUsageApiPath(limit, offset, velocityWindow),
-  );
+  return null;
 }
 
 export type ArenaPodiumPoolDonationRecent = {
@@ -452,9 +516,6 @@ export async function fetchArenaPodiumPoolDonations(limit = 10, donor?: string) 
   return getJson<ArenaPodiumPoolDonations>(arenaPodiumPoolDonationsApiPath(limit, donor));
 }
 
-/** Response header for indexer API schema; present on v1 JSON routes. */
-const INDEXER_SCHEMA_HEADER = "x-schema-version";
-
 /**
  * `GET /v1/status` (best — includes DB pointer and max block).
  * If that is unset or not OK, falls back to the same v1 read the footer uses
@@ -463,48 +524,12 @@ const INDEXER_SCHEMA_HEADER = "x-schema-version";
  * filters match the path) or fails while the rest of the indexer is healthy.
  */
 export async function fetchIndexerStatus() {
-  const direct = await getJson<Record<string, unknown>>("/v1/status");
-  if (direct) {
-    return direct;
-  }
-
-  const base = indexerBaseUrl();
-  if (!base) {
-    return null;
-  }
-  let res: Response;
-  try {
-    res = await fetch(
-      `${base}/v1/fee-router/fees-distributed?limit=1&offset=0`,
-    );
-  } catch {
-    return null;
-  }
-  if (!res.ok) {
-    if (res.status === 429) {
-      reportIndexerRateLimited();
-    }
-    return null;
-  }
-  const ver = (res.headers.get(INDEXER_SCHEMA_HEADER) ?? "").trim() || "?";
-  type FeesBody = { items?: Array<{ block_number: string }> };
-  let data: FeesBody;
-  try {
-    data = (await res.json()) as FeesBody;
-  } catch {
-    return null;
-  }
-  const block0 = data.items?.[0]?.block_number;
-  return {
-    schema_version: ver,
-    max_indexed_block: block0 !== undefined ? block0 : null,
-  } as Record<string, unknown>;
+  return getJson<Record<string, unknown>>("/v1/status");
 }
 
-export async function fetchTimecurveCharmRedemptions(limit = 20) {
-  return getJson<{ items: CharmRedemptionItem[] }>(
-    `/v1/timecurve/charm-redemptions?limit=${limit}`,
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchTimecurveCharmRedemptions(_limit = 20) {
+  return null;
 }
 
 /** `/v1/timecurve/prize-distributions` with limit/offset for safe query embedding. */
@@ -544,8 +569,9 @@ export type PrizePayoutItem = {
   placement: number;
 };
 
-export async function fetchTimecurvePrizePayouts(limit = 30, offset = 0) {
-  return getJson<{ items: PrizePayoutItem[] }>(timecurvePrizePayoutsApiPath(limit, offset));
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchTimecurvePrizePayouts(_limit = 30, _offset = 0) {
+  return null;
 }
 
 export type PrizeDistributionItem = {
@@ -559,10 +585,9 @@ export type PrizeDistributionItem = {
   podium_pool?: string | null;
 };
 
-export async function fetchTimecurvePrizeDistributions(limit = 20, offset = 0) {
-  return getJson<{ items: PrizeDistributionItem[] }>(
-    timecurvePrizeDistributionsApiPath(limit, offset),
-  );
+/** Retired with TimeCurve v1 indexer HTTP (#266). */
+export async function fetchTimecurvePrizeDistributions(_limit = 20, _offset = 0) {
+  return null;
 }
 
 export type ReferralRegistrationItem = {

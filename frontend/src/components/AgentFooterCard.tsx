@@ -58,26 +58,15 @@ w3.eth.send_raw_transaction(raw)`;
 
 const INDEXER_ROUTES = `GET /healthz
 GET /v1/status
-GET /v1/timecurve/chain-timer
-GET /v1/timecurve/podiums
-GET /v1/timecurve/buys
-GET /v1/timecurve/warbow/battle-feed
-GET /v1/timecurve/warbow/leaderboard
-GET /v1/timecurve/warbow/steals-by-victim-day
-GET /v1/timecurve/warbow/guard-latest
-GET /v1/timecurve/warbow/pending-revenge
-GET /v1/timecurve/warbow/refresh-candidates
-GET /v1/timecurve/buyer-stats
-GET /v1/timecurve/platform-usage
-GET /v1/timecurve/charm-redemptions
-GET /v1/timecurve/prize-distributions
-GET /v1/timecurve/prize-payouts
+GET /v1/arena/timers
+GET /v1/arena/podiums
+GET /v1/arena/buys
+GET /v1/arena/wallet/{address}/stats
+GET /v1/arena/podium-pool-donations
 GET /v1/referrals/registrations
 GET /v1/referrals/applied
 GET /v1/referrals/referrer-leaderboard
-GET /v1/referrals/wallet-charm-summary
-GET /v1/fee-router/sinks-updates
-GET /v1/fee-router/fees-distributed`;
+GET /v1/referrals/wallet-charm-summary`;
 
 function ghBlob(path: string) {
   return `${GH_MAIN}/${path}`;
@@ -86,7 +75,6 @@ function ghBlob(path: string) {
 function envAddresses(): { key: string; value: string }[] {
   const entries: { key: string; value: string }[] = [];
   const map: Record<string, `0x${string}` | undefined> = {
-    "VITE_TIMECURVE_ADDRESS (TimeCurve / Arena proxy)": addresses.timeCurve,
     "VITE_TIME_ARENA_ADDRESS": addresses.timeArena,
     "VITE_PODIUM_VAULTS_ADDRESS": addresses.podiumVaults,
     "VITE_ADMIN_SELL_VAULT_ADDRESS": addresses.adminSellVault,
