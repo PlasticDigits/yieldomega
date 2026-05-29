@@ -44,8 +44,17 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-FRONTEND-260-ARENA-MOUNT`** | `/arena` mounts timer chips + CRED card | `e2e/anvil-arena-mount.spec.ts` |
 | **`INV-INDEXER-260-ARENA-TIMERS`** | `GET /v1/arena/timers` (+ buys, wallet stats) | `integration_stage2.rs` HTTP smoke |
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `cargo test` |
+| **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
+| **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
+| **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `TimeCurveProtocolDonatePoolsSection.test.tsx`, `e2e/timecurve.spec.ts` |
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). ETH route E2E gates on `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` until [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251).
+
+<a id="arena-podium-pool-donations-gitlab-262"></a>
+
+### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+
+Onchain entry: **`TimeArena.topUpPodiumPools`** ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)). Indexer HTTP: **`GET /v1/arena/podium-pool-donations`**. Frontend: protocol AUDIT card — [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262). Play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
 
 ---
 

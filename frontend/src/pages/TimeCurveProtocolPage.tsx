@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
@@ -22,6 +22,8 @@ import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveProtocolDoubProjectionSection } from "@/pages/timecurve/TimeCurveProtocolDoubProjectionSection";
 import { TimeCurveProtocolPlatformUsageSection } from "@/pages/timecurve/TimeCurveProtocolPlatformUsageSection";
+import { TimeCurveProtocolDonatePoolsSection } from "@/pages/timecurve/TimeCurveProtocolDonatePoolsSection";
+import { WalletProfileModal } from "@/components/WalletProfileModal";
 import { TimeCurveProtocolWarbowRefreshSection } from "@/pages/timecurve/TimeCurveProtocolWarbowRefreshSection";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
 import { useTimecurveProtocolLiveBuys } from "@/pages/timecurve/useTimecurveProtocolLiveBuys";
@@ -67,6 +69,9 @@ type ProtocolStickyChartsPayload = {
 };
 
 export function TimeCurveProtocolPage() {
+  const [profileAddress, setProfileAddress] = useState<string | null>(null);
+  const onOpenWalletProfile = useCallback((addr: string) => setProfileAddress(addr), []);
+
   const tc = addresses.timeCurve;
   const {
     protocolReading: reading,
@@ -460,6 +465,11 @@ export function TimeCurveProtocolPage() {
 
       <TimeCurveProtocolPlatformUsageSection isOffline={isOffline} />
 
+      <TimeCurveProtocolDonatePoolsSection
+        isOffline={isOffline}
+        onOpenWalletProfile={onOpenWalletProfile}
+      />
+
       <PageSection
         title="Immutable parameters"
         badgeLabel="constructor args"
@@ -590,6 +600,8 @@ export function TimeCurveProtocolPage() {
       </PageSection>
 
       <RawDataAccordion {...protocolRawAccordion} />
+
+      <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
     </div>
   );
 }

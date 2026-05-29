@@ -155,6 +155,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event WarBowGuard(address indexed player, uint256 doubSpent, uint256 guardUntil);
     event WarBowFlagClaimed(address indexed player, uint256 bonusBp);
     event WarbowPodiumFinalized(uint256 indexed epoch, address first, address second, address third);
+    event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -241,6 +242,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     {
         require(msg.sender == timeArenaBuyRouter, "TimeArena: not router");
         _buyDoub(buyer, charmWad, codeHash, plantWarBowFlag);
+    }
+
+    /// @notice Permissionless DOUB top-up across all eight prize vaults (no admin take; GitLab #261).
+    function topUpPodiumPools(uint256 amountDoubWad) external nonReentrant {
+        require(amountDoubWad > 0, "TimeArena: zero amount");
+        require(arenaStart > 0, "TimeArena: not started");
+        uint256 received = _pullDoubExact(msg.sender, amountDoubWad);
+        _routeDoubPrizeTopUp(received);
+        emit PodiumPoolsToppedUp(msg.sender, received);
     }
 
     function claimCred(uint256 epoch) external nonReentrant {
@@ -541,6 +551,23 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     function _routeDoubPrizeSplit(uint256 amount) private returns (uint256 routed) {
         (uint256[4] memory act, uint256[4] memory sed, uint256 adminShare) = ArenaBuyRouting.splitBuyAmount(amount);
+        routed = _routeActiveAndSeedVaults(act, sed);
+        if (adminShare > 0) {
+            doub.safeTransfer(address(adminSellVault), adminShare);
+            adminSellVault.notifyFunded(adminShare);
+            routed += adminShare;
+        }
+    }
+
+    function _routeDoubPrizeTopUp(uint256 amount) private returns (uint256 routed) {
+        (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(amount);
+        routed = _routeActiveAndSeedVaults(act, sed);
+    }
+
+    function _routeActiveAndSeedVaults(uint256[4] memory act, uint256[4] memory sed)
+        private
+        returns (uint256 routed)
+    {
         for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
             if (act[i] > 0) {
                 address pool = podiumVaults.activePools(i);
@@ -554,11 +581,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
                 podiumVaults.notifySeedFunded(i, sed[i], pool);
                 routed += sed[i];
             }
-        }
-        if (adminShare > 0) {
-            doub.safeTransfer(address(adminSellVault), adminShare);
-            adminSellVault.notifyFunded(adminShare);
-            routed += adminShare;
         }
     }
 

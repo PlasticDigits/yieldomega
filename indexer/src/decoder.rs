@@ -64,6 +64,7 @@ mod contracts {
                 uint256 doubPaid
             );
             event PausedSet(bool paused);
+            event PodiumPoolsToppedUp(address indexed donor, uint256 amountDoubWad);
         }
     }
 }
@@ -147,6 +148,10 @@ pub enum DecodedEvent {
         owner: Address,
         code_hash: B256,
         normalized_code: String,
+    },
+    ArenaPodiumPoolTopUp {
+        donor: Address,
+        amount_doub_wad: U256,
     },
     Unknown {
         #[allow(dead_code)]
@@ -275,6 +280,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 owner: e.owner,
                 code_hash: e.codeHash,
                 normalized_code: e.normalizedCode.clone(),
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::PodiumPoolsToppedUp::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::PodiumPoolsToppedUp::decode_log(log, true) {
+            return DecodedEvent::ArenaPodiumPoolTopUp {
+                donor: e.donor,
+                amount_doub_wad: e.amountDoubWad,
             };
         }
     }

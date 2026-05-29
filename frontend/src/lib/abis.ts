@@ -51,6 +51,10 @@ export const timeArenaReadAbi = parseAbi([
   "function level(address) view returns (uint256)",
 ]);
 
+export const timeArenaWriteAbi = parseAbi([
+  "function topUpPodiumPools(uint256 amountDoubWad)",
+]);
+
 export const timeCurveReadAbi = parseAbi([
   "function saleStart() view returns (uint256)",
   "function deadline() view returns (uint256)",

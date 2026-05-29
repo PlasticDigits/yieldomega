@@ -16,4 +16,25 @@ contract ArenaPrizeRoutingTest is Test {
         }
         assertEq(sum, 1000e18);
     }
+
+    function test_splitPrizeTopUp_700_matches_buy_prize_slice() public pure {
+        (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(700e18);
+        assertEq(act[0], 100e18);
+        assertEq(sed[0], 75e18);
+        uint256 sum;
+        for (uint8 i; i < 4; ++i) {
+            sum += act[i] + sed[i];
+        }
+        assertEq(sum, 700e18);
+    }
+
+    function testFuzz_splitPrizeTopUp_no_dust(uint256 amount) public pure {
+        amount = bound(amount, 1, type(uint128).max);
+        (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(amount);
+        uint256 sum;
+        for (uint8 i; i < 4; ++i) {
+            sum += act[i] + sed[i];
+        }
+        assertEq(sum, amount);
+    }
 }

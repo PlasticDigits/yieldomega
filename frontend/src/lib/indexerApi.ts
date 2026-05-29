@@ -417,6 +417,41 @@ export async function fetchTimecurvePlatformUsage(
   );
 }
 
+export type ArenaPodiumPoolDonationRecent = {
+  donor: string;
+  amount_doub_wad: string;
+  block_timestamp: string | null;
+  tx_hash: string;
+};
+
+export type ArenaPodiumPoolDonationsDonorSummary = {
+  total_donated_doub_wad: string;
+  donation_count: string;
+};
+
+/** `GET /v1/arena/podium-pool-donations` — protocol donate-pools card ([GitLab #262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)). */
+export type ArenaPodiumPoolDonations = {
+  total_donated_doub_wad: string;
+  unique_donors_count: string;
+  recent: ArenaPodiumPoolDonationRecent[];
+  donor_summary?: ArenaPodiumPoolDonationsDonorSummary;
+};
+
+export function arenaPodiumPoolDonationsApiPath(
+  limit = 10,
+  donor?: string,
+): string {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (donor) {
+    params.set("donor", donor);
+  }
+  return `/v1/arena/podium-pool-donations?${params.toString()}`;
+}
+
+export async function fetchArenaPodiumPoolDonations(limit = 10, donor?: string) {
+  return getJson<ArenaPodiumPoolDonations>(arenaPodiumPoolDonationsApiPath(limit, donor));
+}
+
 /** Response header for indexer API schema; present on v1 JSON routes. */
 const INDEXER_SCHEMA_HEADER = "x-schema-version";
 

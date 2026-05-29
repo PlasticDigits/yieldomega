@@ -27,4 +27,23 @@ library ArenaBuyRouting {
         }
         admin = amount - allocated;
     }
+
+    /// @dev Prize-only split for manual podium top-ups (10:7.5 active:seed per category, 100% to vaults).
+    /// Remainder wei is assigned to the last category seed pool (GitLab #261 / #262).
+    function splitPrizeTopUpAmount(uint256 amount)
+        internal
+        pure
+        returns (uint256[NUM_PODIUMS] memory active, uint256[NUM_PODIUMS] memory seed)
+    {
+        uint256 allocated;
+        for (uint8 i; i < NUM_PODIUMS; ++i) {
+            active[i] = Math.mulDiv(amount, ACTIVE_PODIUM_BPS, 7000);
+            seed[i] = Math.mulDiv(amount, SEED_PODIUM_BPS, 7000);
+            allocated += active[i] + seed[i];
+        }
+        uint256 rem = amount - allocated;
+        if (rem > 0) {
+            seed[NUM_PODIUMS - 1] += rem;
+        }
+    }
 }
