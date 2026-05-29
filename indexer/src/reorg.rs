@@ -112,6 +112,7 @@ pub async fn get_stored_block_hash(pool: &PgPool, block_number: u64) -> Result<O
 const ROLLBACK_TABLES: &[&str] = &[
     "idx_referral_code_registered",
     "idx_arena_podium_pool_top_up",
+    "idx_arena_vault_funding",
     "idx_arena_buy",
     "idx_arena_started",
     "idx_arena_podium_epoch",

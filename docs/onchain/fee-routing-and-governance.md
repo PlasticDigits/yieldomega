@@ -30,4 +30,4 @@ Legacy **FeeRouter** five-sink **CL8Y** model (30/40/20/0/10), **`PodiumPool`**,
 - `AdminVaultFunded` — [`AdminSellVault`](../../contracts/src/arena/AdminSellVault.sol)
 - `Buy`, `LastBuyEpochStarted` — [`TimeArena`](../../contracts/src/arena/TimeArena.sol)
 
-Spec: [`docs/product/arena-v2.md`](../product/arena-v2.md).
+Indexer ingest + HTTP for buy-sourced vault funding events: [GitLab #267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`INV-INDEXER-267-VAULT-FUNDING`** · [design §267](../indexer/design.md#arena-vault-funding-http-gitlab-267). Donate-only **`PodiumPoolsToppedUp`**: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262).

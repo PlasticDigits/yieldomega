@@ -26,6 +26,18 @@ pub fn arena_routes() -> axum::Router<AppState> {
             "/v1/arena/podium-pool-donations",
             axum::routing::get(arena_podium_pool_donations),
         )
+        .route(
+            "/v1/arena/vault-funding/recent",
+            axum::routing::get(arena_vault_funding_recent),
+        )
+        .route(
+            "/v1/arena/vault-funding/by-tx/{tx_hash}",
+            axum::routing::get(arena_vault_funding_by_tx),
+        )
+        .route(
+            "/v1/arena/vault-funding/totals",
+            axum::routing::get(arena_vault_funding_totals),
+        )
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -314,6 +326,190 @@ async fn arena_wallet_stats(
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(body),
+    )
+        .into_response()
+}
+
+fn normalize_tx_hash_param(raw: &str) -> Option<String> {
+    let h = raw.trim().to_ascii_lowercase();
+    if !h.starts_with("0x") || h.len() != 66 || !h[2..].chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    Some(h)
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct VaultFundingRecentQuery {
+    #[serde(flatten)]
+    page: PageParams,
+}
+
+async fn arena_vault_funding_recent(
+    State(state): State<AppState>,
+    Query(p): Query<VaultFundingRecentQuery>,
+) -> Response {
+    let limit = p.page.limit.clamp(1, 200);
+    let offset = p.page.offset.max(0);
+
+    let rows = match sqlx::query(
+        r#"SELECT kind, podium_id, amount_doub_wad::text AS amount,
+                  pool_address, block_number, tx_hash,
+                  EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+           FROM idx_arena_vault_funding
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/vault-funding/recent", e),
+    };
+
+    let items: Vec<_> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "kind": r.get::<String, _>("kind"),
+                "podium_id": r.get::<Option<i16>, _>("podium_id").map(|p| p.to_string()),
+                "amount_doub_wad": r.get::<String, _>("amount"),
+                "pool_address": r.get::<Option<String>, _>("pool_address"),
+                "block_number": r.get::<i64, _>("block_number"),
+                "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
+                "tx_hash": r.get::<String, _>("tx_hash"),
+            })
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({ "items": items, "limit": limit, "offset": offset })),
+    )
+        .into_response()
+}
+
+async fn arena_vault_funding_by_tx(
+    State(state): State<AppState>,
+    Path(tx_hash): Path<String>,
+) -> Response {
+    let Some(tx_h) = normalize_tx_hash_param(&tx_hash) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "invalid_tx_hash" })),
+        )
+            .into_response();
+    };
+
+    let rows = match sqlx::query(
+        r#"SELECT kind, podium_id, amount_doub_wad::text AS amount, pool_address, log_index
+           FROM idx_arena_vault_funding
+           WHERE tx_hash = $1
+           ORDER BY log_index ASC"#,
+    )
+    .bind(&tx_h)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/vault-funding/by-tx", e),
+    };
+
+    let total_row = match sqlx::query(
+        r#"SELECT COALESCE(SUM(amount_doub_wad), 0)::text AS total
+           FROM idx_arena_vault_funding WHERE tx_hash = $1"#,
+    )
+    .bind(&tx_h)
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/vault-funding/by-tx", e),
+    };
+
+    let items: Vec<_> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "kind": r.get::<String, _>("kind"),
+                "podium_id": r.get::<Option<i16>, _>("podium_id").map(|p| p.to_string()),
+                "amount_doub_wad": r.get::<String, _>("amount"),
+                "pool_address": r.get::<Option<String>, _>("pool_address"),
+                "log_index": r.get::<i32, _>("log_index"),
+            })
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({
+            "tx_hash": tx_h,
+            "items": items,
+            "total_funded_doub_wad": total_row.get::<String, _>("total"),
+        })),
+    )
+        .into_response()
+}
+
+async fn arena_vault_funding_totals(State(state): State<AppState>) -> Response {
+    let rows = match sqlx::query(
+        r#"SELECT kind, podium_id, COALESCE(SUM(amount_doub_wad), 0)::text AS total
+           FROM idx_arena_vault_funding
+           GROUP BY kind, podium_id
+           ORDER BY kind, podium_id NULLS FIRST"#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/vault-funding/totals", e),
+    };
+
+    let by_kind = match sqlx::query(
+        r#"SELECT kind, COALESCE(SUM(amount_doub_wad), 0)::text AS total
+           FROM idx_arena_vault_funding
+           GROUP BY kind
+           ORDER BY kind"#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/vault-funding/totals", e),
+    };
+
+    let kind_totals: Vec<_> = by_kind
+        .iter()
+        .map(|r| {
+            json!({
+                "kind": r.get::<String, _>("kind"),
+                "total_doub_wad": r.get::<String, _>("total"),
+            })
+        })
+        .collect();
+
+    let by_podium: Vec<_> = rows
+        .iter()
+        .filter(|r| r.get::<Option<i16>, _>("podium_id").is_some())
+        .map(|r| {
+            json!({
+                "kind": r.get::<String, _>("kind"),
+                "podium_id": r.get::<Option<i16>, _>("podium_id").map(|p| p.to_string()),
+                "total_doub_wad": r.get::<String, _>("total"),
+            })
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({
+            "by_kind": kind_totals,
+            "by_kind_and_podium": by_podium,
+        })),
     )
         .into_response()
 }
