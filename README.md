@@ -10,7 +10,7 @@ MegaETH-oriented monorepo for onchain gamefi: **Time Arena** (Arena v2) — **`T
 
 ## MegaETH mainnet production contracts
 
-**Network:** MegaETH mainnet (**chain id 4326**). The table below is the **legacy v1** deployment snapshot until Arena v2 mainnet redeploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). For new work, use your **registry JSON** from **`DeployDev`** / production deploy — **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**.
+**Network:** MegaETH mainnet (**chain id 4326**). The table below is the **legacy v1** deployment snapshot until Arena v2 mainnet redeploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). For new work, use your **registry JSON** from **`DeployDev`** / **`DeployProduction`** — **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`PlayCred`**. Deploy docs: [`docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259`](docs/operations/deployment-guide.md#arena-v2-deploy-gitlab-259).
 
 | Contract | Address |
 |----------|---------|

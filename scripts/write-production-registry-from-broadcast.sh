@@ -2,16 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Build the Stage-3 address registry JSON from an existing DeployProduction broadcast
 # (`run-latest.json`) without running `forge script` or `forge build`.
-#
-# Default ABI hashes use existing `contracts/out/` artifacts. For hashes matching a fresh
-# compile, run `forge build` in `contracts/` first, then invoke this script with
-# `--with-forge-build` (runs `forge build` inside export_abi_hashes.sh).
-#
-# Usage:
-#   scripts/write-production-registry-from-broadcast.sh
-#   scripts/write-production-registry-from-broadcast.sh path/to/run-latest.json
-#   scripts/write-production-registry-from-broadcast.sh --out .deploy/registry.json
-#   scripts/write-production-registry-from-broadcast.sh --chain-id 4326 --network megaeth_mainnet
+# Arena v2 contract set — GitLab #259.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,10 +12,6 @@ DEFAULT_CHAIN_ID="4326"
 DEFAULT_NETWORK_NAME="megaeth_mainnet"
 DEFAULT_MEGAETH_MAINNET_CL8Y="0xfBAa45A537cF07dC768c469FfaC4e88208B0098D"
 DEFAULT_RPC_URL="https://mainnet.megaeth.com/rpc"
-DEFAULT_MEGAETH_MAINNET_KUMBAYA_SWAP_ROUTER="0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e"
-DEFAULT_MEGAETH_MAINNET_KUMBAYA_WETH="0x4200000000000000000000000000000000000006"
-DEFAULT_MEGAETH_MAINNET_KUMBAYA_STABLE="0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7"
-DEFAULT_MEGAETH_MAINNET_KUMBAYA_QUOTER="0x1F1a8dC7E138C34b503Ca080962aC10B75384a27"
 
 RUN_JSON=""
 OUT_FILE=""
@@ -61,10 +48,6 @@ Options:
   --rpc-url URL         Shown in printed Frontend/Indexer hints (default: MegaETH mainnet RPC).
   --with-forge-build    Run `forge build` before ABI hash export (default: skip build).
   -h, --help            Show this help.
-
-After a successful write, the script prints suggested INDEXER_* and VITE_* lines (same shape as
-`scripts/deploy-megaeth-contracts.sh`). You still set VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL,
-VITE_WALLETCONNECT_PROJECT_ID, etc. yourself — see frontend/.env.example.
 
   --handoff DIR         Write DIR with address-registry.json, indexer.env, vite-frontend.env,
                         and README.txt for scp to production (DIR relative to repo root OK).
@@ -227,109 +210,14 @@ PY
   echo "Could not read receipt block numbers from ${RUN_JSON}" >&2
   exit 1
 fi
-if [[ ! "$DEPLOY_BLOCK" =~ ^[0-9]+$ ]] || [[ "$DEPLOY_BLOCK" == "0" ]]; then
-  echo "Invalid deploy block parsed from ${RUN_JSON}: ${DEPLOY_BLOCK}" >&2
-  exit 1
-fi
 
 BROADCAST_ADDR_LIB="${ROOT}/scripts/lib/broadcast_proxy_addresses.sh"
-if [[ ! -f "$BROADCAST_ADDR_LIB" ]]; then
-  echo "Missing ${BROADCAST_ADDR_LIB}" >&2
-  exit 1
-fi
+ARENA_REGISTRY_LIB="${ROOT}/scripts/lib/arena_v2_registry_from_broadcast.sh"
 # shellcheck source=lib/broadcast_proxy_addresses.sh
 source "$BROADCAST_ADDR_LIB"
-
-zero_to_empty() {
-  if [[ "${1:-}" == "0x0000000000000000000000000000000000000000" ]]; then
-    echo ""
-  else
-    echo "${1:-}"
-  fi
-}
-
-DOUB="$(broadcast_direct_create_address "$RUN_JSON" Doubloon)"
-PODIUM="$(broadcast_erc1967_proxy_address "$RUN_JSON" PodiumPool)"
-SALE_BURN="0x000000000000000000000000000000000000dEaD"
-DOUB_LP="$(broadcast_erc1967_proxy_address "$RUN_JSON" DoubLPIncentives)"
-ECO="$(broadcast_erc1967_proxy_address "$RUN_JSON" EcosystemTreasury)"
-RT_VAULT="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" RabbitTreasuryVault)")"
-if [[ -n "$RT_VAULT" ]]; then
-  RABBIT_FEE_SINK="$RT_VAULT"
-else
-  if ! RABBIT_FEE_SINK="$(
-    python3 - "$RUN_JSON" <<'PY'
-import json
-import re
-import subprocess
-import sys
-
-run = json.load(open(sys.argv[1], encoding="utf-8"))
-impl = next(
-    (
-        t["contractAddress"]
-        for t in run["transactions"]
-        if t.get("transactionType") == "CREATE" and t.get("contractName") == "FeeRouter"
-    ),
-    None,
-)
-if not impl:
-    print("No FeeRouter implementation CREATE in broadcast JSON.", file=sys.stderr)
-    sys.exit(1)
-want = str(impl).lower()
-init = None
-for t in run["transactions"]:
-    if t.get("transactionType") != "CREATE" or t.get("contractName") != "ERC1967Proxy":
-        continue
-    args = t.get("arguments") or []
-    if len(args) < 2 or str(args[0]).lower() != want:
-        continue
-    init = args[1]
-    break
-if not init:
-    print("No FeeRouter ERC1967Proxy CREATE in broadcast JSON.", file=sys.stderr)
-    sys.exit(1)
-raw = subprocess.check_output(
-    [
-        "cast",
-        "calldata-decode",
-        "initialize(address,address[5],uint16[5])",
-        init,
-    ],
-    stderr=subprocess.DEVNULL,
-    text=True,
-)
-lines = [ln.strip() for ln in raw.strip().splitlines() if ln.strip() and not ln.startswith("Warning:")]
-if len(lines) < 2:
-    print("Unexpected cast calldata-decode output for FeeRouter.initialize.", file=sys.stderr)
-    sys.exit(1)
-addrs = re.findall(r"0x[a-fA-F]{40}", lines[1])
-if len(addrs) < 5:
-    print("Could not parse FeeRouter destination addresses from cast output.", file=sys.stderr)
-    sys.exit(1)
-print(addrs[4])
-PY
-  )"; then
-    echo "Could not resolve RabbitFeeSink from FeeRouter init in ${RUN_JSON} (no vault row)." >&2
-    exit 1
-  fi
-fi
-RT="$(broadcast_erc1967_proxy_address "$RUN_JSON" RabbitTreasury)"
-FEE_ROUTER="$(broadcast_erc1967_proxy_address "$RUN_JSON" FeeRouter)"
-REFERRAL="$(broadcast_erc1967_proxy_address "$RUN_JSON" ReferralRegistry)"
-CHARM_PRICE="$(broadcast_erc1967_proxy_address "$RUN_JSON" LinearCharmPrice)"
-TC="$(broadcast_erc1967_proxy_address "$RUN_JSON" TimeCurve)"
-DPV="$(zero_to_empty "$(broadcast_erc1967_proxy_address "$RUN_JSON" DoubPresaleVesting 2>/dev/null || true)")"
-PCRG="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" PresaleCharmBeneficiaryRegistry)")"
-BUY_ROUTER="$(zero_to_empty "$(broadcast_direct_create_address "$RUN_JSON" TimeCurveBuyRouter)")"
-NFT="$(broadcast_direct_create_address "$RUN_JSON" LeprechaunNFT)"
-
-for required in DOUB PODIUM SALE_BURN DOUB_LP ECO RABBIT_FEE_SINK RT FEE_ROUTER REFERRAL CHARM_PRICE TC NFT; do
-  if [[ -z "${!required:-}" ]]; then
-    echo "Could not resolve ${required} from broadcast JSON: ${RUN_JSON}" >&2
-    exit 1
-  fi
-done
+# shellcheck source=lib/arena_v2_registry_from_broadcast.sh
+source "$ARENA_REGISTRY_LIB"
+yieldomega_arena_v2_extract_registry_addresses "$RUN_JSON"
 
 export_abi_env=()
 if [[ "$WITH_FORGE_BUILD" == true ]]; then
@@ -349,21 +237,12 @@ jq -n \
   --arg network "$NETWORK_NAME" \
   --arg reserve "$RESERVE_ASSET_ADDRESS" \
   --arg doub "$DOUB" \
-  --arg podium "$PODIUM" \
-  --arg saleBurn "$SALE_BURN" \
-  --arg doubLp "$DOUB_LP" \
-  --arg eco "$ECO" \
-  --arg rtVault "$RT_VAULT" \
-  --arg rabbitFeeSink "$RABBIT_FEE_SINK" \
-  --arg rt "$RT" \
-  --arg feeRouter "$FEE_ROUTER" \
-  --arg referral "$REFERRAL" \
-  --arg charmPrice "$CHARM_PRICE" \
-  --arg tc "$TC" \
+  --arg cred "$CRED" \
+  --arg pv "$PV" \
+  --arg av "$AV" \
+  --arg rr "$RR" \
+  --arg ta "$TA" \
   --arg buyRouter "$BUY_ROUTER" \
-  --arg nft "$NFT" \
-  --arg dpv "$DPV" \
-  --arg pcrg "$PCRG" \
   --arg deployer "$DEPLOYER_ADDRESS" \
   --argjson deployBlock "$DEPLOY_BLOCK" \
   --arg gitCommit "$GIT_COMMIT" \
@@ -375,22 +254,13 @@ jq -n \
     contracts: {
       CL8Y_reserve: $reserve,
       Doubloon: $doub,
-      PodiumPool: $podium,
-      CL8YProtocolTreasury: $saleBurn,
-      DoubLPIncentives: $doubLp,
-      EcosystemTreasury: $eco,
-      RabbitTreasuryVault: $rtVault,
-      RabbitFeeSink: $rabbitFeeSink,
-      RabbitTreasury: $rt,
-      FeeRouter: $feeRouter,
-      TimeCurve: $tc,
-      TimeCurveBuyRouter: $buyRouter,
-      LeprechaunNFT: $nft,
-      LaunchedToken: $doub,
-      ReferralRegistry: $referral,
-      DoubPresaleVesting: $dpv,
-      PresaleCharmBeneficiaryRegistry: $pcrg,
-      LinearCharmPrice: $charmPrice
+      PlayCred: $cred,
+      PodiumVaults: $pv,
+      AdminSellVault: $av,
+      ReferralRegistry: $rr,
+      TimeArena: $ta,
+      TimeArenaBuyRouter: $buyRouter,
+      LaunchedToken: $doub
     },
     deployer: $deployer,
     deployBlock: $deployBlock,
@@ -399,9 +269,6 @@ jq -n \
 rm -f "$ABI_HASH_TMP"
 
 RPC_HINT="${RPC_URL:-$DEFAULT_RPC_URL}"
-KUMBAYA_ROUTER="${KUMBAYA_SWAP_ROUTER_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_SWAP_ROUTER}"
-KUMBAYA_WETH="${KUMBAYA_WETH_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_WETH}"
-KUMBAYA_STABLE="${KUMBAYA_STABLE_TOKEN_ADDRESS:-$DEFAULT_MEGAETH_MAINNET_KUMBAYA_STABLE}"
 
 if [[ "$OUT_FILE" == "$ROOT"/* ]]; then
   REGISTRY_REPO_REL=".${OUT_FILE#"$ROOT"}"
@@ -410,10 +277,9 @@ else
 fi
 
 echo "Wrote registry (path inside this repo): ${REGISTRY_REPO_REL}"
-echo "  (Full path on your dev machine only — the production server has different users/paths.)"
 echo "  ${OUT_FILE}"
 echo
-echo "Indexer env — use on the server that runs the indexer (fix ADDRESS_REGISTRY_PATH after you upload the JSON):"
+echo "Indexer env:"
 echo "  CHAIN_ID=${CHAIN_ID}"
 echo "  RPC_URL=${RPC_HINT}"
 echo "  START_BLOCK=${DEPLOY_BLOCK}"
@@ -422,31 +288,18 @@ if [[ -n "$BUY_ROUTER" ]]; then
   echo "  INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1"
 fi
 echo
-echo "Frontend env (Vite) — for the machine that builds the static site / CI secrets:"
+echo "Frontend env:"
 echo "  VITE_CHAIN_ID=${CHAIN_ID}"
 echo "  VITE_RPC_URL=${RPC_HINT}"
-echo "  VITE_TIMECURVE_ADDRESS=${TC}"
-echo "  VITE_RABBIT_TREASURY_ADDRESS=${RT}"
-echo "  VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}"
-echo "  VITE_REFERRAL_REGISTRY_ADDRESS=${REFERRAL}"
-echo "  VITE_FEE_ROUTER_ADDRESS=${FEE_ROUTER}"
-if [[ -n "$DPV" ]]; then
-  echo "  VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}"
-fi
-if [[ -n "$PCRG" ]]; then
-  echo "  VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY=${PCRG}"
-fi
+echo "  VITE_TIME_ARENA_ADDRESS=${TA}"
+echo "  VITE_PODIUM_VAULTS_ADDRESS=${PV}"
+echo "  VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}"
+echo "  VITE_REFERRAL_REGISTRY_ADDRESS=${RR}"
 if [[ -n "$BUY_ROUTER" ]]; then
-  echo "  VITE_KUMBAYA_WETH=${KUMBAYA_WETH}"
-  echo "  VITE_KUMBAYA_USDM=${KUMBAYA_STABLE}"
-  echo "  VITE_KUMBAYA_SWAP_ROUTER=${KUMBAYA_ROUTER}"
-  if [[ "$CHAIN_ID" == "4326" ]]; then
-    echo "  VITE_KUMBAYA_QUOTER=${DEFAULT_MEGAETH_MAINNET_KUMBAYA_QUOTER}"
-  fi
-  echo "  VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=${BUY_ROUTER}"
+  echo "  VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER=${BUY_ROUTER}"
 fi
 echo
-echo "Also set yourself: VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL, VITE_WALLETCONNECT_PROJECT_ID — see frontend/.env.example."
+echo "Also set: VITE_INDEXER_URL, VITE_EXPLORER_BASE_URL, VITE_WALLETCONNECT_PROJECT_ID — see frontend/.env.example."
 
 if [[ -n "$HANDOFF_DIR" ]]; then
   mkdir -p "$HANDOFF_DIR"
@@ -456,21 +309,16 @@ if [[ -n "$HANDOFF_DIR" ]]; then
   fi
   cp -f "$OUT_FILE" "${HANDOFF_DIR}/address-registry.json"
   cat >"${HANDOFF_DIR}/README.txt" <<EOF
-YieldOmega — files for your production server (created on your dev laptop)
+YieldOmega Arena v2 — files for your production server
 
-The path /home/... in any earlier terminal output is only YOUR machine. On production, paths
-look like /var/www/... or /home/deploy/... — that is expected.
-
-1. From your repo, copy this whole folder to the server, e.g.:
+1. Copy this folder to the server, e.g.:
      scp -r ${HANDOFF_REL} user@your-server:/opt/yieldomega/
-2. On the server, edit indexer.env: set ADDRESS_REGISTRY_PATH to the real absolute path of
-   address-registry.json on that host.
-3. Merge vite-frontend.env into frontend/.env.production (or your host/CI env).
+2. On the server, edit indexer.env: set ADDRESS_REGISTRY_PATH to address-registry.json.
+3. Merge vite-frontend.env into frontend/.env.production.
 4. Add DATABASE_URL and other indexer settings per indexer/README.md.
 EOF
 
   {
-    echo "# Edit after upload: absolute path to address-registry.json on THIS server."
     echo "ADDRESS_REGISTRY_PATH=/opt/yieldomega/$(basename "$HANDOFF_DIR")/address-registry.json"
     echo "CHAIN_ID=${CHAIN_ID}"
     echo "RPC_URL=${RPC_HINT}"
@@ -478,38 +326,20 @@ EOF
     if [[ -n "$BUY_ROUTER" ]]; then
       echo "INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1"
     fi
-    echo "# DATABASE_URL=… INDEXER_PRODUCTION=… — indexer/README.md"
   } >"${HANDOFF_DIR}/indexer.env"
 
   {
-    echo "# Vite — merge into .env.production"
     echo "VITE_CHAIN_ID=${CHAIN_ID}"
     echo "VITE_RPC_URL=${RPC_HINT}"
-    echo "VITE_TIMECURVE_ADDRESS=${TC}"
-    echo "VITE_RABBIT_TREASURY_ADDRESS=${RT}"
-    echo "VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}"
-    echo "VITE_REFERRAL_REGISTRY_ADDRESS=${REFERRAL}"
-    echo "VITE_FEE_ROUTER_ADDRESS=${FEE_ROUTER}"
-    if [[ -n "$DPV" ]]; then
-      echo "VITE_DOUB_PRESALE_VESTING_ADDRESS=${DPV}"
-    fi
-    if [[ -n "$PCRG" ]]; then
-      echo "VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY=${PCRG}"
-    fi
+    echo "VITE_TIME_ARENA_ADDRESS=${TA}"
+    echo "VITE_PODIUM_VAULTS_ADDRESS=${PV}"
+    echo "VITE_ADMIN_SELL_VAULT_ADDRESS=${AV}"
+    echo "VITE_REFERRAL_REGISTRY_ADDRESS=${RR}"
     if [[ -n "$BUY_ROUTER" ]]; then
-      echo "VITE_KUMBAYA_WETH=${KUMBAYA_WETH}"
-      echo "VITE_KUMBAYA_USDM=${KUMBAYA_STABLE}"
-      echo "VITE_KUMBAYA_SWAP_ROUTER=${KUMBAYA_ROUTER}"
-      if [[ "$CHAIN_ID" == "4326" ]]; then
-        echo "VITE_KUMBAYA_QUOTER=${DEFAULT_MEGAETH_MAINNET_KUMBAYA_QUOTER}"
-      fi
-      echo "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER=${BUY_ROUTER}"
+      echo "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER=${BUY_ROUTER}"
     fi
-    echo "# VITE_INDEXER_URL=https://…"
-    echo "# VITE_EXPLORER_BASE_URL=https://…"
-    echo "# VITE_WALLETCONNECT_PROJECT_ID=…"
   } >"${HANDOFF_DIR}/vite-frontend.env"
 
   echo
-  echo "Handoff folder (scp this directory to prod): ${HANDOFF_REL}/"
+  echo "Handoff folder: ${HANDOFF_REL}/"
 fi

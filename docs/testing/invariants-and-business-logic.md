@@ -228,6 +228,21 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 **INV-INDEXER-156:** With **`INDEXER_PRODUCTION`**, registry must include **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`**, valid **`chain_id`**, and **`deploy_block > 0`** (except Anvil **31337**).
 
+<a id="arena-v2-deploy-gitlab-259"></a>
+
+### Arena v2 deploy wiring (GitLab [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259))
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-DEPLOY-259-DEV-WIRE`** | DeployDev: vaults → arena, PlayCred minter, arena live | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
+| **`INV-DEPLOY-259-DEV-SEED`** | DeployDev seeds DOUB/CL8Y/CRED for E2E mock wallet | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) |
+| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
+| **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
+
+Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md).
+
+---
+
 <a id="qa-local-full-stack-orchestrator-gitlab-104"></a>
 
 ### QA local full stack (GitLab [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104))

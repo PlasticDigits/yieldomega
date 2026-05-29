@@ -15,7 +15,12 @@ import {DeployDevBuyCooldown} from "./DeployDevBuyCooldown.sol";
 import {DevOnlyChainGuard} from "./DevOnlyChainGuard.sol";
 
 /// @notice Deploy Arena v2 core contracts to dev/local Anvil.
+/// @dev TimeArenaBuyRouter is deployed separately via `DeployKumbayaAnvilFixtures` when
+///      `YIELDOMEGA_DEPLOY_KUMBAYA=1` (GitLab #270). See `scripts/lib/anvil_deploy_dev.sh`.
 contract DeployDev is Script {
+    /// @dev Playwright mock wallet (Anvil account #0) — E2E #269.
+    address internal constant E2E_MOCK_WALLET = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+
     function run() external {
         DevOnlyChainGuard.assertDevScriptChain();
         uint256 deployerKey =
@@ -28,8 +33,9 @@ contract DeployDev is Script {
         if (reserveAsset == address(0)) {
             reserveAsset = vm.envOr("USDM_ADDRESS", address(0));
         }
+        MockReserveCl8y mock;
         if (reserveAsset == address(0)) {
-            MockReserveCl8y mock = new MockReserveCl8y();
+            mock = new MockReserveCl8y();
             reserveAsset = address(mock);
             console.log("MockReserveCl8y deployed (dev only):", reserveAsset);
         }
@@ -65,16 +71,22 @@ contract DeployDev is Script {
         podiumVaults.setArena(address(arena));
         adminVault.setArena(address(arena));
         playCred.grantRole(playCred.MINTER_ROLE(), address(arena));
-        // Anvil default account #0 — Playwright mock wallet (E2E #269).
         playCred.grantRole(playCred.MINTER_ROLE(), deployer);
-        playCred.mint(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266, 1000e18);
+        playCred.mint(E2E_MOCK_WALLET, 1000e18);
         arena.startArena();
         console.log("TimeArena:", address(arena));
         console.log("TimeArena buyCooldownSec (dev deploy):", buyCooldownSecDev);
 
         doub.grantRole(doub.MINTER_ROLE(), deployer);
         doub.mint(deployer, 10_000_000e18);
+        doub.mint(E2E_MOCK_WALLET, 1_000_000e18);
         console.log("Doubloon MINTER_ROLE granted to deployer for local QA");
+
+        if (address(mock) != address(0)) {
+            mock.mint(E2E_MOCK_WALLET, 100_000e18);
+            mock.mint(deployer, 100_000e18);
+            console.log("MockReserveCl8y seeded for E2E mock wallet");
+        }
 
         vm.stopBroadcast();
 
