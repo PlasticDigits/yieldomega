@@ -3,7 +3,7 @@
 # Shared DeployDev.s.sol deploy + address extraction for Anvil workflows.
 #
 # After success, sets: TA, PV, AV, RR, DOUB, CRED (Arena v2 — GitLab #260).
-# Optional Kumbaya only when YIELDOMEGA_DEPLOY_KUMBAYA=1 (#251).
+# Kumbaya + TimeArenaBuyRouter when YIELDOMEGA_DEPLOY_KUMBAYA=1 (default in e2e-anvil.sh — GitLab #270).
 #
 # TimeArena buy cooldown: YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 / YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC (#88).
 
@@ -47,16 +47,22 @@ yieldomega_anvil_deploy_dev() {
     echo "Deploying Kumbaya Anvil fixtures (YIELDOMEGA_DEPLOY_KUMBAYA=1)..."
     KUMBAYA_LOG=$(mktemp)
     forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
-      --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}" || true
-    _yieldomega_extract_k() {
-      local label="$1"
-      grep "${label}" "${KUMBAYA_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
-    }
-    KUMBAYA_WETH=$(_yieldomega_extract_k "AnvilWETH9:")
-    KUMBAYA_USDM=$(_yieldomega_extract_k "AnvilMockUSDM:")
-    KUMBAYA_ROUTER=$(_yieldomega_extract_k "AnvilKumbayaRouter")
-    KUMBAYA_BUY_ROUTER=$(_yieldomega_extract_k "TimeCurveBuyRouter (single-tx")
+      --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}"
+    # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
+    source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
+    yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"
     rm -f "${KUMBAYA_LOG}"
-    echo "Kumbaya: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER} BuyRouter=${KUMBAYA_BUY_ROUTER}"
+    if [ -z "${KUMBAYA_BUY_ROUTER}" ]; then
+      echo "DeployKumbayaAnvilFixtures: could not parse TimeArenaBuyRouter from log." >&2
+      return 1
+    fi
+    ONCHAIN_BR="$(cast call "${TA}" "timeArenaBuyRouter()(address)" --rpc-url "${RPC}" 2>/dev/null | tr -d '[:space:]')"
+    ONCHAIN_BR="$(cast to-checksum "${ONCHAIN_BR}" 2>/dev/null || echo "")"
+    EXP_BR="$(cast to-checksum "${KUMBAYA_BUY_ROUTER}" 2>/dev/null || echo "${KUMBAYA_BUY_ROUTER}")"
+    if [ -z "${ONCHAIN_BR}" ] || [ "${ONCHAIN_BR,,}" != "${EXP_BR,,}" ]; then
+      echo "TimeArena.timeArenaBuyRouter (${ONCHAIN_BR}) != deployed ${EXP_BR}" >&2
+      return 1
+    fi
+    echo "Kumbaya: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER} TimeArenaBuyRouter=${KUMBAYA_BUY_ROUTER}"
   fi
 }

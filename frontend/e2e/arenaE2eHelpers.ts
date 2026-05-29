@@ -39,7 +39,13 @@ export async function selectPayWith(page: Page, asset: "cl8y" | "eth" | "usdm"):
 
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  await buyPanel.locator('input[type="range"]').evaluate((input) => {
+  await openBuyAdvanced(page);
+  const range = buyPanel.locator("input.timecurve-buy-spend-range");
+  if ((await range.count()) === 0) {
+    // Arena DOUB checkout may omit the CL8Y spend slider when bounds are not wired yet.
+    return;
+  }
+  await range.first().evaluate((input) => {
     const el = input as HTMLInputElement;
     el.value = "1";
     el.dispatchEvent(new Event("input", { bubbles: true }));

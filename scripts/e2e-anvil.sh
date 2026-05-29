@@ -22,6 +22,8 @@ if [ ! -d "${ROOT}/frontend/node_modules" ]; then
   exit 1
 fi
 
+pkill -f "anvil.*${PORT}" 2>/dev/null || true
+sleep 1
 echo "Starting anvil on ${RPC}..."
 anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 524288 >/tmp/yieldomega_anvil_e2e.log 2>&1 &
 ANVIL_PID=$!
@@ -37,6 +39,7 @@ if ! cast block-number --rpc-url "${RPC}" >/dev/null 2>&1; then
   exit 1
 fi
 
+export YIELDOMEGA_DEPLOY_KUMBAYA="${YIELDOMEGA_DEPLOY_KUMBAYA:-1}"
 yieldomega_anvil_deploy_dev
 
 export VITE_CHAIN_ID=31337
