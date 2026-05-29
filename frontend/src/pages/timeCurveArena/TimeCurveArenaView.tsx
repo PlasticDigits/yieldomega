@@ -38,6 +38,7 @@ export function TimeCurveArenaView() {
     address,
     buyEnvelopeParams,
     buyFeeRoutingEnabled,
+    arenaPaused,
     buyListModalOpen,
     buys,
     buysNextOffset,
@@ -208,6 +209,7 @@ export function TimeCurveArenaView() {
               warbowGuardBurnWad={warbowGuardBurnWad.toString()}
               warbowBypassBurnWad={warbowBypassBurnWad.toString()}
               buyFeeRoutingEnabled={buyFeeRoutingEnabled}
+              arenaPaused={arenaPaused}
               isWriting={isWriting}
               showClaimFlagBlock={iHoldPlantFlag && flagPlantAtSec > 0n}
               canClaimWarBowFlag={canClaimWarBowFlag}

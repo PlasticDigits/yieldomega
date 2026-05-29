@@ -35,6 +35,7 @@ export function arenaV2CoreContracts(tc: HexAddress) {
     { address: tc, abi: timeArenaReadAbi, functionName: "buyCooldownSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerExtensionSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerCapSec" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "timeArenaBuyRouter" as const },
   ] as const;
 }
 
@@ -60,11 +61,12 @@ export function mapArenaV2CoreRows(
   const buyCooldown = ok(7) ? (raw[7]!.result as bigint) : 300n;
   const timerExt = ok(8) ? (raw[8]!.result as bigint) : 120n;
   const timerCap = ok(9) ? (raw[9]!.result as bigint) : 86_400n;
+  const buyRouter = ok(10) ? (raw[10]!.result as HexAddress) : ZERO;
 
   return [
     row(saleStart),
     row(deadline),
-    row(paused),
+    row(false),
     row(CHARM_MIN_WAD),
     row(CHARM_MAX_WAD),
     row([CHARM_MIN_WAD, CHARM_MAX_WAD]),
@@ -81,10 +83,10 @@ export function mapArenaV2CoreRows(
     row(timerCap),
     row(buyCooldown),
     row(ZERO),
-    row(true),
+    row(!paused),
     row(false),
     row(false),
-    row(ZERO),
+    row(buyRouter),
     row(ZERO),
     row(ZERO),
     row(0n),
