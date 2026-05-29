@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
 # One-shot: Postgres (Docker) → Anvil → DeployDev → (optional) anvil_rich_state → (optional YIELDOMEGA_DEPLOY_KUMBAYA=1:
-# DeployKumbayaAnvilFixtures + registry key TimeCurveBuyRouter + Kumbaya VITE_* in frontend/.env.local, GitLab #84) →
+# DeployKumbayaAnvilFixtures + registry key TimeArenaBuyRouter + Kumbaya VITE_* in frontend/.env.local, GitLab #84/#270) →
 # registry JSON → reset indexer DB → indexer → frontend/.env.local (chain 31337 + contract addresses incl. FeeRouter, PodiumPool, ReferralRegistry, DoubPresaleVesting + indexer URL — GitLab #92).
 #
 # Optional **short per-wallet buy cooldown** on TimeCurve for multi-buy QA ([GitLab #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)):
@@ -252,11 +252,16 @@ if [[ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" == "1" ]]; then
   export PRIVATE_KEY="${DEPLOYER_PK:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}"
   forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
     --rpc-url "${RPC_URL}" --optimizer-runs 1 --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}" \
-    || echo "  WARN: DeployKumbayaAnvilFixtures skipped or failed (TimeCurveBuyRouter retired until #251)."
+    || die "DeployKumbayaAnvilFixtures failed."
   yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"
   rm -f "${KUMBAYA_LOG}"
-  [[ -n "${KUMBAYA_BUY_ROUTER}" ]] || die "DeployKumbayaAnvilFixtures: could not parse TimeCurveBuyRouter from log."
-  echo "  Kumbaya fixtures + TimeCurveBuyRouter deployed onchain."
+  [[ -n "${KUMBAYA_BUY_ROUTER}" ]] || die "DeployKumbayaAnvilFixtures: could not parse TimeArenaBuyRouter from log."
+  ONCHAIN_BR="$(cast call "${TA}" "timeArenaBuyRouter()(address)" --rpc-url "${RPC_URL}" 2>/dev/null | tr -d '[:space:]')"
+  ONCHAIN_BR="$(cast to-checksum "${ONCHAIN_BR}" 2>/dev/null || echo "")"
+  EXP_BR="$(cast to-checksum "${KUMBAYA_BUY_ROUTER}" 2>/dev/null || echo "${KUMBAYA_BUY_ROUTER}")"
+  [[ -n "${ONCHAIN_BR}" && "${ONCHAIN_BR,,}" == "${EXP_BR,,}" ]] \
+    || die "TimeArena.timeArenaBuyRouter (${ONCHAIN_BR}) != deployed ${EXP_BR}"
+  echo "  Kumbaya fixtures + TimeArenaBuyRouter deployed onchain."
 fi
 
 jq -n \
@@ -272,7 +277,7 @@ jq -n \
     chainId: $chainId,
     contracts: (
       { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr }
-      + (if $tcbr != "" then {TimeCurveBuyRouter: $tcbr} else {} end)
+      + (if $tcbr != "" then {TimeArenaBuyRouter: $tcbr} else {} end)
     ),
     deployBlock: $deployBlock
   }' > "${REGISTRY_OUT}"
