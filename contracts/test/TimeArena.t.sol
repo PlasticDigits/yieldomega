@@ -385,11 +385,65 @@ contract TimeArenaTest is Test {
         assertEq(arena.totalDoubRaised(), 0);
     }
 
+    /// GitLab #261: 700 DOUB top-up prize slice equals DOUB prize portion of a 1000 DOUB buy.
+    function test_topUpPodiumPools_equivalent_to_buy_prize_vaults() public {
+        TimeArena buyArena = _newArena();
+        vm.prank(alice);
+        buyArena.buy(1e18);
+
+        TimeArena topUpArena = _newArena();
+        vm.prank(alice);
+        topUpArena.topUpPodiumPools(700e18);
+
+        assertEq(doub.balanceOf(address(_vaultsFor(buyArena))), doub.balanceOf(address(_vaultsFor(topUpArena))));
+        assertEq(doub.balanceOf(address(_adminFor(buyArena))), 300e18);
+        assertEq(doub.balanceOf(address(_adminFor(topUpArena))), 0);
+    }
+
+    function test_topUpPodiumPools_1000_admin_vault_unchanged() public {
+        uint256 adminBefore = doub.balanceOf(address(adminVault));
+        vm.prank(alice);
+        arena.topUpPodiumPools(1000e18);
+        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
+        assertEq(doub.balanceOf(address(vaults)), 1000e18);
+    }
+
+    function test_topUpPodiumPools_emits_topped_up() public {
+        vm.expectEmit(true, false, false, true);
+        emit TimeArena.PodiumPoolsToppedUp(alice, 700e18);
+        vm.prank(alice);
+        arena.topUpPodiumPools(700e18);
+    }
+
     function test_topUpPodiumPools_reverts_without_allowance() public {
         vm.prank(bob);
         doub.approve(address(arena), 0);
         vm.prank(bob);
         vm.expectRevert();
         arena.topUpPodiumPools(1e18);
+    }
+
+    function _newArena() internal returns (TimeArena a) {
+        PodiumVaults v = new PodiumVaults(doub, admin);
+        AdminSellVault av = new AdminSellVault(doub, admin);
+        TimeArena impl = new TimeArena();
+        bytes memory data = abi.encodeCall(
+            TimeArena.initialize,
+            (doub, v, av, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+        );
+        a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
+        v.setArena(address(a));
+        av.setArena(address(a));
+        a.startArena();
+        vm.prank(alice);
+        doub.approve(address(a), type(uint256).max);
+    }
+
+    function _vaultsFor(TimeArena a) internal view returns (PodiumVaults) {
+        return PodiumVaults(a.podiumVaults());
+    }
+
+    function _adminFor(TimeArena a) internal view returns (AdminSellVault) {
+        return AdminSellVault(a.adminSellVault());
     }
 }

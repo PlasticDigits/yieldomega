@@ -14,6 +14,14 @@ Implementation: [`ArenaBuyRouting.sol`](../../contracts/src/arena/libraries/Aren
 
 Integer rounding remainder is assigned to the **admin vault** (see `splitBuyAmount`).
 
+## Manual podium pool top-up ([GitLab #261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
+
+**`TimeArena.topUpPodiumPools(amountDoubWad)`** is permissionless sponsorship: **`transferFrom`** the caller, route **100%** of DOUB across the eight prize vaults at the **same 10% : 7.5% active:seed ratio per category** as the buy prize slice (`ArenaBuyRouting.splitPrizeTopUpAmount`; remainder wei → last category seed pool). **Zero** DOUB to **`AdminSellVault`**. Emits **`PodiumPoolsToppedUp`** plus **`PodiumFunded` / `SeedFunded`** on **`PodiumVaults`**. Does not mint CRED/XP, extend timers, or increment **`totalDoubRaised`**.
+
+**Equivalence:** `topUpPodiumPools(700e18)` must match the prize vault deltas of the **700 DOUB** prize portion of a **1000 DOUB** `buy` (see `TimeArena.t.sol::test_topUpPodiumPools_equivalent_to_buy_prize_vaults`).
+
+Indexer + AUDIT UI for donation history: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) · **`INV-INDEXER-262-DONATE-POOLS`**. Buy-sourced vault funding rows (distinct): [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267).
+
 ## Governance
 
 - **`TimeArena`**: `onlyOwner` — `setCharmPriceWad`, `setPaused`, UUPS upgrade, `startArena`.
@@ -28,6 +36,6 @@ Legacy **FeeRouter** five-sink **CL8Y** model (30/40/20/0/10), **`PodiumPool`**,
 
 - `PodiumFunded`, `SeedFunded` — [`PodiumVaults`](../../contracts/src/arena/PodiumVaults.sol)
 - `AdminVaultFunded` — [`AdminSellVault`](../../contracts/src/arena/AdminSellVault.sol)
-- `Buy`, `LastBuyEpochStarted` — [`TimeArena`](../../contracts/src/arena/TimeArena.sol)
+- `Buy`, `LastBuyEpochStarted`, `PodiumPoolsToppedUp` — [`TimeArena`](../../contracts/src/arena/TimeArena.sol)
 
-Indexer ingest + HTTP for buy-sourced vault funding events: [GitLab #267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`INV-INDEXER-267-VAULT-FUNDING`** · [design §267](../indexer/design.md#arena-vault-funding-http-gitlab-267). Donate-only **`PodiumPoolsToppedUp`**: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262).
+Indexer ingest + HTTP for buy-sourced vault funding events: [GitLab #267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`INV-INDEXER-267-VAULT-FUNDING`** · [design §267](../indexer/design.md#arena-vault-funding-http-gitlab-267). Donate-only **`PodiumPoolsToppedUp`**: onchain [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261) · indexer [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) · **`INV-TIME-ARENA-PODIUM-TOPUP`** / **`INV-INDEXER-262-DONATE-POOLS`**.

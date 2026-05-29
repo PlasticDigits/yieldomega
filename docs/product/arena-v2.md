@@ -49,6 +49,8 @@ WarBow: live BP resets on WarBow epoch roll; admin **`finalizeWarbowPodium(epoch
 
 Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer ingest + **`GET /v1/arena/vault-funding/*`**: [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · [invariants §267](../testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267).
 
+<a id="manual-podium-pool-top-up-gitlab-261"></a>
+
 ### Manual podium pool top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
 
 **`topUpPodiumPools(amountDoubWad)`** — voluntary prize sponsorship only: pulls DOUB from **`msg.sender`**, routes **100%** across the eight vaults at the **same 10% : 7.5% active:seed ratio per category** as the buy prize slice (normalized over the donated amount), **zero** to **`AdminSellVault`**. Emits **`PodiumPoolsToppedUp`**. Does not mint CRED/XP, extend timers, or increment **`totalDoubRaised`**. AUDIT UI + indexer: [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262).
