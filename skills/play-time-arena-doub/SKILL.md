@@ -11,6 +11,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 - `buy(charmWad)` or `buy(charmWad, codeHash)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18` (default **1000 DOUB** per 1 CHARM).
 - Each buy routes DOUB: **40%** active podium pools, **30%** seed pools, **30%** `AdminSellVault`.
+- Onchain: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** per buy. Indexer history + per-tx breakdown: [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`GET /v1/arena/vault-funding/*`** · [invariants §267](../../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267).
 
 ## Donate to pools (optional sponsorship)
 

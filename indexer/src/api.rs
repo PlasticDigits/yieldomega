@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 
 use crate::chain_timer::TimecurveHeadSnapshot;
 
-const SCHEMA_VERSION: &str = "2.1.0";
+const SCHEMA_VERSION: &str = "2.2.0";
 
 #[derive(Clone)]
 pub struct AppState {

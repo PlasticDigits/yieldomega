@@ -283,6 +283,32 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaVaultFunding {
+            kind,
+            podium_id,
+            amount_doub_wad,
+            pool_address,
+        } => {
+            let podium_i: Option<i16> = podium_id.map(|p| p as i16);
+            let pool_h = pool_address.map(addr_hex);
+            sqlx::query(
+                r#"INSERT INTO idx_arena_vault_funding (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    kind, podium_id, amount_doub_wad, pool_address
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6, $7::numeric, $8)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(kind.as_db_str())
+            .bind(podium_i)
+            .bind(u256_dec(*amount_doub_wad))
+            .bind(pool_h.as_deref())
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())
