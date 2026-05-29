@@ -8,7 +8,7 @@ import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrie
 
 export function ArenaCharmCredCard() {
   const { address } = useAccount();
-  const arena = addresses.timeArena ?? addresses.timeCurve;
+  const arena = addresses.timeArena ?? addresses.timeArena;
 
   const { data: epoch } = useReadContract({
     address: arena,

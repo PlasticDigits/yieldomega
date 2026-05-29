@@ -11,15 +11,11 @@ interface ImportMetaEnv {
   /** Set to "1" to log each JSON-RPC attempt and fallback switches in the browser console. */
   readonly VITE_RPC_DEBUG?: string;
   readonly VITE_INDEXER_URL: string;
-  readonly VITE_TIMECURVE_ADDRESS: string;
-  /** Arena v2 `TimeArena` proxy; aliases `VITE_TIMECURVE_ADDRESS` when the legacy key is unset (#244). */
-  readonly VITE_TIME_ARENA_ADDRESS?: string;
-  readonly VITE_PODIUM_VAULTS_ADDRESS?: string;
-  readonly VITE_ADMIN_SELL_VAULT_ADDRESS?: string;
-  readonly VITE_RABBIT_TREASURY_ADDRESS: string;
-  readonly VITE_LEPRECHAUN_NFT_ADDRESS: string;
-  /** Optional: `PresaleCharmBeneficiaryRegistry` for presale CHARM +15% boost (mainnet boost-only). */
-  readonly VITE_PRESALE_CHARM_BENEFICIARY_REGISTRY?: string;
+  /** Arena v2 `TimeArena` proxy (required — GitLab #266). */
+  readonly VITE_TIME_ARENA_ADDRESS: string;
+  readonly VITE_PODIUM_VAULTS_ADDRESS: string;
+  readonly VITE_ADMIN_SELL_VAULT_ADDRESS: string;
+  readonly VITE_REFERRAL_REGISTRY_ADDRESS: string;
   /** Set to "1" only for Playwright Anvil E2E (mock wallet). */
   readonly VITE_E2E_MOCK_WALLET: string;
   /** Optional: third-party Kumbaya DEX (e.g. pool page on external AMM). */
@@ -32,8 +28,14 @@ interface ImportMetaEnv {
   readonly VITE_KUMBAYA_USDM?: string;
   readonly VITE_KUMBAYA_FEE_CL8Y_WETH?: string;
   readonly VITE_KUMBAYA_FEE_USDM_WETH?: string;
-  /** Optional: third-party Sir levs DEX. */
+  /** TimeArenaBuyRouter for Kumbaya single-tx buys (#251). */
+  readonly VITE_KUMBAYA_TIMECURVE_BUY_ROUTER?: string;
+  readonly VITE_GOVERNANCE_URL?: string;
+  readonly VITE_EXPLORER_BASE_URL?: string;
+  readonly VITE_CHAIN_NAME?: string;
+  readonly VITE_DOTMEGA_REGISTRY_ADDRESS?: string;
   readonly VITE_SIR_DEX_URL?: string;
+  readonly VITE_LAUNCH_TIMESTAMP?: string;
 }
 
 interface ImportMeta {

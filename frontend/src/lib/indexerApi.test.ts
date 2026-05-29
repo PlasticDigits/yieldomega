@@ -21,30 +21,17 @@ import {
 } from "./indexerConnectivity";
 
 describe("timecurveBuyerStatsApiPath", () => {
-  it("encodes buyer address", () => {
+  it("maps to arena wallet stats path", () => {
     const buyer = "0xdddddddddddddddddddddddddddddddddddddddd";
     expect(timecurveBuyerStatsApiPath(buyer)).toBe(
-      `/v1/timecurve/buyer-stats?buyer=${encodeURIComponent(buyer)}`,
+      `/v1/arena/wallet/${buyer.toLowerCase()}/stats`,
     );
   });
 });
 
 describe("timecurvePlatformUsageApiPath", () => {
-  it("includes limit, offset, and default velocity window", () => {
-    expect(timecurvePlatformUsageApiPath(20, 0)).toBe(
-      "/v1/timecurve/platform-usage?limit=20&offset=0&velocity_window=1h",
-    );
-  });
-
-  it("supports 24h velocity window", () => {
-    expect(timecurvePlatformUsageApiPath(25, 50, "24h")).toBe(
-      "/v1/timecurve/platform-usage?limit=25&offset=50&velocity_window=24h",
-    );
-  });
-  it("supports whole-sale velocity window (GitLab #233)", () => {
-    expect(timecurvePlatformUsageApiPath(50, 0, "sale")).toBe(
-      "/v1/timecurve/platform-usage?limit=50&offset=0&velocity_window=sale",
-    );
+  it("points at arena timers after platform-usage retirement (#266)", () => {
+    expect(timecurvePlatformUsageApiPath(20, 0)).toBe("/v1/arena/timers");
   });
 });
 
@@ -151,43 +138,7 @@ describe("fetchIndexerStatus", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to fees-distributed when /v1/status is not OK", async () => {
-    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
-      const u = String(input);
-      if (u.includes("/v1/status")) {
-        return Promise.resolve(new Response("", { status: 404 }));
-      }
-      if (u.includes("/v1/fee-router/fees-distributed")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              items: [{ block_number: "12" }],
-              limit: 1,
-              offset: 0,
-              next_offset: null,
-            }),
-            {
-              status: 200,
-              headers: {
-                "content-type": "application/json",
-                "x-schema-version": "1.7.0",
-              },
-            },
-          ),
-        );
-      }
-      return Promise.resolve(new Response("", { status: 500 }));
-    });
-
-    const s = await fetchIndexerStatus();
-    expect(s).toMatchObject({
-      schema_version: "1.7.0",
-      max_indexed_block: "12",
-    });
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-  });
-
-  it("returns null when both status and fallback fail", async () => {
+  it("returns null when /v1/status is not OK", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
 
     await expect(fetchIndexerStatus()).resolves.toBeNull();
@@ -226,22 +177,6 @@ describe("HTTP 429 triggers shared indexer backoff", () => {
     expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
   });
 
-  it("fetchIndexerStatus bumps backoff on 429 from fees-distributed fallback", async () => {
-    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
-      const u = String(input);
-      if (u.includes("/v1/status")) {
-        return Promise.resolve(new Response("", { status: 404 }));
-      }
-      if (u.includes("/v1/fee-router/fees-distributed")) {
-        return Promise.resolve(new Response("", { status: 429 }));
-      }
-      return Promise.resolve(new Response("", { status: 500 }));
-    });
-
-    await expect(fetchIndexerStatus()).resolves.toBeNull();
-    expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-  });
 });
 
 describe("indexer JSON bodies (issue #111)", () => {
@@ -274,63 +209,7 @@ describe("indexer JSON bodies (issue #111)", () => {
 });
 
 describe("fetchTimecurveWarbowLeaderboardAll", () => {
-  const originalFetch = globalThis.fetch;
-
-  beforeEach(() => {
-    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
-    vi.unstubAllEnvs();
-  });
-
-  it("concatenates pages until next_offset is null", async () => {
-    const row = (buyer: string, logIndex: number) => ({
-      buyer,
-      battle_points_after: String(1000 - logIndex),
-      block_number: "1",
-      tx_hash: `0x${"11".repeat(32)}`,
-      log_index: logIndex,
-    });
-    globalThis.fetch = vi.fn().mockImplementation((input: RequestInfo) => {
-      const u = String(input);
-      if (u.includes("limit=200&offset=0")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              items: [row(`0x${"22".repeat(20)}`, 0)],
-              limit: 200,
-              offset: 0,
-              next_offset: 200,
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          ),
-        );
-      }
-      if (u.includes("limit=200&offset=200")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              items: [row(`0x${"33".repeat(20)}`, 1)],
-              limit: 200,
-              offset: 200,
-              next_offset: null,
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          ),
-        );
-      }
-      return Promise.resolve(new Response(`unexpected ${u}`, { status: 500 }));
-    });
-
-    const all = await fetchTimecurveWarbowLeaderboardAll();
-    expect(all).toHaveLength(2);
-    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-  });
-
-  it("returns null when the first page fails", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 503 }));
+  it("returns null after TimeCurve v1 indexer retirement (#266)", async () => {
     await expect(fetchTimecurveWarbowLeaderboardAll()).resolves.toBeNull();
   });
 });

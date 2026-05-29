@@ -19,7 +19,7 @@ import { useWriteContract } from "wagmi";
 const RECENT_LIMIT = 10;
 
 export function useTimecurveProtocolDonatePools() {
-  const timeArena = addresses.timeCurve;
+  const timeArena = addresses.timeArena;
   const wagmiConfig = useConfig();
   const { address, isConnected, chainId } = useAccount();
   const { writeContractAsync } = useWriteContract();

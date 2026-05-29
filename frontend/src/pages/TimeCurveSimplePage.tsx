@@ -47,7 +47,7 @@ import { phaseNarrative } from "@/pages/timecurve/timeCurveSimplePhase";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
 import { TimeCurveTimerHero } from "@/pages/timecurve/TimeCurveTimerHero";
 import { useTimeCurveSaleSession } from "@/pages/timecurve/useTimeCurveSaleSession";
-import { WarbowClaimFlagButton } from "@/pages/timeCurveArena/WarbowClaimFlagButton";
+import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
 import { useTimeCurveSimplePageSfx } from "@/pages/timecurve/useTimeCurveSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { TimeCurveSimpleAgentCard } from "@/pages/timecurve/TimeCurveSimpleAgentCard";
@@ -58,7 +58,7 @@ import {
   usePodiumReads,
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/timecurve/usePodiumReads";
-import { mergeBuysNewestFirst } from "@/pages/timeCurveArena/arenaPageHelpers";
+import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
 import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
@@ -408,7 +408,7 @@ function TimecurveSimpleAmountPayTokenSelect({
  * source of truth (see `docs/frontend/timecurve-views.md`).
  */
 export function TimeCurveSimplePage() {
-  const tc = addresses.timeCurve;
+  const tc = addresses.timeArena;
   const session = useTimeCurveSaleSession(tc);
   const simpleProjectedEffectsLatchRef = useRef<SimpleProjectedEffectsLatch>(
     emptySimpleProjectedEffectsLatch(),
