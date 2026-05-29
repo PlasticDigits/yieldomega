@@ -47,6 +47,7 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `TimeCurveProtocolDonatePoolsSection.test.tsx`, `e2e/timecurve.spec.ts` |
+| **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) |
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,eth,usdm}` on [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) (`/arena`). ETH route E2E gates on `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` until [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251).
 
@@ -55,6 +56,12 @@ Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md
 ### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
 Onchain entry: **`TimeArena.topUpPodiumPools`** ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)). Indexer HTTP: **`GET /v1/arena/podium-pool-donations`**. Frontend: protocol AUDIT card — [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262). Play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
+
+<a id="arena-vault-funding-gitlab-267"></a>
+
+### Arena buy vault funding (GitLab [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
+
+Onchain notifications: **`PodiumFunded`**, **`SeedFunded`** on **`PodiumVaults`**; **`AdminVaultFunded`** on **`AdminSellVault`** — emitted on each DOUB **`buy`** (not CRED burn, not **`topUpPodiumPools`**). Indexer table: **`idx_arena_vault_funding`** (`kind`: `podium_active` | `podium_seed` | `admin`). HTTP: **`GET /v1/arena/vault-funding/recent`**, **`…/by-tx/{tx_hash}`**, **`…/totals`**. Reconciliation: for each **`idx_arena_buy`** row with **`paid_with_cred = false`**, **`SUM(amount_doub_wad)`** over funding rows sharing **`tx_hash`** must equal **`doub_paid`**. Distinct from donate-pools ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)). Design: [indexer design §267](../indexer/design.md#arena-vault-funding-http-gitlab-267) · onchain: [fee-routing § events](../onchain/fee-routing-and-governance.md#events) · play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
 
 ---
 

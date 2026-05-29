@@ -20,7 +20,7 @@ use yieldomega_indexer::api::{router, AppState};
 use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 use yieldomega_indexer::config::DEFAULT_DATABASE_POOL_MAX;
 use yieldomega_indexer::db::connect_and_migrate;
-use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog};
+use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog, VaultFundingKind};
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
@@ -37,6 +37,70 @@ fn b256_lo(n: u64) -> B256 {
 
 fn addr_byte(b: u8) -> Address {
     Address::from([b; 20])
+}
+
+fn sample_log_tx(block: u64, tx_id: u64, log_index: u64, event: DecodedEvent) -> DecodedLog {
+    DecodedLog {
+        block_number: block,
+        block_hash: b256_lo(block.saturating_add(10_000)),
+        tx_hash: b256_lo(tx_id),
+        log_index,
+        block_timestamp: Some(1_700_000_000),
+        contract: CONTRACT,
+        event,
+    }
+}
+
+const DOUB_1000: u128 = 1_000_000_000_000_000_000_000;
+const DOUB_100: u128 = 100_000_000_000_000_000_000;
+const DOUB_75: u128 = 75_000_000_000_000_000_000;
+const DOUB_300: u128 = 300_000_000_000_000_000_000;
+
+fn vault_funding_rows_for_buy_tx(block: u64, tx_id: u64, start_log_index: u64) -> Vec<DecodedLog> {
+    let pool = |i: u8| addr_byte(0x50 + i);
+    let mut rows = Vec::with_capacity(9);
+    let mut li = start_log_index;
+    for podium in 0u8..4 {
+        li += 1;
+        rows.push(sample_log_tx(
+            block,
+            tx_id,
+            li,
+            DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::PodiumActive,
+                podium_id: Some(podium),
+                amount_doub_wad: U256::from(DOUB_100),
+                pool_address: Some(pool(podium)),
+            },
+        ));
+    }
+    for podium in 0u8..4 {
+        li += 1;
+        rows.push(sample_log_tx(
+            block,
+            tx_id,
+            li,
+            DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::PodiumSeed,
+                podium_id: Some(podium),
+                amount_doub_wad: U256::from(DOUB_75),
+                pool_address: Some(pool(podium)),
+            },
+        ));
+    }
+    li += 1;
+    rows.push(sample_log_tx(
+        block,
+        tx_id,
+        li,
+        DecodedEvent::ArenaVaultFunding {
+            kind: VaultFundingKind::Admin,
+            podium_id: None,
+            amount_doub_wad: U256::from(DOUB_300),
+            pool_address: None,
+        },
+    ));
+    rows
 }
 
 fn sample_log(block: u64, tx_id: u64, log_index: u64, event: DecodedEvent) -> DecodedLog {
@@ -279,6 +343,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             donor: alice,
             amount_doub_wad: U256::from(700_000_000_000_000_000_000u128),
         }),
+        next(DecodedEvent::ArenaVaultFunding {
+            kind: VaultFundingKind::Admin,
+            podium_id: None,
+            amount_doub_wad: U256::from(DOUB_300),
+            pool_address: None,
+        }),
     ];
 
     let mut conn = pool.acquire().await.expect("acquire");
@@ -306,6 +376,12 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         count_where(&pool, "idx_arena_podium_pool_top_up", 100).await,
         1
     );
+    assert_eq!(
+        count_where(&pool, "idx_arena_vault_funding", 100).await,
+        1
+    );
+
+    api_vault_funding_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
         .await
@@ -330,6 +406,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     };
     rollback_after(&pool, ancestor).await.expect("rollback");
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 0);
+    assert_eq!(count_where(&pool, "idx_arena_vault_funding", 100).await, 0);
 
     let ptr = load_chain_pointer(&pool).await.expect("load pointer");
     assert_eq!(ptr.block_number, 99);
@@ -389,5 +466,165 @@ async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
     assert_eq!(
         summary.get("donation_count").and_then(|v| v.as_str()),
         Some("1")
+    );
+}
+
+async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
+    let buy_tx_id = 9_000u64;
+    let cred_tx_id = 9_001u64;
+    let block = 200u64;
+    let alice = addr_byte(0xa1);
+
+    let buy_log = sample_log_tx(
+        block,
+        buy_tx_id,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: U256::from(1u8),
+            doub_paid: U256::from(DOUB_1000),
+            new_deadline: U256::from(2u8),
+            total_doub_raised_after: U256::from(DOUB_1000),
+            buy_index: U256::from(1u8),
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            paid_with_cred: false,
+        },
+    );
+    let funding_logs = vault_funding_rows_for_buy_tx(block, buy_tx_id, 1);
+    let cred_buy_log = sample_log_tx(
+        block + 1,
+        cred_tx_id,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: U256::from(1u8),
+            doub_paid: U256::from(DOUB_1000),
+            new_deadline: U256::from(2u8),
+            total_doub_raised_after: U256::from(DOUB_1000),
+            buy_index: U256::from(2u8),
+            actual_seconds_added: U256::ZERO,
+            timer_hard_reset: false,
+            paid_with_cred: true,
+        },
+    );
+
+    persist_decoded_log_autocommit(pool, &buy_log)
+        .await
+        .expect("persist buy");
+    for log in &funding_logs {
+        persist_decoded_log_autocommit(pool, log)
+            .await
+            .expect("persist funding");
+    }
+    persist_decoded_log_autocommit(pool, &cred_buy_log)
+        .await
+        .expect("persist cred buy");
+
+    assert_eq!(
+        count_where(pool, "idx_arena_vault_funding", block as i64).await,
+        9
+    );
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let buy_tx_hash = format!("{:#x}", b256_lo(buy_tx_id));
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/vault-funding/by-tx/{}",
+                    buy_tx_hash
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let items = j.get("items").and_then(|v| v.as_array()).expect("items");
+    assert_eq!(items.len(), 9);
+    assert_eq!(
+        j.get("total_funded_doub_wad").and_then(|v| v.as_str()),
+        Some("1000000000000000000000")
+    );
+
+    let cred_tx_hash = format!("{:#x}", b256_lo(cred_tx_id));
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/v1/arena/vault-funding/by-tx/{}",
+                    cred_tx_hash
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(j.get("items").and_then(|v| v.as_array()).map(|a| a.len()), Some(0));
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/vault-funding/totals")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let by_kind = j.get("by_kind").and_then(|v| v.as_array()).expect("by_kind");
+    assert_eq!(by_kind.len(), 3);
+    let admin_total = by_kind
+        .iter()
+        .find(|r| r.get("kind").and_then(|v| v.as_str()) == Some("admin"))
+        .and_then(|r| r.get("total_doub_wad").and_then(|v| v.as_str()));
+    assert_eq!(admin_total, Some("600000000000000000000")); // fixture row + buy row
+
+    let res = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/vault-funding/recent?limit=5")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert!(j.get("items").and_then(|v| v.as_array()).is_some());
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/vault-funding/by-tx/0xbad")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    persist_decoded_log_autocommit(pool, &funding_logs[0])
+        .await
+        .expect("idempotent funding replay");
+    assert_eq!(
+        count_where(pool, "idx_arena_vault_funding", block as i64).await,
+        9
     );
 }
