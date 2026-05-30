@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
@@ -56,6 +57,7 @@ contract TimeArenaTest is Test {
         uint256 charm = 1e18;
         uint256 owed = 1000e18;
 
+        vm.recordLogs();
         vm.prank(alice);
         arena.buy(charm);
 
@@ -63,6 +65,26 @@ contract TimeArenaTest is Test {
         assertEq(doub.balanceOf(address(adminVault)), 300e18);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), owed);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 podiumEvents;
+        uint256 seedEvents;
+        bool sawAdminFunded;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].topics[0] == keccak256("PodiumFunded(uint8,uint256,address)")) {
+                podiumEvents++;
+                assertEq(abi.decode(entries[i].data, (uint256)), 100e18);
+            } else if (entries[i].topics[0] == keccak256("SeedFunded(uint8,uint256,address)")) {
+                seedEvents++;
+                assertEq(abi.decode(entries[i].data, (uint256)), 75e18);
+            } else if (entries[i].topics[0] == keccak256("AdminVaultFunded(uint256)")) {
+                assertEq(abi.decode(entries[i].data, (uint256)), 300e18);
+                sawAdminFunded = true;
+            }
+        }
+        assertEq(podiumEvents, 4);
+        assertEq(seedEvents, 4);
+        assertTrue(sawAdminFunded);
     }
 
     function test_timer_hard_reset_increments_epoch() public {

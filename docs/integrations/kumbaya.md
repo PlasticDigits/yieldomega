@@ -137,6 +137,20 @@ Deployer pays gas for **`new TimeCurveBuyRouter`**; admin **`0xcd4eb82cfc16d5785
 
 ---
 
+<a id="admin-sell-vault-gitlab-249"></a>
+
+## AdminSellVault DOUB → USDM ([GitLab #249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249))
+
+Arena v2 routes **30%** of each DOUB **`buy`** to **`AdminSellVault`**. Governance calls **`sellDoubToUsdm(minOut)`** (`onlyOwner`) to swap the vault balance via a configured **Kumbaya `exactInputSingle`** router into **USDM** for **`adminAccount`**.
+
+| Layer | Reference |
+|-------|-----------|
+| Onchain | [`AdminSellVault.sol`](../../contracts/src/arena/AdminSellVault.sol) · routing [#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249) / [fee-routing § admin liquidation](../onchain/fee-routing-and-governance.md) |
+| Forge | [`AdminSellVault.t.sol`](../../contracts/test/AdminSellVault.t.sol) — mock **`exactInputSingle`** + [`AnvilMockUSDM`](../../contracts/src/fixtures/AnvilKumbayaFixture.sol) (distinct from **`AnvilKumbayaRouter`** `exactOutput` used by **`TimeArenaBuyRouter`**) |
+| Invariant | **`INV-ADMIN-SELL-VAULT-249`** · [invariants](../testing/invariants-and-business-logic.md) |
+
+---
+
 ## See also
 
 - [Local swap testing (issue #41)](../testing/local-swap-testing.md)
