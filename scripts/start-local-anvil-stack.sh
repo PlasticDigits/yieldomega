@@ -22,7 +22,7 @@
 # Swarm + default 300s per-wallet buy cooldown + Anvil automine stalls chain time once every wallet sleeps (GitLab #99):
 #   recommend YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 and/or explicit YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC for dense buys.
 #   This script starts Anvil with --block-time when it spawns the swarm (interval mining advances block.timestamp during idle sleeps).
-#   Override seconds: YIELDOMEGA_ANVIL_BLOCK_TIME_SEC (default 12); set to 0 to omit --block-time (automine only).
+#   Override seconds: YIELDOMEGA_ANVIL_BLOCK_TIME_SEC (default 0.5); set to 0 to omit --block-time (automine only).
 #
 # Prerequisites: Docker, Foundry (anvil, forge, cast), jq, Node (for npm run dev).
 # DeployDev uses forge --code-size-limit 524288 (EIP-170 pre-broadcast sim + MegaEVM-sized TimeCurve).
@@ -171,7 +171,7 @@ else
   ANVIL_EXTRA=()
   if [[ "${START_BOT_SWARM}" == "1" ]]; then
     ANVIL_EXTRA=(--accounts 30)
-    ANVIL_BT="${YIELDOMEGA_ANVIL_BLOCK_TIME_SEC:-12}"
+    ANVIL_BT="${YIELDOMEGA_ANVIL_BLOCK_TIME_SEC:-0.5}"
     if [[ "${ANVIL_BT}" != "0" ]]; then
       ANVIL_EXTRA+=(--block-time "${ANVIL_BT}")
       echo "Anvil interval mining: --block-time ${ANVIL_BT}s (GitLab #99; YIELDOMEGA_ANVIL_BLOCK_TIME_SEC=0 disables)."
