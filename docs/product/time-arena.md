@@ -36,7 +36,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 **Last Buy epoch:** `lastBuyEpoch` increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**. This drives epoch-scoped CHARM and CRED accrual (below).
 
-**Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live scores, emit **`PodiumEpochRolled`**.
+**Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240), implementation [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live scores, emit **`PodiumEpochRolled`**.
 
 **Timer cap:** Last Buy (and current deploy defaults) use a **96h** cap (`timerCapSec = 4 × 86400`); per-category caps may follow the same pattern when per-podium params land onchain.
 
