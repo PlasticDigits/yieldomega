@@ -26,7 +26,7 @@ Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%*
 
 ## TimeArena v2 (GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 
-Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
+Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|

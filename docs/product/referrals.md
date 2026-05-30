@@ -1,8 +1,16 @@
-# Referral program (TimeCurve)
+# Referral program (TimeArena / ReferralRegistry)
+
+## Arena v2 (live)
+
+Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5% + 5%** of the **35 CRED** mint goes to referrer and buyer — **not** CHARM weight. Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](docs/product/time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240).
+
+---
+
+## Legacy (TimeCurve — retired)
 
 ## Purpose
 
-Let users **register a short referral code** by paying a **fixed CL8Y burn**, then share links so **new buyers** can be attributed onchain. Rewards are enforced in **`TimeCurve`** on qualifying buys—**not** by the indexer or local browser storage.
+Let users **register a short referral code** by paying a **fixed CL8Y burn**, then share links so **new buyers** can be attributed onchain. v1 rewards were enforced in **`TimeCurve`** on qualifying buys—**not** by the indexer or local browser storage.
 
 See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross** buy is routed through `FeeRouter`; referral incentives are **CHARM weight**, documented below). **Launch UX / F-11:** **`/referrals`** is **not** an **`UnderConstruction`** stub — it ships the full referrals surface at TGE ([`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend), [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
 

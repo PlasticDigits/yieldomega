@@ -5,7 +5,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 # Play Time Arena (DOUB)
 
-**Authority:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) onchain + [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md).
+**Authority:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) onchain + [`docs/product/time-arena.md`](../../docs/product/time-arena.md) + [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md).
 
 ## Buy
 

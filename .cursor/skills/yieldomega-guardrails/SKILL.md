@@ -7,7 +7,7 @@ description: Apply Yieldomega repository guardrails for agent work. Arena v2 —
 
 Before substantive changes in this repository:
 
-1. Read `docs/agent-phases.md` for the matching phase, then [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) for Arena v2 economics (epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238)). Contributor invariants: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md) (Arena v2 only — legacy TimeCurve/FeeRouter docs removed [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
+1. Read `docs/agent-phases.md` for the matching phase, then [`docs/product/time-arena.md`](../../docs/product/time-arena.md) (canonical Arena v2 spec · [#240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)) and [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) for implementation detail. Contributor invariants: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md) (Arena v2 only — legacy TimeCurve/FeeRouter docs removed [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
 2. Respect `LICENSE` and `docs/licensing.md` (AGPL-3.0 default).
 3. **Onchain authority:** `TimeArena`, `PodiumVaults`, `AdminSellVault`, `Doubloon`, `ReferralRegistry`. Indexer and frontend are derived only.
 4. **Testing:** Follow `docs/testing/strategy.md`; run relevant `forge test`, `cargo test`, and frontend tests when touching each layer.
