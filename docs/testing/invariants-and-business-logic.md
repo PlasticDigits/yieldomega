@@ -43,6 +43,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls | `test_warbow_steal_pulls_doub` |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
+| **`INV-REMOVAL-243-NO-LAUNCHPAD-LIFECYCLE`** | No `TimeCurve.sol`, `endSale`, `redeemCharms`, `distributePrizes`, `LinearCharmPrice`, presale vesting contracts, or `/vesting` route | `rg` clean in `contracts/src`; no `PresaleVestingPage`; `LaunchGate.tsx` routes; [`surfaceContent.ts`](../../frontend/src/lib/surfaceContent.ts) → `/arena` ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
 | **`INV-FRONTEND-260-ARENA-MOUNT`** | `/arena` mounts timer chips + CRED card | `e2e/anvil-arena-mount.spec.ts` |
 | **`INV-FRONTEND-269-CRED-BUY`** | Arena buy picker includes CRED when `playCred` set; burn preview from onchain constants; submit `buyWithCred` | `arenaCredBurn.test.ts`, `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | **`INV-INDEXER-260-ARENA-TIMERS`** | `GET /v1/arena/timers` (+ buys, wallet stats) | `integration_stage2.rs` HTTP smoke |
@@ -166,7 +167,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### Frontend wallet chain write gate (GitLab [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95))
 
-**INV-FRONTEND-95:** When **`useChainId() !== configuredTargetChainId()`**, in-app writes on **`/arena`**, **`/referrals`**, **`/vesting`** are blocked via **`chainMismatchWriteMessage`**, overlays, and **`SwitchToTargetChainButton`**.
+**INV-FRONTEND-95:** When **`useChainId() !== configuredTargetChainId()`**, in-app writes on **`/arena`**, **`/referrals`** are blocked via **`chainMismatchWriteMessage`**, overlays, and **`SwitchToTargetChainButton`**.
 
 <a id="arena-buy-charm-wrong-chain-visual-gitlab-194"></a>
 
@@ -271,7 +272,7 @@ Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deplo
 
 ### Branded 404 (GitLab [#223](https://gitlab.com/PlasticDigits/yieldomega/-/issues/223))
 
-**INV-FRONTEND-223-NOT-FOUND:** **`path="*"`** → **`NotFoundPage`**; **`/arena`**, **`/referrals`**, **`/vesting`** unchanged.
+**INV-FRONTEND-223-NOT-FOUND:** **`path="*"`** → **`NotFoundPage`**; **`/arena`**, **`/referrals`** unchanged. **`/vesting`** removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
 ---
 
