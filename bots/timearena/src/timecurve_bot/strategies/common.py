@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 
+from web3 import Web3
 from web3.contract import Contract
 
 
@@ -12,18 +13,29 @@ def loop_mean_sec(env_name: str, default: str) -> float:
     return max(1.0, float(raw))
 
 WAD = 10**18
+# TimeArena fixed CHARM envelope (matches TimeArena.sol CHARM_MIN_WAD / CHARM_MAX_WAD).
+CHARM_MIN_WAD = 99 * 10**16
+CHARM_MAX_WAD = 10 * 10**18
 # Large approval for local dev (not uint256 max to avoid some tooling quirks).
 APPROVE_LARGE = 10**40
 
 
 def asset_amount_for_charm(tc: Contract, charm_wad: int) -> int:
-    price = int(tc.functions.currentPricePerCharmWad().call())
+    price = int(tc.functions.charmPriceWad().call())
     return (charm_wad * price) // WAD
 
 
 def charm_bounds(tc: Contract) -> tuple[int, int]:
-    lo, hi = tc.functions.currentCharmBoundsWad().call()
-    return int(lo), int(hi)
+    del tc  # TimeArena uses fixed bounds; keep signature for strategy callers.
+    return CHARM_MIN_WAD, CHARM_MAX_WAD
+
+
+def sale_ended(w3: Web3, tc: Contract) -> bool:
+    """True when TimeArena is paused or past its global deadline."""
+    if bool(tc.functions.paused().call()):
+        return True
+    head_ts = int(w3.eth.get_block("latest")["timestamp"])
+    return head_ts > int(tc.functions.deadline().call())
 
 
 def charm_for_buy(tc: Contract, desired: int) -> int:

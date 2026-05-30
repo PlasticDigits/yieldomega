@@ -8,7 +8,7 @@ import time
 
 from timecurve_bot.actions import account_from_config, approve_if_needed, buy, print_dry
 from timecurve_bot.config import BotConfig
-from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec
+from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
 from web3 import Web3
 from web3.contract import Contract
 
@@ -31,13 +31,13 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
     approve_if_needed(w3, asset, acct, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
 
     while True:
-        if bool(tc.functions.ended().call()):
+        if sale_ended(w3, tc):
             print("rando: sale ended; stopping.")
             return
         # Exponential inter-arrival times ⇔ Poisson counting process (homogeneous rate 1/mean).
         delay = random.expovariate(1.0 / mean)
         time.sleep(delay)
-        if bool(tc.functions.ended().call()):
+        if sale_ended(w3, tc):
             print("rando: sale ended; stopping.")
             return
         lo, hi = charm_bounds(tc)

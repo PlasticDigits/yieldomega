@@ -16,7 +16,7 @@ from timecurve_bot.actions import (
     warbow_steal,
 )
 from timecurve_bot.config import BotConfig
-from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec
+from timecurve_bot.strategies.common import APPROVE_LARGE, asset_amount_for_charm, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
 from web3 import Web3
 from web3.contract import Contract
 
@@ -54,7 +54,7 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
         return
 
     while True:
-        if bool(tc.functions.ended().call()):
+        if sale_ended(w3, tc):
             print("pvp: sale ended; stopping.")
             return
 

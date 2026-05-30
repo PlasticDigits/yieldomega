@@ -14,6 +14,7 @@ from timecurve_bot.strategies.common import (
     charm_bounds,
     charm_for_buy,
     loop_mean_sec,
+    sale_ended,
 )
 from web3 import Web3
 from web3.contract import Contract
@@ -45,7 +46,7 @@ def run(
     approve_if_needed(w3, asset, acct, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
 
     while True:
-        if bool(tc.functions.ended().call()):
+        if sale_ended(w3, tc):
             print("shark: sale ended; stopping.")
             return
         desired = cfg.charm_wad_shark if cfg.charm_wad_shark > 0 else charm_bounds(tc)[1]
