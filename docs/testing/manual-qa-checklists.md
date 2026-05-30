@@ -191,10 +191,10 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ### Checklist
 
-- [ ] With indexer **schema ≥ 1.19.0** and at least one indexed **`ReferralCodeRegistered`** for wallet **W** and **zero** `ReferralApplied` rows, **`GET /v1/referrals/referrer-leaderboard`** returns a row for **W** with **`codes_registered_count ≥ 1`**, **`referred_buy_count == 0`**, **`total_referrer_charm_wad == 0`**.
+- [ ] With indexer **schema ≥ 1.19.0** and at least one indexed **`ReferralCodeRegistered`** for wallet **W** and **zero** `ReferralCredApplied` rows, **`GET /v1/referrals/referrer-leaderboard`** returns a row for **W** with **`codes_registered_count ≥ 1`**, **`referred_buy_count == 0`**, **`total_referrer_cred_wad == 0`**.
 - [ ] `/referrals` **Guide leaderboard** shows **W** with sublines for **onchain codes registered** and **recorded buys** (may be zero buys).
-- [ ] After a qualifying referred buy indexes for **W**, **`referred_buy_count`** / CHARM increase while **`codes_registered_count`** stays consistent with registry rows.
-- [ ] When two referrers tie on Σ CHARM, JSON **`rank`** values match dense **`RANK()`** (**`1, 2, 2, 4`**, not page ordinal **`1, 2, 3, 4`**) — **`postgres_gitlab177_referrer_leaderboard_dense_rank`**.
+- [ ] After a qualifying referred buy indexes for **W**, **`referred_buy_count`** / CRED increase while **`codes_registered_count`** stays consistent with registry rows.
+- [ ] When two referrers tie on Σ CRED, JSON **`rank`** values match dense **`RANK()`** (**`1, 2, 2, 4`**, not page ordinal **`1, 2, 3, 4`**) — **`postgres_gitlab177_referrer_leaderboard_dense_rank`**.
 
 **Automated:** `cargo test` **`postgres_gitlab204_referrer_leaderboard_includes_registry_registrations`** · **`postgres_gitlab177_referrer_leaderboard_dense_rank`** (requires **`YIELDOMEGA_PG_TEST_URL`**).
 
@@ -211,7 +211,7 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 
 ### Checklist
 
-- [ ] With indexer **schema ≥ 1.25.0**, **`GET /v1/referrals/referrer-leaderboard?limit=20&offset=0`** returns **`total`**, **`total_codes_registered`**, **`total_referred_buys`**, and **`total_referrer_charm_wad`** matching full-table counts (not sums of the current page **`items`**).
+- [ ] With indexer **schema ≥ 1.25.0** (CRED fields **≥ 2.3.0**), **`GET /v1/referrals/referrer-leaderboard?limit=20&offset=0`** returns **`total`**, **`total_codes_registered`**, **`total_referred_buys`**, and **`total_referrer_cred_wad`** matching full-table counts (not sums of the current page **`items`**).
 - [ ] `/referrals` summary strip labels read **“(global)”** and stay stable when changing pages (no flicker back to page-local sums).
 - [ ] When **`total > 20`**, numbered page controls appear at the bottom; page **2** fetches **`offset=20`** and row **`rank`** values remain dense competitive ranks from JSON (not **`21, 22, …`** ordinals).
 - [ ] Connected wallet **“you”** row highlight still works when your address appears on the current page.
@@ -230,6 +230,28 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Automated:** [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) asserts the disclosure test id appears in the connected unregistered path.
 
+<a id="manual-qa-issue-253"></a>
+
+### Referrals — Play CRED earnings ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
+
+**Scope:** Arena v2 referred buys mint **Play CRED** (not CHARM weight); indexer + **`/referrals`** surface CRED totals.
+
+### Authoritative docs
+
+- [referrals.md — Arena v2](../product/referrals.md)
+- [INV-REFERRAL-253-CRED](invariants-and-business-logic.md#referral-cred-split-gitlab-253)
+
+### Checklist
+
+- [ ] **`FOUNDRY_PROFILE=ci forge test --match-test test_referred_buy_mints_cred_not_charm`** and **`test_self_referral_reverts`** pass.
+- [ ] After a referred **`TimeArena.buy(charmWad, codeHash)`**, **`ReferralCredApplied`** indexes to **`idx_arena_referral_cred`**; **`GET /v1/referrals/applied`** returns **`referrer_cred`** / **`buyer_cred`** (= **1.75e18** each at default **35 CRED** mint).
+- [ ] **`GET /v1/referrals/wallet-cred-summary?wallet=<referrer>`** shows **`referrer_cred_wad > 0`** after a qualifying buy.
+- [ ] **`/referrals`** **Your earnings** panel labels **CRED** (not CHARM); **Guide leaderboard** ranks by **CRED**.
+- [ ] **`codeHash → owner`** preserved across **`ReferralRegistry`** UUPS upgrade; fresh deploy requires re-registration (see [referrals.md § continuity](../product/referrals.md)).
+
+**Automated:** `TimeArena.t.sol` referral tests · `integration_stage2` persist smoke · Playwright **`referrals-surface.spec.ts`**.
+
+---
 <a id="manual-qa-issue-80"></a>
 
 ## Arena sniper-shark UI (GitLab #80)

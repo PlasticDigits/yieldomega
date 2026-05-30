@@ -63,7 +63,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
           setGlobals({
             totalCodesRegistered: 0n,
             totalBuys: 0n,
-            totalCharmWad: 0n,
+            totalCredWad: 0n,
             totalReferrers: 0,
           });
         }
@@ -104,13 +104,13 @@ export function ReferralLeaderboardSection({ className }: Props) {
       return {
         ...it,
         codes_registered_count: codes,
-        amount: formatAmountTriple(BigInt(it.total_referrer_charm_wad), 18),
+        amount: formatAmountTriple(BigInt(it.total_referrer_cred_wad), 18),
         isYou: address?.toLowerCase() === it.referrer.toLowerCase(),
       };
     });
   }, [items, address]);
 
-  const topCharm = formatAmountTriple(globals?.totalCharmWad ?? 0n, 18);
+  const topCred = formatAmountTriple(globals?.totalCredWad ?? 0n, 18);
   const showSummary = globals !== null && !initialLoading && !err;
   const showEmpty =
     showSummary && globals.totalReferrers === 0 && (items === null || items.length === 0);
@@ -129,7 +129,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
       title="Guide leaderboard"
       badgeLabel="Guides"
       badgeTone="live"
-      lede="Ranked by CHARM earned from qualifying referred buys (indexed ReferralApplied). Guides who registered a code on ReferralRegistry appear as soon as that event is indexed—even before the first qualifying buy."
+      lede="Ranked by Play CRED earned from qualifying referred buys (indexed ReferralCredApplied). Guides who registered a code on ReferralRegistry appear as soon as that event is indexed—even before the first qualifying buy."
       cutout={{
         src: REF_CUT.tertiary,
         width: 108,
@@ -142,11 +142,11 @@ export function ReferralLeaderboardSection({ className }: Props) {
         <StatusMessage variant="muted">Loading leaderboard…</StatusMessage>
       ) : showSummary ? (
         <>
-          <LeaderboardSummary globals={globals} topCharmAbbrev={topCharm.abbrev} />
+          <LeaderboardSummary globals={globals} topCredAbbrev={topCred.abbrev} />
           {showEmpty ? (
             <StatusMessage variant="muted">
               No indexed guide registrations or referral buys yet. Register a code (ReferralRegistry) or
-              link buys (TimeCurve ReferralApplied) to appear here.
+              link buys (TimeArena ReferralCredApplied) to appear here.
             </StatusMessage>
           ) : null}
           {showList ? (
@@ -168,10 +168,10 @@ export function ReferralLeaderboardSection({ className }: Props) {
 
 function LeaderboardSummary({
   globals,
-  topCharmAbbrev,
+  topCredAbbrev,
 }: {
   globals: ReferralLeaderboardGlobalTotals | null;
-  topCharmAbbrev: string;
+  topCredAbbrev: string;
 }) {
   return (
     <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
@@ -183,7 +183,7 @@ function LeaderboardSummary({
         label="Recorded referral buys (global)"
         value={formatLocaleInteger(globals?.totalBuys ?? 0n)}
       />
-      <SummaryCell label="Total guide CHARM (global)" value={topCharmAbbrev} />
+      <SummaryCell label="Total guide CRED (global)" value={topCredAbbrev} />
     </div>
   );
 }
@@ -255,7 +255,7 @@ function LeaderboardList({
             </div>
             <div className="referrals-leaderboard-row__score">
               <strong>{row.amount.abbrev}</strong>
-              <span>CHARM</span>
+              <span>CRED</span>
               <small>{row.amount.decimal}</small>
             </div>
           </li>

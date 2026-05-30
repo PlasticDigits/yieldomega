@@ -9,7 +9,7 @@ import {
 export type ReferralLeaderboardGlobalTotals = {
   totalCodesRegistered: bigint;
   totalBuys: bigint;
-  totalCharmWad: bigint;
+  totalCredWad: bigint;
   totalReferrers: number;
 };
 
@@ -19,7 +19,7 @@ export function referralLeaderboardPageHasGlobalTotals(page: ReferralReferrerLea
     page.total !== undefined &&
     page.total_codes_registered !== undefined &&
     page.total_referred_buys !== undefined &&
-    page.total_referrer_charm_wad !== undefined
+    page.total_referrer_cred_wad !== undefined
   );
 }
 
@@ -32,7 +32,7 @@ export function parseReferralLeaderboardGlobalTotals(
   return {
     totalCodesRegistered: BigInt(page.total_codes_registered!),
     totalBuys: BigInt(page.total_referred_buys!),
-    totalCharmWad: BigInt(page.total_referrer_charm_wad!),
+    totalCredWad: BigInt(page.total_referrer_cred_wad!),
     totalReferrers: page.total!,
   };
 }
@@ -42,16 +42,16 @@ export function aggregateReferralLeaderboardGlobalTotalsFromItems(
 ): ReferralLeaderboardGlobalTotals {
   let totalCodesRegistered = 0n;
   let totalBuys = 0n;
-  let totalCharmWad = 0n;
+  let totalCredWad = 0n;
   for (const it of items) {
     totalCodesRegistered += BigInt(it.codes_registered_count ?? "0");
     totalBuys += BigInt(it.referred_buy_count);
-    totalCharmWad += BigInt(it.total_referrer_charm_wad);
+    totalCredWad += BigInt(it.total_referrer_cred_wad);
   }
   return {
     totalCodesRegistered,
     totalBuys,
-    totalCharmWad,
+    totalCredWad,
     totalReferrers: items.length,
   };
 }

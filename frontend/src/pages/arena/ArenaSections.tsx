@@ -638,8 +638,8 @@ export function BattleFeedSection(props: {
                     <li key={`${item.tx_hash}-${item.log_index}`}>
                       buyer{" "}
                       <AddressInline address={item.buyer} formatWallet={formatWallet} size={16} />{" "}
-                      · referrer CHARM{" "}
-                      <AmountDisplay raw={String(item.referrer_amount)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
+                      · referrer CRED{" "}
+                      <AmountDisplay raw={String(item.referrer_cred)} decimals={18} /> · tx <TxHash hash={item.tx_hash} />
                     </li>
                   ))}
                 </ul>

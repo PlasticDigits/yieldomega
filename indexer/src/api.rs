@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 
 use crate::chain_timer::TimecurveHeadSnapshot;
 
-const SCHEMA_VERSION: &str = "2.2.0";
+const SCHEMA_VERSION: &str = "2.3.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -57,8 +57,12 @@ pub fn router(state: AppState) -> Router {
             get(referral_referrer_leaderboard),
         )
         .route(
+            "/v1/referrals/wallet-cred-summary",
+            get(referral_wallet_cred_summary),
+        )
+        .route(
             "/v1/referrals/wallet-charm-summary",
-            get(referral_wallet_charm_summary),
+            get(referral_wallet_cred_summary),
         )
         .with_state(state)
 }
@@ -242,9 +246,8 @@ struct ReferralAppliedRow {
     buyer: String,
     referrer: String,
     code_hash: String,
-    referrer_amount: String,
-    referee_amount: String,
-    amount_to_fee_router: String,
+    referrer_cred: String,
+    buyer_cred: String,
 }
 
 async fn referral_applied(
@@ -268,10 +271,9 @@ async fn referral_applied(
         let addr_l = addr.to_lowercase();
         sqlx::query(
             r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
-                      referrer_amount::text AS referrer_amount,
-                      referee_amount::text AS referee_amount,
-                      doub_paid::text AS amount_to_fee_router
-               FROM idx_arena_referral_applied
+                      referrer_cred::text AS referrer_cred,
+                      buyer_cred::text AS buyer_cred
+               FROM idx_arena_referral_cred
                WHERE referrer = $3
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
@@ -284,10 +286,9 @@ async fn referral_applied(
     } else {
         sqlx::query(
             r#"SELECT block_number, tx_hash, log_index, buyer, referrer, code_hash,
-                      referrer_amount::text AS referrer_amount,
-                      referee_amount::text AS referee_amount,
-                      doub_paid::text AS amount_to_fee_router
-               FROM idx_arena_referral_applied
+                      referrer_cred::text AS referrer_cred,
+                      buyer_cred::text AS buyer_cred
+               FROM idx_arena_referral_cred
                ORDER BY block_number DESC, log_index ASC
                LIMIT $1 OFFSET $2"#,
         )
@@ -312,9 +313,8 @@ async fn referral_applied(
                 buyer: r.try_get("buyer").ok()?,
                 referrer: r.try_get("referrer").ok()?,
                 code_hash: r.try_get("code_hash").ok()?,
-                referrer_amount: r.try_get("referrer_amount").ok()?,
-                referee_amount: r.try_get("referee_amount").ok()?,
-                amount_to_fee_router: r.try_get("amount_to_fee_router").ok()?,
+                referrer_cred: r.try_get("referrer_cred").ok()?,
+                buyer_cred: r.try_get("buyer_cred").ok()?,
             })
         })
         .collect();
@@ -340,7 +340,7 @@ async fn referral_applied(
 struct ReferralReferrerLeaderboardRow {
     rank: i64,
     referrer: String,
-    total_referrer_charm_wad: String,
+    total_referrer_cred_wad: String,
     referred_buy_count: String,
     codes_registered_count: String,
 }
@@ -355,14 +355,14 @@ async fn referral_referrer_leaderboard(
     let totals = sqlx::query(
         r#"SELECT
               (SELECT COUNT(*)::bigint FROM idx_referral_code_registered) AS total_codes_registered,
-              (SELECT COUNT(*)::bigint FROM idx_arena_referral_applied) AS total_referred_buys,
-              (SELECT COALESCE(SUM(referrer_amount), 0)::text
-                 FROM idx_arena_referral_applied) AS total_referrer_charm_wad,
+              (SELECT COUNT(*)::bigint FROM idx_arena_referral_cred) AS total_referred_buys,
+              (SELECT COALESCE(SUM(referrer_cred), 0)::text
+                 FROM idx_arena_referral_cred) AS total_referrer_cred_wad,
               (SELECT COUNT(*)::bigint
                  FROM (
                         SELECT owner_address AS referrer FROM idx_referral_code_registered
                         UNION
-                        SELECT referrer FROM idx_arena_referral_applied
+                        SELECT referrer FROM idx_arena_referral_cred
                       ) u) AS total"#,
     )
     .fetch_one(&state.pool)
@@ -380,27 +380,27 @@ async fn referral_referrer_leaderboard(
         .try_get::<i64, _>("total_codes_registered")
         .unwrap_or(0);
     let total_referred_buys: i64 = totals.try_get::<i64, _>("total_referred_buys").unwrap_or(0);
-    let total_referrer_charm_wad: String = totals
-        .try_get::<String, _>("total_referrer_charm_wad")
+    let total_referrer_cred_wad: String = totals
+        .try_get::<String, _>("total_referrer_cred_wad")
         .unwrap_or_else(|_| "0".into());
 
     let rows = sqlx::query(
-        r#"SELECT referrer, total_referrer_charm_wad, referred_buy_count, codes_registered_count, rank
+        r#"SELECT referrer, total_referrer_cred_wad, referred_buy_count, codes_registered_count, rank
              FROM (
                  SELECT r.referrer,
-                        COALESCE(a.total_charm, 0)::text AS total_referrer_charm_wad,
+                        COALESCE(a.total_cred, 0)::text AS total_referrer_cred_wad,
                         COALESCE(a.buy_count, 0)::text AS referred_buy_count,
                         COALESCE(reg.cnt, 0)::text AS codes_registered_count,
-                        RANK() OVER (ORDER BY COALESCE(a.total_charm, 0) DESC NULLS LAST)::bigint AS rank
+                        RANK() OVER (ORDER BY COALESCE(a.total_cred, 0) DESC NULLS LAST)::bigint AS rank
                    FROM (
                             SELECT owner_address AS referrer FROM idx_referral_code_registered
                             UNION
-                            SELECT referrer FROM idx_arena_referral_applied
+                            SELECT referrer FROM idx_arena_referral_cred
                         ) r
                    LEFT JOIN (
-                            SELECT referrer, SUM(referrer_amount) AS total_charm,
+                            SELECT referrer, SUM(referrer_cred) AS total_cred,
                                    COUNT(*)::bigint AS buy_count
-                              FROM idx_arena_referral_applied
+                              FROM idx_arena_referral_cred
                              GROUP BY referrer
                         ) a ON r.referrer = a.referrer
                    LEFT JOIN (
@@ -428,7 +428,7 @@ async fn referral_referrer_leaderboard(
             Some(ReferralReferrerLeaderboardRow {
                 rank: r.try_get("rank").ok()?,
                 referrer: r.try_get("referrer").ok()?,
-                total_referrer_charm_wad: r.try_get("total_referrer_charm_wad").ok()?,
+                total_referrer_cred_wad: r.try_get("total_referrer_cred_wad").ok()?,
                 referred_buy_count: r.try_get("referred_buy_count").ok()?,
                 codes_registered_count: r.try_get("codes_registered_count").ok()?,
             })
@@ -449,7 +449,7 @@ async fn referral_referrer_leaderboard(
         "total": total,
         "total_codes_registered": total_codes_registered.to_string(),
         "total_referred_buys": total_referred_buys.to_string(),
-        "total_referrer_charm_wad": total_referrer_charm_wad,
+        "total_referrer_cred_wad": total_referrer_cred_wad,
     }))
     .into_response();
     *res.headers_mut() = with_schema_version(res.headers().clone());
@@ -457,13 +457,13 @@ async fn referral_referrer_leaderboard(
 }
 
 #[derive(Debug, serde::Deserialize)]
-pub struct ReferralWalletCharmSummaryQuery {
+pub struct ReferralWalletCredSummaryQuery {
     pub wallet: String,
 }
 
-async fn referral_wallet_charm_summary(
+async fn referral_wallet_cred_summary(
     State(state): State<AppState>,
-    Query(q): Query<ReferralWalletCharmSummaryQuery>,
+    Query(q): Query<ReferralWalletCredSummaryQuery>,
 ) -> Response {
     if !valid_0x_address20(&q.wallet) {
         return (
@@ -476,10 +476,10 @@ async fn referral_wallet_charm_summary(
 
     let row = sqlx::query(
         r#"SELECT
-              (SELECT COALESCE(SUM(referrer_amount), 0)::text FROM idx_arena_referral_applied WHERE referrer = $1) AS referrer_charm_wad,
-              (SELECT COALESCE(SUM(referee_amount), 0)::text FROM idx_arena_referral_applied WHERE buyer = $1) AS referee_charm_wad,
-              (SELECT COUNT(*)::text FROM idx_arena_referral_applied WHERE referrer = $1) AS referred_buy_count,
-              (SELECT COUNT(*)::text FROM idx_arena_referral_applied WHERE buyer = $1) AS referee_buy_count"#,
+              (SELECT COALESCE(SUM(referrer_cred), 0)::text FROM idx_arena_referral_cred WHERE referrer = $1) AS referrer_cred_wad,
+              (SELECT COALESCE(SUM(buyer_cred), 0)::text FROM idx_arena_referral_cred WHERE buyer = $1) AS buyer_cred_wad,
+              (SELECT COUNT(*)::text FROM idx_arena_referral_cred WHERE referrer = $1) AS referred_buy_count,
+              (SELECT COUNT(*)::text FROM idx_arena_referral_cred WHERE buyer = $1) AS referee_buy_count"#,
     )
     .bind(&w)
     .fetch_one(&state.pool)
@@ -487,13 +487,13 @@ async fn referral_wallet_charm_summary(
 
     let row = match row {
         Ok(r) => r,
-        Err(e) => return internal_db_error_response("GET /v1/referrals/wallet-charm-summary", e),
+        Err(e) => return internal_db_error_response("GET /v1/referrals/wallet-cred-summary", e),
     };
 
     let mut res = Json(json!({
         "wallet": w,
-        "referrer_charm_wad": row.try_get::<String, _>("referrer_charm_wad").unwrap_or_else(|_| "0".into()),
-        "referee_charm_wad": row.try_get::<String, _>("referee_charm_wad").unwrap_or_else(|_| "0".into()),
+        "referrer_cred_wad": row.try_get::<String, _>("referrer_cred_wad").unwrap_or_else(|_| "0".into()),
+        "buyer_cred_wad": row.try_get::<String, _>("buyer_cred_wad").unwrap_or_else(|_| "0".into()),
         "referred_buy_count": row.try_get::<String, _>("referred_buy_count").unwrap_or_else(|_| "0".into()),
         "referee_buy_count": row.try_get::<String, _>("referee_buy_count").unwrap_or_else(|_| "0".into()),
     }))
