@@ -15,7 +15,12 @@ _PKG = Path(__file__).resolve().parent
 
 def _load_abi(name: str) -> List[Any]:
     p = _PKG / "abis" / name
-    return json.loads(p.read_text(encoding="utf-8"))
+    data = json.loads(p.read_text(encoding="utf-8"))
+    if isinstance(data, dict) and "abi" in data:
+        return data["abi"]
+    if not isinstance(data, list):
+        raise ValueError(f"{name}: expected ABI array or Foundry artifact with 'abi' key")
+    return data
 
 
 def timearena_contract(w3: Web3, address: str) -> Contract:
