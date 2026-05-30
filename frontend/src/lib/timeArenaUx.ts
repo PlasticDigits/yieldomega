@@ -411,7 +411,6 @@ export function describeStealPreflight(
   params: {
     connected: boolean;
     saleActive: boolean;
-    saleEnded: boolean;
     viewer: string | undefined;
     victim: string | undefined;
     viewerBattlePoints: bigint | undefined;
@@ -427,7 +426,6 @@ export function describeStealPreflight(
   const {
     connected,
     saleActive,
-    saleEnded,
     viewer,
     victim,
     viewerBattlePoints,
@@ -448,11 +446,9 @@ export function describeStealPreflight(
   }
   if (!saleActive) {
     return {
-      tone: saleEnded ? "warning" : "muted",
-      title: saleEnded ? "Round already expired" : "Waiting for live round",
-      detail: saleEnded
-        ? "Steal and guard actions are mostly over once the timer expires. Only residual revenge state may remain."
-        : "WarBow actions unlock when the live round is running.",
+      tone: "muted",
+      title: "Waiting for live round",
+      detail: "WarBow actions unlock when the arena round is live.",
     };
   }
   if (!victim) {

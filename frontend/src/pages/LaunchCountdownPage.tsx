@@ -108,7 +108,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
         </p>
 
         <p className="launch-countdown__supporting">
-          TimeCurve goes live the moment this hits zero.
+          Time Arena goes live the moment this hits zero.
         </p>
 
         <nav

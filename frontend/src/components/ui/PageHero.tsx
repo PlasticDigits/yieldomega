@@ -28,7 +28,7 @@ type Props = {
    * Optional issue-#45 wide JPG scene used as a soft backplate for the hero
    * banner. See [`frontend/public/art/scenes/`](../../../public/art/scenes/)
    * and the asset map in [`frontend/public/art/README.md`](../../../public/art/README.md).
-   * Pages opt-in (e.g. TimeCurve Simple uses
+   * Pages opt-in (e.g. Time Arena Simple uses
    * `/art/scenes/arena-simple.jpg`); cards remain crisp via the
    * `arcade-banner--with-scene` overlay defined in `index.css`.
    */

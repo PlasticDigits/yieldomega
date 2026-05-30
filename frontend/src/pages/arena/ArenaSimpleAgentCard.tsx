@@ -35,7 +35,7 @@ const CONTRIBUTOR_SKILL = {
 };
 
 const DOCS_SIMPLE: { label: string; path: string }[] = [
-  { label: "TimeCurve primitives (four podiums, timer, WarBow)", path: "docs/product/primitives.md" },
+  { label: "Time Arena primitives (four podiums, timer, WarBow)", path: "docs/product/primitives.md" },
   { label: "Arena frontend views (/arena, Kumbaya)", path: "docs/frontend/arena-views.md" },
   { label: "Kumbaya single-tx buy + router", path: "docs/integrations/kumbaya.md" },
   { label: "Invariants index (INV-*)", path: "docs/testing/invariants-and-business-logic.md" },
@@ -47,7 +47,7 @@ GET /v1/arena/buys
 GET /v1/arena/warbow/leaderboard
 GET /v1/arena/warbow/battle-feed`;
 
-/** `TimeCurve.podium(uint8)` category indices (see `CAT_*` view functions onchain). */
+/** `TimeArena.podium(uint8)` category indices (see `CAT_*` view functions onchain). */
 const PODIUM_CAT_ONCHAIN = {
   lastBuy: 0,
   timeBooster: 1,
@@ -56,8 +56,8 @@ const PODIUM_CAT_ONCHAIN = {
 } as const;
 
 /** Raw GitHub URLs baked into Python snippets (copy-paste safe; matches `ghRaw` in this module). */
-const PY_DEFAULT_TIMECURVE_ABI_URL = `${GH_RAW}/frontend/public/abis/TimeCurve.json`;
-const PY_DEFAULT_BUY_ROUTER_ABI_URL = `${GH_RAW}/frontend/public/abis/TimeCurveBuyRouter.json`;
+const PY_DEFAULT_TIME_ARENA_ABI_URL = `${GH_RAW}/frontend/public/abis/TimeArena.json`;
+const PY_DEFAULT_BUY_ROUTER_ABI_URL = `${GH_RAW}/frontend/public/abis/TimeArenaBuyRouter.json`;
 
 const PY_ABI_BOOTSTRAP = `import json
 import os
@@ -68,14 +68,14 @@ from web3 import Web3
 # MegaETH mainnet production — indexer/address-registry.megaeth-mainnet.json (chain 4326)
 MEGAETH_MAINNET_CHAIN_ID = 4326
 DEFAULT_RPC_URL = "https://mainnet.megaeth.com/rpc"
-DEFAULT_TIMECURVE_ABI_URL = "${PY_DEFAULT_TIMECURVE_ABI_URL}"
+DEFAULT_TIME_ARENA_ABI_URL = "${PY_DEFAULT_TIME_ARENA_ABI_URL}"
 DEFAULT_BUY_ROUTER_ABI_URL = "${PY_DEFAULT_BUY_ROUTER_ABI_URL}"
-TIMECURVE = Web3.to_checksum_address("0x1b68bb6789baeba4bd28f53c10b52dbe1ef2bf71")
-TIMECURVE_BUY_ROUTER_ADDR = Web3.to_checksum_address("0xb09542acae355c5ea42345522d403c1742c75b61")
+TIME_ARENA = Web3.to_checksum_address("0x1b68bb6789baeba4bd28f53c10b52dbe1ef2bf71")
+TIME_ARENA_BUY_ROUTER_ADDR = Web3.to_checksum_address("0xb09542acae355c5ea42345522d403c1742c75b61")
 
 
 def _fetch_json_url(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "yieldomega-timecurve-sketch"})
+    req = urllib.request.Request(url, headers={"User-Agent": "yieldomega-arena-sketch"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         return json.loads(resp.read().decode())
 
@@ -84,24 +84,24 @@ def _abi_from_raw(raw):
     return raw["abi"] if isinstance(raw, dict) and "abi" in raw else raw
 
 
-def load_timecurve_abi():
-    path = os.environ.get("TIMECURVE_ABI_JSON", "").strip()
+def load_timearena_abi():
+    path = os.environ.get("TIME_ARENA_ABI_JSON", "").strip()
     if path:
         raw = json.loads(Path(path).read_text())
     else:
-        url = os.environ.get("TIMECURVE_ABI_URL", DEFAULT_TIMECURVE_ABI_URL)
+        url = os.environ.get("TIME_ARENA_ABI_URL", DEFAULT_TIME_ARENA_ABI_URL)
         raw = _fetch_json_url(url)
     return _abi_from_raw(raw)
 
 
-TIME_CURVE_ABI = load_timecurve_abi()`;
+TIME_ARENA_ABI = load_timearena_abi()`;
 
-/** Shared Python: CL8Y approve → TimeCurve.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow CL8Y spend. */
+/** Shared Python: CL8Y approve → TimeArena.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow CL8Y spend. */
 const PY_SKETCH_SHARED = `# --- approvals + routing (sketch; simulate on your fork first) ---
 # Contract addresses default to MegaETH mainnet production (see PY_ABI_BOOTSTRAP). Forks: ALLOW_CHAIN_MISMATCH=1.
 # PRIVATE_KEY required. RPC_URL defaults to MegaETH public JSON-RPC; override for other providers.
-# TimeCurve ABI: downloaded from GitHub raw unless TIMECURVE_ABI_JSON (local file) or TIMECURVE_ABI_URL is set.
-# CL8Y: approve acceptedAsset → TimeCurve for gross CL8Y (price × charmWad / WAD), then buy.
+# Time Arena ABI: downloaded from GitHub raw unless TIME_ARENA_ABI_JSON (local file) or TIME_ARENA_ABI_URL is set.
+# CL8Y: approve acceptedAsset → Time Arena for gross CL8Y (price × charmWad / WAD), then buy.
 #   ERC20_APPROVE_UNLIMITED=true → approve 2**256-1 (some tokens reject; omit for exact headroom).
 #   BUY_APPROVE_SLIPPAGE_BPS (default 100) pads the approve amount when not unlimited.
 # Kumbaya single-tx: PAY_MODE=ROUTER_ETH | ROUTER_STABLE (router address baked for mainnet; ABI downloaded by default),
@@ -127,11 +127,11 @@ def require_expected_chain(w3):
 def buy_router_abi():
     global _ROUTER_ABI_CACHE
     if _ROUTER_ABI_CACHE is None:
-        path = os.environ.get("TIMECURVE_BUY_ROUTER_ABI_JSON", "").strip()
+        path = os.environ.get("TIME_ARENA_BUY_ROUTER_ABI_JSON", "").strip()
         if path:
             raw = json.loads(Path(path).read_text())
         else:
-            url = os.environ.get("TIMECURVE_BUY_ROUTER_ABI_URL", DEFAULT_BUY_ROUTER_ABI_URL)
+            url = os.environ.get("TIME_ARENA_BUY_ROUTER_ABI_URL", DEFAULT_BUY_ROUTER_ABI_URL)
             raw = _fetch_json_url(url)
         _ROUTER_ABI_CACHE = _abi_from_raw(raw)
     return _ROUTER_ABI_CACHE
@@ -181,7 +181,7 @@ def plant_warbow_flag():
     return os.environ.get("PLANT_WARBOW_FLAG", "false").lower() == "true"
 
 
-def exec_timecurve_buy(tc, tc_addr, acct, w3, me, charm_wad):
+def exec_arena_buy(tc, tc_addr, acct, w3, me, charm_wad):
     tc_addr = Web3.to_checksum_address(tc_addr)
     pay = os.environ.get("PAY_MODE", "CL8Y").upper()
     h32 = referral_code_hash()
@@ -200,7 +200,7 @@ def exec_timecurve_buy(tc, tc_addr, acct, w3, me, charm_wad):
         tx = fn.build_transaction({"from": me, "nonce": _nonce(w3, me), "chainId": w3.eth.chain_id})
         return _sign_send(w3, acct, tx)
     r_abi = buy_router_abi()
-    rt_addr = TIMECURVE_BUY_ROUTER_ADDR
+    rt_addr = TIME_ARENA_BUY_ROUTER_ADDR
     rt = w3.eth.contract(address=rt_addr, abi=r_abi)
     path = bytes.fromhex(os.environ["KUMBAYA_PATH"][2:])
     max_in = int(os.environ["KUMBAYA_AMOUNT_IN_MAXIMUM"])
@@ -224,7 +224,7 @@ def exec_timecurve_buy(tc, tc_addr, acct, w3, me, charm_wad):
     raise SystemExit("PAY_MODE must be CL8Y, ROUTER_ETH, or ROUTER_STABLE")
 
 
-def ensure_cl8y_for_timecurve_burn(tc, acct, w3, me, min_cl8y):
+def ensure_cl8y_for_arena_burn(tc, acct, w3, me, min_cl8y):
     tc_addr = Web3.to_checksum_address(tc.address)
     cl8y = Web3.to_checksum_address(tc.functions.acceptedAsset().call())
     tok = w3.eth.contract(address=cl8y, abi=ERC20_ABI)
@@ -242,7 +242,7 @@ RPC_URL = os.environ.get("RPC_URL", DEFAULT_RPC_URL).strip()
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 require_expected_chain(w3)
 acct = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
-tc = w3.eth.contract(address=TIMECURVE, abi=TIME_CURVE_ABI)
+tc = w3.eth.contract(address=TIME_ARENA, abi=TIME_ARENA_ABI)
 me = Web3.to_checksum_address(acct.address)
 
 def chain_ts():
@@ -273,12 +273,12 @@ while True:
     if now < cool:
         time.sleep(min(POLL, cool - now + 1)); continue
     _min, max_wad = tc.functions.currentCharmBoundsWad().call()
-    h = exec_timecurve_buy(tc, TIMECURVE, acct, w3, me, max_wad)
+    h = exec_arena_buy(tc, TIME_ARENA, acct, w3, me, max_wad)
     print("last-buy sent", h); time.sleep(POLL)`;
 
 const PY_WARBOW = `# WarBow ladder — loop: prefer revenge vs BP #1 ("head") when a window is open; else steal head if 2×–10× BP band passes.
 # Head: INDEXER_URL + /v1/arena/warbow/leaderboard?limit=1 (live) else warbowLadderPodium().
-# CL8Y approve to TimeCurve for each burn (revenge 1e18 / steal 1e18 + optional 50e18 bypass). buyFeeRoutingEnabled must be on for WarBow writes.
+# CL8Y approve to Time Arena for each burn (revenge 1e18 / steal 1e18 + optional 50e18 bypass). buyFeeRoutingEnabled must be on for WarBow writes.
 # Daily steal caps: WARBOW_STEAL_BYPASS=true if needed.
 ${PY_ABI_BOOTSTRAP}
 ${PY_SKETCH_SHARED}
@@ -291,7 +291,7 @@ RPC_URL = os.environ.get("RPC_URL", DEFAULT_RPC_URL).strip()
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 require_expected_chain(w3)
 acct = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
-tc = w3.eth.contract(address=TIMECURVE, abi=TIME_CURVE_ABI)
+tc = w3.eth.contract(address=TIME_ARENA, abi=TIME_ARENA_ABI)
 me = Web3.to_checksum_address(acct.address)
 base = os.environ.get("INDEXER_URL", "").rstrip("/")
 
@@ -330,7 +330,7 @@ while True:
     exp = int(tc.functions.warbowPendingRevengeExpiryExclusive(me, head).call())
     if exp != 0 and now < exp:
         need = int(tc.functions.WARBOW_REVENGE_BURN_WAD().call())
-        ensure_cl8y_for_timecurve_burn(tc, acct, w3, me, need)
+        ensure_cl8y_for_arena_burn(tc, acct, w3, me, need)
         tx = tc.functions.warbowRevenge(head).build_transaction(
             {"from": me, "nonce": _nonce(w3, me), "chainId": w3.eth.chain_id}
         )
@@ -342,7 +342,7 @@ while True:
         need = int(tc.functions.WARBOW_STEAL_BURN_WAD().call())
         if bypass:
             need += int(tc.functions.WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD().call())
-        ensure_cl8y_for_timecurve_burn(tc, acct, w3, me, need)
+        ensure_cl8y_for_arena_burn(tc, acct, w3, me, need)
         tx = tc.functions.warbowSteal(head, bypass).build_transaction(
             {"from": me, "nonce": _nonce(w3, me), "chainId": w3.eth.chain_id}
         )
@@ -364,7 +364,7 @@ RPC_URL = os.environ.get("RPC_URL", DEFAULT_RPC_URL).strip()
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 require_expected_chain(w3)
 acct = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
-tc = w3.eth.contract(address=TIMECURVE, abi=TIME_CURVE_ABI)
+tc = w3.eth.contract(address=TIME_ARENA, abi=TIME_ARENA_ABI)
 me = Web3.to_checksum_address(acct.address)
 base = os.environ.get("INDEXER_URL", "").rstrip("/")
 SILENCE = int(os.environ.get("DEFENDED_SILENCE_SEC", "300"))
@@ -408,11 +408,11 @@ while True:
     if now < cool:
         time.sleep(min(POLL, cool - now + 1)); continue
     _min, max_wad = tc.functions.currentCharmBoundsWad().call()
-    h = exec_timecurve_buy(tc, TIMECURVE, acct, w3, me, max_wad)
+    h = exec_arena_buy(tc, TIME_ARENA, acct, w3, me, max_wad)
     print("defended-streak buy", h); time.sleep(POLL)`;
 
 const PY_TIME_BOOSTER = `# Time Booster — loop: buy while round time left < 3 minutes AND you are not already #1 on podium(1).
-# CL8Y approve to TimeCurve or Kumbaya router (PAY_MODE, KUMBAYA_* envs) per docs/integrations/kumbaya.md.
+# CL8Y approve to Time Arena or Kumbaya router (PAY_MODE, KUMBAYA_* envs) per docs/integrations/kumbaya.md.
 ${PY_ABI_BOOTSTRAP}
 ${PY_SKETCH_SHARED}
 import time
@@ -423,7 +423,7 @@ RPC_URL = os.environ.get("RPC_URL", DEFAULT_RPC_URL).strip()
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 require_expected_chain(w3)
 acct = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
-tc = w3.eth.contract(address=TIMECURVE, abi=TIME_CURVE_ABI)
+tc = w3.eth.contract(address=TIME_ARENA, abi=TIME_ARENA_ABI)
 me = Web3.to_checksum_address(acct.address)
 
 def chain_ts():
@@ -450,12 +450,12 @@ while True:
     if now < cool:
         time.sleep(min(POLL, cool - now + 1)); continue
     _min, max_wad = tc.functions.currentCharmBoundsWad().call()
-    h = exec_timecurve_buy(tc, TIMECURVE, acct, w3, me, max_wad)
+    h = exec_arena_buy(tc, TIME_ARENA, acct, w3, me, max_wad)
     print("time-booster buy", h); time.sleep(POLL)`;
 
 function envAddresses(): { key: string; value: string }[] {
   const entries: { key: string; value: string }[] = [];
-  const routerOpt = parseHexAddress(import.meta.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER);
+  const routerOpt = parseHexAddress(import.meta.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER);
   const map: Record<string, `0x${string}` | undefined> = {
     "VITE_TIMECURVE_ADDRESS": addresses.timeArena,
     "VITE_REFERRAL_REGISTRY_ADDRESS": addresses.referralRegistry,
@@ -465,7 +465,7 @@ function envAddresses(): { key: string; value: string }[] {
   }
   if (routerOpt) {
     entries.push({
-      key: "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER (optional; must match onchain router)",
+      key: "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER (optional; must match onchain router)",
       value: routerOpt,
     });
   }
@@ -482,7 +482,7 @@ function FragmentRow({ k, v }: { k: string; v: string }) {
 }
 
 /**
- * Collapsed agent orientation for `/timecurve` (Simple). The global footer is
+ * Collapsed agent orientation for `/arena` (Simple). The global footer is
  * hidden on this route so first-time buyers are not overwhelmed; this `<details>`
  * restores skills, contract/indexer hints, and sketch scripts when expanded.
  */
@@ -499,13 +499,13 @@ export function ArenaSimpleAgentCard() {
   }));
 
   const abisBase = `${import.meta.env.BASE_URL}abis`;
-  const abiTimeCurveApp = `${abisBase}/TimeCurve.json`;
-  const abiBuyRouterApp = `${abisBase}/TimeCurveBuyRouter.json`;
+  const abiTimeArenaApp = `${abisBase}/TimeArena.json`;
+  const abiBuyRouterApp = `${abisBase}/TimeArenaBuyRouter.json`;
 
   return (
-    <details className="app-footer-agent arena-simple-agent-card" data-testid="arena-simple-agent-card">
+    <details className="app-footer-agent timecurve-simple-agent-card" data-testid="timecurve-simple-agent-card">
       <summary className="app-footer-agent__summary">
-        <span className="app-footer-agent__summary-title">AGENT CARD: TimeCurve Simple</span>
+        <span className="app-footer-agent__summary-title">AGENT CARD: Time Arena Simple</span>
         <span className="app-footer-agent__summary-hint">
           Expand for podium mechanics, skills, indexer routes, and Python sketches.
         </span>
@@ -514,18 +514,13 @@ export function ArenaSimpleAgentCard() {
         <article className="app-footer-agent__article" lang="en">
           <h3 className="app-footer-agent__h">What this page shows (onchain authority)</h3>
           <p className="app-footer-agent__p">
-            <strong>Timer + phase</strong> follow <code className="app-footer-agent__code-inline">saleStart</code>,{" "}
-            <code className="app-footer-agent__code-inline">deadline</code>, <code className="app-footer-agent__code-inline">ended</code>{" "}
-            and the indexer <code className="app-footer-agent__code-inline">chain-timer</code> when configured (
-            <a href={ghBlob("docs/frontend/arena-views.md")} target="_blank" rel="noreferrer">
-              arena-views
-            </a>
-            , issue 48). <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeCurve.buy</code> /
-            referral hash variant, or <code className="app-footer-agent__code-inline">TimeCurveBuyRouter.buyViaKumbaya</code> for
-            ETH/USDM. <strong>CHARM weight</strong> and <strong>DOUB redemption</strong> after end use{" "}
-            <code className="app-footer-agent__code-inline">charmWeight</code> / <code className="app-footer-agent__code-inline">redeemCharms</code>.{" "}
-            <strong>Reserve podiums</strong> pay CL8Y from the podium pool after <code className="app-footer-agent__code-inline">endSale</code> +{" "}
-            <code className="app-footer-agent__code-inline">distributePrizes</code> (gated — see issue #55).
+            <strong>Timer + phase</strong> follow <code className="app-footer-agent__code-inline">arenaStart</code>,{" "}
+            <code className="app-footer-agent__code-inline">deadline</code>, and the indexer{" "}
+            <code className="app-footer-agent__code-inline">chain-timer</code> when configured.{" "}
+            <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeArena.buy</code> /
+            referral hash variant, <code className="app-footer-agent__code-inline">buyWithCred</code>, or{" "}
+            <code className="app-footer-agent__code-inline">TimeArenaBuyRouter.buyViaKumbaya</code> for ETH/USDM.{" "}
+            <strong>Podium pools</strong> receive DOUB via onchain ArenaBuyRouting (40/30/30).
           </p>
 
           <h4 className="app-footer-agent__h">
@@ -546,20 +541,17 @@ export function ArenaSimpleAgentCard() {
           </ul>
 
           <h4 className="app-footer-agent__h">
-            High-signal <code className="app-footer-agent__code-inline">TimeCurve</code> calls
+            High-signal <code className="app-footer-agent__code-inline">TimeArena</code> calls
           </h4>
           <p className="app-footer-agent__p">
-            <strong>Reads:</strong> <code className="app-footer-agent__code-inline">currentCharmBoundsWad</code>,{" "}
-            <code className="app-footer-agent__code-inline">currentPricePerCharmWad</code>,{" "}
+            <strong>Reads:</strong> fixed CHARM bounds (0.99–10),{" "}
+            <code className="app-footer-agent__code-inline">charmPriceWad</code>,{" "}
             <code className="app-footer-agent__code-inline">nextBuyAllowedAt</code>,{" "}
             <code className="app-footer-agent__code-inline">battlePoints</code>,{" "}
-            <code className="app-footer-agent__code-inline">totalEffectiveTimerSecAdded</code>,{" "}
-            <code className="app-footer-agent__code-inline">bestDefendedStreak</code>,{" "}
-            <code className="app-footer-agent__code-inline">buyFeeRoutingEnabled</code>.{" "}
+            <code className="app-footer-agent__code-inline">paused</code>.{" "}
             <strong>Writes:</strong> <code className="app-footer-agent__code-inline">buy</code>,{" "}
-            <code className="app-footer-agent__code-inline">claimWarBowFlag</code>, WarBow trio,{" "}
-            <code className="app-footer-agent__code-inline">endSale</code>, <code className="app-footer-agent__code-inline">redeemCharms</code>,{" "}
-            <code className="app-footer-agent__code-inline">distributePrizes</code>. Decode rich{" "}
+            <code className="app-footer-agent__code-inline">buyWithCred</code>,{" "}
+            <code className="app-footer-agent__code-inline">claimWarBowFlag</code>, WarBow trio. Decode rich{" "}
             <code className="app-footer-agent__code-inline">Buy</code> events for timer and BP fields.
           </p>
 
@@ -606,14 +598,14 @@ export function ArenaSimpleAgentCard() {
           <h4 className="app-footer-agent__h">Python sketches (not financial advice)</h4>
           <p className="app-footer-agent__p">
             By default each sketch <strong>downloads</strong> the published{" "}
-            <code className="app-footer-agent__code-inline">TimeCurve</code> /{" "}
+            <code className="app-footer-agent__code-inline">TimeArena</code> /{" "}
             <code className="app-footer-agent__code-inline">TimeCurveBuyRouter</code> ABI JSON from{" "}
             <code className="app-footer-agent__code-inline">main</code> on GitHub (same files as below); set{" "}
-            <code className="app-footer-agent__code-inline">TIMECURVE_ABI_JSON</code> /{" "}
-            <code className="app-footer-agent__code-inline">TIMECURVE_BUY_ROUTER_ABI_JSON</code> to use a local Forge artifact (
-            <code className="app-footer-agent__code-inline">contracts/out/TimeCurve.sol/TimeCurve.json</code>{" "}
+            <code className="app-footer-agent__code-inline">TIME_ARENA_ABI_JSON</code> /{" "}
+            <code className="app-footer-agent__code-inline">TIME_ARENA_BUY_ROUTER_ABI_JSON</code> to use a local Forge artifact (
+            <code className="app-footer-agent__code-inline">contracts/out/TimeCurve.sol/TimeArena.json</code>{" "}
             <code className="app-footer-agent__code-inline">abi</code> field) instead. Contract addresses in the snippets are{" "}
-            <strong>MegaETH mainnet production</strong> (ERC-1967 <code className="app-footer-agent__code-inline">TimeCurve</code> proxy +{" "}
+            <strong>MegaETH mainnet production</strong> (ERC-1967 <code className="app-footer-agent__code-inline">TimeArena</code> proxy +{" "}
             <code className="app-footer-agent__code-inline">TimeCurveBuyRouter</code> from{" "}
             <a href={ghBlob("indexer/address-registry.megaeth-mainnet.json")} target="_blank" rel="noreferrer">
               indexer/address-registry.megaeth-mainnet.json
@@ -631,37 +623,37 @@ export function ArenaSimpleAgentCard() {
             <code className="app-footer-agent__code-inline">buy</code>), or{" "}
             <code className="app-footer-agent__code-inline">ROUTER_ETH</code> /{" "}
             <code className="app-footer-agent__code-inline">ROUTER_STABLE</code> for{" "}
-            <code className="app-footer-agent__code-inline">buyViaKumbaya</code> with the env vars listed in that header; WarBow ticks pre-approve CL8Y for the burn <code className="app-footer-agent__code-inline">TimeCurve</code> pulls.
+            <code className="app-footer-agent__code-inline">buyViaKumbaya</code> with the env vars listed in that header; WarBow ticks pre-approve CL8Y for the burn <code className="app-footer-agent__code-inline">TimeArena</code> pulls.
           </p>
           <p className="app-footer-agent__p">
             <strong>Download ABI JSON</strong> (mirrors <code className="app-footer-agent__code-inline">main</code>):
           </p>
           <ul className="app-footer-agent__list">
             <li>
-              <strong>TimeCurve</strong> —{" "}
-              <a href={abiTimeCurveApp} download="TimeCurve.json">
+              <strong>Time Arena</strong> —{" "}
+              <a href={abiTimeArenaApp} download="TimeArena.json">
                 this app
               </a>
               ,{" "}
-              <a href={ghRaw("frontend/public/abis/TimeCurve.json")} target="_blank" rel="noreferrer">
+              <a href={ghRaw("frontend/public/abis/TimeArena.json")} target="_blank" rel="noreferrer">
                 raw GitHub
               </a>
               ,{" "}
-              <a href={ghBlob("frontend/public/abis/TimeCurve.json")} target="_blank" rel="noreferrer">
+              <a href={ghBlob("frontend/public/abis/TimeArena.json")} target="_blank" rel="noreferrer">
                 repo path
               </a>
             </li>
             <li>
               <strong>TimeCurveBuyRouter</strong> (single-tx Kumbaya) —{" "}
-              <a href={abiBuyRouterApp} download="TimeCurveBuyRouter.json">
+              <a href={abiBuyRouterApp} download="TimeArenaBuyRouter.json">
                 this app
               </a>
               ,{" "}
-              <a href={ghRaw("frontend/public/abis/TimeCurveBuyRouter.json")} target="_blank" rel="noreferrer">
+              <a href={ghRaw("frontend/public/abis/TimeArenaBuyRouter.json")} target="_blank" rel="noreferrer">
                 raw GitHub
               </a>
               ,{" "}
-              <a href={ghBlob("frontend/public/abis/TimeCurveBuyRouter.json")} target="_blank" rel="noreferrer">
+              <a href={ghBlob("frontend/public/abis/TimeArenaBuyRouter.json")} target="_blank" rel="noreferrer">
                 repo path
               </a>
             </li>

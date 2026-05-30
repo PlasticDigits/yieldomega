@@ -27,9 +27,9 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 
 - **Home / hub: wide hero (desktop)** — [`scenes/home-hero-desktop.jpg`](../scenes/home-hero-desktop.jpg)
 - **Home / hub: mobile crop variant** — [`scenes/home-hero-mobile.jpg`](../scenes/home-hero-mobile.jpg)
-- **TimeCurve Simple: timer + fair launch calm energy** — [`scenes/arena-simple.jpg`](../scenes/arena-simple.jpg)
-- **TimeCurve Arena: PvP / podium tension** — [`scenes/timecurve-arena.jpg`](../scenes/timecurve-arena.jpg)
-- **TimeCurve Protocol: operator / audit neutral backdrop** — [`scenes/arena-protocol.jpg`](../scenes/arena-protocol.jpg)
+- **Time Arena Simple: timer + fair launch calm energy** — [`scenes/arena-simple.jpg`](../scenes/arena-simple.jpg)
+- **Time Arena: PvP / podium tension** — [`scenes/timecurve-arena.jpg`](../scenes/timecurve-arena.jpg)
+- **Time Arena Protocol: operator / audit neutral backdrop** — [`scenes/arena-protocol.jpg`](../scenes/arena-protocol.jpg)
 - **retired v1 player reserve: reserve / v1 reserve / chart-adjacent** — [`scenes/retired-v1-reserve.jpg`](../scenes/retired-v1-reserve.jpg)
 - **Collection: gallery-forward (shelves / vault / grid)** — [`scenes/collection-gallery.jpg`](../scenes/collection-gallery.jpg)
 - **Referrals: network / invitation threads motif** — [`scenes/referrals-network.jpg`](../scenes/referrals-network.jpg)
@@ -56,7 +56,7 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 - **Token / asset (issue #45 raster drafts, historic):** [`icons/token-cl8y.png`](../icons/token-cl8y.png), [`icons/token-doub.png`](../icons/token-doub.png), [`icons/token-charm.png`](../icons/token-charm.png), [`icons/token-usdm.png`](../icons/token-usdm.png). **Current product UI** serves canonical art from [`public/tokens/`](../../tokens/) at `/tokens/…` and imports constants from [`tokenMedia.ts`](../../../src/lib/tokenMedia.ts); see the **Canonical token marks** section in [`frontend/public/art/README.md`](../README.md).
 - **Status:** [`icons/status-live.png`](../icons/status-live.png), [`icons/status-ended.png`](../icons/status-ended.png), [`icons/status-prelanch.png`](../icons/status-prelanch.png) (sic — pre-launch alias documented in `frontend/src/components/ui/PageBadge.tsx`), [`icons/status-cooldown.png`](../icons/status-cooldown.png), [`icons/status-net-ok.png`](../icons/status-net-ok.png), [`icons/status-net-warn.png`](../icons/status-net-warn.png), [`icons/status-indexer-ok.png`](../icons/status-indexer-ok.png), [`icons/status-indexer-bad.png`](../icons/status-indexer-bad.png).
 - **WarBow actions:** [`icons/warbow-guard.png`](../icons/warbow-guard.png), [`icons/warbow-steal.png`](../icons/warbow-steal.png), [`icons/warbow-revenge.png`](../icons/warbow-revenge.png), [`icons/warbow-flag.png`](../icons/warbow-flag.png).
-- **TimeCurve sub-nav pictograms:** [`icons/nav-simple.png`](../icons/nav-simple.png), [`icons/nav-arena.png`](../icons/nav-arena.png), [`icons/nav-protocol.png`](../icons/nav-protocol.png).
+- **Time Arena sub-nav pictograms:** [`icons/nav-simple.png`](../icons/nav-simple.png), [`icons/nav-arena.png`](../icons/nav-arena.png), [`icons/nav-protocol.png`](../icons/nav-protocol.png).
 - **Charts accessibility swatch:** [`icons/chart-accessibility.png`](../icons/chart-accessibility.png).
 
 ## 4) Mouse cursors & pointer affordances → `cursors/`

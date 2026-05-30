@@ -13,7 +13,7 @@ const ATTENTION_SEC = 13 * 60;
 const URGENT_SEC = 120;
 
 /**
- * Ambient SFX for the TimeCurve Simple page: peer buys (indexer head, short bell)
+ * Ambient SFX for the Time Arena Simple page: peer buys (indexer head, short bell)
  * and sparse timer heartbeats in the attention / urgent bands (see
  * `docs/frontend/sound-effects-recommendations.md` §2).
  */

@@ -10,7 +10,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | `VITE_PODIUM_VAULTS_ADDRESS` | Podium vaults |
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault |
 | `VITE_INDEXER_URL` | Optional `GET /v1/arena/*` reads (no `/v1/arena/*` — [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)) |
-| `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | Optional — must match `TimeArena.timeArenaBuyRouter()` when set ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)); legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` |
+| `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | Optional — must match `TimeArena.timeArenaBuyRouter()` when set ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)); legacy alias `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` |
 | `VITE_PLAY_CRED_ADDRESS` | Optional PlayCred override when `TimeArena.playCred()` read fails ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | `VITE_CHAIN_ID` / `VITE_RPC_URL` | Wagmi target chain |
 

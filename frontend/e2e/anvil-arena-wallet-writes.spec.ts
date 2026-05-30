@@ -37,7 +37,7 @@ test.describe("Anvil Arena wallet writes", () => {
   test("ETH pay via TimeArena buy router (single-tx buyViaKumbaya)", async ({ page }) => {
     test.skip(
       !process.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER &&
-        !process.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER,
+        !process.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER,
       "TimeArena buy router not deployed — set VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER after Kumbaya fixtures.",
     );
     await gotoArena(page);

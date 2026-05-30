@@ -76,7 +76,7 @@ export function RootLayout() {
   // `/arena/arena` and `/arena/protocol` keep it. Agents still get the
   // collapsed `ArenaSimpleAgentCard` at the bottom of the Simple page (same
   // skills + fee sinks when expanded). See
-  // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
+  // [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md).
   const showFooter = location.pathname !== "/arena";
   const isArenaPlayRoute = location.pathname === "/arena" || location.pathname.startsWith("/arena/");
   const isReferralsRoute = location.pathname === "/referrals";
@@ -217,7 +217,7 @@ export function RootLayout() {
                     <NavLink to="/arena" className={navLinkClass} aria-label="Time Arena" title="Time Arena">
                       <HeaderIcon src={HEADER_ICONS.arena} />
                       <span className="app-header__nav-label" aria-hidden="true">
-                        TimeCurve
+                        Time Arena
                       </span>
                     </NavLink>
                     <NavLink to="/referrals" className={navLinkClass} aria-label="Referrals" title="Referrals">

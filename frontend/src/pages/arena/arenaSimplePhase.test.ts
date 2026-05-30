@@ -7,87 +7,57 @@ import {
   phaseBadge,
   phaseFlags,
   phaseNarrative,
-  timecurveHeroDisplaySecondsRemaining,
-  type DerivePhaseInput,
-  type SaleSessionPhase,
+  arenaHeroDisplaySecondsRemaining,
 } from "./arenaSimplePhase";
 
-const BASE: DerivePhaseInput = {
+const BASE = {
   hasCoreData: true,
-  ended: false,
   saleStartSec: 1000,
   deadlineSec: 2000,
   ledgerSecInt: 1500,
 };
 
-describe("timecurveHeroDisplaySecondsRemaining (issue #115 — pre-open vs live)", () => {
+describe("arenaSimplePhase (Arena v2)", () => {
   it("counts down to saleStart in saleStartPending", () => {
     expect(
-      timecurveHeroDisplaySecondsRemaining({
+      arenaHeroDisplaySecondsRemaining({
         phase: "saleStartPending",
         saleStartSec: 1_000,
         deadlineSec: 2_000,
-        chainNowSec: 800.7,
-      }),
-    ).toBe(200);
-  });
-
-  it("returns undefined when saleStart is unset in saleStartPending", () => {
-    expect(
-      timecurveHeroDisplaySecondsRemaining({
-        phase: "saleStartPending",
-        saleStartSec: undefined,
-        deadlineSec: 2_000,
-        chainNowSec: 800,
-      }),
-    ).toBeUndefined();
-  });
-
-  it("uses deadline in saleActive", () => {
-    expect(
-      timecurveHeroDisplaySecondsRemaining({
-        phase: "saleActive",
-        saleStartSec: 100,
-        deadlineSec: 1_500,
-        chainNowSec: 1_400.2,
+        chainNowSec: 900,
       }),
     ).toBe(100);
   });
 
-  it("returns undefined for loading", () => {
+  it("returns undefined when saleStart is unset in saleStartPending", () => {
     expect(
-      timecurveHeroDisplaySecondsRemaining({
-        phase: "loading",
-        saleStartSec: 100,
-        deadlineSec: 200,
-        chainNowSec: 150,
+      arenaHeroDisplaySecondsRemaining({
+        phase: "saleStartPending",
+        saleStartSec: undefined,
+        deadlineSec: 2_000,
+        chainNowSec: 900,
       }),
     ).toBeUndefined();
   });
-});
 
-describe("ledgerSecIntForPhase (issue #48 — align phase with hero timer)", () => {
-  it("prefers indexer-anchored hero time over wallet block time", () => {
+  it("counts down to deadline in saleActive", () => {
     expect(
-      ledgerSecIntForPhase({ blockLedgerSecInt: 100, heroChainNowSec: 5000 }),
-    ).toBe(5000);
+      arenaHeroDisplaySecondsRemaining({
+        phase: "saleActive",
+        saleStartSec: 100,
+        deadlineSec: 2_000,
+        chainNowSec: 1_500,
+      }),
+    ).toBe(500);
   });
 
-  it("floors fractional hero time", () => {
+  it("prefers hero chain now for phase ledger", () => {
     expect(
-      ledgerSecIntForPhase({ blockLedgerSecInt: 100, heroChainNowSec: 5000.9 }),
-    ).toBe(5000);
+      ledgerSecIntForPhase({ blockLedgerSecInt: 100, heroChainNowSec: 999 }),
+    ).toBe(999);
   });
 
-  it("falls back to block-based time when the hero snapshot is absent", () => {
-    expect(
-      ledgerSecIntForPhase({ blockLedgerSecInt: 200, heroChainNowSec: undefined }),
-    ).toBe(200);
-  });
-});
-
-describe("derivePhase (TimeCurve simple view state machine)", () => {
-  it("returns 'loading' until any core read lands", () => {
+  it("returns 'loading' when core data missing", () => {
     expect(derivePhase({ ...BASE, hasCoreData: false })).toBe("loading");
   });
 
@@ -95,94 +65,31 @@ describe("derivePhase (TimeCurve simple view state machine)", () => {
     expect(derivePhase({ ...BASE, saleStartSec: 0 })).toBe("loading");
   });
 
-  it("ended=true overrides chain time (settlement view)", () => {
-    expect(derivePhase({ ...BASE, ended: true, ledgerSecInt: 500 })).toBe("saleEnded");
-    expect(derivePhase({ ...BASE, ended: true, ledgerSecInt: 5000 })).toBe("saleEnded");
-  });
-
   it("returns 'saleStartPending' before saleStart", () => {
     expect(derivePhase({ ...BASE, ledgerSecInt: 999 })).toBe("saleStartPending");
   });
 
-  it("returns 'saleActive' between saleStart and deadline", () => {
+  it("returns 'saleActive' after saleStart (always-on arena)", () => {
     expect(derivePhase({ ...BASE, ledgerSecInt: 1000 })).toBe("saleActive");
-    expect(derivePhase({ ...BASE, ledgerSecInt: 1999 })).toBe("saleActive");
+    expect(derivePhase({ ...BASE, ledgerSecInt: 2001 })).toBe("saleActive");
+    expect(derivePhase({ ...BASE, ledgerSecInt: 9999 })).toBe("saleActive");
   });
 
-  it("returns 'saleExpiredAwaitingEnd' only after chain time is strictly past deadline (GitLab #136)", () => {
-    expect(derivePhase({ ...BASE, ledgerSecInt: 2000 })).toBe("saleActive");
-    expect(derivePhase({ ...BASE, ledgerSecInt: 2001 })).toBe("saleExpiredAwaitingEnd");
-    expect(derivePhase({ ...BASE, ledgerSecInt: 9999 })).toBe("saleExpiredAwaitingEnd");
-  });
-
-  it("'saleActive' when deadlineSec is unknown but sale started", () => {
-    expect(derivePhase({ ...BASE, deadlineSec: undefined })).toBe("saleActive");
-  });
-});
-
-describe("phaseFlags (Arena ↔ Simple invariant — issue #40 follow-up)", () => {
-  const PHASES: readonly SaleSessionPhase[] = [
-    "loading",
-    "saleStartPending",
-    "saleActive",
-    "saleExpiredAwaitingEnd",
-    "saleEnded",
-  ];
-
-  it("returns at most one true flag per phase (mutually exclusive)", () => {
-    for (const phase of PHASES) {
-      const flags = phaseFlags(phase);
-      const trueCount = Object.values(flags).filter(Boolean).length;
-      expect(trueCount, `phase=${phase}`).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it("loading collapses every flag to false (no UX branch can render)", () => {
-    expect(phaseFlags("loading")).toEqual({
-      saleActive: false,
-      saleEnded: false,
+  it("phaseFlags are mutually exclusive for active phases", () => {
+    expect(phaseFlags("saleActive")).toEqual({
+      saleActive: true,
       saleStartPending: false,
-      timerExpiredAwaitingEnd: false,
     });
-  });
-
-  it("each non-loading phase lights exactly one flag (Arena UX branches stay total)", () => {
     expect(phaseFlags("saleStartPending").saleStartPending).toBe(true);
-    expect(phaseFlags("saleActive").saleActive).toBe(true);
-    expect(phaseFlags("saleExpiredAwaitingEnd").timerExpiredAwaitingEnd).toBe(true);
-    expect(phaseFlags("saleEnded").saleEnded).toBe(true);
-  });
-});
-
-describe("phaseBadge / phaseNarrative copy contract (issue #40 A1/A2/A4)", () => {
-  it("phaseBadge tones map to the dapp-wide PageBadge tones", () => {
-    expect(phaseBadge("loading").tone).toBe("info");
-    expect(phaseBadge("saleStartPending").tone).toBe("soon");
-    expect(phaseBadge("saleActive").tone).toBe("live");
-    expect(phaseBadge("saleExpiredAwaitingEnd").tone).toBe("warning");
-    expect(phaseBadge("saleEnded").tone).toBe("warning");
   });
 
-  it("phaseBadge labels do not leak protocol jargon to first-run users", () => {
-    expect(phaseBadge("saleActive").label).toBe("Sale live");
+  it("phaseBadge labels reflect arena UX", () => {
     expect(phaseBadge("saleStartPending").label).toBe("Pre-launch");
-    expect(phaseBadge("saleEnded").label).toBe("Sale ended");
+    expect(phaseBadge("saleActive").label).toBe("Arena live");
   });
 
-  it("phaseBadge iconSrc points at the issue #45 status pictograms (purpose folder)", () => {
-    expect(phaseBadge("saleActive").iconSrc).toBe("/art/icons/status-live.png");
-    expect(phaseBadge("saleEnded").iconSrc).toBe("/art/icons/status-ended.png");
-    expect(phaseBadge("saleStartPending").iconSrc).toBe("/art/icons/status-prelaunch.png");
-    expect(phaseBadge("saleExpiredAwaitingEnd").iconSrc).toBe(
-      "/art/icons/status-cooldown.png",
-    );
-    expect(phaseBadge("loading").iconSrc).toBe("/art/icons/status-cooldown.png");
-  });
-
-  it("narratives are short and phase-appropriate (issue #40 A1/A2/A4)", () => {
-    expect(phaseNarrative("saleActive")).toBe("You might win in:");
+  it("phaseNarrative mentions CHARM / DOUB for arena", () => {
     expect(phaseNarrative("saleStartPending")).toMatch(/CHARM/);
-    expect(phaseNarrative("saleEnded")).toMatch(/redeem/i);
-    expect(phaseNarrative("saleExpiredAwaitingEnd")).toMatch(/End Sale/i);
+    expect(phaseNarrative("saleActive")).toMatch(/win/i);
   });
 });

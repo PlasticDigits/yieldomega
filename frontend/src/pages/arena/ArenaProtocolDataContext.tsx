@@ -11,136 +11,57 @@ import {
   type ReactNode,
 } from "react";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
-import {
-  erc20Abi,
-  feeRouterReadAbi,
-  linearCharmPriceReadAbi,
-  timeCurveReadAbi,
-} from "@/lib/abis";
+import { erc20Abi, timeArenaReadAbi } from "@/lib/abis";
 import { addresses, type HexAddress } from "@/lib/addresses";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { mergeStickyMulticallRows, type MulticallReadRow } from "@/lib/mergeStickyMulticallRows";
 import { useArenaHeroTimer } from "@/pages/arena/useArenaHeroTimer";
+import {
+  arenaV2AdvancedCoreContracts,
+  arenaV2AdvancedWarbowContracts,
+  mapArenaV2AdvancedCoreRows,
+  mapArenaV2AdvancedWarbowRows,
+} from "@/pages/arena/arenaV2AdvancedSessionBridge";
 import type { ContractReadRow } from "@/lib/arenaPageHelpers";
 
-const ZERO = "0x0000000000000000000000000000000000000000" as const;
-
-/** Same order as the former `ArenaProtocolPage` TC bundle (indices 0–29). */
-export const TIMECURVE_PROTOCOL_PAGE_TC_READS = [
-  "saleStart",
+/** TimeArena core reads exposed on the protocol page (mapped row labels). */
+export const ARENA_PROTOCOL_CORE_READS = [
+  "arenaStart",
   "deadline",
-  "ended",
-  "totalRaised",
-  "totalCharmWeight",
-  "totalTokensForSale",
-  "currentMinBuyAmount",
-  "currentMaxBuyAmount",
-  "currentPricePerCharmWad",
-  "initialMinBuy",
-  "growthRateWad",
+  "totalDoubRaised",
+  "paused",
+  "charmPriceWad",
+  "doub",
+  "referralRegistry",
   "timerExtensionSec",
-  "initialTimerSec",
   "timerCapSec",
   "buyCooldownSec",
-  "REFERRAL_EACH_BPS",
-  "feeRouter",
-  "podiumPool",
-  "charmPrice",
-  "acceptedAsset",
-  "launchedToken",
-  "prizesDistributed",
-  "warbowPendingFlagOwner",
-  "warbowPendingFlagPlantAt",
-  "WARBOW_FLAG_SILENCE_SEC",
-  "WARBOW_FLAG_CLAIM_BP",
-  "WARBOW_MAX_STEALS_PER_DAY",
-  "WARBOW_STEAL_BURN_WAD",
-  "WARBOW_GUARD_BURN_WAD",
-  "WARBOW_REVENGE_WINDOW_SEC",
-] as const;
-
-/** Appended to the page bundle for RawDataAccordion + WarBow governance (indices 30–36). */
-const TIMECURVE_PROTOCOL_EXTRA_TC_READS = [
-  "currentCharmBoundsWad",
-  "referralRegistry",
-  "buyFeeRoutingEnabled",
-  "timeCurveBuyRouter",
-  "reservePodiumPayoutsEnabled",
-  "warbowPodiumFinalized",
+  "timeArenaBuyRouter",
   "owner",
 ] as const;
 
-const PROTOCOL_TC_ALL_READS = [
-  ...TIMECURVE_PROTOCOL_PAGE_TC_READS,
-  ...TIMECURVE_PROTOCOL_EXTRA_TC_READS,
-] as const;
-
-/** Indices into {@link PROTOCOL_TC_ALL_READS} / `protocolReading`. */
+/** Indices into merged `protocolReading` for common accessors. */
 export const PROTOCOL_READING_INDICES = {
-  feeRouter: 16,
-  charmPrice: 18,
-  acceptedAsset: 19,
-  warbowPodiumFinalized: 35,
-  owner: 36,
+  doub: 5,
+  buyFeeRoutingEnabled: 19,
 } as const;
 
 function isNonZeroAddr(v: unknown): v is HexAddress {
-  return typeof v === "string" && v.startsWith("0x") && v.length === 42 && v.toLowerCase() !== ZERO;
+  return typeof v === "string" && v.startsWith("0x") && v.length === 42 && v.toLowerCase() !== "0x0000000000000000000000000000000000000000";
 }
 
-/**
- * Reorders the extended protocol multicall into the 27-row `coreTcContracts` shape used by
- * {@link useArenaProtocolRawAccordion} (matches former Arena raw accordion order).
- */
+/** Maps advanced core rows into the 27-row accordion shape (legacy indices preserved where possible). */
 export function mapProtocolReadingToCoreTcData(
-  reading: readonly ContractReadRow[] | undefined,
+  coreRows: readonly ContractReadRow[] | undefined,
 ): readonly ContractReadRow[] | undefined {
-  if (!reading || reading.length < PROTOCOL_TC_ALL_READS.length) {
-    return undefined;
-  }
-  const g = (i: number) => reading[i];
-  return [
-    g(0), // saleStart
-    g(1), // deadline
-    g(3), // totalRaised
-    g(2), // ended
-    g(6), // currentMinBuyAmount
-    g(7), // currentMaxBuyAmount
-    g(30), // currentCharmBoundsWad
-    g(8), // currentPricePerCharmWad
-    g(18), // charmPrice
-    g(19), // acceptedAsset
-    g(31), // referralRegistry
-    g(9), // initialMinBuy
-    g(10), // growthRateWad
-    g(11), // timerExtensionSec
-    g(12), // initialTimerSec
-    g(13), // timerCapSec
-    g(5), // totalTokensForSale
-    g(20), // launchedToken
-    g(21), // prizesDistributed
-    g(32), // buyFeeRoutingEnabled
-    g(16), // feeRouter
-    g(17), // podiumPool
-    g(4), // totalCharmWeight
-    g(14), // buyCooldownSec
-    g(33), // timeCurveBuyRouter
-    g(34), // reservePodiumPayoutsEnabled
-    g(36), // owner
-  ];
+  return coreRows;
 }
 
 export type ArenaProtocolDataContextValue = {
-  timeCurve: HexAddress | undefined;
-  /** Merged sticky rows for the full extended TC multicall (length 37 when complete). */
+  arenaAddress: HexAddress | undefined;
   protocolReading: readonly ContractReadRow[];
   refetchProtocolReads: () => void;
-  charmPriceRows: readonly ContractReadRow[];
-  sinksRows: readonly ContractReadRow[];
-  /** Latched routing addresses (set from first successful TC read; cleared on `timeCurve` change). */
-  latchedCharmPriceAddr: HexAddress | undefined;
-  latchedFeeRouterAddr: HexAddress | undefined;
   latchedAcceptedAssetAddr: HexAddress | undefined;
   coreTcDataForAccordion: readonly ContractReadRow[] | undefined;
   userSaleData: readonly ContractReadRow[] | undefined;
@@ -157,30 +78,21 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   const { address } = useAccount();
 
   const tcReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const charmReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
-  const sinksReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
+  const warbowReadsStickyRef = useRef<readonly MulticallReadRow[]>([]);
 
-  const [latchedCharm, setLatchedCharm] = useState<HexAddress | undefined>(undefined);
-  const [latchedFeeRouter, setLatchedFeeRouter] = useState<HexAddress | undefined>(undefined);
   const [latchedAccepted, setLatchedAccepted] = useState<HexAddress | undefined>(undefined);
 
   useEffect(() => {
     tcReadsStickyRef.current = [];
-    charmReadsStickyRef.current = [];
-    sinksReadsStickyRef.current = [];
-    setLatchedCharm(undefined);
-    setLatchedFeeRouter(undefined);
+    warbowReadsStickyRef.current = [];
     setLatchedAccepted(undefined);
   }, [tc]);
 
-  const protocolReads = useReadContracts({
-    contracts: tc
-      ? PROTOCOL_TC_ALL_READS.map((fn) => ({
-          address: tc,
-          abi: timeCurveReadAbi,
-          functionName: fn,
-        }))
-      : [],
+  const coreContracts = tc ? [...arenaV2AdvancedCoreContracts(tc)] : [];
+  const warbowContracts = tc ? [...arenaV2AdvancedWarbowContracts(tc)] : [];
+
+  const coreReads = useReadContracts({
+    contracts: coreContracts as readonly unknown[],
     query: {
       enabled: Boolean(tc),
       refetchInterval: () => getRpcBackoffPollMs(1000),
@@ -189,14 +101,43 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   });
 
   useRpcQueryHealthForRefetch({
-    isFetched: protocolReads.isFetched,
-    isFetching: protocolReads.isFetching,
-    isError: protocolReads.isError,
-    isSuccess: protocolReads.isSuccess,
-    error: protocolReads.error,
+    isFetched: coreReads.isFetched,
+    isFetching: coreReads.isFetching,
+    isError: coreReads.isError,
+    isSuccess: coreReads.isSuccess,
+    error: coreReads.error,
   });
 
-  const readingLive = (protocolReads.data ?? []) as readonly ContractReadRow[];
+  const warbowReads = useReadContracts({
+    contracts: warbowContracts as readonly unknown[],
+    query: {
+      enabled: Boolean(tc),
+      refetchInterval: () => getRpcBackoffPollMs(1000),
+      placeholderData: (previous) => previous,
+    },
+  });
+
+  useRpcQueryHealthForRefetch({
+    isFetched: warbowReads.isFetched,
+    isFetching: warbowReads.isFetching,
+    isError: warbowReads.isError,
+    isSuccess: warbowReads.isSuccess,
+    error: warbowReads.error,
+  });
+
+  const coreMapped = mapArenaV2AdvancedCoreRows(
+    coreReads.data as readonly { status: string; result?: unknown }[] | undefined,
+  );
+  const warbowMapped = mapArenaV2AdvancedWarbowRows(
+    warbowReads.data as readonly { status: string; result?: unknown }[] | undefined,
+  );
+
+  const readingLive = useMemo((): readonly ContractReadRow[] => {
+    const core = coreMapped ?? [];
+    const war = warbowMapped ?? [];
+    return [...core, ...war];
+  }, [coreMapped, warbowMapped]);
+
   const protocolReading = useMemo(() => {
     const merged = mergeStickyMulticallRows(readingLive, tcReadsStickyRef.current);
     tcReadsStickyRef.current = merged;
@@ -204,109 +145,21 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   }, [readingLive]);
 
   useEffect(() => {
-    if (protocolReading.length < PROTOCOL_TC_ALL_READS.length) {
+    if (!coreMapped || coreMapped.length <= PROTOCOL_READING_INDICES.doub) {
       return;
     }
-    const charmRow = protocolReading[PROTOCOL_READING_INDICES.charmPrice];
-    if (!latchedCharm && charmRow?.status === "success" && isNonZeroAddr(charmRow.result)) {
-      setLatchedCharm(charmRow.result as HexAddress);
+    const doubRow = coreMapped[PROTOCOL_READING_INDICES.doub];
+    if (!latchedAccepted && doubRow?.status === "success" && isNonZeroAddr(doubRow.result)) {
+      setLatchedAccepted(doubRow.result as HexAddress);
     }
-    const feeRow = protocolReading[PROTOCOL_READING_INDICES.feeRouter];
-    if (!latchedFeeRouter && feeRow?.status === "success" && isNonZeroAddr(feeRow.result)) {
-      setLatchedFeeRouter(feeRow.result as HexAddress);
-    }
-    const accRow = protocolReading[PROTOCOL_READING_INDICES.acceptedAsset];
-    if (!latchedAccepted && accRow?.status === "success" && isNonZeroAddr(accRow.result)) {
-      setLatchedAccepted(accRow.result as HexAddress);
-    }
-  }, [protocolReading, latchedCharm, latchedFeeRouter, latchedAccepted]);
-
-  const charmPriceReads = useReadContracts({
-    contracts: latchedCharm
-      ? [
-          {
-            address: latchedCharm,
-            abi: linearCharmPriceReadAbi,
-            functionName: "basePriceWad",
-          },
-          {
-            address: latchedCharm,
-            abi: linearCharmPriceReadAbi,
-            functionName: "dailyIncrementWad",
-          },
-        ]
-      : [],
-    query: {
-      enabled: Boolean(latchedCharm),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: charmPriceReads.isFetched,
-    isFetching: charmPriceReads.isFetching,
-    isError: charmPriceReads.isError,
-    isSuccess: charmPriceReads.isSuccess,
-    error: charmPriceReads.error,
-  });
-
-  const FEE_SINK_COUNT = 5;
-  const sinks = useReadContracts({
-    contracts: latchedFeeRouter
-      ? Array.from({ length: FEE_SINK_COUNT }, (_, i) => ({
-          address: latchedFeeRouter,
-          abi: feeRouterReadAbi,
-          functionName: "sinks" as const,
-          args: [BigInt(i)] as const,
-        }))
-      : [],
-    query: {
-      enabled: Boolean(latchedFeeRouter),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: sinks.isFetched,
-    isFetching: sinks.isFetching,
-    isError: sinks.isError,
-    isSuccess: sinks.isSuccess,
-    error: sinks.error,
-  });
-
-  const charmPriceRowsLive = (charmPriceReads.data ?? []) as readonly ContractReadRow[];
-  const charmPriceRows = useMemo(() => {
-    const merged = mergeStickyMulticallRows(charmPriceRowsLive, charmReadsStickyRef.current);
-    charmReadsStickyRef.current = merged;
-    return merged as readonly ContractReadRow[];
-  }, [charmPriceRowsLive]);
-
-  const sinksRowsLive = (sinks.data ?? []) as readonly ContractReadRow[];
-  const sinksRows = useMemo(() => {
-    const merged = mergeStickyMulticallRows(sinksRowsLive, sinksReadsStickyRef.current);
-    sinksReadsStickyRef.current = merged;
-    return merged as readonly ContractReadRow[];
-  }, [sinksRowsLive]);
+  }, [coreMapped, latchedAccepted]);
 
   const userSaleContracts =
     tc && address
       ? [
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmWeight" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "buyCount" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "charmsRedeemed" as const, args: [address] },
-          {
-            address: tc,
-            abi: timeCurveReadAbi,
-            functionName: "totalEffectiveTimerSecAdded" as const,
-            args: [address],
-          },
-          { address: tc, abi: timeCurveReadAbi, functionName: "battlePoints" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "activeDefendedStreak" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "bestDefendedStreak" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "warbowGuardUntil" as const, args: [address] },
-          { address: tc, abi: timeCurveReadAbi, functionName: "nextBuyAllowedAt" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "battlePoints" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "warbowGuardUntil" as const, args: [address] },
+          { address: tc, abi: timeArenaReadAbi, functionName: "nextBuyAllowedAt" as const, args: [address] },
         ]
       : [];
 
@@ -328,25 +181,20 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   } = useArenaHeroTimer(tc);
 
   const coreTcDataForAccordion = useMemo(
-    () => mapProtocolReadingToCoreTcData(protocolReading),
-    [protocolReading],
+    () => mapProtocolReadingToCoreTcData(coreMapped),
+    [coreMapped],
   );
 
   const refetchProtocolReads = useCallback(() => {
-    void protocolReads.refetch();
-    void charmPriceReads.refetch();
-    void sinks.refetch();
-  }, [protocolReads, charmPriceReads, sinks]);
+    void coreReads.refetch();
+    void warbowReads.refetch();
+  }, [coreReads, warbowReads]);
 
   const value = useMemo(
     (): ArenaProtocolDataContextValue => ({
-      timeCurve: tc ?? undefined,
+      arenaAddress: tc ?? undefined,
       protocolReading,
       refetchProtocolReads,
-      charmPriceRows,
-      sinksRows,
-      latchedCharmPriceAddr: latchedCharm,
-      latchedFeeRouterAddr: latchedFeeRouter,
       latchedAcceptedAssetAddr: latchedAccepted,
       coreTcDataForAccordion,
       userSaleData,
@@ -359,10 +207,6 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
       tc,
       protocolReading,
       refetchProtocolReads,
-      charmPriceRows,
-      sinksRows,
-      latchedCharm,
-      latchedFeeRouter,
       latchedAccepted,
       coreTcDataForAccordion,
       userSaleData,
@@ -378,17 +222,16 @@ export function ArenaProtocolDataProvider({ children }: { children: ReactNode })
   );
 }
 
-export function useTimeCurveProtocolData(): ArenaProtocolDataContextValue {
+export function useArenaProtocolData(): ArenaProtocolDataContextValue {
   const ctx = useContext(ArenaProtocolDataContext);
   if (!ctx) {
-    throw new Error("useTimeCurveProtocolData must be used within ArenaProtocolDataProvider");
+    throw new Error("useArenaProtocolData must be used within ArenaProtocolDataProvider");
   }
   return ctx;
 }
 
-/** Accordion-only: ERC20 decimals using latched accepted asset from protocol context. */
-export function useTimecurveProtocolAccordionTokenDecimals() {
-  const { latchedAcceptedAssetAddr: tokenAddr } = useTimeCurveProtocolData();
+export function useArenaProtocolAccordionTokenDecimals() {
+  const { latchedAcceptedAssetAddr: tokenAddr } = useArenaProtocolData();
   const { data: tokenDecimals } = useReadContract({
     address: tokenAddr,
     abi: erc20Abi,

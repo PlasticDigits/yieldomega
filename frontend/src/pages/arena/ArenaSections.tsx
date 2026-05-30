@@ -28,7 +28,7 @@ import type {
   PrizeDistributionItem,
   PrizePayoutItem,
   ReferralAppliedItem,
-  TimecurveBuyerStats,
+  ArenaBuyerStats,
   WarbowBattleFeedItem,
   WarbowPendingRevengeItem,
 } from "@/lib/indexerApi";
@@ -336,7 +336,7 @@ export function WarbowSection(props: {
             <input type="checkbox" checked={stealBypass} onChange={(e) => setStealBypass(e.target.checked)} /> Pay the
             bypass spend if the victim already hit the UTC-day steal cap
           </label>
-          <div className="timecurve-action-row">
+          <div className="arena-action-row">
             <motion.button
               type="button"
               className="btn-secondary btn-secondary--critical"
@@ -505,7 +505,7 @@ export function BattleFeedSection(props: {
       badgeLabel="Indexer mirror"
       badgeTone="info"
       spotlight
-      className="timecurve-panel timecurve-panel--feed"
+      className="arena-panel arena-panel--feed"
       cutout={{
         src: "/art/cutouts/mascot-bunny-girl-wave-cutout.png",
         width: 256,
@@ -676,7 +676,7 @@ export function RawDataAccordion(props: {
   /** Per-stealer open windows from indexer ([GitLab #135](https://gitlab.com/PlasticDigits/yieldomega/-/issues/135)). */
   pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
   revengeIndexerConfigured: boolean;
-  buyerStats: TimecurveBuyerStats | null;
+  buyerStats: ArenaBuyerStats | null;
   initialMinBuyResult: SerializableContractRead | undefined;
   growthRateWadResult: SerializableContractRead | undefined;
   timerExtensionSecResult: SerializableContractRead | undefined;

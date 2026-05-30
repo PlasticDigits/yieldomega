@@ -59,7 +59,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
         }}
       >
         <Link to="/arena" className="btn-primary">
-          Open TimeCurve
+          Open Time Arena
         </Link>
       </PageHero>
       <div className="split-layout">
@@ -77,10 +77,10 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
           title="Launch Track"
           badgeLabel="What exists now"
           badgeTone="warning"
-          lede="The launch track is still centered on the live TimeCurve surface, but the rest of the product now shares its framing and design language."
+          lede="The launch track is still centered on the live Time Arena surface, but the rest of the product now shares its framing and design language."
         >
           <ul className="accent-list">
-            <li>TimeCurve remains the active launch surface for onchain buying, charms, podiums, and WarBow PvP.</li>
+            <li>Time Arena remains the active launch surface for onchain buying, charms, podiums, and WarBow PvP.</li>
             <li>This page is intentionally polished now so Collection and Referrals still feel first-party while functionality catches up.</li>
             <li>When the next milestone lands, this route should plug into the same badges, panels, and state patterns instead of starting over visually.</li>
           </ul>

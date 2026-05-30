@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Submit-time CHARM sizing: live `currentCharmBoundsWad` / price can move between
+// Submit-time CHARM sizing: fixed Arena bounds + live `charmPriceWad` can move between
 // slider quote and tx landing ([GitLab #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)).
 
 import type { Config } from "wagmi";
 import { readContract } from "wagmi/actions";
-import { timeCurveReadAbi } from "@/lib/abis";
+import { timeArenaReadAbi } from "@/lib/abis";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { finalizeCharmSpendForBuy } from "@/lib/timeArenaBuyAmount";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeArenaMinSpendHeadroom";
 
@@ -65,7 +66,7 @@ export function reconcileFreshBuySizingFromReads(input: {
     return { ok: false, message: "Onchain per-CHARM price is zero; wait for contract state." };
   }
   if (minSpendWei > maxSpendWei) {
-    return { ok: false, message: "CL8Y spend band is empty for this wallet and curve state." };
+    return { ok: false, message: "DOUB spend band is empty for this wallet and arena state." };
   }
   const sw = clampBigint(spendWeiIntent, minSpendWei, maxSpendWei);
   const maxCharmEff = effectiveMaxCharmWadForSubmit(maxCharmWad);
@@ -85,7 +86,7 @@ export function reconcileFreshBuySizingFromReads(input: {
       maxCharmEff,
     );
     if (charmWad <= 0n || spendWei <= 0n) {
-      return { ok: false, message: "Computed buy size is zero; adjust the CL8Y amount." };
+      return { ok: false, message: "Computed buy size is zero; adjust the DOUB amount." };
     }
     return { ok: true, charmWad, spendWei, pricePerCharmWad };
   } catch {
@@ -94,43 +95,30 @@ export function reconcileFreshBuySizingFromReads(input: {
 }
 
 /**
- * Re-read min/max CL8Y spend, CHARM bounds, and price, then derive **`charmWad`**
- * and matching gross CL8Y **`spendWei`** (floored like onchain `mulDiv`) for
+ * Re-read CHARM bounds (fixed Arena policy) and `charmPriceWad`, then derive **`charmWad`**
+ * and matching gross DOUB **`spendWei`** (floored like onchain `mulDiv`) for
  * **`buy` / `buyViaKumbaya`**. Call immediately before building calldata.
  */
-export async function readFreshTimeCurveBuySizing(params: {
+export async function readFreshArenaBuySizing(params: {
   wagmiConfig: Config;
-  timeCurveAddress: `0x${string}`;
+  timeArenaAddress: `0x${string}`;
   spendWeiIntent: bigint;
-  /** CL8Y direct pay: cap max spend by wallet CL8Y balance. Omit for ETH/USDM. */
+  /** DOUB direct pay: cap max spend by wallet DOUB balance. Omit for ETH/USDM. */
   walletCl8yCapWei?: bigint;
 }): Promise<FreshBuySizingResult> {
-  const { wagmiConfig, timeCurveAddress, spendWeiIntent, walletCl8yCapWei } = params;
+  const { wagmiConfig, timeArenaAddress, spendWeiIntent, walletCl8yCapWei } = params;
 
-  const [bounds, price, minBuy, maxBuy] = await Promise.all([
-    readContract(wagmiConfig, {
-      address: timeCurveAddress,
-      abi: timeCurveReadAbi,
-      functionName: "currentCharmBoundsWad",
-    }) as Promise<readonly [bigint, bigint]>,
-    readContract(wagmiConfig, {
-      address: timeCurveAddress,
-      abi: timeCurveReadAbi,
-      functionName: "currentPricePerCharmWad",
-    }) as Promise<bigint>,
-    readContract(wagmiConfig, {
-      address: timeCurveAddress,
-      abi: timeCurveReadAbi,
-      functionName: "currentMinBuyAmount",
-    }) as Promise<bigint>,
-    readContract(wagmiConfig, {
-      address: timeCurveAddress,
-      abi: timeCurveReadAbi,
-      functionName: "currentMaxBuyAmount",
-    }) as Promise<bigint>,
-  ]);
+  const price = (await readContract(wagmiConfig, {
+    address: timeArenaAddress,
+    abi: timeArenaReadAbi,
+    functionName: "charmPriceWad",
+  })) as bigint;
 
-  const [minC, maxC] = bounds;
+  const minC = ARENA_CHARM_MIN_WAD;
+  const maxC = ARENA_CHARM_MAX_WAD;
+  const minBuy = (minC * price) / 10n ** 18n;
+  const maxBuy = (maxC * price) / 10n ** 18n;
+
   const minS = minCl8ySpendBroadcastHeadroom(minBuy);
   let maxS = maxBuy;
   if (walletCl8yCapWei !== undefined) {

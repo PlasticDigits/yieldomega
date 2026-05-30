@@ -2,7 +2,7 @@
 //
 // Buy receipts: viem resolves `waitForTransactionReceipt` even when `status` is reverted.
 
-/** User-visible copy when a submitted TimeCurve buy mines as failed (no extra RPC). */
+/** User-visible copy when a submitted Time Arena buy mines as failed (no extra RPC). */
 export const BUY_TRANSACTION_REVERTED_MESSAGE =
   "Your wallet broadcast this purchase, but it reverted onchain. The CL8Y cost follows the live curve at inclusion—wait a moment and try again.";
 

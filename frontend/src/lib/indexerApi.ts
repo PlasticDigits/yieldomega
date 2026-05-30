@@ -87,7 +87,7 @@ export type PaginatedItems<T> = {
 };
 
 /** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
-export type TimecurveBuysPage = PaginatedItems<BuyItem> & { total?: number };
+export type ArenaBuysPageLegacy = PaginatedItems<BuyItem> & { total?: number };
 
 function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
   return {
@@ -106,7 +106,7 @@ function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
 }
 
 /** @deprecated Use `fetchArenaBuys` — maps arena rows for legacy callers (#266). */
-export async function fetchTimecurveBuys(limit = 20, offset = 0) {
+export async function fetchArenaBuysAsBuyItems(limit = 20, offset = 0) {
   const page = await fetchArenaBuys(limit, offset);
   if (!page) {
     return null;
@@ -116,11 +116,11 @@ export async function fetchTimecurveBuys(limit = 20, offset = 0) {
     limit: page.limit,
     offset: page.offset,
     next_offset: null,
-  } satisfies TimecurveBuysPage;
+  } satisfies ArenaBuysPageLegacy;
 }
 
 /** Indexer-polled head snapshot for hero timer (schema ≥ 1.11.0 adds `sale_start_sec`). */
-export type TimecurveChainTimer = {
+export type ArenaChainTimer = {
   /** `TimeCurve.saleStart()` at `read_block_number` (`"0"` when unscheduled); omitted on pre-1.11.0 indexers. */
   sale_start_sec?: string;
   deadline_sec: string;
@@ -140,7 +140,7 @@ export type FeeRouterSinkSnapshot = {
 };
 
 /** Head RPC sale views at `read_block_number` (schema ≥ 1.24.0, [GitLab #216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)). */
-export type TimecurveSaleState = {
+export type ArenaSaleState = {
   read_block_number: string;
   block_timestamp_sec: string;
   polled_at_ms: number;
@@ -190,7 +190,7 @@ const ZERO_DEC = "0";
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 /** Builds legacy sale-state shape from `GET /v1/arena/timers` for RPC row mappers (#266). */
-export async function fetchTimecurveSaleState(): Promise<TimecurveSaleState | null> {
+export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null> {
   const t = await fetchArenaTimers();
   if (!t) {
     return null;
@@ -275,7 +275,7 @@ export async function fetchWarbowGuardLatest(_player: string) {
   return null;
 }
 
-export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | null> {
+export async function fetchLegacyArenaChainTimer(): Promise<ArenaChainTimer | null> {
   const t = await fetchArenaTimers();
   if (!t) {
     return null;
@@ -291,7 +291,7 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
 }
 
 /** `GET /v1/arena/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
-export type TimecurvePodiumApiRow = {
+export type ArenaPodiumApiRow = {
   winners: string[];
   values: string[];
   /** True when the row is derived from indexed events (live sale); false when mirroring head `podium()` RPC (schema ≥ 1.20.0). */
@@ -300,14 +300,14 @@ export type TimecurvePodiumApiRow = {
   last_buy_prediction?: boolean;
 };
 
-export type TimecurvePodiumsResponse = {
+export type ArenaPodiumsResponse = {
   sale_ended: boolean;
   read_block_number: string;
   polled_at_ms: number;
-  rows: TimecurvePodiumApiRow[];
+  rows: ArenaPodiumApiRow[];
 };
 
-export async function fetchTimecurvePodiums(): Promise<TimecurvePodiumsResponse | null> {
+export async function fetchLegacyArenaPodiums(): Promise<ArenaPodiumsResponse | null> {
   const arena = await fetchArenaPodiums();
   if (!arena) {
     return null;
@@ -316,7 +316,7 @@ export async function fetchTimecurvePodiums(): Promise<TimecurvePodiumsResponse 
     sale_ended: false,
     read_block_number: arena.read_block_number,
     polled_at_ms: Date.now(),
-    rows: (arena.rows as TimecurvePodiumApiRow[]) ?? [],
+    rows: (arena.rows as ArenaPodiumApiRow[]) ?? [],
   };
 }
 
@@ -329,12 +329,12 @@ export type WarbowLeaderboardItem = {
 };
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurveWarbowLeaderboard(_limit = 20, _offset = 0) {
+export async function fetchArenaWarbowLeaderboard(_limit = 20, _offset = 0) {
   return null;
 }
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurveWarbowLeaderboardAll(): Promise<WarbowLeaderboardItem[] | null> {
+export async function fetchArenaWarbowLeaderboardAll(): Promise<WarbowLeaderboardItem[] | null> {
   return null;
 }
 
@@ -348,7 +348,7 @@ export type WarbowBattleFeedItem = {
 };
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurveWarbowBattleFeed(_limit = 25, _offset = 0) {
+export async function fetchArenaWarbowBattleFeed(_limit = 25, _offset = 0) {
   return null;
 }
 
@@ -371,7 +371,7 @@ export type WarbowRefreshCandidatesResponse = {
  * Paginate with `offset` when `next_offset` is set. Uses `VITE_INDEXER_URL`.
  */
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurveWarbowRefreshCandidates(
+export async function fetchArenaWarbowRefreshCandidates(
   _limit = 200,
   _offset = 0,
 ): Promise<WarbowRefreshCandidatesResponse | null> {
@@ -399,17 +399,17 @@ export async function fetchWarbowPendingRevenge(_victim: string, _nowSec: number
   return null;
 }
 
-export type TimecurveBuyerStats = {
+export type ArenaBuyerStats = {
   buyer: string;
   indexed_charm_weight: string;
   indexed_buy_count: string;
 };
 
-export function timecurveBuyerStatsApiPath(buyer: string): string {
+export function arenaBuyerStatsApiPath(buyer: string): string {
   return arenaWalletStatsPath(buyer);
 }
 
-export async function fetchTimecurveBuyerStats(buyer: string) {
+export async function fetchArenaBuyerStats(buyer: string) {
   const stats = await fetchArenaWalletStats(buyer);
   if (!stats) {
     return null;
@@ -418,7 +418,7 @@ export async function fetchTimecurveBuyerStats(buyer: string) {
     buyer: stats.address,
     indexed_charm_weight: stats.xp,
     indexed_buy_count: String(stats.buy_count),
-  } satisfies TimecurveBuyerStats;
+  } satisfies ArenaBuyerStats;
 }
 
 export type PlatformUsageWarbowAction = {
@@ -440,7 +440,7 @@ export type PlatformUsageWalletItem = {
 };
 
 /** `GET /v1/arena/platform-usage` — network-wide sale + WarBow usage ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)). */
-export type TimecurvePlatformUsage = {
+export type ArenaPlatformUsage = {
   unique_wallets: string;
   total_buys: string;
   unique_buyers: string;
@@ -464,7 +464,7 @@ export type TimecurvePlatformUsage = {
 
 export type PlatformUsageVelocityWindow = "1h" | "24h" | "sale";
 
-export function timecurvePlatformUsageApiPath(
+export function arenaPlatformUsageApiPath(
   _limit: number,
   _offset = 0,
   _velocityWindow: PlatformUsageVelocityWindow = "1h",
@@ -473,7 +473,7 @@ export function timecurvePlatformUsageApiPath(
 }
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurvePlatformUsage(
+export async function fetchArenaPlatformUsage(
   _limit = 20,
   _offset = 0,
   _velocityWindow: PlatformUsageVelocityWindow = "1h",
@@ -528,17 +528,17 @@ export async function fetchIndexerStatus() {
 }
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurveCharmRedemptions(_limit = 20) {
+export async function fetchArenaCharmRedemptions(_limit = 20) {
   return null;
 }
 
 /** `/v1/arena/prize-distributions` with limit/offset for safe query embedding. */
-export function timecurvePrizeDistributionsApiPath(limit: number, offset = 0): string {
+export function arenaPrizeDistributionsApiPath(limit: number, offset = 0): string {
   return `/v1/arena/prize-distributions?limit=${limit}&offset=${offset}`;
 }
 
 /** `/v1/arena/prize-payouts` with limit/offset for safe query embedding. */
-export function timecurvePrizePayoutsApiPath(limit: number, offset = 0): string {
+export function arenaPrizePayoutsApiPath(limit: number, offset = 0): string {
   return `/v1/arena/prize-payouts?limit=${limit}&offset=${offset}`;
 }
 
@@ -570,7 +570,7 @@ export type PrizePayoutItem = {
 };
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurvePrizePayouts(_limit = 30, _offset = 0) {
+export async function fetchArenaPrizePayouts(_limit = 30, _offset = 0) {
   return null;
 }
 
@@ -586,7 +586,7 @@ export type PrizeDistributionItem = {
 };
 
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
-export async function fetchTimecurvePrizeDistributions(_limit = 20, _offset = 0) {
+export async function fetchArenaPrizeDistributions(_limit = 20, _offset = 0) {
   return null;
 }
 
@@ -748,7 +748,7 @@ export async function fetchArenaTimers() {
 }
 
 export async function fetchArenaPodiums() {
-  return getJson<{ rows: unknown[]; read_block_number: string }>("/v1/arena/podiums");
+  return getJson<{ rows: ArenaPodiumApiRow[]; read_block_number: string }>("/v1/arena/podiums");
 }
 
 export function arenaWalletStatsPath(address: string) {

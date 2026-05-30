@@ -6,7 +6,7 @@ import {
   minOutFromSlippage,
   resolveKumbayaRouting,
   resolveTimeArenaBuyRouterForKumbayaSingleTx,
-  resolveTimeCurveBuyRouterForKumbayaSingleTx,
+  resolveArenaBuyRouterForKumbayaSingleTx,
   routingForPayAsset,
   type KumbayaChainConfigResolved,
 } from "./kumbayaRoutes";
@@ -148,32 +148,32 @@ describe("minOutFromSlippage", () => {
   });
 });
 
-describe("resolveTimeCurveBuyRouterForKumbayaSingleTx (issue #66)", () => {
+describe("resolveArenaBuyRouterForKumbayaSingleTx (issue #66)", () => {
   it("returns none when onchain is zero and env unset", () => {
-    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {});
+    const r = resolveArenaBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {});
     expect(r).toEqual({ kind: "none" });
   });
 
   it("returns none when onchain is undefined and env unset", () => {
-    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(undefined, {});
+    const r = resolveArenaBuyRouterForKumbayaSingleTx(undefined, {});
     expect(r).toEqual({ kind: "none" });
   });
 
   it("mismatch when onchain is zero but env is set", () => {
-    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {
-      VITE_KUMBAYA_TIMECURVE_BUY_ROUTER: BUY_R,
+    const r = resolveArenaBuyRouterForKumbayaSingleTx("0x0000000000000000000000000000000000000000", {
+      VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER: BUY_R,
     });
     expect(r.kind).toBe("mismatch");
   });
 
   it("ok when onchain is set; env may be unset", () => {
-    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(BUY_R, {});
+    const r = resolveArenaBuyRouterForKumbayaSingleTx(BUY_R, {});
     expect(r).toEqual({ kind: "ok", router: BUY_R });
   });
 
   it("mismatch when env and onchain differ (case-insensitive check)", () => {
-    const r = resolveTimeCurveBuyRouterForKumbayaSingleTx(BUY_R, {
-      VITE_KUMBAYA_TIMECURVE_BUY_ROUTER: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    const r = resolveArenaBuyRouterForKumbayaSingleTx(BUY_R, {
+      VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER: "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
     expect(r.kind).toBe("mismatch");
   });

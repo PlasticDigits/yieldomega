@@ -2,14 +2,14 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY,
+  DEFAULT_ARENA_BUY_PREVIEW_POLICY,
   inferDefendedStreakHolderFromRecentBuys,
   previewBuyTimerSecondsAdded,
   previewWarbowBuyEffects,
 } from "./timeArenaBuyPreview";
 
 describe("previewBuyTimerSecondsAdded", () => {
-  const policy = DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY;
+  const policy = DEFAULT_ARENA_BUY_PREVIEW_POLICY;
 
   it("returns +120s in the calm band", () => {
     expect(previewBuyTimerSecondsAdded(900, policy)).toEqual({
@@ -45,7 +45,7 @@ describe("previewBuyTimerSecondsAdded", () => {
 });
 
 describe("previewWarbowBuyEffects", () => {
-  const policy = DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY;
+  const policy = DEFAULT_ARENA_BUY_PREVIEW_POLICY;
   const holder = "0x1111111111111111111111111111111111111111" as const;
   const rival = "0x2222222222222222222222222222222222222222" as const;
 

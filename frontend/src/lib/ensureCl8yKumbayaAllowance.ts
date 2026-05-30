@@ -41,7 +41,7 @@ export type EnsureCl8yTimeCurveAllowanceParams = {
   account: `0x${string}`;
   chainId: number;
   tokenAddress: `0x${string}`;
-  timeCurveAddress: `0x${string}`;
+  timeArenaAddress: `0x${string}`;
   needWei: bigint;
   /** Optional debug label (e.g. `arena:buy`, `arena:warbow-steal`). */
   debugContext?: string;
@@ -58,7 +58,7 @@ export async function ensureCl8yKumbayaAllowance({
   account,
   chainId,
   tokenAddress,
-  timeCurveAddress,
+  timeArenaAddress,
   needWei,
   debugContext,
   unlimitedPreferred = readArenaDoubUnlimitedApproval(),
@@ -71,22 +71,22 @@ export async function ensureCl8yKumbayaAllowance({
     address: tokenAddress,
     abi: erc20Abi,
     functionName: "allowance",
-    args: [account, timeCurveAddress],
+    args: [account, timeArenaAddress],
   });
   const plan = planCl8yKumbayaApprove(allow, needWei, unlimitedPreferred);
   const debugPayload = {
     context: debugContext,
-    spender: timeCurveAddress,
+    spender: timeArenaAddress,
     allow: allow.toString(),
     needWei: needWei.toString(),
     approveAmt: plan.approveAmt.toString(),
     unlimitedPref: unlimitedPreferred,
   };
   if (!plan.required) {
-    kumbayaBuyDebugLog("cl8y-timecurve-approve:skip", debugPayload);
+    kumbayaBuyDebugLog("cl8y-arena-approve:skip", debugPayload);
     return;
   }
-  kumbayaBuyDebugLog("cl8y-timecurve-approve:submit", debugPayload);
+  kumbayaBuyDebugLog("cl8y-arena-approve:submit", debugPayload);
   const { hash: approveHash } = await writeContractWithGasBuffer({
     wagmiConfig,
     writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -95,7 +95,7 @@ export async function ensureCl8yKumbayaAllowance({
     address: tokenAddress,
     abi: erc20Abi,
     functionName: "approve",
-    args: [timeCurveAddress, plan.approveAmt],
+    args: [timeArenaAddress, plan.approveAmt],
   });
   await waitForWriteReceipt(wagmiConfig, { hash: approveHash });
 }

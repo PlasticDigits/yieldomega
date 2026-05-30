@@ -18,7 +18,7 @@ export type ArenaBuySpendRangeInputProps = Omit<
 
 /**
  * Native range control for CL8Y spend permille (or any min/max) with the shared
- * TimeCurve buy-hub track + knob styling (see `.arena-buy-spend-range` in `index.css`).
+ * Time Arena buy-hub track + knob styling (see `.arena-buy-spend-range` in `index.css`).
  */
 export function ArenaBuySpendRangeInput({
   className,

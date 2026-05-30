@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Maps TimeArena multicall reads into Advanced Arena (`useTimeCurveArenaModel`) row shapes.
+// Maps TimeArena multicall reads into Advanced Arena (`useArenaModel`) row shapes.
 
 import { parseUnits } from "viem";
 import type { HexAddress } from "@/lib/addresses";
 import { addresses } from "@/lib/addresses";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ContractReadRow } from "@/pages/arena/useArenaSaleState";
-import { isArenaV2TimeCurve } from "@/pages/arena/arenaV2SaleSessionBridge";
+import { isTimeArenaV2 } from "@/pages/arena/arenaV2SaleSessionBridge";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const CHARM_MIN_WAD = parseUnits("0.99", 18);
@@ -18,7 +18,7 @@ function row(result: unknown): ContractReadRow {
   return { status: "success", result };
 }
 
-export { isArenaV2TimeCurve };
+export { isTimeArenaV2 };
 
 /** Core session reads for `/arena/arena` when `tc` is TimeArena (27 rows). */
 export function arenaV2AdvancedCoreContracts(tc: HexAddress) {

@@ -7,7 +7,7 @@ const DOUB = "0x" + "1".repeat(40);
 const REF = "0x" + "2".repeat(40);
 
 describe("mapArenaV2CoreRows", () => {
-  it("returns 31 TimeCurve-shaped rows aligned with useArenaSaleSession destructuring", () => {
+  it("returns 31 Arena-shaped rows aligned with useArenaSaleSession destructuring", () => {
     const raw = [
       { status: "success", result: 100n },
       { status: "success", result: 200n },

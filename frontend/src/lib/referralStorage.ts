@@ -7,7 +7,7 @@ import { isReferralSlugReservedForRouting } from "@/lib/referralPathReserved";
 /**
  * localStorage/sessionStorage key for captured referral (not a secret).
  * Persists until overwritten by a new `?ref=` / path capture or manual site-data clear —
- * successful TimeCurve buys do **not** remove this entry.
+ * successful Time Arena buys do **not** remove this entry.
  */
 const REF_STORAGE = "yieldomega.ref.v1";
 

@@ -60,7 +60,7 @@ export function HomePage() {
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
               <Link to="/arena" className="btn-primary btn-primary--xl btn-primary--priority">
-                Open TimeCurve
+                Open Time Arena
               </Link>
             </motion.div>
             <img

@@ -25,7 +25,7 @@ test("footer site links card on footer-enabled routes (GitLab #232)", async ({ p
 
 test("/timecurve Simple shows site links card below agent card (GitLab #232)", async ({ page }) => {
   const state = await detectLaunchState(page);
-  test.skip(state === "countdown", "Launch countdown hides TimeCurve surfaces.");
+  test.skip(state === "countdown", "Launch countdown hides Time Arena surfaces.");
 
   await page.goto("/arena");
   const card = page.getByTestId("footer-site-links-card");

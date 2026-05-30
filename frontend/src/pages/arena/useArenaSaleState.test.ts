@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
-import type { TimecurveSaleState } from "@/lib/indexerApi";
+import type { ArenaSaleState } from "@/lib/indexerApi";
 import {
   arenaCoreReadRowsFromSaleState,
   arenaWarbowPolicyRowsFromSaleState,
   coreReadRowsFromSaleState,
   feeRouterSinkRowsFromSaleState,
-  linearCharmPriceRowsFromSaleState,
 } from "./useArenaSaleState";
 
-const SAMPLE: TimecurveSaleState = {
+const SAMPLE: ArenaSaleState = {
   read_block_number: "100",
   block_timestamp_sec: "1700000000",
   polled_at_ms: 1,
@@ -97,15 +96,6 @@ describe("feeRouterSinkRowsFromSaleState", () => {
       "0x1111111111111111111111111111111111111111",
       2000,
     ]);
-  });
-});
-
-describe("linearCharmPriceRowsFromSaleState", () => {
-  it("maps base and daily increment wad rows", () => {
-    const rows = linearCharmPriceRowsFromSaleState(SAMPLE);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.result).toBe(1000000000000000000n);
-    expect(rows[1]?.result).toBe(100000000000000000n);
   });
 });
 

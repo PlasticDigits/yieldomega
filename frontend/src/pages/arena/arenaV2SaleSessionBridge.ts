@@ -15,7 +15,7 @@ function lowerHex(v: unknown): string | undefined {
 }
 
 /** True when `tc` is the configured Time Arena proxy (Arena v2 only — #266). */
-export function isArenaV2TimeCurve(tc: HexAddress | undefined): boolean {
+export function isTimeArenaV2(tc: HexAddress | undefined): boolean {
   const arena = addresses.timeArena;
   if (!tc || !arena) return false;
   const a = lowerHex(tc);
@@ -44,7 +44,7 @@ function row(result: unknown): ContractReadRow {
   return { status: "success", result };
 }
 
-/** Maps Arena v2 multicall results into TimeCurve-shaped `coreData` rows. */
+/** Maps Arena v2 multicall results into Arena-shaped `coreData` rows. */
 export function mapArenaV2CoreRows(
   raw: readonly { status: string; result?: unknown }[] | undefined,
 ): readonly ContractReadRow[] | undefined {

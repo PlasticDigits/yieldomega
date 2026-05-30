@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { fetchTimecurveChainTimer, type TimecurveChainTimer } from "@/lib/indexerApi";
+import { fetchLegacyArenaChainTimer, type ArenaChainTimer } from "@/lib/indexerApi";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { timeArenaReadAbi } from "@/lib/abis";
-import { isArenaV2TimeCurve } from "@/pages/arena/arenaV2SaleSessionBridge";
+import { isTimeArenaV2 } from "@/pages/arena/arenaV2SaleSessionBridge";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
 export type HeroTimerState = {
@@ -19,7 +19,7 @@ export type HeroTimerState = {
   fetchedAtSec: number;
 };
 
-function snapshotFromIndexerChainTimer(data: TimecurveChainTimer): Omit<HeroTimerState, "fetchedAtSec"> {
+function snapshotFromIndexerChainTimer(data: ArenaChainTimer): Omit<HeroTimerState, "fetchedAtSec"> {
   const rawSale = data.sale_start_sec;
   const saleStartSec =
     rawSale !== undefined && rawSale !== "" ? Number(rawSale) : 0;
@@ -46,7 +46,7 @@ function conservativeSkewWallMinusChainSec(fetchedAtSec: number, blockTimestampS
   return fetchedAtSec - blockTimestampSec - 1;
 }
 
-export type UseTimecurveHeroTimerResult = {
+export type UseArenaHeroTimerResult = {
   heroTimer: HeroTimerState | null;
   secondsRemaining: number | undefined;
   /**
@@ -62,12 +62,12 @@ export type UseTimecurveHeroTimerResult = {
 };
 
 /**
- * TimeCurve hero countdown from indexer `/v1/arena/chain-timer`.
+ * Time Arena hero countdown from indexer `/v1/arena/chain-timer`.
  * Wall-vs-chain skew is fixed on first load and on `refresh()`; polls only update deadline / display fields so the skew does not drift tick-to-tick.
  *
  * Poll cadence backs off when the shared indexer health streak is open ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
  */
-export function useArenaHeroTimer(timeCurveAddress: `0x${string}` | undefined): UseTimecurveHeroTimerResult {
+export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): UseArenaHeroTimerResult {
   const publicClient = usePublicClient();
   const [heroTimer, setHeroTimer] = useState<HeroTimerState | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -101,32 +101,32 @@ export function useArenaHeroTimer(timeCurveAddress: `0x${string}` | undefined): 
 
   const loadSnapshot = useCallback(
     async (resetSkew: boolean) => {
-      if (!timeCurveAddress) return;
+      if (!timeArenaAddress) return;
       if (resetSkew) setIsBusy(true);
       try {
         const fetchedAtSec = Math.floor(Date.now() / 1000);
         let base: Omit<HeroTimerState, "fetchedAtSec"> | null = null;
-        const data = await fetchTimecurveChainTimer();
+        const data = await fetchLegacyArenaChainTimer();
         if (data) {
           const fromIdx = snapshotFromIndexerChainTimer(data);
           if (isFiniteHeroBase(fromIdx)) {
             base = fromIdx;
           }
         }
-        if (!base && isArenaV2TimeCurve(timeCurveAddress) && publicClient) {
+        if (!base && isTimeArenaV2(timeArenaAddress) && publicClient) {
           const [saleStart, deadline, timerCap, block] = await Promise.all([
             publicClient.readContract({
-              address: timeCurveAddress,
+              address: timeArenaAddress,
               abi: timeArenaReadAbi,
               functionName: "arenaStart",
             }),
             publicClient.readContract({
-              address: timeCurveAddress,
+              address: timeArenaAddress,
               abi: timeArenaReadAbi,
               functionName: "deadline",
             }),
             publicClient.readContract({
-              address: timeCurveAddress,
+              address: timeArenaAddress,
               abi: timeArenaReadAbi,
               functionName: "timerCapSec",
             }),
@@ -161,7 +161,7 @@ export function useArenaHeroTimer(timeCurveAddress: `0x${string}` | undefined): 
         if (resetSkew) setIsBusy(false);
       }
     },
-    [timeCurveAddress, publicClient],
+    [timeArenaAddress, publicClient],
   );
 
   const refresh = useCallback(() => void loadSnapshot(true), [loadSnapshot]);
@@ -177,7 +177,7 @@ export function useArenaHeroTimer(timeCurveAddress: `0x${string}` | undefined): 
   }, [loadSnapshot]);
 
   useEffect(() => {
-    if (!timeCurveAddress) {
+    if (!timeArenaAddress) {
       setHeroTimer(null);
       skewWallMinusChainRef.current = null;
       return;
@@ -205,21 +205,21 @@ export function useArenaHeroTimer(timeCurveAddress: `0x${string}` | undefined): 
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [timeCurveAddress, loadSnapshot]);
+  }, [timeArenaAddress, loadSnapshot]);
 
   useEffect(() => {
     recomputeCountdown();
   }, [heroTimer, recomputeCountdown]);
 
   useEffect(() => {
-    if (!timeCurveAddress) {
+    if (!timeArenaAddress) {
       setSecondsRemaining(undefined);
       setChainNowSec(undefined);
       return;
     }
     const id = window.setInterval(recomputeCountdown, 1000);
     return () => window.clearInterval(id);
-  }, [timeCurveAddress, recomputeCountdown]);
+  }, [timeArenaAddress, recomputeCountdown]);
 
   return {
     heroTimer,

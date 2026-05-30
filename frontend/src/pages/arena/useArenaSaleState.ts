@@ -3,15 +3,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { indexerBaseUrl } from "@/lib/addresses";
 import {
-  fetchTimecurveSaleState,
-  type TimecurveSaleState,
+  fetchLegacyArenaSaleState,
+  type ArenaSaleState,
 } from "@/lib/indexerApi";
 import {
   getIndexerBackoffPollMs,
   reportIndexerFetchAttempt,
 } from "@/lib/indexerConnectivity";
 
-export const TIMECURVE_SALE_STATE_QUERY_KEY = ["timecurve-sale-state"] as const;
+export const ARENA_SALE_STATE_QUERY_KEY = ["arena-sale-state"] as const;
 
 /** Wagmi multicall row shape shared by Simple and Arena sale-state mappers. */
 export type ContractReadRow = {
@@ -24,7 +24,7 @@ function successRow(result: unknown): ContractReadRow {
 }
 
 /** Maps indexer sale-state JSON to the same row order as `useArenaSaleSession` `coreContracts`. */
-export function coreReadRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+export function coreReadRowsFromSaleState(s: ArenaSaleState): readonly ContractReadRow[] {
   const addr = (v: string) => v as `0x${string}`;
   return [
     successRow(BigInt(s.sale_start_sec)),
@@ -64,7 +64,7 @@ export function coreReadRowsFromSaleState(s: TimecurveSaleState): readonly Contr
 /**
  * Maps indexer sale-state to Arena `coreTcData` row order (27 rows).
  */
-export function arenaCoreReadRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+export function arenaCoreReadRowsFromSaleState(s: ArenaSaleState): readonly ContractReadRow[] {
   const addr = (v: string) => v as `0x${string}`;
   return [
     successRow(BigInt(s.sale_start_sec)),
@@ -98,19 +98,11 @@ export function arenaCoreReadRowsFromSaleState(s: TimecurveSaleState): readonly 
 }
 
 /** Maps `fee_router_sinks` to wagmi `sinks(i)` multicall rows (5). */
-export function feeRouterSinkRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
+export function feeRouterSinkRowsFromSaleState(s: ArenaSaleState): readonly ContractReadRow[] {
   const addr = (v: string) => v as `0x${string}`;
   return s.fee_router_sinks.map((sink) =>
     successRow([addr(sink.destination), sink.weight_bps] as const),
   );
-}
-
-/** Maps linear charm price fields to `basePriceWad` / `dailyIncrementWad` read rows. */
-export function linearCharmPriceRowsFromSaleState(s: TimecurveSaleState): readonly ContractReadRow[] {
-  return [
-    successRow(BigInt(s.linear_charm_base_price_wad)),
-    successRow(BigInt(s.linear_charm_daily_increment_wad)),
-  ];
 }
 
 /**
@@ -118,7 +110,7 @@ export function linearCharmPriceRowsFromSaleState(s: TimecurveSaleState): readon
  * ladder podium, burn constants, max steals, revenge window/burn, finalized).
  */
 export function arenaWarbowPolicyRowsFromSaleState(
-  s: TimecurveSaleState,
+  s: ArenaSaleState,
   rpcRows: readonly ContractReadRow[],
 ): readonly ContractReadRow[] {
   const addr = (v: string) => v as `0x${string}`;
@@ -154,9 +146,9 @@ export function arenaWarbowPolicyRowsFromSaleState(
 export function useArenaSaleStateQuery(tc: `0x${string}` | undefined) {
   const indexerOn = Boolean(indexerBaseUrl());
   return useQuery({
-    queryKey: TIMECURVE_SALE_STATE_QUERY_KEY,
+    queryKey: ARENA_SALE_STATE_QUERY_KEY,
     queryFn: async () => {
-      const body = await fetchTimecurveSaleState();
+      const body = await fetchLegacyArenaSaleState();
       reportIndexerFetchAttempt(body != null);
       return body;
     },
