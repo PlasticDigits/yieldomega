@@ -24,7 +24,13 @@ Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol)
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
-| `charmPriceWad` | governance `setCharmPriceWad` | DOUB per 1e18 CHARM for `buy` |
+| `charmPriceWad` | `1000e18` (governance `setCharmPriceWad`) | DOUB per 1e18 CHARM for `buy` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
+| CHARM band | `99e16` – `10e18` | Fixed envelope; not bonding curve ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
+| `timerExtensionSec` | `120` | +2 min per buy when not in hard-reset band |
+| `initialTimerSec` | `86_400` (24 h) | First Last Buy deadline after `startArena` |
+| `timerCapSec` | `345_600` (96 h) | Max remaining time after extension |
+| Hard-reset band | `< 780s` (13 m) → snap to `900s` (15 m) | `TIMER_RESET_BELOW_REMAINING_SEC` / `TIMER_RESET_TO_REMAINING_SEC` in `TimeArena.sol` |
+| `buyCooldownSec` | `300` (5 min prod; Anvil may shorten) | Rolling from last buy |
 | `CRED_PER_CHARM_WAD` | `100e18` | `buyWithCred` burn ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 | First-buy CRED bonus | `150e18` scheduled for `lastBuyEpoch + 1` | One wallet lifetime ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 

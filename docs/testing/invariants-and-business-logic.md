@@ -44,8 +44,8 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
 | **`INV-TIME-ARENA-ROUTE-SPLIT`** | 40% active + 30% seed + 30% admin per DOUB buy; **no** legacy FeeRouter CL8Y burn/LP sinks ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split` · [fee-routing](../onchain/fee-routing-and-governance.md) |
-| **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset` |
-| **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments | `test_timer_hard_reset_increments_epoch` |
+| **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset`, `TimeMath.t.sol::testFuzz_extendDeadlineOrReset_arenaProfile` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
+| **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments; emits **`LastBuyEpochStarted`** | `test_timer_hard_reset_increments_epoch`, `test_emits_LastBuyEpochStarted_on_hard_reset`, `TimeMath.t.sol::test_extendDeadlineOrReset_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | **`INV-TIME-ARENA-TIMER-MULTI`** | One buy extends **all four** `podiumDeadline[i]` | `test_multi_podium_deadline_extend` |
 | **`INV-TIME-ARENA-PODIUM-ROLL`** | `rollPodiumEpoch(cat)` after expiry; epoch bump | `test_roll_podium_after_expiry` |
 | **`INV-TIME-ARENA-CRED-ACCRUE`** | DOUB buy adds **35 CRED** (18 dec) to epoch pool | `test_cred_accrue_on_doub_buy` |
@@ -67,6 +67,22 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/arena/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
+
+<a id="timearena-core-gitlab-246"></a>
+
+### TimeArena core — buys, timer, CHARM price (GitLab [#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246))
+
+Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Onchain: [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · timer math: [`TimeMath.sol`](../../contracts/src/libraries/TimeMath.sol). Product: [time-arena § buy & timer](../product/time-arena.md) · [arena-v2](../product/arena-v2.md). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-DOUB-PRICE`** | `buy(charmWad)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18`; default **`1000e18`** per 1e18 CHARM | `test_buy_routes_doub_split`, `testFuzz_buy_charmInBand_doubPullParity`, `testFuzz_setCharmPriceWad_doubOwed` |
+| **`INV-TIME-ARENA-SET-PRICE`** | Governance **`setCharmPriceWad`** (mutable, > 0) | `test_setCharmPriceWad_changes_doub_owed` |
+| **`INV-TIME-ARENA-CHARM-BAND`** | Fixed **0.99–10** CHARM (WAD) envelope | `test_buy_reverts_charm_*`, `testFuzz_buy_charmBelowMin_reverts`, `testFuzz_buy_charmAboveMax_reverts` |
+| **`INV-TIME-ARENA-COOLDOWN`** | Rolling per-wallet **`buyCooldownSec`** | `test_buy_reverts_on_cooldown` |
+| **`INV-TIME-ARENA-EPOCH-EVENT`** | **`LastBuyEpochStarted`** on hard reset | `test_emits_LastBuyEpochStarted_on_hard_reset` |
+
+Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)). ERC-20 ingress: **`INV-ERC20-123`** below · `test_feeOnTransfer_buy_reverts_erc20Parity`.
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`ArenaSimplePage.tsx`](../../frontend/src/pages/ArenaSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
@@ -204,7 +220,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### ERC-20 balance-delta ingress (GitLab [#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123))
 
-**INV-ERC20-123:** DOUB (and other) pulls on **`TimeArena`** use balance-delta parity — credited amount equals declared spend.
+**INV-ERC20-123:** DOUB (and other) pulls on **`TimeArena`** use balance-delta parity — credited amount equals declared spend. Forge: `TimeArena.t.sol::test_feeOnTransfer_buy_reverts_erc20Parity`, `testFuzz_buy_charmInBand_doubPullParity` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)).
 
 <a id="indexer-offline-ux-and-backoff-gitlab-96"></a>
 
