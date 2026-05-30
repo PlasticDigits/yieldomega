@@ -22,7 +22,7 @@ For the contracts-to-indexer/frontend deployment guide, start with [deployment-g
 | Chain ID | |
 | RPC URL (internal) | |
 | Contract: TimeCurve | Address: … Verified: Y/N Link: … |
-| Contract: Rabbit Treasury | Address: … Verified: Y/N Link: … |
+| Contract: retired v1 player reserve | Address: … Verified: Y/N Link: … |
 | Contract: Leprechaun NFT | Address: … Verified: Y/N Link: … |
 | Contract: Fee router / registry | Address: … Verified: Y/N Link: … |
 | Indexer migration version | |

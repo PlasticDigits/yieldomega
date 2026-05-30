@@ -1,10 +1,13 @@
 {
-  "_comment": "Ephemeral Anvil addresses from DeployDev — regenerate via forge script; not for production.",
+  "_comment": "Legacy v1 Stage 2 example — superseded by Arena v2 dev-addresses.example.json. Regenerate via DeployDev.",
   "chainId": 31337,
   "contracts": {
-    "TimeCurve": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
-    "RabbitTreasury": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-    "LeprechaunNFT": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE"
+    "TimeArena": "",
+    "PodiumVaults": "",
+    "AdminSellVault": "",
+    "Doubloon": "",
+    "PlayCred": "",
+    "ReferralRegistry": ""
   },
   "deployBlock": 1
 }

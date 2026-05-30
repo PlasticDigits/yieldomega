@@ -40,7 +40,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 | Phase | Scope | Status |
 |-------|--------|--------|
 | impl-0 | Parameters / interfaces tracked | [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md), [`contracts/README.md`](../contracts/README.md) |
-| impl-1 … impl-5 | Libraries, TimeCurve, RabbitTreasury, fee router + sinks, Leprechaun NFT | Implemented under `contracts/src/` with matching tests in `contracts/test/` |
+| impl-1 … impl-5 | Libraries, TimeCurve, RetiredV1Treasury, fee router + sinks, Leprechaun NFT | Implemented under `contracts/src/` with matching tests in `contracts/test/` |
 | impl-6 | Deploy + address registry | [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol), [`dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json), [`stage2-anvil-registry.json`](../contracts/deployments/stage2-anvil-registry.json), [`contracts/deployments/README.md`](../contracts/deployments/README.md) |
 | impl-7 … impl-8 | Indexer schema, decoders, API, reorg | `indexer/` migrations + `cargo test` (incl. Postgres rollback integration when `YIELDOMEGA_PG_TEST_URL` is set in CI) |
 | impl-9 | Frontend wallet + reads | `frontend/` + [`frontend/.env.example`](../frontend/.env.example) |
@@ -48,9 +48,9 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 | impl-11 | Stage 3 testnet | **Operator-run** — runbook [operations/stage3-mainnet-operator-runbook.md](operations/stage3-mainnet-operator-runbook.md) §Stage 3 |
 | impl-12 | Mainnet + audit | **Operator-run** — same runbook §Mainnet; record audited commit in checklist |
 
-**Contracts (~25% row):** Foundry stack implements core mechanics — [`TimeCurve`](../contracts/src/TimeCurve.sol), [`RabbitTreasury`](../contracts/src/RabbitTreasury.sol) (with [`BurrowMath`](../contracts/src/libraries/BurrowMath.sol)), [`FeeRouter`](../contracts/src/FeeRouter.sol) and fee sinks, [`LeprechaunNFT`](../contracts/src/LeprechaunNFT.sol), shared libs ([`TimeMath`](../contracts/src/libraries/TimeMath.sol), [`FeeMath`](../contracts/src/libraries/FeeMath.sol)); **Stage 1** contract tests green via `forge test` (CI: `FOUNDRY_PROFILE=ci` per [testing/ci.md](testing/ci.md)); dev deploy via [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol) and [`contracts/deployments/dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json). Parameter checklist: [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md).
+**Contracts (~25% row):** Foundry stack implements core mechanics — [`TimeCurve`](../contracts/src/TimeCurve.sol), [`RetiredV1Treasury`](../contracts/src/RetiredV1Treasury.sol) (with [`RetiredV1ReserveMath`](../contracts/src/libraries/RetiredV1ReserveMath.sol)), [`FeeRouter`](../contracts/src/FeeRouter.sol) and fee sinks, [`LeprechaunNFT`](../contracts/src/LeprechaunNFT.sol), shared libs ([`TimeMath`](../contracts/src/libraries/TimeMath.sol), [`FeeMath`](../contracts/src/libraries/FeeMath.sol)); **Stage 1** contract tests green via `forge test` (CI: `FOUNDRY_PROFILE=ci` per [testing/ci.md](testing/ci.md)); dev deploy via [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol) and [`contracts/deployments/dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json). Parameter checklist: [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md).
 
-**~50% row (indexer + frontend reads):** Rust [**indexer**](../indexer/) decodes canonical TimeCurve / RabbitTreasury / Leprechaun events via `sol!` definitions, persists to Postgres ([`migrations/`](../indexer/migrations/)), runs JSON-RPC ingestion with reorg rollback ([`ingestion.rs`](../indexer/src/ingestion.rs), [`reorg.rs`](../indexer/src/reorg.rs)), and exposes versioned HTTP endpoints + CORS ([`api.rs`](../indexer/src/api.rs)). Vite [**frontend**](../frontend/) reads contract state via wagmi/viem and optional indexer URLs configured in [`frontend/.env.example`](../frontend/.env.example).
+**~50% row (indexer + frontend reads):** Rust [**indexer**](../indexer/) decodes canonical TimeCurve / RetiredV1Treasury / Leprechaun events via `sol!` definitions, persists to Postgres ([`migrations/`](../indexer/migrations/)), runs JSON-RPC ingestion with reorg rollback ([`ingestion.rs`](../indexer/src/ingestion.rs), [`reorg.rs`](../indexer/src/reorg.rs)), and exposes versioned HTTP endpoints + CORS ([`api.rs`](../indexer/src/api.rs)). Vite [**frontend**](../frontend/) reads contract state via wagmi/viem and optional indexer URLs configured in [`frontend/.env.example`](../frontend/.env.example).
 
 **~75% row (Stage 2 devnet integration):** Exit checklist in [testing/strategy.md](testing/strategy.md) is **satisfied** with evidence in [**operations/stage2-run-log.md**](operations/stage2-run-log.md) (deploy + fresh DB + smoke txs + lag + history). **Reorg:** Postgres integration tests exercise `rollback_after` in CI (see `indexer/tests/integration_stage2.rs`); optional **live Anvil reorg drill** remains in [indexer/REORG_STRATEGY.md](../indexer/REORG_STRATEGY.md). **Verification:** run the full matrix in [testing/invariants-and-business-logic.md](testing/invariants-and-business-logic.md) before claiming this milestone. **Next milestone (~90%):** execute Stage 3 per [operations/stage3-mainnet-operator-runbook.md](operations/stage3-mainnet-operator-runbook.md) and [testing/strategy.md](testing/strategy.md) Stage 3.
 
@@ -60,7 +60,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 
 ## Implementation phase 0 — Lock parameters and interfaces
 
-**Goal:** Freeze or explicitly **TODO** every numeric policy and external dependency called out in [product/primitives.md](product/primitives.md), [product/rabbit-treasury.md](product/rabbit-treasury.md), [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), and [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
+**Goal:** Freeze or explicitly **TODO** every numeric policy and external dependency called out in [product/primitives.md](product/primitives.md), [product/retired-v1-reserve.md](product/retired-v1-reserve.md), [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), and [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
 
 **Deliverables**
 
@@ -74,7 +74,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 **Agent prompt (copy-paste):**
 
 ```text
-You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, docs/product/rabbit-treasury.md, docs/onchain/fee-routing-and-governance.md, and docs/research/stablecoin-and-reserves.md. Produce a single checklist of parameters that need human-fixed values before mainnet, with suggested conservative testnet defaults where safe. Do not write Solidity until the maintainer confirms or defers each item with an explicit TODO location.
+You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, docs/product/retired-v1-reserve.md, docs/onchain/fee-routing-and-governance.md, and docs/research/stablecoin-and-reserves.md. Produce a single checklist of parameters that need human-fixed values before mainnet, with suggested conservative testnet defaults where safe. Do not write Solidity until the maintainer confirms or defers each item with an explicit TODO location.
 ```
 
 ---
@@ -85,11 +85,11 @@ You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, doc
 
 **Docs:** [contracts/foundry-and-megaeth.md](contracts/foundry-and-megaeth.md), [contracts/README.md](../contracts/README.md) (if present)
 
-**Goal:** Foundry project is CI-clean, modularized for MegaEVM constraints, and extends existing math ([`BurrowMath`](../contracts/src/libraries/BurrowMath.sol)) as specs require.
+**Goal:** Foundry project is CI-clean, modularized for MegaEVM constraints, and extends existing math ([`RetiredV1ReserveMath`](../contracts/src/libraries/RetiredV1ReserveMath.sol)) as specs require.
 
 **Deliverables**
 
-- Libraries / helpers used by TimeCurve and Rabbit Treasury (e.g. fixed-point, time math, fee splitting) with **unit tests** and **documented invariants** next to tests.
+- Libraries / helpers used by TimeCurve and retired v1 player reserve (e.g. fixed-point, time math, fee splitting) with **unit tests** and **documented invariants** next to tests.
 - `forge test` passes locally and in [CI per docs/testing/ci.md](testing/ci.md).
 
 **Exit criteria**
@@ -99,7 +99,7 @@ You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, doc
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1. Extend contracts/ with shared libraries only—no full game contracts yet. Match style of existing BurrowMath.sol; add tests; run forge test. AGPL-3.0 headers on new files. Small PR.
+Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1. Extend contracts/ with shared libraries only—no full game contracts yet. Match style of existing RetiredV1ReserveMath.sol; add tests; run forge test. AGPL-3.0 headers on new files. Small PR.
 ```
 
 ---
@@ -132,16 +132,16 @@ Implement the TimeCurve primitive per docs/product/primitives.md and docs/onchai
 
 <a id="impl-3"></a>
 
-## Implementation phase 3 — Contracts: Rabbit Treasury (Burrow)
+## Implementation phase 3 — Contracts: retired v1 player reserve (v1 reserve)
 
-**Docs:** [product/rabbit-treasury.md](product/rabbit-treasury.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md)
+**Docs:** [product/retired-v1-reserve.md](product/retired-v1-reserve.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md)
 
-**Goal:** Player-facing reserve logic: USDm in/out, DOUB mint/burn, repricing using **BurrowMath**, **Burrow\*** events for charts.
+**Goal:** Player-facing reserve logic: USDm in/out, DOUB mint/burn, repricing using **RetiredV1ReserveMath**, **v1 reserve\*** events for charts.
 
 **Deliverables**
 
-- **RabbitTreasury** deployment with `AccessControlEnumerable` roles per [treasury-contracts.md](onchain/treasury-contracts.md).
-- Integration tests with **BurrowMath**; events match naming in [rabbit-treasury.md](product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events).
+- **RetiredV1Treasury** deployment with `AccessControlEnumerable` roles per [treasury-contracts.md](onchain/treasury-contracts.md).
+- Integration tests with **RetiredV1ReserveMath**; events match naming in [retired-v1-reserve.md](product/retired-v1-reserve.md#reserve-health-metrics-and-canonical-events).
 
 **Exit criteria**
 
@@ -150,7 +150,7 @@ Implement the TimeCurve primitive per docs/product/primitives.md and docs/onchai
 **Agent prompt (copy-paste):**
 
 ```text
-Implement RabbitTreasury per docs/product/rabbit-treasury.md and docs/onchain/treasury-contracts.md. Reuse contracts/src/libraries/BurrowMath.sol. Emit Burrow* events as specified. Add integration tests for deposit, withdraw, repricing epoch, and failure cases. forge test.
+Implement RetiredV1Treasury per docs/product/retired-v1-reserve.md and docs/onchain/treasury-contracts.md. Reuse contracts/src/libraries/RetiredV1ReserveMath.sol. Emit RetiredV1* events as specified. Add integration tests for deposit, withdraw, repricing epoch, and failure cases. forge test.
 ```
 
 ---
@@ -250,7 +250,7 @@ Add Foundry script(s) or documented deploy steps for devnet per docs/operations/
 **Agent prompt (copy-paste):**
 
 ```text
-Wire indexer/ to real ABIs from contracts/artifacts. Implement Postgres migrations and decoders per docs/indexer/design.md. Index TimeCurve, RabbitTreasury Burrow* events, fee/NFT events as deployed. Add unit tests with fixtures. cargo test. AGPL-3.0 on new files.
+Wire indexer/ to real ABIs from contracts/artifacts. Implement Postgres migrations and decoders per docs/indexer/design.md. Index TimeCurve, RetiredV1Treasury RetiredV1* events, fee/NFT events as deployed. Add unit tests with fixtures. cargo test. AGPL-3.0 on new files.
 ```
 
 ---
@@ -290,7 +290,7 @@ Complete indexer API per docs/indexer/design.md. Harden reorg handling in indexe
 
 **Deliverables**
 
-- TimeCurve, Rabbit Treasury, Collection pages call **real** endpoints or contracts on devnet.
+- TimeCurve, retired v1 player reserve, Collection pages call **real** endpoints or contracts on devnet.
 - `.env.example` only for **public** config (chain id, URLs, address map).
 
 **Exit criteria**

@@ -1,6 +1,6 @@
 # Arena v2 product primitives
 
-**Status:** Arena v2 replaces the TimeCurve launchpad, Rabbit Treasury / Burrow, Leprechaun NFTs, and the legacy FeeRouter five-sink CL8Y model. Full redeploy; **no backwards compatibility** with v1 addresses.
+**Status:** Arena v2 replaces the TimeCurve launchpad, retired v1 player reserve (GitLab #242), Leprechaun NFTs, and the legacy FeeRouter five-sink CL8Y model. Full redeploy; **no backwards compatibility** with v1 addresses.
 
 Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
@@ -87,6 +87,6 @@ BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×
 ## Retired surfaces
 
 - Leprechaun NFT — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
-- Rabbit Treasury / Burrow — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)
+- retired v1 player reserve (GitLab #242) — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)
 - TimeCurve sale-end / redemption / presale — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
 - FeeRouter CL8Y sinks — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)

@@ -22,7 +22,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **TimeCurve launchpad** — Legacy CL8Y bonding-curve sale with `endSale`, `redeemCharms`, **PodiumPool** payouts, and **FeeRouter** routing. Removed in epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
-- **Rabbit Treasury / Burrow** — Retired player treasury layer ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
+- **retired v1 player reserve (GitLab #242)** — Retired player treasury layer ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 
 - **Leprechaun NFTs** — Retired collectible layer ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
 

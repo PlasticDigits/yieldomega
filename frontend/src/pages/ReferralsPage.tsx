@@ -13,7 +13,7 @@ function ReferralQuestStrip() {
   return (
     <aside className="referrals-quest-strip" aria-label="Referral quest guide">
       <div>
-        <h2>Guide new buyers through the burrow</h2>
+        <h2>Guide new buyers into the arena</h2>
         <p>
           When someone uses your referral link, every TimeCurve buy earns you 5% and gets them 5% bonus CHARM
         </p>

@@ -39,29 +39,29 @@ Maps each numbered threat above to **unit** (Stage 1), **integration** (Stage 2 
 | 4 | **Invariant** tests on growth formula, caps, redemption; fuzz **rounding**. | Compare **contract-emitted** amounts to indexer-stored rows for sampled txs. | Fuzz-like **random buy sequences** on public RPC; spot-check vs simulation. |
 | 5 | Indexer **unit tests**: rollback/reapply **reorg** fixture; decoder idempotency. | **Reorg simulation** in CI or manual: alternate head → rollback → verify **leaderboard** rows and APIs; UI shows **pending vs confirmed** if implemented. | Testnet **natural reorgs** (if any); monitor **head lag** and incorrect “winner” incidents = **0** for confirmed tier. |
 
-## Rabbit Treasury-specific
+## retired v1 player reserve-specific
 
 - **Bank run dynamics** — Even with gradual repricing, extreme outflows can stress reserves. **Withdrawal queues**, **epoch limits**, or **transparent fee drains** may be required (TBD at implementation).
 - **Oracle manipulation** — If reserve health uses external prices, define **sources**, **staleness checks**, and **fallbacks**. Prefer **pure onchain** accounting where possible.
 - **Accounting bugs** — Internal units vs reserves mismatch is catastrophic; require **invariant tests** and **formalized accounting spec** before mainnet.
 
-### Rabbit Treasury (Burrow) — top design threats and mitigations
+### retired v1 player reserve (v1 reserve) — top design threats and mitigations
 
 | # | Threat (design level) | Mitigation (design level) |
 |---|------------------------|---------------------------|
-| 1 | **Bank run / liquidity stress** — Concurrent **withdrawals** can force sharp **repricing** or insolvency perception even if math is sound. | **Withdrawal queues**, **per-epoch caps**, **transparent repricing** rules; clear UX that DOUB is **game accounting**, not a bank deposit ([../product/rabbit-treasury.md](../product/rabbit-treasury.md)); optional **fee retention** to slow drains. |
+| 1 | **Bank run / liquidity stress** — Concurrent **withdrawals** can force sharp **repricing** or insolvency perception even if math is sound. | **Withdrawal queues**, **per-epoch caps**, **transparent repricing** rules; clear UX that DOUB is **game accounting**, not a bank deposit ([../product/retired-v1-reserve.md](../product/retired-v1-reserve.md)); optional **fee retention** to slow drains. |
 | 2 | **Oracle / external price manipulation** — If health or repricing uses **offchain** feeds, attackers can move marks. | **Prefer onchain reserves and emitted snapshots**; any oracle: **multiple sources**, **staleness bounds**, **TWAP or bounded updates**, **circuit breakers**; document fallbacks in [../research/stablecoin-and-reserves.md](../research/stablecoin-and-reserves.md). |
-| 3 | **Accounting / unit mismatch** — **DOUB**, reserves, and **internal price** diverge due to a bug (classic catastrophic loss). | **Formal accounting spec**; **BurrowMath**-style single module; **invariant tests** (reserves, supply, backing); epoch-close **BurrowHealthEpochFinalized** as chart anchor ([rabbit-treasury events](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events)). |
+| 3 | **Accounting / unit mismatch** — **DOUB**, reserves, and **internal price** diverge due to a bug (classic catastrophic loss). | **Formal accounting spec**; **RetiredV1ReserveMath**-style single module; **invariant tests** (reserves, supply, backing); epoch-close **RetiredV1HealthEpochFinalized** as chart anchor ([retired-v1-reserve events](../product/retired-v1-reserve.md#reserve-health-metrics-and-canonical-events)). |
 | 4 | **Indexer reorg confusion (epochs, repricing, faction stats)** — Reorgs can **reorder** deposits/withdrawals across **epoch boundaries** or duplicate/miss events briefly; dashboards may show **wrong epoch** or **stale** reserve ratio. | **Canonical `epochId` + `finalizedAt`** in events; indexer **rollback to common ancestor**; APIs expose **confirmations**; **do not** treat indexed balance as sole authority for **redemptions**—users verify via RPC when needed; align with [../indexer/design.md](../indexer/design.md). |
 | 5 | **Faction / sybil pressure on deposits** — Users split across identities to **game** leaderboards or rewards tied to **faction** flows. | **Onchain rules** only; **rate limits** or **costly** gates (e.g. NFT); **normalization** or caps per faction if policy requires; document tradeoffs in product specs. |
 
-### Rabbit Treasury — test plan (threat → validation stage)
+### retired v1 player reserve — test plan (threat → validation stage)
 
 | Threat # | Unit (Stage 1) | Integration (Stage 2) | Testnet (Stage 3) |
 |----------|----------------|-------------------------|---------------------|
-| 1 | Unit tests for **queue/epoch limits** and **repricing** under extreme **withdraw** sequences. | Devnet: **burst withdrawals** + indexer **epoch** rows; UI/API match **finalized** events. | Soak with **uneven** deposit/withdraw; monitor **reserve ratio** charts vs onchain **BurrowHealthEpochFinalized**. |
+| 1 | Unit tests for **queue/epoch limits** and **repricing** under extreme **withdraw** sequences. | Devnet: **burst withdrawals** + indexer **epoch** rows; UI/API match **finalized** events. | Soak with **uneven** deposit/withdraw; monitor **reserve ratio** charts vs onchain **RetiredV1HealthEpochFinalized**. |
 | 2 | Mock oracle **staleness**, **deviation**, **fallback** branches in contract math (if present). | Integration with **oracle mock** on devnet; indexer stores **same** values as emitted. | Testnet: if live oracle, **spot-check** against sources; document **failure modes**. |
-| 3 | **Invariant** and fuzz tests on **deposit/withdraw/fee**; **BurrowMath** vs reference simulator ([../simulations/README.md](../simulations/README.md)). | Compare **every** `Burrow*` emission to DB rows; reconciliation job for **totals**. | Periodic **reconciliation** on testnet; **supply** vs **backing** sanity alerts. |
+| 3 | **Invariant** and fuzz tests on **deposit/withdraw/fee**; **RetiredV1ReserveMath** vs reference simulator ([../simulations/README.md](../simulations/README.md)). | Compare **every** `RetiredV1*` emission to DB rows; reconciliation job for **totals**. | Periodic **reconciliation** on testnet; **supply** vs **backing** sanity alerts. |
 | 4 | Indexer **reorg** fixtures for **epoch** ordering; property: **epochId** monotonicity after heal. | **Reorg** test: events at epoch boundary **rollback** and **reapply**; faction aggregates **match** chain replay. | Testnet: monitor for **duplicate** epoch closes or **orphan** rows; **head lag** SLO. |
 | 5 | Unit tests for **faction** accounting rules and **caps**. | Multi-wallet flows; indexer **faction** leaderboards match **onchain** sums. | Soak with **many** small accounts; watch for **unexpected** faction skew. |
 
@@ -87,11 +87,11 @@ Internal review items (not a substitute for an **external audit**):
 | **TimeCurve WarBow steal / revenge / guard** | **Burn-sink-address `msg.sender`** — With **`#123`** **`_pullAcceptedExact`**, `0x…dEaD` can **round-trip** CL8Y with **net zero** change to sink-side **`balanceOf`** while BP mutates ([issue #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123) discussion). | Revert **`TimeCurve: burn sink caller`** (**`INV-WARBOW-123-BURN-CALLER`**). Tests: `test_warbow_steal_reverts_when_caller_is_burn_sink`, `test_warbow_revenge_reverts_when_caller_is_burn_sink`, `test_warbow_guard_reverts_when_caller_is_burn_sink` in [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol). |
 | **FeeRouter `distributeFees`** | **`amount` exceeds balance** | Reverts via OZ ERC20 checks. Test: `test_distributeFees_insufficient_balance_reverts`. Callers must match **`amount`** to measured ingress (#123). |
 | **FeeRouter `distributeFees`** | **Transfer reverts** — Token always reverts on P2P transfer, or reverts when paying a specific sink. | Griefing / misconfiguration. Tests: [`test_alwaysRevert_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol), [`test_blockedSink_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: **asset allowlist**, **pull payments** to sinks, governance swap of sink/token. |
-| **RabbitTreasury `deposit` / `receiveFee`** | **Fee-on-transfer** | **Balance-delta parity** on pulls (#123). Tests: [`test_feeOnTransfer_rabbitTreasury_deposit_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol), [`test_feeOnTransfer_rabbitTreasury_receiveFee_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
+| **RetiredV1Treasury `deposit` / `receiveFee`** | **Fee-on-transfer** | **Balance-delta parity** on pulls (#123). Tests: [`test_feeOnTransfer_RetiredV1Treasury_deposit_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol), [`test_feeOnTransfer_RetiredV1Treasury_receiveFee_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
 | **`ReferralRegistry` `registerCode`** | **Fee-on-transfer** burn mismatch | **Burn-address `balanceOf` delta** vs `registrationBurnAmount` (#123). Test: [`test_feeOnTransfer_referralRegistry_register_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
 | **`TimeCurveBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | **`TimeCurveBuyRouter__StableIngressParity`** before swap (#123). Test: `TimeCurveBuyRouterStableIngress123Test` in [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol). |
-| **RabbitTreasury `deposit` / accounting** | **Rebasing / balance drift** — `totalReserves` tracks internal sums; a rebasing token can change `balanceOf` without going through deposit/withdraw/fee paths. | Prefer **non-rebasing** reserve asset for v1. Test: [`test_rebasing_treasury_balanceCanDesyncFromTotalReserves`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: disallow rebasing assets, periodic **reconciliation** jobs offchain, or measure **balance deltas** per tx (larger contract change). |
-| **RabbitTreasury `deposit`** | **Non-standard transfer** | **Balance-delta parity** (#123). Test: [`test_alwaysRevert_rabbitTreasury_depositReverts`](../../contracts/test/NonStandardERC20.t.sol). |
+| **RetiredV1Treasury `deposit` / accounting** | **Rebasing / balance drift** — `totalReserves` tracks internal sums; a rebasing token can change `balanceOf` without going through deposit/withdraw/fee paths. | Prefer **non-rebasing** reserve asset for v1. Test: [`test_rebasing_treasury_balanceCanDesyncFromTotalReserves`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: disallow rebasing assets, periodic **reconciliation** jobs offchain, or measure **balance deltas** per tx (larger contract change). |
+| **RetiredV1Treasury `deposit`** | **Non-standard transfer** | **Balance-delta parity** (#123). Test: [`test_alwaysRevert_RetiredV1Treasury_depositReverts`](../../contracts/test/NonStandardERC20.t.sol). |
 
 **Still accepted** (by design / governance): MEV and block ordering on podiums and timer; anyone may call `distributeFees` when the router holds balance (funds only go to configured sinks); permissionless `endSale` / `finalizeEpoch` for liveness; small rounding residue in token redemption and prize splits.
 
@@ -112,7 +112,7 @@ Align mitigations with [../testing/strategy.md](../testing/strategy.md):
 - **Devnet integration** — indexer reorg replay, end-to-end buys and deposits.
 - **Testnet** — soak tests, MEV-style ordering simulations where feasible.
 
-**Per-component matrices:** Under [TimeCurve-specific](#timecurve-specific) and [Rabbit Treasury-specific](#rabbit-treasury-specific), each numbered threat maps to **unit / integration / testnet** rows in the test plan tables.
+**Per-component matrices:** Under [TimeCurve-specific](#timecurve-specific) and [retired v1 player reserve-specific](#retired-v1-reserve-specific), each numbered threat maps to **unit / integration / testnet** rows in the test plan tables.
 
 ---
 

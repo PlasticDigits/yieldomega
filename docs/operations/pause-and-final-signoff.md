@@ -33,7 +33,7 @@ The following tables name **what can move value**, **where**, and **repo-propose
 | Podium (reserve prizes) | `TimeCurve.distributePrizes()` | CL8Y from `PodiumPool` to winners | **In the signoff set** for “no CL8Y to winners until signoff” — gate this call or the underlying reserve payout path. | If prizes may pay before other gates, document exception explicitly. |
 | CL8Y token / DAO treasury | External / out of repo | Genesis, airdrops, team unlocks | **Out of this repo** unless a contract is added; document in deploy runbooks only. | N/A here |
 
-**Rabbit Treasury** (`RabbitTreasury`) already uses **`Pausable`** for **deposit/withdraw** — a **separate** concern from TimeCurve presale/DOUB redemption/CL8Y podium **unless** product folds Burrow into the same “go-live” ceremony. State **in** or **out** in the mainnet runbook when cutting implementation.
+**retired v1 player reserve** (`RetiredV1Treasury`) already uses **`Pausable`** for **deposit/withdraw** — a **separate** concern from TimeCurve presale/DOUB redemption/CL8Y podium **unless** product folds v1 reserve into the same “go-live” ceremony. State **in** or **out** in the mainnet runbook when cutting implementation.
 
 ---
 
@@ -80,7 +80,7 @@ These **must** hold after implementation; they are also listed in testing invari
 - **G1 (explicit gate):** No gated function completes user-facing token transfer without the designed **signoff** state (revert or zero payout).
 - **G2 (no shadow mint):** Pausing `claim` / `redeemCharms` / prize payout does **not** create alternate user pulls of the same DOUB/CL8Y in-repo without a documented path.
 - **G3 (observability):** Indexer-backed UX can distinguish **“not started”** vs **“awaiting signoff”** vs **“live”** from chain (or from documented events + storage).
-- **G4 (scope clarity):** `RabbitTreasury` deposit/withdraw pause is **separate** unless explicitly linked in the runbook.
+- **G4 (scope clarity):** `RetiredV1Treasury` deposit/withdraw pause is **separate** unless explicitly linked in the runbook.
 - **G5 (fee bypass):** If only **subset** of fee sinks is pausable, the design document **bypass and ordering** risks in `FeeRouter` (see [#55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55) §2).
 
 ---

@@ -34,4 +34,4 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 ## Retired
 
-TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, Rabbit Treasury, Leprechaun — see epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
+TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, retired v1 player reserve, Leprechaun — see epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).

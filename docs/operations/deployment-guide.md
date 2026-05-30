@@ -138,7 +138,7 @@ export TIMECURVE_TIMER_EXTENSION_SEC='120'
 export TIMECURVE_INITIAL_TIMER_SEC='86400'
 export TIMECURVE_TIMER_CAP_SEC='345600'
 
-# --- Rabbit fee sink: zero address → script deploys RabbitTreasuryVault and wires FeeRouter to it ---
+# --- Rabbit fee sink: zero address → script deploys RetiredV1FeeSinkVault and wires FeeRouter to it ---
 export RABBIT_FEE_SINK_ADDRESS='0x0000000000000000000000000000000000000000'
 
 # --- Presale CHARM +15%: comma-separated wallets → PresaleCharmBeneficiaryRegistry (TimeCurve `isBeneficiary`). Canonical: first wallet is the participant who buys with the boost; DOUB vesting for that tranche may go to a different address in PRESALE_BENEFICIARIES below. ---
@@ -272,8 +272,8 @@ The **retired v1** script deployed:
 - `PodiumPool` proxy
 - `DoubLPIncentives` proxy
 - `EcosystemTreasury` proxy
-- `RabbitTreasury` proxy
-- `RabbitTreasuryVault` unless `RABBIT_FEE_SINK_ADDRESS` is provided
+- `RetiredV1Treasury` proxy
+- `RetiredV1FeeSinkVault` unless `RABBIT_FEE_SINK_ADDRESS` is provided
 - `FeeRouter` proxy
 - `ReferralRegistry` proxy
 - `LinearCharmPrice` proxy
@@ -285,16 +285,16 @@ The **retired v1** script deployed:
 
 It wires the core permissions in the same broadcast:
 
-- Grants `RabbitTreasury` the `Doubloon.MINTER_ROLE`.
-- Grants `FeeRouter` the `RabbitTreasury.FEE_ROUTER_ROLE`.
-- Routes the FeeRouter Rabbit slice to `RabbitTreasuryVault` or `RABBIT_FEE_SINK_ADDRESS`; it does not send that slice directly to `RabbitTreasury` unless explicitly configured.
+- Grants `RetiredV1Treasury` the `Doubloon.MINTER_ROLE`.
+- Grants `FeeRouter` the `RetiredV1Treasury.FEE_ROUTER_ROLE`.
+- Routes the FeeRouter Rabbit slice to `RetiredV1FeeSinkVault` or `RABBIT_FEE_SINK_ADDRESS`; it does not send that slice directly to `RetiredV1Treasury` unless explicitly configured.
 - Allows the reserve asset through `FeeRouter.setDistributableToken`.
 - Sets `PodiumPool.prizePusher` to the `TimeCurve` proxy.
 - Mints the TimeCurve sale allocation of DOUB directly to `TimeCurve`.
 - Sets `podiumResidualRecipient` and `unredeemedLaunchedTokenRecipient` to `EcosystemTreasury`.
 - Wires **`TimeCurve.doubPresaleVesting`** to **`PresaleCharmBeneficiaryRegistry`** when that registry is deployed ( **`isBeneficiary`** for +15% CHARM); otherwise to **`DoubPresaleVesting`** when only vesting is deployed.
 - Optionally wires **`TimeCurveBuyRouter`** into **`TimeCurve`** when Kumbaya env vars are set.
-- Opens the first Rabbit Treasury epoch.
+- Opens the first retired v1 player reserve epoch.
 - Calls `TimeCurve.startSaleAt(SALE_START_EPOCH)`.
 - Hands ownership / admin / governance roles to `DEPLOY_ADMIN_ADDRESS`, which defaults to the CL8Y manager `0xcd4eb82cfc16d5785b4f7e3bfc255e735e79f39c`.
 
@@ -313,9 +313,9 @@ The registry JSON looks like:
     "CL8Y_reserve": "0xfBAa45A537cF07dC768c469FfaC4e88208B0098D",
     "Doubloon": "0x...",
     "PodiumPool": "0x...",
-    "RabbitTreasuryVault": "0x...",
+    "RetiredV1FeeSinkVault": "0x...",
     "RabbitFeeSink": "0x...",
-    "RabbitTreasury": "0x...",
+    "RetiredV1Treasury": "0x...",
     "FeeRouter": "0x...",
     "TimeCurve": "0x...",
     "TimeCurveBuyRouter": "",
@@ -398,7 +398,7 @@ export VITE_DOTMEGA_REGISTRY_ADDRESS='0x5B424C6CCba77b32b9625a6fd5A30D409d20d997
 
 # Proxies from registry JSON (`contracts` keys match deploy log labels)
 export VITE_TIMECURVE_ADDRESS="$(jq -r '.contracts.TimeCurve' "$REGISTRY_PATH")"
-export VITE_RABBIT_TREASURY_ADDRESS="$(jq -r '.contracts.RabbitTreasury' "$REGISTRY_PATH")"
+export VITE_RETIRED_V1_TREASURY_ADDRESS="$(jq -r '.contracts.RetiredV1Treasury' "$REGISTRY_PATH")"
 export VITE_LEPRECHAUN_NFT_ADDRESS="$(jq -r '.contracts.LeprechaunNFT' "$REGISTRY_PATH")"
 export VITE_REFERRAL_REGISTRY_ADDRESS="$(jq -r '.contracts.ReferralRegistry' "$REGISTRY_PATH")"
 export VITE_FEE_ROUTER_ADDRESS="$(jq -r '.contracts.FeeRouter' "$REGISTRY_PATH")"
@@ -432,7 +432,7 @@ Minimum checks before announcing the deployment:
 - Confirm `TimeCurve.saleStart()` equals the requested epoch.
 - Confirm `TimeCurve.launchedToken()` equals `Doubloon`.
 - Confirm `Doubloon.balanceOf(TimeCurve)` is at least `TimeCurve.totalTokensForSale()`.
-- Confirm `RabbitTreasury.currentEpochId()` is `1`.
+- Confirm `RetiredV1Treasury.currentEpochId()` is `1`.
 - Confirm `/v1/status` reports the correct chain and indexer progress after startup.
 - Confirm the frontend reads the TimeCurve countdown from the deployed chain/indexer and does not point at Anvil defaults.
 

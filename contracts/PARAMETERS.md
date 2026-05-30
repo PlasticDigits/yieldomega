@@ -5,7 +5,7 @@ Conservative testnet defaults are provided where safe; security-critical
 fields without confirmed values carry explicit TODOs with bounds.
 
 Sources: [product/primitives.md](../docs/product/primitives.md),
-[product/rabbit-treasury.md](../docs/product/rabbit-treasury.md),
+[product/retired-v1-reserve.md](../docs/product/retired-v1-reserve.md),
 [product/referrals.md](../docs/product/referrals.md),
 [onchain/fee-routing-and-governance.md](../docs/onchain/fee-routing-and-governance.md),
 [research/stablecoin-and-reserves.md](../docs/research/stablecoin-and-reserves.md).
@@ -61,7 +61,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | CL8Y burned — burn sink (`0x…dEaD` in `DeployDev`) | 4 000 | ≥ 0 |
 | Podium pool — `PodiumPool` | 2 000 | ≥ 0 |
 | Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
-| Rabbit Treasury | 1 000 | ≥ 0 |
+| retired v1 player reserve | 1 000 | ≥ 0 |
 
 **FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: **last buy** 40% · **WarBow** 25% · **defended streak** 20% · **time booster** 15% of pool (**8%** · **5%** · **4%** · **3%** of gross raise); placements **4∶2∶1** per category.
 
@@ -74,9 +74,9 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Presale DOUB vesting (optional) | **21.5M** total (**10M / 4M / 5M / 2M / 0.5M** example split) | **30%** at vesting start · **70%** linear over **180 days** (six months) — [`DoubPresaleVesting`](src/vesting/DoubPresaleVesting.sol): fund then `startVesting()`; **`setClaimsEnabled(true)`** when operational signoff allows DOUB claims ([issue #55](../docs/operations/final-signoff-and-value-movement.md)); deploy only when `PRESALE_BENEFICIARIES` is set; rare: **`reduceAllocationsUniformBps` → `burnDoubExcessAboveOutstanding`** to shrink rows uniformly and burn freed DOUB (owner, **Doubloon** burnable) |
 | V3 liquidity seed | **28.5M** | Pair with pool strategy (`DoubLPIncentives` / Kumbaya docs) |
 
-## Rabbit Treasury (Burrow)
+## retired v1 player reserve (v1 reserve)
 
-On-chain **`PARAMS_ROLE`** updates must stay inside the envelopes below (enforced in `RabbitTreasury` setters + `initialize`; see [GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119)). **`c_max`** is fixed at deploy (no setter).
+On-chain **`PARAMS_ROLE`** updates must stay inside the envelopes below (enforced in `RetiredV1Treasury` setters + `initialize`; see [GitLab #119](https://gitlab.com/PlasticDigits/yieldomega/-/issues/119)). **`c_max`** is fixed at deploy (no setter).
 
 | Parameter | Testnet default | On-chain bounds (WAD) | Status |
 |-----------|-----------------|----------------------|--------|

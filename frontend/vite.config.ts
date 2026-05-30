@@ -10,7 +10,7 @@ import { defineConfig, loadEnv } from "vite";
 const OG = {
   title: "YieldOmega",
   description:
-    "Onchain gamefi on MegaETH — TimeCurve, Rabbit Treasury, and leprechaun collectibles in a bright arcade-fantasy world.",
+    "Onchain gamefi on MegaETH — Time Arena, DOUB prizes, and referral codes in a bright arcade-fantasy world.",
   siteName: "YieldOmega",
   locale: "en_US",
   imagePath: "/art/opengraph.jpg",

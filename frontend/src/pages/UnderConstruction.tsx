@@ -81,7 +81,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-l
         >
           <ul className="accent-list">
             <li>TimeCurve remains the active launch surface for onchain buying, charms, podiums, and WarBow PvP.</li>
-            <li>This page is intentionally polished now so Rabbit Treasury, Collection, and Referrals still feel first-party while functionality catches up.</li>
+            <li>This page is intentionally polished now so Collection and Referrals still feel first-party while functionality catches up.</li>
             <li>When the next milestone lands, this route should plug into the same badges, panels, and state patterns instead of starting over visually.</li>
           </ul>
         </PageSection>

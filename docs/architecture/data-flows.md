@@ -48,9 +48,9 @@ flowchart TD
 
 ---
 
-## Rabbit Treasury: user deposits (Burrow)
+## retired v1 player reserve: user deposits (v1 reserve)
 
-The user may see charts, epoch context, or projected DOUB from the **indexer**. **Reserve transfer, DOUB mint/burn, and repricing rules** are enforced by the **RabbitTreasury** contract. Indexer tables (deposits, health epochs) are **projections** of onchain events/snapshots, not the ledger of truth ([product/rabbit-treasury.md](../product/rabbit-treasury.md)). **Canonical `Burrow*` log names** for reserve-health charts are in [Reserve health metrics and canonical events](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events) in `rabbit-treasury.md`.
+The user may see charts, epoch context, or projected DOUB from the **indexer**. **Reserve transfer, DOUB mint/burn, and repricing rules** are enforced by the **RetiredV1Treasury** contract. Indexer tables (deposits, health epochs) are **projections** of onchain events/snapshots, not the ledger of truth ([product/retired-v1-reserve.md](../product/retired-v1-reserve.md)). **Canonical `RetiredV1*` log names** for reserve-health charts are in [Reserve health metrics and canonical events](../product/retired-v1-reserve.md#reserve-health-metrics-and-canonical-events) in `retired-v1-reserve.md`.
 
 ```mermaid
 flowchart TD
@@ -63,7 +63,7 @@ flowchart TD
     D[ERC20_approve_if_needed]
     E[Wallet_signs_deposit_tx]
     F[Tx_included]
-    G[RabbitTreasury_executes_deposit]
+    G[RetiredV1Treasury_executes_deposit]
     H[Reserve_moved_DOUB_minted_or_credited_per_rules]
   end
   subgraph indexer_follow [Offchain_derived_follow]
@@ -110,7 +110,7 @@ The indexer must **never** be authority for balances or winners ([overview](over
 - **Incorrect winner or category in indexer** — User **trusts** wrong info; may **skip** a valid claim or **attempt** an invalid one (**wasted gas** on revert).
 - **Stale “sale still active”** — User delays claim or mis-times strategy; **onchain** end time remains source of truth.
 
-**Rabbit Treasury deposit-specific**
+**retired v1 player reserve deposit-specific**
 
 - **Stale DOUB preview / health / epoch** — User **expected** a different conversion or phase; **actual** mint/repricing follows **contract** at execution.
 - **Wrong faction or score in indexer-only views** — **Display or agent** errors; **onchain** rules for NFT/faction hooks (if any) still govern the transaction.

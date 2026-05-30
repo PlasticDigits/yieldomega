@@ -488,6 +488,7 @@ mod production_registry_validation_tests {
         RegistryContracts {
             time_arena: ADDR_A.into(),
             timecurve_buy_router: buy_router.into(),
+            time_arena_buy_router: buy_router.into(),
             podium_vaults: ADDR_A.into(),
             admin_sell_vault: ADDR_A.into(),
             referral_registry: ADDR_A.into(),
@@ -555,6 +556,7 @@ mod production_registry_validation_tests {
         let c = RegistryContracts {
             time_arena: "nope".into(),
             timecurve_buy_router: String::new(),
+            time_arena_buy_router: String::new(),
             podium_vaults: "nope2".into(),
             admin_sell_vault: String::new(),
             referral_registry: String::new(),
@@ -568,6 +570,7 @@ mod production_registry_validation_tests {
         let mut c = RegistryContracts {
             time_arena: String::new(),
             timecurve_buy_router: String::new(),
+            time_arena_buy_router: String::new(),
             podium_vaults: String::new(),
             admin_sell_vault: String::new(),
             referral_registry: String::new(),

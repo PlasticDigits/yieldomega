@@ -12,7 +12,6 @@ export const APP_RESERVED_TOP_LEVEL_SEGMENTS: ReadonlySet<string> = new Set([
   "favicon.ico",
   "home",
   "kumbaya",
-  "rabbit-treasury",
   "referrals",
   "sir",
   "static",

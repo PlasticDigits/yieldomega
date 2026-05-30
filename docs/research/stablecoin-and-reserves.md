@@ -1,6 +1,6 @@
 # Research notes: USDm, CL8Y, and reserve assets
 
-**Canonical launch default (this repo):** **CL8Y** is the **single ERC-20 reserve** for **Rabbit Treasury** and the **TimeCurve** `acceptedAsset`, and the same token is used for **`ReferralRegistry`** registration burns. **USDm** remains relevant as MegaETH ecosystem context and a possible future basket asset — see below.
+**Canonical launch default (this repo):** **CL8Y** is the **single ERC-20 reserve** for **retired v1 player reserve** and the **TimeCurve** `acceptedAsset`, and the same token is used for **`ReferralRegistry`** registration burns. **USDm** remains relevant as MegaETH ecosystem context and a possible future basket asset — see below.
 
 ## USDm (MegaUSD)
 
@@ -13,9 +13,9 @@ Public background (verify with primary sources):
 
 - MegaETH announcement and FAQ pages describing **USDm** and ecosystem integration.
 
-## Rabbit Treasury reserves
+## retired v1 player reserve reserves
 
-Rabbit Treasury ([../product/rabbit-treasury.md](../product/rabbit-treasury.md)) uses a **single onchain-auditable** vault token at launch (**CL8Y**) unless governance expands to a basket.
+retired v1 player reserve ([../product/retired-v1-reserve.md](../product/retired-v1-reserve.md)) uses a **single onchain-auditable** vault token at launch (**CL8Y**) unless governance expands to a basket.
 
 ### v1 testnet reserve policy
 
@@ -23,7 +23,7 @@ Default **accepted reserve**: **testnet CL8Y**—the single vault token for depo
 
 **USDm** may still appear in liquidity plans (for example DOUB/USDm pools) or future multi-asset baskets; document any expansion next to [fee routing](../onchain/fee-routing-and-governance.md) and [PARAMETERS.md](../../contracts/PARAMETERS.md).
 
-**Deferred** until governance defines **onchain** eligibility, caps, and (if needed) conversion rules: additional stablecoins, LP positions, rebasing tokens, and bridged or wrapped assets that need **oracle** marks to value fairly. Keeping one ERC-20 reserve on testnet avoids cross-asset pricing and shrinks **oracle attack surface** while reserve balances and **`Burrow*`** events remain the sole chart authority ([../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events)).
+**Deferred** until governance defines **onchain** eligibility, caps, and (if needed) conversion rules: additional stablecoins, LP positions, rebasing tokens, and bridged or wrapped assets that need **oracle** marks to value fairly. Keeping one ERC-20 reserve on testnet avoids cross-asset pricing and shrinks **oracle attack surface** while reserve balances and **`RetiredV1*`** events remain the sole chart authority ([../product/retired-v1-reserve.md#reserve-health-metrics-and-canonical-events](../product/retired-v1-reserve.md#reserve-health-metrics-and-canonical-events)).
 
 ## “Fully onchain” alignment
 

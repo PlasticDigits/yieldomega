@@ -30,7 +30,7 @@
   - See [`docs/frontend/arena-views.md`](./arena-views.md) for the
     layout contract, single-source-of-truth invariants, and the
     LaunchCountdown → Simple handoff.
-- **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
+- **retired v1 player reserve** — deposit/withdraw flows, epoch charts, faction standings.
 - **Collection** — Leprechaun NFT gallery, set progress, trait filters for humans and agents.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
 
