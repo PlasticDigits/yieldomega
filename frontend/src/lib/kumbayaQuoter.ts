@@ -1,39 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Kumbaya QuoterV2 reads for TimeCurve ETH / USDM entry. On MegaETH mainnet,
+// Kumbaya QuoterV2 reads for TimeArena ETH / USDM entry. On MegaETH mainnet,
 // `quoteExactOutput(bytes)` reverts (`toAddress_outOfBounds`); use `quoteExactOutputSingle` hops.
 
 import type { Config } from "wagmi";
 import { readContract } from "wagmi/actions";
 import type { HexAddress } from "@/lib/addresses";
-import { kumbayaQuoterV2Abi, timeArenaReadAbi, timeCurveReadAbi } from "@/lib/abis";
+import { kumbayaQuoterV2Abi, timeArenaReadAbi } from "@/lib/abis";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
 import { WAD } from "@/lib/timeCurveMath";
 import { kumbayaBuyDebugLog } from "@/lib/kumbayaBuyDebug";
 
 function amountInFromQuoteResult(result: unknown): bigint {
   return (result as readonly [bigint, ...unknown[]])[0];
-}
-
-/** Gross CL8Y the router will request at inclusion (`charmWad × price / WAD`). */
-export async function readGrossCl8yForCharmWad(
-  wagmiConfig: Config,
-  timeCurveAddress: HexAddress,
-  charmWad: bigint,
-): Promise<bigint> {
-  const price = (await readContract(wagmiConfig, {
-    address: timeCurveAddress,
-    abi: timeCurveReadAbi,
-    functionName: "currentPricePerCharmWad",
-  })) as bigint;
-  const gross = (charmWad * price) / WAD;
-  kumbayaBuyDebugLog("readGrossCl8yForCharmWad", {
-    timeCurve: timeCurveAddress,
-    charmWad: charmWad.toString(),
-    pricePerCharmWad: price.toString(),
-    grossCl8y: gross.toString(),
-  });
-  return gross;
 }
 
 /** Gross DOUB the TimeArena buy router requests at inclusion (`charmWad × charmPriceWad / WAD`). */
@@ -58,7 +37,7 @@ export async function readGrossDoubForCharmWad(
 }
 
 /**
- * Extra CL8Y out used only when sizing swap `maxIn` so a rising `LinearCharmPrice`
+ * Extra DOUB out used only when sizing swap `maxIn` so a rising price
  * between quote and inclusion is less likely to trip Uniswap `STF()`.
  */
 export const KUMBAYA_GROSS_CL8Y_QUOTE_HEADROOM_BPS = 150;
@@ -136,7 +115,7 @@ async function quoteUsdmPathAmountIn(
 
 /**
  * Pay-token input for the swap leg. `path` is still passed to `buyViaKumbaya` onchain.
- * `amountOut` should be the router's gross CL8Y target (see `readGrossCl8yForCharmWad`).
+ * `amountOut` should be the router's gross DOUB target (see `readGrossDoubForCharmWad`).
  */
 export async function quoteKumbayaExactOutputAmountIn(
   wagmiConfig: Config,
@@ -154,7 +133,7 @@ export async function quoteKumbayaExactOutputAmountIn(
     payWith,
     quoter,
     acceptedCl8y,
-    grossCl8yTarget: amountOut.toString(),
+    grossDoubTarget: amountOut.toString(),
     quoteHeadroomBps: KUMBAYA_GROSS_CL8Y_QUOTE_HEADROOM_BPS,
     amountOutWithHeadroom: outForQuote.toString(),
     cl8yWethFee: kConfig.cl8yWethFee,

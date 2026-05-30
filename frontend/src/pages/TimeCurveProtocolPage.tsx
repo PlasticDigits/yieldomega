@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { envelopeCurveParamsFromWire, type EnvelopeCurveParamsWire } from "@/lib/timeCurveBuyDisplay";
+import { useCallback, useMemo, useState } from "react";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeCurveMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
@@ -12,15 +12,12 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, type HexAddress } from "@/lib/addresses";
-import { formatLocaleInteger, formatBpsAsPercent } from "@/lib/formatAmount";
-import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
-import { TimeCurveLiveCharts } from "@/pages/timecurve/TimeCurveLiveCharts";
 import { TimeCurveLiveBuysActivitySection } from "@/pages/timecurve/TimeCurveLiveBuysActivitySection";
 import { RawDataAccordion } from "@/pages/timecurve/TimeCurveSections";
 import { TimeCurveSubnav } from "@/pages/timecurve/TimeCurveSubnav";
-import { TimeCurveProtocolDoubProjectionSection } from "@/pages/timecurve/TimeCurveProtocolDoubProjectionSection";
 import { TimeCurveProtocolDonatePoolsSection } from "@/pages/timecurve/TimeCurveProtocolDonatePoolsSection";
 import { WalletProfileModal } from "@/components/WalletProfileModal";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/timecurve/timeCurveSimplePhase";
@@ -36,79 +33,50 @@ import { ProtocolInlineRefreshButton } from "@/pages/timecurve/ProtocolInlineRef
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useTimeCurveProtocolData } from "@/pages/timecurve/TimeCurveProtocolDataContext";
 
-/**
- * Protocol view for `/timecurve/protocol` — a focused dump of authoritative
- * onchain reads + reserve fee routing for operators / power users.
- *
- * Invariant: every value rendered here is read directly from a public view
- * function on `TimeArena` / vault contracts (legacy `TimeCurve` ABI where env aliases).
- * We never derive
- * values that the contract does not expose, so this page can be used to
- * verify the simple / arena views. **TOTAL RAISE / TOTAL USD** mirror the
- * former Arena hero (same formatting on `totalRaised()` wei). **Live buys** use the indexer read-model
- * (same cards as the former Arena rail) alongside these RPC reads. The WarBow
- * refresh helper uses the indexer only as an offline candidate list for calldata ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160)); writes remain plain RPC.
- */
-
 const ARENA_VAULT_LABELS = [
   "Active podium (40%)",
   "Seed podium (30%)",
   "Admin sell vault (30%)",
 ] as const;
 
-/** Last good TimeCurveLiveCharts inputs — avoids mount/unmount flicker while RPC refetch errors. */
-type ProtocolStickyChartsPayload = {
-  saleStartSec: number;
-  deadlineSec: number;
-  initialMinBuy: string;
-  growthRateWad: string;
-  basePriceWad: string;
-  dailyIncrementWad: string;
-};
+const WAD = 10n ** 18n;
+
+/** Indices into {@link mapArenaV2AdvancedCoreRows} output. */
+const CORE = {
+  arenaStart: 0,
+  deadline: 1,
+  totalDoubRaised: 2,
+  minCharmWad: 4,
+  maxCharmWad: 5,
+  charmPriceWad: 7,
+  doub: 8,
+  referralRegistry: 10,
+  timerExtensionSec: 13,
+  timerCapSec: 15,
+  buyFeeRoutingEnabled: 19,
+  podiumVaults: 21,
+  buyCooldownSec: 23,
+  timeArenaBuyRouter: 24,
+  owner: 26,
+} as const;
 
 export function TimeCurveProtocolPage() {
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
   const onOpenWalletProfile = useCallback((addr: string) => setProfileAddress(addr), []);
 
   const tc = addresses.timeArena;
-  const {
-    protocolReading: reading,
-    charmPriceRows,
-    latchedAcceptedAssetAddr,
-    heroChainNowSec,
-  } = useTimeCurveProtocolData();
+  const { protocolReading: reading, latchedAcceptedAssetAddr, heroChainNowSec } =
+    useTimeCurveProtocolData();
 
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
-
   const get = (i: number) => reading[i];
 
   const { data: latestBlock } = useLatestBlock();
   const blockTimestampSec =
     latestBlock?.timestamp !== undefined ? Number(latestBlock.timestamp) : undefined;
-  const blockChainSec = blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000;
-  const ledgerSecInt = Math.floor(blockChainSec);
-
-  const [displayTick, setDisplayTick] = useState(0);
-  const [blockSyncWallMs, setBlockSyncWallMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (latestBlock?.timestamp !== undefined) {
-      setBlockSyncWallMs(Date.now());
-    }
-  }, [latestBlock?.number, latestBlock?.timestamp]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setDisplayTick((n) => n + 1), 100);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const effectiveLedgerSec = useMemo(() => {
-    void displayTick;
-    if (blockTimestampSec !== undefined) {
-      return blockTimestampSec + (Date.now() - blockSyncWallMs) / 1000;
-    }
-    return Date.now() / 1000;
-  }, [blockTimestampSec, blockSyncWallMs, displayTick]);
+  const ledgerSecInt = Math.floor(
+    blockTimestampSec !== undefined ? blockTimestampSec : Date.now() / 1000,
+  );
 
   const phaseLedgerSecInt = useMemo(
     () =>
@@ -122,7 +90,7 @@ export function TimeCurveProtocolPage() {
   const liveBuys = useTimecurveProtocolLiveBuys();
   const { isOffline } = useIndexerConnectivity();
 
-  const totalRaisedRow = get(3);
+  const totalRaisedRow = get(CORE.totalDoubRaised);
   const totalRaiseSerialized =
     totalRaisedRow?.status === "success" && totalRaisedRow.result !== undefined
       ? String(totalRaisedRow.result as bigint)
@@ -132,138 +100,29 @@ export function TimeCurveProtocolPage() {
 
   const totalRaiseHeroDisplay = useMemo(() => {
     if (!totalRaiseSerialized) {
-      return { cl8y: "—" as const, usd: "—" as const };
+      return { doub: "—" as const, usd: "—" as const };
     }
-    const cl8y = formatTotalRaiseHeroDisplayFromWei(BigInt(totalRaiseSerialized), 18).cl8y;
-    const usd =
-      cl8yWeiToUsdDisplay(BigInt(totalRaiseSerialized), cl8yUsd.usdPerCl8y) ?? "—";
-    return { cl8y, usd };
+    const doub = formatTotalRaiseHeroDisplayFromWei(BigInt(totalRaiseSerialized), 18).cl8y;
+    const usd = cl8yWeiToUsdDisplay(BigInt(totalRaiseSerialized), cl8yUsd.usdPerCl8y) ?? "—";
+    return { doub, usd };
   }, [totalRaiseSerialized, cl8yUsd.usdPerCl8y]);
 
-  const buyEnvelopeParamsWire = useMemo((): EnvelopeCurveParamsWire | null => {
-    const saleStartRow = get(0);
-    const initialMinBuyRow = get(9);
-    const growthRateRow = get(10);
-    if (
-      saleStartRow?.status !== "success" ||
-      initialMinBuyRow?.status !== "success" ||
-      growthRateRow?.status !== "success" ||
-      charmPriceRows?.[0]?.status !== "success" ||
-      charmPriceRows?.[1]?.status !== "success"
-    ) {
-      return null;
-    }
-    const start = Number(saleStartRow.result as bigint);
-    if (start <= 0) {
-      return null;
-    }
-    return {
-      saleStartSec: start,
-      charmEnvelopeRefWad: (initialMinBuyRow.result as bigint).toString(),
-      growthRateWad: (growthRateRow.result as bigint).toString(),
-      basePriceWad: (charmPriceRows[0].result as bigint).toString(),
-      dailyIncrementWad: (charmPriceRows[1].result as bigint).toString(),
-    };
-  }, [reading, charmPriceRows]);
-
-  const tickerEnvelopeParams = useMemo(
-    () => envelopeCurveParamsFromWire(buyEnvelopeParamsWire),
-    [buyEnvelopeParamsWire],
-  );
-
   const cl8ySpendBounds = useMemo(() => {
-    const minBuy = get(6);
-    const maxBuy = get(7);
-    if (minBuy?.status !== "success" || maxBuy?.status !== "success") {
+    const priceRow = get(CORE.charmPriceWad);
+    if (priceRow?.status !== "success") {
       return null;
     }
-    const minS = minCl8ySpendBroadcastHeadroom(minBuy.result as bigint);
-    const maxS = maxBuy.result as bigint;
+    const price = priceRow.result as bigint;
+    const minS = minCl8ySpendBroadcastHeadroom((ARENA_CHARM_MIN_WAD * price) / WAD);
+    const maxS = (ARENA_CHARM_MAX_WAD * price) / WAD;
     if (minS > maxS) {
       return null;
     }
     return { minS, maxS };
   }, [reading]);
 
-  const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
-
   const protocolRawAccordion = useTimecurveProtocolRawAccordion();
-
-  const readingsForCharts = reading;
-  const chartsGateSaleStartRow = readingsForCharts[0];
-  const chartsGateDeadlineRow = readingsForCharts[1];
-  const chartsGateEndedRow = readingsForCharts[2];
-
-  const protocolChartsPhaseGate = derivePhase({
-    hasCoreData: readingsForCharts.length > 0 && Boolean(tc),
-    ended:
-      chartsGateEndedRow?.status === "success"
-        ? (chartsGateEndedRow.result as boolean)
-        : undefined,
-    saleStartSec:
-      chartsGateSaleStartRow?.status === "success"
-        ? Number(chartsGateSaleStartRow.result as bigint)
-        : undefined,
-    deadlineSec:
-      chartsGateDeadlineRow?.status === "success"
-        ? Number(chartsGateDeadlineRow.result as bigint)
-        : undefined,
-    ledgerSecInt: phaseLedgerSecInt,
-  });
-
-  const protocolLiveChartsFresh =
-    Boolean(tc) &&
-    protocolChartsPhaseGate === "saleActive" &&
-    chartsGateDeadlineRow?.status === "success" &&
-    chartsGateSaleStartRow?.status === "success" &&
-    readingsForCharts[9]?.status === "success" &&
-    readingsForCharts[10]?.status === "success" &&
-    charmPriceRows?.[0]?.status === "success" &&
-    charmPriceRows?.[1]?.status === "success";
-
-  const [protocolChartsSticky, setProtocolChartsSticky] = useState<
-    ProtocolStickyChartsPayload | null
-  >(null);
-
-  useEffect(() => {
-    if (!tc) {
-      setProtocolChartsSticky(null);
-    }
-  }, [tc]);
-
-  useEffect(() => {
-    if (!protocolLiveChartsFresh) {
-      return;
-    }
-    setProtocolChartsSticky({
-      saleStartSec: Number(chartsGateSaleStartRow!.result as bigint),
-      deadlineSec: Number(chartsGateDeadlineRow!.result as bigint),
-      initialMinBuy: (readingsForCharts[9]!.result as bigint).toString(),
-      growthRateWad: (readingsForCharts[10]!.result as bigint).toString(),
-      basePriceWad: (charmPriceRows![0]!.result as bigint).toString(),
-      dailyIncrementWad: (charmPriceRows![1]!.result as bigint).toString(),
-    });
-  }, [protocolLiveChartsFresh, chartsGateSaleStartRow, chartsGateDeadlineRow, charmPriceRows, readingsForCharts]);
-
-  useEffect(() => {
-    if (
-      chartsGateSaleStartRow?.status !== "success" ||
-      chartsGateDeadlineRow?.status !== "success" ||
-      chartsGateEndedRow?.status !== "success"
-    ) {
-      return;
-    }
-    const phase = derivePhase({
-      hasCoreData: true,
-      ended: chartsGateEndedRow.result as boolean,
-      saleStartSec: Number(chartsGateSaleStartRow.result as bigint),
-      deadlineSec: Number(chartsGateDeadlineRow.result as bigint),
-      ledgerSecInt: phaseLedgerSecInt,
-    });
-    if (phase !== "saleActive") {
-      setProtocolChartsSticky(null);
-    }
-  }, [chartsGateSaleStartRow, chartsGateDeadlineRow, chartsGateEndedRow, phaseLedgerSecInt]);
+  const liveBuysPollLastOk = liveBuys.buys === null ? null : liveBuys.indexerNote === null;
 
   if (!tc) {
     return (
@@ -271,7 +130,7 @@ export function TimeCurveProtocolPage() {
         <TimeCurveSubnav active="protocol" />
         <PageHero
           title="Protocol view"
-          lede="Authoritative onchain reads for TimeCurve."
+          lede="Authoritative onchain reads for TimeArena."
           badgeLabel="Protocol"
           badgeTone="info"
         />
@@ -320,12 +179,10 @@ export function TimeCurveProtocolPage() {
     return "—";
   };
 
-  const saleStartRow = get(0);
-  const deadlineRow = get(1);
-  const endedRow = get(2);
+  const saleStartRow = get(CORE.arenaStart);
+  const deadlineRow = get(CORE.deadline);
   const protocolPhase = derivePhase({
     hasCoreData: reading.length > 0,
-    ended: endedRow?.status === "success" ? (endedRow.result as boolean) : undefined,
     saleStartSec:
       saleStartRow?.status === "success" ? Number(saleStartRow.result as bigint) : undefined,
     deadlineSec:
@@ -340,7 +197,7 @@ export function TimeCurveProtocolPage() {
 
       <PageHero
         title="Protocol view"
-        lede="Raw, authoritative onchain reads for TimeCurve. Use this surface to verify what the simple and arena views show."
+        lede="Raw, authoritative onchain reads for TimeArena. Use this surface to verify what the simple and arena views show."
         badgeLabel={protocolPhaseBadge.label}
         badgeTone={protocolPhaseBadge.tone}
         badgeIconSrc={protocolPhaseBadge.iconSrc}
@@ -349,46 +206,32 @@ export function TimeCurveProtocolPage() {
         sceneSrc="/art/scenes/timecurve-protocol.jpg"
       />
 
-      {protocolChartsSticky && protocolChartsPhaseGate === "saleActive" && (
-        <TimeCurveLiveCharts
-          saleActive
-          saleStartSec={protocolChartsSticky.saleStartSec}
-          deadlineSec={protocolChartsSticky.deadlineSec}
-          nowSec={effectiveLedgerSec}
-          initialMinBuy={protocolChartsSticky.initialMinBuy}
-          growthRateWad={protocolChartsSticky.growthRateWad}
-          basePriceWad={protocolChartsSticky.basePriceWad}
-          dailyIncrementWad={protocolChartsSticky.dailyIncrementWad}
-          decimals={18}
-        />
-      )}
-
       <PageSection
-        title="Sale state (semilive reads)"
+        title="Arena state (semilive reads)"
         spotlight
         badgeLabel="contract reads"
         badgeTone="info"
-        lede='Onchain getters via JSON-RPC multicall (~1 s cadence while healthy). After transport errors or HTTP 429 the app backs off (~5 s → ~15 s → ~30 s, same tiers as indexer polling). Intermittent per-call multicall failures keep displaying the last successful row so sale state, total raise, live charts, and FeeRouter sinks do not flicker.'
+        lede="Onchain TimeArena getters via JSON-RPC multicall (~1 s cadence while healthy)."
       >
         <div className="timecurve-protocol-raise-card" aria-label="Total raised summary">
           <div className="timer-hero__raise-lines">
             <div className="timer-hero__total-raise">
-              TOTAL RAISE: {totalRaiseHeroDisplay.cl8y} CL8Y
+              TOTAL RAISE: {totalRaiseHeroDisplay.doub} DOUB
             </div>
             <div className="timer-hero__total-usd-block" title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
               <div className="timer-hero__total-usd timecurve-protocol__total-usd-row">
                 <span>TOTAL USD: {totalRaiseHeroDisplay.usd}</span>
                 <ProtocolInlineRefreshButton
-                  ariaLabel="Refresh CL8Y USD price"
+                  ariaLabel="Refresh DOUB USD price"
                   disabled={cl8yUsd.loading}
                   onClick={cl8yUsd.refresh}
                 />
               </div>
               {totalRaiseUsdFreshness ? (
                 <div className="timer-hero__total-usd-affordance">
-                  CL8Y total seen {totalRaiseUsdFreshness}
+                  DOUB total seen {totalRaiseUsdFreshness}
                   {cl8yUsd.usdPerCl8y !== undefined
-                    ? ` · 1 CL8Y ≈ $${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })} (Kumbaya)`
+                    ? ` · 1 DOUB ≈ $${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })} (Kumbaya)`
                     : cl8yUsd.error
                       ? ` · ${cl8yUsd.error}`
                       : null}
@@ -398,56 +241,27 @@ export function TimeCurveProtocolPage() {
           </div>
         </div>
         <dl className="kv">
-          <dt>{humanizeKvLabel("saleStart")}</dt>
-          <dd>{renderUnix(0)}</dd>
+          <dt>{humanizeKvLabel("arenaStart")}</dt>
+          <dd>{renderUnix(CORE.arenaStart)}</dd>
           <dt>{humanizeKvLabel("deadline")}</dt>
-          <dd>{renderUnix(1)}</dd>
-          <dt>{humanizeKvLabel("ended")}</dt>
-          <dd>{renderBool(2)}</dd>
-          <dt>{humanizeKvLabel("totalRaised")}</dt>
-          <dd>{renderAmount(3, 18)}</dd>
-          <dt>{humanizeKvLabel("totalCharmWeight")}</dt>
-          <dd>{renderAmount(4, 18)}</dd>
-          <dt>{humanizeKvLabel("totalTokensForSale")}</dt>
-          <dd>{renderAmount(5, 18)}</dd>
-          <dt>{humanizeKvLabel("currentMinBuyAmount")}</dt>
-          <dd>{renderAmount(6, 18)}</dd>
-          <dt>{humanizeKvLabel("currentMaxBuyAmount")}</dt>
-          <dd>{renderAmount(7, 18)}</dd>
-          <dt>{humanizeKvLabel("currentPricePerCharmWad")}</dt>
-          <dd>{renderAmount(8, 18)}</dd>
-          <dt>{humanizeKvLabel("prizesDistributed")}</dt>
-          <dd>{renderBool(21)}</dd>
+          <dd>{renderUnix(CORE.deadline)}</dd>
+          <dt>{humanizeKvLabel("totalDoubRaised")}</dt>
+          <dd>{renderAmount(CORE.totalDoubRaised, 18)}</dd>
+          <dt>{humanizeKvLabel("charmPriceWad")}</dt>
+          <dd>{renderAmount(CORE.charmPriceWad, 18)}</dd>
+          <dt>{humanizeKvLabel("minCharmWad")}</dt>
+          <dd>{renderAmount(CORE.minCharmWad, 18)}</dd>
+          <dt>{humanizeKvLabel("maxCharmWad")}</dt>
+          <dd>{renderAmount(CORE.maxCharmWad, 18)}</dd>
+          <dt>{humanizeKvLabel("buyFeeRoutingEnabled")}</dt>
+          <dd>{renderBool(CORE.buyFeeRoutingEnabled)}</dd>
         </dl>
       </PageSection>
-
-      {protocolPhase !== "saleStartPending" && (
-        <TimeCurveProtocolDoubProjectionSection
-          totalRaisedSerialized={totalRaiseSerialized}
-          cl8yUsd={cl8yUsd}
-          totalTokensForSaleSerialized={
-            get(5)?.status === "success" && get(5)!.result !== undefined
-              ? String(get(5)!.result as bigint)
-              : undefined
-          }
-          totalCharmWeightSerialized={
-            get(4)?.status === "success" && get(4)!.result !== undefined
-              ? String(get(4)!.result as bigint)
-              : undefined
-          }
-          currentPricePerCharmSerialized={
-            get(8)?.status === "success" && get(8)!.result !== undefined
-              ? String(get(8)!.result as bigint)
-              : undefined
-          }
-          readsPending={reading.length === 0}
-        />
-      )}
 
       <TimeCurveLiveBuysActivitySection
         recentBuys={liveBuys.buys}
         decimals={18}
-        tickerEnvelopeParams={tickerEnvelopeParams}
+        tickerEnvelopeParams={null}
         cl8ySpendBounds={cl8ySpendBounds}
         isOffline={isOffline}
         buyPollLastOk={liveBuysPollLastOk}
@@ -463,56 +277,17 @@ export function TimeCurveProtocolPage() {
       />
 
       <PageSection
-        title="Immutable parameters"
-        badgeLabel="constructor args"
+        title="Timer parameters"
+        badgeLabel="onchain config"
         badgeTone="info"
-        lede="These were fixed at deploy time and cannot change."
       >
         <dl className="kv">
-          <dt>{humanizeKvLabel("initialMinBuy (envelope ref)")}</dt>
-          <dd>{renderAmount(9, 18)}</dd>
-          <dt>{humanizeKvLabel("growthRateWad")}</dt>
-          <dd>
-            {(() => {
-              const r = get(10);
-              return r?.status === "success" && r.result !== undefined
-                ? formatCompactFromRaw(r.result as bigint, 18)
-                : "—";
-            })()}
-          </dd>
           <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
-          <dd>{renderInt(11)}</dd>
-          <dt>{humanizeKvLabel("initialTimerSec")}</dt>
-          <dd>{renderInt(12)}</dd>
+          <dd>{renderInt(CORE.timerExtensionSec)}</dd>
           <dt>{humanizeKvLabel("timerCapSec")}</dt>
-          <dd>{renderInt(13)}</dd>
+          <dd>{renderInt(CORE.timerCapSec)}</dd>
           <dt>{humanizeKvLabel("buyCooldownSec")}</dt>
-          <dd>{renderInt(14)}</dd>
-          <dt>{humanizeKvLabel("REFERRAL_EACH_BPS")}</dt>
-          <dd>
-            {(() => {
-              const r = get(15);
-              return r?.status === "success" && r.result !== undefined
-                ? formatBpsAsPercent(Number(r.result))
-                : "—";
-            })()}
-          </dd>
-          <dt>{humanizeKvLabel("charmPrice basePriceWad")}</dt>
-          <dd>
-            {charmPriceRows?.[0]?.status === "success" && charmPriceRows[0].result !== undefined ? (
-              <AmountDisplay raw={String(charmPriceRows[0].result)} decimals={18} />
-            ) : (
-              "—"
-            )}
-          </dd>
-          <dt>{humanizeKvLabel("charmPrice dailyIncrementWad")}</dt>
-          <dd>
-            {charmPriceRows?.[1]?.status === "success" && charmPriceRows[1].result !== undefined ? (
-              <AmountDisplay raw={String(charmPriceRows[1].result)} decimals={18} />
-            ) : (
-              "—"
-            )}
-          </dd>
+          <dd>{renderInt(CORE.buyCooldownSec)}</dd>
         </dl>
       </PageSection>
 
@@ -520,19 +295,19 @@ export function TimeCurveProtocolPage() {
         title="Wired contracts"
         badgeLabel="addresses"
         badgeTone="info"
-        lede="Addresses that TimeCurve forwards to."
+        lede="Addresses that TimeArena forwards to."
       >
         <dl className="kv">
-          <dt>{humanizeKvLabel("acceptedAsset (CL8Y)")}</dt>
-          <dd>{renderAddress(19)}</dd>
-          <dt>{humanizeKvLabel("launchedToken")}</dt>
-          <dd>{renderAddress(20)}</dd>
-          <dt>{humanizeKvLabel("charmPrice")}</dt>
-          <dd>{renderAddress(18)}</dd>
-          <dt>{humanizeKvLabel("feeRouter")}</dt>
-          <dd>{renderAddress(16)}</dd>
-          <dt>{humanizeKvLabel("podiumPool")}</dt>
-          <dd>{renderAddress(17)}</dd>
+          <dt>{humanizeKvLabel("doub")}</dt>
+          <dd>{renderAddress(CORE.doub)}</dd>
+          <dt>{humanizeKvLabel("referralRegistry")}</dt>
+          <dd>{renderAddress(CORE.referralRegistry)}</dd>
+          <dt>{humanizeKvLabel("podiumVaults")}</dt>
+          <dd>{renderAddress(CORE.podiumVaults)}</dd>
+          <dt>{humanizeKvLabel("timeArenaBuyRouter")}</dt>
+          <dd>{renderAddress(CORE.timeArenaBuyRouter)}</dd>
+          <dt>{humanizeKvLabel("owner")}</dt>
+          <dd>{renderAddress(CORE.owner)}</dd>
         </dl>
       </PageSection>
 

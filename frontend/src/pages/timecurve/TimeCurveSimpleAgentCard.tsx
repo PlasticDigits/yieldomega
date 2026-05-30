@@ -514,18 +514,13 @@ export function TimeCurveSimpleAgentCard() {
         <article className="app-footer-agent__article" lang="en">
           <h3 className="app-footer-agent__h">What this page shows (onchain authority)</h3>
           <p className="app-footer-agent__p">
-            <strong>Timer + phase</strong> follow <code className="app-footer-agent__code-inline">saleStart</code>,{" "}
-            <code className="app-footer-agent__code-inline">deadline</code>, <code className="app-footer-agent__code-inline">ended</code>{" "}
-            and the indexer <code className="app-footer-agent__code-inline">chain-timer</code> when configured (
-            <a href={ghBlob("docs/frontend/arena-views.md")} target="_blank" rel="noreferrer">
-              arena-views
-            </a>
-            , issue 48). <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeCurve.buy</code> /
-            referral hash variant, or <code className="app-footer-agent__code-inline">TimeCurveBuyRouter.buyViaKumbaya</code> for
-            ETH/USDM. <strong>CHARM weight</strong> and <strong>DOUB redemption</strong> after end use{" "}
-            <code className="app-footer-agent__code-inline">charmWeight</code> / <code className="app-footer-agent__code-inline">redeemCharms</code>.{" "}
-            <strong>Reserve podiums</strong> pay CL8Y from the podium pool after <code className="app-footer-agent__code-inline">endSale</code> +{" "}
-            <code className="app-footer-agent__code-inline">distributePrizes</code> (gated — see issue #55).
+            <strong>Timer + phase</strong> follow <code className="app-footer-agent__code-inline">arenaStart</code>,{" "}
+            <code className="app-footer-agent__code-inline">deadline</code>, and the indexer{" "}
+            <code className="app-footer-agent__code-inline">chain-timer</code> when configured.{" "}
+            <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeArena.buy</code> /
+            referral hash variant, <code className="app-footer-agent__code-inline">buyWithCred</code>, or{" "}
+            <code className="app-footer-agent__code-inline">TimeArenaBuyRouter.buyViaKumbaya</code> for ETH/USDM.{" "}
+            <strong>Podium pools</strong> receive DOUB via onchain ArenaBuyRouting (40/30/30).
           </p>
 
           <h4 className="app-footer-agent__h">
@@ -546,20 +541,17 @@ export function TimeCurveSimpleAgentCard() {
           </ul>
 
           <h4 className="app-footer-agent__h">
-            High-signal <code className="app-footer-agent__code-inline">TimeCurve</code> calls
+            High-signal <code className="app-footer-agent__code-inline">TimeArena</code> calls
           </h4>
           <p className="app-footer-agent__p">
-            <strong>Reads:</strong> <code className="app-footer-agent__code-inline">currentCharmBoundsWad</code>,{" "}
-            <code className="app-footer-agent__code-inline">currentPricePerCharmWad</code>,{" "}
+            <strong>Reads:</strong> fixed CHARM bounds (0.99–10),{" "}
+            <code className="app-footer-agent__code-inline">charmPriceWad</code>,{" "}
             <code className="app-footer-agent__code-inline">nextBuyAllowedAt</code>,{" "}
             <code className="app-footer-agent__code-inline">battlePoints</code>,{" "}
-            <code className="app-footer-agent__code-inline">totalEffectiveTimerSecAdded</code>,{" "}
-            <code className="app-footer-agent__code-inline">bestDefendedStreak</code>,{" "}
-            <code className="app-footer-agent__code-inline">buyFeeRoutingEnabled</code>.{" "}
+            <code className="app-footer-agent__code-inline">paused</code>.{" "}
             <strong>Writes:</strong> <code className="app-footer-agent__code-inline">buy</code>,{" "}
-            <code className="app-footer-agent__code-inline">claimWarBowFlag</code>, WarBow trio,{" "}
-            <code className="app-footer-agent__code-inline">endSale</code>, <code className="app-footer-agent__code-inline">redeemCharms</code>,{" "}
-            <code className="app-footer-agent__code-inline">distributePrizes</code>. Decode rich{" "}
+            <code className="app-footer-agent__code-inline">buyWithCred</code>,{" "}
+            <code className="app-footer-agent__code-inline">claimWarBowFlag</code>, WarBow trio. Decode rich{" "}
             <code className="app-footer-agent__code-inline">Buy</code> events for timer and BP fields.
           </p>
 

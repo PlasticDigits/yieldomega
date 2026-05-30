@@ -74,6 +74,9 @@ export const timeArenaReadAbi = parseAbi([
 ]);
 
 export const timeArenaWriteAbi = parseAbi([
+  "function buy(uint256 charmWad)",
+  "function buy(uint256 charmWad, bytes32 codeHash)",
+  "function buyWithCred(uint256 charmWad)",
   "function topUpPodiumPools(uint256 amountDoubWad)",
   "function claimWarBowFlag()",
   "function warbowSteal(address victim, bool payBypassBurn)",
@@ -92,93 +95,6 @@ export const timeArenaBuyRouterAbi = parseAbi([
   "error TimeArenaBuyRouter__SwapExpired()",
 ]);
 
-export const timeCurveReadAbi = parseAbi([
-  "function saleStart() view returns (uint256)",
-  "function deadline() view returns (uint256)",
-  "function totalRaised() view returns (uint256)",
-  "function ended() view returns (bool)",
-  "function currentMinBuyAmount() view returns (uint256)",
-  "function currentMaxBuyAmount() view returns (uint256)",
-  "function currentCharmBoundsWad() view returns (uint256 minCharmWad, uint256 maxCharmWad)",
-  "function currentPricePerCharmWad() view returns (uint256)",
-  "function charmPrice() view returns (address)",
-  "function acceptedAsset() view returns (address)",
-  "function referralRegistry() view returns (address)",
-  "function doubPresaleVesting() view returns (address)",
-  "function REFERRAL_EACH_BPS() view returns (uint16)",
-  "function PRESALE_CHARM_WEIGHT_BPS() view returns (uint16)",
-  "function initialMinBuy() view returns (uint256)",
-  "function growthRateWad() view returns (uint256)",
-  "function timerExtensionSec() view returns (uint256)",
-  "function initialTimerSec() view returns (uint256)",
-  "function timerCapSec() view returns (uint256)",
-  "function totalTokensForSale() view returns (uint256)",
-  "function launchedToken() view returns (address)",
-  "function feeRouter() view returns (address)",
-  "function podiumPool() view returns (address)",
-  "function totalCharmWeight() view returns (uint256)",
-  "function buyCooldownSec() view returns (uint256)",
-  "function nextBuyAllowedAt(address) view returns (uint256)",
-  "function podium(uint8 category) view returns (address[3] winners, uint256[3] values)",
-  "function charmWeight(address user) view returns (uint256)",
-  "function buyCount(address user) view returns (uint256)",
-  "function charmsRedeemed(address user) view returns (bool)",
-  "function totalEffectiveTimerSecAdded(address user) view returns (uint256)",
-  "function battlePoints(address user) view returns (uint256)",
-  "function activeDefendedStreak(address user) view returns (uint256)",
-  "function bestDefendedStreak(address user) view returns (uint256)",
-  "function NUM_PODIUM_CATEGORIES() view returns (uint8)",
-  "function CAT_LAST_BUYERS() view returns (uint8)",
-  "function CAT_TIME_BOOSTER() view returns (uint8)",
-  "function CAT_DEFENDED_STREAK() view returns (uint8)",
-  "function CAT_WARBOW() view returns (uint8)",
-  "function DEFENDED_STREAK_WINDOW_SEC() view returns (uint256)",
-  "function prizesDistributed() view returns (bool)",
-  "function buyFeeRoutingEnabled() view returns (bool)",
-  "function charmRedemptionEnabled() view returns (bool)",
-  "function reservePodiumPayoutsEnabled() view returns (bool)",
-  "function warbowLadderPodium() view returns (address[3] winners, uint256[3] values)",
-  "function warbowPodiumFinalized() view returns (bool)",
-  "function warbowPendingFlagOwner() view returns (address)",
-  "function warbowPendingFlagPlantAt() view returns (uint256)",
-  "function warbowGuardUntil(address player) view returns (uint256)",
-  "function warbowPendingRevengeExpiryExclusive(address victim, address stealer) view returns (uint256)",
-  "function warbowPendingRevengeStealSeq(address victim, address stealer) view returns (uint64)",
-  "function stealsReceivedOnDay(address victim, uint256 day) view returns (uint8)",
-  "function stealsCommittedByAttackerOnDay(address attacker, uint256 day) view returns (uint8)",
-  "function WARBOW_STEAL_BURN_WAD() view returns (uint256)",
-  "function WARBOW_GUARD_BURN_WAD() view returns (uint256)",
-  "function WARBOW_STEAL_LIMIT_BYPASS_BURN_WAD() view returns (uint256)",
-  "function WARBOW_FLAG_SILENCE_SEC() view returns (uint256)",
-  "function WARBOW_FLAG_CLAIM_BP() view returns (uint256)",
-  "function WARBOW_MAX_STEALS_PER_DAY() view returns (uint8)",
-  "function SECONDS_PER_DAY() view returns (uint256)",
-  "function WARBOW_REVENGE_WINDOW_SEC() view returns (uint256)",
-  "function WARBOW_REVENGE_BURN_WAD() view returns (uint256)",
-  "function timeCurveBuyRouter() view returns (address)",
-  "function owner() view returns (address)",
-]);
-
-export const linearCharmPriceReadAbi = parseAbi([
-  "function basePriceWad() view returns (uint256)",
-  "function dailyIncrementWad() view returns (uint256)",
-]);
-
-export const timeCurveWriteAbi = parseAbi([
-  "function startSaleAt(uint256 epoch)",
-  "function buy(uint256 charmWad)",
-  "function buy(uint256 charmWad, bool plantWarBowFlag)",
-  "function buy(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag)",
-  "function claimWarBowFlag()",
-  "function warbowSteal(address victim, bool payBypassBurn)",
-  "function warbowRevenge(address stealer)",
-  "function warbowActivateGuard()",
-  "function finalizeWarbowPodium(address first, address second, address third)",
-  "function endSale()",
-  "function redeemCharms()",
-  "function distributePrizes()",
-]);
-
 export const referralRegistryReadAbi = parseAbi([
   "function cl8yToken() view returns (address)",
   "function ownerCode(address owner) view returns (bytes32)",
@@ -188,10 +104,6 @@ export const referralRegistryReadAbi = parseAbi([
 ]);
 
 export const referralRegistryWriteAbi = parseAbi(["function registerCode(string code)"]);
-
-export const feeRouterReadAbi = parseAbi([
-  "function sinks(uint256 i) view returns (address destination, uint16 weightBps)",
-]);
 
 export const erc20Abi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
@@ -223,36 +135,6 @@ export const kumbayaSwapRouterAbi = parseAbi([
   "function exactOutput((bytes path, address recipient, uint256 amountOut, uint256 amountInMaximum)) returns (uint256 amountIn)",
   "function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96)) returns (uint256 amountIn)",
 ]);
-
-/** [`TimeCurveBuyRouter.buyViaKumbaya`](../../contracts/src/TimeCurveBuyRouter.sol) — single-tx ETH / stable → Kumbaya → `buyFor` (issue #65 / #66). */
-export const timeCurveBuyRouterAbi = parseAbi([
-  "function buyViaKumbaya(uint256 charmWad, bytes32 codeHash, bool plantWarBowFlag, uint8 payKind, uint256 swapDeadline, uint256 amountInMaximum, bytes path) payable",
-  "error TimeCurveBuyRouter__BadSalePhase()",
-  "error TimeCurveBuyRouter__BadPath()",
-  "error TimeCurveBuyRouter__CharmBounds()",
-  "error TimeCurveBuyRouter__EthMode()",
-  "error TimeCurveBuyRouter__StableMode()",
-  "error TimeCurveBuyRouter__StableNotConfigured()",
-  "error TimeCurveBuyRouter__StableIngressParity()",
-  "error TimeCurveBuyRouter__EthValue()",
-  "error TimeCurveBuyRouter__SwapExpired()",
-  "error TimeCurveBuyRouter__RefundInvariant()",
-]);
-
-/** [`DoubPresaleVesting`](../../contracts/src/vesting/DoubPresaleVesting.sol) — presale DOUB cliff + linear vesting (GitLab #92). */
-export const doubPresaleVestingReadAbi = parseAbi([
-  "function token() view returns (address)",
-  "function totalAllocated() view returns (uint256)",
-  "function vestingDuration() view returns (uint256)",
-  "function vestingStart() view returns (uint256)",
-  "function claimsEnabled() view returns (bool)",
-  "function allocationOf(address) view returns (uint256)",
-  "function claimedOf(address) view returns (uint256)",
-  "function claimable(address) view returns (uint256)",
-  "function isBeneficiary(address) view returns (bool)",
-]);
-
-export const doubPresaleVestingWriteAbi = parseAbi(["function claim()"]);
 
 export const leprechaunReadAbi = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",

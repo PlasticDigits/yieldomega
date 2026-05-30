@@ -10,7 +10,6 @@ export function viewerShouldSuggestWarBowPodiumRefresh(args: {
   viewerBp?: bigint;
   podiumWallets: readonly `0x${string}`[];
   podiumValues: readonly bigint[];
-  saleEnded: boolean;
 }): boolean {
   void args;
   return false;
