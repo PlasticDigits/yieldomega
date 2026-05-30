@@ -22,7 +22,7 @@ test("referrals page shell renders when not behind launch countdown", async ({ p
           {
             rank: 1,
             referrer: "0x0000000000000000000000000000000000000001",
-            total_referrer_charm_wad: "1000000000000000000",
+            total_referrer_cred_wad: "1000000000000000000",
             referred_buy_count: "1",
             codes_registered_count: "1",
           },
@@ -33,7 +33,7 @@ test("referrals page shell renders when not behind launch countdown", async ({ p
         total: 1,
         total_codes_registered: "1",
         total_referred_buys: "1",
-        total_referrer_charm_wad: "1000000000000000000",
+        total_referrer_cred_wad: "1000000000000000000",
       }),
     });
   });

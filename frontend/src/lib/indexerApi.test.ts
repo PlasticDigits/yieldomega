@@ -9,7 +9,7 @@ import {
   referralAppliedApiPath,
   referralReferrerLeaderboardApiPath,
   referralRegistrationsApiPath,
-  referralWalletCharmSummaryApiPath,
+  referralWalletCredSummaryApiPath,
   arenaBuyerStatsApiPath,
   arenaPlatformUsageApiPath,
   arenaPrizeDistributionsApiPath,
@@ -89,11 +89,11 @@ describe("referralAppliedApiPath", () => {
   });
 });
 
-describe("referralWalletCharmSummaryApiPath", () => {
+describe("referralWalletCredSummaryApiPath", () => {
   it("encodes wallet", () => {
     const w = "0xdddddddddddddddddddddddddddddddddddddddd";
-    expect(referralWalletCharmSummaryApiPath(w)).toBe(
-      `/v1/referrals/wallet-charm-summary?wallet=${encodeURIComponent(w)}`,
+    expect(referralWalletCredSummaryApiPath(w)).toBe(
+      `/v1/referrals/wallet-cred-summary?wallet=${encodeURIComponent(w)}`,
     );
   });
 });

@@ -1,47 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useReadContract } from "wagmi";
-import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
+import { useAccount } from "wagmi";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { timeArenaReadAbi } from "@/lib/abis";
-import { addresses } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
-import { fetchReferralWalletCharmSummary, type ReferralWalletCharmSummary } from "@/lib/indexerApi";
+import { fetchReferralWalletCredSummary, type ReferralWalletCredSummary } from "@/lib/indexerApi";
 
-const WAD = 10n ** 18n;
-
-/** Guide CHARM (referrer) line: compact humanized amount with six significant figures. */
-const REFERRAL_GUIDE_CHARM_DISPLAY_SIGFIGS = 6;
+/** Guide CRED (referrer) line: compact humanized amount with six significant figures. */
+const REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS = 6;
 
 type Props = { className?: string };
 
 export function ReferralProgramEarningsSection({ className }: Props) {
   const { address, isConnected } = useAccount();
-  const tc = addresses.timeArena;
-  const [summary, setSummary] = useState<ReferralWalletCharmSummary | null | undefined>(undefined);
+  const [summary, setSummary] = useState<ReferralWalletCredSummary | null | undefined>(undefined);
   const [loadErr, setLoadErr] = useState<string | null>(null);
-
-  const priceQuery = useReadContract({
-    address: tc,
-    abi: timeArenaReadAbi,
-    functionName: "charmPriceWad",
-    query: {
-      enabled: Boolean(tc && isConnected && address),
-      refetchInterval: () => getRpcBackoffPollMs(15_000),
-    },
-  });
-  const pricePerCharmWad = priceQuery.data;
-
-  useRpcQueryHealthForRefetch({
-    isFetched: priceQuery.isFetched,
-    isFetching: priceQuery.isFetching,
-    isError: priceQuery.isError,
-    isSuccess: priceQuery.isSuccess,
-    error: priceQuery.error,
-  });
 
   useEffect(() => {
     if (!address) {
@@ -52,7 +26,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
     let cancelled = false;
     setSummary(undefined);
     setLoadErr(null);
-    void fetchReferralWalletCharmSummary(address).then(
+    void fetchReferralWalletCredSummary(address).then(
       (r) => {
         if (!cancelled) {
           setSummary(r);
@@ -77,38 +51,31 @@ export function ReferralProgramEarningsSection({ className }: Props) {
     if (!summary) {
       return null;
     }
-    const totalCharm =
-      BigInt(summary.referrer_charm_wad) + BigInt(summary.referee_charm_wad);
-    const p = pricePerCharmWad !== undefined ? BigInt(pricePerCharmWad) : 0n;
-    const cl8yWei = p > 0n && totalCharm > 0n ? (totalCharm * p) / WAD : 0n;
-    return {
-      totalCharm,
-      cl8yWei,
-      hasPrice: p > 0n,
-    };
-  }, [summary, pricePerCharmWad]);
+    const totalCred = BigInt(summary.referrer_cred_wad) + BigInt(summary.buyer_cred_wad);
+    return { totalCred };
+  }, [summary]);
 
-  const guideCharmHumanized = useMemo(() => {
+  const guideCredHumanized = useMemo(() => {
     if (!summary) {
       return "";
     }
-    return formatCompactFromRaw(summary.referrer_charm_wad, 18, { sigfigs: REFERRAL_GUIDE_CHARM_DISPLAY_SIGFIGS });
+    return formatCompactFromRaw(summary.referrer_cred_wad, 18, { sigfigs: REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS });
   }, [summary]);
 
   return (
     <PageSection
       className={className}
       title="Your earnings"
-      lede="Track the CHARM you earned when people buy CHARM on TimeCurve after clicking your link"
+      lede="Track Play CRED earned when people buy on TimeArena after clicking your link (5% of the 35 CRED mint per side)"
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">
           <span className="referrals-empty-state__icon" aria-hidden="true">
-            CH
+            CR
           </span>
           <div>
-            <strong>Connect to see your CHARM</strong>
-            <p>The page will load guide CHARM and referral-weight details.</p>
+            <strong>Connect to see your CRED</strong>
+            <p>The page will load guide CRED and referral buy counts from the indexer.</p>
           </div>
         </div>
       ) : loadErr ? (
@@ -119,15 +86,15 @@ export function ReferralProgramEarningsSection({ className }: Props) {
         <StatusMessage variant="muted">No summary data.</StatusMessage>
       ) : (
         <div className="data-panel data-panel--stack" data-testid="referrals-program-earnings">
-          {totals.totalCharm === 0n ? (
+          {totals.totalCred === 0n ? (
             <StatusMessage variant="muted" data-testid="referrals-earnings-zero-banner">
-              <strong>No referral CHARM yet.</strong> Totals stay at zero until qualifying referral purchases show up
+              <strong>No referral CRED yet.</strong> Totals stay at zero until qualifying referral purchases show up
               here for this wallet.
             </StatusMessage>
           ) : null}
-          <p className="data-panel__label referrals-earnings-charm-line" data-testid="referrals-earnings-guide-charm">
-            <span>YOUR CHARM EARNED:</span>{" "}
-            <strong className="tabular-nums">{guideCharmHumanized}</strong>
+          <p className="data-panel__label referrals-earnings-charm-line" data-testid="referrals-earnings-guide-cred">
+            <span>YOUR CRED EARNED (GUIDE):</span>{" "}
+            <strong className="tabular-nums">{guideCredHumanized}</strong>
           </p>
           <p
             className="data-panel__label referrals-earnings-recorded-buys-line"
@@ -136,15 +103,10 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             <span>RECORDED BUYS:</span>{" "}
             <strong className="tabular-nums">{summary.referred_buy_count}</strong>
           </p>
-          {totals.totalCharm === 0n ? (
+          {totals.totalCred === 0n ? (
             <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
               No referral activity recorded for this wallet yet — buys with your code (or a code you used) appear here
               shortly after they settle onchain.
-            </p>
-          ) : !totals.hasPrice || totals.cl8yWei === 0n ? (
-            <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-              Set `VITE_TIME_ARENA_ADDRESS` and ensure the sale view can read `charmPriceWad` to show CL8Y
-              notionals.
             </p>
           ) : null}
         </div>

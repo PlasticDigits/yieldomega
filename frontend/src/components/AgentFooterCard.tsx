@@ -66,7 +66,7 @@ GET /v1/arena/podium-pool-donations
 GET /v1/referrals/registrations
 GET /v1/referrals/applied
 GET /v1/referrals/referrer-leaderboard
-GET /v1/referrals/wallet-charm-summary`;
+GET /v1/referrals/wallet-cred-summary`;
 
 function ghBlob(path: string) {
   return `${GH_MAIN}/${path}`;
