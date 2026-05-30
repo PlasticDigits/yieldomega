@@ -2,7 +2,7 @@
 
 import type { WarbowRefreshCandidatesResponse } from "@/lib/indexerApi";
 
-/** Matches `fetchTimecurveWarbowRefreshCandidates` clamp (indexer page size). */
+/** Matches `fetchArenaWarbowRefreshCandidates` clamp (indexer page size). */
 export const WARBOW_REFRESH_CANDIDATES_PAGE_LIMIT = 500;
 
 /** Frontend safety ceiling: `page_limit × max_pages` rows before we stop paging. */

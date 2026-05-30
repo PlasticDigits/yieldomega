@@ -10,10 +10,13 @@ function cssBlock(css: string, selector: string, window = 900): string {
   return css.slice(idx, idx + window);
 }
 
-describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
+describe("Time Arena responsive layout CSS (GitLab #201)", () => {
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
   const rootLayout = fs.readFileSync(path.resolve(__dirname, "../layout/RootLayout.tsx"), "utf8");
-  const simplePage = fs.readFileSync(path.resolve(__dirname, "../pages/ArenaSimplePage.tsx"), "utf8");
+  const simplePage = fs.readFileSync(
+    path.resolve(__dirname, "../pages/arena/ArenaSimplePage.tsx"),
+    "utf8",
+  );
 
   it("keeps the Simple buy panel free of the former floating coin-stack cutout", () => {
     expect(simplePage).not.toContain("panel-cutout--coin-stack");
@@ -22,7 +25,7 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
   });
 
   it("collapses the phone-width buy-panel slider layout", () => {
-    const block = cssBlock(css, "@container timecurveSimplePage (max-width: 520px)", 1_500);
+    const block = cssBlock(css, "@container arenaSimplePage (max-width: 520px)", 1_500);
     expect(block).toContain(".arena-simple__slider-row");
     expect(block).toContain("grid-template-columns: minmax(0, 1fr)");
   });
@@ -43,14 +46,14 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     const idx = css.indexOf(anchor);
     expect(idx).toBeGreaterThanOrEqual(0);
     const block = css.slice(idx, idx + 520);
-    expect(block).toContain("@container timecurveSimplePage (min-width: 881px)");
+    expect(block).toContain("@container arenaSimplePage (min-width: 881px)");
     expect(block).toContain(".arena-simple__hub > .arena-simple__timer-panel");
     expect(block).toContain("min-height: 392px");
     expect(block).toContain("@media (min-width: 881px)");
   });
 
   it("keeps Simple timer days chip + HH:MM:SS on one row from page width 541px up", () => {
-    const cqIdx = css.indexOf("@container timecurveSimplePage (min-width: 541px)");
+    const cqIdx = css.indexOf("@container arenaSimplePage (min-width: 541px)");
     expect(cqIdx).toBeGreaterThanOrEqual(0);
     const cqBlock = css.slice(cqIdx, cqIdx + 380);
     expect(cqBlock).toContain(".arena-simple__timer-clock");
@@ -69,7 +72,7 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(base).toContain("display: flex");
     expect(base).toContain("flex-direction: column");
 
-    const cqIdx = css.indexOf("@container timecurveSimplePage (min-width: 881px)");
+    const cqIdx = css.indexOf("@container arenaSimplePage (min-width: 881px)");
     expect(cqIdx).toBeGreaterThanOrEqual(0);
     const cqBlock = css.slice(cqIdx, cqIdx + 320);
     expect(cqBlock).toContain(".arena-simple__activity-list");
@@ -94,9 +97,9 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
 
   it("keeps tablet WarBow cards from overflowing squeezed tracks", () => {
     const tabletBlock = cssBlock(css, "@media (max-width: 960px)", 700);
-    expect(tabletBlock).toContain(".page--timecurve .data-panel--spotlight");
+    expect(tabletBlock).toContain(".page--arena .data-panel--spotlight");
     expect(tabletBlock).toContain("padding-right: 1.15rem");
-    expect(tabletBlock).toContain(".page--timecurve .warbow-hero-actions__grid");
+    expect(tabletBlock).toContain(".page--arena .warbow-hero-actions__grid");
     expect(tabletBlock).toContain("grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr))");
 
     const stealCardIdx = css.indexOf(".warbow-hero-card--steal {\n");
@@ -117,7 +120,7 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(stealTargetsDesktopIdx).toBeGreaterThanOrEqual(0);
     const desktopWarbowMq = css.slice(stealTargetsDesktopIdx, stealTargetsDesktopIdx + 420);
     expect(desktopWarbowMq).toContain("repeat(3, minmax(0, 1fr))");
-    expect(desktopWarbowMq).toContain(".page--timecurve .warbow-hero-actions__grid");
+    expect(desktopWarbowMq).toContain(".page--arena .warbow-hero-actions__grid");
     expect(desktopWarbowMq).toContain("minmax(min(100%, 28rem), 1fr)");
 
     const headBlock = cssBlock(css, ".warbow-hero-card__head", 500);
@@ -142,7 +145,7 @@ describe("TimeCurve responsive layout CSS (GitLab #201)", () => {
     expect(desktopHomeBlock).toContain("grid-template-columns: repeat(3, minmax(0, 22rem))");
   });
 
-  it("tightens TimeCurve shell top padding on tablet/desktop so the subnav sits closer to the pinned header", () => {
+  it("tightens Time Arena shell top padding on tablet/desktop so the subnav sits closer to the pinned header", () => {
     const mqIdx = css.indexOf("@media (min-width: 721px) {\n  /* Pinned shell header on tablet/desktop only");
     expect(mqIdx).toBeGreaterThanOrEqual(0);
     const mqBlock = css.slice(mqIdx, mqIdx + 900);

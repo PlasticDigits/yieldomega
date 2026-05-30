@@ -460,13 +460,13 @@ label:has(input[type="radio"]:disabled) {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack));
   }
 
-  /* TimeCurve routes: pull main (BUY / ARENA / AUDIT strip) closer to the pinned header; the
+  /* Time Arena routes: pull main (BUY / ARENA / AUDIT strip) closer to the pinned header; the
      global stack leaves ~1rem slack under the dense bar — reclaim ~30px without touching mobile. */
   .app-shell.app-shell--arena {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 30px);
   }
 
-  /* Referrals hero: reclaim more slack than TimeCurve-simple so the `<h1>` sits ~100px below the viewport top. */
+  /* Referrals hero: reclaim more slack than Arena-simple so the `<h1>` sits ~100px below the viewport top. */
   .app-shell.app-shell--referrals {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 60px);
   }
@@ -1505,7 +1505,7 @@ label:has(input[type="radio"]:disabled) {
   gap: 1rem;
 }
 
-.page--timecurve {
+.page--arena {
   gap: 1.25rem;
 }
 
@@ -1778,7 +1778,7 @@ label:has(input[type="radio"]:disabled) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-/* TimeCurve: keep action and competitive surfaces stacked full width. */
+/* TimeArena: keep action and competitive surfaces stacked full width. */
 .split-layout.split-layout--hero {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
@@ -1844,47 +1844,47 @@ label:has(input[type="radio"]:disabled) {
   font-size: 0.84rem;
 }
 
-.timecurve-action-highlights {
+.arena-action-highlights {
   margin-bottom: 1rem;
 }
 
-.timecurve-action-highlights li {
+.arena-action-highlights li {
   font-size: 0.92rem;
 }
 
-.timecurve-stats-grid {
+.arena-stats-grid {
   margin-top: 0.4rem;
 }
 
-.timecurve-panel {
+.arena-panel {
   position: relative;
 }
 
-.timecurve-panel--summary {
+.arena-panel--summary {
   overflow: visible;
   background:
     radial-gradient(circle at top right, rgba(255, 229, 102, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 255, 248, 0.9));
 }
 
-.timecurve-panel--summary > :not(.panel-cutout) {
+.arena-panel--summary > :not(.panel-cutout) {
   position: relative;
   z-index: 1;
 }
 
-.timecurve-panel--action {
+.arena-panel--action {
   background:
     radial-gradient(circle at top right, rgba(58, 227, 157, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(241, 255, 247, 0.9));
 }
 
-.timecurve-panel--status {
+.arena-panel--status {
   background:
     radial-gradient(circle at top right, rgba(255, 209, 102, 0.2), transparent 30%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(255, 249, 240, 0.9));
 }
 
-.timecurve-panel--feed {
+.arena-panel--feed {
   overflow: visible;
   background:
     radial-gradient(circle at top right, rgba(255, 209, 102, 0.22), transparent 24%),
@@ -1892,7 +1892,7 @@ label:has(input[type="radio"]:disabled) {
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 255, 250, 0.94));
 }
 
-.timecurve-panel--feed > :not(.panel-cutout) {
+.arena-panel--feed > :not(.panel-cutout) {
   position: relative;
   z-index: 1;
 }
@@ -2037,7 +2037,7 @@ label:has(input[type="radio"]:disabled) {
   box-shadow: 3px 3px 0 var(--line);
 }
 
-.timecurve-live-charts {
+.arena-live-charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
@@ -2051,7 +2051,7 @@ label:has(input[type="radio"]:disabled) {
   box-shadow: 4px 4px 0 var(--line);
 }
 
-.timecurve-live-charts__intro {
+.arena-live-charts__intro {
   grid-column: 1 / -1;
   color: rgba(6, 61, 36, 0.8);
   font-size: 0.9rem;
@@ -2059,11 +2059,11 @@ label:has(input[type="radio"]:disabled) {
   max-width: 54rem;
 }
 
-.timecurve-live-charts__intro strong {
+.arena-live-charts__intro strong {
   color: var(--text);
 }
 
-.timecurve-live-charts__panel {
+.arena-live-charts__panel {
   display: grid;
   gap: 0.5rem;
   padding: 0.95rem 1rem 1rem;
@@ -2072,13 +2072,13 @@ label:has(input[type="radio"]:disabled) {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.timecurve-live-charts__title {
+.arena-live-charts__title {
   margin: 0;
   font-size: 1.02rem;
   letter-spacing: 0.02em;
 }
 
-.timecurve-live-charts__live-row {
+.arena-live-charts__live-row {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -2088,22 +2088,22 @@ label:has(input[type="radio"]:disabled) {
   font-variant-numeric: tabular-nums;
 }
 
-.timecurve-live-charts__muted {
+.arena-live-charts__muted {
   color: rgba(6, 61, 36, 0.68);
   font-size: 0.8rem;
 }
 
-.timecurve-live-charts__bounds-note {
+.arena-live-charts__bounds-note {
   margin: 0;
   line-height: 1.35;
 }
 
-.timecurve-live-charts__plot {
+.arena-live-charts__plot {
   width: 100%;
   min-height: 220px;
 }
 
-@keyframes timecurve-spot-pulse {
+@keyframes arena-spot-pulse {
   0%,
   100% {
     opacity: 1;
@@ -2113,18 +2113,18 @@ label:has(input[type="radio"]:disabled) {
   }
 }
 
-.timecurve-live-charts__spot-dot {
+.arena-live-charts__spot-dot {
   animation: timecurve-spot-pulse 2.75s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-live-charts__spot-dot {
+  .arena-live-charts__spot-dot {
     animation: none;
   }
 }
 
-.timecurve-live-charts .recharts-cartesian-grid-horizontal line,
-.timecurve-live-charts .recharts-cartesian-grid-vertical line {
+.arena-live-charts .recharts-cartesian-grid-horizontal line,
+.arena-live-charts .recharts-cartesian-grid-vertical line {
   stroke: rgba(6, 61, 36, 0.2);
 }
 
@@ -2386,12 +2386,12 @@ label:has(input[type="radio"]:disabled) {
 
 /* Arena hero: `.page-hero__actions` is flex; a lone `.chain-write-gate` shrink-wraps so WarBow
  * card grids read left-heavy inside the arcade plate — stretch children to the banner width. */
-.page--timecurve .arcade-banner > .page-hero__actions > * {
+.page--arena .arcade-banner > .page-hero__actions > * {
   flex: 1 1 100%;
   min-width: 0;
 }
 
-.page--timecurve .warbow-hero-actions {
+.page--arena .warbow-hero-actions {
   width: 100%;
 }
 
@@ -4219,7 +4219,7 @@ label:has(input[type="radio"]:disabled) {
   cursor: url("/art/cursors/pointer.png") 10 2, crosshair;
 }
 
-.timecurve-action-row {
+.arena-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
@@ -4440,7 +4440,7 @@ label:has(input[type="radio"]:disabled) {
   }
 
   /* Guard + Revenge: ~2× the base 14rem min track so desktop cards match requested width (steal still spans full row). */
-  .page--timecurve .warbow-hero-actions__grid {
+  .page--arena .warbow-hero-actions__grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
   }
 }
@@ -5128,12 +5128,12 @@ code {
     text-align: left;
   }
 
-  .timecurve-action-row {
+  .arena-action-row {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .timecurve-action-row .btn-secondary {
+  .arena-action-row .btn-secondary {
     width: 100%;
   }
 
@@ -5166,11 +5166,11 @@ code {
 }
 
 @media (max-width: 960px) {
-  .page--timecurve .data-panel--spotlight {
+  .page--arena .data-panel--spotlight {
     padding-right: 1.15rem;
   }
 
-  .page--timecurve .warbow-hero-actions__grid {
+  .page--arena .warbow-hero-actions__grid {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   }
 }
@@ -5299,16 +5299,16 @@ code {
 }
 
 /* Arena buy panel: page-level slot (outside timer-hero) */
-.timecurve-arena-buy-page {
+.arena-buy-page {
   min-width: 0;
   margin: 0 0 1.25rem;
 }
 
-.timecurve-arena-buy-page .timecurve-panel--action {
+.arena-buy-page .arena-panel--action {
   margin-bottom: 0;
 }
 
-.timecurve-arena-buy-panel.data-panel {
+.arena-buy-panel.data-panel {
   isolation: isolate;
   overflow: hidden;
   padding-right: clamp(1.1rem, 4vw, 2rem);
@@ -5325,7 +5325,7 @@ code {
     inset 0 0 24px rgba(212, 160, 18, 0.08);
 }
 
-.timecurve-arena-buy-panel.data-panel::before {
+.arena-buy-panel.data-panel::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -5339,16 +5339,16 @@ code {
   pointer-events: none;
 }
 
-.timecurve-arena-buy-panel.data-panel::after {
+.arena-buy-panel.data-panel::after {
   display: none;
 }
 
-.timecurve-arena-buy-panel > :not(.panel-cutout) {
+.arena-buy-panel > :not(.panel-cutout) {
   position: relative;
   z-index: 2;
 }
 
-.timecurve-arena-buy-panel .section-heading h2 {
+.arena-buy-panel .section-heading h2 {
   color: var(--arcade-green-900);
   text-shadow: 2px 3px 0 rgba(255, 255, 255, 0.62);
 }
@@ -5373,7 +5373,7 @@ code {
     saturate(1.06);
 }
 
-.timecurve-arena-buy-panel__conversion {
+.arena-buy-panel__conversion {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
@@ -5393,13 +5393,13 @@ code {
   text-transform: uppercase;
 }
 
-.timecurve-arena-buy-panel__conversion-token {
+.arena-buy-panel__conversion-token {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
 }
 
-.timecurve-arena-buy-panel__conversion-token img {
+.arena-buy-panel__conversion-token img {
   width: 1.55rem;
   height: 1.55rem;
   object-fit: contain;
@@ -5407,14 +5407,14 @@ code {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.5));
 }
 
-.timecurve-arena-buy-panel__conversion-arrow {
+.arena-buy-panel__conversion-arrow {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.timecurve-arena-buy-panel__conversion-arrow img {
+.arena-buy-panel__conversion-arrow img {
   display: block;
   width: 1.25rem;
   height: 1.25rem;
@@ -5422,11 +5422,11 @@ code {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
 }
 
-.timecurve-arena-buy-page .arena-simple__rate-value--hero {
+.arena-buy-page .arena-simple__rate-value--hero {
   font-size: clamp(2.05rem, 5vw, 3.25rem);
 }
 
-.timecurve-arena-buy-panel__checkout {
+.arena-buy-panel__checkout {
   display: grid;
   gap: 0.75rem;
   margin: 0.9rem 0 1rem;
@@ -5439,7 +5439,7 @@ code {
   box-shadow: 4px 4px 0 var(--line);
 }
 
-.timecurve-arena-buy-panel__checkout-head {
+.arena-buy-panel__checkout-head {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -5447,15 +5447,15 @@ code {
   border-bottom: 2px dashed rgba(11, 31, 20, 0.22);
 }
 
-.timecurve-arena-buy-panel__checkout-head img {
+.arena-buy-panel__checkout-head img {
   width: 1.65rem;
   height: 1.65rem;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-.timecurve-arena-buy-panel__checkout-head span,
-.timecurve-buy-projected-effects__title {
+.arena-buy-panel__checkout-head span,
+.arena-buy-projected-effects__title {
   display: block;
   margin: 0;
   font-size: 0.72rem;
@@ -5465,7 +5465,7 @@ code {
   color: rgba(11, 31, 20, 0.68);
 }
 
-.timecurve-arena-buy-panel__checkout-head strong {
+.arena-buy-panel__checkout-head strong {
   display: block;
   margin-top: 0.1rem;
   font-size: 0.98rem;
@@ -5473,7 +5473,7 @@ code {
   color: var(--arcade-green-900);
 }
 
-/* TimeCurve buy hub: shared spend slider (Simple + Arena checkout). */
+/* Time Arena buy hub: shared spend slider (Simple + Arena checkout). */
 input[type="range"].form-input.arena-buy-spend-range {
   appearance: none;
   width: 100%;
@@ -5545,7 +5545,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   image-rendering: auto;
 }
 
-.timecurve-arena-buy-panel__future-option {
+.arena-buy-panel__future-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -5558,7 +5558,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   font-size: 0.78rem;
 }
 
-.timecurve-arena-buy-panel__future-option label {
+.arena-buy-panel__future-option label {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -5566,26 +5566,26 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   color: var(--arcade-green-900);
 }
 
-.timecurve-arena-buy-panel__future-option span {
+.arena-buy-panel__future-option span {
   line-height: 1.25;
   text-align: right;
 }
 
-.timecurve-arena-buy-panel__advanced {
+.arena-buy-panel__advanced {
   border: 2px dashed rgba(11, 31, 20, 0.2);
   border-radius: 0.75rem;
   padding: 0.4rem 0.6rem;
   background: rgba(255, 255, 255, 0.55);
 }
 
-.timecurve-arena-buy-panel__advanced summary {
+.arena-buy-panel__advanced summary {
   cursor: url("/art/cursors/default.png") 4 4, pointer;
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--arcade-green-900);
 }
 
-.timecurve-buy-projected-effects {
+.arena-buy-projected-effects {
   display: grid;
   gap: 0.45rem;
   padding: 0.62rem 0.68rem;
@@ -5594,20 +5594,20 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.62);
 }
 
-.timecurve-buy-projected-effects__head {
+.arena-buy-projected-effects__head {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 }
 
-.timecurve-buy-projected-effects__head img {
+.arena-buy-projected-effects__head img {
   width: 1.1rem;
   height: 1.1rem;
   image-rendering: pixelated;
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-.timecurve-buy-projected-effects ul {
+.arena-buy-projected-effects ul {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -5616,7 +5616,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   padding: 0;
 }
 
-.timecurve-buy-projected-effects li {
+.arena-buy-projected-effects li {
   margin: 0;
   padding: 0.26rem 0.48rem;
   border: 2px solid rgba(11, 31, 20, 0.18);
@@ -5637,17 +5637,17 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
     display: none;
   }
 
-  .timecurve-arena-buy-panel__conversion {
+  .arena-buy-panel__conversion {
     width: 100%;
     justify-content: center;
   }
 
-  .timecurve-arena-buy-panel__future-option {
+  .arena-buy-panel__future-option {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .timecurve-arena-buy-panel__future-option span {
+  .arena-buy-panel__future-option span {
     text-align: left;
   }
 }
@@ -5830,7 +5830,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-decoration: underline;
 }
 
-/* Blockie + compact label — TimeCurve lists, referrals, FeeRouter sinks, etc. */
+/* Blockie + compact label — Time Arena lists, referrals, FeeRouter sinks, etc. */
 .address-inline {
   display: inline-flex;
   align-items: center;
@@ -6090,7 +6090,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 @media (max-width: 900px) {
   .split-layout.split-layout--hero,
-  .timecurve-live-charts {
+  .arena-live-charts {
     grid-template-columns: 1fr;
   }
 
@@ -6123,14 +6123,14 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.35;
 }
 
-.timecurve-cl8y-buy-controls {
+.arena-cl8y-buy-controls {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
 
-.timecurve-cl8y-buy-controls__balance {
+.arena-cl8y-buy-controls__balance {
   font-size: 0.9rem;
 }
 
@@ -6396,7 +6396,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* TimeCurve buy modals (list + detail) */
+/* Time Arena buy modals (list + detail) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -7129,7 +7129,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* =============================================================
- * TimeCurve · Simple / Subnav / Protocol surfaces (issue #40)
+ * Time Arena · Simple / Subnav / Protocol surfaces (issue #40)
  * Reuses palette tokens from the rest of the app (no new vars).
  * ============================================================= */
 
@@ -7399,7 +7399,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* =============================================================
- * TimeCurve Simple — sale hub spotlight panels (Iteration 1)
+ * Time Arena Simple — sale hub spotlight panels (Iteration 1)
  *
  * The two top panels (timer + buy) used to share the generic cream
  * `.data-panel` chrome with a dark `timer-hero` rectangle inset inside
@@ -7420,7 +7420,7 @@ a.podium-address-explorer:hover .address-inline__label {
  *   - The mascot cutout (`leprechaun-bag-bunny-pair.png`) anchors the
  *     timer panel to the Yieldomega world.
  *
- * Sibling spec: see `docs/frontend/timecurve-views.md` and the standalone
+ * Sibling spec: see `docs/frontend/arena-views.md` and the standalone
  * `.launch-countdown` hero (same digit rhythm, urgency colours, days chip,
  * sparks). The two timers must remain visual siblings.
  * ============================================================= */
@@ -7615,8 +7615,8 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Transparent TimeCurve stopwatch icon in front of the "TIME LEFT" H2.
-   Reuses the generated header icon so the timer panel reads as TimeCurve
+/* Transparent Time Arena stopwatch icon in front of the "TIME LEFT" H2.
+   Reuses the generated header icon so the timer panel reads as Time Arena
    instead of a generic coin, while keeping the PageSection title DOM intact. */
 .arena-simple__timer-panel .section-heading h2 {
   display: inline-flex;
@@ -7897,14 +7897,14 @@ a.podium-address-explorer:hover .address-inline__label {
    browsers that don't support container queries. */
 .arena-simple-page {
   container-type: inline-size;
-  container-name: timecurveSimplePage;
+  container-name: arenaSimplePage;
 }
 
 /* Wider Simple page: keep the days chip + `HH:MM:SS` on one flex line. With
    `flex-wrap: wrap`, the pair often stacked in the two-column hub because
    each grid track is ~half the page while digit `font-size` still tracks
    viewport `vw`. */
-@container timecurveSimplePage (min-width: 541px) {
+@container arenaSimplePage (min-width: 541px) {
   .arena-simple__timer-clock {
     flex-wrap: nowrap;
     align-items: center;
@@ -7933,7 +7933,7 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: stretch;
 }
 
-@container timecurveSimplePage (max-width: 880px) {
+@container arenaSimplePage (max-width: 880px) {
   .arena-simple__hub {
     grid-template-columns: 1fr;
   }
@@ -7945,7 +7945,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-@container timecurveSimplePage (max-width: 520px) {
+@container arenaSimplePage (max-width: 520px) {
   .arena-simple__slider-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -8709,7 +8709,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Live buys: two columns on desktop (row-major: 1+2, then 3+4). Matches the
    hub’s 880px breakpoint family — tablet/phone stay a single column. */
-@container timecurveSimplePage (min-width: 881px) {
+@container arenaSimplePage (min-width: 881px) {
   .arena-simple__activity-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8725,7 +8725,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Desktop hub: give the arcade timer stage a stable vertical footprint so the
    mascot + digits + extension chip layout does not feel vertically cramped. */
-@container timecurveSimplePage (min-width: 881px) {
+@container arenaSimplePage (min-width: 881px) {
   .arena-simple__hub > .arena-simple__timer-panel {
     min-height: 392px;
   }
@@ -9150,7 +9150,7 @@ a.podium-address-explorer:hover .address-inline__label {
    read as two clearly different actions: "watch the clock" on the left,
    "feed the machine" on the right. Bigger gold border + gold drop shadow
    echo the WarBow arena's gold-bordered chrome so the family stays
-   consistent across TimeCurve surfaces. */
+   consistent across Time Arena surfaces. */
 .arena-simple__buy-panel.data-panel {
   position: relative;
   isolation: isolate;
@@ -9525,17 +9525,17 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--ink, #111);
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.arena-buy-spend-range,
+.arena-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.arena-buy-spend-range,
 .arena-simple__slider-row--pay-cl8y .arena-buy-spend-range {
   accent-color: var(--arcade-green-600, #15803d);
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.arena-buy-spend-range,
+.arena-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.arena-buy-spend-range,
 .arena-simple__slider-row--pay-eth .arena-buy-spend-range {
   accent-color: #627eea;
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.arena-buy-spend-range,
+.arena-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.arena-buy-spend-range,
 .arena-simple__slider-row--pay-usdm .arena-buy-spend-range {
   accent-color: #0d9488;
 }
@@ -10041,7 +10041,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: coin-wobble 5s ease-in-out infinite;
 }
 
-/* Mascot cutout positions for TimeCurve surfaces.
+/* Mascot cutout positions for Time Arena surfaces.
    - `--pair-mascot` anchors `leprechaun-bag-bunny-pair.png` to the bottom
      of the timer panel as the calm "fair launch" sidekick (the role the
      art README assigns to that asset).
@@ -10077,7 +10077,7 @@ a.podium-address-explorer:hover .address-inline__label {
    scene `::before` and the gold "SALE LIVE" pill. We also fall back to
    a viewport media query so older user agents that don't support
    container queries still get the safe layout. */
-@container timecurveSimplePage (max-width: 880px) {
+@container arenaSimplePage (max-width: 880px) {
   .arena-simple__timer-panel .panel-cutout--pair-mascot {
     display: none;
   }
@@ -10162,7 +10162,7 @@ a.podium-address-explorer:hover .address-inline__label {
   object-fit: contain;
 }
 
-@keyframes timecurve-stake-gradient-drift {
+@keyframes arena-stake-gradient-drift {
   0%,
   100% {
     background-position: 0% 50%;
@@ -10173,7 +10173,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-@keyframes timecurve-stake-particle-float {
+@keyframes arena-stake-particle-float {
   0%,
   100% {
     opacity: 0.68;
@@ -10565,7 +10565,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Arena BUY CHARM — GitLab #194: wrong-network must read as disabled (arcade
    lever + gold panel chrome stay high-contrast under the #95 barrier overlay). */
-.timecurve-arena-buy-page .chain-write-gate__overlay {
+.arena-buy-page .chain-write-gate__overlay {
   z-index: 40;
 }
 

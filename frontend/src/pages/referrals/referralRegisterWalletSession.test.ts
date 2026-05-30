@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// [`ReferralRegisterSection`](./ReferralRegisterSection.tsx) latches the same guard as TimeCurve buys
+// [`ReferralRegisterSection`](./ReferralRegisterSection.tsx) latches the same guard as Time Arena buys
 // ([GitLab #155](https://gitlab.com/PlasticDigits/yieldomega/-/issues/155) ↔ **`INV-REFERRAL-SESSION-155`**).
 
 import type { Config } from "wagmi";

@@ -21,7 +21,7 @@ import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
-import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
+import { fetchArenaBuysAsBuyItems, type BuyItem } from "@/lib/indexerApi";
 import {
   formatBuyCtaCharmAmountLabel,
   formatBuyHubDerivedCompact,
@@ -90,7 +90,7 @@ function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
   };
 }
 
-function TimecurveSimpleRatePayTokenPicker({
+function ArenaSimpleRatePayTokenPicker({
   payWith,
   setPayWith,
   options,
@@ -244,7 +244,7 @@ function TimecurveSimpleRatePayTokenPicker({
   );
 }
 
-function TimecurveSimpleAmountPayTokenSelect({
+function ArenaSimpleAmountPayTokenSelect({
   payWith,
   setPayWith,
   disabled,
@@ -400,7 +400,7 @@ function TimecurveSimpleAmountPayTokenSelect({
  * Contract: this page never owns game state. It uses
  * {@link useArenaSaleSession}, which delegates writes to the same
  * `TimeCurve` ABI used by the Arena view, so the contract remains the single
- * source of truth (see `docs/frontend/timecurve-views.md`).
+ * source of truth (see `docs/frontend/arena-views.md`).
  */
 export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: boolean }) {
   const tc = addresses.timeArena;
@@ -421,7 +421,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
     session.phase === "saleStartPending" ? "Arena Opens In" : "Time left";
 
   const heroSecondsRemaining =
-    session.phase === "saleActive" || session.phase === "saleExpiredAwaitingEnd"
+    session.phase === "saleActive"
       ? session.saleCountdownSec
       : session.preStartCountdownSec;
 
@@ -562,7 +562,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
 
     const tick = async () => {
       try {
-        const buys = await fetchTimecurveBuys(SIMPLE_RECENT_BUYS_PAGE_LIMIT, 0);
+        const buys = await fetchArenaBuysAsBuyItems(SIMPLE_RECENT_BUYS_PAGE_LIMIT, 0);
         if (cancelled) return;
         const ok = buys != null;
         reportIndexerFetchAttempt(ok);
@@ -709,7 +709,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
           }}
           disabled={session.phase !== "saleActive" || !session.walletConnected}
         />
-        <TimecurveSimpleAmountPayTokenSelect
+        <ArenaSimpleAmountPayTokenSelect
           payWith={session.payWith}
           setPayWith={session.setPayWith}
           disabled={session.phase !== "saleActive" || !session.walletConnected}
@@ -936,7 +936,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
     nonCl8yBlocked ||
     insufficientCredForBuy ||
     (session.payWith === "cred" && session.credCheckoutBoundsGate.kind === "unavailable") ||
-    (session.arenaPaused ?? session.buyFeeRoutingEnabled === false);
+    session.arenaPaused === true;
 
   const buyButtonMotion =
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
@@ -1073,7 +1073,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
             {rateNowDisplay.text}
           </strong>
         </span>
-        <TimecurveSimpleRatePayTokenPicker
+        <ArenaSimpleRatePayTokenPicker
           payWith={session.payWith}
           setPayWith={session.setPayWith}
           options={payTokenOptions}
@@ -1084,15 +1084,9 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
   );
 
   const timerHeroFoot =
-    session.phase === "saleEnded"
-      ? session.charmRedemptionEnabled === false
-        ? "Redemptions await onchain go-live (operator / governance signoff)."
-        : "Holders of CHARM can claim their DOUB share."
-      : session.phase === "saleStartPending"
-        ? "Stay on this page — it switches to Live automatically."
-        : session.phase === "saleExpiredAwaitingEnd"
-          ? "Anyone can call endSale() now — see the Arena view."
-          : undefined;
+    session.phase === "saleStartPending"
+      ? "Stay on this page — it switches to Live automatically."
+      : undefined;
 
   return (
     <div className="page arena-simple-page">
@@ -1150,23 +1144,13 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
         </PageSection>
 
         <PageSection
-          title={
-            session.phase === "saleEnded"
-              ? "Redeem CHARM"
-              : session.phase === "saleActive"
-                ? undefined
-                : "Buy CHARM"
-          }
+          title={session.phase === "saleActive" ? undefined : "Buy CHARM"}
           spotlight
           className="arena-simple__buy-panel"
           lede={
-            session.phase === "saleEnded"
-              ? session.charmRedemptionEnabled === false
-                ? "The sale is over. DOUB allocation redemptions are gated onchain until the owner enables them (issue #55)."
-                : "The sale is over. Redeem CHARM to mint your DOUB share onchain."
-              : session.phase === "saleActive"
-                ? undefined
-                : "The sale will open here when the timer hits zero."
+            session.phase === "saleActive"
+              ? undefined
+              : "The arena will open here when the timer hits zero."
           }
         >
           <ChainMismatchWriteBarrier testId="arena-simple-chain-write-gate">
@@ -1234,11 +1218,9 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
                   />
                 )}
               </p>
-              {(session.arenaPaused ?? session.buyFeeRoutingEnabled === false) && (
+              {session.arenaPaused === true && (
                 <StatusMessage variant="muted">
-                  {session.arenaPaused
-                    ? "Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause."
-                    : "Sale interactions are paused onchain (buys + WarBow CL8Y spend) until operators re-enable."}
+                  Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause.
                 </StatusMessage>
               )}
               <motion.button
@@ -1344,7 +1326,6 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
                   ledgerNowSec={session.chainNowSec}
                   flagSilenceEndSec={session.warbowFlagSilenceEndSec}
                   saleActive={session.phase === "saleActive"}
-                  buyFeeRoutingEnabled={session.buyFeeRoutingEnabled}
                   arenaPaused={session.arenaPaused}
                   isConnected={session.walletConnected}
                   isWriting={session.isWriting || session.buySubmitBusy}
@@ -1357,39 +1338,6 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
             </>
           )}
 
-          {session.phase === "saleEnded" && session.walletConnected && (
-            <>
-              {session.charmRedemptionEnabled === false && (
-                <StatusMessage variant="muted">
-                  The contract has not enabled redeemCharms yet — this is expected before final go-live (issue #55).
-                </StatusMessage>
-              )}
-              <motion.button
-                type="button"
-                className="btn-primary arena-simple__cta"
-                disabled={
-                  session.isWriting ||
-                  chainMismatch ||
-                  session.charmsRedeemed === true ||
-                  session.charmWeightWad === undefined ||
-                  session.charmWeightWad === 0n ||
-                  session.charmRedemptionEnabled === false
-                }
-                onClick={() => void session.submitRedeem()}
-                {...buyButtonMotion}
-              >
-                {session.charmsRedeemed
-                  ? "Already redeemed"
-                  : session.isWriting
-                    ? "Submitting…"
-                    : "Redeem CHARM"}
-              </motion.button>
-              {session.buyError && (
-                <StatusMessage variant="error">{session.buyError}</StatusMessage>
-              )}
-            </>
-          )}
-
           {session.phase === "saleStartPending" && (
             <StatusMessage variant="muted">
               The sale has not opened yet. The Buy CHARM action will unlock automatically when the
@@ -1397,12 +1345,6 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
             </StatusMessage>
           )}
 
-          {session.phase === "saleExpiredAwaitingEnd" && (
-            <StatusMessage variant="muted">
-              The timer expired but settlement has not run yet. Anyone can trigger{" "}
-              <code>endSale()</code>; the Arena view exposes a button.
-            </StatusMessage>
-          )}
           </ChainMismatchWriteBarrier>
         </PageSection>
       </div>

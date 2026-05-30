@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { indexerBaseUrl } from "@/lib/addresses";
-import { fetchTimecurveBuys, type BuyItem } from "@/lib/indexerApi";
+import { fetchArenaBuysAsBuyItems, type BuyItem } from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
 
@@ -24,7 +24,7 @@ export function useArenaProtocolLiveBuys() {
 
     const loadBuys = async () => {
       const id = ++requestSeq;
-      const data = await fetchTimecurveBuys(25, 0);
+      const data = await fetchArenaBuysAsBuyItems(25, 0);
       if (cancelled || id !== requestSeq) {
         return;
       }
@@ -77,7 +77,7 @@ export function useArenaProtocolLiveBuys() {
       return;
     }
     setLoadingMoreBuys(true);
-    const data = await fetchTimecurveBuys(25, buysNextOffset);
+    const data = await fetchArenaBuysAsBuyItems(25, buysNextOffset);
     setLoadingMoreBuys(false);
     if (!data) {
       return;

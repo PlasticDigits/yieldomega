@@ -32,7 +32,7 @@ export function NotFoundPage() {
         coinSrc="/art/hat-coin-stack.png"
         lede={
           <>
-            This URL is not part of the YieldOmega app. Check the link, use a TimeCurve referral path like{" "}
+            This URL is not part of the YieldOmega app. Check the link, use a Time Arena referral path like{" "}
             <code>/arena/yourcode</code>, or head back to a live surface below.
           </>
         }
@@ -44,7 +44,7 @@ export function NotFoundPage() {
         }}
       >
         <Link to="/arena" className="btn-primary">
-          Open TimeCurve
+          Open Time Arena
         </Link>
         <Link to={homePath} className="btn-secondary">
           {homePath === "/" ? "Go home" : "Go to hub"}

@@ -26,7 +26,7 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 |-----------------------------------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | [`bunny-cutout.png`](./cutouts/bunny-cutout.png)    | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts)                  | Tertiary cutout for the Collection placeholder.                                        |
 | [`cutout-bunnyleprechaungirl-full.png`](./cutouts/cutout-bunnyleprechaungirl-full.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Primary heroine cutout for the home / launch countdown art column. |
-| [`cutout-bunnyleprechaungirl-head.png`](./cutouts/cutout-bunnyleprechaungirl-head.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Compact head bust used as `peek` decoration on Home and TimeCurve Arena. |
+| [`cutout-bunnyleprechaungirl-head.png`](./cutouts/cutout-bunnyleprechaungirl-head.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Compact head bust used as `peek` decoration on Home and Time Arena. |
 | [`cutout-bunnyleprechaungirl-playful.png`](./cutouts/cutout-bunnyleprechaungirl-playful.png) | _unused (reserved for upcoming Collection)_                          | Style reference for the next Collection iteration.                                     |
 | [`greenhat.png`](./cutouts/greenhat.png)            | _legacy_                                                                | Replaced in product UI by `hat-coin-*.png` art at the repo root.                       |
 | [`loading-mascot-circle.png`](./cutouts/loading-mascot-circle.png) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx), [`ArenaSections.tsx`](../../src/pages/arena/ArenaSections.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Header mascot + tertiary cutout in placeholders / TimeCurve. |
@@ -82,7 +82,7 @@ On-chain ticker art for **CHARM**, **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a
 | File | Used by (via `tokenMedia.ts`) |
 |------|-------------------------------|
 | [`tokens/charm.png`](../tokens/charm.png) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) (rate glyph, buy CTA), [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) |
-| [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`ArenaProtocolPage.tsx`](../../src/pages/ArenaProtocolPage.tsx) (`coinSrc`), TimeCurve Simple **Pay with**, Arena buy panel (28px and 24px) |
+| [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`ArenaProtocolPage.tsx`](../../src/pages/ArenaProtocolPage.tsx) (`coinSrc`), Time Arena Simple **Pay with**, Arena buy panel (28px and 24px) |
 | [`tokens/doub.png`](../tokens/doub.png) | [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) (`PageHero` `coinSrc`) |
 | [`tokens/eth.svg`](../tokens/eth.svg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) **Pay with** |
 | [`tokens/usdm.svg`](../tokens/usdm.svg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) **Pay with** |
@@ -113,7 +113,7 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 | `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (Protocol).                                    |
 | `chart-accessibility.png`         | _staged_ for charts in retired v1 player reserve                                    | Color-blind safe pair swatch reference.                          |
 | `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`TimeCurveBranchPage.tsx`](../../src/pages/TimeCurveBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). TimeCurve Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. |
+| `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). Time Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. |
 | `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) | Fee sink pictograms beside canonical onchain sink labels ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `ui-conversion-arrow.png` | [`ConversionArrow`](../../src/components/ui/ConversionArrow.tsx) (`TimeCurveArenaView`, `FeeTransparency`, `CharmRedemptionCurve`) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
 | `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ (inline WarBow rows) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
@@ -164,7 +164,7 @@ Concept stills for motion / VFX. These are illustration references, **not** runt
 |-------------------------------|------------------------------------------------------------------------|
 | `route-transition.jpg`        | `RootLayout.tsx` page transition styling.                              |
 | `countdown-tick.png`          | `LaunchCountdownPage.tsx` tick visual reference.                       |
-| `victory-podium.jpg`          | TimeCurve Arena podium "post-end" celebration block.                   |
+| `victory-podium.jpg`          | Time Arena podium "post-end" celebration block.                   |
 
 ### `podium_prizes/`
 
@@ -172,10 +172,10 @@ Legacy single-illustration prize art kept for the Arena view. Not in the issue #
 
 | Slug                 | Used by                                                  |
 |----------------------|----------------------------------------------------------|
-| `lastbuy.png`        | TimeCurve Arena "Last buy" podium card. |
-| `WARBOW_LADDER.png`  | TimeCurve Arena WarBow ladder block. |
-| `DEFENDEDSTREAK.png` | TimeCurve Arena "Defended streak" podium card. |
-| `TIMEBOOSTER.png`    | TimeCurve Arena "Time booster" podium card. |
+| `lastbuy.png`        | Time Arena "Last buy" podium card. |
+| `WARBOW_LADDER.png`  | Time Arena WarBow ladder block. |
+| `DEFENDEDSTREAK.png` | Time Arena "Defended streak" podium card. |
+| `TIMEBOOSTER.png`    | Time Arena "Time booster" podium card. |
 | `podium prizes.png`  | Composite legacy art (kept for reference).               |
 
 ### `pending_manual_review/`

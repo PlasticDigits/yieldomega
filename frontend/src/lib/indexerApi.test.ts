@@ -4,56 +4,56 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchIndexerStatus,
   fetchArenaBuys,
-  fetchTimecurveChainTimer,
-  fetchTimecurveWarbowLeaderboardAll,
+  fetchLegacyArenaChainTimer,
+  fetchArenaWarbowLeaderboardAll,
   referralAppliedApiPath,
   referralReferrerLeaderboardApiPath,
   referralRegistrationsApiPath,
   referralWalletCharmSummaryApiPath,
-  timecurveBuyerStatsApiPath,
-  timecurvePlatformUsageApiPath,
-  timecurvePrizeDistributionsApiPath,
-  timecurvePrizePayoutsApiPath,
+  arenaBuyerStatsApiPath,
+  arenaPlatformUsageApiPath,
+  arenaPrizeDistributionsApiPath,
+  arenaPrizePayoutsApiPath,
 } from "./indexerApi";
 import {
   getIndexerBackoffPollMs,
   resetIndexerConnectivityForTests,
 } from "./indexerConnectivity";
 
-describe("timecurveBuyerStatsApiPath", () => {
+describe("arenaBuyerStatsApiPath", () => {
   it("maps to arena wallet stats path", () => {
     const buyer = "0xdddddddddddddddddddddddddddddddddddddddd";
-    expect(timecurveBuyerStatsApiPath(buyer)).toBe(
+    expect(arenaBuyerStatsApiPath(buyer)).toBe(
       `/v1/arena/wallet/${buyer.toLowerCase()}/stats`,
     );
   });
 });
 
-describe("timecurvePlatformUsageApiPath", () => {
+describe("arenaPlatformUsageApiPath", () => {
   it("points at arena timers after platform-usage retirement (#266)", () => {
-    expect(timecurvePlatformUsageApiPath(20, 0)).toBe("/v1/arena/timers");
+    expect(arenaPlatformUsageApiPath(20, 0)).toBe("/v1/arena/timers");
   });
 });
 
-describe("timecurvePrizeDistributionsApiPath", () => {
+describe("arenaPrizeDistributionsApiPath", () => {
   it("includes limit and default offset", () => {
-    expect(timecurvePrizeDistributionsApiPath(20)).toBe("/v1/arena/prize-distributions?limit=20&offset=0");
+    expect(arenaPrizeDistributionsApiPath(20)).toBe("/v1/arena/prize-distributions?limit=20&offset=0");
   });
 
   it("includes custom offset", () => {
-    expect(timecurvePrizeDistributionsApiPath(10, 30)).toBe(
+    expect(arenaPrizeDistributionsApiPath(10, 30)).toBe(
       "/v1/arena/prize-distributions?limit=10&offset=30",
     );
   });
 });
 
-describe("timecurvePrizePayoutsApiPath", () => {
+describe("arenaPrizePayoutsApiPath", () => {
   it("includes limit and default offset", () => {
-    expect(timecurvePrizePayoutsApiPath(30)).toBe("/v1/arena/prize-payouts?limit=30&offset=0");
+    expect(arenaPrizePayoutsApiPath(30)).toBe("/v1/arena/prize-payouts?limit=30&offset=0");
   });
 
   it("includes custom offset", () => {
-    expect(timecurvePrizePayoutsApiPath(25, 5)).toBe("/v1/arena/prize-payouts?limit=25&offset=5");
+    expect(arenaPrizePayoutsApiPath(25, 5)).toBe("/v1/arena/prize-payouts?limit=25&offset=5");
   });
 });
 
@@ -165,9 +165,9 @@ describe("HTTP 429 triggers shared indexer backoff", () => {
     expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
   });
 
-  it("fetchTimecurveChainTimer bumps backoff immediately", async () => {
+  it("fetchLegacyArenaChainTimer bumps backoff immediately", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 429 }));
-    await expect(fetchTimecurveChainTimer()).resolves.toBeNull();
+    await expect(fetchLegacyArenaChainTimer()).resolves.toBeNull();
     expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
   });
 
@@ -198,18 +198,18 @@ describe("indexer JSON bodies (issue #111)", () => {
     await expect(fetchArenaBuys(20, 0)).resolves.toBeNull();
   });
 
-  it("fetchTimecurveChainTimer resolves null when response is 200 OK but json() rejects", async () => {
+  it("fetchLegacyArenaChainTimer resolves null when response is 200 OK but json() rejects", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: () => Promise.reject(new SyntaxError("Unexpected token")),
     } as Response);
-    await expect(fetchTimecurveChainTimer()).resolves.toBeNull();
+    await expect(fetchLegacyArenaChainTimer()).resolves.toBeNull();
   });
 });
 
-describe("fetchTimecurveWarbowLeaderboardAll", () => {
+describe("fetchArenaWarbowLeaderboardAll", () => {
   it("returns null after TimeCurve v1 indexer retirement (#266)", async () => {
-    await expect(fetchTimecurveWarbowLeaderboardAll()).resolves.toBeNull();
+    await expect(fetchArenaWarbowLeaderboardAll()).resolves.toBeNull();
   });
 });

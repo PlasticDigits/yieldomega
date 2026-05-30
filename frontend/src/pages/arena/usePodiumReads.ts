@@ -6,13 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useReadContracts, useWatchContractEvent } from "wagmi";
 import { zeroAddress } from "viem";
 import {
-  timeCurveBuyEventAbi,
-  timeCurveReadAbi,
-  timeCurveWarbowBpEventAbi,
+  timeArenaBuyEventAbi,
+  timeArenaReadAbi,
+  timeArenaWarbowBpEventAbi,
 } from "@/lib/abis";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { fetchTimecurvePodiums } from "@/lib/indexerApi";
+import { fetchArenaPodiums } from "@/lib/indexerApi";
 import {
   INDEXER_EVENT_COALESCE_MS,
   getIndexerBackoffPollMs,
@@ -23,7 +23,7 @@ import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { rpcBackedReadQueryOptions } from "@/lib/rpcReadQueryOptions";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 
-export const TIMECURVE_PODIUMS_QUERY_KEY = ["timecurve-podiums"] as const;
+export const ARENA_PODIUMS_QUERY_KEY = ["arena-podiums"] as const;
 
 type ContractReadRow = {
   status: "success" | "failure";
@@ -79,7 +79,7 @@ function rowsFromRpcData(rawData: readonly ContractReadRow[] | undefined): Podiu
 }
 
 /**
- * Invalidate live reads when WarBow-related TimeCurve logs arrive (BP-moving txs, guard activations).
+ * Invalidate live reads when WarBow-related Time Arena logs arrive (BP-moving txs, guard activations).
  * Shared by Simple (podium panel + buy feed) and Arena (WarBow leaderboard + battle feed).
  *
  * Skipped when **`VITE_INDEXER_URL`** is set (indexer polls + coalesced HTTP refresh cover live WarBow)
@@ -99,7 +99,7 @@ export function useWarbowBpMovingEventWatch(
 
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveBuyEventAbi,
+    abi: timeArenaBuyEventAbi,
     eventName: "Buy",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
@@ -107,35 +107,35 @@ export function useWarbowBpMovingEventWatch(
 
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveWarbowBpEventAbi,
+    abi: timeArenaWarbowBpEventAbi,
     eventName: "WarBowSteal",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveWarbowBpEventAbi,
+    abi: timeArenaWarbowBpEventAbi,
     eventName: "WarBowRevenge",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveWarbowBpEventAbi,
+    abi: timeArenaWarbowBpEventAbi,
     eventName: "WarBowFlagClaimed",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveWarbowBpEventAbi,
+    abi: timeArenaWarbowBpEventAbi,
     eventName: "WarBowFlagPenalized",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
   });
   useWatchContractEvent({
     address: tc,
-    abi: timeCurveWarbowBpEventAbi,
+    abi: timeArenaWarbowBpEventAbi,
     eventName: "WarBowGuardActivated",
     enabled: rpcEventsEnabled,
     onLogs: handleLogs,
@@ -157,7 +157,7 @@ export function useWarbowPodiumLiveInvalidation(
     lastCoalesceWallMsRef.current = now;
     setBuyFeedRefreshNonce((n) => n + 1);
     if (indexerBaseUrl()) {
-      void queryClient.invalidateQueries({ queryKey: TIMECURVE_PODIUMS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: ARENA_PODIUMS_QUERY_KEY });
     }
   }, [queryClient, setBuyFeedRefreshNonce]);
 
@@ -171,9 +171,9 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   const rpcPollMs = useRpcBackoffPollInterval(1000);
 
   const indexerQuery = useQuery({
-    queryKey: TIMECURVE_PODIUMS_QUERY_KEY,
+    queryKey: ARENA_PODIUMS_QUERY_KEY,
     queryFn: async () => {
-      const body = await fetchTimecurvePodiums();
+      const body = await fetchArenaPodiums();
       reportIndexerFetchAttempt(body != null);
       return body;
     },
@@ -186,7 +186,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   const contracts = tc
     ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
         address: tc,
-        abi: timeCurveReadAbi,
+        abi: timeArenaReadAbi,
         functionName: "podium" as const,
         args: [category],
       }))
@@ -211,7 +211,12 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   const rows: PodiumReadRow[] = useMemo(() => {
     if (indexerOn) {
-      return rowsFromIndexerData(indexerQuery.data?.rows ?? []);
+      return rowsFromIndexerData(
+        (indexerQuery.data?.rows ?? []) as readonly {
+          winners?: string[];
+          values?: string[];
+        }[],
+      );
     }
     return rowsFromRpcData(rpc.data as readonly ContractReadRow[] | undefined);
   }, [indexerOn, indexerQuery.data, rpc.data]);

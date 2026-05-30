@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * Exercises TimeCurve live buys + modals. Requires `playwright.arena-ui.config.ts`
+ * Exercises Time Arena live buys + modals. Requires `playwright.arena-ui.config.ts`
  * (Vite dev with VITE_INDEXER_URL so the app polls the indexer; requests are mocked).
  */
 import { expect, test } from "@playwright/test";

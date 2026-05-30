@@ -4,7 +4,7 @@ import type { HexAddress } from "@/lib/addresses";
 import type { BuyItem } from "@/lib/indexerApi";
 import { formatBuyHubDerivedCompact } from "@/lib/timeArenaBuyHubFormat";
 import {
-  type TimeCurveBuyPreviewPolicy,
+  type ArenaBuyPreviewPolicy,
   formatPreviewBpPill,
   formatPreviewStreakPill,
   formatPreviewTimerPill,
@@ -26,7 +26,7 @@ export function formatBuyProjectedSpendLine(
   return `-${whole}.${frac3} ${assetLabel}`;
 }
 
-export type BuildTimeCurveBuyProjectedEffectLinesArgs = {
+export type BuildArenaBuyProjectedEffectLinesArgs = {
   charmWadSelected?: bigint;
   /**
    * When set, used for the "+X CHARM" chip instead of {@link charmWadSelected}
@@ -48,18 +48,18 @@ export type BuildTimeCurveBuyProjectedEffectLinesArgs = {
   walletAddress?: HexAddress;
   /** Indexer head for defended-streak holder inference (GitLab #227). */
   recentBuys?: readonly BuyItem[] | null;
-  previewPolicy?: TimeCurveBuyPreviewPolicy;
+  previewPolicy?: ArenaBuyPreviewPolicy;
   /** `formatWallet(addr, "rival")` on Arena; Simple may use {@link shortAddress}. */
   formatRivalWallet: (addr: HexAddress) => string;
 };
 
 /**
  * Narrative chips for the buy checkout “projected effects” rail — shared by
- * TimeCurve Simple and Arena so the copy stays aligned with the live sizing
+ * Time Arena Simple and Arena so the copy stays aligned with the live sizing
  * reads (issue #82 / #191 / #227).
  */
 export function buildArenaBuyProjectedEffectLines(
-  args: BuildTimeCurveBuyProjectedEffectLinesArgs,
+  args: BuildArenaBuyProjectedEffectLinesArgs,
 ): string[] {
   const {
     charmWadSelected,

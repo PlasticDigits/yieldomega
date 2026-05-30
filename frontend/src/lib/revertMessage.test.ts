@@ -12,32 +12,32 @@ import { GasSoftCapExceededError } from "./writeContractWithGasBuffer";
 
 describe("friendlyRevertMessage", () => {
   it("maps live charm band errors to clearer buy copy", () => {
+    expect(friendlyRevertMessage("TimeArena: charm bounds")).toBe(
+      "This charm size is outside the live min–max band. Nudge the amount or wait one block and retry.",
+    );
     expect(friendlyRevertMessage("TimeCurve: below min charms")).toBe(
       "This charm size slipped below the live minimum for the current timer state.",
     );
-    expect(friendlyRevertMessage("TimeCurve: above max charms")).toBe(
-      "This charm size is above the live maximum for the current timer state.",
-    );
   });
 
-  it("maps TimeCurveBuyRouter custom errors", () => {
-    expect(friendlyRevertMessage("TimeCurveBuyRouter__CharmBounds()")).toContain("min–max band");
+  it("maps TimeArenaBuyRouter custom errors", () => {
+    expect(friendlyRevertMessage("TimeArenaBuyRouter__CharmBounds()")).toContain("min–max band");
     expect(friendlyRevertMessage("0xa8130f38")).toContain("min–max band");
     expect(friendlyRevertMessage("0x817275ab")).toContain("slippage");
   });
 
   it("maps common WarBow eligibility failures", () => {
-    expect(friendlyRevertMessage("TimeCurve: steal 2x rule")).toBe(
+    expect(friendlyRevertMessage("TimeArena: steal band")).toBe(
       "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
     );
     expect(friendlyRevertMessage("TimeCurve: steal 10x cap")).toBe(
       "That victim’s Battle Points are too far above yours for a steal under the onchain 2×–10× band.",
     );
-    expect(friendlyRevertMessage("TimeCurve: steal attacker daily limit")).toContain("three steals today");
-    expect(friendlyRevertMessage("TimeCurve: flag silence")).toBe(
+    expect(friendlyRevertMessage("TimeArena: steal limit")).toContain("three steals today");
+    expect(friendlyRevertMessage("TimeArena: flag silence")).toBe(
       "The silence timer has not finished, so the flag is not claimable yet.",
     );
-    expect(friendlyRevertMessage("TimeCurve: revenge expired")).toBe(
+    expect(friendlyRevertMessage("TimeArena: revenge")).toBe(
       "The revenge window already expired.",
     );
   });
@@ -132,9 +132,9 @@ describe("friendlyRevertFromUnknown — viem BaseError dedup ([#183](https://git
   });
 
   it("still returns a usable single-line message when only shortMessage is populated", () => {
-    const err = new BaseError("The contract function \"buy\" reverted with the following reason: TimeCurve: below min buy");
+    const err = new BaseError("The contract function \"buy\" reverted with the following reason: TimeArena: below min buy");
     const msg = friendlyRevertFromUnknown(err);
-    // matches the friendly mapping for "timecurve: below min buy"
+    // matches the friendly mapping for "timearena: below min buy"
     expect(msg).toBe("Amount is below the current minimum buy.");
   });
 });

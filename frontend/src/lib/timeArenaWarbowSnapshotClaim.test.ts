@@ -7,23 +7,13 @@ const A = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as const;
 const D = "0xdddddddddddddddddddddddddddddddddddddddd" as const;
 
 describe("viewerShouldSuggestWarBowPodiumRefresh (GitLab #172)", () => {
-  it("always false — permissionless refresh removed; governance finalize only post-end", () => {
+  it("always false — permissionless refresh removed", () => {
     expect(
       viewerShouldSuggestWarBowPodiumRefresh({
         viewer: A,
         viewerBp: 900n,
         podiumWallets: [D, D, D],
         podiumValues: [1000n, 800n, 500n],
-        saleEnded: false,
-      }),
-    ).toBe(false);
-    expect(
-      viewerShouldSuggestWarBowPodiumRefresh({
-        viewer: A,
-        viewerBp: 900n,
-        podiumWallets: [D, D, D],
-        podiumValues: [1000n, 800n, 500n],
-        saleEnded: true,
       }),
     ).toBe(false);
   });

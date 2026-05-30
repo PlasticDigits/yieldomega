@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Kumbaya (MegaETH v3) routing for TimeCurve multi-asset entry. Deployment runbooks
+// Kumbaya (MegaETH v3) routing for Time Arena multi-asset entry. Deployment runbooks
 // and upstream address parity: docs/integrations/kumbaya.md (GitLab #46).
 
 import type { HexAddress } from "@/lib/addresses";
 import { parseHexAddress } from "@/lib/addresses";
 
-/** User-selected spend asset for TimeCurve entry (issue #41). Arena v2 adds `cred` (#269). */
+/** User-selected spend asset for Time Arena entry (issue #41). Arena v2 adds `cred` (#269). */
 export type PayWithAsset = "cl8y" | "eth" | "usdm" | "cred";
 
 export type KumbayaResolveErrorReason =
@@ -226,26 +226,26 @@ export function routingForPayAsset(
 }
 
 /**
- * Onchain `TimeCurve.timeCurveBuyRouter` is authoritative for **single-tx** Kumbaya entry
- * ([`TimeCurveBuyRouter`](../../../contracts/src/TimeCurveBuyRouter.sol), [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)).
- * Optional `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER` must match the onchain address when set (fail closed).
+ * Onchain `TimeArena.timeArenaBuyRouter` is authoritative for **single-tx** Kumbaya entry
+ * ([`TimeArenaBuyRouter`](../../../contracts/src/TimeArenaBuyRouter.sol), [issue #66](https://gitlab.com/PlasticDigits/yieldomega/-/issues/66)).
+ * Optional `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match the onchain address when set (fail closed).
  */
-export type TimeCurveBuyRouterForSingleTxResult =
+export type ArenaBuyRouterForSingleTxResult =
   | { kind: "none" }
   | { kind: "mismatch"; message: string }
   | { kind: "ok"; router: HexAddress };
 
-export function resolveTimeCurveBuyRouterForKumbayaSingleTx(
+export function resolveArenaBuyRouterForKumbayaSingleTx(
   onchain: HexAddress | undefined,
   env: KumbayaEnv,
-): TimeCurveBuyRouterForSingleTxResult {
-  const fromEnv = envAddr(env, "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER");
+): ArenaBuyRouterForSingleTxResult {
+  const fromEnv = envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER");
   if (isZeroAddr(onchain)) {
     if (fromEnv && !isZeroAddr(fromEnv)) {
       return {
         kind: "mismatch",
         message:
-          "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER is set but onchain timeCurveBuyRouter is zero — remove the env var or call setTimeCurveBuyRouter on TimeCurve.",
+          "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER is set but onchain timeArenaBuyRouter is zero — remove the env var or wire the router on TimeArena.",
       };
     }
     return { kind: "none" };
@@ -253,7 +253,7 @@ export function resolveTimeCurveBuyRouterForKumbayaSingleTx(
   if (fromEnv && !isZeroAddr(fromEnv) && fromEnv.toLowerCase() !== onchain!.toLowerCase()) {
     return {
       kind: "mismatch",
-      message: "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER does not match onchain timeCurveBuyRouter.",
+      message: "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER does not match onchain timeArenaBuyRouter.",
     };
   }
   return { kind: "ok", router: onchain! };
@@ -274,7 +274,7 @@ export function resolveTimeArenaBuyRouterForKumbayaSingleTx(
 ): TimeArenaBuyRouterForSingleTxResult {
   const fromEnv =
     envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER") ??
-    envAddr(env, "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER");
+    envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER");
   if (isZeroAddr(onchain)) {
     if (fromEnv && !isZeroAddr(fromEnv)) {
       return {

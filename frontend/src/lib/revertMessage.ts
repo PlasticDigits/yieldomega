@@ -47,30 +47,43 @@ export function friendlyRevertMessage(raw: string): string {
   const s = raw.toLowerCase();
   const map: [string, string][] = [
     ["timecurve: below min buy", "Amount is below the current minimum buy."],
+    ["timearena: below min buy", "Amount is below the current minimum buy."],
     ["timecurve: above cap", "Amount exceeds the per-transaction cap."],
     ["timecurve: below min charms", "This charm size slipped below the live minimum for the current timer state."],
     ["timecurve: above max charms", "This charm size is above the live maximum for the current timer state."],
+    ["timearena: charm bounds", "This charm size is outside the live min–max band. Nudge the amount or wait one block and retry."],
     ["timecurve: timer expired", "The sale timer has expired."],
+    ["timearena: timer expired", "The sale timer has expired."],
     ["timecurve: timer not expired", "This action only works after the live timer fully expires."],
     ["timecurve: ended", "This sale has ended."],
     ["timecurve: already ended", "This sale was already ended onchain."],
     ["timecurve: not started", "The sale has not started yet."],
+    ["timearena: not started", "The sale has not started yet."],
     ["timecurve: bad phase", "This action is not available in the current sale phase."],
+    ["timearena: paused", "The arena is paused — buys are disabled until an operator resumes."],
     ["timecurve: self-referral", "You cannot use your own referral code."],
+    ["timearena: self-referral", "You cannot use your own referral code."],
     ["timecurve: invalid referral", "That referral code is not registered."],
+    ["timearena: invalid referral", "That referral code is not registered."],
     ["timecurve: referral disabled", "Referrals are not enabled for this deployment."],
     ["timecurve: referral amount", "This referral bonus no longer fits inside the selected charm size."],
     ["timecurve: not ended", "This action is only available after the sale ends."],
     ["timecurve: no charm weight", "This wallet has no charm weight to redeem."],
     ["timecurve: already redeemed", "This wallet already redeemed its charms."],
     ["timecurve: nothing to redeem", "There is nothing claimable for this wallet at current totals."],
+    ["timearena: nothing to claim", "There is nothing claimable for this wallet at current totals."],
     ["timecurve: steal victim daily limit", "That victim already hit the daily steal cap unless you pay the bypass spend."],
     [
       "timecurve: steal attacker daily limit",
       "You already landed three steals today from this wallet unless you pay the bypass spend.",
     ],
+    ["timearena: steal limit", "You already landed three steals today from this wallet unless you pay the bypass spend."],
     [
       "timecurve: steal 2x rule",
+      "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
+    ],
+    [
+      "timearena: steal band",
       "Stealing requires positive Battle Points on your wallet and a victim with at least 2× your Battle Points (and at most 10× — see the steal preflight).",
     ],
     [
@@ -78,13 +91,20 @@ export function friendlyRevertMessage(raw: string): string {
       "That victim’s Battle Points are too far above yours for a steal under the onchain 2×–10× band.",
     ],
     ["timecurve: bad victim", "Choose a real rival address instead of zero or your own wallet."],
+    ["timearena: bad victim", "Choose a real rival address instead of zero or your own wallet."],
     ["timecurve: steal zero", "That steal would move zero Battle Points, so the contract rejected it."],
+    ["timearena: steal zero", "That steal would move zero Battle Points, so the contract rejected it."],
     ["timecurve: not flag holder", "Only the wallet holding the planted flag can claim it."],
+    ["timearena: not flag holder", "Only the wallet holding the planted flag can claim it."],
     ["timecurve: flag silence", "The silence timer has not finished, so the flag is not claimable yet."],
+    ["timearena: flag silence", "The silence timer has not finished, so the flag is not claimable yet."],
     ["timecurve: revenge not pending", "There is no pending revenge target for this wallet."],
     ["timecurve: revenge expired", "The revenge window already expired."],
+    ["timearena: revenge", "The revenge window already expired."],
     ["timecurve: revenge zero", "That revenge would move zero Battle Points, so it was rejected."],
+    ["timearena: revenge zero", "That revenge would move zero Battle Points, so it was rejected."],
     ["timecurve: prizes done", "Prize distribution already ran for this round."],
+    ["timearena: buy cooldown", "This wallet is still in the per-buy cooldown window. Wait a moment and retry."],
     ["referralregistry: code taken", "That referral code is already taken."],
     ["referralregistry: already registered", "This wallet already registered a code."],
     ["referralregistry: invalid length", "Referral code must be 3–16 characters."],
@@ -101,8 +121,11 @@ export function friendlyRevertMessage(raw: string): string {
     ],
     ["0x817275ab", "The Kumbaya swap needed more pay-token than your max slippage allows—the linear CHARM price may have moved. Retry in a few seconds."],
     ["timecurvebuyrouter__badsalephase", "The sale is not open for Kumbaya buys right now (not started, ended, or past the timer)."],
+    ["timearenabuyrouter__badphase", "The sale is not open for Kumbaya buys right now (not started, ended, or past the timer)."],
     ["timecurvebuyrouter__charmbounds", "CHARM size is outside the live min–max band. Nudge the amount or wait one block and retry."],
+    ["timearenabuyrouter__charmbounds", "CHARM size is outside the live min–max band. Nudge the amount or wait one block and retry."],
     ["timecurvebuyrouter__badpath", "Kumbaya swap path is misconfigured for this chain. Contact support if this persists."],
+    ["timearenabuyrouter__badpath", "Kumbaya swap path is misconfigured for this chain. Contact support if this persists."],
     ["timecurvebuyrouter__ethmode", "ETH pay mode requires a WETH-terminated swap path."],
     ["timecurvebuyrouter__stablemode", "USDM pay mode requires a stable-terminated swap path."],
     ["0x2be94f46", "The sale is not open for Kumbaya buys right now (not started, ended, or past the timer)."],
@@ -123,7 +146,7 @@ const BARE_BUY_CHARM_SHIFT_HINT =
 function looksLikeBareExecutionRevert(raw: string): boolean {
   const s = raw.toLowerCase();
   if (s.includes("user rejected") || s.includes("user denied")) return false;
-  if (s.includes("timecurve:")) return false;
+  if (s.includes("timecurve:") || s.includes("timearena:")) return false;
   return (
     s.includes("execution reverted for an unknown reason") ||
     s.includes("execution reverted with no data") ||
@@ -132,7 +155,7 @@ function looksLikeBareExecutionRevert(raw: string): boolean {
 }
 
 export type FriendlyRevertOpts = {
-  /** Use when catching from TimeCurve buy / `buyViaKumbaya` submit ([GitLab #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). */
+  /** Use when catching from Time Arena buy / `buyViaKumbaya` submit ([GitLab #82](https://gitlab.com/PlasticDigits/yieldomega/-/issues/82)). */
   buySubmit?: boolean;
 };
 

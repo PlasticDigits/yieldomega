@@ -6,7 +6,7 @@ import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { timeCurveReadAbi } from "@/lib/abis";
+import { timeArenaReadAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { fetchReferralWalletCharmSummary, type ReferralWalletCharmSummary } from "@/lib/indexerApi";
@@ -26,8 +26,8 @@ export function ReferralProgramEarningsSection({ className }: Props) {
 
   const priceQuery = useReadContract({
     address: tc,
-    abi: timeCurveReadAbi,
-    functionName: "currentPricePerCharmWad",
+    abi: timeArenaReadAbi,
+    functionName: "charmPriceWad",
     query: {
       enabled: Boolean(tc && isConnected && address),
       refetchInterval: () => getRpcBackoffPollMs(15_000),

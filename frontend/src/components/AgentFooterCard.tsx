@@ -33,19 +33,19 @@ const DOCS_LINKS: { label: string; path: string }[] = [
   { label: "Arena v2 product primitives", path: "docs/product/arena-v2.md" },
 ];
 
-const TIMECURVE_SCRIPTING_SNIPPET = `# pip install web3 — sketch only: set RPC_URL, PRIVATE_KEY, TIMECURVE, TIME_CURVE_ABI (proxy).
+const ARENA_SCRIPTING_SNIPPET = `# pip install web3 — sketch only: set RPC_URL, PRIVATE_KEY, TIME_ARENA_ADDRESS, TIME_ARENA_ABI (proxy).
 import os
 from web3 import Web3
 
 w3 = Web3(Web3.HTTPProvider(os.environ["RPC_URL"]))
 acct = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
-tc = w3.eth.contract(address=w3.to_checksum_address(os.environ["TIMECURVE"]), abi=TIME_CURVE_ABI)
+arena = w3.eth.contract(address=w3.to_checksum_address(os.environ["TIME_ARENA_ADDRESS"]), abi=TIME_ARENA_ABI)
 
 ts = w3.eth.get_block("latest")["timestamp"]
-if tc.functions.ended().call() or tc.functions.deadline().call() - ts > 15:
-    raise SystemExit("skip: not final 15s or sale ended")
+if arena.functions.paused().call() or arena.functions.deadline().call() - ts > 15:
+    raise SystemExit("skip: not final 15s or timer closed")
 
-winners, _ = tc.functions.podium(0).call()  # category 0 = last-buy reserve podium
+winners, _ = arena.functions.podium(0).call()  # category 0 = last-buy reserve podium
 if winners[0].lower() == acct.address.lower():
     raise SystemExit("skip: wallet already first on last-buy podium")
 
@@ -166,9 +166,9 @@ export function AgentFooterCard() {
             <a href={ghBlob("skills/play-time-arena-doub/SKILL.md")} target="_blank" rel="noreferrer">
               play-time-arena-doub
             </a>
-            ). Sketch below is legacy TimeCurve-shaped; see play skills for Arena v2.
+            ). Sketch below is legacy Arena-shaped; see play skills for Arena v2.
           </p>
-          <pre className="app-footer-agent__route-block">{TIMECURVE_SCRIPTING_SNIPPET}</pre>
+          <pre className="app-footer-agent__route-block">{ARENA_SCRIPTING_SNIPPET}</pre>
 
           <h4 className="app-footer-agent__h">Indexer HTTP API (v1)</h4>
           <p className="app-footer-agent__p">

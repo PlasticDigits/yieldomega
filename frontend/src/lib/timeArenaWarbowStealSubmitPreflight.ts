@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { readContract } from "wagmi/actions";
-import { timeCurveReadAbi } from "@/lib/abis";
+import { timeArenaReadAbi } from "@/lib/abis";
 import { wagmiConfig } from "@/wagmi-config";
 
 export type FreshWarbowStealPreflight = {
@@ -20,19 +20,19 @@ export async function readFreshWarbowStealPreflight(params: {
   const [victimBattlePoints, victimStealsToday, victimGuardUntil] = await Promise.all([
     readContract(wagmiConfig, {
       address: tc,
-      abi: timeCurveReadAbi,
+      abi: timeArenaReadAbi,
       functionName: "battlePoints",
       args: [victim],
     }),
     readContract(wagmiConfig, {
       address: tc,
-      abi: timeCurveReadAbi,
+      abi: timeArenaReadAbi,
       functionName: "stealsReceivedOnDay",
       args: [victim, utcDayId],
     }),
     readContract(wagmiConfig, {
       address: tc,
-      abi: timeCurveReadAbi,
+      abi: timeArenaReadAbi,
       functionName: "warbowGuardUntil",
       args: [victim],
     }),

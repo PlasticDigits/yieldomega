@@ -4,8 +4,8 @@ import type { HexAddress } from "@/lib/addresses";
 import type { BuyItem } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 
-/** Onchain defaults from `TimeCurve.sol` / `TimeMath` — override via chain reads when passed. */
-export type TimeCurveBuyPreviewPolicy = {
+/** Onchain defaults from `TimeArena.sol` / `TimeMath` — override via chain reads when passed. */
+export type ArenaBuyPreviewPolicy = {
   timerExtensionSec: number;
   timerCapSec: number;
   resetBelowRemainingSec: number;
@@ -18,7 +18,7 @@ export type TimeCurveBuyPreviewPolicy = {
   warbowAmbushBonusBp: number;
 };
 
-export const DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY: TimeCurveBuyPreviewPolicy = {
+export const DEFAULT_ARENA_BUY_PREVIEW_POLICY: ArenaBuyPreviewPolicy = {
   timerExtensionSec: 120,
   timerCapSec: 96 * 3600,
   resetBelowRemainingSec: 780,
@@ -42,7 +42,7 @@ export type PreviewBuyTimerResult = {
  */
 export function previewBuyTimerSecondsAdded(
   secondsRemaining: number,
-  policy: TimeCurveBuyPreviewPolicy,
+  policy: ArenaBuyPreviewPolicy,
 ): PreviewBuyTimerResult {
   const remaining = Math.max(0, secondsRemaining);
   const {
@@ -112,12 +112,12 @@ export function inferDefendedStreakHolderFromRecentBuys(
 
 export function previewWarbowBuyEffects(args: {
   secondsRemaining: number | undefined;
-  policy?: TimeCurveBuyPreviewPolicy;
+  policy?: ArenaBuyPreviewPolicy;
   walletAddress?: HexAddress;
   activeDefendedStreak?: bigint;
   recentBuys?: readonly BuyItem[] | null;
 }): PreviewWarbowBuyEffects {
-  const policy = args.policy ?? DEFAULT_TIMECURVE_BUY_PREVIEW_POLICY;
+  const policy = args.policy ?? DEFAULT_ARENA_BUY_PREVIEW_POLICY;
   const remaining = args.secondsRemaining;
 
   if (remaining === undefined) {

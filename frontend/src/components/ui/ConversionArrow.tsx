@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /**
- * Canonical “A → B” conversion glyph for TimeCurve pay rails and fee sinks.
+ * Canonical “A → B” conversion glyph for Time Arena pay rails and fee sinks.
  * Source: `/art/icons/ui-conversion-arrow.png` (Replicate gpt-image-2; regenerate via
  * `scripts/replicate-art/ui_conversion_arrow_batch.py`, or `--fetch-prediction-id` for an existing run).
  */

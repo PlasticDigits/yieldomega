@@ -3,10 +3,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { maxUint256 } from "viem";
 import {
-  CL8Y_TIMECURVE_UNLIMITED_APPROVAL_STORAGE_KEY,
+  CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY,
   arenaDoubApprovalAmountWei,
   readArenaDoubUnlimitedApproval,
-  writeCl8yTimeCurveUnlimitedApproval,
+  writeCl8yArenaUnlimitedApproval,
 } from "./arenaDoubApprovalPreference";
 
 function memStorage(): Storage {
@@ -54,11 +54,11 @@ describe("arenaDoubApprovalPreference", () => {
 
   it("storage roundtrip", () => {
     expect(readArenaDoubUnlimitedApproval()).toBe(false);
-    writeCl8yTimeCurveUnlimitedApproval(true);
-    expect(window.localStorage.getItem(CL8Y_TIMECURVE_UNLIMITED_APPROVAL_STORAGE_KEY)).toBe("1");
+    writeCl8yArenaUnlimitedApproval(true);
+    expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBe("1");
     expect(readArenaDoubUnlimitedApproval()).toBe(true);
-    writeCl8yTimeCurveUnlimitedApproval(false);
-    expect(window.localStorage.getItem(CL8Y_TIMECURVE_UNLIMITED_APPROVAL_STORAGE_KEY)).toBeNull();
+    writeCl8yArenaUnlimitedApproval(false);
+    expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBeNull();
     expect(readArenaDoubUnlimitedApproval()).toBe(false);
   });
 });

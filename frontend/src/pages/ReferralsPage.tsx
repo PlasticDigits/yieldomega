@@ -15,7 +15,7 @@ function ReferralQuestStrip() {
       <div>
         <h2>Guide new buyers into the arena</h2>
         <p>
-          When someone uses your referral link, every TimeCurve buy earns you 5% and gets them 5% bonus CHARM
+          When someone uses your referral link, every Time Arena buy earns you 5% and gets them 5% bonus CHARM
         </p>
       </div>
       <div className="referrals-quest-strip__badges" aria-label="Referral facts">

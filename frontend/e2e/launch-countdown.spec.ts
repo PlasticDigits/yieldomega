@@ -30,7 +30,7 @@ test("countdown gate locks every route when VITE_LAUNCH_TIMESTAMP is in the futu
   await expect(page.getByTestId("launch-countdown")).toBeVisible();
 });
 
-test("post-launch routing serves TimeCurve at / and HomePage at /home", async ({ page }) => {
+test("post-launch routing serves Time Arena at / and HomePage at /home", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state !== "post-launch", `Build state is "${state}"; this scenario requires a past launch timestamp.`);
 

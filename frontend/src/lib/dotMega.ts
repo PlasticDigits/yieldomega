@@ -70,7 +70,7 @@ function walkUnknownForAddresses(value: unknown, sink: Set<string>): void {
   }
 }
 
-export type TimecurveDotMegaSourceInput = {
+export type ArenaDotMegaSourceInput = {
   connected?: string;
   stealVictim?: string;
   stealVictimInput?: string;
@@ -90,7 +90,7 @@ export type TimecurveDotMegaSourceInput = {
 };
 
 /** Collect checksummed wallet addresses shown on TimeCurve for DotMega reverse lookups. */
-export function collectTimecurveWalletAddressesForDotMega(input: TimecurveDotMegaSourceInput): readonly HexAddress[] {
+export function collectArenaWalletAddressesForDotMega(input: ArenaDotMegaSourceInput): readonly HexAddress[] {
   const sink = new Set<string>();
   const add = (a?: string | null) => {
     if (!a) {
