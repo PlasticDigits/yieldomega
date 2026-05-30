@@ -4,6 +4,7 @@ import {
   levelFromXp,
   xpForCharm,
   xpRemainingToNextLevel,
+  xpToAdvance,
   xpToNextLevel,
 } from "./arenaXpMath";
 
@@ -38,5 +39,32 @@ describe("arenaXpMath", () => {
     expect(state.level).toBeLessThan(levelFromXp(200n));
     const caughtUp = applyXpGain(state.level, state.xpTowardNext, 50n);
     expect(caughtUp.level).toBe(levelFromXp(250n));
+  });
+
+  it("table-test level thresholds L1–L10 (GitLab #250)", () => {
+    const steps = [20n, 25n, 30n, 35n, 40n, 45n, 50n, 55n, 60n, 65n];
+    for (let i = 0; i < steps.length; i++) {
+      expect(xpToAdvance(BigInt(i + 1))).toBe(steps[i]!);
+    }
+    let cumulative = 0n;
+    for (let level = 1; level <= 10; level++) {
+      cumulative += xpToAdvance(BigInt(level));
+      expect(levelFromXp(cumulative)).toBe(BigInt(level + 1));
+      expect(xpToNextLevel(cumulative)).toBe(xpToAdvance(BigInt(level + 1)));
+    }
+  });
+
+  it("level 50+ uses flat 100 XP/level (GitLab #250)", () => {
+    expect(xpToAdvance(16n)).toBe(95n);
+    expect(xpToAdvance(17n)).toBe(100n);
+    expect(xpToAdvance(50n)).toBe(100n);
+    let cumulative = 0n;
+    for (let level = 1; level < 50; level++) {
+      cumulative += xpToAdvance(BigInt(level));
+    }
+    expect(levelFromXp(cumulative)).toBe(50n);
+    expect(xpToNextLevel(cumulative)).toBe(100n);
+    cumulative += 100n;
+    expect(levelFromXp(cumulative)).toBe(51n);
   });
 });

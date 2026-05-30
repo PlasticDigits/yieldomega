@@ -302,6 +302,15 @@ contract TimeArenaTest is Test {
         assertEq(arena.xpToNextLevel(alice), 10);
     }
 
+    /// GitLab #250: `_finishBuy` emits `XpGained(buyer, amount, newLevel)`.
+    function test_xp_emits_XpGained() public {
+        vm.expectEmit(true, false, false, true);
+        emit TimeArena.XpGained(alice, 10, 1);
+        vm.prank(alice);
+        arena.buy(10e18);
+        assertEq(arena.xp(alice), 10);
+    }
+
     function test_xp_buy_with_cred_same_as_doub() public {
         vm.prank(alice);
         arena.buy(1e18);

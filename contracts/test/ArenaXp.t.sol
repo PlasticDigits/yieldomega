@@ -5,6 +5,53 @@ import {Test} from "forge-std/Test.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 
 contract ArenaXpTest is Test {
+    /// GitLab #250: table-test level thresholds L1–L10 (step grows +5 until cap).
+    function test_level_thresholds_table_levels_1_through_10() public pure {
+        assertEq(ArenaXp.xpToAdvance(1), 20);
+        assertEq(ArenaXp.xpToAdvance(2), 25);
+        assertEq(ArenaXp.xpToAdvance(3), 30);
+        assertEq(ArenaXp.xpToAdvance(4), 35);
+        assertEq(ArenaXp.xpToAdvance(5), 40);
+        assertEq(ArenaXp.xpToAdvance(6), 45);
+        assertEq(ArenaXp.xpToAdvance(7), 50);
+        assertEq(ArenaXp.xpToAdvance(8), 55);
+        assertEq(ArenaXp.xpToAdvance(9), 60);
+        assertEq(ArenaXp.xpToAdvance(10), 65);
+
+        uint256 cumulative;
+        for (uint256 level = 1; level <= 10; ++level) {
+            cumulative += ArenaXp.xpToAdvance(level);
+            assertEq(ArenaXp.levelFromXp(cumulative), level + 1, "level entry");
+            assertEq(ArenaXp.xpToNextLevel(cumulative), ArenaXp.xpToAdvance(level + 1), "fresh level bar");
+        }
+    }
+
+    /// GitLab #250: level 17+ uses flat 100 XP/level; level 50+ unchanged.
+    function test_level_50_plus_flat_100_xp_per_level() public pure {
+        assertEq(ArenaXp.xpToAdvance(16), 95);
+        assertEq(ArenaXp.xpToAdvance(17), 100);
+        assertEq(ArenaXp.xpToAdvance(50), 100);
+        assertEq(ArenaXp.xpToAdvance(100), 100);
+
+        uint256 cumulative;
+        for (uint256 level = 1; level < 50; ++level) {
+            cumulative += ArenaXp.xpToAdvance(level);
+        }
+        assertEq(ArenaXp.levelFromXp(cumulative), 50);
+        assertEq(ArenaXp.xpToNextLevel(cumulative), 100);
+
+        cumulative += 100;
+        assertEq(ArenaXp.levelFromXp(cumulative), 51);
+        assertEq(ArenaXp.xpToAdvance(51), 100);
+    }
+
+    /// GitLab #250: CHARM band maps to 1–10 XP (integer floor via mulDiv).
+    function test_xpForCharm_linear_band() public pure {
+        assertEq(ArenaXp.xpForCharm(99e16), 1);
+        assertEq(ArenaXp.xpForCharm(10e18), 10);
+        assertEq(ArenaXp.xpForCharm(5e18 + 495e15), 5); // mid-band
+    }
+
     function test_applyXpGain_matches_levelFromXp_single_step() public pure {
         uint256 lifetime;
         uint256 lvl = 1;
