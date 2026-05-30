@@ -8,7 +8,7 @@ import type { Page } from "@playwright/test";
  * partitions e2e specs into three runtime states:
  *
  * - `"countdown"` — `VITE_LAUNCH_TIMESTAMP` is in the future. Every route
- *   (`/`, `/timecurve`, `/rabbit-treasury`, …) renders `LaunchCountdownPage`.
+ *   (`/`, `/timecurve`, `/arena`, …) renders `LaunchCountdownPage`.
  *   Tests that assume the regular `RootLayout` chrome must skip.
  * - `"post-launch"` — `VITE_LAUNCH_TIMESTAMP` is set but already in the past.
  *   Index `/` lands on `TimeCurveSimplePage` (issue #40); HomePage moves to

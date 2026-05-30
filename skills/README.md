@@ -16,7 +16,7 @@ These files help agents and humans **use** onchain **Time Arena** (Arena v2) mec
 
 ## Retired (Arena v2 epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238))
 
-TimeCurve launchpad playbooks, Rabbit Treasury, Leprechaun collection — removed in GitLab #241–#245.
+TimeCurve launchpad playbooks, retired v1 player reserve, Leprechaun collection — removed in GitLab #241–#245.
 
 ## Contributor docs
 

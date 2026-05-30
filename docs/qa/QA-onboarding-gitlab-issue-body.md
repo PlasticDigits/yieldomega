@@ -180,7 +180,7 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 2. **`distributePrizes` internals:** At call time, splits the **accepted asset** balance held by **`PodiumPool`** **40% / 25% / 20% / 15%** across the four rows above (see `TimeCurve.distributePrizes()`). Equivalently **8% / 5% / 4% / 3%** of **gross raise** while the podium **`FeeRouter`** sink remains **20%**. **Within** each category, **1st : 2nd : 3rd** uses **4∶2∶1**. This layer is **not** the same as **buy-time** `FeeRouter` top-level routing ([`docs/onchain/fee-routing-and-governance.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/onchain/fee-routing-and-governance.md)).
 
-3. **Buy-time fee routing** (canonical launch default, **full gross** per buy through `FeeRouter`): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool (**reserve** prizes; **podium-internal** splits in the table above) · **0%** team · **10%** Rabbit Treasury — **10 000 bps** (**3000 / 4000 / 2000 / 0 / 1000**). Do not conflate these **top-level** percentages with **podium-internal** **40/25/20/15** or placement **4∶2∶1**.
+3. **Buy-time fee routing** (canonical launch default, **full gross** per buy through `FeeRouter`): **30%** DOUB/CL8Y locked LP · **40%** CL8Y burned · **20%** podium pool (**reserve** prizes; **podium-internal** splits in the table above) · **0%** team · **10%** retired v1 player reserve — **10 000 bps** (**3000 / 4000 / 2000 / 0 / 1000**). Do not conflate these **top-level** percentages with **podium-internal** **40/25/20/15** or placement **4∶2∶1**.
 
 ---
 

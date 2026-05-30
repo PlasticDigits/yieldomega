@@ -628,3 +628,37 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
         9
     );
 }
+
+#[tokio::test]
+async fn api_legacy_player_reserve_routes_return_404() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip api_legacy_player_reserve_routes_return_404: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    for path in ["/v1/rabbit/deposits", "/v1/rabbit/health-epochs"] {
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::NOT_FOUND, "expected 404 for {path}");
+    }
+}

@@ -30,7 +30,7 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 - **TimeCurve Simple: timer + fair launch calm energy** — [`scenes/timecurve-simple.jpg`](../scenes/timecurve-simple.jpg)
 - **TimeCurve Arena: PvP / podium tension** — [`scenes/timecurve-arena.jpg`](../scenes/timecurve-arena.jpg)
 - **TimeCurve Protocol: operator / audit neutral backdrop** — [`scenes/timecurve-protocol.jpg`](../scenes/timecurve-protocol.jpg)
-- **Rabbit Treasury: reserve / burrow / chart-adjacent** — [`scenes/rabbit-treasury.jpg`](../scenes/rabbit-treasury.jpg)
+- **retired v1 player reserve: reserve / v1 reserve / chart-adjacent** — [`scenes/retired-v1-reserve.jpg`](../scenes/retired-v1-reserve.jpg)
 - **Collection: gallery-forward (shelves / vault / grid)** — [`scenes/collection-gallery.jpg`](../scenes/collection-gallery.jpg)
 - **Referrals: network / invitation threads motif** — [`scenes/referrals-network.jpg`](../scenes/referrals-network.jpg)
 - **Kumbaya: branded scene strip for embedded DEX** — [`scenes/kumbaya-strip.jpg`](../scenes/kumbaya-strip.jpg)

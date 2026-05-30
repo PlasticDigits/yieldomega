@@ -36,7 +36,7 @@ When **`INDEXER_PRODUCTION=1`** and **`INGESTION_ENABLED`** is not disabled:
 
 - Set **`ADDRESS_REGISTRY_PATH`** to your deployment registry JSON **or** rely on the **default** committed **`address-registry.megaeth-mainnet.json`** when **`CHAIN_ID`** matches that file ([`src/config.rs`](src/config.rs)).
 - Confirm **`chain_id`** in that file equals **`CHAIN_ID`**.
-- Confirm every mandatory contract key is the **ERC-1967 proxy** address from your deploy artifact, **not** an implementation row ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)): **`TimeCurve`**, **`RabbitTreasury`**, **`LeprechaunNFT`**, **`FeeRouter`**, **`ReferralRegistry`**, **`PodiumPool`** (alias **`PrizeVault`** in JSON).
+- Confirm every mandatory contract key is the **ERC-1967 proxy** address from your deploy artifact, **not** an implementation row ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)): **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`**. Legacy v1 keys (**`TimeCurve`**, player reserve, **`LeprechaunNFT`**, **`FeeRouter`**) must be absent on Arena v2 deploys ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 - Set **`deploy_block`** to the deployment anchor block (must be **> 0** except on **`CHAIN_ID=31337`** Anvil).
 - If the stack serves **`BuyViaKumbaya`** rows, set **`TimeCurveBuyRouter`** or export **`INDEXER_REGISTRY_REQUIRE_BUY_ROUTER=1`** to force the router field populated.
 

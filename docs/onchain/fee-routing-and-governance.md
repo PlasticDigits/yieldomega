@@ -26,7 +26,7 @@ Indexer + AUDIT UI for donation history: [#262](https://gitlab.com/PlasticDigits
 
 - **`TimeArena`**: `onlyOwner` — `setCharmPriceWad`, `setPaused`, UUPS upgrade, `startArena`.
 - **`PodiumVaults` / `AdminSellVault`**: `onlyOwner` — pool address overrides, `rescueDoub` on admin vault.
-- **`Doubloon`**: `MINTER_ROLE` for governance / protocol minter only (Rabbit Treasury removed — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
+- **`Doubloon`**: `MINTER_ROLE` for governance / protocol minter only (retired v1 player reserve removed — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 
 ## Retired
 

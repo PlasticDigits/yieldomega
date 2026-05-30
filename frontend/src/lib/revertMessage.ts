@@ -89,7 +89,6 @@ export function friendlyRevertMessage(raw: string): string {
     ["referralregistry: already registered", "This wallet already registered a code."],
     ["referralregistry: invalid length", "Referral code must be 3–16 characters."],
     ["referralregistry: invalid charset", "Referral code may only use letters and digits."],
-    ["burrow:", "Treasury rule rejected this transaction (see wallet details)."],
     ["user rejected", "Transaction was rejected in the wallet."],
     ["user denied", "Transaction was rejected in the wallet."],
     [

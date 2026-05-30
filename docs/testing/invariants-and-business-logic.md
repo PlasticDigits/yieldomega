@@ -228,6 +228,18 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 **INV-INDEXER-156:** With **`INDEXER_PRODUCTION`**, registry must include **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`**, valid **`chain_id`**, and **`deploy_block > 0`** (except Anvil **31337**).
 
+<a id="retired-v1-reserve-removal-gitlab-242"></a>
+
+### Retired v1 player reserve removal (GitLab [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242))
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-242-RABBIT-REMOVED`** | No v1 player-reserve contracts in **`DeployDev`** / **`DeployProduction`**; **`Doubloon.MINTER_ROLE`** to governance/deployer only | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol), [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
+| **`INV-242-INDEXER-NO-HTTP`** | Legacy **`GET /v1/rabbit/*`** routes absent (404) | [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) `api_legacy_player_reserve_routes_return_404` |
+| **`INV-242-SOURCE-GREP`** | `rg -i 'rabbit.?treasury\|burrow'` clean in contracts, indexer, frontend, docs, skills — **`Doubloon`** may retain “Burrow receipt” in the token notice | Manual + CI hygiene; see [treasury-contracts](../onchain/treasury-contracts.md) |
+
+Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces) · Play skills: [skills/README.md](../../skills/README.md) · Guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
 <a id="arena-v2-deploy-gitlab-259"></a>
 
 ### Arena v2 deploy wiring (GitLab [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259))

@@ -455,7 +455,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, or 
 
 ### Checklist
 
-1. **Desktop (width > ~720px, two columns):** Open **`/rabbit-treasury`**, **`/collection`**, **`/kumbaya`**, **`/sir`** — the left image card’s **border** should hug the **image** (no tall empty green band inside the frame).
+1. **Desktop (width > ~720px, two columns):** Open **`/retired-v1-reserve`**, **`/collection`**, **`/kumbaya`**, **`/sir`** — the left image card’s **border** should hug the **image** (no tall empty green band inside the frame).
 2. **Landscape phone / narrow-tall viewport** where the layout still uses **two columns:** same check — no interior gap between image bottom and card border.
 3. **Narrow / stacked (`max-width: 720px`):** layout stacks to one column; image card still looks coherent (no overflow clipping).
 

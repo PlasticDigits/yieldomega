@@ -193,24 +193,6 @@ export const feeRouterReadAbi = parseAbi([
   "function sinks(uint256 i) view returns (address destination, uint16 weightBps)",
 ]);
 
-export const rabbitTreasuryReadAbi = parseAbi([
-  "function currentEpochId() view returns (uint256)",
-  "function epochEnd() view returns (uint256)",
-  "function totalReserves() view returns (uint256)",
-  "function eWad() view returns (uint256)",
-  "function reserveAsset() view returns (address)",
-  "function paused() view returns (bool)",
-  "function doub() view returns (address)",
-  // Quote user payout + protocol fee; previewWithdraw uses msg.sender for cooldown, previewWithdrawFor(user) for wallets/RPC sims.
-  "function previewWithdraw(uint256 doubAmount) view returns (uint256 userOut, uint256 feeToProtocol)",
-  "function previewWithdrawFor(address user, uint256 doubAmount) view returns (uint256 userOut, uint256 feeToProtocol)",
-]);
-
-export const rabbitTreasuryWriteAbi = parseAbi([
-  "function deposit(uint256 amount, uint256 factionId)",
-  "function withdraw(uint256 doubAmount, uint256 factionId)",
-]);
-
 export const erc20Abi = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)",

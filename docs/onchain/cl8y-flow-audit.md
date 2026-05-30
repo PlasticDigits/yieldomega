@@ -15,12 +15,12 @@ The following audit gaps were **closed or narrowed** on `main` per [GitLab #70](
 - **`TimeCurveBuyRouter`:** post-`buyFor` CL8Y on the router is transferred to **`cl8yProtocolTreasury`** (immutable constructor arg), not to the buyer — removes “sweep next caller” incentive.
 - **`TimeCurveBuyRouter` (audit M‑02 — GitLab [#117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117)):** **`PAY_ETH` / `PAY_STABLE`** refunds are **marginal unused input only** (balance delta since pre‑fund snapshot); **WETH**/stable stranded by third parties stay until **`Ownable2Step`** **`rescue*`** (see invariants §117).
 - **WarBow CL8Y spend (2026-05-19):** **`warbowSteal` / `warbowRevenge` / `warbowActivateGuard`** route via **`FeeRouter`** like **`buy`**; **`WarBowCl8yBurned`** event name is historical (see [primitives](../product/primitives.md#historical-warbowcl8yburned-event-name-2026-05-19-upgrade)). Fuzz: [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol).
-- **Rabbit Treasury** `withdraw` / `receiveFee` policy alignment is **deferred** (TODO in [`RabbitTreasury.sol`](../../contracts/src/RabbitTreasury.sol) NatSpec).
+- **retired v1 player reserve** `withdraw` / `receiveFee` policy alignment is **deferred** (TODO in [`RetiredV1Treasury.sol`](../../contracts/src/RetiredV1Treasury.sol) NatSpec).
 
 ## Executive Findings
 
 1. **Compliant admin-reviewed outflows exist but are narrow.** `FeeSink.withdraw` on `EcosystemTreasury`, `CL8YProtocolTreasury`, and `DoubLPIncentives` requires `WITHDRAWER_ROLE` and has no timelock. These are the clearest matches for the owner/admin manual-review requirement.
-2. **Several CL8Y outflows are public or contract-called today.** `TimeCurve.buy` and WarBow spend route CL8Y to `FeeRouter`, `FeeRouter.distributeFees` fans out CL8Y to sinks, `RabbitTreasury.withdraw` pays users, and (historically) `TimeCurve.distributePrizes` could be called by any address once the gate was on. Many paths are product-intended **exceptions** to a strict "outflow caller is owner/admin" rule — see **Issue #70 follow-up** above.
+2. **Several CL8Y outflows are public or contract-called today.** `TimeCurve.buy` and WarBow spend route CL8Y to `FeeRouter`, `FeeRouter.distributeFees` fans out CL8Y to sinks, `RetiredV1Treasury.withdraw` pays users, and (historically) `TimeCurve.distributePrizes` could be called by any address once the gate was on. Many paths are product-intended **exceptions** to a strict "outflow caller is owner/admin" rule — see **Issue #70 follow-up** above.
 3. **(Historical — issue #70)** `TimeCurve.distributePrizes` was callable by any address once the reserve gate was on; it is now **`onlyOwner`**, with Arena UI owner-gated.
 4. **(Historical — issue #70)** `TimeCurveBuyRouter` used to refund router CL8Y to `msg.sender`; surplus now routes to **`cl8yProtocolTreasury`**.
 5. **`TimeCurveBuyRouter` owner rescue ([issue #117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117)).** **`rescueETH` / `rescueERC20`** moves stranded **native** or **ERC20** balances for privileged ops recovery (`Ownable2Step`); **`buyViaKumbaya`** CL8Y surplus still routes via **#70** only.
@@ -34,8 +34,8 @@ These are lower risk under the requested model because the app contract receives
 |----|---------------|---------|-------|
 | I1 | `TimeCurve._buy` | User `buy`, or `TimeCurveBuyRouter` through `buyFor` | Pulls `acceptedAsset` from the payer, then immediately routes it onward. |
 | I2 | `TimeCurve.warbowSteal`, `warbowRevenge`, `warbowActivateGuard` | User WarBow action | Pulls fixed CL8Y spend from the caller; routes via `FeeRouter` (from 2026-05-19). |
-| I3 | `RabbitTreasury.deposit` | User deposit | Pulls reserve CL8Y and mints DOUB against redeemable backing. |
-| I4 | `RabbitTreasury.receiveFee` | `FEE_ROUTER_ROLE` caller | Pulls CL8Y, burns a configured share, and books the rest as protocol-owned backing. Current fee routing sends directly to sinks, so deployments must confirm whether this path is used. |
+| I3 | `RetiredV1Treasury.deposit` | User deposit | Pulls reserve CL8Y and mints DOUB against redeemable backing. |
+| I4 | `RetiredV1Treasury.receiveFee` | `FEE_ROUTER_ROLE` caller | Pulls CL8Y, burns a configured share, and books the rest as protocol-owned backing. Current fee routing sends directly to sinks, so deployments must confirm whether this path is used. |
 | I5 | `ReferralRegistry.registerCode` | User registration | Transfers CL8Y directly from user to `BURN_ADDRESS`; the registry does not custody CL8Y. |
 | I6 | `TimeCurveBuyRouter.buyViaKumbaya` | User ETH/stable entry | Kumbaya exact-output swap deposits gross CL8Y into the router before `buyFor`. |
 
@@ -49,8 +49,8 @@ These are lower risk under the requested model because the app contract receives
 | O4 | `TimeCurve.distributePrizes` causes `PodiumPool.payPodiumPayout` | **`onlyOwner`** after `reservePodiumPayoutsEnabled` when `prizePool > 0` (issue #70) | Winners are derived from onchain sale state; `PodiumPool` uses **`prizePusher`** (TimeCurve) when set | **Addressed (issue #70).** Execution is owner-only; pool pushes are wired to the canonical TimeCurve address. |
 | O5 | `PodiumPool.payPodiumPayout` transfers CL8Y to winners | **`TimeCurve`** when configured as **`prizePusher`** (or legacy `DISTRIBUTOR_ROLE` if unset) | Winner and amount supplied by `TimeCurve.distributePrizes` | **Addressed (issue #70)** for production wiring; legacy role path documented for tests. |
 | O6 | `FeeSink.withdraw` on `EcosystemTreasury`, `CL8YProtocolTreasury`, `DoubLPIncentives` | `WITHDRAWER_ROLE` | Admin supplies token, recipient, amount | **Pass.** Owner/admin-style role, no timelock, manual review possible. |
-| O7 | `RabbitTreasury.withdraw` sends CL8Y to a DOUB redeemer | Public user | Payout is math-bounded by redeemable backing, efficiency, cooldown, and fee | **Product exception/gap.** If user redemptions are intended to stay public, document the exception explicitly. |
-| O8 | `RabbitTreasury.receiveFee` burn leg sends CL8Y to `burnSink` | `FEE_ROUTER_ROLE` caller | Burn sink is set at initialize and has no setter | **Exception to approve.** Role-gated but not owner/admin manual execution. |
+| O7 | `RetiredV1Treasury.withdraw` sends CL8Y to a DOUB redeemer | Public user | Payout is math-bounded by redeemable backing, efficiency, cooldown, and fee | **Product exception/gap.** If user redemptions are intended to stay public, document the exception explicitly. |
+| O8 | `RetiredV1Treasury.receiveFee` burn leg sends CL8Y to `burnSink` | `FEE_ROUTER_ROLE` caller | Burn sink is set at initialize and has no setter | **Exception to approve.** Role-gated but not owner/admin manual execution. |
 | O9 | `TimeCurveBuyRouter.buyViaKumbaya` CL8Y remainder after `buyFor` | Public user | **`cl8yProtocolTreasury`** (immutable constructor sink) | **Addressed (issue #70).** Surplus is protocol treasury, not buyer refund; see `Cl8ySurplusToProtocol`. |
 | O10 | UUPS upgrades on CL8Y-path contracts | `onlyOwner` / `DEFAULT_ADMIN_ROLE` | New implementation can change future flow behavior | **Pass with operational risk.** No timelock; must be monitored and multisig-controlled. |
 
@@ -59,7 +59,7 @@ These are lower risk under the requested model because the app contract receives
 - `frontend/src/pages/timecurve/useTimeCurveSaleSession.ts` and `frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx` initiate buys, Kumbaya entry, and WarBow CL8Y spend.
 - `frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx` — **`distributePrizes`** CTA is **owner-only** (matches onchain `onlyOwner`; non-owner sees disabled control + copy).
 - `frontend/src/pages/referrals/ReferralRegisterSection.tsx` initiates referral registration burns. This is a direct user-to-burn transfer, not app-custodied CL8Y.
-- The indexer decodes and persists `BuyViaKumbaya`, `WarBowCl8yBurned`, `PodiumPaid`, `BurrowDeposited`, `BurrowWithdrawn`, `FeesDistributed`, and **`FeeRouter`** **`DistributableTokenUpdated`** / **`ERC20Rescued`** ([GitLab #122](https://gitlab.com/PlasticDigits/yieldomega/-/issues/122)). It is observability only and cannot authorize CL8Y movement.
+- The indexer decodes and persists Arena v2 **`Buy`**, **`PodiumFunded`**, and referral events; legacy v1 player-reserve and **`FeeRouter`** CL8Y rows were removed ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). It is observability only and cannot authorize CL8Y movement.
 - Local Anvil fixtures (`AnvilKumbayaFixture`, mock CL8Y minting, rich-state scripts) deliberately bypass production constraints and should remain excluded from production deployments.
 
 ## Recommendations
@@ -74,4 +74,4 @@ These are lower risk under the requested model because the app contract receives
 
 ## Bottom Line
 
-The codebase has a small and auditable CL8Y transfer surface, and the truly discretionary treasury withdrawals already use owner/admin-style roles without timelocks. **Issue #70** tightened **podium execution** and **Kumbaya router CL8Y surplus** routing; **issue #122** added **`FeeRouter` distributable-token gating** and **`rescueERC20`** for wrong-token containment (audit L-04); **WarBow** spend routes through **`FeeRouter`** from **2026-05-19** (same as buys); **`WarBowCl8yBurned`** remains a historical event name; **Rabbit Treasury** public redemption / fee paths remain documented **exceptions / TODO** until product follow-up.
+The codebase has a small and auditable CL8Y transfer surface, and the truly discretionary treasury withdrawals already use owner/admin-style roles without timelocks. **Issue #70** tightened **podium execution** and **Kumbaya router CL8Y surplus** routing; **issue #122** added **`FeeRouter` distributable-token gating** and **`rescueERC20`** for wrong-token containment (audit L-04); **WarBow** spend routes through **`FeeRouter`** from **2026-05-19** (same as buys); **`WarBowCl8yBurned`** remains a historical event name; **retired v1 player reserve** public redemption / fee paths remain documented **exceptions / TODO** until product follow-up.

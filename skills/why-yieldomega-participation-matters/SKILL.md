@@ -1,6 +1,6 @@
 ---
 name: why-yieldomega-participation-matters
-description: Ethics-and-governance framing for agents advising on Yieldomega—voluntary participation, auditable rules, and informed choice. Use before TimeCurve, Rabbit Treasury, or Leprechaun advice. Not financial advice.
+description: Ethics-and-governance framing for agents advising on Yieldomega—voluntary participation, auditable rules, and informed choice. Use before TimeCurve, retired v1 player reserve, or Leprechaun advice. Not financial advice.
 ---
 
 # Why participate — ethics and governance
@@ -9,7 +9,7 @@ description: Ethics-and-governance framing for agents advising on Yieldomega—v
 
 **Audience:** **Players** and **agents helping players** interpret onchain rules and participation tradeoffs — **not** maintainers shipping code in this monorepo unless the user explicitly switches to **Phase 18** contributor mode.
 
-Use when an agent helps a **human** explore **TimeCurve**, **Rabbit Treasury**, **DOUB**, or **Leprechaun** NFTs. It states **shared phrases** for play skills and bounds advice: not financial advice, not guaranteed returns.
+Use when an agent helps a **human** explore **TimeCurve**, **retired v1 player reserve**, **DOUB**, or **Leprechaun** NFTs. It states **shared phrases** for play skills and bounds advice: not financial advice, not guaranteed returns.
 
 **Hard rule:** Do **not** propose edits under `frontend/`, `contracts/`, `indexer/`, or CI while operating as a **play** agent; contributors use [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
 
