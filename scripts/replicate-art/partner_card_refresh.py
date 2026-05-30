@@ -83,7 +83,7 @@ def _run_card(
         fmt = "png"
         bg = "opaque"
         notes = (
-            "Sir third-party venue card: keep the counter, merchant gorilla, leprechaun customer, bunting, "
+            "Sir third-party venue card: keep the counter, merchant gorilla, mascot customer, bunting, "
             "and trophy placement from the card reference. Same market scene — refined render only.\n"
             "Doubloon (DOUB) brand fix: replace any off-model coin or shield D with the exact hat+D emblem from token-logo — "
             "green hat, yellow band, bold stylized D. The counter/green runner shield plaque and every visible coin must match that mark."

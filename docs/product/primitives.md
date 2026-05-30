@@ -2,7 +2,7 @@
 
 ## Arena v2 (canonical)
 
-**Time Arena** economics — DOUB buys, four podium timers, 40/30/30 vault routing, epoch CRED, XP, DOUB WarBow — are specified in [`time-arena.md`](time-arena.md) (canonical · GitLab [#240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)) and [`arena-v2.md`](arena-v2.md) (implementation companion). Automated invariant map: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md) (section **TimeArena v2** · GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
+**Time Arena** economics — DOUB buys, four podium timers, 40/30/30 vault routing, epoch CRED, XP, DOUB WarBow — are specified in [`arena-v2.md`](arena-v2.md). Automated invariant map: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md) (section **TimeArena v2** · GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
 
 Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Documentation cleanup of retired v1 launchpad prose: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263).
 
@@ -23,7 +23,7 @@ Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Document
 
 ## Retired (do not reintroduce in docs or agents)
 
-v1 **TimeCurve** sale lifecycle (`endSale`, `redeemCharms`, `distributePrizes`), **FeeRouter** five-sink CL8Y routing, **Rabbit/RetiredV1**, **Leprechaun** — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Contract sources may remain in-tree for history; **Arena v2** is the operator and agent authority.
+v1 **TimeCurve** sale lifecycle (`endSale`, `redeemCharms`, `distributePrizes`), **FeeRouter** five-sink CL8Y routing, **Rabbit/Burrow**, **collectible NFT layer** — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Contract sources may remain in-tree for history; **Arena v2** is the operator and agent authority.
 
 ---
 

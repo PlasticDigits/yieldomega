@@ -2,9 +2,9 @@
 
 All notable changes to **schema files in this directory** are documented here. Each schema carries its own **`schemaVersion`** semver inside validated JSON payloads; this file tracks **file-level** history and breaking vs additive edits.
 
-Guidance for semver bumps (patch / minor / major) is summarized in [../product/leprechaun-nfts.md](../product/leprechaun-nfts.md) and [README.md](README.md).
+Guidance for semver bumps (patch / minor / major) is summarized in [README.md](README.md) and [`../../schemas/archive/`](../../schemas/archive/) (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
 
-## [leprechaun-nft-metadata-v1.schema.json](leprechaun-nft-metadata-v1.schema.json)
+## [leprechaun-nft-metadata-v1.schema.json](../../schemas/archive/leprechaun-nft-metadata-v1.schema.json) (archived)
 
 ### 1.0.0 — 2026-03-23
 

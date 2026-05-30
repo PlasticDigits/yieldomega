@@ -30,7 +30,7 @@ MegaETH-oriented monorepo for onchain gamefi: **Time Arena** (Arena v2) — **`T
 | DoubPresaleVesting | `0xB4128c9f52dC345aD13680973146b23f5383dda0` |
 | PresaleCharmBeneficiaryRegistry | `0x6bfe055e767bF777a963157a6AEdE2F1e3eE2107` |
 | TimeCurveBuyRouter | `0x9F7B0Fd3ed1cA730E37882aC3644b9991cdCaed9` |
-| LeprechaunNFT | `0x9591bA1347D8f79aF7622d3145F8B6026078C85B` |
+| Collectible NFT (v1, retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)) | `0x9591bA1347D8f79aF7622d3145F8B6026078C85B` |
 
 UUPS cores are deployed behind **proxies**; use the addresses in this table for RPC and wallet calls. Foundry `run-latest.json` may also list **implementation** deployments for the same logical name—do not treat those as the live protocol surface ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 
@@ -65,7 +65,7 @@ What this ecosystem explicitly does **not** optimize for:
 - **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests; roadmap alignment in [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md) and [`docs/agent-phases.md`](docs/agent-phases.md).
 - **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
 - **`bots/`** — optional Python clients for local/public RPC testing ([`bots/README.md`](bots/README.md)); Arena v2 package: [`bots/timearena/README.md`](bots/timearena/README.md) ([#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
-- **Agent skills:** **Contributor** (code): [`.cursor/skills/README.md`](.cursor/skills/README.md), guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). **Play** (TimeCurve, Rabbit Treasury, Leprechauns): [`skills/README.md`](skills/README.md).
+- **Agent skills:** **Contributor** (code): [`.cursor/skills/README.md`](.cursor/skills/README.md), guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). **Play** (Time Arena): [`skills/README.md`](skills/README.md).
 - **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.
 
 ## License

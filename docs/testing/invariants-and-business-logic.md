@@ -14,11 +14,11 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-DOCS-245-PLAY-SKILLS`** | Root [`skills/README.md`](../../skills/README.md) indexes **`play-active-time-arena`**, **`play-time-arena-doub`**, **`play-time-arena-warbow`** only (legacy `play-timecurve-*` / Rabbit / Leprechaun removed) | `skills/play-*-time-arena*/SKILL.md`, grep absence of `play-timecurve-doubloon` |
+| **`INV-DOCS-245-PLAY-SKILLS`** | Root [`skills/README.md`](../../skills/README.md) indexes **`play-active-time-arena`**, **`play-time-arena-doub`**, **`play-time-arena-warbow`** only (legacy `play-timecurve-*` / Rabbit / collectible NFT removed) | `skills/play-*-time-arena*/SKILL.md`, grep absence of `play-timecurve-doubloon` |
 | **`INV-DOCS-245-GUARDRAILS`** | [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) references Arena v2 onchain authority + [`skills/README.md`](../../skills/README.md) play index | manual review |
 | **`INV-DOCS-245-PHASE20`** | [`docs/agent-phases.md`](../agent-phases.md) Phase 20 prompt names Time Arena play skills + [`docs/product/time-arena.md`](../product/time-arena.md) | `grep play-time-arena agent-phases.md` |
 | **`INV-BOTS-245-TIMEARENA`** | Bot package at [`bots/timearena/`](../../bots/timearena/README.md); env **`YIELDOMEGA_TIME_ARENA_ADDRESS`**; `inspect` reads **`TimeArena.doub()`** / **`arenaStart`** / **`paused`** (not legacy `saleStart` / `acceptedAsset`) | `bots/timearena/tests/`, `bash scripts/sync-bot-env-from-frontend.sh` |
-| **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit/Leprechaun required) | script + `frontend/.env.example` |
+| **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit / retired NFT env required) | script + `frontend/.env.example` |
 
 Cross-links: [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timecurve-local/SKILL.md`](../../skills/script-with-timecurve-local/SKILL.md) (local stack env hygiene).
 
@@ -262,10 +262,22 @@ Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces)
 |----|----------|-------------------|
 | **`INV-DEPLOY-259-DEV-WIRE`** | DeployDev: vaults → arena, PlayCred minter, arena live | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
 | **`INV-DEPLOY-259-DEV-SEED`** | DeployDev seeds DOUB/CL8Y/CRED for E2E mock wallet | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) |
-| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
+| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no retired v1 NFT/treasury/presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
 | **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
 
 Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md).
+
+<a id="retired-collectible-nft-gitlab-241"></a>
+
+### Retired collectible NFT surface (GitLab [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-RETIRED-241-NO-CONTRACT`** | No collectible NFT Solidity under `contracts/src/`; no deploy wiring in `DeployDev` / `DeployProduction` | File grep for retired NFT contract name → empty |
+| **`INV-RETIRED-241-NO-INDEXER`** | No NFT decode tables or `/v1/*` mint routes in `indexer/src/` | Indexer source grep → empty |
+| **`INV-RETIRED-241-NO-FRONTEND`** | No `/collection` route, `CollectionPage`, or NFT read ABI in `frontend/src/` | Frontend source grep → empty |
+| **`INV-RETIRED-241-DOCS-SKILLS`** | Product doc + play skill removed; schema archived under [`schemas/archive/`](../../schemas/archive/) | [`skills/README.md`](../../skills/README.md) · guardrails [§12](../../.cursor/skills/yieldomega-guardrails/SKILL.md) |
+| **`INV-RETIRED-241-RG-CLEAN`** | Repo grep for retired NFT keyword empty outside `CHANGELOG` / `archive` / `audits` | Manual gate before closing #241 |
 
 ---
 

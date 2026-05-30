@@ -37,7 +37,7 @@ export function NotFoundPage() {
           </>
         }
         mascot={{
-          src: "/art/mascot-bunny-leprechaun-wave.png",
+          src: "/art/mascot-bunny-wave.jpg",
           width: 208,
           height: 208,
           className: "cutout-decoration--peek",

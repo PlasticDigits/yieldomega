@@ -26,7 +26,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **retired v1 player reserve (GitLab #242)** — Retired player treasury layer ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 
-- **Leprechaun NFTs** — Retired collectible layer ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
+- **Legacy collectible NFT layer** — Retired ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
 
 ## Assets and naming
 

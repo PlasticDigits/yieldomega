@@ -42,8 +42,8 @@ large, high contrast, and scannable. Do not add dense fine print, legal claims, 
 watermarks, or return/profit promises.
 
 Reference images are supplied as input_images in this order:
-(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-leprechaun mascot,
-red-bearded leprechauns, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
+(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-mascot mascot,
+red-bearded mascots, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
 accents, and magical arena energy.
 (2) token-logo.png — use as canonical hat-token / DOUB-style coin language.
 """.strip()
@@ -161,7 +161,7 @@ no infographic panels, no slogans, no profit copy.
 Wide 3:2 onboarding infographic poster. Massive glowing arena gate with wordmark exactly "YIELDOMEGA" across the lintel.
 A new adult player avatar steps through while short holographic referral slugs float nearby (readable but fake codes like
 "yo-friend-7qk" style, not real user data). Three labeled steps along the path: "ENTER", "BRING A CODE", "JOIN THE ARENA".
-Small badge: "REFERRALS ON-CHAIN". Welcoming hosts (bunny-leprechaun + red-bearded leprechaun) wave from the sides without
+Small badge: "REFERRALS ON-CHAIN". Welcoming hosts (bunny-mascot + red-bearded mascot) wave from the sides without
 speech bubbles. Fantasy crypto metaverse lighting, green-gold portal flare, chunky readable type.
 """,
         ),

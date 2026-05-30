@@ -60,21 +60,21 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
 
 export const PLACEHOLDER_CUTOUTS_BY_SLUG = {
   referrals: {
-    primary: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
-    secondary: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
+    primary: "/art/cutouts/mascot-bunny-girl-wave-cutout.png",
+    secondary: "/art/cutouts/cutout-bunny-girl-head.png",
     tertiary: "/art/cutouts/loading-mascot-circle.png",
   },
 } as const;
 
 export const THIRD_PARTY_CUTOUTS_BY_SLUG = {
   kumbaya: {
-    banner: "/art/cutouts/cutout-bunnyleprechaungirl-head.png",
-    panel: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
+    banner: "/art/cutouts/cutout-bunny-girl-head.png",
+    panel: "/art/cutouts/mascot-bunny-girl-wave-cutout.png",
     footer: "/art/cutouts/loading-mascot-circle.png",
   },
   sir: {
-    banner: "/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png",
-    panel: "/art/cutouts/cutout-bunnyleprechaungirl-full.png",
+    banner: "/art/cutouts/mascot-bunny-girl-jump-cutout.png",
+    panel: "/art/cutouts/cutout-bunny-girl-full.png",
     footer: "/art/cutouts/loading-mascot-circle.png",
   },
 } as const;

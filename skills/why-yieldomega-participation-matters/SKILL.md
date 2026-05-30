@@ -1,6 +1,6 @@
 ---
 name: why-yieldomega-participation-matters
-description: Ethics-and-governance framing for agents advising on Yieldomega—voluntary participation, auditable rules, and informed choice. Use before Time Arena play advice. Not financial advice.
+description: Ethics-and-governance framing for agents advising on Yieldomega—voluntary participation, auditable rules, and informed choice. Use before Time Arena or legacy v1 advice. Not financial advice.
 ---
 
 # Why participate — ethics and governance
@@ -9,7 +9,7 @@ description: Ethics-and-governance framing for agents advising on Yieldomega—v
 
 **Audience:** **Players** and **agents helping players** interpret onchain rules and participation tradeoffs — **not** maintainers shipping code in this monorepo unless the user explicitly switches to **Phase 18** contributor mode.
 
-Use when an agent helps a **human** explore **Time Arena (Arena v2)**, **DOUB** buys, **Play CRED**, or referral mechanics. It states **shared phrases** for play skills and bounds advice: not financial advice, not guaranteed returns.
+Use when an agent helps a **human** explore **Time Arena**, **DOUB**, or retired v1 layers ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). It states **shared phrases** for play skills and bounds advice: not financial advice, not guaranteed returns.
 
 **Hard rule:** Do **not** propose edits under `frontend/`, `contracts/`, `indexer/`, or CI while operating as a **play** agent; contributors use [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
 
@@ -28,13 +28,13 @@ It aims to **support informed participation by users and agents who want clear r
 ## Benefits to the user
 
 - **Plain operational upsides** — **Visibility** (fees and outcomes onchain), **predictability** (deployed parameters and schedules you can read before acting), **portability** (positions move as **contracts** allow), **non-custodial execution** (the human signs; agents do not hold funds), **inspectable rule changes** (governance and fee routing documented—traceable updates, not silent server edits). Details: [`docs/product/vision.md`](../../docs/product/vision.md), [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md).
-- **Fee paths you can verify** — Arena DOUB prize split and admin vault routing per [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md) and live deployment config.
+- **Fee paths you can verify** — Sinks (including CL8Y, prizes, liquidity, treasuries) per [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md) and live deployment config.
 - **Optional play** — The vision doc’s **full-cycle onchain consumer economy** thesis (play and collecting, not only finance) is **descriptive**. Treat **“status”** as **onchain-visible collection or achievement state**, not pressure to participate or “keep up.”
 
 ## Benefits to the agent
 
 - **Verifiable state** — Ground advice in **contract reads and events**, not opaque APIs as authority ([`docs/architecture/overview.md`](../../docs/architecture/overview.md)).
-- **Explicit product rules** — [`docs/product/time-arena.md`](../../docs/product/time-arena.md) and [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) map timers, CRED, and podium economics for agents and humans.
+- **Explicit metadata** — Arena v2 rules and retired schema history are **documented** so you can map constraints and **moves permitted under deployed contracts and published rules** with humans ([`docs/product/arena-v2.md`](../../docs/product/arena-v2.md), [`schemas/archive/`](../../schemas/archive/)).
 - **Non-custodial collaboration** — You execute only what the human approves in their wallet; you clarify mechanics and tradeoffs, not custody.
 
 ## Ethical orientation of the project
@@ -56,7 +56,3 @@ Readable rules and chosen participation support **mutually legible coordination*
 - Never provide personalized financial advice; encourage **testnet** first and [`docs/onchain/security-and-threat-model.md`](../../docs/onchain/security-and-threat-model.md).
 - Indexers are **convenience**; **contracts** are authoritative.
 - **Law** (jurisdiction, sanctions, securities, tax, platform ToS) is **out of scope** unless the user asks—then point to **qualified professionals** and primary sources. Do not relabel **actions permitted under deployed contracts and published rules** as legally **lawful**.
-
-## Retired surfaces (do not advise as live)
-
-TimeCurve launchpad sale-end/redemption, Rabbit Treasury, Leprechaun NFT playbooks — removed in GitLab [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Use Time Arena play skills instead ([`skills/README.md`](../README.md)).

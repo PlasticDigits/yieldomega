@@ -267,7 +267,7 @@ def _deliver_replicate_fallbacks(art: Path) -> None:
     rs("icons/token-cl8y.png", "icons/fee-burn.png", 128, 128)
     rs("icons/token-doub.png", "icons/fee-treasury.png", 128, 128)
     rs("icons/token-charm.png", "icons/fee-referral.png", 128, 128)
-    rs("cutouts/mascot-leprechaun-with-bag-cutout.png", "cutouts/indexer-down-mascot.png", 512, 512)
+    rs("cutouts/mascot-mascot-with-bag-cutout.png", "cutouts/indexer-down-mascot.png", 512, 512)
 
 
 def _post_deliver_png(data: bytes, post: PostDeliver) -> bytes:
@@ -431,7 +431,7 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "UI cursor sprite only: a small round leprechaun shield badge with a bold red diagonal NO bar and thick "
+            "UI cursor sprite only: a small round mascot shield badge with a bold red diagonal NO bar and thick "
             "black outline—friendly arcade 'not allowed' icon, glossy toy finish, no readable words, centered, "
             "transparent background, readable at 24px.",
             "cursors/disabled.png",
@@ -503,12 +503,12 @@ def jobs() -> list[BatchJob]:
         BatchJob(
             "issue57-cutout-indexer-down-mascot.png",
             "Cutouts",
-            "Indexer-down sad leprechaun",
+            "Indexer-down sad mascot",
             "1:1",
             "transparent",
             "png",
             "cutout",
-            "Character cutout: a sympathetic red-bearded leprechaun mascot looking a little sad and shrugging—gentle "
+            "Character cutout: a sympathetic red-bearded mascot mascot looking a little sad and shrugging—gentle "
             "'service hiccup' mood, holding a tilted empty coin bag, chunky arcade outlines, adult character, fully "
             "clothed, transparent chroma-friendly backdrop for keying, no text, no UI chrome.",
             "cutouts/indexer-down-mascot.png",

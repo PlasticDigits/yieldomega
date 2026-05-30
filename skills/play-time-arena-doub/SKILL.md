@@ -5,7 +5,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 # Play Time Arena (DOUB)
 
-**Authority:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) onchain + [`docs/product/time-arena.md`](../../docs/product/time-arena.md) + [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md).
+**Authority:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) onchain + [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md).
 
 ## Buy
 
@@ -34,4 +34,4 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 ## Retired
 
-TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, retired v1 player reserve ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), Leprechaun — epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **FeeRouter** five-sink CL8Y buy routing (`PodiumPool`, `DoubLPIncentives`, burn sink) — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244); canonical split is **40/30/30 DOUB** above · [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md).
+TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, Rabbit Treasury, collectible NFT layer — see epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).

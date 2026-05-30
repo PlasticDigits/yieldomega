@@ -71,7 +71,7 @@ EP_CONCEPTS: tuple[dict[str, Any], ...] = (
             "bouncy quantized groove with light chiptune-style lead hooks layered over warm pennywhistle "
             "and fiddle lines, sparkly plucky synth arps, gentle orchestral strings for lift, "
             "tight punchy drums with a casual mobile-game lobby bounce, glossy polished mix, "
-            "whimsical leprechaun-hills adventure energy, wide happy soundstage, "
+            "whimsical mascot-hills adventure energy, wide happy soundstage, "
             "instrumental only, no vocals, no singing, no voice, no choir, no spoken word"
         ),
     },

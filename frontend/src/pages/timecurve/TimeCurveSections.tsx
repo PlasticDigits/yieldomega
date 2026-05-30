@@ -507,7 +507,7 @@ export function BattleFeedSection(props: {
       spotlight
       className="timecurve-panel timecurve-panel--feed"
       cutout={{
-        src: "/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png",
+        src: "/art/cutouts/mascot-bunny-girl-wave-cutout.png",
         width: 256,
         height: 256,
         className: "panel-cutout panel-cutout--mid-right",

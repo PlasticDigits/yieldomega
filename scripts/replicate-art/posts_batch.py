@@ -79,8 +79,8 @@ REFERENCE_INSTRUCTIONS_INFOGRAPHIC = """
 CRITICAL — infographic typography: this job is a marketing chart/poster, not a silent key-art still. You MUST render clearly readable English words as chunky cartoon lettering (headlines, panel titles, chart callouts). An image with no on-picture text is wrong for this task. Keep labels short and scannable like a game HUD; no watermarks, no dense paragraphs, no fake fine print.
 
 Reference images are supplied as input_images in this exact order:
-(1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
-(2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green leprechaun hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel.
+(1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny mascot girl mascot (clearly adult, non-minor), red-bearded mascots, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
+(2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green mascot hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel.
 
 Important balance: keep the characters, costume language, palette, token motif, and overall aesthetic clearly consistent with the references, but do not make a direct edit or near-duplicate of the reference image. Change the composition, camera angle, staging, pose, layout, and scene arrangement while keeping the same brand identity.
 
@@ -271,7 +271,7 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
             "reason to win. Show a bold diagram of a 'Short Clock Zone' as a highlighted "
             "segment on a chunky countdown ring or arena clock where extra time is visibly "
             "capped (ceiling arc). Connect paths with pictogram wallets and podium shapes. "
-            "Adult bunny-leprechaun girl and red-bearded leprechaun as small icons in corners, "
+            "Adult bunny-mascot girl and red-bearded mascot as small icons in corners, "
             "not the whole frame. Editorial layout, strong grid, high information density, "
             "flat vector-like planes with thick outlines. "
             "Required on-image type (spell out legibly): big headline FAST IN / FAST OUT vs STAY TO WIN; "
@@ -305,12 +305,12 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
         "opaque",
         (
             "SOCIAL POST VISUAL — light narrative worldbuilding (character-forward, low chart density). "
-            "Theme: launch energy — 'sniper sharks' vs 'leprechaun token collectors' as two "
+            "Theme: launch energy — 'sniper sharks' vs 'mascot token collectors' as two "
             "playstyles in the same blockie green hills. Left: a sleek cartoon shark mascot in "
             "playful tactical gear, circling above voxel water or coin shallows. Right: cheerful "
-            "red-bearded leprechaun with a pot of glossy hat-coins and charm sparkles, relaxed stance. "
+            "red-bearded mascot with a pot of glossy hat-coins and charm sparkles, relaxed stance. "
             "Split composition with a sunlit path between them; rainbow hint; both look competent, "
-            "not evil vs good — different games. Adult bunny-leprechaun girl waving from a distant "
+            "not evil vs good — different games. Adult bunny-mascot girl waving from a distant "
             "hill center as host. Cinematic, story moment, breathing room, not an infographic. "
             "No captions, speech bubbles, or overlaid lettering — communicate only through poses and scenery."
         ),
@@ -323,12 +323,12 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
         "opaque",
         (
             "SOCIAL POST VISUAL — cozy story panel (light information, warm tableau). "
-            "Theme: the patient path — leprechaun collectors not playing the sniper sprint; "
+            "Theme: the patient path — mascot collectors not playing the sniper sprint; "
             "accumulating across the sale and redeeming when the clock hits zero. Interior or "
-            "porch scene: red-bearded leprechaun at a wooden table with stacks of stylized "
+            "porch scene: red-bearded mascot at a wooden table with stacks of stylized "
             "charm tokens (glowing green discs), a small hourglass, and a chest suggesting "
             "doubloons; open window shows a distant chunky countdown clock in the hills. "
-            "Adult bunny-leprechaun girl leaning in with a knowing smile, tea or map vibe. "
+            "Adult bunny-mascot girl leaning in with a knowing smile, tea or map vibe. "
             "Soft lamp light, tactile props; clock face is pictorial only (no numerals). "
             "No captions, labels, or UI text."
         ),
@@ -362,9 +362,9 @@ POST_JOBS: list[tuple[str, str, str, str, str, str]] = [
             "SOCIAL POST VISUAL — wide celebratory key art (moderate detail, poster energy). "
             "Theme: clock hit zero — blockie green hills are alive with launch night. "
             "Central burst: giant stylized arena clock at zero with confetti and sparkles. "
-            "Foreground: leprechaun collectors cheering with charm trails; midground: shark "
+            "Foreground: mascot collectors cheering with charm trails; midground: shark "
             "mascots already repositioning for the next play; background: voxel hills, rainbow "
-            "arc, flying hat-coins. Adult bunny-leprechaun girl center-front welcoming the viewer. "
+            "arc, flying hat-coins. Adult bunny-mascot girl center-front welcoming the viewer. "
             "Inviting 'everyone in the room' mood — diverse silhouettes of fantasy participants. "
             "No captions, slogan lettering, speech bubbles, or numerals on the clock — pure celebration art."
         ),

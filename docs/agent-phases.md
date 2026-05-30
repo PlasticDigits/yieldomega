@@ -12,7 +12,7 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 **Two tracks (do not confuse them)**
 
 - **Build / fork the repo** — Phases **1–19** plus [`.cursor/skills`](../.cursor/skills/README.md) **guardrails**: licensing, architecture, tests, small diffs. This is for contributors shipping code, docs, and infra.
-- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **Time Arena** (Arena v2) onchain mechanics. Legacy TimeCurve launchpad, retired v1 player reserve, and Leprechaun playbooks were removed ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
+- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **Time Arena** (Arena v2) onchain mechanics. Legacy TimeCurve launchpad, Rabbit Treasury, and collectible NFT playbooks were removed ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
 
 ---
 
@@ -22,12 +22,12 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 
 **Doc:** [glossary.md](glossary.md)
 
-**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeCurve, retired v1 player reserve, reserve asset, agents).
+**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeCurve, Rabbit Treasury, reserve asset, agents).
 
 **Agent prompt (copy-paste):**
 
 ```text
-You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and retired v1 player reserve, (2) what “fully onchain” means in this project, (3) that **CL8Y** is the canonical **reserve / accepted asset** for TimeCurve and retired v1 player reserve at launch (and how **USDm** fits as MegaETH context in research docs), (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
+You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) that **CL8Y** is the canonical **reserve / accepted asset** for TimeCurve and Rabbit Treasury at launch (and how **USDm** fits as MegaETH context in research docs), (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
 ```
 
 ---
@@ -59,7 +59,7 @@ Read docs/licensing.md and the root LICENSE (AGPL-3.0). Explain in plain languag
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/architecture/overview.md. Draw (in text/mermaid) the data flow for: a user claiming a TimeCurve prize, and a user depositing into retired v1 player reserve. For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
+Read docs/architecture/overview.md. Draw (in text/mermaid) the data flow for: a user claiming a TimeCurve prize, and a user depositing into Rabbit Treasury. For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
 ```
 
 ---
@@ -98,49 +98,43 @@ Read docs/product/vision.md. Write a short “non-goals” list (what this ecosy
 
 <a id="phase-6"></a>
 
-## Phase 6 — Time Arena primitive requirements
+## Phase 6 — TimeCurve primitive requirements
 
-**Docs:** [product/time-arena.md](product/time-arena.md) (canonical Arena v2 spec · [#240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)), [product/primitives.md](product/primitives.md) (shared cooldown + referrals index)
+**Doc:** [product/primitives.md](product/primitives.md)
 
-**Goal:** Translate TimeArena mechanics into implementable requirements and open parameters.
+**Goal:** Translate TimeCurve mechanics into implementable requirements and open parameters.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/time-arena.md, docs/product/arena-v2.md, and docs/glossary.md. Produce a requirements checklist for a Foundry implementation: state variables, events, and edge cases (per-podium timers, timer cap, CHARM band, podium epoch rolls). Flag any underspecified numeric policy as TODOs needing human parameters. Do not write Solidity yet unless asked. Do not treat v1 TimeCurve sale-end, redeemCharms, or linear CHARM price as v2 behavior.
+Read docs/product/primitives.md and docs/glossary.md. Produce a requirements checklist for a Foundry implementation: state variables, events, and edge cases (timer cap, minimum buy growth, max purchase multiple, sale end). Flag any underspecified numeric policy (for example per-category prize weights inside the prizes fee bucket) as TODOs needing human parameters. Do not write Solidity yet unless asked.
 ```
 
 ---
 
 <a id="phase-7"></a>
 
-## Phase 7 — retired v1 player reserve design goals
+## Phase 7 — Rabbit Treasury design goals
 
-**Doc:** [product/retired-v1-reserve.md](product/retired-v1-reserve.md)
+**Doc:** [product/rabbit-treasury.md](product/rabbit-treasury.md)
 
 **Goal:** Internal accounting and health-linked repricing without pretending unsustainable yield.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/retired-v1-reserve.md. Summarize the honest sustainability story in 5 bullet points. Propose onchain-visible metrics (names only) that an indexer could chart for “reserve health” without inventing secret logic. Identify conflicts with “fully onchain” if external oracles are used, and suggest mitigation patterns (still design-level, no code).
+Read docs/product/rabbit-treasury.md. Summarize the honest sustainability story in 5 bullet points. Propose onchain-visible metrics (names only) that an indexer could chart for “reserve health” without inventing secret logic. Identify conflicts with “fully onchain” if external oracles are used, and suggest mitigation patterns (still design-level, no code).
 ```
 
 ---
 
 <a id="phase-8"></a>
 
-## Phase 8 — Leprechaun NFTs and onchain metadata schema
+## Phase 8 — Retired: collectible NFT metadata (Arena v2)
 
-**Doc:** [product/leprechaun-nfts.md](product/leprechaun-nfts.md)
+**Status:** Removed in Arena v2 ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)). Historical schema notes: [`schemas/archive/`](../../schemas/archive/), [`schemas/CHANGELOG.md`](../../schemas/CHANGELOG.md).
 
-**Goal:** Machine-readable traits for gameplay and agents.
-
-**Agent prompt (copy-paste):**
-
-```text
-Read docs/product/leprechaun-nfts.md. Draft a versioned JSON schema outline for onchain metadata fields (trait keys, types, allowed ranges). Include set, faction, bonus, synergy tags, and agent skill flags. Explain how upgrades or seasonal series would bump schema version. No Solidity until parameters are approved.
-```
+**Goal:** Do not implement new NFT metadata surfaces without an approved Arena v2 spec.
 
 ---
 
@@ -171,7 +165,7 @@ Read docs/onchain/fee-routing-and-governance.md. List every fee sink and the gov
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/onchain/security-and-threat-model.md. For TimeCurve and retired v1 player reserve separately, list top 5 threats and mitigations (design-level). Include MEV on timer/buys and indexer reorg confusion. Output a test plan mapping each threat to unit vs integration vs testnet validation.
+Read docs/onchain/security-and-threat-model.md. For TimeCurve and Rabbit Treasury separately, list top 5 threats and mitigations (design-level). Include MEV on timer/buys and indexer reorg confusion. Output a test plan mapping each threat to unit vs integration vs testnet validation.
 ```
 
 ---
@@ -219,7 +213,7 @@ Read docs/indexer/design.md. Scaffold a Rust binary/crate under indexer/ with: P
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/frontend/design.md. Scaffold a Vite + TypeScript app under frontend/ with routes placeholders for TimeCurve, retired v1 player reserve, and Collection. Integrate wallet connect pattern (library choice per maintainer). No hidden env secrets; use .env.example only. AGPL for new app source.
+Read docs/frontend/design.md. Scaffold a Vite + TypeScript app under frontend/ with routes placeholders for TimeCurve, Rabbit Treasury, and Collection. Integrate wallet connect pattern (library choice per maintainer). No hidden env secrets; use .env.example only. AGPL for new app source.
 ```
 
 ---
@@ -278,7 +272,7 @@ Read docs/research/megaeth.md. Verify official doc URLs still resolve; update th
 
 **Doc:** [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md)
 
-**Goal:** Clarify reserve assumptions for retired v1 player reserve, TimeCurve accepted asset, and fee routing.
+**Goal:** Clarify reserve assumptions for Rabbit Treasury, TimeCurve accepted asset, and fee routing.
 
 **Agent prompt (copy-paste):**
 
@@ -324,16 +318,16 @@ Read the root README.md and docs/README.md. Improve only clarity: link to docs/a
 
 ## Phase 20 — Play the ecosystem (agents helping users participate)
 
-**Docs:** Root [`skills/README.md`](../skills/README.md) (index), plus product specs [product/time-arena.md](product/time-arena.md), [product/arena-v2.md](product/arena-v2.md), [product/primitives.md](product/primitives.md), and [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md).
+**Docs:** Root [`skills/README.md`](../skills/README.md) (index), plus product specs [product/arena-v2.md](product/arena-v2.md), [product/time-arena.md](product/time-arena.md), and [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md). Retired v1 specs: [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 **Goal:** Equip agents that help humans **understand, evaluate, and use** the onchain games, treasuries, and participation systems in the Yieldomega ecosystem—not only contributors working inside this repo. Play skills should help users interpret authoritative onchain state, understand wallet and transaction safety, and compare options, constraints, and consequences so they can decide for themselves whether participation matches their goals. These skills should be written for transparent, voluntary, user-controlled interaction under auditable rules. They should not import contributor-only assumptions or internal workflow guardrails from `.cursor/skills/`. **Instruction:** Clarify mechanics and constraints; do not pressure, recruit, or steer the user into participation.
 
 **Agent prompt (copy-paste):**
 
 ```text
-You are an agent helping a human understand, evaluate, or use the Yieldomega onchain ecosystem on MegaETH, where the human remains in control of whether and how to participate. This is not limited to editing this repo. Read skills/README.md and each play SKILL under skills/ that matches the user’s intent: start with play-active-time-arena, then play-time-arena-doub; see docs/product/time-arena.md and docs/product/arena-v2.md.
+You are an agent helping a human understand, evaluate, or use the Yieldomega onchain ecosystem on MegaETH, where the human remains in control of whether and how to participate. This is not limited to editing this repo. Read skills/README.md and each play SKILL under skills/ that matches the user’s intent: start with play-active-time-arena, then play-time-arena-doub; see docs/product/arena-v2.md.
 
-Your job is to help the user understand available options, relevant constraints, likely consequences, and the current deployed rules so they can make an informed choice. Prefer authoritative sources in this order: deployed contract state and contract reads, tokenURI or other onchain metadata where relevant, and canonical onchain events. Use product docs such as docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitives.md, and docs/onchain/fee-routing-and-governance.md to interpret current rules and terminology. Treat offchain indexers and interfaces only as convenience layers or caches, not as final sources of truth for balances, winners, permissions, or state.
+Your job is to help the user understand available options, relevant constraints, likely consequences, and the current deployed rules so they can make an informed choice. Prefer authoritative sources in this order: deployed contract state and contract reads, and canonical onchain events. Use product docs such as docs/product/arena-v2.md, docs/product/time-arena.md, and docs/onchain/fee-routing-and-governance.md to interpret current rules and terminology. Treat offchain indexers and interfaces only as convenience layers or caches, not as final sources of truth for balances, winners, permissions, or state.
 
 Always distinguish clearly between:
 what is visible in deployed contracts and published rules,

@@ -30,8 +30,8 @@
   - See [`docs/frontend/arena-views.md`](./arena-views.md) for the
     layout contract, single-source-of-truth invariants, and the
     LaunchCountdown → Simple handoff.
-- **retired v1 player reserve** — deposit/withdraw flows, epoch charts, faction standings.
-- **Collection** — Leprechaun NFT gallery, set progress, trait filters for humans and agents.
+- **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
+- **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary route is **`/arena`**.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
 
 ## Data sources

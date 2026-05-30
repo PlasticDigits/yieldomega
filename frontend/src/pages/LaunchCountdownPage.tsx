@@ -66,7 +66,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
 
       <CutoutDecoration
         className="launch-countdown__cutout launch-countdown__cutout--left cutout-decoration--float"
-        src="/art/cutouts/cutout-bunnyleprechaungirl-full.png"
+        src="/art/cutouts/cutout-bunny-girl-full.png"
         width={332}
         height={412}
         loading="eager"
