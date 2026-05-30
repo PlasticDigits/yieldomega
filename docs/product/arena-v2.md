@@ -39,7 +39,7 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 4. Increment **`podiumEpoch[cat]`**; clear live scores for that category only.
 5. Emit **`PodiumEpochRolled`**.
 
-WarBow: live BP resets on WarBow epoch roll; admin **`finalizeWarbowPodium(epoch, …)`** pays from that epoch’s pool.
+**WarBow (cat 3):** steps 1 and 3–5 apply; step 2 (auto 4∶2∶1 pay) is **skipped** — owner **`finalizeWarbowPodium(epoch, …)`** pays that epoch’s pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). Live BP resets via **`warbowBpGeneration`** on roll.
 
 ## DOUB prize routing (per buy)
 

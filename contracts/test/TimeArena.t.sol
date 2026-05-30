@@ -711,6 +711,113 @@ contract TimeArenaTest is Test {
         assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
     }
 
+    /// GitLab #252: guard pulls 10_000 DOUB.
+    function test_warbow_guard_pulls_doub() public {
+        uint256 balBefore = doub.balanceOf(address(arena));
+        vm.prank(alice);
+        arena.warbowActivateGuard();
+        assertEq(doub.balanceOf(address(arena)) - balBefore, 10_000e18);
+        assertGt(arena.warbowGuardUntil(alice), block.timestamp);
+    }
+
+    /// GitLab #252: revenge pulls 1000 DOUB.
+    function test_warbow_revenge_pulls_doub() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        uint256 balBefore = doub.balanceOf(address(arena));
+        vm.prank(bob);
+        arena.warbowRevenge(alice);
+        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18);
+    }
+
+    /// GitLab #252: fourth steal on same victim in a UTC day pulls steal + 50_000 DOUB override.
+    function test_warbow_steal_limit_override_pulls_doub() public {
+        _seedWarbowStealBand(bob, alice);
+        for (uint256 i; i < 3; ++i) {
+            vm.prank(alice);
+            arena.warbowSteal(bob, false);
+            _boostWarbowVictim(bob);
+        }
+        uint256 balBefore = doub.balanceOf(address(arena));
+        vm.prank(alice);
+        arena.warbowSteal(bob, true);
+        assertEq(doub.balanceOf(address(arena)) - balBefore, 1000e18 + 50_000e18);
+    }
+
+    /// GitLab #252: flag claim costs zero DOUB and awards BP.
+    function test_warbow_flag_claim_zero_doub() public {
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        uint256 arenaBalBefore = doub.balanceOf(address(arena));
+        vm.warp(block.timestamp + arena.WARBOW_FLAG_SILENCE_SEC());
+        uint256 bpBefore = arena.battlePoints(alice);
+        vm.prank(alice);
+        arena.claimWarBowFlag();
+        assertEq(doub.balanceOf(address(arena)), arenaBalBefore);
+        assertEq(arena.battlePoints(alice), bpBefore + arena.WARBOW_FLAG_CLAIM_BP());
+    }
+
+    /// GitLab #252: WarBow epoch roll clears live battlePoints (generation bump).
+    function test_warbow_epoch_roll_clears_battle_points() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertGt(arena.battlePoints(alice), 0);
+
+        vm.warp(arena.podiumDeadline(arena.CAT_WARBOW()) + 1);
+        arena.rollPodiumEpoch(arena.CAT_WARBOW());
+
+        assertEq(arena.battlePoints(alice), 0);
+        assertEq(arena.podiumEpoch(arena.CAT_WARBOW()), 1);
+    }
+
+    /// GitLab #252: roll retains pool; admin finalizeWarbowPodium pays 4:2:1 for past epoch.
+    function test_finalize_warbow_podium_pays_after_roll() public {
+        vm.prank(alice);
+        arena.buy(10e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(10e18);
+
+        uint8 cat = arena.CAT_WARBOW();
+        address pool = vaults.activePools(cat);
+        uint256 poolBal = doub.balanceOf(pool);
+        assertGt(poolBal, 0);
+
+        (address[3] memory winners,) = arena.podium(cat);
+        assertTrue(winners[0] != address(0));
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(arena.podiumEpoch(cat), 1);
+        assertEq(doub.balanceOf(pool), poolBal, "WarBow roll must not auto-pay");
+
+        uint256 firstBefore = doub.balanceOf(winners[0]);
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+        assertTrue(doub.balanceOf(winners[0]) > firstBefore);
+        assertTrue(arena.warbowEpochFinalized(0));
+    }
+
+    /// Sets victim BP high and attacker BP low so steal band (2x–10x) passes.
+    function _seedWarbowStealBand(address victim, address attacker) internal {
+        _boostWarbowVictim(victim);
+        vm.prank(attacker);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+    }
+
+    function _boostWarbowVictim(address victim) internal {
+        vm.startPrank(victim);
+        arena.buy(10e18);
+        vm.warp(block.timestamp + 301);
+        arena.buy(10e18);
+        vm.stopPrank();
+        _warpPastBuyCooldown();
+    }
+
     function test_topUpPodiumPools_700_matches_buy_prize_vaults() public {
         uint256 adminBefore = doub.balanceOf(address(adminVault));
         vm.prank(alice);

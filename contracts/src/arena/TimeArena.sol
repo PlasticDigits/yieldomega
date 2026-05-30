@@ -93,7 +93,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     mapping(address => uint256) public bestDefendedStreak;
     mapping(address => uint256) public activeDefendedStreak;
     mapping(address => uint256) public xp;
-    mapping(address => uint256) public battlePoints;
+    mapping(address => uint256) internal _battlePoints;
+    /// @dev Incremented on WarBow epoch roll; stale `_battlePoints` rows read as zero (#252).
+    uint256 public warbowBpGeneration;
+    mapping(address => uint256) public battlePointsGeneration;
 
     mapping(uint256 => mapping(address => uint256)) public epochCharmWad;
     mapping(uint256 => uint256) public epochCharmTotal;
@@ -318,7 +321,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
         address poolAddr = podiumVaults.activePools(category);
         uint256 poolBal = doub.balanceOf(poolAddr);
-        if (poolBal > 0) {
+        // WarBow: admin `finalizeWarbowPodium(epoch, …)` pays; roll only clears scores (#252).
+        if (category != CAT_WARBOW && poolBal > 0) {
             (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
         }
@@ -369,8 +373,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             spent += _pullDoubExact(msg.sender, WARBOW_STEAL_LIMIT_BYPASS_DOUB);
         }
 
-        uint256 vbp = battlePoints[victim];
-        uint256 abp = battlePoints[msg.sender];
+        uint256 vbp = _effectiveBattlePoints(victim);
+        uint256 abp = _effectiveBattlePoints(msg.sender);
         require(abp > 0 && vbp >= 2 * abp && vbp <= 10 * abp, "TimeArena: steal band");
 
         uint16 bps = block.timestamp < warbowGuardUntil[victim] ? WARBOW_STEAL_DRAIN_GUARDED_BPS : WARBOW_STEAL_DRAIN_BPS;
@@ -378,7 +382,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(take > 0, "TimeArena: steal zero");
         _subBattlePoints(victim, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, msg.sender, battlePoints[msg.sender]);
+        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
 
         if (victimSteals < type(uint8).max) stealsReceivedOnDay[victim][day] = victimSteals + 1;
         if (attackerSteals < type(uint8).max) stealsCommittedByAttackerOnDay[msg.sender][day] = attackerSteals + 1;
@@ -395,11 +399,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
 
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_REVENGE_DOUB);
-        uint256 take = Math.mulDiv(battlePoints[stealer], WARBOW_STEAL_DRAIN_BPS, 10_000);
+        uint256 take = Math.mulDiv(_effectiveBattlePoints(stealer), WARBOW_STEAL_DRAIN_BPS, 10_000);
         require(take > 0, "TimeArena: revenge zero");
         _subBattlePoints(stealer, take);
         _addBattlePoints(msg.sender, take);
-        _updateTopThree(CAT_WARBOW, msg.sender, battlePoints[msg.sender]);
+        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
         warbowPendingRevengeExpiryExclusive[msg.sender][stealer] = 0;
         emit WarBowRevenge(msg.sender, stealer, take, spent);
     }
@@ -418,7 +422,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         warbowPendingFlagOwner = address(0);
         warbowPendingFlagPlantAt = 0;
         _addBattlePoints(msg.sender, WARBOW_FLAG_CLAIM_BP);
-        _updateTopThree(CAT_WARBOW, msg.sender, battlePoints[msg.sender]);
+        _updateTopThree(CAT_WARBOW, msg.sender, _effectiveBattlePoints(msg.sender));
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP);
     }
 
@@ -606,7 +610,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         if (hardReset) bp += WARBOW_TIMER_RESET_BONUS_BP;
         if (remainingBefore < 30) bp += WARBOW_CLUTCH_BONUS_BP;
         _addBattlePoints(buyer, bp);
-        _updateTopThree(CAT_WARBOW, buyer, battlePoints[buyer]);
+        _updateTopThree(CAT_WARBOW, buyer, _effectiveBattlePoints(buyer));
+    }
+
+    function battlePoints(address user) external view returns (uint256) {
+        return _effectiveBattlePoints(user);
     }
 
     function _routeDoubPrizeSplit(uint256 amount) private returns (uint256 routed) {
@@ -740,19 +748,29 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _clearAllBattlePoints() private {
-        // BP maps cleared lazily on next buy; reset live WarBow podium only
+        warbowBpGeneration += 1;
         _clearPodium(CAT_WARBOW);
     }
 
+    function _effectiveBattlePoints(address user) private view returns (uint256) {
+        if (battlePointsGeneration[user] != warbowBpGeneration) return 0;
+        return _battlePoints[user];
+    }
+
     function _addBattlePoints(address user, uint256 amt) private {
-        battlePoints[user] += amt;
+        if (battlePointsGeneration[user] != warbowBpGeneration) {
+            _battlePoints[user] = 0;
+            battlePointsGeneration[user] = warbowBpGeneration;
+        }
+        _battlePoints[user] += amt;
     }
 
     function _subBattlePoints(address user, uint256 amt) private {
-        if (amt >= battlePoints[user]) {
-            battlePoints[user] = 0;
+        if (battlePointsGeneration[user] != warbowBpGeneration) return;
+        if (amt >= _battlePoints[user]) {
+            _battlePoints[user] = 0;
         } else {
-            battlePoints[user] -= amt;
+            _battlePoints[user] -= amt;
         }
     }
 }

@@ -1,12 +1,32 @@
 ---
 name: play-time-arena-warbow
-description: WarBow on TimeArena — not yet deployed; follow GitLab #252 for DOUB-based PvP.
+description: WarBow PvP on TimeArena — DOUB steals, guard, revenge, flag; epoch BP reset and admin finalize.
 ---
 
 # Play Time Arena — WarBow
 
-**WarBow PvP is not live in Arena v2** after the #241–#245 removal batch (legacy CL8Y WarBow on `TimeCurve` was removed).
+WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rules: [`docs/product/arena-v2.md` § WarBow](../../docs/product/arena-v2.md#warbow-doub) · [`docs/product/time-arena.md` § WarBow PvP](../../docs/product/time-arena.md) · invariants **`INV-TIME-ARENA-WARBOW-*`** in [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md).
 
-When [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252) lands, WarBow will spend **DOUB**, reset on WarBow epochs, and integrate with the four-podium model in [`docs/product/time-arena.md`](../../docs/product/time-arena.md).
+## DOUB costs (18 decimals)
 
-Until then, do not assume steal/guard/revenge/flag transactions are available.
+| Action | DOUB |
+|--------|------|
+| `warbowSteal(victim, payBypassBurn)` | 1000 (+ 50000 if daily steal limit exceeded) |
+| `warbowActivateGuard()` | 10000 |
+| `warbowRevenge(stealer)` | 1000 |
+| `claimWarBowFlag()` | 0 |
+
+## Flow
+
+1. **Earn BP** — each DOUB/CRED buy adds WarBow BP (base + Last Buy timer bonuses; scoring uses **Last Buy** timer only — [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
+2. **Steal** — attacker BP &gt; 0; victim BP in **2×–10×** band; drains 10% (1% if guarded).
+3. **Guard / revenge / flag** — see [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) constants `WARBOW_*`.
+4. **Epoch roll** — permissionless `rollPodiumEpoch(CAT_WARBOW)` after deadline clears live BP/podium; **admin** `finalizeWarbowPodium(epoch, first, second, third)` pays 4∶2∶1 from the WarBow active pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)).
+
+## Local stack
+
+Same as [`play-time-arena-doub`](../play-time-arena-doub/SKILL.md): Anvil **`http://127.0.0.1:8545`**, approve DOUB to **`TimeArena`**, `VITE_TIME_ARENA_ADDRESS`. Indexer WarBow feeds: **`GET /v1/arena/warbow/*`** ([`docs/indexer/design.md`](../../docs/indexer/design.md)).
+
+## Bots
+
+[`bots/timearena/`](../../bots/timearena/README.md) PvP strategy: `strategies/pvp.py` — retarget to deployed `TimeArena` proxy ABI.
