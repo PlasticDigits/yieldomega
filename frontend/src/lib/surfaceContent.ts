@@ -17,9 +17,9 @@ export type HomeSurfaceCard = {
 
 export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
   {
-    to: "/timecurve",
+    to: "/arena",
     title: "Time Arena",
-    blurb: "Timed DOUB launchpad — buy CHARM, compete on podiums, extend the clock",
+    blurb: "Always-on DOUB arena — buy CHARM, compete on podiums, extend the clock",
     image: "/art/scenes/timecurve-simple.jpg",
     imageAlt: "Time Arena fair-launch arcade scene with mascots and coins",
     badgeLabel: "Live",
