@@ -34,4 +34,4 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 ## Retired
 
-TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, Rabbit Treasury, Leprechaun — see epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
+TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, Rabbit Treasury, Leprechaun — epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **FeeRouter** five-sink CL8Y buy routing (`PodiumPool`, `DoubLPIncentives`, burn sink) — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244); canonical split is **40/30/30 DOUB** above · [`docs/onchain/fee-routing-and-governance.md`](../../docs/onchain/fee-routing-and-governance.md).
