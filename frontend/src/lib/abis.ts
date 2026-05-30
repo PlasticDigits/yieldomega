@@ -57,6 +57,7 @@ export const timeArenaReadAbi = parseAbi([
   "function buy(uint256 charmWad, bytes32 codeHash)",
   "function playCred() view returns (address)",
   "function CRED_PER_CHARM_WAD() view returns (uint256)",
+  "function REFERRAL_CRED_FLAT_WAD() view returns (uint256)",
   "function xp(address) view returns (uint256)",
   "function xpTowardNext(address) view returns (uint256)",
   "function level(address) view returns (uint256)",

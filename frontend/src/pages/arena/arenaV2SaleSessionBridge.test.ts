@@ -20,6 +20,7 @@ describe("mapArenaV2CoreRows", () => {
       { status: "success", result: 120n },
       { status: "success", result: 86_400n },
       { status: "success", result: "0x" + "3".repeat(40) },
+      { status: "success", result: 5n * 10n ** 18n },
     ] as const;
 
     const rows = mapArenaV2CoreRows(raw);
@@ -33,8 +34,8 @@ describe("mapArenaV2CoreRows", () => {
       "0x0000000000000000000000000000000000000000",
     );
 
-    const referralEachBps = rows![29];
-    expect(referralEachBps?.result).toBe(500n);
+    const referralFlatCredWad = rows![29];
+    expect(referralFlatCredWad?.result).toBe(5n * 10n ** 18n);
 
     const silenceSec = rows![27];
     expect(silenceSec?.result).toBe(0n);

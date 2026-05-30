@@ -2,7 +2,7 @@
 
 ## Arena v2 (live)
 
-Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5% + 5%** of the **35 CRED** mint goes to referrer and buyer — **not** CHARM weight. Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · verified [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
+Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5 CRED** mints to referrer and **5 CRED** to buyer — **not** CHARM weight, independent of the **35 CRED** epoch pool ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)). Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
 
 ### Code ownership continuity ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
 
@@ -14,13 +14,14 @@ Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**:
 
 Onchain identity remains **`keccak256(bytes(normalizedCode))`** — unchanged from v1. Indexer table: **`idx_referral_code_registered`**.
 
-### Arena v2 reward math
+### Arena v2 reward math ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272))
 
-On a referred **DOUB** buy with **`CRED_PER_BUY = 35e18`** and **`REFERRAL_CRED_BPS = 500`**:
+On a referred **DOUB** buy with **`REFERRAL_CRED_FLAT_WAD = 5e18`**:
 
-- **`refEach = CRED_PER_BUY × 500 / 10_000`** (= **1.75 CRED** per side at default params)
+- **`refEach = REFERRAL_CRED_FLAT_WAD`** (= **5 CRED** per side; **not** tied to **`CRED_PER_BUY`** epoch pool)
 - **`playCred.mint(referrer, refEach)`** and **`playCred.mint(buyer, refEach)`**
 - **`charmWeight`** accrues **only** the purchased **`charmWad`** — no referral CHARM bonus
+- **`buyWithCred`** has **no** referral path (no `codeHash` param)
 - **Self-referral** (`referrer == buyer`) **reverts** (`TimeArena: self-referral`)
 
 Forge: [`TimeArena.t.sol::test_referred_buy_mints_cred_not_charm`](../../contracts/test/TimeArena.t.sol), [`test_self_referral_reverts`](../../contracts/test/TimeArena.t.sol). Indexer: **`idx_arena_referral_cred`** ← **`ReferralCredApplied`**. HTTP: **`GET /v1/referrals/applied`**, **`referrer-leaderboard`**, **`wallet-cred-summary`** (schema **≥ 2.3.0**).

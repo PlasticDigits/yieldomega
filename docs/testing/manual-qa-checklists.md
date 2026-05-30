@@ -244,7 +244,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 ### Checklist
 
 - [ ] **`FOUNDRY_PROFILE=ci forge test --match-test test_referred_buy_mints_cred_not_charm`** and **`test_self_referral_reverts`** pass.
-- [ ] After a referred **`TimeArena.buy(charmWad, codeHash)`**, **`ReferralCredApplied`** indexes to **`idx_arena_referral_cred`**; **`GET /v1/referrals/applied`** returns **`referrer_cred`** / **`buyer_cred`** (= **1.75e18** each at default **35 CRED** mint).
+- [ ] After a referred **`TimeArena.buy(charmWad, codeHash)`**, **`ReferralCredApplied`** indexes to **`idx_arena_referral_cred`**; **`GET /v1/referrals/applied`** returns **`referrer_cred`** / **`buyer_cred`** (= **5e18** each — flat **`REFERRAL_CRED_FLAT_WAD`**, [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)).
 - [ ] **`GET /v1/referrals/wallet-cred-summary?wallet=<referrer>`** shows **`referrer_cred_wad > 0`** after a qualifying buy.
 - [ ] **`/referrals`** **Your earnings** panel labels **CRED** (not CHARM); **Guide leaderboard** ranks by **CRED**.
 - [ ] **`codeHash → owner`** preserved across **`ReferralRegistry`** UUPS upgrade; fresh deploy requires re-registration (see [referrals.md § continuity](../product/referrals.md)).

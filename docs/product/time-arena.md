@@ -99,7 +99,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 ## Referrals
 
 - **Existing codes preserved** via **`ReferralRegistry`**; registration burn remains **1 CL8Y** for continuity ([#240 open decision #2](#resolved-open-decisions-gitlab-240)).
-- On referred **DOUB** buy: **5% CRED to referrer + 5% CRED to buyer**, each computed as **5% of the 35 CRED mint** for that buy — **not** CHARM weight ([#240 open decision #3](#resolved-open-decisions-gitlab-240)). See [referrals.md](referrals.md).
+- On referred **DOUB** buy: **5 CRED to referrer + 5 CRED to buyer** via **`REFERRAL_CRED_FLAT_WAD`** — immediate mint, **not** CHARM weight and **not** coupled to the **35 CRED** epoch pool ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272); supersedes [#240 open decision #3](#resolved-open-decisions-gitlab-240)). See [referrals.md](referrals.md).
 
 ---
 
@@ -118,7 +118,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 |---|----------|------------|
 | 1 | Revenge DOUB cost | **1000 DOUB** (same as steal) — `WARBOW_REVENGE_DOUB` |
 | 2 | Referral registration burn | Keep **1 CL8Y** for existing-code continuity |
-| 3 | CRED referral 5% basis | **5% of the 35 CRED mint** per side (`REFERRAL_CRED_BPS = 500`) |
+| 3 | CRED referral payout | **Flat 5 CRED per side** (`REFERRAL_CRED_FLAT_WAD = 5e18`); supersedes BPS basis — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272) |
 | 4 | Podium settlement trigger | Permissionless **`rollPodiumEpoch(cat)`** after deadline (not auto on first post-expiry buy) |
 | 5 | Route naming | **`/arena`** primary; **`/timecurve`** redirect (optional legacy alias) |
 

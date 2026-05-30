@@ -37,6 +37,7 @@ export function arenaV2CoreContracts(tc: HexAddress) {
     { address: tc, abi: timeArenaReadAbi, functionName: "timerExtensionSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerCapSec" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timeArenaBuyRouter" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "REFERRAL_CRED_FLAT_WAD" as const },
   ] as const;
 }
 
@@ -48,7 +49,7 @@ function row(result: unknown): ContractReadRow {
 export function mapArenaV2CoreRows(
   raw: readonly { status: string; result?: unknown }[] | undefined,
 ): readonly ContractReadRow[] | undefined {
-  if (!raw || raw.length < 10) return undefined;
+  if (!raw || raw.length < 12) return undefined;
   const ok = (i: number) => raw[i]?.status === "success";
   if (![0, 1, 2, 3, 4].every(ok)) return undefined;
 
@@ -63,6 +64,7 @@ export function mapArenaV2CoreRows(
   const timerExt = ok(8) ? (raw[8]!.result as bigint) : 120n;
   const timerCap = ok(9) ? (raw[9]!.result as bigint) : 86_400n;
   const buyRouter = ok(10) ? (raw[10]!.result as HexAddress) : ZERO;
+  const referralFlatCredWad = ok(11) ? (raw[11]!.result as bigint) : 5n * 10n ** 18n;
 
   return [
     row(saleStart),
@@ -94,7 +96,7 @@ export function mapArenaV2CoreRows(
     row(0n),
     row(0n),
     row(ZERO),
-    row(500n),
+    row(referralFlatCredWad),
     row(0n),
   ];
 }

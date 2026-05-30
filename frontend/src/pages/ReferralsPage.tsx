@@ -15,14 +15,14 @@ function ReferralQuestStrip() {
       <div>
         <h2>Guide new buyers into the arena</h2>
         <p>
-          When someone uses your referral link, every Time Arena buy earns you 5% and gets them 5% bonus CHARM
+          When someone uses your referral link, each qualifying Time Arena DOUB buy mints you and them Play CRED right away
         </p>
       </div>
       <div className="referrals-quest-strip__badges" aria-label="Referral facts">
         <span>3-16 letters or digits</span>
         <span>1 CL8Y burn</span>
         <span>One code per wallet</span>
-        <span>5% CHARM each side</span>
+        <span>5 CRED each side</span>
       </div>
     </aside>
   );

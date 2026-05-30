@@ -66,7 +66,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
     <PageSection
       className={className}
       title="Your earnings"
-      lede="Track Play CRED earned when people buy on TimeArena after clicking your link (5% of the 35 CRED mint per side)"
+      lede="Track Play CRED earned when people buy on TimeArena after clicking your link (5 CRED per referred DOUB buy per side)"
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">

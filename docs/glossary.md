@@ -18,7 +18,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 - **AdminSellVault** — Receives the admin slice of each DOUB buy for later distribution policy.
 
-- **ReferralRegistry** — Onchain referral codes; Arena v2 **`ReferralCredApplied`** on DOUB buys mints **5% + 5%** of the 35 CRED tranche to referrer and buyer ([referrals](product/referrals.md)).
+- **ReferralRegistry** — Onchain referral codes; Arena v2 **`ReferralCredApplied`** on DOUB buys mints **5 CRED** to referrer and buyer each ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272); [referrals](product/referrals.md)).
 
 ## Retired primitives (do not reintroduce)
 

@@ -34,7 +34,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant CRED_PER_CHARM_WAD = 100e18;
     /// @dev One-time CRED credited to the next Last Buy epoch on a wallet's first buy (#268).
     uint256 public constant FIRST_BUY_CRED_BONUS = 150e18;
-    uint16 public constant REFERRAL_CRED_BPS = 500;
+    /// @dev Flat Play CRED minted to referrer and buyer per referred DOUB buy (GitLab #272).
+    uint256 public constant REFERRAL_CRED_FLAT_WAD = 5e18;
     uint256 public constant SECONDS_PER_DAY = 86_400;
 
     uint256 public constant WARBOW_BASE_BUY_BP = 250;
@@ -589,7 +590,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             require(referrer != address(0), "TimeArena: invalid referral");
             require(referrer != buyer, "TimeArena: self-referral");
             if (address(playCred) != address(0)) {
-                uint256 each = Math.mulDiv(CRED_PER_BUY, REFERRAL_CRED_BPS, 10_000);
+                uint256 each = REFERRAL_CRED_FLAT_WAD;
                 playCred.mint(referrer, each);
                 playCred.mint(buyer, each);
                 emit ReferralCredApplied(buyer, referrer, codeHash, each, each);
