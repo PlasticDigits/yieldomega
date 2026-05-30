@@ -12,6 +12,7 @@ import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
+import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 
 contract TimeArenaTest is Test {
@@ -29,7 +30,15 @@ contract TimeArenaTest is Test {
     uint256 internal constant CHARM_MIN = 99e16;
     uint256 internal constant CHARM_MAX = 10e18;
 
+    uint256[4] internal _ext;
+    uint256[4] internal _init;
+    uint256[4] internal _cap;
+    uint256[4] internal _below;
+    uint256[4] internal _to;
+
     function setUp() public {
+        (_ext, _init, _cap, _below, _to) = ArenaPodiumTimerConfig.getProductionDefaults();
+
         doub = new Doubloon(admin);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
@@ -38,7 +47,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+            (doub, vaults, adminVault, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
@@ -148,7 +157,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (feeDoub, v, av, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+            (feeDoub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         TimeArena feeArena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(feeArena));
@@ -213,17 +222,71 @@ contract TimeArenaTest is Test {
         assertEq(arena.lastBuyEpoch(), 0);
     }
 
-    /// INV-TIME-ARENA-TIMER-MULTI: one buy extends all four podium deadlines together.
+    /// INV-TIME-ARENA-TIMER-MULTI (#271): one buy extends each podium by its category extension.
     function test_multi_podium_deadline_extend() public {
         uint256[] memory before = new uint256[](4);
+        uint256[4] memory expectedDelta = _ext;
         for (uint8 c = 0; c < 4; c++) {
             before[c] = arena.podiumDeadline(c);
         }
         vm.prank(alice);
         arena.buy(1e18);
         for (uint8 c = 0; c < 4; c++) {
-            assertEq(arena.podiumDeadline(c), before[c] + 120, "category mismatch");
+            assertEq(arena.podiumDeadline(c), before[c] + expectedDelta[c], "category mismatch");
         }
+    }
+
+    /// GitLab #271: `startArena` seeds distinct initial deadlines per category.
+    function test_start_arena_initial_deadlines_differ_by_category() public view {
+        uint256 start = arena.arenaStart();
+        assertEq(arena.podiumDeadline(0), start + _init[0]);
+        assertEq(arena.podiumDeadline(1), start + _init[1]);
+        assertEq(arena.podiumDeadline(2), start + _init[2]);
+        assertEq(arena.podiumDeadline(3), start + _init[3]);
+        assertTrue(arena.podiumDeadline(0) != arena.podiumDeadline(1));
+        assertTrue(arena.podiumDeadline(1) != arena.podiumDeadline(2));
+        assertTrue(arena.podiumDeadline(2) != arena.podiumDeadline(3));
+    }
+
+    /// GitLab #271: Time Booster hard-reset band snaps to 300s, not +60s extension.
+    function test_time_booster_hard_reset_band_240_to_300() public {
+        vm.warp(arena.podiumDeadline(1) - 200);
+        uint256 before = arena.podiumDeadline(1);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.podiumDeadline(1), block.timestamp + _to[1]);
+        assertGt(arena.podiumDeadline(1), before + _ext[1]);
+    }
+
+    /// GitLab #271: WarBow BP reset bonus follows Last Buy hard reset, not WarBow timer band.
+    function test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.warp(arena.podiumDeadline(0) + 1);
+        arena.rollPodiumEpoch(arena.CAT_LAST_BUYERS());
+        uint256 lastBuyDl = arena.podiumDeadline(0);
+        vm.warp(lastBuyDl - 1000);
+        assertGt(arena.podiumDeadline(0) - block.timestamp, _below[0]);
+        vm.warp(arena.podiumDeadline(3) - 2000);
+        assertLt(arena.podiumDeadline(3) - block.timestamp, _below[3]);
+
+        uint256 bpBefore = arena.battlePoints(alice);
+        vm.prank(alice);
+        arena.buy(1e18);
+        uint256 bpGain = arena.battlePoints(alice) - bpBefore;
+        assertEq(bpGain, arena.WARBOW_BASE_BUY_BP(), "no WarBow reset bonus without Last Buy hard reset");
+    }
+
+    /// GitLab #271: Defended streak window uses Last Buy remaining, not other podium timers.
+    function test_defended_streak_uses_last_buy_timer_not_other_podium() public {
+        vm.warp(arena.podiumDeadline(1) - 100);
+        assertLt(arena.podiumDeadline(1) - block.timestamp, _below[1]);
+        assertGt(arena.podiumDeadline(0) - block.timestamp, arena.DEFENDED_STREAK_WINDOW_SEC());
+
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.activeDefendedStreak(alice), 0);
+        assertEq(arena.bestDefendedStreak(alice), 0);
     }
 
     /// INV-TIME-ARENA-CRED-ACCRUE: DOUB buy adds 35 CRED (18 dec) to the active epoch pool.
@@ -562,17 +625,16 @@ contract TimeArenaTest is Test {
 
     /// GitLab #247: one category roll resets only its timer; Streak/Booster/WarBow diverge from Last Buy.
     function test_podium_timers_diverge_after_single_roll() public {
-        uint256 shared = arena.podiumDeadline(0);
-        assertEq(arena.podiumDeadline(1), shared);
-        assertEq(arena.podiumDeadline(2), shared);
-        assertEq(arena.podiumDeadline(3), shared);
+        uint256 lastBuyDl = arena.podiumDeadline(0);
+        assertEq(arena.podiumDeadline(1), arena.arenaStart() + _init[1]);
+        assertTrue(lastBuyDl != arena.podiumDeadline(1));
 
-        vm.warp(shared + 1);
+        vm.warp(arena.podiumDeadline(1) + 1);
         uint256 ts = block.timestamp;
         arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
 
-        assertEq(arena.podiumDeadline(1), ts + 86_400);
-        assertEq(arena.podiumDeadline(0), shared);
+        assertEq(arena.podiumDeadline(1), ts + _init[1]);
+        assertEq(arena.podiumDeadline(0), lastBuyDl);
         assertTrue(arena.podiumDeadline(0) != arena.podiumDeadline(1));
         assertTrue(arena.podiumDeadline(2) != arena.podiumDeadline(1));
         assertTrue(arena.podiumDeadline(3) != arena.podiumDeadline(1));
@@ -703,7 +765,7 @@ contract TimeArenaTest is Test {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, av, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+            (doub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));

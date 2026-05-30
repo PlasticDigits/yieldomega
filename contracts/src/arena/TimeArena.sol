@@ -11,6 +11,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TimeMath} from "../libraries/TimeMath.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
+import {ArenaPodiumTimerConfig} from "./libraries/ArenaPodiumTimerConfig.sol";
 import {ArenaXp} from "./libraries/ArenaXp.sol";
 import {PodiumVaults} from "./PodiumVaults.sol";
 import {AdminSellVault} from "./AdminSellVault.sol";
@@ -28,8 +29,6 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint8 public constant NUM_PODIUM_CATEGORIES = 4;
 
     uint256 public constant DEFENDED_STREAK_WINDOW_SEC = 900;
-    uint256 public constant TIMER_RESET_BELOW_REMAINING_SEC = 780;
-    uint256 public constant TIMER_RESET_TO_REMAINING_SEC = 900;
     uint256 public constant CRED_PER_BUY = 35e18;
     /// @dev CRED burned per 1e18 CHARM on `buyWithCred` (GitLab #268).
     uint256 public constant CRED_PER_CHARM_WAD = 100e18;
@@ -66,9 +65,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     IPlayCred public playCred;
 
     uint256 public charmPriceWad;
+    /// @dev Cat-0 shims for ABI compat; authoritative values are per-category arrays (#271).
     uint256 public timerExtensionSec;
     uint256 public initialTimerSec;
     uint256 public timerCapSec;
+    uint256[4] public podiumTimerExtensionSec;
+    uint256[4] public podiumInitialTimerSec;
+    uint256[4] public podiumTimerCapSec;
+    uint256[4] public podiumResetBelowRemainingSec;
+    uint256[4] public podiumResetToRemainingSec;
     uint256 public buyCooldownSec;
 
     uint256 public arenaStart;
@@ -179,9 +184,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
-        uint256 _timerExtensionSec,
-        uint256 _initialTimerSec,
-        uint256 _timerCapSec,
+        uint256[4] calldata _podiumTimerExtensionSec,
+        uint256[4] calldata _podiumInitialTimerSec,
+        uint256[4] calldata _podiumTimerCapSec,
+        uint256[4] calldata _podiumResetBelowRemainingSec,
+        uint256[4] calldata _podiumResetToRemainingSec,
         uint256 _buyCooldownSec,
         address upgradeAdmin
     ) external initializer {
@@ -191,6 +198,14 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(address(_adminSellVault) != address(0), "TimeArena: zero admin vault");
         require(_charmPriceWad > 0, "TimeArena: zero price");
         require(_buyCooldownSec > 0, "TimeArena: zero cooldown");
+
+        ArenaPodiumTimerConfig.validate(
+            _podiumTimerExtensionSec,
+            _podiumInitialTimerSec,
+            _podiumTimerCapSec,
+            _podiumResetBelowRemainingSec,
+            _podiumResetToRemainingSec
+        );
 
         doub = _doub;
         podiumVaults = _podiumVaults;
@@ -202,9 +217,16 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             playCred = IPlayCred(_playCred);
         }
         charmPriceWad = _charmPriceWad;
-        timerExtensionSec = _timerExtensionSec;
-        initialTimerSec = _initialTimerSec;
-        timerCapSec = _timerCapSec;
+        for (uint8 i; i < NUM_PODIUM_CATEGORIES; ++i) {
+            podiumTimerExtensionSec[i] = _podiumTimerExtensionSec[i];
+            podiumInitialTimerSec[i] = _podiumInitialTimerSec[i];
+            podiumTimerCapSec[i] = _podiumTimerCapSec[i];
+            podiumResetBelowRemainingSec[i] = _podiumResetBelowRemainingSec[i];
+            podiumResetToRemainingSec[i] = _podiumResetToRemainingSec[i];
+        }
+        timerExtensionSec = _podiumTimerExtensionSec[CAT_LAST_BUYERS];
+        initialTimerSec = _podiumInitialTimerSec[CAT_LAST_BUYERS];
+        timerCapSec = _podiumTimerCapSec[CAT_LAST_BUYERS];
         buyCooldownSec = _buyCooldownSec;
     }
 
@@ -227,10 +249,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function startArena() external onlyOwner {
         require(arenaStart == 0, "TimeArena: started");
         arenaStart = block.timestamp;
-        deadline = block.timestamp + initialTimerSec;
         for (uint8 i; i < NUM_PODIUM_CATEGORIES; ++i) {
-            podiumDeadline[i] = deadline;
+            podiumDeadline[i] = block.timestamp + podiumInitialTimerSec[i];
         }
+        deadline = podiumDeadline[CAT_LAST_BUYERS];
         emit ArenaStarted(arenaStart, deadline);
     }
 
@@ -303,7 +325,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         podiumVaults.rollSeedToActive(category);
 
         podiumEpoch[category] += 1;
-        podiumDeadline[category] = block.timestamp + initialTimerSec;
+        podiumDeadline[category] = block.timestamp + podiumInitialTimerSec[category];
         if (category == CAT_LAST_BUYERS) {
             deadline = podiumDeadline[category];
         }
@@ -483,10 +505,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         (uint256 newDl, bool hardReset) = TimeMath.extendDeadlineOrResetBelowThreshold(
             deadlineBefore,
             block.timestamp,
-            timerExtensionSec,
-            timerCapSec,
-            TIMER_RESET_BELOW_REMAINING_SEC,
-            TIMER_RESET_TO_REMAINING_SEC
+            podiumTimerExtensionSec[CAT_LAST_BUYERS],
+            podiumTimerCapSec[CAT_LAST_BUYERS],
+            podiumResetBelowRemainingSec[CAT_LAST_BUYERS],
+            podiumResetToRemainingSec[CAT_LAST_BUYERS]
         );
         deadline = newDl;
         podiumDeadline[CAT_LAST_BUYERS] = newDl;
@@ -541,10 +563,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             (uint256 nd,) = TimeMath.extendDeadlineOrResetBelowThreshold(
                 podiumDeadline[c],
                 block.timestamp,
-                timerExtensionSec,
-                timerCapSec,
-                TIMER_RESET_BELOW_REMAINING_SEC,
-                TIMER_RESET_TO_REMAINING_SEC
+                podiumTimerExtensionSec[c],
+                podiumTimerCapSec[c],
+                podiumResetBelowRemainingSec[c],
+                podiumResetToRemainingSec[c]
             );
             podiumDeadline[c] = nd;
         }

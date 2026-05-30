@@ -11,6 +11,7 @@ import {TimeArena} from "../src/arena/TimeArena.sol";
 import {TimeArenaBuyRouter} from "../src/arena/TimeArenaBuyRouter.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
+import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {AnvilWETH9, AnvilMockUSDM, AnvilKumbayaRouter} from "../src/fixtures/AnvilKumbayaFixture.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 
@@ -42,6 +43,20 @@ abstract contract TimeArenaBuyRouterFixture is Test {
 
     address alice = makeAddr("alice");
 
+    function _productionTimerInit()
+        internal
+        pure
+        returns (
+            uint256[4] memory ext,
+            uint256[4] memory init,
+            uint256[4] memory cap,
+            uint256[4] memory below,
+            uint256[4] memory to
+        )
+    {
+        return ArenaPodiumTimerConfig.getProductionDefaults();
+    }
+
     function deployBuyRouterFixture() internal {
         cl8y = new MockReserveCl8y();
         doub = new Doubloon(address(this));
@@ -50,9 +65,11 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         adminVault = new AdminSellVault(doub, address(this));
 
         TimeArena impl = new TimeArena();
+        (uint256[4] memory ext, uint256[4] memory init, uint256[4] memory cap, uint256[4] memory below, uint256[4] memory to) =
+            _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 1, address(this))
+            (doub, vaults, adminVault, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
@@ -93,9 +110,11 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         adminVault = new AdminSellVault(doub, address(this));
 
         TimeArena impl = new TimeArena();
+        (uint256[4] memory ext, uint256[4] memory init, uint256[4] memory cap, uint256[4] memory below, uint256[4] memory to) =
+            _productionTimerInit();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 1, address(this))
+            (doub, vaults, adminVault, address(0), address(cred), 1000e18, ext, init, cap, below, to, 1, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 

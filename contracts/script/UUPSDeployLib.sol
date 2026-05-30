@@ -9,6 +9,7 @@ import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {PlayCred} from "../src/PlayCred.sol";
+import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 
 /// @notice Shared **implementation → ERC1967Proxy + initialize** helpers for Arena v2 UUPS contracts.
 library UUPSDeployLib {
@@ -32,9 +33,11 @@ library UUPSDeployLib {
         address _referralRegistry,
         address _playCred,
         uint256 _charmPriceWad,
-        uint256 _timerExtensionSec,
-        uint256 _initialTimerSec,
-        uint256 _timerCapSec,
+        uint256[4] memory _podiumTimerExtensionSec,
+        uint256[4] memory _podiumInitialTimerSec,
+        uint256[4] memory _podiumTimerCapSec,
+        uint256[4] memory _podiumResetBelowRemainingSec,
+        uint256[4] memory _podiumResetToRemainingSec,
         uint256 _buyCooldownSec,
         address upgradeAdmin
     ) internal returns (TimeArena) {
@@ -48,13 +51,50 @@ library UUPSDeployLib {
                 _referralRegistry,
                 _playCred,
                 _charmPriceWad,
-                _timerExtensionSec,
-                _initialTimerSec,
-                _timerCapSec,
+                _podiumTimerExtensionSec,
+                _podiumInitialTimerSec,
+                _podiumTimerCapSec,
+                _podiumResetBelowRemainingSec,
+                _podiumResetToRemainingSec,
                 _buyCooldownSec,
                 upgradeAdmin
             )
         );
         return TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
+    }
+
+    /// @dev Product defaults from `ArenaPodiumTimerConfig` (GitLab #271).
+    function deployTimeArenaProductionDefaults(
+        IERC20 _doub,
+        PodiumVaults _podiumVaults,
+        AdminSellVault _adminSellVault,
+        address _referralRegistry,
+        address _playCred,
+        uint256 _charmPriceWad,
+        uint256 _buyCooldownSec,
+        address upgradeAdmin
+    ) internal returns (TimeArena) {
+        (
+            uint256[4] memory ext,
+            uint256[4] memory init,
+            uint256[4] memory cap,
+            uint256[4] memory below,
+            uint256[4] memory to
+        ) = ArenaPodiumTimerConfig.getProductionDefaults();
+        return deployTimeArena(
+            _doub,
+            _podiumVaults,
+            _adminSellVault,
+            _referralRegistry,
+            _playCred,
+            _charmPriceWad,
+            ext,
+            init,
+            cap,
+            below,
+            to,
+            _buyCooldownSec,
+            upgradeAdmin
+        );
     }
 }

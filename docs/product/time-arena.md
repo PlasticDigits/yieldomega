@@ -38,13 +38,9 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 **Podium epoch roll:** permissionless **`rollPodiumEpoch(category)`** when `block.timestamp > podiumDeadline[category]` ([#240 open decision #4](#resolved-open-decisions-gitlab-240), implementation [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). On roll: snapshot top-3, pay **4∶2∶1** from active pool, roll seed → active, increment `podiumEpoch[cat]`, clear that category’s live scores, emit **`PodiumEpochRolled`**.
 
-**Timer cap:** Last Buy (and current deploy defaults) use a **96h** cap (`timerCapSec = 4 × 86400`); per-category caps may follow the same pattern when per-podium params land onchain.
+**Timer cap:** per category **`timerCapSec[cat] = 4 × initialTimerSec[cat]`** (WarBow cap = 192h). Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
 
-<a id="onchain-timer-implementation-note"></a>
-
-### Onchain implementation note
-
-Current **`TimeArena`** bootstrap deploy ([`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)) wires **shared** Last Buy timer params (`+120s`, 780s→900s hard reset, 24h initial) for **all four** categories. **Product target** is the per-podium table above; track divergence in Forge/invariant work before treating non–Last Buy hard-reset bands as enforced onchain.
+**Scoring vs settlement:** Time Booster, Defended Streak, and WarBow BP bonuses use **Last Buy (cat 0)** timer deltas / remaining / hard-reset. Per-category timers govern **prize epoch deadlines** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
 
 ---
 
