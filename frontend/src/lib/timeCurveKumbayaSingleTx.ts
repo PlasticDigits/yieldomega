@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Single-transaction ETH / USDM → Kumbaya `exactOutput` → `TimeCurve.buyFor` via
-// `TimeCurveBuyRouter.buyViaKumbaya` (issue #66). Two-step swap + `buy` remains when
-// `timeCurveBuyRouter` is zero onchain.
+// Single-transaction ETH / USDM → Kumbaya `exactOutput` → `TimeArena.buyFor` via
+// `TimeArenaBuyRouter.buyViaKumbaya` (GitLab #251 / #264).
 
 import { simulateContract } from "viem/actions";
 import { getPublicClient, readContract } from "wagmi/actions";
@@ -11,14 +10,15 @@ import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeC
 import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
 import type { Config } from "wagmi";
-import { erc20Abi, timeCurveBuyRouterAbi, timeCurveReadAbi } from "@/lib/abis";
+import { erc20Abi, timeArenaBuyRouterAbi, timeArenaReadAbi } from "@/lib/abis";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import {
   formatKumbayaWei,
   isKumbayaBuyDebugEnabled,
   kumbayaBuyDebugError,
   kumbayaBuyDebugLog,
 } from "@/lib/kumbayaBuyDebug";
-import { quoteKumbayaExactOutputAmountIn, readGrossCl8yForCharmWad } from "@/lib/kumbayaQuoter";
+import { quoteKumbayaExactOutputAmountIn, readGrossDoubForCharmWad } from "@/lib/kumbayaQuoter";
 import type { HexAddress } from "@/lib/addresses";
 import type { KumbayaChainConfigResolved, RouteForPayOk } from "@/lib/kumbayaRoutes";
 import {
@@ -57,13 +57,13 @@ function bytes32OrZero(codeHash: `0x${string}` | undefined): `0x${string}` {
 
 async function logBuyViaKumbayaPreflight(params: {
   wagmiConfig: Config;
-  timeCurveAddress: HexAddress;
-  timeCurveBuyRouter: HexAddress;
+  timeArenaAddress: HexAddress;
+  timeArenaBuyRouter: HexAddress;
   userAddress: `0x${string}`;
   chainId: number;
   payWith: "eth" | "usdm";
   charmWad: bigint;
-  grossCl8y: bigint;
+  grossDoub: bigint;
   qIn: bigint;
   maxIn: bigint;
   deadline: bigint;
@@ -72,13 +72,13 @@ async function logBuyViaKumbayaPreflight(params: {
 }): Promise<void> {
   const {
     wagmiConfig,
-    timeCurveAddress,
-    timeCurveBuyRouter,
+    timeArenaAddress,
+    timeArenaBuyRouter,
     userAddress,
     chainId,
     payWith,
     charmWad,
-    grossCl8y,
+    grossDoub,
     qIn,
     maxIn,
     deadline,
@@ -86,56 +86,44 @@ async function logBuyViaKumbayaPreflight(params: {
     kConfig,
   } = params;
 
-  const [saleStart, ended, deadlineSec, priceNow, bounds, ethBal, usdmBal, uAllow] =
-    await Promise.all([
-      readContract(wagmiConfig, {
-        address: timeCurveAddress,
-        abi: timeCurveReadAbi,
-        functionName: "saleStart",
-      }),
-      readContract(wagmiConfig, {
-        address: timeCurveAddress,
-        abi: timeCurveReadAbi,
-        functionName: "ended",
-      }),
-      readContract(wagmiConfig, {
-        address: timeCurveAddress,
-        abi: timeCurveReadAbi,
-        functionName: "deadline",
-      }),
-      readContract(wagmiConfig, {
-        address: timeCurveAddress,
-        abi: timeCurveReadAbi,
-        functionName: "currentPricePerCharmWad",
-      }),
-      readContract(wagmiConfig, {
-        address: timeCurveAddress,
-        abi: timeCurveReadAbi,
-        functionName: "currentCharmBoundsWad",
-      }),
-      payWith === "eth"
-        ? getPublicClient(wagmiConfig, { chainId })?.getBalance({ address: userAddress })
-        : Promise.resolve(undefined),
-      payWith === "usdm"
-        ? readContract(wagmiConfig, {
-            address: route.tokenIn,
-            abi: erc20Abi,
-            functionName: "balanceOf",
-            args: [userAddress],
-          })
-        : Promise.resolve(undefined),
-      payWith === "usdm"
-        ? readContract(wagmiConfig, {
-            address: route.tokenIn,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [userAddress, timeCurveBuyRouter],
-          })
-        : Promise.resolve(undefined),
-    ]);
+  const [arenaStart, deadlineSec, priceNow, ethBal, usdmBal, uAllow] = await Promise.all([
+    readContract(wagmiConfig, {
+      address: timeArenaAddress,
+      abi: timeArenaReadAbi,
+      functionName: "arenaStart",
+    }),
+    readContract(wagmiConfig, {
+      address: timeArenaAddress,
+      abi: timeArenaReadAbi,
+      functionName: "deadline",
+    }),
+    readContract(wagmiConfig, {
+      address: timeArenaAddress,
+      abi: timeArenaReadAbi,
+      functionName: "charmPriceWad",
+    }),
+    payWith === "eth"
+      ? getPublicClient(wagmiConfig, { chainId })?.getBalance({ address: userAddress })
+      : Promise.resolve(undefined),
+    payWith === "usdm"
+      ? readContract(wagmiConfig, {
+          address: route.tokenIn,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [userAddress],
+        })
+      : Promise.resolve(undefined),
+    payWith === "usdm"
+      ? readContract(wagmiConfig, {
+          address: route.tokenIn,
+          abi: erc20Abi,
+          functionName: "allowance",
+          args: [userAddress, timeArenaBuyRouter],
+        })
+      : Promise.resolve(undefined),
+  ]);
 
   const chainNow = await readSwapDeadlineChainTimestampSec(wagmiConfig);
-  const [minCharm, maxCharm] = bounds as readonly [bigint, bigint];
   const grossOnchain = (charmWad * (priceNow as bigint)) / 10n ** 18n;
 
   kumbayaBuyDebugLog("preflight:onchain-reads", {
@@ -143,21 +131,20 @@ async function logBuyViaKumbayaPreflight(params: {
     chainNowSec: chainNow,
     swapDeadline: deadline.toString(),
     deadlineExpired: chainNow > Number(deadlineSec),
-    saleStart: (saleStart as bigint).toString(),
-    ended,
+    arenaStart: (arenaStart as bigint).toString(),
     charmWad: charmWad.toString(),
-    charmBounds: { min: minCharm.toString(), max: maxCharm.toString() },
-    pricePerCharmWad: (priceNow as bigint).toString(),
-    grossCl8yFrontend: grossCl8y.toString(),
-    grossCl8yOnchainNow: grossOnchain.toString(),
-    grossCl8yDriftWei: (grossOnchain - grossCl8y).toString(),
+    charmBounds: { min: ARENA_CHARM_MIN_WAD.toString(), max: ARENA_CHARM_MAX_WAD.toString() },
+    charmPriceWad: (priceNow as bigint).toString(),
+    grossDoubFrontend: grossDoub.toString(),
+    grossDoubOnchainNow: grossOnchain.toString(),
+    grossDoubDriftWei: (grossOnchain - grossDoub).toString(),
     quotedPayIn: qIn.toString(),
     maxIn: maxIn.toString(),
     slippageBps: KUMBAYA_SWAP_SLIPPAGE_BPS,
     maxInCoversQuote: maxIn >= qIn,
     payWith,
     path: route.path,
-    router: timeCurveBuyRouter,
+    router: timeArenaBuyRouter,
     swapRouter: kConfig.swapRouter,
     quoter: kConfig.quoter,
     weth: kConfig.weth,
@@ -191,7 +178,7 @@ async function simulateBuyViaKumbaya(params: {
   try {
     await simulateContract(client, {
       address: params.router,
-      abi: timeCurveBuyRouterAbi,
+      abi: timeArenaBuyRouterAbi,
       functionName: "buyViaKumbaya",
       args: [
         params.charmWad,
@@ -213,15 +200,7 @@ async function simulateBuyViaKumbaya(params: {
 
 /**
  * `quoteExactOutput` + slippage + `buyViaKumbaya` in one user-signed write (or two when USDM
- * still needs a separate `approve` to `timeCurveBuyRouter`).
- *
- * **`sessionSnapshot`** — latched wallet session after submit-time sizing; aborts if account or
- * chain drift across internal awaits ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
- *
- * Resolves to the inclusion block timestamp (seconds) after `buyViaKumbaya` mines.
- *
- * **`onBuyMinedBeforeChainTimestamp`** — optional hook after the receipt is available but before
- * `getBlock` (wallet buy cooldown UI can start a wall-clock countdown immediately).
+ * still needs a separate `approve` to `timeArenaBuyRouter`).
  */
 export async function submitKumbayaSingleTxBuy(params: {
   wagmiConfig: Config;
@@ -229,16 +208,15 @@ export async function submitKumbayaSingleTxBuy(params: {
   userAddress: `0x${string}`;
   chainId: number;
   timeCurveBuyRouter: HexAddress;
-  /** TimeCurve proxy — used to match router gross CL8Y at inclusion. */
+  /** TimeArena proxy — used to match router gross DOUB at inclusion. */
   timeCurveAddress: HexAddress;
   payWith: "eth" | "usdm";
   kConfig: KumbayaChainConfigResolved;
   route: RouteForPayOk;
-  /** TimeCurve `acceptedAsset` (CL8Y) — swap `exactOutput` target token. */
+  /** TimeArena `doub()` — swap `exactOutput` target token. */
   acceptedCl8y: HexAddress;
   charmWad: bigint;
   codeHash: `0x${string}` | undefined;
-  /** Same opt-in as `TimeCurve.buy` / `buyFor` ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
   sessionSnapshot: WalletBuySessionSnapshot;
   onBuyMinedBeforeChainTimestamp?: () => void;
@@ -268,8 +246,8 @@ export async function submitKumbayaSingleTxBuy(params: {
     chainId,
     payWith,
     router,
-    timeCurve: timeCurveAddress,
-    acceptedCl8y,
+    timeArena: timeCurveAddress,
+    doub: acceptedCl8y,
     charmWad: charmWad.toString(),
     plantWarBowFlag,
     codeHash: codeHash ?? null,
@@ -278,14 +256,14 @@ export async function submitKumbayaSingleTxBuy(params: {
   });
 
   try {
-    const grossCl8y = await readGrossCl8yForCharmWad(cfg, timeCurveAddress, charmWad);
+    const grossDoub = await readGrossDoubForCharmWad(cfg, timeCurveAddress, charmWad);
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     const qIn = await quoteKumbayaExactOutputAmountIn(cfg, {
       quoter: kConfig.quoter,
       kConfig,
       payWith,
       acceptedCl8y,
-      amountOut: grossCl8y,
+      amountOut: grossDoub,
     });
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     const maxIn = swapMaxInputFromQuoted(qIn, KUMBAYA_SWAP_SLIPPAGE_BPS);
@@ -293,7 +271,7 @@ export async function submitKumbayaSingleTxBuy(params: {
     const h = bytes32OrZero(codeHash);
 
     kumbayaBuyDebugLog("submit:sized", {
-      grossCl8y: grossCl8y.toString(),
+      grossDoub: grossDoub.toString(),
       quotedIn: formatKumbayaWei(qIn, payDecimals, payWith === "eth" ? "ETH" : "USDM"),
       maxIn: formatKumbayaWei(maxIn, payDecimals, payWith === "eth" ? "ETH" : "USDM"),
       payKind,
@@ -307,13 +285,7 @@ export async function submitKumbayaSingleTxBuy(params: {
         args: [userAddress, router],
       });
       assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
-      kumbayaBuyDebugLog("submit:usdm-allowance", {
-        allowance: uAllow.toString(),
-        maxIn: maxIn.toString(),
-        needsApprove: uAllow < maxIn,
-      });
       if (uAllow < maxIn) {
-        kumbayaBuyDebugLog("submit:usdm-approve", { spender: router, amount: maxIn.toString() });
         const { hash: uAp } = await writeContractWithGasBuffer({
           wagmiConfig: cfg,
           writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
@@ -326,7 +298,6 @@ export async function submitKumbayaSingleTxBuy(params: {
         });
         await waitForWriteReceipt(cfg, { hash: uAp });
         assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
-        kumbayaBuyDebugLog("submit:usdm-approve-mined", { hash: uAp });
       }
     }
 
@@ -336,13 +307,13 @@ export async function submitKumbayaSingleTxBuy(params: {
     if (isKumbayaBuyDebugEnabled()) {
       await logBuyViaKumbayaPreflight({
         wagmiConfig: cfg,
-        timeCurveAddress,
-        timeCurveBuyRouter,
+        timeArenaAddress: timeCurveAddress,
+        timeArenaBuyRouter: timeCurveBuyRouter,
         userAddress,
         chainId,
         payWith,
         charmWad,
-        grossCl8y,
+        grossDoub,
         qIn,
         maxIn,
         deadline,
@@ -366,19 +337,13 @@ export async function submitKumbayaSingleTxBuy(params: {
     }
 
     const buyArgs = [charmWad, h, plantWarBowFlag, payKind, deadline, maxIn, route.path] as const;
-    kumbayaBuyDebugLog("submit:write", {
-      functionName: "buyViaKumbaya",
-      args: buyArgs.map((a) => (typeof a === "bigint" ? a.toString() : a)),
-      valueWei: payWith === "eth" ? maxIn.toString() : "0",
-    });
-
     const { hash } = await writeContractWithGasBuffer({
       wagmiConfig: cfg,
       writeContractAsync: asWriteContractAsyncFn(writeContractAsync),
       account: userAddress,
       chainId,
       address: router,
-      abi: timeCurveBuyRouterAbi,
+      abi: timeArenaBuyRouterAbi,
       functionName: "buyViaKumbaya",
       args: [...buyArgs],
       value: payWith === "eth" ? maxIn : undefined,
@@ -387,15 +352,9 @@ export async function submitKumbayaSingleTxBuy(params: {
     });
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
     playGameSfxCoinHitBuySubmit();
-    kumbayaBuyDebugLog("submit:tx-sent", { hash });
     const receipt = await waitForWriteReceipt(cfg, { hash });
     assertSuccessfulBuyReceipt(receipt);
     assertWalletBuySessionUnchanged(cfg, sessionSnapshot);
-    kumbayaBuyDebugLog("submit:mined", {
-      hash,
-      status: receipt.status,
-      blockNumber: receipt.blockNumber?.toString(),
-    });
     onBuyMinedBeforeChainTimestamp?.();
     return chainSecondsAtReceiptBlock(cfg, receipt);
   } catch (err) {

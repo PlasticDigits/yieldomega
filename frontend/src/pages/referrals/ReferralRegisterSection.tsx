@@ -26,7 +26,7 @@ import {
   erc20Abi,
   referralRegistryReadAbi,
   referralRegistryWriteAbi,
-  timeCurveReadAbi,
+  timeArenaReadAbi,
 } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
@@ -129,8 +129,8 @@ export function ReferralRegisterSection({ className }: Props) {
   const tc = addresses.timeArena;
   const priceQuery = useReadContract({
     address: tc,
-    abi: timeCurveReadAbi,
-    functionName: "currentPricePerCharmWad",
+    abi: timeArenaReadAbi,
+    functionName: "charmPriceWad",
     query: { enabled: Boolean(tc), refetchInterval: () => getRpcBackoffPollMs(20_000) },
   });
   const pricePerCharmWad = priceQuery.data;
@@ -143,7 +143,7 @@ export function ReferralRegisterSection({ className }: Props) {
   });
   const { data: regFromTimeCurve } = useReadContract({
     address: tc,
-    abi: timeCurveReadAbi,
+    abi: timeArenaReadAbi,
     functionName: "referralRegistry",
     query: { enabled: Boolean(tc) },
   });

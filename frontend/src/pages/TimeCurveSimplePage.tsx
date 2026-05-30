@@ -421,7 +421,7 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
     session.phase === "saleStartPending" ? "TimeCurve Opens In" : "Time left";
 
   const heroSecondsRemaining =
-    session.phase === "saleActive" || session.phase === "saleExpiredAwaitingEnd"
+    session.phase === "saleActive"
       ? session.saleCountdownSec
       : session.preStartCountdownSec;
 
@@ -936,7 +936,7 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
     nonCl8yBlocked ||
     insufficientCredForBuy ||
     (session.payWith === "cred" && session.credCheckoutBoundsGate.kind === "unavailable") ||
-    (session.arenaPaused ?? session.buyFeeRoutingEnabled === false);
+    (session.arenaPaused === true);
 
   const buyButtonMotion =
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
@@ -1084,15 +1084,9 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
   );
 
   const timerHeroFoot =
-    session.phase === "saleEnded"
-      ? session.charmRedemptionEnabled === false
-        ? "Redemptions await onchain go-live (operator / governance signoff)."
-        : "Holders of CHARM can claim their DOUB share."
-      : session.phase === "saleStartPending"
-        ? "Stay on this page — it switches to Live automatically."
-        : session.phase === "saleExpiredAwaitingEnd"
-          ? "Anyone can call endSale() now — see the Arena view."
-          : undefined;
+    session.phase === "saleStartPending"
+      ? "Stay on this page — it switches to Live automatically."
+      : undefined;
 
   return (
     <div className="page timecurve-simple-page">
@@ -1150,23 +1144,13 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
         </PageSection>
 
         <PageSection
-          title={
-            session.phase === "saleEnded"
-              ? "Redeem CHARM"
-              : session.phase === "saleActive"
-                ? undefined
-                : "Buy CHARM"
-          }
+          title={session.phase === "saleActive" ? undefined : "Buy CHARM"}
           spotlight
           className="timecurve-simple__buy-panel"
           lede={
-            session.phase === "saleEnded"
-              ? session.charmRedemptionEnabled === false
-                ? "The sale is over. DOUB allocation redemptions are gated onchain until the owner enables them (issue #55)."
-                : "The sale is over. Redeem CHARM to mint your DOUB share onchain."
-              : session.phase === "saleActive"
-                ? undefined
-                : "The sale will open here when the timer hits zero."
+            session.phase === "saleActive"
+              ? undefined
+              : "The arena will open here when the timer hits zero."
           }
         >
           <ChainMismatchWriteBarrier testId="timecurve-simple-chain-write-gate">
@@ -1234,7 +1218,7 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
                   />
                 )}
               </p>
-              {(session.arenaPaused ?? session.buyFeeRoutingEnabled === false) && (
+              {session.arenaPaused === true && (
                 <StatusMessage variant="muted">
                   {session.arenaPaused
                     ? "Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause."
@@ -1344,7 +1328,6 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
                   ledgerNowSec={session.chainNowSec}
                   flagSilenceEndSec={session.warbowFlagSilenceEndSec}
                   saleActive={session.phase === "saleActive"}
-                  buyFeeRoutingEnabled={session.buyFeeRoutingEnabled}
                   arenaPaused={session.arenaPaused}
                   isConnected={session.walletConnected}
                   isWriting={session.isWriting || session.buySubmitBusy}
@@ -1357,39 +1340,6 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
             </>
           )}
 
-          {session.phase === "saleEnded" && session.walletConnected && (
-            <>
-              {session.charmRedemptionEnabled === false && (
-                <StatusMessage variant="muted">
-                  The contract has not enabled redeemCharms yet — this is expected before final go-live (issue #55).
-                </StatusMessage>
-              )}
-              <motion.button
-                type="button"
-                className="btn-primary timecurve-simple__cta"
-                disabled={
-                  session.isWriting ||
-                  chainMismatch ||
-                  session.charmsRedeemed === true ||
-                  session.charmWeightWad === undefined ||
-                  session.charmWeightWad === 0n ||
-                  session.charmRedemptionEnabled === false
-                }
-                onClick={() => void session.submitRedeem()}
-                {...buyButtonMotion}
-              >
-                {session.charmsRedeemed
-                  ? "Already redeemed"
-                  : session.isWriting
-                    ? "Submitting…"
-                    : "Redeem CHARM"}
-              </motion.button>
-              {session.buyError && (
-                <StatusMessage variant="error">{session.buyError}</StatusMessage>
-              )}
-            </>
-          )}
-
           {session.phase === "saleStartPending" && (
             <StatusMessage variant="muted">
               The sale has not opened yet. The Buy CHARM action will unlock automatically when the
@@ -1397,12 +1347,6 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
             </StatusMessage>
           )}
 
-          {session.phase === "saleExpiredAwaitingEnd" && (
-            <StatusMessage variant="muted">
-              The timer expired but settlement has not run yet. Anyone can trigger{" "}
-              <code>endSale()</code>; the Arena view exposes a button.
-            </StatusMessage>
-          )}
           </ChainMismatchWriteBarrier>
         </PageSection>
       </div>

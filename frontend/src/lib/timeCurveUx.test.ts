@@ -246,7 +246,6 @@ describe("describeStealPreflight", () => {
       describeStealPreflight({
         connected: true,
         saleActive: true,
-        saleEnded: false,
         viewer: "0x1111111111111111111111111111111111111111",
         victim: "0x2222222222222222222222222222222222222222",
         viewerBattlePoints: 500n,
@@ -268,7 +267,6 @@ describe("describeStealPreflight", () => {
       describeStealPreflight({
         connected: true,
         saleActive: true,
-        saleEnded: false,
         viewer: "0x1111111111111111111111111111111111111111",
         victim: "0x2222222222222222222222222222222222222222",
         viewerBattlePoints: 400n,
@@ -290,7 +288,6 @@ describe("describeStealPreflight", () => {
       describeStealPreflight({
         connected: true,
         saleActive: true,
-        saleEnded: false,
         viewer: "0x1111111111111111111111111111111111111111",
         victim: "0x2222222222222222222222222222222222222222",
         viewerBattlePoints: 500n,

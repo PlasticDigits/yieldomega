@@ -7,7 +7,7 @@ import { useReadContracts, useWatchContractEvent } from "wagmi";
 import { zeroAddress } from "viem";
 import {
   timeCurveBuyEventAbi,
-  timeCurveReadAbi,
+  timeArenaReadAbi,
   timeCurveWarbowBpEventAbi,
 } from "@/lib/abis";
 import { indexerBaseUrl } from "@/lib/addresses";
@@ -186,7 +186,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   const contracts = tc
     ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
         address: tc,
-        abi: timeCurveReadAbi,
+        abi: timeArenaReadAbi,
         functionName: "podium" as const,
         args: [category],
       }))

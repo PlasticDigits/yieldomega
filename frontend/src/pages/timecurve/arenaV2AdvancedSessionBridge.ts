@@ -2,16 +2,16 @@
 //
 // Maps TimeArena multicall reads into Advanced Arena (`useTimeCurveArenaModel`) row shapes.
 
-import { parseUnits } from "viem";
 import type { HexAddress } from "@/lib/addresses";
 import { addresses } from "@/lib/addresses";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ContractReadRow } from "@/pages/timecurve/useTimecurveSaleState";
 import { isArenaV2TimeCurve } from "@/pages/timecurve/arenaV2SaleSessionBridge";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
-const CHARM_MIN_WAD = parseUnits("0.99", 18);
-const CHARM_MAX_WAD = parseUnits("10", 18);
+const CHARM_MIN_WAD = ARENA_CHARM_MIN_WAD;
+const CHARM_MAX_WAD = ARENA_CHARM_MAX_WAD;
 const CAT_WARBOW = 3;
 
 function row(result: unknown): ContractReadRow {

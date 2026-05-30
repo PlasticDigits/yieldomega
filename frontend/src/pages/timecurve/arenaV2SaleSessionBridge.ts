@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { parseUnits } from "viem";
 import { addresses, type HexAddress } from "@/lib/addresses";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ContractReadRow } from "@/pages/timecurve/useTimecurveSaleState";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
-const CHARM_MIN_WAD = parseUnits("0.99", 18);
-const CHARM_MAX_WAD = parseUnits("10", 18);
+const CHARM_MIN_WAD = ARENA_CHARM_MIN_WAD;
+const CHARM_MAX_WAD = ARENA_CHARM_MAX_WAD;
 
 function lowerHex(v: unknown): string | undefined {
   if (typeof v !== "string" || !v.startsWith("0x")) return undefined;
