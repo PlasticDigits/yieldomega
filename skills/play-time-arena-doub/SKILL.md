@@ -33,9 +33,19 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 
 ## Timer
 
-- Last Buy deadline extends **+120s** per buy; **13m → 15m** hard-reset band (see `TimeMath`).
+Per-category **prize settlement** deadlines (`podiumDeadline[cat]`, `podiumEpoch[cat]`). One buy extends **all four** by category-specific rules ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)):
+
+| Cat | Podium | Extension | Hard reset | Initial |
+|-----|--------|-----------|------------|---------|
+| 0 | Last Buy | +120s | 780s → 900s | 24h |
+| 1 | Time Booster | +60s | 240s → 300s | 12h |
+| 2 | Defended Streak | +90s | 510s → 600s | 18h |
+| 3 | WarBow | +300s | 3300s → 3600s | 48h |
+
+Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol). **Scoring** (Time Booster totals, Defended Streak, WarBow BP clutch/reset) uses **Last Buy (cat 0)** timer only — not other podium bands ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) comment).
+
 - **`lastBuyEpoch`** increments on Last Buy hard reset (CHARM/CRED epoch); independent of other podium rolls ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)).
-- Four podium categories each have **`podiumDeadline[cat]`** + **`podiumEpoch[cat]`**; one buy extends all four; **`rollPodiumEpoch(cat)`** after expiry settles that category only — [arena-v2 § timers](../../docs/product/arena-v2.md#timers-last-buy--four-podiums) · [invariants §247](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
+- **`rollPodiumEpoch(cat)`** after expiry settles that category only — [arena-v2 § timers](../../docs/product/arena-v2.md#timers-last-buy--four-podiums) · [invariants §271](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
 
 ## Not in v1 removal batch
 

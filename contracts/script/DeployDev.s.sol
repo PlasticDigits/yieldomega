@@ -17,6 +17,7 @@ import {DevOnlyChainGuard} from "./DevOnlyChainGuard.sol";
 /// @notice Deploy Arena v2 core contracts to dev/local Anvil.
 /// @dev TimeArenaBuyRouter is deployed separately via `DeployKumbayaAnvilFixtures` when
 ///      `YIELDOMEGA_DEPLOY_KUMBAYA=1` (GitLab #270). See `scripts/lib/anvil_deploy_dev.sh`.
+///      Per-podium timer params use production table via `ArenaPodiumTimerConfig` (#271).
 contract DeployDev is Script {
     /// @dev Playwright mock wallet (Anvil account #0) — E2E #269.
     address internal constant E2E_MOCK_WALLET = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
@@ -55,16 +56,13 @@ contract DeployDev is Script {
         console.log("PlayCred:", address(playCred));
 
         uint256 buyCooldownSecDev = DeployDevBuyCooldown.readBuyCooldownSec(vm);
-        TimeArena arena = UUPSDeployLib.deployTimeArena(
+        TimeArena arena = UUPSDeployLib.deployTimeArenaProductionDefaults(
             doub,
             podiumVaults,
             adminVault,
             address(referralRegistry),
             address(playCred),
             1000e18,
-            120,
-            86_400,
-            4 * 86_400,
             buyCooldownSecDev,
             deployer
         );

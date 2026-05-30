@@ -43,16 +43,13 @@ contract DevStackIntegrationTest is Test {
         playCred = UUPSDeployLib.deployPlayCred(deployer);
 
         uint256 buyCooldownSec = DeployDevBuyCooldown.readBuyCooldownSec(vm);
-        arena = UUPSDeployLib.deployTimeArena(
+        arena = UUPSDeployLib.deployTimeArenaProductionDefaults(
             doub,
             podiumVaults,
             adminVault,
             address(referralRegistry),
             address(playCred),
             1000e18,
-            120,
-            86_400,
-            4 * 86_400,
             buyCooldownSec,
             deployer
         );
