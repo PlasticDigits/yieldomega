@@ -20,7 +20,7 @@ Replaces legacy **FeeRouter** five-sink CL8Y table ([#244](https://gitlab.com/Pl
 | Each of 4 **seed** podium pools | 750 | 7.5% × 4 = **30%** |
 | **`AdminSellVault`** | 3000 | **30%** |
 
-Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`. Manual top-up (`topUpPodiumPools`): 100% to eight prize vaults, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
+Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`, `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). Manual top-up (`topUpPodiumPools`): 100% to eight prize vaults, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
