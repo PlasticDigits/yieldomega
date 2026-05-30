@@ -30,7 +30,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
-| **`INV-TIME-ARENA-ROUTE-SPLIT`** | 40% active + 30% seed + 30% admin per DOUB buy; zero dust in `TimeArena` | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split` |
+| **`INV-TIME-ARENA-ROUTE-SPLIT`** | 40% active + 30% seed + 30% admin per DOUB buy; **no** legacy FeeRouter CL8Y burn/LP sinks ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split` · [fee-routing](../onchain/fee-routing-and-governance.md) |
 | **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset` |
 | **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments | `test_timer_hard_reset_increments_epoch` |
 | **`INV-TIME-ARENA-TIMER-MULTI`** | One buy extends **all four** `podiumDeadline[i]` | `test_multi_podium_deadline_extend` |

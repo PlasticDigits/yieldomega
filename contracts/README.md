@@ -130,32 +130,29 @@ ABIs live in `out/` after `forge build`. Registry templates and **ABI hash expor
 See [`PARAMETERS.md`](./PARAMETERS.md) for testnet defaults and `TODO`s that
 need human decisions before mainnet.
 
-## Contract map
+## Contract map (Arena v2 — canonical)
 
 | Contract | Purpose |
 |----------|---------|
-| `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing (future: optional pause/latch for `buy` / `redeemCharms` / `distributePrizes` per [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
-| `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
-| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** mint (expected: `RabbitTreasury`); burns are **OpenZeppelin `ERC20Burnable`** (`burn` / **`burnFrom` + allowance** — [GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
-| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration; rare ops: **`reduceAllocationsUniformBps`** + **`burnDoubExcessAboveOutstanding`** (owner, **ERC20Burnable** token); **`setClaimsEnabled`** gate ([pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
-| `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
-| `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
-| `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
-| `DoubLPIncentives` | DOUB / CL8Y liquidity sink (**30%** launch default) — LP mechanics TODO |
-| `EcosystemTreasury` | Team / ecosystem sink address (**0%** weight at launch; still wired in `DeployDev`) |
-| `RabbitTreasuryVault` | Optional **interim** fifth-sink custody ([GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159)); **`Ownable2Step`** withdrawals; **not** Burrow accounting until **`receiveFee`** path |
-| `LeprechaunNFT` | ERC-721 with onchain traits, series, role-gated minting; `DEFAULT_ADMIN_ROLE` may `setBaseURI` (offchain `tokenURI` JSON root mutable; traits stay onchain — [product doc](../docs/product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json), [#125](https://gitlab.com/PlasticDigits/yieldomega/-/issues/125)) |
-| `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |
-| `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
-| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
+| `TimeArena` | Always-live arena — DOUB/CRED buys, four podium timers, 40/30/30 DOUB routing via `ArenaBuyRouting` ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) |
+| `PodiumVaults` | Four **active** + four **seed** DOUB prize pools; `PodiumFunded` / `SeedFunded` |
+| `AdminSellVault` | **30%** admin slice per buy; `AdminVaultFunded` |
+| `TimeArenaBuyRouter` | Kumbaya `exactOutput` → DOUB → `buyFor` (ETH/USDM ingress) |
+| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** mint; burns via **OpenZeppelin `ERC20Burnable`** ([#132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
+| `PlayCred` | Arena CRED mint/burn; `buyWithCred` burns per `CRED_PER_CHARM_WAD` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+| `ReferralRegistry` | Short referral codes; used by `TimeArena` buys |
 | `DoubAirdrop` | Permissionless batch ERC-20 sender (disperse.app-style); CSV workflow in [`../airdrop/`](../airdrop/). **MegaETH mainnet:** `0x3CAf127624d8b81F4aa00aD1cCBbc9242B502e5d` |
+| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
+
+Deploy: [`script/DeployDev.s.sol`](script/DeployDev.s.sol), [`script/DeployProduction.s.sol`](script/DeployProduction.s.sol) — no `FeeRouter` / `TimeCurve` ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
+
+**Retired (sources removed — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)):** `TimeCurve`, `FeeRouter`, `PodiumPool`, `DoubLPIncentives`, `EcosystemTreasury`, `CL8YProtocolTreasury`, `RabbitTreasury`, `LeprechaunNFT`, presale vesting stack. Historical parameters remain in [`PARAMETERS.md`](./PARAMETERS.md) under **Retired v1**.
 
 ## Libraries
 
-- `BurrowMath` — coverage, multiplier, epoch `e` step (aligned with `simulations/bounded_formulas/model.py`).
-- `TimeMath` — exponential **envelope** factor for CHARM min/max band; timer extension with cap.
-- `LinearCharmPrice` — default linear per-CHARM price schedule (`ICharmPrice` for `TimeCurve`).
-- `FeeMath` — basis-point weight validation and share computation.
+- `ArenaBuyRouting` — pure 40% active / 30% seed / 30% admin split per DOUB buy ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+- `ArenaXp` / `ArenaPodiumSettlement` — XP progression and podium settlement math.
+- `TimeMath` — timer extension and hard-reset band (shared with legacy TimeCurve docs).
 
 ## Burrow events
 
