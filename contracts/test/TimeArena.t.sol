@@ -361,6 +361,81 @@ contract TimeArenaTest is Test {
         assertEq(arena.podiumEpoch(1), 1);
     }
 
+    /// GitLab #247: one category roll resets only its timer; Streak/Booster/WarBow diverge from Last Buy.
+    function test_podium_timers_diverge_after_single_roll() public {
+        uint256 shared = arena.podiumDeadline(0);
+        assertEq(arena.podiumDeadline(1), shared);
+        assertEq(arena.podiumDeadline(2), shared);
+        assertEq(arena.podiumDeadline(3), shared);
+
+        vm.warp(shared + 1);
+        uint256 ts = block.timestamp;
+        arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
+
+        assertEq(arena.podiumDeadline(1), ts + 86_400);
+        assertEq(arena.podiumDeadline(0), shared);
+        assertTrue(arena.podiumDeadline(0) != arena.podiumDeadline(1));
+        assertTrue(arena.podiumDeadline(2) != arena.podiumDeadline(1));
+        assertTrue(arena.podiumDeadline(3) != arena.podiumDeadline(1));
+    }
+
+    /// GitLab #247: `podiumEpoch[cat]` counters advance independently when categories roll on different schedules.
+    function test_podium_epochs_independent_after_skewed_rolls() public {
+        vm.warp(arena.podiumDeadline(1) + 1);
+        arena.rollPodiumEpoch(arena.CAT_TIME_BOOSTER());
+        assertEq(arena.podiumEpoch(1), 1);
+
+        vm.warp(arena.podiumDeadline(3) + 1);
+        arena.rollPodiumEpoch(arena.CAT_WARBOW());
+        assertEq(arena.podiumEpoch(3), 1);
+
+        assertEq(arena.podiumEpoch(0), 0);
+        assertEq(arena.podiumEpoch(2), 0);
+        assertTrue(arena.podiumEpoch(0) != arena.podiumEpoch(1));
+        assertTrue(arena.podiumEpoch(2) != arena.podiumEpoch(3));
+    }
+
+    function test_roll_podium_reverts_while_timer_live() public {
+        vm.expectRevert("TimeArena: timer live");
+        arena.rollPodiumEpoch(2);
+    }
+    /// GitLab #247: settlement pays winners, clears live scores, bumps epoch (default test vault shares one DOUB holder per pool slot).
+    function test_roll_podium_settlement_pays_and_clears_scores() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(2e18);
+
+        uint8 cat = arena.CAT_TIME_BOOSTER();
+        (address[3] memory winners,) = arena.podium(cat);
+        assertTrue(winners[0] != address(0));
+
+        uint256 winnerBefore = doub.balanceOf(winners[0]);
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertGt(doub.balanceOf(winners[0]), winnerBefore);
+        (address[3] memory cleared,) = arena.podium(cat);
+        assertEq(cleared[0], address(0));
+        assertEq(cleared[1], address(0));
+        assertEq(cleared[2], address(0));
+        assertEq(arena.podiumEpoch(cat), 1);
+    }
+
+    /// GitLab #247: Last Buy hard reset on buy bumps `lastBuyEpoch` (CHARM/CRED epoch), not on other podium rolls.
+    function test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll() public {
+        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(arena.lastBuyEpoch(), 1);
+
+        vm.warp(arena.podiumDeadline(2) + 1);
+        arena.rollPodiumEpoch(arena.CAT_DEFENDED_STREAK());
+        assertEq(arena.lastBuyEpoch(), 1);
+        assertEq(arena.podiumEpoch(2), 1);
+    }
+
     function test_warbow_steal_pulls_doub() public {
         vm.startPrank(bob);
         arena.buy(10e18);
