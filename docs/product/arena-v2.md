@@ -64,7 +64,7 @@ Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer in
 - **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED (pro-rata plus any **`epochFixedCredBonus`** for that epoch).
 - **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing, no epoch pool accrual) — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - **First buy ever** (DOUB or CRED, per wallet, not reset on timer hard-reset): schedules **150 CRED** claimable in **`lastBuyEpoch + 1`** after that buy completes (including same-tx hard-reset). Emits **`FirstBuyCredScheduled`**. **`buyCount`** tracks buys for podiums only; first-buy consumption is **`buyCount == 0`** before increment — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
-- Referred buy: **5% + 5%** of the **35 CRED** tranche minted to referrer and buyer (not CHARM weight).
+- Referred **DOUB** buy: **5 CRED** flat to referrer and buyer (`REFERRAL_CRED_FLAT_WAD`; independent of epoch pool) — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272). **`buyWithCred`** has no referral path.
 
 ## XP
 

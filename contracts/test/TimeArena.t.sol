@@ -929,7 +929,7 @@ contract TimeArenaTest is Test {
         ar.startArena();
     }
 
-    /// GitLab #253: referred buy mints Play CRED (5% + 5% of 35 CRED), not CHARM weight.
+    /// GitLab #253 / #272: referred buy mints flat Play CRED per side, not CHARM weight.
     function test_referred_buy_mints_cred_not_charm() public {
         (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve) = _arenaWithReferrals();
         address referrer = makeAddr("referrer");
@@ -946,7 +946,9 @@ contract TimeArenaTest is Test {
         vm.startPrank(buyer);
         doub.approve(address(ar), type(uint256).max);
 
-        uint256 expectedEach = Math.mulDiv(ar.CRED_PER_BUY(), ar.REFERRAL_CRED_BPS(), 10_000);
+        uint256 expectedEach = ar.REFERRAL_CRED_FLAT_WAD();
+        assertEq(expectedEach, 5e18);
+        assertTrue(ar.CRED_PER_BUY() != expectedEach, "referral flat decoupled from epoch CRED tranche");
         uint256 referrerCredBefore = cred.balanceOf(referrer);
         uint256 buyerCredBefore = cred.balanceOf(buyer);
         uint256 totalCharmBefore = ar.totalCharmWeight();

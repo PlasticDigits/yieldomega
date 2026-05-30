@@ -179,7 +179,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 |------|----------------|------|
 | **TimeArena** | DOUB/CRED buys, four podium timers, 40/30/30 routing, epoch CRED, XP, DOUB WarBow, always-live (`paused` only) | [arena-v2.md](../product/arena-v2.md), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) |
 | **PodiumVaults / AdminSellVault** | Active/seed pools, admin vault, `rollPodiumEpoch`, manual top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) | [arena-v2.md](../product/arena-v2.md) |
-| **ReferralRegistry** | Code registration; referred-buy **CRED** split (**5% + 5%** of 35 CRED mint, not CHARM) — [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253) | [referrals.md](../product/referrals.md) |
+| **ReferralRegistry** | Code registration; referred-buy **flat 5 CRED per side** on DOUB buys ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272); baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) | [referrals.md](../product/referrals.md) |
 | **DoubPresaleVesting** | Presale DOUB vesting schedule + claims gate | [`DoubPresaleVesting.sol`](../../contracts/src/vesting/DoubPresaleVesting.sol) |
 | **Indexer** | Arena + referral decode; per-block tx ([#140](#indexer-transactional-block-ingestion-gitlab-140)); reorg rollback | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [indexer design](../indexer/design.md) |
 | **Frontend `/arena`** | Env-driven addresses, indexer reads, wallet gating | [arena-views.md](../frontend/arena-views.md), [wallet-connection.md](../frontend/wallet-connection.md) |
@@ -311,11 +311,15 @@ Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deplo
 
 **INV-FRONTEND-223-NOT-FOUND:** **`path="*"`** → **`NotFoundPage`**; **`/arena`**, **`/referrals`** unchanged. **`/vesting`** removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
+<a id="referral-flat-cred-gitlab-272"></a>
+
+**INV-REFERRAL-272-FLAT-CRED:** On referred **`TimeArena`** **DOUB** buy with valid **`codeHash`**, **`ReferralCredApplied`** mints **`REFERRAL_CRED_FLAT_WAD`** (**5e18**) to **referrer** and **buyer** each; amount is **independent** of **`CRED_PER_BUY`** epoch pool; **`charmWeight`** gains **only** purchased **`charmWad`**; self-referral reverts; **`buyWithCred`** has no referral path. Supersedes BPS basis ([#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)). Indexer persists **`idx_arena_referral_cred`**; HTTP **`/v1/referrals/*`** exposes **`referrer_cred` / `buyer_cred` / `total_referrer_cred_wad`** (schema **≥ 2.3.0**). **`/referrals`** and **`/arena`** preview show **flat 5 CRED**, not **5%** or **1.75**. Forge: **`test_referred_buy_mints_cred_not_charm`**, **`test_self_referral_reverts`**. Spec: [referrals.md § Arena v2](../product/referrals.md).
+
 <a id="referral-cred-split-gitlab-253"></a>
 
-### Referral CRED split (GitLab [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
+### Referral CRED split (GitLab [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253) · flat amount [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272))
 
-**INV-REFERRAL-253-CRED:** On referred **`TimeArena`** DOUB buy, **`ReferralCredApplied`** mints **`REFERRAL_CRED_BPS`** (500) of **`CRED_PER_BUY`** (35e18) to **referrer** and **buyer** each; **`charmWeight`** gains **only** purchased **`charmWad`**; self-referral reverts. Indexer persists **`idx_arena_referral_cred`**; HTTP **`/v1/referrals/*`** exposes **`referrer_cred` / `buyer_cred` / `total_referrer_cred_wad`** (schema **≥ 2.3.0**). **`/referrals`** UI shows **CRED**, not CHARM. Forge: **`test_referred_buy_mints_cred_not_charm`**, **`test_self_referral_reverts`**. Spec: [referrals.md § Arena v2](../product/referrals.md).
+**INV-REFERRAL-253-CRED:** Alias of **`INV-REFERRAL-272-FLAT-CRED`** — kept for cross-links from [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253) QA; do not document **5% of 35 CRED** or **`REFERRAL_CRED_BPS`** on live Arena v2 paths.
 
 ---
 

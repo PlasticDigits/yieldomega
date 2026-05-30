@@ -83,7 +83,8 @@ import {
   arenaHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/arena/arenaSimplePhase";
-import { ARENA_CHARM_MIN_WAD, ARENA_CHARM_MAX_WAD } from "@/lib/arenaConstants";
+import { ARENA_CHARM_MIN_WAD, ARENA_CHARM_MAX_WAD, ARENA_REFERRAL_FLAT_CRED_WAD } from "@/lib/arenaConstants";
+import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
@@ -115,14 +116,6 @@ function hexAddressFromRead(v: unknown): HexAddress | undefined {
 function isNonZeroHexAddress(v: unknown): boolean {
   const a = hexAddressFromRead(v);
   return Boolean(a && a.toLowerCase() !== "0x0000000000000000000000000000000000000000");
-}
-
-/** Display `bps / 100` as a compact percent magnitude (500 → `5`, 1500 → `15`). */
-function bpsToDisplayPercentMag(bps: number): string {
-  if (!Number.isFinite(bps) || bps < 0) return "0";
-  const n = bps / 100;
-  if (Number.isInteger(n)) return String(n);
-  return n.toFixed(2).replace(/\.?0+$/, "");
 }
 
 /**
@@ -434,7 +427,7 @@ export function useArenaSaleSession(
     warbowPendingFlagPlantAtR,
     warbowFlagClaimBpR,
     warbowFlagSilenceSecR,
-    referralEachBpsR,
+    referralFlatCredWadR,
     presaleCharmWeightBpsR,
   ] = coreData ?? [];
 
@@ -465,7 +458,7 @@ export function useArenaSaleSession(
   /** Holds last successful referral config reads so referral/presale bonus lines stay stable across refetches. */
   const referralMetaLatchRef = useRef<{
     referralRegistryOn?: boolean;
-    referralEachBps?: number;
+    referralFlatCredWad?: bigint;
     presaleCharmWeightBps?: number;
   }>({});
 
@@ -516,15 +509,15 @@ export function useArenaSaleSession(
     if (referralRegistryR?.status === "success") {
       L.referralRegistryOn = isNonZeroHexAddress(referralRegistryR.result);
     }
-    if (referralEachBpsR?.status === "success") {
-      const v = Number(referralEachBpsR.result as number);
-      if (Number.isFinite(v)) L.referralEachBps = v;
+    if (referralFlatCredWadR?.status === "success") {
+      const v = referralFlatCredWadR.result as bigint;
+      if (typeof v === "bigint" && v >= 0n) L.referralFlatCredWad = v;
     }
     if (presaleCharmWeightBpsR?.status === "success") {
       const v = Number(presaleCharmWeightBpsR.result as number);
       if (Number.isFinite(v)) L.presaleCharmWeightBps = v;
     }
-  }, [tc, referralRegistryR, referralEachBpsR, presaleCharmWeightBpsR]);
+  }, [tc, referralRegistryR, referralFlatCredWadR, presaleCharmWeightBpsR]);
 
   const buyCooldownSecResolved = useMemo(() => {
     if (buyCooldownSecR?.status !== "success") return 300;
@@ -606,10 +599,10 @@ export function useArenaSaleSession(
       ? hexAddressFromRead(referralRegistryR.result)
       : undefined;
 
-  const referralEachBpsOnchain =
-    referralEachBpsR?.status === "success"
-      ? Number(referralEachBpsR.result as number)
-      : referralMetaLatchRef.current.referralEachBps;
+  const referralFlatCredWadOnchain =
+    referralFlatCredWadR?.status === "success"
+      ? (referralFlatCredWadR.result as bigint)
+      : referralMetaLatchRef.current.referralFlatCredWad;
 
   const warbowFlagClaimBp =
     warbowFlagClaimBpR?.status === "success" ? (warbowFlagClaimBpR.result as bigint) : undefined;
@@ -839,22 +832,12 @@ export function useArenaSaleSession(
     [payWith, playCredConfigured, requiredCredBurnWei, credBalanceWei],
   );
 
-  const referralEachBpsResolved = Number.isFinite(referralEachBpsOnchain ?? NaN)
-    ? (referralEachBpsOnchain as number)
-    : 500;
-  const buyCharmReferralBonusWad = useMemo(() => {
-    if (charmWadSelected === undefined || charmWadSelected <= 0n) return 0n;
-    if (!useReferral || !referralRegistryOn) return 0n;
-    if (!pendingReferralCode?.trim()) return 0n;
-    const bps = BigInt(Math.max(0, Math.min(10_000, referralEachBpsResolved)));
-    return (charmWadSelected * bps) / 10_000n;
-  }, [
-    charmWadSelected,
-    useReferral,
-    referralRegistryOn,
-    pendingReferralCode,
-    referralEachBpsResolved,
-  ]);
+  const referralFlatCredWadResolved =
+    typeof referralFlatCredWadOnchain === "bigint" && referralFlatCredWadOnchain >= 0n
+      ? referralFlatCredWadOnchain
+      : ARENA_REFERRAL_FLAT_CRED_WAD;
+
+  const buyCharmReferralBonusWad = 0n;
 
   const buyCheckoutCharmWeightWad = useMemo(() => {
     if (charmWadSelected === undefined) return undefined;
@@ -870,10 +853,10 @@ export function useArenaSaleSession(
       referralRegistryOn &&
       pendingReferralCode?.trim()
     ) {
-      const pct = bpsToDisplayPercentMag(referralEachBpsResolved);
+      const credLabel = formatCompactFromRaw(referralFlatCredWadResolved, 18, { sigfigs: 4 });
       const raw = pendingReferralCode.trim();
       const codeLabel = raw.length > 22 ? `${raw.slice(0, 20)}…` : raw;
-      lines.push(`+${pct}% Referral ${codeLabel}`);
+      lines.push(`+${credLabel} CRED Referral ${codeLabel}`);
     }
     return lines;
   }, [
@@ -881,7 +864,7 @@ export function useArenaSaleSession(
     useReferral,
     referralRegistryOn,
     pendingReferralCode,
-    referralEachBpsResolved,
+    referralFlatCredWadResolved,
   ]);
 
   const kumbayaResolved = useMemo(
