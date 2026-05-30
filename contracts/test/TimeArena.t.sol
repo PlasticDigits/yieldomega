@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
@@ -118,6 +119,55 @@ contract TimeArenaTest is Test {
         arena.claimCred(ep);
         assertEq(arena.epochCharmWad(ep, alice), 0);
         assertGt(cred.balanceOf(alice), 0);
+    }
+
+    /// INV-TIME-ARENA-CRED-PRO-RATA-SPLIT: two DOUB buyers at 1:2 CHARM split 70 CRED pool (#248).
+    function test_cred_pro_rata_exact_1_2_split() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(2e18);
+        assertGt(arena.lastBuyEpoch(), 0);
+
+        uint256 ep = 0;
+        assertEq(arena.epochCharmTotal(ep), 3e18);
+        assertEq(arena.epochCredPool(ep), 70e18);
+
+        uint256 aliceShare = Math.mulDiv(70e18, 1e18, 3e18);
+        uint256 bobShare = Math.mulDiv(70e18, 2e18, 3e18);
+
+        vm.prank(alice);
+        arena.claimCred(ep);
+        vm.prank(bob);
+        arena.claimCred(ep);
+
+        assertEq(cred.balanceOf(alice), 1000e18 + aliceShare);
+        assertEq(cred.balanceOf(bob), 1000e18 + bobShare);
+        assertLe(aliceShare + bobShare, 70e18);
+        assertGe(aliceShare + bobShare, 70e18 - 2);
+    }
+
+    /// INV-TIME-ARENA-CRED-NO-DOUBLE-CLAIM: second `claimCred` reverts after epoch CHARM zeroed (#248).
+    function test_claimCred_cannot_double_claim() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        _endLastBuyEpoch();
+
+        vm.prank(alice);
+        arena.claimCred(0);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: nothing to claim");
+        arena.claimCred(0);
+    }
+
+    function test_buyWithCred_reverts_charm_bounds() public {
+        vm.startPrank(alice);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buyWithCred(98e16);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buyWithCred(11e18);
+        vm.stopPrank();
     }
 
     /// INV-TIME-ARENA-CRED-BURN-BUY: `buyWithCred` burns 100 CRED per 1e18 CHARM (#268).
@@ -268,6 +318,13 @@ contract TimeArenaTest is Test {
         if (remaining > 600) {
             vm.warp(block.timestamp + remaining - 600);
         }
+    }
+
+    function _endLastBuyEpoch() internal {
+        _warpNearHardReset();
+        vm.prank(bob);
+        arena.buy(1e18);
+        assertGt(arena.lastBuyEpoch(), 0);
     }
 
     function test_xp_levels() public {

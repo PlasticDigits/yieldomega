@@ -18,6 +18,13 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - **First buy ever** (this wallet): schedules **150 CRED** for the **next** `lastBuyEpoch` (DOUB or CRED path); one-time — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - **Pause:** `TimeArena.paused` — not legacy `buyFeeRoutingEnabled`.
 
+## Play CRED yield + claim ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248))
+
+- Each **DOUB** buy adds **35 CRED** to `epochCredPool[lastBuyEpoch]`; pro-rata by `epochCharmWad[epoch][user] / epochCharmTotal[epoch]`.
+- **`buyWithCred`**: burns CRED, accrues epoch CHARM weight, **does not** add to the epoch CRED pool.
+- **`claimCred(epoch)`** when `epoch < lastBuyEpoch`: mints pro-rata share + any `epochFixedCredBonus`; zeros epoch CHARM for that wallet.
+- Invariants: [`INV-TIME-ARENA-CRED-*`](../../docs/testing/invariants-and-business-logic.md), [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol).
+
 ## Donate to pools (optional sponsorship)
 
 - `topUpPodiumPools(amountDoubWad)` — permissionless DOUB **`transferFrom`**; **100%** to the eight prize vaults using the same **10% : 7.5%** active:seed ratio per category as the buy prize slice, **no** admin take ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
@@ -31,7 +38,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 ## Not in v1 removal batch
 
 - **WarBow** — returns on DOUB in [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252).
-- **Play CRED claim** — [GitLab #248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248); **CRED pay UI** — [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269).
+- **Play CRED claim** — [GitLab #248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248); **CRED pay UI** — [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269). See **Play CRED yield + claim** in this skill.
 
 ## Retired
 
