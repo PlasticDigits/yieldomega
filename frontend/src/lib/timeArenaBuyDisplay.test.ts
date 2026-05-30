@@ -7,14 +7,12 @@ import { WAD } from "./timeArenaMath";
 
 describe("buySpendEnvelopeFillRatio", () => {
   const env = {
-    saleStartSec: 1_000_000,
-    charmEnvelopeRefWad: WAD,
-    growthRateWad: 0n,
-    basePriceWad: WAD,
-    dailyIncrementWad: 0n,
+    charmPriceWad: WAD,
+    minCharmWad: WAD,
+    maxCharmWad: 10n * WAD,
   };
 
-  it("returns null without block_timestamp", () => {
+  it("returns null when max spend does not exceed min", () => {
     const buy: BuyItem = {
       block_number: "1",
       tx_hash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -27,28 +25,33 @@ describe("buySpendEnvelopeFillRatio", () => {
       total_raised_after: "1",
       buy_index: "1",
     };
-    expect(buySpendEnvelopeFillRatio(buy, env)).toBeNull();
+    expect(
+      buySpendEnvelopeFillRatio(buy, {
+        charmPriceWad: WAD,
+        minCharmWad: 10n * WAD,
+        maxCharmWad: 10n * WAD,
+      }),
+    ).toBeNull();
   });
 
-  it("returns a ratio in [0,1] when block time and amount are present", () => {
+  it("returns a ratio in [0,1] for mid-band spend", () => {
     const buy: BuyItem = {
       block_number: "1",
       tx_hash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       log_index: 0,
       buyer: "0xdddddddddddddddddddddddddddddddddddddddd",
-      amount: WAD.toString(),
-      charm_wad: WAD.toString(),
+      amount: (5n * WAD).toString(),
+      charm_wad: (5n * WAD).toString(),
       price_per_charm_wad: WAD.toString(),
       new_deadline: "1",
       total_raised_after: "1",
       buy_index: "1",
-      block_timestamp: String(env.saleStartSec + 3600),
     };
     const r = buySpendEnvelopeFillRatio(buy, env);
     expect(r).not.toBeNull();
     if (r !== null) {
-      expect(r).toBeGreaterThanOrEqual(0);
-      expect(r).toBeLessThanOrEqual(1);
+      expect(r).toBeGreaterThan(0);
+      expect(r).toBeLessThan(1);
     }
   });
 
@@ -64,7 +67,6 @@ describe("buySpendEnvelopeFillRatio", () => {
       new_deadline: "1",
       total_raised_after: "1",
       buy_index: "1",
-      block_timestamp: String(env.saleStartSec + 3600),
     };
 
     expect(buySpendEnvelopeFillRatio(buy, env)).toBe(0.1);
@@ -82,7 +84,6 @@ describe("buySpendEnvelopeFillRatio", () => {
       new_deadline: "1",
       total_raised_after: "1",
       buy_index: "1",
-      block_timestamp: String(env.saleStartSec + 3600),
     };
 
     expect(buySpendEnvelopeFillRatio(buy, env)).toBe(1);

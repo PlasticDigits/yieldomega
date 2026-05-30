@@ -7,14 +7,11 @@ import { PageSection } from "@/components/ui/PageSection";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatBuyHubDerivedCompact } from "@/lib/timeArenaBuyHubFormat";
 import {
-  displayMinGrossSpendAtFloat,
-  maxGrossSpendAtFloat,
-} from "@/lib/timeArenaMath";
-import {
   buySpendEnvelopeFillRatio,
   formatBuyAge,
   type EnvelopeCurveParams,
 } from "@/lib/timeArenaBuyDisplay";
+import { WAD } from "@/lib/timeArenaMath";
 import { listBuyImpactTicks, type BuyImpactTick } from "@/lib/timeArenaUx";
 import { buySizeColor } from "@/pages/arena/buySizeColor";
 import { CHARM_TOKEN_LOGO, CL8Y_TOKEN_LOGO } from "@/lib/tokenMedia";
@@ -63,31 +60,10 @@ function buyBandPosition(
   let minSpend: bigint | undefined;
   let maxSpend: bigint | undefined;
   let arenaRatio: number | null = null;
-  if (envelopeParams && buy.block_timestamp?.trim()) {
-    try {
-      arenaRatio = buySpendEnvelopeFillRatio(buy, envelopeParams);
-      const elapsedSec = Math.max(
-        0,
-        Number(BigInt(buy.block_timestamp.trim())) - envelopeParams.saleStartSec,
-      );
-      minSpend = displayMinGrossSpendAtFloat(
-        envelopeParams.charmEnvelopeRefWad,
-        envelopeParams.growthRateWad,
-        envelopeParams.basePriceWad,
-        envelopeParams.dailyIncrementWad,
-        elapsedSec,
-      );
-      maxSpend = maxGrossSpendAtFloat(
-        envelopeParams.charmEnvelopeRefWad,
-        envelopeParams.growthRateWad,
-        envelopeParams.basePriceWad,
-        envelopeParams.dailyIncrementWad,
-        elapsedSec,
-      );
-    } catch {
-      minSpend = undefined;
-      maxSpend = undefined;
-    }
+  if (envelopeParams) {
+    arenaRatio = buySpendEnvelopeFillRatio(buy, envelopeParams);
+    minSpend = (envelopeParams.minCharmWad * envelopeParams.charmPriceWad) / WAD;
+    maxSpend = (envelopeParams.maxCharmWad * envelopeParams.charmPriceWad) / WAD;
   }
 
   if ((minSpend === undefined || maxSpend === undefined) && fallbackBounds) {
@@ -121,7 +97,7 @@ function buyBandPosition(
     maxLabel: formatCompactFromRaw(maxSpend, decimals, { sigfigs: 3 }),
     sizeLabel,
     accentColor: buySizeColor(fillRatio),
-    title: `${Math.round(fillPercent)}% of current max CL8Y band; ${Math.round(positionPercent)}% from min to max`,
+    title: `${Math.round(fillPercent)}% of current max spend band; ${Math.round(positionPercent)}% from min to max`,
   };
 }
 

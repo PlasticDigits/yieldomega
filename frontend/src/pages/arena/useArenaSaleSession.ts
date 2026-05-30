@@ -37,7 +37,6 @@ import {
   resolveTimeArenaBuyRouterForKumbayaSingleTx,
   routingForArenaPayAsset,
 } from "@/lib/kumbayaRoutes";
-import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import { usePendingReferralCode } from "@/hooks/usePendingReferralCode";
 import { kumbayaBuyDebugError, logKumbayaBuyDebugHelpOnce } from "@/lib/kumbayaBuyDebug";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
@@ -84,7 +83,7 @@ import {
   arenaHeroDisplaySecondsRemaining,
   type SaleSessionPhase,
 } from "@/pages/arena/arenaSimplePhase";
-import { participantLaunchValueCl8yWei } from "@/lib/timeArenaPodiumMath";
+import { ARENA_CHARM_MIN_WAD, ARENA_CHARM_MAX_WAD } from "@/lib/arenaConstants";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { wagmiConfig } from "@/wagmi-config";
 import type { HexAddress } from "@/lib/addresses";
@@ -92,8 +91,6 @@ import {
   DEFAULT_ARENA_BUY_PREVIEW_POLICY,
   type ArenaBuyPreviewPolicy,
 } from "@/lib/timeArenaBuyPreview";
-
-const WAD_ONE_CHARM = 10n ** 18n;
 
 export type { SaleSessionPhase };
 
@@ -181,7 +178,7 @@ export type UseArenaSaleSession = {
   estimatedSpendWei: bigint | undefined;
   /**
    * Total CHARM **weight** credited to the buyer for this checkout (`charmWadSelected` plus onchain referral
-   * buyer tranche and optional presale beneficiary bonus when `doubPresaleVesting` is wired).
+   * buyer tranche when referral registry is on).
    */
   buyCheckoutCharmWeightWad: bigint | undefined;
   /** Bonus caption lines under the buy preview (referral code, presale). Empty when none apply. */
@@ -212,47 +209,10 @@ export type UseArenaSaleSession = {
   /** True during the full purchase flow after validations pass (includes mempool confirmation waits). */
   buySubmitBusy: boolean;
   totalRaisedWei: bigint | undefined;
-  totalCharmWeightWad: bigint | undefined;
-  /** Sale's `totalTokensForSale` (DOUB-WAD). Constant across the sale; used by the rate board to compute `1 CHARM → DOUB at launch`. */
-  totalTokensForSaleWad: bigint | undefined;
-  /** Connected wallet's onchain CHARM weight. */
-  charmWeightWad: bigint | undefined;
-  charmsRedeemed: boolean | undefined;
-  /** Projected launched-token redemption from current charm weight (post-end only). */
-  expectedTokenFromCharms: bigint | undefined;
-  /**
-   * Projected CL8Y value of the connected wallet's CHARM at launch — uses the
-   * canonical **1.275× per-CHARM clearing price** anchor enforced by
-   * `DoubLPIncentives` (see [`launch-anchor invariant`](../../../docs/testing/invariants-and-business-logic.md)).
-   * Live and non-decreasing through the sale; `undefined` when reads are
-   * pending; `0n` when the wallet holds no CHARM (so UI can render a clean
-   * zero rather than "—").
-   */
-  launchCl8yValueWei: bigint | undefined;
-  /**
-   * **Worth at launch** line in the stake panel: same CL8Y anchor as {@link launchCl8yValueWei},
-   * converted to the selected pay asset (CL8Y passthrough; ETH/USDM via Kumbaya launch quote
-   * scaled to the wallet’s CHARM weight, else static fallback rates).
-   */
-  stakeLaunchEquivPayWei: bigint | undefined;
-  /** ETH/USDM stake line: true while the launch leg quoter read is in flight during an active sale. */
-  stakeLaunchEquivQuoteLoading: boolean;
-  /** Live per-CHARM price in CL8Y wei — exposed so the UX can show "1 CHARM ≈ X CL8Y at launch". */
+  /** Live per-CHARM price in DOUB wei (Arena v2 `charmPriceWad`). */
   pricePerCharmWad: bigint | undefined;
-  /** Envelope parameters for recent-buy min/max position displays; mirrors the Arena ticker math. */
+  /** Fixed-price envelope for recent-buy min/max position displays. */
   buyEnvelopeParams: EnvelopeCurveParamsWire | null;
-  /**
-   * Projected CL8Y value of **one CHARM** at launch (1.275× clearing price anchor).
-   * Used by the rate board DOUB = ? tile chain and for Kumbaya `quoteExactOutput` into ETH/USDM.
-   */
-  launchCl8yPerCharmWei: bigint | undefined;
-  /**
-   * Kumbaya `quoteExactOutput` for **one CHARM at launch** (amount out = `launchCl8yPerCharmWei` CL8Y).
-   * Mirrors `quotedPerCharmPayInWei` but for the launch projection leg.
-   */
-  quotedLaunchPerCharmPayInWei: bigint | undefined;
-  /** True until the first launch per-CHARM quoter value exists; avoids stake-line flicker on refetch. */
-  launchPayQuoteLoading: boolean;
   referralRegistryOn: boolean;
   pendingReferralCode: string | null;
   useReferral: boolean;
@@ -463,8 +423,6 @@ export function useArenaSaleSession(
     acceptedAssetR,
     referralRegistryR,
     totalRaisedR,
-    totalCharmWeightR,
-    totalTokensForSaleR,
     timerExtensionSecR,
     timerCapSecR,
     buyCooldownSecR,
@@ -480,7 +438,7 @@ export function useArenaSaleSession(
     presaleCharmWeightBpsR,
   ] = coreData ?? [];
 
-  const [charmWeightR, charmsRedeemedR, nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
+  const [nextBuyAllowedAtR, activeDefendedStreakR] = userData ?? [];
 
   /**
    * Last successful `acceptedAsset()` for **this** `tc`. Core multicall refetches (~1 Hz) occasionally return a
@@ -498,8 +456,6 @@ export function useArenaSaleSession(
 
   /** Last-good wallet-scoped multicall slices (MegaETH throttle / flaky rows). Same idea as checkoutReadLatchRef. */
   const userWalletLatchRef = useRef<{
-    charmWeightWad?: bigint;
-    charmsRedeemed?: boolean;
     /** Last successful chain `nextBuyAllowedAt(wallet)` unix sec — used when multicall rows flicker pending/failure mid-refetch. */
     nextBuyAllowedAtChainSec?: number;
     /** `address` snapshot for {@link nextBuyAllowedAtChainSec} (ref is not keyed by wallet elsewhere). */
@@ -544,14 +500,12 @@ export function useArenaSaleSession(
       return;
     }
     const L = userWalletLatchRef.current;
-    if (charmWeightR?.status === "success") L.charmWeightWad = charmWeightR.result as bigint;
-    if (charmsRedeemedR?.status === "success") L.charmsRedeemed = charmsRedeemedR.result as boolean;
     if (nextBuyAllowedAtR?.status === "success") {
       const v = Number(nextBuyAllowedAtR.result as bigint);
       if (Number.isFinite(v)) L.nextBuyAllowedAtChainSec = v;
       if (address) L.nextBuyCooldownWallet = address;
     }
-  }, [tc, address, charmWeightR, charmsRedeemedR, nextBuyAllowedAtR]);
+  }, [tc, address, nextBuyAllowedAtR]);
 
   useEffect(() => {
     if (!tc) {
@@ -679,18 +633,6 @@ export function useArenaSaleSession(
   const ended =
     endedR?.status === "success" ? (endedR.result as boolean) : phaseCoreLatchRef.current.ended;
 
-  const charmWeightWadEffective = useMemo(() => {
-    if (charmWeightR?.status === "success") return charmWeightR.result as bigint;
-    if (isConnected && address) return userWalletLatchRef.current.charmWeightWad;
-    return undefined;
-  }, [charmWeightR, isConnected, address]);
-
-  const charmsRedeemedEffective = useMemo(() => {
-    if (charmsRedeemedR?.status === "success") return charmsRedeemedR.result as boolean;
-    if (isConnected && address) return userWalletLatchRef.current.charmsRedeemed;
-    return undefined;
-  }, [charmsRedeemedR, isConnected, address]);
-
   const phaseLedgerSecInt = useMemo(
     () =>
       ledgerSecIntForPhase({
@@ -759,7 +701,16 @@ export function useArenaSaleSession(
     return undefined;
   }, [phase, pricePerCharmR]);
 
-  const buyEnvelopeParams = useMemo((): EnvelopeCurveParamsWire | null => null, []);
+  const buyEnvelopeParams = useMemo((): EnvelopeCurveParamsWire | null => {
+    if (pricePerCharmWad === undefined || pricePerCharmWad <= 0n) {
+      return null;
+    }
+    return {
+      charmPriceWad: pricePerCharmWad.toString(),
+      minCharmWad: ARENA_CHARM_MIN_WAD.toString(),
+      maxCharmWad: ARENA_CHARM_MAX_WAD.toString(),
+    };
+  }, [pricePerCharmWad]);
 
   const preStartCountdownSec = useMemo(() => {
     if (phase !== "saleStartPending") {
@@ -968,31 +919,11 @@ export function useArenaSaleSession(
           ? swapRoute.message
           : null;
 
-  const launchCl8yPerCharmWei = useMemo(
-    () =>
-      pricePerCharmWad !== undefined
-        ? participantLaunchValueCl8yWei({
-            charmWeightWad: WAD_ONE_CHARM,
-            pricePerCharmWad,
-          })
-        : undefined,
-    [pricePerCharmWad],
-  );
-
   const charmPriceQuoteEnabled =
     payUsesKumbaya &&
     phase === "saleActive" &&
     pricePerCharmWad !== undefined &&
     pricePerCharmWad > 0n &&
-    swapRoute !== null &&
-    swapRoute.ok &&
-    kumbayaResolved.ok;
-
-  const launchPayQuoteEnabled =
-    payUsesKumbaya &&
-    phase === "saleActive" &&
-    launchCl8yPerCharmWei !== undefined &&
-    launchCl8yPerCharmWei > 0n &&
     swapRoute !== null &&
     swapRoute.ok &&
     kumbayaResolved.ok;
@@ -1036,30 +967,11 @@ export function useArenaSaleSession(
     swapOutToken: isArenaV2 ? "doub" : "cl8y",
   });
 
-  const {
-    data: quotedLaunchPerCharmPayInWei,
-    isPending: launchPayQuotePending,
-    isFetching: launchPayQuoteFetching,
-    isError: launchPayQuoteIsError,
-  } = useKumbayaExactOutputQuote({
-    enabled: launchPayQuoteEnabled,
-    payWith,
-    kConfig: kumbayaQuoteKConfig,
-    acceptedCl8y: acceptedAsset,
-    amountOut: launchCl8yPerCharmWei,
-    swapOutToken: isArenaV2 ? "doub" : "cl8y",
-  });
-
   const perCharmPayQuoteLoading =
     charmPriceQuoteEnabled &&
     quotedPerCharmPayInWei === undefined &&
     (charmPriceQuotePending || charmPriceQuoteFetching);
   const perCharmPayQuoteFailed = charmPriceQuoteIsError;
-
-  const launchPayQuoteLoading =
-    launchPayQuoteEnabled &&
-    quotedLaunchPerCharmPayInWei === undefined &&
-    (launchPayQuotePending || launchPayQuoteFetching);
 
   const rateBoardKumbayaWarning =
     payUsesKumbaya &&
@@ -1067,17 +979,11 @@ export function useArenaSaleSession(
     (kumbayaRoutingBlocker !== null ||
       swapRoute?.ok === false ||
       charmPriceQuoteIsError ||
-      launchPayQuoteIsError ||
       (pricePerCharmWad !== undefined &&
         pricePerCharmWad > 0n &&
         !perCharmPayQuoteLoading &&
         charmPriceQuoteEnabled &&
-        quotedPerCharmPayInWei === undefined) ||
-      (launchCl8yPerCharmWei !== undefined &&
-        launchCl8yPerCharmWei > 0n &&
-        !launchPayQuoteLoading &&
-        launchPayQuoteEnabled &&
-        quotedLaunchPerCharmPayInWei === undefined));
+        quotedPerCharmPayInWei === undefined));
 
   const payTokenInAddr =
     payUsesKumbaya && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
@@ -1406,47 +1312,6 @@ export function useArenaSaleSession(
       phaseLedgerSecInt,
     ],
   );
-
-  const expectedTokenFromCharms = undefined;
-
-  // Launch-anchor invariant: see `participantLaunchValueCl8yWei` (1.275× × per-CHARM
-  // price). Recompute reactively against the live `currentPricePerCharmWad` so the
-  // value rises through the sale (UX prop: "what your CHARM is worth in CL8Y at
-  // launch — only goes up").
-  const launchCl8yValueWei = useMemo(
-    () =>
-      participantLaunchValueCl8yWei({
-        charmWeightWad: charmWeightWadEffective,
-        pricePerCharmWad,
-      }),
-    [charmWeightWadEffective, pricePerCharmWad],
-  );
-
-  const stakeLaunchEquivPayWei = useMemo(() => {
-    if (launchCl8yValueWei === undefined) return undefined;
-    if (payWith === "cl8y" || payWith === "cred") return launchCl8yValueWei;
-    if (launchCl8yValueWei === 0n) return 0n;
-    if (
-      quotedLaunchPerCharmPayInWei !== undefined &&
-      launchCl8yPerCharmWei !== undefined &&
-      launchCl8yPerCharmWei > 0n
-    ) {
-      return (quotedLaunchPerCharmPayInWei * launchCl8yValueWei) / launchCl8yPerCharmWei;
-    }
-    return fallbackPayTokenWeiForCl8y(launchCl8yValueWei, payWith);
-  }, [
-    launchCl8yValueWei,
-    payWith,
-    quotedLaunchPerCharmPayInWei,
-    launchCl8yPerCharmWei,
-  ]);
-
-  const stakeLaunchEquivQuoteLoading =
-    payUsesKumbaya &&
-    launchCl8yValueWei !== undefined &&
-    launchCl8yValueWei > 0n &&
-    launchPayQuoteEnabled &&
-    launchPayQuoteLoading;
 
   const refetchAll = useCallback(() => {
     void refetchCore();
@@ -1782,23 +1647,8 @@ export function useArenaSaleSession(
     buySubmitBusy,
     totalRaisedWei:
       totalRaisedR?.status === "success" ? (totalRaisedR.result as bigint) : undefined,
-    totalCharmWeightWad:
-      totalCharmWeightR?.status === "success"
-        ? (totalCharmWeightR.result as bigint)
-        : undefined,
-    totalTokensForSaleWad:
-      totalTokensForSaleR?.status === "success"
-        ? (totalTokensForSaleR.result as bigint)
-        : undefined,
-    charmWeightWad: charmWeightWadEffective,
-    charmsRedeemed: charmsRedeemedEffective,
-    expectedTokenFromCharms,
-    launchCl8yValueWei,
-    stakeLaunchEquivPayWei,
-    stakeLaunchEquivQuoteLoading,
     pricePerCharmWad,
     buyEnvelopeParams,
-    launchCl8yPerCharmWei,
     referralRegistryOn,
     pendingReferralCode,
     useReferral,
@@ -1828,10 +1678,8 @@ export function useArenaSaleSession(
     swapQuoteDisplayLoading: swapQuoteAwaitingFirstResult,
     swapQuoteFailed: quoteIsError,
     quotedPerCharmPayInWei,
-    quotedLaunchPerCharmPayInWei,
     perCharmPayQuoteLoading,
     perCharmPayQuoteFailed,
-    launchPayQuoteLoading,
     rateBoardKumbayaWarning,
     quotedBandMinPayInWei,
     quotedBandMaxPayInWei,

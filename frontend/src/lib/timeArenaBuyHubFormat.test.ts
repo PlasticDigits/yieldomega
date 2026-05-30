@@ -5,7 +5,6 @@ import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import {
   formatBuyCtaCharmAmountLabel,
   formatBuyHubDerivedCompact,
-  formatBuyHubLaunchVsClearingGainPercentLabel,
   formatHeroRateFromWad,
   ARENA_BUY_HUB_DERIVED_SIGFIGS,
 } from "@/lib/timeArenaBuyHubFormat";
@@ -32,35 +31,11 @@ describe("timeArenaBuyHubFormat", () => {
     );
   });
 
-  it("formats launch vs clearing CL8Y gain to four sigfigs (+27.50% at 1.275× anchor)", () => {
-    expect(
-      formatBuyHubLaunchVsClearingGainPercentLabel({
-        clearingSpendCl8yWei: 1000n,
-        approxLaunchCl8yWei: 1275n,
-      }),
-    ).toBe("+27.50% GAIN");
-  });
-
   it("formats buy CTA CHARM amount to four truncated significant figures (compact scientific exponents)", () => {
     expect(formatBuyCtaCharmAmountLabel(9086n * 10n ** 18n)).toBe("9086");
     expect(formatBuyCtaCharmAmountLabel(1n * 10n ** 18n)).toBe("1");
     expect(formatBuyCtaCharmAmountLabel(1234n * 10n ** 15n)).toBe("1.234");
     // Rounding would give 10.27; truncation matches earn-line style precision.
     expect(formatBuyCtaCharmAmountLabel(10269999999999999999n)).toBe("10.26");
-  });
-
-  it("returns null when spend or launch projection is missing or non-positive", () => {
-    expect(
-      formatBuyHubLaunchVsClearingGainPercentLabel({
-        clearingSpendCl8yWei: undefined,
-        approxLaunchCl8yWei: 100n,
-      }),
-    ).toBeNull();
-    expect(
-      formatBuyHubLaunchVsClearingGainPercentLabel({
-        clearingSpendCl8yWei: 0n,
-        approxLaunchCl8yWei: 100n,
-      }),
-    ).toBeNull();
   });
 });

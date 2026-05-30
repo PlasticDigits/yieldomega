@@ -68,7 +68,6 @@ export function useArenaProtocolRawAccordion() {
   const [battlePtsR, _guardUntilR, timerAddedR] = userSaleDataRaw ?? [];
 
   const decimals = useArenaProtocolAccordionTokenDecimals();
-  const launchedDec = 18;
 
   const arenaSaleStartSec =
     saleStart?.status === "success" ? Number(saleStart.result as bigint) : undefined;
@@ -145,17 +144,11 @@ export function useArenaProtocolRawAccordion() {
     pendingRevengeTargets,
     revengeIndexerConfigured: Boolean(indexerBaseUrl()),
     buyerStats: indexerBaseUrl() ? buyerStats : null,
-    initialMinBuyResult: undefined,
-    growthRateWadResult: undefined,
     timerExtensionSecResult: serializeContractRead(timerExtensionSecR),
     initialTimerSecResult: undefined,
     timerCapSecResult: serializeContractRead(timerCapSecR),
-    totalTokensForSaleResult: undefined,
     sinkReads: undefined,
-    liquidityAnchors: undefined,
-    minSpendCurvePoints: [],
     decimals,
-    launchedDec,
     formatWallet,
   };
 }

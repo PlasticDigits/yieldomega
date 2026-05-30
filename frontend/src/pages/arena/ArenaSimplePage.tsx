@@ -4,7 +4,6 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReadContract } from "wagmi";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
@@ -16,7 +15,6 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { AddressInline } from "@/components/AddressInline";
-import { erc20Abi } from "@/lib/abis";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -25,7 +23,6 @@ import { fetchArenaBuysAsBuyItems, type BuyItem } from "@/lib/indexerApi";
 import {
   formatBuyCtaCharmAmountLabel,
   formatBuyHubDerivedCompact,
-  formatBuyHubLaunchVsClearingGainPercentLabel,
   formatHeroRateFromWad,
 } from "@/lib/timeArenaBuyHubFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
@@ -35,11 +32,6 @@ import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
 import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { formatUnits } from "viem";
 import { ARENA_CRED_WAD } from "@/lib/arenaCredBurn";
-import {
-  participantLaunchValueCl8yWei,
-  podiumCategorySlices,
-  podiumPlacementShares,
-} from "@/lib/timeArenaPodiumMath";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
@@ -58,7 +50,6 @@ import {
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/arena/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
-import { getRpcBackoffPollMs } from "@/lib/rpcConnectivity";
 import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 
 /** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
@@ -380,27 +371,10 @@ function ArenaSimpleAmountPayTokenSelect({
 }
 
 /**
- * Default `/timecurve` view — the **simple, first-run path** described in
- * issue #40. The page surfaces only what a new visitor needs: time remaining,
- * the single primary buy action, and what their CHARM is currently worth in
- * CL8Y at launch (the **launch-anchor invariant**: `1.275 × per-CHARM price`,
- * see [`launchplan-timecurve.md`](../../launchplan-timecurve.md) and
- * [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md)).
- *
- * The buy panel shows the full **rate chain** `1 CHARM = X DOUB = Y CL8Y at
- * launch` so participants can see where the CL8Y projection comes from, plus
- * the **current per-CHARM CL8Y price** big and featured (it ticks up every
- * block, so it's the most important number on the page). During the sale we
- * **do not** surface wallet-level projected DOUB — DOUB-per-CHARM dilutes as
- * `totalCharmWeight` grows. After `redeemCharms` ([issue #90](https://gitlab.com/PlasticDigits/yieldomega/-/issues/90)),
- * the stake panel adds the **actual redeemed DOUB** (same ratio as the contract)
- * and strikes through the CL8Y-at-launch tile — we **do not** replace that CL8Y
- * line with DOUB alone because pay rails and anchoring stay in CL8Y terms.
- *
- * Contract: this page never owns game state. It uses
- * {@link useArenaSaleSession}, which delegates writes to the same
- * `TimeCurve` ABI used by the Arena view, so the contract remains the single
- * source of truth (see `docs/frontend/arena-views.md`).
+ * Default `/arena` view — Arena v2 **always-on DOUB** sale. Surfaces time remaining,
+ * the primary buy action, live per-CHARM DOUB price, and checkout preview (CHARM
+ * size + estimated DOUB spend). Contract state comes from {@link useArenaSaleSession}
+ * (`TimeArena` reads/writes; see `docs/frontend/arena-views.md`).
  */
 export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: boolean }) {
   const tc = addresses.timeArena;
@@ -462,29 +436,6 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
   ]);
 
   const podiumReads = usePodiumReads(tc);
-  const { data: podiumPoolBalance } = useReadContract({
-    address: session.acceptedAsset,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args:
-      session.acceptedAsset && session.podiumPoolAddress
-        ? [session.podiumPoolAddress]
-        : undefined,
-    query: {
-      enabled: Boolean(session.acceptedAsset && session.podiumPoolAddress),
-      refetchInterval: () => getRpcBackoffPollMs(1000),
-      placeholderData: (previous) => previous,
-    },
-  });
-  const podiumPayoutPreview = useMemo(() => {
-    if (typeof podiumPoolBalance !== "bigint") {
-      return undefined;
-    }
-    return podiumCategorySlices(podiumPoolBalance).map((slice) => {
-      const [first, second, third] = podiumPlacementShares(slice);
-      return { places: [first.toString(), second.toString(), third.toString()] as const };
-    });
-  }, [podiumPoolBalance]);
 
   const [recentBuys, setRecentBuys] = useState<BuyItem[] | null>(null);
   /** Wall clock for podium “time since buy” copy; decoupled from chain time. */
@@ -589,46 +540,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
     };
   }, [buyFeedRefreshNonce]);
 
-  // Launch-anchor invariant (DoubLPIncentives policy): 1 CHARM is projected
-  // to be worth `1.275 × pricePerCharmWad` CL8Y at launch. We surface the
-  // buy-delta ("This buy adds ≈ Y CL8Y of launch value") and the stake-panel
-  // helper caption; math lives in `timeArenaPodiumMath` (see tests there).
-  const buyPreviewCharmWeightWad = session.buyCheckoutCharmWeightWad;
-  const buyAddsCl8yAtLaunch = useMemo(
-    () =>
-      participantLaunchValueCl8yWei({
-        charmWeightWad: buyPreviewCharmWeightWad,
-        pricePerCharmWad: session.pricePerCharmWad,
-      }),
-    [buyPreviewCharmWeightWad, session.pricePerCharmWad],
-  );
-
-  const buyPreviewLaunchGainLabel = useMemo(
-    () =>
-      formatBuyHubLaunchVsClearingGainPercentLabel({
-        clearingSpendCl8yWei: session.estimatedSpendWei,
-        approxLaunchCl8yWei: buyAddsCl8yAtLaunch,
-      }),
-    [session.estimatedSpendWei, buyAddsCl8yAtLaunch],
-  );
-
-  /** Holds the last non-null gain label while checkout reads settle — avoids parentheses mount/unmount flicker. */
-  const [heldBuyPreviewGainLabel, setHeldBuyPreviewGainLabel] = useState<string | null>(null);
-  useLayoutEffect(() => {
-    const previewOk =
-      session.charmWadSelected !== undefined &&
-      buyAddsCl8yAtLaunch !== undefined &&
-      buyAddsCl8yAtLaunch > 0n;
-    if (!previewOk) {
-      setHeldBuyPreviewGainLabel(null);
-      return;
-    }
-    if (buyPreviewLaunchGainLabel) {
-      setHeldBuyPreviewGainLabel(buyPreviewLaunchGainLabel);
-    }
-  }, [session.charmWadSelected, buyAddsCl8yAtLaunch, buyPreviewLaunchGainLabel]);
-
-  const buyPreviewGainLabelUi = buyPreviewLaunchGainLabel ?? heldBuyPreviewGainLabel;
+  const spendAssetForPreview = session.isArenaV2 ? "DOUB" : spendAssetLabel;
 
   // Price-tick pulse: bump a key whenever the live per-CHARM price changes
   // so the rate row re-renders and the CSS animation re-runs. This keeps
@@ -868,52 +780,34 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
       <div className="arena-simple__buy-preview arena-simple__buy-preview--loading">
         Loading CHARM preview…
       </div>
-    ) : buyAddsCl8yAtLaunch !== undefined && buyAddsCl8yAtLaunch > 0n ? (
+    ) : (
       <div className="arena-simple__buy-preview" data-testid="arena-simple-buy-preview">
-        <div
-          className="arena-simple__buy-preview-approx"
-          aria-label="Approximate CL8Y at launch"
-        >
-          <div className="arena-simple__buy-preview-approx-main">
-            <span className="arena-simple__buy-preview-approx-symbol" aria-hidden>
-              ≈
-            </span>
-            <span className="arena-simple__buy-preview-approx-value">
-              {"Worth: "}
-              {formatBuyHubDerivedCompact(buyAddsCl8yAtLaunch, session.decimals)}
-            </span>
-            <span className="arena-simple__buy-preview-approx-unit">CL8Y</span>
-            <span
-              className={
-                buyPreviewGainLabelUi
-                  ? "arena-simple__buy-preview-gain"
-                  : "arena-simple__buy-preview-gain arena-simple__buy-preview-gain--reserved"
-              }
-              aria-hidden={!buyPreviewGainLabelUi}
-              aria-label={
-                buyPreviewGainLabelUi
-                  ? "Estimated percent gain: CL8Y at launch versus implied CL8Y spend for this CHARM size"
-                  : undefined
-              }
-            >
-              {buyPreviewGainLabelUi ? `(${buyPreviewGainLabelUi})` : "\u00A0"}
-            </span>
-          </div>
-          {session.buyCharmBonusPreviewLines.length > 0 ? (
-            <div
-              className="arena-simple__buy-preview-bonuses"
-              data-testid="arena-simple-buy-preview-bonuses"
-            >
-              {session.buyCharmBonusPreviewLines.map((line, i) => (
-                <div key={`${i}:${line}`} className="arena-simple__buy-preview-bonus-line">
-                  {line}
-                </div>
-              ))}
-            </div>
+        <p className="muted">
+          CHARM: <strong>{formatBuyCtaCharmAmountLabel(session.charmWadSelected)}</strong>
+          {session.estimatedSpendWei !== undefined && session.estimatedSpendWei > 0n ? (
+            <>
+              {" · "}
+              {spendAssetForPreview}:{" "}
+              <strong>
+                {formatBuyHubDerivedCompact(session.estimatedSpendWei, session.decimals)}
+              </strong>
+            </>
           ) : null}
-        </div>
+        </p>
+        {session.buyCharmBonusPreviewLines.length > 0 ? (
+          <div
+            className="arena-simple__buy-preview-bonuses"
+            data-testid="arena-simple-buy-preview-bonuses"
+          >
+            {session.buyCharmBonusPreviewLines.map((line, i) => (
+              <div key={`${i}:${line}`} className="arena-simple__buy-preview-bonus-line">
+                {line}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
-    ) : null;
+    );
 
   const payUsesKumbaya = session.payWith === "eth" || session.payWith === "usdm";
   const nonCl8yBlocked =
@@ -1154,8 +1048,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
           }
         >
           <ChainMismatchWriteBarrier testId="arena-simple-chain-write-gate">
-          {/* Live rate board: current price (big, ticks every block) +
-              at-launch chain (1 CHARM = N DOUB = M CL8Y at 1.275× anchor). */}
+          {/* Live rate board: current per-CHARM price in the selected pay asset. */}
           {session.phase === "saleActive" && rateBoard}
 
           {!session.walletConnected && session.phase !== "loading" && (
@@ -1352,7 +1245,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
       <ArenaSimplePodiumSection
         podiumRows={podiumReads.data}
         podiumLoading={podiumReads.isLoading}
-        podiumPayoutPreview={podiumPayoutPreview}
+        podiumPayoutPreview={undefined}
         decimals={session.decimals}
         address={session.walletAddress}
         recentBuys={recentBuys}

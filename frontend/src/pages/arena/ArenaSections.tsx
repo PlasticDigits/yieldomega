@@ -3,7 +3,6 @@
 import { motion } from "motion/react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { AddressInline } from "@/components/AddressInline";
-import { CharmRedemptionCurve } from "@/components/CharmRedemptionCurve";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { TxHash } from "@/components/TxHash";
 import { PageBadge } from "@/components/ui/PageBadge";
@@ -677,24 +676,11 @@ export function RawDataAccordion(props: {
   pendingRevengeTargets: readonly WarbowPendingRevengeItem[];
   revengeIndexerConfigured: boolean;
   buyerStats: ArenaBuyerStats | null;
-  initialMinBuyResult: SerializableContractRead | undefined;
-  growthRateWadResult: SerializableContractRead | undefined;
   timerExtensionSecResult: SerializableContractRead | undefined;
   initialTimerSecResult: SerializableContractRead | undefined;
   timerCapSecResult: SerializableContractRead | undefined;
-  totalTokensForSaleResult: SerializableContractRead | undefined;
   sinkReads: readonly SerializableContractRead[] | undefined;
-  liquidityAnchors:
-    | {
-        clearing: string;
-        launch: string;
-        kLo: string;
-      }
-    | null
-    | undefined;
-  minSpendCurvePoints: { minSpend: string }[];
   decimals: number;
-  launchedDec: number;
   formatWallet: WalletFormatShort;
 }) {
   const {
@@ -717,17 +703,11 @@ export function RawDataAccordion(props: {
     pendingRevengeTargets,
     revengeIndexerConfigured,
     buyerStats,
-    initialMinBuyResult,
-    growthRateWadResult,
     timerExtensionSecResult,
     initialTimerSecResult,
     timerCapSecResult,
-    totalTokensForSaleResult,
     sinkReads,
-    liquidityAnchors,
-    minSpendCurvePoints,
     decimals,
-    launchedDec,
     formatWallet,
   } = props;
 
@@ -739,7 +719,7 @@ export function RawDataAccordion(props: {
           <h2>Raw contract and operator context</h2>
           <div className="section-heading__lede">
             Player-facing buy, timer, prizes, and PvP surfaces now come first. Open this for raw onchain mirrors,
-            immutable parameters, and launch-routing context.
+            immutable parameters, and DOUB buy routing.
           </div>
         </div>
       </summary>
@@ -767,7 +747,7 @@ export function RawDataAccordion(props: {
                 </dd>
                 <dt>
                   {countdownSecondsContext === "untilOpen"
-                    ? "Seconds until TimeCurve opens (hero clock)"
+                    ? "Seconds until Time Arena opens (hero clock)"
                     : countdownSecondsContext === "untilRoundDeadline"
                       ? "Seconds until round deadline (hero clock)"
                       : "seconds remaining"}
@@ -880,20 +860,6 @@ export function RawDataAccordion(props: {
             <h3>Immutable sale parameters</h3>
             {coreTcData && (
               <dl className="kv">
-                <dt>envelope ref WAD</dt>
-                <dd>
-                  {initialMinBuyResult?.status === "success" && initialMinBuyResult.result !== undefined ? (
-                    <AmountDisplay raw={initialMinBuyResult.result} decimals={18} />
-                  ) : (
-                    "—"
-                  )}
-                </dd>
-                <dt>{humanizeKvLabel("growthRateWad")}</dt>
-                <dd className="mono">
-                  {growthRateWadResult?.status === "success" && growthRateWadResult.result !== undefined
-                    ? formatCompactFromRaw(growthRateWadResult.result, 18)
-                    : "—"}
-                </dd>
                 <dt>{humanizeKvLabel("timerExtensionSec")}</dt>
                 <dd>
                   {timerExtensionSecResult?.status === "success" && timerExtensionSecResult.result !== undefined
@@ -912,19 +878,11 @@ export function RawDataAccordion(props: {
                     ? formatLocaleInteger(BigInt(timerCapSecResult.result))
                     : "—"}
                 </dd>
-                <dt>{humanizeKvLabel("totalTokensForSale")}</dt>
-                <dd>
-                  {totalTokensForSaleResult?.status === "success" && totalTokensForSaleResult.result !== undefined ? (
-                    <AmountDisplay raw={totalTokensForSaleResult.result} decimals={18} />
-                  ) : (
-                    "—"
-                  )}
-                </dd>
               </dl>
             )}
           </div>
           <div className="podium-block">
-            <h3>Reserve routing and launch anchors</h3>
+            <h3>DOUB buy routing</h3>
             <ul className="event-list">
               {(
                 [
@@ -946,70 +904,6 @@ export function RawDataAccordion(props: {
                 );
               })}
             </ul>
-            {liquidityAnchors ? (
-              <dl className="kv" style={{ marginTop: "0.85rem" }}>
-                <dt>Projected reserve / DOUB</dt>
-                <dd className="mono">{formatCompactFromRaw(liquidityAnchors.clearing, 18)}</dd>
-                <dt>Launch anchor</dt>
-                <dd className="mono">{formatCompactFromRaw(liquidityAnchors.launch, 18)}</dd>
-                <dt>Kumbaya lower band</dt>
-                <dd className="mono">{formatCompactFromRaw(liquidityAnchors.kLo, 18)}</dd>
-              </dl>
-            ) : (
-              <StatusMessage variant="muted">Waiting for sale totals to project liquidity anchors.</StatusMessage>
-            )}
-          </div>
-        </div>
-        <div className="split-layout">
-          <div className="podium-block">
-            <h3>Charm redemption curve</h3>
-            {coreTcData &&
-              totalRaised?.status === "success" &&
-              totalRaised.result !== undefined &&
-              totalTokensForSaleResult?.status === "success" &&
-              totalTokensForSaleResult.result !== undefined && (
-              <CharmRedemptionCurve
-                totalRaised={totalRaised.result}
-                totalTokensForSale={totalTokensForSaleResult.result}
-                acceptedDecimals={decimals}
-                launchedDecimals={launchedDec}
-                userCharmWeight={charmWeightResult?.status === "success" ? charmWeightResult.result : undefined}
-                saleStarted={
-                  saleStart?.status === "success" &&
-                  saleStart.result !== undefined &&
-                  BigInt(saleStart.result) > 0n
-                }
-              />
-            )}
-          </div>
-          <div className="podium-block">
-            <h3>Min gross spend curve</h3>
-            {minSpendCurvePoints.length > 1 ? (
-              <svg className="epoch-chart" viewBox="0 0 400 120" role="img" aria-label="Min gross spend curve">
-                {(() => {
-                  const vals = minSpendCurvePoints.map((point) => Number(point.minSpend));
-                  const vmin = Math.min(...vals);
-                  const vmax = Math.max(...vals);
-                  const span = Math.max(vmax - vmin, 1);
-                  return (
-                    <polyline
-                      fill="none"
-                      stroke="var(--line)"
-                      strokeWidth="3"
-                      points={minSpendCurvePoints
-                        .map((point, index) => {
-                          const x = (index / (minSpendCurvePoints.length - 1)) * 380 + 10;
-                          const y = 110 - ((Number(point.minSpend) - vmin) / span) * 100;
-                          return `${x},${y}`;
-                        })
-                        .join(" ")}
-                    />
-                  );
-                })()}
-              </svg>
-            ) : (
-              <StatusMessage variant="muted">Curve appears after the sale has started.</StatusMessage>
-            )}
           </div>
         </div>
       </div>
