@@ -612,16 +612,15 @@ export type ReferralAppliedItem = {
   buyer: string;
   referrer: string;
   code_hash: string;
-  referrer_amount: string;
-  referee_amount: string;
-  amount_to_fee_router: string;
+  referrer_cred: string;
+  buyer_cred: string;
 };
 
 export async function fetchReferralApplied(referrer: string | undefined, limit = 30) {
   return getJson<{ items: ReferralAppliedItem[] }>(referralAppliedApiPath(referrer, limit));
 }
 
-/** `/v1/referrals/referrer-leaderboard` — Σ indexed `ReferralApplied.referrerCharmAdded` per referrer plus **`ReferralCodeRegistered`** union ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), [GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)). */
+/** `/v1/referrals/referrer-leaderboard` — Σ indexed `ReferralCredApplied.referrerCred` per referrer plus **`ReferralCodeRegistered`** union ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), [GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204), [GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)). */
 export function referralReferrerLeaderboardApiPath(limit: number, offset = 0): string {
   return `/v1/referrals/referrer-leaderboard?limit=${limit}&offset=${offset}`;
 }
@@ -629,7 +628,7 @@ export function referralReferrerLeaderboardApiPath(limit: number, offset = 0): s
 export type ReferralReferrerLeaderboardItem = {
   rank: number;
   referrer: string;
-  total_referrer_charm_wad: string;
+  total_referrer_cred_wad: string;
   referred_buy_count: string;
   /** Indexed `ReferralCodeRegistered` rows for this owner (schema ≥ 1.19.0). */
   codes_registered_count: string;
@@ -640,7 +639,7 @@ export type ReferralReferrerLeaderboardPage = PaginatedItems<ReferralReferrerLea
   total?: number;
   total_codes_registered?: string;
   total_referred_buys?: string;
-  total_referrer_charm_wad?: string;
+  total_referrer_cred_wad?: string;
 };
 
 export async function fetchReferralReferrerLeaderboard(limit = 25, offset = 0) {
@@ -649,21 +648,34 @@ export async function fetchReferralReferrerLeaderboard(limit = 25, offset = 0) {
   );
 }
 
-/** `/v1/referrals/wallet-charm-summary` — sums indexed `referrerCharmAdded` / `refereeCharmAdded` for one wallet. */
-export function referralWalletCharmSummaryApiPath(wallet: string): string {
-  return `/v1/referrals/wallet-charm-summary?wallet=${encodeURIComponent(wallet)}`;
+/** `/v1/referrals/wallet-cred-summary` — sums indexed `ReferralCredApplied` referrer/buyer CRED for one wallet ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)). */
+export function referralWalletCredSummaryApiPath(wallet: string): string {
+  return `/v1/referrals/wallet-cred-summary?wallet=${encodeURIComponent(wallet)}`;
 }
 
-export type ReferralWalletCharmSummary = {
+export type ReferralWalletCredSummary = {
   wallet: string;
-  referrer_charm_wad: string;
-  referee_charm_wad: string;
+  referrer_cred_wad: string;
+  buyer_cred_wad: string;
   referred_buy_count: string;
   referee_buy_count: string;
 };
 
+export async function fetchReferralWalletCredSummary(wallet: string) {
+  return getJson<ReferralWalletCredSummary>(referralWalletCredSummaryApiPath(wallet));
+}
+
+/** @deprecated Use `fetchReferralWalletCredSummary` — alias hits the same route. */
+export function referralWalletCharmSummaryApiPath(wallet: string): string {
+  return referralWalletCredSummaryApiPath(wallet);
+}
+
+/** @deprecated Use `ReferralWalletCredSummary`. */
+export type ReferralWalletCharmSummary = ReferralWalletCredSummary;
+
+/** @deprecated Use `fetchReferralWalletCredSummary`. */
 export async function fetchReferralWalletCharmSummary(wallet: string) {
-  return getJson<ReferralWalletCharmSummary>(referralWalletCharmSummaryApiPath(wallet));
+  return fetchReferralWalletCredSummary(wallet);
 }
 
 export type FeeRouterSinksUpdateItem = {

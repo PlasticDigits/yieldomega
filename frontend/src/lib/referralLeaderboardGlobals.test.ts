@@ -18,13 +18,13 @@ describe("referralLeaderboardGlobals", () => {
       total: 2,
       total_codes_registered: "2",
       total_referred_buys: "5",
-      total_referrer_charm_wad: "9000",
+      total_referrer_cred_wad: "9000",
     };
     expect(referralLeaderboardPageHasGlobalTotals(page)).toBe(true);
     expect(parseReferralLeaderboardGlobalTotals(page)).toEqual({
       totalCodesRegistered: 2n,
       totalBuys: 5n,
-      totalCharmWad: 9000n,
+      totalCredWad: 9000n,
       totalReferrers: 2,
     });
   });
@@ -35,7 +35,7 @@ describe("referralLeaderboardGlobals", () => {
         {
           rank: 1,
           referrer: "0x1",
-          total_referrer_charm_wad: "100",
+          total_referrer_cred_wad: "100",
           referred_buy_count: "1",
           codes_registered_count: "1",
         },
@@ -53,14 +53,14 @@ describe("referralLeaderboardGlobals", () => {
       {
         rank: 1,
         referrer: "0x1",
-        total_referrer_charm_wad: "300",
+        total_referrer_cred_wad: "300",
         referred_buy_count: "2",
         codes_registered_count: "1",
       },
       {
         rank: 2,
         referrer: "0x2",
-        total_referrer_charm_wad: "100",
+        total_referrer_cred_wad: "100",
         referred_buy_count: "1",
         codes_registered_count: "1",
       },
@@ -68,7 +68,7 @@ describe("referralLeaderboardGlobals", () => {
     expect(totals).toEqual({
       totalCodesRegistered: 2n,
       totalBuys: 3n,
-      totalCharmWad: 400n,
+      totalCredWad: 400n,
       totalReferrers: 2,
     });
   });

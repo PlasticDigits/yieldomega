@@ -2,7 +2,28 @@
 
 ## Arena v2 (live)
 
-Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5% + 5%** of the **35 CRED** mint goes to referrer and buyer — **not** CHARM weight. Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](docs/product/time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240).
+Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5% + 5%** of the **35 CRED** mint goes to referrer and buyer — **not** CHARM weight. Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · verified [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
+
+### Code ownership continuity ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
+
+| Scenario | `codeHash → owner` |
+|----------|-------------------|
+| **UUPS implementation upgrade** (`ReferralRegistry` proxy unchanged) | **Preserved** — `codeOwner` / `ownerCode` live in proxy storage |
+| **Fresh `ReferralRegistry` proxy deploy** (Arena v2 greenfield) | **Empty** — guides must **`registerCode`** again (same normalized slug → same `codeHash`) |
+| **Production migration from v1 registry** | Export **`ReferralCodeRegistered`** rows from indexer or chain; governance batch **`registerCode`** from each owner wallet (or merkle-gated import script — not shipped in-repo; track as ops runbook) |
+
+Onchain identity remains **`keccak256(bytes(normalizedCode))`** — unchanged from v1. Indexer table: **`idx_referral_code_registered`**.
+
+### Arena v2 reward math
+
+On a referred **DOUB** buy with **`CRED_PER_BUY = 35e18`** and **`REFERRAL_CRED_BPS = 500`**:
+
+- **`refEach = CRED_PER_BUY × 500 / 10_000`** (= **1.75 CRED** per side at default params)
+- **`playCred.mint(referrer, refEach)`** and **`playCred.mint(buyer, refEach)`**
+- **`charmWeight`** accrues **only** the purchased **`charmWad`** — no referral CHARM bonus
+- **Self-referral** (`referrer == buyer`) **reverts** (`TimeArena: self-referral`)
+
+Forge: [`TimeArena.t.sol::test_referred_buy_mints_cred_not_charm`](../../contracts/test/TimeArena.t.sol), [`test_self_referral_reverts`](../../contracts/test/TimeArena.t.sol). Indexer: **`idx_arena_referral_cred`** ← **`ReferralCredApplied`**. HTTP: **`GET /v1/referrals/applied`**, **`referrer-leaderboard`**, **`wallet-cred-summary`** (schema **≥ 2.3.0**).
 
 ---
 
@@ -113,9 +134,9 @@ The frontend may surface **derived** referral metrics for UX. They must map to *
 
 | Surface | Authority | Indexer / RPC |
 |--------|-----------|---------------|
-| **Referrer leaderboard** | **Σ `referrerCharmAdded`** per referrer from indexed **`ReferralApplied`**, plus **onchain code registrations** from **`ReferralCodeRegistered`** so guides appear before the first qualifying buy ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)) | `GET /v1/referrals/referrer-leaderboard?limit=&offset=` (schema **≥ 1.19.0**; global summary fields **≥ 1.25.0** — [GitLab #225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225)) — distinct **`referrer`** keys = **`UNION(owner_address from idx_referral_code_registered, referrer from idx_timecurve_referral_applied)`**; **`codes_registered_count`** counts registry rows per owner; **`referred_buy_count`** / CHARM totals remain **`ReferralApplied`** aggregates; response also includes network-wide **`total_codes_registered`**, **`total_referred_buys`**, **`total_referrer_charm_wad`**, and **`total`** referrer count for pagination; row order **`Σ CHARM DESC, referrer ASC`**; JSON **`rank`** = dense **`RANK()`** over Σ CHARM only (outer **`referrer ASC`** tiebreaker — [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170), [GitLab #177](https://gitlab.com/PlasticDigits/yieldomega/-/issues/177), [#204 rank fix](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204)). **`/referrals`** Guide leaderboard card paginates with numbered page controls (**20** rows per page) and shows **global** summary totals from the indexer (not page-local sums). |
-| **Wallet CHARM summary** | Same log fields, filtered by wallet | `GET /v1/referrals/wallet-charm-summary?wallet=0x…` — **`referrer_charm_wad`** = Σ `referrer_amount` where `referrer = wallet`; **`referee_charm_wad`** = Σ `referee_amount` where `buyer = wallet`; counts are indexed referral buy rows (not total sale CHARM weight). |
-| **CL8Y / pay-asset “notional” on `/referrals`** | Illustrative only | Uses live **`currentPricePerCharmWad`** × combined indexed referral CHARM for **spot CL8Y** at the current sale curve; **USDM** / **ETH** hints reuse the same **static fallback** multipliers as other pay-mode labels (`frontend/src/lib/kumbayaDisplayFallback.ts`), not live DEX quotes. |
+| **Referrer leaderboard** | **Σ `referrer_cred`** per referrer from indexed **`ReferralCredApplied`** (`idx_arena_referral_cred`), plus **onchain code registrations** from **`ReferralCodeRegistered`** so guides appear before the first qualifying buy ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204), [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) | `GET /v1/referrals/referrer-leaderboard?limit=&offset=` (schema **≥ 2.3.0** for CRED fields; global summary **≥ 1.25.0** — [GitLab #225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225)) — distinct **`referrer`** keys = **`UNION(owner_address from idx_referral_code_registered, referrer from idx_arena_referral_cred)`**; **`codes_registered_count`** counts registry rows per owner; **`referred_buy_count`** / CRED totals from **`idx_arena_referral_cred`**; response includes **`total_codes_registered`**, **`total_referred_buys`**, **`total_referrer_cred_wad`**, and **`total`**; row order **`Σ CRED DESC, referrer ASC`** |
+| **Wallet CRED summary** | Same log fields, filtered by wallet | `GET /v1/referrals/wallet-cred-summary?wallet=0x…` — **`referrer_cred_wad`** = Σ `referrer_cred` where `referrer = wallet`; **`buyer_cred_wad`** = Σ `buyer_cred` where `buyer = wallet`. Legacy alias **`/wallet-charm-summary`** returns the same CRED JSON (schema **≥ 2.3.0**). |
+| **Applied rows** | Per-buy CRED split | `GET /v1/referrals/applied?limit=&offset=` — **`referrer_cred`**, **`buyer_cred`** from **`idx_arena_referral_cred`** |
 
 Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at insert; HTTP handlers bind lowercase addresses and use **bare equality** in SQL so btree indexes apply ([GitLab #165](https://gitlab.com/PlasticDigits/yieldomega/-/issues/165)).
 
@@ -123,7 +144,7 @@ Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at in
 
 ## Automated checks (frontend)
 
-Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-charm-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Manual QA: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Third-party agents walking the checklist: [`../testing/manual-qa-checklists.md#manual-qa-issue-64`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Storage key names for R4 vs R7: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85).
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), CRED fields [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-cred-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Manual QA: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Third-party agents: [`skills/play-time-arena-doub/SKILL.md`](../../skills/play-time-arena-doub/SKILL.md) · [`docs/testing/manual-qa-checklists.md#manual-qa-issue-253`](../testing/manual-qa-checklists.md#manual-qa-issue-253).
 
 ---
 
