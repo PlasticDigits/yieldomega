@@ -62,7 +62,7 @@ def load_dotenv_files(explicit_env_file: Optional[Path] = None) -> None:
     load_dotenv(".env", override=False)
     if explicit_env_file is not None and explicit_env_file.is_file():
         load_dotenv(explicit_env_file, override=True)
-    # Repo convention: bots/timecurve/.env.local when run from package dir
+    # Repo convention: bots/timearena/.env.local when run from repo root
     local = Path("bots/timearena/.env.local")
     if local.is_file():
         load_dotenv(local, override=True)

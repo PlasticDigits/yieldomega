@@ -1,54 +1,34 @@
 ---
-name: yieldomega-timecurve-bot
-description: Work on the TimeCurve Python bot under bots/timecurve — env-based RPC, Anvil-first workflows, no offchain game authority.
+name: yieldomega-timearena-bot
+description: Work on the TimeArena Python bot under bots/timearena — env-based RPC, Anvil-first workflows, no offchain game authority.
 ---
 
-# TimeCurve bot (`bots/timecurve`)
+# TimeArena bot (`bots/timearena`)
 
-Use this skill when editing or running the **`timecurve-bot`** package.
+Use this skill when editing or running the **`timecurve-bot`** package (Arena v2 client for `TimeArena`).
+
+Renamed from `bots/timecurve/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
 
 ## Authority and scope
 
-- **Contracts are authoritative.** The bot reads onchain state via `web3.py` and may submit **normal** contract calls (`buy`, WarBow, etc.). It does **not** re-implement TimeCurve rules, podiums, or BP logic as a parallel simulator.
-- Product semantics (four reserve podium categories including WarBow; timer hard-reset band) are documented in `docs/product/primitives.md`. Keep bot interpretations **thin** — prefer `eth_call` over inferred rules.
+- **Contracts are authoritative.** The bot reads onchain state via `web3.py` and may submit **normal** contract calls (`buy`, etc.). It does **not** re-implement arena rules as a parallel simulator.
+- Product semantics: [`docs/product/time-arena.md`](../../docs/product/time-arena.md), [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md). Invariants: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#arena-v2-play-skills-gitlab-245).
 - This tree is **contributor tooling**, not a “play” skill. Play-oriented agent guidance lives under root `skills/` and Phase 20 in `docs/agent-phases.md`.
-
-## Repository guardrails
-
-- Read `docs/agent-phases.md` and follow `docs/testing/strategy.md` when changing behavior or docs.
-- Default license for new files: **AGPL-3.0** (match repo).
-- Do not commit secrets. Use `.env.example` only for templates; real keys stay in gitignored `.env` / `.env.local`.
-
-## Layout
-
-- `src/timecurve_bot/config.py` — env parsing, send/dry-run policy.
-- `addresses.py`, `rpc.py`, `contracts.py`, `state.py` — reads and wiring.
-- `actions.py` — tx building; `strategies/` — thin orchestration.
-- `cli.py` — Typer entrypoint (`timecurve-bot` console script).
 
 ## Environment
 
-- Required: `YIELDOMEGA_RPC_URL` (or `RPC_URL`), `YIELDOMEGA_CHAIN_ID`, `YIELDOMEGA_TIMECURVE_ADDRESS`.
-- Optional: treasury/NFT/accepted-asset overrides, `YIELDOMEGA_ADDRESS_FILE` for registry JSON.
-- **`YIELDOMEGA_TIMECURVE_ADDRESS`** must be the **ERC1967 proxy** from `DeployDev`, not the implementation address from a naive `jq` on `run-latest.json` (`contractName=="TimeCurve"` is the impl row — see [`scripts/lib/broadcast_proxy_addresses.sh`](../../scripts/lib/broadcast_proxy_addresses.sh), [GitLab #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
+- Required: `YIELDOMEGA_RPC_URL` (or `RPC_URL`), `YIELDOMEGA_CHAIN_ID`, `YIELDOMEGA_TIME_ARENA_ADDRESS` (legacy alias `YIELDOMEGA_TIMECURVE_ADDRESS`).
+- DOUB token: `YIELDOMEGA_ACCEPTED_ASSET_ADDRESS` or read `TimeArena.doub()`.
+- **`YIELDOMEGA_TIME_ARENA_ADDRESS`** must be the **ERC1967 proxy** from `DeployDev`, not the implementation row in `run-latest.json`.
 - **Sending txs:** CLI `--send` **or** `YIELDOMEGA_SEND_TX=1` with `YIELDOMEGA_DRY_RUN=0`, plus `YIELDOMEGA_PRIVATE_KEY`.
-- **Anvil dev funding:** `--allow-anvil-funding` or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` only for **`swarm`** one-shot ETH + mock CL8Y on `YIELDOMEGA_CHAIN_ID=31337`. Default false (mainnet-safe).
+- **Anvil dev funding:** `--allow-anvil-funding` or `YIELDOMEGA_ALLOW_ANVIL_FUNDING=1` only for **`swarm`** one-shot ETH + DOUB mint on `YIELDOMEGA_CHAIN_ID=31337`.
 
 ## Local Anvil workflow
 
-1. From repo root: `bash scripts/anvil-export-bot-env.sh` (starts Anvil, runs shared `DeployDev` via `scripts/lib/anvil_deploy_dev.sh`, writes `bots/timecurve/.env.local`).
-2. `cd bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` — on **PEP 668** hosts without a venv, use the `--user --break-system-packages` fallback documented in [`README.md`](README.md).
-3. `set -a && source .env.local && set +a`
-4. `.venv/bin/timecurve-bot inspect` (reads only).
-5. For scripted activity: `timecurve-bot --send --allow-anvil-cheat seed-local`.
-
-**Full stack:** [`scripts/start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) preflights `import web3` before the optional bot swarm; see README **PEP 668** if that step fails ([issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). With **`SKIP_ANVIL_RICH_STATE=1`**, the stack defaults **`START_BOT_SWARM=1`** and starts Anvil with interval mining plus optional notes on **`buyCooldownSec`** — [GitLab #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99), [`../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99`](../../docs/testing/manual-qa-checklists.md#manual-qa-issue-99). **`YIELDOMEGA_SWARM_REFERRALS=0`** is honored when exported before the stack; standalone **`run_swarm()`** prerequisites and opt-out are documented in README § *Run `run_swarm()` without `start-local-anvil-stack.sh`* and [GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102).
-
-## Public RPC
-
-- Use a **dedicated wallet** and low limits. Never assume Anvil gas or behavior matches MegaETH; see `docs/testing/e2e-anvil.md`.
+1. From repo root: `bash scripts/anvil-export-bot-env.sh` or `bash scripts/sync-bot-env-from-frontend.sh` → `bots/timearena/.env.local`.
+2. `cd bots/timearena && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`.
+3. `.venv/bin/timecurve-bot inspect` (reads only).
 
 ## Testing
 
-- Unit tests: `pytest` in `bots/timecurve/` (no chain).
-- Integration: manual Anvil + `anvil-export-bot-env.sh` as in README.
+- Unit tests: `pytest` in `bots/timearena/` (no chain).

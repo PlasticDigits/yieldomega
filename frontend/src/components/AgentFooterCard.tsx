@@ -10,12 +10,12 @@ import { resolveChainRpcConfig } from "@/lib/chain";
 const GH_MAIN = "https://github.com/PlasticDigits/yieldomega/blob/main";
 
 const PLAY_SKILLS: { label: string; path: string }[] = [
-  { label: "play-active-timecurve (detect live sale phase)", path: "skills/play-active-timecurve/SKILL.md" },
+  { label: "play-active-time-arena (detect live / paused timer)", path: "skills/play-active-time-arena/SKILL.md" },
+  { label: "play-time-arena-doub (DOUB buys, podium funding)", path: "skills/play-time-arena-doub/SKILL.md" },
+  { label: "play-time-arena-warbow (stub until #252)", path: "skills/play-time-arena-warbow/SKILL.md" },
   { label: "skills index (play + contributor map)", path: "skills/README.md" },
   { label: "why-yieldomega-participation-matters", path: "skills/why-yieldomega-participation-matters/SKILL.md" },
-  { label: "script-with-timecurve-local", path: "skills/script-with-timecurve-local/SKILL.md" },
-  { label: "play-timecurve-doubloon", path: "skills/play-timecurve-doubloon/SKILL.md" },
-  { label: "play-timecurve-warbow", path: "skills/play-timecurve-warbow/SKILL.md" },
+  { label: "script-with-timecurve-local (Anvil stack env)", path: "skills/script-with-timecurve-local/SKILL.md" },
 ];
 
 const CONTRIBUTOR_SKILL = {
@@ -29,7 +29,7 @@ const DOCS_LINKS: { label: string; path: string }[] = [
   { label: "Architecture overview (onchain vs indexer vs UI)", path: "docs/architecture/overview.md" },
   { label: "Indexer design + HTTP error redaction (#157)", path: "docs/indexer/design.md" },
   { label: "Invariants & business logic (indexer INV-* index)", path: "docs/testing/invariants-and-business-logic.md" },
-  { label: "TimeCurve product primitives", path: "docs/product/primitives.md" },
+  { label: "Time Arena product spec", path: "docs/product/time-arena.md" },
   { label: "Arena v2 product primitives", path: "docs/product/arena-v2.md" },
 ];
 
@@ -103,8 +103,7 @@ export function AgentFooterCard() {
         <article className="app-footer-agent__article" lang="en">
           <h3 className="app-footer-agent__h">YieldOmega — machine-readable orientation</h3>
           <p className="app-footer-agent__p">
-            YieldOmega ships onchain games and treasuries (Time Arena / TimeCurve DOUB sale, referrals, fee
-            routing).{" "}
+            YieldOmega ships onchain games (Time Arena / Arena v2 DOUB sale, referrals, prize routing).{" "}
             <strong>Authoritative rules and balances live in contracts</strong>; the indexer and this UI are{" "}
             <strong>derived read models</strong> built from decoded logs and JSON-RPC (see architecture doc). Agents
             helping <em>users participate</em> should follow{" "}
@@ -155,16 +154,19 @@ export function AgentFooterCard() {
             ))}
           </ul>
 
-          <h4 className="app-footer-agent__h">TimeCurve scripting</h4>
+          <h4 className="app-footer-agent__h">Time Arena scripting</h4>
           <p className="app-footer-agent__p">
             Use <strong>RPC</strong> for <code className="app-footer-agent__code-inline">deadline</code> vs{" "}
             <code className="app-footer-agent__code-inline">latest</code> time — not indexer latency alone (
             <a href={ghBlob("skills/script-with-timecurve-local/SKILL.md")} target="_blank" rel="noreferrer">
               script-with-timecurve-local
             </a>
-            ). <code className="app-footer-agent__code-inline">podium(0)</code> is the <strong>last-buy</strong> reserve
-            podium (first address = current #1). Before production sends: cooldown, allowances, CHARM slack (#82),
-            gas — this is a process sketch, not execution advice.
+            ). Prefer <code className="app-footer-agent__code-inline">TimeArena</code> reads and{" "}
+            <code className="app-footer-agent__code-inline">GET /v1/arena/*</code> indexer routes (
+            <a href={ghBlob("skills/play-time-arena-doub/SKILL.md")} target="_blank" rel="noreferrer">
+              play-time-arena-doub
+            </a>
+            ). Sketch below is legacy TimeCurve-shaped; see play skills for Arena v2.
           </p>
           <pre className="app-footer-agent__route-block">{TIMECURVE_SCRIPTING_SNIPPET}</pre>
 

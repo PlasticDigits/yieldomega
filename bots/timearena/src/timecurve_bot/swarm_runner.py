@@ -14,7 +14,7 @@ from web3 import Web3
 from timecurve_bot.anvil_accounts import address_at, private_key_hex
 from timecurve_bot.anvil_extra_addresses import extra_funded_addresses_from_environ, merge_funded_recipients
 from timecurve_bot.config import BotConfig, load_config
-from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
+from timecurve_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
 from timecurve_bot.referral_bootstrap import (
     ensure_swarm_referral_registered,
     load_referral_registrar_account,
@@ -42,7 +42,7 @@ _LOG_DIR = Path("/tmp")
 _SWARM_CONFIG_HINT = (
     "  Hint: from repository root run `bash scripts/sync-bot-env-from-frontend.sh` "
     "(needs `frontend/.env.local` or equivalent), export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1, "
-    "and use repo-root cwd so `bots/timecurve/.env.local` is loaded by `load_config`."
+    "and use repo-root cwd so `bots/timearena/.env.local` is loaded by `load_config`."
 )
 
 
@@ -85,8 +85,8 @@ def run_swarm(*, skip_mint: bool = False, cfg: BotConfig | None = None) -> None:
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
     tc = timecurve_contract(w3, cfg.timecurve_address)
-    aa = cfg.accepted_asset_address or tc.functions.acceptedAsset().call()
-    asset = mock_reserve_contract(w3, Web3.to_checksum_address(aa))
+    doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
+    asset = mock_reserve_contract(w3, doub)
 
     recipients = [Web3.to_checksum_address(address_at(i)) for i in ALL_FUNDED_INDICES]
     extras = extra_funded_addresses_from_environ()
