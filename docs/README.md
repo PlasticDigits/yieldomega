@@ -26,10 +26,10 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 | Architecture overview | [architecture/overview.md](architecture/overview.md) |
 | Repository layout | [architecture/repository-layout.md](architecture/repository-layout.md) |
 | Product vision | [product/vision.md](product/vision.md) |
-| Arena v2 (TimeArena, DOUB buys, prize vaults) | [product/arena-v2.md](product/arena-v2.md) |
-| TimeCurve / launchpad (retired — historical) | [product/primitives.md](product/primitives.md) |
+| Arena v2 (TimeArena, DOUB buys, prize vaults) | [product/time-arena.md](product/time-arena.md) · [product/arena-v2.md](product/arena-v2.md) |
+| Shared primitives index (cooldown, referrals) | [product/primitives.md](product/primitives.md) |
 | Referrals | [product/referrals.md](product/referrals.md) |
-| DOUB launch plan + **F-10 / F-11** UX flows ([issue #92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92), [issue #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)) | [launchplan-timecurve.md](../launchplan-timecurve.md) · [YO-DOUB-Launch-UX-Flows.md](../YO-DOUB-Launch-UX-Flows.md) |
+| DOUB launch UX flows (**F-10 / F-11**) | [YO-DOUB-Launch-UX-Flows.md](../YO-DOUB-Launch-UX-Flows.md) · Arena spec [product/time-arena.md](product/time-arena.md) |
 | JSON schemas (metadata drafts, changelog) | [schemas/README.md](schemas/README.md) · [schemas/CHANGELOG.md](schemas/CHANGELOG.md) |
 | Fee routing and governance | [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) ([sinks](onchain/fee-routing-and-governance.md#fee-sinks), [governance](onchain/fee-routing-and-governance.md#governance-actors), [invariants](onchain/fee-routing-and-governance.md#post-update-invariants)) |
 | Treasury contracts (separation, roles) | [onchain/treasury-contracts.md](onchain/treasury-contracts.md) |

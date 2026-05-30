@@ -14,7 +14,7 @@ No package implements privileged game rules offchain.
 
 | Layer | Trust model |
 |--------|-------------|
-| MegaEVM contracts | Source of truth for balances, sales, timers, winners (per contract rules), NFT traits stored onchain, fee splits enforced by code. |
+| MegaEVM contracts | Source of truth for balances, timers, podium epochs, winners (per contract rules), and fee splits enforced by code. |
 | Full nodes / RPC | Provides canonical chain state; subject to reorgs and provider correctness. |
 | Indexer | Replays chain data into a database; must handle reorgs; must never **invent** outcomes not derivable from chain + contract ABI. |
 | Static frontend | User-facing; can err on presentation but should not hold secrets that control funds. |
@@ -29,7 +29,7 @@ No package implements privileged game rules offchain.
 “Fully onchain” means:
 
 1. **Authorization** for moving user funds or minting claims happens in contracts.
-2. **Outcome determination** (for example sale end, prize eligibility, treasury repricing epochs) is defined in contract code or verifiable onchain state—not in a private server.
+2. **Outcome determination** (for example podium epoch rolls, prize eligibility, WarBow scores) is defined in contract code or verifiable onchain state—not in a private server.
 3. Offchain systems may **simulate** or **display** outcomes but must treat chain state as final.
 
 ## Upgrade and proxy strategy (design topic)
@@ -42,15 +42,17 @@ The codebase does not yet choose a pattern. Documented options to decide before 
 
 Any chosen pattern should be reflected in [onchain/security-and-threat-model.md](../onchain/security-and-threat-model.md) and deployment runbooks.
 
-## High-level diagram
+## High-level diagram (Arena v2)
 
 ```mermaid
 flowchart LR
   subgraph chain [MegaETH_MegaEVM]
-    TC[TimeCurve]
-    RT[RetiredV1Treasury]
-    NFT[LeprechaunNFTs]
-    Router[FeeRouter]
+    TA[TimeArena]
+    PV[PodiumVaults]
+    ASV[AdminSellVault]
+    PC[PlayCred]
+    RR[ReferralRegistry]
+    DB[Doubloon]
   end
   subgraph offchain [Offchain_read_models]
     IDX[Indexer_Rust_Postgres]
@@ -61,12 +63,19 @@ flowchart LR
   WEB --> chain
   IDX --> chain
   chain --> IDX
+  TA --> PV
+  TA --> ASV
+  TA --> PC
+  TA --> RR
+  TA --> DB
 ```
 
 ## Relationship to product primitives
 
-- **TimeCurve** and **retired v1 player reserve** generate fees and participation; **TimeCurve** uses the canonical split in [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) ([full doc](../onchain/fee-routing-and-governance.md)); other modules use **their own** documented routes.
-- **Leprechaun NFTs** attach identity and bonuses; gameplay fields must remain **machine-readable onchain** (see [product/leprechaun-nfts.md](../product/leprechaun-nfts.md)). **Offchain** presentation linked from `tokenURI` can change if **`DEFAULT_ADMIN_ROLE`** updates `baseURI` ([metadata trust model](../product/leprechaun-nfts.md#metadata-uri-trust-model-onchain-traits-vs-offchain-json)).
+- **TimeArena** ([product/time-arena.md](../product/time-arena.md)) is the live arena: DOUB buys, four independent podium timers, 40/30/30 prize routing, epoch CRED, XP, and DOUB WarBow. Always-on when not paused — **no** v1 sale-end or CHARM redemption.
+- **PodiumVaults** and **AdminSellVault** hold prize and admin slices per buy ([arena-v2.md](../product/arena-v2.md)).
+- **ReferralRegistry** preserves referral codes; Arena v2 rewards are **CRED**, not CHARM weight ([referrals.md](../product/referrals.md)).
+- **Retired v1 modules** (TimeCurve launchpad, retired v1 player reserve [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242), Leprechaun NFTs, FeeRouter CL8Y sinks) remain in-tree for history only — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 ## User data flows
 

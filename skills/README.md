@@ -2,7 +2,7 @@
 
 These files help agents and humans **use** onchain **Time Arena** (Arena v2) mechanics under published rules. They are **not** contributor guardrails — use [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../.cursor/skills/yieldomega-guardrails/SKILL.md) when editing the repo.
 
-**Entry point:** [Phase 20 in `docs/agent-phases.md`](../docs/agent-phases.md#phase-20) · Product spec: [`docs/product/arena-v2.md`](../docs/product/arena-v2.md) · XP/level gas bounds: [GitLab #265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) · [`INV-TIME-ARENA-XP-GAS`](../docs/testing/invariants-and-business-logic.md)
+**Entry point:** [Phase 20 in `docs/agent-phases.md`](../docs/agent-phases.md#phase-20) · Product spec: [`docs/product/time-arena.md`](../docs/product/time-arena.md) · Implementation: [`docs/product/arena-v2.md`](../docs/product/arena-v2.md) · XP/level gas bounds: [GitLab #265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) · [`INV-TIME-ARENA-XP-GAS`](../docs/testing/invariants-and-business-logic.md)
 
 ## Index
 
@@ -16,7 +16,7 @@ These files help agents and humans **use** onchain **Time Arena** (Arena v2) mec
 
 ## Retired (Arena v2 epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238))
 
-TimeCurve launchpad playbooks, retired v1 player reserve, Leprechaun collection — removed in GitLab #241–#245.
+TimeCurve launchpad playbooks, retired v1 player reserve ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), Leprechaun collection, **FeeRouter** CL8Y sinks — removed in GitLab [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 ## Contributor docs
 
