@@ -1,6 +1,8 @@
 # Arena v2 product primitives
 
-**Status:** Arena v2 replaces the TimeCurve launchpad, retired v1 player reserve (GitLab #242), Leprechaun NFTs, and the legacy FeeRouter five-sink CL8Y model. Full redeploy; **no backwards compatibility** with v1 addresses.
+**Canonical spec:** [`time-arena.md`](time-arena.md) ([GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)). This file remains the implementation companion and preserves anchor IDs used by invariants and skills.
+
+**Status:** Arena v2 replaces the TimeCurve launchpad, retired v1 player reserve ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), Leprechaun NFTs, and the legacy FeeRouter five-sink CL8Y model. Full redeploy; **no backwards compatibility** with v1 addresses.
 
 Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
@@ -8,23 +10,25 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 
 - Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **100 CRED per 1e18 CHARM** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
 - DOUB payment: `doubOwed = charmWad × charmPriceWad / 1e18`.
-- Default **`charmPriceWad = 1000e18`** (1000 DOUB per 1e18 CHARM). Governance may **`setCharmPriceWad`**.
+- Default **`charmPriceWad = 1000e18`** (1000 DOUB per 1e18 CHARM). Governance may **`setCharmPriceWad`**. Flat admin-set price — **not** v1 linear/bonding CHARM curve.
 - CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
 - **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`**.
 
 ## Timers (Last Buy + four podiums)
 
-| Category | Index | Timer storage | Extension / reset |
-|----------|-------|---------------|-------------------|
-| Last Buy | 0 | `deadline` (= `podiumDeadline[0]`) | `TimeMath`: **+120s**, **780s → 900s** hard reset, **24h** initial, **96h** cap |
-| Time Booster | 1 | `podiumDeadline[1]` | Same params (deploy-configurable) |
-| Defended Streak | 2 | `podiumDeadline[2]` | Same |
-| WarBow | 3 | `podiumDeadline[3]` | Same |
+Per-podium timer targets: [time-arena.md § Timers](time-arena.md#timers--four-independent-podiums). Each category has independent **`podiumDeadline[cat]`** and **`podiumEpoch[cat]`**; epochs are **not synchronized**.
 
-Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge** when categories roll on different schedules.
+| Category | Index | Product target (see time-arena.md) |
+|----------|-------|-------------------------------------|
+| Last Buy | 0 | 24h initial · +120s · 13m→15m hard reset |
+| Time Booster | 1 | 12h · +60s · 4m→5m |
+| Defended Streak | 2 | 18h · +90s · 8.5m→10m |
+| WarBow | 3 | 48h · +300s · 55m→1h |
+
+Each qualifying **buy** extends **all four** podium deadlines. Current bootstrap deploy uses **shared Last Buy params** for all categories until per-podium storage lands — [implementation note](time-arena.md#onchain-timer-implementation-note).
 
 - **`lastBuyEpoch`** increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**.
-- **`podiumEpoch[cat]`** increments on **`rollPodiumEpoch(cat)`** when `block.timestamp > podiumDeadline[cat]`.
+- **`podiumEpoch[cat]`** increments on permissionless **`rollPodiumEpoch(cat)`** when `block.timestamp > podiumDeadline[cat]`.
 - Arena is **always live** when not **`paused`** — no `endSale` or `redeemCharms`.
 
 ## Podium settlement
@@ -82,7 +86,7 @@ Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer in
 | Revenge | 1000e18 |
 | Flag claim | 0 |
 
-BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
+BP rules: buy bonuses, steal band 2×–10×, flag plant/claim ([time-arena.md § WarBow](time-arena.md#warbow-pvp-doub)). All spends are **DOUB** pulls with balance-delta parity.
 
 ## Retired surfaces
 

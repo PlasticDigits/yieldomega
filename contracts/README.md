@@ -130,23 +130,27 @@ ABIs live in `out/` after `forge build`. Registry templates and **ABI hash expor
 See [`PARAMETERS.md`](./PARAMETERS.md) for testnet defaults and `TODO`s that
 need human decisions before mainnet.
 
-## Contract map (Arena v2)
+## Contract map (Arena v2 — canonical)
 
 | Contract | Purpose |
 |----------|---------|
-| `TimeArena` | Onchain arena — DOUB buys, Last Buy timer, podium funding split, CRED accrual, WarBow hooks ([#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238)) |
-| `PodiumVaults` | Active + seed podium balances per category |
-| `AdminSellVault` | Admin slice of each DOUB buy |
-| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** for governance / deployer only ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)); **OpenZeppelin `ERC20Burnable`** ([#132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
-| `PlayCred` | CRED ERC-20 minted by **`TimeArena`** buys and **`buyWithCred`** burns |
-| `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by **`TimeArena`** buys |
-| `TimeArenaBuyRouter` | Optional ETH/USDM → DOUB → **`buyFor`** entry ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) |
+| `TimeArena` | Always-live arena — DOUB/CRED buys, four podium timers, 40/30/30 DOUB routing via `ArenaBuyRouting` ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) |
+| `PodiumVaults` | Four **active** + four **seed** DOUB prize pools; `PodiumFunded` / `SeedFunded` |
+| `AdminSellVault` | **30%** admin slice per buy; `AdminVaultFunded` |
+| `TimeArenaBuyRouter` | Kumbaya `exactOutput` → DOUB → `buyFor` (ETH/USDM ingress) |
+| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** to governance/deployer only ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)); burns via **OpenZeppelin `ERC20Burnable`** ([#132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
+| `PlayCred` | Arena CRED mint/burn; `buyWithCred` burns per `CRED_PER_CHARM_WAD` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+| `ReferralRegistry` | Short referral codes; used by `TimeArena` buys |
+| `DoubAirdrop` | Permissionless batch ERC-20 sender (disperse.app-style); CSV workflow in [`../airdrop/`](../airdrop/). **MegaETH mainnet:** `0x3CAf127624d8b81F4aa00aD1cCBbc9242B502e5d` |
+| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
 | `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
 
-Retired v1 contracts (TimeCurve, legacy fee sinks, player reserve layer, Leprechaun NFTs) — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). See [`docs/product/arena-v2.md`](../docs/product/arena-v2.md).
+Deploy: [`script/DeployDev.s.sol`](script/DeployDev.s.sol), [`script/DeployProduction.s.sol`](script/DeployProduction.s.sol) — no `FeeRouter` / `TimeCurve` ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
+
+**Retired (sources removed — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)):** `TimeCurve`, `FeeRouter`, `PodiumPool`, `DoubLPIncentives`, `EcosystemTreasury`, `CL8YProtocolTreasury`, retired v1 player reserve ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), `LeprechaunNFT`, presale vesting stack. Historical parameters remain in [`PARAMETERS.md`](./PARAMETERS.md) under **Retired v1**. See [`docs/product/arena-v2.md`](../docs/product/arena-v2.md).
 
 ## Libraries (Arena v2)
 
-- `ArenaBuyRouting` — 40/30/30 DOUB buy split + manual podium top-up routing ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
-- `ArenaXp` — level / XP progression with gas-bounded level-ups ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265))
-- `TimeMath` — timer extension + hard-reset band (shared with legacy tests where retained)
+- `ArenaBuyRouting` — pure 40% active / 30% seed / 30% admin split per DOUB buy + manual podium top-up ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244), [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
+- `ArenaXp` / `ArenaPodiumSettlement` — XP progression and podium settlement math ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265))
+- `TimeMath` — timer extension and hard-reset band (shared with legacy TimeCurve docs)

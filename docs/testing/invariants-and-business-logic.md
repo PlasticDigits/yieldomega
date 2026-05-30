@@ -26,11 +26,11 @@ Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%*
 
 ## TimeArena v2 (GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 
-Authoritative product rules: [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
+Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
-| **`INV-TIME-ARENA-ROUTE-SPLIT`** | 40% active + 30% seed + 30% admin per DOUB buy; zero dust in `TimeArena` | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split` |
+| **`INV-TIME-ARENA-ROUTE-SPLIT`** | 40% active + 30% seed + 30% admin per DOUB buy; **no** legacy FeeRouter CL8Y burn/LP sinks ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol), `TimeArena.t.sol::test_buy_routes_doub_split` · [fee-routing](../onchain/fee-routing-and-governance.md) |
 | **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset` |
 | **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments | `test_timer_hard_reset_increments_epoch` |
 | **`INV-TIME-ARENA-TIMER-MULTI`** | One buy extends **all four** `podiumDeadline[i]` | `test_multi_podium_deadline_extend` |
@@ -236,7 +236,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 |----|----------|-------------------|
 | **`INV-242-RABBIT-REMOVED`** | No v1 player-reserve contracts in **`DeployDev`** / **`DeployProduction`**; **`Doubloon.MINTER_ROLE`** to governance/deployer only | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol), [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
 | **`INV-242-INDEXER-NO-HTTP`** | Legacy **`GET /v1/rabbit/*`** routes absent (404) | [`integration_stage2.rs`](../../indexer/tests/integration_stage2.rs) `api_legacy_player_reserve_routes_return_404` |
-| **`INV-242-SOURCE-GREP`** | `rg -i 'rabbit.?treasury\|burrow'` clean in contracts, indexer, frontend, docs, skills — **`Doubloon`** may retain “Burrow receipt” in the token notice | Manual + CI hygiene; see [treasury-contracts](../onchain/treasury-contracts.md) |
+| **`INV-242-SOURCE-GREP`** | Active-source grep hygiene: no legacy player-reserve identifiers in contracts, indexer, frontend, docs, skills — **`Doubloon.sol`** token notice exception per [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242) | Manual + CI hygiene; see [treasury-contracts](../onchain/treasury-contracts.md) |
 
 Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces) · Play skills: [skills/README.md](../../skills/README.md) · Guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 

@@ -10,7 +10,25 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 [onchain/fee-routing-and-governance.md](../docs/onchain/fee-routing-and-governance.md),
 [research/stablecoin-and-reserves.md](../docs/research/stablecoin-and-reserves.md).
 
-## TimeCurve
+## TimeArena (Arena v2 — canonical DOUB routing)
+
+Replaces legacy **FeeRouter** five-sink CL8Y table ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). Invariant: **`INV-TIME-ARENA-ROUTE-SPLIT`**.
+
+| Destination | Bps (of gross DOUB in) | Share |
+|-------------|------------------------|-------|
+| Each of 4 **active** podium pools | 1000 | 10% × 4 = **40%** |
+| Each of 4 **seed** podium pools | 750 | 7.5% × 4 = **30%** |
+| **`AdminSellVault`** | 3000 | **30%** |
+
+Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`. Manual top-up (`topUpPodiumPools`): 100% to eight prize vaults, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
+
+| Parameter | Default | Notes |
+|-----------|---------|-------|
+| `charmPriceWad` | governance `setCharmPriceWad` | DOUB per 1e18 CHARM for `buy` |
+| `CRED_PER_CHARM_WAD` | `100e18` | `buyWithCred` burn ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+| First-buy CRED bonus | `150e18` scheduled for `lastBuyEpoch + 1` | One wallet lifetime ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+
+## TimeCurve (retired v1 — historical)
 
 | Parameter | Testnet default | Bounds / notes | Status |
 |-----------|-----------------|----------------|--------|
@@ -53,7 +71,9 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | CL8Y token (ERC-20) | Mock deploy or env address | **Not** `CL8YProtocolTreasury` — see [product/referrals.md](../docs/product/referrals.md) |
 | Registration burn | `1e18` (1 token, 18 decimals) | Must match token decimals on mainnet |
 
-## TimeCurve fee split (basis points, must sum to 10 000)
+## TimeCurve fee split (retired v1 — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244))
+
+**Not used in Arena v2.** Canonical routing is **TimeArena** 40/30/30 DOUB above. Historical **FeeRouter** five-sink table (30/40/20/0/10 CL8Y) for archaeology only:
 
 | Sink | Testnet default (bps) | Bounds |
 |------|-----------------------|--------|
@@ -63,7 +83,7 @@ Sources: [product/primitives.md](../docs/product/primitives.md),
 | Team — `EcosystemTreasury` (or ops multisig) | 0 | ≥ 0 |
 | retired v1 player reserve | 1 000 | ≥ 0 |
 
-**FeeRouter** uses **five** sinks (last sink receives rounding remainder). **Podium** internals are fixed in `TimeCurve`: **last buy** 40% · **WarBow** 25% · **defended streak** 20% · **time booster** 15% of pool (**8%** · **5%** · **4%** · **3%** of gross raise); placements **4∶2∶1** per category.
+**FeeRouter** used **five** sinks (last sink received rounding remainder). **Podium** internals in `TimeCurve`: **last buy** 40% · **WarBow** 25% · **defended streak** 20% · **time booster** 15% of pool; placements **4∶2∶1** per category.
 
 ## DOUB genesis allocation (policy — 250M total)
 

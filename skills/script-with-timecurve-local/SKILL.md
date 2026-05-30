@@ -19,12 +19,12 @@ description: Author local TypeScript or Python scripts against deployed TimeAren
 - **RPC URL** and **chain ID** in env; keys via env or hardware only.
 - **UUPS proxies:** Call **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`** proxy addresses — not implementation rows in `run-latest.json` ([#61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
 - **Env vars:** `VITE_TIME_ARENA_ADDRESS` (canonical), `VITE_PODIUM_VAULTS_ADDRESS`, `VITE_ADMIN_SELL_VAULT_ADDRESS`, `VITE_REFERRAL_REGISTRY_ADDRESS`. Legacy `VITE_TIMECURVE_ADDRESS` may alias the arena proxy on local stacks.
-- Product rules: [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) · invariant map: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) doc cleanup).
+- Product rules: [`docs/product/time-arena.md`](../../docs/product/time-arena.md) · [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) · invariant map: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) doc cleanup).
 
 ## C. Read-before-write
 
 - **`TimeArena`:** `paused`, podium deadlines, `buyCooldownSec`, `nextBuyAllowedAt(account)`.
-- **CHARM band** and **DOUB** spend per [`arena-v2.md`](../../docs/product/arena-v2.md).
+- **CHARM band** and **DOUB** spend per [`time-arena.md`](../../docs/product/time-arena.md).
 - **Balances / allowances** for DOUB and optional Kumbaya paths ([`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md)).
 - **Reference:** [`bots/timearena/README.md`](../../bots/timearena/README.md) — AGPL; study patterns in your own project.
 
