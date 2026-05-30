@@ -3,12 +3,14 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
+import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 
 contract TimeArenaTest is Test {
     Doubloon doub;
@@ -20,6 +22,10 @@ contract TimeArenaTest is Test {
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
     address admin = address(this);
+
+    uint256 internal constant WAD = 1e18;
+    uint256 internal constant CHARM_MIN = 99e16;
+    uint256 internal constant CHARM_MAX = 10e18;
 
     function setUp() public {
         doub = new Doubloon(admin);
@@ -69,6 +75,111 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(1e18);
         assertEq(arena.lastBuyEpoch(), 1);
+    }
+
+    /// INV-TIME-ARENA-EPOCH-EVENT (#246): hard reset emits `LastBuyEpochStarted`.
+    function test_emits_LastBuyEpochStarted_on_hard_reset() public {
+        vm.warp(block.timestamp + arena.deadline() - 600);
+        vm.expectEmit(true, false, false, true);
+        emit TimeArena.LastBuyEpochStarted(1, block.timestamp + 900);
+        vm.prank(alice);
+        arena.buy(1e18);
+    }
+
+    /// INV-TIME-ARENA-CHARM-BAND (#246): fixed min/max CHARM envelope.
+    function test_buy_reverts_charm_below_min() public {
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buy(CHARM_MIN - 1);
+    }
+
+    function test_buy_reverts_charm_above_max() public {
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buy(CHARM_MAX + 1);
+    }
+
+    /// INV-TIME-ARENA-COOLDOWN (#246): per-wallet rolling cooldown.
+    function test_buy_reverts_on_cooldown() public {
+        vm.prank(alice);
+        arena.buy(1e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: buy cooldown");
+        arena.buy(1e18);
+    }
+
+    /// INV-TIME-ARENA-DOUB-PRICE (#246): governance `setCharmPriceWad` changes DOUB owed.
+    function test_setCharmPriceWad_changes_doub_owed() public {
+        arena.setCharmPriceWad(2000e18);
+        uint256 balBefore = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(1e18);
+        assertEq(doub.balanceOf(alice), balBefore - 2000e18);
+    }
+
+    /// INV-ERC20-123 (#246): fee-on-transfer DOUB reverts on ingress parity mismatch.
+    function test_feeOnTransfer_buy_reverts_erc20Parity() public {
+        MockERC20FeeOnTransfer feeDoub = new MockERC20FeeOnTransfer(100);
+        PodiumVaults v = new PodiumVaults(feeDoub, admin);
+        AdminSellVault av = new AdminSellVault(feeDoub, admin);
+        TimeArena impl = new TimeArena();
+        bytes memory data = abi.encodeCall(
+            TimeArena.initialize,
+            (feeDoub, v, av, address(0), address(cred), 1000e18, 120, 86_400, 4 * 86_400, 300, admin)
+        );
+        TimeArena feeArena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
+        v.setArena(address(feeArena));
+        av.setArena(address(feeArena));
+        feeArena.startArena();
+        feeDoub.mint(alice, 1_000_000e18);
+        vm.prank(alice);
+        feeDoub.approve(address(feeArena), type(uint256).max);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: ERC20 parity");
+        feeArena.buy(1e18);
+    }
+
+    /// GitLab #246 fuzz: in-band CHARM → DOUB pull matches `charmWad × charmPriceWad / 1e18`.
+    function testFuzz_buy_charmInBand_doubPullParity(uint96 rawCharm) public {
+        uint256 charmWad = bound(uint256(rawCharm), CHARM_MIN, CHARM_MAX);
+        uint256 expected = Math.mulDiv(charmWad, arena.charmPriceWad(), WAD);
+        uint256 aliceBefore = doub.balanceOf(alice);
+        uint256 raisedBefore = arena.totalDoubRaised();
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(charmWad);
+        assertEq(doub.balanceOf(alice), aliceBefore - expected, "buyer balance delta");
+        assertEq(arena.totalDoubRaised(), raisedBefore + expected, "totalDoubRaised");
+        assertEq(doub.balanceOf(address(arena)), 0, "arena retains no DOUB");
+    }
+
+    function testFuzz_buy_charmBelowMin_reverts(uint96 raw) public {
+        uint256 charmWad = bound(uint256(raw), 1, CHARM_MIN - 1);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buy(charmWad);
+    }
+
+    function testFuzz_buy_charmAboveMax_reverts(uint96 raw) public {
+        uint256 charmWad = bound(uint256(raw), CHARM_MAX + 1, type(uint96).max);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: charm bounds");
+        arena.buy(charmWad);
+    }
+
+    function testFuzz_setCharmPriceWad_doubOwed(uint96 rawCharm, uint128 rawPrice) public {
+        uint256 charmWad = bound(uint256(rawCharm), CHARM_MIN, CHARM_MAX);
+        uint256 price = bound(uint256(rawPrice), 1, 1e23);
+        uint256 expected = Math.mulDiv(charmWad, price, WAD);
+        vm.assume(expected <= doub.balanceOf(alice));
+        arena.setCharmPriceWad(price);
+        uint256 aliceBefore = doub.balanceOf(alice);
+        _warpPastBuyCooldown();
+        vm.prank(alice);
+        arena.buy(charmWad);
+        assertEq(doub.balanceOf(alice), aliceBefore - expected);
     }
 
     function test_timer_extension_without_hard_reset() public {
