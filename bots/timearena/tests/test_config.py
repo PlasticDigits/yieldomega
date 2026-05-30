@@ -54,16 +54,17 @@ def test_send_blocked_by_dry_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cfg.send_transactions is False
 
 
-def test_registry_file_fills_timecurve(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_registry_file_fills_time_arena(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # Isolate from repo .env.local (dotenv override would otherwise mask registry-driven address).
     monkeypatch.chdir(tmp_path)
     reg = tmp_path / "reg.json"
     reg.write_text(
-        '{"contracts":{"TimeCurve":"0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"}}',
+        '{"contracts":{"TimeArena":"0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0"}}',
         encoding="utf-8",
     )
     monkeypatch.setenv("YIELDOMEGA_RPC_URL", "http://127.0.0.1:8545")
     monkeypatch.setenv("YIELDOMEGA_CHAIN_ID", "31337")
+    monkeypatch.delenv("YIELDOMEGA_TIME_ARENA_ADDRESS", raising=False)
     monkeypatch.delenv("YIELDOMEGA_TIMECURVE_ADDRESS", raising=False)
     monkeypatch.setenv("YIELDOMEGA_ADDRESS_FILE", str(reg))
     cfg = load_config(send=False, allow_anvil_funding=False)

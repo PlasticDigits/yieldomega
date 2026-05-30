@@ -25,7 +25,7 @@ Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + 
 | `jq`, `curl` | Stack and smoke checks. |
 | Rust toolchain | Indexer `cargo build` / `cargo run` inside the stack. |
 | Node + npm | `frontend/node_modules` (`npm ci` in `frontend/`) for **`npm run dev`**. |
-| Python + `web3` | Only if **`START_BOT_SWARM=1`** — venv in `bots/timecurve/.venv` preferred ([`bots/timecurve/README.md`](../../bots/timecurve/README.md), [issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). |
+| Python + `web3` | Only if **`START_BOT_SWARM=1`** — venv in `bots/timearena/.venv` preferred ([`bots/timearena/README.md`](../../bots/timearena/README.md), [issue #50](https://gitlab.com/PlasticDigits/yieldomega/-/issues/50)). |
 
 ---
 
@@ -126,7 +126,7 @@ Logs: `/tmp/yieldomega_anvil_stack.log`, `/tmp/yieldomega_indexer_stack.log`, `/
 ## Troubleshooting
 
 - **Indexer port in use:** Stack may auto-bump **`INDEXER_PORT`** unless **`QA_USE_FIXED_INDEXER_PORT=1`**. Re-read **`VITE_INDEXER_URL`** in `.env.local` after each run.
-- **PEP 668 / missing `web3`:** [`bots/timecurve/README.md`](../../bots/timecurve/README.md).
+- **PEP 668 / missing `web3`:** [`bots/timearena/README.md`](../../bots/timearena/README.md).
 - **Kumbaya router not ingesting:** Registry must list **`TimeCurveBuyRouter`**; restart indexer after registry updates.
 
 ---

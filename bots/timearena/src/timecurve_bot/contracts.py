@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
 from web3 import Web3
 from web3.contract import Contract
@@ -32,10 +32,17 @@ def erc20_contract(w3: Web3, address: str) -> Contract:
 
 
 def mock_reserve_contract(w3: Web3, address: str) -> Contract:
-    """MockReserveCl8y `mint` (dev only)."""
+    """Dev mintable ERC-20 (`MockReserveCl8y` or `Doubloon` with MINTER_ROLE)."""
     base = _load_abi("erc20.json")
     extra = _load_abi("mock_reserve.json")
     return w3.eth.contract(address=Web3.to_checksum_address(address), abi=base + extra)
+
+
+def arena_doub_address(tc: Contract, *, explicit: Optional[str] = None) -> str:
+    """DOUB token for TimeArena buys — env override or `TimeArena.doub()`."""
+    if explicit:
+        return Web3.to_checksum_address(explicit)
+    return Web3.to_checksum_address(tc.functions.doub().call())
 
 
 def referral_registry_contract(w3: Web3, address: str) -> Contract:

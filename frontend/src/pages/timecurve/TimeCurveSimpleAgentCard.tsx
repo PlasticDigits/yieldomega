@@ -21,11 +21,11 @@ function ghRaw(path: string) {
 
 const PLAY_SKILLS_SIMPLE: { label: string; path: string }[] = [
   {
-    label: "play-active-timecurve (detect live sale phase)",
-    path: "skills/play-active-timecurve/SKILL.md",
+    label: "play-active-time-arena (detect live / paused timer)",
+    path: "skills/play-active-time-arena/SKILL.md",
   },
-  { label: "play-timecurve-doubloon (buys, redeem, referrals)", path: "skills/play-timecurve-doubloon/SKILL.md" },
-  { label: "play-timecurve-warbow (BP, steal, guard, flag)", path: "skills/play-timecurve-warbow/SKILL.md" },
+  { label: "play-time-arena-doub (DOUB buys, podium funding)", path: "skills/play-time-arena-doub/SKILL.md" },
+  { label: "play-time-arena-warbow (stub until #252)", path: "skills/play-time-arena-warbow/SKILL.md" },
   { label: "script-with-timecurve-local (RPC vs indexer time)", path: "skills/script-with-timecurve-local/SKILL.md" },
 ];
 

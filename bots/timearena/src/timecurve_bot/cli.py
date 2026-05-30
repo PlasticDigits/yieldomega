@@ -11,14 +11,14 @@ from web3 import Web3
 from web3.contract.contract import Contract
 
 from timecurve_bot.config import BotConfig, load_config
-from timecurve_bot.contracts import mock_reserve_contract, timecurve_contract
+from timecurve_bot.contracts import arena_doub_address, mock_reserve_contract, timecurve_contract
 from timecurve_bot.rpc import assert_chain_id, make_web3
 from timecurve_bot.state import fetch_sale_snapshot, format_snapshot_human
 from timecurve_bot.strategies import defender, fun, pvp, rando, seed_local, shark
 
 app = typer.Typer(
     no_args_is_help=True,
-    help="TimeCurve client bot — onchain state is authoritative; bots only submit normal txs.",
+    help="TimeArena client bot — onchain state is authoritative; bots only submit normal txs.",
 )
 
 
@@ -55,8 +55,8 @@ def _connect(cfg: BotConfig) -> Tuple[Web3, Contract, Contract]:
     w3 = make_web3(cfg.rpc_url)
     assert_chain_id(w3, cfg.chain_id)
     tc = timecurve_contract(w3, cfg.timecurve_address)
-    aa = cfg.accepted_asset_address or tc.functions.acceptedAsset().call()
-    asset = mock_reserve_contract(w3, Web3.to_checksum_address(aa))
+    doub = arena_doub_address(tc, explicit=cfg.accepted_asset_address)
+    asset = mock_reserve_contract(w3, doub)
     return w3, tc, asset
 
 

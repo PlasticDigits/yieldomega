@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-"""Read-only sale snapshot from chain (authoritative). Derived fields are labeled."""
+"""Read-only TimeArena snapshot from chain (authoritative). Derived fields are labeled."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ from typing import List, Tuple
 from web3 import Web3
 from web3.contract import Contract
 
-# Contract category indices (see TimeCurve.sol)
+from timecurve_bot.strategies.common import CHARM_MAX_WAD, CHARM_MIN_WAD
+
+# TimeArena category indices (see TimeArena.sol CAT_*)
 CAT_LAST_BUY = 0
 CAT_TIME_BOOSTER = 1
 CAT_DEFENDED_STREAK = 2
@@ -32,19 +34,14 @@ class SaleSnapshot:
     block_number: int
     block_timestamp: int
     chain_id: int
-    sale_start: int
+    arena_start: int
     deadline: int
-    ended: bool
+    paused: bool
     remaining_sec: int
-    total_raised: int
-    total_charm_weight: int
+    last_buy_epoch: int
     min_charm_wad: int
     max_charm_wad: int
-    price_per_charm_wad: int
-    warbow_winners: Tuple[str, str, str]
-    warbow_values: Tuple[int, int, int]
-    flag_owner: str
-    flag_plant_at: int
+    charm_price_wad: int
     podiums: Tuple[PodiumRow, PodiumRow, PodiumRow, PodiumRow]
 
 
@@ -62,15 +59,12 @@ def fetch_sale_snapshot(w3: Web3, tc: Contract, chain_id: int) -> SaleSnapshot:
     ts = int(latest["timestamp"])
     bn = int(latest["number"])
 
-    sale_start = int(tc.functions.saleStart().call())
+    arena_start = int(tc.functions.arenaStart().call())
     deadline = int(tc.functions.deadline().call())
-    ended = bool(tc.functions.ended().call())
-    remaining = max(0, deadline - ts) if not ended and sale_start > 0 else 0
-
-    tr = int(tc.functions.totalRaised().call())
-    tcw = int(tc.functions.totalCharmWeight().call())
-    min_c, max_c = tc.functions.currentCharmBoundsWad().call()
-    price = int(tc.functions.currentPricePerCharmWad().call())
+    paused = bool(tc.functions.paused().call())
+    remaining = max(0, deadline - ts) if not paused and arena_start > 0 else 0
+    last_buy_epoch = int(tc.functions.lastBuyEpoch().call())
+    price = int(tc.functions.charmPriceWad().call())
 
     podiums: List[PodiumRow] = []
     for c in PODIUM_DISPLAY_ORDER:
@@ -84,46 +78,34 @@ def fetch_sale_snapshot(w3: Web3, tc: Contract, chain_id: int) -> SaleSnapshot:
             )
         )
 
-    ww, wv = tc.functions.warbowLadderPodium().call()
-    fo = tc.functions.warbowPendingFlagOwner().call()
-    fp = int(tc.functions.warbowPendingFlagPlantAt().call())
-
     return SaleSnapshot(
         block_number=bn,
         block_timestamp=ts,
         chain_id=chain_id,
-        sale_start=sale_start,
+        arena_start=arena_start,
         deadline=deadline,
-        ended=ended,
+        paused=paused,
         remaining_sec=remaining,
-        total_raised=tr,
-        total_charm_weight=tcw,
-        min_charm_wad=int(min_c),
-        max_charm_wad=int(max_c),
-        price_per_charm_wad=price,
-        warbow_winners=tuple(str(x) for x in ww),
-        warbow_values=tuple(int(x) for x in wv),
-        flag_owner=str(fo),
-        flag_plant_at=fp,
+        last_buy_epoch=last_buy_epoch,
+        min_charm_wad=CHARM_MIN_WAD,
+        max_charm_wad=CHARM_MAX_WAD,
+        charm_price_wad=price,
         podiums=(podiums[0], podiums[1], podiums[2], podiums[3]),
     )
 
 
-def format_snapshot_human(s: SaleSnapshot, *, rpc_url: str, timecurve: str) -> str:
+def format_snapshot_human(s: SaleSnapshot, *, rpc_url: str, time_arena: str) -> str:
     lines = [
         f"RPC: {rpc_url}",
         f"Block: {s.block_number}  time: {s.block_timestamp}",
-        f"TimeCurve: {timecurve}",
-        f"Sale: started={s.sale_start} ended={s.ended} deadline={s.deadline} remaining_sec={s.remaining_sec}",
-        f"Raised (raw): {s.total_raised}  totalCharmWeight: {s.total_charm_weight}",
-        f"CHARM bounds (wad): min={s.min_charm_wad} max={s.max_charm_wad}  pricePerCharmWad={s.price_per_charm_wad}",
-        "Reserve podiums (onchain; CL8Y after distributePrizes):",
+        f"TimeArena: {time_arena}",
+        f"Arena: started={s.arena_start} paused={s.paused} deadline={s.deadline} remaining_sec={s.remaining_sec}",
+        f"lastBuyEpoch={s.last_buy_epoch}",
+        f"CHARM bounds (wad): min={s.min_charm_wad} max={s.max_charm_wad}  charmPriceWad={s.charm_price_wad}",
+        "Podiums (onchain DOUB prize state):",
     ]
     for p in s.podiums:
         lines.append(
             f"  [{p.category_label}] " + ", ".join(f"{w}:{v}" for w, v in zip(p.winners, p.values))
         )
-    lines.append("WarBow ladder (same top-3 as warbow podium category):")
-    lines.append("  " + ", ".join(f"{w}:{v}" for w, v in zip(s.warbow_winners, s.warbow_values)))
-    lines.append(f"Flag pending owner={s.flag_owner} plant_at={s.flag_plant_at}")
     return "\n".join(lines)

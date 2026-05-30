@@ -64,7 +64,7 @@ What this ecosystem explicitly does **not** optimize for:
 - **Kumbaya (TimeCurve multi-asset entry):** [`docs/integrations/kumbaya.md`](docs/integrations/kumbaya.md).
 - **`contracts/`**, **`indexer/`**, **`frontend/`** — application code and tests; roadmap alignment in [`docs/agent-implementation-phases.md`](docs/agent-implementation-phases.md) and [`docs/agent-phases.md`](docs/agent-phases.md).
 - **`simulations/`** — Python notebooks/scripts for treasury math experiments (not authoritative onchain behavior).
-- **`bots/`** — optional Python clients for local/public RPC testing ([`bots/README.md`](bots/README.md)); first package: TimeCurve ([`bots/timecurve/README.md`](bots/timecurve/README.md)).
+- **`bots/`** — optional Python clients for local/public RPC testing ([`bots/README.md`](bots/README.md)); Arena v2 package: [`bots/timearena/README.md`](bots/timearena/README.md) ([#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
 - **Agent skills:** **Contributor** (code): [`.cursor/skills/README.md`](.cursor/skills/README.md), guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). **Play** (TimeCurve, Rabbit Treasury, Leprechauns): [`skills/README.md`](skills/README.md).
 - **Rabbit Treasury (Burrow):** reserve-health metrics map to canonical onchain **`Burrow*`** events in [`docs/product/rabbit-treasury.md`](docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Indexers should decode against that spec for stable charts and history.
 
