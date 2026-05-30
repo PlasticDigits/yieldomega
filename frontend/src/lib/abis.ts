@@ -253,9 +253,3 @@ export const doubPresaleVestingReadAbi = parseAbi([
 ]);
 
 export const doubPresaleVestingWriteAbi = parseAbi(["function claim()"]);
-
-export const leprechaunReadAbi = parseAbi([
-  "function balanceOf(address owner) view returns (uint256)",
-  "function totalSupply() view returns (uint256)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-]);

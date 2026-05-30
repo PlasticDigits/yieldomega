@@ -76,8 +76,8 @@ no realism, no painterly texture, no muted palette, no gritty rendering, no phot
 
 REFERENCE_INSTRUCTIONS = """
 Reference images are supplied as input_images in this exact order:
-(1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), red-bearded leprechauns, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
-(2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green leprechaun hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel. For any coins, tokens, badges, or currency icons, keep them closely aligned to this emblem design language and finish.
+(1) style.png — preserve its core character design language and worldbuilding: adult yet playful bunny mascot girl mascot (clearly adult, non-minor), red-bearded mascots, bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics. Keep the same brand universe, mascot types, and overall visual identity.
+(2) token-logo.png — use as the canonical emblem/style reference for hat-token details: green mascot hat, yellow band, chunky yellow D buckle, thick black outlines, circular badge feel. For any coins, tokens, badges, or currency icons, keep them closely aligned to this emblem design language and finish.
 (3) some jobs may include an extra character/logo reference image — when present, preserve that character's recognizable silhouette, face shape, and key identity markers while translating it fully into the same Yieldomega blocky arcade cartoon universe.
 
 Important balance: keep the characters, costume language, palette, token motif, and overall aesthetic clearly consistent with the references, but do not make a direct edit or near-duplicate of the reference image. Change the composition, camera angle, staging, pose, layout, and scene arrangement while keeping the same brand identity. Do not render readable text, letters beyond the stylized D buckle motif on token emblems, watermarks, or UI chrome in the output image.
@@ -187,13 +187,13 @@ def build_airdrop_social_prompt() -> str:
     """Marketing still with mandatory readable sign copy (overrides default no-text reference guidance)."""
     ref = """
 Reference images are supplied as input_images in this exact order:
-(1) style.png — preserve its core character design language: adult yet playful bunny leprechaun girl mascot (clearly adult, non-minor), bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics.
+(1) style.png — preserve its core character design language: adult yet playful bunny mascot girl mascot (clearly adult, non-minor), bright green-and-gold fantasy wardrobe, thick dark outlines, glossy toy-like shading, cheerful magical arcade energy, voxel-like hills, rainbow/sparkle accents, and chunky collectible coin aesthetics.
 (2) token-logo.png — canonical hat + stylized D buckle for any DOUB / hat-token emblems on floating coins or small badges (the stylized D on coins is allowed and expected).
 
 IGNORE any generic “no text in the image” guidance for this job. This deliverable is a finished social promo poster, not silent key art.
 
 CRITICAL — readable typography on the sign (non-negotiable):
-- The adult bunny leprechaun girl mascot holds ONE large wooden parade sign on a post (two hands OK: one wave, one steadying the post).
+- The adult bunny mascot girl mascot holds ONE large wooden parade sign on a post (two hands OK: one wave, one steadying the post).
 - The sign board must fill a large fraction of the frame width and use bold, high-contrast, legible English letters at poster scale (not tiny, not blurry, not faux-runes, not gibberish).
 - Exactly two lines of readable copy on the sign, spelled character-for-character as shown (including punctuation and spacing):
   Line 1: YIELDOMEGA.COM AIRDROP!
@@ -202,7 +202,7 @@ CRITICAL — readable typography on the sign (non-negotiable):
 - Do not add any other readable words, URLs, hashtags, watermarks, captions, UI chrome, or extra sentences anywhere else in the image (decorative stars/sparkles without letters are fine).
 """.strip()
     subject = """
-Wide 3:2 landscape. Center foreground: bunny leprechaun girl mascot smiling at the viewer, energetic pose, the sign clearly in front of her torso so both lines of copy read at a glance. Midground: confetti, floating glossy hat-coins echoing token-logo embossing, soft rainbow arc, voxel hills. Background: bright arcade sky and simple clouds; distant silhouettes only (no extra lettering on buildings). Warm celebratory lighting with the sign face evenly lit for OCR-clear readability.
+Wide 3:2 landscape. Center foreground: bunny mascot girl mascot smiling at the viewer, energetic pose, the sign clearly in front of her torso so both lines of copy read at a glance. Midground: confetti, floating glossy hat-coins echoing token-logo embossing, soft rainbow arc, voxel hills. Background: bright arcade sky and simple clouds; distant silhouettes only (no extra lettering on buildings). Warm celebratory lighting with the sign face evenly lit for OCR-clear readability.
 """.strip()
     return (
         f"{STYLE_GUIDE}\n\n"
@@ -320,49 +320,49 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "jpeg",
         "opaque",
-        "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Adult yet playful bunny leprechaun girl and red-bearded leprechaun mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
+        "TimeCurve Doubloon launch banner: wide arcade fantasy sale arena. Left: stylized upward curve and stepped platforms suggesting minimum buy rising over time. Center: giant magical countdown ring or chunky clock face with extra segments lighting up when buys extend time, capped by a visible ceiling arc so time cannot grow forever. Adult yet playful bunny mascot girl and red-bearded mascot mascots at a cheerful kiosk handing over stacks of glossy green-gold stable-style coins between a visible low floor and a higher ceiling bar suggesting min buy and per-purchase cap. Flowing charm-glow ribbons from spend toward a mountain of glossy Doubloon hat-tokens using the token-logo hat and D buckle emblem on coins. Colorful ribbon streams split toward separate treasure chests and vaults hinting at fee sinks. Right: three podium blocks with trophy hat-coins for abstract prize categories. Distant sunrise and sunset arches suggesting opening and closing windows. Rainbow sparkles, voxel hills, energetic horizontal composition, hero negative space, no readable text or numbers, no UI chrome",
     ),
     (
         "hero-home",
         "3:2",
         "jpeg",
         "opaque",
-        "Homepage hero banner: adult yet playful bunny leprechaun girl mascot centered, smiling and playful, white rabbit ears, green fantasy dress, red-bearded leprechauns with green hats on both sides carrying bags of glossy hat-coins, rainbow arc, sparkles, voxel hills, treasure field, high energy landing page art, leave clear negative space for UI overlays at top",
+        "Homepage hero banner: adult yet playful bunny mascot girl mascot centered, smiling and playful, white rabbit ears, green fantasy dress, red-bearded mascots with green hats on both sides carrying bags of glossy hat-coins, rainbow arc, sparkles, voxel hills, treasure field, high energy landing page art, leave clear negative space for UI overlays at top",
     ),
     (
         "hero-home-wide",
         "3:2",
         "jpeg",
         "opaque",
-        "Extra wide feeling website hero: adult yet playful bunny leprechaun girl mascot in foreground, two red-bearded leprechauns flanking the mascot, flying hat-coins, chunky cube landscape, bright sky, rainbow, strong horizontal composition with breathing room on left and right for nav and CTAs",
+        "Extra wide feeling website hero: adult yet playful bunny mascot girl mascot in foreground, two red-bearded mascots flanking the mascot, flying hat-coins, chunky cube landscape, bright sky, rainbow, strong horizontal composition with breathing room on left and right for nav and CTAs",
     ),
     (
-        "mascot-bunny-leprechaun-full",
+        "mascot-bunny-mascot-full",
         "2:3",
         "png",
         "transparent",
-        "Full body adult yet playful bunny leprechaun girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, alpha background, character cutout quality for UI compositing, centered, no text",
+        "Full body adult yet playful bunny mascot girl mascot, facing slightly toward camera, confident friendly pose, green and gold outfit, rabbit ears, alpha background, character cutout quality for UI compositing, centered, no text",
     ),
     (
-        "mascot-bunny-leprechaun-wave",
+        "mascot-bunny-mascot-wave",
         "2:3",
         "png",
         "transparent",
-        "Full body adult yet playful bunny leprechaun girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, alpha background, character cutout quality, centered, no text",
+        "Full body adult yet playful bunny mascot girl mascot waving toward the viewer, playful arcade game host pose, green dress, white gloves, rabbit tail, alpha background, character cutout quality, centered, no text",
     ),
     (
-        "mascot-redbeard-leprechaun",
+        "mascot-redbeard-mascot",
         "2:3",
         "png",
         "transparent",
-        "Full body red-bearded leprechaun mascot, big green hat, cheerful grin, carrying a sack of glossy hat-coins, chunky cartoon proportions, alpha background, character cutout quality, centered, no text",
+        "Full body red-bearded mascot mascot, big green hat, cheerful grin, carrying a sack of glossy hat-coins, chunky cartoon proportions, alpha background, character cutout quality, centered, no text",
     ),
     (
-        "mascot-redbeard-leprechaun-cheer",
+        "mascot-redbeard-mascot-cheer",
         "2:3",
         "png",
         "transparent",
-        "Full body red-bearded leprechaun mascot cheering with one hand up and one bag of coins, arcade fantasy merchant vibe, alpha background, character cutout quality, centered, no text",
+        "Full body red-bearded mascot mascot cheering with one hand up and one bag of coins, arcade fantasy merchant vibe, alpha background, character cutout quality, centered, no text",
     ),
     (
         "hat-coin-front",
@@ -397,7 +397,7 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "jpeg",
         "opaque",
-        "Leprechaun collection feature art: lineup of adult yet playful bunny leprechaun girl and red-bearded leprechauns like a collectible character roster, rainbow sparkles, display card composition, no text",
+        "Mascot collection feature art: lineup of adult yet playful bunny mascot girl and red-bearded mascots like a collectible character roster, rainbow sparkles, display card composition, no text",
     ),
     (
         "referrals-card",
@@ -418,7 +418,7 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "3:2",
         "png",
         "opaque",
-        "Trading arena feature art: SIRDoub gorilla mascot behind the counter as the main merchant, using the supplied gorilla logo reference translated into the same bright Yieldomega blocky arcade cartoon style, with a black top hat with gold band (not a green leprechaun hat) and fantasy marketkeeper presentation, plus a smaller red-bearded leprechaun customer at the counter, green gold banners, hat-coin trophies, bold readable shapes, fantasy not gritty, no text",
+        "Trading arena feature art: SIRDoub gorilla mascot behind the counter as the main merchant, using the supplied gorilla logo reference translated into the same bright Yieldomega blocky arcade cartoon style, with a black top hat with gold band (not a green mascot hat) and fantasy marketkeeper presentation, plus a smaller red-bearded mascot customer at the counter, green gold banners, hat-coin trophies, bold readable shapes, fantasy not gritty, no text",
     ),
     (
         "bg-voxel-hills",
@@ -439,21 +439,21 @@ JOBS: list[tuple[str, str, OutputFmt, BackgroundMode, str]] = [
         "1:1",
         "png",
         "transparent",
-        "Adult yet playful bunny leprechaun girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text, transparent background",
+        "Adult yet playful bunny mascot girl mascot holding a glowing hat-coin and smiling, compact loading-state sticker composition, centered, no text, transparent background",
     ),
     (
         "app-icon",
         "1:1",
         "png",
         "transparent",
-        "App icon: single glossy gold coin with green leprechaun hat emblem matching token-logo (yellow D buckle), tiny rainbow sparkle accents, bold centered composition, readable at small size, no letters besides the stylized D on the buckle, no watermark, transparent background outside the round icon",
+        "App icon: single glossy gold coin with green mascot hat emblem matching token-logo (yellow D buckle), tiny rainbow sparkle accents, bold centered composition, readable at small size, no letters besides the stylized D on the buckle, no watermark, transparent background outside the round icon",
     ),
     (
         "opengraph",
         "3:2",
         "jpeg",
         "opaque",
-        "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Adult yet playful bunny leprechaun girl mascot and red-bearded leprechauns, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
+        "Social link preview / Open Graph card for messaging apps and X: wide landscape, bold readable composition safe for center crops. Adult yet playful bunny mascot girl mascot and red-bearded mascots, glossy hat-coins, rainbow, voxel hills, bright arcade fantasy promo energy, strong focal cluster in the middle third for Telegram and Twitter thumbnail framing, generous sky and ground bands, no readable text, no logos spelled out, no UI chrome, no watermarks",
     ),
     (
         "yieldomega-airdrop",

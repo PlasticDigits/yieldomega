@@ -47,7 +47,7 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 - **Mascot pose: podium win** — [`cutouts/bunny-podium-win.png`](../cutouts/bunny-podium-win.png)
 - **Mascot pose: guarding** — [`cutouts/bunny-guarding.png`](../cutouts/bunny-guarding.png)
 - **Mascot pose: sneak steal** — [`cutouts/bunny-sneak-steal.png`](../cutouts/bunny-sneak-steal.png)
-- **Leprechaun w/ bag pair** — [`cutouts/leprechaun-bag-bunny-pair.png`](../cutouts/leprechaun-bag-bunny-pair.png)
+- **Mascot w/ bag pair** — [`cutouts/mascot-bag-bunny-pair.png`](../cutouts/mascot-bag-bunny-pair.png)
 - **Trait-adjacent silos (style alignment concept)** — [`cutouts/trait-silos-concept.png`](../cutouts/trait-silos-concept.png)
 - **Footer / micro-decoration (indexer / fee hint)** — [`cutouts/footer-micro.png`](../cutouts/footer-micro.png)
 

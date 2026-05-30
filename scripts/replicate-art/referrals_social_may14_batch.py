@@ -118,7 +118,7 @@ def jobs() -> list[ReferralSocialJob]:
             slug="01-share-trail",
             title="Earn By Sharing",
             subject="""
-Wide 3:2 finished infographic poster. Layout: bold headline band at top, three labeled step cards along the bottom, illustrated action scene through the middle. A friendly adult bunny-leprechaun guide shares a glowing referral trail from a code sigil toward a TimeCurve buy kiosk where a new buyer arrives with a MegaETH wallet lantern. CHARM crystal beams arc back to both the guide and buyer. Use readable arcade typography for the headline, subhead, and step cards. Include arrows, badges, small event-log callouts, voxel hills, rainbow sky, hat-coins, and chain-link sparkles. The card should clearly explain referrals earn CHARM weight by sharing.
+Wide 3:2 finished infographic poster. Layout: bold headline band at top, three labeled step cards along the bottom, illustrated action scene through the middle. A friendly adult bunny-mascot guide shares a glowing referral trail from a code sigil toward a TimeCurve buy kiosk where a new buyer arrives with a MegaETH wallet lantern. CHARM crystal beams arc back to both the guide and buyer. Use readable arcade typography for the headline, subhead, and step cards. Include arrows, badges, small event-log callouts, voxel hills, rainbow sky, hat-coins, and chain-link sparkles. The card should clearly explain referrals earn CHARM weight by sharing.
 """,
             kicker="YIELDOMEGA REFERRALS",
             headline="Earn by sharing.",
@@ -134,7 +134,7 @@ Wide 3:2 finished infographic poster. Layout: bold headline band at top, three l
             slug="02-what-is-code",
             title="What Is a Referral Code",
             subject="""
-Wide 3:2 finished infographic poster explaining a Yieldomega referral code. Layout: bold question headline at top, central ReferralRegistry vault with code sigil and hash crystal, five readable fact tiles around it. Icons: length ruler, letters/digits blocks, one-wallet badge, CL8Y burn flame, first-successful-registration flag, TimeCurve codeHash check. Include a red-bearded leprechaun registrar and adult bunny-leprechaun guide beside the vault. Use readable arcade typography, rich green-gold lighting, coins, chain links, arrows, and sparkles. The card should feel like product education, not just fantasy art.
+Wide 3:2 finished infographic poster explaining a Yieldomega referral code. Layout: bold question headline at top, central ReferralRegistry vault with code sigil and hash crystal, five readable fact tiles around it. Icons: length ruler, letters/digits blocks, one-wallet badge, CL8Y burn flame, first-successful-registration flag, TimeCurve codeHash check. Include a red-bearded mascot registrar and adult bunny-mascot guide beside the vault. Use readable arcade typography, rich green-gold lighting, coins, chain links, arrows, and sparkles. The card should feel like product education, not just fantasy art.
 """,
             kicker="REFERRAL CODE BASICS",
             headline="What is a Yieldomega referral code?",
@@ -152,7 +152,7 @@ Wide 3:2 finished infographic poster explaining a Yieldomega referral code. Layo
             slug="03-sign-up",
             title="Sign Up With 1 CL8Y",
             subject="""
-Wide 3:2 finished onboarding infographic poster. Layout: large URL headline at top, stylized app-screen frame for yieldomega.com/referrals in the middle, four numbered step cards at the bottom. Show a MegaETH wallet portal, one large CL8Y token moving into an emerald burn flame, a code input sigil forming above a chain-confirmation block, and an adult bunny-leprechaun host gesturing toward the process. Use readable arcade typography for the URL, 1 CL8Y requirement, and the four steps: connect wallet, pick code, approve 1 CL8Y, register and burn onchain.
+Wide 3:2 finished onboarding infographic poster. Layout: large URL headline at top, stylized app-screen frame for yieldomega.com/referrals in the middle, four numbered step cards at the bottom. Show a MegaETH wallet portal, one large CL8Y token moving into an emerald burn flame, a code input sigil forming above a chain-confirmation block, and an adult bunny-mascot host gesturing toward the process. Use readable arcade typography for the URL, 1 CL8Y requirement, and the four steps: connect wallet, pick code, approve 1 CL8Y, register and burn onchain.
 """,
             kicker="START HERE",
             headline="Go to yieldomega.com/referrals",

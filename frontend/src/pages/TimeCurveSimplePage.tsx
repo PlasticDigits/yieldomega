@@ -1118,7 +1118,7 @@ export function TimeCurveSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2
               clipped by the panel's own `overflow: hidden`). */}
           <CutoutDecoration
             className="panel-cutout panel-cutout--pair-mascot cutout-decoration--bob"
-            src="/art/cutouts/leprechaun-bag-bunny-pair.png"
+            src="/art/cutouts/mascot-bag-bunny-pair.png"
             width={260}
             height={260}
           />

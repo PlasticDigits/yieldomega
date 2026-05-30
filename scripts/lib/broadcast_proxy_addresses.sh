@@ -10,7 +10,7 @@
 # Usage (after `source`):
 #   broadcast_erc1967_proxy_address "$RUN_JSON" TimeCurve
 #   broadcast_erc1967_proxy_address "$RUN_JSON" RabbitTreasury
-#   broadcast_direct_create_address "$RUN_JSON" LeprechaunNFT
+#   broadcast_direct_create_address "$RUN_JSON" SomeContract
 
 broadcast_erc1967_proxy_address() {
   local RUN="$1"

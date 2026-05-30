@@ -70,12 +70,6 @@ fi
 
 yieldomega_anvil_deploy_dev
 
-DOUB=$(cast call "${TA}" "doub()(address)" --rpc-url "${RPC}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | head -1 || true)
-if [ -z "${DOUB}" ]; then
-  echo "Could not read doub() from TimeArena at ${TA}." >&2
-  exit 1
-fi
-
 mkdir -p "$(dirname "${OUT_FILE}")"
 umask 077
 cat > "${OUT_FILE}" <<EOF
@@ -83,7 +77,11 @@ cat > "${OUT_FILE}" <<EOF
 YIELDOMEGA_RPC_URL=${RPC}
 YIELDOMEGA_CHAIN_ID=31337
 YIELDOMEGA_TIME_ARENA_ADDRESS=${TA}
-YIELDOMEGA_ACCEPTED_ASSET_ADDRESS=${DOUB}
+YIELDOMEGA_PODIUM_VAULTS_ADDRESS=${PV}
+YIELDOMEGA_ADMIN_SELL_VAULT_ADDRESS=${AV}
+YIELDOMEGA_REFERRAL_REGISTRY_ADDRESS=${RR}
+YIELDOMEGA_DOUBLOON_ADDRESS=${DOUB:-}
+YIELDOMEGA_PLAY_CRED_ADDRESS=${CRED:-}
 # Optional: YIELDOMEGA_PRIVATE_KEY=  (Anvil account #0 key from Foundry docs — local only)
 EOF
 

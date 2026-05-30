@@ -135,7 +135,7 @@ Do not document or reintroduce as live product rules:
 - TimeCurve **`endSale`**, **`redeemCharms`**, linear/bonding CHARM price — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
 - FeeRouter five-sink CL8Y routing — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)
 - Retired v1 player reserve — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)
-- Leprechaun NFTs — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
+- Collectible NFT layer — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
 
 ---
 

@@ -1,6 +1,6 @@
 # Contracts (Foundry)
 
-Smart contracts for MegaEVM (Arena v2 **TimeArena**, **PodiumVaults**, **Doubloon**, **ReferralRegistry**).
+Smart contracts for MegaEVM (TimeCurve, Rabbit Treasury / **Burrow**, NFTs, routers).
 
 Original Solidity and documentation in this directory follow the repository **GNU Affero General Public License v3.0** ([`../LICENSE`](../LICENSE)); third-party libraries under `lib/` keep their own licenses.
 
@@ -130,27 +130,34 @@ ABIs live in `out/` after `forge build`. Registry templates and **ABI hash expor
 See [`PARAMETERS.md`](./PARAMETERS.md) for testnet defaults and `TODO`s that
 need human decisions before mainnet.
 
-## Contract map (Arena v2 — canonical)
+## Contract map
 
 | Contract | Purpose |
 |----------|---------|
-| `TimeArena` | Always-live arena — DOUB/CRED buys, four podium timers, 40/30/30 DOUB routing via `ArenaBuyRouting` ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)) |
-| `PodiumVaults` | Four **active** + four **seed** DOUB prize pools; `PodiumFunded` / `SeedFunded` |
-| `AdminSellVault` | **30%** admin slice per buy; `AdminVaultFunded` |
-| `TimeArenaBuyRouter` | Kumbaya `exactOutput` → DOUB → `buyFor` (ETH/USDM ingress) |
-| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** to governance/deployer only ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)); burns via **OpenZeppelin `ERC20Burnable`** ([#132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
-| `PlayCred` | Arena CRED mint/burn; `buyWithCred` burns per `CRED_PER_CHARM_WAD` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
-| `ReferralRegistry` | Short referral codes; used by `TimeArena` buys |
-| `DoubAirdrop` | Permissionless batch ERC-20 sender (disperse.app-style); CSV workflow in [`../airdrop/`](../airdrop/). **MegaETH mainnet:** `0x3CAf127624d8b81F4aa00aD1cCBbc9242B502e5d` |
-| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
+| `TimeCurve` | Token launch primitive — buys, timer, prizes, fee routing (future: optional pause/latch for `buy` / `redeemCharms` / `distributePrizes` per [pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
+| `RabbitTreasury` | Player-facing reserve game — **CL8Y** ↔ DOUB, **redeemable / protocol-owned** buckets, burn + controlled redemption, epoch repricing via `BurrowMath` |
+| `Doubloon` | DOUB ERC-20 — **`MINTER_ROLE`** mint (expected: `RabbitTreasury`); burns are **OpenZeppelin `ERC20Burnable`** (`burn` / **`burnFrom` + allowance** — [GitLab #132](https://gitlab.com/PlasticDigits/yieldomega/-/issues/132)) |
+| `DoubPresaleVesting` | Presale DOUB — immutable beneficiary set; **30%** at `startVesting`, **70%** linear over configurable duration (canonical **180 days**); `EnumerableSet` enumeration; rare ops: **`reduceAllocationsUniformBps`** + **`burnDoubExcessAboveOutstanding`** (owner, **ERC20Burnable** token); **`setClaimsEnabled`** gate ([pause-and-final-signoff.md](../docs/operations/pause-and-final-signoff.md)) |
+| `FeeRouter` | Splits fees to **five** sink slots (bps weights, governed; launch default includes one **0%** team slot) |
+| `PodiumPool` | Holds podium-pool portion of fees; `TimeCurve.distributePrizes` pays winners |
+| `CL8YProtocolTreasury` | Optional legacy sink — canonical routing uses a **burn address** for the **40%** sale burn slice |
+| `DoubLPIncentives` | DOUB / CL8Y liquidity sink (**30%** launch default) — LP mechanics TODO |
+| `EcosystemTreasury` | Team / ecosystem sink address (**0%** weight at launch; still wired in `DeployDev`) |
+| `RabbitTreasuryVault` | Optional **interim** fifth-sink custody ([GitLab #159](https://gitlab.com/PlasticDigits/yieldomega/-/issues/159)); **`Ownable2Step`** withdrawals; **not** Burrow accounting until **`receiveFee`** path |
+| `ReferralRegistry` | Short referral codes; **CL8Y** burn to register; used by `TimeCurve` buys |
 | `MockReserveCl8y` | Dev-only mintable **CL8Y** stand-in in `DeployDev.s.sol` when no reserve address is set |
+| `MockCL8Y` | Dev-only mintable token in `src/tokens/` for isolated tests |
+| `DoubAirdrop` | Permissionless batch ERC-20 sender (disperse.app-style); CSV workflow in [`../airdrop/`](../airdrop/). **MegaETH mainnet:** `0x3CAf127624d8b81F4aa00aD1cCBbc9242B502e5d` |
 
-Deploy: [`script/DeployDev.s.sol`](script/DeployDev.s.sol), [`script/DeployProduction.s.sol`](script/DeployProduction.s.sol) — no `FeeRouter` / `TimeCurve` ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
+## Libraries
 
-**Retired (sources removed — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)):** `TimeCurve`, `FeeRouter`, `PodiumPool`, `DoubLPIncentives`, `EcosystemTreasury`, `CL8YProtocolTreasury`, retired v1 player reserve ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), `LeprechaunNFT`, presale vesting stack. Historical parameters remain in [`PARAMETERS.md`](./PARAMETERS.md) under **Retired v1**. See [`docs/product/arena-v2.md`](../docs/product/arena-v2.md).
+- `BurrowMath` — coverage, multiplier, epoch `e` step (aligned with `simulations/bounded_formulas/model.py`).
+- `TimeMath` — exponential **envelope** factor for CHARM min/max band; timer extension with cap.
+- `LinearCharmPrice` — default linear per-CHARM price schedule (`ICharmPrice` for `TimeCurve`).
+- `FeeMath` — basis-point weight validation and share computation.
 
-## Libraries (Arena v2)
+## Burrow events
 
-- `ArenaBuyRouting` — pure 40% active / 30% seed / 30% admin split per DOUB buy + manual podium top-up ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244), [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
-- `ArenaXp` / `ArenaPodiumSettlement` — XP progression and podium settlement math ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265))
-- `TimeMath` — timer extension and hard-reset band (shared with legacy TimeCurve docs)
+`RabbitTreasury` emits the canonical `Burrow*` events defined in
+[`docs/product/rabbit-treasury.md`](../docs/product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events)
+so indexers decode a stable ABI.

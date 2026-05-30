@@ -59,7 +59,6 @@ mkdir -p "$DEPLOY_DIR"
 
 TC="$(jq -r '.contracts.TimeCurve' "$REGISTRY")"
 RT="$(jq -r '.contracts.RabbitTreasury' "$REGISTRY")"
-NFT="$(jq -r '.contracts.LeprechaunNFT' "$REGISTRY")"
 FR="$(jq -r '.contracts.FeeRouter' "$REGISTRY")"
 RR="$(jq -r '.contracts.ReferralRegistry' "$REGISTRY")"
 CHAIN_ID="$(jq -r '.chainId' "$REGISTRY")"
@@ -76,7 +75,6 @@ VITE_RPC_URL=${RPC_URL}
 VITE_INDEXER_URL=${INDEXER_URL}
 VITE_TIMECURVE_ADDRESS=${TC}
 VITE_RABBIT_TREASURY_ADDRESS=${RT}
-VITE_LEPRECHAUN_NFT_ADDRESS=${NFT}
 VITE_FEE_ROUTER_ADDRESS=${FR}
 VITE_REFERRAL_REGISTRY_ADDRESS=${RR}
 EOF

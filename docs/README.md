@@ -12,7 +12,7 @@ This folder holds **architecture, product, and process** specs for the Yieldomeg
 2. Read [architecture/overview.md](architecture/overview.md) for trust model and data flow.
 3. Use [glossary.md](glossary.md) for shared vocabulary (CL8Y, TimeArena, DOUB, prize vaults, agents).
 4. Use [agent-phases.md](agent-phases.md) when executing the roadmap in order or by task: each phase links one doc section and includes a **copy-paste prompt**.
-5. For **Leprechaun NFT onchain metadata** (JSON Schema drafts, semver, changelog), see [schemas/README.md](schemas/README.md) and [schemas/CHANGELOG.md](schemas/CHANGELOG.md).
+5. For **retired collectible NFT metadata** (JSON Schema history, semver, changelog), see [schemas/README.md](schemas/README.md) and [schemas/CHANGELOG.md](schemas/CHANGELOG.md) ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
 6. For **contributor** Cursor skills (code and licensing guardrails), see [../.cursor/skills/README.md](../.cursor/skills/README.md).
 7. For **play** skills (TimeArena — agents as participants), see [../skills/README.md](../skills/README.md) and [agent-phases.md](agent-phases.md#phase-20).
 

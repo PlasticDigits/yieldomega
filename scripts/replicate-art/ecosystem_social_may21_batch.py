@@ -55,8 +55,8 @@ do not leave blank zones for post-processing text overlay. Do not add dense fine
 dates, prices, watermarks, or return/profit promises.
 
 Reference images are supplied as input_images in this order:
-(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-leprechaun mascot,
-red-bearded leprechauns, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
+(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-mascot mascot,
+red-bearded mascots, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
 accents, and magical arena energy.
 (2) token-logo.png — use as canonical hat-token / DOUB-style coin language.
 """.strip()

@@ -42,8 +42,8 @@ large, high contrast, and scannable. Do not add dense fine print, legal claims, 
 watermarks, or return/profit promises.
 
 Reference images are supplied as input_images in this order:
-(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-leprechaun mascot,
-red-bearded leprechauns, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
+(1) style.png — preserve the Yieldomega blocky arcade fantasy world, adult playful bunny-mascot mascot,
+red-bearded mascots, green-gold palette, thick dark outlines, glossy toy depth, voxel hills, rainbow
 accents, and magical arena energy.
 (2) token-logo.png — use as canonical hat-token / DOUB-style coin language.
 """.strip()
@@ -134,7 +134,7 @@ Wide 3:2 cinematic action shot. Adult archer aims a glowing WarBow directly at a
             kind="worldbuilding",
             seed="New player entering into Yieldomega Arena. New player entering a giant glowing arena gate marked YieldOmega, referral code holograms floating around, welcoming but intense atmosphere, fantasy crypto metaverse aesthetic.",
             subject="""
-Wide 3:2 worldbuilding scene. A new adult player avatar walks through a giant glowing arena gate marked exactly "YIELDOMEGA". Referral code holograms float around the entry path as short stylized lowercase slugs and glowing codeHash crystals, pointing toward the TimeCurve arena inside. Adult bunny-leprechaun host and red-bearded leprechaun guides welcome the player while the crowd and timer energy make the atmosphere intense. Fantasy crypto metaverse aesthetic, green-gold portal light, coins, wallet lanterns. Limited text only: the gate word "YIELDOMEGA" and a few short code holograms; no explanatory captions.
+Wide 3:2 worldbuilding scene. A new adult player avatar walks through a giant glowing arena gate marked exactly "YIELDOMEGA". Referral code holograms float around the entry path as short stylized lowercase slugs and glowing codeHash crystals, pointing toward the TimeCurve arena inside. Adult bunny-mascot host and red-bearded mascot guides welcome the player while the crowd and timer energy make the atmosphere intense. Fantasy crypto metaverse aesthetic, green-gold portal light, coins, wallet lanterns. Limited text only: the gate word "YIELDOMEGA" and a few short code holograms; no explanatory captions.
 """,
         ),
         ArenaSocialJob(

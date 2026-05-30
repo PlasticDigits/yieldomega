@@ -10,14 +10,14 @@ import { defineConfig, loadEnv } from "vite";
 const OG = {
   title: "YieldOmega",
   description:
-    "Onchain gamefi on MegaETH — Time Arena, DOUB prizes, and referral codes in a bright arcade-fantasy world.",
+    "Onchain gamefi on MegaETH — Time Arena, DOUB prizes, and bright arcade-fantasy mascots.",
   siteName: "YieldOmega",
   locale: "en_US",
   imagePath: "/art/opengraph.jpg",
   /** Square JPEG (issue #57) — Twitter/X `summary` card while Open Graph keeps the wide hero. */
   twitterSquareImagePath: "/art/opengraph-square.jpg",
   imageAlt:
-    "YieldOmega artwork: bunny leprechaun mascots, glossy hat-coins, rainbow, and voxel hills in arcade cartoon style",
+    "YieldOmega artwork: bunny mascots, glossy hat-coins, rainbow, and voxel hills in arcade cartoon style",
   imageType: "image/jpeg",
 } as const;
 

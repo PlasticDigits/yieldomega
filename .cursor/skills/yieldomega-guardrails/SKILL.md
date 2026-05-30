@@ -22,7 +22,7 @@ Before substantive changes in this repository:
 9b. **CRED buy UI ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)):** `buyWithCred` via pay picker; burn from onchain `CRED_PER_CHARM_WAD` — [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts); optional `VITE_PLAY_CRED_ADDRESS`.
 10. **Wallet / chain:** Single-chain wagmi ([#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81)); wrong-network write gating ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)).
 11. **Bots:** [`bots/timearena/`](../../bots/timearena/README.md) — retarget to `TimeArena` proxy; venv + PEP 668 per README.
-12. **Retired (do not reintroduce):** Leprechaun ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)), Rabbit/Burrow ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), TimeCurve sale-end/redemption/presale ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)), FeeRouter five-sink CL8Y ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). WarBow returns in [#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252).
+12. **Retired (do not reintroduce):** Collectible NFT layer ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)), Rabbit/Burrow ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)), TimeCurve sale-end/redemption/presale ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)), FeeRouter five-sink CL8Y ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). WarBow returns in [#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252).
 
 Play skills (participants): [`skills/README.md`](../../skills/README.md) — `play-active-time-arena`, `play-time-arena-doub`, `play-time-arena-warbow`.
 

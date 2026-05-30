@@ -7417,7 +7417,7 @@ a.podium-address-explorer:hover .address-inline__label {
  *     stamped CTA.
  *   - The generic `.data-panel::after` gold dot is hidden on both panels;
  *     it competes with the new chrome and indicates nothing.
- *   - The mascot cutout (`leprechaun-bag-bunny-pair.png`) anchors the
+ *   - The mascot cutout (`mascot-bag-bunny-pair.png`) anchors the
  *     timer panel to the Yieldomega world.
  *
  * Sibling spec: see `docs/frontend/timecurve-views.md` and the standalone
@@ -10042,7 +10042,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* Mascot cutout positions for TimeCurve surfaces.
-   - `--pair-mascot` anchors `leprechaun-bag-bunny-pair.png` to the bottom
+   - `--pair-mascot` anchors `mascot-bag-bunny-pair.png` to the bottom
      of the timer panel as the calm "fair launch" sidekick (the role the
      art README assigns to that asset).
    - `--coin-stack` remains available to buy panels that still opt into the
@@ -10069,7 +10069,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* When the hub flips to a single column (the `timecurveSimplePage`
    container shrinks below 880px, see line 4463), the panel narrows to
-   the point where the centred digits collide with the leprechaun-bunny
+   the point where the centred digits collide with the bunny-bag
    mascot's silhouette. The mascot is portrait (682x1024) and there's no
    safe way to keep it bottom-left without overlapping the countdown, so
    we just hide it below the breakpoint and reclaim the padding. The
@@ -10354,7 +10354,7 @@ a.podium-address-explorer:hover .address-inline__label {
     padding-right: clamp(4.7rem, 11.4vw, 6.6rem);
   }
 
-  /* Leprechaun cutout: 40% smaller than default (60% of prior width / nudges). */
+  /* Bunny-girl mascot cutout: 40% smaller than default (60% of prior width / nudges). */
   .timecurve-simple__stake-cutout {
     right: clamp(-0.6rem, -0.84vw, -0.15rem);
     bottom: -0.81rem;

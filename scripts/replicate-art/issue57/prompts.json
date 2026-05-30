@@ -47,7 +47,7 @@
       "resize": "icon_256",
       "post_deliver": "cursor_24x24_hot_4_4",
       "checklist": "Disabled / no-entry (24\u00d724)",
-      "subject": "UI cursor sprite only: a small round leprechaun shield badge with a bold red diagonal NO bar and thick black outline\u2014friendly arcade 'not allowed' icon, glossy toy finish, no readable words, centered, transparent background, readable at 24px."
+      "subject": "UI cursor sprite only: a small round mascot shield badge with a bold red diagonal NO bar and thick black outline\u2014friendly arcade 'not allowed' icon, glossy toy finish, no readable words, centered, transparent background, readable at 24px."
     },
     {
       "id": "issue57-cursor-external-link",
@@ -106,8 +106,8 @@
       "output_format": "png",
       "resize": "cutout",
       "post_deliver": "none",
-      "checklist": "Indexer-down sad leprechaun",
-      "subject": "Character cutout: a sympathetic red-bearded leprechaun mascot looking a little sad and shrugging\u2014gentle 'service hiccup' mood, holding a tilted empty coin bag, chunky arcade outlines, adult character, fully clothed, transparent chroma-friendly backdrop for keying, no text, no UI chrome."
+      "checklist": "Indexer-down sad mascot",
+      "subject": "Character cutout: a sympathetic red-bearded mascot mascot looking a little sad and shrugging\u2014gentle 'service hiccup' mood, holding a tilted empty coin bag, chunky arcade outlines, adult character, fully clothed, transparent chroma-friendly backdrop for keying, no text, no UI chrome."
     }
   ],
   "derivatives_imagemagick": [

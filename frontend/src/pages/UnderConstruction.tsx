@@ -14,7 +14,7 @@ type Props = {
 };
 
 /** Placeholder surface while TimeCurve is the active launch milestone. */
-export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-leprechaun-wave.png", children }: Props) {
+export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-wave.jpg", children }: Props) {
   const cutouts = PLACEHOLDER_CUTOUTS_BY_SLUG[slug as keyof typeof PLACEHOLDER_CUTOUTS_BY_SLUG]
     ?? PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 

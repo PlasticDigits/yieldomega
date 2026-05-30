@@ -12,7 +12,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 
 /// @notice Production deploy for Arena v2 (MegaETH). Set env vars before broadcast.
-/// @dev No Leprechaun, Rabbit, Presale, TimeCurve, or FeeRouter — GitLab #259.
+/// @dev No retired v1 NFT/treasury/presale/TimeCurve/FeeRouter — GitLab #259.
 contract DeployProduction is Script {
     uint256 internal constant DEFAULT_CHARM_PRICE_WAD = 1000e18;
     uint256 internal constant DEFAULT_TIMER_EXTENSION_SEC = 120;

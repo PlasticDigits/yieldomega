@@ -42,14 +42,14 @@ export function HomePage() {
         </picture>
         <CutoutDecoration
           className="home-hero__cutout home-hero__cutout--peek cutout-decoration--hoverable cutout-decoration--bob"
-          src="/art/cutouts/cutout-bunnyleprechaungirl-head.png"
+          src="/art/cutouts/cutout-bunny-girl-head.png"
           width={184}
           height={184}
           loading="eager"
         />
         <CutoutDecoration
           className="home-hero__cutout home-hero__cutout--heroine cutout-decoration--hoverable cutout-decoration--float"
-          src="/art/cutouts/cutout-bunnyleprechaungirl-full.png"
+          src="/art/cutouts/cutout-bunny-girl-full.png"
           width={332}
           height={412}
           loading="eager"
@@ -110,13 +110,13 @@ export function HomePage() {
       <div className="home-cutout-strip" aria-hidden="true">
         <CutoutDecoration
           className="home-cutout-strip__cutout home-cutout-strip__cutout--left cutout-decoration--sway"
-          src="/art/cutouts/mascot-bunnyleprechaungirl-wave-cutout.png"
+          src="/art/cutouts/mascot-bunny-girl-wave-cutout.png"
           width={260}
           height={260}
         />
         <CutoutDecoration
           className="home-cutout-strip__cutout home-cutout-strip__cutout--right cutout-decoration--bounce"
-          src="/art/cutouts/mascot-bunnyleprechaungirl-jump-cutout.png"
+          src="/art/cutouts/mascot-bunny-girl-jump-cutout.png"
           width={260}
           height={260}
         />

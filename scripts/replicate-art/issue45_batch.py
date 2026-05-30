@@ -44,7 +44,7 @@ import replicate_bounded_run as _bounded  # noqa: E402
 ResizeMode = Literal["scene_wide", "scene_mid", "portrait_768_1024", "cutout", "icon_256", "none"]
 
 BUNNY_MOOD = (
-    "Adult yet playful bunny-leprechaun woman mascot (clearly grown-up, non-minor), confident body language and "
+    "Adult yet playful bunny-mascot woman mascot (clearly grown-up, non-minor), confident body language and "
     "stylish fantasy arcade costume; tasteful cartoon energy like a premium mobile game host—fully clothed, "
     "non-explicit, no nudity."
 )
@@ -231,7 +231,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_wide",
             "Home hub wide landscape hero for desktop: arcade green-and-gold palette, hard-shadow panel language, "
-            "adult yet playful bunny leprechaun girl mascot + red-bearded leprechauns, hat-coins, voxel hills, rainbow, strong horizontal "
+            "adult yet playful bunny mascot girl mascot + red-bearded mascots, hat-coins, voxel hills, rainbow, strong horizontal "
             "composition with negative space for nav and CTAs, energetic fair-launch story mood.",
         )
     )
@@ -258,7 +258,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_wide",
             "TimeCurve Simple dedicated scene: calm fair-launch story, oversized friendly countdown dial, soft "
-            "sparkle trails, voxel hills, adult yet playful bunny leprechaun girl as welcoming guide, less aggressive than Arena—"
+            "sparkle trails, voxel hills, adult yet playful bunny mascot girl as welcoming guide, less aggressive than Arena—"
             "trust and clarity mood.",
         )
     )
@@ -271,7 +271,7 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_wide",
-            "TimeCurve Arena backplate: competitive podium energy, dramatic side lighting, rival leprechaun teams, "
+            "TimeCurve Arena backplate: competitive podium energy, dramatic side lighting, rival mascot teams, "
             "trophy hat-coins, tension lines and arena gates, distinct from Simple calm—PvP spectacle.",
         )
     )
@@ -350,7 +350,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_mid",
             "Short wide branded strip for Sir trading embed: market counter energy, gorilla merchant silhouette in "
-            "blocky arcade style, leprechaun customer, banners—compact strip not a full page.",
+            "blocky arcade style, mascot customer, banners—compact strip not a full page.",
         )
     )
     j.append(
@@ -363,7 +363,7 @@ def jobs() -> list[BatchJob]:
             "jpeg",
             "scene_wide",
             "Wide landscape pre-launch / launch hero for social link previews (no typography in the art). Foreground: "
-            "adult yet playful bunny leprechaun girl and red-bearded leprechauns cheering along a balcony or stage lip, confetti and "
+            "adult yet playful bunny mascot girl and red-bearded mascots cheering along a balcony or stage lip, confetti and "
             "small fireworks, voxel hills and rainbow in the distance. **Center: one huge magical timer hoop**—thick "
             "glowing emerald-and-gold ring segments only, **hollow open center like a donut**, no clock face, **no "
             "digits of any kind, no Arabic numerals, no Roman numerals, no tick marks that resemble numbers**, no "
@@ -380,7 +380,7 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "Empty state / error panel illustration: adult yet playful bunny leprechaun girl with a sympathetic shrug beside a **sleepy "
+            "Empty state / error panel illustration: adult yet playful bunny mascot girl with a sympathetic shrug beside a **sleepy "
             "tortoise wearing a tiny server-tech visor**; a snapped glowing “data” ribbon cable on the ground; soft "
             "dusty sparkles (not smoke). Mood: “we’ll be back soon,” pastel-friendly, not scary—no error codes, no "
             "stack traces, no text.",
@@ -405,33 +405,33 @@ def jobs() -> list[BatchJob]:
     for pose_slug, pose_desc in [
         (
             "wave",
-            f"Full-length adult yet playful bunny leprechaun girl facing the viewer, one arm raised in a big welcoming wave, feet "
+            f"Full-length adult yet playful bunny mascot girl facing the viewer, one arm raised in a big welcoming wave, feet "
             f"planted, slight hip tilt, hosting-a-game-show energy. {BUNNY_MOOD}",
         ),
         (
             "jump",
-            f"Full-length adult yet playful bunny leprechaun girl frozen mid-jump: knees bent, arms up, ears streaming back, huge "
+            f"Full-length adult yet playful bunny mascot girl frozen mid-jump: knees bent, arms up, ears streaming back, huge "
             f"cheerful grin—celebration hop, not fighting. {BUNNY_MOOD}",
         ),
         (
             "thinking",
-            f"Full-length adult yet playful bunny leprechaun girl standing, one gloved hand on chin, other hand on hip, eyes glancing "
+            f"Full-length adult yet playful bunny mascot girl standing, one gloved hand on chin, other hand on hip, eyes glancing "
             f"up—plotting the next play, playful not worried. {BUNNY_MOOD}",
         ),
         (
             "podium-win",
-            f"Full-length adult yet playful bunny leprechaun girl on the **center step** of a three-step winners’ podium, both arms "
+            f"Full-length adult yet playful bunny mascot girl on the **center step** of a three-step winners’ podium, both arms "
             f"high, hoisting a **single oversized hat-coin trophy**; confetti ribbons, no readable text on banners. "
             f"{BUNNY_MOOD}",
         ),
         (
             "guarding",
-            f"Full-length adult yet playful bunny leprechaun girl in a low defensive stance in front of a **small pile of hat-coins**, "
+            f"Full-length adult yet playful bunny mascot girl in a low defensive stance in front of a **small pile of hat-coins**, "
             f"arms out like blocking a steal, determined smirk—Arena guard fantasy, not violence. {BUNNY_MOOD}",
         ),
         (
             "sneak-steal",
-            f"Full-length adult yet playful bunny leprechaun girl tiptoeing with one hat-coin already tucked under one arm, other hand "
+            f"Full-length adult yet playful bunny mascot girl tiptoeing with one hat-coin already tucked under one arm, other hand "
             f"reaching for a second coin, exaggerated sneaky grin—cartoon heist, non-threatening. {BUNNY_MOOD}",
         ),
     ]:
@@ -444,22 +444,22 @@ def jobs() -> list[BatchJob]:
                 "transparent",
                 "png",
                 "cutout",
-                f"Full-body **adult yet playful bunny leprechaun girl** cutout only: {pose_desc} "
+                f"Full-body **adult yet playful bunny mascot girl** cutout only: {pose_desc} "
                 f"Transparent alpha, soft cel shading, **no ground shadow patch**, no background props except what the "
                 f"pose requires (e.g. podium), bold outline consistent with brand refs.",
             )
         )
     j.append(
         BatchJob(
-            "issue45-cutout-leprechaun-bag-bunny-pair.png",
+            "issue45-cutout-mascot-bag-bunny-pair.png",
             "2) Cutouts & characters",
-            "Leprechaun w/ bag vs adult yet playful bunny leprechaun mascot style pairing reference",
+            "Mascot w/ bag vs adult yet playful bunny mascot mascot style pairing reference",
             "2:3",
             "transparent",
             "png",
             "cutout",
-            "Duo cutout sheet: **red-bearded leprechaun** with full green hat and **heavy coin sack** standing shoulder-to-shoulder "
-            "with **adult yet playful bunny leprechaun girl** (same lineup height). Same stroke width, same highlight color recipe, same "
+            "Duo cutout sheet: **red-bearded mascot** with full green hat and **heavy coin sack** standing shoulder-to-shoulder "
+            "with **adult yet playful bunny mascot girl** (same lineup height). Same stroke width, same highlight color recipe, same "
             "neutral rim-light direction—designed so both can be dropped into headers side-by-side. Transparent alpha, "
             "no floor, no text.",
         )
@@ -487,7 +487,7 @@ def jobs() -> list[BatchJob]:
             "transparent",
             "png",
             "icon_256",
-            "Micro mascot accent: **one mini red-bearded leprechaun** peeking over the rim of **two stacked hat-coins** "
+            "Micro mascot accent: **one mini red-bearded mascot** peeking over the rim of **two stacked hat-coins** "
             "only—big eyes, minimal body, lots of empty transparent margin so it can sit in a slim footer bar. No text.",
         )
     )
@@ -645,7 +645,7 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_wide",
-            "3:2 link-preview hero: adult yet playful bunny leprechaun girl **center-left**, two leprechauns **center-right**, flying "
+            "3:2 link-preview hero: adult yet playful bunny mascot girl **center-left**, two mascots **center-right**, flying "
             "hat-coins, rainbow arc, voxel hills. **No logos spelled out, no digits, no UI**. Extra sky top and grass "
             "bottom so Telegram/X crops stay safe.",
         )
@@ -659,7 +659,7 @@ def jobs() -> list[BatchJob]:
             "opaque",
             "jpeg",
             "scene_mid",
-            "1:1 bust portrait of adult yet playful bunny leprechaun girl from ribs up: big smile, rabbit ears, green dress collar, "
+            "1:1 bust portrait of adult yet playful bunny mascot girl from ribs up: big smile, rabbit ears, green dress collar, "
             "**one hat-coin held near shoulder**; soft bokeh of rainbow sparkles behind—reads at small avatar size. "
             "No text.",
         )
