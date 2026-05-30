@@ -127,19 +127,24 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
         f"deterministic scenario={'yes' if run_full_scenario else 'no (slot>=1)'}"
     )
 
-    for label, acct in ("A1", a1), ("A2", a2):
-        mint_mock_reserve(
-            w3,
-            asset,
-            a0,
-            acct.address,
-            _MINT_WAD,
-            gas_multiplier=cfg.gas_multiplier,
-            send=True,
-        )
-        print(f"  minted CL8Y for {label}")
+    # Parallel swarm slots use non-deployer A0 keys; Doubloon mint requires MINTER_ROLE (DeployDev deployer only).
+    # Swarm bootstrap already minted DOUB to every HD wallet — skip redundant mints here.
+    if raw_slot == "":
+        for label, acct in ("A1", a1), ("A2", a2):
+            mint_mock_reserve(
+                w3,
+                asset,
+                a0,
+                acct.address,
+                _MINT_WAD,
+                gas_multiplier=cfg.gas_multiplier,
+                send=True,
+            )
+            print(f"  minted CL8Y for {label}")
 
-    mint_mock_reserve(w3, asset, a0, a0.address, _MINT_WAD, gas_multiplier=cfg.gas_multiplier, send=True)
+        mint_mock_reserve(w3, asset, a0, a0.address, _MINT_WAD, gas_multiplier=cfg.gas_multiplier, send=True)
+    else:
+        print(f"  seed-local: slot {slot_i} — skipping mint (swarm bootstrap funded wallets)")
 
     for acct in (a0, a1, a2):
         approve_if_needed(w3, asset, acct, tc.address, APPROVE_LARGE, gas_multiplier=cfg.gas_multiplier, send=True)
