@@ -5,7 +5,7 @@ import { CutoutDecoration } from "@/components/CutoutDecoration";
 import {
   formatLaunchCountdown,
   timerUrgencyClass,
-} from "@/pages/timecurve/formatTimer";
+} from "@/pages/arena/formatTimer";
 
 type Props = {
   secondsRemaining: number;

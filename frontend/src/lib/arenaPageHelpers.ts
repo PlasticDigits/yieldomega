@@ -3,7 +3,7 @@
 import { formatUnits } from "viem";
 import type { BuyItem } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
-export { formatPodiumLeaderboardValue } from "@/pages/timecurve/podiumFormat";
+export { formatPodiumLeaderboardValue } from "@/pages/arena/podiumFormat";
 
 /** Arena “YOUR BP” line: locale-grouped integer, rounded to this many significant figures. */
 export const WARBOW_VIEWER_BP_DISPLAY_SIGFIGS = 5 as const;

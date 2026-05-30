@@ -13,7 +13,7 @@ function cssBlock(css: string, selector: string, window = 900): string {
 describe("DOUB projection layout CSS (GitLab #235)", () => {
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
   const component = fs.readFileSync(
-    path.resolve(__dirname, "../pages/timecurve/TimeCurveProtocolDoubProjectionSection.tsx"),
+    path.resolve(__dirname, "../pages/arena/ArenaProtocolDoubProjectionSection.tsx"),
     "utf8",
   );
 

@@ -7,7 +7,7 @@ description: Work on the TimeArena Python bot under bots/timearena — env-based
 
 Use this skill when editing or running the **`timecurve-bot`** package (Arena v2 client for `TimeArena`).
 
-Renamed from `bots/timecurve/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
+Renamed from `bots/arena/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
 
 ## Authority and scope
 

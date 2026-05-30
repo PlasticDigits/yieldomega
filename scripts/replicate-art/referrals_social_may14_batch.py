@@ -81,7 +81,7 @@ Accuracy constraints for referrals:
 - Codes are 3-16 ASCII lowercase letters or digits after normalization.
 - One code per wallet; each code has at most one owner.
 - The first successful onchain registration wins the code.
-- Share links can use ?ref={{code}} or /timecurve/{{code}}.
+- Share links can use ?ref={{code}} or /arena/{{code}}.
 - TimeCurve applies referrals per qualifying buy by codeHash; invalid or self-referrals revert.
 - A referred buy adds 5 percent CHARM weight to the referrer and 5 percent CHARM weight to the buyer.
 - Referral rewards are CHARM weight, not a direct wallet payout.
@@ -176,7 +176,7 @@ Wide 3:2 finished infographic poster showing how to share and check earnings. La
             subhead="Copy your referral trail, then track CHARM from recorded buys.",
             panels=(
                 "Share yieldomega.com/?ref=yourcode",
-                "Or share yieldomega.com/timecurve/yourcode",
+                "Or share yieldomega.com/arena/yourcode",
                 "Track guide + traveler CHARM",
                 "Leaderboard uses recorded buys",
             ),

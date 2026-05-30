@@ -58,7 +58,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
           className: "cutout-decoration--peek",
         }}
       >
-        <Link to="/timecurve" className="btn-primary">
+        <Link to="/arena" className="btn-primary">
           Open TimeCurve
         </Link>
       </PageHero>

@@ -11,8 +11,8 @@ describe("shouldShowPendingPill — GitLab #205 referrals footer pill gate", () 
 
   it("returns false when not on /referrals even with a valid code", () => {
     expect(shouldShowPendingPill("/", "swarmyo")).toBe(false);
-    expect(shouldShowPendingPill("/timecurve", "swarmyo")).toBe(false);
-    expect(shouldShowPendingPill("/timecurve/arena", "swarmyo")).toBe(false);
+    expect(shouldShowPendingPill("/arena", "swarmyo")).toBe(false);
+    expect(shouldShowPendingPill("/arena/arena", "swarmyo")).toBe(false);
     expect(shouldShowPendingPill("/referrals/", "swarmyo")).toBe(false);
     expect(shouldShowPendingPill("/referrals/something", "swarmyo")).toBe(false);
   });
@@ -26,6 +26,6 @@ describe("shouldShowPendingPill — GitLab #205 referrals footer pill gate", () 
 
   it("returns false for both gates failing", () => {
     expect(shouldShowPendingPill("/", null)).toBe(false);
-    expect(shouldShowPendingPill("/timecurve", "")).toBe(false);
+    expect(shouldShowPendingPill("/arena", "")).toBe(false);
   });
 });

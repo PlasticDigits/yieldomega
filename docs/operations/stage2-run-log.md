@@ -13,8 +13,8 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 - [x] **Command:**  
   `cd contracts && forge script script/DeployDev.s.sol:DeployDev --rpc-url <RPC> --broadcast --code-size-limit 524288` (and Anvil with `--code-size-limit 524288`; see [foundry-and-megaeth.md](../contracts/foundry-and-megaeth.md#megaevm-bytecode-limits-and-nested-call-gas))
-- [x] **Script** calls `RabbitTreasury.openFirstEpoch()` and schedules **`TimeCurve.startSaleAt(block.timestamp + YIELDOMEGA_DEV_SALE_START_DELAY_SEC)`** after deploy so Forge broadcast simulation time cannot become a past epoch by the execution transaction. Local stack scripts then advance Anvil to that `saleStart` before rich-state or live-sale QA, so **deposit** and **buy** work immediately for the run (**`startSaleAt`** replaces legacy `startSale` — [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
-- [x] **Deterministic addresses** (same mnemonic / deploy order): see [contracts/deployments/stage2-anvil-registry.json](../../contracts/deployments/stage2-anvil-registry.json) for `TimeCurve`, `RabbitTreasury` (template for `ADDRESS_REGISTRY_PATH`; collectible NFT layer removed [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)).
+- [x] **Script** calls `RetiredV1Treasury.openFirstEpoch()` and schedules **`TimeCurve.startSaleAt(block.timestamp + YIELDOMEGA_DEV_SALE_START_DELAY_SEC)`** after deploy so Forge broadcast simulation time cannot become a past epoch by the execution transaction. Local stack scripts then advance Anvil to that `saleStart` before rich-state or live-sale QA, so **deposit** and **buy** work immediately for the run (**`startSaleAt`** replaces legacy `startSale` — [GitLab #114](https://gitlab.com/PlasticDigits/yieldomega/-/issues/114)).
+- [x] **Deterministic addresses** (same mnemonic / deploy order): see [contracts/deployments/stage2-anvil-registry.json](../../contracts/deployments/stage2-anvil-registry.json) for `TimeCurve`, `RetiredV1Treasury`, `LeprechaunNFT` (template for `ADDRESS_REGISTRY_PATH`).
 
 ---
 
@@ -51,10 +51,10 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 |------|---------|
 | Approve sale token → TimeCurve | `0x7504b3de812f0230782c0d0c7c8960bec0e5d9fd9e3a16ebac35ccb5a27da49b` |
 | `TimeCurve.buy(minAmount)` | `0x67f1a08bcd38b4778879b1ad1d0b99c208064c2da4c0e2d36e004cee57b377ff` |
-| Approve reserve → RabbitTreasury | `0x9bb688c7367c181178f4385094be38b85058c95887e468f5134a9a31fe7957dd` |
-| `RabbitTreasury.deposit(10e18, 0)` | `0x9a714b97a97e3498329d2d75575280ffee489f0bf6f7b4f030d925c3eef52b0e` |
-| Retired collectible NFT `createSeries` (historical) | `0x3538a58c414c7fe917837277b651232b98764ef60a6890728d100ee151a95ed5` |
-| Retired collectible NFT `mint` (traits tuple, historical) | `0x05e2a102a71b75b04ffd909acfcce385750164cf17b170d8f265af53f98a1576` |
+| Approve reserve → RetiredV1Treasury | `0x9bb688c7367c181178f4385094be38b85058c95887e468f5134a9a31fe7957dd` |
+| `RetiredV1Treasury.deposit(10e18, 0)` | `0x9a714b97a97e3498329d2d75575280ffee489f0bf6f7b4f030d925c3eef52b0e` |
+| `LeprechaunNFT.createSeries` | `0x3538a58c414c7fe917837277b651232b98764ef60a6890728d100ee151a95ed5` |
+| `LeprechaunNFT.mint` (traits tuple) | `0x05e2a102a71b75b04ffd909acfcce385750164cf17b170d8f265af53f98a1576` |
 
 **`cast` tips**
 
@@ -63,7 +63,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 - Mint tuple example:  
   `cast send <NFT> "mint(address,(uint256,uint8,uint8,uint8,uint256,uint8,uint8,uint256,uint256,bool,bool,bool))" <TO> "(0,0,0,0,0,0,0,0,0,false,false,false)" ...`
 
-**Frontend:** connect wallet → **TimeCurve** “Buy” → **Rabbit Treasury** “Deposit” → **Collection** (NFT reads + indexer mint feed). Set `VITE_CHAIN_ID=31337`, `VITE_RPC_URL`, contract addresses from deploy, `VITE_INDEXER_URL=http://127.0.0.1:3100`.
+**Frontend:** connect wallet → **TimeCurve** “Buy” → **retired v1 player reserve** “Deposit” → **Collection** (NFT reads + indexer mint feed). Set `VITE_CHAIN_ID=31337`, `VITE_RPC_URL`, contract addresses from deploy, `VITE_INDEXER_URL=http://127.0.0.1:3100`.
 
 ---
 
@@ -77,8 +77,8 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 
 ## 5. History consistency
 
-- [x] **DB:** `idx_timecurve_buy`, `idx_rabbit_deposit`, `idx_nft_minted` each contained **1** row after the smoke txs (verified with `psql` `COUNT(*)`).
-- [x] **API:** after `::text` SELECT fix, `GET /v1/timecurve/buys`, `/v1/rabbit/deposits` return non-empty `items` matching those rows (retired NFT mints route removed [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241); re-verify after any schema change).
+- [x] **DB:** `idx_timecurve_buy`, `idx_retired_v1_deposit`, `idx_nft_minted` each contained **1** row after the smoke txs (verified with `psql` `COUNT(*)`).
+- [x] **API:** after `::text` SELECT fix, `GET /v1/arena/buys`, `/v1/retired-v1/deposits`, `/v1/leprechauns/mints` return non-empty `items` matching those rows (re-verify after any schema change).
 
 ---
 

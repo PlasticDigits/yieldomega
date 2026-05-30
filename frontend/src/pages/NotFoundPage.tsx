@@ -33,7 +33,7 @@ export function NotFoundPage() {
         lede={
           <>
             This URL is not part of the YieldOmega app. Check the link, use a TimeCurve referral path like{" "}
-            <code>/timecurve/yourcode</code>, or head back to a live surface below.
+            <code>/arena/yourcode</code>, or head back to a live surface below.
           </>
         }
         mascot={{
@@ -43,7 +43,7 @@ export function NotFoundPage() {
           className: "cutout-decoration--peek",
         }}
       >
-        <Link to="/timecurve" className="btn-primary">
+        <Link to="/arena" className="btn-primary">
           Open TimeCurve
         </Link>
         <Link to={homePath} className="btn-secondary">

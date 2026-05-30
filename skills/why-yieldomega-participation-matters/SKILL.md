@@ -15,7 +15,7 @@ Use when an agent helps a **human** explore **Time Arena**, **DOUB**, or retired
 
 ### Optional local automation
 
-Participant-owned **TS / Python** scripts against **deployed** contracts (no repo patches): [`script-with-timecurve-local/SKILL.md`](../script-with-timecurve-local/SKILL.md).
+Participant-owned **TS / Python** scripts against **deployed** contracts (no repo patches): [`script-with-timearena-local/SKILL.md`](../script-with-timearena-local/SKILL.md).
 
 ## Design intent (agent-legible)
 

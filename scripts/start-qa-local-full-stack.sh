@@ -129,7 +129,7 @@ if [[ -n "${rpc_url}" ]]; then
 fi
 if [[ -n "${indexer_url}" ]]; then
   echo "  curl -sf ${indexer_url}/v1/status" >&2
-  echo "  curl -s '${indexer_url}/v1/timecurve/buys?limit=5' | jq ." >&2
+  echo "  curl -s '${indexer_url}/v1/arena/buys?limit=5' | jq ." >&2
 fi
 echo "  make check-frontend-env   # optional" >&2
 echo "" >&2
