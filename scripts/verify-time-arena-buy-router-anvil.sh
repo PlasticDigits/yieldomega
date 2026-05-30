@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# GitLab #270 — verify DeployDev + DeployKumbayaAnvilFixtures + TimeArenaBuyRouter on Anvil.
+# GitLab #251 / #270 — verify DeployDev + DeployKumbayaAnvilFixtures + TimeArenaBuyRouter on Anvil.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,9 +21,6 @@ if ! command -v cast >/dev/null 2>&1 || ! command -v forge >/dev/null 2>&1 || ! 
   die "need cast, forge, and jq in PATH."
 fi
 
-pkill -f "anvil.*${PORT}" 2>/dev/null || true
-sleep 1
-
 TA="${YIELDOMEGA_TIME_ARENA:-}"
 if [[ -z "${TA}" ]] && [[ -f "${REGISTRY_DEFAULT}" ]]; then
   TA="$(jq -r '.contracts.TimeArena // empty' "${REGISTRY_DEFAULT}")"
@@ -32,6 +29,9 @@ fi
 _start_anvil_if_needed() {
   if cast block-number --rpc-url "${RPC_URL}" >/dev/null 2>&1; then
     return 0
+  fi
+  if [[ "${YIELDOMEGA_VERIFY_NO_ANVIL_RESTART:-0}" == "1" ]]; then
+    die "Anvil not reachable at ${RPC_URL} and YIELDOMEGA_VERIFY_NO_ANVIL_RESTART=1."
   fi
   echo "=== Starting Anvil on ${RPC_URL} ==="
   anvil --host 127.0.0.1 --port "${PORT}" --code-size-limit 524288 >/tmp/yieldomega_verify_tabr_anvil.log 2>&1 &
@@ -93,11 +93,17 @@ BR_READ="$(cast to-checksum "${BR_HEX}" 2>/dev/null || echo "")"
 [[ -n "${BR_READ}" && "${BR_READ}" != "0x0000000000000000000000000000000000000000" ]] \
   || die "TimeArena.timeArenaBuyRouter is still zero."
 
-PAUSED="$(cast to-dec "$(cast call "${TA}" "paused()(bool)" --rpc-url "${RPC_URL}")" 2>/dev/null || echo 1)"
-[[ "${PAUSED}" == "0" ]] || die "TimeArena.paused is true."
+PAUSED_RAW="$(tr -d '[:space:]' <<<"$(cast call "${TA}" "paused()(bool)" --rpc-url "${RPC_URL}" 2>/dev/null || echo "")")"
+if [[ "${PAUSED_RAW}" == "true" || "${PAUSED_RAW}" == "0x0000000000000000000000000000000000000000000000000000000000000001" ]]; then
+  die "TimeArena.paused is true."
+fi
 
-ARENA_START="$(cast to-dec "$(cast call "${TA}" "arenaStart()(uint256)" --rpc-url "${RPC_URL}")" 2>/dev/null || echo 0)"
-[[ "${ARENA_START}" != "0" ]] || die "TimeArena.arenaStart is zero (arena not started)."
+_cast_uint_dec() {
+  tr -d '[:space:]' <<<"$1" | sed -E 's/\[.*//'
+}
+
+ARENA_START="$(_cast_uint_dec "$(cast call "${TA}" "arenaStart()(uint256)" --rpc-url "${RPC_URL}" 2>/dev/null || echo 0)")"
+[[ -n "${ARENA_START}" && "${ARENA_START}" != "0" ]] || die "TimeArena.arenaStart is zero (arena not started)."
 
 if [[ -f "${REGISTRY_DEFAULT}" ]]; then
   yieldomega_registry_merge_timearena_buy_router "${REGISTRY_DEFAULT}" "${BR_READ}"
@@ -115,6 +121,18 @@ echo "=== forge test TimeArenaBuyRouter ==="
 (
   cd "${CONTRACTS}"
   forge test --match-contract TimeArenaBuyRouter -q
+)
+
+export FORK_URL="${RPC_URL}"
+export YIELDOMEGA_FORK_VERIFY=1
+export YIELDOMEGA_TIME_ARENA="${TA}"
+export FOUNDRY_OUT="${FOUNDRY_OUT:-${CONTRACTS}/out-verify-tabr-fork}"
+mkdir -p "${FOUNDRY_OUT}"
+
+echo "=== forge test (fork): VerifyTimeArenaBuyRouterAnvil.t.sol ==="
+(
+  cd "${CONTRACTS}"
+  forge test --match-path "test/VerifyTimeArenaBuyRouterAnvil.t.sol" --match-test "test_Forked_issue251" -vv
 )
 
 echo "=== verify-time-arena-buy-router-anvil: OK ==="

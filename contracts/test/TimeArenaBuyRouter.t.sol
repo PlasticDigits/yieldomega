@@ -165,6 +165,10 @@ abstract contract TimeArenaBuyRouterFixture is Test {
     function _pathEthToDoub() internal view returns (bytes memory) {
         return abi.encodePacked(address(doub), uint24(3000), address(weth));
     }
+
+    function _pathCl8yToDoub() internal view returns (bytes memory) {
+        return abi.encodePacked(address(doub), uint24(3000), address(cl8y));
+    }
 }
 
 contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
@@ -186,6 +190,35 @@ contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
         );
         vm.stopPrank();
 
+        assertEq(arena.totalCharmWeight(), charmWad);
+    }
+
+    function test_buyViaKumbaya_cl8y_creditsAlice() public {
+        uint256 charmWad = 1e18;
+        bytes memory path = _pathCl8yToDoub();
+        uint256 gross = _grossDoub(charmWad);
+        (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
+        uint256 maxIn = (quotedIn * 110) / 100 + 1;
+
+        cl8y.mint(alice, maxIn);
+        vm.startPrank(alice);
+        cl8y.approve(address(buyRouter), maxIn);
+        buyRouter.buyViaKumbaya(
+            charmWad, bytes32(0), false, buyRouter.PAY_CL8Y(), block.timestamp + 600, maxIn, path
+        );
+        vm.stopPrank();
+
+        assertEq(arena.totalCharmWeight(), charmWad);
+    }
+
+    function test_buy_doub_direct_pullsFromWallet() public {
+        uint256 charmWad = 1e18;
+        uint256 gross = _grossDoub(charmWad);
+        doub.mint(alice, gross);
+        vm.startPrank(alice);
+        doub.approve(address(arena), gross);
+        arena.buy(charmWad);
+        vm.stopPrank();
         assertEq(arena.totalCharmWeight(), charmWad);
     }
 

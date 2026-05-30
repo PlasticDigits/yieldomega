@@ -1,8 +1,12 @@
-# Kumbaya integration (TimeCurve entry)
+# Kumbaya integration (Time Arena v2 + legacy TimeCurve)
 
-This document is the **in-repo source of truth** for how Yieldomega uses **Kumbaya** (Uniswap v3–compatible DEX on MegaETH) for **optional** TimeCurve entry with **ETH** or a **chain stable** while the sale still settles in **CL8Y**. It satisfies [GitLab issue #46](https://gitlab.com/PlasticDigits/yieldomega/-/issues/46) cross-linking and deployment expectations.
+> **Arena v2 (canonical):** [`TimeArenaBuyRouter`](../../contracts/src/arena/TimeArenaBuyRouter.sol) — ETH / USDm / reserve **CL8Y** → Kumbaya **`exactOutput`** → **DOUB** → **`TimeArena.buyFor`** ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251)). **DOUB** direct entry uses **`TimeArena.buy`** (no router). Verify: `bash scripts/verify-time-arena-buy-router-anvil.sh` · invariants **`INV-TIME-ARENA-BUY-ROUTER`** · play skill [`skills/play-time-arena-doub/SKILL.md`](../../skills/play-time-arena-doub/SKILL.md).
 
-**Related code:** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`frontend/src/pages/arena/useArenaSaleSession.ts`](../../frontend/src/pages/arena/useArenaSaleSession.ts), [`contracts/script/DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`contracts/src/TimeCurveBuyRouter.sol`](../../contracts/src/TimeCurveBuyRouter.sol), [`scripts/lib/anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh), [`scripts/lib/kumbaya_local_anvil_env.sh`](../../scripts/lib/kumbaya_local_anvil_env.sh) (registry + **`VITE_*`** merge helpers — [issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84); literal **`KEY=value`** writes — [`kumbaya_env_set_line.py`](../../scripts/lib/kumbaya_env_set_line.py), [issue #154](https://gitlab.com/PlasticDigits/yieldomega/-/issues/154)), [`scripts/verify-timecurve-buy-router-anvil.sh`](../../scripts/verify-timecurve-buy-router-anvil.sh) (issue #78 fork verification; merges **`contracts.TimeCurveBuyRouter`** into [`contracts/deployments/local-anvil-registry.json`](../../contracts/deployments/local-anvil-registry.json) — [issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84)), [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) / [`indexer/src/persist.rs`](../../indexer/src/persist.rs) (`BuyViaKumbaya` + [`ADDRESS_REGISTRY` `TimeCurveBuyRouter`](../../indexer/src/config.rs) — [issue #67](https://gitlab.com/PlasticDigits/yieldomega/-/issues/67)).
+This document is the **in-repo source of truth** for how Yieldomega uses **Kumbaya** (Uniswap v3–compatible DEX on MegaETH) for **optional** multi-asset Arena entry while settlement remains in **DOUB**. Legacy **TimeCurve / CL8Y** sections below are retained for audit cross-links only ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
+
+**Related code (Arena v2):** [`TimeArenaBuyRouter.sol`](../../contracts/src/arena/TimeArenaBuyRouter.sol), [`AnvilKumbayaFixture.sol`](../../contracts/src/fixtures/AnvilKumbayaFixture.sol), [`DeployKumbayaAnvilFixtures.s.sol`](../../contracts/script/DeployKumbayaAnvilFixtures.s.sol), [`frontend/src/lib/timeArenaKumbayaSingleTx.ts`](../../frontend/src/lib/timeArenaKumbayaSingleTx.ts), [`scripts/verify-time-arena-buy-router-anvil.sh`](../../scripts/verify-time-arena-buy-router-anvil.sh) (replaces `verify-timecurve-buy-router-anvil.sh`).
+
+**Related code (legacy TimeCurve):** [`frontend/src/lib/kumbayaRoutes.ts`](../../frontend/src/lib/kumbayaRoutes.ts), [`scripts/lib/kumbaya_local_anvil_env.sh`](../../scripts/lib/kumbaya_local_anvil_env.sh), [`scripts/verify-timecurve-buy-router-anvil.sh`](../../scripts/verify-timecurve-buy-router-anvil.sh) (deprecated wrapper → arena script).
 
 **Contributor guardrails:** When changing routing or env contracts, follow [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) and [testing strategy](../testing/strategy.md).
 
@@ -28,7 +32,24 @@ This document is the **in-repo source of truth** for how Yieldomega uses **Kumba
 
 ---
 
-## Product flow (ETH / stable → CHARM)
+<a id="arena-v2-buy-router-gitlab-251"></a>
+
+### Time Arena buy router (GitLab [#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251))
+
+| Pay asset | Path | Onchain entry |
+|-----------|------|-----------------|
+| **DOUB** | wallet → `TimeArena` | `buy(charmWad)` / `buy(charmWad, codeHash)` |
+| **CL8Y** | reserve CL8Y → DOUB (single-hop) | `TimeArenaBuyRouter.buyViaKumbaya` **`PAY_CL8Y`** |
+| **ETH** | WETH → DOUB | `buyViaKumbaya` **`PAY_ETH`** (`msg.value` → WETH) |
+| **USDm** | stable → WETH → DOUB | `buyViaKumbaya` **`PAY_STABLE`** |
+
+**Invariants:** gross DOUB = `charmWad × charmPriceWad / 1e18`; **`exactOutput` `amountOut`** equals that gross; stable ingress balance-delta parity ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)); **`swapDeadline`** checked against **`block.timestamp`** before swap ([#83](https://gitlab.com/PlasticDigits/yieldomega/-/issues/83)); DOUB dust → **`doubSurplusRecipient`** (AdminSellVault). **`buyFor`** only from registered router.
+
+**Local verify:** `bash scripts/verify-time-arena-buy-router-anvil.sh` (does **not** restart a running Anvil unless RPC is down). Sets `YIELDOMEGA_VERIFY_NO_ANVIL_RESTART=1` to fail instead of starting a new node.
+
+---
+
+## Legacy TimeCurve product flow (ETH / stable → CHARM)
 
 1. User chooses spend asset in TimeCurve UI (**CL8Y**, **ETH**, or **USDM** mode).
 2. **CL8Y:** Direct `approve` + `TimeCurve.buy` — no DEX.
