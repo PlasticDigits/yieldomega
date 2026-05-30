@@ -35,7 +35,7 @@ from timecurve_bot.swarm_layout import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[4]
-_BOT_SRC = _REPO_ROOT / "bots" / "timecurve" / "src"
+_BOT_SRC = _REPO_ROOT / "bots" / "timearena" / "src"
 _PID_FILE = Path("/tmp/yieldomega_bot_swarm.pids")
 _LOG_DIR = Path("/tmp")
 

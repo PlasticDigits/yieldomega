@@ -108,7 +108,7 @@ def buy(
             h = hash_referral_code(code_src)
         except ValueError as e:
             raise ValueError(f"Invalid referral code for buy: {e}") from e
-        fn = tc.functions.buy(charm_wad, h, False)
+        fn = tc.functions.buy(charm_wad, h)
     else:
         fn = tc.functions.buy(charm_wad)
     tx = fn.build_transaction(_tx_template(w3, account))

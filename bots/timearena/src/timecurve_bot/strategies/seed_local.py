@@ -19,7 +19,7 @@ from timecurve_bot.actions import (
     print_dry,
 )
 from timecurve_bot.config import BotConfig
-from timecurve_bot.strategies.common import APPROVE_LARGE, charm_bounds, charm_for_buy, loop_mean_sec
+from timecurve_bot.strategies.common import APPROVE_LARGE, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
 from web3 import Web3
 from web3.contract import Contract
 
@@ -154,7 +154,7 @@ def run(w3: Web3, cfg: BotConfig, tc: Contract, asset: Contract) -> None:
     accts = (a0, a1, a2)
     cycle = 0
     while True:
-        if bool(tc.functions.ended().call()):
+        if sale_ended(w3, tc):
             print("seed-local: sale ended; stopping.")
             return
         acct = accts[cycle % 3]
