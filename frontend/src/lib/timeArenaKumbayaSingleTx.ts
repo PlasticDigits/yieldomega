@@ -6,8 +6,8 @@
 import { readContract } from "wagmi/actions";
 import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import { writeContractWithGasBuffer, asWriteContractAsyncFn } from "@/lib/writeContractWithGasBuffer";
-import { chainSecondsAtReceiptBlock } from "@/lib/timeCurveBuyCooldownUx";
-import { assertSuccessfulBuyReceipt } from "@/lib/timeCurveBuyReceipt";
+import { chainSecondsAtReceiptBlock } from "@/lib/timeArenaBuyCooldownUx";
+import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
 import type { Config } from "wagmi";
 import { erc20Abi, timeArenaBuyRouterAbi, timeArenaReadAbi } from "@/lib/abis";
 import {
@@ -25,13 +25,22 @@ import {
   fetchSwapDeadlineUnixSec,
   KUMBAYA_SWAP_SLIPPAGE_BPS,
   swapMaxInputFromQuoted,
-} from "@/lib/timeCurveKumbayaSwap";
+} from "@/lib/timeArenaKumbayaSwap";
 import {
   assertWalletBuySessionUnchanged,
   type WalletBuySessionSnapshot,
 } from "@/lib/walletBuySessionGuard";
 import { playGameSfxCoinHitBuySubmit } from "@/audio/playGameSfx";
-import type { WalletWriteAsync } from "@/lib/timeCurveKumbayaSingleTx";
+
+/** Same shape as `useWriteContract().writeContractAsync` (avoids hook import in a pure module). */
+export type WalletWriteAsync = (args: {
+  address: `0x${string}`;
+  abi: readonly unknown[];
+  functionName: string;
+  args?: readonly unknown[];
+  value?: bigint;
+  gas?: bigint;
+}) => Promise<`0x${string}`>;
 
 const BYTES32_ZERO =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;

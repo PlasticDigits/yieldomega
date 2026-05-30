@@ -19,7 +19,7 @@ export const APP_RESERVED_TOP_LEVEL_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Reserved under `/timecurve/...` besides product sub-routes (`arena`, `protocol`).
+ * Reserved under `/arena/...` besides product sub-routes (`arena`, `protocol`).
  * Add here if a new static `timecurve/foo` route is introduced.
  */
 export const APP_RESERVED_UNDER_TIMECURVE: ReadonlySet<string> = new Set([
@@ -37,7 +37,7 @@ export function isReservedUnderTimecurve(segment: string): boolean {
 
 /**
  * True when a normalized referral slug must not be used for path/query capture or
- * registration in the web app — same rules as the second segment of `/timecurve/{slug}`.
+ * registration in the web app — same rules as the second segment of `/arena/{slug}`.
  * Input should already be normalized (lowercase `[a-z0-9]`, length 3–16).
  */
 export function isReferralSlugReservedForRouting(normalizedSlug: string): boolean {

@@ -5,7 +5,7 @@ import {
   kumbayaBandLowerWad,
   launchLiquidityAnchorWad,
   projectedReservePerDoubWad,
-} from "@/lib/timeCurvePodiumMath";
+} from "@/lib/timeArenaPodiumMath";
 
 /**
  * Policy constant for full DOUB genesis supply (200M sale + 21.5M presale + 28.5M V3 LP + 1M airdrops).

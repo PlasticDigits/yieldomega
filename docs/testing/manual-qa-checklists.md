@@ -327,12 +327,12 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 ### Manual steps
 
 1. Open **`/arena`** with the wallet on the **correct** target chain — **Buy CHARM** shows normal **arcade** styling and hover lift (unless reduced motion).
-2. Switch to a **wrong** chain — **`timecurve-arena-buy-chain-write-gate`** overlay; **`data-testid="timecurve-arena-buy-charm-cta"`** is **dimmed**, **`disabled`**, with **`chainMismatchWriteMessage`** as native **`title`**.
+2. Switch to a **wrong** chain — **`timecurve-arena-buy-chain-write-gate`** overlay; **`data-testid="arena-arena-buy-charm-cta"`** is **dimmed**, **`disabled`**, with **`chainMismatchWriteMessage`** as native **`title`**.
 3. Switch back to the build target chain — **Buy CHARM** regains normal styling.
 
 ### Code references
 
-- [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) · [`index.css`](../../frontend/src/index.css) (`timecurve-simple__cta--wrong-network`)
+- [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) · [`index.css`](../../frontend/src/index.css) (`arena-simple__cta--wrong-network`)
 - [`chainMismatchWriteGuard.ts`](../../frontend/src/lib/chainMismatchWriteGuard.ts)
 
 **Doc map:** [`arena-views.md` §194](../frontend/arena-views.md#arena-buy-charm-wrong-chain-visual-gitlab-194) · [invariants — `INV-FRONTEND-194-ARENA-BUY-CHAIN`](invariants-and-business-logic.md#arena-buy-charm-wrong-chain-visual-gitlab-194)
@@ -357,7 +357,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 
 ### Code references
 
-- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`arenaV2SaleSessionBridge.ts`](../../frontend/src/pages/timecurve/arenaV2SaleSessionBridge.ts)
+- [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`arenaV2SaleSessionBridge.ts`](../../frontend/src/pages/arena/arenaV2SaleSessionBridge.ts)
 
 **Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144)
 
@@ -465,7 +465,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, or 
 
 ## SFX — buy coin + WarBow twang (GitLab #68 / #108)
 
-Spot-check after changing **`playGameSfx*`**, **`submitKumbayaSingleTxBuy`**, **`useTimeCurveSaleSession`**, **`useTimeCurveArenaModel`**, **`useArenaWarbowRankSfx`**, or **`WebAudioMixer` throttles**.
+Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`**, **`useArenaSaleSession`**, **`useTimeCurveArenaModel`**, **`useArenaWarbowRankSfx`**, or **`WebAudioMixer` throttles**.
 
 ### Checklist
 

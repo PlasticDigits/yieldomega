@@ -290,7 +290,7 @@ export async function fetchTimecurveChainTimer(): Promise<TimecurveChainTimer | 
   };
 }
 
-/** `GET /v1/timecurve/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
+/** `GET /v1/arena/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
 export type TimecurvePodiumApiRow = {
   winners: string[];
   values: string[];
@@ -352,7 +352,7 @@ export async function fetchTimecurveWarbowBattleFeed(_limit = 25, _offset = 0) {
   return null;
 }
 
-/** `GET /v1/timecurve/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)); DISTINCT list unbounded from 1.18.0 ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)). */
+/** `GET /v1/arena/warbow/refresh-candidates` — schema ≥ 1.15.1 ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)); DISTINCT list unbounded from 1.18.0 ([GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)). */
 export type WarbowRefreshCandidatesResponse = {
   candidates: string[];
   limit: number;
@@ -439,7 +439,7 @@ export type PlatformUsageWalletItem = {
   cl8y_spent_wei: string;
 };
 
-/** `GET /v1/timecurve/platform-usage` — network-wide sale + WarBow usage ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)). */
+/** `GET /v1/arena/platform-usage` — network-wide sale + WarBow usage ([GitLab #231](https://gitlab.com/PlasticDigits/yieldomega/-/issues/231)). */
 export type TimecurvePlatformUsage = {
   unique_wallets: string;
   total_buys: string;
@@ -532,14 +532,14 @@ export async function fetchTimecurveCharmRedemptions(_limit = 20) {
   return null;
 }
 
-/** `/v1/timecurve/prize-distributions` with limit/offset for safe query embedding. */
+/** `/v1/arena/prize-distributions` with limit/offset for safe query embedding. */
 export function timecurvePrizeDistributionsApiPath(limit: number, offset = 0): string {
-  return `/v1/timecurve/prize-distributions?limit=${limit}&offset=${offset}`;
+  return `/v1/arena/prize-distributions?limit=${limit}&offset=${offset}`;
 }
 
-/** `/v1/timecurve/prize-payouts` with limit/offset for safe query embedding. */
+/** `/v1/arena/prize-payouts` with limit/offset for safe query embedding. */
 export function timecurvePrizePayoutsApiPath(limit: number, offset = 0): string {
-  return `/v1/timecurve/prize-payouts?limit=${limit}&offset=${offset}`;
+  return `/v1/arena/prize-payouts?limit=${limit}&offset=${offset}`;
 }
 
 /** `/v1/referrals/registrations` with limit/offset and optional `owner` wallet filter (schema ≥ 1.22.0). */

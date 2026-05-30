@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { formatCountdown } from "@/pages/timecurve/formatTimer";
+import { formatCountdown } from "@/pages/arena/formatTimer";
 
 export function warbowClaimFlagSilenceRemainingSec(
   ledgerNowSec: number,

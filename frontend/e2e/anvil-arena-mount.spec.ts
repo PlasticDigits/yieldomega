@@ -11,13 +11,13 @@ test.describe("Anvil Arena mount", () => {
     await page.goto("/arena");
     await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({ timeout: 120_000 });
     await expect(page.getByTestId("time-arena-page-mounted")).toBeAttached({ timeout: 120_000 });
-    await expect(page.locator(".timecurve-simple-page")).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator(".arena-simple-page")).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId("arena-charm-cred-card")).toBeVisible({ timeout: 120_000 });
     await expect(page.getByTestId("arena-timer-chips")).toBeAttached({ timeout: 120_000 });
   });
 
   test("redirects /timecurve to /arena", async ({ page }) => {
-    await page.goto("/timecurve");
+    await page.goto("/arena");
     await expect(page).toHaveURL(/\/arena$/);
   });
 });

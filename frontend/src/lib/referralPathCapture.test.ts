@@ -13,18 +13,18 @@ describe("extractReferralCodeFromPathname", () => {
   });
 
   it("accepts a code under /timecurve when not a product sub-route", () => {
-    expect(extractReferralCodeFromPathname("/timecurve/abc12")).toBe("abc12");
-    expect(extractReferralCodeFromPathname("/timecurve/test1")).toBe("test1");
+    expect(extractReferralCodeFromPathname("/arena/abc12")).toBe("abc12");
+    expect(extractReferralCodeFromPathname("/arena/test1")).toBe("test1");
   });
 
   it("returns null for arena and protocol", () => {
-    expect(extractReferralCodeFromPathname("/timecurve/arena")).toBeNull();
-    expect(extractReferralCodeFromPathname("/timecurve/protocol")).toBeNull();
+    expect(extractReferralCodeFromPathname("/arena/arena")).toBeNull();
+    expect(extractReferralCodeFromPathname("/arena/protocol")).toBeNull();
   });
 
   it("returns null when the slug mirrors a reserved top-level segment", () => {
-    expect(extractReferralCodeFromPathname("/timecurve/home")).toBeNull();
-    expect(extractReferralCodeFromPathname("/timecurve/referrals")).toBeNull();
+    expect(extractReferralCodeFromPathname("/arena/home")).toBeNull();
+    expect(extractReferralCodeFromPathname("/arena/referrals")).toBeNull();
   });
 
   it("returns null for longer paths (no path capture yet)", () => {

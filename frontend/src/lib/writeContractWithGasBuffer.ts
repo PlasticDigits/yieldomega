@@ -12,7 +12,7 @@ type EstimateContractGasFn = typeof defaultEstimateContractGas;
 /**
  * Writer signature compatible with `useWriteContract().writeContractAsync` plus an optional
  * `gas: bigint` override. Same shape that `WalletWriteAsync` advertises after the #176 extension
- * (see `frontend/src/lib/timeCurveKumbayaSingleTx.ts`).
+ * (see `frontend/src/lib/timeArenaKumbayaSingleTx.ts`).
  */
 /**
  * Cast wagmi's `useWriteContract().writeContractAsync` (a complex discriminated union) to the

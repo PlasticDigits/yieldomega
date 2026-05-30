@@ -2,7 +2,7 @@
 
 Python **client** for [`TimeArena`](../../contracts/src/arena/TimeArena.sol) (Arena v2): reads authoritative onchain state and optionally submits normal transactions. It does **not** replace contracts or encode a parallel rules engine.
 
-Renamed from `bots/timecurve/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
+Renamed from `bots/arena/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
 
 **Anvil ≠ MegaETH:** local Foundry Anvil uses vanilla EVM-style gas and timing. A green run here does **not** prove behavior on MegaETH testnet or mainnet. See [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) and [`docs/testing/strategy.md`](../../docs/testing/strategy.md).
 

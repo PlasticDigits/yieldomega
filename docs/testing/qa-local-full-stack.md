@@ -102,7 +102,7 @@ Substitute `RPC_URL` and indexer base URL from stack output or `frontend/.env.lo
 ```bash
 cast block-number --rpc-url "$RPC_URL"
 curl -sf "${INDEXER_URL}/v1/status"
-curl -s "${INDEXER_URL}/v1/timecurve/buys?limit=5" | jq .
+curl -s "${INDEXER_URL}/v1/arena/buys?limit=5" | jq .
 ```
 
 **Optional:** `make check-frontend-env` — merged `frontend/.env` + `frontend/.env.local` ([`e2e-anvil.md`](e2e-anvil.md)).
@@ -137,7 +137,7 @@ Use this list after the orchestrator or documented manual sequence ([issue #104]
 
 - [ ] `cast block-number --rpc-url <RPC_URL>` succeeds.
 - [ ] `curl -sf http://127.0.0.1:<indexer>/v1/status` returns OK.
-- [ ] `curl -s 'http://127.0.0.1:<indexer>/v1/timecurve/buys?limit=5' | jq .` returns JSON (empty array OK right after deploy).
+- [ ] `curl -s 'http://127.0.0.1:<indexer>/v1/arena/buys?limit=5' | jq .` returns JSON (empty array OK right after deploy).
 - [ ] Browser: app URL loads; TimeCurve phase matches setup (live vs post–rich-state).
 - [ ] If swarm enabled: `/tmp/yieldomega_swarm_*.log` shows activity; buys endpoint gains rows over time (with short cooldown for dense checks).
 - [ ] If `SKIP_ANVIL_RICH_STATE=1` + swarm: when stack **started** Anvil, logs note **interval mining**; if **reusing** RPC, expect the documented warning path ([issue #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)).
@@ -151,4 +151,4 @@ Use this list after the orchestrator or documented manual sequence ([issue #104]
 - [`manual-qa-checklists.md`](manual-qa-checklists.md) — Issue-tagged contributor checklists (includes [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104) TOC row).
 - [`invariants-and-business-logic.md`](invariants-and-business-logic.md) — **Local QA full stack orchestrator** ([GitLab #104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104)): [`invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104`](invariants-and-business-logic.md#qa-local-full-stack-orchestrator-gitlab-104).
 
-Player-facing agents: root [`skills/README.md`](../../skills/README.md) (index); contributor QA cross-link for local stack in [`skills/script-with-timecurve-local/SKILL.md`](../../skills/script-with-timecurve-local/SKILL.md).
+Player-facing agents: root [`skills/README.md`](../../skills/README.md) (index); contributor QA cross-link for local stack in [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md).

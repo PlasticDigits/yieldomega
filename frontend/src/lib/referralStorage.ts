@@ -130,7 +130,7 @@ function captureFromRefQueryString(search: string): boolean {
 
 /**
  * On load and on client-side navigations, persist the pending referral: first `?ref=`
- * (if valid), else path-based `/code` or `/timecurve/code` when the segment is
+ * (if valid), else path-based `/code` or `/arena/code` when the segment is
  * a valid on-chain code shape (see `extractReferralCodeFromPathname`).
  */
 export function applyReferralUrlCapture(pathname: string, search: string): void {

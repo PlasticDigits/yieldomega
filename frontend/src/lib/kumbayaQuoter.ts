@@ -8,7 +8,7 @@ import { readContract } from "wagmi/actions";
 import type { HexAddress } from "@/lib/addresses";
 import { kumbayaQuoterV2Abi, timeArenaReadAbi, timeCurveReadAbi } from "@/lib/abis";
 import type { KumbayaChainConfigResolved, PayWithAsset } from "@/lib/kumbayaRoutes";
-import { WAD } from "@/lib/timeCurveMath";
+import { WAD } from "@/lib/timeArenaMath";
 import { kumbayaBuyDebugLog } from "@/lib/kumbayaBuyDebug";
 
 function amountInFromQuoteResult(result: unknown): bigint {

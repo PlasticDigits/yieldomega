@@ -8,20 +8,20 @@
 
 ## Pages (illustrative)
 
-- **TimeCurve** — three-route surface sharing one sub-nav (`<TimeCurveSubnav />`):
+- **TimeCurve** — three-route surface sharing one sub-nav (`<ArenaSubnav />`):
   - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown
-    rendered through the shared `TimeCurveTimerHero` (scene-art backplate,
+    rendered through the shared `ArenaTimerHero` (scene-art backplate,
     days chip + tabular digits, urgency-aware glow + pulse — same design
     family as `LaunchCountdownPage`), and a single focal **buy CHARM** card
     with a live rate board (current per-CHARM CL8Y price
     + at-launch DOUB↔CL8Y chain), and last-3 activity ticker. Cross-page navigation
-    to Arena / Protocol lives only in the persistent `TimeCurveSubnav` at the top
-    of the route. Renders through `TimeCurveSimplePage` + `useTimeCurveSaleSession`
+    to Arena / Protocol lives only in the persistent `ArenaSubnav` at the top
+    of the route. Renders through `ArenaSimplePage` + `useArenaSaleSession`
     so the buy/redeem path stays a single source of truth.
-  - **`/timecurve/arena`** — existing dense PvP surface (WarBow Ladder, four reserve
+  - **`/arena/arena`** — existing dense PvP surface (WarBow Ladder, four reserve
     podiums, full battle feed, raw data accordion) for power users. **No game-rule
     changes vs the previous `/timecurve`.**
-  - **`/timecurve/protocol`** — read-only operator view of `TimeCurve`,
+  - **`/arena/protocol`** — read-only operator view of `TimeCurve`,
     `LinearCharmPrice`, and `FeeRouter` reads (sale state, immutable parameters,
     sink configuration). No write surface. The AUDIT **DOUB projection** cards
     group launch economics into supply/redemption, price anchors, and
@@ -109,7 +109,7 @@ shape constraint:
 - `scenes/` — wide JPG backplates for `PageHero` (`sceneSrc` prop) and the
   `LaunchCountdown` scene backdrop.
 - `icons/` — 256px square PNG pictograms used inside `PageBadge` (status,
-  phase), `IndexerStatusBar`, `TimeCurveSubnav`, and the WarBow legend.
+  phase), `IndexerStatusBar`, `ArenaSubnav`, and the WarBow legend.
 - `public/tokens/` — canonical **CHARM / CL8Y / DOUB / ETH / USDM** logos and
   the **MegaETH** mark, served as `/tokens/…` and centralized in
   [`tokenMedia.ts`](../../frontend/src/lib/tokenMedia.ts) (see

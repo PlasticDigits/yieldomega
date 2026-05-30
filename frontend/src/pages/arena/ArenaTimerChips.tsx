@@ -5,7 +5,7 @@ import { useReadContracts } from "wagmi";
 import { fetchArenaTimers } from "@/lib/indexerApi";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { timeArenaReadAbi } from "@/lib/abis";
-import { formatMmSsCountdown } from "@/pages/timecurve/formatTimer";
+import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 
 const LABELS = ["Last Buy", "Time Booster", "Streak", "WarBow"] as const;
 

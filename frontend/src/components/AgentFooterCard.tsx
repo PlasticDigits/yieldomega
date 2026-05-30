@@ -15,7 +15,7 @@ const PLAY_SKILLS: { label: string; path: string }[] = [
   { label: "play-time-arena-warbow (stub until #252)", path: "skills/play-time-arena-warbow/SKILL.md" },
   { label: "skills index (play + contributor map)", path: "skills/README.md" },
   { label: "why-yieldomega-participation-matters", path: "skills/why-yieldomega-participation-matters/SKILL.md" },
-  { label: "script-with-timecurve-local (Anvil stack env)", path: "skills/script-with-timecurve-local/SKILL.md" },
+  { label: "script-with-timearena-local (Anvil stack env)", path: "skills/script-with-timearena-local/SKILL.md" },
 ];
 
 const CONTRIBUTOR_SKILL = {
@@ -158,8 +158,8 @@ export function AgentFooterCard() {
           <p className="app-footer-agent__p">
             Use <strong>RPC</strong> for <code className="app-footer-agent__code-inline">deadline</code> vs{" "}
             <code className="app-footer-agent__code-inline">latest</code> time — not indexer latency alone (
-            <a href={ghBlob("skills/script-with-timecurve-local/SKILL.md")} target="_blank" rel="noreferrer">
-              script-with-timecurve-local
+            <a href={ghBlob("skills/script-with-timearena-local/SKILL.md")} target="_blank" rel="noreferrer">
+              script-with-timearena-local
             </a>
             ). Prefer <code className="app-footer-agent__code-inline">TimeArena</code> reads and{" "}
             <code className="app-footer-agent__code-inline">GET /v1/arena/*</code> indexer routes (

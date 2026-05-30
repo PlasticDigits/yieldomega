@@ -110,7 +110,7 @@ Current **`TimeArena`** bootstrap deploy ([`DeployProduction.s.sol`](../../contr
 ## Routes (frontend)
 
 - Primary play route: **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)).
-- Legacy **`/timecurve/*`** redirects to **`/arena/*`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
+- Legacy **`/arena/*`** redirects to **`/arena/*`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
 
 ---
 

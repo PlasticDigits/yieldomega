@@ -78,7 +78,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 ## 5. History consistency
 
 - [x] **DB:** `idx_timecurve_buy`, `idx_retired_v1_deposit`, `idx_nft_minted` each contained **1** row after the smoke txs (verified with `psql` `COUNT(*)`).
-- [x] **API:** after `::text` SELECT fix, `GET /v1/timecurve/buys`, `/v1/retired-v1/deposits`, `/v1/leprechauns/mints` return non-empty `items` matching those rows (re-verify after any schema change).
+- [x] **API:** after `::text` SELECT fix, `GET /v1/arena/buys`, `/v1/retired-v1/deposits`, `/v1/leprechauns/mints` return non-empty `items` matching those rows (re-verify after any schema change).
 
 ---
 
