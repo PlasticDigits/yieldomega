@@ -11,6 +11,6 @@ test("home shows title and nav links", async ({ page }) => {
   }
   await expect(page.getByRole("heading", { name: "YieldOmega", level: 1 })).toBeVisible();
   await expect(
-    page.getByLabel("Primary").getByRole("link", { name: "TimeCurve" }),
+    page.getByLabel("Primary").getByRole("link", { name: "Time Arena" }),
   ).toBeVisible();
 });

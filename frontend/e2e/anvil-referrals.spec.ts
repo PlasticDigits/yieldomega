@@ -54,7 +54,7 @@ test.describe("Anvil referrals surface", () => {
     await sharePanel.getByRole("button", { name: /^Copy$/ }).nth(0).click();
     await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);
     const copiedPath = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copiedPath).toContain(`/timecurve/${code}`);
+    expect(copiedPath).toContain(`/arena/${code}`);
     await expect(sharePanel.getByRole("button", { name: /^Copied!$/ })).toHaveCount(1);
     await sharePanel.getByRole("button", { name: /^Copied!$/ }).click();
     await expect(page.getByTestId("referrals-copy-feedback")).toContainText(/Copied to clipboard/i);

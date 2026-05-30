@@ -5,7 +5,7 @@
 import { erc20Abi } from "viem";
 import { readContract } from "wagmi/actions";
 import type { Config } from "wagmi";
-import { cl8yTimeCurveApprovalAmountWei } from "@/lib/cl8yTimeCurveApprovalPreference";
+import { arenaDoubApprovalAmountWei } from "@/lib/arenaDoubApprovalPreference";
 import {
   asWriteContractAsyncFn,
   writeContractWithGasBuffer,
@@ -45,7 +45,7 @@ export async function ensureDoubTimeArenaAllowance({
     functionName: "allowance",
     args: [account, timeArenaAddress],
   });
-  const approveAmt = cl8yTimeCurveApprovalAmountWei(needWei, unlimitedPreferred);
+  const approveAmt = arenaDoubApprovalAmountWei(needWei, unlimitedPreferred);
   if (allow >= approveAmt) {
     return;
   }

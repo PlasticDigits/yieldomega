@@ -5,7 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from "react-router-
 import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 import { RootLayout } from "@/layout/RootLayout";
 import { LaunchCountdownPage } from "@/pages/LaunchCountdownPage";
-import { TimeCurveProtocolDataProvider } from "@/pages/timecurve/TimeCurveProtocolDataContext";
+import { ArenaProtocolDataProvider } from "@/pages/arena/ArenaProtocolDataContext";
 import { launchTimestampSec, useLaunchCountdown } from "@/lib/launchCountdown";
 
 function lazyPage(
@@ -20,9 +20,9 @@ function lazyPage(
 
 const HomePage = lazyPage(() => import("@/pages/HomePage"), "HomePage");
 const TimeArenaPage = lazyPage(() => import("@/pages/TimeArenaPage"), "TimeArenaPage");
-const TimeCurveProtocolPage = lazyPage(
-  () => import("@/pages/TimeCurveProtocolPage"),
-  "TimeCurveProtocolPage",
+const ArenaProtocolPage = lazyPage(
+  () => import("@/pages/arena/ArenaProtocolPage"),
+  "ArenaProtocolPage",
 );
 const ArenaBranchPage = lazyPage(() => import("@/pages/ArenaBranchPage"), "ArenaBranchPage");
 const ReferralsPage = lazyPage(() => import("@/pages/ReferralsPage"), "ReferralsPage");
@@ -30,9 +30,9 @@ const KumbayaPage = lazyPage(() => import("@/pages/KumbayaPage"), "KumbayaPage")
 const SirPage = lazyPage(() => import("@/pages/SirPage"), "SirPage");
 const NotFoundPage = lazyPage(() => import("@/pages/NotFoundPage"), "NotFoundPage");
 
-function LegacyTimecurveSegmentRedirect() {
-  const { timecurveSegment } = useParams<{ timecurveSegment: string }>();
-  const seg = timecurveSegment?.trim() ?? "";
+function LegacyArenaSegmentRedirect() {
+  const { arenaLegacySegment } = useParams<{ arenaLegacySegment: string }>();
+  const seg = arenaLegacySegment?.trim() ?? "";
   if (!seg) {
     return <Navigate to="/arena" replace />;
   }
@@ -47,15 +47,15 @@ const SECONDARY_ROUTES: Surface[] = [
   { path: "sir", element: <SirPage /> },
 ];
 
-/** Canonical Arena routes (#256, #266). Legacy `/timecurve/*` redirects here. */
+/** Canonical Arena routes (#256, #266). Legacy `/arena/*` redirects here. */
 const ARENA_ROUTES: Surface[] = [
   { path: "arena", element: <TimeArenaPage /> },
   {
     path: "arena/protocol",
     element: (
-      <TimeCurveProtocolDataProvider>
-        <TimeCurveProtocolPage />
-      </TimeCurveProtocolDataProvider>
+      <ArenaProtocolDataProvider>
+        <ArenaProtocolPage />
+      </ArenaProtocolDataProvider>
     ),
   },
   { path: "arena/:arenaSegment", element: <ArenaBranchPage /> },
@@ -65,7 +65,7 @@ const ARENA_ROUTES: Surface[] = [
     path: "timecurve/protocol",
     element: <Navigate to="/arena/protocol" replace />,
   },
-  { path: "timecurve/:timecurveSegment", element: <LegacyTimecurveSegmentRedirect /> },
+  { path: "timecurve/:arenaLegacySegment", element: <LegacyArenaSegmentRedirect /> },
 ];
 
 const ROUTES_NO_ENV: Surface[] = [

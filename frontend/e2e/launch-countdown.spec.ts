@@ -22,7 +22,7 @@ test("countdown gate locks every route when VITE_LAUNCH_TIMESTAMP is in the futu
   await expect(page.locator(".app-footer")).toHaveCount(0);
   await expect(page.getByLabel("Primary")).toHaveCount(0);
 
-  await page.goto("/timecurve");
+  await page.goto("/arena");
   await expect(page.getByTestId("launch-countdown")).toBeVisible();
   await expect(page.locator(".app-header")).toHaveCount(0);
 

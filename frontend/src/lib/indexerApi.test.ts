@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchIndexerStatus,
-  fetchTimecurveBuys,
+  fetchArenaBuys,
   fetchTimecurveChainTimer,
   fetchTimecurveWarbowLeaderboardAll,
   referralAppliedApiPath,
@@ -37,23 +37,23 @@ describe("timecurvePlatformUsageApiPath", () => {
 
 describe("timecurvePrizeDistributionsApiPath", () => {
   it("includes limit and default offset", () => {
-    expect(timecurvePrizeDistributionsApiPath(20)).toBe("/v1/timecurve/prize-distributions?limit=20&offset=0");
+    expect(timecurvePrizeDistributionsApiPath(20)).toBe("/v1/arena/prize-distributions?limit=20&offset=0");
   });
 
   it("includes custom offset", () => {
     expect(timecurvePrizeDistributionsApiPath(10, 30)).toBe(
-      "/v1/timecurve/prize-distributions?limit=10&offset=30",
+      "/v1/arena/prize-distributions?limit=10&offset=30",
     );
   });
 });
 
 describe("timecurvePrizePayoutsApiPath", () => {
   it("includes limit and default offset", () => {
-    expect(timecurvePrizePayoutsApiPath(30)).toBe("/v1/timecurve/prize-payouts?limit=30&offset=0");
+    expect(timecurvePrizePayoutsApiPath(30)).toBe("/v1/arena/prize-payouts?limit=30&offset=0");
   });
 
   it("includes custom offset", () => {
-    expect(timecurvePrizePayoutsApiPath(25, 5)).toBe("/v1/timecurve/prize-payouts?limit=25&offset=5");
+    expect(timecurvePrizePayoutsApiPath(25, 5)).toBe("/v1/arena/prize-payouts?limit=25&offset=5");
   });
 });
 
@@ -159,9 +159,9 @@ describe("HTTP 429 triggers shared indexer backoff", () => {
     resetIndexerConnectivityForTests();
   });
 
-  it("fetchTimecurveBuys bumps backoff immediately", async () => {
+  it("fetchArenaBuys bumps backoff immediately", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response("", { status: 429 }));
-    await expect(fetchTimecurveBuys(20, 0)).resolves.toBeNull();
+    await expect(fetchArenaBuys(20, 0)).resolves.toBeNull();
     expect(getIndexerBackoffPollMs(1000)).toBe(5_000);
   });
 
@@ -191,11 +191,11 @@ describe("indexer JSON bodies (issue #111)", () => {
     vi.unstubAllEnvs();
   });
 
-  it("fetchTimecurveBuys resolves null when response is 200 OK but body is not JSON", async () => {
+  it("fetchArenaBuys resolves null when response is 200 OK but body is not JSON", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response("not json", { status: 200, headers: { "content-type": "application/json" } }),
     );
-    await expect(fetchTimecurveBuys(20, 0)).resolves.toBeNull();
+    await expect(fetchArenaBuys(20, 0)).resolves.toBeNull();
   });
 
   it("fetchTimecurveChainTimer resolves null when response is 200 OK but json() rejects", async () => {

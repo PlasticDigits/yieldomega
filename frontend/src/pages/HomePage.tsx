@@ -59,7 +59,7 @@ export function HomePage() {
           <p className="lede">The Timed Launchpad Primitive</p>
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
-              <Link to="/timecurve" className="btn-primary btn-primary--xl btn-primary--priority">
+              <Link to="/arena" className="btn-primary btn-primary--xl btn-primary--priority">
                 Open TimeCurve
               </Link>
             </motion.div>

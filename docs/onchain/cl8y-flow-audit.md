@@ -56,7 +56,7 @@ These are lower risk under the requested model because the app contract receives
 
 ## App And Observability Surfaces
 
-- `frontend/src/pages/timecurve/useTimeCurveSaleSession.ts` and `frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx` initiate buys, Kumbaya entry, and WarBow CL8Y spend.
+- `frontend/src/pages/arena/useArenaSaleSession.ts` and `frontend/src/pages/timeCurveArena/useTimeCurveArenaModel.tsx` initiate buys, Kumbaya entry, and WarBow CL8Y spend.
 - `frontend/src/pages/timeCurveArena/TimeCurveArenaView.tsx` — **`distributePrizes`** CTA is **owner-only** (matches onchain `onlyOwner`; non-owner sees disabled control + copy).
 - `frontend/src/pages/referrals/ReferralRegisterSection.tsx` initiates referral registration burns. This is a direct user-to-burn transfer, not app-custodied CL8Y.
 - The indexer decodes and persists Arena v2 **`Buy`**, **`PodiumFunded`**, and referral events; legacy v1 player-reserve and **`FeeRouter`** CL8Y rows were removed ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). It is observability only and cannot authorize CL8Y movement.

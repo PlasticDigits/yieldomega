@@ -27,9 +27,9 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 
 - **Home / hub: wide hero (desktop)** — [`scenes/home-hero-desktop.jpg`](../scenes/home-hero-desktop.jpg)
 - **Home / hub: mobile crop variant** — [`scenes/home-hero-mobile.jpg`](../scenes/home-hero-mobile.jpg)
-- **TimeCurve Simple: timer + fair launch calm energy** — [`scenes/timecurve-simple.jpg`](../scenes/timecurve-simple.jpg)
+- **TimeCurve Simple: timer + fair launch calm energy** — [`scenes/arena-simple.jpg`](../scenes/arena-simple.jpg)
 - **TimeCurve Arena: PvP / podium tension** — [`scenes/timecurve-arena.jpg`](../scenes/timecurve-arena.jpg)
-- **TimeCurve Protocol: operator / audit neutral backdrop** — [`scenes/timecurve-protocol.jpg`](../scenes/timecurve-protocol.jpg)
+- **TimeCurve Protocol: operator / audit neutral backdrop** — [`scenes/arena-protocol.jpg`](../scenes/arena-protocol.jpg)
 - **retired v1 player reserve: reserve / v1 reserve / chart-adjacent** — [`scenes/retired-v1-reserve.jpg`](../scenes/retired-v1-reserve.jpg)
 - **Collection: gallery-forward (shelves / vault / grid)** — [`scenes/collection-gallery.jpg`](../scenes/collection-gallery.jpg)
 - **Referrals: network / invitation threads motif** — [`scenes/referrals-network.jpg`](../scenes/referrals-network.jpg)

@@ -58,7 +58,7 @@ This is a **template** for operators; **actual** multisig names and block height
 | `DoubPresaleVesting` | Pause/flag on `claim` only, or `claimsEnabled` + role | `DoubPresaleVesting.t.sol`, invariants |
 | `TimeCurve` | Scoped `Pausable` or latches for `buy` / `redeemCharms` / `distributePrizes` | `TimeCurve.t.sol`, `TimeCurveInvariant.t.sol` |
 | `FeeRouter` + sinks | Only if “pause routing without pausing all of TimeCurve” | `FeeRouter*.t.sol`, security review for bypass |
-| Indexer / frontend | New events/fields | `decoder.rs`, `persist.rs`, `useTimeCurveSaleSession`, ABIs |
+| Indexer / frontend | New events/fields | `decoder.rs`, `persist.rs`, `useArenaSaleSession`, ABIs |
 | Deploy | Initial paused state, roles | `DeployDev.s.sol` pattern, `deployments/*.json` |
 
 ---

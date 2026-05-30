@@ -68,7 +68,7 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
-Edit **`bots/timecurve/.env.local`** (gitignored). Add your **browser test wallet address** (MetaMask or similar) so it receives the same one-shot funding as swarm bots:
+Edit **`bots/arena/.env.local`** (gitignored). Add your **browser test wallet address** (MetaMask or similar) so it receives the same one-shot funding as swarm bots:
 
 ```bash
 # Comma-separated 0x addresses only — never commit private keys.
@@ -89,12 +89,12 @@ Also ensure Anvil funding is allowed when running swarm (the local stack sets th
 If you used `SKIP_ANVIL_RICH_STATE=1`, the stack may already have started the swarm. Otherwise, from repo root with env loaded:
 
 ```bash
-set -a && source bots/timecurve/.env.local && set +a
+set -a && source bots/arena/.env.local && set +a
 export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1
 cd bots/timecurve && .venv/bin/timecurve-bot --allow-anvil-funding swarm
 ```
 
-Details: [`bots/timecurve/README.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/bots/timecurve/README.md).
+Details: [`bots/arena/README.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/bots/arena/README.md).
 
 ---
 
@@ -128,9 +128,9 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 
 ### Bots, swarm, and QA wallet
 
-- [ ] `bash scripts/sync-bot-env-from-frontend.sh` run so `bots/timecurve/.env.local` matches frontend RPC and addresses.
-- [ ] `bots/timecurve` deps installed (venv + `pip install -e ".[dev]"`, or PEP 668 fallback in [`bots/timecurve/README.md`](../../bots/timecurve/README.md)); `timecurve-bot --help` and `import web3` succeed.
-- [ ] `YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES` set in `bots/timecurve/.env.local` to the **same** address(es) you use in the browser (**0x only**, no private keys in shared files).
+- [ ] `bash scripts/sync-bot-env-from-frontend.sh` run so `bots/arena/.env.local` matches frontend RPC and addresses.
+- [ ] `bots/timecurve` deps installed (venv + `pip install -e ".[dev]"`, or PEP 668 fallback in [`bots/arena/README.md`](../../bots/arena/README.md)); `timecurve-bot --help` and `import web3` succeed.
+- [ ] `YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES` set in `bots/arena/.env.local` to the **same** address(es) you use in the browser (**0x only**, no private keys in shared files).
 - [ ] Swarm has run with Anvil funding: either the stack started it (`SKIP_ANVIL_RICH_STATE=1` path) **or** you ran `timecurve-bot --allow-anvil-funding swarm` manually **or** you intentionally skipped swarm (`START_BOT_SWARM=0`) and documented why.
 - [ ] After funding: QA wallet shows sufficient **native ETH** on Anvil for gas (same dev top-up as swarm bots).
 - [ ] After funding: QA wallet shows **mock CL8Y** (accepted asset) balance for buys and WarBow burns.
@@ -149,9 +149,9 @@ The older [ecosystem-qa verification spec v2.0](https://gitlab.com/PlasticDigits
 
 ## Acceptance criteria — indexer smoke
 
-- [ ] `curl -s "http://127.0.0.1:<INDEXER_PORT>/v1/timecurve/buys?limit=5"` returns HTTP 200 and JSON (adjust `<INDEXER_PORT>` from stack output).
+- [ ] `curl -s "http://127.0.0.1:<INDEXER_PORT>/v1/arena/buys?limit=5"` returns HTTP 200 and JSON (adjust `<INDEXER_PORT>` from stack output).
 - [ ] After swarm or manual buys, **buy** rows appear in that response (non-empty `data` / rows as applicable).
-- [ ] Migrations applied; `/v1/timecurve/*` routes used by the frontend respond without 5xx.
+- [ ] Migrations applied; `/v1/arena/*` routes used by the frontend respond without 5xx.
 - [ ] Buy and WarBow data are driven from **decoded events**; ambush / streak-break come from **`Buy` event fields**, not offchain guesses.
 
 ---
@@ -192,11 +192,11 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 - [ ] **A1a** — From repo root: `make check-frontend-env` — validates merged `frontend/.env` + `frontend/.env.local` (TimeCurve + FeeRouter + related `VITE_*`).
 - [ ] **A2** — Optional: `SKIP_ANVIL_RICH_STATE=1` for live sale + default swarm (see script header) — sale stays active for bots/UI; `START_BOT_SWARM=0` to skip bots.
 - [ ] **A3** — `cd frontend && npm ci && npm run dev` — app at `http://127.0.0.1:5173` (or configured port). Restart Vite if you opened dev **before** `frontend/.env.local` was created.
-- [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — `bots/timecurve/.env.local` aligned with `VITE_*`.
+- [ ] **A4** — `bash scripts/sync-bot-env-from-frontend.sh` — `bots/arena/.env.local` aligned with `VITE_*`.
 - [ ] **A5** — `cd bots/timecurve && python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"` (or PEP 668 fallback in that README) — `timecurve-bot` / `import web3` works.
-- [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to `bots/timecurve/.env.local` (**addresses only**); re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + mock CL8Y mint as swarm bots (Anvil **31337** + `--allow-anvil-funding` only).
+- [ ] **A6** — QA wallet: add **`YIELDOMEGA_ANVIL_EXTRA_FUNDED_ADDRESSES=<0x...>`** to `bots/arena/.env.local` (**addresses only**); re-run swarm or stack so one-shot funding includes your wallet — same 10k ETH + mock CL8Y mint as swarm bots (Anvil **31337** + `--allow-anvil-funding` only).
 - [ ] **A7** — Connect browser wallet with the **same** account as A6 — can submit buys / WarBow txs from UI.
-- [ ] **A8** — Smoke indexer: `curl -s http://127.0.0.1:<INDEXER_PORT>/v1/timecurve/buys?limit=5` — JSON rows after activity.
+- [ ] **A8** — Smoke indexer: `curl -s http://127.0.0.1:<INDEXER_PORT>/v1/arena/buys?limit=5` — JSON rows after activity.
 
 ---
 
@@ -225,5 +225,5 @@ The external [YO-TimeCurve-Verification-Spec.md v2.0](https://gitlab.com/Plastic
 
 - [`docs/testing/e2e-anvil.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/docs/testing/e2e-anvil.md) — `VITE_*` table, Playwright
 - [`scripts/check-frontend-vite-env.sh`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/scripts/check-frontend-vite-env.sh) — verify required `VITE_*` before `npm run dev`
-- [`bots/timecurve/README.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/bots/timecurve/README.md) — swarm, env vars
+- [`bots/arena/README.md`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/bots/arena/README.md) — swarm, env vars
 - [`scripts/start-local-anvil-stack.sh`](https://gitlab.com/PlasticDigits/yieldomega/-/blob/main/scripts/start-local-anvil-stack.sh) — stack env toggles

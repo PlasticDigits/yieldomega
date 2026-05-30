@@ -333,7 +333,7 @@ if [[ -n "${KUMBAYA_WETH}" && -n "${KUMBAYA_USDM}" && -n "${KUMBAYA_ROUTER}" && 
   echo "  Kumbaya VITE_* merged into ${FRONTEND}/.env.local (GitLab #84)."
 fi
 
-# Optional: schedule the LaunchCountdownPage → TimeCurveSimplePage handoff (issue #40).
+# Optional: schedule the LaunchCountdownPage → ArenaSimplePage handoff (issue #40).
 # Set LAUNCH_OFFSET_SEC=N to make the launch fire N seconds from "now". Use small
 # values (e.g. 60–120) to watch the countdown gate flip on the local frontend.
 if [[ -n "${LAUNCH_OFFSET_SEC:-}" ]]; then

@@ -12,7 +12,7 @@ These files help agents and humans **use** onchain **Time Arena** (Arena v2) mec
 | [`play-time-arena-doub/SKILL.md`](play-time-arena-doub/SKILL.md) | DOUB buys, Last Buy timer, podium funding split; optional **`topUpPodiumPools`** ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)); vault funding indexer [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267). |
 | [`play-time-arena-warbow/SKILL.md`](play-time-arena-warbow/SKILL.md) | WarBow stub until [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252). |
 | [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) | Ethics framing before other play skills. |
-| [`script-with-timecurve-local/SKILL.md`](script-with-timecurve-local/SKILL.md) | Local scripts — env hygiene, proxies, Anvil stack (Arena v2 addresses). |
+| [`script-with-timearena-local/SKILL.md`](script-with-timearena-local/SKILL.md) | Local scripts — env hygiene, proxies, Anvil stack (Arena v2 addresses). |
 
 ## Retired (Arena v2 epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238))
 
