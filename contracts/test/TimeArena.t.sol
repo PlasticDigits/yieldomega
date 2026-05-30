@@ -14,6 +14,10 @@ import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
+import {ReferralRegistry} from "../src/ReferralRegistry.sol";
+import {MockCL8Y} from "../src/tokens/MockCL8Y.sol";
+import {UUPSDeployLib} from "../script/UUPSDeployLib.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract TimeArenaTest is Test {
     Doubloon doub;
@@ -781,5 +785,105 @@ contract TimeArenaTest is Test {
 
     function _adminFor(TimeArena a) internal view returns (AdminSellVault) {
         return AdminSellVault(a.adminSellVault());
+    }
+
+    /// @dev Fresh arena + ReferralRegistry for GitLab #253 referral CRED tests.
+    function _arenaWithReferrals()
+        internal
+        returns (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve)
+    {
+        reserve = new MockCL8Y();
+        reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, admin);
+        PodiumVaults v = new PodiumVaults(doub, admin);
+        AdminSellVault av = new AdminSellVault(doub, admin);
+        TimeArena impl = new TimeArena();
+        bytes memory data = abi.encodeCall(
+            TimeArena.initialize,
+            (
+                doub,
+                v,
+                av,
+                address(reg),
+                address(cred),
+                1000e18,
+                _ext,
+                _init,
+                _cap,
+                _below,
+                _to,
+                300,
+                admin
+            )
+        );
+        ar = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
+        v.setArena(address(ar));
+        av.setArena(address(ar));
+        cred.grantRole(cred.MINTER_ROLE(), address(ar));
+        ar.startArena();
+    }
+
+    /// GitLab #253: referred buy mints Play CRED (5% + 5% of 35 CRED), not CHARM weight.
+    function test_referred_buy_mints_cred_not_charm() public {
+        (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve) = _arenaWithReferrals();
+        address referrer = makeAddr("referrer");
+        address buyer = makeAddr("buyer");
+
+        reserve.mint(referrer, 10e18);
+        vm.startPrank(referrer);
+        reserve.approve(address(reg), type(uint256).max);
+        reg.registerCode("refcode");
+        vm.stopPrank();
+
+        bytes32 codeHash = reg.hashCode("refcode");
+        doub.mint(buyer, 1_000_000e18);
+        vm.startPrank(buyer);
+        doub.approve(address(ar), type(uint256).max);
+
+        uint256 expectedEach = Math.mulDiv(ar.CRED_PER_BUY(), ar.REFERRAL_CRED_BPS(), 10_000);
+        uint256 referrerCredBefore = cred.balanceOf(referrer);
+        uint256 buyerCredBefore = cred.balanceOf(buyer);
+        uint256 totalCharmBefore = ar.totalCharmWeight();
+        uint256 buyerCharmBefore = ar.charmWeight(buyer);
+        uint256 referrerCharmBefore = ar.charmWeight(referrer);
+
+        vm.recordLogs();
+        ar.buy(1e18, codeHash);
+        vm.stopPrank();
+
+        assertEq(cred.balanceOf(referrer) - referrerCredBefore, expectedEach);
+        assertEq(cred.balanceOf(buyer) - buyerCredBefore, expectedEach);
+        assertEq(ar.charmWeight(buyer) - buyerCharmBefore, 1e18);
+        assertEq(ar.charmWeight(referrer) - referrerCharmBefore, 0);
+        assertEq(ar.totalCharmWeight() - totalCharmBefore, 1e18);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 sig = keccak256("ReferralCredApplied(address,address,bytes32,uint256,uint256)");
+        bool sawCredEvent;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].topics[0] == sig) {
+                sawCredEvent = true;
+                (uint256 refCred, uint256 buyCred) = abi.decode(entries[i].data, (uint256, uint256));
+                assertEq(refCred, expectedEach);
+                assertEq(buyCred, expectedEach);
+            }
+        }
+        assertTrue(sawCredEvent);
+    }
+
+    /// GitLab #253: self-referral still reverts.
+    function test_self_referral_reverts() public {
+        (TimeArena ar, ReferralRegistry reg, MockCL8Y reserve) = _arenaWithReferrals();
+        address referrer = makeAddr("selfref");
+
+        reserve.mint(referrer, 10e18);
+        doub.mint(referrer, 1_000_000e18);
+        vm.startPrank(referrer);
+        reserve.approve(address(reg), type(uint256).max);
+        reg.registerCode("selfref");
+        bytes32 codeHash = reg.hashCode("selfref");
+        doub.approve(address(ar), type(uint256).max);
+        vm.expectRevert("TimeArena: self-referral");
+        ar.buy(1e18, codeHash);
+        vm.stopPrank();
     }
 }

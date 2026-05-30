@@ -178,7 +178,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 |------|----------------|------|
 | **TimeArena** | DOUB/CRED buys, four podium timers, 40/30/30 routing, epoch CRED, XP, DOUB WarBow, always-live (`paused` only) | [arena-v2.md](../product/arena-v2.md), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) |
 | **PodiumVaults / AdminSellVault** | Active/seed pools, admin vault, `rollPodiumEpoch`, manual top-up ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) | [arena-v2.md](../product/arena-v2.md) |
-| **ReferralRegistry** | Code registration, referred-buy CRED split | [referrals.md](../product/referrals.md) |
+| **ReferralRegistry** | Code registration; referred-buy **CRED** split (**5% + 5%** of 35 CRED mint, not CHARM) — [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253) | [referrals.md](../product/referrals.md) |
 | **DoubPresaleVesting** | Presale DOUB vesting schedule + claims gate | [`DoubPresaleVesting.sol`](../../contracts/src/vesting/DoubPresaleVesting.sol) |
 | **Indexer** | Arena + referral decode; per-block tx ([#140](#indexer-transactional-block-ingestion-gitlab-140)); reorg rollback | [`REORG_STRATEGY.md`](../../indexer/REORG_STRATEGY.md), [indexer design](../indexer/design.md) |
 | **Frontend `/arena`** | Env-driven addresses, indexer reads, wallet gating | [arena-views.md](../frontend/arena-views.md), [wallet-connection.md](../frontend/wallet-connection.md) |
@@ -310,13 +310,19 @@ Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deplo
 
 **INV-FRONTEND-223-NOT-FOUND:** **`path="*"`** → **`NotFoundPage`**; **`/arena`**, **`/referrals`** unchanged. **`/vesting`** removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
+<a id="referral-cred-split-gitlab-253"></a>
+
+### Referral CRED split (GitLab [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
+
+**INV-REFERRAL-253-CRED:** On referred **`TimeArena`** DOUB buy, **`ReferralCredApplied`** mints **`REFERRAL_CRED_BPS`** (500) of **`CRED_PER_BUY`** (35e18) to **referrer** and **buyer** each; **`charmWeight`** gains **only** purchased **`charmWad`**; self-referral reverts. Indexer persists **`idx_arena_referral_cred`**; HTTP **`/v1/referrals/*`** exposes **`referrer_cred` / `buyer_cred` / `total_referrer_cred_wad`** (schema **≥ 2.3.0**). **`/referrals`** UI shows **CRED**, not CHARM. Forge: **`test_referred_buy_mints_cred_not_charm`**, **`test_self_referral_reverts`**. Spec: [referrals.md § Arena v2](../product/referrals.md).
+
 ---
 
 ## Contract test suite inventory (Arena v2 focus)
 
 | File | Focus |
 |------|--------|
-| [`TimeArena.t.sol`](../../contracts/test/TimeArena.t.sol) | Timers, buys, CRED, XP, WarBow DOUB, routing |
+| [`TimeArena.t.sol`](../../contracts/test/TimeArena.t.sol) | Timers, buys, CRED, XP, WarBow DOUB, routing, referral CRED ([#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) |
 | [`ArenaPrizeRouting.t.sol`](../../contracts/test/ArenaPrizeRouting.t.sol) | 40/30/30 split math |
 | [`DoubPresaleVesting.t.sol`](../../contracts/test/DoubPresaleVesting.t.sol) | Vesting schedule + claims |
 | [`ReferralRegistry.t.sol`](../../contracts/test/ReferralRegistry.t.sol) | Referral burns + registration |
