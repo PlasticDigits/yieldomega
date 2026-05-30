@@ -10,13 +10,15 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Primitives (Arena v2)
 
-- **TimeArena** — Onchain arena where participants buy with **DOUB**, extend a **Last Buy** countdown, and compete for podium prizes. Each buy splits proceeds **40%** active podium · **30%** seed podium · **30%** admin sell vault ([arena-v2](product/arena-v2.md)). No launchpad sale-end, CHARM redemption, or legacy **FeeRouter** sinks.
+- **TimeArena** — Onchain arena where participants buy with **DOUB** (or burn **Play CRED**), extend a **Last Buy** countdown, and compete for four podium prizes. Each DOUB buy splits proceeds **40%** active podium · **30%** seed podium · **30%** admin sell vault. Canonical rules: [time-arena.md](product/time-arena.md) · [arena-v2.md](product/arena-v2.md). **No** launchpad sale-end, CHARM redemption, linear bonding price, or legacy **FeeRouter** sinks.
+
+- **Play CRED** — Non-transferable reward/burn token for free buys (**100 CRED per 1e18 CHARM** on `buyWithCred`); DOUB buys accrue **35 CRED** per buy into the current Last Buy epoch pool.
 
 - **PodiumVaults** — Holds active and seed podium balances funded per buy.
 
 - **AdminSellVault** — Receives the admin slice of each DOUB buy for later distribution policy.
 
-- **ReferralRegistry** — Onchain referral codes; **ReferralApplied** on buys attributes referrer/referee CHARM bonuses ([referrals](product/referrals.md)).
+- **ReferralRegistry** — Onchain referral codes; Arena v2 **`ReferralCredApplied`** on DOUB buys mints **5% + 5%** of the 35 CRED tranche to referrer and buyer ([referrals](product/referrals.md)).
 
 ## Retired primitives (do not reintroduce)
 

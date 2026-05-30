@@ -2,21 +2,25 @@
 
 This filename is kept so **F-11** checkpoints in external QA specs and spreadsheets resolve to stable paths in-repo.
 
+**Arena v2 (live):** Primary play route **`/arena`** · product spec [`docs/product/time-arena.md`](docs/product/time-arena.md) · [#240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240). v1 TimeCurve sale-end / redeem flows are **retired** ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
+
 ## F-10 — Presale vesting UX (`/vesting`)
 
 **Shipping path:** [`/vesting`](frontend/src/pages/PresaleVestingPage.tsx) + onchain **[`DoubPresaleVesting`](contracts/src/vesting/DoubPresaleVesting.sol)** (GitLab [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)).
 
 **Nav:** Route is **hidden** from the primary header — participants use a **direct link** (see issue comment).
 
-**Docs:** [presale-vesting.md](docs/frontend/presale-vesting.md), [launchplan §6](launchplan-timecurve.md#6-under-construction-frontend), [invariants — #92](docs/testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92). **Manual QA checklist:** [`docs/testing/manual-qa-checklists.md#manual-qa-issue-92`](docs/testing/manual-qa-checklists.md#manual-qa-issue-92).
+**Docs:** [presale-vesting.md](docs/frontend/presale-vesting.md), [frontend design § vesting](docs/frontend/presale-vesting.md), [invariants — #92](docs/testing/invariants-and-business-logic.md#presale-vesting-frontend-gitlab-92). **Manual QA checklist:** [`docs/testing/manual-qa-checklists.md#manual-qa-issue-92`](docs/testing/manual-qa-checklists.md#manual-qa-issue-92).
 
 ---
 
-## F-11 — Non–TimeCurve routes at TGE (under construction vs shipped)
+## F-11 — Arena v2 routes (under construction vs shipped)
 
-**Invariant:** **`/rabbit-treasury`** and **`/collection`** use **`UnderConstruction`**. **`/referrals`** does **not** — it is the **full** referrals registration, storage-key docs, registry reads, and share-link UX shipped for TimeCurve attribution ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)). Removing `/referrals` from the placeholder set matches live routing and QA evidence ([GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
+**Live:** **`/arena`** (TimeArena play), **`/arena/protocol`** (AUDIT), **`/referrals`** (full referrals UX — not `UnderConstruction`).
 
-**Canonical doc:** **[`launchplan-timecurve.md`](launchplan-timecurve.md)** — especially **§6 Under construction** and §7 checklist.
+**Retired / placeholder:** **`/rabbit-treasury`**, **`/collection`** → **`UnderConstruction`**. Legacy **`/timecurve/*`** redirects to **`/arena/*`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
+
+**Canonical product spec:** [`docs/product/time-arena.md`](docs/product/time-arena.md) · routing invariants: [`INV-FRONTEND-266-ARENA-ROUTES`](docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
 
 **Product + tests:**
 
@@ -24,4 +28,4 @@ This filename is kept so **F-11** checkpoints in external QA specs and spreadshe
 - [`docs/testing/invariants-and-business-logic.md`](docs/testing/invariants-and-business-logic.md#referrals-page-visual-issue-64)
 - Third-party agent checklist: [`docs/testing/manual-qa-checklists.md#manual-qa-issue-64`](docs/testing/manual-qa-checklists.md#manual-qa-issue-64)
 
-**Agent phase:** Contributor alignment with [`docs/agent-phases.md`](docs/agent-phases.md).
+**Agent phase:** Contributor alignment with [`docs/agent-phases.md`](docs/agent-phases.md) · Play track: [Phase 20](docs/agent-phases.md#phase-20) · [`skills/README.md`](skills/README.md).
