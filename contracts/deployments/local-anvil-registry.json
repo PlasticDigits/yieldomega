@@ -5,7 +5,8 @@
     "TimeArena": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
     "PodiumVaults": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
     "AdminSellVault": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    "ReferralRegistry": "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+    "ReferralRegistry": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "TimeArenaBuyRouter": "0x1fA02b2d6A771842690194Cf62D91bdd92BfE28d"
   },
   "deployBlock": 5
 }
