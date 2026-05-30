@@ -10186,7 +10186,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* "Your stake at launch" panel — combined CHARM ≈ CL8Y line (`participantLaunchValueCl8yWei`). */
+/* Wallet stake / CHARM holdings panel on the simple arena view. */
 .arena-simple__stake-panel.data-panel {
   position: relative;
   isolation: isolate;

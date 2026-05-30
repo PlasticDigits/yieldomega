@@ -110,5 +110,5 @@ export function mapArenaV2UserRows(
 ): readonly ContractReadRow[] | undefined {
   if (!raw?.[0] || raw[0].status !== "success") return undefined;
   const nextBuy = raw[0].result as bigint;
-  return [row(0n), row(false), row(nextBuy), row(0n)];
+  return [row(nextBuy), row(0n)];
 }

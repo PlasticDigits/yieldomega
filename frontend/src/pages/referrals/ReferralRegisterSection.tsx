@@ -222,7 +222,7 @@ export function ReferralRegisterSection({ className }: Props) {
     return {
       text: `≈ $${usd} USD`,
       title:
-        "USD shows 1 CL8Y = 1 USD when the TimeCurve sale price (`currentPricePerCharmWad`) is unavailable; not a live oracle. The CL8Y line above is the onchain registration burn.",
+        "USD shows 1 CL8Y = 1 USD when Time Arena `charmPriceWad` is unavailable; not a live oracle. The CL8Y line above is the onchain registration burn.",
     };
   }, [burnWad, pricePerCharmWad]);
 

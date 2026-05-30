@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { BuyItem } from "@/lib/indexerApi";
-import { displayMinGrossSpendAtFloat, maxGrossSpendAtFloat } from "@/lib/timeArenaMath";
+import { WAD } from "@/lib/timeArenaMath";
 
 export type EnvelopeCurveParams = {
-  saleStartSec: number;
-  charmEnvelopeRefWad: bigint;
-  growthRateWad: bigint;
-  basePriceWad: bigint;
-  dailyIncrementWad: bigint;
+  charmPriceWad: bigint;
+  minCharmWad: bigint;
+  maxCharmWad: bigint;
 };
 
 /**
@@ -16,11 +14,9 @@ export type EnvelopeCurveParams = {
  * Parse with {@link envelopeCurveParamsFromWire} before math.
  */
 export type EnvelopeCurveParamsWire = {
-  saleStartSec: number;
-  charmEnvelopeRefWad: string;
-  growthRateWad: string;
-  basePriceWad: string;
-  dailyIncrementWad: string;
+  charmPriceWad: string;
+  minCharmWad: string;
+  maxCharmWad: string;
 };
 
 export function envelopeCurveParamsFromWire(w: EnvelopeCurveParamsWire | null): EnvelopeCurveParams | null {
@@ -29,11 +25,9 @@ export function envelopeCurveParamsFromWire(w: EnvelopeCurveParamsWire | null): 
   }
   try {
     return {
-      saleStartSec: w.saleStartSec,
-      charmEnvelopeRefWad: BigInt(w.charmEnvelopeRefWad),
-      growthRateWad: BigInt(w.growthRateWad),
-      basePriceWad: BigInt(w.basePriceWad),
-      dailyIncrementWad: BigInt(w.dailyIncrementWad),
+      charmPriceWad: BigInt(w.charmPriceWad),
+      minCharmWad: BigInt(w.minCharmWad),
+      maxCharmWad: BigInt(w.maxCharmWad),
     };
   } catch {
     return null;
@@ -42,35 +36,11 @@ export function envelopeCurveParamsFromWire(w: EnvelopeCurveParamsWire | null): 
 
 /**
  * Where `amount` sat as a share of the legal max gross spend at the buy block time.
- * Legal buys therefore map to roughly 0.1..1.0 because the displayed min:max band is 1:10.
- * Requires indexer `block_timestamp` on the buy row.
+ * Arena v2: fixed min/max spend = charmWad × charmPriceWad / WAD from onchain bounds.
  */
 export function buySpendEnvelopeFillRatio(buy: BuyItem, env: EnvelopeCurveParams): number | null {
-  const ts = buy.block_timestamp?.trim();
-  if (!ts || env.saleStartSec <= 0) {
-    return null;
-  }
-  let elapsedSec: number;
-  try {
-    const bt = Number(BigInt(ts));
-    elapsedSec = Math.max(0, bt - env.saleStartSec);
-  } catch {
-    return null;
-  }
-  const minSpend = displayMinGrossSpendAtFloat(
-    env.charmEnvelopeRefWad,
-    env.growthRateWad,
-    env.basePriceWad,
-    env.dailyIncrementWad,
-    elapsedSec,
-  );
-  const maxSpend = maxGrossSpendAtFloat(
-    env.charmEnvelopeRefWad,
-    env.growthRateWad,
-    env.basePriceWad,
-    env.dailyIncrementWad,
-    elapsedSec,
-  );
+  const minSpend = (env.minCharmWad * env.charmPriceWad) / WAD;
+  const maxSpend = (env.maxCharmWad * env.charmPriceWad) / WAD;
   const amount = BigInt(buy.amount);
   if (maxSpend <= 0n || maxSpend <= minSpend) {
     return null;

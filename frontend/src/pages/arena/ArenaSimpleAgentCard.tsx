@@ -154,7 +154,7 @@ def _sign_send(w3, acct, tx):
 
 
 def gross_cl8y_for_charm(tc, charm_wad):
-    p = int(tc.functions.currentPricePerCharmWad().call())
+    p = int(tc.functions.charmPriceWad().call())
     return (int(charm_wad) * p) // WAD
 
 
@@ -599,14 +599,14 @@ export function ArenaSimpleAgentCard() {
           <p className="app-footer-agent__p">
             By default each sketch <strong>downloads</strong> the published{" "}
             <code className="app-footer-agent__code-inline">TimeArena</code> /{" "}
-            <code className="app-footer-agent__code-inline">TimeCurveBuyRouter</code> ABI JSON from{" "}
+            <code className="app-footer-agent__code-inline">TimeArenaBuyRouter</code> ABI JSON from{" "}
             <code className="app-footer-agent__code-inline">main</code> on GitHub (same files as below); set{" "}
             <code className="app-footer-agent__code-inline">TIME_ARENA_ABI_JSON</code> /{" "}
             <code className="app-footer-agent__code-inline">TIME_ARENA_BUY_ROUTER_ABI_JSON</code> to use a local Forge artifact (
-            <code className="app-footer-agent__code-inline">contracts/out/TimeCurve.sol/TimeArena.json</code>{" "}
+            <code className="app-footer-agent__code-inline">contracts/out/TimeArena.sol/TimeArena.json</code>{" "}
             <code className="app-footer-agent__code-inline">abi</code> field) instead. Contract addresses in the snippets are{" "}
             <strong>MegaETH mainnet production</strong> (ERC-1967 <code className="app-footer-agent__code-inline">TimeArena</code> proxy +{" "}
-            <code className="app-footer-agent__code-inline">TimeCurveBuyRouter</code> from{" "}
+            <code className="app-footer-agent__code-inline">TimeArenaBuyRouter</code> from{" "}
             <a href={ghBlob("indexer/address-registry.megaeth-mainnet.json")} target="_blank" rel="noreferrer">
               indexer/address-registry.megaeth-mainnet.json
             </a>
@@ -644,7 +644,7 @@ export function ArenaSimpleAgentCard() {
               </a>
             </li>
             <li>
-              <strong>TimeCurveBuyRouter</strong> (single-tx Kumbaya) —{" "}
+              <strong>TimeArenaBuyRouter</strong> (single-tx Kumbaya) —{" "}
               <a href={abiBuyRouterApp} download="TimeArenaBuyRouter.json">
                 this app
               </a>

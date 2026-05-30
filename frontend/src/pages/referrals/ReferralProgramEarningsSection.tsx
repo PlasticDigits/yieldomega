@@ -143,7 +143,7 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             </p>
           ) : !totals.hasPrice || totals.cl8yWei === 0n ? (
             <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-              Set `VITE_TIMECURVE_ADDRESS` and ensure the sale view can read `currentPricePerCharmWad` to show CL8Y
+              Set `VITE_TIME_ARENA_ADDRESS` and ensure the sale view can read `charmPriceWad` to show CL8Y
               notionals.
             </p>
           ) : null}
