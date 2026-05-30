@@ -92,7 +92,7 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 | Flag claim | 0 |
 
 - Steal/guard/revenge/flag mechanics; BP buy bonuses, steal band **2×–10×**, flag plant/claim silence window.
-- **WarBow scores reset** when the WarBow timer epoch ends (`rollPodiumEpoch(CAT_WARBOW)` clears live BP podium); indexer retains historical epochs for admin **`finalizeWarbowPodium(epoch, …)`** payout.
+- **WarBow scores reset** when the WarBow timer epoch ends (`rollPodiumEpoch(CAT_WARBOW)` bumps **`warbowBpGeneration`** and clears live BP podium; stale BP reads as zero). Roll **does not** auto-pay — indexer retains historical epochs for admin **`finalizeWarbowPodium(epoch, …)`** payout ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)).
 
 ---
 
