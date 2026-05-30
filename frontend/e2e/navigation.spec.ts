@@ -6,14 +6,12 @@ test("deep link from home to each surface", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  // Post-launch builds route HomePage to `/home`; no-env builds keep it at `/`.
-  // Primary nav currently exposes TimeCurve + Referrals; other surfaces stay routable by URL.
   const navHomeRoute = state === "post-launch" ? "/home" : "/";
   const nav = page.getByLabel("Primary");
 
   await page.goto(navHomeRoute);
-  await nav.getByRole("link", { name: "TimeCurve" }).click();
-  await expect(page).toHaveURL(/\/timecurve$/);
+  await nav.getByRole("link", { name: "Time Arena" }).click();
+  await expect(page).toHaveURL(/\/arena$/);
 
   await page.goto(navHomeRoute);
   await nav.getByRole("link", { name: "Referrals" }).click();
@@ -35,11 +33,19 @@ test("unknown routes show branded 404 inside RootLayout", async ({ page }) => {
   await expect(page.getByLabel("Primary")).toBeVisible();
 });
 
-test("valid timecurve referral path does not show 404", async ({ page }) => {
+test("valid arena referral path does not show 404", async ({ page }) => {
+  const state = await detectLaunchState(page);
+  test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
+
+  await page.goto("/arena/abc12");
+  await expect(page).toHaveURL(/\/arena\/abc12/);
+  await expect(page.getByTestId("not-found-page")).toHaveCount(0);
+});
+
+test("legacy /timecurve referral path redirects to /arena", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/timecurve/abc12");
-  await expect(page).toHaveURL(/\/timecurve\/abc12/);
-  await expect(page.getByTestId("not-found-page")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/arena\/abc12/);
 });

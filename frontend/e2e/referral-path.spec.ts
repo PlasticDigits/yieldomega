@@ -9,7 +9,7 @@ test("timecurve path can carry a referral segment (not arena/protocol)", async (
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  await page.goto("/timecurve/abc12");
+  await page.goto("/arena/abc12");
   await expect(page).toHaveURL(/\/timecurve\/abc12/);
   const pending = await page.evaluate(() => {
     return window.localStorage.getItem("yieldomega.ref.v1");
@@ -33,7 +33,7 @@ test("timecurve path locks referral without wallet (test1)", async ({ page }) =>
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  await page.goto("/timecurve/test1");
+  await page.goto("/arena/test1");
   await expect(page).toHaveURL(/\/timecurve\/test1/);
   const pending = await page.evaluate(() => window.localStorage.getItem("yieldomega.ref.v1"));
   expect(JSON.parse(pending!).code).toBe("test1");

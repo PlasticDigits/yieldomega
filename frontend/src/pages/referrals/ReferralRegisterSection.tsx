@@ -354,7 +354,7 @@ export function ReferralRegisterSection({ className }: Props) {
     }
     const b = (path: string) => `${origin}${path}`;
     return {
-      timecurve: b(`/timecurve/${displayCode}`),
+      timecurve: b(`/arena/${displayCode}`),
       query: b(`/?ref=${encodeURIComponent(displayCode)}`),
     };
   }, [displayCode, origin]);

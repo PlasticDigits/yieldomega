@@ -80,7 +80,7 @@ describe("referralStorage pending cross-store sync", () => {
 
   it("applyReferralUrlCapture locks path slug into both stores", async () => {
     const { applyReferralUrlCapture, getPendingReferralCode } = await import("./referralStorage");
-    applyReferralUrlCapture("/timecurve/test1", "");
+    applyReferralUrlCapture("/arena/test1", "");
     expect(getPendingReferralCode()).toBe("test1");
     expect(window.localStorage.getItem(KEY)).toContain("test1");
     expect(window.sessionStorage.getItem(KEY)).toContain("test1");
@@ -92,7 +92,7 @@ describe("referralStorage pending cross-store sync", () => {
     const unsub = subscribePendingReferralCode(() => {
       n += 1;
     });
-    applyReferralUrlCapture("/timecurve/abc12", "");
+    applyReferralUrlCapture("/arena/abc12", "");
     unsub();
     expect(n).toBe(1);
   });

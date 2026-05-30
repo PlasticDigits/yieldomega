@@ -131,7 +131,7 @@ export function ThirdPartyDexPage({
       </PageSection>
       {externalUrl && outboundStatus}
       <p className="muted">
-        <Link to="/timecurve">TimeCurve</Link> is the canonical DOUB launch surface.
+        <Link to="/arena">TimeCurve</Link> is the canonical DOUB launch surface.
       </p>
       <div className="third-party-cutout-row" aria-hidden="true">
         <CutoutDecoration

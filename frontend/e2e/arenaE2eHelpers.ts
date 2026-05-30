@@ -5,7 +5,7 @@ import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
   await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({ timeout: 120_000 });
-  await expect(page.locator(".timecurve-simple-page")).toBeVisible({ timeout: 120_000 });
+  await expect(page.locator(".arena-simple-page")).toBeVisible({ timeout: 120_000 });
 }
 
 export async function connectArenaWallet(page: Page): Promise<void> {
@@ -19,12 +19,12 @@ export async function connectArenaWallet(page: Page): Promise<void> {
 }
 
 export function arenaBuyPanel(page: Page) {
-  return page.locator(".timecurve-simple__buy-panel");
+  return page.locator(".arena-simple__buy-panel");
 }
 
 export async function openBuyAdvanced(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  await buyPanel.locator('[data-testid="timecurve-simple-buy-advanced"] summary').click();
+  await buyPanel.locator('[data-testid="arena-simple-buy-advanced"] summary').click();
 }
 
 export async function selectPayWith(
@@ -44,7 +44,7 @@ export async function selectPayWith(
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
   await openBuyAdvanced(page);
-  const range = buyPanel.locator("input.timecurve-buy-spend-range");
+  const range = buyPanel.locator("input.arena-buy-spend-range");
   if ((await range.count()) === 0) {
     // Arena DOUB checkout may omit the CL8Y spend slider when bounds are not wired yet.
     return;

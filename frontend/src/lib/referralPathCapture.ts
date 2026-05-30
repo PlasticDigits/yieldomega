@@ -9,7 +9,7 @@ function pathSegments(pathname: string): string[] {
 
 /**
  * Extracts a referral code from the path for client capture (localStorage).
- * **Supported:** `/arena/{code}` or legacy `/timecurve/{code}` when the second
+ * **Supported:** `/arena/{code}` or legacy `/arena/{code}` when the second
  * segment is not a fixed sub-route (`protocol`, …) and not otherwise reserved.
  * Prefer `?ref=` or `/arena/{code}` (GitLab #266).
  */

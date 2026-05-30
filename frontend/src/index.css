@@ -462,7 +462,7 @@ label:has(input[type="radio"]:disabled) {
 
   /* TimeCurve routes: pull main (BUY / ARENA / AUDIT strip) closer to the pinned header; the
      global stack leaves ~1rem slack under the dense bar — reclaim ~30px without touching mobile. */
-  .app-shell.app-shell--timecurve {
+  .app-shell.app-shell--arena {
     padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + var(--app-shell-fixed-header-stack) - 30px);
   }
 
@@ -1510,7 +1510,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 /* Protocol audit: same TOTAL RAISE / TOTAL USD chrome as the former Arena hero, on a dark inset. */
-.timecurve-protocol-raise-card {
+.arena-protocol-raise-card {
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
   border-radius: 0.65rem;
@@ -1519,21 +1519,21 @@ label:has(input[type="radio"]:disabled) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.timecurve-protocol__total-usd-row {
+.arena-protocol__total-usd-row {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
 }
 
-.timecurve-protocol__stat-value-row {
+.arena-protocol__stat-value-row {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
 }
 
-.timecurve-protocol__inline-refresh {
+.arena-protocol__inline-refresh {
   font: inherit;
   font-size: 0.85rem;
   line-height: 1;
@@ -1546,7 +1546,7 @@ label:has(input[type="radio"]:disabled) {
   flex-shrink: 0;
 }
 
-.timecurve-protocol__inline-refresh:disabled {
+.arena-protocol__inline-refresh:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1767,7 +1767,7 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 600;
 }
 
-.timecurve-simple__stake-combined-line .empty-data-placeholder {
+.arena-simple__stake-combined-line .empty-data-placeholder {
   font-size: clamp(0.95rem, 2.5vw, 1.1rem);
   font-weight: 700;
 }
@@ -2839,11 +2839,11 @@ label:has(input[type="radio"]:disabled) {
   text-decoration: none;
 }
 
-.timecurve-simple__referral--locked {
+.arena-simple__referral--locked {
   margin-bottom: 0.75rem;
 }
 
-.timecurve-simple__referral-locked-copy {
+.arena-simple__referral-locked-copy {
   margin: 0;
 }
 
@@ -3580,7 +3580,7 @@ label:has(input[type="radio"]:disabled) {
   max-width: 28rem;
 }
 
-.platform-usage-velocity__toggle .timecurve-simple__rate-paywith-btn {
+.platform-usage-velocity__toggle .arena-simple__rate-paywith-btn {
   min-height: 2.75rem;
   padding: 0.45rem 0.65rem;
   font-size: 0.72rem;
@@ -5032,7 +5032,7 @@ code {
     padding: 1rem 0.75rem max(11rem, calc(env(safe-area-inset-bottom, 0px) + 10.8rem));
   }
 
-  .app-main--timecurve {
+  .app-main--arena {
     padding-top: 1rem;
   }
 
@@ -5422,7 +5422,7 @@ code {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.45));
 }
 
-.timecurve-arena-buy-page .timecurve-simple__rate-value--hero {
+.timecurve-arena-buy-page .arena-simple__rate-value--hero {
   font-size: clamp(2.05rem, 5vw, 3.25rem);
 }
 
@@ -5474,7 +5474,7 @@ code {
 }
 
 /* TimeCurve buy hub: shared spend slider (Simple + Arena checkout). */
-input[type="range"].form-input.timecurve-buy-spend-range {
+input[type="range"].form-input.arena-buy-spend-range {
   appearance: none;
   width: 100%;
   max-width: none;
@@ -5483,7 +5483,7 @@ input[type="range"].form-input.timecurve-buy-spend-range {
   border: 3px solid var(--line);
   border-radius: 999px;
   background:
-    linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500)) 0 / var(--timecurve-buy-spend-fill, 50%) 100% no-repeat,
+    linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500)) 0 / var(--arena-buy-spend-fill, 50%) 100% no-repeat,
     linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
   box-shadow:
     4px 4px 0 var(--line),
@@ -5492,22 +5492,22 @@ input[type="range"].form-input.timecurve-buy-spend-range {
   cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range:disabled {
+input[type="range"].form-input.arena-buy-spend-range:disabled {
   opacity: 0.65;
   cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range:active:not(:disabled) {
+input[type="range"].form-input.arena-buy-spend-range:active:not(:disabled) {
   cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range::-webkit-slider-runnable-track {
+input[type="range"].form-input.arena-buy-spend-range::-webkit-slider-runnable-track {
   height: 1.15rem;
   border-radius: 999px;
   background: transparent;
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range::-webkit-slider-thumb {
+input[type="range"].form-input.arena-buy-spend-range::-webkit-slider-thumb {
   appearance: none;
   width: 2rem;
   height: 2rem;
@@ -5521,19 +5521,19 @@ input[type="range"].form-input.timecurve-buy-spend-range::-webkit-slider-thumb {
   image-rendering: auto;
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-track {
+input[type="range"].form-input.arena-buy-spend-range::-moz-range-track {
   height: 1.15rem;
   border-radius: 999px;
   background: linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-progress {
+input[type="range"].form-input.arena-buy-spend-range::-moz-range-progress {
   height: 1.15rem;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500));
 }
 
-input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
+input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   appearance: none;
   width: 2rem;
   height: 2rem;
@@ -5628,7 +5628,7 @@ input[type="range"].form-input.timecurve-buy-spend-range::-moz-range-thumb {
   line-height: 1.1;
 }
 
-.timecurve-simple__buy-projected-effects {
+.arena-simple__buy-projected-effects {
   margin-top: 0.55rem;
 }
 
@@ -7133,7 +7133,7 @@ a.podium-address-explorer:hover .address-inline__label {
  * Reuses palette tokens from the rest of the app (no new vars).
  * ============================================================= */
 
-.timecurve-subnav-stack {
+.arena-subnav-stack {
   box-sizing: border-box;
   width: 100%;
   max-width: 480px;
@@ -7144,18 +7144,18 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.65rem;
 }
 
-.timecurve-subnav {
+.arena-subnav {
   margin: 0;
 }
 
 @media (min-width: 721px) {
   /* Tighter gap below the pinned dense header to the BUY / ARENA / AUDIT strip. */
-  .app-main.app-main--timecurve {
+  .app-main.app-main--arena {
     padding-top: 0.5rem;
   }
 }
 
-.timecurve-subnav__list {
+.arena-subnav__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -7171,17 +7171,17 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.timecurve-subnav__item {
+.arena-subnav__item {
   margin: 0;
   flex: 1 1 0;
   min-width: 0;
 }
 
-.timecurve-subnav__item:not(:last-child) {
+.arena-subnav__item:not(:last-child) {
   border-right: 2px solid var(--line);
 }
 
-.timecurve-subnav__link {
+.arena-subnav__link {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -7201,21 +7201,21 @@ a.podium-address-explorer:hover .address-inline__label {
   justify-content: center;
 }
 
-.timecurve-subnav__link:hover {
+.arena-subnav__link:hover {
   transform: translate(-1px, -1px);
 }
 
-.timecurve-subnav__link--active {
+.arena-subnav__link--active {
   background: #fff;
 }
 
-.timecurve-subnav__label {
+.arena-subnav__label {
   font-weight: 400;
   letter-spacing: 0.04em;
   flex: 0 1 auto;
 }
 
-.timecurve-subnav__link--active .timecurve-subnav__label {
+.arena-subnav__link--active .arena-subnav__label {
   font-weight: 700;
   text-decoration: underline;
   text-decoration-color: var(--arcade-green-500);
@@ -7223,7 +7223,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-underline-offset: 0.18em;
 }
 
-.timecurve-subnav__icon {
+.arena-subnav__icon {
   width: 1.5rem;
   height: 1.5rem;
   object-fit: contain;
@@ -7233,7 +7233,7 @@ a.podium-address-explorer:hover .address-inline__label {
   transform-origin: 50% 62%;
 }
 
-@keyframes timecurve-subnav-icon-bob-sway {
+@keyframes arena-subnav-icon-bob-sway {
   0%,
   100% {
     transform: translate(0, 0) rotate(0deg);
@@ -7249,28 +7249,28 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.timecurve-subnav__item:nth-child(1) .timecurve-subnav__icon {
-  animation: timecurve-subnav-icon-bob-sway 4.05s ease-in-out infinite;
+.arena-subnav__item:nth-child(1) .arena-subnav__icon {
+  animation: arena-subnav-icon-bob-sway 4.05s ease-in-out infinite;
   animation-delay: 0s;
 }
 
-.timecurve-subnav__item:nth-child(2) .timecurve-subnav__icon {
-  animation: timecurve-subnav-icon-bob-sway 3.68s ease-in-out infinite;
+.arena-subnav__item:nth-child(2) .arena-subnav__icon {
+  animation: arena-subnav-icon-bob-sway 3.68s ease-in-out infinite;
   animation-delay: 0.52s;
 }
 
-.timecurve-subnav__item:nth-child(3) .timecurve-subnav__icon {
-  animation: timecurve-subnav-icon-bob-sway 4.28s ease-in-out infinite;
+.arena-subnav__item:nth-child(3) .arena-subnav__icon {
+  animation: arena-subnav-icon-bob-sway 4.28s ease-in-out infinite;
   animation-delay: 1.08s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-subnav__link:hover {
+  .arena-subnav__link:hover {
     transform: none;
   }
 }
 
-.timecurve-subnav-about {
+.arena-subnav-about {
   margin: 0;
   padding: 0;
   border: none;
@@ -7278,7 +7278,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-align: start;
 }
 
-.timecurve-subnav-about__summary {
+.arena-subnav-about__summary {
   list-style: none;
   cursor: pointer;
   font-weight: 700;
@@ -7292,15 +7292,15 @@ a.podium-address-explorer:hover .address-inline__label {
   user-select: none;
 }
 
-.timecurve-subnav-about__summary::-webkit-details-marker {
+.arena-subnav-about__summary::-webkit-details-marker {
   display: none;
 }
 
-.timecurve-subnav-about__summary::marker {
+.arena-subnav-about__summary::marker {
   content: "";
 }
 
-.timecurve-subnav-about__summary::before {
+.arena-subnav-about__summary::before {
   content: "▸";
   display: inline-block;
   margin-right: 0.35em;
@@ -7308,22 +7308,22 @@ a.podium-address-explorer:hover .address-inline__label {
   transition: transform 0.12s ease;
 }
 
-.timecurve-subnav-about[open] > .timecurve-subnav-about__summary::before {
+.arena-subnav-about[open] > .arena-subnav-about__summary::before {
   transform: rotate(90deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-subnav-about__summary::before {
+  .arena-subnav-about__summary::before {
     transition: none;
   }
 }
 
-.timecurve-subnav-about__body {
+.arena-subnav-about__body {
   margin: 0.55rem 0 0;
   padding: 0;
 }
 
-.timecurve-subnav-about__p {
+.arena-subnav-about__p {
   margin: 0 0 0.55rem;
   font-size: 0.88rem;
   line-height: 1.45;
@@ -7334,18 +7334,18 @@ a.podium-address-explorer:hover .address-inline__label {
     0 3px 6px rgba(0, 35, 20, 0.85);
 }
 
-.timecurve-subnav-about__p:last-child {
+.arena-subnav-about__p:last-child {
   margin-bottom: 0;
 }
 
-.timecurve-subnav-about__lead {
+.arena-subnav-about__lead {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
   gap: 0.35rem;
 }
 
-.timecurve-subnav-about__icon {
+.arena-subnav-about__icon {
   width: 1.35rem;
   height: 1.35rem;
   object-fit: contain;
@@ -7355,43 +7355,43 @@ a.podium-address-explorer:hover .address-inline__label {
   transform-origin: 50% 62%;
 }
 
-.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(1) .timecurve-subnav-about__icon {
-  animation: timecurve-subnav-icon-bob-sway 3.82s ease-in-out infinite;
+.arena-subnav-about__body .arena-subnav-about__p:nth-child(1) .arena-subnav-about__icon {
+  animation: arena-subnav-icon-bob-sway 3.82s ease-in-out infinite;
   animation-delay: 0.22s;
 }
 
-.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(2) .timecurve-subnav-about__icon {
-  animation: timecurve-subnav-icon-bob-sway 4.38s ease-in-out infinite;
+.arena-subnav-about__body .arena-subnav-about__p:nth-child(2) .arena-subnav-about__icon {
+  animation: arena-subnav-icon-bob-sway 4.38s ease-in-out infinite;
   animation-delay: 0.88s;
 }
 
-.timecurve-subnav-about__body .timecurve-subnav-about__p:nth-child(3) .timecurve-subnav-about__icon {
-  animation: timecurve-subnav-icon-bob-sway 3.55s ease-in-out infinite;
+.arena-subnav-about__body .arena-subnav-about__p:nth-child(3) .arena-subnav-about__icon {
+  animation: arena-subnav-icon-bob-sway 3.55s ease-in-out infinite;
   animation-delay: 1.42s;
 }
 
-.timecurve-subnav-about__label {
+.arena-subnav-about__label {
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-subnav__icon,
-  .timecurve-subnav-about__icon {
+  .arena-subnav__icon,
+  .arena-subnav-about__icon {
     animation: none;
   }
 }
 
 /* ---- Simple page focal column ---- */
 
-.timecurve-simple-page {
+.arena-simple-page {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
 
 /* In-page agent `<details>` — mirrors global footer card styling without occupying the shell footer. */
-.timecurve-simple-agent-card.app-footer-agent {
+.arena-simple-agent-card.app-footer-agent {
   padding: 0.75rem 0.95rem;
   border-radius: 0.9rem;
   border: 2px solid color-mix(in srgb, var(--line) 85%, var(--arcade-green-700));
@@ -7407,17 +7407,17 @@ a.podium-address-explorer:hover .address-inline__label {
  * left both panels visually identical. The Iteration 1 design pass turns
  * each into a single, cohesive arcade surface:
  *
- *   - `.timecurve-simple__timer-panel` becomes a deep-green ARCADE STAGE
+ *   - `.arena-simple__timer-panel` becomes a deep-green ARCADE STAGE
  *     (the panel itself is the dark scoreboard; the inner `timer-hero`
  *     loses its own border/box and just provides the digit area). The
  *     section heading text inverts to on-dark colours so the panel reads
  *     as one continuous billboard.
- *   - `.timecurve-simple__buy-panel` becomes a warm gold/honey VENDING
+ *   - `.arena-simple__buy-panel` becomes a warm gold/honey VENDING
  *     MACHINE — distinct from the timer's green stage, with a bigger,
  *     stamped CTA.
  *   - The generic `.data-panel::after` gold dot is hidden on both panels;
  *     it competes with the new chrome and indicates nothing.
- *   - The mascot cutout (`mascot-bag-bunny-pair.png`) anchors the
+ *   - The mascot cutout (`leprechaun-bag-bunny-pair.png`) anchors the
  *     timer panel to the Yieldomega world.
  *
  * Sibling spec: see `docs/frontend/timecurve-views.md` and the standalone
@@ -7428,14 +7428,14 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Outer panel chrome → arcade stage. The deep-green gradient continues all
    the way to the panel border so the timer reads as one immersive surface
    instead of "cream box wrapping a dark inset". A gold border + chunky
-   shadow keep the heavy arcade outline. The scene art (`timecurve-simple
+   shadow keep the heavy arcade outline. The scene art (`arena-simple
    .jpg`) bleeds into the **whole** panel via a `::before` layer (not just
    the inner timer-hero region) so there's no visible "window-in-a-wall"
    rectangle around the scene. */
-.timecurve-simple__timer-panel.data-panel {
+.arena-simple__timer-panel.data-panel {
   position: relative;
   isolation: isolate;
-  /* Hub panels are column flex (`.timecurve-simple__hub > .data-panel`). The
+  /* Hub panels are column flex (`.arena-simple__hub > .data-panel`). The
      timer stage sets a desktop `min-height` so it matches the buy column;
      without this, the heading + clock hug the top above empty stage space. */
   justify-content: center;
@@ -7457,11 +7457,11 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.timecurve-simple__timer-panel.data-panel::before {
+.arena-simple__timer-panel.data-panel::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url("/art/scenes/timecurve-simple.jpg");
+  background-image: url("/art/scenes/arena-simple.jpg");
   background-size: cover;
   background-position: center 35%;
   background-repeat: no-repeat;
@@ -7491,7 +7491,7 @@ a.podium-address-explorer:hover .address-inline__label {
    now lives at the panel level (above) for a seamless backplate. The img
    is kept in the component for the (legacy) standalone case but is just
    noise here. */
-.timecurve-simple__timer-panel .timecurve-simple__timer-hero-scene {
+.arena-simple__timer-panel .arena-simple__timer-hero-scene {
   display: none;
 }
 
@@ -7500,13 +7500,13 @@ a.podium-address-explorer:hover .address-inline__label {
    to sit above it. Keeping the mascot just under the digits (z-index 1
    vs 2) so the bunny pair doesn't ever cover the H:M:S readout if the
    panel ever shrinks past expected widths. */
-.timecurve-simple__timer-panel .section-heading,
-.timecurve-simple__timer-panel .timer-hero {
+.arena-simple__timer-panel .section-heading,
+.arena-simple__timer-panel .timer-hero {
   position: relative;
   z-index: 2;
 }
 
-.timecurve-simple__timer-panel .panel-cutout--pair-mascot {
+.arena-simple__timer-panel .panel-cutout--pair-mascot {
   z-index: 1;
 }
 
@@ -7515,7 +7515,7 @@ a.podium-address-explorer:hover .address-inline__label {
    of the most recent buy that bumped the clock. Sourced from the
    page's `recentBuys` array (already fetched every 5s); only renders
    when there's data. */
-.timecurve-simple__last-extension {
+.arena-simple__last-extension {
   position: absolute;
   z-index: 3;
   right: clamp(0.65rem, 2vw, 1.1rem);
@@ -7537,37 +7537,37 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  animation: timecurve-simple-extension-wiggle 0.58s ease-out both;
+  animation: arena-simple-extension-wiggle 0.58s ease-out both;
 }
 
-.timecurve-simple__last-extension-dot {
+.arena-simple__last-extension-dot {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 999px;
   background: var(--arcade-green-500);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 8px var(--arcade-green-300);
   flex-shrink: 0;
-  animation: timecurve-simple-extension-blink 1.8s ease-in-out infinite;
+  animation: arena-simple-extension-blink 1.8s ease-in-out infinite;
 }
 
-.timecurve-simple__last-extension--reset {
+.arena-simple__last-extension--reset {
   background: linear-gradient(180deg, #ffe5a8, #ffd06a);
   border-color: #b86a05;
 }
 
-.timecurve-simple__last-extension--reset .timecurve-simple__last-extension-dot {
+.arena-simple__last-extension--reset .arena-simple__last-extension-dot {
   background: #ff7a1a;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 0 8px #ffa54a;
 }
 
-.timecurve-simple__last-extension-addr {
+.arena-simple__last-extension-addr {
   font-family: "IBM Plex Mono", monospace;
   font-weight: 700;
   font-size: 0.75rem;
   color: var(--arcade-green-900);
 }
 
-@keyframes timecurve-simple-extension-wiggle {
+@keyframes arena-simple-extension-wiggle {
   0% {
     transform: translateY(5px) translateX(0) rotate(0deg) scale(0.94);
     opacity: 0.7;
@@ -7598,7 +7598,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-@keyframes timecurve-simple-extension-blink {
+@keyframes arena-simple-extension-blink {
   0%,
   100% {
     opacity: 1;
@@ -7609,8 +7609,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__last-extension,
-  .timecurve-simple__last-extension-dot {
+  .arena-simple__last-extension,
+  .arena-simple__last-extension-dot {
     animation: none;
   }
 }
@@ -7618,13 +7618,13 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Transparent TimeCurve stopwatch icon in front of the "TIME LEFT" H2.
    Reuses the generated header icon so the timer panel reads as TimeCurve
    instead of a generic coin, while keeping the PageSection title DOM intact. */
-.timecurve-simple__timer-panel .section-heading h2 {
+.arena-simple__timer-panel .section-heading h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.timecurve-simple__timer-panel .section-heading h2::before {
+.arena-simple__timer-panel .section-heading h2::before {
   content: "";
   display: inline-block;
   width: 2.25rem;
@@ -7637,15 +7637,15 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Hide the generic gold-dot status indicator on the spotlight panels —
    it competes with the new arcade chrome and indicates nothing. */
-.timecurve-simple__timer-panel.data-panel::after,
-.timecurve-simple__buy-panel.data-panel::after {
+.arena-simple__timer-panel.data-panel::after,
+.arena-simple__buy-panel.data-panel::after {
   display: none;
 }
 
 /* Section heading ON the dark stage: invert text colours so the H2 + lede
    stay legible against the deep green. The badge is left as-is (it already
    has its own bordered chip styling). */
-.timecurve-simple__timer-panel .section-heading h2 {
+.arena-simple__timer-panel .section-heading h2 {
   color: #fff;
   text-shadow: 2px 3px 0 rgba(6, 24, 14, 0.55), 0 0 14px rgba(255, 215, 94, 0.18);
   font-size: 1.35rem;
@@ -7653,14 +7653,14 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1;
 }
 
-.timecurve-simple__timer-panel .section-heading__lede,
-.timecurve-simple__timer-panel .section-heading__lede p {
+.arena-simple__timer-panel .section-heading__lede,
+.arena-simple__timer-panel .section-heading__lede p {
   color: rgba(232, 252, 230, 0.9);
   font-size: 0.92rem;
   line-height: 1.25;
 }
 
-.timecurve-simple__timer-panel .section-heading {
+.arena-simple__timer-panel .section-heading {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -7673,7 +7673,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Stack badge + title + lede as one centred column (default section-heading
    is left-biased via `space-between` + grid copy, which felt off on a
    "stage" panel). */
-.timecurve-simple__timer-panel .section-heading__copy {
+.arena-simple__timer-panel .section-heading__copy {
   justify-items: center;
   text-align: center;
   max-width: 28rem;
@@ -7683,7 +7683,7 @@ a.podium-address-explorer:hover .address-inline__label {
   row-gap: 0;
 }
 
-.timecurve-simple__timer-panel .section-heading__lede {
+.arena-simple__timer-panel .section-heading__lede {
   margin-top: -0.2rem;
 }
 
@@ -7692,7 +7692,7 @@ a.podium-address-explorer:hover .address-inline__label {
    becomes a transparent inner area. The rising sparks + digits continue
    to do the visual work; the gradient backplate already comes from the
    panel itself. */
-.timecurve-simple__timer-panel .timer-hero {
+.arena-simple__timer-panel .timer-hero {
   margin: 0;
   /* No top inset — lede sits flush on the digit stage; keep breathing room below the clock. */
   padding: 0 clamp(0.5rem, 1.6vw, 1.25rem) clamp(1.15rem, 2.2vw, 1.85rem)
@@ -7707,7 +7707,7 @@ a.podium-address-explorer:hover .address-inline__label {
    so the digits remain the brightest thing in the panel. The image has
    `object-fit: cover` so it always fills the stage; pointer-events: none
    keeps clicks falling through to the panel chrome above it. */
-.timecurve-simple__timer-hero-scene {
+.arena-simple__timer-hero-scene {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -7723,7 +7723,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Sparks fill the same layer as the scene (z-index 0 inside the timer-hero
    isolation context). The shared `.timer-hero__fx-spark*` keyframes do all
    the heavy lifting — these overrides just scope the spread to this card. */
-.timecurve-simple__timer-hero-sparks {
+.arena-simple__timer-hero-sparks {
   position: absolute;
   inset: 0;
   z-index: 0;
@@ -7731,7 +7731,7 @@ a.podium-address-explorer:hover .address-inline__label {
   contain: paint;
 }
 
-.timecurve-simple__timer-hero-inner {
+.arena-simple__timer-hero-inner {
   position: relative;
   z-index: 1;
   display: flex;
@@ -7741,7 +7741,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-align: center;
 }
 
-.timecurve-simple__timer-hero-eyebrow {
+.arena-simple__timer-hero-eyebrow {
   margin: 0;
   font-size: clamp(0.85rem, 2vw, 1.05rem);
   font-weight: 800;
@@ -7754,7 +7754,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Days chip first in DOM, then digits — flex row keeps `Nd` to the left of
    `HH:MM:SS`. `flex-wrap` can move the clock to the next line on very tight
    widths without reversing order. */
-.timecurve-simple__timer-clock {
+.arena-simple__timer-clock {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -7771,12 +7771,12 @@ a.podium-address-explorer:hover .address-inline__label {
 /* When the “last extension” chip is present (absolute bottom-right), add
    ~1em air between the H:M:S line and the pill without affecting layouts
    where the chip is hidden. */
-.timecurve-simple__timer-panel:has(.timecurve-simple__last-extension)
-  .timecurve-simple__timer-clock {
+.arena-simple__timer-panel:has(.arena-simple__last-extension)
+  .arena-simple__timer-clock {
   margin-bottom: 1em;
 }
 
-.timecurve-simple__timer-digits {
+.arena-simple__timer-digits {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: clamp(2.5rem, 8vw, 5rem);
   font-weight: 900;
@@ -7791,7 +7791,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* "1d" / "12d" chip mirrors the `.launch-countdown__days` bordered pill —
    same palette + box shadow so the two timers read as siblings; only the
    border + corner radius are tighter so the chip fits the in-card scale. */
-.timecurve-simple__timer-days {
+.arena-simple__timer-days {
   display: inline-flex;
   align-items: baseline;
   gap: 0.15em;
@@ -7806,21 +7806,21 @@ a.podium-address-explorer:hover .address-inline__label {
   transform: translateY(-4px);
 }
 
-.timecurve-simple__timer-days-num {
+.arena-simple__timer-days-num {
   font-size: clamp(1.85rem, 6vw, 3.5rem);
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 
-.timecurve-simple__timer-days-unit {
+.arena-simple__timer-days-unit {
   font-size: clamp(0.9rem, 2vw, 1.3rem);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: lowercase;
 }
 
-.timecurve-simple__timer-hero-foot {
+.arena-simple__timer-hero-foot {
   margin: 0;
   max-width: 32rem;
   text-align: center;
@@ -7838,23 +7838,23 @@ a.podium-address-explorer:hover .address-inline__label {
    timers shift colour together as the deadline approaches. The base
    `.timer-hero--critical .timer-hero__countdown` rule still fires for any
    legacy callers; this scoped block targets the new digits class. */
-.timecurve-simple__timer-hero.timer-hero--warning .timecurve-simple__timer-digits {
+.arena-simple__timer-hero.timer-hero--warning .arena-simple__timer-digits {
   color: var(--arcade-gold-200, #ffe48a);
   text-shadow:
     3px 4px 0 var(--line),
     0 0 24px rgba(255, 200, 80, 0.7);
 }
 
-.timecurve-simple__timer-hero.timer-hero--critical .timecurve-simple__timer-digits {
+.arena-simple__timer-hero.timer-hero--critical .arena-simple__timer-digits {
   color: #ffe1e1;
   text-shadow:
     3px 4px 0 var(--line),
     0 0 24px rgba(248, 113, 113, 0.85),
     0 0 48px rgba(220, 38, 38, 0.55);
-  animation: timecurve-simple-timer-pulse 1.05s ease-in-out infinite;
+  animation: arena-simple-timer-pulse 1.05s ease-in-out infinite;
 }
 
-@keyframes timecurve-simple-timer-pulse {
+@keyframes arena-simple-timer-pulse {
   0%,
   100% {
     transform: scale(1);
@@ -7865,7 +7865,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__timer-hero.timer-hero--critical .timecurve-simple__timer-digits {
+  .arena-simple__timer-hero.timer-hero--critical .arena-simple__timer-digits {
     animation: none;
   }
 }
@@ -7873,16 +7873,16 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Mobile rhythm — keep the `Nd` chip inline to the left of `HH:MM:SS` (same
    row as wider viewports); only tighten padding so the pair fits narrow cards. */
 @media (max-width: 540px) {
-  .timecurve-simple__timer-panel .timer-hero {
+  .arena-simple__timer-panel .timer-hero {
     padding: 0.75rem 0.85rem 1.2rem;
   }
 
-  .timecurve-simple__timer-clock {
+  .arena-simple__timer-clock {
     flex-direction: row;
     gap: clamp(0.35rem, 2.5vw, 0.75rem);
   }
 
-  .timecurve-simple__timer-days {
+  .arena-simple__timer-days {
     padding: 0.05em 0.4em;
   }
 }
@@ -7895,7 +7895,7 @@ a.podium-address-explorer:hover .address-inline__label {
    contexts where viewport-keyed media queries would not fire. We also keep
    a viewport `@media` fallback so the layout still degrades gracefully on
    browsers that don't support container queries. */
-.timecurve-simple-page {
+.arena-simple-page {
   container-type: inline-size;
   container-name: timecurveSimplePage;
 }
@@ -7905,28 +7905,28 @@ a.podium-address-explorer:hover .address-inline__label {
    each grid track is ~half the page while digit `font-size` still tracks
    viewport `vw`. */
 @container timecurveSimplePage (min-width: 541px) {
-  .timecurve-simple__timer-clock {
+  .arena-simple__timer-clock {
     flex-wrap: nowrap;
     align-items: center;
   }
 
-  .timecurve-simple__timer-clock .timecurve-simple__timer-days {
+  .arena-simple__timer-clock .arena-simple__timer-days {
     transform: none;
   }
 }
 
 @media (min-width: 541px) {
-  .timecurve-simple__timer-clock {
+  .arena-simple__timer-clock {
     flex-wrap: nowrap;
     align-items: center;
   }
 
-  .timecurve-simple__timer-clock .timecurve-simple__timer-days {
+  .arena-simple__timer-clock .arena-simple__timer-days {
     transform: none;
   }
 }
 
-.timecurve-simple__hub {
+.arena-simple__hub {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: 1rem;
@@ -7934,23 +7934,23 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @container timecurveSimplePage (max-width: 880px) {
-  .timecurve-simple__hub {
+  .arena-simple__hub {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 880px) {
-  .timecurve-simple__hub {
+  .arena-simple__hub {
     grid-template-columns: 1fr;
   }
 }
 
 @container timecurveSimplePage (max-width: 520px) {
-  .timecurve-simple__slider-row {
+  .arena-simple__slider-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .timecurve-simple__minmax:not(.timecurve-simple__minmax--rate-card) {
+  .arena-simple__minmax:not(.arena-simple__minmax--rate-card) {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -7959,11 +7959,11 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (max-width: 520px) {
-  .timecurve-simple__slider-row {
+  .arena-simple__slider-row {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .timecurve-simple__minmax:not(.timecurve-simple__minmax--rate-card) {
+  .arena-simple__minmax:not(.arena-simple__minmax--rate-card) {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -7971,7 +7971,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.timecurve-simple__hub > .data-panel {
+.arena-simple__hub > .data-panel {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -7979,11 +7979,11 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Timer column stays content-height: hub row still sizes to the taller BUY
    panel, but the clock card must not stretch when that panel grows. */
-.timecurve-simple__hub > .timecurve-simple__timer-panel {
+.arena-simple__hub > .arena-simple__timer-panel {
   align-self: start;
 }
 
-.timecurve-simple__activity-panel {
+.arena-simple__activity-panel {
   margin-top: 0;
   height: 85vh;
   display: flex;
@@ -7992,11 +7992,11 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* Hide generic `.data-panel::after` gold dot — it sits on the badge header and adds no signal. */
-.timecurve-simple__activity-panel.data-panel::after {
+.arena-simple__activity-panel.data-panel::after {
   display: none;
 }
 
-.timecurve-simple__podium-panel {
+.arena-simple__podium-panel {
   --podium-panel-aurora-a: rgba(255, 217, 91, 0.72);
   --podium-panel-aurora-b: rgba(255, 78, 190, 0.4);
   --podium-panel-aurora-c: rgba(31, 184, 106, 0.48);
@@ -8018,15 +8018,15 @@ a.podium-address-explorer:hover .address-inline__label {
     inset 0 1.2rem 3rem rgba(255, 255, 255, 0.3);
 }
 
-.timecurve-simple__podium-panel::before,
-.timecurve-simple__podium-panel::after {
+.arena-simple__podium-panel::before,
+.arena-simple__podium-panel::after {
   content: "";
   position: absolute;
   pointer-events: none;
   border-radius: inherit;
 }
 
-.timecurve-simple__podium-panel::before {
+.arena-simple__podium-panel::before {
   inset: 0;
   z-index: 0;
   background:
@@ -8038,7 +8038,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-panel-aurora 10s ease-in-out infinite alternate;
 }
 
-.timecurve-simple__podium-panel::after {
+.arena-simple__podium-panel::after {
   top: 1rem;
   right: 1rem;
   z-index: 0;
@@ -8061,7 +8061,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-panel-particles 5.8s ease-in-out infinite;
 }
 
-.timecurve-simple__podium-panel .section-heading {
+.arena-simple__podium-panel .section-heading {
   position: relative;
   z-index: 1;
   padding: 0.88rem 1rem;
@@ -8076,24 +8076,24 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0.8rem 1.8rem rgba(11, 31, 20, 0.08);
 }
 
-.timecurve-simple__podium-panel .page-section__standalone-badge {
+.arena-simple__podium-panel .page-section__standalone-badge {
   position: relative;
   z-index: 1;
 }
 
-.timecurve-simple__podium-panel .section-heading h2 {
+.arena-simple__podium-panel .section-heading h2 {
   color: color-mix(in srgb, var(--arcade-green-900) 76%, #ff4a9d);
   text-shadow:
     2px 3px 0 rgba(255, 255, 255, 0.72),
     0 0 1rem rgba(255, 217, 91, 0.26);
 }
 
-.timecurve-simple__podium-panel .section-heading__lede,
-.timecurve-simple__podium-panel .section-heading__lede p {
+.arena-simple__podium-panel .section-heading__lede,
+.arena-simple__podium-panel .section-heading__lede p {
   color: rgba(6, 61, 36, 0.86);
 }
 
-.timecurve-simple__podium-panel > :not(.panel-cutout) {
+.arena-simple__podium-panel > :not(.panel-cutout) {
   position: relative;
   z-index: 1;
 }
@@ -8109,13 +8109,13 @@ a.podium-address-explorer:hover .address-inline__label {
   opacity: 0.9;
 }
 
-.timecurve-simple__podium-grid {
+.arena-simple__podium-grid {
   margin-top: 1rem;
   gap: 0.85rem;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 }
 
-.timecurve-simple__podium-card {
+.arena-simple__podium-card {
   --podium-card-accent: var(--arcade-green);
   --podium-card-glow: rgba(31, 184, 106, 0.22);
   --podium-art-a: #fff3a8;
@@ -8132,12 +8132,12 @@ a.podium-address-explorer:hover .address-inline__label {
     inset 0 18px 38px rgba(255, 255, 255, 0.24);
 }
 
-.timecurve-simple__podium-card h3 {
+.arena-simple__podium-card h3 {
   margin-bottom: 0.24rem;
   color: color-mix(in srgb, var(--podium-card-accent) 34%, var(--line));
 }
 
-.timecurve-simple__podium-card--last-buy {
+.arena-simple__podium-card--last-buy {
   --podium-card-accent: #f6b832;
   --podium-card-glow: rgba(246, 184, 50, 0.28);
   --podium-art-a: #ffef7a;
@@ -8145,7 +8145,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-art-c: #ff9f1c;
 }
 
-.timecurve-simple__podium-card--warbow {
+.arena-simple__podium-card--warbow {
   --podium-card-accent: #ff4a9d;
   --podium-card-glow: rgba(255, 74, 157, 0.2);
   --podium-art-a: #ffe5fb;
@@ -8153,7 +8153,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-art-c: #ff4fc7;
 }
 
-.timecurve-simple__podium-card--defended {
+.arena-simple__podium-card--defended {
   --podium-card-accent: #1fb86a;
   --podium-card-glow: rgba(31, 184, 106, 0.22);
   --podium-art-a: #c6ff8d;
@@ -8161,7 +8161,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-art-c: #ffe76c;
 }
 
-.timecurve-simple__podium-card--booster {
+.arena-simple__podium-card--booster {
   --podium-card-accent: #28a5ff;
   --podium-card-glow: rgba(40, 165, 255, 0.2);
   --podium-art-a: #d6f3ff;
@@ -8169,7 +8169,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-art-c: #28a5ff;
 }
 
-.timecurve-simple__podium-card::before {
+.arena-simple__podium-card::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
@@ -8178,7 +8178,7 @@ a.podium-address-explorer:hover .address-inline__label {
   opacity: 0.86;
 }
 
-.timecurve-simple__podium-card::after {
+.arena-simple__podium-card::after {
   content: "";
   position: absolute;
   right: 1rem;
@@ -8192,7 +8192,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-sparkle 4.8s ease-in-out 1.7s infinite;
 }
 
-.timecurve-simple__podium-card-head {
+.arena-simple__podium-card-head {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.7rem;
@@ -8200,13 +8200,13 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-bottom: 0.8rem;
 }
 
-.timecurve-simple__podium-card-head p {
+.arena-simple__podium-card-head p {
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.35;
 }
 
-.timecurve-simple__podium-art {
+.arena-simple__podium-art {
   position: relative;
   isolation: isolate;
   width: 4.35rem;
@@ -8227,15 +8227,15 @@ a.podium-address-explorer:hover .address-inline__label {
   transform: rotate(-2deg);
 }
 
-.timecurve-simple__podium-art::before,
-.timecurve-simple__podium-art::after {
+.arena-simple__podium-art::before,
+.arena-simple__podium-art::after {
   content: "";
   position: absolute;
   pointer-events: none;
   z-index: 0;
 }
 
-.timecurve-simple__podium-art::before {
+.arena-simple__podium-art::before {
   inset: -0.27rem;
   border-radius: inherit;
   background:
@@ -8245,7 +8245,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-icon-orbit 8.5s linear infinite;
 }
 
-.timecurve-simple__podium-art::after {
+.arena-simple__podium-art::after {
   top: 0.22rem;
   right: 0.14rem;
   width: 0.6rem;
@@ -8259,7 +8259,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-icon-glint 3.6s ease-in-out infinite;
 }
 
-.timecurve-simple__podium-art img {
+.arena-simple__podium-art img {
   position: relative;
   z-index: 1;
   display: block;
@@ -8276,23 +8276,23 @@ a.podium-address-explorer:hover .address-inline__label {
   transition: transform 180ms ease, filter 180ms ease;
 }
 
-.timecurve-simple__podium-card:hover .timecurve-simple__podium-art img,
-.timecurve-simple__podium-card:focus-within .timecurve-simple__podium-art img {
+.arena-simple__podium-card:hover .arena-simple__podium-art img,
+.arena-simple__podium-card:focus-within .arena-simple__podium-art img {
   transform: translateY(-0.16rem) scale(1.12) rotate(2deg);
   filter:
     drop-shadow(0 3px 0 rgba(11, 31, 20, 0.32))
     drop-shadow(0 0 12px color-mix(in srgb, var(--podium-card-accent) 48%, transparent));
 }
 
-.timecurve-simple__podium-address .address-inline__label {
+.arena-simple__podium-address .address-inline__label {
   font-weight: 900;
 }
 
-.timecurve-simple__podium-card .ranking-list {
+.arena-simple__podium-card .ranking-list {
   gap: 0.48rem;
 }
 
-.timecurve-simple__podium-card .ranking-list__item {
+.arena-simple__podium-card .ranking-list__item {
   grid-template-columns: 2.8rem minmax(7.3rem, auto) minmax(0, 1fr);
   gap: 0.52rem;
   padding: 0.56rem 0.64rem;
@@ -8301,7 +8301,7 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: start;
 }
 
-.timecurve-simple__podium-card .ranking-list__rank {
+.arena-simple__podium-card .ranking-list__rank {
   position: relative;
   isolation: isolate;
   width: 2.65rem;
@@ -8314,8 +8314,8 @@ a.podium-address-explorer:hover .address-inline__label {
     drop-shadow(0 0 0.45rem color-mix(in srgb, var(--podium-card-accent, #ffd95b) 28%, transparent));
 }
 
-.timecurve-simple__podium-card .ranking-list__rank::before,
-.timecurve-simple__podium-card .ranking-list__rank::after {
+.arena-simple__podium-card .ranking-list__rank::before,
+.arena-simple__podium-card .ranking-list__rank::after {
   content: "";
   position: absolute;
   pointer-events: none;
@@ -8323,7 +8323,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: 999px;
 }
 
-.timecurve-simple__podium-card .ranking-list__rank::before {
+.arena-simple__podium-card .ranking-list__rank::before {
   inset: 0.15rem;
   background:
     radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.86) 0 8%, transparent 10%),
@@ -8333,7 +8333,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-trophy-aura 3.8s ease-in-out infinite;
 }
 
-.timecurve-simple__podium-card .ranking-list__rank::after {
+.arena-simple__podium-card .ranking-list__rank::after {
   top: 0.15rem;
   right: 0.02rem;
   width: 0.28rem;
@@ -8347,7 +8347,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: podium-trophy-particles 2.9s ease-in-out infinite;
 }
 
-.timecurve-simple__podium-card .ranking-list__rank img {
+.arena-simple__podium-card .ranking-list__rank img {
   position: relative;
   z-index: 1;
   display: block;
@@ -8361,21 +8361,21 @@ a.podium-address-explorer:hover .address-inline__label {
     filter 180ms ease;
 }
 
-.timecurve-simple__podium-card .ranking-list__item--second .ranking-list__rank img {
+.arena-simple__podium-card .ranking-list__item--second .ranking-list__rank img {
   animation-delay: 0.28s;
 }
 
-.timecurve-simple__podium-card .ranking-list__item--third .ranking-list__rank img {
+.arena-simple__podium-card .ranking-list__item--third .ranking-list__rank img {
   animation-delay: 0.54s;
 }
 
-.timecurve-simple__podium-card .ranking-list__item:hover .ranking-list__rank img,
-.timecurve-simple__podium-card .ranking-list__item:focus-within .ranking-list__rank img {
+.arena-simple__podium-card .ranking-list__item:hover .ranking-list__rank img,
+.arena-simple__podium-card .ranking-list__item:focus-within .ranking-list__rank img {
   transform: translateY(-0.12rem) rotate(-4deg) scale(1.09);
   filter: saturate(1.14) brightness(1.06);
 }
 
-.timecurve-simple__podium-card .ranking-list__item > .ranking-list__meta {
+.arena-simple__podium-card .ranking-list__item > .ranking-list__meta {
   grid-column: 1 / -1;
   justify-self: stretch;
   text-align: left;
@@ -8383,7 +8383,7 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.25;
 }
 
-.timecurve-simple__podium-card .ranking-list__item strong {
+.arena-simple__podium-card .ranking-list__item strong {
   min-width: max-content;
   padding: 0.26rem 0.48rem 0.22rem;
   border-radius: 0.9rem;
@@ -8400,7 +8400,7 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0.34rem 1.1rem color-mix(in srgb, var(--podium-card-accent, #ff6fd8) 24%, transparent);
 }
 
-.timecurve-simple__podium-prize {
+.arena-simple__podium-prize {
   display: inline-flex;
   flex-direction: column;
   align-items: flex-start;
@@ -8409,13 +8409,13 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
 }
 
-.timecurve-simple__podium-prize-main {
+.arena-simple__podium-prize-main {
   display: inline-flex;
   align-items: baseline;
   gap: 0.22rem;
 }
 
-.timecurve-simple__podium-prize small {
+.arena-simple__podium-prize small {
   font-family: "Inter", sans-serif;
   font-size: 0.54em;
   font-weight: 950;
@@ -8423,7 +8423,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
-.timecurve-simple__podium-prize-usd {
+.arena-simple__podium-prize-usd {
   font-family: "Inter", sans-serif;
   font-size: 0.58rem;
   font-weight: 950;
@@ -8610,16 +8610,16 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__podium-panel::before,
-  .timecurve-simple__podium-panel::after,
-  .timecurve-simple__podium-card::before,
-  .timecurve-simple__podium-card::after,
-  .timecurve-simple__podium-art::before,
-  .timecurve-simple__podium-art::after,
-  .timecurve-simple__podium-art img,
-  .timecurve-simple__podium-card .ranking-list__rank::before,
-  .timecurve-simple__podium-card .ranking-list__rank::after,
-  .timecurve-simple__podium-card .ranking-list__rank img {
+  .arena-simple__podium-panel::before,
+  .arena-simple__podium-panel::after,
+  .arena-simple__podium-card::before,
+  .arena-simple__podium-card::after,
+  .arena-simple__podium-art::before,
+  .arena-simple__podium-art::after,
+  .arena-simple__podium-art img,
+  .arena-simple__podium-card .ranking-list__rank::before,
+  .arena-simple__podium-card .ranking-list__rank::after,
+  .arena-simple__podium-card .ranking-list__rank img {
     animation: none;
   }
 
@@ -8631,38 +8631,38 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (max-width: 720px) {
-  .timecurve-simple__podium-card-head {
+  .arena-simple__podium-card-head {
     grid-template-columns: 3.1rem minmax(0, 1fr);
     gap: 0.55rem;
     align-items: center;
   }
 
-  .timecurve-simple__podium-art {
+  .arena-simple__podium-art {
     width: 3.1rem;
     height: 3.1rem;
     border-radius: 0.8rem;
   }
 
-  .timecurve-simple__podium-card {
+  .arena-simple__podium-card {
     padding: 0.68rem 0.68rem 0.74rem;
   }
 
-  .timecurve-simple__podium-card-head p {
+  .arena-simple__podium-card-head p {
     font-size: 0.76rem;
   }
 
-  .timecurve-simple__podium-card .ranking-list__item {
+  .arena-simple__podium-card .ranking-list__item {
     grid-template-columns: 2.45rem minmax(6.75rem, auto) minmax(0, 1fr);
     gap: 0.42rem 0.5rem;
     padding: 0.5rem 0.52rem;
   }
 
-  .timecurve-simple__podium-card .ranking-list__rank {
+  .arena-simple__podium-card .ranking-list__rank {
     width: 2.35rem;
     height: 2.35rem;
   }
 
-  .timecurve-simple__podium-card .ranking-list__item strong {
+  .arena-simple__podium-card .ranking-list__item strong {
     justify-self: start;
     width: fit-content;
     max-width: 100%;
@@ -8670,13 +8670,13 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.timecurve-simple__indexer-stale-hint {
+.arena-simple__indexer-stale-hint {
   margin: 0 0 0.75rem;
   font-size: 0.85rem;
 }
 
 /* Scroll the ticker; older rows load when the sentinel nears the viewport (Simple lazy feed). */
-.timecurve-simple__activity-scroll {
+.arena-simple__activity-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
@@ -8687,18 +8687,18 @@ a.podium-address-explorer:hover .address-inline__label {
   border-bottom: 4px solid grey;
 }
 
-.timecurve-simple__activity-load-more {
+.arena-simple__activity-load-more {
   margin: 0.65rem 0 0;
   font-size: 0.85rem;
   text-align: center;
 }
 
-.timecurve-simple__activity-load-sentinel {
+.arena-simple__activity-load-sentinel {
   height: 1px;
   flex-shrink: 0;
 }
 
-.timecurve-simple__activity-list {
+.arena-simple__activity-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -8710,14 +8710,14 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Live buys: two columns on desktop (row-major: 1+2, then 3+4). Matches the
    hub’s 880px breakpoint family — tablet/phone stay a single column. */
 @container timecurveSimplePage (min-width: 881px) {
-  .timecurve-simple__activity-list {
+  .arena-simple__activity-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 881px) {
-  .timecurve-simple__activity-list {
+  .arena-simple__activity-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -8726,18 +8726,18 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Desktop hub: give the arcade timer stage a stable vertical footprint so the
    mascot + digits + extension chip layout does not feel vertically cramped. */
 @container timecurveSimplePage (min-width: 881px) {
-  .timecurve-simple__hub > .timecurve-simple__timer-panel {
+  .arena-simple__hub > .arena-simple__timer-panel {
     min-height: 392px;
   }
 }
 
 @media (min-width: 881px) {
-  .timecurve-simple__hub > .timecurve-simple__timer-panel {
+  .arena-simple__hub > .arena-simple__timer-panel {
     min-height: 392px;
   }
 }
 
-.timecurve-simple__ticker-row {
+.arena-simple__ticker-row {
   --ticker-accent: var(--arcade-green);
   --ticker-card-bg:
     linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(246, 255, 236, 0.93)),
@@ -8759,7 +8759,7 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.timecurve-simple__ticker-row::after {
+.arena-simple__ticker-row::after {
   content: "";
   position: absolute;
   inset: auto 0 0;
@@ -8768,15 +8768,15 @@ a.podium-address-explorer:hover .address-inline__label {
   opacity: 0.95;
 }
 
-.timecurve-simple__ticker-art,
-.timecurve-simple__ticker-main,
-.timecurve-simple__ticker-amounts,
-.timecurve-simple__ticker-band,
-.timecurve-simple__ticker-meta {
+.arena-simple__ticker-art,
+.arena-simple__ticker-main,
+.arena-simple__ticker-amounts,
+.arena-simple__ticker-band,
+.arena-simple__ticker-meta {
   min-width: 0;
 }
 
-.timecurve-simple__ticker-art {
+.arena-simple__ticker-art {
   width: 3.25rem;
   height: 3.25rem;
   display: grid;
@@ -8791,7 +8791,7 @@ a.podium-address-explorer:hover .address-inline__label {
     inset 0 0 12px rgba(255, 255, 255, 0.34);
 }
 
-.timecurve-simple__ticker-art img {
+.arena-simple__ticker-art img {
   display: block;
   max-width: 86%;
   max-height: 86%;
@@ -8799,13 +8799,13 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: drop-shadow(0 2px 0 rgba(11, 31, 20, 0.2));
 }
 
-.timecurve-simple__ticker-main {
+.arena-simple__ticker-main {
   display: flex;
   flex-direction: column;
   gap: 0.28rem;
 }
 
-.timecurve-simple__ticker-badge {
+.arena-simple__ticker-badge {
   width: fit-content;
   padding: 0.12rem 0.42rem;
   border-radius: 999px;
@@ -8819,11 +8819,11 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
-.timecurve-simple__ticker-buyer .address-inline__label {
+.arena-simple__ticker-buyer .address-inline__label {
   font-weight: 900;
 }
 
-.timecurve-simple__ticker-age {
+.arena-simple__ticker-age {
   width: fit-content;
   padding: 0.12rem 0.4rem;
   border-radius: 999px;
@@ -8834,12 +8834,12 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 800;
 }
 
-.timecurve-simple__ticker-amounts {
+.arena-simple__ticker-amounts {
   display: grid;
   gap: 0.35rem;
 }
 
-.timecurve-simple__ticker-amount {
+.arena-simple__ticker-amount {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -8847,28 +8847,28 @@ a.podium-address-explorer:hover .address-inline__label {
   color: #314636;
 }
 
-.timecurve-simple__ticker-amount img {
+.arena-simple__ticker-amount img {
   align-self: center;
   flex-shrink: 0;
   filter: drop-shadow(0 1px 0 rgba(11, 31, 20, 0.22));
 }
 
-.timecurve-simple__ticker-amount strong {
+.arena-simple__ticker-amount strong {
   color: var(--line);
   font-size: 1.02rem;
   font-weight: 950;
 }
 
-.timecurve-simple__ticker-amount--charm strong {
+.arena-simple__ticker-amount--charm strong {
   color: var(--arcade-magenta-700);
 }
 
-.timecurve-simple__ticker-band {
+.arena-simple__ticker-band {
   display: grid;
   gap: 0.32rem;
 }
 
-.timecurve-simple__ticker-band-head {
+.arena-simple__ticker-band-head {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 0.45rem;
@@ -8880,13 +8880,13 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
-.timecurve-simple__ticker-band-head strong {
+.arena-simple__ticker-band-head strong {
   text-align: center;
   color: var(--line);
   letter-spacing: 0;
 }
 
-.timecurve-simple__ticker-band-track {
+.arena-simple__ticker-band-track {
   position: relative;
   width: 100%;
   height: 0.92rem;
@@ -8899,7 +8899,7 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.timecurve-simple__ticker-band-fill {
+.arena-simple__ticker-band-fill {
   display: block;
   width: var(--ticker-band-fill, 0%);
   height: 100%;
@@ -8912,7 +8912,7 @@ a.podium-address-explorer:hover .address-inline__label {
   transition: width 260ms ease-out;
 }
 
-.timecurve-simple__ticker-band-min-marker {
+.arena-simple__ticker-band-min-marker {
   position: absolute;
   z-index: 1;
   left: 10%;
@@ -8923,7 +8923,7 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
-.timecurve-simple__ticker-band-fill--unknown {
+.arena-simple__ticker-band-fill--unknown {
   width: 100%;
   background:
     repeating-linear-gradient(
@@ -8933,13 +8933,13 @@ a.podium-address-explorer:hover .address-inline__label {
     );
 }
 
-.timecurve-simple__ticker-band-foot {
+.arena-simple__ticker-band-foot {
   color: #496154;
   font-size: 0.68rem;
   font-weight: 800;
 }
 
-.timecurve-simple__ticker-effects {
+.arena-simple__ticker-effects {
   grid-column: 2 / 4;
   list-style: none;
   margin: 0;
@@ -8949,7 +8949,7 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.42rem;
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick {
+.arena-simple__ticker-effects .live-buy-tick {
   --effect-bg: linear-gradient(180deg, #f8fff1, #dff8e8);
   --effect-border: rgba(11, 31, 20, 0.78);
   --effect-ink: #12331f;
@@ -8971,7 +8971,7 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick__glyph {
+.arena-simple__ticker-effects .live-buy-tick__glyph {
   display: grid;
   place-items: center;
   min-width: 2.05rem;
@@ -8987,7 +8987,7 @@ a.podium-address-explorer:hover .address-inline__label {
   text-shadow: 0 1px 0 rgba(11, 31, 20, 0.32);
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick__text {
+.arena-simple__ticker-effects .live-buy-tick__text {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -8996,14 +8996,14 @@ a.podium-address-explorer:hover .address-inline__label {
   min-width: 0;
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick__label {
+.arena-simple__ticker-effects .live-buy-tick__label {
   color: inherit;
   font-size: 0.66rem;
   line-height: 1.05;
   letter-spacing: 0.04em;
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick__sub {
+.arena-simple__ticker-effects .live-buy-tick__sub {
   color: color-mix(in srgb, var(--effect-ink) 78%, #ffffff);
   font-size: 0.64rem;
   line-height: 1.05;
@@ -9011,54 +9011,54 @@ a.podium-address-explorer:hover .address-inline__label {
   opacity: 1;
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick--danger,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-flag {
+.arena-simple__ticker-effects .live-buy-tick--danger,
+.arena-simple__ticker-effects .live-buy-tick--effect-flag {
   --effect-bg: linear-gradient(180deg, #ffe9ee, #ffd4df);
   --effect-border: #9f1239;
   --effect-ink: #5f0f26;
   --effect-glyph-bg: linear-gradient(180deg, #fb7185, #be123c);
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick--warning,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-flag-plant,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-hreset,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-tbp {
+.arena-simple__ticker-effects .live-buy-tick--warning,
+.arena-simple__ticker-effects .live-buy-tick--effect-flag-plant,
+.arena-simple__ticker-effects .live-buy-tick--effect-hreset,
+.arena-simple__ticker-effects .live-buy-tick--effect-tbp {
   --effect-bg: linear-gradient(180deg, #fff7cc, #ffe48b);
   --effect-border: #b7791f;
   --effect-ink: #593709;
   --effect-glyph-bg: linear-gradient(180deg, #facc15, #d97706);
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick--success,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-sbreak,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-ambush,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-clutch {
+.arena-simple__ticker-effects .live-buy-tick--success,
+.arena-simple__ticker-effects .live-buy-tick--effect-sbreak,
+.arena-simple__ticker-effects .live-buy-tick--effect-ambush,
+.arena-simple__ticker-effects .live-buy-tick--effect-clutch {
   --effect-bg: linear-gradient(180deg, #e9ffe9, #c8f5d0);
   --effect-border: #15803d;
   --effect-ink: #103d21;
   --effect-glyph-bg: linear-gradient(180deg, #4ade80, #15803d);
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick--info,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-wb,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-def,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-streak {
+.arena-simple__ticker-effects .live-buy-tick--info,
+.arena-simple__ticker-effects .live-buy-tick--effect-wb,
+.arena-simple__ticker-effects .live-buy-tick--effect-def,
+.arena-simple__ticker-effects .live-buy-tick--effect-streak {
   --effect-bg: linear-gradient(180deg, #edf8ff, #cfe9ff);
   --effect-border: #1d4ed8;
   --effect-ink: #12306b;
   --effect-glyph-bg: linear-gradient(180deg, #60a5fa, #1d4ed8);
 }
 
-.timecurve-simple__ticker-effects .live-buy-tick--neutral,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-tadd,
-.timecurve-simple__ticker-effects .live-buy-tick--effect-buy {
+.arena-simple__ticker-effects .live-buy-tick--neutral,
+.arena-simple__ticker-effects .live-buy-tick--effect-tadd,
+.arena-simple__ticker-effects .live-buy-tick--effect-buy {
   --effect-bg: linear-gradient(180deg, #f8fff1, #e0f5c8);
   --effect-border: color-mix(in srgb, var(--ticker-accent) 70%, #12331f);
   --effect-ink: #173820;
   --effect-glyph-bg: linear-gradient(180deg, var(--ticker-accent), #0f6f3f);
 }
 
-.timecurve-simple__ticker-meta {
+.arena-simple__ticker-meta {
   grid-column: 4;
   display: flex;
   justify-content: flex-end;
@@ -9070,7 +9070,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 800;
 }
 
-.timecurve-simple__ticker-meta .cursor-external-link {
+.arena-simple__ticker-meta .cursor-external-link {
   color: var(--arcade-magenta-700);
   text-decoration-thickness: 2px;
 }
@@ -9088,59 +9088,59 @@ a.podium-address-explorer:hover .address-inline__label {
   --ticker-card-glow: rgba(212, 160, 18, 0.22);
 }
 
-.timecurve-simple__ticker-row--flag {
+.arena-simple__ticker-row--flag {
   --ticker-card-bg:
     radial-gradient(circle at 96% 14%, rgba(236, 72, 153, 0.3), transparent 32%),
     linear-gradient(90deg, #fff0f7, #fffaf0);
   --ticker-card-glow: rgba(236, 72, 153, 0.18);
 }
 
-.timecurve-simple__ticker-row--reset {
+.arena-simple__ticker-row--reset {
   --ticker-card-bg:
     radial-gradient(circle at 96% 12%, rgba(250, 204, 21, 0.34), transparent 34%),
     linear-gradient(90deg, #fff2b8, #fff9e5);
   --ticker-card-glow: rgba(250, 204, 21, 0.24);
 }
 
-.timecurve-simple__ticker-row--streak {
+.arena-simple__ticker-row--streak {
   --ticker-card-bg:
     radial-gradient(circle at 96% 12%, rgba(34, 197, 94, 0.27), transparent 34%),
     linear-gradient(90deg, #effff4, #fffef2);
   --ticker-card-glow: rgba(34, 197, 94, 0.2);
 }
 
-.timecurve-simple__ticker-row--max {
+.arena-simple__ticker-row--max {
   --ticker-card-bg:
     radial-gradient(circle at 96% 12%, rgba(239, 68, 68, 0.24), transparent 34%),
     linear-gradient(90deg, #fff2e8, #fff8d7);
   --ticker-card-glow: rgba(239, 68, 68, 0.17);
 }
 
-.timecurve-simple__ticker-row--mid {
+.arena-simple__ticker-row--mid {
   --ticker-card-bg:
     radial-gradient(circle at 96% 12%, rgba(250, 204, 21, 0.24), transparent 34%),
     linear-gradient(90deg, #f6fff0, #fff8dc);
 }
 
-.timecurve-simple__ticker-row--min {
+.arena-simple__ticker-row--min {
   --ticker-card-bg:
     radial-gradient(circle at 96% 12%, rgba(59, 130, 246, 0.18), transparent 34%),
     linear-gradient(90deg, #f1fbff, #fbfff3);
 }
 
 @media (max-width: 900px) {
-  .timecurve-simple__ticker-row {
+  .arena-simple__ticker-row {
     grid-template-columns: 3.5rem 1fr;
   }
 
-  .timecurve-simple__ticker-amounts,
-  .timecurve-simple__ticker-band,
-  .timecurve-simple__ticker-effects,
-  .timecurve-simple__ticker-meta {
+  .arena-simple__ticker-amounts,
+  .arena-simple__ticker-band,
+  .arena-simple__ticker-effects,
+  .arena-simple__ticker-meta {
     grid-column: 1 / -1;
   }
 
-  .timecurve-simple__ticker-meta {
+  .arena-simple__ticker-meta {
     justify-content: flex-start;
   }
 }
@@ -9151,7 +9151,7 @@ a.podium-address-explorer:hover .address-inline__label {
    "feed the machine" on the right. Bigger gold border + gold drop shadow
    echo the WarBow arena's gold-bordered chrome so the family stays
    consistent across TimeCurve surfaces. */
-.timecurve-simple__buy-panel.data-panel {
+.arena-simple__buy-panel.data-panel {
   position: relative;
   isolation: isolate;
   display: flex;
@@ -9176,9 +9176,9 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Buy hub: column-align interactive chrome (rate, slider, CTA) on the vending
    panel's centerline. Gate wrapper stays full width (overlay + E2E guardrail
-   in timeCurveResponsiveLayoutCss.test.ts forbids `.buy-panel .chain-write-gate`
+   in timeArenaResponsiveLayoutCss.test.ts forbids `.buy-panel .chain-write-gate`
    as a substring — use `.buy-panel.data-panel > .chain-write-gate` only). */
-.timecurve-simple__buy-panel.data-panel > .chain-write-gate {
+.arena-simple__buy-panel.data-panel > .chain-write-gate {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9187,20 +9187,20 @@ a.podium-address-explorer:hover .address-inline__label {
   box-sizing: border-box;
 }
 
-.timecurve-simple__buy-panel.data-panel > .chain-write-gate > * {
+.arena-simple__buy-panel.data-panel > .chain-write-gate > * {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-.timecurve-simple__buy-panel.data-panel > .chain-write-gate > p {
+.arena-simple__buy-panel.data-panel > .chain-write-gate > p {
   text-align: center;
 }
 
 /* Slightly tighter heading rhythm + gold-tone H2 so the buy-panel title
    feels like a stamped sign on the front of the vending machine.
    Centred copy so the hub reads symmetric inside the gold frame. */
-.timecurve-simple__buy-panel .section-heading {
+.arena-simple__buy-panel .section-heading {
   align-self: stretch;
   align-items: center;
   justify-content: center;
@@ -9211,80 +9211,80 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-bottom: 0.2rem;
 }
 
-.timecurve-simple__buy-panel .section-heading__copy {
+.arena-simple__buy-panel .section-heading__copy {
   justify-items: center;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__rate-board {
+.arena-simple__buy-panel .arena-simple__rate-board {
   align-items: center;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__rate-now-line {
+.arena-simple__buy-panel .arena-simple__rate-now-line {
   justify-content: center;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__pay-balance {
+.arena-simple__buy-panel .arena-simple__pay-balance {
   text-align: center;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__buy-preview {
+.arena-simple__buy-panel .arena-simple__buy-preview {
   align-items: center;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__claim-flag-cta {
+.arena-simple__buy-panel .arena-simple__claim-flag-cta {
   width: 100%;
   margin-top: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__buy-advanced > summary {
+.arena-simple__buy-panel .arena-simple__buy-advanced > summary {
   justify-content: center;
   position: relative;
   padding-inline: 2.85rem;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__buy-advanced > summary::after {
+.arena-simple__buy-panel .arena-simple__buy-advanced > summary::after {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
 }
 
-.timecurve-simple__buy-panel .section-heading h2 {
+.arena-simple__buy-panel .section-heading h2 {
   margin: 0;
   color: var(--arcade-green-900);
   text-shadow: 2px 3px 0 rgba(255, 255, 255, 0.55);
 }
 
 /* Pay-asset toggles: top of Simple buy hub ADVANCED accordion during active sale (no H2). */
-.timecurve-simple__buy-panel .timecurve-simple__rate-paywith--buy-heading {
+.arena-simple__buy-panel .arena-simple__rate-paywith--buy-heading {
   margin: 0;
   padding-bottom: 0;
 }
 
-.timecurve-simple__connect {
+.arena-simple__connect {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
   align-items: flex-start;
 }
 
-.timecurve-simple__buy-panel .timecurve-simple__connect {
+.arena-simple__buy-panel .arena-simple__connect {
   align-items: center;
 }
 
-.timecurve-simple__balance-row {
+.arena-simple__balance-row {
   display: flex;
   align-items: center;
   gap: 0.65rem;
   margin: 0.35rem 0;
 }
 
-.timecurve-simple__minmax-row {
+.arena-simple__minmax-row {
   margin: 0.5rem 0;
 }
 
-.timecurve-simple__minmax {
+.arena-simple__minmax {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -9297,7 +9297,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Buy limits as flat supporting copy inside the Simple buy panel ADVANCED accordion.
    Flat text — no pill chrome — so it reads as supporting copy. */
-.timecurve-simple__minmax--rate-card {
+.arena-simple__minmax--rate-card {
   border: none;
   background: none;
   padding: 0;
@@ -9311,24 +9311,24 @@ a.podium-address-explorer:hover .address-inline__label {
   align-self: stretch;
 }
 
-.timecurve-simple__minmax--rate-card strong {
+.arena-simple__minmax--rate-card strong {
   font-weight: 800;
   color: var(--arcade-green-800, #166534);
 }
 
 /* Keep amount + min/max label visually tight; parent span uses flex gap for separation between pairs. */
-.timecurve-simple__minmax--rate-card .timecurve-simple__minmax-pair {
+.arena-simple__minmax--rate-card .arena-simple__minmax-pair {
   display: inline-flex;
   align-items: baseline;
   gap: 0;
 }
 
-.timecurve-simple__minmax--rate-card .timecurve-simple__minmax-suffix {
+.arena-simple__minmax--rate-card .arena-simple__minmax-suffix {
   margin-left: 0.04em;
   font-weight: inherit;
 }
 
-.timecurve-simple__slider-row {
+.arena-simple__slider-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
@@ -9337,7 +9337,7 @@ a.podium-address-explorer:hover .address-inline__label {
   margin: 0.35rem 0 0.12rem;
 }
 
-.timecurve-simple__amount-input {
+.arena-simple__amount-input {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -9349,7 +9349,7 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: none;
 }
 
-.timecurve-simple__amount-field {
+.arena-simple__amount-field {
   font-family: monospace;
   font-size: 1rem;
   width: 100%;
@@ -9360,13 +9360,13 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: none;
 }
 
-.timecurve-simple__amount-suffix {
+.arena-simple__amount-suffix {
   font-weight: 700;
   font-size: 0.85rem;
   color: var(--text-main);
 }
 
-.timecurve-simple__amount-token-dropdown {
+.arena-simple__amount-token-dropdown {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -9377,16 +9377,16 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-inline-start: auto;
 }
 
-.timecurve-simple__amount-token-dropdown:has(.timecurve-simple__amount-token-combobox:disabled) {
+.arena-simple__amount-token-dropdown:has(.arena-simple__amount-token-combobox:disabled) {
   cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
 }
 
-.timecurve-simple__amount-token-dropdown-icon {
+.arena-simple__amount-token-dropdown-icon {
   display: block;
   flex-shrink: 0;
 }
 
-.timecurve-simple__amount-token-combobox {
+.arena-simple__amount-token-combobox {
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -9404,11 +9404,11 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.2;
 }
 
-.timecurve-simple__amount-token-combobox-label {
+.arena-simple__amount-token-combobox-label {
   flex-shrink: 0;
 }
 
-.timecurve-simple__amount-token-combobox-chevron {
+.arena-simple__amount-token-combobox-chevron {
   display: flex;
   align-items: center;
   margin-inline-start: 0.05rem;
@@ -9416,12 +9416,12 @@ a.podium-address-explorer:hover .address-inline__label {
   opacity: 0.72;
 }
 
-.timecurve-simple__amount-token-combobox:disabled {
+.arena-simple__amount-token-combobox:disabled {
   cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
   opacity: 0.62;
 }
 
-.timecurve-simple__amount-token-list {
+.arena-simple__amount-token-list {
   position: absolute;
   z-index: 50;
   top: calc(100% + 3px);
@@ -9436,7 +9436,7 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.12);
 }
 
-.timecurve-simple__amount-token-option {
+.arena-simple__amount-token-option {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -9454,27 +9454,27 @@ a.podium-address-explorer:hover .address-inline__label {
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
-.timecurve-simple__amount-token-option:hover {
+.arena-simple__amount-token-option:hover {
   background: rgba(40, 90, 40, 0.08);
 }
 
-.timecurve-simple__amount-token-option--active {
+.arena-simple__amount-token-option--active {
   background: rgba(40, 90, 40, 0.12);
 }
 
-.timecurve-simple__pay-balance {
+.arena-simple__pay-balance {
   margin: 0.15rem 0 0.35rem;
   font-size: 0.92rem;
 }
 
-.timecurve-simple__pay-balance-row {
+.arena-simple__pay-balance-row {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-.timecurve-simple__balance-refresh {
+.arena-simple__balance-refresh {
   font: inherit;
   font-size: 0.85rem;
   line-height: 1;
@@ -9486,36 +9486,36 @@ a.podium-address-explorer:hover .address-inline__label {
   cursor: pointer;
 }
 
-.timecurve-simple__balance-refresh:disabled {
+.arena-simple__balance-refresh:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* Inline pay-token balance: `YOUR CL8Y:` (caption) + larger sans value; `display:flex` on `.amount-triple` is block-level and breaks `<p>` flow (GitLab #9). */
-.timecurve-simple__pay-balance .amount-triple {
+.arena-simple__pay-balance .amount-triple {
   display: inline-flex;
   flex-direction: column;
   vertical-align: baseline;
   max-width: 100%;
 }
 
-.timecurve-simple__pay-balance .amount-triple__row {
+.arena-simple__pay-balance .amount-triple__row {
   flex-wrap: nowrap;
   gap: 0.35rem;
 }
 
-.timecurve-simple__pay-balance .amount-triple__label {
+.arena-simple__pay-balance .amount-triple__label {
   font-size: 0.78em;
   min-width: 0;
 }
 
-.timecurve-simple__pay-balance .amount-triple__value {
+.arena-simple__pay-balance .amount-triple__value {
   font-size: 1.12em;
   font-weight: 800;
   line-height: 1.2;
 }
 
-.timecurve-simple__amount-field--quoted {
+.arena-simple__amount-field--quoted {
   display: inline-flex;
   align-items: center;
   min-width: 0;
@@ -9525,24 +9525,24 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--ink, #111);
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.timecurve-buy-spend-range,
-.timecurve-simple__slider-row--pay-cl8y .timecurve-buy-spend-range {
+.timecurve-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.arena-buy-spend-range,
+.arena-simple__slider-row--pay-cl8y .arena-buy-spend-range {
   accent-color: var(--arcade-green-600, #15803d);
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.timecurve-buy-spend-range,
-.timecurve-simple__slider-row--pay-eth .timecurve-buy-spend-range {
+.timecurve-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.arena-buy-spend-range,
+.arena-simple__slider-row--pay-eth .arena-buy-spend-range {
   accent-color: #627eea;
 }
 
-.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.timecurve-buy-spend-range,
-.timecurve-simple__slider-row--pay-usdm .timecurve-buy-spend-range {
+.timecurve-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.arena-buy-spend-range,
+.arena-simple__slider-row--pay-usdm .arena-buy-spend-range {
   accent-color: #0d9488;
 }
 
 /* CHARM / CL8Y preview under the Buy CTA: unboxed inline copy on the buy panel's
-   gold vending-machine surface (same intent as `.timecurve-simple__rate-board`). */
-.timecurve-simple__buy-preview {
+   gold vending-machine surface (same intent as `.arena-simple__rate-board`). */
+.arena-simple__buy-preview {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -9554,25 +9554,25 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: none;
 }
 
-.timecurve-simple__buy-preview--loading {
+.arena-simple__buy-preview--loading {
   background: none;
   color: rgba(60, 40, 0, 0.72);
   font-weight: 700;
   font-size: 0.85rem;
 }
 
-.timecurve-simple__buy-preview--blocked {
+.arena-simple__buy-preview--blocked {
   color: rgba(60, 40, 0, 0.88);
   font-size: 0.85rem;
   font-weight: 700;
 }
 
-.timecurve-simple__buy-preview-blocked-lede {
+.arena-simple__buy-preview-blocked-lede {
   margin: 0 0 0.55rem;
   line-height: 1.45;
 }
 
-.timecurve-simple__minmax--blocked {
+.arena-simple__minmax--blocked {
   color: rgba(60, 40, 0, 0.88);
 }
 
@@ -9583,7 +9583,7 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
 }
 
-.timecurve-simple__buy-preview-approx {
+.arena-simple__buy-preview-approx {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -9594,14 +9594,14 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--arcade-green-800);
 }
 
-.timecurve-simple__buy-preview-approx-main {
+.arena-simple__buy-preview-approx-main {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.35rem;
 }
 
-.timecurve-simple__buy-preview-gain {
+.arena-simple__buy-preview-gain {
   font-family: monospace;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -9611,24 +9611,24 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Reserve horizontal space when gain % is briefly unavailable so Worth / CL8Y row
    does not reflow (parentheses used to mount/unmount; see held label in TSX). */
-.timecurve-simple__buy-preview-gain--reserved {
+.arena-simple__buy-preview-gain--reserved {
   align-self: center;
   min-width: 14ch;
   min-height: 1em;
   visibility: hidden;
 }
 
-.timecurve-simple__buy-preview-approx-value {
+.arena-simple__buy-preview-approx-value {
   font-family: monospace;
   font-weight: 800;
 }
 
-.timecurve-simple__buy-preview-approx-unit {
+.arena-simple__buy-preview-approx-unit {
   font-weight: 800;
   text-transform: uppercase;
 }
 
-.timecurve-simple__buy-preview-bonuses {
+.arena-simple__buy-preview-bonuses {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -9642,7 +9642,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(45, 90, 55, 0.92);
 }
 
-.timecurve-simple__buy-preview-bonus-line {
+.arena-simple__buy-preview-bonus-line {
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -9653,7 +9653,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Live rate board: column for the hero "now" row plus optional "at launch"
    row (Arena). Intentionally unboxed — the buy panel chrome carries the
    vending-machine frame; the live price reads as inline panel content. */
-.timecurve-simple__rate-board {
+.arena-simple__rate-board {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -9665,7 +9665,7 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: none;
 }
 
-.timecurve-simple__rate-row {
+.arena-simple__rate-row {
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
@@ -9673,20 +9673,20 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Live "now" row: inline CHARM glyph + label + price + pay-token logo; Arena
    stacks the pay-asset toggle on a second line below. */
-.timecurve-simple__rate-row--now {
+.arena-simple__rate-row--now {
   gap: 0.45rem;
 }
 
-.timecurve-simple__rate-row--now > .timecurve-simple__rate-paywith {
+.arena-simple__rate-row--now > .arena-simple__rate-paywith {
   margin-top: 0;
 }
 
-.timecurve-simple__rate-row--launch {
+.arena-simple__rate-row--launch {
   border-top: 2px dashed rgba(60, 40, 0, 0.3);
   padding-top: 0.55rem;
 }
 
-.timecurve-simple__rate-label {
+.arena-simple__rate-label {
   font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -9694,7 +9694,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(60, 40, 0, 0.78);
 }
 
-.timecurve-simple__rate-value {
+.arena-simple__rate-value {
   font-family: monospace;
   font-weight: 900;
   font-size: clamp(1.35rem, 2.6vw, 1.85rem);
@@ -9704,7 +9704,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--ink, #111);
 }
 
-.timecurve-simple__rate-value--hero {
+.arena-simple__rate-value--hero {
   font-size: clamp(1.85rem, 4.2vw, 2.85rem);
   letter-spacing: -0.01em;
 }
@@ -9713,11 +9713,11 @@ a.podium-address-explorer:hover .address-inline__label {
    The TSX toggles `--tick` on the value as a key-driven re-render so the
    animation re-runs without us having to manage timers. Suppressed under
    `prefers-reduced-motion`. */
-.timecurve-simple__rate-value--tick {
-  animation: timecurve-simple-rate-pulse 0.9s ease-out;
+.arena-simple__rate-value--tick {
+  animation: arena-simple-rate-pulse 0.9s ease-out;
 }
 
-@keyframes timecurve-simple-rate-pulse {
+@keyframes arena-simple-rate-pulse {
   0% {
     text-shadow: 0 0 0 rgba(212, 160, 18, 0);
     transform: scale(1);
@@ -9733,12 +9733,12 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__rate-value--tick {
+  .arena-simple__rate-value--tick {
     animation: none;
   }
 }
 
-.timecurve-simple__rate-equals {
+.arena-simple__rate-equals {
   font-size: 0.7em;
   margin: 0 0.25em;
   color: rgba(60, 40, 0, 0.65);
@@ -9748,7 +9748,7 @@ a.podium-address-explorer:hover .address-inline__label {
    separator so DOUB and CL8Y values are equally readable and never
    wrap mid-number. Iteration 3 fix for the awkward
    "5.6551k DOUB = 1.205784 CL8Y" line that broke after `DOUB = `. */
-.timecurve-simple__rate-pair {
+.arena-simple__rate-pair {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -9756,7 +9756,7 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-top: 0.15rem;
 }
 
-.timecurve-simple__rate-pair-tile {
+.arena-simple__rate-pair-tile {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -9767,19 +9767,19 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(255, 255, 255, 0.78);
 }
 
-.timecurve-simple__rate-pair-tile--launch-pay-cl8y {
+.arena-simple__rate-pair-tile--launch-pay-cl8y {
   background: linear-gradient(180deg, #f1fbe9 0%, #fffbe5 100%);
 }
 
-.timecurve-simple__rate-pair-tile--launch-pay-eth {
+.arena-simple__rate-pair-tile--launch-pay-eth {
   background: linear-gradient(180deg, #eef6ff 0%, #f5fbff 100%);
 }
 
-.timecurve-simple__rate-pair-tile--launch-pay-usdm {
+.arena-simple__rate-pair-tile--launch-pay-usdm {
   background: linear-gradient(180deg, #f0f4ff 0%, #fff5f0 100%);
 }
 
-.timecurve-simple__rate-pair-value {
+.arena-simple__rate-pair-value {
   font-family: monospace;
   font-weight: 900;
   font-size: clamp(1.05rem, 2.2vw, 1.4rem);
@@ -9787,7 +9787,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--ink, #111);
 }
 
-.timecurve-simple__rate-pair-unit {
+.arena-simple__rate-pair-unit {
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -9795,7 +9795,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-muted);
 }
 
-.timecurve-simple__rate-pair-equals {
+.arena-simple__rate-pair-equals {
   font-size: 1.15rem;
   font-weight: 900;
   color: rgba(60, 40, 0, 0.6);
@@ -9803,7 +9803,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* CHARM glyph + "1 CHARM =" + hero digits + selected pay-token logo on one
    wrapping flex line (`/tokens/charm.png` + `/tokens/cl8y.png`, etc.). */
-.timecurve-simple__rate-now-line {
+.arena-simple__rate-now-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -9811,7 +9811,7 @@ a.podium-address-explorer:hover .address-inline__label {
   min-width: 0;
 }
 
-.timecurve-simple__rate-pay-logo {
+.arena-simple__rate-pay-logo {
   width: clamp(1.65rem, 4.8vw, 2.15rem);
   height: clamp(1.65rem, 4.8vw, 2.15rem);
   object-fit: contain;
@@ -9822,7 +9822,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* Isolates the block animation + text-shadow on the hero price from sibling
    compositing (pay-token trigger) to cut rare “whole row” shimmer in prod. */
-.timecurve-simple__rate-hero-tick-isolate {
+.arena-simple__rate-hero-tick-isolate {
   display: inline-block;
   isolation: isolate;
 }
@@ -9830,7 +9830,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Rate row: pay token icon + chevron open a menu portaled to `document.body`
    (buy panel uses overflow:hidden + isolation — in-tree fixed menus could clip
    or stack oddly). */
-.timecurve-simple__rate-pay-picker {
+.arena-simple__rate-pay-picker {
   position: relative;
   display: inline-flex;
   flex-shrink: 0;
@@ -9838,7 +9838,7 @@ a.podium-address-explorer:hover .address-inline__label {
   isolation: isolate;
 }
 
-.timecurve-simple__rate-pay-picker-trigger {
+.arena-simple__rate-pay-picker-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -9852,11 +9852,11 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 0;
 }
 
-.timecurve-simple__rate-pay-picker-trigger:hover .timecurve-simple__rate-pay-logo {
+.arena-simple__rate-pay-picker-trigger:hover .arena-simple__rate-pay-logo {
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.22)) brightness(1.05);
 }
 
-.timecurve-simple__rate-pay-picker-chevron {
+.arena-simple__rate-pay-picker-chevron {
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -9866,23 +9866,23 @@ a.podium-address-explorer:hover .address-inline__label {
   transition: transform 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
-.timecurve-simple__rate-pay-picker-trigger:hover .timecurve-simple__rate-pay-picker-chevron {
+.arena-simple__rate-pay-picker-trigger:hover .arena-simple__rate-pay-picker-chevron {
   color: rgba(40, 28, 0, 0.72);
   opacity: 1;
 }
 
-.timecurve-simple__rate-pay-picker-trigger[aria-expanded="true"] .timecurve-simple__rate-pay-picker-chevron {
+.arena-simple__rate-pay-picker-trigger[aria-expanded="true"] .arena-simple__rate-pay-picker-chevron {
   transform: rotate(180deg);
   color: rgba(40, 28, 0, 0.78);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__rate-pay-picker-chevron {
+  .arena-simple__rate-pay-picker-chevron {
     transition: none;
   }
 }
 
-.timecurve-simple__rate-pay-picker-menu {
+.arena-simple__rate-pay-picker-menu {
   z-index: 600;
   display: flex;
   flex-direction: column;
@@ -9897,7 +9897,7 @@ a.podium-address-explorer:hover .address-inline__label {
     0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
-.timecurve-simple__rate-pay-picker-option {
+.arena-simple__rate-pay-picker-option {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -9916,35 +9916,35 @@ a.podium-address-explorer:hover .address-inline__label {
   text-align: left;
 }
 
-.timecurve-simple__rate-pay-picker-option:hover {
+.arena-simple__rate-pay-picker-option:hover {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.timecurve-simple__rate-pay-picker-option--active {
+.arena-simple__rate-pay-picker-option--active {
   background: rgba(241, 251, 233, 0.95);
   color: var(--arcade-green-800, #166534);
 }
 
-.timecurve-simple__rate-pay-picker-option img {
+.arena-simple__rate-pay-picker-option img {
   flex-shrink: 0;
   object-fit: contain;
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.1));
 }
 
-.timecurve-simple__rate-pay-picker-label {
+.arena-simple__rate-pay-picker-label {
   flex: 1 1 auto;
   min-width: 0;
 }
 
 /* Pay-asset toggle on the live rate row (CL8Y / ETH / USDM). */
-.timecurve-simple__rate-paywith {
+.arena-simple__rate-paywith {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   margin: 0.15rem 0 0.2rem;
 }
 
-.timecurve-simple__rate-paywith-btn {
+.arena-simple__rate-paywith-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
@@ -9961,17 +9961,17 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.08);
 }
 
-.timecurve-simple__rate-paywith-btn:hover {
+.arena-simple__rate-paywith-btn:hover {
   background: #fff;
 }
 
-.timecurve-simple__rate-paywith-btn--active {
+.arena-simple__rate-paywith-btn--active {
   background: linear-gradient(180deg, var(--arcade-green-200, #d8f5c8), #fff);
   border-color: rgba(40, 90, 40, 0.55);
 }
 
 /* Single horizontal segmented control (Simple buy heading + Arena live rate). */
-.timecurve-simple__rate-paywith--segmented {
+.arena-simple__rate-paywith--segmented {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: stretch;
@@ -9985,7 +9985,7 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1);
 }
 
-.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn {
+.arena-simple__rate-paywith--segmented .arena-simple__rate-paywith-btn {
   flex: 1 1 0;
   min-width: 0;
   justify-content: center;
@@ -10003,15 +10003,15 @@ a.podium-address-explorer:hover .address-inline__label {
   text-decoration: none;
 }
 
-.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn:first-of-type {
+.arena-simple__rate-paywith--segmented .arena-simple__rate-paywith-btn:first-of-type {
   border-left: none;
 }
 
-.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn:hover {
+.arena-simple__rate-paywith--segmented .arena-simple__rate-paywith-btn:hover {
   background: rgba(255, 255, 255, 0.72);
 }
 
-.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn--active {
+.arena-simple__rate-paywith--segmented .arena-simple__rate-paywith-btn--active {
   font-weight: 700;
   color: var(--arcade-green-800, #166534);
   text-decoration: underline;
@@ -10021,17 +10021,17 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(241, 251, 233, 0.88);
 }
 
-.timecurve-simple__rate-paywith--segmented .timecurve-simple__rate-paywith-btn--active:hover {
+.arena-simple__rate-paywith--segmented .arena-simple__rate-paywith-btn--active:hover {
   background: rgba(241, 251, 233, 1);
 }
 
-.timecurve-simple__kumbaya-route-warn {
+.arena-simple__kumbaya-route-warn {
   display: inline-flex;
   flex-shrink: 0;
   filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.12));
 }
 
-.timecurve-simple__rate-glyph {
+.arena-simple__rate-glyph {
   width: 1.4rem;
   height: 1.4rem;
   object-fit: contain;
@@ -10042,7 +10042,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* Mascot cutout positions for TimeCurve surfaces.
-   - `--pair-mascot` anchors `mascot-bag-bunny-pair.png` to the bottom
+   - `--pair-mascot` anchors `leprechaun-bag-bunny-pair.png` to the bottom
      of the timer panel as the calm "fair launch" sidekick (the role the
      art README assigns to that asset).
    - `--coin-stack` remains available to buy panels that still opt into the
@@ -10069,7 +10069,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 /* When the hub flips to a single column (the `timecurveSimplePage`
    container shrinks below 880px, see line 4463), the panel narrows to
-   the point where the centred digits collide with the bunny-bag
+   the point where the centred digits collide with the leprechaun-bunny
    mascot's silhouette. The mascot is portrait (682x1024) and there's no
    safe way to keep it bottom-left without overlapping the countdown, so
    we just hide it below the breakpoint and reclaim the padding. The
@@ -10078,21 +10078,21 @@ a.podium-address-explorer:hover .address-inline__label {
    a viewport media query so older user agents that don't support
    container queries still get the safe layout. */
 @container timecurveSimplePage (max-width: 880px) {
-  .timecurve-simple__timer-panel .panel-cutout--pair-mascot {
+  .arena-simple__timer-panel .panel-cutout--pair-mascot {
     display: none;
   }
 
-  .timecurve-simple__timer-panel.data-panel {
+  .arena-simple__timer-panel.data-panel {
     padding-bottom: clamp(1.25rem, 3vw, 1.85rem);
   }
 }
 
 @media (max-width: 880px) {
-  .timecurve-simple__timer-panel .panel-cutout--pair-mascot {
+  .arena-simple__timer-panel .panel-cutout--pair-mascot {
     display: none;
   }
 
-  .timecurve-simple__timer-panel.data-panel {
+  .arena-simple__timer-panel.data-panel {
     padding-bottom: clamp(1.25rem, 3vw, 1.85rem);
   }
 }
@@ -10102,13 +10102,13 @@ a.podium-address-explorer:hover .address-inline__label {
    the mascot decorations. Padding stays inside the panel chrome so the
    absolute-positioned cutouts can extend slightly outside (clipped by the
    panel's own `overflow: hidden`). */
-.timecurve-simple__timer-panel.data-panel {
+.arena-simple__timer-panel.data-panel {
   padding-bottom: clamp(1.5rem, 3vw, 2.25rem);
 }
 
 /* Advanced disclosure: pay-with, slippage, referral. Hidden by default to
    keep the buy panel laser-focused on the slider + CTA + launch projection. */
-.timecurve-simple__advanced {
+.arena-simple__advanced {
   margin-top: 0.85rem;
   border: 2px dashed var(--line);
   border-radius: 0.85rem;
@@ -10116,7 +10116,7 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(255, 255, 255, 0.55);
 }
 
-.timecurve-simple__advanced-summary {
+.arena-simple__advanced-summary {
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   font-weight: 700;
   font-size: 0.9rem;
@@ -10125,24 +10125,24 @@ a.podium-address-explorer:hover .address-inline__label {
   list-style: revert;
 }
 
-.timecurve-simple__advanced[open] .timecurve-simple__advanced-summary {
+.arena-simple__advanced[open] .arena-simple__advanced-summary {
   margin-bottom: 0.6rem;
 }
 
-.timecurve-simple__advanced-body {
+.arena-simple__advanced-body {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
-.timecurve-simple__paywith {
+.arena-simple__paywith {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.85rem;
 }
 
-.timecurve-simple__paywith-label {
+.arena-simple__paywith-label {
   flex: 1 0 100%;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -10150,14 +10150,14 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.72rem;
 }
 
-.timecurve-simple__paywith-option {
+.arena-simple__paywith-option {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
-.timecurve-simple__paywith-icon {
+.arena-simple__paywith-icon {
   flex-shrink: 0;
   object-fit: contain;
 }
@@ -10187,7 +10187,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* "Your stake at launch" panel — combined CHARM ≈ CL8Y line (`participantLaunchValueCl8yWei`). */
-.timecurve-simple__stake-panel.data-panel {
+.arena-simple__stake-panel.data-panel {
   position: relative;
   isolation: isolate;
   margin-bottom: 0.5rem;
@@ -10207,7 +10207,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: timecurve-stake-gradient-drift 10s ease-in-out infinite;
 }
 
-.timecurve-simple__stake-panel.data-panel::before {
+.arena-simple__stake-panel.data-panel::before {
   content: "";
   position: absolute;
   inset: 0.55rem;
@@ -10222,11 +10222,11 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* Same as timer/buy simple panels: hide generic `.data-panel::after` gold dot — it overlaps the inner stake card and adds no signal. */
-.timecurve-simple__stake-panel.data-panel::after {
+.arena-simple__stake-panel.data-panel::after {
   display: none;
 }
 
-.timecurve-simple__stake-panel--has-charm.data-panel {
+.arena-simple__stake-panel--has-charm.data-panel {
   border-color: var(--arcade-gold-600);
   background:
     radial-gradient(circle at 84% 18%, rgba(255, 229, 102, 0.74), transparent 20%),
@@ -10234,7 +10234,7 @@ a.podium-address-explorer:hover .address-inline__label {
     linear-gradient(124deg, #fffdf0 0%, #dfffee 34%, #fff0a8 66%, #e8fbff 100%);
 }
 
-.timecurve-simple__stake-panel--no-charm.data-panel {
+.arena-simple__stake-panel--no-charm.data-panel {
   border-color: #e28d0a;
   background:
     radial-gradient(circle at 85% 18%, rgba(255, 184, 55, 0.66), transparent 20%),
@@ -10243,7 +10243,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* Mood, headings, CHARM card — above cutout/fx; keep copy left-aligned (desktop panel is narrowed + centered). */
-.timecurve-simple__stake-panel-main {
+.arena-simple__stake-panel-main {
   position: relative;
   z-index: 2;
   display: flex;
@@ -10253,7 +10253,7 @@ a.podium-address-explorer:hover .address-inline__label {
   width: 100%;
 }
 
-.timecurve-simple__stake-fx {
+.arena-simple__stake-fx {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -10261,7 +10261,7 @@ a.podium-address-explorer:hover .address-inline__label {
   pointer-events: none;
 }
 
-.timecurve-simple__stake-particle {
+.arena-simple__stake-particle {
   position: absolute;
   width: 0.68rem;
   height: 0.68rem;
@@ -10272,12 +10272,12 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: timecurve-stake-particle-float 3.8s ease-in-out infinite;
 }
 
-.timecurve-simple__stake-particle--one {
+.arena-simple__stake-particle--one {
   top: 1rem;
   right: clamp(7rem, 16vw, 9.5rem);
 }
 
-.timecurve-simple__stake-particle--two {
+.arena-simple__stake-particle--two {
   right: clamp(2.6rem, 7vw, 4.2rem);
   bottom: 1rem;
   width: 0.48rem;
@@ -10285,7 +10285,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation-delay: -1.2s;
 }
 
-.timecurve-simple__stake-particle--three {
+.arena-simple__stake-particle--three {
   top: 50%;
   right: clamp(5rem, 11vw, 7rem);
   width: 0.54rem;
@@ -10294,7 +10294,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation-delay: -2.1s;
 }
 
-.timecurve-simple__stake-cutout {
+.arena-simple__stake-cutout {
   z-index: 1;
   right: clamp(-1rem, -1.4vw, -0.25rem);
   bottom: -1.35rem;
@@ -10303,7 +10303,7 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: drop-shadow(5px 7px 0 rgba(11, 31, 20, 0.38));
 }
 
-.timecurve-simple__stake-mood {
+.arena-simple__stake-mood {
   margin: 0 0 0.55rem;
   display: flex;
   flex-wrap: wrap;
@@ -10312,7 +10312,7 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.4rem 0.6rem;
 }
 
-.timecurve-simple__stake-mood-copy {
+.arena-simple__stake-mood-copy {
   max-width: 42rem;
   font-size: clamp(0.88rem, 1.9vw, 1rem);
   font-weight: 800;
@@ -10320,29 +10320,29 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (max-width: 720px) {
-  .timecurve-simple__stake-panel.data-panel {
+  .arena-simple__stake-panel.data-panel {
     padding-right: clamp(4.55rem, 18vw, 5.8rem);
   }
 
-  .timecurve-simple__stake-cutout {
+  .arena-simple__stake-cutout {
     right: -0.85rem;
     bottom: -1.15rem;
     width: clamp(4.9rem, 19vw, 6rem);
     opacity: 0.94;
   }
 
-  .timecurve-simple__stake-mood-copy {
+  .arena-simple__stake-mood-copy {
     max-width: 34rem;
   }
 
-  .timecurve-simple__stake-combined-line {
+  .arena-simple__stake-combined-line {
     font-size: clamp(1.25rem, 4.8vw, 1.8rem);
   }
 }
 
 @media (min-width: 721px) {
-  /* Child of `.timecurve-simple-page` flex column: center the panel, keep copy flush start. */
-  .timecurve-simple-page > .timecurve-simple__stake-panel.data-panel {
+  /* Child of `.arena-simple-page` flex column: center the panel, keep copy flush start. */
+  .arena-simple-page > .arena-simple__stake-panel.data-panel {
     align-self: center;
     width: 50%;
     max-width: 100%;
@@ -10354,27 +10354,27 @@ a.podium-address-explorer:hover .address-inline__label {
     padding-right: clamp(4.7rem, 11.4vw, 6.6rem);
   }
 
-  /* Bunny-girl mascot cutout: 40% smaller than default (60% of prior width / nudges). */
-  .timecurve-simple__stake-cutout {
+  /* Leprechaun cutout: 40% smaller than default (60% of prior width / nudges). */
+  .arena-simple__stake-cutout {
     right: clamp(-0.6rem, -0.84vw, -0.15rem);
     bottom: -0.81rem;
     width: clamp(4.2rem, 9.6vw, 6rem);
   }
 
-  .timecurve-simple__stake-particle--one {
+  .arena-simple__stake-particle--one {
     right: clamp(4.2rem, 9.6vw, 5.7rem);
   }
 
-  .timecurve-simple__stake-particle--two {
+  .arena-simple__stake-particle--two {
     right: clamp(1.56rem, 4.2vw, 2.52rem);
   }
 
-  .timecurve-simple__stake-particle--three {
+  .arena-simple__stake-particle--three {
     right: clamp(3rem, 6.6vw, 4.2rem);
   }
 }
 
-.timecurve-simple__stake-combined {
+.arena-simple__stake-combined {
   margin: 0.4rem 0 0.6rem;
   padding: 0.95rem 1.1rem;
   display: flex;
@@ -10388,11 +10388,11 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow: 4px 4px 0 rgba(11, 31, 20, 0.82), inset 0 0 0 2px rgba(255, 255, 255, 0.36);
 }
 
-.timecurve-simple__stake-combined--redeemed {
+.arena-simple__stake-combined--redeemed {
   opacity: 0.92;
 }
 
-.timecurve-simple__stake-combined-line {
+.arena-simple__stake-combined-line {
   margin: 0;
   font-size: clamp(1.35rem, 3.6vw, 2.15rem);
   font-weight: 900;
@@ -10405,38 +10405,38 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.15rem 0.35rem;
 }
 
-.timecurve-simple__stake-combined-line--approx {
+.arena-simple__stake-combined-line--approx {
   font-size: clamp(0.95rem, 2.4vw, 1.25rem);
   font-weight: 800;
   color: var(--arcade-green-800);
 }
 
-.timecurve-simple__stake-combined-label {
+.arena-simple__stake-combined-label {
   font-family: "Fredoka", system-ui, sans-serif;
   letter-spacing: 0.04em;
 }
 
 /* `AmountDisplay` → `.amount-triple` is block-level by default; keep the row inline in this sentence. */
-.timecurve-simple__stake-combined .amount-triple {
+.arena-simple__stake-combined .amount-triple {
   display: inline-flex;
   flex-direction: column;
   vertical-align: baseline;
 }
 
-.timecurve-simple__stake-combined .amount-triple__value.mono {
+.arena-simple__stake-combined .amount-triple__value.mono {
   font-size: 1em;
   font-weight: 900;
   line-height: 1.05;
 }
 
-.timecurve-simple__stake-combined-token {
+.arena-simple__stake-combined-token {
   font-family: "Fredoka", system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: 0.04em;
   font-size: 0.72em;
 }
 
-.timecurve-simple__stake-combined-usd {
+.arena-simple__stake-combined-usd {
   font-family: "Inter", sans-serif;
   font-size: 0.88em;
   font-weight: 750;
@@ -10445,7 +10445,7 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
 }
 
-.timecurve-simple__stake-tile-label {
+.arena-simple__stake-tile-label {
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -10453,26 +10453,26 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-muted, #4a5a4a);
 }
 
-.timecurve-simple__stake-tile-unit {
+.arena-simple__stake-tile-unit {
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
-.timecurve-simple__stake-settled-actions {
+.arena-simple__stake-settled-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   flex-shrink: 0;
 }
 
-.timecurve-simple__stake-settled-check {
+.arena-simple__stake-settled-check {
   flex-shrink: 0;
   display: block;
   vertical-align: middle;
 }
 
-.timecurve-simple__stake-redeemed-note {
+.arena-simple__stake-redeemed-note {
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.03em;
@@ -10480,12 +10480,12 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.72rem;
 }
 
-.timecurve-simple__stake-tile-value--redeemed-struck {
+.arena-simple__stake-tile-value--redeemed-struck {
   text-decoration: line-through;
   text-decoration-thickness: 2px;
 }
 
-.timecurve-simple__stake-redeemed-row {
+.arena-simple__stake-redeemed-row {
   margin: 0.55rem 0 0.25rem;
   padding: 0.85rem 1rem;
   border-radius: 0.85rem;
@@ -10499,11 +10499,11 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.15rem 0.65rem;
 }
 
-.timecurve-simple__stake-redeemed-row .timecurve-simple__stake-tile-label {
+.arena-simple__stake-redeemed-row .arena-simple__stake-tile-label {
   grid-column: 1;
 }
 
-.timecurve-simple__stake-redeemed-value {
+.arena-simple__stake-redeemed-value {
   grid-column: 2;
   font-size: clamp(1.45rem, 3.4vw, 2.1rem);
   font-weight: 900;
@@ -10512,11 +10512,11 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-main);
 }
 
-.timecurve-simple__stake-redeemed-row .timecurve-simple__stake-tile-unit {
+.arena-simple__stake-redeemed-row .arena-simple__stake-tile-unit {
   grid-column: 3;
 }
 
-.timecurve-simple__cta {
+.arena-simple__cta {
   font-size: 1.1rem;
   font-weight: 800;
   padding: 0.85rem 1.4rem;
@@ -10529,7 +10529,7 @@ a.podium-address-explorer:hover .address-inline__label {
    the chunky gold base; the inset highlight + bigger text-shadow + chunky
    shadow drop sell the "this is the button you want" message at a
    glance. Hover/active interactions are inherited from .btn-primary. */
-.timecurve-simple__cta--arcade {
+.arena-simple__cta--arcade {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -10545,20 +10545,20 @@ a.podium-address-explorer:hover .address-inline__label {
   text-shadow: 1px 2px 0 rgba(255, 255, 255, 0.45);
 }
 
-.timecurve-simple__cta--arcade:disabled {
+.arena-simple__cta--arcade:disabled {
   filter: grayscale(0.45) brightness(0.96);
 }
 
 /* Simple BUY — wallet on buy cooldown: read as inert (no arcade lift / coin
    wobble; stronger grey vs default disabled alone). */
-.timecurve-simple__cta--arcade.timecurve-simple__cta--cooldown:disabled {
+.arena-simple__cta--arcade.arena-simple__cta--cooldown:disabled {
   opacity: 0.48;
   filter: grayscale(0.78) brightness(0.88);
   box-shadow: 3px 3px 0 var(--line);
   text-shadow: none;
 }
 
-.timecurve-simple__cta--arcade.timecurve-simple__cta--cooldown:disabled .timecurve-simple__cta-glyph {
+.arena-simple__cta--arcade.arena-simple__cta--cooldown:disabled .arena-simple__cta-glyph {
   animation: none;
   filter: drop-shadow(1px 1px 0 var(--line));
 }
@@ -10569,14 +10569,14 @@ a.podium-address-explorer:hover .address-inline__label {
   z-index: 40;
 }
 
-.timecurve-simple__cta--arcade.timecurve-simple__cta--wrong-network:disabled {
+.arena-simple__cta--arcade.arena-simple__cta--wrong-network:disabled {
   opacity: 0.38;
   filter: grayscale(0.82) brightness(0.88);
   box-shadow: 3px 3px 0 var(--line);
   text-shadow: none;
 }
 
-.timecurve-simple__cta-glyph {
+.arena-simple__cta-glyph {
   width: clamp(1.5rem, 3vw, 2rem);
   height: clamp(1.5rem, 3vw, 2rem);
   object-fit: contain;
@@ -10588,13 +10588,13 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: coin-wobble 3.6s ease-in-out infinite;
 }
 
-.timecurve-simple__cta-label {
+.arena-simple__cta-label {
   display: inline-block;
   line-height: 1.05;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .timecurve-simple__cta-glyph {
+  .arena-simple__cta-glyph {
     animation: none;
   }
 }
@@ -10602,7 +10602,7 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Connect-wallet pitch box — lifts the connect pitch out of the regular
    paragraph rhythm so newbies see it as the gate-keeper to the BUY action,
    not as quiet body copy. */
-.timecurve-simple__connect-pitch {
+.arena-simple__connect-pitch {
   margin: 0;
   padding: 0.6rem 0.85rem;
   border: 3px dashed var(--arcade-gold-600);
@@ -10613,24 +10613,24 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--arcade-green-900);
 }
 
-.timecurve-simple__cta-hint {
+.arena-simple__cta-hint {
   margin-top: 0.4rem;
   font-size: 0.85rem;
 }
 
-.timecurve-simple__error-dismiss {
+.arena-simple__error-dismiss {
   margin-left: 0.5rem;
   font-size: 0.8rem;
   padding: 0.2rem 0.55rem;
 }
 
-.timecurve-simple__referral {
+.arena-simple__referral {
   margin-top: 0.6rem;
 }
 
 /* Buy hub — WarBow plant + CL8Y approval prefs (collapsed by default).
    Sits under the primary Buy CTA on Simple view. */
-.timecurve-simple__buy-advanced {
+.arena-simple__buy-advanced {
   margin-top: 0.85rem;
   border: 2px dashed rgba(11, 31, 20, 0.2);
   border-radius: 0.75rem;
@@ -10638,7 +10638,7 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(255, 255, 255, 0.55);
 }
 
-.timecurve-simple__buy-advanced > summary {
+.arena-simple__buy-advanced > summary {
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -10648,16 +10648,16 @@ a.podium-address-explorer:hover .address-inline__label {
 /* ---- "Want more?" explore tiles ---- */
 
 @media (max-width: 980px) {
-  .timecurve-simple__hub {
+  .arena-simple__hub {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .timecurve-simple__slider-row {
+  .arena-simple__slider-row {
     grid-template-columns: 1fr;
   }
-  .timecurve-simple__ticker-row {
+  .arena-simple__ticker-row {
     grid-template-columns: 1fr 1fr;
   }
 }

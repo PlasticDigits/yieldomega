@@ -20,7 +20,7 @@ const TARGET_CHAIN_ID = configuredTargetChainId();
 
 const HEADER_ICONS = {
   home: "/art/icons/header-home.png",
-  timecurve: "/art/icons/header-timecurve.png",
+  arena: "/art/icons/header-timecurve.png",
   referrals: "/art/icons/header-referrals.png",
   networkLocal: "/art/icons/header-network-local.png",
   networkChain: "/art/icons/header-network-chain.png",
@@ -73,17 +73,17 @@ export function RootLayout() {
   // canonical-fee-sink table are valuable on operator / power-user surfaces
   // (home, Arena, Protocol, etc.) but they distract from the primary buy action
   // when always visible. We hide the footer **only** on `/timecurve` (exact);
-  // `/timecurve/arena` and `/timecurve/protocol` keep it. Agents still get the
-  // collapsed `TimeCurveSimpleAgentCard` at the bottom of the Simple page (same
+  // `/arena/arena` and `/arena/protocol` keep it. Agents still get the
+  // collapsed `ArenaSimpleAgentCard` at the bottom of the Simple page (same
   // skills + fee sinks when expanded). See
   // [`docs/frontend/timecurve-views.md`](../../docs/frontend/timecurve-views.md).
-  const showFooter = location.pathname !== "/timecurve";
-  const isTimecurveRoute = location.pathname === "/timecurve" || location.pathname.startsWith("/timecurve/");
+  const showFooter = location.pathname !== "/arena";
+  const isArenaPlayRoute = location.pathname === "/arena" || location.pathname.startsWith("/arena/");
   const isReferralsRoute = location.pathname === "/referrals";
 
   const shellClassName = [
     "app-shell",
-    isTimecurveRoute ? "app-shell--timecurve" : null,
+    isArenaPlayRoute ? "app-shell--arena" : null,
     isReferralsRoute ? "app-shell--referrals" : null,
   ]
     .filter(Boolean)
@@ -91,7 +91,7 @@ export function RootLayout() {
 
   const mainClassName = [
     "app-main",
-    isTimecurveRoute ? "app-main--timecurve" : null,
+    isArenaPlayRoute ? "app-main--arena" : null,
     isReferralsRoute ? "app-main--referrals" : null,
   ]
     .filter(Boolean)
@@ -214,8 +214,8 @@ export function RootLayout() {
                     </NavLink>
                   </div>
                   <nav className="app-nav app-nav--dense" aria-label="Primary">
-                    <NavLink to="/timecurve" className={navLinkClass} aria-label="TimeCurve" title="TimeCurve">
-                      <HeaderIcon src={HEADER_ICONS.timecurve} />
+                    <NavLink to="/arena" className={navLinkClass} aria-label="Time Arena" title="Time Arena">
+                      <HeaderIcon src={HEADER_ICONS.arena} />
                       <span className="app-header__nav-label" aria-hidden="true">
                         TimeCurve
                       </span>

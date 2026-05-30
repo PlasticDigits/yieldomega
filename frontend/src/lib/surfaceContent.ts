@@ -20,7 +20,7 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
     to: "/arena",
     title: "Time Arena",
     blurb: "Always-on DOUB arena — buy CHARM, compete on podiums, extend the clock",
-    image: "/art/scenes/timecurve-simple.jpg",
+    image: "/art/scenes/arena-simple.jpg",
     imageAlt: "Time Arena fair-launch arcade scene with mascots and coins",
     badgeLabel: "Live",
     badgeTone: "live",

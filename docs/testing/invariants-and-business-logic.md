@@ -14,13 +14,13 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-DOCS-245-PLAY-SKILLS`** | Root [`skills/README.md`](../../skills/README.md) indexes **`play-active-time-arena`**, **`play-time-arena-doub`**, **`play-time-arena-warbow`** only (legacy `play-timecurve-*` / Rabbit / collectible NFT removed) | `skills/play-*-time-arena*/SKILL.md`, grep absence of `play-timecurve-doubloon` |
+| **`INV-DOCS-245-PLAY-SKILLS`** | Root [`skills/README.md`](../../skills/README.md) indexes **`play-active-time-arena`**, **`play-time-arena-doub`**, **`play-time-arena-warbow`**, **`script-with-timearena-local`** only (legacy `play-timecurve-*` removed) | `skills/play-*-time-arena*/SKILL.md`, grep absence of `play-timecurve-doubloon` |
 | **`INV-DOCS-245-GUARDRAILS`** | [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) references Arena v2 onchain authority + [`skills/README.md`](../../skills/README.md) play index | manual review |
 | **`INV-DOCS-245-PHASE20`** | [`docs/agent-phases.md`](../agent-phases.md) Phase 20 prompt names Time Arena play skills + [`docs/product/time-arena.md`](../product/time-arena.md) | `grep play-time-arena agent-phases.md` |
 | **`INV-BOTS-245-TIMEARENA`** | Bot package at [`bots/timearena/`](../../bots/timearena/README.md); env **`YIELDOMEGA_TIME_ARENA_ADDRESS`**; `inspect` reads **`TimeArena.doub()`** / **`arenaStart`** / **`paused`** (not legacy `saleStart` / `acceptedAsset`) | `bots/timearena/tests/`, `bash scripts/sync-bot-env-from-frontend.sh` |
-| **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit / retired NFT env required) | script + `frontend/.env.example` |
+| **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit/Leprechaun required) | script + `frontend/.env.example` |
 
-Cross-links: [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timecurve-local/SKILL.md`](../../skills/script-with-timecurve-local/SKILL.md) (local stack env hygiene).
+Cross-links: [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md) (local stack env hygiene).
 
 
 ## ~75% (Stage 2) verification
@@ -63,12 +63,12 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `cargo test` |
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
-| **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `TimeCurveProtocolDonatePoolsSection.test.tsx`, `e2e/timecurve.spec.ts` |
+| **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
 | **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) |
-| **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/timecurve/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
-| **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/timecurve/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
+| **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
+| **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/arena/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
 
-**Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`TimeCurveSimplePage.tsx`](../../frontend/src/pages/TimeCurveSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
+**Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`ArenaSimplePage.tsx`](../../frontend/src/pages/ArenaSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
 
 <a id="arena-podium-pool-topup-gitlab-261"></a>
 
@@ -186,7 +186,7 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 ### Arena buy CTA wrong-chain visual (GitLab [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194))
 
-**INV-FRONTEND-194-ARENA-BUY-CHAIN:** On **`/arena`**, mismatched chain adds **`timecurve-simple__cta--wrong-network`**, native **`title`**, no Framer lift, raised **`ChainMismatchWriteBarrier`**.
+**INV-FRONTEND-194-ARENA-BUY-CHAIN:** On **`/arena`**, mismatched chain adds **`arena-simple__cta--wrong-network`**, native **`title`**, no Framer lift, raised **`ChainMismatchWriteBarrier`**.
 
 <a id="timecurve-buy-wallet-session-drift-gitlab-144"></a>
 
@@ -262,22 +262,10 @@ Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces)
 |----|----------|-------------------|
 | **`INV-DEPLOY-259-DEV-WIRE`** | DeployDev: vaults → arena, PlayCred minter, arena live | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
 | **`INV-DEPLOY-259-DEV-SEED`** | DeployDev seeds DOUB/CL8Y/CRED for E2E mock wallet | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) |
-| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no retired v1 NFT/treasury/presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
+| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
 | **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
 
 Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md).
-
-<a id="retired-collectible-nft-gitlab-241"></a>
-
-### Retired collectible NFT surface (GitLab [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))
-
-| ID | Property | Evidence |
-|----|----------|----------|
-| **`INV-RETIRED-241-NO-CONTRACT`** | No collectible NFT Solidity under `contracts/src/`; no deploy wiring in `DeployDev` / `DeployProduction` | File grep for retired NFT contract name → empty |
-| **`INV-RETIRED-241-NO-INDEXER`** | No NFT decode tables or `/v1/*` mint routes in `indexer/src/` | Indexer source grep → empty |
-| **`INV-RETIRED-241-NO-FRONTEND`** | No `/collection` route, `CollectionPage`, or NFT read ABI in `frontend/src/` | Frontend source grep → empty |
-| **`INV-RETIRED-241-DOCS-SKILLS`** | Product doc + play skill removed; schema archived under [`schemas/archive/`](../../schemas/archive/) | [`skills/README.md`](../../skills/README.md) · guardrails [§12](../../.cursor/skills/yieldomega-guardrails/SKILL.md) |
-| **`INV-RETIRED-241-RG-CLEAN`** | Repo grep for retired NFT keyword empty outside `CHANGELOG` / `archive` / `audits` | Manual gate before closing #241 |
 
 ---
 

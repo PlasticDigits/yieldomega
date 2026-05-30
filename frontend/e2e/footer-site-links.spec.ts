@@ -18,7 +18,7 @@ test("footer site links card on footer-enabled routes (GitLab #232)", async ({ p
   );
   await expect(ribbon.getByRole("link", { name: "Agent SKILL.md" })).toHaveAttribute(
     "href",
-    /github\.com\/PlasticDigits\/yieldomega\/blob\/main\/skills\/play-active-timecurve\/SKILL\.md/,
+    /github\.com\/PlasticDigits\/yieldomega\/blob\/main\/skills\/play-active-time-arena\/SKILL\.md/,
   );
   await expect(ribbon.locator(".footer-link-pill__icon").first()).toBeVisible();
 });
@@ -27,7 +27,7 @@ test("/timecurve Simple shows site links card below agent card (GitLab #232)", a
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Launch countdown hides TimeCurve surfaces.");
 
-  await page.goto("/timecurve");
+  await page.goto("/arena");
   const card = page.getByTestId("footer-site-links-card");
   await expect(card).toBeVisible();
   const ribbon = card.getByTestId("footer-site-links");
@@ -35,7 +35,7 @@ test("/timecurve Simple shows site links card below agent card (GitLab #232)", a
     "href",
     "https://bridge.cl8y.com",
   );
-  await expect(page.getByTestId("timecurve-simple-agent-card").getByTestId("footer-site-links")).toHaveCount(
+  await expect(page.getByTestId("arena-simple-agent-card").getByTestId("footer-site-links")).toHaveCount(
     0,
   );
 });

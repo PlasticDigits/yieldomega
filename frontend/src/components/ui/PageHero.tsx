@@ -29,7 +29,7 @@ type Props = {
    * banner. See [`frontend/public/art/scenes/`](../../../public/art/scenes/)
    * and the asset map in [`frontend/public/art/README.md`](../../../public/art/README.md).
    * Pages opt-in (e.g. TimeCurve Simple uses
-   * `/art/scenes/timecurve-simple.jpg`); cards remain crisp via the
+   * `/art/scenes/arena-simple.jpg`); cards remain crisp via the
    * `arcade-banner--with-scene` overlay defined in `index.css`.
    */
   sceneSrc?: string;

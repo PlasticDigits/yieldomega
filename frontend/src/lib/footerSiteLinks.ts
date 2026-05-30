@@ -64,7 +64,7 @@ export const FOOTER_SITE_LINKS: readonly FooterSiteLink[] = [
   },
   {
     label: "Agent SKILL.md",
-    href: ghMainBlob("skills/play-active-timecurve/SKILL.md"),
+    href: ghMainBlob("skills/play-active-time-arena/SKILL.md"),
     testId: "footer-site-link-agent-skill",
     icon: { kind: "asset", src: "/art/icons/header-timecurve.png", alt: "" },
   },

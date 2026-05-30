@@ -33,9 +33,9 @@ See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross*
 <a id="referral-browser-storage-keys"></a>
 
 - **Search:** `?ref={code}` — when present, must normalize to a valid code (3–16, `a-z0-9` after lowercasing) or it is ignored.
-- **Path (under TimeCurve):** `/timecurve/{code}` (e.g. `https://yieldomega.com/timecurve/test1`) when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists). Same **`yieldomega.ref.v1`** persistence as `?ref=` — **no wallet required** to capture; the app shows a site-wide **Referral locked** pill and TimeCurve copy when disconnected.
-- **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/timecurve/{code}` instead. Unknown paths (e.g. `/luck777`, `/nope`) render the branded **404** inside `RootLayout` ([GitLab #223](https://gitlab.com/PlasticDigits/yieldomega/-/issues/223)); **`?ref=`** capture still runs on those URLs via [`ReferralPathSync`](../../frontend/src/components/ReferralPathSync.tsx).
-- **Invalid `/timecurve/{segment}`** (too short, bad charset, or reserved slug such as `home`): still lands on **TimeCurve Simple** without path capture — same as today. Only **unmatched** router paths hit the 404 page.
+- **Path (under TimeCurve):** `/arena/{code}` (e.g. `https://yieldomega.com/arena/test1`) when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists). Same **`yieldomega.ref.v1`** persistence as `?ref=` — **no wallet required** to capture; the app shows a site-wide **Referral locked** pill and TimeCurve copy when disconnected.
+- **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/arena/{code}` instead. Unknown paths (e.g. `/luck777`, `/nope`) render the branded **404** inside `RootLayout` ([GitLab #223](https://gitlab.com/PlasticDigits/yieldomega/-/issues/223)); **`?ref=`** capture still runs on those URLs via [`ReferralPathSync`](../../frontend/src/components/ReferralPathSync.tsx).
+- **Invalid `/arena/{segment}`** (too short, bad charset, or reserved slug such as `home`): still lands on **TimeCurve Simple** without path capture — same as today. Only **unmatched** router paths hit the 404 page.
 - **Precedence:** If both a valid `?ref=` and a path-based code are present, **`?ref=` wins** (query overrides path).
 - **Browser storage (two keys; implementation in `frontend/src/lib/referralStorage.ts`):** neither store is authoritative for code ownership — the chain is. Users can clear entries in devtools.
 
@@ -50,7 +50,7 @@ Spec / QA alignment: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/
 
 ### Self-referral pending purge ([GitLab #222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222))
 
-If a user captures **their own** registered referral slug into **`yieldomega.ref.v1`** (for example by opening their share link on `/timecurve/{code}` or `?ref=`), buys would otherwise auto-apply that code and revert onchain with **`TimeCurve: self-referral`**. The frontend **drops** the pending entry when it detects a match against **`yieldomega.myrefcode.v1.<walletLowercase>`** for the **connected** wallet:
+If a user captures **their own** registered referral slug into **`yieldomega.ref.v1`** (for example by opening their share link on `/arena/{code}` or `?ref=`), buys would otherwise auto-apply that code and revert onchain with **`TimeCurve: self-referral`**. The frontend **drops** the pending entry when it detects a match against **`yieldomega.myrefcode.v1.<walletLowercase>`** for the **connected** wallet:
 
 - on **wallet connect / account change**;
 - immediately after a new **`?ref=` / path** capture while that wallet is connected;

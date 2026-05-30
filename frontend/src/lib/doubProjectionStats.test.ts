@@ -6,7 +6,7 @@ import {
   PROJECTED_DOUB_SUPPLY_WAD,
   PROJECTED_DOUB_SUPPLY_WHOLE,
 } from "./doubProjectionStats";
-import { LAUNCH_LIQUIDITY_ANCHOR_DEN, LAUNCH_LIQUIDITY_ANCHOR_NUM } from "./timeCurvePodiumMath";
+import { LAUNCH_LIQUIDITY_ANCHOR_DEN, LAUNCH_LIQUIDITY_ANCHOR_NUM } from "./timeArenaPodiumMath";
 
 const WAD = 10n ** 18n;
 const SALE_BUCKET = 200n * 1_000_000n * WAD;

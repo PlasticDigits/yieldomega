@@ -1,6 +1,8 @@
-# TimeCurve bot (`timecurve-bot`)
+# TimeArena bot (`timecurve-bot`)
 
-Python **client** for [TimeCurve](../../contracts/src/TimeCurve.sol): reads authoritative onchain state and optionally submits normal transactions. It does **not** replace contracts or encode a parallel rules engine.
+Python **client** for [`TimeArena`](../../contracts/src/arena/TimeArena.sol) (Arena v2): reads authoritative onchain state and optionally submits normal transactions. It does **not** replace contracts or encode a parallel rules engine.
+
+Renamed from `bots/timecurve/` in GitLab [#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245). Play skills: [`skills/README.md`](../../skills/README.md).
 
 **Anvil ≠ MegaETH:** local Foundry Anvil uses vanilla EVM-style gas and timing. A green run here does **not** prove behavior on MegaETH testnet or mainnet. See [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) and [`docs/testing/strategy.md`](../../docs/testing/strategy.md).
 
@@ -9,7 +11,7 @@ Python **client** for [TimeCurve](../../contracts/src/TimeCurve.sol): reads auth
 Requires **Python 3.11+** and a JSON-RPC endpoint (Anvil or public).
 
 ```bash
-cd bots/timecurve
+cd bots/timearena
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
@@ -23,7 +25,7 @@ Ubuntu 22.04+, Debian 12+, and other distributions may mark the system Python as
 **Bare QA / CI host (no venv):** install into the user site with an explicit override — only when you accept that policy on that machine:
 
 ```bash
-cd bots/timecurve
+cd bots/timearena
 pip install -e ".[dev]" --user --break-system-packages
 ```
 
@@ -39,13 +41,12 @@ Copy [`.env.example`](.env.example) to `.env` or `.env.local` (gitignored) and s
 |----------|---------|
 | `YIELDOMEGA_RPC_URL` or `RPC_URL` | HTTP RPC |
 | `YIELDOMEGA_CHAIN_ID` | Chain id (Anvil default `31337`) |
-| `YIELDOMEGA_TIMECURVE_ADDRESS` | TimeCurve contract |
-| `YIELDOMEGA_RABBIT_TREASURY_ADDRESS` | Optional (shown in `inspect`) |
-| `YIELDOMEGA_PLAY_CRED_ADDRESS` | Optional Play CRED for inspect |
-| `YIELDOMEGA_ACCEPTED_ASSET_ADDRESS` | Optional; else read from contract |
+| `YIELDOMEGA_TIME_ARENA_ADDRESS` | TimeArena ERC-1967 proxy (preferred) |
+| `YIELDOMEGA_TIMECURVE_ADDRESS` | Legacy alias for the same proxy |
+| `YIELDOMEGA_ACCEPTED_ASSET_ADDRESS` | Optional DOUB token; else read via `TimeArena.doub()` |
 | `YIELDOMEGA_ADDRESS_FILE` | Optional JSON registry (see `contracts/deployments/stage2-anvil-registry.json`) |
 
-**UUPS `TimeCurve`:** `YIELDOMEGA_TIMECURVE_ADDRESS` must be the **`ERC1967Proxy`** from DeployDev / stack scripts, not the **implementation** row in `run-latest.json` ([issue #61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)). **`currentCharmBoundsWad`** no longer **panics** on uninitialized `initialMinBuy` and returns the base **(0.99, 10) CHARM** envelope instead ([issue #73](https://gitlab.com/PlasticDigits/yieldomega/-/issues/73)); **buys and real bounds** still require the **proxy**.
+**UUPS `TimeArena`:** `YIELDOMEGA_TIME_ARENA_ADDRESS` must be the **`ERC1967Proxy`** from DeployDev / stack scripts, not the implementation row in `run-latest.json`.
 
 - No submissions unless you pass **`--send`** on the CLI **or** set `YIELDOMEGA_SEND_TX=1` **and** `YIELDOMEGA_DRY_RUN=0`, **and** set `YIELDOMEGA_PRIVATE_KEY`.
 - **`inspect`** never sends transactions.
@@ -59,10 +60,10 @@ Copy [`.env.example`](.env.example) to `.env` or `.env.local` (gitignored) and s
 From repository root (Foundry `anvil`, `forge`, `cast` on `PATH`):
 
 ```bash
-# Writes bots/timecurve/.env.local and leaves Anvil running (note the printed PID).
+# Writes bots/timearena/.env.local and leaves Anvil running (note the printed PID).
 bash scripts/anvil-export-bot-env.sh
 
-cd bots/timecurve
+cd bots/timearena
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 set -a && source .env.local && set +a
@@ -106,35 +107,35 @@ Global options: `--send`, `--allow-anvil-funding`, `--env-file PATH`.
 
 Use this when Anvil + DeployDev (or `frontend/.env.local`) already exist and you only want the Python swarm.
 
-1. **Repository root** as the current working directory (so `load_config` finds `bots/timecurve/.env.local`).
+1. **Repository root** as the current working directory (so `load_config` finds `bots/timearena/.env.local`).
 2. **`frontend/.env.local`** with RPC, chain id, and contract addresses (from the full stack, `scripts/e2e-anvil.sh`, or `scripts/anvil-export-bot-env.sh`).
-3. **`bash scripts/sync-bot-env-from-frontend.sh`** — copies/syncs into **`bots/timecurve/.env.local`**.
-4. **`export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`** (required for one-shot ETH + mock CL8Y funding).
+3. **`bash scripts/sync-bot-env-from-frontend.sh`** — copies/syncs into **`bots/timearena/.env.local`**.
+4. **`export YIELDOMEGA_ALLOW_ANVIL_FUNDING=1`** (required for one-shot ETH + DOUB mint funding on Anvil).
 5. Optional: **`export YIELDOMEGA_SWARM_REFERRALS=0`** — skips registrar funding and shared referral code on workers ([GitLab #102](https://gitlab.com/PlasticDigits/yieldomega/-/issues/102), [GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94)).
-6. **`PYTHONPATH=bots/timecurve/src`** and the same Python that has `web3` installed, **from repo root**:
+6. **`PYTHONPATH=bots/timearena/src`** and the same Python that has `web3` installed, **from repo root**:
 
    ```bash
-   PYTHONPATH=bots/timecurve/src python3 -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()"
+   PYTHONPATH=bots/timearena/src python3 -c "from timecurve_bot.swarm_runner import run_swarm; run_swarm()"
    ```
 
-   Or, from `bots/timecurve` after activating the venv:
+   Or, from `bots/timearena` after activating the venv:
 
    ```bash
    timecurve-bot --allow-anvil-funding swarm
    ```
 
-If `load_config` fails (missing RPC or TimeCurve), `run_swarm()` prints a short hint to run **`sync-bot-env-from-frontend.sh`** and stay at repo root.
+If `load_config` fails (missing RPC or TimeArena), `run_swarm()` prints a short hint to run **`sync-bot-env-from-frontend.sh`** and stay at repo root.
 
 ## Implementation note
 
-1. **Export env** — `scripts/anvil-export-bot-env.sh` runs the same `DeployDev` forge script as `e2e-anvil.sh` and writes Arena v2 addresses (`TimeArena`, `PodiumVaults`, `AdminSellVault`, `ReferralRegistry`).
+1. **Export env** — `scripts/anvil-export-bot-env.sh` runs `DeployDev` and writes `YIELDOMEGA_TIME_ARENA_ADDRESS` + DOUB from `TimeArena.doub()`.
 2. **Load config** — `timecurve_bot.config.load_config` reads env (and optional address file), checksums addresses, applies send/dry-run policy.
 3. **Connect** — `web3.py` HTTP provider; `assert_chain_id` catches mismatched `YIELDOMEGA_CHAIN_ID`.
-4. **Strategies** — call `actions.approve_if_needed`, `buy`, WarBow helpers, and `mock_reserve.mint` only on dev tokens that expose `mint` (DeployDev `MockReserveCl8y`).
+4. **Strategies** — call `actions.approve_if_needed`, `buy`, and `Doubloon.mint` (dev MINTER_ROLE) on Anvil only.
 
 ## Frontend support
 
-Point the Vite app at the **same** RPC and TimeCurve address as `.env.local` (see [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) `VITE_*` table). Then:
+Point the Vite app at the **same** RPC and TimeArena address as `.env.local` (see [`docs/testing/e2e-anvil.md`](../../docs/testing/e2e-anvil.md) `VITE_*` table). Then:
 
 - **`seed-local`** produces staggered `Buy` events, optional reset-band max buy when chain time is already `<13m` remaining, multiple wallets for **last-buy** / **WarBow** motion, and a best-effort **`claimWarBowFlag`** (may require on-chain time to advance the silence window).
 - Running **`inspect`** before/after scenarios gives a quick textual check of podiums and ladder slots without opening the indexer.

@@ -250,7 +250,7 @@ def jobs() -> list[BatchJob]:
     )
     j.append(
         BatchJob(
-            "issue45-scene-timecurve-simple.jpg",
+            "issue45-scene-arena-simple.jpg",
             "1) Scenes & wide compositions",
             "TimeCurve Simple: timer + fair launch calm energy",
             "3:2",
@@ -277,7 +277,7 @@ def jobs() -> list[BatchJob]:
     )
     j.append(
         BatchJob(
-            "issue45-scene-timecurve-protocol.jpg",
+            "issue45-scene-arena-protocol.jpg",
             "1) Scenes & wide compositions",
             "TimeCurve Protocol: operator / audit neutral backdrop",
             "3:2",
