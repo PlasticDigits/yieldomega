@@ -21,9 +21,9 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 | Defended Streak | 2 | `podiumDeadline[2]` | Same |
 | WarBow | 3 | `podiumDeadline[3]` | Same |
 
-Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge** when categories roll on different schedules.
+Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge** when categories roll on different schedules ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)).
 
-- **`lastBuyEpoch`** increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**.
+- **`lastBuyEpoch`** increments on Last Buy **hard reset**; emits **`LastBuyEpochStarted`**. Permissionless **`rollPodiumEpoch(0)`** after expiry settles Last Buy prizes but does **not** bump `lastBuyEpoch` (CHARM/CRED epochs roll only on hard reset).
 - **`podiumEpoch[cat]`** increments on **`rollPodiumEpoch(cat)`** when `block.timestamp > podiumDeadline[cat]`.
 - Arena is **always live** when not **`paused`** — no `endSale` or `redeemCharms`.
 

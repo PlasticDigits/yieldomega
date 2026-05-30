@@ -33,7 +33,8 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 ## Timer
 
 - Last Buy deadline extends **+120s** per buy; **13m → 15m** hard-reset band (see `TimeMath`).
-- **`lastBuyEpoch`** increments on hard reset.
+- **`lastBuyEpoch`** increments on Last Buy hard reset (CHARM/CRED epoch); independent of other podium rolls ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)).
+- Four podium categories each have **`podiumDeadline[cat]`** + **`podiumEpoch[cat]`**; one buy extends all four; **`rollPodiumEpoch(cat)`** after expiry settles that category only — [arena-v2 § timers](../../docs/product/arena-v2.md#timers-last-buy--four-podiums) · [invariants §247](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
 
 ## Not in v1 removal batch
 
