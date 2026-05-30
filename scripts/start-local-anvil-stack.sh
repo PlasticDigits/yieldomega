@@ -135,11 +135,11 @@ else
 fi
 
 echo "=== Postgres (${DOCKER_PG} on localhost:${PG_HOST_PORT}) ==="
+# Host networking avoids broken Docker port-forward on some Linux hosts (indexer pool timeouts).
 if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
-  pg_host_ip="$(docker inspect "${DOCKER_PG}" 2>/dev/null | jq -r '.[0].HostConfig.PortBindings["5432/tcp"][0].HostIp // ""')"
-  # Empty HostIp means Docker published to 0.0.0.0 — recreate so QA only listens on loopback.
-  if [[ "${pg_host_ip}" != "127.0.0.1" ]]; then
-    echo "Recreating ${DOCKER_PG} for 127.0.0.1:${PG_HOST_PORT} bind (was HostIp='${pg_host_ip:-empty}')."
+  pg_net="$(docker inspect "${DOCKER_PG}" 2>/dev/null | jq -r '.[0].HostConfig.NetworkMode // ""')"
+  if [[ "${pg_net}" != "host" ]]; then
+    echo "Recreating ${DOCKER_PG} with --network host PGPORT=${PG_HOST_PORT}."
     docker rm -f "${DOCKER_PG}" >/dev/null
   fi
 fi
@@ -148,17 +148,18 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
     docker start "${DOCKER_PG}" >/dev/null
   fi
 else
-  docker run -d --name "${DOCKER_PG}" -p "127.0.0.1:${PG_HOST_PORT}:5432" \
+  docker run -d --name "${DOCKER_PG}" --network host \
     -e POSTGRES_USER=yieldomega \
     -e POSTGRES_PASSWORD=password \
     -e POSTGRES_DB=yieldomega_indexer \
+    -e PGPORT="${PG_HOST_PORT}" \
     postgres:16-alpine >/dev/null
 fi
 for _ in $(seq 1 30); do
-  docker exec "${DOCKER_PG}" pg_isready -U yieldomega -d yieldomega_indexer >/dev/null 2>&1 && break
+  docker exec "${DOCKER_PG}" pg_isready -U yieldomega -p "${PG_HOST_PORT}" -d yieldomega_indexer >/dev/null 2>&1 && break
   sleep 1
 done
-docker exec "${DOCKER_PG}" pg_isready -U yieldomega -d yieldomega_indexer >/dev/null || die "Postgres not ready."
+docker exec "${DOCKER_PG}" pg_isready -U yieldomega -p "${PG_HOST_PORT}" -d yieldomega_indexer >/dev/null || die "Postgres not ready."
 
 echo "=== Anvil (${RPC_URL}) ==="
 if ss -tlnp 2>/dev/null | grep -qE ":${ANVIL_PORT}\\s"; then
@@ -283,6 +284,11 @@ jq -n \
   }' > "${REGISTRY_OUT}"
 
 echo "=== Reset indexer database ==="
+if [[ -f /tmp/yieldomega_indexer_stack.pid ]]; then
+  kill "$(cat /tmp/yieldomega_indexer_stack.pid)" 2>/dev/null || true
+fi
+pkill -f 'yieldomega-indexer' 2>/dev/null || true
+sleep 1
 docker exec "${DOCKER_PG}" psql -U yieldomega -d postgres -v ON_ERROR_STOP=1 -c \
   "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'yieldomega_indexer' AND pid <> pg_backend_pid();" \
   >/dev/null 2>&1 || true
@@ -293,9 +299,6 @@ docker exec "${DOCKER_PG}" psql -U yieldomega -d postgres -v ON_ERROR_STOP=1 -c 
   "CREATE DATABASE yieldomega_indexer OWNER yieldomega;" >/dev/null
 
 echo "=== Start indexer (127.0.0.1:${INDEXER_PORT}) ==="
-if [[ -f /tmp/yieldomega_indexer_stack.pid ]]; then
-  kill "$(cat /tmp/yieldomega_indexer_stack.pid)" 2>/dev/null || true
-fi
 export DATABASE_URL="postgres://yieldomega:password@127.0.0.1:${PG_HOST_PORT}/yieldomega_indexer"
 export CHAIN_ID=31337
 export START_BLOCK=0
