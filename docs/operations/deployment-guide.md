@@ -59,6 +59,19 @@ Registry JSON keys: **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, *
 
 **Invariants:** [`INV-DEPLOY-259`](../testing/invariants-and-business-logic.md#arena-v2-deploy-gitlab-259) · Forge: [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol).
 
+### QA verification (agent, GitLab [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259))
+
+Recorded **2026-05-30** on `main` @ `ab89966` (QA agent — not manual `@brouie` sign-off).
+
+| Check | Result |
+|-------|--------|
+| `FOUNDRY_PROFILE=ci forge test --match-contract DevStackIntegration` | **6/6 pass** |
+| `bash scripts/e2e-anvil.sh` | DeployDev + Kumbaya OK; **4/5** Playwright specs pass (`anvil-arena-wallet-writes` DOUB buy timeout — known flake) |
+| `scripts/deploy-megaeth-contracts.sh --help` | Arena v2 env defaults present |
+| `scripts/write-production-registry-from-broadcast.sh` (Anvil `DeployProduction` broadcast) | Emits `TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon` |
+| `forge build --sizes` (MegaEVM [#72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72)) | Largest runtime: `TimeArena` impl **24,637 B** ≪ 512 KiB limit |
+| `SKIP_ANVIL_RICH_STATE=1 bash scripts/start-local-anvil-stack.sh` | DeployDev + registry JSON OK; indexer readiness blocked by local Postgres pool timeout in this run (infra — not deploy script) |
+
 ---
 
 ## Legacy v1 quickstart (pre–Arena v2 mainnet redeploy)
