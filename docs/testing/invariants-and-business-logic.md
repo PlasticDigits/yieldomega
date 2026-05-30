@@ -47,7 +47,10 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset` |
 | **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments | `test_timer_hard_reset_increments_epoch` |
 | **`INV-TIME-ARENA-TIMER-MULTI`** | One buy extends **all four** `podiumDeadline[i]` | `test_multi_podium_deadline_extend` |
-| **`INV-TIME-ARENA-PODIUM-ROLL`** | `rollPodiumEpoch(cat)` after expiry; epoch bump | `test_roll_podium_after_expiry` |
+| **`INV-TIME-ARENA-PODIUM-ROLL`** | `rollPodiumEpoch(cat)` after expiry; epoch bump; pays winners; clears scores | `test_roll_podium_after_expiry`, `test_roll_podium_settlement_pays_and_clears_scores` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
+| **`INV-TIME-ARENA-PODIUM-DIVERGE`** | Per-category rolls reset one `podiumDeadline[cat]`; timers diverge across Streak / Booster / WarBow / Last Buy | `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
+| **`INV-TIME-ARENA-PODIUM-EPOCH-INDEP`** | `podiumEpoch[cat]` counters advance independently | `test_podium_epochs_independent_after_skewed_rolls` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
+| **`INV-TIME-ARENA-LAST-BUY-EPOCH`** | `lastBuyEpoch` bumps on Last Buy **hard reset** only (CHARM/CRED), not on other podium rolls | `test_timer_hard_reset_increments_epoch`, `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-CRED-ACCRUE`** | DOUB buy adds **35 CRED** (18 dec) to epoch pool | `test_cred_accrue_on_doub_buy` |
 | **`INV-TIME-ARENA-CRED-CLAIM`** | `claimCred(epoch)` pro-rata by `epochCharmWad` | `test_cred_pro_rata_claim` |
 | **`INV-TIME-ARENA-CRED-BURN-BUY`** | `buyWithCred` burns **100 CRED** per 1e18 CHARM (`CRED_PER_CHARM_WAD`) | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled` |
