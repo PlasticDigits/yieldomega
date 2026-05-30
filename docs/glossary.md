@@ -22,7 +22,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Retired primitives (do not reintroduce)
 
-- **TimeCurve launchpad** — Legacy CL8Y bonding-curve sale with `endSale`, `redeemCharms`, **PodiumPool** payouts, and **FeeRouter** routing. Removed in epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
+- **TimeCurve launchpad** — Legacy CL8Y bonding-curve sale with `endSale`, `redeemCharms`, **PodiumPool** payouts, and **FeeRouter** routing. Removed in epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238); sale-end / redemption / presale flows verified removed in [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243). Replacement: **Time Arena** ([`arena-v2.md`](product/arena-v2.md)).
 
 - **retired v1 player reserve (GitLab #242)** — Retired player treasury layer ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 

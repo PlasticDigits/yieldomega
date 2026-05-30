@@ -1,5 +1,7 @@
 # Final signoff and value movement (issue #55)
 
+> **Superseded for Arena v2:** TimeCurve `endSale` / `redeemCharms` / `distributePrizes`, presale vesting **`/vesting`**, and CL8Y linear sale gates were removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)). Arena v2 uses **`TimeArena.paused`** only — see [`arena-v2.md`](../product/arena-v2.md) and **`INV-TIME-ARENA-ALWAYS-LIVE`** in [invariants](invariants-and-business-logic.md#timearena-v2-gitlab-260). The tables below document **retired v1** gates for historical ops reference.
+
 This document records the **authoritative onchain gates** for [GitLab #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55): pausing or holding user-facing value movement (DOUB claims, sale allocation redemptions, reserve podium CL8Y) until a **governance/operator** step enables them.
 
 **Authoritative state lives in contracts**; the indexer and frontend only reflect it.
