@@ -39,6 +39,18 @@ Canonical table: [`ArenaPodiumTimerConfig.sol`](src/arena/libraries/ArenaPodiumT
 | `CRED_PER_CHARM_WAD` | `100e18` | `buyWithCred` burn ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 | First-buy CRED bonus | `150e18` scheduled for `lastBuyEpoch + 1` | One wallet lifetime ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 
+### WarBow DOUB costs ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252))
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `WARBOW_STEAL_DOUB` | `1000e18` | Per steal |
+| `WARBOW_GUARD_DOUB` | `10_000e18` | 6h guard |
+| `WARBOW_STEAL_LIMIT_BYPASS_DOUB` | `50_000e18` | Extra when daily steal cap exceeded |
+| `WARBOW_REVENGE_DOUB` | `1000e18` | Revenge window 24h |
+| Flag claim | `0` | +1000 BP after 300s silence |
+
+Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after_roll`. Epoch roll clears BP via `warbowBpGeneration`; admin `finalizeWarbowPodium` pays (roll skips auto 4∶2∶1).
+
 ## TimeCurve (retired v1 — historical)
 
 | Parameter | Testnet default | Bounds / notes | Status |
