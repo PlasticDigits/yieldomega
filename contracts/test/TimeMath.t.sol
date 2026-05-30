@@ -52,4 +52,57 @@ contract TimeMathTest is Test {
         uint256 dl = TimeMath.extendDeadline(900, 1000, 60, 86_400);
         assertEq(dl, 1060); // 1000 + 60
     }
+
+    /// GitLab #246: Last Buy timer profile — +120s extend, 13m→15m hard reset, 96h cap.
+    uint256 internal constant ARENA_EXTENSION = 120;
+    uint256 internal constant ARENA_TIMER_CAP = 4 * 86_400;
+    uint256 internal constant ARENA_RESET_BELOW = 780;
+    uint256 internal constant ARENA_RESET_TO = 900;
+
+    function test_extendDeadlineOrReset_hardReset_arenaProfile() public pure {
+        uint256 tNow = 10_000;
+        uint256 deadline = tNow + 600; // 10m remaining < 13m
+        (uint256 newDl, bool didReset) = TimeMath.extendDeadlineOrResetBelowThreshold(
+            deadline, tNow, ARENA_EXTENSION, ARENA_TIMER_CAP, ARENA_RESET_BELOW, ARENA_RESET_TO
+        );
+        assertTrue(didReset);
+        assertEq(newDl, tNow + ARENA_RESET_TO);
+    }
+
+    function test_extendDeadlineOrReset_extension_arenaProfile() public pure {
+        uint256 tNow = 10_000;
+        uint256 deadline = tNow + 2000; // > 13m remaining
+        (uint256 newDl, bool didReset) = TimeMath.extendDeadlineOrResetBelowThreshold(
+            deadline, tNow, ARENA_EXTENSION, ARENA_TIMER_CAP, ARENA_RESET_BELOW, ARENA_RESET_TO
+        );
+        assertFalse(didReset);
+        assertEq(newDl, deadline + ARENA_EXTENSION);
+    }
+
+    function testFuzz_extendDeadlineOrReset_arenaProfile(
+        uint32 deadlineOffset,
+        uint32 nowOffset,
+        uint16 extensionRaw
+    ) public pure {
+        uint256 tNow = uint256(nowOffset) % (365 days);
+        uint256 deadline = tNow + (uint256(deadlineOffset) % ARENA_TIMER_CAP);
+        uint256 extension = (uint256(extensionRaw) % 600) + 1;
+
+        (uint256 newDl, bool didReset) = TimeMath.extendDeadlineOrResetBelowThreshold(
+            deadline, tNow, extension, ARENA_TIMER_CAP, ARENA_RESET_BELOW, ARENA_RESET_TO
+        );
+
+        assertLe(newDl, tNow + ARENA_TIMER_CAP, "capped by timerCapSec");
+        uint256 remaining = deadline > tNow ? deadline - tNow : 0;
+        if (didReset) {
+            assertLt(remaining, ARENA_RESET_BELOW, "hard reset only below threshold");
+            assertEq(newDl, tNow + ARENA_RESET_TO < tNow + ARENA_TIMER_CAP ? tNow + ARENA_RESET_TO : tNow + ARENA_TIMER_CAP);
+        } else {
+            assertGe(remaining, ARENA_RESET_BELOW);
+            uint256 base = deadline > tNow ? deadline : tNow;
+            uint256 expected = base + extension;
+            if (expected > tNow + ARENA_TIMER_CAP) expected = tNow + ARENA_TIMER_CAP;
+            assertEq(newDl, expected);
+        }
+    }
 }
