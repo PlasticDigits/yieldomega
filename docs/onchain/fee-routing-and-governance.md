@@ -12,7 +12,11 @@ Each **`TimeArena.buy`** routes paid **DOUB** as follows (basis points of gross 
 
 Implementation: [`ArenaBuyRouting.sol`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol), [`PodiumVaults.sol`](../../contracts/src/arena/PodiumVaults.sol), [`AdminSellVault.sol`](../../contracts/src/arena/AdminSellVault.sol).
 
-Integer rounding remainder is assigned to the **admin vault** (see `splitBuyAmount`).
+Integer rounding remainder is assigned to the **admin vault** (see `ArenaBuyRouting.splitBuyAmount` — GitLab [#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)).
+
+### Admin DOUB liquidation
+
+**`AdminSellVault.sellDoubToUsdm(minOut)`** — **`onlyOwner`**: approves the configured Kumbaya-style router, swaps the vault’s full DOUB balance for **USDM**, delivers output to **`adminAccount`**. Local Forge evidence: [`AdminSellVault.t.sol`](../../contracts/test/AdminSellVault.t.sol) with [`AnvilMockUSDM`](../../contracts/src/fixtures/AnvilKumbayaFixture.sol) and a mock **`exactInputSingle`** router (production MegaETH uses integrator-kit **SwapRouter02** — see [Kumbaya integration](../integrations/kumbaya.md#admin-sell-vault-gitlab-249)).
 
 ## Manual podium pool top-up ([GitLab #261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
 

@@ -28,6 +28,17 @@ contract ArenaPrizeRoutingTest is Test {
         assertEq(sum, 700e18);
     }
 
+    function testFuzz_splitBuy_no_dust(uint256 amount) public pure {
+        amount = bound(amount, 1, type(uint128).max);
+        (uint256[4] memory act, uint256[4] memory sed, uint256 admin) = ArenaBuyRouting.splitBuyAmount(amount);
+        uint256 sum = admin;
+        for (uint8 i; i < 4; ++i) {
+            sum += act[i] + sed[i];
+        }
+        assertEq(sum, amount);
+        assertGe(admin, amount * 3000 / 10_000);
+    }
+
     function testFuzz_splitPrizeTopUp_no_dust(uint256 amount) public pure {
         amount = bound(amount, 1, type(uint128).max);
         (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(amount);
