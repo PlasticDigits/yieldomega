@@ -328,11 +328,12 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### Checklist
 
+- [ ] **`bash scripts/check-megaevm-contract-sizes.sh`** — all `src/` artifacts within MegaEVM 512 KiB / 536 KiB initcode limits (`TimeArena` exceeds vanilla EIP-170 but passes).
 - [ ] **`bash scripts/verify-contract-fork-smoke.sh`** — passes with `FORK_URL` unset (no-op gas ~3.8k per test).
 - [ ] **`export FORK_URL=<megaeth-testnet-rpc> && bash scripts/verify-contract-fork-smoke.sh`** — fork selects chain; `test_fork_smoke_chainIdAndBlock` asserts positive `chainid` / `block.number`.
 - [ ] **`FOUNDRY_PROFILE=ci forge test`** (full suite, `FORK_URL` unset) — `TimeArenaForkTest` no-ops inside the run; no fork URL required for merge gate.
 - [ ] Grep workflow, `contracts/README.md`, `contracts/.env.example` — no `TimeCurveForkTest` / `TimeCurveFork.t.sol` (historical `audits/` exempt).
-- [ ] Dispatch **`contract-fork-smoke`** with valid RPC input or repository secret `FORK_URL` — job runs `--match-contract TimeArenaForkTest` (no `forge build --sizes` gate) and succeeds.
+- [ ] Dispatch **`contract-fork-smoke`** with valid RPC input or repository secret `FORK_URL` — job runs MegaEVM size gate + `--match-contract TimeArenaForkTest` and succeeds.
 - [ ] After mainnet Arena deploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)): set `TIME_ARENA_FORK_ADDRESS=<proxy>` and re-run; `test_fork_smoke_timeArenaHeadState` reads `paused()` / `deadline()` when bytecode is present.
 
 **Automated:** `bash scripts/verify-contract-fork-smoke.sh` · `TimeArenaFork.t.sol` · **`contract-fork-smoke`** workflow.

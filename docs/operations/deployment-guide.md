@@ -69,7 +69,7 @@ Recorded **2026-05-30** on `main` @ `ab89966` (QA agent — not manual `@brouie`
 | `bash scripts/e2e-anvil.sh` | DeployDev + Kumbaya OK; **`e2e/anvil-arena-*.spec.ts`** (6 tests: mount, reads, DOUB/ETH wallet writes, CRED buy) — see [e2e-anvil.md](../testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)) |
 | `scripts/deploy-megaeth-contracts.sh --help` | Arena v2 env defaults present |
 | `scripts/write-production-registry-from-broadcast.sh` (Anvil `DeployProduction` broadcast) | Emits `TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon` |
-| `forge build --sizes` (MegaEVM [#72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72)) | Largest runtime: `TimeArena` impl **24,637 B** ≪ 512 KiB limit |
+| `bash scripts/check-megaevm-contract-sizes.sh` (MegaEVM [#72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72)) | Largest runtime: `TimeArena` **26,222 B** ≪ 512 KiB limit |
 | `SKIP_ANVIL_RICH_STATE=1 bash scripts/start-local-anvil-stack.sh` | DeployDev + registry JSON OK; indexer readiness blocked by local Postgres pool timeout in this run (infra — not deploy script) |
 
 ---

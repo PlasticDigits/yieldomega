@@ -12,6 +12,9 @@ optimizer_runs = 200
 via_ir = true
 ffi = true
 fs_permissions = [{ access = "read", path = "../airdrop" }]
+# MegaEVM runtime bytecode cap (512 KiB), not Ethereum EIP-170 (24 KiB).
+# https://docs.megaeth.com/spec/megaevm/contract-limits
+code_size_limit = 524288
 
 # RPC labels for `forge script` / `--fork-url` (URLs from official docs; verify if they change).
 [rpc_endpoints]
