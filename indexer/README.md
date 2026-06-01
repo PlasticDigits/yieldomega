@@ -111,7 +111,7 @@ Schema **≥ 2.1.0** (`x-schema-version`). Ingests **`PodiumPoolsToppedUp`** int
 
 ### Buy vault funding (`GET /v1/arena/vault-funding/*`, GitLab [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
 
-Schema **≥ 2.2.0** (`x-schema-version`). Ingests **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** into **`idx_arena_vault_funding`**. Routes: **`/recent`**, **`/by-tx/{tx_hash}`**, **`/totals`**. Empty DB → zeros / empty arrays (not 404). Map: **`INV-INDEXER-267-VAULT-FUNDING`** · [design — vault funding](../docs/indexer/design.md#arena-vault-funding-http-gitlab-267) · [invariants §267](../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267) · [onchain events](../docs/onchain/fee-routing-and-governance.md#events).
+Schema **≥ 2.2.0** (`x-schema-version`). Ingests **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** into **`idx_arena_vault_funding`**. Routes: **`/recent`**, **`/by-tx/{tx_hash}`**, **`/totals`**. Empty DB → zeros / empty arrays (not 404). Anvil smoke: `bash scripts/verify-vault-funding-anvil.sh`. Map: **`INV-INDEXER-267-VAULT-FUNDING`** · [design — vault funding](../docs/indexer/design.md#arena-vault-funding-http-gitlab-267) · [invariants §267](../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267) · [manual QA §267](../docs/testing/manual-qa-checklists.md#manual-qa-issue-267) · [onchain events](../docs/onchain/fee-routing-and-governance.md#events).
 
 ### Wallet stats (`GET /v1/arena/wallet/{address}/stats`, GitLab [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
 
