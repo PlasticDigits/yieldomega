@@ -23,7 +23,7 @@ Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Document
 
 ## Retired (do not reintroduce in docs or agents)
 
-v1 **TimeCurve** sale lifecycle (`endSale`, `redeemCharms`, `distributePrizes`), **FeeRouter** five-sink CL8Y routing, **Rabbit/Burrow**, **collectible NFT layer** — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Contract sources may remain in-tree for history; **Arena v2** is the operator and agent authority.
+v1 **TimeCurve** sale lifecycle (`endSale`, `redeemCharms`, `distributePrizes`), **FeeRouter** five-sink CL8Y routing, **Rabbit/Burrow**, **collectible NFT layer** — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244) ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). Contract sources may remain in-tree for history; **Arena v2** is the operator and agent authority.
 
 ---
 

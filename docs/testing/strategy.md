@@ -8,6 +8,8 @@
 
 **Doc anchor CI (local):** `bash scripts/check-doc-anchors.sh` — fails on broken `invariants-and-business-logic.md#…` links under `docs/`.
 
+**Retired v1 doc gate ([GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)):** `bash scripts/check-doc-retired-terms.sh` — fails if operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) still cite retired TimeCurve/FeeRouter env vars or lifecycle APIs.
+
 ## Three stages (plus production)
 
 Quality gates progress from **fast feedback** to **realistic integration** to **public testnet** before **mainnet**. Shared vocabulary: [../glossary.md](../glossary.md).

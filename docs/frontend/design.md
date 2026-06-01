@@ -8,28 +8,15 @@
 
 ## Pages (illustrative)
 
-- **TimeCurve** — three-route surface sharing one sub-nav (`<ArenaSubnav />`):
-  - **`/timecurve` (Simple)** — first-run path: state badge, hero countdown
-    rendered through the shared `ArenaTimerHero` (scene-art backplate,
-    days chip + tabular digits, urgency-aware glow + pulse — same design
-    family as `LaunchCountdownPage`), and a single focal **buy CHARM** card
-    with a live rate board (current per-CHARM CL8Y price
-    + at-launch DOUB↔CL8Y chain), and last-3 activity ticker. Cross-page navigation
-    to Arena / Protocol lives only in the persistent `ArenaSubnav` at the top
-    of the route. Renders through `ArenaSimplePage` + `useArenaSaleSession`
-    so the buy/redeem path stays a single source of truth.
-  - **`/arena/arena`** — existing dense PvP surface (WarBow Ladder, four reserve
-    podiums, full battle feed, raw data accordion) for power users. **No game-rule
-    changes vs the previous `/timecurve`.**
-  - **`/arena/protocol`** — read-only operator view of `TimeCurve`,
-    `LinearCharmPrice`, and `FeeRouter` reads (sale state, immutable parameters,
-    sink configuration). No write surface. The AUDIT **DOUB projection** cards
-    group launch economics into supply/redemption, price anchors, and
-    market/wallet lens so operators do not conflate clearing, launch-anchor,
-    Kumbaya floor, USD quote, or wallet-share values ([GitLab #235](https://gitlab.com/PlasticDigits/yieldomega/-/issues/235)).
-  - See [`docs/frontend/arena-views.md`](./arena-views.md) for the
-    layout contract, single-source-of-truth invariants, and the
-    LaunchCountdown → Simple handoff.
+- **Time Arena (`/arena`)** — unified participant surface at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)); legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Renders through [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx):
+  - **Last Buy countdown** — [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) (primary timer; RPC/indexer deadline).
+  - **Secondary podium timers** — [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) (Time Booster · Defended Streak · WarBow).
+  - **Buy hub** — DOUB-primary toggle plus ETH / USDM / Play CRED paths ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)).
+  - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums` or RPC).
+  - **CHARM + Play CRED** — [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) (epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`**).
+  - **WarBow PvP** — [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (steal / guard / revenge with DOUB cost pills).
+  - **`/arena/protocol`** — read-only operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, donate-pools). No write surface.
+  - See [`docs/frontend/arena-views.md`](./arena-views.md) for the layout contract and indexer/RPC invariants.
 - **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
 - **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary route is **`/arena`**.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
@@ -39,7 +26,7 @@
 | Data type | Preferred source |
 |-----------|------------------|
 | Historical buys, leaderboards | Indexer API |
-| Live timer / sale phase | Contract `view` via RPC or indexer |
+| Live timer / podium deadlines | Contract `view` via RPC or indexer `GET /v1/arena/timers` |
 | NFT metadata | Contract + tokenURI resolution policy |
 | Gas estimation | MegaETH RPC (`eth_estimateGas`) |
 
@@ -59,7 +46,7 @@
 
 - **Home product card grid** — homepage cards use a stretched CSS Grid row contract:
   `.home-cta-grid` owns equal implicit rows, `.home-cta-grid__item` is a flex
-  wrapper, and `.home-cta-card` fills the item. This keeps TimeCurve, Rabbit
+  wrapper, and `.home-cta-card` fills the item. This keeps Time Arena, Rabbit
   Treasury, Collection, Referrals, Kumbaya, and Sir cards visually aligned even
   when blurbs differ in length. At tablet widths, the grid reflows to two
   `minmax(0, 22rem)` columns before returning to three columns at desktop width,

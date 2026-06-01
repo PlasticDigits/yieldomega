@@ -2,6 +2,8 @@
 
 ## Arena v2 (live)
 
+<a id="arena-v2-live"></a>
+
 Arena v2 **`TimeArena`** buys attribute referrers via **`ReferralCredApplied`**: on each referred **DOUB** buy, **5 CRED** mints to referrer and **5 CRED** to buyer — **not** CHARM weight, independent of the **35 CRED** epoch pool ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)). Registration still burns **1 CL8Y** per code for continuity. Full rules: [time-arena.md § Referrals](time-arena.md#referrals) · [GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240) · baseline [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253).
 
 ### Code ownership continuity ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
@@ -30,102 +32,7 @@ Forge: [`TimeArena.t.sol::test_referred_buy_mints_cred_not_charm`](../../contrac
 
 ## Legacy (TimeCurve — retired)
 
-## Purpose
-
-Let users **register a short referral code** by paying a **fixed CL8Y burn**, then share links so **new buyers** can be attributed onchain. v1 rewards were enforced in **`TimeCurve`** on qualifying buys—**not** by the indexer or local browser storage.
-
-See also: [fee routing](../onchain/fee-routing-and-governance.md) (full **gross** buy is routed through `FeeRouter`; referral incentives are **CHARM weight**, documented below). **Launch UX / F-11:** **`/referrals`** is **not** an **`UnderConstruction`** stub — it ships the full referrals surface at TGE ([`launchplan-timecurve.md`](../../launchplan-timecurve.md#6-under-construction-frontend), [GitLab #91](https://gitlab.com/PlasticDigits/yieldomega/-/issues/91)).
-
-## CL8Y token
-
-- **Registration** burns **1 CL8Y** (`1e18` if 18 decimals) per successful registration.
-- The **CL8Y ERC-20** used for registration is **not** [`CL8YProtocolTreasury`](../onchain/treasury-contracts.md) (that contract is a **fee sink**). Production uses the **governance-approved CL8Y token address** wired at deploy. Dev/test may use a **mock burnable ERC-20** with a faucet for local testing.
-
-## Referral codes
-
-| Rule | Value |
-|------|--------|
-| Length | **3–16** characters |
-| Charset | **ASCII lowercase letters `a–z` and digits `0–9`** (input may be uppercased; canonical storage uses **normalized lowercase)** |
-| Uniqueness | **One code per address**; each code **at most one owner** |
-| Onchain identity | `bytes32 codeHash = keccak256(bytes(normalizedCode))` |
-
-## Client link capture (frontend)
-
-<a id="referral-browser-storage-keys"></a>
-
-- **Search:** `?ref={code}` — when present, must normalize to a valid code (3–16, `a-z0-9` after lowercasing) or it is ignored.
-- **Path (under TimeCurve):** `/arena/{code}` (e.g. `https://yieldomega.com/arena/test1`) when the second segment is **not** a fixed sub-route such as `arena` or `protocol` (or another reserved name; mirror list in `frontend/src/lib/referralPathReserved.ts` until a governance on-chain set exists). Same **`yieldomega.ref.v1`** persistence as `?ref=` — **no wallet required** to capture; the app shows a site-wide **Referral locked** pill and TimeCurve copy when disconnected.
-- **Not exposed as a top-level public route:** a bare `/{code}` is not used in the app shell, because a dynamic first segment can collide with real routes (e.g. post-launch `/home`). Use `?ref=` and `/arena/{code}` instead. Unknown paths (e.g. `/luck777`, `/nope`) render the branded **404** inside `RootLayout` ([GitLab #223](https://gitlab.com/PlasticDigits/yieldomega/-/issues/223)); **`?ref=`** capture still runs on those URLs via [`ReferralPathSync`](../../frontend/src/components/ReferralPathSync.tsx).
-- **Invalid `/arena/{segment}`** (too short, bad charset, or reserved slug such as `home`): still lands on **TimeCurve Simple** without path capture — same as today. Only **unmatched** router paths hit the 404 page.
-- **Precedence:** If both a valid `?ref=` and a path-based code are present, **`?ref=` wins** (query overrides path).
-- **Browser storage (two keys; implementation in `frontend/src/lib/referralStorage.ts`):** neither store is authoritative for code ownership — the chain is. Users can clear entries in devtools.
-
-| Purpose | Storage | Key | JSON payload |
-|---------|---------|-----|----------------|
-| **Pending** referral (captured from `?ref=` or allowed path) | **`localStorage` and `sessionStorage`** (same key in both) | `yieldomega.ref.v1` | `{ "code": "<normalized>", "ts": <ms> }` — `code` is the pending slug for `codeHash` preview / apply on buy. **No TTL**; **not** cleared after a successful referred buy. Removed when the user clears site data, a **new** valid `?ref=` / path capture **overwrites** the entry, or [**self-referral purge**](#referral-self-referral-pending-purge-issue-222) drops a slug that matches the connected wallet’s registered code. |
-| **Registered “my code”** UX cache (plaintext for share links after a successful `registerCode`) | **`localStorage` only** | `yieldomega.myrefcode.v1.<walletLowercase>` | `{ "code": "<normalized>", "ts": <ms> }` — one key per connected wallet (hex address lowercased). |
-
-Spec / QA alignment: [GitLab #85](https://gitlab.com/PlasticDigits/yieldomega/-/issues/85) (do not assume a single `yieldomega.ref.v1` row covers post-register “my code”; that row is **pending capture** only).
-
-<a id="referral-self-referral-pending-purge-issue-222"></a>
-
-### Self-referral pending purge ([GitLab #222](https://gitlab.com/PlasticDigits/yieldomega/-/issues/222))
-
-If a user captures **their own** registered referral slug into **`yieldomega.ref.v1`** (for example by opening their share link on `/arena/{code}` or `?ref=`), buys would otherwise auto-apply that code and revert onchain with **`TimeCurve: self-referral`**. The frontend **drops** the pending entry when it detects a match against **`yieldomega.myrefcode.v1.<walletLowercase>`** for the **connected** wallet:
-
-- on **wallet connect / account change**;
-- immediately after a new **`?ref=` / path** capture while that wallet is connected;
-- when **`setStoredMyReferralCodeForWallet`** writes the registered code (for example right after **`registerCode`**).
-
-Onchain self-referral reverts are unchanged. Successful referred buys still **do not** clear pending storage for third-party codes. **Out of scope for #222:** pending capture of a slug the wallet has **not** registered yet (no `myrefcode` row) — that case still relies on onchain preflight at submit time until a later enhancement.
-
-Implementation: [`referralSelfReferralPending.ts`](../../frontend/src/lib/referralSelfReferralPending.ts), [`ReferralSelfReferralPurge.tsx`](../../frontend/src/components/ReferralSelfReferralPurge.tsx). Manual QA: [checklist § #222](../testing/manual-qa-checklists.md#manual-qa-issue-222).
-
-- The **TimeCurve** buy UI reads the pending code for preview and for `codeHash` on `buy` when the user leaves “apply referral” enabled. The same pending code is reused on **every** subsequent buy in that browser until overwritten or cleared manually.
-
-## Attribution (TimeCurve buys)
-
-- The buyer calls **`buy(charmWad, codeHash, plantWarBowFlag)`** with a **non-zero** `codeHash` only when using a referral. If `codeHash` is zero, behavior matches **`buy(charmWad)`** / **`buy(charmWad, plantWarBowFlag)`** (no referral split). `plantWarBowFlag` is the WarBow opt-in from [issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63).
-- **Referrer** is `ReferralRegistry.ownerOfCode(codeHash)`. If `codeHash` is non-zero but unregistered, the transaction **reverts**.
-- **Self-referral** (`referrer == buyer`) **reverts**.
-- **Binding:** Referral is applied **per transaction** from the **provided `codeHash`**; there is no persistent “bound referrer” in the registry for the buyer. The frontend **does** keep the captured pending code in **`yieldomega.ref.v1`** across successful buys so repeat purchases in the same browser default to the same referrer without revisiting the share link (user may still uncheck “apply referral” for a single tx).
-
-## Reward math (TimeCurve, canonical)
-
-On a referred buy, let **`charmWad`** be the buyer’s CHARM quantity (WAD) and **`amount`** the **gross accepted-asset spend** = `charmWad × pricePerCharmWad / 1e18` (see [primitives](primitives.md)).
-
-- **`FeeRouter` path:** the **entire** **`amount`** is transferred to **`FeeRouter.distributeFees`** (canonical **five-sink** split — see [fee routing](../onchain/fee-routing-and-governance.md)).
-- **CHARM (referral):** **`refEach = charmWad × 500 / 10_000`** (5% of `charmWad` each). **Referrer** and **buyer** each receive **`refEach`** as additional **`charmWeight`**. No **reserve-asset** transfer is made to them on the referral path.
-- **`totalRaised`:** increases by **`amount`** (gross) for sale accounting.
-- **`charmWeight` / `totalCharmWeight`:** buyer accrues **`charmWad + refEach`**; referrer accrues **`refEach`**; **`totalCharmWeight`** increases by **`charmWad + 2 × refEach`**.
-- **DOUB redemption:** `redeemCharms` uses **`totalCharmWeight`** in the denominator: `totalTokensForSale * charmWeight[user] / totalCharmWeight`.
-
-**Reserve podiums:** Onchain **prize** categories are **last buy**, **WarBow** (top Battle Points), **defended streak**, and **time booster** ([primitives](primitives.md)). Referral splits affect **`charmWeight`** and thus **redemption**; they do **not** pay reserve to referrer/referee and are unrelated to podium scoring except indirectly through participation patterns.
-
-**Min buy and cap:** Enforced on **`charmWad`** within **`currentCharmBoundsWad`** and implied gross spend via **`currentMinBuyAmount` / `currentMaxBuyAmount`**.
-
-## Anti-abuse
-
-- **Burn** on registration reduces code squatting.
-- **Self-referral** blocked onchain.
-- **Invalid or unregistered codes** revert (no silent fallback).
-
-<a id="referral-registration-ordering-issue-121"></a>
-
-### Registration ordering and mempool visibility (audit L-02; [GitLab #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121))
-
-- **Winner rule:** `ReferralRegistry` assigns a code to the **first address whose `registerCode` succeeds** for that normalized slug. Later attempts revert with **`ReferralRegistry: code taken`**. There is **no** protocol-level reservation keyed on “I submitted first” or a pending public-mempool transaction.
-- **Calldata on public mempools:** The **plaintext code** is in `registerCode` calldata **before execution**. Anyone who observes a pending registration may broadcast a competing transaction with the **same normalized code**; **miner/builder ordering, gas price, and inclusion rules** decide which executes first ([audit L-02](../../audits/audit_smartcontract_1777813071.md#l-02-referral-code-registration-is-front-runnable)).
-- **Burn as an economic barrier, not FIFO fairness:** **`registrationBurnAmount`** CL8Y is transferred **only after** uniqueness checks succeed ([CL8Y token §](#cl8y-token)). The **successful** claimant pays the burn to the irreversible sink; **failed / reverted** attempts **do not** spend that registration burn ([`ReferralRegistry.sol`](../../contracts/src/ReferralRegistry.sol)).
-- **Product stance (v1):** Treat ordering as **transparent and onchain** — disclosure in product docs + register UX; **no** commit‑reveal, signed offchain reservations, or private‑mempool‑only flows in this work item ([issue #121](https://gitlab.com/PlasticDigits/yieldomega/-/issues/121)).
-
-Contributor checklist: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-121-referrals-register-disclosure).
-
-## Related contracts
-
-- `ReferralRegistry` — code ownership and CL8Y burn.
-- `TimeCurve` — optional `IReferralRegistry`; `buy(charmWad, codeHash, plantWarBowFlag)` applies splits.
+v1 **TimeCurve** referral CHARM-weight boosts and presale-attached attribution were removed with the launchpad ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). **`ReferralRegistry`** code registration (1 CL8Y burn) and Arena v2 **`ReferralCredApplied`** on DOUB buys remain live — see [Arena v2 (live)](#arena-v2-live) above.
 
 <a id="referrals-dashboard-issue-94"></a>
 

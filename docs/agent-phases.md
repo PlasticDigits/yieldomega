@@ -2,6 +2,8 @@
 
 This file is the **implementation roadmap for AI agents** (and humans driving agents). Each **phase** corresponds to one clean documentation section. Complete phases **in order** when bootstrapping from zero; otherwise jump to the phase that matches your task.
 
+**Arena v2 authority:** Active phases describe **TimeArena** (Arena v2), not the retired v1 TimeCurve launchpad, Rabbit Treasury, or FeeRouter model. Doc cleanup tracker: [GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (see also [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
+
 **Rules for every phase**
 
 - Default license for new repo code: **AGPL-3.0**; respect [licensing.md](licensing.md).
@@ -22,12 +24,12 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 
 **Doc:** [glossary.md](glossary.md)
 
-**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeCurve, Rabbit Treasury, reserve asset, agents).
+**Goal:** Align all subsequent work with shared definitions (CL8Y, TimeArena, DOUB, Play CRED, reserve asset, agents).
 
 **Agent prompt (copy-paste):**
 
 ```text
-You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Rabbit Treasury, (2) what “fully onchain” means in this project, (3) that **CL8Y** is the canonical **reserve / accepted asset** for TimeCurve and Rabbit Treasury at launch (and how **USDm** fits as MegaETH context in research docs), (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
+You are working on the yieldomega monorepo (MegaETH-native, fully onchain gamefi). Read docs/glossary.md end-to-end. Do not write code. Produce a one-page summary listing: (1) the distinction between CL8Y treasury and Arena v2 prize vaults (PodiumVaults, AdminSellVault), (2) what “fully onchain” means in this project, (3) that **DOUB** is the spend asset for TimeArena buys (and how **CL8Y** / **USDm** fit as MegaETH context in research docs), (4) three ambiguities you would resolve before implementing contracts. Wait for human confirmation on those ambiguities before implementing.
 ```
 
 ---
@@ -59,7 +61,7 @@ Read docs/licensing.md and the root LICENSE (AGPL-3.0). Explain in plain languag
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/architecture/overview.md. Draw (in text/mermaid) the data flow for: a user claiming a TimeCurve prize, and a user depositing into Rabbit Treasury. For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
+Read docs/architecture/overview.md and docs/architecture/data-flows.md. Draw (in text/mermaid) the data flow for: (1) a permissionless caller settling an expired podium via rollPodiumEpoch(category) on TimeArena, and (2) a user executing a DOUB buy(charmWad) that routes 40/30/30 to PodiumVaults and AdminSellVault. For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
 ```
 
 ---
@@ -91,40 +93,34 @@ Read docs/architecture/repository-layout.md. Create only empty top-level directo
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/vision.md. Write a short “non-goals” list (what this ecosystem explicitly refuses to optimize for) suitable for a README. Ensure governance emphasis stays on CL8Y rather than a TimeCurve token DAO. No code.
+Read docs/product/vision.md. Write a short “non-goals” list (what this ecosystem explicitly refuses to optimize for) suitable for a README. Ensure governance emphasis stays on CL8Y rather than a single-game token DAO. No code.
 ```
 
 ---
 
 <a id="phase-6"></a>
 
-## Phase 6 — TimeCurve primitive requirements
+## Phase 6 — TimeArena primitive requirements
 
-**Doc:** [product/primitives.md](product/primitives.md)
+**Docs:** [product/time-arena.md](product/time-arena.md), [product/arena-v2.md](product/arena-v2.md), [product/primitives.md](product/primitives.md)
 
-**Goal:** Translate TimeCurve mechanics into implementable requirements and open parameters.
+**Goal:** Translate TimeArena mechanics into implementable requirements and open parameters.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/primitives.md and docs/glossary.md. Produce a requirements checklist for a Foundry implementation: state variables, events, and edge cases (timer cap, minimum buy growth, max purchase multiple, sale end). Flag any underspecified numeric policy (for example per-category prize weights inside the prizes fee bucket) as TODOs needing human parameters. Do not write Solidity yet unless asked.
+Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitives.md, and docs/glossary.md. Produce a requirements checklist for a Foundry TimeArena implementation: state variables, events, and edge cases (four independent podium timers, timer caps, buy cooldown, 40/30/30 DOUB routing, rollPodiumEpoch settlement with 4∶2∶1 payouts). Flag any underspecified numeric policy (for example per-podium timer params or CRED accrual) as TODOs needing human parameters. Do not write Solidity yet unless asked.
 ```
 
 ---
 
 <a id="phase-7"></a>
 
-## Phase 7 — Rabbit Treasury design goals
+## Phase 7 — Retired: Rabbit Treasury (Arena v2)
 
-**Doc:** [product/rabbit-treasury.md](product/rabbit-treasury.md)
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical notes: [product/rabbit-treasury.md](product/rabbit-treasury.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
-**Goal:** Internal accounting and health-linked repricing without pretending unsustainable yield.
-
-**Agent prompt (copy-paste):**
-
-```text
-Read docs/product/rabbit-treasury.md. Summarize the honest sustainability story in 5 bullet points. Propose onchain-visible metrics (names only) that an indexer could chart for “reserve health” without inventing secret logic. Identify conflicts with “fully onchain” if external oracles are used, and suggest mitigation patterns (still design-level, no code).
-```
+**Goal:** Do not implement or route new user flows through Rabbit Treasury / Burrow deposit-withdraw. Arena v2 prize funding uses **PodiumVaults** and **AdminSellVault** per buy routing.
 
 ---
 
@@ -140,16 +136,16 @@ Read docs/product/rabbit-treasury.md. Summarize the honest sustainability story 
 
 <a id="phase-9"></a>
 
-## Phase 9 — Fee routing and governance
+## Phase 9 — Arena buy routing and governance
 
-**Doc:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) — [Fee sinks](onchain/fee-routing-and-governance.md#fee-sinks), [governance](onchain/fee-routing-and-governance.md#governance-actors), [post-update invariants](onchain/fee-routing-and-governance.md#post-update-invariants)
+**Doc:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md) — [DOUB split](onchain/fee-routing-and-governance.md#arena-v2-doub-split-canonical), [governance](onchain/fee-routing-and-governance.md#governance)
 
-**Goal:** Define where fees may flow and who controls parameter changes.
+**Goal:** Define where each DOUB buy routes (PodiumVaults, AdminSellVault) and who controls parameter changes.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/onchain/fee-routing-and-governance.md. List every fee sink and the governance actor allowed to change its weight or destination. Propose invariant checks (plain English) that should hold after any parameter update (e.g. weights sum to 100%). No code.
+Read docs/onchain/fee-routing-and-governance.md. List every Arena v2 buy destination (active podium pools, seed podium pools, AdminSellVault) and the governance actor allowed to change routing parameters or vault addresses. Propose invariant checks (plain English) that should hold after any parameter update (e.g. 40/30/30 shares sum to 100% of gross DOUB). No code.
 ```
 
 ---
@@ -165,7 +161,7 @@ Read docs/onchain/fee-routing-and-governance.md. List every fee sink and the gov
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/onchain/security-and-threat-model.md. For TimeCurve and Rabbit Treasury separately, list top 5 threats and mitigations (design-level). Include MEV on timer/buys and indexer reorg confusion. Output a test plan mapping each threat to unit vs integration vs testnet validation.
+Read docs/onchain/security-and-threat-model.md. For TimeArena (buys, podium settlement, WarBow) list top 5 threats and mitigations (design-level). Include MEV on timer/buys and indexer reorg confusion. Output a test plan mapping each threat to unit vs integration vs testnet validation.
 ```
 
 ---
@@ -213,7 +209,7 @@ Read docs/indexer/design.md. Scaffold a Rust binary/crate under indexer/ with: P
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/frontend/design.md. Scaffold a Vite + TypeScript app under frontend/ with routes placeholders for TimeCurve, Rabbit Treasury, and Collection. Integrate wallet connect pattern (library choice per maintainer). No hidden env secrets; use .env.example only. AGPL for new app source.
+Read docs/frontend/design.md and docs/frontend/arena-views.md. Scaffold a Vite + TypeScript app under frontend/ with route placeholders for the unified /arena page (TimeArena buys, podium timers, CRED/CHARM card). Integrate wallet connect pattern (library choice per maintainer). No hidden env secrets; use .env.example only (VITE_TIME_ARENA_ADDRESS and related Arena v2 vars). AGPL for new app source.
 ```
 
 ---
@@ -272,12 +268,12 @@ Read docs/research/megaeth.md. Verify official doc URLs still resolve; update th
 
 **Doc:** [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md)
 
-**Goal:** Clarify reserve assumptions for Rabbit Treasury, TimeCurve accepted asset, and fee routing.
+**Goal:** Clarify reserve assumptions for DOUB spend, CL8Y governance, and Arena v2 buy routing.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/research/stablecoin-and-reserves.md. List design decisions that require human/legal input (if any). Propose conservative defaults for which assets are accepted as reserves on v1 testnet. Ensure recommendations stay aligned with fully onchain enforcement and transparent accounting.
+Read docs/research/stablecoin-and-reserves.md. List design decisions that require human/legal input (if any). Propose conservative defaults for which assets are accepted on testnet (DOUB buys, optional TimeArenaBuyRouter ingress). Ensure recommendations stay aligned with fully onchain enforcement and transparent accounting.
 ```
 
 ---

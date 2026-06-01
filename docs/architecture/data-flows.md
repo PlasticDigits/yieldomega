@@ -4,47 +4,90 @@ This document expands [architecture/overview.md](overview.md) with **step-by-ste
 
 ---
 
-## TimeCurve: user claims a prize
+## TimeArena: user buys (DOUB or Play CRED)
 
-The user may use the UI (often backed by the indexer) to decide *when* and *whether* to claim. **Value movement and final eligibility** are determined only when a **signed transaction** is executed by the **TimeCurve** contract. Podium categories and tie-breaking are **onchain** per [product/primitives.md](../product/primitives.md).
+The user may use the UI (often backed by the indexer) to decide *when* and *whether* to buy. **Value movement, timer extension, and podium scoring** are determined only when a **signed transaction** is executed by **`TimeArena`**. Podium categories and tie-breaking are **onchain** per [product/arena-v2.md](../product/arena-v2.md) and [product/time-arena.md](../product/time-arena.md).
 
 ```mermaid
 flowchart TD
   subgraph offchain [Offchain_derived_or_presentation]
-    A[User_views_UI]
+    A[User_views_arena_UI]
     B[Frontend_queries_indexer]
     C[Frontend_may_query_RPC_for_reads]
   end
   subgraph wallet_chain [Authoritative_onchain_path]
-    D[Wallet_builds_signed_tx_claim]
-    E[Tx_broadcast_and_inclusion]
-    F[TimeCurve_contract_executes_claim]
-    G[Chain_state_updated_balances_claim_flags_payouts]
+    D[Optional_ERC20_approve_or_router_path]
+    E[Wallet_builds_signed_tx_buy_or_buyWithCred]
+    F[Tx_broadcast_and_inclusion]
+    G[TimeArena_executes_buy]
+    H[DOUB_routed_to_vaults_timers_extended_scores_updated]
   end
   subgraph indexer_follow [Offchain_derived_follow]
-    H[Indexer_decodes_logs]
-    I[Postgres_projections_updated]
+    I[Indexer_decodes_Buy_ReferralCredApplied_logs]
+    J[Postgres_arena_projections_updated]
   end
   A --> B
-  B -->|"derived: leaderboards_history_eligibility_hints"| A
+  B -->|"derived: timers_podiums_history"| A
   A --> C
-  C -->|"reads_via_RPC: latest_contract_views"| A
+  C -->|"reads_via_RPC: deadline_charmPrice_paused"| A
   A --> D
   D --> E
   E --> F
   F --> G
-  G -->|"events"| H
-  H --> I
+  G --> H
+  H -->|"events"| I
+  I --> J
 ```
 
 | Step | Authoritative onchain | Derived offchain |
 |------|------------------------|------------------|
-| User views TimeCurve UI | — | Presentation only (static site) |
-| Indexer-backed leaderboards / “you may have a claim” | — | **Derived** (replay of logs + projections) |
-| Optional RPC reads (e.g. claimable, sale ended) | **Yes** (contract state via RPC) | — |
-| Signed `claim` transaction | **Yes** | — |
-| Post-tx balances and claim consumed | **Yes** | — |
-| Indexer updating prize / history rows | — | **Derived** (must match chain; reorg-handled per indexer design) |
+| User views **`/arena`** UI | — | Presentation only (static site) |
+| Indexer-backed timers, podiums, buy feed | — | **Derived** (replay of logs + projections) |
+| Optional RPC reads (e.g. `deadline`, `charmPriceWad`, `paused`) | **Yes** (contract state via RPC) | — |
+| Token `approve` or router **`buyViaKumbaya`** path | **Yes** | — |
+| Signed **`buy`** / **`buyWithCred`** transaction | **Yes** | — |
+| Post-tx vault balances, timer deadlines, scores | **Yes** | — |
+| Indexer updating buy / timer / podium rows | — | **Derived** (must match chain; reorg-handled per indexer design) |
+
+---
+
+## TimeArena: podium epoch roll and prize payout
+
+Anyone may call **`rollPodiumEpoch(category)`** after that category's deadline. **Prize snapshots, 4∶2∶1 payouts, and seed→active transfers** are enforced by **`TimeArena`** and **`PodiumVaults`**. WarBow (category 3) skips auto-payout — owner **`finalizeWarbowPodium`** settles that epoch ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)).
+
+```mermaid
+flowchart TD
+  subgraph offchain [Offchain_derived_or_presentation]
+    A[User_or_bot_views_expired_podium]
+    B[Indexer_shows_deadline_and_rankings]
+  end
+  subgraph wallet_chain [Authoritative_onchain_path]
+    C[Wallet_signs_rollPodiumEpoch]
+    D[Tx_included]
+    E[TimeArena_snapshots_top3_pays_from_active_pool]
+    F[Seed_pool_rolled_to_active_epoch_incremented]
+  end
+  subgraph indexer_follow [Offchain_derived_follow]
+    G[Indexer_decodes_PodiumEpochRolled_PodiumPaid]
+    H[Postgres_podium_history_updated]
+  end
+  A --> B
+  B -->|"derived: rankings_deadlines"| A
+  A --> C
+  C --> D
+  D --> E
+  E --> F
+  F -->|"events"| G
+  G --> H
+```
+
+| Step | Authoritative onchain | Derived offchain |
+|------|------------------------|------------------|
+| UI / indexer podium rankings and deadlines | — | **Derived** |
+| RPC reads of `podiumDeadline`, `podiumEpoch`, live scores | **Yes** | — |
+| **`rollPodiumEpoch(category)`** after expiry | **Yes** | — |
+| Final DOUB payouts and vault balances | **Yes** | — |
+| Indexer podium history and winner rows | — | **Derived** |
 
 ---
 
@@ -105,10 +148,14 @@ The indexer must **never** be authority for balances or winners ([overview](over
 - **Reorg / indexing bugs** — Missing or duplicate rows; **history and analytics** wrong; dashboards/agents may **disagree with block explorers** until fixed.
 - **Schema / API version drift** — Clients use stale schemas; **wrong fields** while chain remains correct.
 
-**TimeCurve claim-specific**
+**TimeArena buy-specific**
 
-- **Incorrect winner or category in indexer** — User **trusts** wrong info; may **skip** a valid claim or **attempt** an invalid one (**wasted gas** on revert).
-- **Stale “sale still active”** — User delays claim or mis-times strategy; **onchain** end time remains source of truth.
+- **Incorrect podium ranking in indexer** — User **trusts** wrong info; may **mis-time** buys or WarBow actions (**wasted gas** on revert or suboptimal play).
+- **Stale timer display** — User delays a buy; **onchain** `deadline` / `podiumDeadline[cat]` remain source of truth.
+
+**TimeArena roll-specific**
+
+- **Stale “podium not yet expired”** — User or bot delays **`rollPodiumEpoch`**; **onchain** deadline governs eligibility.
 
 **retired v1 player reserve deposit-specific**
 

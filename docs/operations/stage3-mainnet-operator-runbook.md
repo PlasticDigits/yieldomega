@@ -22,7 +22,7 @@ This document closes **implementation phases 11 and 12** from [`docs/agent-imple
 5. **Indexer** — fresh or migrated DB, `ADDRESS_REGISTRY_PATH` to the published JSON, `START_BLOCK` at deploy block, soak with real RPC.
 6. **Frontend** — build with public `VITE_*` env only; record build id / CID in the checklist.
 7. **Soak** — run indexer + minimal UI for the agreed duration; log RPC errors, restarts, and head lag (compare `GET /v1/status` to `eth_blockNumber` as in Stage 2). Use [stage3-soak-log.template.md](stage3-soak-log.template.md) as a checklist and attach the completed log to the deployment ticket.
-8. **Rollback / pause** — document governance or circuit steps (see [fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md) if applicable). For **gating** user-facing DOUB claims and CL8Y prize/routing before “go live”, use the design inventory in [pause-and-final-signoff.md](pause-and-final-signoff.md) ([issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)) and keep **retired v1 player reserve**’s existing `Pausable` surface separate unless the runbook explicitly links them.
+8. **Rollback / pause** — document governance or circuit steps for **`TimeArena.setPaused`** ([pause-and-final-signoff.md](pause-and-final-signoff.md), [issue #55](https://gitlab.com/PlasticDigits/yieldomega/-/issues/55)).
 
 ### Exit (~90%)
 
@@ -43,7 +43,7 @@ This document closes **implementation phases 11 and 12** from [`docs/agent-imple
 2. Publish **mainnet address registry JSON** + **ABI hashes** (same procedure as Stage 3).
 3. **Incident channel** and **rollback** note in the checklist (what to revert, who can pause, how to point frontend/indexer to last good registry).
 4. Post-deploy monitoring: gas anomalies, failed txs, indexer lag — minimal dashboards or log alerts as agreed with maintainers.
-5. **UUPS upgrades** (TimeCurve proxy, MegaETH mainnet): follow [deployment-guide — UUPS TimeCurve upgrade](deployment-guide.md#uups-timecurve-upgrade-megaeth-mainnet) and `scripts/uups-upgrade-timecurve-mainnet.sh` (canonical proxy from `indexer/address-registry.megaeth-mainnet.json`).
+5. **UUPS upgrades** (TimeArena proxy, MegaETH mainnet): follow [deployment-guide](deployment-guide.md) Arena v2 upgrade notes and recorded proxy addresses in the published registry ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
 
 ### Exit (100% per implementation phases doc)
 
