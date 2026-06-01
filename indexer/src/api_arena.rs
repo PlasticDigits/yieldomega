@@ -12,6 +12,7 @@ use serde_json::json;
 use sqlx::Row;
 
 use crate::api::{internal_db_error_response, with_schema_version, AppState, PageParams};
+use crate::arena_wallet_stats;
 
 pub fn arena_routes() -> axum::Router<AppState> {
     axum::Router::new()
@@ -241,87 +242,10 @@ async fn arena_wallet_stats(
         return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_address" }))).into_response();
     }
 
-    let buy_row = sqlx::query(
-        r#"SELECT COUNT(*)::bigint AS buy_count,
-                  COALESCE(SUM(doub_paid), 0)::text AS total_spent,
-                  COALESCE(AVG(doub_paid), 0)::text AS avg_buy,
-                  COALESCE(MAX(doub_paid), 0)::text AS max_buy,
-                  MIN(EXTRACT(EPOCH FROM block_timestamp))::text AS first_buy_sec
-           FROM idx_arena_buy WHERE lower(buyer) = $1"#,
-    )
-    .bind(&w)
-    .fetch_optional(&state.pool)
-    .await;
-
-    let xp_row = sqlx::query(
-        r#"SELECT new_level::text FROM idx_player_xp
-           WHERE lower(player) = $1 ORDER BY block_number DESC LIMIT 1"#,
-    )
-    .bind(&w)
-    .fetch_optional(&state.pool)
-    .await;
-
-    let cred_row = sqlx::query(
-        r#"SELECT COALESCE(SUM(amount), 0)::text AS claimed
-           FROM idx_play_cred_claim WHERE lower(claimer) = $1"#,
-    )
-    .bind(&w)
-    .fetch_optional(&state.pool)
-    .await;
-
-    let steals_row = sqlx::query(
-        r#"SELECT COUNT(*)::bigint AS cnt FROM idx_arena_warbow_steal WHERE lower(attacker) = $1"#,
-    )
-    .bind(&w)
-    .fetch_optional(&state.pool)
-    .await;
-
-    let (buy_count, total_spent, avg_buy, max_buy, first_buy_sec): (i64, String, String, String, Option<String>) =
-        match buy_row {
-            Ok(Some(r)) => (
-                r.get("buy_count"),
-                r.get("total_spent"),
-                r.get("avg_buy"),
-                r.get("max_buy"),
-                r.try_get("first_buy_sec").ok(),
-            ),
-            Ok(None) => (0, "0".into(), "0".into(), "0".into(), None),
-            Err(e) => return internal_db_error_response("GET /v1/arena/wallet/stats", e),
-        };
-
-    let level = xp_row
-        .ok()
-        .flatten()
-        .map(|r| r.get::<String, _>("new_level"))
-        .unwrap_or_else(|| "1".into());
-    let cred_claimed = cred_row
-        .ok()
-        .flatten()
-        .map(|r| r.get::<String, _>("claimed"))
-        .unwrap_or_else(|| "0".into());
-    let warbow_steals = steals_row
-        .ok()
-        .flatten()
-        .map(|r| r.get::<i64, _>("cnt"))
-        .unwrap_or(0);
-
-    let body = json!({
-        "address": w,
-        "epochs_participated": std::cmp::min(buy_count, 1_i64),
-        "buy_count": buy_count,
-        "total_spent_doub": total_spent,
-        "average_buy_doub": avg_buy,
-        "max_single_buy_doub": max_buy,
-        "first_buy_at": first_buy_sec,
-        "xp": "0",
-        "level": level,
-        "prizes_won": [],
-        "total_won_doub": "0",
-        "highest_scores": [],
-        "warbow_steals": warbow_steals,
-        "cred_claimed": cred_claimed,
-        "referral_cred_earned": "0",
-    });
+    let body = match arena_wallet_stats::fetch_wallet_stats(&state.pool, &w).await {
+        Ok(body) => body,
+        Err(e) => return internal_db_error_response("GET /v1/arena/wallet/stats", e),
+    };
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
