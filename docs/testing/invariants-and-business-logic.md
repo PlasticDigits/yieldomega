@@ -45,6 +45,20 @@ Follow-up to [#274](#satellite-docs-gitlab-274): reduce `TimeCurve|FeeRouter` no
 
 Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md) · [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md).
 
+<a id="frontend-cl8y-arena-approval-storage-gitlab-277"></a>
+
+## Frontend — CL8Y unlimited approval storage rename (GitLab [#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277))
+
+Follow-up to [#276](#satellite-docs-gitlab-276): finish Arena v2 rename of the opt-in unlimited **CL8Y → TimeArena** `localStorage` preference — canonical key, UI copy, docs, and legacy read/migrate path.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-277-CL8Y-ARENA-STORAGE`** | Active key is **`yieldomega.erc20.cl8yArenaUnlimited.v1`**; `/arena` checkbox label names **Time Arena** | [`arenaDoubApprovalPreference.ts`](../../frontend/src/lib/arenaDoubApprovalPreference.ts) · [`ArenaDoubUnlimitedApprovalFieldset.tsx`](../../frontend/src/components/ArenaDoubUnlimitedApprovalFieldset.tsx) · [wallet-connection §143](../frontend/wallet-connection.md#erc20-approval-sizing-h-01-gitlab-143) |
+| **`INV-FRONTEND-277-LEGACY-READ-MIGRATE`** | Retired v1 key honored on read; enabling preference writes canonical key and removes legacy key | [`arenaDoubApprovalPreference.test.ts`](../../frontend/src/lib/arenaDoubApprovalPreference.test.ts) |
+| **`INV-FRONTEND-277-APPROVAL-UNCHANGED`** | Approval economics unchanged: 50 bps headroom or `maxUint256` when opted in ([#143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143), [#224](https://gitlab.com/PlasticDigits/yieldomega/-/issues/224)) | [`arenaDoubApprovalPreference.test.ts`](../../frontend/src/lib/arenaDoubApprovalPreference.test.ts) · [`ensureCl8yKumbayaAllowance.test.ts`](../../frontend/src/lib/ensureCl8yKumbayaAllowance.test.ts) |
+
+Cross-links: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/play-time-arena-doub/SKILL.md`](../../skills/play-time-arena-doub/SKILL.md) · `bash scripts/check-doc-satellite-retired-count.sh`.
+
 ## ~75% (Stage 2) verification
 
 Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%** means the **Stage 2 exit checklist** in [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration) is satisfied.

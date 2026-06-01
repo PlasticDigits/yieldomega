@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Opt-in unlimited CL8Y allowance for TimeCurve (GitLab #143).
+// Opt-in unlimited CL8Y allowance for Time Arena (GitLab #143 / #277).
 
 import { useCl8yArenaUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 
@@ -24,7 +24,7 @@ export function ArenaDoubUnlimitedApprovalFieldset({ disabled, className }: Prop
           disabled={disabled}
           aria-describedby="cl8y-arena-unlimited-approval-disclosure"
         />{" "}
-        Remember unlimited CL8Y allowance for TimeCurve (optional)
+        Remember unlimited CL8Y allowance for Time Arena (optional)
       </label>
       <p id="cl8y-arena-unlimited-approval-disclosure" className="muted" style={{ marginTop: "0.5rem" }}>
         Unlimited approve means you don't have to sign twice for each buy.
