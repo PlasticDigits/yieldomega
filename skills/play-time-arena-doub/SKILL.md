@@ -54,6 +54,10 @@ Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPod
 - **WarBow** — returns on DOUB in [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252).
 - **Play CRED claim** — [GitLab #248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248); **CRED pay UI** — [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269). See **Play CRED yield + claim** in this skill.
 
+## Participant profiles ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258))
+
+On **`/arena`** and **`/arena/protocol`**, click any participant wallet on live buy rows or podium rankings to open **`WalletProfileModal`** — stats from **`GET /v1/arena/wallet/{address}/stats`** (Overview, Podium wins, Spending, XP/Level, WarBow, Referrals, Fun facts). Invariant: [**`INV-FRONTEND-258-WALLET-PROFILE`**](../../docs/testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258) · [arena-views § wallet-profile](../../docs/frontend/arena-views.md#wallet-profile-modal-gitlab-258).
+
 ## Retired
 
 TimeCurve `endSale`, `redeemCharms`, linear CL8Y price, Rabbit Treasury, collectible NFT layer — see epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
