@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
-// Shared CL8Y → TimeCurve allowance gate (GitLab #224 / #143).
+// Shared CL8Y → TimeArena allowance gate (GitLab #224 / #143 / #277).
 
 import { erc20Abi } from "viem";
 import { readContract } from "wagmi/actions";
@@ -35,7 +35,7 @@ export function planCl8yKumbayaApprove(
   return { approveAmt, required: allow < approveAmt };
 }
 
-export type EnsureCl8yTimeCurveAllowanceParams = {
+export type EnsureCl8yArenaAllowanceParams = {
   wagmiConfig: Config;
   writeContractAsync: WriteContractAsyncFn;
   account: `0x${string}`;
@@ -48,8 +48,11 @@ export type EnsureCl8yTimeCurveAllowanceParams = {
   unlimitedPreferred?: boolean;
 };
 
+/** @deprecated Use `EnsureCl8yArenaAllowanceParams` — retained for imports from pre-#277 rename. */
+export type EnsureCl8yTimeCurveAllowanceParams = EnsureCl8yArenaAllowanceParams;
+
 /**
- * Read CL8Y allowance for `TimeCurve` and approve only when `allow < approveAmt`
+ * Read CL8Y allowance for `TimeArena` and approve only when `allow < approveAmt`
  * (`approveAmt` from [#143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143) sizing).
  */
 export async function ensureCl8yKumbayaAllowance({
@@ -62,7 +65,7 @@ export async function ensureCl8yKumbayaAllowance({
   needWei,
   debugContext,
   unlimitedPreferred = readArenaDoubUnlimitedApproval(),
-}: EnsureCl8yTimeCurveAllowanceParams): Promise<void> {
+}: EnsureCl8yArenaAllowanceParams): Promise<void> {
   if (needWei <= 0n) {
     return;
   }

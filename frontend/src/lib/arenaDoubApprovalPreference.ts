@@ -12,7 +12,8 @@ export const CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY = [
   "cl8yArenaUnlimited",
   "v1",
 ].join(".");
-const CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY = [
+/** Read-only fallback for wallets that opted in before Arena v2 rename ([#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277)). */
+export const CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY = [
   "yieldomega",
   "erc20",
   "cl8yTimeCurveUnlimited",
