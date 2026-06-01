@@ -2,13 +2,13 @@
 
 **CI mapping:** [ci.md](ci.md).
 
-**Business logic + invariant map:** [invariants-and-business-logic.md](invariants-and-business-logic.md) (Arena v2; legacy TimeCurve/FeeRouter sections removed — [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
+**Business logic + invariant map:** [invariants-and-business-logic.md](invariants-and-business-logic.md) (Arena v2; legacy v1 launchpad sections removed — [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
 
 **Contributor manual QA:** [manual-qa-checklists.md](manual-qa-checklists.md). Root [`skills/`](../../skills/) is **player-facing only**.
 
 **Doc anchor CI (local):** `bash scripts/check-doc-anchors.sh` — fails on broken `invariants-and-business-logic.md#…` links under `docs/`.
 
-**Retired v1 doc gate ([GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)):** `bash scripts/check-doc-retired-terms.sh` — fails if operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) still cite retired TimeCurve/FeeRouter env vars or lifecycle APIs.
+**Retired v1 doc gates:** [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) P0 paths — `bash scripts/check-doc-retired-terms.sh`; [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) satellite trim — `bash scripts/check-doc-satellite-retired-count.sh` (≤15 files, ≤25 `TimeCurve|FeeRouter` tokens in `docs/`).
 
 ## Three stages (plus production)
 

@@ -1,6 +1,6 @@
 # Time Arena — product primitives (Arena v2)
 
-**Status:** Authoritative product spec for **TimeArena** — timers, CRED, prizes, XP, and WarBow. Replaces v1 **TimeCurve** launchpad semantics ([GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)).
+**Status:** Authoritative product spec for **TimeArena** — timers, CRED, prizes, XP, and WarBow. Replaces v1 launchpad sale semantics ([GitLab #240](https://gitlab.com/PlasticDigits/yieldomega/-/issues/240)).
 
 Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238).
 
@@ -128,8 +128,8 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 Do not document or reintroduce as live product rules:
 
-- TimeCurve **`endSale`**, **`redeemCharms`**, linear/bonding CHARM price — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
-- FeeRouter five-sink CL8Y routing — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)
+- Launchpad **`endSale`**, **`redeemCharms`**, linear/bonding CHARM price — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)
+- Five-sink CL8Y routing — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)
 - Retired v1 player reserve — [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)
 - Collectible NFT layer — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)
 

@@ -1,6 +1,6 @@
 # Research notes: USDm, CL8Y, and reserve assets
 
-**Canonical launch default (this repo):** **CL8Y** is used for **`ReferralRegistry`** registration burns and optional **TimeArenaBuyRouter** swap paths. **Arena v2** primary buy asset is **DOUB** ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). Retired v1 **TimeCurve** CL8Y sale semantics — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243). **USDm** remains relevant as MegaETH ecosystem context — see below.
+**Canonical launch default (this repo):** **CL8Y** is used for **`ReferralRegistry`** registration burns and optional **TimeArenaBuyRouter** swap paths. **Arena v2** primary buy asset is **DOUB** ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). Retired v1 launchpad CL8Y sale semantics — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243). **USDm** remains relevant as MegaETH ecosystem context — see below.
 
 ## USDm (MegaUSD)
 

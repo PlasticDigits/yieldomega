@@ -48,7 +48,7 @@ Arena v2 Postgres projections (fresh DB only — see [Arena v2 schema](#arena-v2
 
 ### Arena v2 schema + HTTP ([GitLab #254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
 
-Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/migrations/20240601000000_arena_v2.up.sql) only (no TimeCurve buy/WarBow tables). Core projections:
+Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/migrations/20240601000000_arena_v2.up.sql) only (no legacy v1 buy/WarBow tables). Core projections:
 
 | Table / view | Source events |
 |--------------|----------------|
@@ -68,7 +68,7 @@ Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/m
 | `idx_arena_podium_pool_top_up` | `PodiumPoolsToppedUp` ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)) |
 | `idx_arena_vault_funding` | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)) |
 
-Decode **`TimeArena`**, **`ReferralRegistry`**, and registry vault contracts per [`decoder.rs`](../../indexer/src/decoder.rs). **Legacy TimeCurve / FeeRouter / TimeCurveBuyRouter / Rabbit `Burrow*` decode paths and `idx_timecurve_*` tables were removed** ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263), [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)). **Emitted-event completeness** for persisted families (dedicated `idx_*` tables, **`rollback_after` coverage**) remains mandated by [GitLab #112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) — **`INV-INDEXER-112`** in [invariants — emitted-event coverage](../testing/invariants-and-business-logic.md#indexer-emitted-event-coverage-gitlab-112).
+Decode **`TimeArena`**, **`ReferralRegistry`**, and registry vault contracts per [`decoder.rs`](../../indexer/src/decoder.rs). **Legacy v1 launchpad decode paths and `idx_timecurve_*` tables were removed** ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263), [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)). **Emitted-event completeness** for persisted families (dedicated `idx_*` tables, **`rollback_after` coverage**) remains mandated by [GitLab #112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) — **`INV-INDEXER-112`** in [invariants — emitted-event coverage](../testing/invariants-and-business-logic.md#indexer-emitted-event-coverage-gitlab-112).
 
 HTTP (schema **≥ 2.5.0**, [`api_arena.rs`](../../indexer/src/api_arena.rs)): **`GET /v1/arena/timers`**, **`GET /v1/arena/podiums`**, **`GET /v1/arena/buys`**, **`GET /v1/arena/wallet/{address}/stats`**, **`GET /v1/arena/podium-pool-donations`**, **`GET /v1/arena/vault-funding/*`**, plus **`GET /v1/referrals/*`** in [`api.rs`](../../indexer/src/api.rs). **No** active **`GET /v1/timecurve/*`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Map: **`INV-INDEXER-254-ARENA-SCHEMA`**, **`INV-INDEXER-PODIUM-PREDICT-LIVE`**, **`INV-FRONTEND-266-ARENA-INDEXER`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
 

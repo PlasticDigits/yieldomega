@@ -30,9 +30,9 @@ Forge: [`TimeArena.t.sol::test_referred_buy_mints_cred_not_charm`](../../contrac
 
 ---
 
-## Legacy (TimeCurve — retired)
+## Legacy (v1 launchpad — retired)
 
-v1 **TimeCurve** referral CHARM-weight boosts and presale-attached attribution were removed with the launchpad ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). **`ReferralRegistry`** code registration (1 CL8Y burn) and Arena v2 **`ReferralCredApplied`** on DOUB buys remain live — see [Arena v2 (live)](#arena-v2-live) above.
+v1 launchpad referral CHARM-weight boosts and presale-attached attribution were removed with the sale ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). **`ReferralRegistry`** code registration (1 CL8Y burn) and Arena v2 **`ReferralCredApplied`** on DOUB buys remain live — see [Arena v2 (live)](#arena-v2-live) above.
 
 <a id="referrals-dashboard-issue-94"></a>
 

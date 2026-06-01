@@ -10,7 +10,7 @@ MegaETH mainnet policy: pay the **21.5M DOUB** presale bucket to vesting benefic
 | **DoubPresaleVesting** | `0xB4128c9f52dC345aD13680973146b23f5383dda0` |
 | **Owner** (`owner()`) | CL8Y manager `0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c` |
 
-**CHARM +15%** is unrelated to these DOUB wallets: `TimeCurve.doubPresaleVesting()` points at **`PresaleCharmBeneficiaryRegistry`** (`0x6bfe055e767bF777a963157a6AEdE2F1e3eE2107`). Boost list ≠ vesting claim list for wallet #1.
+**CHARM +15%** is unrelated to these DOUB wallets: the presale CHARM beneficiary registry (`0x6bfe055e767bF777a963157a6AEdE2F1e3eE2107`) may point at a **different** wallet list than DOUB vesting allocations. Boost list ≠ vesting claim list for wallet #1.
 
 ---
 

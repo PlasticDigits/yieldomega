@@ -6,7 +6,7 @@ This log records a **full-stack smoke** aligned with [docs/testing/strategy.md](
 **Target chain:** local Anvil, `chainId` **31337**  
 **RPC:** `http://127.0.0.1:8545` (or free port from stack script)
 
-> **Retired v1:** Historical Stage 2 logs referencing **TimeCurve**, **RetiredV1Treasury**, **LeprechaunNFT**, and `idx_timecurve_*` are obsolete ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). Use the replay below for Arena v2.
+> **Retired v1:** Historical Stage 2 logs referencing the v1 launchpad, **RetiredV1Treasury**, **LeprechaunNFT**, and `idx_timecurve_*` are obsolete ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). Use the replay below for Arena v2.
 
 ---
 

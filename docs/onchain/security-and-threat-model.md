@@ -39,7 +39,7 @@ Maps each numbered threat above to **unit** (Stage 1), **integration** (Stage 2 
 | 4 | **Invariant** tests on **`ArenaBuyRouting.splitBuyAmount`**, podium payouts; fuzz **rounding**. | Compare **contract-emitted** amounts to indexer-stored rows for sampled txs. | Fuzz-like **random buy sequences** on public RPC; spot-check vs simulation. |
 | 5 | Indexer **unit tests**: rollback/reapply **reorg** fixture; decoder idempotency. | **Reorg simulation** in CI or manual: alternate head → rollback → verify **leaderboard** rows and APIs; UI shows **pending vs confirmed** if implemented. | Testnet **natural reorgs** (if any); monitor **head lag** and incorrect “winner” incidents = **0** for confirmed tier. |
 
-> **Retired v1:** TimeCurve / FeeRouter / PodiumPool CL8Y threat rows — historical; contracts removed [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
+> **Retired v1:** Launchpad / five-sink CL8Y threat rows — historical; contracts removed [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Hardening rows — git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
 ## retired v1 player reserve-specific
 
@@ -93,9 +93,6 @@ Internal review items (not a substitute for an **external audit**):
 | **`TimeArenaBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | Stable ingress balance-delta parity before swap (#123). Test: `TimeArenaBuyRouter.t.sol`. |
 | **`AdminSellVault.sellDoubToUsdm`** | **Slippage / router misconfig** — Owner-only liquidation; bad `minOut` or router address drains value. | **`onlyOwner`**; immutable router wiring; tests in `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). |
 | **`TimeArena.setPaused`** | **Emergency halt scope** — Pause must block buys and WarBow DOUB spends but not break views or flag claims. | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**; `claimWarBowFlag` unchanged ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). |
-
-> **Retired v1:** TimeCurve / FeeRouter / PodiumPool / TimeCurveBuyRouter hardening rows — historical; see git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
-
 **Still accepted** (by design / governance): MEV and block ordering on podiums and timers; permissionless **`rollPodiumEpoch`** / **`finalizeWarbowPodium`** for liveness; small rounding residue in DOUB prize splits; **`topUpPodiumPools`** as permissionless sponsorship ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
 
 ## Audit and bug bounty (intent)

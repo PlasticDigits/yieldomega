@@ -21,7 +21,7 @@ Authoritative game rules and balances remain onchain. The indexer and frontend o
 | `ReferralRegistry` | UUPS — CL8Y burn to register codes |
 | `TimeArena` | UUPS — timers, buys, CRED, XP, WarBow |
 
-**Not deployed:** collectible NFT layer, Rabbit, Presale, TimeCurve, FeeRouter ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+**Not deployed:** collectible NFT layer, Rabbit, Presale, v1 launchpad / five-sink CL8Y stacks ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 
 **`TimeArenaBuyRouter`** (ETH/USDM entry) is **not** in `DeployProduction`; deploy separately with Kumbaya fixtures on Anvil ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)) or wire post-mainnet.
 
@@ -74,7 +74,7 @@ Recorded **2026-05-30** on `main` @ `ab89966` (QA agent — not manual `@brouie`
 
 ---
 
-> **Retired v1 mainnet:** Historical TimeCurve / FeeRouter / presale deploy runbooks — git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274); contracts removed [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
+> **Retired v1 mainnet:** Historical launchpad / presale deploy runbooks — git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274); contracts removed [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 ## Deploy wrapper options
 

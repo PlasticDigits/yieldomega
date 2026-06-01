@@ -33,4 +33,4 @@ DOUB from each **`buy`** routes immediately to **`PodiumVaults`** and **`AdminSe
 - **Anvil E2E:** `bash scripts/e2e-anvil.sh` — arena mount, reads, DOUB/ETH wallet writes ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
 - **Buy router (optional):** `bash scripts/verify-time-arena-buy-router-anvil.sh` when Kumbaya router is deployed ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251)).
 
-> **Retired v1 (historical):** TimeCurve `endSale` / `redeemCharms` / `distributePrizes`, presale vesting, and FeeRouter CL8Y gates — removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). No operator steps for those paths in Arena v2.
+> **Retired v1 (historical):** Launchpad `endSale` / `redeemCharms` / `distributePrizes`, presale vesting, and five-sink CL8Y gates — removed ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)). No operator steps for those paths in Arena v2.
