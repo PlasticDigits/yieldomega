@@ -66,7 +66,7 @@ flowchart LR
 ## Relationship to product primitives
 
 - **TimeArena** (Arena v2) is the live participation primitive: DOUB buys, Last Buy timer, podium prizes, Play CRED — [arena-v2.md](../product/arena-v2.md).
-- Retired v1 stacks (TimeCurve launchpad, Rabbit Treasury, collectible NFT layer [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)) are documented for history only; do not reintroduce.
+- Retired v1 stacks (launchpad sale, Rabbit Treasury, collectible NFT layer [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)) are documented for history only; do not reintroduce.
 
 ## User data flows
 

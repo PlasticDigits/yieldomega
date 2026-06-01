@@ -36,7 +36,7 @@ Indexer + AUDIT UI for donation history: [#262](https://gitlab.com/PlasticDigits
 
 ## Retired
 
-Legacy **FeeRouter** five-sink **CL8Y** model (30/40/20/0/10), **`PodiumPool`**, **`DoubLPIncentives`**, Rabbit **10%** sink — removed [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244) / [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242).
+Legacy five-sink **CL8Y** model (30/40/20/0/10), **`PodiumPool`**, **`DoubLPIncentives`**, Rabbit **10%** sink — removed [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244) / [#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242).
 
 ## Events
 

@@ -128,10 +128,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Doc anchor + retired v1 term gates (#274)
+      - name: Doc anchor + retired v1 term gates (#274, #276)
         run: |
           bash scripts/check-doc-anchors.sh
           bash scripts/check-doc-retired-terms.sh
+          bash scripts/check-doc-satellite-retired-count.sh
 
       - name: Kumbaya env line merge regression (#154)
         run: bash scripts/test-kumbaya-env-set-line.sh

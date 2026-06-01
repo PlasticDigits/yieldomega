@@ -2,7 +2,7 @@
 
 Onboarding task for a new QA engineer ([GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)): run the full local YieldOmega stack (Postgres, Anvil, indexer, frontend, bot swarm), fund a **personal test wallet** on Anvil alongside bots, and complete the **Arena v2** verification checklist below.
 
-**Canonical product:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) on route **`/arena`** — not the retired TimeCurve launchpad or FeeRouter five-sink model ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+**Canonical product:** [`TimeArena`](../../contracts/src/arena/TimeArena.sol) on route **`/arena`** — not the retired v1 launchpad or five-sink CL8Y fee model ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243), [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 
 **Authoritative checklists (read before filing defects):**
 
@@ -132,7 +132,7 @@ Each qualifying **buy** extends **all four** podium deadlines. Timers **diverge*
 
 ### DOUB buy routing (per buy)
 
-Canonical split — **not** the retired FeeRouter five-sink CL8Y model:
+Canonical split — **not** the retired five-sink CL8Y model:
 
 | Destination | Share of gross DOUB buy |
 |-------------|-------------------------|
@@ -227,7 +227,7 @@ See [arena-v2.md § DOUB prize routing](../product/arena-v2.md#doub-prize-routin
 - [ ] **B1** — **Last Buy** timer: buys extend deadline; hard reset band when remaining &lt; 13 min — match **`ArenaPodiumTimerConfig`** / `TimeArena.sol`.
 - [ ] **B2** — Four independent podium timers — Last Buy, Time Booster, Defended Streak, WarBow — see [arena-v2.md § Timers](../product/arena-v2.md#timers-last-buy--four-podiums).
 - [ ] **B3** — **`rollPodiumEpoch`**: pays **4∶2∶1** from category **active** DOUB pool; seed → active transfer on roll — **not** legacy `distributePrizes`.
-- [ ] **B4** — DOUB buy routing: **40% / 30% / 30%** (active pools / seed pools / admin vault) — [arena-v2.md](../product/arena-v2.md), **not** FeeRouter top-level percentages.
+- [ ] **B4** — DOUB buy routing: **40% / 30% / 30%** (active pools / seed pools / admin vault) — [arena-v2.md](../product/arena-v2.md), **not** legacy five-sink percentages.
 - [ ] **B5** — WarBow: steal, revenge, guard, flag spend **DOUB**; **`finalizeWarbowPodium`** for epoch payout after roll — confirm in `TimeArena.sol` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)).
 - [ ] **B6** — Play CRED: epoch accrual on DOUB buy; **`claimCred`** after epoch ends; optional **`buyWithCred`** burn path ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)).
 
@@ -239,7 +239,7 @@ See [arena-v2.md § DOUB prize routing](../product/arena-v2.md#doub-prize-routin
 - [ ] **C2** — CHARM bounds and price display consistent with onchain reads.
 - [ ] **C3** — Podium / leaderboard panels for **four** categories; live predictions from **`GET /v1/arena/podiums`** when wired ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
 - [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired).
-- [ ] **C5** — Prize routing / vault transparency matches **40/30/30** Arena split — not FeeRouter five-sink labels.
+- [ ] **C5** — Prize routing / vault transparency matches **40/30/30** Arena split — not legacy five-sink labels.
 - [ ] **C6** — **`WalletProfileModal`** from participant addresses ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)); **`ArenaCharmCredCard`** CRED claim UX ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)).
 
 ---

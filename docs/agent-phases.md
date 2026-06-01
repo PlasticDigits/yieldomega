@@ -2,7 +2,7 @@
 
 This file is the **implementation roadmap for AI agents** (and humans driving agents). Each **phase** corresponds to one clean documentation section. Complete phases **in order** when bootstrapping from zero; otherwise jump to the phase that matches your task.
 
-**Arena v2 authority:** Active phases describe **TimeArena** (Arena v2), not the retired v1 TimeCurve launchpad, Rabbit Treasury, or FeeRouter model. Doc cleanup tracker: [GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (see also [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
+**Arena v2 authority:** Active phases describe **TimeArena** (Arena v2), not retired v1 launchpad sale, Rabbit Treasury, or five-sink CL8Y fee routing. Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (see also [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
 
 **Rules for every phase**
 
@@ -14,7 +14,7 @@ This file is the **implementation roadmap for AI agents** (and humans driving ag
 **Two tracks (do not confuse them)**
 
 - **Build / fork the repo** — Phases **1–19** plus [`.cursor/skills`](../.cursor/skills/README.md) **guardrails**: licensing, architecture, tests, small diffs. This is for contributors shipping code, docs, and infra.
-- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **Time Arena** (Arena v2) onchain mechanics. Legacy TimeCurve launchpad, Rabbit Treasury, and collectible NFT playbooks were removed ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
+- **Play / participate in the ecosystem** — [Phase 20 — Play the ecosystem (agents helping users participate)](#phase-20) plus the root [`skills/`](../skills/README.md) **play skills**: how to read onchain rules and help a human interpret **Time Arena** (Arena v2) onchain mechanics. Legacy v1 launchpad, Rabbit Treasury, and collectible NFT playbooks were removed ([#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#245](https://gitlab.com/PlasticDigits/yieldomega/-/issues/245)).
 
 ---
 

@@ -332,7 +332,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] **`bash scripts/verify-contract-fork-smoke.sh`** — passes with `FORK_URL` unset (no-op gas ~3.8k per test).
 - [ ] **`export FORK_URL=<megaeth-testnet-rpc> && bash scripts/verify-contract-fork-smoke.sh`** — fork selects chain; `test_fork_smoke_chainIdAndBlock` asserts positive `chainid` / `block.number`.
 - [ ] **`FOUNDRY_PROFILE=ci forge test`** (full suite, `FORK_URL` unset) — `TimeArenaForkTest` no-ops inside the run; no fork URL required for merge gate.
-- [ ] Grep workflow, `contracts/README.md`, `contracts/.env.example` — no `TimeCurveForkTest` / `TimeCurveFork.t.sol` (historical `audits/` exempt).
+- [ ] Grep workflow, `contracts/README.md`, `contracts/.env.example` — no retired v1 fork smoke test names (historical `audits/` exempt).
 - [ ] Dispatch **`contract-fork-smoke`** with valid RPC input or repository secret `FORK_URL` — job runs MegaEVM size gate + `--match-contract TimeArenaForkTest` and succeeds.
 - [ ] After mainnet Arena deploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)): set `TIME_ARENA_FORK_ADDRESS=<proxy>` and re-run; `test_fork_smoke_timeArenaHeadState` reads `paused()` / `deadline()` when bytecode is present.
 
@@ -457,7 +457,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 1. **No-env:** `cd frontend && npm run dev` with **no** `VITE_LAUNCH_TIMESTAMP` in `.env` / `.env.local`.
 2. Open **`/home`** (e.g. `http://127.0.0.1:5173/home`).
-3. Expect **`YieldOmega`** hero **`h1`**, hero art, **Open TimeCurve** CTA, and **surface cards** — same hub as **`/`** (not a blank main).
+3. Expect **`YieldOmega`** hero **`h1`**, hero art, **Open Arena** CTA, and **surface cards** — same hub as **`/`** (not a blank main).
 4. **`/`** still shows the same hub; **no** double layout (single **`RootLayout`** outlet).
 5. **Post-launch (optional):** rebuild with **`VITE_LAUNCH_TIMESTAMP`** in the **past** → **`/`** is Arena, **`/home`** is still the full hub.
 
@@ -642,7 +642,7 @@ Use after changes to **`VITE_INDEXER_URL`** polling, **`IndexerStatusBar`**, or 
 
 ## SFX — buy coin + WarBow twang (GitLab #68 / #108)
 
-Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`**, **`useArenaSaleSession`**, **`useTimeCurveArenaModel`**, **`useArenaWarbowRankSfx`**, or **`WebAudioMixer` throttles**.
+Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`**, **`useArenaSaleSession`**, **`useArenaModel`**, **`useArenaWarbowRankSfx`**, or **`WebAudioMixer` throttles**.
 
 ### Checklist
 

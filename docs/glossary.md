@@ -10,7 +10,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Primitives (Arena v2)
 
-- **TimeArena** — Onchain arena where participants buy with **DOUB** (or burn **Play CRED**), extend a **Last Buy** countdown, and compete for four podium prizes. Each DOUB buy splits proceeds **40%** active podium · **30%** seed podium · **30%** admin sell vault. Canonical rules: [time-arena.md](product/time-arena.md) · [arena-v2.md](product/arena-v2.md). **No** launchpad sale-end, CHARM redemption, linear bonding price, or legacy **FeeRouter** sinks.
+- **TimeArena** — Onchain arena where participants buy with **DOUB** (or burn **Play CRED**), extend a **Last Buy** countdown, and compete for four podium prizes. Each DOUB buy splits proceeds **40%** active podium · **30%** seed podium · **30%** admin sell vault. Canonical rules: [time-arena.md](product/time-arena.md) · [arena-v2.md](product/arena-v2.md). **No** launchpad sale-end, CHARM redemption, or linear bonding price ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
 
 - **Play CRED** — Non-transferable reward/burn token for free buys (**100 CRED per 1e18 CHARM** on `buyWithCred`); DOUB buys accrue **35 CRED** per buy into the current Last Buy epoch pool.
 
@@ -22,7 +22,7 @@ Terms below are used consistently across product, architecture, and agent prompt
 
 ## Retired primitives (do not reintroduce)
 
-- **TimeCurve launchpad** — Retired v1 CL8Y bonding-curve sale with `endSale`, `redeemCharms`, **PodiumPool** payouts, and **FeeRouter** routing. Removed in epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238); sale-end / redemption verified removed in [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243); presale-attached flows in [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). **Not** a flagship primitive — replacement: **Time Arena** ([`arena-v2.md`](product/arena-v2.md)).
+- **v1 launchpad (retired)** — CL8Y bonding-curve sale with `endSale`, `redeemCharms`, **PodiumPool** payouts, and five-sink CL8Y routing. Removed in epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238); sale-end / redemption verified removed in [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243); presale-attached flows in [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). **Not** a flagship primitive — replacement: **Time Arena** ([`arena-v2.md`](product/arena-v2.md)).
 
 - **retired v1 player reserve (GitLab #242)** — Retired player treasury layer ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)).
 

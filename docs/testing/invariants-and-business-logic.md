@@ -6,7 +6,7 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
 
-**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup (operator/QA/agent paths): [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) · verify links: `bash scripts/check-doc-anchors.sh` · retired v1 term gate: `bash scripts/check-doc-retired-terms.sh`.
+**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (P0 operator paths) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (residual token trim) · verify: `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-doc-satellite-retired-count.sh`.
 
 <a id="arena-v2-play-skills-gitlab-245"></a>
 
@@ -27,13 +27,23 @@ This document ties **product intent** and **must-hold properties** to **automate
 | ID | Property | Evidence |
 |----|----------|----------|
 | **`INV-DOCS-274-RETIRED-TERMS`** | Operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) contain **no** `VITE_FEE_ROUTER`, `FeeRouter.distributeFees`, `TimeCurve.endSale`, `redeemCharms`, or `idx_timecurve` | `bash scripts/check-doc-retired-terms.sh` (CI **`scripts-smoke`** job) |
-| **`INV-DOCS-274-QA-ONBOARDING`** | [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../qa/QA-onboarding-gitlab-issue-body.md) describes **`/arena`**, `bots/timearena`, **`VITE_TIME_ARENA_ADDRESS`** — not TimeCurve page / FeeRouter panel | manual review |
+| **`INV-DOCS-274-QA-ONBOARDING`** | [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../qa/QA-onboarding-gitlab-issue-body.md) describes **`/arena`**, `bots/timearena`, **`VITE_TIME_ARENA_ADDRESS`** — not retired v1 launchpad page / five-sink panel | manual review |
 | **`INV-DOCS-274-INDEXER-DESIGN`** | [`docs/indexer/design.md`](../indexer/design.md) documents **`idx_arena_*`** + **`GET /v1/arena/*`** only; no active **`GET /v1/timecurve/*`** | grep + [`decoder.rs`](../../indexer/src/decoder.rs) |
 
 Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md).
 
-Cross-links: [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md) (local stack env hygiene).
+<a id="satellite-docs-gitlab-276"></a>
 
+## Satellite docs — residual v1 token trim (GitLab [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276))
+
+Follow-up to [#274](#satellite-docs-gitlab-274): reduce `TimeCurve|FeeRouter` noise across **`docs/`** while preserving invariant anchor IDs and P0 operator paths.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DOCS-276-SATELLITE-COUNT`** | **`docs/`** contains **≤ 15** files and **≤ 25** total `TimeCurve\|FeeRouter` tokens (baseline at #276 open: 30 files / 55 mentions) | `bash scripts/check-doc-satellite-retired-count.sh` (CI **`scripts-smoke`**) |
+| **`INV-DOCS-276-P0-UNCHANGED`** | P0 operator/agent paths unchanged from [#274](#satellite-docs-gitlab-274) | `bash scripts/check-doc-retired-terms.sh` |
+
+Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md) · [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md).
 
 ## ~75% (Stage 2) verification
 
@@ -84,7 +94,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-260-ARENA-TIMERS`** | `GET /v1/arena/timers` (+ buys) | `integration_stage2.rs::api_http_smoke` |
 | **`INV-INDEXER-255-WALLET-STATS`** | `GET /v1/arena/wallet/{address}/stats` — full participant profile aggregates (no stub zeros); schema **≥ 2.4.0** | `arena_wallet_stats.rs`, `integration_stage2.rs::arena_wallet_stats_two_epochs_and_bonus_fields` ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) |
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after` |
-| **`INV-INDEXER-254-ARENA-SCHEMA`** | Fresh DB: `idx_arena_buy`, `idx_arena_podium_epoch`, view `idx_arena_podium_snapshot`, `idx_play_cred_claim`, `idx_player_xp`, `idx_warbow_epoch_score`; no TimeCurve-only buy tables; `GET /v1/arena/{timers,podiums,buys}`; WarBow BP snapshots on BP-affecting logs; schema **≥ 2.5.0** | `20240601000000_arena_v2.up.sql`, `integration_stage2.rs` ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)) |
+| **`INV-INDEXER-254-ARENA-SCHEMA`** | Fresh DB: `idx_arena_buy`, `idx_arena_podium_epoch`, view `idx_arena_podium_snapshot`, `idx_play_cred_claim`, `idx_player_xp`, `idx_warbow_epoch_score`; no legacy-only buy tables; `GET /v1/arena/{timers,podiums,buys}`; WarBow BP snapshots on BP-affecting logs; schema **≥ 2.5.0** | `20240601000000_arena_v2.up.sql`, `integration_stage2.rs` ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)) |
 | **`INV-INDEXER-PODIUM-PREDICT-LIVE`** | `GET /v1/arena/podiums`: UX order; head epochs; live top-3 from `idx_arena_podium_live` + WarBow scores; `podium_prediction` true only when DB-derived; ingest snapshots on Buy/WarBow/epoch events; reorg clears live table; **`chain_timer`** uses `podiumDeadline(uint256)` / `podiumEpoch(uint256)` array getters (not `uint8`) | `arena_podium_live.rs`, `chain_timer.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke`, `bash scripts/verify-podium-live-anvil.sh` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) · [design § podiums](../indexer/design.md#timecurve-podiums-http) · [detail §273](#indexer-live-podium-predictions-gitlab-273) |
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
@@ -236,7 +246,7 @@ cd indexer && cargo test
 # Frontend unit tests
 cd frontend && npm ci && npm test
 
-# Python simulations (bounded repricing / eco scenarios — not v1 TimeCurve sale authority)
+# Python simulations (bounded repricing / eco scenarios — not v1 launchpad sale authority)
 cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
 ```
 
@@ -385,7 +395,7 @@ Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces)
 |----|----------|-------------------|
 | **`INV-DEPLOY-259-DEV-WIRE`** | DeployDev: vaults → arena, PlayCred minter, arena live | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
 | **`INV-DEPLOY-259-DEV-SEED`** | DeployDev seeds DOUB/CL8Y/CRED for E2E mock wallet | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) |
-| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/TimeCurve | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
+| **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/v1 launchpad cores | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
 | **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
 
 Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md).
@@ -449,7 +459,7 @@ Run `cd contracts && forge test --list` for the authoritative list. Pre–Arena 
 
 <a id="contract-fork-smoke-optional-gitlab-275"></a>
 
-**`INV-CONTRACTS-275-FORK-SMOKE`:** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) (`TimeArenaForkTest`) is the only CI-matched fork smoke contract. With **`FORK_URL` unset**, both tests **no-op** (pass) so default **`unit-tests`** stays deterministic. With **`FORK_URL` set**, `test_fork_smoke_chainIdAndBlock` forks and asserts positive `chainid` / `block.number`. Optional `test_fork_smoke_timeArenaHeadState` reads `TimeArena.paused()` and `deadline()` when **`TIME_ARENA_FORK_ADDRESS`** points at deployed bytecode; skips on zero placeholder or empty code. **`contract-fork-smoke`** workflow uses `--match-contract TimeArenaForkTest` ([`contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml)). Runbook: [contract-fork-smoke.md](contract-fork-smoke.md). Verify: `bash scripts/verify-contract-fork-smoke.sh` · [manual QA §275](manual-qa-checklists.md#manual-qa-issue-275). Replaces retired `TimeCurveForkTest` ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) doc follow-up).
+**`INV-CONTRACTS-275-FORK-SMOKE`:** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) (`TimeArenaForkTest`) is the only CI-matched fork smoke contract. With **`FORK_URL` unset**, both tests **no-op** (pass) so default **`unit-tests`** stays deterministic. With **`FORK_URL` set**, `test_fork_smoke_chainIdAndBlock` forks and asserts positive `chainid` / `block.number`. Optional `test_fork_smoke_timeArenaHeadState` reads `TimeArena.paused()` and `deadline()` when **`TIME_ARENA_FORK_ADDRESS`** points at deployed bytecode; skips on zero placeholder or empty code. **`contract-fork-smoke`** workflow uses `--match-contract TimeArenaForkTest` ([`contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml)). Runbook: [contract-fork-smoke.md](contract-fork-smoke.md). Verify: `bash scripts/verify-contract-fork-smoke.sh` · [manual QA §275](manual-qa-checklists.md#manual-qa-issue-275). Replaces retired v1 fork smoke ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) doc follow-up).
 
 ---
 

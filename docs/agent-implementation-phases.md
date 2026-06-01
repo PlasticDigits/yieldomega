@@ -2,7 +2,7 @@
 
 This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-phases.md) planning is complete. Where **agent-phases** ties each step to documentation and design prompts, **implementation phases** tie work to **mergeable artifacts**, **tests**, and **promotion gates** in [`testing/strategy.md`](testing/strategy.md) and [`operations/deployment-stages.md`](operations/deployment-stages.md).
 
-**Arena v2 authority:** Active implementation phases target **TimeArena**, **PodiumVaults**, and **AdminSellVault** — not retired v1 TimeCurve, Rabbit Treasury, or FeeRouter wiring. Agent-phase doc cleanup: [GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+**Arena v2 authority:** Active implementation phases target **TimeArena**, **PodiumVaults**, and **AdminSellVault** — not retired v1 launchpad sale, Rabbit Treasury, or five-sink CL8Y wiring. Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276).
 
 **Rules for every implementation phase**
 
