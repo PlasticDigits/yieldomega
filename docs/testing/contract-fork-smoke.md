@@ -13,7 +13,15 @@ Skips (early return, still green) when `FORK_URL` is unset, `TIME_ARENA_FORK_ADD
 
 ## Local runbook
 
-From the repo root (or `contracts/`):
+From the repo root:
+
+```bash
+bash scripts/verify-contract-fork-smoke.sh
+```
+
+The script always runs the **no-op** path (`FORK_URL` unset). Export `FORK_URL` first to also exercise live RPC connectivity in the same run.
+
+Manual equivalent from `contracts/`:
 
 ```bash
 cd contracts

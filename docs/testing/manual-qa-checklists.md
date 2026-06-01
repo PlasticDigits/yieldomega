@@ -10,6 +10,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) | [XP buy-path gas](#manual-qa-issue-265) |
 | [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268) | [CRED buy + first-buy bonus](#manual-qa-issue-268) |
 | [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) | [Per-podium timer params](#manual-qa-issue-271) |
+| [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275) | [Contract fork smoke (optional)](#manual-qa-issue-275) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E](#manual-qa-issue-87) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev cooldown](#manual-qa-issue-88) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
@@ -312,6 +313,29 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] Buy checkout preview shows Last Buy timer/scoring effects; settlement note: all four podium deadlines extend per [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol).
 
 **Automated:** `TimeArena.t.sol::test_*` (see above) · `bash scripts/verify-podium-timers-anvil.sh` · `ArenaTimerChips.test.tsx`.
+
+<a id="manual-qa-issue-275"></a>
+
+### Contract fork smoke — optional MegaETH RPC ([GitLab #275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275))
+
+**Scope:** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) (`TimeArenaForkTest`) is the only CI-matched optional RPC fork smoke. Default **`unit-tests`** leaves `FORK_URL` unset so both tests **no-op** (deterministic PR gate). Live connectivity is opt-in via local env or the **`contract-fork-smoke`** workflow (`workflow_dispatch` only).
+
+### Authoritative docs
+
+- [`INV-CONTRACTS-275-FORK-SMOKE`](invariants-and-business-logic.md#contract-fork-smoke-optional-gitlab-275) · [contract-fork-smoke.md](contract-fork-smoke.md) · [CI mapping](ci.md)
+- [`.github/workflows/contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml) · [`contracts/.env.example`](../../contracts/.env.example)
+- [script-with-timearena-local § fork smoke](../../skills/script-with-timearena-local/SKILL.md) (contributors)
+
+### Checklist
+
+- [ ] **`bash scripts/verify-contract-fork-smoke.sh`** — passes with `FORK_URL` unset (no-op gas ~3.8k per test).
+- [ ] **`export FORK_URL=<megaeth-testnet-rpc> && bash scripts/verify-contract-fork-smoke.sh`** — fork selects chain; `test_fork_smoke_chainIdAndBlock` asserts positive `chainid` / `block.number`.
+- [ ] **`FOUNDRY_PROFILE=ci forge test`** (full suite, `FORK_URL` unset) — `TimeArenaForkTest` no-ops inside the run; no fork URL required for merge gate.
+- [ ] Grep workflow, `contracts/README.md`, `contracts/.env.example` — no `TimeCurveForkTest` / `TimeCurveFork.t.sol` (historical `audits/` exempt).
+- [ ] Dispatch **`contract-fork-smoke`** with valid RPC input or repository secret `FORK_URL` — job runs `--match-contract TimeArenaForkTest` and succeeds.
+- [ ] After mainnet Arena deploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)): set `TIME_ARENA_FORK_ADDRESS=<proxy>` and re-run; `test_fork_smoke_timeArenaHeadState` reads `paused()` / `deadline()` when bytecode is present.
+
+**Automated:** `bash scripts/verify-contract-fork-smoke.sh` · `TimeArenaFork.t.sol` · **`contract-fork-smoke`** workflow.
 
 <a id="manual-qa-issue-273"></a>
 

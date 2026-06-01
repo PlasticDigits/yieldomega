@@ -27,7 +27,7 @@ description: Author local TypeScript or Python scripts against deployed TimeAren
 - **CHARM band** and **DOUB** spend per [`time-arena.md`](../../docs/product/time-arena.md).
 - **Balances / allowances** for DOUB and optional Kumbaya paths ([`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md)).
 - **Reference:** [`bots/timearena/README.md`](../../bots/timearena/README.md) — AGPL; study patterns in your own project.
-- **Optional RPC fork smoke (contributors):** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) + [`contract-fork-smoke.md`](../../docs/testing/contract-fork-smoke.md) ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)) — not required for local Anvil scripts.
+- **Optional RPC fork smoke (contributors):** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) + [`contract-fork-smoke.md`](../../docs/testing/contract-fork-smoke.md) ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)) — verify `bash scripts/verify-contract-fork-smoke.sh`; not required for local Anvil scripts.
 
 ## D. Timing-sensitive buys
 
