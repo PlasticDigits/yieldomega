@@ -85,7 +85,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-255-WALLET-STATS`** | `GET /v1/arena/wallet/{address}/stats` — full participant profile aggregates (no stub zeros); schema **≥ 2.4.0** | `arena_wallet_stats.rs`, `integration_stage2.rs::arena_wallet_stats_two_epochs_and_bonus_fields` ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) |
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after` |
 | **`INV-INDEXER-254-ARENA-SCHEMA`** | Fresh DB: `idx_arena_buy`, `idx_arena_podium_epoch`, view `idx_arena_podium_snapshot`, `idx_play_cred_claim`, `idx_player_xp`, `idx_warbow_epoch_score`; no TimeCurve-only buy tables; `GET /v1/arena/{timers,podiums,buys}`; WarBow BP snapshots on BP-affecting logs; schema **≥ 2.5.0** | `20240601000000_arena_v2.up.sql`, `integration_stage2.rs` ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)) |
-| **`INV-INDEXER-PODIUM-PREDICT-LIVE`** | `GET /v1/arena/podiums`: UX order; head epochs; live top-3 from `idx_arena_podium_live` + WarBow scores; `podium_prediction` true only when DB-derived; ingest snapshots on Buy/WarBow/epoch events; reorg clears live table | `arena_podium_live.rs` (ingest), `integration_stage2.rs::arena_podiums_live_predictions_smoke` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) · [design § podiums](../indexer/design.md#timecurve-podiums-http) |
+| **`INV-INDEXER-PODIUM-PREDICT-LIVE`** | `GET /v1/arena/podiums`: UX order; head epochs; live top-3 from `idx_arena_podium_live` + WarBow scores; `podium_prediction` true only when DB-derived; ingest snapshots on Buy/WarBow/epoch events; reorg clears live table; **`chain_timer`** uses `podiumDeadline(uint256)` / `podiumEpoch(uint256)` array getters (not `uint8`) | `arena_podium_live.rs`, `chain_timer.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke`, `bash scripts/verify-podium-live-anvil.sh` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) · [design § podiums](../indexer/design.md#timecurve-podiums-http) · [detail §273](#indexer-live-podium-predictions-gitlab-273) |
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
@@ -129,6 +129,19 @@ Parent: [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247) (indepe
 | **`INV-TIME-ARENA-LAST-BUY-EPOCH-UNCHANGED`** | `lastBuyEpoch` still increments only on Last Buy (cat 0) hard reset | `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll`, `test_timer_hard_reset_increments_epoch` |
 
 Derived UI: [`ArenaTimerChips.tsx`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) reads four `podiumDeadline` values; buy checkout preview (`timeArenaBuyPreview.ts`) models **Last Buy** timer for scoring pills — all four settlement deadlines still extend onchain per buy.
+
+<a id="indexer-live-podium-predictions-gitlab-273"></a>
+
+### Indexer live podium predictions (GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
+
+Parent: [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254) (Arena HTTP baseline). Ingest: [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · HTTP: [`api_arena.rs`](../../indexer/src/api_arena.rs) · head poller: [`chain_timer.rs`](../../indexer/src/chain_timer.rs). Product: [arena-v2 § podiums](../product/arena-v2.md) · [design § live podiums](../indexer/design.md#timecurve-podiums-http). Play skill: [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md). Manual QA: [§273](manual-qa-checklists.md#manual-qa-issue-273).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-INDEXER-PODIUM-LIVE-TABLE`** | `idx_arena_podium_live` in `ARENA_INDEX_TABLES`; top-3 per `(category, epoch)`; reorg rollback clears rows | migration `20260601140000_idx_arena_podium_live_gl273`, `reorg.rs`, `integration_stage2.rs` |
+| **`INV-INDEXER-PODIUM-LIVE-INGEST`** | Block-tagged `podium()` snapshots on `Buy`, WarBow BP logs, `LastBuyEpochStarted`, `PodiumEpochRolled`; WarBow rollup from `idx_warbow_epoch_score` | `arena_podium_live.rs`, `ingestion.rs` |
+| **`INV-INDEXER-PODIUM-LIVE-HTTP`** | UX order (Last Buy · WarBow · Defended · Time Booster); per-row `epoch` from head `lastBuyEpoch` / `podiumEpoch[cat]`; `podium_prediction: true` only when Postgres supplies entrants | `api_arena.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke` |
+| **`INV-INDEXER-273-CHAIN-TIMER-SELECTORS`** | `chain_timer` + ingest epoch reads call **`podiumDeadline(uint256)`** / **`podiumEpoch(uint256)`** (Solidity public-array getters), not `uint8` overloads that revert | `chain_timer.rs`, `warbow_score.rs`, `bash scripts/verify-podium-live-anvil.sh` |
 
 <a id="timearena-xp-gas-gitlab-265"></a>
 
