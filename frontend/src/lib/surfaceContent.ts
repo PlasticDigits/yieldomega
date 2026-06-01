@@ -28,7 +28,7 @@ export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
   {
     to: "/referrals",
     title: "Referrals",
-    blurb: "Earn 5% everytime someone uses TimeCurve",
+    blurb: "Earn 5 Play CRED per referred Time Arena DOUB buy — for you and your guide",
     image: "/art/scenes/referrals-network.jpg",
     imageAlt: "Referral network threads scene",
     badgeLabel: "Live",
