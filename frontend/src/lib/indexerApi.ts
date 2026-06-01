@@ -741,12 +741,30 @@ export type ArenaWalletStats = {
   first_buy_at: string | null;
   xp: string;
   level: string;
-  prizes_won: unknown[];
+  prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;
-  highest_scores: unknown[];
+  highest_scores: ArenaWalletHighestScore[];
   warbow_steals: number;
+  warbow_guards: number;
   cred_claimed: string;
   referral_cred_earned: string;
+  longest_defended_streak: string;
+  podium_win_rate: string;
+  rank_distribution: Record<"1" | "2" | "3", string>;
+};
+
+export type ArenaWalletPrizeWon = {
+  podium: string;
+  epoch: string;
+  rank: number;
+  amount_doub: string;
+};
+
+export type ArenaWalletHighestScore = {
+  podium: string;
+  epoch: string;
+  score: string;
+  rank: number | null;
 };
 
 export async function fetchArenaBuys(limit = 20, offset = 0) {
