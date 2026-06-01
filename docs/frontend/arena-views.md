@@ -18,7 +18,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 
 - `GET /v1/arena/timers` — four podium deadlines + Last Buy epoch
 - `GET /v1/arena/buys` — recent buys
-- `GET /v1/arena/wallet-stats` — XP, buy count (when wired)
+- `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
 <a id="protocol-donate-pools-gitlab-262"></a>
