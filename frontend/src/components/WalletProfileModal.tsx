@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { explorerAddressUrl } from "@/lib/explorer";
+import { indexerBaseUrl } from "@/lib/addresses";
 import { useWalletStats } from "@/hooks/useWalletStats";
 import { AddressInline } from "@/components/AddressInline";
+import {
+  WalletProfileErrorState,
+  WalletProfileLoadingState,
+  WalletProfileStatsBody,
+} from "@/components/WalletProfileModalSections";
 
 type Props = {
   address: string | null;
@@ -12,7 +18,9 @@ type Props = {
 
 export function WalletProfileModal({ address, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { data, isLoading, isError } = useWalletStats(address ?? undefined);
+  const titleId = useId();
+  const indexerUnset = !indexerBaseUrl();
+  const { data, isLoading, isError } = useWalletStats(indexerUnset ? undefined : (address ?? undefined));
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -24,6 +32,17 @@ export function WalletProfileModal({ address, onClose }: Props) {
     }
   }, [address]);
 
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el || !address) return;
+    const onCancel = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    el.addEventListener("cancel", onCancel);
+    return () => el.removeEventListener("cancel", onCancel);
+  }, [address, onClose]);
+
   if (!address) return null;
 
   return (
@@ -31,6 +50,7 @@ export function WalletProfileModal({ address, onClose }: Props) {
       ref={dialogRef}
       className="wallet-profile-modal"
       data-testid="wallet-profile-modal"
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === dialogRef.current) onClose();
@@ -38,8 +58,8 @@ export function WalletProfileModal({ address, onClose }: Props) {
     >
       <div className="wallet-profile-modal__panel" role="document">
         <header className="wallet-profile-modal__header">
-          <h2>Participant profile</h2>
-          <button type="button" className="btn btn--ghost" onClick={onClose} aria-label="Close">
+          <h2 id={titleId}>Participant profile</h2>
+          <button type="button" className="btn btn--ghost wallet-profile-modal__close" onClick={onClose} aria-label="Close">
             Close
           </button>
         </header>
@@ -47,34 +67,18 @@ export function WalletProfileModal({ address, onClose }: Props) {
         <p className="wallet-profile-modal__address">
           <AddressInline address={address} explorer={false} />
         </p>
-        <p>
+        <p className="wallet-profile-modal__explorer-link">
           <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer noopener">
             View on explorer
           </a>
         </p>
 
-        {isLoading ? <p aria-live="polite">Loading stats…</p> : null}
-        {isError ? <p role="alert">Stats unavailable (indexer offline or empty).</p> : null}
-
-        {data ? (
-          <div className="wallet-profile-modal__sections">
-            <section>
-              <h3>Overview</h3>
-              <ul>
-                <li>Buys: {data.buy_count}</li>
-                <li>DOUB spent: {data.total_spent_doub}</li>
-                <li>Level: {data.level}</li>
-              </ul>
-            </section>
-            <section>
-              <h3>WarBow</h3>
-              <p>Steals: {data.warbow_steals}</p>
-            </section>
-            <section>
-              <h3>CRED</h3>
-              <p>Claimed: {data.cred_claimed}</p>
-            </section>
-          </div>
+        {isLoading ? <WalletProfileLoadingState /> : null}
+        {!isLoading && (isError || indexerUnset) ? (
+          <WalletProfileErrorState indexerUnset={indexerUnset} />
+        ) : null}
+        {!isLoading && !isError && !indexerUnset && data ? (
+          <WalletProfileStatsBody data={data} />
         ) : null}
       </div>
     </dialog>

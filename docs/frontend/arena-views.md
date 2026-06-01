@@ -60,13 +60,15 @@ Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredCl
 
 Participant addresses on **`/arena`** and **`/arena/protocol`** open **`WalletProfileModal`** via **`AddressInline` `onOpenProfile`** (not block explorer). Stats: **`GET /v1/arena/wallet/{address}/stats`**. Modal includes **View on explorer** as a secondary link.
 
+Modal sections (from indexer aggregates): **Overview**, **Podium wins**, **Spending**, **XP / Level**, **WarBow**, **Referrals**, **Fun facts**. Loading / error / indexer-unset states use shared placeholders ([#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)). Layout: [`WalletProfileModal.tsx`](../../frontend/src/components/WalletProfileModal.tsx), [`WalletProfileModalSections.tsx`](../../frontend/src/components/WalletProfileModalSections.tsx), [`walletProfileFormat.ts`](../../frontend/src/lib/walletProfileFormat.ts).
+
 | Surface | Component |
 |---------|-----------|
 | Play — podium winners, last timer extension | [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage.tsx`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) |
 | AUDIT — live buy ticker, donate-pools recent donors | [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) → [`ArenaLiveBuysActivitySection.tsx`](../../frontend/src/pages/arena/ArenaLiveBuysActivitySection.tsx), [`ArenaProtocolDonatePoolsSection.tsx`](../../frontend/src/pages/arena/ArenaProtocolDonatePoolsSection.tsx) |
 | Live-buy row primitives (hero strip + all-buys modal) | [`LiveBuyRow.tsx`](../../frontend/src/pages/arena/LiveBuyRow.tsx) |
 
-Invariants: **`INV-FRONTEND-258-WALLET-PROFILE`** in [invariants](../testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258). Contracts-only explorer links remain on [`MegaScannerAddressLink.tsx`](../../frontend/src/components/MegaScannerAddressLink.tsx).
+Invariants: **`INV-FRONTEND-258-WALLET-PROFILE`** in [invariants](../testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258). Tests: `WalletProfileModalSections.test.tsx`, `walletProfileFormat.test.ts`. Contracts-only explorer links remain on [`MegaScannerAddressLink.tsx`](../../frontend/src/components/MegaScannerAddressLink.tsx).
 
 <a id="protocol-donate-pools-gitlab-262"></a>
 
