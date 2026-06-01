@@ -25,6 +25,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - Each **DOUB** buy adds **35 CRED** to `epochCredPool[lastBuyEpoch]`; pro-rata by `epochCharmWad[epoch][user] / epochCharmTotal[epoch]`.
 - **`buyWithCred`**: burns CRED, accrues epoch CHARM weight, **does not** add to the epoch CRED pool.
 - **`claimCred(epoch)`** when `epoch < lastBuyEpoch`: mints pro-rata share + any `epochFixedCredBonus`; zeros epoch CHARM for that wallet.
+- **`/arena` UI ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)):** [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) — claim **`lastBuyEpoch - 1`** after hard reset · [arena-views §257](../../docs/frontend/arena-views.md#charm-cred-card-gitlab-257).
 - Invariants: [`INV-TIME-ARENA-CRED-*`](../../docs/testing/invariants-and-business-logic.md), [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol).
 
 ## Donate to pools (optional sponsorship)

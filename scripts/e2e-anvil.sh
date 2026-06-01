@@ -144,6 +144,10 @@ if ! curl -sf "http://127.0.0.1:4173/" >/dev/null 2>&1; then
 fi
 
 PLAYWRIGHT_SPECS="${PLAYWRIGHT_SPECS:-e2e/anvil-arena-*.spec.ts}"
+# Playwright specs read deploy addresses (e.g. #257 claim warp); build-time unset must not leak.
+export VITE_TIME_ARENA_ADDRESS="${TA}"
+export VITE_RPC_URL="${RPC}"
+export VITE_DOUB_ADDRESS="${DOUB}"
 E2E_REUSE_PREVIEW=1 npx playwright test ${PLAYWRIGHT_SPECS}
 
 echo "Done."
