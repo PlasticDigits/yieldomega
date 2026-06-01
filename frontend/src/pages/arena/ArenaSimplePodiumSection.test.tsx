@@ -73,6 +73,12 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("ranking-list__item--you");
   });
 
+  it("wires onOpenWalletProfile to podium winner addresses (#258)", () => {
+    const html = renderSimplePodiums({ onOpenWalletProfile: () => {} });
+    expect(html).toContain("address-inline__profile-btn");
+    expect(html).not.toContain("cursor-external-link");
+  });
+
   it("Defended Streak rows show no-streak guidance when on-chain streak values are zero", () => {
     const html = renderSimplePodiums({
       podiumRows: [

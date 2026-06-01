@@ -205,6 +205,8 @@ export type ArenaLiveBuysActivitySectionProps = {
   loadingMoreBuys: boolean;
   buyPagesExpanded: boolean;
   onLoadMore: () => void | Promise<void>;
+  /** Opens wallet profile modal on buyer click (#258). */
+  onOpenWalletProfile?: (address: string) => void;
 };
 
 /**
@@ -224,6 +226,7 @@ export function ArenaLiveBuysActivitySection({
   loadingMoreBuys,
   buyPagesExpanded,
   onLoadMore,
+  onOpenWalletProfile,
 }: ArenaLiveBuysActivitySectionProps) {
   const [tickerWallNowSec, setTickerWallNowSec] = useState(() => Math.floor(Date.now() / 1000));
   const activityScrollRef = useRef<HTMLDivElement>(null);
@@ -308,7 +311,12 @@ export function ArenaLiveBuysActivitySection({
                     </div>
                     <div className="arena-simple__ticker-main">
                       <span className="arena-simple__ticker-badge">{theme.badge}</span>
-                      <AddressInline address={b.buyer} size={22} className="arena-simple__ticker-buyer" />
+                      <AddressInline
+                        address={b.buyer}
+                        size={22}
+                        className="arena-simple__ticker-buyer"
+                        onOpenProfile={onOpenWalletProfile}
+                      />
                       <span className="arena-simple__ticker-age">
                         {age ?? `block ${formatLocaleInteger(b.block_number)}`}
                       </span>

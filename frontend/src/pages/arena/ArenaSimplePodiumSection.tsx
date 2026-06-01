@@ -61,6 +61,8 @@ export type ArenaSimplePodiumSectionProps = {
    * even if the parent does not re-render every second.
    */
   podiumNowUnixSec?: number;
+  /** Opens wallet profile modal on participant address click (#258). */
+  onOpenWalletProfile?: (address: string) => void;
 };
 
 function sameAddress(a: string | undefined, b: string | undefined): boolean {
@@ -80,6 +82,7 @@ function rankingRowsForPodium(
   decimals: number,
   podiumNowUnixSec: number,
   recentBuys: ArenaSimplePodiumSectionProps["recentBuys"],
+  onOpenWalletProfile: ArenaSimplePodiumSectionProps["onOpenWalletProfile"],
 ): RankingRow[] {
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const values = row?.values ?? ["0", "0", "0"];
@@ -113,6 +116,7 @@ function rankingRowsForPodium(
           fallback="—"
           size={18}
           className="arena-simple__podium-address"
+          onOpenProfile={onOpenWalletProfile}
         />
       ),
       value: (
@@ -171,6 +175,7 @@ function SimplePodiumCard({
   decimals,
   podiumNowUnixSec,
   recentBuys,
+  onOpenWalletProfile,
 }: {
   label: string;
   categoryIndex: number;
@@ -183,6 +188,7 @@ function SimplePodiumCard({
   decimals: number;
   podiumNowUnixSec: number;
   recentBuys: ArenaSimplePodiumSectionProps["recentBuys"];
+  onOpenWalletProfile: ArenaSimplePodiumSectionProps["onOpenWalletProfile"];
 }) {
   const winnersSig = row?.winners.join(":") ?? "";
   const burstNonce = usePodiumBurstNonce(winnersSig);
@@ -194,6 +200,7 @@ function SimplePodiumCard({
     decimals,
     podiumNowUnixSec,
     recentBuys,
+    onOpenWalletProfile,
   );
 
   return (
@@ -224,6 +231,7 @@ export function ArenaSimplePodiumSection({
   address,
   podiumNowUnixSec,
   recentBuys = null,
+  onOpenWalletProfile,
 }: ArenaSimplePodiumSectionProps) {
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
 
@@ -259,6 +267,7 @@ export function ArenaSimplePodiumSection({
             decimals={decimals}
             podiumNowUnixSec={scoreNowUnixSec}
             recentBuys={recentBuys}
+            onOpenWalletProfile={onOpenWalletProfile}
           />
         ))}
       </div>

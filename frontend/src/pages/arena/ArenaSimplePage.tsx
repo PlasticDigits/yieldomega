@@ -376,7 +376,14 @@ function ArenaSimpleAmountPayTokenSelect({
  * size + estimated DOUB spend). Contract state comes from {@link useArenaSaleSession}
  * (`TimeArena` reads/writes; see `docs/frontend/arena-views.md`).
  */
-export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: boolean }) {
+export function ArenaSimplePage({
+  mountAsArenaV2 = false,
+  onOpenWalletProfile,
+}: {
+  mountAsArenaV2?: boolean;
+  /** Opens wallet profile modal on participant address click (#258). */
+  onOpenWalletProfile?: (address: string) => void;
+}) {
   const tc = addresses.timeArena;
   const session = useArenaSaleSession(tc, { forceArenaV2: mountAsArenaV2 });
   const payTokenOptions = useMemo(
@@ -1032,6 +1039,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
                 tailHexDigits={6}
                 size={14}
                 className="arena-simple__last-extension-addr"
+                onOpenProfile={onOpenWalletProfile}
               />
             </span>
           )}
@@ -1250,6 +1258,7 @@ export function ArenaSimplePage({ mountAsArenaV2 = false }: { mountAsArenaV2?: b
         address={session.walletAddress}
         recentBuys={recentBuys}
         podiumNowUnixSec={tickerWallNowSec}
+        onOpenWalletProfile={onOpenWalletProfile}
       />
 
       <ArenaSimpleAgentCard />
