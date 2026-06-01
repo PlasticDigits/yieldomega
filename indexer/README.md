@@ -109,6 +109,10 @@ Schema **≥ 2.1.0** (`x-schema-version`). Ingests **`PodiumPoolsToppedUp`** int
 
 Schema **≥ 2.2.0** (`x-schema-version`). Ingests **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** into **`idx_arena_vault_funding`**. Routes: **`/recent`**, **`/by-tx/{tx_hash}`**, **`/totals`**. Empty DB → zeros / empty arrays (not 404). Map: **`INV-INDEXER-267-VAULT-FUNDING`** · [design — vault funding](../docs/indexer/design.md#arena-vault-funding-http-gitlab-267) · [invariants §267](../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267) · [onchain events](../docs/onchain/fee-routing-and-governance.md#events).
 
+### Wallet stats (`GET /v1/arena/wallet/{address}/stats`, GitLab [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
+
+Schema **≥ 2.4.0** (`x-schema-version`). SQL aggregations over buys, podium payouts, XP, CRED, WarBow tables — full bonus stats (no stub zeros). Map: **`INV-INDEXER-255-WALLET-STATS`** · [design — wallet stats](../docs/indexer/design.md#arena-wallet-stats-http-gitlab-255) · [invariants](../docs/testing/invariants-and-business-logic.md) · [arena-views](../docs/frontend/arena-views.md).
+
 ### SQLx migrations
 
 Migrations live under [`migrations/`](migrations/). Ship **paired** **`.up.sql`** and **`.down.sql`** per version so **`sqlx migrate revert`** can roll back a step and **`sqlx migrate run`** can re-apply it without hand-editing **`_sqlx_migrations`** ([GitLab #152](https://gitlab.com/PlasticDigits/yieldomega/-/issues/152) — unredeemed launched-token **`idx_*`** tables, [`invariants §128`](../docs/testing/invariants-and-business-logic.md#timecurve-unredeemed-launch-allocation-sweep-gitlab-128)).
