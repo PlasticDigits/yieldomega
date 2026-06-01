@@ -168,13 +168,31 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             .into_response();
     };
     let labels = ["last_buy", "time_booster", "defended_streak", "warbow"];
+    let epoch_by_cat: std::collections::HashMap<i16, String> = match sqlx::query(
+        r#"SELECT category, COALESCE(MAX(epoch), 0)::text AS epoch
+           FROM idx_arena_podium_epoch
+           GROUP BY category"#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|r| (r.get::<i16, _>("category"), r.get::<String, _>("epoch")))
+            .collect(),
+        Err(e) => {
+            return internal_db_error_response("GET /v1/arena/podiums", e);
+        }
+    };
     let rows: Vec<_> = h
         .podium_contract
         .iter()
         .enumerate()
         .map(|(i, p)| {
+            let epoch = epoch_by_cat.get(&(i as i16)).cloned();
             json!({
                 "category": labels.get(i).unwrap_or(&"unknown"),
+                "epoch": epoch,
                 "winners": p.winners,
                 "values": p.values,
                 "podium_prediction": true,
@@ -338,18 +356,12 @@ fn normalize_tx_hash_param(raw: &str) -> Option<String> {
     Some(h)
 }
 
-#[derive(Debug, serde::Deserialize)]
-struct VaultFundingRecentQuery {
-    #[serde(flatten)]
-    page: PageParams,
-}
-
 async fn arena_vault_funding_recent(
     State(state): State<AppState>,
-    Query(p): Query<VaultFundingRecentQuery>,
+    Query(p): Query<PageParams>,
 ) -> Response {
-    let limit = p.page.limit.clamp(1, 200);
-    let offset = p.page.offset.max(0);
+    let limit = p.limit.clamp(1, 200);
+    let offset = p.offset.max(0);
 
     let rows = match sqlx::query(
         r#"SELECT kind, podium_id, amount_doub_wad::text AS amount,

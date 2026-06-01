@@ -6,15 +6,16 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use alloy_primitives::B256;
+use alloy_primitives::{Address, B256};
 use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockTransactionsKind, Filter};
 use eyre::Result;
 use sqlx::PgPool;
 
 use crate::config::Config;
-use crate::decoder::decode_rpc_log;
+use crate::decoder::{decode_rpc_log, DecodedEvent};
 use crate::persist::persist_decoded_log_conn;
+use crate::warbow_score;
 use crate::reorg::{
     find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer_conn,
     upsert_indexed_block_conn, ChainPointer,
@@ -141,6 +142,12 @@ pub async fn run(
 
     let parsed = parse_http_rpc_urls(&config.rpc_urls)?;
     let providers = build_reqwest_providers(&parsed, config.rpc_request_timeout)?;
+
+    let time_arena: Option<Address> = config
+        .address_registry
+        .as_ref()
+        .and_then(|r| r.contracts.time_arena.parse().ok())
+        .filter(|a| *a != Address::ZERO);
 
     let mut rpc_health = RpcPollHealth::new();
 
@@ -340,6 +347,35 @@ pub async fn run(
                     }
                     if let Some(decoded) = decode_rpc_log(lg) {
                         persist_decoded_log_conn(&mut tx, &decoded).await?;
+                        if let Some(arena) = time_arena {
+                            if decoded.contract == arena {
+                                let players = warbow_score::warbow_score_players(&decoded.event);
+                                let skip_rpc = matches!(
+                                    &decoded.event,
+                                    DecodedEvent::ArenaWarbowEpochScore { .. }
+                                );
+                                if !players.is_empty() && !skip_rpc {
+                                    let provider =
+                                        &providers[rpc_sticky_idx % providers.len()];
+                                    if let Err(e) = warbow_score::snapshot_warbow_players_after_log(
+                                        provider,
+                                        arena,
+                                        &decoded,
+                                        &mut tx,
+                                        &players,
+                                    )
+                                    .await
+                                    {
+                                        tracing::warn!(
+                                            block = decoded.block_number,
+                                            tx = %decoded.tx_hash,
+                                            ?e,
+                                            "ingestion: warbow BP snapshot skipped"
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 upsert_indexed_block_conn(&mut tx, next, block_hash).await?;

@@ -261,6 +261,22 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         .await
         .expect("connect_and_migrate");
 
+    for table in yieldomega_indexer::reorg::ARENA_INDEX_TABLES {
+        let q = format!("DELETE FROM {table}");
+        sqlx::query(&q).execute(&pool).await.expect("clear index table");
+    }
+    sqlx::query("DELETE FROM indexed_blocks")
+        .execute(&pool)
+        .await
+        .expect("clear indexed_blocks");
+    sqlx::query(
+        r#"UPDATE indexer_state SET value = '{"block_number": 0, "block_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"}'::jsonb
+           WHERE key = 'chain_pointer'"#,
+    )
+    .execute(&pool)
+    .await
+    .expect("reset chain_pointer");
+
     let u1 = U256::from(1u8);
     let u2 = U256::from(2u8);
     let alice = addr_byte(0xa1);
@@ -326,6 +342,11 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             doub_spent: u1,
             guard_until: u2,
         }),
+        next(DecodedEvent::ArenaWarbowEpochScore {
+            epoch: u1,
+            player: alice,
+            battle_points: U256::from(900u32),
+        }),
         next(DecodedEvent::ArenaReferralApplied {
             buyer: alice,
             referrer: addr_byte(0xee),
@@ -367,6 +388,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(count_where(&pool, "idx_arena_podium_epoch", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_steal", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_warbow_guard", 100).await, 1);
+    assert_eq!(count_where(&pool, "idx_warbow_epoch_score", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_arena_referral_applied", 100).await, 1);
     assert_eq!(
         count_where(&pool, "idx_referral_code_registered", 100).await,
@@ -382,6 +404,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     );
 
     api_vault_funding_smoke(&pool).await;
+    api_podium_pool_donations_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
         .await
@@ -412,7 +435,6 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(ptr.block_number, 99);
 
     api_http_smoke(&pool).await;
-    api_podium_pool_donations_smoke(&pool).await;
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {

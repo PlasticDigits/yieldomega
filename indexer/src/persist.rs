@@ -283,6 +283,21 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaWarbowEpochScore {
+            epoch,
+            player,
+            battle_points,
+        } => {
+            crate::warbow_score::persist_warbow_epoch_score_event(
+                conn,
+                d,
+                *epoch,
+                *player,
+                *battle_points,
+            )
+            .await?;
+        }
+        DecodedEvent::ArenaWarbowRevenge { .. } | DecodedEvent::ArenaWarbowFlagClaimed { .. } => {}
         DecodedEvent::ArenaVaultFunding {
             kind,
             podium_id,

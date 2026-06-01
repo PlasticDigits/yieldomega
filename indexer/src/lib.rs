@@ -14,5 +14,6 @@ pub mod persist;
 pub mod reorg;
 pub mod rpc_http;
 pub mod sale_state;
+pub mod warbow_score;
 
 mod rpc_poll_health;
