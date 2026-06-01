@@ -17,8 +17,11 @@ yieldomega_anvil_deploy_dev() {
   export FOUNDRY_OUT="${ROOT}/contracts/out-e2e-anvil"
   mkdir -p "${FOUNDRY_OUT}"
   forge build
-  forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" \
-    --code-size-limit 524288 -vv 2>&1 | tee "${DEPLOY_LOG}"
+  if ! forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" \
+    --code-size-limit 524288 -vv 2>&1 | tee "${DEPLOY_LOG}"; then
+    echo "DeployDev broadcast failed (see ${DEPLOY_LOG})." >&2
+    return 1
+  fi
 
   _yieldomega_extract_addr() {
     local label="$1"

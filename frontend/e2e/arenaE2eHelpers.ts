@@ -4,6 +4,8 @@ import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
 /** Anvil E2E: fail fast when RPC/env is wrong (was 120s; keep low for local iteration). */
 export const ARENA_E2E_TIMEOUT_MS = 15_000;
+/** Kumbaya exact-output quotes can lag first RPC round-trip on cold Anvil. */
+export const ARENA_KUMBAYA_QUOTE_TIMEOUT_MS = 45_000;
 
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
@@ -24,7 +26,9 @@ export async function connectArenaWallet(
   await expect(page.getByText(connectPitch)).not.toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
-  await expect(arenaBuyPanel(page).getByText(/YOUR CL8Y:/i)).toBeVisible({
+  const buyPanel = arenaBuyPanel(page);
+  await expect(buyPanel).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  await expect(buyPanel.getByTestId("arena-simple-rate-board")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
   if (options?.requireDoubSpendControls) {
@@ -68,7 +72,7 @@ export async function selectPayWith(
   await expect(btn).toHaveAttribute("aria-pressed", "true");
 }
 
-/** Sets minimum valid DOUB/CL8Y spend so `charmWadSelected` resolves and the buy CTA enables. */
+/** Sets minimum valid CL8Y-band spend so `charmWadSelected` resolves (CL8Y / CRED paths). */
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
   await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
@@ -80,8 +84,40 @@ export async function setCharmSliderMin(page: Page): Promise<void> {
     // Dev deploy uses 1000 DOUB/CHARM; headroom pushes min spend above 1000 DOUB.
     await spendInput.fill("2000");
     await spendInput.blur();
-    await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
-      timeout: ARENA_E2E_TIMEOUT_MS,
-    });
+  } else {
+    // CRED pay: slider targets CL8Y band; input shows CRED burn after charm resolves.
+    const slider = buyPanel.locator("input.arena-buy-spend-range");
+    if ((await slider.count()) > 0) {
+      await slider.evaluate((el: HTMLInputElement) => {
+        el.value = "500";
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
   }
+  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
+}
+
+/** ETH/USDM Kumbaya pay: set pay-in budget, wait for swap quote + enabled buy CTA. */
+export async function setKumbayaPaySpendMin(page: Page): Promise<void> {
+  const buyPanel = arenaBuyPanel(page);
+  await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
+  const spendInput = buyPanel.getByLabel(/Exact (ETH|USDM) spend/i);
+  await expect(spendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  const label = (await spendInput.getAttribute("aria-label")) ?? "";
+  await spendInput.fill(/USDM/i.test(label) ? "100" : "0.05");
+  await spendInput.blur();
+  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
+  await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+  });
+  await expect(arenaBuyCharmButton(page)).toBeEnabled({
+    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+  });
 }

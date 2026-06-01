@@ -66,7 +66,7 @@ Recorded **2026-05-30** on `main` @ `ab89966` (QA agent — not manual `@brouie`
 | Check | Result |
 |-------|--------|
 | `FOUNDRY_PROFILE=ci forge test --match-contract DevStackIntegration` | **6/6 pass** |
-| `bash scripts/e2e-anvil.sh` | DeployDev + Kumbaya OK; **4/5** Playwright specs pass (`anvil-arena-wallet-writes` DOUB buy timeout — known flake) |
+| `bash scripts/e2e-anvil.sh` | DeployDev + Kumbaya OK; **`e2e/anvil-arena-*.spec.ts`** (6 tests: mount, reads, DOUB/ETH wallet writes, CRED buy) — see [e2e-anvil.md](../testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)) |
 | `scripts/deploy-megaeth-contracts.sh --help` | Arena v2 env defaults present |
 | `scripts/write-production-registry-from-broadcast.sh` (Anvil `DeployProduction` broadcast) | Emits `TimeArena`, `PodiumVaults`, `AdminSellVault`, `PlayCred`, `ReferralRegistry`, `Doubloon` |
 | `forge build --sizes` (MegaEVM [#72](https://gitlab.com/PlasticDigits/yieldomega/-/issues/72)) | Largest runtime: `TimeArena` impl **24,637 B** ≪ 512 KiB limit |

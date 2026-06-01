@@ -14,6 +14,7 @@ describe("wagmiConfig — GitLab #203 empty projectId fallback", () => {
   });
 
   it("produces a wagmi Config with connectors when projectId is empty", async () => {
+    // Dynamic import of RainbowKit + wagmi can exceed the default 5s on cold CI runners.
     vi.stubEnv("VITE_WALLETCONNECT_PROJECT_ID", "");
     vi.stubEnv("VITE_E2E_MOCK_WALLET", "");
     vi.stubEnv("VITE_CHAIN_ID", "31337");
@@ -25,7 +26,7 @@ describe("wagmiConfig — GitLab #203 empty projectId fallback", () => {
     // If branch 3 had fallen back to createConfig({ connectors: [injected()] }) the modal
     // would render blank. We assert connectors are present and exceed the single-injected count.
     expect(mod.wagmiConfig.connectors.length).toBeGreaterThan(1);
-  });
+  }, 15_000);
 
   it("produces a wagmi Config with connectors when projectId is set", async () => {
     vi.stubEnv("VITE_WALLETCONNECT_PROJECT_ID", "test-project-id-not-real");
@@ -36,7 +37,7 @@ describe("wagmiConfig — GitLab #203 empty projectId fallback", () => {
     const mod = await import("./wagmi-config");
     expect(mod.wagmiConfig).toBeDefined();
     expect(mod.wagmiConfig.connectors.length).toBeGreaterThan(1);
-  });
+  }, 15_000);
 
   it("E2E mock branch still works when VITE_E2E_MOCK_WALLET=1", async () => {
     vi.stubEnv("VITE_WALLETCONNECT_PROJECT_ID", "");
