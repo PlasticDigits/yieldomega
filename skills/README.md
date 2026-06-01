@@ -21,7 +21,7 @@ TimeCurve launchpad playbooks, Rabbit Treasury, collectible NFT layer — remove
 ## Contributor docs
 
 - [`docs/testing/strategy.md`](../docs/testing/strategy.md)
-- [`docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md) — optional MegaETH RPC fork (`TimeArenaForkTest`, [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275))
+- [`docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md) — optional MegaETH RPC fork (`TimeArenaForkTest`, [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); verify `bash scripts/verify-contract-fork-smoke.sh`
 - [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../docs/qa/QA-onboarding-gitlab-issue-body.md) — QA onboarding ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))
 - [`docs/testing/invariants-and-business-logic.md` § TimeArena v2](../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) · [manual QA §260](../docs/testing/manual-qa-checklists.md#manual-qa-issue-260) · [Anvil E2E](../docs/testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 - [`bots/timearena/README.md`](../bots/timearena/README.md)
