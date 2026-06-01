@@ -4,6 +4,7 @@
 //! idempotency, `rollback_after`, and HTTP API smoke (`/v1/arena/*`, `/v1/referrals/*`).
 
 use alloy_primitives::{address, Address, B256, U256};
+use std::sync::LazyLock;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::Arc;
 
@@ -129,6 +130,24 @@ fn pg_url() -> Option<String> {
     std::env::var("YIELDOMEGA_PG_TEST_URL")
         .ok()
         .filter(|s| !s.trim().is_empty())
+}
+
+async fn clear_arena_index_for_test(pool: &sqlx::PgPool) {
+    for table in yieldomega_indexer::reorg::ARENA_INDEX_TABLES {
+        let q = format!("DELETE FROM {table}");
+        sqlx::query(&q).execute(pool).await.expect("clear index table");
+    }
+    sqlx::query("DELETE FROM indexed_blocks")
+        .execute(pool)
+        .await
+        .expect("clear indexed_blocks");
+}
+
+static PG_INTEGRATION_MUTEX: LazyLock<tokio::sync::Mutex<()>> =
+    LazyLock::new(|| tokio::sync::Mutex::new(()));
+
+async fn pg_integration_lock() -> tokio::sync::MutexGuard<'static, ()> {
+    PG_INTEGRATION_MUTEX.lock().await
 }
 
 async fn response_json(response: axum::response::Response) -> Value {
@@ -258,18 +277,13 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         return;
     };
 
+    let _pg = pg_integration_lock().await;
+
     let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
 
-    for table in yieldomega_indexer::reorg::ARENA_INDEX_TABLES {
-        let q = format!("DELETE FROM {table}");
-        sqlx::query(&q).execute(&pool).await.expect("clear index table");
-    }
-    sqlx::query("DELETE FROM indexed_blocks")
-        .execute(&pool)
-        .await
-        .expect("clear indexed_blocks");
+    clear_arena_index_for_test(&pool).await;
     sqlx::query(
         r#"UPDATE indexer_state SET value = '{"block_number": 0, "block_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"}'::jsonb
            WHERE key = 'chain_pointer'"#,
@@ -752,9 +766,13 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
         return;
     };
 
+    let _pg = pg_integration_lock().await;
+
     let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
         .expect("connect_and_migrate");
+
+    clear_arena_index_for_test(&pool).await;
 
     let alice = addr_byte(0xa1);
     let alice_hex = format!("{alice:#x}");
@@ -894,6 +912,8 @@ async fn api_legacy_player_reserve_routes_return_404() {
         eprintln!("skip api_legacy_player_reserve_routes_return_404: set YIELDOMEGA_PG_TEST_URL");
         return;
     };
+
+    let _pg = pg_integration_lock().await;
 
     let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
         .await
