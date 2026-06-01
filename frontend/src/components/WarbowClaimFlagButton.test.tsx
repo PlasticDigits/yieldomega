@@ -11,7 +11,7 @@ function renderButton(overrides: Partial<Parameters<typeof WarbowClaimFlagButton
     ledgerNowSec: 1_000_000,
     flagSilenceEndSec: 1_000_200n,
     saleActive: true,
-    buyFeeRoutingEnabled: true,
+    arenaPaused: false,
     isConnected: true,
     isWriting: false,
     onClaim: () => {},

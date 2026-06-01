@@ -101,7 +101,7 @@ export function mapArenaV2AdvancedCoreRows(
     row(0n),
     row(ZERO),
     row(false),
-    row(!paused),
+    row(paused),
     row(ZERO),
     row(podiumVaults),
     row(0n),
