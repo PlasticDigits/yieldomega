@@ -8,6 +8,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 |-------|--------|
 | [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA](#manual-qa-issue-260) |
 | [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) | [XP buy-path gas](#manual-qa-issue-265) |
+| [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268) | [CRED buy + first-buy bonus](#manual-qa-issue-268) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E](#manual-qa-issue-87) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev cooldown](#manual-qa-issue-88) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
@@ -254,6 +255,33 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] Wallet profile modal **Level** (indexer `new_level` from `XpGained`) matches onchain `level()` after buys ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)).
 
 **Automated:** `TimeArena.t.sol::test_xp_*`, `ArenaXp.t.sol`, `arenaXpMath.test.ts` · optional: `YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/lib/anvil_deploy_dev.sh` + `cast call` as above.
+
+<a id="manual-qa-issue-268"></a>
+
+### CRED buy burn + first-buy bonus ([GitLab #268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268))
+
+**Scope:** `buyWithCred` burns **100 CRED per 1e18 CHARM**; wallet’s first `_finishBuy` (DOUB or CRED) schedules **150 CRED** for **`lastBuyEpoch + 1`** (post same-tx hard-reset); `pendingCred` / `claimCred` include fixed bonus.
+
+### Authoritative docs
+
+- [arena-v2 § CRED buy](../product/arena-v2.md) · [time-arena § Play CRED](../product/time-arena.md)
+- [`INV-TIME-ARENA-CRED-BURN-BUY`](invariants-and-business-logic.md#timearena-cred-buy-gitlab-268) · [`INV-TIME-ARENA-FIRST-BUY-CRED-BONUS`](invariants-and-business-logic.md#timearena-cred-buy-gitlab-268)
+- [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts) (frontend mirror)
+- [play-time-arena-doub § Play CRED](../../skills/play-time-arena-doub/SKILL.md)
+
+### Checklist
+
+- [ ] **`forge test --match-contract TimeArena`** passes (includes `test_buy_with_cred`, `test_first_buy_*`, `test_claim_cred_*`).
+- [ ] **`bash scripts/verify-cred-buy-anvil.sh`** — fresh Anvil DeployDev: burn scaling + first-buy bonus onchain.
+- [ ] **`npm test -- --run src/lib/arenaCredBurn.test.ts`** — frontend burn helper matches `CRED_PER_CHARM_WAD`.
+- [ ] `cast call TimeArena.CRED_PER_CHARM_WAD` → **100e18**; `buyWithCred(1e18)` decreases wallet CRED by **100e18**.
+- [ ] First buy: `epochFixedCredBonus[lastBuyEpoch+1][wallet] == 150e18`; second buy from same wallet does **not** add another 150.
+- [ ] First buy in hard-reset band: bonus targets **post-reset** `lastBuyEpoch + 1` (`test_first_buy_hard_reset_targets_post_epoch`).
+- [ ] `claimCred(epoch)` mints pro-rata + bonus; bonus-only claim (no CHARM in epoch) mints **150e18**; reverts while `epoch >= lastBuyEpoch`.
+- [ ] DOUB path still adds **35 CRED** to `epochCredPool` per buy; CRED path does **not** accrue pool.
+- [ ] **`buyWithCred`** has no referral CRED path ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)).
+
+**Automated:** `TimeArena.t.sol::test_buyWithCred_*`, `test_first_buy_*`, `test_claim_cred_*` · `bash scripts/verify-cred-buy-anvil.sh` · `arenaCredBurn.test.ts`.
 
 <a id="manual-qa-issue-262"></a>
 
