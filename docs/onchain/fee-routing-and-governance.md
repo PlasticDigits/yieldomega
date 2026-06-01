@@ -18,6 +18,8 @@ Integer rounding remainder is assigned to the **admin vault** (see `ArenaBuyRout
 
 **`AdminSellVault.sellDoubToUsdm(minOut)`** — **`onlyOwner`**: approves the configured Kumbaya-style router, swaps the vault’s full DOUB balance for **USDM**, delivers output to **`adminAccount`**. Local Forge evidence: [`AdminSellVault.t.sol`](../../contracts/test/AdminSellVault.t.sol) with [`AnvilMockUSDM`](../../contracts/src/fixtures/AnvilKumbayaFixture.sol) and a mock **`exactInputSingle`** router (production MegaETH uses integrator-kit **SwapRouter02** — see [Kumbaya integration](../integrations/kumbaya.md#admin-sell-vault-gitlab-249)).
 
+<a id="manual-podium-pool-top-up-gitlab-261"></a>
+
 ## Manual podium pool top-up ([GitLab #261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261))
 
 **`TimeArena.topUpPodiumPools(amountDoubWad)`** is permissionless sponsorship: **`transferFrom`** the caller, route **100%** of DOUB across the eight prize vaults at the **same 10% : 7.5% active:seed ratio per category** as the buy prize slice (`ArenaBuyRouting.splitPrizeTopUpAmount`; remainder wei → last category seed pool). **Zero** DOUB to **`AdminSellVault`**. Emits **`PodiumPoolsToppedUp`** plus **`PodiumFunded` / `SeedFunded`** on **`PodiumVaults`**. Does not mint CRED/XP, extend timers, or increment **`totalDoubRaised`**.
