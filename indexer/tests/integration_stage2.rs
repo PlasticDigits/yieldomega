@@ -652,6 +652,149 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
 }
 
 #[tokio::test]
+async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip arena_wallet_stats_two_epochs: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    let alice = addr_byte(0xa1);
+    let alice_hex = format!("{alice:#x}");
+    let block = 500u64;
+    let ts = 1_700_100_000u64;
+
+    let mk_buy =
+        |tx_id: u64, log_index: u64, hard_reset: bool, doub: u128| -> DecodedLog {
+            let mut log = sample_log_tx(
+                block + tx_id,
+                tx_id,
+                log_index,
+                DecodedEvent::ArenaBuy {
+                    buyer: alice,
+                    charm_wad: U256::from(1_000_000_000_000_000_000u128),
+                    doub_paid: U256::from(doub),
+                    new_deadline: U256::from(ts + 900),
+                    total_doub_raised_after: U256::from(doub),
+                    buy_index: U256::from(tx_id),
+                    actual_seconds_added: U256::from(120u64),
+                    timer_hard_reset: hard_reset,
+                    paid_with_cred: false,
+                },
+            );
+            log.block_timestamp = Some(ts + tx_id);
+            log
+        };
+
+    let logs = vec![
+        mk_buy(1, 1, false, DOUB_100),
+        mk_buy(2, 1, true, DOUB_1000),
+        sample_log_tx(
+            block + 3,
+            3,
+            1,
+            DecodedEvent::ArenaXpGained {
+                player: alice,
+                amount: U256::from(5u8),
+                new_level: U256::from(2u8),
+            },
+        ),
+        sample_log_tx(
+            block + 4,
+            4,
+            1,
+            DecodedEvent::ArenaReferralCred {
+                buyer: alice,
+                referrer: addr_byte(0xee),
+                code_hash: b256_lo(1),
+                referrer_cred: U256::from(5_000_000_000_000_000_000u128),
+                buyer_cred: U256::from(5_000_000_000_000_000_000u128),
+            },
+        ),
+        sample_log_tx(
+            block + 5,
+            5,
+            1,
+            DecodedEvent::ArenaPodiumEpochRolled {
+                category: 0,
+                epoch: U256::from(1u8),
+                first: alice,
+                second: addr_byte(0xb2),
+                third: addr_byte(0xb3),
+                pool_paid: U256::from(700u128),
+            },
+        ),
+        sample_log_tx(
+            block + 6,
+            6,
+            1,
+            DecodedEvent::ArenaWarbowGuard {
+                player: alice,
+                doub_spent: U256::from(1u8),
+                guard_until: U256::from(ts + 3600),
+            },
+        ),
+    ];
+
+    for log in &logs {
+        persist_decoded_log_autocommit(&pool, log)
+            .await
+            .expect("persist wallet stats fixture");
+    }
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/wallet/{alice_hex}/stats"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+
+    assert_eq!(j.get("epochs_participated").and_then(|v| v.as_i64()), Some(2));
+    assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(2));
+    assert_eq!(j.get("xp").and_then(|v| v.as_str()), Some("5"));
+    assert_eq!(j.get("level").and_then(|v| v.as_str()), Some("2"));
+    assert_eq!(j.get("warbow_guards").and_then(|v| v.as_i64()), Some(1));
+    assert_eq!(
+        j.get("referral_cred_earned").and_then(|v| v.as_str()),
+        Some("5000000000000000000")
+    );
+
+    let prizes = j.get("prizes_won").and_then(|v| v.as_array()).expect("prizes_won");
+    assert_eq!(prizes.len(), 1);
+    assert_eq!(prizes[0].get("podium").and_then(|v| v.as_str()), Some("last_buy"));
+    assert_eq!(prizes[0].get("rank").and_then(|v| v.as_u64()), Some(1));
+    assert_eq!(prizes[0].get("amount_doub").and_then(|v| v.as_str()), Some("400"));
+
+    let total_won = j.get("total_won_doub").and_then(|v| v.as_str()).expect("total_won");
+    assert_eq!(total_won, "400");
+
+    let highest = j
+        .get("highest_scores")
+        .and_then(|v| v.as_array())
+        .expect("highest_scores");
+    assert_eq!(highest.len(), 4);
+
+    let rank_dist = j.get("rank_distribution").expect("rank_distribution");
+    assert_eq!(rank_dist.get("1").and_then(|v| v.as_str()), Some("1"));
+}
+
+#[tokio::test]
 async fn api_legacy_player_reserve_routes_return_404() {
     let Some(url) = pg_url() else {
         eprintln!("skip api_legacy_player_reserve_routes_return_404: set YIELDOMEGA_PG_TEST_URL");

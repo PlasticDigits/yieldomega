@@ -269,6 +269,7 @@ export function ArenaProtocolPage() {
         loadingMoreBuys={liveBuys.loadingMoreBuys}
         buyPagesExpanded={liveBuys.hasExpandedBuyPages}
         onLoadMore={() => void liveBuys.handleLoadMoreBuys()}
+        onOpenWalletProfile={onOpenWalletProfile}
       />
 
       <ArenaProtocolDonatePoolsSection

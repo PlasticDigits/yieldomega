@@ -16,6 +16,8 @@ type Props = {
   envelopeParams: EnvelopeCurveParamsWire | null;
   onSelectBuy?: (buy: BuyItem) => void;
   onMore?: () => void;
+  /** Opens wallet profile modal on buyer click (#258). */
+  onOpenWalletProfile?: (address: string) => void;
 };
 
 export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
@@ -26,6 +28,7 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
   envelopeParams,
   onSelectBuy,
   onMore,
+  onOpenWalletProfile,
 }: Props) {
   /** Wall clock for “Xs ago” — matches Simple recent buys (chain-interpolated “now” understates age when head is stale). */
   const [wallNowUnixSec, setWallNowUnixSec] = useState(() => Math.floor(Date.now() / 1000));
@@ -78,6 +81,7 @@ export const TimerHeroLiveBuys = memo(function TimerHeroLiveBuys({
                 buy={buy}
                 formatWallet={formatWallet}
                 onSelectBuy={onSelectBuy}
+                onOpenProfile={onOpenWalletProfile}
                 nowUnixSec={wallNowUnixSec}
                 envelopeParams={envelopeParams}
                 variant="hero"

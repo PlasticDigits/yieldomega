@@ -45,6 +45,8 @@ type Props = {
   formatWallet: WalletFormatShort;
   decimals: number;
   envelopeParams: EnvelopeCurveParamsWire | null;
+  /** Opens wallet profile modal on buyer click (#258). */
+  onOpenWalletProfile?: (address: string) => void;
 };
 
 export function ArenaBuyModals({
@@ -63,6 +65,7 @@ export function ArenaBuyModals({
   formatWallet,
   decimals,
   envelopeParams,
+  onOpenWalletProfile,
 }: Props) {
   const listTitleId = useId();
   const detailTitleId = useId();
@@ -148,6 +151,7 @@ export function ArenaBuyModals({
                     buy={buy}
                     formatWallet={formatWallet}
                     onSelectBuy={onSelectBuy}
+                    onOpenProfile={onOpenWalletProfile}
                     nowUnixSec={wallNowUnixSec}
                     envelopeParams={envelopeParams}
                     variant="modal"

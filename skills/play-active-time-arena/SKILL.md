@@ -11,4 +11,4 @@ description: Route agents to the right TimeArena playbook from onchain paused/li
 4. If **live** → use [`play-time-arena-doub/SKILL.md`](play-time-arena-doub/SKILL.md).
 5. WarBow → [`play-time-arena-warbow/SKILL.md`](play-time-arena-warbow/SKILL.md) (stub until #252).
 
-Indexer: when `VITE_INDEXER_URL` is set, use Arena v2 HTTP **`GET /v1/arena/timers`**, **`/v1/arena/podiums`**, **`/v1/arena/buys`** ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)). Retired TimeCurve v1 routes (`/v1/timecurve/*`, legacy WarBow leaderboard HTTP) — [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266).
+Indexer: when `VITE_INDEXER_URL` is set, use Arena v2 HTTP **`GET /v1/arena/timers`**, **`/v1/arena/podiums`**, **`/v1/arena/buys`**, and **`GET /v1/arena/wallet/{address}/stats`** ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)). Retired TimeCurve v1 routes (`/v1/timecurve/*`, legacy WarBow leaderboard HTTP) — [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266).
