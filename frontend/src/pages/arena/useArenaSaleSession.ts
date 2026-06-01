@@ -874,7 +874,7 @@ export function useArenaSaleSession(
 
   const onchainTimeArenaBuyRouter = useMemo((): HexAddress | undefined => {
     if (arenaBuyRouterR?.status === "success") {
-      return arenaBuyRouterR.result as HexAddress;
+      return hexAddressFromRead(arenaBuyRouterR.result);
     }
     return undefined;
   }, [arenaBuyRouterR]);

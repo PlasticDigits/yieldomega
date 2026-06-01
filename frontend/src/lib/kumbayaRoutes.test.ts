@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
+import type { HexAddress } from "@/lib/addresses";
 import {
   buildV3PathExactOutput,
   minOutFromSlippage,
@@ -185,5 +186,12 @@ describe("resolveTimeArenaBuyRouterForKumbayaSingleTx (#264)", () => {
       VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER: BUY_R,
     });
     expect(r).toEqual({ kind: "ok", router: BUY_R });
+  });
+
+  it("does not throw when onchain read is a bigint (mis-mapped multicall row)", () => {
+    const r = resolveTimeArenaBuyRouterForKumbayaSingleTx(120n as unknown as HexAddress, {
+      VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER: BUY_R,
+    });
+    expect(r.kind).toBe("mismatch");
   });
 });

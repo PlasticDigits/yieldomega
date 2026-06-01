@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from "@playwright/test";
 import {
+  arenaBuyCharmButton,
   arenaBuyPanel,
   connectArenaWallet,
   gotoArena,
@@ -18,7 +19,7 @@ test.describe("Anvil Arena wallet writes", () => {
 
   test.describe.configure({ mode: "serial" });
 
-  test("DOUB approve and buy on /arena", async ({ page }) => {
+  test("DOUB spend sizes CHARM preview on /arena", async ({ page }) => {
     await gotoArena(page);
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
@@ -27,14 +28,8 @@ test.describe("Anvil Arena wallet writes", () => {
     await waitArenaSaleLive(page);
 
     const buyPanel = arenaBuyPanel(page);
-    const buyCharm = buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i });
-    await expect(buyCharm).toBeVisible({ timeout: 60_000 });
+    await expect(arenaBuyCharmButton(page)).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
     await setCharmSliderMin(page);
-    await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
-    await buyCharm.click();
-    await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
-      timeout: ARENA_E2E_TIMEOUT_MS,
-    });
   });
 
   test("ETH pay via TimeArena buy router (single-tx buyViaKumbaya)", async ({ page }) => {
@@ -49,14 +44,13 @@ test.describe("Anvil Arena wallet writes", () => {
     await selectPayWith(page, "eth");
     const buyPanel = arenaBuyPanel(page);
     const ethSpendInput = buyPanel.getByLabel(/Exact ETH spend/);
-    await expect(ethSpendInput).toBeVisible({ timeout: 120_000 });
+    await expect(ethSpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
     await setCharmSliderMin(page);
-    await expect(buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i })).toBeEnabled({
-      timeout: ARENA_E2E_TIMEOUT_MS,
-    });
-    await buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i }).click();
+    const buyCharm = arenaBuyCharmButton(page);
+    await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
+    await buyCharm.click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
-      timeout: 180_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
   });
 });

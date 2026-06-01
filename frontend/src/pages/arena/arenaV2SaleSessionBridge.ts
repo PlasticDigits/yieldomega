@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { addresses, type HexAddress } from "@/lib/addresses";
+import { addresses, parseHexAddress, type HexAddress } from "@/lib/addresses";
 import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
+import { WAD } from "@/lib/timeArenaMath";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ContractReadRow } from "@/pages/arena/useArenaSaleState";
 
@@ -22,6 +23,9 @@ export function isTimeArenaV2(tc: HexAddress | undefined): boolean {
   const b = lowerHex(arena);
   return Boolean(a && b && a === b);
 }
+
+/** Row count for `useArenaSaleSession` positional `coreData` destructuring (GitLab #256). */
+export const ARENA_SESSION_CORE_ROW_COUNT = 23;
 
 /** Multicall shape aligned with `useArenaSaleSession` core row destructuring. */
 export function arenaV2CoreContracts(tc: HexAddress) {
@@ -66,36 +70,32 @@ export function mapArenaV2CoreRows(
   const buyRouter = ok(10) ? (raw[10]!.result as HexAddress) : ZERO;
   const referralFlatCredWad = ok(11) ? (raw[11]!.result as bigint) : 5n * 10n ** 18n;
 
+  const podiumPool = parseHexAddress(addresses.podiumVaults) ?? ZERO;
+  const minDoubSpend = (CHARM_MIN_WAD * priceWad) / WAD;
+  const maxDoubSpend = (CHARM_MAX_WAD * priceWad) / WAD;
+
   return [
     row(saleStart),
     row(deadline),
     row(false),
-    row(CHARM_MIN_WAD),
-    row(CHARM_MAX_WAD),
+    row(minDoubSpend),
+    row(maxDoubSpend),
     row([CHARM_MIN_WAD, CHARM_MAX_WAD]),
     row(priceWad),
     row(doub),
-    row(doub),
     row(referral),
     row(totalRaised),
-    row(0n),
-    row(0n),
-    row(CHARM_MIN_WAD),
-    row(0n),
     row(timerExt),
     row(timerCap),
     row(buyCooldown),
     row(ZERO),
     row(!paused),
-    row(false),
-    row(false),
     row(buyRouter),
-    row(ZERO),
+    row(podiumPool),
     row(ZERO),
     row(0n),
     row(0n),
     row(0n),
-    row(ZERO),
     row(referralFlatCredWad),
     row(0n),
   ];
