@@ -19,8 +19,22 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 - `GET /v1/arena/timers` — Last Buy deadline + four podium deadlines + epoch ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
 - `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category
 - `GET /v1/arena/buys` — recent buys
-- `GET /v1/arena/wallet/{address}/stats` — XP, buy count, WarBow steals ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
+- `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+
+<a id="wallet-profile-modal-gitlab-258"></a>
+
+## Wallet profile modal (GitLab [#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258))
+
+Participant addresses on **`/arena`** and **`/arena/protocol`** open **`WalletProfileModal`** via **`AddressInline` `onOpenProfile`** (not block explorer). Stats: **`GET /v1/arena/wallet/{address}/stats`**. Modal includes **View on explorer** as a secondary link.
+
+| Surface | Component |
+|---------|-----------|
+| Play — podium winners, last timer extension | [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage.tsx`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) |
+| AUDIT — live buy ticker, donate-pools recent donors | [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) → [`ArenaLiveBuysActivitySection.tsx`](../../frontend/src/pages/arena/ArenaLiveBuysActivitySection.tsx), [`ArenaProtocolDonatePoolsSection.tsx`](../../frontend/src/pages/arena/ArenaProtocolDonatePoolsSection.tsx) |
+| Live-buy row primitives (hero strip + all-buys modal) | [`LiveBuyRow.tsx`](../../frontend/src/pages/arena/LiveBuyRow.tsx) |
+
+Invariants: **`INV-FRONTEND-258-WALLET-PROFILE`** in [invariants](../testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258). Contracts-only explorer links remain on [`MegaScannerAddressLink.tsx`](../../frontend/src/components/MegaScannerAddressLink.tsx).
 
 <a id="protocol-donate-pools-gitlab-262"></a>
 
