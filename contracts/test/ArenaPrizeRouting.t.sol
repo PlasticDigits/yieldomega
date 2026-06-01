@@ -19,10 +19,10 @@ contract ArenaPrizeRoutingTest is Test {
 
     function test_splitPrizeTopUp_700_matches_buy_prize_slice() public pure {
         (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(700e18);
-        assertEq(act[0], 100e18);
-        assertEq(sed[0], 75e18);
         uint256 sum;
         for (uint8 i; i < 4; ++i) {
+            assertEq(act[i], 100e18, "active per category");
+            assertEq(sed[i], 75e18, "seed per category");
             sum += act[i] + sed[i];
         }
         assertEq(sum, 700e18);
