@@ -324,7 +324,7 @@ async fn fetch_podium_placements(
     Ok(rows
         .iter()
         .filter_map(|r| {
-            let rank: Option<i16> = r.get("rank");
+            let rank: Option<i32> = r.get("rank");
             let rank = rank? as u8;
             Some(PodiumPlacement {
                 category: r.get("category"),
