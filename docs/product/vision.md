@@ -2,7 +2,7 @@
 
 ## Mission
 
-We are building a **fully onchain MegaETH-native gamefi ecosystem** centered on two flagship primitives, **TimeCurve** and **Rabbit Treasury**, aligned under the existing **CL8Y DAO** and treasury. The goal is **not** another speculative finance app, but a **full-cycle onchain consumer economy** built around games, collectibles, teams, status goods, and digitally native experiences.
+We are building a **fully onchain MegaETH-native gamefi ecosystem** centered on two flagship primitives, **Time Arena** (Arena v2) and **Rabbit Treasury**, aligned under the existing **CL8Y DAO** and treasury. The goal is **not** another speculative finance app, but a **full-cycle onchain consumer economy** built around games, collectibles, teams, status goods, and digitally native experiences.
 
 The long-term thesis: crypto should move beyond institutional finance, passive speculation, and empty infrastructure toward systems where people **spend for joy, meaning, identity, social status, and participation**.
 
@@ -10,11 +10,11 @@ The long-term thesis: crypto should move beyond institutional finance, passive s
 
 - **All parts of the ecosystem generate fees.**
 - A portion of fees flows into the **CL8Y treasury**, whose mission is funding new **fully onchain** games, consumer goods, tools, and cyclical digital economic activity.
-- **Governance over ecosystem expansion** should sit **primarily with CL8Y**, not with a separate TimeCurve-token DAO.
+- **Governance over ecosystem expansion** should sit **primarily with CL8Y**, not with a separate launchpad-token DAO.
 
 ## Primitives in one paragraph
 
-- **TimeCurve** is the **token launch primitive**: skill- and timing-forward participation, rising minimum buy, capped purchase size, timer extension, and explicit **podium** prize categories. Its canonical fee split routes to **DOUB/CL8Y locked LP**, **CL8Y burned** (sale proceeds), **podium pool**, **team sink** (0% at launch), and **Rabbit Treasury** per [fee sinks](../onchain/fee-routing-and-governance.md#fee-sinks) ([governance](../onchain/fee-routing-and-governance.md#governance-actors), [invariants](../onchain/fee-routing-and-governance.md#post-update-invariants)) in [onchain/fee-routing-and-governance.md](../onchain/fee-routing-and-governance.md); other ecosystem flows use separate schedules.
+- **Time Arena** is the **flagship game primitive**: skill- and timing-forward participation on **`TimeArena`** — DOUB (or Play CRED) buys, four independent podium timers, **40/30/30** vault routing, epoch CRED, XP, and DOUB WarBow. Arena is **always live** when not paused — no sale-end or CHARM redemption gates ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)). Canonical rules: [time-arena.md](time-arena.md) · [arena-v2.md](arena-v2.md). Retired v1 **TimeCurve** launchpad semantics: [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 - **Rabbit Treasury** is the **treasury game layer** that receives ecosystem value and retains users over time. It should be understood as **reserve-linked** with **internal accounting** and **honest repricing** when reserve health weakens—avoiding brittle collapse narratives while admitting sustainability depends on **real usage and fees**.
 

@@ -1,6 +1,6 @@
 # Research notes: USDm, CL8Y, and reserve assets
 
-**Canonical launch default (this repo):** **CL8Y** is the **single ERC-20 reserve** for **retired v1 player reserve** and the **TimeCurve** `acceptedAsset`, and the same token is used for **`ReferralRegistry`** registration burns. **USDm** remains relevant as MegaETH ecosystem context and a possible future basket asset — see below.
+**Canonical launch default (this repo):** **CL8Y** is used for **`ReferralRegistry`** registration burns and optional **TimeArenaBuyRouter** swap paths. **Arena v2** primary buy asset is **DOUB** ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)). Retired v1 **TimeCurve** CL8Y sale semantics — [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243). **USDm** remains relevant as MegaETH ecosystem context — see below.
 
 ## USDm (MegaUSD)
 
@@ -19,7 +19,7 @@ retired v1 player reserve ([../product/retired-v1-reserve.md](../product/retired
 
 ### v1 testnet reserve policy
 
-Default **accepted reserve**: **testnet CL8Y**—the single vault token for deposits and withdrawals and the TimeCurve sale asset. Resolve its **contract address** from **official artifacts** or an **onchain registry** at deploy time; do not add informal mints or unaudited stand-ins unless documented as an approved test double with the **same ERC-20 surface** intended for production.
+Default **testnet token** for **ReferralRegistry** burns and router fixtures: resolve **CL8Y** contract address from **official artifacts** or an **onchain registry** at deploy time. **DOUB** is the Arena buy token ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
 
 **USDm** may still appear in liquidity plans (for example DOUB/USDm pools) or future multi-asset baskets; document any expansion next to [fee routing](../onchain/fee-routing-and-governance.md) and [PARAMETERS.md](../../contracts/PARAMETERS.md).
 

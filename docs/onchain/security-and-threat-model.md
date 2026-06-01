@@ -10,36 +10,40 @@ This document lists **classes of risk** for a MegaETH-native, fully onchain game
 - **Multidimensional gas** — MegaEVM separates **compute** and **storage** gas ([../research/megaeth.md](../research/megaeth.md)). Contracts that look “cheap” on Ethereum L1 models may be **storage-heavy**; test under MegaETH RPC.
 - **Contract size** — Larger limits than Ethereum mainnet may encourage bigger modules; still prefer **modular boundaries** for auditability.
 
-## TimeCurve-specific
+## TimeArena-specific
 
 - **MEV and ordering** — Last-buyer and timer races are sensitive to **transaction ordering**. Design should assume **same-slot competition**; tie-break rules must be **deterministic** ([../product/primitives.md](../product/primitives.md)).
 - **Per-wallet buy pacing** — **`buyCooldownSec`** limits how often the **same** address can successfully buy; it does **not** change same-block ordering rules for distinct wallets.
-- **Griefing** — Small buys that extend timers could be used to delay endings; mitigations may include **minimum extension contribution**, **fee burn**, or **decay** (design choices).
-- **Parameter changes mid-sale** — Governance updates during an active sale can cause disputes; prefer **timelocks**, **sale-bound locks**, or **two-step** updates.
+- **Griefing** — Small buys that extend timers could be used to delay podium rolls; mitigations include **minimum extension contribution**, **hard-reset bands**, and **per-category timer caps** (design choices).
+- **Parameter changes mid-arena** — Governance updates during an active arena can cause disputes; prefer **timelocks** or **two-step** updates via **`onlyOwner`**.
 
-### TimeCurve — top design threats and mitigations
+### TimeArena — top design threats and mitigations
 
 | # | Threat (design level) | Mitigation (design level) |
 |---|------------------------|---------------------------|
-| 1 | **MEV / builder ordering on timer and buys** — In the same block, transaction order decides who is “last buyer,” who extends the timer, and podium ties; searchers can **sandwich** or **reorder** around user txs. | Specify **deterministic tie-breaks** (e.g. tx index, log index, address) for all podiums; treat **proposer ordering as part of the game** in docs/UX; keep **minimum buy growth** and **per-tx cap** fully onchain so no offchain ambiguity; optional **economic** mitigations (higher fees to protocol, decay) if griefing dominates. |
-| 2 | **Timer griefing / extension spam** — Small qualifying buys repeatedly **extend** the sale or dilute meaningful competition. | **Minimum extension contribution**, **maximum remaining timer cap**, **decay** of extension value over time, and/or **fee burn** on extensions so spam pays the system. |
-| 3 | **Governance or config change mid-sale** — Parameter updates during an active round create **disputes** (effective price curve, caps, fee splits). | **Timelocks**, **sale-scoped parameter snapshots** at sale start, or **two-step** updates with **explicit sale-bound locks**; emit **old/new** values on any change ([fee-routing invariants](fee-routing-and-governance.md#post-update-invariants)). |
-| 4 | **Rounding / time-base errors** — Minimum buy growth, charm redemption rounding, and timer math can **drift** from documented intent (per-second vs per-block, rounding direction). | **Single canonical time base** (e.g. block timestamp rules) in spec; **documented rounding** (floor/ceil) in NatSpec; **WAD** or fixed-point discipline; avoid silent offchain computation as source of truth. |
+| 1 | **MEV / builder ordering on timer and buys** — In the same block, transaction order decides who is “last buyer,” who extends timers, and podium ties; searchers can **sandwich** or **reorder** around user txs. | Specify **deterministic tie-breaks** (e.g. tx index, log index, address) for all podiums; treat **proposer ordering as part of the game** in docs/UX; keep **CHARM band** and **per-tx cooldown** fully onchain; optional **economic** mitigations (DOUB cost on WarBow actions) if griefing dominates. |
+| 2 | **Timer griefing / extension spam** — Small qualifying buys repeatedly **extend** podium timers or dilute meaningful competition. | **Hard-reset bands**, **maximum timer cap**, **category-specific extension rates**, and **DOUB-priced** WarBow actions so spam pays the system. |
+| 3 | **Governance or config change mid-arena** — Parameter updates during an active round create **disputes** (effective charm price, caps, vault wiring). | **Timelocks** or **two-step** updates with **`onlyOwner`**; emit **old/new** values on any change ([fee-routing invariants](fee-routing-and-governance.md#post-update-invariants)). |
+| 4 | **Rounding / split errors** — DOUB buy routing (40/30/30) and podium settlement can **drift** from documented intent (rounding direction). | **Single canonical split** in [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol); **documented rounding** (remainder → admin); **WAD** discipline; tests in `ArenaPrizeRouting.t.sol`. |
 | 5 | **Indexer reorg confusion (leaderboards, “last buyer,” timer UI)** — Fast blocks + reorgs can make the indexer **temporarily show** a winner or order that **differs** from the final chain; agents/UI may act on **stale** head. | **Indexer is not authority** ([../indexer/design.md](../indexer/design.md)); **confirmations / finalized depth** policy for “official” UI badges; **watermarks** (block height / cursor) on API; **client-side verification** before irreversible actions; label **recent** state clearly. |
 
-### TimeCurve — test plan (threat → validation stage)
+### TimeArena — test plan (threat → validation stage)
 
 Maps each numbered threat above to **unit** (Stage 1), **integration** (Stage 2 devnet + indexer), and **testnet** (Stage 3). See [../testing/strategy.md](../testing/strategy.md).
 
 | Threat # | Unit (Stage 1) | Integration (Stage 2) | Testnet (Stage 3) |
 |----------|------------------|-------------------------|---------------------|
 | 1 | Fuzz/property tests for **tie-break ordering**; pure **timer + buy** state machine; fork tests for **same-block** tx order. | Devnet **multi-tx same block** (or tight sequence) with indexer decoding **tx index**; API returns ordering fields for audit. | **Soak** with bursty traffic; manual or scripted **ordering** checks against explorer; optional **MEV-style** bundle ordering **where tooling allows** (document gaps). |
-| 2 | Unit tests for **extension floors/caps/decay**; edge cases at **timer ceiling**. | E2E **many small buys** vs few large buys; indexer **timer** projection matches contract events. | Long-run **spam** scenarios; monitor **gas** and UX; confirm economics still match design. |
-| 3 | Unit tests that **sale snapshot** freezes params; governance change tests **blocked** or **delayed** per design. | Integration: start sale → attempt param change → assert **onchain + indexer** reflect policy. | Governance ops on **staging** with human checklist; no **surprise** mid-sale behavior. |
-| 4 | **Invariant** tests on growth formula, caps, redemption; fuzz **rounding**. | Compare **contract-emitted** amounts to indexer-stored rows for sampled txs. | Fuzz-like **random buy sequences** on public RPC; spot-check vs simulation. |
+| 2 | Unit tests for **extension floors/caps/hard-reset**; edge cases at **timer ceiling**. | E2E **many small buys** vs few large buys; indexer **timer** projection matches contract events. | Long-run **spam** scenarios; monitor **gas** and UX; confirm economics still match design. |
+| 3 | Unit tests that **`setCharmPriceWad`** and timer params respect owner policy; upgrade tests **blocked** or **delayed** per design. | Integration: start arena → attempt param change → assert **onchain + indexer** reflect policy. | Governance ops on **staging** with human checklist; no **surprise** mid-arena behavior. |
+| 4 | **Invariant** tests on **`ArenaBuyRouting.splitBuyAmount`**, podium payouts; fuzz **rounding**. | Compare **contract-emitted** amounts to indexer-stored rows for sampled txs. | Fuzz-like **random buy sequences** on public RPC; spot-check vs simulation. |
 | 5 | Indexer **unit tests**: rollback/reapply **reorg** fixture; decoder idempotency. | **Reorg simulation** in CI or manual: alternate head → rollback → verify **leaderboard** rows and APIs; UI shows **pending vs confirmed** if implemented. | Testnet **natural reorgs** (if any); monitor **head lag** and incorrect “winner” incidents = **0** for confirmed tier. |
 
+> **Retired v1:** TimeCurve / FeeRouter / PodiumPool CL8Y threat rows — historical; contracts removed [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
+
 ## retired v1 player reserve-specific
+
+> **Retired:** **`RetiredV1Treasury`** removed from production deploy ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Rows below are historical reference only.
 
 - **Bank run dynamics** — Even with gradual repricing, extreme outflows can stress reserves. **Withdrawal queues**, **epoch limits**, or **transparent fee drains** may be required (TBD at implementation).
 - **Oracle manipulation** — If reserve health uses external prices, define **sources**, **staleness checks**, and **fallbacks**. Prefer **pure onchain** accounting where possible.
@@ -81,19 +85,18 @@ Internal review items (not a substitute for an **external audit**):
 
 | Area | Issue class | Mitigation in code / tests |
 |------|-------------|----------------------------|
-| **TimeCurve `distributePrizes`** | **Griefing / operational ambiguity** — Operators need a **distinguishable** onchain record when the **podium pool is empty** at settlement vs a **full drain** of a non-zero pool; otherwise indexers and runbooks may mis-parse “prizes done” without **`PrizesDistributed`**. | **GitLab #133:** zero balance — **`reservePodiumPayoutsEnabled`**, **`PrizesSettledEmptyPodiumPool`**, latch **`prizesDistributed`** (no refill retry). Non-zero — **`warbowPodiumFinalized`**, pay slices, drain check, **`PrizesDistributed`**. Tests: `test_distributePrizes_empty_vault_emits_empty_settlement_and_locks`, `test_distributePrizes_reduces_vault_and_sets_flag` in [`contracts/test/TimeCurve.t.sol`](../../contracts/test/TimeCurve.t.sol). |
-| **TimeCurve constructor** | **Misconfiguration** — Zero `launchedToken` or `podiumPool` bricks claims and podium payouts. | `require` non-zero addresses. Tests: `test_constructor_zero_launchedToken_reverts`, `test_constructor_zero_podiumPool_reverts`. |
-| **TimeCurve `buy`** | **Non-standard ERC20** — Fee-on-transfer or rebasing tokens desync `totalRaised` from tokens actually moved. | **Balance-delta parity** on ingress ([GitLab #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)); rebasing still discouraged. Tests: [`test_feeOnTransfer_timeCurve_buyReverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
-| **TimeCurve WarBow steal / revenge / guard** | **Burn-sink-address `msg.sender`** — With **`#123`** **`_pullAcceptedExact`**, `0x…dEaD` can **round-trip** CL8Y with **net zero** change to sink-side **`balanceOf`** while BP mutates ([issue #123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123) discussion). | Revert **`TimeCurve: burn sink caller`** (**`INV-WARBOW-123-BURN-CALLER`**). Tests: `test_warbow_steal_reverts_when_caller_is_burn_sink`, `test_warbow_revenge_reverts_when_caller_is_burn_sink`, `test_warbow_guard_reverts_when_caller_is_burn_sink` in [`TimeCurveWarBowCl8yBurns.t.sol`](../../contracts/test/TimeCurveWarBowCl8yBurns.t.sol). |
-| **FeeRouter `distributeFees`** | **`amount` exceeds balance** | Reverts via OZ ERC20 checks. Test: `test_distributeFees_insufficient_balance_reverts`. Callers must match **`amount`** to measured ingress (#123). |
-| **FeeRouter `distributeFees`** | **Transfer reverts** — Token always reverts on P2P transfer, or reverts when paying a specific sink. | Griefing / misconfiguration. Tests: [`test_alwaysRevert_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol), [`test_blockedSink_feeRouter_distributeReverts`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: **asset allowlist**, **pull payments** to sinks, governance swap of sink/token. |
-| **RetiredV1Treasury `deposit` / `receiveFee`** | **Fee-on-transfer** | **Balance-delta parity** on pulls (#123). Tests: [`test_feeOnTransfer_RetiredV1Treasury_deposit_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol), [`test_feeOnTransfer_RetiredV1Treasury_receiveFee_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
+| **`TimeArena.buy` / `buyWithCred`** | **Non-standard ERC20 DOUB** — Fee-on-transfer or rebasing DOUB desyncs vault splits from tokens actually moved. | **Balance-delta parity** on DOUB pulls ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)); prefer standard **`Doubloon`**. Tests: `TimeArena.t.sol`, `NonStandardERC20.t.sol`. |
+| **`TimeArena` WarBow DOUB spends** | **Insufficient balance / reentrancy** — WarBow actions pull fixed DOUB amounts from caller. | Revert on short balance; CEI pattern; tests in `TimeArena.t.sol` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). |
+| **`ArenaBuyRouting.splitBuyAmount`** | **Rounding residue** — Integer division can leave wei unmatched to documented 40/30/30 split. | Remainder → **`AdminSellVault`** ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)); fuzz in `ArenaPrizeRouting.t.sol`. |
+| **`PodiumVaults` payout** | **Double payout / wrong epoch** — Rolling or finalizing the wrong podium epoch pays wrong winners. | Epoch counters per category; tests `test_roll_podium_*`, `test_finalize_warbow_podium_*` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)). |
 | **`ReferralRegistry` `registerCode`** | **Fee-on-transfer** burn mismatch | **Burn-address `balanceOf` delta** vs `registrationBurnAmount` (#123). Test: [`test_feeOnTransfer_referralRegistry_register_reverts_erc20Parity`](../../contracts/test/NonStandardERC20.t.sol). |
-| **`TimeCurveBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | **`TimeCurveBuyRouter__StableIngressParity`** before swap (#123). Test: `TimeCurveBuyRouterStableIngress123Test` in [`TimeCurveBuyRouter.t.sol`](../../contracts/test/TimeCurveBuyRouter.t.sol). |
-| **RetiredV1Treasury `deposit` / accounting** | **Rebasing / balance drift** — `totalReserves` tracks internal sums; a rebasing token can change `balanceOf` without going through deposit/withdraw/fee paths. | Prefer **non-rebasing** reserve asset for v1. Test: [`test_rebasing_treasury_balanceCanDesyncFromTotalReserves`](../../contracts/test/NonStandardERC20.t.sol). Mitigations: disallow rebasing assets, periodic **reconciliation** jobs offchain, or measure **balance deltas** per tx (larger contract change). |
-| **RetiredV1Treasury `deposit`** | **Non-standard transfer** | **Balance-delta parity** (#123). Test: [`test_alwaysRevert_RetiredV1Treasury_depositReverts`](../../contracts/test/NonStandardERC20.t.sol). |
+| **`TimeArenaBuyRouter` `PAY_STABLE`** | **Fee-on-transfer stable** | Stable ingress balance-delta parity before swap (#123). Test: `TimeArenaBuyRouter.t.sol`. |
+| **`AdminSellVault.sellDoubToUsdm`** | **Slippage / router misconfig** — Owner-only liquidation; bad `minOut` or router address drains value. | **`onlyOwner`**; immutable router wiring; tests in `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). |
+| **`TimeArena.setPaused`** | **Emergency halt scope** — Pause must block buys and WarBow DOUB spends but not break views or flag claims. | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**; `claimWarBowFlag` unchanged ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). |
 
-**Still accepted** (by design / governance): MEV and block ordering on podiums and timer; anyone may call `distributeFees` when the router holds balance (funds only go to configured sinks); permissionless `endSale` / `finalizeEpoch` for liveness; small rounding residue in token redemption and prize splits.
+> **Retired v1:** TimeCurve / FeeRouter / PodiumPool / TimeCurveBuyRouter hardening rows — historical; see git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+
+**Still accepted** (by design / governance): MEV and block ordering on podiums and timers; permissionless **`rollPodiumEpoch`** / **`finalizeWarbowPodium`** for liveness; small rounding residue in DOUB prize splits; **`topUpPodiumPools`** as permissionless sponsorship ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)).
 
 ## Audit and bug bounty (intent)
 
@@ -102,7 +105,7 @@ Internal review items (not a substitute for an **external audit**):
 
 ## Fee routing checks
 
-Documented plain-language **post-update invariants** for fee splits and destinations (weights sum to 100%, events, no hidden paths, etc.) live in [fee-routing-and-governance.md — Post-update invariants](fee-routing-and-governance.md#post-update-invariants), alongside [who may change](fee-routing-and-governance.md#governance-actors) each parameter class.
+Documented plain-language **post-update invariants** for DOUB splits and vault destinations live in [fee-routing-and-governance.md](fee-routing-and-governance.md), alongside governance actors for **`TimeArena`**, **`PodiumVaults`**, and **`AdminSellVault`**.
 
 ## Testing mapping
 
@@ -112,7 +115,7 @@ Align mitigations with [../testing/strategy.md](../testing/strategy.md):
 - **Devnet integration** — indexer reorg replay, end-to-end buys and deposits.
 - **Testnet** — soak tests, MEV-style ordering simulations where feasible.
 
-**Per-component matrices:** Under [TimeCurve-specific](#timecurve-specific) and [retired v1 player reserve-specific](#retired-v1-reserve-specific), each numbered threat maps to **unit / integration / testnet** rows in the test plan tables.
+**Per-component matrices:** Under [TimeArena-specific](#timearena-specific) and [retired v1 player reserve-specific](#retired-v1-player-reserve-specific), each numbered threat maps to **unit / integration / testnet** rows in the test plan tables.
 
 ---
 

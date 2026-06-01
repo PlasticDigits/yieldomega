@@ -21,10 +21,11 @@ For the contracts-to-indexer/frontend deployment guide, start with [deployment-g
 | Network (devnet / testnet / mainnet) | |
 | Chain ID | |
 | RPC URL (internal) | |
-| Contract: TimeCurve | Address: … Verified: Y/N Link: … |
-| Contract: Rabbit Treasury | Address: … Verified: Y/N Link: … |
-| Contract: collectible NFT (retired #241) | Address: … Verified: Y/N Link: … |
-| Contract: Fee router / registry | Address: … Verified: Y/N Link: … |
+| Contract: TimeArena | Address: … Verified: Y/N Link: … |
+| Contract: PodiumVaults | Address: … Verified: Y/N Link: … |
+| Contract: AdminSellVault | Address: … Verified: Y/N Link: … |
+| Contract: ReferralRegistry | Address: … Verified: Y/N Link: … |
+| Contract: TimeArenaBuyRouter (optional) | Address: … Verified: Y/N Link: … |
 | Indexer migration version | |
 | Indexer image / binary digest | |
 | Frontend build id / CID | |

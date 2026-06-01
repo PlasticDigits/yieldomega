@@ -31,10 +31,11 @@ Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + 
 
 ## Decision tree
 
-1. **Sale state**
-   - **Post-end / prizes / rich narrative:** default stack (**`anvil_rich_state.sh`** runs). Use orchestrator **`--rich-state`** only if you need to **clear** a inherited `SKIP_ANVIL_RICH_STATE=1` from your shell.
-   - **Live sale (bots + UI demos):** `SKIP_ANVIL_RICH_STATE=1` or **`--live-sale`**. Stack defaults **`START_BOT_SWARM=1`** unless you **`--no-swarm`** or set `START_BOT_SWARM=0`.
-2. **Kumbaya / `BuyViaKumbaya`:** `YIELDOMEGA_DEPLOY_KUMBAYA=1` or **`--kumbaya`**. Indexer must see **`TimeCurveBuyRouter`** in the registry; after [`scripts/verify-timecurve-buy-router-anvil.sh`](../../scripts/verify-timecurve-buy-router-anvil.sh), restart the indexer if you merged registry rows ([issue #78](https://gitlab.com/PlasticDigits/yieldomega/-/issues/78), [issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84)).
+1. **Anvil narrative (optional)**
+   - **Default stack:** runs **`anvil_rich_state.sh`** when not skipped — dense historical buys for indexer/UI exploration ([anvil-rich-state.md](anvil-rich-state.md)); optional, not required for Arena v2 ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
+   - **Live arena (bots + Kumbaya / UI demos):** `SKIP_ANVIL_RICH_STATE=1` or **`--live-sale`** (flag name retained). Stack defaults **`START_BOT_SWARM=1`** unless you **`--no-swarm`** or set `START_BOT_SWARM=0`.
+   - **`--rich-state`:** unset **`SKIP_ANVIL_RICH_STATE`** when your shell inherited `SKIP_ANVIL_RICH_STATE=1` and you want the rich-state script again.
+2. **Kumbaya / `BuyViaKumbaya`:** `YIELDOMEGA_DEPLOY_KUMBAYA=1` or **`--kumbaya`**. Indexer must see **`TimeArenaBuyRouter`** in the registry; after [`scripts/verify-time-arena-buy-router-anvil.sh`](../../scripts/verify-time-arena-buy-router-anvil.sh), restart the indexer if you merged registry rows ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), [issue #84](https://gitlab.com/PlasticDigits/yieldomega/-/issues/84)).
 3. **Dense buys / swarm:** Prefer **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** (and optionally **`YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC`**) — [issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88), [issue #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99).
 4. **Headless (no browser dev server):** **`--no-frontend`**.
 
@@ -51,7 +52,7 @@ bash scripts/start-qa-local-full-stack.sh
 Examples:
 
 ```bash
-# Live sale + Kumbaya fixtures + short cooldown (env forwarded)
+# Live arena + Kumbaya fixtures + short cooldown (env forwarded)
 YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/start-qa-local-full-stack.sh --live-sale --kumbaya
 
 # Stack only (no Vite, no swarm override — inherits stack defaults)
@@ -65,8 +66,8 @@ bash scripts/start-qa-local-full-stack.sh --no-frontend --no-swarm
 | `--no-frontend` | Skip background **`npm run dev`**. |
 | `--no-swarm` | **`START_BOT_SWARM=0`** before the stack. |
 | `--kumbaya` | **`YIELDOMEGA_DEPLOY_KUMBAYA=1`**. |
-| `--rich-state` | **`unset SKIP_ANVIL_RICH_STATE`** (run rich state script when stack defaults apply). |
-| `--live-sale` | **`SKIP_ANVIL_RICH_STATE=1`**. |
+| `--rich-state` | **`unset SKIP_ANVIL_RICH_STATE`** (run optional **`anvil_rich_state.sh`** when stack defaults apply). |
+| `--live-sale` | **`SKIP_ANVIL_RICH_STATE=1`** (live arena; unwarped chain time). |
 
 Any other variable documented for [`start-local-anvil-stack.sh`](../../scripts/start-local-anvil-stack.sh) can be **exported before** the orchestrator (same shell); the orchestrator does not strip env.
 
@@ -127,7 +128,7 @@ Logs: `/tmp/yieldomega_anvil_stack.log`, `/tmp/yieldomega_indexer_stack.log`, `/
 
 - **Indexer port in use:** Stack may auto-bump **`INDEXER_PORT`** unless **`QA_USE_FIXED_INDEXER_PORT=1`**. Re-read **`VITE_INDEXER_URL`** in `.env.local` after each run.
 - **PEP 668 / missing `web3`:** [`bots/timearena/README.md`](../../bots/timearena/README.md).
-- **Kumbaya router not ingesting:** Registry must list **`TimeCurveBuyRouter`**; restart indexer after registry updates.
+- **Kumbaya router not ingesting:** Registry must list **`TimeArenaBuyRouter`**; restart indexer after registry updates.
 
 ---
 
@@ -138,7 +139,7 @@ Use this list after the orchestrator or documented manual sequence ([issue #104]
 - [ ] `cast block-number --rpc-url <RPC_URL>` succeeds.
 - [ ] `curl -sf http://127.0.0.1:<indexer>/v1/status` returns OK.
 - [ ] `curl -s 'http://127.0.0.1:<indexer>/v1/arena/buys?limit=5' | jq .` returns JSON (empty array OK right after deploy).
-- [ ] Browser: app URL loads; TimeCurve phase matches setup (live vs post–rich-state).
+- [ ] Browser: app URL loads; **`/arena`** accepts buys when **`SKIP_ANVIL_RICH_STATE=1`** (live arena) or shows rich-state narrative when rich state ran.
 - [ ] If swarm enabled: `/tmp/yieldomega_swarm_*.log` shows activity; buys endpoint gains rows over time (with short cooldown for dense checks).
 - [ ] If `SKIP_ANVIL_RICH_STATE=1` + swarm: when stack **started** Anvil, logs note **interval mining**; if **reusing** RPC, expect the documented warning path ([issue #99](https://gitlab.com/PlasticDigits/yieldomega/-/issues/99)).
 - [ ] `make check-frontend-env` passes when `.env.local` exists (optional).

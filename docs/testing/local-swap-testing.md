@@ -43,7 +43,7 @@ Example shape for documenting Anvil output (regenerate after deploy): `contracts
 
 1. Obtain canonical **router**, **quoter**, **WETH**, **USDM**, and **fee tiers** from the Kumbaya protocol team.
 2. Update `CHAIN_DEFAULTS` / env for the target `chainId` in `kumbayaRoutes.ts` or your secrets manager.
-3. Run a manual **quote → swap → TimeCurve buy** on the target RPC before shipping.
+3. Run a manual **quote → swap → TimeArena buy** (or **`buyViaKumbaya`**) on the target RPC before shipping.
 
 ## Related
 

@@ -2,6 +2,8 @@
 
 Manual frontend QA against **Anvil + indexer running on a QA server**, with **SSH port forwards** to your laptop and **Vite running locally**. Services listen on **127.0.0.1** on the server so only **SSH** needs to be exposed to the internet.
 
+**Product surface:** unified **`/arena`** page ([`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256)) — not the retired TimeCurve launchpad ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).
+
 ## On the QA server
 
 **One-time:** Docker, Foundry (`anvil`, `forge`, `cast`), `jq`, `curl`, Rust toolchain (indexer builds with `cargo`).
@@ -40,9 +42,9 @@ After `make start-qa` succeeds on the server:
 2. **`scp`** — `.deploy/local.env` from the server into your clone:  
    `scp user@host:/path/to/yieldomega/.deploy/local.env .deploy/local.env`
 3. **Frontend env** — `./scripts/qa/write-frontend-env-local.sh` after copying `.deploy/local.env`.  
-   **`--urls-only`** is only for checking tunnel wiring: it **clears all contract addresses**, so the TimeCurve page and fee-router panel will show “config needed” until you run again **without** `--urls-only` (with a real `local.env`). Prefer the default mode for normal QA.
+   **`--urls-only`** is only for checking tunnel wiring: it **clears all contract addresses**, so the **`/arena`** page will show “config needed” until you run again **without** `--urls-only` (with a real `local.env`). Prefer the default mode for normal QA.
 4. **Vite** — `cd frontend && npm ci && npm run dev` — open the URL Vite prints. **Do not** tunnel the Vite port; run the dev server only on the laptop. If the stack or `write-frontend-env-local.sh` ran **after** you started Vite, **restart** the dev server so `VITE_*` reloads.
-5. **Optional:** `make check-frontend-env` — confirms `frontend/.env.local` has the deploy addresses (merged with `frontend/.env`).
+5. **Optional:** `make check-frontend-env` — confirms `frontend/.env.local` has Arena v2 deploy addresses (`VITE_TIME_ARENA_ADDRESS`, vault vars; merged with `frontend/.env`).
 
 Reprint tunnel steps anytime: **`make qa-tunnel-help`** (on server or laptop clone).
 
@@ -55,3 +57,9 @@ bash scripts/start-local-anvil-stack.sh
 ```
 
 That script may pick a free indexer port if `QA_USE_FIXED_INDEXER_PORT` is not set.
+
+## See also
+
+- [QA onboarding issue body](../docs/qa/QA-onboarding-gitlab-issue-body.md) — full checklist ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))
+- [manual-qa-checklists §260](../docs/testing/manual-qa-checklists.md#manual-qa-issue-260)
+- [skills/README.md](../../skills/README.md) — play skills for agents

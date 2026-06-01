@@ -2,6 +2,8 @@
 
 This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-phases.md) planning is complete. Where **agent-phases** ties each step to documentation and design prompts, **implementation phases** tie work to **mergeable artifacts**, **tests**, and **promotion gates** in [`testing/strategy.md`](testing/strategy.md) and [`operations/deployment-stages.md`](operations/deployment-stages.md).
 
+**Arena v2 authority:** Active implementation phases target **TimeArena**, **PodiumVaults**, and **AdminSellVault** — not retired v1 TimeCurve, Rabbit Treasury, or FeeRouter wiring. Agent-phase doc cleanup: [GitLab #274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
+
 **Rules for every implementation phase**
 
 - Default license for new code: **AGPL-3.0**; respect [licensing.md](licensing.md).
@@ -40,7 +42,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 | Phase | Scope | Status |
 |-------|--------|--------|
 | impl-0 | Parameters / interfaces tracked | [`contracts/PARAMETERS.md`](../contracts/PARAMETERS.md), [`contracts/README.md`](../contracts/README.md) |
-| impl-1 … impl-5 | Libraries, TimeCurve, RabbitTreasury, fee router + sinks, collectible NFT (retired #241) | Historical under `contracts/src/`; Arena v2 is authority |
+| impl-1 … impl-5 | Libraries, TimeArena, PodiumVaults/AdminSellVault, arena buy routing, collectible NFT (retired #241) | Historical v1 under `contracts/src/`; Arena v2 is authority |
 | impl-6 | Deploy + address registry | [`DeployDev.s.sol`](../contracts/script/DeployDev.s.sol), [`dev-addresses.example.json`](../contracts/deployments/dev-addresses.example.json), [`stage2-anvil-registry.json`](../contracts/deployments/stage2-anvil-registry.json), [`contracts/deployments/README.md`](../contracts/deployments/README.md) |
 | impl-7 … impl-8 | Indexer schema, decoders, API, reorg | `indexer/` migrations + `cargo test` (incl. Postgres rollback integration when `YIELDOMEGA_PG_TEST_URL` is set in CI) |
 | impl-9 | Frontend wallet + reads | `frontend/` + [`frontend/.env.example`](../frontend/.env.example) |
@@ -60,12 +62,11 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 
 ## Implementation phase 0 — Lock parameters and interfaces
 
-**Goal:** Freeze or explicitly **TODO** every numeric policy and external dependency called out in [product/primitives.md](product/primitives.md), [product/rabbit-treasury.md](product/rabbit-treasury.md), [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), and [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
+**Goal:** Freeze or explicitly **TODO** every numeric policy and external dependency called out in [product/time-arena.md](product/time-arena.md), [product/arena-v2.md](product/arena-v2.md), [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), and [research/stablecoin-and-reserves.md](research/stablecoin-and-reserves.md).
 
 **Deliverables**
 
-- Written list (issue or short `contracts/README.md` / design note): timer caps, purchase multiples, fee weights, reserve asset allowlist for v1, governance addresses vs placeholders.
-- JSON metadata alignment with [schemas/README.md](schemas/README.md) if NFT work starts soon.
+- Written list (issue or short `contracts/README.md` / design note): podium timer params, buy cooldown, 40/30/30 routing shares, charm price band, governance addresses vs placeholders.
 
 **Exit criteria**
 
@@ -74,7 +75,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 **Agent prompt (copy-paste):**
 
 ```text
-You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, docs/product/rabbit-treasury.md, docs/onchain/fee-routing-and-governance.md, and docs/research/stablecoin-and-reserves.md. Produce a single checklist of parameters that need human-fixed values before mainnet, with suggested conservative testnet defaults where safe. Do not write Solidity until the maintainer confirms or defers each item with an explicit TODO location.
+You are implementing Yieldomega on MegaEVM. Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/onchain/fee-routing-and-governance.md, and docs/research/stablecoin-and-reserves.md. Produce a single checklist of parameters that need human-fixed values before mainnet, with suggested conservative testnet defaults where safe. Do not write Solidity until the maintainer confirms or defers each item with an explicit TODO location.
 ```
 
 ---
@@ -89,7 +90,7 @@ You are implementing Yieldomega on MegaEVM. Read docs/product/primitives.md, doc
 
 **Deliverables**
 
-- Libraries / helpers used by TimeCurve and Rabbit Treasury (e.g. fixed-point, time math, fee splitting) with **unit tests** and **documented invariants** next to tests.
+- Libraries / helpers used by TimeArena and PodiumVaults (e.g. fixed-point, time math, arena buy routing) with **unit tests** and **documented invariants** next to tests.
 - `forge test` passes locally and in [CI per docs/testing/ci.md](testing/ci.md).
 
 **Exit criteria**
@@ -106,16 +107,16 @@ Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1.
 
 <a id="impl-2"></a>
 
-## Implementation phase 2 — Contracts: TimeCurve primitive
+## Implementation phase 2 — Contracts: TimeArena primitive
 
-**Docs:** [product/primitives.md](product/primitives.md), [onchain/security-and-threat-model.md](onchain/security-and-threat-model.md)
+**Docs:** [product/time-arena.md](product/time-arena.md), [product/arena-v2.md](product/arena-v2.md), [onchain/security-and-threat-model.md](onchain/security-and-threat-model.md)
 
-**Goal:** Onchain TimeCurve matches the spec: timer, purchases, fees outbound, sale end, events for indexers.
+**Goal:** Onchain TimeArena matches the spec: four podium timers, DOUB buys, 40/30/30 vault routing, permissionless `rollPodiumEpoch` settlement, events for indexers.
 
 **Deliverables**
 
-- TimeCurve (or modular equivalent) with **state**, **events**, and **access control** per [fee routing](onchain/fee-routing-and-governance.md).
-- **Fuzz / invariant tests** for timer caps, min buy growth, max multiple, and end state per threat model.
+- **TimeArena** (with **PodiumVaults** / **AdminSellVault** wiring) with **state**, **events**, and **access control** per [arena buy routing](onchain/fee-routing-and-governance.md).
+- **Fuzz / invariant tests** for timer caps, buy cooldown, podium settlement, and WarBow epoch behavior per threat model.
 
 **Exit criteria**
 
@@ -125,57 +126,52 @@ Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1.
 **Agent prompt (copy-paste):**
 
 ```text
-Implement the TimeCurve primitive per docs/product/primitives.md and docs/onchain/security-and-threat-model.md. Emit indexer-friendly events. Add fuzz/invariant tests for edge cases. Fee destinations may be placeholder addresses if fee router is not ready—document invariants. Run forge test.
+Implement the TimeArena primitive per docs/product/time-arena.md, docs/product/arena-v2.md, and docs/onchain/security-and-threat-model.md. Emit indexer-friendly events (Buy, PodiumEpochRolled, PodiumFunded, etc.). Add fuzz/invariant tests for edge cases including rollPodiumEpoch after expiry. Document 40/30/30 routing invariants. Run forge test.
 ```
 
 ---
 
 <a id="impl-3"></a>
 
-## Implementation phase 3 — Contracts: Rabbit Treasury (Burrow)
+## Implementation phase 3 — Retired: Rabbit Treasury (Burrow)
 
-**Docs:** [product/rabbit-treasury.md](product/rabbit-treasury.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md)
+**Status:** Removed in Arena v2 ([#242](https://gitlab.com/PlasticDigits/yieldomega/-/issues/242)). Historical docs: [product/rabbit-treasury.md](product/rabbit-treasury.md). Doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
-**Goal:** Player-facing reserve logic: USDm in/out, DOUB mint/burn, repricing using **BurrowMath**, **Burrow\*** events for charts.
-
-**Deliverables**
-
-- **RabbitTreasury** deployment with `AccessControlEnumerable` roles per [treasury-contracts.md](onchain/treasury-contracts.md).
-- Integration tests with **BurrowMath**; events match naming in [rabbit-treasury.md](product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events).
+**Goal:** Do not implement new RabbitTreasury deposit/withdraw flows. Arena v2 funds podiums via per-buy DOUB routing to **PodiumVaults** and **AdminSellVault**.
 
 **Exit criteria**
 
-- Reserve and repricing paths covered by tests; no offchain-only “truth” for balances.
+- No active deploy script, indexer decode path, or frontend route for Burrow deposits.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Implement RabbitTreasury per docs/product/rabbit-treasury.md and docs/onchain/treasury-contracts.md. Reuse contracts/src/libraries/BurrowMath.sol. Emit Burrow* events as specified. Add integration tests for deposit, withdraw, repricing epoch, and failure cases. forge test.
+Do not implement RabbitTreasury for Arena v2 unless explicitly scoped for historical review. If auditing removal, confirm no active user flow references Burrow deposit/withdraw outside archive docs and CHANGELOG. Arena prize funding is PodiumVaults + AdminSellVault per docs/product/arena-v2.md.
 ```
 
 ---
 
 <a id="impl-4"></a>
 
-## Implementation phase 4 — Contracts: fee router and treasury sinks
+## Implementation phase 4 — Contracts: arena buy routing and vault sinks
 
-**Docs:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md)
+**Docs:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md), [product/arena-v2.md](product/arena-v2.md)
 
-**Goal:** Explicit addresses for each fee sink; **post-update invariants** (e.g. weights) enforced onchain or in router logic.
+**Goal:** Explicit **PodiumVaults** (active + seed) and **AdminSellVault** destinations; **40/30/30** split enforced on each DOUB buy via **ArenaBuyRouting**.
 
 **Deliverables**
 
-- Deployments or modules for **EcosystemTreasury**, **CL8YProtocolTreasury**, **DoubLPIncentives** (or documented **TODO** + non-zero sink for tests as allowed by governance doc).
-- Router / wiring from TimeCurve to sinks; tests for invariant violations reverting or emitting as designed.
+- Deployments or modules for **PodiumVaults**, **AdminSellVault**, and **PlayCred** (or documented **TODO** + test doubles as allowed by governance doc).
+- **TimeArena** buy path routes DOUB to vaults; tests for routing invariants and governance parameter updates.
 
 **Exit criteria**
 
-- Fee split changes are **governed** and **tested**; no silent commingling of player reserves with protocol treasuries.
+- Buy routing shares are **governed** and **tested**; no silent commingling of podium pools with admin vault balances.
 
 **Agent prompt (copy-paste):**
 
 ```text
-Wire fee routing per docs/onchain/fee-routing-and-governance.md and docs/onchain/treasury-contracts.md. Implement separate contract deployments for sinks; router sends to explicit addresses. Add tests for post-update invariants and governance roles. Document any TODO for DoubLPIncentives mechanics.
+Wire Arena v2 buy routing per docs/product/arena-v2.md and docs/onchain/fee-routing-and-governance.md. Implement PodiumVaults and AdminSellVault; TimeArena buy sends 40% active / 30% seed / 30% admin per buy. Add tests for routing invariants and governance roles. Document any TODO for AdminSellVault distribution policy.
 ```
 
 ---
@@ -245,7 +241,7 @@ Add Foundry script(s) or documented deploy steps for devnet per docs/operations/
 **Agent prompt (copy-paste):**
 
 ```text
-Wire indexer/ to real ABIs from contracts/artifacts. Implement Postgres migrations and decoders per docs/indexer/design.md. Index TimeCurve, RabbitTreasury Burrow* events, fee/NFT events as deployed. Add unit tests with fixtures. cargo test. AGPL-3.0 on new files.
+Wire indexer/ to real ABIs from contracts/artifacts. Implement Postgres migrations and decoders per docs/indexer/design.md. Index TimeArena Buy / PodiumFunded / PodiumEpochRolled / SeedFunded / AdminVaultFunded and ReferralRegistry events as deployed (idx_arena_* tables). Add unit tests with fixtures. cargo test. AGPL-3.0 on new files.
 ```
 
 ---
@@ -260,7 +256,7 @@ Wire indexer/ to real ABIs from contracts/artifacts. Implement Postgres migratio
 
 **Deliverables**
 
-- Endpoints for smoke flows: user history, treasury health fields, NFT metadata pointers as needed.
+- Endpoints for smoke flows: arena buy history, live podium state, wallet stats, referral CRED as needed.
 - Reorg tests or **documented manual reorg** path for Stage 2 sign-off.
 
 **Exit criteria**
@@ -285,8 +281,8 @@ Complete indexer API per docs/indexer/design.md. Harden reorg handling in indexe
 
 **Deliverables**
 
-- TimeCurve, Rabbit Treasury, Collection pages call **real** endpoints or contracts on devnet.
-- `.env.example` only for **public** config (chain id, URLs, address map).
+- Unified **`/arena`** page calls **real** endpoints or contracts on devnet (TimeArena buys, podium timers, claimCred).
+- `.env.example` only for **public** config (chain id, URLs, `VITE_TIME_ARENA_ADDRESS`, `VITE_PODIUM_VAULTS_ADDRESS`, `VITE_ADMIN_SELL_VAULT_ADDRESS`).
 
 **Exit criteria**
 
@@ -310,7 +306,7 @@ Wire frontend/ to indexer API and public RPC per docs/frontend/design.md. Use ad
 
 **Deliverables**
 
-- Completed checklist: deploy → indexer → **buy → deposit → NFT read**; lag **N** recorded; reorg exercised once (CI or manual log).
+- Completed checklist: deploy → indexer → **buy → rollPodiumEpoch settlement → claimCred**; lag **N** recorded; reorg exercised once (CI or manual log).
 
 **Exit criteria**
 
@@ -385,7 +381,7 @@ Execute mainnet deployment per docs/operations/deployment-stages.md only after t
 
 | [agent-phases.md](agent-phases.md) | Implementation focus |
 |-----------------------------------|----------------------|
-| Phases 1–10 | Preconditions; no duplicate—**re-read** before impl-2–5 |
+| Phases 1–10 | Preconditions; no duplicate—**re-read** before impl-2–5 (TimeArena authority; Rabbit Treasury retired — [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)) |
 | Phase 11 (Foundry) | **impl-1** … **impl-6** |
 | Phase 12 (Indexer) | **impl-7** … **impl-8** |
 | Phase 13 (Frontend) | **impl-9** |
