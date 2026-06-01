@@ -371,6 +371,7 @@ Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deplo
 | [`DoubPresaleVesting.t.sol`](../../contracts/test/DoubPresaleVesting.t.sol) | Vesting schedule + claims |
 | [`ReferralRegistry.t.sol`](../../contracts/test/ReferralRegistry.t.sol) | Referral burns + registration |
 | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) | DeployDev wiring |
+| [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) | Optional RPC fork smoke ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); **`INV-CONTRACTS-275-FORK-SMOKE`** |
 
 Run `cd contracts && forge test --list` for the authoritative list. Pre–Arena v1 contract tests may remain in-tree but are **not** mapped here.
 
@@ -380,7 +381,15 @@ Run `cd contracts && forge test --list` for the authoritative list. Pre–Arena 
 
 - **Stage 2 wallet-signed txs:** [stage2-run-log.md](../operations/stage2-run-log.md); CI Playwright is UI smoke only unless **`ANVIL_E2E=1`**.
 - **~90% / 100%:** [stage3-mainnet-operator-runbook.md](../operations/stage3-mainnet-operator-runbook.md).
-- **Fork smoke:** optional; see [contract-fork-smoke.md](contract-fork-smoke.md).
+- **Fork smoke:** optional; see [contract-fork-smoke.md](contract-fork-smoke.md) and **`INV-CONTRACTS-275-FORK-SMOKE`** below.
+
+---
+
+## Contract fork smoke (optional) (GitLab #275)
+
+<a id="contract-fork-smoke-optional-gitlab-275"></a>
+
+**`INV-CONTRACTS-275-FORK-SMOKE`:** [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) (`TimeArenaForkTest`) is the only CI-matched fork smoke contract. With **`FORK_URL` unset**, both tests **no-op** (pass) so default **`unit-tests`** stays deterministic. With **`FORK_URL` set**, `test_fork_smoke_chainIdAndBlock` forks and asserts positive `chainid` / `block.number`. Optional `test_fork_smoke_timeArenaHeadState` reads `TimeArena.paused()` and `deadline()` when **`TIME_ARENA_FORK_ADDRESS`** points at deployed bytecode; skips on zero placeholder or empty code. **`contract-fork-smoke`** workflow uses `--match-contract TimeArenaForkTest` ([`contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml)). Runbook: [contract-fork-smoke.md](contract-fork-smoke.md). Replaces retired `TimeCurveForkTest` ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) doc follow-up).
 
 ---
 

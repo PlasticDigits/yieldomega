@@ -1,10 +1,15 @@
 # Contract fork smoke (optional MegaETH / public RPC)
 
-**Maintainer policy (issue #6):** Live RPC fork checks are **opt-in** only. Default **push/PR** CI runs `forge test` **without** any fork URL. Arena-focused fork smoke tests (for example [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) when present) **no-op** when `FORK_URL` is unset. This keeps the default branch **deterministic** and avoids **rate limits**, **RPC outages**, and **nondeterministic** failures.
+**Maintainer policy (issue #6):** Live RPC fork checks are **opt-in** only. Default **push/PR** CI runs `forge test` **without** any fork URL. [`TimeArenaFork.t.sol`](../../contracts/test/TimeArenaFork.t.sol) (`TimeArenaForkTest`, [GitLab #275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)) **no-ops** when `FORK_URL` is unset. This keeps the default branch **deterministic** and avoids **rate limits**, **RPC outages**, and **nondeterministic** failures.
 
 ## What the test does
 
-When `FORK_URL` is a non-empty string, the test calls `vm.createSelectFork(url)` and asserts `block.chainid` and `block.number` are positive — a minimal **connectivity / execution** smoke against the target chain. Arena v2 tests may additionally read deployed **`TimeArena`** / vault addresses on the forked network.
+| Test | When it runs |
+|------|----------------|
+| `test_fork_smoke_chainIdAndBlock` | `FORK_URL` non-empty → `vm.createSelectFork(url)`; asserts `block.chainid` and `block.number` > 0 |
+| `test_fork_smoke_timeArenaHeadState` | Same fork + non-zero `TIME_ARENA_FORK_ADDRESS` with bytecode → reads `paused()` and `deadline()` on `TimeArena` |
+
+Skips (early return, still green) when `FORK_URL` is unset, `TIME_ARENA_FORK_ADDRESS` is unset/zero, or the address has no code (mainnet registry placeholder until [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259) deploy).
 
 ## Local runbook
 
@@ -37,6 +42,7 @@ Do **not** commit RPC URLs with API keys; use a local `.env` (see [`contracts/.e
 
 ## Related
 
+- **`INV-CONTRACTS-275-FORK-SMOKE`** — [invariants — Contract fork smoke](invariants-and-business-logic.md#contract-fork-smoke-optional-gitlab-275)
 - [Continuous integration](ci.md) — full workflow map.
 - [Testing strategy — Stage 1](strategy.md#stage-1--unit-tests) — contracts unit gate.
 - [`contracts/README.md` — MegaETH RPC](../../contracts/README.md#megaeth-rpc-testnet-and-mainnet).
