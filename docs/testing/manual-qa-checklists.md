@@ -7,6 +7,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | Issue | Topic |
 |-------|--------|
 | [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA](#manual-qa-issue-260) |
+| [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) | [XP buy-path gas](#manual-qa-issue-265) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E](#manual-qa-issue-87) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev cooldown](#manual-qa-issue-88) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
@@ -229,6 +230,30 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] **Burn row** (`registrationBurnAmount` via `AmountDisplay`) unchanged vs chain.
 
 **Automated:** [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) asserts the disclosure test id appears in the connected unregistered path.
+
+<a id="manual-qa-issue-265"></a>
+
+### XP buy-path gas — cached level + cap ([GitLab #265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265))
+
+**Scope:** Buy-path XP uses cached **`level`** + **`xpTowardNext`**; at most **five** level-ups per buy; timer hard-reset does **not** clear progression.
+
+### Authoritative docs
+
+- [arena-v2 § XP](../product/arena-v2.md#xp) · [time-arena § progression](../product/time-arena.md)
+- [`INV-TIME-ARENA-XP-GAS`](invariants-and-business-logic.md#timearena-xp-gas-gitlab-265) · [`ArenaXp.applyXpGain`](../../contracts/src/arena/libraries/ArenaXp.sol)
+- [play-time-arena-doub § XP](../../skills/play-time-arena-doub/SKILL.md)
+
+### Checklist
+
+- [ ] **`forge test --match-test test_xp_`** and **`forge test --match-path test/ArenaXp.t.sol`** pass.
+- [ ] **`npm test -- --run src/lib/arenaXpMath.test.ts`** passes (mirrors `applyXpGain`).
+- [ ] Fresh Anvil **`DeployDev`**: max-CHARM buy → `cast call level` = **1**, `xpTowardNext` = **10**, `xpToNextLevel` = **10** (10 XP toward L2 threshold 20).
+- [ ] After many buys from one wallet, a non-level-up buy gas does **not** scale vs a fresh wallet (`test_xp_high_level_buy_gas_bounded_no_level_up`).
+- [ ] Timer hard-reset buy: `lastBuyEpoch` increments; **`level`** / **`xpTowardNext`** unchanged (`test_xp_survives_timer_hard_reset`).
+- [ ] **`buyWithCred`** at same CHARM yields same level/progress as DOUB (`test_xp_buy_with_cred_same_as_doub`).
+- [ ] Wallet profile modal **Level** (indexer `new_level` from `XpGained`) matches onchain `level()` after buys ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)).
+
+**Automated:** `TimeArena.t.sol::test_xp_*`, `ArenaXp.t.sol`, `arenaXpMath.test.ts` · optional: `YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 bash scripts/lib/anvil_deploy_dev.sh` + `cast call` as above.
 
 <a id="manual-qa-issue-262"></a>
 

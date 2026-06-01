@@ -39,7 +39,7 @@ Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%*
 
 ## TimeArena v2 (GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 
-Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **Manual QA:** [Arena v2 QA checklist](manual-qa-checklists.md#manual-qa-issue-260) · **Anvil E2E:** [e2e-anvil.md](e2e-anvil.md).
+Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **Manual QA:** [Arena v2 QA checklist](manual-qa-checklists.md#manual-qa-issue-260) · [XP gas §265](manual-qa-checklists.md#manual-qa-issue-265) · **Anvil E2E:** [e2e-anvil.md](e2e-anvil.md).
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
@@ -60,7 +60,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-PLAY-CRED-NON-TRANSFER`** | `PlayCred` mint/burn only; wallet transfer reverts | [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol) ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
 | **`INV-TIME-ARENA-FIRST-BUY-CRED-BONUS`** | First `_finishBuy` per wallet schedules **150 CRED** for **`lastBuyEpoch + 1`** (post-reset); not repeated; survives epoch roll | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_claim_cred_bonus_only_no_charm`, `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
 | **`INV-TIME-ARENA-XP`** | XP 1–10 linear in CHARM band; level steps per `ArenaXp`; uncapped level; `XpGained` event | `ArenaXp.t.sol::test_level_thresholds_*`, `test_xpForCharm_*`, `TimeArena.t.sol::test_xp_levels`, `test_xp_emits_XpGained` ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)) |
-| **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) |
+| **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) · [manual QA §265](manual-qa-checklists.md#manual-qa-issue-265) · [detail §265](#timearena-xp-gas-gitlab-265) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls (steal 1000 / guard 10000 / override 50000 / revenge 1000; flag claim 0) | `test_warbow_steal_pulls_doub`, `test_warbow_guard_pulls_doub`, `test_warbow_revenge_pulls_doub`, `test_warbow_steal_limit_override_pulls_doub`, `test_warbow_flag_claim_zero_doub` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | **`INV-TIME-ARENA-WARBOW-EPOCH-RESET`** | WarBow `rollPodiumEpoch` clears live BP (`warbowBpGeneration` bump) and podium; does **not** auto-pay (admin `finalizeWarbowPodium(epoch, …)` pays retained pool) | `test_warbow_epoch_roll_clears_battle_points`, `test_finalize_warbow_podium_pays_after_roll` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
@@ -82,6 +82,20 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` (DOUB + ETH when Kumbaya env set) · see [§264](#arena-frontend-pay-pause-gitlab-264) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use **`/v1/arena/*`** only; no **`/v1/timecurve/*`** or legacy WarBow HTTP | `indexerApi.test.ts` (#266 retirement), `indexer/src/api_arena.rs` |
+
+<a id="timearena-xp-gas-gitlab-265"></a>
+
+### TimeArena XP buy-path gas (GitLab [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265))
+
+Parent: [#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250) (XP/level math). Onchain: [`ArenaXp.applyXpGain`](../../contracts/src/arena/libraries/ArenaXp.sol), [`TimeArena._finishBuy`](../../contracts/src/arena/TimeArena.sol). Product: [arena-v2 § XP](../product/arena-v2.md#xp). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md). Manual QA: [§265](manual-qa-checklists.md#manual-qa-issue-265).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-XP-GAS-CACHED`** | `_cachedLevel` + `xpTowardNext` updated in `_finishBuy`; **`levelFromXp` not called** on buy path | `test_xp_incremental_matches_reference_many_buys`, `test_xp_high_level_buy_gas_bounded_no_level_up` |
+| **`INV-TIME-ARENA-XP-GAS-CAP`** | At most **5** level-ups per buy; surplus XP retained in `xpTowardNext` | `ArenaXp.t.sol::test_applyXpGain_caps_five_level_ups_per_step`, `test_applyXpGain_eight_levels_two_steps` |
+| **`INV-TIME-ARENA-XP-GAS-EPOCH`** | Timer hard-reset / `lastBuyEpoch` roll does **not** reset level or in-level progress | `test_xp_survives_timer_hard_reset` |
+| **`INV-TIME-ARENA-XP-GAS-VIEWS`** | `level()` and `xpToNextLevel()` are O(1) from cached storage | `test_xp_max_charm_first_buy`, `test_xp_incremental_matches_reference_many_buys` |
+| **`INV-TIME-ARENA-XP-GAS-CRED`** | `buyWithCred` uses same `_finishBuy` XP helper as DOUB | `test_xp_buy_with_cred_same_as_doub` |
 
 <a id="timearena-core-gitlab-246"></a>
 
