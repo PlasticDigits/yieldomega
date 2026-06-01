@@ -33,10 +33,6 @@ test.describe("Anvil Arena wallet writes", () => {
   });
 
   test("ETH pay via TimeArena buy router (single-tx buyViaKumbaya)", async ({ page }) => {
-    test.fixme(
-      true,
-      "Playwright ETH quote → buy CTA enable still flaky on Anvil; onchain path covered by VerifyTimeArenaBuyRouterAnvil + TimeArenaBuyRouter.t.sol (#270).",
-    );
     test.skip(
       !process.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER &&
         !process.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER,
