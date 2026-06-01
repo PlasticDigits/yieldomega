@@ -57,6 +57,10 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
  * Narrative chips for the buy checkout “projected effects” rail — shared by
  * Time Arena Simple and Arena so the copy stays aligned with the live sizing
  * reads (issue #82 / #191 / #227).
+ *
+ * Timer/scoring pills mirror **Last Buy (cat 0)** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
+ * Every qualifying buy also extends all four podium settlement deadlines onchain
+ * (see `ArenaPodiumTimerConfig`); secondary countdowns live on `ArenaTimerChips`.
  */
 export function buildArenaBuyProjectedEffectLines(
   args: BuildArenaBuyProjectedEffectLinesArgs,

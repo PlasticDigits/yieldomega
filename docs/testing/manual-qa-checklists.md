@@ -9,6 +9,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA](#manual-qa-issue-260) |
 | [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) | [XP buy-path gas](#manual-qa-issue-265) |
 | [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268) | [CRED buy + first-buy bonus](#manual-qa-issue-268) |
+| [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) | [Per-podium timer params](#manual-qa-issue-271) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E](#manual-qa-issue-87) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev cooldown](#manual-qa-issue-88) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
@@ -282,6 +283,35 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 - [ ] **`buyWithCred`** has no referral CRED path ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)).
 
 **Automated:** `TimeArena.t.sol::test_buyWithCred_*`, `test_first_buy_*`, `test_claim_cred_*` · `bash scripts/verify-cred-buy-anvil.sh` · `arenaCredBurn.test.ts`.
+
+<a id="manual-qa-issue-271"></a>
+
+### Per-podium timer params ([GitLab #271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271))
+
+**Scope:** Each podium category has independent extension, initial timer, cap, and hard-reset bands onchain. One buy extends **all four** settlement deadlines by category-specific rules. **Scoring** (Time Booster, Defended Streak, WarBow BP) still uses **Last Buy (cat 0)** timer only.
+
+### Authoritative docs
+
+- [time-arena § timers](../product/time-arena.md) · [arena-v2 § timers](../product/arena-v2.md#timers-last-buy--four-podiums)
+- [`ArenaPodiumTimerConfig.sol`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol) · [`PARAMETERS.md`](../../contracts/PARAMETERS.md)
+- [`INV-TIME-ARENA-PODIUM-TIMER-PARAMS`](invariants-and-business-logic.md#timearena-podium-timers-gitlab-271) · [`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER`](invariants-and-business-logic.md#timearena-podium-timers-gitlab-271)
+- [play-time-arena-doub § Timer](../../skills/play-time-arena-doub/SKILL.md)
+
+### Checklist
+
+- [ ] **`FOUNDRY_PROFILE=ci forge test --match-contract TimeArenaTest`** — includes `test_start_arena_initial_deadlines_differ_by_category`, `test_multi_podium_deadline_extend`, `test_time_booster_hard_reset_band_240_to_300`, scoring hook tests.
+- [ ] **`bash scripts/verify-podium-timers-anvil.sh`** — fresh Anvil DeployDev: distinct initial deadlines, per-category extensions, Time Booster hard-reset band.
+- [ ] After `startArena`, four `podiumDeadline[i]` differ (24h / 12h / 18h / 48h offsets from `arenaStart`).
+- [ ] One buy extends cats by +120 / +60 / +90 / +300 respectively (`test_multi_podium_deadline_extend`).
+- [ ] Time Booster: remaining &lt; 240s → snap to 300s from `block.timestamp`, not +60s extension.
+- [ ] WarBow BP reset bonus requires **Last Buy** hard reset, not WarBow timer band alone.
+- [ ] Defended streak window uses Last Buy remaining, not other podium timers.
+- [ ] `lastBuyEpoch` bumps only on Last Buy hard reset; other podium hard resets do not roll CHARM/CRED epoch.
+- [ ] **`GET /v1/arena/timers`** (with indexer + Anvil): `podium_deadlines_sec` has four distinct values at arena start.
+- [ ] **`/arena`** timer chips (`ArenaTimerChips`) show distinct countdowns for Time Booster / Defended Streak / WarBow.
+- [ ] Buy checkout preview shows Last Buy timer/scoring effects; settlement note: all four podium deadlines extend per [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol).
+
+**Automated:** `TimeArena.t.sol::test_*` (see above) · `bash scripts/verify-podium-timers-anvil.sh` · `ArenaTimerChips.test.tsx`.
 
 <a id="manual-qa-issue-262"></a>
 
