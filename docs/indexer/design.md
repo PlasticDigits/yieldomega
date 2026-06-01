@@ -39,6 +39,23 @@ Examples of tables or projections (names illustrative):
 - **rabbit_health_epochs** — reserve snapshots and repricing factors **as emitted onchain**; canonical **`Burrow*`** event names and metric mapping live in [product/rabbit-treasury.md](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events).
 - **arena_** — TimeArena buys, timers, vault funding, podium top-ups (see [arena-v2.md](../product/arena-v2.md)).
 
+<a id="arena-v2-schema-http-gitlab-254"></a>
+
+### Arena v2 schema + HTTP ([GitLab #254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
+
+Fresh databases use migration [`20240601000000_arena_v2.up.sql`](../../indexer/migrations/20240601000000_arena_v2.up.sql) only (no TimeCurve buy/WarBow tables). Core projections:
+
+| Table / view | Source events |
+|--------------|----------------|
+| `idx_arena_buy` | `Buy` |
+| `idx_arena_podium_epoch` | `PodiumEpochRolled` |
+| `idx_arena_podium_snapshot` | **View** over `idx_arena_podium_epoch` ([`20260601120000_…_gl254`](../../indexer/migrations/20260601120000_idx_arena_podium_snapshot_view_gl254.up.sql)) |
+| `idx_play_cred_claim` | `CredClaimed` |
+| `idx_player_xp` | `XpGained` |
+| `idx_warbow_epoch_score` | Post-log `battlePoints` eth_call snapshots + explicit test/backfill rows ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [`warbow_score.rs`](../../indexer/src/warbow_score.rs)) |
+
+HTTP (schema **≥ 2.4.0**): **`GET /v1/arena/timers`** (Last Buy + four podium deadlines), **`GET /v1/arena/podiums`** (head `podium()` + indexed `epoch` per category), **`GET /v1/arena/buys`**, **`GET /v1/arena/wallet/{address}/stats`**. Replaces legacy **`/v1/timecurve/*`** for Arena reads ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Map: **`INV-INDEXER-254-ARENA-SCHEMA`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
+
 ### Rabbit Treasury (`RabbitTreasury` / Burrow) logs
 
 Decode **`BurrowEpochOpened`**, **`BurrowHealthEpochFinalized`**, **`BurrowEpochReserveSnapshot`**, **`BurrowReserveBalanceUpdated`**, **`BurrowDeposited`**, **`BurrowWithdrawn`**, **`BurrowFeeAccrued`**, **`BurrowRepricingApplied`**, **`BurrowReserveBuckets`**, **`BurrowProtocolRevenueSplit`**, and **`BurrowWithdrawalFeeAccrued`** per the spec table in [product/rabbit-treasury.md](../product/rabbit-treasury.md#reserve-health-metrics-and-canonical-events). Version decoder mappings when the deployment ABI changes; reject unknown `topic0` or register them explicitly. **Emitted-event completeness** for Postgres persistence (decoder + dedicated `idx_*` tables per event family, **`rollback_after` coverage**) is mandated by [GitLab #112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) — see **`INV-INDEXER-112`** in [invariants — emitted-event coverage](../testing/invariants-and-business-logic.md#indexer-emitted-event-coverage-gitlab-112).

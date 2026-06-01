@@ -109,7 +109,8 @@ pub async fn get_stored_block_hash(pool: &PgPool, block_number: u64) -> Result<O
     Ok(None)
 }
 
-const ROLLBACK_TABLES: &[&str] = &[
+/// Arena v2 index tables cleared on reorg rollback (and integration test reset).
+pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_referral_code_registered",
     "idx_arena_podium_pool_top_up",
     "idx_arena_vault_funding",
@@ -129,7 +130,7 @@ pub async fn rollback_after(pool: &PgPool, ancestor: ChainPointer) -> Result<()>
     let cut = ancestor.block_number as i64;
     let mut tx = pool.begin().await?;
 
-    for table in ROLLBACK_TABLES {
+    for table in ARENA_INDEX_TABLES {
         let q = format!("DELETE FROM {table} WHERE block_number > $1");
         sqlx::query(&q).bind(cut).execute(&mut *tx).await?;
     }

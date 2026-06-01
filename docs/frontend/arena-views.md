@@ -9,16 +9,17 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | `VITE_TIME_ARENA_ADDRESS` | `TimeArena` proxy |
 | `VITE_PODIUM_VAULTS_ADDRESS` | Podium vaults |
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault |
-| `VITE_INDEXER_URL` | Optional `GET /v1/arena/*` reads (no `/v1/arena/*` — [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)) |
+| `VITE_INDEXER_URL` | Optional Arena v2 reads: `GET /v1/arena/*` ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)); not legacy `/v1/timecurve/*` ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | Optional — must match `TimeArena.timeArenaBuyRouter()` when set ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)); legacy alias `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` |
 | `VITE_PLAY_CRED_ADDRESS` | Optional PlayCred override when `TimeArena.playCred()` read fails ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | `VITE_CHAIN_ID` / `VITE_RPC_URL` | Wagmi target chain |
 
 ## Indexer reads
 
-- `GET /v1/arena/timers` — four podium deadlines + Last Buy epoch
+- `GET /v1/arena/timers` — Last Buy deadline + four podium deadlines + epoch ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
+- `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category
 - `GET /v1/arena/buys` — recent buys
-- `GET /v1/arena/wallet-stats` — XP, buy count (when wired)
+- `GET /v1/arena/wallet/{address}/stats` — XP, buy count, WarBow steals ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255))
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
 <a id="protocol-donate-pools-gitlab-262"></a>

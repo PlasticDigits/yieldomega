@@ -292,6 +292,9 @@ export async function fetchLegacyArenaChainTimer(): Promise<ArenaChainTimer | nu
 
 /** `GET /v1/arena/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
 export type ArenaPodiumApiRow = {
+  category?: string;
+  /** Latest rolled epoch for this category from `idx_arena_podium_epoch` (schema ≥ 2.4.0, [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)). */
+  epoch?: string | null;
   winners: string[];
   values: string[];
   /** True when the row is derived from indexed events (live sale); false when mirroring head `podium()` RPC (schema ≥ 1.20.0). */

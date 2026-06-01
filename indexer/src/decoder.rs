@@ -68,6 +68,8 @@ mod contracts {
                 bool limitBypassBurned
             );
             event WarBowGuard(address indexed player, uint256 doubSpent, uint256 guardUntil);
+            event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 bpTaken, uint256 doubSpent);
+            event WarBowFlagClaimed(address indexed player, uint256 bonusBp);
             event ReferralApplied(
                 address indexed buyer,
                 address indexed referrer,
@@ -168,6 +170,22 @@ pub enum DecodedEvent {
         player: Address,
         doub_spent: U256,
         guard_until: U256,
+    },
+    ArenaWarbowRevenge {
+        avenger: Address,
+        stealer: Address,
+        bp_taken: U256,
+        doub_spent: U256,
+    },
+    ArenaWarbowFlagClaimed {
+        player: Address,
+        bonus_bp: U256,
+    },
+    /// Explicit WarBow BP snapshot row (tests / operator backfill); not an onchain log topic.
+    ArenaWarbowEpochScore {
+        epoch: U256,
+        player: Address,
+        battle_points: U256,
     },
     ArenaReferralApplied {
         buyer: Address,
@@ -290,6 +308,24 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 player: e.player,
                 doub_spent: e.doubSpent,
                 guard_until: e.guardUntil,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::WarBowRevenge::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::WarBowRevenge::decode_log(log, true) {
+            return DecodedEvent::ArenaWarbowRevenge {
+                avenger: e.avenger,
+                stealer: e.stealer,
+                bp_taken: e.bpTaken,
+                doub_spent: e.doubSpent,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::WarBowFlagClaimed::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::WarBowFlagClaimed::decode_log(log, true) {
+            return DecodedEvent::ArenaWarbowFlagClaimed {
+                player: e.player,
+                bonus_bp: e.bonusBp,
             };
         }
     }
