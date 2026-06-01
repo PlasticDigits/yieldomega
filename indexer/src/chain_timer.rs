@@ -21,10 +21,11 @@ use crate::sale_state::TimecurveSaleStateSnapshot;
 pub const SEL_ARENA_START: [u8; 4] = [0x07, 0xf2, 0x87, 0x15];
 pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
 pub const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
-pub const SEL_PODIUM_DEADLINE: [u8; 4] = [0x89, 0x5b, 0x4a, 0xa0];
+pub const SEL_PODIUM_DEADLINE: [u8; 4] = [0xab, 0x8a, 0x6e, 0xb3];
 pub const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 pub const SEL_LAST_BUY_EPOCH: [u8; 4] = [0x6a, 0x9e, 0xa0, 0x67];
-pub const SEL_PODIUM_EPOCH: [u8; 4] = [0xf9, 0x69, 0xcd, 0x3d];
+/// `podiumEpoch(uint256)` — public array getter on `TimeArena` (not `uint8`).
+pub const SEL_PODIUM_EPOCH: [u8; 4] = [0x66, 0x11, 0xfd, 0x1b];
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainTimerSnapshot {
@@ -97,6 +98,7 @@ pub fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
     Ok(PodiumRpcRow { winners, values })
 }
 
+/// ABI-encode a category index for `podiumDeadline(uint256)` / `podiumEpoch(uint256)` array getters.
 pub fn encode_u8_call(selector: [u8; 4], arg: u8) -> Bytes {
     let mut buf = Vec::with_capacity(36);
     buf.extend_from_slice(&selector);

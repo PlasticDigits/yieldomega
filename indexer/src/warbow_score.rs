@@ -8,12 +8,11 @@ use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::Result;
 use sqlx::postgres::PgConnection;
 
+use crate::chain_timer::{encode_u8_call, SEL_PODIUM_EPOCH};
 use crate::decoder::{DecodedEvent, DecodedLog};
 
 /// `battlePoints(address)`
 const SEL_BATTLE_POINTS: [u8; 4] = [0xb2, 0x10, 0xd9, 0xf2];
-/// `podiumEpoch(uint8)` — WarBow category = 3
-const SEL_PODIUM_EPOCH: [u8; 4] = [0xf9, 0x69, 0xcd, 0x3d];
 const CAT_WARBOW: u8 = 3;
 
 fn u256_dec(n: U256) -> String {
@@ -33,15 +32,6 @@ fn encode_address_call(sel: [u8; 4], addr: Address) -> Bytes {
     data.extend_from_slice(&sel);
     let mut word = [0u8; 32];
     word[12..].copy_from_slice(addr.as_slice());
-    data.extend_from_slice(&word);
-    Bytes::from(data)
-}
-
-fn encode_u8_call(sel: [u8; 4], v: u8) -> Bytes {
-    let mut data = Vec::with_capacity(4 + 32);
-    data.extend_from_slice(&sel);
-    let mut word = [0u8; 32];
-    word[31] = v;
     data.extend_from_slice(&word);
     Bytes::from(data)
 }

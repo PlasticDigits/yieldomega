@@ -313,6 +313,30 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Automated:** `TimeArena.t.sol::test_*` (see above) · `bash scripts/verify-podium-timers-anvil.sh` · `ArenaTimerChips.test.tsx`.
 
+<a id="manual-qa-issue-273"></a>
+
+### Live podium predictions ([GitLab #273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
+
+**Scope:** `GET /v1/arena/podiums` returns UX-ordered live top-3 from Postgres (`idx_arena_podium_live` + WarBow `idx_warbow_epoch_score`) while the arena is live. Requires working **`chain_timer`** head poller (schema **≥ 2.5.0**).
+
+### Authoritative docs
+
+- [`INV-INDEXER-PODIUM-PREDICT-LIVE`](invariants-and-business-logic.md#indexer-live-podium-predictions-gitlab-273) · [design § live podiums](../indexer/design.md#timecurve-podiums-http)
+- [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · [`usePodiumReads.ts`](../../frontend/src/pages/arena/usePodiumReads.ts)
+- [play-active-time-arena § Indexer](../../skills/play-active-time-arena/SKILL.md)
+
+### Checklist
+
+- [ ] **`YIELDOMEGA_PG_TEST_URL=… cargo test --test integration_stage2`** — includes `arena_podiums_live_predictions_smoke`.
+- [ ] **`bash scripts/verify-podium-live-anvil.sh`** — DeployDev + indexer ingest + `GET /v1/arena/podiums` matches block-tagged `podium()` (Last Buy / Time Booster) and `battlePoints` (WarBow).
+- [ ] Empty DB + live chain: four UX rows, head `epoch` per category, `podium_prediction: false` until first qualifying ingest.
+- [ ] After 3+ DOUB buys: Last Buy row `podium_prediction: true`; winners match `cast call podium(0)` at `read_block_number`.
+- [ ] WarBow row shows non-zero leaders mid-epoch when `idx_warbow_epoch_score` has data even if head `podium(3)` is empty.
+- [ ] Row order: Last Buy · WarBow · Defended Streak · Time Booster (`category_index` 0 · 3 · 2 · 1).
+- [ ] **`/arena`** podium cards (with `VITE_INDEXER_URL`) match indexer response for the same block.
+
+**Automated:** `integration_stage2.rs` · `bash scripts/verify-podium-live-anvil.sh` · `indexer/README.md` § live podiums.
+
 <a id="manual-qa-issue-262"></a>
 
 ### Arena AUDIT — donate to pools ([GitLab #262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
