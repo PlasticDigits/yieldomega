@@ -45,9 +45,18 @@ yieldomega_anvil_deploy_dev() {
   KUMBAYA_BUY_ROUTER=""
   if [ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" = "1" ]; then
     echo "Deploying Kumbaya Anvil fixtures (YIELDOMEGA_DEPLOY_KUMBAYA=1)..."
+    # Let DeployDev txs settle before the second broadcast (avoids Anvil nonce races).
+    sleep 2
     KUMBAYA_LOG=$(mktemp)
-    forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
-      --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}"
+    _yieldomega_kumbaya_deploy_once() {
+      forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
+        --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}"
+    }
+    if ! _yieldomega_kumbaya_deploy_once; then
+      echo "Kumbaya deploy failed; retrying once after 3s..." >&2
+      sleep 3
+      _yieldomega_kumbaya_deploy_once || return 1
+    fi
     # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
     source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
     yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"

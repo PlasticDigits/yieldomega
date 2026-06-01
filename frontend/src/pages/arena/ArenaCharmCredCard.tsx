@@ -35,7 +35,17 @@ export function ArenaCharmCredCard() {
 
   const { writeContractAsync, isPending } = useWriteContract();
 
-  if (!arena) return null;
+  if (!arena) {
+    return (
+      <PageSection
+        title="CHARM & Play CRED"
+        dataTestId="arena-charm-cred-card"
+        className="arena-charm-cred-card"
+      >
+        <p className="muted">Time Arena address is not configured (VITE_TIME_ARENA_ADDRESS).</p>
+      </PageSection>
+    );
+  }
 
   const canClaim = pending != null && pending > 0n && epoch !== undefined;
 

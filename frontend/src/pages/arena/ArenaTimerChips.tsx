@@ -7,10 +7,15 @@ import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { timeArenaReadAbi } from "@/lib/abis";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 
-const LABELS = ["Last Buy", "Time Booster", "Streak", "WarBow"] as const;
+/** Secondary podium timers beside the Last Buy hero (#256). Contract category indices per arena-v2.md. */
+const SECONDARY_PODIUM_CHIPS = [
+  { label: "Time Booster", contractIndex: 1 },
+  { label: "Defended Streak", contractIndex: 2 },
+  { label: "WarBow", contractIndex: 3 },
+] as const;
 
 export function ArenaTimerChips() {
-  const arena = addresses.timeArena ?? addresses.timeArena;
+  const arena = addresses.timeArena;
   const indexerOn = Boolean(indexerBaseUrl());
 
   const { data: indexerData } = useQuery({
@@ -23,8 +28,6 @@ export function ArenaTimerChips() {
   const { data: rpcRows } = useReadContracts({
     contracts: arena
       ? [
-          { address: arena, abi: timeArenaReadAbi, functionName: "deadline" },
-          { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [0] },
           { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [1] },
           { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [2] },
           { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [3] },
@@ -34,32 +37,30 @@ export function ArenaTimerChips() {
   });
 
   const data = indexerData ?? (() => {
-    if (!rpcRows?.[0] || rpcRows[0].status !== "success") return null;
-    const lastBuy = Number(rpcRows[0].result as bigint);
-    const podium = [1, 2, 3, 4].map((i) =>
-      rpcRows[i]?.status === "success" ? Number(rpcRows[i]!.result as bigint) : lastBuy,
-    );
+    if (!rpcRows?.length) return null;
+    const podium = SECONDARY_PODIUM_CHIPS.map((_chip, i) => {
+      const row = rpcRows[i];
+      return row?.status === "success" ? Number(row.result as bigint) : undefined;
+    });
+    if (podium.every((d) => d === undefined)) return null;
     return {
       block_timestamp_sec: String(Math.floor(Date.now() / 1000)),
-      last_buy_deadline_sec: String(lastBuy),
-      podium_deadlines_sec: podium.map(String),
+      podium_deadlines_sec: podium.map((d) => String(d ?? 0)),
     };
   })();
 
   const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
   const deadlines = data?.podium_deadlines_sec ?? [];
-  const lastBuy = data?.last_buy_deadline_sec;
 
   return (
     <div className="arena-timer-chips" data-testid="arena-timer-chips" aria-label="Podium timers">
-      {LABELS.map((label, i) => {
-        const dl = data
-          ? Number(deadlines[i] ?? lastBuy)
-          : undefined;
+      {SECONDARY_PODIUM_CHIPS.map((chip, i) => {
+        const idx = indexerOn ? chip.contractIndex : i;
+        const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
         const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
         return (
-          <span key={label} className="arena-timer-chips__chip">
-            {label}: {rem !== undefined ? formatMmSsCountdown(rem) : "—"}
+          <span key={chip.label} className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${chip.contractIndex}`}>
+            {chip.label}: {rem !== undefined ? formatMmSsCountdown(rem) : "—"}
           </span>
         );
       })}

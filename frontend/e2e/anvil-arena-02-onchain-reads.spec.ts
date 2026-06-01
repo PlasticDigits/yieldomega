@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, test } from "@playwright/test";
-import { connectArenaWallet, gotoArena } from "./arenaE2eHelpers";
+import {
+  ARENA_E2E_TIMEOUT_MS,
+  connectArenaWallet,
+  gotoArena,
+  waitArenaSaleLive,
+} from "./arenaE2eHelpers";
 
 test.describe("Anvil Arena onchain reads", () => {
   test.skip(
@@ -11,9 +16,10 @@ test.describe("Anvil Arena onchain reads", () => {
   test("CRED card and timer chips load without contract read errors", async ({ page }) => {
     await gotoArena(page);
     await connectArenaWallet(page);
+    await waitArenaSaleLive(page);
 
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await expect(
       page.getByText("Could not read contract (check RPC / network)."),

@@ -2,10 +2,17 @@
 import { expect, type Page } from "@playwright/test";
 import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
+/** Anvil E2E: fail fast when RPC/env is wrong (full suite was ~8m with 120s expects). */
+export const ARENA_E2E_TIMEOUT_MS = 45_000;
+
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
-  await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({ timeout: 120_000 });
-  await expect(page.locator(".arena-simple-page")).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
+  await expect(page.locator(".arena-simple-page")).toBeVisible({
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
 }
 
 export async function connectArenaWallet(page: Page): Promise<void> {
@@ -20,6 +27,13 @@ export async function connectArenaWallet(page: Page): Promise<void> {
 
 export function arenaBuyPanel(page: Page) {
   return page.locator(".arena-simple__buy-panel");
+}
+
+/** Waits until DeployDev `startArena()` reads resolve to the live buy surface. */
+export async function waitArenaSaleLive(page: Page): Promise<void> {
+  await expect(page.getByTestId("arena-simple-rate-board")).toBeVisible({
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
 }
 
 export async function openBuyAdvanced(page: Page): Promise<void> {
