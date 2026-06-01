@@ -324,6 +324,7 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
+        DecodedEvent::ArenaLastBuyEpochStarted { .. } => {}
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())

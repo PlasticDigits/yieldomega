@@ -159,6 +159,10 @@ pub enum DecodedEvent {
         third: Address,
         pool_paid: U256,
     },
+    ArenaLastBuyEpochStarted {
+        epoch: U256,
+        deadline: U256,
+    },
     ArenaWarbowSteal {
         attacker: Address,
         victim: Address,
@@ -288,6 +292,14 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 second: e.second,
                 third: e.third,
                 pool_paid: e.poolPaid,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::LastBuyEpochStarted::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::LastBuyEpochStarted::decode_log(log, true) {
+            return DecodedEvent::ArenaLastBuyEpochStarted {
+                epoch: e.epoch,
+                deadline: e.deadline,
             };
         }
     }

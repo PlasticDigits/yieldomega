@@ -290,10 +290,12 @@ export async function fetchLegacyArenaChainTimer(): Promise<ArenaChainTimer | nu
   };
 }
 
-/** `GET /v1/arena/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 1.10.0. While `sale_ended` is false, rows are indexer DB predictions (`podium_prediction: true`); after sale end, rows mirror head `podium()` at `read_block_number` (schema ≥ 1.20.0). */
+/** `GET /v1/arena/podiums` — UX-ordered rows (Last Buy · WarBow · Defended · Time Booster). Schema ≥ 2.5.0 ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)). Live leaders from `idx_arena_podium_live` + WarBow scores when `podium_prediction: true`; RPC fallback when indexer has no row yet. */
 export type ArenaPodiumApiRow = {
   category?: string;
-  /** Latest rolled epoch for this category from `idx_arena_podium_epoch` (schema ≥ 2.4.0, [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)). */
+  /** Onchain category index (0=Last Buy, 3=WarBow, 2=Defended, 1=Time Booster). Schema ≥ 2.5.0 ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)). */
+  category_index?: number;
+  /** Head `lastBuyEpoch` (cat 0) or `podiumEpoch[cat]` from chain timer (schema ≥ 2.5.0, [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)). */
   epoch?: string | null;
   winners: string[];
   values: string[];

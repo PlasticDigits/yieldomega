@@ -22,7 +22,9 @@ pub const SEL_ARENA_START: [u8; 4] = [0x07, 0xf2, 0x87, 0x15];
 pub const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
 pub const SEL_TIMER_CAP: [u8; 4] = [0x0f, 0x63, 0x25, 0x76];
 pub const SEL_PODIUM_DEADLINE: [u8; 4] = [0x89, 0x5b, 0x4a, 0xa0];
-const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
+pub const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
+pub const SEL_LAST_BUY_EPOCH: [u8; 4] = [0x6a, 0x9e, 0xa0, 0x67];
+pub const SEL_PODIUM_EPOCH: [u8; 4] = [0xf9, 0x69, 0xcd, 0x3d];
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainTimerSnapshot {
@@ -33,6 +35,8 @@ pub struct ChainTimerSnapshot {
     pub read_block_number: String,
     pub polled_at_ms: u64,
     pub last_buy_epoch: String,
+    /// `podiumEpoch(cat)` for categories 0–3 at `read_block_number`.
+    pub podium_epochs: [String; 4],
     pub podium_deadlines_sec: [String; 4],
 }
 
@@ -68,7 +72,7 @@ fn addr_word_hex(a: Address) -> String {
     format!("{:#x}", a)
 }
 
-fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
+pub fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
     if data.len() < 32 * 6 {
         return Err(eyre::eyre!(
             "podium eth_call return too short: {} bytes",
@@ -93,7 +97,7 @@ fn decode_podium_return(data: &[u8]) -> Result<PodiumRpcRow> {
     Ok(PodiumRpcRow { winners, values })
 }
 
-fn encode_u8_call(selector: [u8; 4], arg: u8) -> Bytes {
+pub fn encode_u8_call(selector: [u8; 4], arg: u8) -> Bytes {
     let mut buf = Vec::with_capacity(36);
     buf.extend_from_slice(&selector);
     let mut word = [0u8; 32];
@@ -107,6 +111,33 @@ fn empty_podium_row() -> PodiumRpcRow {
         winners: std::array::from_fn(|_| addr_word_hex(Address::ZERO)),
         values: std::array::from_fn(|_| String::from("0")),
     }
+}
+
+/// Block-tagged `TimeArena.podium(category)` for ingest snapshots ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
+pub async fn podium_at_block(
+    provider: &ReqwestProvider,
+    arena: Address,
+    block: u64,
+    category: u8,
+) -> Result<PodiumRpcRow> {
+    podium_at_block_id(provider, arena, BlockId::Number(block.into()), category).await
+}
+
+pub async fn podium_at_block_id(
+    provider: &ReqwestProvider,
+    arena: Address,
+    block_id: BlockId,
+    category: u8,
+) -> Result<PodiumRpcRow> {
+    let p_req = TransactionRequest::default()
+        .to(arena)
+        .input(encode_u8_call(SEL_PODIUM, category).into());
+    let p_raw = provider
+        .call(&p_req)
+        .block(block_id)
+        .await
+        .wrap_err_with(|| format!("podium({category}) eth_call"))?;
+    decode_podium_return(&p_raw).wrap_err_with(|| format!("decode podium({category})"))
 }
 
 pub async fn run_poll_loop(
@@ -230,18 +261,31 @@ async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<Timecur
         podium_deadlines[cat as usize] = u256_to_decimal_string(dl);
     }
 
+    let last_buy_epoch = eth_call_u256(
+        provider,
+        arena,
+        block_id,
+        Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
+        "lastBuyEpoch",
+    )
+    .await?;
+
+    let mut podium_epochs = std::array::from_fn(|_| String::new());
+    for cat in 0u8..=3 {
+        let ep = eth_call_u256(
+            provider,
+            arena,
+            block_id,
+            encode_u8_call(SEL_PODIUM_EPOCH, cat),
+            &format!("podiumEpoch({cat})"),
+        )
+        .await?;
+        podium_epochs[cat as usize] = u256_to_decimal_string(ep);
+    }
+
     let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
     for cat in 0u8..=3 {
-        let p_req = TransactionRequest::default()
-            .to(arena)
-            .input(encode_u8_call(SEL_PODIUM, cat).into());
-        let p_raw = provider
-            .call(&p_req)
-            .block(block_id)
-            .await
-            .wrap_err(format!("podium({cat}) eth_call"))?;
-        podium_rows[cat as usize] =
-            decode_podium_return(&p_raw).wrap_err(format!("decode podium({cat})"))?;
+        podium_rows[cat as usize] = podium_at_block_id(provider, arena, block_id, cat).await?;
     }
 
     let polled_at_ms = SystemTime::now()
@@ -256,7 +300,8 @@ async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<Timecur
         timer_cap_sec: u256_to_decimal_string(cap),
         read_block_number: bn.to_string(),
         polled_at_ms,
-        last_buy_epoch: "0".into(),
+        last_buy_epoch: u256_to_decimal_string(last_buy_epoch),
+        podium_epochs,
         podium_deadlines_sec: podium_deadlines,
     };
 

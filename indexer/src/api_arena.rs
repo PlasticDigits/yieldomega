@@ -12,6 +12,10 @@ use serde_json::json;
 use sqlx::Row;
 
 use crate::api::{internal_db_error_response, with_schema_version, AppState, PageParams};
+use crate::arena_podium_live::{
+    fetch_live_podium_conn, live_row_has_entrant, warbow_top3_from_scores_conn, LivePodiumRow,
+    PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
+};
 use crate::arena_wallet_stats;
 
 pub fn arena_routes() -> axum::Router<AppState> {
@@ -154,9 +158,42 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "paused": h.sale_state.paused,
         "total_doub_raised": h.sale_state.total_doub_raised,
         "last_buy_epoch": h.timer.last_buy_epoch,
+        "podium_epochs": h.timer.podium_epochs,
         "podium_deadlines_sec": h.timer.podium_deadlines_sec,
     });
     (StatusCode::OK, with_schema_version(axum::http::HeaderMap::new()), Json(body)).into_response()
+}
+
+fn epoch_for_category(head: &crate::chain_timer::TimecurveHeadSnapshot, cat: u8) -> String {
+    if cat == 0 {
+        head.timer.last_buy_epoch.clone()
+    } else {
+        head.timer.podium_epochs[cat as usize].clone()
+    }
+}
+
+async fn fetch_live_podium_pool(
+    pool: &sqlx::PgPool,
+    category: u8,
+    epoch: &str,
+) -> Result<Option<LivePodiumRow>, sqlx::Error> {
+    let mut conn = pool.acquire().await?;
+    fetch_live_podium_conn(&mut conn, category, epoch).await
+}
+
+async fn warbow_top3_from_scores_pool(
+    pool: &sqlx::PgPool,
+    epoch: &str,
+) -> Result<LivePodiumRow, sqlx::Error> {
+    let mut conn = pool.acquire().await?;
+    warbow_top3_from_scores_conn(&mut conn, epoch).await
+}
+
+fn live_to_json(row: &LivePodiumRow) -> (Vec<String>, Vec<String>) {
+    (
+        row.winners.to_vec(),
+        row.values.to_vec(),
+    )
 }
 
 async fn arena_podiums(State(state): State<AppState>) -> Response {
@@ -168,42 +205,61 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         )
             .into_response();
     };
-    let labels = ["last_buy", "time_booster", "defended_streak", "warbow"];
-    let epoch_by_cat: std::collections::HashMap<i16, String> = match sqlx::query(
-        r#"SELECT category, COALESCE(MAX(epoch), 0)::text AS epoch
-           FROM idx_arena_podium_epoch
-           GROUP BY category"#,
-    )
-    .fetch_all(&state.pool)
-    .await
-    {
-        Ok(rows) => rows
-            .into_iter()
-            .map(|r| (r.get::<i16, _>("category"), r.get::<String, _>("epoch")))
-            .collect(),
-        Err(e) => {
-            return internal_db_error_response("GET /v1/arena/podiums", e);
+
+    let mut rows: Vec<serde_json::Value> = Vec::with_capacity(4);
+    for (ux_i, &cat) in PODIUM_UX_CATEGORY_ORDER.iter().enumerate() {
+        let epoch = epoch_for_category(h, cat);
+        let label = PODIUM_CATEGORY_LABELS[ux_i];
+
+        let mut live = match fetch_live_podium_pool(&state.pool, cat, &epoch).await {
+            Ok(v) => v,
+            Err(e) => return internal_db_error_response("GET /v1/arena/podiums", e),
+        };
+
+        if cat == 3 {
+            let needs_warbow_scores = live
+                .as_ref()
+                .map(|r| !live_row_has_entrant(r))
+                .unwrap_or(true);
+            if needs_warbow_scores {
+                match warbow_top3_from_scores_pool(&state.pool, &epoch).await {
+                    Ok(wb) if live_row_has_entrant(&wb) => live = Some(wb),
+                    Ok(_) => {}
+                    Err(e) => return internal_db_error_response("GET /v1/arena/podiums", e),
+                }
+            }
         }
-    };
-    let rows: Vec<_> = h
-        .podium_contract
-        .iter()
-        .enumerate()
-        .map(|(i, p)| {
-            let epoch = epoch_by_cat.get(&(i as i16)).cloned();
-            json!({
-                "category": labels.get(i).unwrap_or(&"unknown"),
-                "epoch": epoch,
-                "winners": p.winners,
-                "values": p.values,
-                "podium_prediction": true,
-            })
-        })
-        .collect();
+
+        let (winners, values, podium_prediction) = if let Some(ref r) = live {
+            let (w, v) = live_to_json(r);
+            (w, v, live_row_has_entrant(r))
+        } else {
+            let rpc = &h.podium_contract[cat as usize];
+            (rpc.winners.to_vec(), rpc.values.to_vec(), false)
+        };
+
+        let mut row = json!({
+            "category": label,
+            "category_index": cat,
+            "epoch": epoch,
+            "winners": winners,
+            "values": values,
+            "podium_prediction": podium_prediction,
+        });
+        if cat == 0 {
+            row["last_buy_prediction"] = json!(podium_prediction);
+        }
+        rows.push(row);
+    }
+
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
-        Json(json!({ "rows": rows, "read_block_number": h.timer.read_block_number })),
+        Json(json!({
+            "rows": rows,
+            "read_block_number": h.timer.read_block_number,
+            "sale_ended": h.sale_ended,
+        })),
     )
         .into_response()
 }
