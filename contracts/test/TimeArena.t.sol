@@ -832,6 +832,44 @@ contract TimeArenaTest is Test {
         assertEq(arena.totalDoubRaised(), 0);
     }
 
+    /// GitLab #261: four PodiumFunded + four SeedFunded at 100e18 / 75e18; no AdminVaultFunded.
+    function test_topUpPodiumPools_700_emits_per_category_funding() public {
+        vm.recordLogs();
+        vm.prank(alice);
+        arena.topUpPodiumPools(700e18);
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 podiumEvents;
+        uint256 seedEvents;
+        bool sawAdminFunded;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].topics[0] == keccak256("PodiumFunded(uint8,uint256,address)")) {
+                podiumEvents++;
+                assertEq(abi.decode(entries[i].data, (uint256)), 100e18);
+            } else if (entries[i].topics[0] == keccak256("SeedFunded(uint8,uint256,address)")) {
+                seedEvents++;
+                assertEq(abi.decode(entries[i].data, (uint256)), 75e18);
+            } else if (entries[i].topics[0] == keccak256("AdminVaultFunded(uint256)")) {
+                sawAdminFunded = true;
+            }
+        }
+        assertEq(podiumEvents, 4);
+        assertEq(seedEvents, 4);
+        assertFalse(sawAdminFunded);
+    }
+
+    function test_topUpPodiumPools_reverts_without_allowance_no_vault_mutation() public {
+        uint256 vaultBefore = doub.balanceOf(address(vaults));
+        uint256 adminBefore = doub.balanceOf(address(adminVault));
+        vm.prank(bob);
+        doub.approve(address(arena), 0);
+        vm.prank(bob);
+        vm.expectRevert();
+        arena.topUpPodiumPools(1e18);
+        assertEq(doub.balanceOf(address(vaults)), vaultBefore);
+        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
+    }
+
     /// GitLab #261: 700 DOUB top-up prize slice equals DOUB prize portion of a 1000 DOUB buy.
     function test_topUpPodiumPools_equivalent_to_buy_prize_vaults() public {
         TimeArena buyArena = _newArena();

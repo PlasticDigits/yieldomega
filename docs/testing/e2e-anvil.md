@@ -38,8 +38,6 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 
 **Referrals `/referrals` (issue #64)** — [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts): mock wallet registers a code and asserts share-link copy UX. See [`referrals.md`](../product/referrals.md) and [manual QA — #64](manual-qa-checklists.md#manual-qa-issue-64).
 
-**Presale vesting `/vesting` (issue #92)** — [`frontend/e2e/anvil-presale-vesting.spec.ts`](../../frontend/e2e/anvil-presale-vesting.spec.ts): **`PresaleVestingPage`** after `DeployDev`. See [presale-vesting.md](../frontend/presale-vesting.md).
-
 ## Environment contract (build time)
 
 Vite inlines `VITE_*` at **build** time. For Anvil:
@@ -53,7 +51,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault proxy |
 | `VITE_TIMECURVE_ADDRESS` | **Legacy alias** — `e2e-anvil.sh` sets this to the same proxy as **`VITE_TIME_ARENA_ADDRESS`** for reads still keyed on the old env name |
 | `VITE_REFERRAL_REGISTRY_ADDRESS` | Referral registry proxy |
-| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | **`DoubPresaleVesting`** proxy — **`/vesting`** ([#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92)) |
+| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | Optional **`DoubPresaleVesting`** proxy when deployed; no **`/vesting`** route ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Optional — set when Kumbaya fixtures run ([#41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | ETH pay-mode E2E; must match onchain `timeArenaBuyRouter` ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). **`e2e-anvil.sh` defaults `YIELDOMEGA_DEPLOY_KUMBAYA=1`** ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); set `YIELDOMEGA_DEPLOY_KUMBAYA=0` to skip fixtures (ETH test skipped). Also sets legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`. |
