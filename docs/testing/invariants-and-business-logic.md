@@ -156,7 +156,9 @@ Forge dependencies: [contracts/README.md](../../contracts/README.md).
 
 ### Postgres integration test behavior (`indexer/tests/integration_stage2.rs`)
 
-CI sets `YIELDOMEGA_PG_TEST_URL` so `postgres_stage2_persist_all_events_and_rollback_after` runs migrations, inserts **every non-Unknown Arena v2** [`DecodedEvent`](../../indexer/src/decoder.rs) variant, checks idempotency, calls `rollback_after`, then HTTP smoke for **`GET /v1/arena/*`** and **`GET /v1/referrals/*`**.
+CI sets `YIELDOMEGA_PG_TEST_URL` so `postgres_stage2_persist_all_events_and_rollback_after` runs migrations, inserts **every non-Unknown Arena v2** [`DecodedEvent`](../../indexer/src/decoder.rs) variant, checks idempotency, calls `rollback_after`, then HTTP smoke for **`GET /v1/arena/*`** and **`GET /v1/referrals/*`**. **`arena_wallet_stats_two_epochs_and_bonus_fields`** ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) asserts two Last Buy epochs + bonus fields on **`GET /v1/arena/wallet/{address}/stats`**.
+
+Tests share one Postgres URL and serialize on a process-wide mutex (`PG_INTEGRATION_MUTEX`) so parallel `cargo test` does not cross-delete fixture rows.
 
 If the variable is **unset** locally, that test **returns immediately** (passes without proving Postgres).
 
