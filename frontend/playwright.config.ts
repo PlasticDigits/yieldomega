@@ -12,7 +12,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: isAnvilE2E ? 1 : process.env.CI ? 5 : undefined,
-  timeout: isAnvilE2E ? 90_000 : 180_000,
+  timeout: isAnvilE2E ? 45_000 : 180_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",

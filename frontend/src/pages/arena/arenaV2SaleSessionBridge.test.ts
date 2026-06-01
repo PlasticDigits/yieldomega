@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it, vi } from "vitest";
-import { mapArenaV2CoreRows } from "./arenaV2SaleSessionBridge";
+import {
+  ARENA_SESSION_CORE_ROW_COUNT,
+  mapArenaV2CoreRows,
+} from "./arenaV2SaleSessionBridge";
 
 const DOUB = "0x" + "1".repeat(40);
 const REF = "0x" + "2".repeat(40);
+const BUY_ROUTER = "0x" + "3".repeat(40);
 
 describe("mapArenaV2CoreRows", () => {
-  it("returns 31 Arena-shaped rows aligned with useArenaSaleSession destructuring", () => {
+  it("returns 23 rows aligned with useArenaSaleSession destructuring", () => {
     const raw = [
       { status: "success", result: 100n },
       { status: "success", result: 200n },
@@ -19,26 +23,21 @@ describe("mapArenaV2CoreRows", () => {
       { status: "success", result: 300n },
       { status: "success", result: 120n },
       { status: "success", result: 86_400n },
-      { status: "success", result: "0x" + "3".repeat(40) },
+      { status: "success", result: BUY_ROUTER },
       { status: "success", result: 5n * 10n ** 18n },
     ] as const;
 
     const rows = mapArenaV2CoreRows(raw);
     expect(rows).toBeDefined();
-    expect(rows).toHaveLength(31);
+    expect(rows).toHaveLength(ARENA_SESSION_CORE_ROW_COUNT);
 
-    const doubPresale = rows![28];
-    expect(doubPresale?.status).toBe("success");
-    expect(typeof doubPresale?.result).toBe("string");
-    expect((doubPresale?.result as string).toLowerCase()).toBe(
-      "0x0000000000000000000000000000000000000000",
-    );
-
-    const referralFlatCredWad = rows![29];
-    expect(referralFlatCredWad?.result).toBe(5n * 10n ** 18n);
-
-    const silenceSec = rows![27];
-    expect(silenceSec?.result).toBe(0n);
+    expect(rows![3]?.result).toBe((99n * 10n ** 16n * 10n ** 18n) / 10n ** 18n);
+    expect(rows![7]?.result).toBe(DOUB);
+    expect(rows![8]?.result).toBe(REF);
+    expect(rows![10]?.result).toBe(120n);
+    expect(rows![15]?.result).toBe(BUY_ROUTER);
+    expect(typeof rows![15]?.result).toBe("string");
+    expect(rows![21]?.result).toBe(5n * 10n ** 18n);
   });
 
   it("returns undefined when required reads are missing", () => {

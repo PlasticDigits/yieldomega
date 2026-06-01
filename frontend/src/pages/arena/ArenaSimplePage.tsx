@@ -1131,6 +1131,7 @@ export function ArenaSimplePage({
               )}
               <motion.button
                 type="button"
+                data-testid="arena-simple-buy-charm"
                 className={[
                   "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
                   buyOnCooldown ? "arena-simple__cta--cooldown" : "",

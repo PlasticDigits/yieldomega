@@ -268,14 +268,22 @@ export type TimeArenaBuyRouterForSingleTxResult =
  * Onchain `TimeArena.timeArenaBuyRouter` is authoritative for Arena single-tx Kumbaya entry (#251 / #264).
  * `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (fail closed).
  */
+function hexAddressFromUnknown(v: unknown): HexAddress | undefined {
+  if (typeof v !== "string" || !v.startsWith("0x") || v.length !== 42) {
+    return undefined;
+  }
+  return parseHexAddress(v);
+}
+
 export function resolveTimeArenaBuyRouterForKumbayaSingleTx(
   onchain: HexAddress | undefined,
   env: KumbayaEnv,
 ): TimeArenaBuyRouterForSingleTxResult {
+  const onchainAddr = hexAddressFromUnknown(onchain);
   const fromEnv =
     envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER") ??
-    envAddr(env, "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER");
-  if (isZeroAddr(onchain)) {
+    envAddr(env, "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER");
+  if (!onchainAddr || isZeroAddr(onchainAddr)) {
     if (fromEnv && !isZeroAddr(fromEnv)) {
       return {
         kind: "mismatch",
@@ -285,13 +293,14 @@ export function resolveTimeArenaBuyRouterForKumbayaSingleTx(
     }
     return { kind: "none" };
   }
-  if (fromEnv && !isZeroAddr(fromEnv) && fromEnv.toLowerCase() !== onchain!.toLowerCase()) {
+  const router = onchainAddr;
+  if (fromEnv && !isZeroAddr(fromEnv) && fromEnv.toLowerCase() !== router.toLowerCase()) {
     return {
       kind: "mismatch",
       message: "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER does not match onchain timeArenaBuyRouter.",
     };
   }
-  return { kind: "ok", router: onchain! };
+  return { kind: "ok", router };
 }
 
 /**

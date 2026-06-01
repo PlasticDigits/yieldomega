@@ -2,8 +2,8 @@
 import { expect, type Page } from "@playwright/test";
 import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
-/** Anvil E2E: fail fast when RPC/env is wrong (full suite was ~8m with 120s expects). */
-export const ARENA_E2E_TIMEOUT_MS = 45_000;
+/** Anvil E2E: fail fast when RPC/env is wrong (was 120s; keep low for local iteration). */
+export const ARENA_E2E_TIMEOUT_MS = 15_000;
 
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
@@ -15,18 +15,31 @@ export async function gotoArena(page: Page): Promise<void> {
   });
 }
 
-export async function connectArenaWallet(page: Page): Promise<void> {
-  await connectMockWalletIfPlaceholderVisible(
-    page,
-    "Connect a wallet to preview and buy charms.",
-  );
-  await expect(page.getByText("Connect a wallet to preview and buy charms.")).not.toBeVisible({
-    timeout: 60_000,
+export async function connectArenaWallet(
+  page: Page,
+  options?: { requireDoubSpendControls?: boolean },
+): Promise<void> {
+  const connectPitch = "Connect your Wallet to earn CHARM, reserve your DOUB, and win prizes!";
+  await connectMockWalletIfPlaceholderVisible(page, connectPitch);
+  await expect(page.getByText(connectPitch)).not.toBeVisible({
+    timeout: ARENA_E2E_TIMEOUT_MS,
   });
+  await expect(arenaBuyPanel(page).getByText(/YOUR CL8Y:/i)).toBeVisible({
+    timeout: ARENA_E2E_TIMEOUT_MS,
+  });
+  if (options?.requireDoubSpendControls) {
+    await expect(arenaBuyPanel(page).locator("input.arena-buy-spend-range")).toHaveCount(1, {
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+  }
 }
 
 export function arenaBuyPanel(page: Page) {
   return page.locator(".arena-simple__buy-panel");
+}
+
+export function arenaBuyCharmButton(page: Page) {
+  return arenaBuyPanel(page).getByTestId("arena-simple-buy-charm");
 }
 
 /** Waits until DeployDev `startArena()` reads resolve to the live buy surface. */
@@ -55,18 +68,20 @@ export async function selectPayWith(
   await expect(btn).toHaveAttribute("aria-pressed", "true");
 }
 
+/** Sets minimum valid DOUB/CL8Y spend so `charmWadSelected` resolves and the buy CTA enables. */
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  await openBuyAdvanced(page);
-  const range = buyPanel.locator("input.arena-buy-spend-range");
-  if ((await range.count()) === 0) {
-    // Arena DOUB checkout may omit the CL8Y spend slider when bounds are not wired yet.
-    return;
-  }
-  await range.first().evaluate((input) => {
-    const el = input as HTMLInputElement;
-    el.value = "1";
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.dispatchEvent(new Event("change", { bubbles: true }));
+  await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
+    timeout: ARENA_E2E_TIMEOUT_MS,
   });
+  const spendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
+  if ((await spendInput.count()) > 0) {
+    await expect(spendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+    // Dev deploy uses 1000 DOUB/CHARM; headroom pushes min spend above 1000 DOUB.
+    await spendInput.fill("2000");
+    await spendInput.blur();
+    await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+  }
 }
