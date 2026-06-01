@@ -12,17 +12,20 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: isAnvilE2E ? 1 : process.env.CI ? 5 : undefined,
-  timeout: 180_000,
+  timeout: isAnvilE2E ? 90_000 : 180_000,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://127.0.0.1:4173",
     trace: "on-first-retry",
+    // Fresh deploy address each run — avoid stale index/chunks from a prior preview (#256).
+    ...(isAnvilE2E ? { serviceWorkers: "block" as const } : {}),
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: "npm run preview -- --host 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI && !isAnvilE2E,
+    reuseExistingServer:
+      !process.env.CI && (!isAnvilE2E || process.env.E2E_REUSE_PREVIEW === "1"),
     timeout: 300_000,
   },
 });

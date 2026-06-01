@@ -15,18 +15,15 @@ export function parseHexAddress(v: string | undefined | null): HexAddress | unde
   return t as HexAddress;
 }
 
-function parseAddr(key: string): HexAddress | undefined {
-  return parseHexAddress(import.meta.env[key]);
-}
-
-/** Arena v2 contract addresses — required for play and protocol surfaces (GitLab #266). */
+/** Arena v2 contract addresses — required for play and protocol surfaces (GitLab #266).
+ *  Use static `import.meta.env.VITE_*` keys so Vite inlines them in production builds (E2E #256). */
 export const addresses = {
-  timeArena: parseAddr("VITE_TIME_ARENA_ADDRESS"),
-  podiumVaults: parseAddr("VITE_PODIUM_VAULTS_ADDRESS"),
-  adminSellVault: parseAddr("VITE_ADMIN_SELL_VAULT_ADDRESS"),
-  referralRegistry: parseAddr("VITE_REFERRAL_REGISTRY_ADDRESS"),
+  timeArena: parseHexAddress(import.meta.env.VITE_TIME_ARENA_ADDRESS),
+  podiumVaults: parseHexAddress(import.meta.env.VITE_PODIUM_VAULTS_ADDRESS),
+  adminSellVault: parseHexAddress(import.meta.env.VITE_ADMIN_SELL_VAULT_ADDRESS),
+  referralRegistry: parseHexAddress(import.meta.env.VITE_REFERRAL_REGISTRY_ADDRESS),
   /** Optional override when `TimeArena.playCred()` read is unavailable (#269). */
-  playCred: parseAddr("VITE_PLAY_CRED_ADDRESS"),
+  playCred: parseHexAddress(import.meta.env.VITE_PLAY_CRED_ADDRESS),
 };
 
 /** Primary Time Arena proxy for reads and writes. */

@@ -34,6 +34,8 @@ export type PodiumReadRow = {
   winners: [`0x${string}`, `0x${string}`, `0x${string}`];
   /** Base-10 onchain podium scores as strings (React props JSON-safe). */
   values: readonly [string, string, string];
+  /** Head `lastBuyEpoch` (cat 0) or `podiumEpoch[cat]` when indexer/RPC provides it ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). */
+  epoch?: string;
 };
 
 function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
@@ -52,30 +54,42 @@ function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
 }
 
 function rowsFromIndexerData(
-  raw: readonly { winners?: string[]; values?: string[] }[],
+  raw: readonly { winners?: string[]; values?: string[]; epoch?: string | null }[],
 ): PodiumReadRow[] {
-  return [0, 1, 2, 3].map((i) => asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []));
+  return [0, 1, 2, 3].map((i) => {
+    const row = asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []);
+    const ep = raw[i]?.epoch;
+    return ep != null && ep !== "" ? { ...row, epoch: ep } : row;
+  });
 }
 
 function rowsFromRpcData(rawData: readonly ContractReadRow[] | undefined): PodiumReadRow[] {
-  return (
-    rawData?.map((r) => {
-      if (r.status !== "success") {
-        return asPodiumRow([], []);
-      }
-      const result = r.result as readonly [readonly `0x${string}`[], readonly (bigint | string)[]];
-      const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
-      const values = result[1];
-      return {
-        winners: [winners[0], winners[1], winners[2]],
-        values: [
-          rawToBigIntForFormat(values[0]).toString(),
-          rawToBigIntForFormat(values[1]).toString(),
-          rawToBigIntForFormat(values[2]).toString(),
-        ] as const,
-      };
-    }) ?? []
-  );
+  const rows: PodiumReadRow[] = [];
+  for (let ux = 0; ux < 4; ux++) {
+    const podiumR = rawData?.[ux * 2];
+    const epochR = rawData?.[ux * 2 + 1];
+    if (podiumR?.status !== "success") {
+      rows.push(asPodiumRow([], []));
+      continue;
+    }
+    const result = podiumR.result as readonly [readonly `0x${string}`[], readonly (bigint | string)[]];
+    const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
+    const values = result[1];
+    const base: PodiumReadRow = {
+      winners: [winners[0], winners[1], winners[2]],
+      values: [
+        rawToBigIntForFormat(values[0]).toString(),
+        rawToBigIntForFormat(values[1]).toString(),
+        rawToBigIntForFormat(values[2]).toString(),
+      ] as const,
+    };
+    if (epochR?.status === "success" && epochR.result !== undefined) {
+      rows.push({ ...base, epoch: rawToBigIntForFormat(epochR.result as bigint | string).toString() });
+    } else {
+      rows.push(base);
+    }
+  }
+  return rows;
 }
 
 /**
@@ -184,12 +198,20 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   });
 
   const contracts = tc
-    ? PODIUM_CONTRACT_CATEGORY_INDEX.map((category) => ({
-        address: tc,
-        abi: timeArenaReadAbi,
-        functionName: "podium" as const,
-        args: [category],
-      }))
+    ? PODIUM_CONTRACT_CATEGORY_INDEX.flatMap((category) => [
+        {
+          address: tc,
+          abi: timeArenaReadAbi,
+          functionName: "podium" as const,
+          args: [category],
+        },
+        {
+          address: tc,
+          abi: timeArenaReadAbi,
+          functionName: category === 0 ? ("lastBuyEpoch" as const) : ("podiumEpoch" as const),
+          args: category === 0 ? [] : [category],
+        },
+      ])
     : [];
 
   const rpc = useReadContracts({

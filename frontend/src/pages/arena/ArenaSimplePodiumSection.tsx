@@ -211,6 +211,11 @@ function SimplePodiumCard({
         </span>
         <div>
           <h3>{label}</h3>
+          {row?.epoch !== undefined && (
+            <p className="muted arena-simple__podium-epoch" data-testid={`arena-podium-epoch-${categoryIndex}`}>
+              Epoch <strong>{row.epoch}</strong>
+            </p>
+          )}
           <p className="muted">{help}</p>
         </div>
       </div>

@@ -37,6 +37,8 @@ import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
 import { ArenaSubnav } from "@/pages/arena/ArenaSubnav";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
+import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
+import { ArenaWarbowHeroPanel } from "@/pages/arena/ArenaWarbowHeroPanel";
 import { useArenaSaleSession } from "@/pages/arena/useArenaSaleSession";
 import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
 import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
@@ -991,6 +993,7 @@ export function ArenaSimplePage({
 
   return (
     <div className="page arena-simple-page">
+      <ArenaCharmCredCard />
       <ArenaSubnav active="simple" />
 
       {/* Sale hub — timer + primary buy action share the spotlight row above the fold. */}
@@ -1044,6 +1047,8 @@ export function ArenaSimplePage({
             </span>
           )}
         </PageSection>
+
+        <ArenaWarbowHeroPanel phase={session.phase} />
 
         <PageSection
           title={session.phase === "saleActive" ? undefined : "Buy CHARM"}

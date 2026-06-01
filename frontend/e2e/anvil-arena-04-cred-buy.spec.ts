@@ -6,6 +6,8 @@ import {
   gotoArena,
   selectPayWith,
   setCharmSliderMin,
+  ARENA_E2E_TIMEOUT_MS,
+  waitArenaSaleLive,
 } from "./arenaE2eHelpers";
 
 test.describe("Anvil Arena CRED buy", () => {
@@ -17,9 +19,10 @@ test.describe("Anvil Arena CRED buy", () => {
   test("buyWithCred on /arena when CRED pay is selected", async ({ page }) => {
     await gotoArena(page);
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await connectArenaWallet(page);
+    await waitArenaSaleLive(page);
     const buyPanel = arenaBuyPanel(page);
     await selectPayWith(page, "cred");
     await setCharmSliderMin(page);
@@ -28,7 +31,7 @@ test.describe("Anvil Arena CRED buy", () => {
     });
     await buyPanel.getByRole("button", { name: /buy/i }).click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
   });
 });

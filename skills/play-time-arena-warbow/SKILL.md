@@ -23,6 +23,10 @@ WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rul
 3. **Guard / revenge / flag** — see [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) constants `WARBOW_*`.
 4. **Epoch roll** — permissionless `rollPodiumEpoch(CAT_WARBOW)` after deadline clears live BP/podium; **admin** `finalizeWarbowPodium(epoch, first, second, third)` pays 4∶2∶1 from the WarBow active pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)).
 
+## Frontend (GitLab [#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
+
+Participant UI: **`/arena`** → [`ArenaWarbowHeroPanel.tsx`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (`data-testid="warbow-hero-actions"`). Cost pills read **`WARBOW_STEAL_DOUB`**, **`WARBOW_GUARD_DOUB`**, **`WARBOW_STEAL_LIMIT_BYPASS_DOUB`**, **`WARBOW_REVENGE_DOUB`** from the `TimeArena` proxy. Doc map: [arena-views § unified](../../docs/frontend/arena-views.md#unified-arena-page-gitlab-256) · **`INV-FRONTEND-256-UNIFIED-ARENA`**.
+
 ## Local stack
 
 Same as [`play-time-arena-doub`](../play-time-arena-doub/SKILL.md): Anvil **`http://127.0.0.1:8545`**, approve DOUB to **`TimeArena`**, `VITE_TIME_ARENA_ADDRESS`. Indexer WarBow feeds: **`GET /v1/arena/warbow/*`** ([`docs/indexer/design.md`](../../docs/indexer/design.md)).

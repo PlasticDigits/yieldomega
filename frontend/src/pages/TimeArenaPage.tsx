@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useState } from "react";
-import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
 import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaSimplePage } from "@/pages/arena/ArenaSimplePage";
 import { WalletProfileModal } from "@/components/WalletProfileModal";
@@ -15,7 +14,6 @@ export function TimeArenaPage() {
     <>
       <span className="visually-hidden" data-testid="time-arena-page-mounted" />
       <ArenaTimerChips />
-      <ArenaCharmCredCard />
       <ArenaSimplePage mountAsArenaV2 onOpenWalletProfile={onOpenWalletProfile} />
       <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
     </>

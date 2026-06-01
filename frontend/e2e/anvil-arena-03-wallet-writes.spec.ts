@@ -6,6 +6,8 @@ import {
   gotoArena,
   selectPayWith,
   setCharmSliderMin,
+  ARENA_E2E_TIMEOUT_MS,
+  waitArenaSaleLive,
 } from "./arenaE2eHelpers";
 
 test.describe("Anvil Arena wallet writes", () => {
@@ -19,18 +21,19 @@ test.describe("Anvil Arena wallet writes", () => {
   test("DOUB approve and buy on /arena", async ({ page }) => {
     await gotoArena(page);
     await expect(page.getByText("Loading contract reads…")).toBeHidden({
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await connectArenaWallet(page);
+    await waitArenaSaleLive(page);
 
     const buyPanel = arenaBuyPanel(page);
     const buyCharm = buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i });
     await expect(buyCharm).toBeVisible({ timeout: 60_000 });
     await setCharmSliderMin(page);
-    await expect(buyCharm).toBeEnabled({ timeout: 120_000 });
+    await expect(buyCharm).toBeEnabled({ timeout: ARENA_E2E_TIMEOUT_MS });
     await buyCharm.click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
   });
 
@@ -42,13 +45,14 @@ test.describe("Anvil Arena wallet writes", () => {
     );
     await gotoArena(page);
     await connectArenaWallet(page);
+    await waitArenaSaleLive(page);
     await selectPayWith(page, "eth");
     const buyPanel = arenaBuyPanel(page);
     const ethSpendInput = buyPanel.getByLabel(/Exact ETH spend/);
     await expect(ethSpendInput).toBeVisible({ timeout: 120_000 });
     await setCharmSliderMin(page);
     await expect(buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i })).toBeEnabled({
-      timeout: 120_000,
+      timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await buyPanel.getByRole("button", { name: /^Buy .+ CHARM$/i }).click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {

@@ -15,10 +15,10 @@ function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> =
   return renderToStaticMarkup(
     createElement(MemoryRouter, { initialEntries: ["/arena"] }, createElement(ArenaSimplePodiumSection, {
       podiumRows: [
-        { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"] },
-        { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"] },
-        { winners: [CAROL, BOB, ALICE], values: ["4", "3", "2"] },
-        { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
+        { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"], epoch: "12" },
+        { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"], epoch: "3" },
+        { winners: [CAROL, BOB, ALICE], values: ["4", "3", "2"], epoch: "5" },
+        { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"], epoch: "2" },
       ],
       podiumLoading: false,
       podiumPayoutPreview: [
@@ -43,7 +43,9 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Prize podiums");
     expect(html).toContain("Last Buy");
     expect(html).toContain("WarBow");
-    expect(html).toContain('href="/arena/arena"');
+    expect(html).toContain('data-testid="arena-podium-epoch-0"');
+    expect(html).toContain("Epoch");
+    expect(html).toContain("<strong>12</strong>");
     expect(html).toContain("Defended Streak");
     expect(html).toContain("Time Booster");
     expect(html.match(/class="ranking-list__item/g)?.length).toBe(12);
