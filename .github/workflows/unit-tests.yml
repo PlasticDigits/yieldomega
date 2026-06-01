@@ -28,8 +28,10 @@ jobs:
         with:
           version: stable
 
-      - name: Forge build
-        run: forge build --sizes
+      - name: Forge build (MegaEVM size gate)
+        env:
+          FOUNDRY_PROFILE: ci
+        run: bash ../scripts/check-megaevm-contract-sizes.sh
 
       - name: Forge test (CI profile)
         env:
