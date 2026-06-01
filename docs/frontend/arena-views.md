@@ -12,10 +12,27 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | Secondary podium timers | [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) | Time Booster · Defended Streak · WarBow (`podiumDeadline[1..3]`) |
 | Buy hub | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) buy panel | DOUB-primary toggle (`arena-paywith-cl8y` → **DOUB** label on v2); ETH / USDM / CRED ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
 | Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` or RPC `podium` + `podiumEpoch` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) |
+| CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads only — no separate “Arena advanced” route |
 
 Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
+
+<a id="charm-cred-card-gitlab-257"></a>
+
+## CHARM & Play CRED card (GitLab [#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257))
+
+Component: [`ArenaCharmCredCard.tsx`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) · **`data-testid="arena-charm-cred-card"`**.
+
+| Read / write | Onchain | UI |
+|--------------|---------|-----|
+| Last Buy epoch | `lastBuyEpoch()` | Current epoch id |
+| Epoch CHARM | `epochCharmWad[lastBuyEpoch, wallet]` | Accruing weight this epoch |
+| Pending CRED (active) | `pendingCred(wallet, lastBuyEpoch)` | Pro-rata preview while epoch is live |
+| Claimable CRED | `pendingCred(wallet, lastBuyEpoch - 1)` when `lastBuyEpoch > 0` | Shown after hard reset; **Claim CRED** enabled when &gt; 0 |
+| Claim | `claimCred(endedEpoch)` | **`data-testid="arena-charm-cred-claim"`**; requires `endedEpoch < lastBuyEpoch` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
+
+Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredClaim.ts). Empty / loading copy uses **`EmptyDataPlaceholder`** ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)). Invariant: **`INV-FRONTEND-257-CHARM-CRED-CARD`**. Play skill: [play-time-arena-doub § CRED claim](../../skills/play-time-arena-doub/SKILL.md).
 
 ## Env
 

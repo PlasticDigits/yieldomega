@@ -1,39 +1,118 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { ReactNode } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { addresses } from "@/lib/addresses";
-import { timeArenaReadAbi } from "@/lib/abis";
-import { PageSection } from "@/components/ui/PageSection";
+import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { PageSection } from "@/components/ui/PageSection";
+import { timeArenaReadAbi } from "@/lib/abis";
+import { addresses } from "@/lib/addresses";
+import { canClaimCred, claimableCredEpoch } from "@/lib/arenaCharmCredClaim";
+import type { SerializableContractRead } from "@/lib/serializeContractRead";
+import { statFromContractRead } from "@/lib/statDisplayFromContractRead";
+
+function wadStat(
+  read: SerializableContractRead | undefined,
+  ctx: { isPending: boolean; isConnected: boolean },
+  options: { requireWallet?: boolean; labels?: { loading?: string; missing?: string; connect?: string } },
+): ReactNode {
+  return statFromContractRead(read, ctx, {
+    requireWallet: options.requireWallet,
+    labels: options.labels,
+    mapSuccess: (raw) => <AmountDisplay raw={raw} decimals={18} />,
+  });
+}
 
 export function ArenaCharmCredCard() {
-  const { address } = useAccount();
-  const arena = addresses.timeArena ?? addresses.timeArena;
+  const { address, isConnected } = useAccount();
+  const arena = addresses.timeArena;
 
-  const { data: epoch } = useReadContract({
+  const {
+    data: currentEpoch,
+    isPending: epochPending,
+    isFetching: epochFetching,
+  } = useReadContract({
     address: arena,
     abi: timeArenaReadAbi,
     functionName: "lastBuyEpoch",
     query: { enabled: Boolean(arena) },
   });
 
-  const { data: charm } = useReadContract({
+  const claimEpoch = claimableCredEpoch(currentEpoch);
+
+  const charmReadEnabled = Boolean(arena && address && currentEpoch !== undefined);
+  const {
+    data: charm,
+    isPending: charmPending,
+    isFetching: charmFetching,
+  } = useReadContract({
     address: arena,
     abi: timeArenaReadAbi,
     functionName: "epochCharmWad",
-    args: epoch !== undefined && address ? [epoch, address] : undefined,
-    query: { enabled: Boolean(arena && address && epoch !== undefined) },
+    args: currentEpoch !== undefined && address ? [currentEpoch, address] : undefined,
+    query: { enabled: charmReadEnabled },
   });
 
-  const { data: pending } = useReadContract({
+  const accruingReadEnabled = Boolean(arena && address && currentEpoch !== undefined);
+  const {
+    data: accruingPending,
+    isPending: accruingPendingLoading,
+    isFetching: accruingFetching,
+  } = useReadContract({
     address: arena,
     abi: timeArenaReadAbi,
     functionName: "pendingCred",
-    args: epoch !== undefined && address ? [address, epoch] : undefined,
-    query: { enabled: Boolean(arena && address && epoch !== undefined) },
+    args: currentEpoch !== undefined && address ? [address, currentEpoch] : undefined,
+    query: { enabled: accruingReadEnabled },
   });
 
-  const { writeContractAsync, isPending } = useWriteContract();
+  const claimReadEnabled = Boolean(arena && address && claimEpoch !== undefined);
+  const {
+    data: claimPending,
+    isPending: claimPendingLoading,
+    isFetching: claimPendingFetching,
+  } = useReadContract({
+    address: arena,
+    abi: timeArenaReadAbi,
+    functionName: "pendingCred",
+    args: claimEpoch !== undefined && address ? [address, claimEpoch] : undefined,
+    query: { enabled: claimReadEnabled },
+  });
+
+  const { writeContractAsync, isPending: claimWritePending } = useWriteContract();
+
+  const readCtx = {
+    isPending:
+      epochPending ||
+      epochFetching ||
+      charmPending ||
+      charmFetching ||
+      accruingPendingLoading ||
+      accruingFetching ||
+      claimPendingLoading ||
+      claimPendingFetching,
+    isConnected,
+  };
+
+  const epochRead: SerializableContractRead | undefined =
+    currentEpoch !== undefined ? { status: "success", result: currentEpoch.toString() } : undefined;
+
+  const charmRead: SerializableContractRead | undefined =
+    charm !== undefined ? { status: "success", result: charm.toString() } : undefined;
+
+  const accruingRead: SerializableContractRead | undefined =
+    accruingPending !== undefined ? { status: "success", result: accruingPending.toString() } : undefined;
+
+  const claimableRead: SerializableContractRead | undefined =
+    claimPending !== undefined && claimPending > 0n
+      ? { status: "success", result: claimPending.toString() }
+      : undefined;
+
+  const claimReady = canClaimCred({
+    address,
+    claimEpoch,
+    claimPending,
+  });
 
   if (!arena) {
     return (
@@ -47,8 +126,6 @@ export function ArenaCharmCredCard() {
     );
   }
 
-  const canClaim = pending != null && pending > 0n && epoch !== undefined;
-
   return (
     <PageSection
       title="CHARM & Play CRED"
@@ -56,32 +133,87 @@ export function ArenaCharmCredCard() {
       className="arena-charm-cred-card"
     >
       <p>
-        Last Buy epoch: <strong>{epoch?.toString() ?? "—"}</strong>
+        Last Buy epoch:{" "}
+        <strong data-testid="arena-charm-cred-epoch">
+          {statFromContractRead(epochRead, readCtx, {
+            mapSuccess: (raw) => raw,
+            labels: { loading: "Loading epoch…", missing: "No epoch yet" },
+          })}
+        </strong>
       </p>
       <p>
-        Your epoch CHARM: <strong>{charm?.toString() ?? "0"}</strong> (WAD)
+        Your epoch CHARM:{" "}
+        <strong data-testid="arena-charm-cred-charm">
+          {wadStat(charmRead, readCtx, {
+            requireWallet: true,
+            labels: {
+              loading: "Loading CHARM…",
+              missing: "No CHARM this epoch yet",
+              connect: "Connect a wallet to see epoch CHARM.",
+            },
+          })}
+        </strong>
       </p>
       <p>
-        Pending CRED: <strong>{pending?.toString() ?? "0"}</strong>
+        Pending CRED (this epoch):{" "}
+        <strong data-testid="arena-charm-cred-pending">
+          {wadStat(accruingRead, readCtx, {
+            requireWallet: true,
+            labels: {
+              loading: "Loading pending CRED…",
+              missing: "No pending CRED this epoch yet",
+              connect: "Connect a wallet to see pending CRED.",
+            },
+          })}
+        </strong>
       </p>
+      {claimEpoch !== undefined ? (
+        <p>
+          Claimable CRED (epoch {claimEpoch.toString()}):{" "}
+          <strong data-testid="arena-charm-cred-claimable">
+            {wadStat(claimableRead, readCtx, {
+              requireWallet: true,
+              labels: {
+                loading: "Loading claimable CRED…",
+                missing: "Nothing to claim from last epoch",
+                connect: "Connect a wallet to see claimable CRED.",
+              },
+            })}
+          </strong>
+        </p>
+      ) : null}
       <ChainMismatchWriteBarrier>
         <button
           type="button"
           className="btn btn--primary"
-          disabled={!canClaim || isPending || !address}
+          data-testid="arena-charm-cred-claim"
+          disabled={!claimReady || claimWritePending || !address}
+          title={
+            claimReady
+              ? undefined
+              : claimEpoch === undefined
+                ? "Claim opens after the first Last Buy epoch ends."
+                : "Nothing to claim from the last ended epoch."
+          }
           onClick={() => {
-            if (epoch === undefined) return;
+            if (claimEpoch === undefined) return;
             void writeContractAsync({
               address: arena,
               abi: timeArenaReadAbi,
               functionName: "claimCred",
-              args: [epoch],
+              args: [claimEpoch],
             });
           }}
         >
           Claim CRED
         </button>
       </ChainMismatchWriteBarrier>
+      {!claimReady && isConnected && claimEpoch !== undefined ? (
+        <p className="muted arena-charm-cred-card__claim-hint">
+          Earn DOUB-buy CRED during the active epoch; claim after Last Buy hard reset ends the
+          epoch.
+        </p>
+      ) : null}
     </PageSection>
   );
 }
