@@ -50,5 +50,6 @@ jobs:
             echo "Set workflow input 'fork_url' or configure repository secret FORK_URL. See docs/testing/contract-fork-smoke.md"
             exit 1
           fi
-          forge build --sizes
+          # Compile + run fork smoke only. Skip `forge build --sizes`: TimeArena may exceed
+          # vanilla EIP-170 on CI while still being valid on MegaETH; fork tests do not deploy it.
           forge test -vv --match-contract TimeArenaForkTest
