@@ -145,7 +145,8 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
             sale_start_sec: "100".into(),
             deadline_sec: "9999".into(),
             timer_cap_sec: "86400".into(),
-            last_buy_epoch: "0".into(),
+            last_buy_epoch: "1".into(),
+            podium_epochs: ["1", "0", "0", "2"].map(String::from),
             podium_deadlines_sec: ["1", "2", "3", "4"].map(String::from),
         },
         sale_ended: false,
@@ -435,6 +436,99 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     assert_eq!(ptr.block_number, 99);
 
     api_http_smoke(&pool).await;
+    arena_podiums_live_predictions_smoke(&pool).await;
+}
+
+/// Live `GET /v1/arena/podiums` from `idx_arena_podium_live` + WarBow scores ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
+async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
+    let alice = format!("{:#x}", addr_byte(0xa1));
+    let bob = format!("{:#x}", addr_byte(0xb2));
+    let wb_player = format!("{:#x}", addr_byte(0xc3));
+
+    sqlx::query(
+        r#"INSERT INTO idx_arena_podium_live (
+            category, epoch, slot, player, score, block_number, tx_hash, log_index
+        ) VALUES
+            (0, 1, 0, $1, 3, 50, '0x01', 1),
+            (0, 1, 1, $2, 2, 50, '0x01', 2),
+            (0, 1, 2, $3, 1, 50, '0x01', 3)"#,
+    )
+    .bind(&alice)
+    .bind(&bob)
+    .bind(format!("{:#x}", addr_byte(0xb3)))
+    .execute(pool)
+    .await
+    .expect("seed last buy live");
+
+    sqlx::query(
+        r#"INSERT INTO idx_warbow_epoch_score (
+            block_number, tx_hash, log_index, epoch, player, battle_points
+        ) VALUES (60, '0x02', 1, 2, $1, 500)"#,
+    )
+    .bind(&wb_player)
+    .execute(pool)
+    .await
+    .expect("seed warbow score");
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/podiums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let rows = j.get("rows").and_then(|v| v.as_array()).expect("rows");
+    assert_eq!(rows.len(), 4);
+
+    assert_eq!(rows[0].get("category").and_then(|v| v.as_str()), Some("last_buy"));
+    assert_eq!(rows[0].get("epoch").and_then(|v| v.as_str()), Some("1"));
+    assert_eq!(
+        rows[0].get("podium_prediction").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+    assert_eq!(
+        rows[0].get("winners").and_then(|v| v.as_array()).unwrap()[0]
+            .as_str()
+            .unwrap()
+            .to_ascii_lowercase(),
+        alice.to_ascii_lowercase()
+    );
+
+    assert_eq!(rows[1].get("category").and_then(|v| v.as_str()), Some("warbow"));
+    assert_eq!(rows[1].get("category_index").and_then(|v| v.as_u64()), Some(3));
+    assert_eq!(rows[1].get("epoch").and_then(|v| v.as_str()), Some("2"));
+    assert_eq!(
+        rows[1].get("podium_prediction").and_then(|v| v.as_bool()),
+        Some(true)
+    );
+    assert_eq!(
+        rows[1].get("winners").and_then(|v| v.as_array()).unwrap()[0]
+            .as_str()
+            .unwrap()
+            .to_ascii_lowercase(),
+        wb_player.to_ascii_lowercase()
+    );
+
+    assert_eq!(
+        rows[2].get("category").and_then(|v| v.as_str()),
+        Some("defended_streak")
+    );
+    assert_eq!(
+        rows[3].get("category").and_then(|v| v.as_str()),
+        Some("time_booster")
+    );
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {

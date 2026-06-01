@@ -15,6 +15,7 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::decoder::{decode_rpc_log, DecodedEvent};
 use crate::persist::persist_decoded_log_conn;
+use crate::arena_podium_live;
 use crate::warbow_score;
 use crate::reorg::{
     find_common_ancestor, load_chain_pointer, rollback_after, save_chain_pointer_conn,
@@ -349,14 +350,14 @@ pub async fn run(
                         persist_decoded_log_conn(&mut tx, &decoded).await?;
                         if let Some(arena) = time_arena {
                             if decoded.contract == arena {
+                                let provider =
+                                    &providers[rpc_sticky_idx % providers.len()];
                                 let players = warbow_score::warbow_score_players(&decoded.event);
                                 let skip_rpc = matches!(
                                     &decoded.event,
                                     DecodedEvent::ArenaWarbowEpochScore { .. }
                                 );
                                 if !players.is_empty() && !skip_rpc {
-                                    let provider =
-                                        &providers[rpc_sticky_idx % providers.len()];
                                     if let Err(e) = warbow_score::snapshot_warbow_players_after_log(
                                         provider,
                                         arena,
@@ -371,6 +372,23 @@ pub async fn run(
                                             tx = %decoded.tx_hash,
                                             ?e,
                                             "ingestion: warbow BP snapshot skipped"
+                                        );
+                                    }
+                                }
+                                if arena_podium_live::should_snapshot_live_podium(&decoded.event) {
+                                    if let Err(e) = arena_podium_live::snapshot_live_podium_after_log(
+                                        provider,
+                                        arena,
+                                        &decoded,
+                                        &mut tx,
+                                    )
+                                    .await
+                                    {
+                                        tracing::warn!(
+                                            block = decoded.block_number,
+                                            tx = %decoded.tx_hash,
+                                            ?e,
+                                            "ingestion: live podium snapshot skipped"
                                         );
                                     }
                                 }

@@ -72,11 +72,35 @@ pub async fn warbow_epoch_at_block(
     arena: Address,
     block: u64,
 ) -> Result<U256> {
+    podium_epoch_at_block(provider, arena, block, CAT_WARBOW).await
+}
+
+pub async fn podium_epoch_at_block(
+    provider: &ReqwestProvider,
+    arena: Address,
+    block: u64,
+    category: u8,
+) -> Result<U256> {
     eth_call_u256(
         provider,
         arena,
         block,
-        encode_u8_call(SEL_PODIUM_EPOCH, CAT_WARBOW),
+        encode_u8_call(SEL_PODIUM_EPOCH, category),
+    )
+    .await
+}
+
+pub async fn last_buy_epoch_at_block(
+    provider: &ReqwestProvider,
+    arena: Address,
+    block: u64,
+) -> Result<U256> {
+    use crate::chain_timer::SEL_LAST_BUY_EPOCH;
+    eth_call_u256(
+        provider,
+        arena,
+        block,
+        Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
     )
     .await
 }

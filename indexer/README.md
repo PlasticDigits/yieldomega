@@ -101,6 +101,10 @@ Integration tests in `tests/integration_stage2.rs` run only when **`YIELDOMEGA_P
 
 Schema **≥ 1.26.0**. Network-wide sale + WarBow aggregates for **`/timecurve/protocol`**: unique wallets (buy + WarBow union), buy mean/median, WarBow **`burn_paid_wad`** totals, paginated wallet spend table, and buy **velocity** (`velocity_window=1h|24h`). Map: **`INV-INDEXER-231-PLATFORM-USAGE`** · [design — platform usage](../docs/indexer/design.md#timecurve-platform-usage-http-gitlab-231) · [invariants §231](../docs/testing/invariants-and-business-logic.md#timecurve-platform-usage-gitlab-231).
 
+### Live podiums (`GET /v1/arena/podiums`, GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
+
+Schema **≥ 2.5.0** (`x-schema-version`). UX-ordered rows (**Last Buy · WarBow · Defended Streak · Time Booster**) with head **`epoch`** per category. Ingest fills **`idx_arena_podium_live`** (block-tagged **`podium()`** snapshots) and WarBow **`idx_warbow_epoch_score`** rollups. **`podium_prediction: true`** only when winners are DB-derived. Map: **`INV-INDEXER-PODIUM-PREDICT-LIVE`** · [design — live podiums](../docs/indexer/design.md#timecurve-podiums-http) · [invariants](../docs/testing/invariants-and-business-logic.md) · play skill [`skills/play-active-time-arena`](../skills/play-active-time-arena/SKILL.md).
+
 ### Podium pool donations (`GET /v1/arena/podium-pool-donations`, GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
 Schema **≥ 2.1.0** (`x-schema-version`). Ingests **`PodiumPoolsToppedUp`** into **`idx_arena_podium_pool_top_up`**. Returns network **`total_donated_doub_wad`**, **`unique_donors_count`**, **`recent[]`**, and optional **`donor_summary`** when **`?donor=0x…`**. Empty DB → zeros / empty arrays (not 404). Map: **`INV-INDEXER-262-DONATE-POOLS`** · [design — donate pools](../docs/indexer/design.md#arena-podium-pool-donations-http-gitlab-262) · [invariants §262](../docs/testing/invariants-and-business-logic.md#arena-podium-pool-donations-gitlab-262) · [AUDIT card](../docs/frontend/arena-views.md#protocol-donate-pools-gitlab-262).
