@@ -34,7 +34,7 @@ CI uses the `ci` profile (pinned fuzz runs). To match locally:
 FOUNDRY_PROFILE=ci forge test -vv
 ```
 
-Optional **live RPC fork smoke** (`test/TimeCurveFork.t.sol`) is skipped unless `FORK_URL` is set; see [`../docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md).
+Optional **live RPC fork smoke** (`test/TimeArenaFork.t.sol`, `TimeArenaForkTest`) is skipped unless `FORK_URL` is set; see [`../docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md) ([#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)).
 
 ## Slither (static analysis)
 

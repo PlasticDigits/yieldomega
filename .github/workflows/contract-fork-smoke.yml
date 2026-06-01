@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Optional: TimeCurveFork.t.sol against a live RPC. Not a PR merge gate; not on push.
+# Optional: TimeArenaFork.t.sol against a live RPC. Not a PR merge gate; not on push.
 # See docs/testing/contract-fork-smoke.md
 name: contract-fork-smoke
 
@@ -51,4 +51,4 @@ jobs:
             exit 1
           fi
           forge build --sizes
-          forge test -vv --match-contract TimeCurveForkTest
+          forge test -vv --match-contract TimeArenaForkTest
