@@ -96,10 +96,25 @@ export async function setCharmSliderMin(page: Page): Promise<void> {
   }
 
   await expect(kumbayaSpend).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
-  // Blur-driven sizing resolves DOUB out from Kumbaya quotes (see useArenaSaleSession).
-  await kumbayaSpend.fill("1");
-  await kumbayaSpend.blur();
-  await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
+  await expect(buyPanel.getByText("Could not quote this route")).toHaveCount(0);
+
+  const slider = buyPanel.locator("input.arena-buy-spend-range");
+  await expect(slider).toHaveCount(1, { timeout: ARENA_E2E_TIMEOUT_MS });
+  await slider.fill("0");
+
+  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
     timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
   });
+  await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+  });
+
+  try {
+    await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
+      timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
+    });
+  } catch {
+    const panelText = await buyPanel.innerText();
+    throw new Error(`Buy CTA stayed disabled after Kumbaya quote wait.\n${panelText}`);
+  }
 }

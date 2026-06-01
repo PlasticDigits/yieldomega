@@ -66,6 +66,27 @@ contract AnvilKumbayaRouter {
         uint160 sqrtPriceLimitX96;
     }
 
+    /// @dev QuoterV2-compatible single-hop quote (frontend `kumbayaQuoter.ts` — GitLab #264).
+    struct QuoteExactOutputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint256 amount;
+        uint24 fee;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function quoteExactOutputSingle(QuoteExactOutputSingleParams calldata params)
+        external
+        view
+        returns (uint256 amountIn, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)
+    {
+        uint256 rIn = uint256(reserveIn[params.tokenIn][params.tokenOut]);
+        uint256 rOut = uint256(reserveOut[params.tokenIn][params.tokenOut]);
+        if (rIn == 0 || rOut == 0) revert BadPath();
+        amountIn = getAmountIn(params.amount, rIn, rOut);
+        return (amountIn, 0, 0, 200_000);
+    }
+
     error Expired();
     error SlippageIn();
     error SlippageOut();
