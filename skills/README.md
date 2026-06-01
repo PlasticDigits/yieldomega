@@ -21,5 +21,6 @@ TimeCurve launchpad playbooks, Rabbit Treasury, collectible NFT layer — remove
 ## Contributor docs
 
 - [`docs/testing/strategy.md`](../docs/testing/strategy.md)
+- [`docs/testing/invariants-and-business-logic.md` § TimeArena v2](../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) · [manual QA §260](../docs/testing/manual-qa-checklists.md#manual-qa-issue-260) · [Anvil E2E](../docs/testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 - [`bots/timearena/README.md`](../bots/timearena/README.md)
 - [`docs/onchain/fee-routing-and-governance.md`](../docs/onchain/fee-routing-and-governance.md) — DOUB arena split only

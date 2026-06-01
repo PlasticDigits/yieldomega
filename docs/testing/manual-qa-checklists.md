@@ -38,7 +38,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move 40/30/30 (Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
 | CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
-| Wallet profile | Open profile modal from address control when wired; XP / buy count plausible. |
+| Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
 | Referrals | Register code on `/referrals`; referred buy shows in `GET /v1/referrals/applied`. |
 | WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
 
@@ -54,7 +54,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 1. With **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) uses **`workers: 1`** and **`fullyParallel: false`**. Do not raise Anvil E2E workers without **isolation** (separate Anvil per worker or per project), or document why and get sign-off.
 2. **Pay mode** on **`/arena`** is **toggle buttons** with stable hooks: **`data-testid="arena-paywith-cl8y"`**, **`…-eth`**, **`…-usdm`** on [`TimeArenaPage`](../../frontend/src/pages/TimeArenaPage.tsx).
-3. Wallet-write E2E ([`anvil-arena-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts)) must select pay assets via **`getByTestId("arena-paywith-…")`** inside the buy panel on **`/arena`**, not dead CSS for removed radios.
+3. Wallet-write E2E ([`anvil-arena-03-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-03-wallet-writes.spec.ts)) must select pay assets via **`getByTestId("arena-paywith-…")`** inside the buy panel on **`/arena`**, not dead CSS for removed radios.
 
 ### Checklist
 

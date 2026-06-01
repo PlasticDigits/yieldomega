@@ -32,7 +32,7 @@ When adding or editing specs under `frontend/e2e/` that depend on RPC or chain s
 | Wallet UX | wagmi **`mock`** connector (when `VITE_E2E_MOCK_WALLET=1`) forwards RPC; not a real browser wallet | WalletConnect, mobile wallets, network add flows |
 | Precompiles / fork height | Anvil default | Confirm against MegaETH docs for your target |
 
-**Phase B (wallet writes)** — [`frontend/e2e/anvil-arena-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts): **`/arena`** DOUB **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). The **ETH pay** case selects **`data-testid="arena-paywith-eth"`** when `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` (or legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`) is set after Kumbaya + **`TimeArenaBuyRouter`** deploy ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
+**Phase B (wallet writes)** — [`frontend/e2e/anvil-arena-03-wallet-writes.spec.ts`](../../frontend/e2e/anvil-arena-03-wallet-writes.spec.ts): **`/arena`** DOUB **buy** via the wagmi **`mock`** connector (`VITE_E2E_MOCK_WALLET=1` in [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh)). The **ETH pay** case selects **`data-testid="arena-paywith-eth"`** when `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` (or legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`) is set after Kumbaya + **`TimeArenaBuyRouter`** deploy ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)); currently **`test.fixme`** — onchain path is covered by **`VerifyTimeArenaBuyRouterAnvil.t.sol`** ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)). This is **not** MetaMask or WalletConnect. See [strategy.md — Stage 2](strategy.md#stage-2--devnet-integration).
 
 **Collection** — [`frontend/e2e/anvil-collection.spec.ts`](../../frontend/e2e/anvil-collection.spec.ts) asserts placeholder **under construction** routes (not NFT reads).
 
@@ -136,7 +136,7 @@ This starts Anvil, deploys with `DeployDev`, builds the frontend with the right 
 
 When **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) sets **`workers: 1`** and **`fullyParallel: false`**. The default **CI** Playwright job (`npm run test:e2e` **without** `ANVIL_E2E`) is UI-only and may use **5** workers for speed.
 
-**Arena pay-mode E2E:** The buy panel on **`/arena`** uses **toggle buttons** for CL8Y / ETH / USDM, with stable hooks **`data-testid="arena-paywith-{cl8y,eth,usdm}"`**. Anvil wallet-write specs ([anvil-arena-wallet-writes.spec.ts](../../frontend/e2e/anvil-arena-wallet-writes.spec.ts)) use those test ids.
+**Arena pay-mode E2E:** The buy panel on **`/arena`** uses **toggle buttons** for CL8Y / ETH / USDM, with stable hooks **`data-testid="arena-paywith-{cl8y,eth,usdm}"`**. Anvil wallet-write specs ([anvil-arena-03-wallet-writes.spec.ts](../../frontend/e2e/anvil-arena-03-wallet-writes.spec.ts)) use those test ids.
 
 **Maps:** [invariants — Anvil E2E Playwright](invariants-and-business-logic.md#anvil-e2e-playwright-concurrency-and-pay-mode-selectors-issue-87) · play checklist: [`manual-qa-checklists.md#manual-qa-issue-87`](manual-qa-checklists.md#manual-qa-issue-87).
 
