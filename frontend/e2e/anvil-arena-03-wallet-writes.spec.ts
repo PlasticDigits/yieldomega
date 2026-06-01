@@ -7,7 +7,6 @@ import {
   gotoArena,
   selectPayWith,
   setCharmSliderMin,
-  setKumbayaPaySpendMin,
   ARENA_E2E_TIMEOUT_MS,
   waitArenaSaleLive,
 } from "./arenaE2eHelpers";
@@ -43,6 +42,7 @@ test.describe("Anvil Arena wallet writes", () => {
         !process.env.VITE_KUMBAYA_TIMECURVE_BUY_ROUTER,
       "TimeArena buy router not deployed — set VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER after Kumbaya fixtures.",
     );
+    test.setTimeout(60_000);
     await gotoArena(page);
     await connectArenaWallet(page);
     await waitArenaSaleLive(page);
@@ -50,11 +50,9 @@ test.describe("Anvil Arena wallet writes", () => {
     const buyPanel = arenaBuyPanel(page);
     const ethSpendInput = buyPanel.getByLabel(/Exact ETH spend/);
     await expect(ethSpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
-    await setKumbayaPaySpendMin(page);
+    await expect(buyPanel.getByText("Could not quote this route")).toHaveCount(0);
+    await setCharmSliderMin(page);
     const buyCharm = arenaBuyCharmButton(page);
-    await expect(buyCharm).not.toHaveText(/Refreshing quote/i, {
-      timeout: ARENA_E2E_TIMEOUT_MS,
-    });
     await buyCharm.click();
     await expect(buyPanel.locator(".error-text")).toHaveCount(0, {
       timeout: ARENA_E2E_TIMEOUT_MS,

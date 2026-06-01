@@ -18,7 +18,7 @@ description: Play TimeArena — DOUB buys, Last Buy timer, four podium categorie
 - Onchain: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`** per buy. Indexer history + per-tx breakdown: [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · **`GET /v1/arena/vault-funding/*`** · [invariants §267](../../docs/testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267).
 - **First buy ever** (this wallet): schedules **150 CRED** for the **next** `lastBuyEpoch` (DOUB or CRED path); one-time — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - **Referral (DOUB only):** valid `codeHash` on `buy(charmWad, codeHash)` mints **5 CRED** each to referrer and buyer (`REFERRAL_CRED_FLAT_WAD`); not tied to the **35 CRED** epoch pool; **`buyWithCred`** has no referral path — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272) · [`INV-REFERRAL-272-FLAT-CRED`](../../docs/testing/invariants-and-business-logic.md#referral-flat-cred-gitlab-272).
-- **Pause:** `TimeArena.paused` — not legacy `buyFeeRoutingEnabled`.
+- **Pause:** `TimeArena.paused` only — **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** · [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264).
 
 ## Play CRED yield + claim ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248))
 

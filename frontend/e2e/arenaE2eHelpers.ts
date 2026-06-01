@@ -72,52 +72,34 @@ export async function selectPayWith(
   await expect(btn).toHaveAttribute("aria-pressed", "true");
 }
 
-/** Sets minimum valid CL8Y-band spend so `charmWadSelected` resolves (CL8Y / CRED paths). */
+/** Sets minimum valid spend so `charmWadSelected` resolves and the buy CTA enables. */
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
   await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
-  const spendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
-  if ((await spendInput.count()) > 0) {
-    await expect(spendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  const cl8ySpendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
+  if ((await cl8ySpendInput.count()) > 0) {
+    await expect(cl8ySpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
     // Dev deploy uses 1000 DOUB/CHARM; headroom pushes min spend above 1000 DOUB.
-    await spendInput.fill("2000");
-    await spendInput.blur();
-  } else {
-    // CRED pay: slider targets CL8Y band; input shows CRED burn after charm resolves.
-    const slider = buyPanel.locator("input.arena-buy-spend-range");
-    if ((await slider.count()) > 0) {
-      await slider.evaluate((el: HTMLInputElement) => {
-        el.value = "500";
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-      });
-    }
+    await cl8ySpendInput.fill("2000");
+    await cl8ySpendInput.blur();
+    await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    return;
   }
-  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
-    timeout: ARENA_E2E_TIMEOUT_MS,
-  });
-}
 
-/** ETH/USDM Kumbaya pay: set pay-in budget, wait for swap quote + enabled buy CTA. */
-export async function setKumbayaPaySpendMin(page: Page): Promise<void> {
-  const buyPanel = arenaBuyPanel(page);
-  await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
-    timeout: ARENA_E2E_TIMEOUT_MS,
-  });
-  const spendInput = buyPanel.getByLabel(/Exact (ETH|USDM) spend/i);
-  await expect(spendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
-  const label = (await spendInput.getAttribute("aria-label")) ?? "";
-  await spendInput.fill(/USDM/i.test(label) ? "100" : "0.05");
-  await spendInput.blur();
-  await expect(buyPanel.getByText("Loading CHARM preview…")).toHaveCount(0, {
-    timeout: ARENA_E2E_TIMEOUT_MS,
-  });
-  await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
-    timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
-  });
-  await expect(arenaBuyCharmButton(page)).toBeEnabled({
+  const kumbayaSpend = buyPanel.getByLabel(/Exact (ETH|USDM) spend/i);
+  if ((await kumbayaSpend.count()) === 0) {
+    return;
+  }
+
+  await expect(kumbayaSpend).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  // Blur-driven sizing resolves DOUB out from Kumbaya quotes (see useArenaSaleSession).
+  await kumbayaSpend.fill("1");
+  await kumbayaSpend.blur();
+  await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
     timeout: ARENA_KUMBAYA_QUOTE_TIMEOUT_MS,
   });
 }

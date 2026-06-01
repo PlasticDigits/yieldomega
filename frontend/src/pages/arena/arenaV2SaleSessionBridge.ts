@@ -89,7 +89,7 @@ export function mapArenaV2CoreRows(
     row(timerCap),
     row(buyCooldown),
     row(ZERO),
-    row(!paused),
+    row(paused),
     row(buyRouter),
     row(podiumPool),
     row(ZERO),
