@@ -68,20 +68,34 @@ export async function selectPayWith(
   await expect(btn).toHaveAttribute("aria-pressed", "true");
 }
 
-/** Sets minimum valid DOUB/CL8Y spend so `charmWadSelected` resolves and the buy CTA enables. */
+/** Sets minimum valid spend so `charmWadSelected` resolves and the buy CTA enables. */
 export async function setCharmSliderMin(page: Page): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
   await expect(buyPanel.getByText("Loading buy limits…")).toHaveCount(0, {
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
-  const spendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
-  if ((await spendInput.count()) > 0) {
-    await expect(spendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  const cl8ySpendInput = buyPanel.getByLabel(/Exact CL8Y spend/i);
+  if ((await cl8ySpendInput.count()) > 0) {
+    await expect(cl8ySpendInput).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
     // Dev deploy uses 1000 DOUB/CHARM; headroom pushes min spend above 1000 DOUB.
-    await spendInput.fill("2000");
-    await spendInput.blur();
+    await cl8ySpendInput.fill("2000");
+    await cl8ySpendInput.blur();
     await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
+    return;
   }
+
+  const kumbayaSpend = buyPanel.getByLabel(/Exact (ETH|USDM) spend/i);
+  if ((await kumbayaSpend.count()) === 0) {
+    return;
+  }
+
+  await expect(kumbayaSpend).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  // Blur-driven sizing resolves DOUB out from Kumbaya quotes (see useArenaSaleSession).
+  await kumbayaSpend.fill("1");
+  await kumbayaSpend.blur();
+  await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeEnabled({
+    timeout: 45_000,
+  });
 }

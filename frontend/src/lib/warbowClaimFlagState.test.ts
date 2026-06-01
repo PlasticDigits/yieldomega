@@ -64,7 +64,7 @@ describe("warbowClaimFlagState", () => {
       warbowClaimFlagCanPress({
         isConnected: true,
         saleActive: true,
-        buyFeeRoutingEnabled: true,
+        arenaPaused: false,
         isWriting: false,
         canClaimWarBowFlag: false,
       }),
@@ -73,7 +73,7 @@ describe("warbowClaimFlagState", () => {
       warbowClaimFlagCanPress({
         isConnected: true,
         saleActive: true,
-        buyFeeRoutingEnabled: true,
+        arenaPaused: false,
         isWriting: false,
         canClaimWarBowFlag: true,
       }),

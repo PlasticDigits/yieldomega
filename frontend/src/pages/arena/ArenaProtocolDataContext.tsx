@@ -44,7 +44,7 @@ export const ARENA_PROTOCOL_CORE_READS = [
 /** Indices into merged `protocolReading` for common accessors. */
 export const PROTOCOL_READING_INDICES = {
   doub: 5,
-  buyFeeRoutingEnabled: 19,
+  paused: 19,
 } as const;
 
 function isNonZeroAddr(v: unknown): v is HexAddress {

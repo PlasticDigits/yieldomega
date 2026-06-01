@@ -53,7 +53,7 @@ const CORE = {
   referralRegistry: 10,
   timerExtensionSec: 13,
   timerCapSec: 15,
-  buyFeeRoutingEnabled: 19,
+  paused: 19,
   podiumVaults: 21,
   buyCooldownSec: 23,
   timeArenaBuyRouter: 24,
@@ -253,8 +253,8 @@ export function ArenaProtocolPage() {
           <dd>{renderAmount(CORE.minCharmWad, 18)}</dd>
           <dt>{humanizeKvLabel("maxCharmWad")}</dt>
           <dd>{renderAmount(CORE.maxCharmWad, 18)}</dd>
-          <dt>{humanizeKvLabel("buyFeeRoutingEnabled")}</dt>
-          <dd>{renderBool(CORE.buyFeeRoutingEnabled)}</dd>
+          <dt>{humanizeKvLabel("paused")}</dt>
+          <dd>{renderBool(CORE.paused)}</dd>
         </dl>
       </PageSection>
 

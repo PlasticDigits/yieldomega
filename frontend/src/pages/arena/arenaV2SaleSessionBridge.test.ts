@@ -35,6 +35,7 @@ describe("mapArenaV2CoreRows", () => {
     expect(rows![7]?.result).toBe(DOUB);
     expect(rows![8]?.result).toBe(REF);
     expect(rows![10]?.result).toBe(120n);
+    expect(rows![14]?.result).toBe(false);
     expect(rows![15]?.result).toBe(BUY_ROUTER);
     expect(typeof rows![15]?.result).toBe("string");
     expect(rows![21]?.result).toBe(5n * 10n ** 18n);

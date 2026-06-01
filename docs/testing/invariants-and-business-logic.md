@@ -79,6 +79,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
 | **`INV-FRONTEND-258-WALLET-PROFILE`** | Participant **`AddressInline`** on live buy rows + podium winners opens profile modal (`onOpenProfile`); explorer link only inside modal; modal renders all stats sections from **`GET /v1/arena/wallet/{address}/stats`** | `LiveBuyRow.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `ArenaSimplePodiumSection.test.tsx`, `WalletProfileModalSections.test.tsx` ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) · [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
 | **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) |
+| **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` · [arena-views § pay modes](../frontend/arena-views.md#unified-arena-page-gitlab-256) · [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/arena/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
 
@@ -98,7 +99,17 @@ Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). On
 
 Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)). ERC-20 ingress: **`INV-ERC20-123`** below · `test_feeOnTransfer_buy_reverts_erc20Parity`.
 
-**Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`ArenaSimplePage.tsx`](../../frontend/src/pages/ArenaSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — not `buyFeeRoutingEnabled`.
+**Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`ArenaSimplePage.tsx`](../../frontend/src/pages/ArenaSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set. **Pause:** `TimeArena.paused` only — **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**.
+
+<a id="arena-frontend-pay-pause-gitlab-264"></a>
+
+### Arena buy pay modes + pause (GitLab [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264))
+
+Frontend: [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) · Kumbaya: [integrations/kumbaya.md](../integrations/kumbaya.md) · play skill: [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | No `buyFeeRoutingEnabled` on Arena routes; writes gated by **`TimeArena.paused`**; DOUB **`buy`** + ETH/USDM **`buyViaKumbaya`** when router set; env router mismatch fail-closed | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` |
 
 <a id="arena-podium-pool-topup-gitlab-261"></a>
 
