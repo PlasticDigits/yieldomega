@@ -384,6 +384,29 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Automated:** `ArenaProtocolDonatePoolsSection.test.tsx`, `integration_stage2.rs` (`api_podium_pool_donations_smoke`), `forge test --match-test test_topUpPodiumPools`, [`arena.spec.ts`](../../frontend/e2e/arena.spec.ts) AUDIT card visibility, [`scripts/verify-donate-pools-anvil.sh`](../../scripts/verify-donate-pools-anvil.sh) (Anvil ingest + HTTP totals).
 
+<a id="manual-qa-issue-267"></a>
+
+### Arena buy vault funding indexer ([GitLab #267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
+
+**Scope:** Per-buy DOUB prize routing (**40% active · 30% seed · 30% admin**) from **`PodiumVaults`** / **`AdminSellVault`** events — distinct from donate-pools ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)).
+
+### Authoritative docs
+
+- [indexer design §267](../indexer/design.md#arena-vault-funding-http-gitlab-267)
+- [INV-INDEXER-267-VAULT-FUNDING](invariants-and-business-logic.md#arena-vault-funding-gitlab-267)
+- [fee-routing § events](../onchain/fee-routing-and-governance.md#events)
+- [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md)
+
+### Checklist
+
+- [ ] **`bash scripts/verify-vault-funding-anvil.sh`** — fresh Anvil DeployDev + indexer: one DOUB **`buy`** → **9** funding rows; **`GET /v1/arena/vault-funding/by-tx/{hash}`** sums to **`doub_paid`**; **`buyWithCred`** tx has **0** funding rows.
+- [ ] **`cast logs`** on buy tx: **4× `PodiumFunded`**, **4× `SeedFunded`**, **1× `AdminVaultFunded`** — counts and amounts match Postgres **`idx_arena_vault_funding`**.
+- [ ] **`GET /v1/arena/vault-funding/totals`** **`by_kind`** sums match SQL **`SUM(amount_doub_wad)`** grouped by **`kind`**.
+- [ ] **`topUpPodiumPools`** tx: donate row in **`idx_arena_podium_pool_top_up`** only — **no** buy-sourced funding rows ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262) regression).
+- [ ] Reorg rollback removes funding rows with buy rows (**`integration_stage2`** **`rollback_after`**).
+
+**Automated:** `integration_stage2.rs` (`api_vault_funding_smoke`, `postgres_stage2_persist_all_events_and_rollback_after`) · [`scripts/verify-vault-funding-anvil.sh`](../../scripts/verify-vault-funding-anvil.sh).
+
 <a id="manual-qa-issue-253"></a>
 
 ### Referrals — Play CRED earnings ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))
