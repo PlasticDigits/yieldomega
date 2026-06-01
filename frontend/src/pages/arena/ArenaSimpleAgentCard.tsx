@@ -278,7 +278,7 @@ while True:
 
 const PY_WARBOW = `# WarBow ladder — loop: prefer revenge vs BP #1 ("head") when a window is open; else steal head if 2×–10× BP band passes.
 # Head: INDEXER_URL + /v1/arena/warbow/leaderboard?limit=1 (live) else warbowLadderPodium().
-# CL8Y approve to Time Arena for each burn (revenge 1e18 / steal 1e18 + optional 50e18 bypass). buyFeeRoutingEnabled must be on for WarBow writes.
+# DOUB approve to Time Arena for each burn (revenge / steal / optional bypass). Arena must not be paused for WarBow writes.
 # Daily steal caps: WARBOW_STEAL_BYPASS=true if needed.
 ${PY_ABI_BOOTSTRAP}
 ${PY_SKETCH_SHARED}

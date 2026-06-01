@@ -420,7 +420,7 @@ export function useArenaSaleSession(
     timerCapSecR,
     buyCooldownSecR,
     launchedTokenR,
-    buyFeeRoutingEnabledR,
+    arenaPausedRowR,
     arenaBuyRouterR,
     podiumPoolR,
     warbowPendingFlagOwnerR,
@@ -1303,9 +1303,9 @@ export function useArenaSaleSession(
     refetchCred();
   }, [refetchCore, refetchUser, refreshHeroTimer, refetchCred]);
 
-  const buyFeeRoutingEnabled =
-    buyFeeRoutingEnabledR?.status === "success"
-      ? (buyFeeRoutingEnabledR.result as boolean)
+  const arenaPaused =
+    arenaPausedRowR?.status === "success"
+      ? (arenaPausedRowR.result as boolean)
       : undefined;
 
   const submitBuy = useCallback(async () => {
@@ -1319,7 +1319,7 @@ export function useArenaSaleSession(
       setBuyError("Connect a wallet and wait for contract reads.");
       return;
     }
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true) {
       setBuyError("Time Arena is paused — buys and WarBow DOUB spend are disabled until operators unpause.");
       return;
     }
@@ -1526,7 +1526,7 @@ export function useArenaSaleSession(
     refetchAll,
     payWith,
     chainId,
-    buyFeeRoutingEnabled,
+    arenaPaused,
     onchainTimeArenaBuyRouter,
     buyCooldownSecResolved,
     isArenaV2,
@@ -1548,7 +1548,7 @@ export function useArenaSaleSession(
       setBuyError(netErr);
       return;
     }
-    if (buyFeeRoutingEnabled === false) {
+    if (arenaPaused === true) {
       setBuyError("Time Arena is paused — WarBow actions are disabled until operators unpause.");
       return;
     }
@@ -1572,7 +1572,7 @@ export function useArenaSaleSession(
     }
   }, [
     chainId,
-    buyFeeRoutingEnabled,
+    arenaPaused,
     tc,
     address,
     warbowClaimFlagFields.canClaimWarBowFlag,
@@ -1669,7 +1669,7 @@ export function useArenaSaleSession(
     bandBoundaryQuotesLoading,
     payWalletBalance,
     submitBuy,
-    arenaPaused: buyFeeRoutingEnabled === false,
+    arenaPaused,
     onchainTimeArenaBuyRouter,
     refresh: refetchAll,
   };

@@ -230,6 +230,28 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 **Automated:** [`anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) asserts the disclosure test id appears in the connected unregistered path.
 
+<a id="manual-qa-issue-262"></a>
+
+### Arena AUDIT — donate to pools ([GitLab #262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
+
+**Scope:** Permissionless **`topUpPodiumPools`** sponsorship card on **`/arena/protocol`** with indexer-backed history ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261) onchain).
+
+### Authoritative docs
+
+- [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262)
+- [INV-INDEXER-262-DONATE-POOLS](invariants-and-business-logic.md#arena-podium-pool-donations-gitlab-262) · [INV-FRONTEND-262-DONATE-POOLS](invariants-and-business-logic.md#arena-podium-pool-donations-gitlab-262)
+- [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md)
+
+### Checklist
+
+- [ ] **`/arena/protocol`**: **`data-testid="arena-protocol-donate-pools"`** visible; required no-benefit disclosure shown **without** connecting a wallet.
+- [ ] Indexer unset/offline: totals show **`EmptyDataPlaceholder`** (—), not fabricated zeros ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)).
+- [ ] Connected wallet on chain **31337**: DOUB approve + **Donate to pools** succeeds; card refetches **`GET /v1/arena/podium-pool-donations`** totals.
+- [ ] Recent donations row opens wallet profile modal when **`onOpenWalletProfile`** wired ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)).
+- [ ] Wrong network: write UI gated by **`ChainMismatchWriteBarrier`** ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)).
+
+**Automated:** `ArenaProtocolDonatePoolsSection.test.tsx`, `integration_stage2.rs` (`api_podium_pool_donations_smoke`), `forge test --match-test test_topUpPodiumPools`, [`arena.spec.ts`](../../frontend/e2e/arena.spec.ts) AUDIT card visibility, [`scripts/verify-donate-pools-anvil.sh`](../../scripts/verify-donate-pools-anvil.sh) (Anvil ingest + HTTP totals).
+
 <a id="manual-qa-issue-253"></a>
 
 ### Referrals — Play CRED earnings ([GitLab #253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253))

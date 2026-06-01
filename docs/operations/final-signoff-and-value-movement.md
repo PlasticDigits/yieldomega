@@ -22,7 +22,7 @@ This document records the **authoritative onchain gates** for [GitLab #55](https
 
 **`distributePrizes` empty pool ([GitLab #133](https://gitlab.com/PlasticDigits/yieldomega/-/issues/133)):** if `PodiumPool` balance is zero, the function still requires **`reservePodiumPayoutsEnabled`**, emits **`PrizesSettledEmptyPodiumPool`**, and sets **`prizesDistributed`** (no **`PrizesDistributed`** event). Ops cannot refill and run **`distributePrizes`** again.
 
-**`claimWarBowFlag`:** does **not** spend CL8Y — **not** gated by `buyFeeRoutingEnabled` (only BP / silence rules apply).
+**`claimWarBowFlag`:** does **not** spend DOUB — **not** gated by **`TimeArena.paused`** (only BP / silence rules apply; see [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)).
 
 ## Suggested go-live order (example)
 

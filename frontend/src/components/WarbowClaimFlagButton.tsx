@@ -13,7 +13,6 @@ type Props = {
   ledgerNowSec: number;
   flagSilenceEndSec: bigint;
   saleActive: boolean;
-  buyFeeRoutingEnabled?: boolean | undefined;
   arenaPaused?: boolean | undefined;
   isConnected: boolean;
   isWriting: boolean;
@@ -27,7 +26,6 @@ export function WarbowClaimFlagButton({
   ledgerNowSec,
   flagSilenceEndSec,
   saleActive,
-  buyFeeRoutingEnabled,
   arenaPaused,
   isConnected,
   isWriting,
@@ -48,7 +46,6 @@ export function WarbowClaimFlagButton({
   const disabled = !warbowClaimFlagCanPress({
     isConnected,
     saleActive,
-    buyFeeRoutingEnabled,
     arenaPaused,
     isWriting,
     canClaimWarBowFlag,
