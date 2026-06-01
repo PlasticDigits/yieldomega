@@ -19,6 +19,8 @@ type Props = {
   buy: BuyItem;
   formatWallet: WalletFormatShort;
   onSelectBuy?: (buy: BuyItem) => void;
+  /** Opens wallet profile modal instead of explorer (#258). */
+  onOpenProfile?: (address: string) => void;
   nowUnixSec: number;
   envelopeParams: EnvelopeCurveParamsWire | null;
   /** `hero` = timer strip; `modal` = all-buys list */
@@ -33,11 +35,21 @@ const toneClass: Record<string, string> = {
   neutral: "live-buy-tick--neutral",
 };
 
-function targetIsInsideExplorerLink(target: EventTarget | null): boolean {
-  return Boolean(target && (target as HTMLElement).closest?.("a[href]"));
+function targetIsInsideAddressAction(target: EventTarget | null): boolean {
+  return Boolean(
+    target && (target as HTMLElement).closest?.("a[href], .address-inline__profile-btn"),
+  );
 }
 
-export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelopeParams, variant }: Props) {
+export function LiveBuyRow({
+  buy,
+  formatWallet,
+  onSelectBuy,
+  onOpenProfile,
+  nowUnixSec,
+  envelopeParams,
+  variant,
+}: Props) {
   const ticks = listBuyImpactTicks(buy, 5);
   const age = formatBuyAge(buy.block_timestamp, nowUnixSec);
   const envParsed = useMemo(() => envelopeCurveParamsFromWire(envelopeParams), [envelopeParams]);
@@ -73,6 +85,7 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
             formatWallet={formatWallet}
             size={blockieSize}
             onExplorerLinkClick={stopExplorerBubble}
+            onOpenProfile={onOpenProfile}
           />
           {age !== null ? (
             <span className="live-buy-row__age">{age}</span>
@@ -100,14 +113,14 @@ export function LiveBuyRow({ buy, formatWallet, onSelectBuy, nowUnixSec, envelop
 
   const onRowClick = (e: MouseEvent<HTMLDivElement>) => {
     if (!interactive) return;
-    if (targetIsInsideExplorerLink(e.target)) return;
+    if (targetIsInsideAddressAction(e.target)) return;
     openDetails();
   };
 
   const onRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (!interactive) return;
     if (e.key !== "Enter" && e.key !== " ") return;
-    if (targetIsInsideExplorerLink(e.target)) return;
+    if (targetIsInsideAddressAction(e.target)) return;
     e.preventDefault();
     openDetails();
   };

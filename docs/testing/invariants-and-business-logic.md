@@ -72,6 +72,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
+| **`INV-FRONTEND-258-WALLET-PROFILE`** | Participant **`AddressInline`** on live buy rows + podium winners opens profile modal (`onOpenProfile`); explorer link only inside modal | `LiveBuyRow.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `ArenaSimplePodiumSection.test.tsx` ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) · [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
 | **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use `/v1/arena/*` only; no `/v1/arena/*` or legacy WarBow HTTP | `indexerApi.ts`, `indexer/src/api_arena.rs` |
@@ -116,6 +117,12 @@ Onchain: **`TimeArena.topUpPodiumPools`** · routing: **`ArenaBuyRouting.splitPr
 ### Arena podium pool donations (GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 
 Indexer HTTP: **`GET /v1/arena/podium-pool-donations`** (ingests **`PodiumPoolsToppedUp`** from [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)). Frontend: protocol AUDIT card — [arena-views § donate-pools](../frontend/arena-views.md#protocol-donate-pools-gitlab-262). Play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
+
+<a id="wallet-profile-modal-gitlab-258"></a>
+
+### Wallet profile modal (GitLab [#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258))
+
+Participant wallet addresses on live buy feeds and podium rankings open **`WalletProfileModal`** (indexer **`GET /v1/arena/wallet/{address}/stats`**); explorer links remain inside the modal only. Frontend: [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) · **`INV-FRONTEND-258-WALLET-PROFILE`**.
 
 <a id="arena-vault-funding-gitlab-267"></a>
 
