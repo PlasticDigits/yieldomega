@@ -39,7 +39,7 @@ Per [agent-implementation-phases.md](../agent-implementation-phases.md), **~75%*
 
 ## TimeArena v2 (GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
 
-Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **Manual QA:** [Arena v2 QA checklist](manual-qa-checklists.md#manual-qa-issue-260) · [XP gas §265](manual-qa-checklists.md#manual-qa-issue-265) · **Anvil E2E:** [e2e-anvil.md](e2e-anvil.md).
+Authoritative product rules: [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md). Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). **Manual QA:** [Arena v2 QA checklist](manual-qa-checklists.md#manual-qa-issue-260) · [XP gas §265](manual-qa-checklists.md#manual-qa-issue-265) · [CRED buy §268](manual-qa-checklists.md#manual-qa-issue-268) · **Anvil E2E:** [e2e-anvil.md](e2e-anvil.md).
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
@@ -56,9 +56,9 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-LAST-BUY-EPOCH`** | `lastBuyEpoch` bumps on Last Buy **hard reset** only (CHARM/CRED), not on other podium rolls | `test_timer_hard_reset_increments_epoch`, `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-CRED-ACCRUE`** | DOUB buy adds **35 CRED** (18 dec) to epoch pool | `test_cred_accrue_on_doub_buy` |
 | **`INV-TIME-ARENA-CRED-CLAIM`** | `claimCred(epoch)` pro-rata by `epochCharmWad`; zeros weight; no double-claim | `test_cred_pro_rata_claim`, `test_cred_pro_rata_exact_1_2_split`, `test_claimCred_cannot_double_claim` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
-| **`INV-TIME-ARENA-CRED-BURN-BUY`** | `buyWithCred` burns **100 CRED** per 1e18 CHARM (`CRED_PER_CHARM_WAD`); same CHARM min/max band | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_charm_bounds` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248), [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+| **`INV-TIME-ARENA-CRED-BURN-BUY`** | `buyWithCred` burns **100 CRED** per 1e18 CHARM (`CRED_PER_CHARM_WAD`); same CHARM min/max band | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_charm_bounds` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248), [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) · [detail §268](#timearena-cred-buy-gitlab-268) · `bash scripts/verify-cred-buy-anvil.sh` |
 | **`INV-PLAY-CRED-NON-TRANSFER`** | `PlayCred` mint/burn only; wallet transfer reverts | [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol) ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
-| **`INV-TIME-ARENA-FIRST-BUY-CRED-BONUS`** | First `_finishBuy` per wallet schedules **150 CRED** for **`lastBuyEpoch + 1`** (post-reset); not repeated; survives epoch roll | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_claim_cred_bonus_only_no_charm`, `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) |
+| **`INV-TIME-ARENA-FIRST-BUY-CRED-BONUS`** | First `_finishBuy` per wallet schedules **150 CRED** for **`lastBuyEpoch + 1`** (post-reset); not repeated; survives epoch roll | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_claim_cred_bonus_only_no_charm`, `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) · [detail §268](#timearena-cred-buy-gitlab-268) |
 | **`INV-TIME-ARENA-XP`** | XP 1–10 linear in CHARM band; level steps per `ArenaXp`; uncapped level; `XpGained` event | `ArenaXp.t.sol::test_level_thresholds_*`, `test_xpForCharm_*`, `TimeArena.t.sol::test_xp_levels`, `test_xp_emits_XpGained` ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)) |
 | **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) · [manual QA §265](manual-qa-checklists.md#manual-qa-issue-265) · [detail §265](#timearena-xp-gas-gitlab-265) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls (steal 1000 / guard 10000 / override 50000 / revenge 1000; flag claim 0) | `test_warbow_steal_pulls_doub`, `test_warbow_guard_pulls_doub`, `test_warbow_revenge_pulls_doub`, `test_warbow_steal_limit_override_pulls_doub`, `test_warbow_flag_claim_zero_doub` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
@@ -82,6 +82,23 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` (DOUB + ETH when Kumbaya env set) · see [§264](#arena-frontend-pay-pause-gitlab-264) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use **`/v1/arena/*`** only; no **`/v1/timecurve/*`** or legacy WarBow HTTP | `indexerApi.test.ts` (#266 retirement), `indexer/src/api_arena.rs` |
+
+<a id="timearena-cred-buy-gitlab-268"></a>
+
+### TimeArena CRED buy + first-buy bonus (GitLab [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268))
+
+Parent: [#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248) (Play CRED). Onchain: [`TimeArena._buyCred`](../../contracts/src/arena/TimeArena.sol), [`TimeArena._finishBuy`](../../contracts/src/arena/TimeArena.sol). Product: [arena-v2 § CRED buy](../product/arena-v2.md) · [time-arena](../product/time-arena.md). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md). Manual QA: [§268](manual-qa-checklists.md#manual-qa-issue-268). Anvil smoke: `bash scripts/verify-cred-buy-anvil.sh`.
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-CRED-BURN-SCALE`** | `credBurn = mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD)`; reverts on zero burn / insufficient balance | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_insufficient_cred` |
+| **`INV-TIME-ARENA-CRED-BURN-BOUNDS`** | Same **0.99–10** CHARM band as DOUB buys | `test_buyWithCred_reverts_charm_bounds` |
+| **`INV-TIME-ARENA-CRED-NO-POOL`** | CRED path accrues epoch CHARM weight only; **no** `epochCredPool` / DOUB routing | `test_buy_with_cred`, `test_cred_accrue_on_doub_buy` (contrast) |
+| **`INV-TIME-ARENA-FIRST-BUY-SCHEDULE`** | `buyCount == 0` before increment → `epochFixedCredBonus[lastBuyEpoch+1] += 150e18`; emits **`FirstBuyCredScheduled`** | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_second_buy_no_additional_bonus` |
+| **`INV-TIME-ARENA-FIRST-BUY-EPOCH`** | Hard-reset in same tx uses **post-reset** `lastBuyEpoch + 1`; flag not reset on epoch roll | `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` |
+| **`INV-TIME-ARENA-FIRST-BUY-CLAIM`** | `pendingCred` / `claimCred` include bonus; bonus-only claim without CHARM weight; clears bonus on claim | `test_claim_cred_bonus_only_no_charm`, `test_claim_cred_pro_rata_plus_bonus`, `test_claimCred_reverts_active_epoch` |
+
+Frontend mirror: [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts) · `arenaCredBurn.test.ts`. UI pay path: [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269).
 
 <a id="timearena-xp-gas-gitlab-265"></a>
 
