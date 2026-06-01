@@ -6,7 +6,7 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
 
-**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) · verify links: `bash scripts/check-doc-anchors.sh`.
+**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup (operator/QA/agent paths): [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) · verify links: `bash scripts/check-doc-anchors.sh` · retired v1 term gate: `bash scripts/check-doc-retired-terms.sh`.
 
 <a id="arena-v2-play-skills-gitlab-245"></a>
 
@@ -19,6 +19,18 @@ This document ties **product intent** and **must-hold properties** to **automate
 | **`INV-DOCS-245-PHASE20`** | [`docs/agent-phases.md`](../agent-phases.md) Phase 20 prompt names Time Arena play skills + [`docs/product/time-arena.md`](../product/time-arena.md) | `grep play-time-arena agent-phases.md` |
 | **`INV-BOTS-245-TIMEARENA`** | Bot package at [`bots/timearena/`](../../bots/timearena/README.md); env **`YIELDOMEGA_TIME_ARENA_ADDRESS`**; `inspect` reads **`TimeArena.doub()`** / **`arenaStart`** / **`paused`** (not legacy `saleStart` / `acceptedAsset`) | `bots/timearena/tests/`, `bash scripts/sync-bot-env-from-frontend.sh` |
 | **`INV-BOTS-245-ENV-SYNC`** | `scripts/sync-bot-env-from-frontend.sh` maps **`VITE_TIME_ARENA_ADDRESS`** → bot env (no Rabbit/Leprechaun required) | script + `frontend/.env.example` |
+
+<a id="satellite-docs-gitlab-274"></a>
+
+## Satellite docs — retired v1 terms (GitLab [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DOCS-274-RETIRED-TERMS`** | Operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) contain **no** `VITE_FEE_ROUTER`, `FeeRouter.distributeFees`, `TimeCurve.endSale`, `redeemCharms`, or `idx_timecurve` | `bash scripts/check-doc-retired-terms.sh` (CI **`scripts-smoke`** job) |
+| **`INV-DOCS-274-QA-ONBOARDING`** | [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../qa/QA-onboarding-gitlab-issue-body.md) describes **`/arena`**, `bots/timearena`, **`VITE_TIME_ARENA_ADDRESS`** — not TimeCurve page / FeeRouter panel | manual review |
+| **`INV-DOCS-274-INDEXER-DESIGN`** | [`docs/indexer/design.md`](../indexer/design.md) documents **`idx_arena_*`** + **`GET /v1/arena/*`** only; no active **`GET /v1/timecurve/*`** | grep + [`decoder.rs`](../../indexer/src/decoder.rs) |
+
+Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md).
 
 Cross-links: [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md) (local stack env hygiene).
 

@@ -8,7 +8,7 @@ help:
 	@echo "  make qa-tunnel-help - Reprint SSH tunnel + laptop steps (after start-qa)"
 	@echo "  make stop-qa        - Stop Anvil, indexer, Postgres container"
 	@echo "  make status         - Check Postgres, Anvil, indexer (and optional Vite)"
-	@echo "  make check-frontend-env - Verify frontend/.env.local (merged with .env) has VITE_* for TimeCurve + fee router"
+	@echo "  make check-frontend-env - Verify frontend/.env.local (merged with .env) has VITE_* for Arena v2"
 	@echo "  See scripts/qa/README.md"
 
 check-frontend-env:
