@@ -48,8 +48,8 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-TIMER-EXTEND`** | Qualifying buy adds **+120s** when not in hard-reset band | `test_timer_extension_without_hard_reset`, `TimeMath.t.sol::testFuzz_extendDeadlineOrReset_arenaProfile` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | **`INV-TIME-ARENA-TIMER-HARD-RESET`** | Under **13m** remaining → **900s** reset; **`lastBuyEpoch`** increments; emits **`LastBuyEpochStarted`** | `test_timer_hard_reset_increments_epoch`, `test_emits_LastBuyEpochStarted_on_hard_reset`, `TimeMath.t.sol::test_extendDeadlineOrReset_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | **`INV-TIME-ARENA-TIMER-MULTI`** | One buy extends **all four** `podiumDeadline[i]` by **category-specific** extension (+120 / +60 / +90 / +300) | `test_multi_podium_deadline_extend` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
-| **`INV-TIME-ARENA-PODIUM-TIMER-PARAMS`** | Per-category `podiumTimerExtensionSec`, `podiumInitialTimerSec`, cap, hard-reset bands match product table; `startArena` seeds distinct deadlines | `test_start_arena_initial_deadlines_differ_by_category`, `test_time_booster_hard_reset_band_240_to_300` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
-| **`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER`** | Time Booster / Defended Streak / WarBow BP scoring uses **Last Buy (cat 0)** timer only, not other podium bands | `test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer`, `test_defended_streak_uses_last_buy_timer_not_other_podium` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) |
+| **`INV-TIME-ARENA-PODIUM-TIMER-PARAMS`** | Per-category `podiumTimerExtensionSec`, `podiumInitialTimerSec`, cap, hard-reset bands match product table; `startArena` seeds distinct deadlines | `test_start_arena_initial_deadlines_differ_by_category`, `test_time_booster_hard_reset_band_240_to_300` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) · [detail §271](#timearena-podium-timers-gitlab-271) · `bash scripts/verify-podium-timers-anvil.sh` |
+| **`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER`** | Time Booster / Defended Streak / WarBow BP scoring uses **Last Buy (cat 0)** timer only, not other podium bands | `test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer`, `test_defended_streak_uses_last_buy_timer_not_other_podium` ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)) · [detail §271](#timearena-podium-timers-gitlab-271) |
 | **`INV-TIME-ARENA-PODIUM-ROLL`** | `rollPodiumEpoch(cat)` after expiry; epoch bump; pays winners; clears scores | `test_roll_podium_after_expiry`, `test_roll_podium_settlement_pays_and_clears_scores` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-PODIUM-DIVERGE`** | Per-category rolls reset one `podiumDeadline[cat]`; timers diverge across Streak / Booster / WarBow / Last Buy | `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-PODIUM-EPOCH-INDEP`** | `podiumEpoch[cat]` counters advance independently | `test_podium_epochs_independent_after_skewed_rolls` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
@@ -99,6 +99,24 @@ Parent: [#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248) (Play C
 | **`INV-TIME-ARENA-FIRST-BUY-CLAIM`** | `pendingCred` / `claimCred` include bonus; bonus-only claim without CHARM weight; clears bonus on claim | `test_claim_cred_bonus_only_no_charm`, `test_claim_cred_pro_rata_plus_bonus`, `test_claimCred_reverts_active_epoch` |
 
 Frontend mirror: [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts) · `arenaCredBurn.test.ts`. UI pay path: [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269).
+
+<a id="timearena-podium-timers-gitlab-271"></a>
+
+### TimeArena per-podium timer params (GitLab [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271))
+
+Parent: [#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247) (independent `podiumDeadline[4]`). Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPodiumTimerConfig.sol), [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol). Product: [time-arena § timers](../product/time-arena.md) · [arena-v2 § timers](../product/arena-v2.md#timers-last-buy--four-podiums). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md). Manual QA: [§271](manual-qa-checklists.md#manual-qa-issue-271). Anvil smoke: `bash scripts/verify-podium-timers-anvil.sh`.
+
+**Scoring vs settlement (authoritative comment on #271):** Time Booster totals, Defended Streak window, and WarBow BP clutch/reset bonuses use **Last Buy (cat 0)** timer deltas / remaining / hard-reset. Per-category timer arrays govern **prize epoch deadlines** only (`podiumDeadline[cat]`, `rollPodiumEpoch`).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-PODIUM-TIMER-TABLE`** | `podiumTimerExtensionSec`, `podiumInitialTimerSec`, `podiumTimerCapSec`, reset bands match product table (+120/+60/+90/+300; 24h/12h/18h/48h initial; caps = 4× initial) | `ArenaPodiumTimerConfig.sol`, `test_start_arena_initial_deadlines_differ_by_category`, `verify-podium-timers-anvil.sh` |
+| **`INV-TIME-ARENA-PODIUM-BUY-EXTEND`** | One buy extends all four deadlines by **category-specific** extension / hard-reset rules | `test_multi_podium_deadline_extend`, `test_time_booster_hard_reset_band_240_to_300` |
+| **`INV-TIME-ARENA-PODIUM-ROLL-INIT`** | `rollPodiumEpoch(cat)` resets deadline to that category's `podiumInitialTimerSec[cat]` | `test_roll_podium_after_expiry`, `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
+| **`INV-TIME-ARENA-SCORING-LAST-BUY-TIMER-DETAIL`** | WarBow BP reset bonus requires Last Buy hard reset, not WarBow timer band alone; defended streak uses Last Buy remaining | `test_warbow_bp_bonus_uses_last_buy_hard_reset_not_warbow_timer`, `test_defended_streak_uses_last_buy_timer_not_other_podium` |
+| **`INV-TIME-ARENA-LAST-BUY-EPOCH-UNCHANGED`** | `lastBuyEpoch` still increments only on Last Buy (cat 0) hard reset | `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll`, `test_timer_hard_reset_increments_epoch` |
+
+Derived UI: [`ArenaTimerChips.tsx`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) reads four `podiumDeadline` values; buy checkout preview (`timeArenaBuyPreview.ts`) models **Last Buy** timer for scoring pills — all four settlement deadlines still extend onchain per buy.
 
 <a id="timearena-xp-gas-gitlab-265"></a>
 
