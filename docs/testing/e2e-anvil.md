@@ -49,9 +49,7 @@ Vite inlines `VITE_*` at **build** time. For Anvil:
 | `VITE_TIME_ARENA_ADDRESS` | **`TimeArena`** proxy from `DeployDev` (required for **`/arena`**) |
 | `VITE_PODIUM_VAULTS_ADDRESS` | Podium vaults proxy |
 | `VITE_ADMIN_SELL_VAULT_ADDRESS` | Admin sell vault proxy |
-| `VITE_TIMECURVE_ADDRESS` | **Legacy alias** — `e2e-anvil.sh` sets this to the same proxy as **`VITE_TIME_ARENA_ADDRESS`** for reads still keyed on the old env name |
 | `VITE_REFERRAL_REGISTRY_ADDRESS` | Referral registry proxy |
-| `VITE_DOUB_PRESALE_VESTING_ADDRESS` | Optional **`DoubPresaleVesting`** proxy when deployed; no **`/vesting`** route ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
 | `VITE_E2E_MOCK_WALLET` | `1` for Phase B wallet-write tests (wagmi mock connector) |
 | `VITE_KUMBAYA_WETH`, `VITE_KUMBAYA_USDM`, `VITE_KUMBAYA_SWAP_ROUTER`, `VITE_KUMBAYA_QUOTER` | Optional — set when Kumbaya fixtures run ([#41](https://gitlab.com/PlasticDigits/yieldomega/-/issues/41)) |
 | `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` | ETH pay-mode E2E; must match onchain `timeArenaBuyRouter` ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). **`e2e-anvil.sh` defaults `YIELDOMEGA_DEPLOY_KUMBAYA=1`** ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)); set `YIELDOMEGA_DEPLOY_KUMBAYA=0` to skip fixtures (ETH test skipped). Also sets legacy `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`. |
@@ -112,7 +110,7 @@ Set `VITE_INDEXER_URL` to the indexer base URL (e.g. `http://127.0.0.1:3100`). [
 
 For **minimal** Anvil Playwright only, `VITE_INDEXER_URL` can be omitted; the automated Anvil specs do **not** assert indexer responses.
 
-**Sanity check:** `make check-frontend-env` (or `bash scripts/check-frontend-vite-env.sh`) verifies Arena v2 addresses (`VITE_TIME_ARENA_ADDRESS`, vaults, admin vault, referral registry), legacy `VITE_TIMECURVE_ADDRESS` alias, `VITE_RPC_URL`, and `VITE_CHAIN_ID`. Restart `npm run dev` after changing `.env.local`.
+**Sanity check:** `make check-frontend-env` (or `bash scripts/check-frontend-vite-env.sh`) verifies Arena v2 addresses (`VITE_TIME_ARENA_ADDRESS`, vaults, admin vault, referral registry), `VITE_RPC_URL`, and `VITE_CHAIN_ID` ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) — no `VITE_TIMECURVE_ADDRESS`). Restart `npm run dev` after changing `.env.local`.
 
 Deterministic example addresses from a previous deploy (regenerate if deploy order changes): [`contracts/deployments/stage2-anvil-registry.json`](../../contracts/deployments/stage2-anvil-registry.json).
 

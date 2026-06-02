@@ -518,7 +518,7 @@ export function ReferralRegisterSection({ className }: Props) {
         title="Registry"
         badgeLabel="Unconfigured"
         badgeTone="warning"
-        lede="Set `VITE_REFERRAL_REGISTRY_ADDRESS` or point `VITE_TIMECURVE_ADDRESS` at a TimeCurve with a non-zero `referralRegistry`."
+        lede="Set `VITE_REFERRAL_REGISTRY_ADDRESS` (and `VITE_TIME_ARENA_ADDRESS` for the live Arena proxy)."
       >
         <StatusMessage variant="placeholder">
           <strong>No registry address.</strong> The app cannot read{" "}

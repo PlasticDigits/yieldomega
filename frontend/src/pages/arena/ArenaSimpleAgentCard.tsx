@@ -457,7 +457,7 @@ function envAddresses(): { key: string; value: string }[] {
   const entries: { key: string; value: string }[] = [];
   const routerOpt = parseHexAddress(import.meta.env.VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER);
   const map: Record<string, `0x${string}` | undefined> = {
-    "VITE_TIMECURVE_ADDRESS": addresses.timeArena,
+    "VITE_TIME_ARENA_ADDRESS": addresses.timeArena,
     "VITE_REFERRAL_REGISTRY_ADDRESS": addresses.referralRegistry,
   };
   for (const [key, v] of Object.entries(map)) {
