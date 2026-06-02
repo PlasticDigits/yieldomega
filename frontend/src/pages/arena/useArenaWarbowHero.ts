@@ -5,6 +5,7 @@ import { useAccount, useBlock, useChainId, useConfig, useReadContract, useWriteC
 import { isAddress } from "viem";
 import { addresses } from "@/lib/addresses";
 import { timeArenaReadAbi, timeArenaWriteAbi } from "@/lib/abis";
+import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
 import { readFreshWarbowStealPreflight } from "@/lib/timeArenaWarbowStealSubmitPreflight";
@@ -153,6 +154,7 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
         doubAddress: doub,
         timeArenaAddress: tc,
         needWei: need,
+        unlimitedPreferred: readArenaDoubUnlimitedApproval(),
       });
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
@@ -209,6 +211,7 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
         doubAddress: doub,
         timeArenaAddress: tc,
         needWei: guardDoubWei,
+        unlimitedPreferred: readArenaDoubUnlimitedApproval(),
       });
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,
@@ -255,6 +258,7 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
           doubAddress: doub,
           timeArenaAddress: tc,
           needWei: revengeDoubWei,
+          unlimitedPreferred: readArenaDoubUnlimitedApproval(),
         });
         const { hash } = await writeContractWithGasBuffer({
           wagmiConfig,
