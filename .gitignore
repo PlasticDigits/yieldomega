@@ -16,6 +16,7 @@ Thumbs.db
 
 # Editors / IDE
 .cursor/*
+!.cursor/environment.json
 !.cursor/skills/
 !.cursor/skills/**
 .idea/

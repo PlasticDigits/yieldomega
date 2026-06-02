@@ -77,4 +77,15 @@ yieldomega_anvil_deploy_dev() {
     fi
     echo "Kumbaya: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER} TimeArenaBuyRouter=${KUMBAYA_BUY_ROUTER}"
   fi
+
+  if [ "${YIELDOMEGA_SEED_EVM_DEV_WALLETS:-1}" = "1" ] && [ -n "${DOUB:-}" ] && [ -n "${CRED:-}" ]; then
+    CL8Y=$(_yieldomega_extract_addr "MockReserveCl8y")
+    # shellcheck disable=SC1091
+    source "${ROOT}/scripts/lib/evm_dev_keys.sh" 2>/dev/null || true
+    if command -v cast >/dev/null 2>&1; then
+      echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${CL8Y:+, CL8Y})..."
+      RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y:-}" \
+        bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"
+    fi
+  fi
 }
