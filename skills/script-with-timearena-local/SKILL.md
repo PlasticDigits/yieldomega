@@ -18,7 +18,7 @@ description: Author local TypeScript or Python scripts against deployed TimeAren
 
 - **RPC URL** and **chain ID** in env; keys via env or hardware only.
 - **UUPS proxies:** Call **`TimeArena`**, **`PodiumVaults`**, **`AdminSellVault`**, **`ReferralRegistry`** proxy addresses — not implementation rows in `run-latest.json` ([#61](https://gitlab.com/PlasticDigits/yieldomega/-/issues/61)).
-- **Env vars:** `VITE_TIME_ARENA_ADDRESS` (canonical), `VITE_PODIUM_VAULTS_ADDRESS`, `VITE_ADMIN_SELL_VAULT_ADDRESS`, `VITE_REFERRAL_REGISTRY_ADDRESS`. Legacy `VITE_TIMECURVE_ADDRESS` may alias the arena proxy on local stacks.
+- **Env vars:** `VITE_TIME_ARENA_ADDRESS` (canonical), `VITE_PODIUM_VAULTS_ADDRESS`, `VITE_ADMIN_SELL_VAULT_ADDRESS`, `VITE_REFERRAL_REGISTRY_ADDRESS` ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) — `VITE_TIMECURVE_ADDRESS` retired).
 - Product rules: [`docs/product/time-arena.md`](../../docs/product/time-arena.md) · [`docs/product/arena-v2.md`](../../docs/product/arena-v2.md) · invariant map: [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) ([#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) doc cleanup).
 
 ## C. Read-before-write
