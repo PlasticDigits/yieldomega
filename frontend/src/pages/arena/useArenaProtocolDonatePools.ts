@@ -5,6 +5,7 @@ import { parseUnits } from "viem";
 import { useAccount, useConfig, useReadContract } from "wagmi";
 import { erc20Abi, timeArenaReadAbi, timeArenaWriteAbi } from "@/lib/abis";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
+import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { fetchArenaPodiumPoolDonations, type ArenaPodiumPoolDonations } from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
@@ -144,6 +145,7 @@ export function useArenaProtocolDonatePools() {
         doubAddress,
         timeArenaAddress: timeArena,
         needWei: parsedAmountWei,
+        unlimitedPreferred: readArenaDoubUnlimitedApproval(),
       });
       const { hash } = await writeContractWithGasBuffer({
         wagmiConfig,

@@ -21,6 +21,7 @@ import {
   timeArenaBuyEventAbi,
   timeArenaWriteAbi,
 } from "@/lib/abis";
+import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
 import { useKumbayaExactOutputQuote } from "@/hooks/useKumbayaExactOutputQuote";
 import {
@@ -1470,6 +1471,7 @@ export function useArenaSaleSession(
           doubAddress: acceptedAsset,
           timeArenaAddress: tc,
           needWei: needDoub,
+          unlimitedPreferred: readArenaDoubUnlimitedApproval(),
         });
         let codeHash: `0x${string}` | undefined;
         if (useReferral && referralRegistryOn && pendingReferralCode) {
