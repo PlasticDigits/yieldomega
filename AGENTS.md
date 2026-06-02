@@ -60,3 +60,33 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 
 - **`frontend/.env.local`** is written by the Anvil stack; **restart Vite** if you change it after `npm run dev` is already running.
 - Indexer reads env at process start; restart indexer after registry/RPC changes.
+
+### Playwright Chromium
+
+From `frontend/` (after `npm ci`):
+
+```bash
+npx playwright install chromium
+npx playwright install-deps chromium   # Linux system libraries (fonts, etc.)
+```
+
+Browsers land under `~/.cache/ms-playwright/`. Repo E2E uses the **wagmi mock wallet** ([`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md)), not a browser extension — Playwright does not load Rabby by default.
+
+### Rabby extension (manual / Desktop browser QA)
+
+Install unpacked extension once per VM (or snapshot):
+
+```bash
+sudo bash scripts/install-browser-extensions.sh
+```
+
+Launch Chrome with Rabby + a persistent profile:
+
+```bash
+bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena
+```
+
+- Extension path: `/opt/cursor/browser-extensions/rabby`
+- Profile: `/opt/cursor/chrome-profile-rabby` (wallet state persists here across launches; **not** in git)
+
+Import an Anvil private key in Rabby (chain **31337**) for real signing against the local stack. The Cursor **Desktop** pane may use a separate Chrome profile — use the launch script when you need Rabby specifically.
