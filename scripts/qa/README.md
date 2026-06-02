@@ -48,6 +48,18 @@ After `make start-qa` succeeds on the server:
 
 Reprint tunnel steps anytime: **`make qa-tunnel-help`** (on server or laptop clone).
 
+## Rabby wrong-network verification (Cloud agents)
+
+Mock Playwright (`VITE_E2E_MOCK_WALLET=1`) **cannot** switch wallet chains. For full [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) / issue path **#7** PASS:
+
+```bash
+bash scripts/qa/build-frontend-for-rabby.sh
+cd frontend && npm run preview -- --host 127.0.0.1 --port 5173
+bash scripts/verify-rabby-chain-mismatch.sh
+```
+
+See [`docs/testing/rabby-cloud-agent-qa.md`](../../docs/testing/rabby-cloud-agent-qa.md).
+
 ## Local stack without QA Makefile
 
 For an all-local laptop setup (no QA host), use:

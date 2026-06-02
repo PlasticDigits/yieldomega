@@ -5,8 +5,9 @@ Project-specific **Cursor** skills for **editing the repo** live here. For **usi
 Context: [Phase 18 — Agents: metadata and Cursor skills](../../docs/agent-phases.md#phase-18) and [`../../docs/agents/metadata-and-skills.md`](../../docs/agents/metadata-and-skills.md) (play vs contributor skills, onchain metadata).
 
 - `yieldomega-guardrails/` contains the shared repo guardrails every **contributor** agent should apply before making changes.
+- `rabby-cloud-verification/` — **required** for wrong-network (#95), real wallet signing, and full issue/MR verification when mock Playwright is insufficient ([`docs/testing/rabby-cloud-agent-qa.md`](../../docs/testing/rabby-cloud-agent-qa.md)).
 
-Start with `yieldomega-guardrails/SKILL.md`, then follow `docs/agent-phases.md` for the task-specific phase prompt.
+Start with `yieldomega-guardrails/SKILL.md`, then follow `docs/agent-phases.md` for the task-specific phase prompt. When verifying acceptance criteria that mention wrong network, Rabby, or manual wallet paths, read `rabby-cloud-verification/SKILL.md` and run `bash scripts/verify-rabby-chain-mismatch.sh`.
 
 **Kumbaya (DEX routing for TimeCurve):** [`docs/integrations/kumbaya.md`](../../docs/integrations/kumbaya.md) — cross-linked from the guardrails skill (item 7) and [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md).
 
