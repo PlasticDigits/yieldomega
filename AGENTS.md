@@ -61,16 +61,26 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 - **`frontend/.env.local`** is written by the Anvil stack; **restart Vite** if you change it after `npm run dev` is already running.
 - Indexer reads env at process start; restart indexer after registry/RPC changes.
 
-### Playwright Chromium
+### Cloud agent bootstrap (Playwright + Rabby)
 
-From `frontend/` (after `npm ci`):
+On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs:
 
 ```bash
-npx playwright install chromium
-npx playwright install-deps chromium   # Linux system libraries (fonts, etc.)
+bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-agent.sh
 ```
 
-Browsers land under `~/.cache/ms-playwright/`. Repo E2E uses the **wagmi mock wallet** ([`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md)), not a browser extension — Playwright does not load Rabby by default.
+That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.
+
+Browsers land under `~/.cache/ms-playwright/`. Automated Playwright E2E uses the wagmi **mock** connector ([`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md)), not a browser extension — Playwright does not load Rabby by default. Rabby is for **Desktop / manual QA** with a real extension.
+
+| Item | Details |
+|------|---------|
+| **Dev keys** | `KEY_EVM_1`, `KEY_EVM_2`, `KEY_EVM_3` — default to Foundry Anvil accounts **#0–#2** (override via Cursor Cloud secrets). Addresses: `source scripts/lib/evm_dev_keys.sh` → `ADDR_EVM_*`. |
+| **Rabby install** | `sudo bash scripts/install-browser-extensions.sh` (once per VM/snapshot) → `/opt/cursor/browser-extensions/rabby` |
+| **Rabby import** | `node scripts/setup-rabby-dev-wallets.mjs` (from `frontend/` so Playwright resolves); password `RABBY_DEV_PASSWORD` (default `YieldomegaDevOnly1!`, **local only**). Manual fallback: `bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena` |
+| **On-chain seed** | After `DeployDev`, [`scripts/seed-evm-dev-wallets-anvil.sh`](scripts/seed-evm-dev-wallets-anvil.sh) funds all three addresses with **ETH + DOUB + CRED + mock CL8Y** (via [`scripts/lib/anvil_deploy_dev.sh`](scripts/lib/anvil_deploy_dev.sh) when `YIELDOMEGA_SEED_EVM_DEV_WALLETS=1`, default). |
+
+**Never use Anvil dev keys on a public network.**
 
 ### Rabby extension (manual / Desktop browser QA)
 

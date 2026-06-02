@@ -17,8 +17,13 @@ URL="${1:-about:blank}"
 
 CHROME="${CHROME_BIN:-/usr/local/bin/google-chrome}"
 if [[ ! -x "${CHROME}" ]]; then
-  CHROME="$(command -v google-chrome || command -v chromium-browser || command -v chromium)"
+  CHROME="$(command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
 fi
+
+[[ -n "${CHROME}" && -x "${CHROME}" ]] || {
+  echo "Chrome/Chromium not found. Set CHROME_BIN." >&2
+  exit 1
+}
 
 [[ -f "${RABBY_EXT}/manifest.json" ]] || {
   echo "Rabby extension not found at ${RABBY_EXT}. Run: sudo bash scripts/install-browser-extensions.sh" >&2

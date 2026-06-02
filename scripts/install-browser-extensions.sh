@@ -23,5 +23,7 @@ rm -rf "${RABBY_DIR}"
 unzip -q "${tmp}/rabby.zip" -d "${RABBY_DIR}"
 test -f "${RABBY_DIR}/manifest.json"
 
+chmod -R a+rX "${DEST}" 2>/dev/null || true
+
 echo "==> Installed Rabby at ${RABBY_DIR}"
 echo "    Launch: bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena"
