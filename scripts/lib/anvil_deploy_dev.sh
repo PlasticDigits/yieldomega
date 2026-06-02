@@ -25,7 +25,8 @@ yieldomega_anvil_deploy_dev() {
 
   _yieldomega_extract_addr() {
     local label="$1"
-    grep -E "^[[:space:]]*${label}:" "${DEPLOY_LOG}" | tail -1 | grep -oE '0x[a-fA-F0-9]{40}' | head -1
+    # Forge logs use "Label: 0x…" or "Label deployed …: 0x…" — never fail grep (set -e safe).
+    grep -E "${label}" "${DEPLOY_LOG}" | grep -oE '0x[a-fA-F0-9]{40}' | tail -1 || true
   }
 
   TA=$(_yieldomega_extract_addr "TimeArena")
