@@ -26,7 +26,7 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-DOCS-274-RETIRED-TERMS`** | Operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) contain **no** `VITE_FEE_ROUTER`, `FeeRouter.distributeFees`, `TimeCurve.endSale`, `redeemCharms`, or `idx_timecurve` | `bash scripts/check-doc-retired-terms.sh` (CI **`scripts-smoke`** job) |
+| **`INV-DOCS-274-RETIRED-TERMS`** | Operator/agent paths (`docs/qa/`, `docs/agent-phases.md`, `docs/agent-implementation-phases.md`, `docs/testing/qa-local-full-stack.md`) contain **no** retired v1 launchpad operator symbols (denylist enforced by script) | `bash scripts/check-doc-retired-terms.sh` (CI **`scripts-smoke`** job) |
 | **`INV-DOCS-274-QA-ONBOARDING`** | [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../qa/QA-onboarding-gitlab-issue-body.md) describes **`/arena`**, `bots/timearena`, **`VITE_TIME_ARENA_ADDRESS`** — not retired v1 launchpad page / five-sink panel | manual review |
 | **`INV-DOCS-274-INDEXER-DESIGN`** | [`docs/indexer/design.md`](../indexer/design.md) documents **`idx_arena_*`** + **`GET /v1/arena/*`** only; no active **`GET /v1/timecurve/*`** | grep + [`decoder.rs`](../../indexer/src/decoder.rs) |
 
@@ -36,11 +36,11 @@ Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yield
 
 ## Satellite docs — residual v1 token trim (GitLab [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276))
 
-Follow-up to [#274](#satellite-docs-gitlab-274): reduce `TimeCurve|FeeRouter` noise across **`docs/`** while preserving invariant anchor IDs and P0 operator paths.
+Follow-up to [#274](#satellite-docs-gitlab-274): reduce retired v1 launchpad symbol noise across **`docs/`** while preserving invariant anchor IDs and P0 operator paths.
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-DOCS-276-SATELLITE-COUNT`** | **`docs/`** contains **≤ 15** files and **≤ 25** total `TimeCurve\|FeeRouter` tokens (baseline at #276 open: 30 files / 55 mentions) | `bash scripts/check-doc-satellite-retired-count.sh` (CI **`scripts-smoke`**) |
+| **`INV-DOCS-276-SATELLITE-COUNT`** | **`docs/`** contains **≤ 15** files and **≤ 25** total retired v1 launchpad symbol tokens (baseline at #276 open: 30 files / 55 mentions) | `bash scripts/check-doc-satellite-retired-count.sh` (CI **`scripts-smoke`**) |
 | **`INV-DOCS-276-P0-UNCHANGED`** | P0 operator/agent paths unchanged from [#274](#satellite-docs-gitlab-274) | `bash scripts/check-doc-retired-terms.sh` |
 
 Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md) · [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md).
