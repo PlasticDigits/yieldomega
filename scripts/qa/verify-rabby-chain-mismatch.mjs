@@ -13,17 +13,17 @@
  *   YIELDOMEGA_RABBY_BASE_URL=http://127.0.0.1:5173 node scripts/qa/verify-rabby-chain-mismatch.mjs
  */
 
-import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   connectRabbyToDapp,
+  activeAppPage,
   launchRabbyContext,
   rabbyExtensionIdFromPath,
   RABBY_EXT,
   readWalletChainId,
   switchWalletChain,
-  unlockRabbyIfNeeded,
+  warmUpRabbyExtension,
 } from "../lib/rabby_playwright.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,11 +32,6 @@ const WRONG_CHAIN = Number.parseInt(process.env.YIELDOMEGA_RABBY_WRONG_CHAIN_ID 
 const BASE_URL = (process.env.YIELDOMEGA_RABBY_BASE_URL ?? "http://127.0.0.1:5173").replace(/\/$/, "");
 const PASSWORD = process.env.RABBY_DEV_PASSWORD ?? "YieldomegaDevOnly1!";
 const HEADLESS = process.env.YIELDOMEGA_RABBY_HEADLESS === "1";
-const PROFILE_MARKER = join(
-  process.env.CHROME_RABBY_PROFILE ?? "/opt/cursor/chrome-profile-rabby",
-  ".yieldomega-rabby-dev-wallets-ready",
-);
-
 async function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -54,16 +49,15 @@ async function main() {
   console.log("verify-rabby-chain-mismatch: starting…");
   const extId = rabbyExtensionIdFromPath(RABBY_EXT);
   const context = await launchRabbyContext({ headless: HEADLESS });
-  const page = context.pages()[0] ?? (await context.newPage());
+  let page = context.pages()[0] ?? (await context.newPage());
 
   try {
-    if (!existsSync(PROFILE_MARKER)) {
-      await unlockRabbyIfNeeded(context, extId, PASSWORD);
-    }
+    await warmUpRabbyExtension(context, extId, PASSWORD);
+    page = activeAppPage(context) ?? page;
 
     await page.goto(`${BASE_URL}/`, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForTimeout(2000);
-    await switchWalletChain(page, context, TARGET_CHAIN);
+    await switchWalletChain(page, context, TARGET_CHAIN, PASSWORD);
     await assert(
       (await readWalletChainId(page)) === TARGET_CHAIN,
       `Wallet not on target chain ${TARGET_CHAIN} before dapp load`,
@@ -81,7 +75,9 @@ async function main() {
     );
     console.log("PASS: correct chain — no chain-write-gate overlay");
 
-    await switchWalletChain(page, context, WRONG_CHAIN);
+    await switchWalletChain(page, context, WRONG_CHAIN, PASSWORD);
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+    await page.waitForTimeout(1500);
     await assert(
       (await readWalletChainId(page)) === WRONG_CHAIN,
       `Wallet did not switch to wrong chain ${WRONG_CHAIN}`,
@@ -100,7 +96,8 @@ async function main() {
     }
     console.log("PASS: wrong chain — overlay visible and buy surface blocked");
 
-    await switchWalletChain(page, context, TARGET_CHAIN);
+    await switchWalletChain(page, context, TARGET_CHAIN, PASSWORD);
+    await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
     await page.waitForTimeout(1500);
     await assert(
       (await page.locator(".chain-write-gate__overlay").count()) === 0,

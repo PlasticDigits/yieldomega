@@ -71,9 +71,18 @@ export YIELDOMEGA_RABBY_BASE_URL="${BASE_URL}"
 # Extensions (Rabby) do not inject in Chromium headless — use xvfb + headed browser.
 export YIELDOMEGA_RABBY_HEADLESS="${YIELDOMEGA_RABBY_HEADLESS:-0}"
 
-# Avoid profile lock from a stuck prior run (Playwright + manual Chrome share this profile).
-# Do not use `pkill -f chrome-profile-rabby` — that substring appears in this script's argv and can kill the shell.
-pkill -9 -f "user-data-dir=.*/chrome-profile-rabby" 2>/dev/null || true
+# Avoid profile lock from a stuck prior Playwright/Chrome run (never pkill -f on profile path — matches argv).
+yieldomega_kill_rabby_chrome() {
+  local profile="${CHROME_RABBY_PROFILE:-/opt/cursor/chrome-profile-rabby}"
+  local pid cmdline
+  for pid in $(pgrep -x chrome 2>/dev/null || pgrep chrome 2>/dev/null || true); do
+  [[ -r "/proc/${pid}/cmdline" ]] || continue
+  cmdline="$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true)"
+  [[ "${cmdline}" == *"--user-data-dir=${profile}"* ]] || continue
+  kill -9 "${pid}" 2>/dev/null || true
+  done
+}
+yieldomega_kill_rabby_chrome
 sleep 1
 rm -f "${CHROME_RABBY_PROFILE:-/opt/cursor/chrome-profile-rabby}/SingletonLock" 2>/dev/null || true
 
