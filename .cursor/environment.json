@@ -1,0 +1,6 @@
+{
+  "install": "bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-agent.sh",
+  "env": {
+    "PATH": "/home/ubuntu/.foundry/bin:/usr/local/cargo/bin:${PATH}"
+  }
+}
