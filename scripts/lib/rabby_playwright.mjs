@@ -127,11 +127,17 @@ export async function connectRabbyToDapp(page, context) {
 }
 
 /** Wait until Rabby injects `window.ethereum` (content scripts can lag first navigation). */
-export async function waitForEthereumProvider(page, timeoutMs = 20_000) {
+export async function waitForEthereumProvider(page, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
+  let reloaded = false;
   while (Date.now() < deadline) {
     const ok = await page.evaluate(() => Boolean(window.ethereum?.request)).catch(() => false);
     if (ok) return;
+    if (!reloaded && Date.now() > deadline - timeoutMs / 2) {
+      await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+      await page.waitForTimeout(3000);
+      reloaded = true;
+    }
     await page.waitForTimeout(500);
   }
   throw new Error("Timed out waiting for Rabby window.ethereum injection");
