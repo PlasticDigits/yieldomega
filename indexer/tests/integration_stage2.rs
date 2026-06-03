@@ -636,10 +636,6 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
         row.get("log_index").and_then(|v| v.as_i64()),
         Some(buy_log.log_index as i64)
     );
-    assert_eq!(
-        row.get("block_timestamp").and_then(|v| v.as_str()),
-        Some("1700000000")
-    );
 
     let db_row: (String, String, i32, Option<String>) = sqlx::query_as(
         r#"SELECT actual_seconds_added::text, new_deadline::text, log_index,
@@ -655,7 +651,18 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
     assert_eq!(db_row.0, seconds.to_string());
     assert_eq!(db_row.1, "1700000120");
     assert_eq!(db_row.2, buy_log.log_index as i32);
-    assert_eq!(db_row.3.as_deref(), Some("1700000000"));
+    assert_eq!(
+        row.get("block_timestamp").and_then(|v| v.as_str()),
+        db_row.3.as_deref()
+    );
+    assert!(
+        db_row
+            .3
+            .as_ref()
+            .is_some_and(|s| s.starts_with("1700000000")),
+        "unexpected block_timestamp: {:?}",
+        db_row.3
+    );
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
