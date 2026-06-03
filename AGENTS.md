@@ -11,14 +11,16 @@ After clone or pull, run the full Cloud Agent bootstrap (also in [`.cursor/envir
 ```bash
 bash scripts/bootstrap-dev.sh
 bash scripts/bootstrap-cloud-vm-toolchain.sh
+bash scripts/bootstrap-cloud-postgres-native.sh
 bash scripts/bootstrap-cloud-agent.sh
 ```
 
 - **`bootstrap-dev.sh`** — `git submodule update --init --recursive` and `npm ci` in `frontend/`.
-- **`bootstrap-cloud-vm-toolchain.sh`** — Foundry (`foundryup`), Rust ≥ 1.85, `libssl-dev` / `pkg-config`, Docker (`fuse-overlayfs` with **vfs** fallback), **glab** + `GITLAB_TOKEN`, `xvfb-run`.
+- **`bootstrap-cloud-vm-toolchain.sh`** — Foundry (`foundryup`), Rust ≥ 1.85, `libssl-dev` / `pkg-config`, Docker (`fuse-overlayfs` with **vfs** fallback), **glab** + `GITLAB_TOKEN`, `xvfb-run`; also invokes native Postgres bootstrap when Docker is unavailable ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)).
+- **`bootstrap-cloud-postgres-native.sh`** — **PostgreSQL 16** on host port **5433**, **`postgresql-client`** (`psql`), **`yieldomega`** role with **`CREATEDB`**, app + test databases (idempotent; primary indexer path without Docker).
 - **`bootstrap-cloud-agent.sh`** — Playwright Chromium, Rabby extension, automated import of **`KEY_EVM_1..3`**.
 
-Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh`.
+Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh` (includes **`bash scripts/verify-cloud-postgres.sh`**).
 
 ### Toolchain expectations on Cloud VMs
 
@@ -32,7 +34,7 @@ Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh`.
 
 ### Postgres without Docker (`yieldomega-pg`)
 
-Preferred local path is the **`yieldomega-pg`** container from [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh). On Cloud VMs where Docker is unavailable or `docker run` fails (common: `overlay` / `fuse-overlayfs` mount errors in nested VMs), install **PostgreSQL 16 on the host** with the same connection settings the stack scripts expect.
+Preferred local path is the **`yieldomega-pg`** container from [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh). On Cloud VMs where Docker is unavailable or `docker run` fails (common: `overlay` / `fuse-overlayfs` mount errors in nested VMs), use **native PostgreSQL 16** on the host with the same connection settings the stack scripts expect ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)).
 
 | Setting | Default |
 |---------|---------|
@@ -42,32 +44,18 @@ Preferred local path is the **`yieldomega-pg`** container from [`scripts/start-l
 | Integration tests | `yieldomega_indexer_test` (`YIELDOMEGA_PG_TEST_URL`) |
 | `DATABASE_URL` | `postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer` |
 
-One-time setup (Ubuntu; adjust if your image already runs Postgres on another port):
+**Automated setup (Cloud Agent / Ubuntu):**
 
 ```bash
-sudo apt-get install -y postgresql-16 postgresql-client libssl-dev pkg-config
-sudo pg_ctlcluster 16 main start
-CONF="$(sudo -u postgres psql -tAc 'SHOW config_file;')"
-sudo sed -i 's/^#*port = .*/port = 5433/' "${CONF}"
-sudo pg_ctlcluster 16 main restart
-sudo -u postgres psql -p 5433 -v ON_ERROR_STOP=1 <<'SQL'
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'yieldomega') THEN
-    CREATE ROLE yieldomega LOGIN PASSWORD 'password' CREATEDB;
-  ELSE
-    ALTER ROLE yieldomega WITH PASSWORD 'password' CREATEDB;
-  END IF;
-END $$;
-DROP DATABASE IF EXISTS yieldomega_indexer;
-CREATE DATABASE yieldomega_indexer OWNER yieldomega;
-DROP DATABASE IF EXISTS yieldomega_indexer_test;
-CREATE DATABASE yieldomega_indexer_test OWNER yieldomega;
-SQL
+bash scripts/bootstrap-cloud-postgres-native.sh
+bash scripts/verify-cloud-postgres.sh
 ```
 
-**Why `CREATEDB`:** [`scripts/verify-podium-live-anvil.sh`](scripts/verify-podium-live-anvil.sh), [`scripts/verify-vault-funding-anvil.sh`](scripts/verify-vault-funding-anvil.sh), and the stack script reset the app DB by running `DROP DATABASE` / `CREATE DATABASE` as **`yieldomega`** over `psql` (not `docker exec`). Without `CREATEDB`, those steps fail with `permission denied to create database`.
+Invariants: **`INV-CLOUD-287-NATIVE-PG`**, **`INV-CLOUD-287-PSQL-CLIENT`**, **`INV-CLOUD-287-CREATEDB`** — [invariants §287](docs/testing/invariants-and-business-logic.md#cloud-agent-native-postgres-gitlab-287).
 
-**Client on PATH:** install **`postgresql-client`** so `psql` is available for the verify scripts and manual checks.
+**Why `CREATEDB`:** [`scripts/verify-podium-live-anvil.sh`](scripts/verify-podium-live-anvil.sh), [`scripts/verify-vault-funding-anvil.sh`](scripts/verify-vault-funding-anvil.sh), and the stack script reset the app DB by running `DROP DATABASE` / `CREATE DATABASE` as **`yieldomega`** over `psql` (not `docker exec`). Without `CREATEDB`, those steps fail with `permission denied to create database`. `verify-cloud-postgres.sh` includes a CREATEDB smoke probe.
+
+**Manual fallback** (non-idempotent DB recreate; use only when the bootstrap script cannot run): expand the historical `sudo apt-get` / `pg_ctlcluster` steps in [GitLab #287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287) or prior `AGENTS.md` revisions.
 
 **Port conflicts:** if something else already listens on `5433`, either free that port or set `PG_HOST_PORT` and `DATABASE_URL` consistently when starting the stack and running verify scripts.
 
@@ -111,6 +99,7 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 
 | Situation | Run | Notes |
 |-----------|-----|--------|
+| **Postgres / indexer DB** on Cloud VM (native or Docker) | `bash scripts/verify-cloud-postgres.sh` | PASS: `psql` on PATH, `pg_isready`, `SELECT 1`, **`yieldomega` CREATEDB**. SKIP Docker when native passes ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)). Bootstrap: `bash scripts/bootstrap-cloud-postgres-native.sh`. |
 | Scripts touching **Anvil deploy**, **`KEY_EVM_*`**, **dev wallet seeding**, or **`anvil_deploy_dev.sh`** | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` | Foundry only: fresh Anvil → `DeployDev` → seed `KEY_EVM_1..3` (ETH + DOUB + CRED + mock CL8Y). No Docker. |
 | Contract / deploy script changes (broader) | `cd contracts && forge test` | Skip gitignored `doub.csv` fork tests if missing. |
 | Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |

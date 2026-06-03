@@ -294,5 +294,13 @@ install_glab
 configure_glab
 verify_xvfb
 
+# Native Postgres for indexer QA when Docker yieldomega-pg is unavailable (GitLab #287).
+if [[ -x "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
+  bash "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" || {
+    echo "bootstrap-cloud-vm-toolchain: native Postgres bootstrap failed (see above)." >&2
+  }
+fi
+
 log "Cloud VM toolchain bootstrap finished."
 log "Next: bash scripts/bootstrap-cloud-agent.sh  (Playwright Chromium + Rabby + dev wallets)"
+log "Postgres smoke: bash scripts/verify-cloud-postgres.sh"
