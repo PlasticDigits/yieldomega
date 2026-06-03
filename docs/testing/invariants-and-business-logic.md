@@ -6,7 +6,24 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
 
-**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (P0 operator paths) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (residual token trim) · verify: `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-doc-satellite-retired-count.sh`.
+**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238) · [epic verification §238](#arena-v2-epic-gitlab-238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (P0 operator paths) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (residual token trim) · verify: `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-doc-satellite-retired-count.sh`.
+
+<a id="arena-v2-epic-gitlab-238"></a>
+
+## Arena v2 epic (GitLab [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238))
+
+Umbrella for the full Arena v2 redeploy (TimeArena replaces v1 launchpad; **DOUB** spend asset; **four independent podium timers**). Closes only when all linked children are closed and maintainer accepts mainnet deploy ([#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259)).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-EPIC-238-CHILD-LINKS`** | Core child issues (#240–#260) linked to epic via GitLab **relates_to** | `glab api projects/PlasticDigits%2Fyieldomega/issues/238/links` → 21+ links |
+| **`INV-EPIC-238-DECISION-LOG`** | Published decision log: **TimeArena** replaces TimeCurve; **DOUB** spend; four podiums with independent timers | [`docs/product/time-arena.md`](../product/time-arena.md) · [`docs/product/arena-v2.md`](../product/arena-v2.md) · [time-arena § resolved decisions](../product/time-arena.md#resolved-open-decisions-gitlab-240) |
+| **`INV-EPIC-238-RETIRED-ADDRESSES`** | Legacy v1 mainnet addresses documented as retired in ops docs | [`README.md`](../../README.md) (legacy table + Arena v2 note) · [deployment-guide § retired v1](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · [`launchplan-timecurve.md`](../../launchplan-timecurve.md) redirect |
+| **`INV-EPIC-238-CHILD-CHECKLIST`** | Epic child checklist tracks open vs closed children (issue body + linked issues) | `glab issue view 238 -R PlasticDigits/yieldomega --comments`; open children at last verify: #254, #255, #258 (implementation done — awaiting close) |
+| **`INV-EPIC-238-MAINTAINER-SIGNOFF`** | Maintainer / product sign-off on DeployProduction before epic closes | [#259](https://gitlab.com/PlasticDigits/yieldomega/-/issues/259) QA table in [deployment-guide](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) — epic stays open until accepted |
+| **`INV-EPIC-238-QA-GATE`** | Arena v2 invariants, doc gates, DeployDev smoke | [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) · `FOUNDRY_PROFILE=ci forge test --match-contract DevStackIntegration` · `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-arena-naming.sh` · [manual QA §260](manual-qa-checklists.md#manual-qa-issue-260) |
+
+**Manual QA (epic scope):** [Arena v2 QA checklist §260](manual-qa-checklists.md#manual-qa-issue-260) · Play skills: [`skills/README.md`](../../skills/README.md).
 
 <a id="arena-v2-play-skills-gitlab-245"></a>
 
