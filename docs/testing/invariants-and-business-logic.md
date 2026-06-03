@@ -6,7 +6,7 @@ This document ties **product intent** and **must-hold properties** to **automate
 
 **Authoritative rules live onchain**; the indexer and frontend are derived read models ([architecture/overview.md](../architecture/overview.md)).
 
-**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238) · [epic verification §238](#arena-v2-epic-gitlab-238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (P0 operator paths) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (residual token trim) · verify: `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-doc-satellite-retired-count.sh`.
+**Arena v2 product spec:** [`docs/product/arena-v2.md`](../product/arena-v2.md) · Epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238) · [epic verification §238](#arena-v2-epic-gitlab-238). Retired v1 launchpad, treasury, NFT, and CL8Y fee-split stacks — [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241)–[#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). Bulk removal of legacy invariant sections: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263). Satellite doc cleanup: [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) (P0 operator paths) · [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) (residual token trim) · verify: `bash scripts/check-doc-anchors.sh` · `bash scripts/check-doc-retired-terms.sh` · `bash scripts/check-doc-satellite-retired-count.sh` · `bash scripts/check-doc-timecurve-satellite.sh` ([#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284)).
 
 <a id="arena-v2-epic-gitlab-238"></a>
 
@@ -61,6 +61,17 @@ Follow-up to [#274](#satellite-docs-gitlab-274): reduce retired v1 launchpad sym
 | **`INV-DOCS-276-P0-UNCHANGED`** | P0 operator/agent paths unchanged from [#274](#satellite-docs-gitlab-274) | `bash scripts/check-doc-retired-terms.sh` |
 
 Cross-links: [`docs/testing/strategy.md`](strategy.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md) · [`skills/README.md`](../../skills/README.md) · [`bots/timearena/README.md`](../../bots/timearena/README.md) · [`skills/script-with-timearena-local/SKILL.md`](../../skills/script-with-timearena-local/SKILL.md).
+
+<a id="satellite-docs-gitlab-284"></a>
+
+## Satellite docs — historical `timecurve` trim (GitLab [#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284))
+
+Follow-up to [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263) / [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276): satellite **`docs/`** and **`skills/`** use **`/arena`**, **`GET /v1/arena/*`**, and **`idx_arena_*`** as primary vocabulary. Retired **`timecurve`** strings appear only in explicit legacy-alias sentences (redirects, denylist rows, **`timecurve-bot`** CLI name) or historical retirement notes.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DOCS-284-TIMECURVE-SATELLITE`** | No stale retired write-gate testids, pre-rename indexer or wallet-session markdown anchors, or `timecurve-` HTML anchor ids under **`docs/`** / **`skills/`** | `bash scripts/check-doc-timecurve-satellite.sh` (CI **`scripts-smoke`**) |
+| **`INV-DOCS-284-ANCHORS`** | Cross-links to indexer live podiums use **`#arena-podiums-http`**; buy session drift uses **`#arena-buy-wallet-session-drift-gitlab-144`** | `bash scripts/check-doc-anchors.sh` |
 
 <a id="frontend-cl8y-arena-approval-storage-gitlab-277"></a>
 
@@ -126,7 +137,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-255-WALLET-STATS`** | `GET /v1/arena/wallet/{address}/stats` — full participant profile aggregates (no stub zeros); schema **≥ 2.4.0** | `arena_wallet_stats.rs`, `integration_stage2.rs::arena_wallet_stats_two_epochs_and_bonus_fields` ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) |
 | **`INV-INDEXER-260-NO-TIMECURVE-DECODE`** | No legacy sale `DecodedEvent` variants; Arena + referral registry only | `decoder.rs`, `integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after` |
 | **`INV-INDEXER-254-ARENA-SCHEMA`** | Fresh DB: `idx_arena_buy`, `idx_arena_podium_epoch`, view `idx_arena_podium_snapshot`, `idx_play_cred_claim`, `idx_player_xp`, `idx_warbow_epoch_score`; no legacy-only buy tables; `GET /v1/arena/{timers,podiums,buys}`; WarBow BP snapshots on BP-affecting logs; schema **≥ 2.5.0** | `20240601000000_arena_v2.up.sql`, `integration_stage2.rs` ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254)) |
-| **`INV-INDEXER-PODIUM-PREDICT-LIVE`** | `GET /v1/arena/podiums`: UX order; head epochs; live top-3 from `idx_arena_podium_live` + WarBow scores; `podium_prediction` true only when DB-derived; ingest snapshots on Buy/WarBow/epoch events; reorg clears live table; **`chain_timer`** uses `podiumDeadline(uint256)` / `podiumEpoch(uint256)` array getters (not `uint8`) | `arena_podium_live.rs`, `chain_timer.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke`, `bash scripts/verify-podium-live-anvil.sh` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) · [design § podiums](../indexer/design.md#timecurve-podiums-http) · [detail §273](#indexer-live-podium-predictions-gitlab-273) |
+| **`INV-INDEXER-PODIUM-PREDICT-LIVE`** | `GET /v1/arena/podiums`: UX order; head epochs; live top-3 from `idx_arena_podium_live` + WarBow scores; `podium_prediction` true only when DB-derived; ingest snapshots on Buy/WarBow/epoch events; reorg clears live table; **`chain_timer`** uses `podiumDeadline(uint256)` / `podiumEpoch(uint256)` array getters (not `uint8`) | `arena_podium_live.rs`, `chain_timer.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke`, `bash scripts/verify-podium-live-anvil.sh` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) · [design § podiums](../indexer/design.md#arena-podiums-http) · [detail §273](#indexer-live-podium-predictions-gitlab-273) |
 | **`INV-TIME-ARENA-PODIUM-TOPUP`** | `topUpPodiumPools` sends 100% of DOUB to eight prize vaults (10:7.5 active:seed per category); **no** admin take; **no** `totalDoubRaised` bump | `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_topUpPodiumPools_*` |
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
@@ -189,7 +200,7 @@ Derived UI: [`ArenaTimerChips.tsx`](../../frontend/src/pages/arena/ArenaTimerChi
 
 ### Indexer live podium predictions (GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
 
-Parent: [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254) (Arena HTTP baseline). Ingest: [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · HTTP: [`api_arena.rs`](../../indexer/src/api_arena.rs) · head poller: [`chain_timer.rs`](../../indexer/src/chain_timer.rs). Product: [arena-v2 § podiums](../product/arena-v2.md) · [design § live podiums](../indexer/design.md#timecurve-podiums-http). Play skill: [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md). Manual QA: [§273](manual-qa-checklists.md#manual-qa-issue-273).
+Parent: [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254) (Arena HTTP baseline). Ingest: [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · HTTP: [`api_arena.rs`](../../indexer/src/api_arena.rs) · head poller: [`chain_timer.rs`](../../indexer/src/chain_timer.rs). Product: [arena-v2 § podiums](../product/arena-v2.md) · [design § live podiums](../indexer/design.md#arena-podiums-http). Play skill: [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md). Manual QA: [§273](manual-qa-checklists.md#manual-qa-issue-273).
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
@@ -387,7 +398,7 @@ Doc: [e2e-anvil.md §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-c
 
 **INV-FRONTEND-194-ARENA-BUY-CHAIN:** On **`/arena`**, mismatched chain adds **`arena-simple__cta--wrong-network`**, native **`title`**, no Framer lift, raised **`ChainMismatchWriteBarrier`**.
 
-<a id="timecurve-buy-wallet-session-drift-gitlab-144"></a>
+<a id="arena-buy-wallet-session-drift-gitlab-144"></a>
 
 ### Buy wallet session drift mid-flow (GitLab [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144))
 

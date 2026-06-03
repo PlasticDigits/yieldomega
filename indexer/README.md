@@ -104,7 +104,7 @@ Legacy **`GET /v1/timecurve/platform-usage`** is **not** served. AUDIT may read 
 
 ### Live podiums (`GET /v1/arena/podiums`, GitLab [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273))
 
-Schema **≥ 2.5.0** (`x-schema-version`). UX-ordered rows (**Last Buy · WarBow · Defended Streak · Time Booster**) with head **`epoch`** per category. Ingest fills **`idx_arena_podium_live`** (block-tagged **`podium()`** snapshots) and WarBow **`idx_warbow_epoch_score`** rollups. **`podium_prediction: true`** only when winners are DB-derived. Anvil smoke: `bash scripts/verify-podium-live-anvil.sh`. Map: **`INV-INDEXER-PODIUM-PREDICT-LIVE`** · [design — live podiums](../docs/indexer/design.md#timecurve-podiums-http) · [invariants](../docs/testing/invariants-and-business-logic.md) · play skill [`skills/play-active-time-arena`](../skills/play-active-time-arena/SKILL.md).
+Schema **≥ 2.5.0** (`x-schema-version`). UX-ordered rows (**Last Buy · WarBow · Defended Streak · Time Booster**) with head **`epoch`** per category. Ingest fills **`idx_arena_podium_live`** (block-tagged **`podium()`** snapshots) and WarBow **`idx_warbow_epoch_score`** rollups. **`podium_prediction: true`** only when winners are DB-derived. Anvil smoke: `bash scripts/verify-podium-live-anvil.sh`. Map: **`INV-INDEXER-PODIUM-PREDICT-LIVE`** · [design — live podiums](../docs/indexer/design.md#arena-podiums-http) · [invariants](../docs/testing/invariants-and-business-logic.md) · play skill [`skills/play-active-time-arena`](../skills/play-active-time-arena/SKILL.md).
 
 ### Podium pool donations (`GET /v1/arena/podium-pool-donations`, GitLab [#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 

@@ -8,7 +8,7 @@
 
 **Doc anchor CI (local):** `bash scripts/check-doc-anchors.sh` — fails on broken `invariants-and-business-logic.md#…` links under `docs/`.
 
-**Retired v1 doc gates:** [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) P0 paths — `bash scripts/check-doc-retired-terms.sh`; [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) satellite trim — `bash scripts/check-doc-satellite-retired-count.sh` (≤15 files, ≤25 `TimeCurve|FeeRouter` tokens in `docs/`).
+**Retired v1 doc gates:** [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274) P0 paths — `bash scripts/check-doc-retired-terms.sh`; [#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276) satellite trim — `bash scripts/check-doc-satellite-retired-count.sh` (≤15 files, ≤25 `TimeCurve|FeeRouter` tokens in `docs/`); [#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284) stale `timecurve-*` anchors/testids — `bash scripts/check-doc-timecurve-satellite.sh`.
 
 ## Three stages (plus production)
 
