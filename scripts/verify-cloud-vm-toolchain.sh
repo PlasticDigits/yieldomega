@@ -31,11 +31,14 @@ dpkg-query -W -f='${Status}' libssl-dev 2>/dev/null | grep -q "install ok instal
   && ok "libssl-dev" || bad "libssl-dev missing"
 command -v pkg-config >/dev/null 2>&1 && ok "pkg-config" || bad "pkg-config missing"
 
+echo "--- native Postgres (GitLab #287) ---"
+bash "${ROOT}/scripts/verify-cloud-postgres.sh" || fail=1
+
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   driver="$(docker info --format '{{.Driver}}' 2>/dev/null || echo unknown)"
   docker run --rm hello-world >/dev/null 2>&1 && ok "docker (${driver})" || bad "docker run failed (${driver})"
 else
-  bad "docker daemon unavailable"
+  echo "SKIP  docker daemon unavailable (native Postgres is the indexer QA path — AGENTS.md)" >&2
 fi
 
 if command -v glab >/dev/null 2>&1; then

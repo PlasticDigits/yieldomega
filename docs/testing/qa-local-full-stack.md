@@ -20,7 +20,7 @@ Procedure for **checklist-driven** workflows that bring up **Postgres + Anvil + 
 
 | Requirement | Notes |
 |-------------|--------|
-| Docker | Postgres container `yieldomega-pg` (see stack script). On Cursor Cloud VMs without working Docker, use **native Postgres on port 5433** — [AGENTS.md § Postgres without Docker](../../AGENTS.md#postgres-without-docker-yieldomega-pg). |
+| Docker | Postgres container `yieldomega-pg` (see stack script). On Cursor Cloud VMs without working Docker, use **native Postgres on port 5433** — `bash scripts/bootstrap-cloud-postgres-native.sh` · `bash scripts/verify-cloud-postgres.sh` ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)) · [AGENTS.md § Postgres without Docker](../../AGENTS.md#postgres-without-docker-yieldomega-pg). |
 | Foundry | `anvil`, `forge`, `cast`. |
 | `jq`, `curl` | Stack and smoke checks. |
 | Rust toolchain | Indexer `cargo build` / `cargo run` inside the stack. |

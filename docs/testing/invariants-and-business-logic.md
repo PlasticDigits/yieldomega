@@ -512,6 +512,20 @@ Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deplo
 
 ---
 
+<a id="cloud-agent-native-postgres-gitlab-287"></a>
+
+### Cloud Agent native Postgres (GitLab [#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287))
+
+Indexer QA on Cloud VMs without Docker **`yieldomega-pg`**: host **PostgreSQL 16** on **`127.0.0.1:5433`**, **`postgresql-client`**, **`yieldomega`** / **`password`**, **`CREATEDB`**, databases **`yieldomega_indexer`** and **`yieldomega_indexer_test`**.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-CLOUD-287-NATIVE-PG`** | Bootstrap is idempotent; `psql "$DATABASE_URL" -c 'SELECT 1'` succeeds after `bootstrap-cloud-postgres-native.sh` | [`bootstrap-cloud-postgres-native.sh`](../../scripts/bootstrap-cloud-postgres-native.sh), [`verify-cloud-postgres.sh`](../../scripts/verify-cloud-postgres.sh) |
+| **`INV-CLOUD-287-PSQL-CLIENT`** | **`psql`** and **`pg_isready`** on PATH for verify / Anvil indexer scripts | [`verify-cloud-postgres.sh`](../../scripts/verify-cloud-postgres.sh) |
+| **`INV-CLOUD-287-CREATEDB`** | **`yieldomega`** can `DROP`/`CREATE` databases via `psql` (verify scripts reset app DB without `docker exec`) | [`verify-cloud-postgres.sh`](../../scripts/verify-cloud-postgres.sh) CREATEDB probe; [`verify-podium-live-anvil.sh`](../../scripts/verify-podium-live-anvil.sh) |
+
+Cross-links: [AGENTS.md § Postgres without Docker](../../AGENTS.md#postgres-without-docker-yieldomega-pg) · [`.cursor/environment.json`](../../.cursor/environment.json) · [qa-local-full-stack.md](qa-local-full-stack.md) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md). Docker socket / container path: [#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288).
+
 <a id="qa-local-full-stack-orchestrator-gitlab-104"></a>
 
 ### QA local full stack (GitLab [#104](https://gitlab.com/PlasticDigits/yieldomega/-/issues/104))
