@@ -49,9 +49,9 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Defended Streak");
     expect(html).toContain("Time Booster");
     expect(html.match(/class="ranking-list__item/g)?.length).toBe(12);
-    expect(html).toContain("/art/icons/timecurve-podium-rank-first.png");
-    expect(html).toContain("/art/icons/timecurve-podium-rank-second.png");
-    expect(html).toContain("/art/icons/timecurve-podium-rank-third.png");
+    expect(html).toContain("/art/icons/arena-podium-rank-first.png");
+    expect(html).toContain("/art/icons/arena-podium-rank-second.png");
+    expect(html).toContain("/art/icons/arena-podium-rank-third.png");
     expect(html).toContain("1st prize");
     expect(html).toContain("CL8Y");
     expect(html).toContain("≈ $1.57 USD");

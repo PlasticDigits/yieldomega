@@ -28,7 +28,7 @@ Icons are **PNG raster** drafts—trace to SVG per export spec where required.
 - **Home / hub: wide hero (desktop)** — [`scenes/home-hero-desktop.jpg`](../scenes/home-hero-desktop.jpg)
 - **Home / hub: mobile crop variant** — [`scenes/home-hero-mobile.jpg`](../scenes/home-hero-mobile.jpg)
 - **Time Arena Simple: timer + fair launch calm energy** — [`scenes/arena-simple.jpg`](../scenes/arena-simple.jpg)
-- **Time Arena: PvP / podium tension** — [`scenes/timecurve-arena.jpg`](../scenes/timecurve-arena.jpg)
+- **Time Arena: PvP / podium tension** — [`scenes/arena-arena.jpg`](../scenes/arena-arena.jpg)
 - **Time Arena Protocol: operator / audit neutral backdrop** — [`scenes/arena-protocol.jpg`](../scenes/arena-protocol.jpg)
 - **retired v1 player reserve: reserve / v1 reserve / chart-adjacent** — [`scenes/retired-v1-reserve.jpg`](../scenes/retired-v1-reserve.jpg)
 - **Collection: gallery-forward (shelves / vault / grid)** — [`scenes/collection-gallery.jpg`](../scenes/collection-gallery.jpg)

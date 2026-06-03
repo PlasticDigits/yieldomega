@@ -1,6 +1,20 @@
 # Arena frontend (`/arena`)
 
-Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). Legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)).
+Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). Legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Arena DOM/CSS and public art paths use **`arena-*`** naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) — **`INV-FRONTEND-280-ARENA-CSS-NAMING`**, `bash scripts/check-arena-naming.sh`.
+
+<a id="arena-css-naming-gitlab-280"></a>
+
+## Arena CSS & public art naming (GitLab [#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280))
+
+| Area | Convention | Examples |
+|------|------------|----------|
+| Simple agent footer | `arena-simple-agent-card` · `data-testid="arena-simple-agent-card"` | [`ArenaSimpleAgentCard.tsx`](../../frontend/src/pages/arena/ArenaSimpleAgentCard.tsx) |
+| Protocol AUDIT | `arena-protocol-page`, `arena-protocol-raise-card` | [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) · scene `/art/scenes/arena-protocol.jpg` |
+| Buy projected effects | `arena-buy-projected-effects*` | [`ArenaBuyProjectedEffects.tsx`](../../frontend/src/pages/arena/ArenaBuyProjectedEffects.tsx) |
+| Podium pictograms | `/art/icons/arena-podium-*.png` | [`ArenaSimplePodiumSection.tsx`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx), [`arenaUi.tsx`](../../frontend/src/pages/arena/arenaUi.tsx) |
+| Scenes | `arena-simple.jpg`, `arena-arena.jpg`, `arena-protocol.jpg` | [`ArenaTimerHero.tsx`](../../frontend/src/pages/arena/ArenaTimerHero.tsx), `index.css` buy-panel backplate |
+
+**Unchanged:** `/timecurve` → `/arena` redirects in [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx). **Do not** rename onchain revert substrings in [`revertMessage.ts`](../../src/lib/revertMessage.ts).
 
 <a id="unified-arena-page-gitlab-256"></a>
 

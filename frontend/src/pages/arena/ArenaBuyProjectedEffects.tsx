@@ -15,12 +15,12 @@ export function ArenaBuyProjectedEffects({ items, className }: ArenaBuyProjected
   }
   return (
     <div
-      className={["timecurve-buy-projected-effects", className].filter(Boolean).join(" ")}
+      className={["arena-buy-projected-effects", className].filter(Boolean).join(" ")}
       aria-label="Projected effects of this buy"
     >
-      <div className="timecurve-buy-projected-effects__head">
+      <div className="arena-buy-projected-effects__head">
         <img src="/art/icons/warbow-flag-20.png" alt="" width={20} height={20} decoding="async" />
-        <span className="timecurve-buy-projected-effects__title">Projected effects</span>
+        <span className="arena-buy-projected-effects__title">Projected effects</span>
       </div>
       <ul>
         {items.map((item, i) => (

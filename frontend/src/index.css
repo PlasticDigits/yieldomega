@@ -2114,7 +2114,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .arena-live-charts__spot-dot {
-  animation: timecurve-spot-pulse 2.75s ease-in-out infinite;
+  animation: arena-spot-pulse 2.75s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5332,7 +5332,7 @@ code {
   z-index: 0;
   background-image:
     linear-gradient(90deg, rgba(255, 247, 216, 0.86), rgba(255, 247, 216, 0.72) 46%, rgba(255, 247, 216, 0.3)),
-    url("/art/scenes/timecurve-arena.jpg");
+    url("/art/scenes/arena-arena.jpg");
   background-size: cover;
   background-position: center;
   opacity: 0.34;
@@ -7630,7 +7630,7 @@ a.podium-address-explorer:hover .address-inline__label {
   width: 2.25rem;
   height: 2.25rem;
   margin-block: -0.35rem;
-  background: url("/art/icons/header-timecurve.png") center/contain no-repeat;
+  background: url("/art/icons/header-arena.png") center/contain no-repeat;
   filter: drop-shadow(2px 3px 0 rgba(6, 24, 14, 0.75));
   flex-shrink: 0;
 }
@@ -10067,7 +10067,7 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: bob-loop 4.2s ease-in-out infinite;
 }
 
-/* When the hub flips to a single column (the `timecurveSimplePage`
+/* When the hub flips to a single column (the `arenaSimplePage`
    container shrinks below 880px, see line 4463), the panel narrows to
    the point where the centred digits collide with the leprechaun-bunny
    mascot's silhouette. The mascot is portrait (682x1024) and there's no
@@ -10204,7 +10204,7 @@ a.podium-address-explorer:hover .address-inline__label {
     linear-gradient(124deg, #fffef5 0%, #eaffef 36%, #fff2b8 68%, #dcf9ff 100%);
   background-size: 100% 100%, 100% 100%, 220% 220%;
   box-shadow: 8px 8px 0 var(--line), 0 16px 34px rgba(6, 61, 36, 0.26);
-  animation: timecurve-stake-gradient-drift 10s ease-in-out infinite;
+  animation: arena-stake-gradient-drift 10s ease-in-out infinite;
 }
 
 .arena-simple__stake-panel.data-panel::before {
@@ -10269,7 +10269,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #fff 0%, var(--arcade-gold-200) 36%, var(--arcade-gold-600) 100%);
   box-shadow: 0 0 0 3px rgba(255, 229, 102, 0.18);
-  animation: timecurve-stake-particle-float 3.8s ease-in-out infinite;
+  animation: arena-stake-particle-float 3.8s ease-in-out infinite;
 }
 
 .arena-simple__stake-particle--one {

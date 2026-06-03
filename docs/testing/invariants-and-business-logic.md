@@ -119,6 +119,17 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` (DOUB + ETH when Kumbaya env set) · see [§264](#arena-frontend-pay-pause-gitlab-264) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use **`/v1/arena/*`** only; no **`/v1/timecurve/*`** or legacy WarBow HTTP | `indexerApi.test.ts` (#266 retirement), `indexer/src/api_arena.rs` |
+| **`INV-FRONTEND-280-ARENA-CSS-NAMING`** | No `timecurve-*` CSS classes, `data-testid`s, or `/art/.../timecurve-*` paths under `frontend/src/pages/arena/**`; public art uses `arena-*` filenames; legacy `/timecurve` URL redirects unchanged ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) | `bash scripts/check-arena-naming.sh`, `ArenaSimplePodiumSection.test.tsx`, `e2e/footer-site-links.spec.ts` · [arena-views §280](../frontend/arena-views.md#arena-css-naming-gitlab-280) · [manual QA §280](manual-qa-checklists.md#manual-qa-issue-280) |
+
+<a id="frontend-arena-css-naming-gitlab-280"></a>
+
+### Frontend Arena CSS & art naming (GitLab [#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280))
+
+Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266): rename lingering **`timecurve-*`** DOM/CSS/public-art identifiers to **`arena-*`** without behavior changes. **Out of scope:** `LaunchGate` `/timecurve` redirects, referral slug segment `timecurve`, onchain revert strings in [`revertMessage.ts`](../../frontend/src/lib/revertMessage.ts), historical folders under `frontend/public/art/timecurve-launch-brief/`.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-280-ARENA-CSS-NAMING`** | (see summary row above) | `bash scripts/check-arena-naming.sh` |
 
 <a id="timearena-cred-buy-gitlab-268"></a>
 

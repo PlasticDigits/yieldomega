@@ -34,9 +34,9 @@ export type RankingRow = {
 };
 
 const PODIUM_RANK_TROPHY_SRC = [
-  "/art/icons/timecurve-podium-rank-first.png?v=1",
-  "/art/icons/timecurve-podium-rank-second.png?v=1",
-  "/art/icons/timecurve-podium-rank-third.png?v=1",
+  "/art/icons/arena-podium-rank-first.png?v=2",
+  "/art/icons/arena-podium-rank-second.png?v=2",
+  "/art/icons/arena-podium-rank-third.png?v=2",
 ] as const;
 
 export function RankingList({ rows, emptyText }: { rows: RankingRow[]; emptyText: string }) {

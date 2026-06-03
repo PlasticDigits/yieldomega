@@ -134,6 +134,9 @@ jobs:
           bash scripts/check-doc-retired-terms.sh
           bash scripts/check-doc-satellite-retired-count.sh
 
+      - name: Arena CSS naming gate (#280)
+        run: bash scripts/check-arena-naming.sh
+
       - name: Kumbaya env line merge regression (#154)
         run: bash scripts/test-kumbaya-env-set-line.sh
 
