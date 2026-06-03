@@ -138,6 +138,9 @@ jobs:
       - name: Arena CSS naming gate (#280)
         run: bash scripts/check-arena-naming.sh
 
+      - name: Art README consumer link gate (#286)
+        run: bash scripts/check-art-readme-consumers.sh
+
       - name: Kumbaya env line merge regression (#154)
         run: bash scripts/test-kumbaya-env-set-line.sh
 

@@ -112,7 +112,12 @@ shape constraint:
 
 When a component references a new asset, **list the consumer in
 `frontend/public/art/README.md`** so renames or regenerations stay in
-lock-step. Asset slots that are referenced by component code but not yet
+lock-step. After [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)
+TimeCurve page retirement, confirm consumers with `rg "/art/" frontend/src` and
+keep README links on `pages/arena/*` surfaces — gate
+**`INV-FRONTEND-286-ART-README`**, `bash scripts/check-art-readme-consumers.sh`
+([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286);
+[§286 anchor](./design.md#art-readme-consumer-links-gitlab-286)). Asset slots that are referenced by component code but not yet
 filled live in [`missing-art-assets.md`](./missing-art-assets.md) so
 [`scripts/replicate-art/`](../../scripts/replicate-art/) can complete the
 pack via the same generation pipeline used for
@@ -121,6 +126,18 @@ pack via the same generation pipeline used for
 
 The textual label in any badge / icon component remains the **a11y source
 of truth**; pictograms are decorative (`alt=""` + `aria-hidden`).
+
+<a id="art-readme-consumer-links-gitlab-286"></a>
+
+### Art README consumer links (GitLab #286)
+
+[`frontend/public/art/README.md`](../../frontend/public/art/README.md) is the
+canonical map of raster consumers. After v1 TimeCurve pages were removed
+([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)), **“Used by”**
+markdown links must target live files under `frontend/src/pages/arena/` (and other
+shipped routes) — not deleted `TimeCurve*.tsx` paths. Automated check:
+**`INV-FRONTEND-286-ART-README`** · `bash scripts/check-art-readme-consumers.sh` ·
+[invariants §286](../testing/invariants-and-business-logic.md#frontend-art-readme-consumer-links-gitlab-286).
 
 <a id="placeholder-split-panels-gitlab-163"></a>
 

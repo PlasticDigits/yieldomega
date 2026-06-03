@@ -4,6 +4,8 @@ This is the **single map of all production raster art** referenced from the Vite
 
 The layout was reorganized as part of [`docs/agent-phases.md` Phase 13 — Frontend design](../../../docs/agent-phases.md#phase-13) and [issue #44 — design pass](https://gitlab.com/PlasticDigits/yieldomega/-/issues/44) so each subfolder maps to one **purpose** and one **shape constraint** (cutouts are transparent PNGs, scenes are wide JPGs, icons are 256-square PNGs, etc.).
 
+**v1 TimeCurve pages retired ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)):** consumer links below point at **`TimeArenaPage`** and **`pages/arena/*`** only — not deleted `TimeCurve*.tsx` / `timeCurveArena/*` files. Confirm wiring with `rg "/art/" frontend/src` (source of truth). Automated gate: **`INV-FRONTEND-286-ART-README`**, `bash scripts/check-art-readme-consumers.sh` ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)).
+
 ---
 
 ## Top-level conventions
@@ -24,29 +26,30 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 
 | File                                                | Used by                                                                 | Notes                                                                                  |
 |-----------------------------------------------------|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
-| [`bunny-cutout.png`](./cutouts/bunny-cutout.png)    | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts)                  | Tertiary cutout for the Collection placeholder.                                        |
-| [`cutout-bunnyleprechaungirl-full.png`](./cutouts/cutout-bunnyleprechaungirl-full.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Primary heroine cutout for the home / launch countdown art column. |
-| [`cutout-bunnyleprechaungirl-head.png`](./cutouts/cutout-bunnyleprechaungirl-head.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Compact head bust used as `peek` decoration on Home and Time Arena. |
-| [`cutout-bunnyleprechaungirl-playful.png`](./cutouts/cutout-bunnyleprechaungirl-playful.png) | _unused (reserved for upcoming Collection)_                          | Style reference for the next Collection iteration.                                     |
+| [`bunny-cutout.png`](./cutouts/bunny-cutout.png)    | _staged_                                                                | Reserved for a future Collection placeholder.                                          |
+| [`cutout-bunny-girl-full.png`](./cutouts/cutout-bunny-girl-full.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Primary heroine cutout for the home / launch countdown art column. |
+| [`cutout-bunny-girl-head.png`](./cutouts/cutout-bunny-girl-head.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`ReferralsPage.tsx`](../../src/pages/ReferralsPage.tsx) (via `PLACEHOLDER_CUTOUTS_BY_SLUG`) | Compact head bust used as `peek` decoration on Home and referral placeholders. |
+| [`cutout-bunny-girl-playful.png`](./cutouts/cutout-bunny-girl-playful.png) | _unused (reserved for upcoming Collection)_                          | Style reference for the next Collection iteration.                                     |
 | [`greenhat.png`](./cutouts/greenhat.png)            | _legacy_                                                                | Replaced in product UI by `hat-coin-*.png` art at the repo root.                       |
-| [`loading-mascot-circle.png`](./cutouts/loading-mascot-circle.png) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx), [`ArenaSections.tsx`](../../src/pages/arena/ArenaSections.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Header mascot + tertiary cutout in placeholders / TimeCurve. |
-| [`mascot-bunnyleprechaungirl-jump-cutout.png`](./cutouts/mascot-bunnyleprechaungirl-jump-cutout.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx), [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Action pose for hero strips. |
-| [`mascot-bunnyleprechaungirl-wave-cutout.png`](./cutouts/mascot-bunnyleprechaungirl-wave-cutout.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`ArenaSections.tsx`](../../src/pages/arena/ArenaSections.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Friendly wave pose; wired into the Referrals/Kumbaya placeholders too. |
-| [`mascot-leprechaun-with-bag-cutout.png`](./cutouts/mascot-leprechaun-with-bag-cutout.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Old-money leprechaun (retired v1 player reserve / Arena ambient art). |
+| [`loading-mascot-circle.png`](./cutouts/loading-mascot-circle.png) | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (placeholder + third-party cutout layers) | Tertiary/footer cutout in referral and third-party placeholder surfaces. |
+| [`mascot-bunny-girl-jump-cutout.png`](./cutouts/mascot-bunny-girl-jump-cutout.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) | Action pose for hero strips. |
+| [`mascot-bunny-girl-wave-cutout.png`](./cutouts/mascot-bunny-girl-wave-cutout.png) | [`HomePage.tsx`](../../src/pages/HomePage.tsx), [`ArenaSections.tsx`](../../src/pages/arena/ArenaSections.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`ReferralsPage.tsx`](../../src/pages/ReferralsPage.tsx) | Friendly wave pose; wired into referral placeholders too. |
+| [`mascot-with-bag-cutout.png`](./cutouts/mascot-with-bag-cutout.png) | _staged_                                                                | Old-money leprechaun (legacy reserve art; not wired post-#266). |
 | [`token-logo.png`](./cutouts/token-logo.png)        | _legacy duplicate of `../token-logo.png`_                                | Kept for the issue #45 reference pipeline; do not introduce new consumers.             |
 | **issue #45 additions**                             |                                                                         | All new cutouts came from [issue #45](./issue45/README.md) and use the `bunny-*` and `*-concept` naming prefix below. |
 | [`bunny-wave.png`](./cutouts/bunny-wave.png)        | _staged_                                                                | Mascot wave alt — earmarked for `RootLayout` micro-decoration.                         |
-| [`bunny-jump.png`](./cutouts/bunny-jump.png)        | _staged_                                                                | Mascot jump alt — earmarked for HomePage cutout strip.                                 |
-| [`bunny-thinking.png`](./cutouts/bunny-thinking.png) | [`UnderConstruction.tsx`](../../src/pages/UnderConstruction.tsx) (placeholders surface — see below) | "Thinking" mascot for in-queue placeholders. |
-| [`bunny-podium-win.png`](./cutouts/bunny-podium-win.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena podium row), [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | Victory pose for the podium summary card.                                            |
-| [`bunny-guarding.png`](./cutouts/bunny-guarding.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena WarBow strip) | Guard stance — paired with `icons/warbow-guard.png`.                            |
-| [`bunny-sneak-steal.png`](./cutouts/bunny-sneak-steal.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena WarBow strip) | Steal stance — paired with `icons/warbow-steal.png`.                          |
-| [`leprechaun-bag-bunny-pair.png`](./cutouts/leprechaun-bag-bunny-pair.png) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) (timer panel mascot) | Pair scene used as the calm "fair launch" sidekick on the Simple view. |
+| [`bunny-jump.png`](./cutouts/bunny-jump.png)        | [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx)    | Mascot jump alt on the launch countdown surface.                                       |
+| [`bunny-thinking.png`](./cutouts/bunny-thinking.png) | _staged_                                                                | "Thinking" mascot for in-queue placeholders. |
+| [`bunny-podium-win.png`](./cutouts/bunny-podium-win.png) | [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | Victory pose for the podium summary card.                                            |
+| [`bunny-guarding.png`](./cutouts/bunny-guarding.png) | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) (live-buy legend) | Guard stance — paired with `icons/warbow-guard.png` when WarBow rows wire full pictograms. |
+| [`bunny-sneak-steal.png`](./cutouts/bunny-sneak-steal.png) | _staged_ | Steal stance — paired with `icons/warbow-steal.png` when wired.                          |
+| [`mascot-bag-bunny-pair.png`](./cutouts/mascot-bag-bunny-pair.png) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (timer panel mascot) | Pair scene used as the calm "fair launch" sidekick on the Simple view. |
 | [`trait-silos-concept.png`](./cutouts/trait-silos-concept.png) | _staged_ (Collection page reference)                                | Concept art for the future Collection trait silos.                                     |
-| [`footer-micro.png`](./cutouts/footer-micro.png)    | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) (footer fee panel) | Subtle micro-decoration for the fee transparency block.                              |
+| [`footer-micro.png`](./cutouts/footer-micro.png)    | _staged_                                                                | Subtle micro-decoration candidate for the fee transparency block.                      |
 | [`indexer-down-mascot.png`](./cutouts/indexer-down-mascot.png) | [`TimerHeroLiveBuys.tsx`](../../src/pages/arena/TimerHeroLiveBuys.tsx) | Soft illustration when recent buys cannot load from the indexer ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| [`sniper-shark-peek-scope.png`](./cutouts/sniper-shark-peek-scope.png) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena buy panel via [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx)) | Sparse issue #80 "predator in the pool" accent for the competitive buy surface; decorative (`alt=""`, `aria-hidden`) through `CutoutDecoration`. |
-| [`sniper-shark-*.png`](./cutouts/) (remaining seven files) | _staged_ | Sniper-shark mascots: ghillie prone, tactical kneel, wetsuit + headset, diver harpoon, coin bandolier, spotter, victory medal. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
+| [`sniper-shark-peek-scope.png`](./cutouts/sniper-shark-peek-scope.png) | _staged_ | Sparse issue #80 "predator in the pool" accent for the competitive buy surface; decorative (`alt=""`, `aria-hidden`) through `CutoutDecoration`. |
+| [`sniper-shark-coin-bandolier.png`](./cutouts/sniper-shark-coin-bandolier.png) | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) | Live-buy legend accent. |
+| [`sniper-shark-*.png`](./cutouts/) (remaining six files) | _staged_ | Sniper-shark mascots: ghillie prone, tactical kneel, cool suit + headset, diver harpoon, spotter, victory medal. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
 
 ### `scenes/`
 
@@ -56,16 +59,15 @@ Wide JPG scenes used as page hero backplates or feature art. **JPG only** — al
 |-------------------------------------------------------|------------------------------------------------------|----------------------------------------------------|
 | [`home-hero-desktop.jpg`](./scenes/home-hero-desktop.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Desktop wide hero; replaces the legacy `../hero-home-wide.jpg` for HD viewports. |
 | [`home-hero-mobile.jpg`](./scenes/home-hero-mobile.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Mobile crop variant served via `<picture>` `media`. |
-| [`arena-simple.jpg`](./scenes/arena-simple.jpg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) | Calm fair-launch backplate for the Simple view. |
-| [`arena-arena.jpg`](./scenes/arena-arena.jpg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) buy panel | PvP / podium tension backplate.                |
-| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/ArenaProtocolPage.tsx) | Neutral operator backdrop for the Protocol read-only view. |
-| [`retired-v1-reserve.jpg`](./scenes/retired-v1-reserve.jpg) | [`RetiredV1TreasuryPage.tsx`](../../src/pages/RetiredV1TreasuryPage.tsx) | Reserve / v1 reserve backplate (replaces the legacy card).               |
-| [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | [`CollectionPage.tsx`](../../src/pages/CollectionPage.tsx) | Gallery shelves backplate.                                                |
-| [`referrals-network.jpg`](./scenes/referrals-network.jpg) | _reference / alternate_ | Same motif as `referrals-hero.jpg`; not wired as the hero backplate.        |
-| [`referrals-hero.jpg`](./scenes/referrals-hero.jpg) | [`ReferralsPage.tsx`](../../src/pages/ReferralsPage.tsx) `PageHero` `sceneSrc` | 1600×900 hero backplate ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+| [`arena-simple.jpg`](./scenes/arena-simple.jpg) | [`ArenaTimerHero.tsx`](../../src/pages/arena/ArenaTimerHero.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`index.css`](../../src/index.css) | Calm fair-launch backplate for the Time Arena timer hero. |
+| [`arena-arena.jpg`](./scenes/arena-arena.jpg) | [`index.css`](../../src/index.css) (buy panel background) | PvP / podium tension backplate.                |
+| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) | Neutral operator backdrop for the Protocol read-only view. |
+| [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | _staged_ | Gallery shelves backplate — Collection route not shipped.                                                |
+| [`referrals-network.jpg`](./scenes/referrals-network.jpg) | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home card) | Home grid card art; same motif family as `referrals-hero.jpg`.        |
+| [`referrals-hero.jpg`](./scenes/referrals-hero.jpg) | _reference_ | 1600×900 hero variant ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)); live Referrals surface uses cutout placeholders. |
 | [`launch-countdown.jpg`](./scenes/launch-countdown.jpg) | [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx) | Launch countdown key art.                                                 |
-| [`error-indexer-down.jpg`](./scenes/error-indexer-down.jpg) | [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) error variant (issue #44 wiring) | Empty/error illustration for indexer down.                |
-| [`error-wrong-network.jpg`](./scenes/error-wrong-network.jpg) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) chain pill warning state                  | Empty/error illustration for wrong-network warnings.       |
+| [`error-indexer-down.jpg`](./scenes/error-indexer-down.jpg) | _staged_ | Empty/error illustration for indexer down (issue #44 wiring).                |
+| [`error-wrong-network.jpg`](./scenes/error-wrong-network.jpg) | _staged_ | Wrong-network scene art; live shell uses `icons/header-wrong-network.png` in [`RootLayout.tsx`](../../src/layout/RootLayout.tsx).       |
 | [`error-wrong-network-portrait.jpg`](./scenes/error-wrong-network-portrait.jpg) | _reserved_ (future full-screen wrong-network overlay) | Tall portrait crop from the landscape error art ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 
 **Third-party venue cards (art root, not under `scenes/`):** partner-approved key art for home CTAs and third-party DEX pages. Strips in `scenes/*-strip.jpg` are legacy; production uses:
@@ -81,11 +83,11 @@ On-chain ticker art for **CHARM**, **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a
 
 | File | Used by (via `tokenMedia.ts`) |
 |------|-------------------------------|
-| [`tokens/charm.png`](../tokens/charm.png) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) (rate glyph, buy CTA), [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) |
-| [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`ArenaProtocolPage.tsx`](../../src/pages/ArenaProtocolPage.tsx) (`coinSrc`), Time Arena Simple **Pay with**, Arena buy panel (28px and 24px) |
-| [`tokens/doub.png`](../tokens/doub.png) | [`TimeCurveArenaView.tsx`](../../src/pages/timeCurveArena/TimeCurveArenaView.tsx) (`PageHero` `coinSrc`) |
-| [`tokens/eth.svg`](../tokens/eth.svg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) **Pay with** |
-| [`tokens/usdm.svg`](../tokens/usdm.svg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) **Pay with** |
+| [`tokens/charm.png`](../tokens/charm.png) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx), [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) (via [`tokenMedia.ts`](../../src/lib/tokenMedia.ts)) |
+| [`tokens/cl8y.svg`](../tokens/cl8y.svg) | [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts), [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx), [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) |
+| [`tokens/doub.png`](../tokens/doub.png) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) (`PageHero` `coinSrc` via [`tokenMedia.ts`](../../src/lib/tokenMedia.ts)) |
+| [`tokens/eth.svg`](../tokens/eth.svg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (via [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts)) |
+| [`tokens/usdm.svg`](../tokens/usdm.svg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (via [`arenaPayTokenOptions.ts`](../../src/lib/arenaPayTokenOptions.ts)) |
 | [`tokens/mega.svg`](../tokens/mega.svg) | [`RootLayout.tsx`](../../src/layout/RootLayout.tsx) — network pill when `chainId` is in `MEGAETH_CHAIN_IDS` (MegaETH mainnet / testnet; aligned with [`kumbayaRoutes.ts`](../../src/lib/kumbayaRoutes.ts) defaults) |
 
 ### `icons/`
@@ -104,19 +106,19 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 | `status-net-warn.png`             | [`RootLayout`](../../src/layout/RootLayout.tsx) chain pill `warn`          | Wrong-network glyph.                                              |
 | `status-indexer-ok.png`           | [`IndexerStatusBar`](../../src/components/IndexerStatusBar.tsx) ok         | Indexer ok glyph.                                                 |
 | `status-indexer-bad.png`          | [`IndexerStatusBar`](../../src/components/IndexerStatusBar.tsx) bad        | Indexer degraded glyph.                                           |
-| `warbow-guard.png`                | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) WarBow row        | Guard action.                                                     |
-| `warbow-steal.png`                | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) WarBow row        | Steal action.                                                     |
-| `warbow-revenge.png`              | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) WarBow row        | Revenge action.                                                   |
-| `warbow-flag.png`                 | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) WarBow row        | Silence flag action.                                             |
-| `nav-simple.png`                  | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (Simple).                                      |
-| `nav-arena.png`                   | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (Arena).                                       |
-| `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (Protocol).                                    |
+| `warbow-guard.png`                | _staged_                                                                 | Guard action pictogram.                                                     |
+| `warbow-steal.png`                | _staged_                                                                 | Steal action pictogram.                                                     |
+| `warbow-revenge.png`              | _staged_                                                                 | Revenge action pictogram.                                                   |
+| `warbow-flag.png`                 | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) | Silence flag in live-buy legend.                                             |
+| `nav-simple.png`                  | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (BUY).                                      |
+| `nav-arena.png`                   | _staged_ (#266: unified `/arena` — sub-nav is BUY + AUDIT only) | Legacy Arena tab pictogram.                                       |
+| `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (AUDIT).                                    |
 | `chart-accessibility.png`         | _staged_ for charts in retired v1 player reserve                                    | Color-blind safe pair swatch reference.                          |
-| `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`TimeCurveBranchPage.tsx`](../../src/pages/TimeCurveBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+| `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`ArenaBranchPage.tsx`](../../src/pages/ArenaBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). Time Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. |
-| `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) | Fee sink pictograms beside canonical onchain sink labels ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| `ui-conversion-arrow.png` | [`ConversionArrow`](../../src/components/ui/ConversionArrow.tsx) (`TimeCurveArenaView`, `FeeTransparency`, `CharmRedemptionCurve`) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
-| `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ (inline WarBow rows) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
+| `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | _legacy_ (pre–Arena v2 FeeRouter sinks) | Fee sink pictograms from issue #57; [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) now shows vault addresses only. |
+| `ui-conversion-arrow.png` | [`ConversionArrow.tsx`](../../src/components/ui/ConversionArrow.tsx), [`footerSiteLinks.ts`](../../src/lib/footerSiteLinks.ts) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
+| `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | [`ArenaBuyProjectedEffects.tsx`](../../src/pages/arena/ArenaBuyProjectedEffects.tsx) (`warbow-flag-20.png` only; others _staged_) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `arena-podium-last-buy.png` / `arena-podium-warbow.png` / `arena-podium-defended-streak.png` / `arena-podium-time-booster.png` | [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | 140×140 small-slot reserve podium icons generated once for the 70px Simple card art wells. |
 | `arena-podium-rank-first.png` / `arena-podium-rank-second.png` / `arena-podium-rank-third.png` | [`PodiumRankingList`](../../src/pages/arena/arenaUi.tsx) | 96×96 trophy rank icons displayed at ~40px in Simple podium rows. |
 
@@ -190,7 +192,7 @@ Some assets are still at the top level either because they are **shared by many 
 |---------------------------------------|--------------------------------------------------------------------------------------|
 | `app-icon.png`                        | `index.html` `<link rel="icon">`.                                                    |
 | `token-logo.png`                      | `RootLayout`, `PageHero` (default coin), `LaunchCountdownPage`.                      |
-| `loading-mascot.png`                  | `LaunchGate`, `TimeCurveBranchPage`, `StatusMessage`.                                |
+| `loading-mascot.png`                  | _legacy_ (superseded by `icons/loading-mascot-ring.png`) | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx) and [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) use the ring variant. |
 | `hat-coin-front.png` / `-rain.png` / `-stack.png` | `HomePage`, `LaunchCountdownPage`, placeholders.                                      |
 | `hero-home.jpg` / `hero-home-wide.jpg`| `HomePage`, `surfaceContent.ts`. Will gradually be replaced by `scenes/home-hero-*.jpg`. |
 | `mascot-*.jpg`                        | Reference renders / cards (legacy).                                                  |
@@ -218,6 +220,8 @@ Some assets are still at the top level either because they are **shared by many 
 ## Cross-links
 
 - **Issue #44 — Design pass:** [gitlab.com/PlasticDigits/yieldomega/-/issues/44](https://gitlab.com/PlasticDigits/yieldomega/-/issues/44)
+- **Issue #286 — Art README consumer links:** [gitlab.com/PlasticDigits/yieldomega/-/issues/286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286) · **`INV-FRONTEND-286-ART-README`** · `bash scripts/check-art-readme-consumers.sh`
+- **Issue #266 — TimeCurve page retirement:** [gitlab.com/PlasticDigits/yieldomega/-/issues/266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) · [invariants §260](../../../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260)
 - **Issue #45 — Asset backlog:** [gitlab.com/PlasticDigits/yieldomega/-/issues/45](https://gitlab.com/PlasticDigits/yieldomega/-/issues/45)
 - **Issue #45 catalog (historic):** [`issue45/README.md`](./issue45/README.md)
 - **Generation pipeline:** [`scripts/replicate-art/issue45_batch.py`](../../../scripts/replicate-art/issue45_batch.py), [`scripts/replicate-art/issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py), [`scripts/replicate-art/issue60_batch.py`](../../../scripts/replicate-art/issue60_batch.py), [`scripts/replicate-art/cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py)
