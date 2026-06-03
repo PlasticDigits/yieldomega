@@ -6,6 +6,76 @@
 # Kumbaya + TimeArenaBuyRouter when YIELDOMEGA_DEPLOY_KUMBAYA=1 (default in e2e-anvil.sh — GitLab #270).
 #
 # TimeArena buy cooldown: YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 / YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC (#88).
+# MockReserveCl8y extraction + safe PID cleanup: GitLab #279.
+
+# Kill only when pid is a positive integer — never `kill 0` (process group) on unset vars (#279).
+_yieldomega_kill_pid_if_set() {
+  local pid="${1:-}"
+  if [[ -n "${pid}" ]] && [[ "${pid}" =~ ^[0-9]+$ ]] && [[ "${pid}" -gt 0 ]]; then
+    kill "${pid}" 2>/dev/null || true
+  fi
+}
+
+_yieldomega_extract_addr_from_log() {
+  local log="$1"
+  local label="$2"
+  # Prefer `Label: 0x…` lines; fall back to any line mentioning label (legacy forge logs).
+  local addr
+  addr="$(grep -E "^[[:space:]]*${label}:" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | head -1 || true)"
+  if [[ -z "${addr}" ]]; then
+    addr="$(grep -E "${label}" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | head -1 || true)"
+  fi
+  printf '%s' "${addr}"
+}
+
+_yieldomega_extract_mock_cl8y_from_broadcast() {
+  local run_json="$1"
+  [[ -f "${run_json}" ]] || return 0
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '
+      [.transactions[]? | select(.contractName == "MockReserveCl8y") | .contractAddress? // empty]
+      | map(select(test("^0x[a-fA-F0-9]{40}$")))
+      | last // empty
+    ' "${run_json}" 2>/dev/null || true
+    return 0
+  fi
+  python3 - "${run_json}" <<'PY' 2>/dev/null || true
+import json, re, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as f:
+    data = json.load(f)
+addrs = []
+for tx in data.get("transactions") or []:
+    if tx.get("contractName") != "MockReserveCl8y":
+        continue
+    addr = tx.get("contractAddress") or ""
+    if re.fullmatch(r"0x[a-fA-F0-9]{40}", addr):
+        addrs.append(addr)
+if addrs:
+    print(addrs[-1])
+PY
+}
+
+_yieldomega_resolve_mock_cl8y_addr() {
+  local deploy_log="$1"
+  local root="${2:-}"
+  local cl8y run_json
+  cl8y="$(_yieldomega_extract_addr_from_log "${deploy_log}" "MockReserveCl8y")"
+  if [[ -n "${cl8y}" ]]; then
+    printf '%s' "${cl8y}"
+    return 0
+  fi
+  if [[ -n "${root}" ]]; then
+    run_json="${root}/contracts/broadcast/DeployDev.s.sol/31337/run-latest.json"
+    cl8y="$(_yieldomega_extract_mock_cl8y_from_broadcast "${run_json}")"
+    if [[ -n "${cl8y}" ]]; then
+      echo "MockReserveCl8y: resolved ${cl8y} from ${run_json} (deploy log grep missed address — GitLab #279)." >&2
+      printf '%s' "${cl8y}"
+      return 0
+    fi
+  fi
+  printf '%s' ""
+}
 
 yieldomega_anvil_deploy_dev() {
   if [ -z "${ROOT:-}" ] || [ -z "${RPC:-}" ] || [ -z "${DEPLOY_LOG:-}" ]; then
@@ -29,18 +99,12 @@ yieldomega_anvil_deploy_dev() {
     return 1
   fi
 
-  _yieldomega_extract_addr() {
-    local label="$1"
-    # Forge logs use "Label: 0x…" or "Label deployed …: 0x…" — never fail grep (set -e safe).
-    grep -E "${label}" "${DEPLOY_LOG}" | grep -oE '0x[a-fA-F0-9]{40}' | tail -1 || true
-  }
-
-  TA=$(_yieldomega_extract_addr "TimeArena")
-  PV=$(_yieldomega_extract_addr "PodiumVaults")
-  AV=$(_yieldomega_extract_addr "AdminSellVault")
-  RR=$(_yieldomega_extract_addr "ReferralRegistry")
-  DOUB=$(_yieldomega_extract_addr "Doubloon")
-  CRED=$(_yieldomega_extract_addr "PlayCred")
+  TA="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "TimeArena")"
+  PV="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PodiumVaults")"
+  AV="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "AdminSellVault")"
+  RR="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "ReferralRegistry")"
+  DOUB="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
+  CRED="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
 
   if [ -z "${TA}" ] || [ -z "${PV}" ] || [ -z "${AV}" ] || [ -z "${RR}" ]; then
     echo "Could not parse deploy addresses. Expected TimeArena, PodiumVaults, AdminSellVault, ReferralRegistry." >&2
@@ -86,14 +150,17 @@ yieldomega_anvil_deploy_dev() {
   fi
 
   if [ "${YIELDOMEGA_SEED_EVM_DEV_WALLETS:-1}" = "1" ] && [ -n "${DOUB:-}" ] && [ -n "${CRED:-}" ]; then
-    CL8Y=$(_yieldomega_extract_addr "MockReserveCl8y")
+    CL8Y="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG}" "${ROOT}")"
     # shellcheck disable=SC1091
     source "${ROOT}/scripts/lib/evm_dev_keys.sh" 2>/dev/null || true
     if command -v cast >/dev/null 2>&1; then
-      echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${CL8Y:+, CL8Y})..."
-      RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y:-}" \
+      echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${CL8Y:+, CL8Y=${CL8Y}})..."
+      if ! RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y:-}" \
         DEPLOYER_PK="$(yieldomega_resolve_seed_minter_pk)" \
-        bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"
+        bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"; then
+        echo "yieldomega_anvil_deploy_dev: seed-evm-dev-wallets-anvil.sh failed (CL8Y=${CL8Y:-<unset>}). See errors above." >&2
+        return 1
+      fi
     fi
   fi
 }

@@ -12,7 +12,14 @@ source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
 
 E2E_ENV_FILE=""
 PREVIEW_PID=""
-trap 'rm -f "${DEPLOY_LOG}" "${E2E_ENV_FILE}"; kill "${PREVIEW_PID:-0}" 2>/dev/null || true; kill "${ANVIL_PID:-0}" 2>/dev/null || true' EXIT
+ANVIL_PID=""
+
+_e2e_anvil_cleanup() {
+  rm -f "${DEPLOY_LOG}" "${E2E_ENV_FILE}"
+  _yieldomega_kill_pid_if_set "${PREVIEW_PID:-}"
+  _yieldomega_kill_pid_if_set "${ANVIL_PID:-}"
+}
+trap '_e2e_anvil_cleanup' EXIT
 
 if ! command -v anvil >/dev/null || ! command -v forge >/dev/null || ! command -v cast >/dev/null; then
   echo "Need anvil, forge, and cast on PATH (Foundry)." >&2
@@ -41,6 +48,9 @@ if ! cast block-number --rpc-url "${RPC}" >/dev/null 2>&1; then
   exit 1
 fi
 sleep 2
+
+# Playwright mock wallet is Anvil account #0; seed must target default KEY_EVM_* (#0–#2), not Cloud overrides.
+unset KEY_EVM_1 KEY_EVM_2 KEY_EVM_3 ADDR_EVM_1 ADDR_EVM_2 ADDR_EVM_3 EVM_DEV_ADDRS
 
 export YIELDOMEGA_DEPLOY_KUMBAYA="${YIELDOMEGA_DEPLOY_KUMBAYA:-1}"
 yieldomega_anvil_deploy_dev

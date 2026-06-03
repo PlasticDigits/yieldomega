@@ -187,6 +187,21 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 
 **Optional workflow:** [`.github/workflows/e2e-anvil.yml`](../../.github/workflows/e2e-anvil.yml) — `workflow_dispatch` only; runs `scripts/e2e-anvil.sh` (Foundry + Anvil + Playwright). **Not** a merge blocker; use for release candidates or infra validation.
 
+<a id="anvil-e2e-trap-and-mock-cl8y-extract-gitlab-279"></a>
+
+### Troubleshooting — EXIT trap and MockReserveCl8y seed ([GitLab #279](https://gitlab.com/PlasticDigits/yieldomega/-/issues/279))
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| Script exits abruptly **before Playwright** (no Playwright summary) | EXIT trap used `kill "${PREVIEW_PID:-0}"` / `kill "${ANVIL_PID:-0}"` — **`kill 0`** signals the whole process group when PIDs are unset | Fixed in `scripts/e2e-anvil.sh`: guarded cleanup via `_yieldomega_kill_pid_if_set` ([`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh)) |
+| **`CL8Y` empty** after DeployDev with mock reserve | Legacy log line `MockReserveCl8y deployed (dev only):` did not match the `Label:` extractor; some Foundry builds split the address onto the next line | `DeployDev.s.sol` logs **`MockReserveCl8y:`**; [`_yieldomega_resolve_mock_cl8y_addr`](../../scripts/lib/anvil_deploy_dev.sh) falls back to `contracts/broadcast/DeployDev.s.sol/31337/run-latest.json` |
+| Seed step fails silently | `set -e` + trap ran before stderr flushed | `yieldomega_anvil_deploy_dev` checks `seed-evm-dev-wallets-anvil.sh` exit code and prints **`CL8Y=`** context |
+| Seed **`AccessControlUnauthorizedAccount`** on Cloud Agent | Cursor **`KEY_EVM_*`** secrets override Anvil account #0–#2 | `e2e-anvil.sh` **`unset`s** `KEY_EVM_*` before deploy so seed targets default Anvil addresses |
+
+**Hermetic regressions (no Anvil):** `bash scripts/verify-e2e-anvil-trap.sh` · `bash scripts/test-anvil-deploy-cl8y-extract.sh` (CI **`scripts-smoke`**).
+
+**Invariant map:** [`INV-ANVIL-E2E-279-TRAP`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279) · [`INV-ANVIL-E2E-279-CL8Y-EXTRACT`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279).
+
 ## Related
 
 - [`scripts/anvil-export-bot-env.sh`](../../scripts/anvil-export-bot-env.sh) — writes bot env from the same `DeployDev` deploy ([`bots/timearena/README.md`](../../bots/timearena/README.md)).
