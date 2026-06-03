@@ -76,6 +76,7 @@ cast block-number --rpc-url "${RPC}" >/dev/null
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export YIELDOMEGA_SEED_EVM_DEV_WALLETS=0
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
+yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
 
 [[ -n "${TA:-}" ]] || die "TimeArena address missing after deploy"
 [[ -n "${DOUB:-}" ]] || die "Doubloon address missing after deploy"

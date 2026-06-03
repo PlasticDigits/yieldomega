@@ -53,7 +53,11 @@ sleep 2
 unset KEY_EVM_1 KEY_EVM_2 KEY_EVM_3 ADDR_EVM_1 ADDR_EVM_2 ADDR_EVM_3 EVM_DEV_ADDRS
 
 export YIELDOMEGA_DEPLOY_KUMBAYA="${YIELDOMEGA_DEPLOY_KUMBAYA:-1}"
-yieldomega_anvil_deploy_dev
+ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
+yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
+if [ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" = "1" ]; then
+  yieldomega_export_kumbaya_addrs_from_log "${DEPLOY_LOG}"
+fi
 
 export VITE_CHAIN_ID=31337
 export VITE_RPC_URL="${RPC}"

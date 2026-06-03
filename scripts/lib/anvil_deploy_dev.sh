@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Shared DeployDev.s.sol deploy + address extraction for Anvil workflows.
 #
-# After success, sets: TA, PV, AV, RR, DOUB, CRED (Arena v2 — GitLab #260).
-# Kumbaya + TimeArenaBuyRouter when YIELDOMEGA_DEPLOY_KUMBAYA=1 (default in e2e-anvil.sh — GitLab #270).
+# yieldomega_anvil_deploy_dev does NOT assign TA/PV/DOUB/… in the caller shell (GitLab #289).
+# After deploy, call yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}".
+# For Kumbaya fixtures (YIELDOMEGA_DEPLOY_KUMBAYA=1), also:
+#   yieldomega_export_kumbaya_addrs_from_log "${DEPLOY_LOG}"
 #
 # TimeArena buy cooldown: YIELDOMEGA_DEPLOY_NO_COOLDOWN=1 / YIELDOMEGA_ANVIL_BUY_COOLDOWN_SEC (#88).
 # MockReserveCl8y extraction + safe PID cleanup: GitLab #279.
@@ -78,11 +80,44 @@ _yieldomega_resolve_mock_cl8y_addr() {
   printf '%s' ""
 }
 
+# Explicit export API — sets TA, PV, AV, RR, DOUB, CRED, CL8Y in the caller shell (GitLab #289).
+yieldomega_export_deploy_addrs_from_log() {
+  local deploy_log="${1:-${DEPLOY_LOG:-}}"
+  local root="${2:-${ROOT:-}}"
+  if [[ -z "${deploy_log}" ]]; then
+    echo "yieldomega_export_deploy_addrs_from_log: need deploy log path or DEPLOY_LOG." >&2
+    return 1
+  fi
+  TA="$(_yieldomega_extract_addr_from_log "${deploy_log}" "TimeArena")"
+  PV="$(_yieldomega_extract_addr_from_log "${deploy_log}" "PodiumVaults")"
+  AV="$(_yieldomega_extract_addr_from_log "${deploy_log}" "AdminSellVault")"
+  RR="$(_yieldomega_extract_addr_from_log "${deploy_log}" "ReferralRegistry")"
+  DOUB="$(_yieldomega_extract_addr_from_log "${deploy_log}" "Doubloon")"
+  CRED="$(_yieldomega_extract_addr_from_log "${deploy_log}" "PlayCred")"
+  CL8Y="$(_yieldomega_resolve_mock_cl8y_addr "${deploy_log}" "${root}")"
+}
+
+# Sets KUMBAYA_WETH, KUMBAYA_USDM, KUMBAYA_ROUTER, KUMBAYA_BUY_ROUTER in caller scope.
+yieldomega_export_kumbaya_addrs_from_log() {
+  local deploy_log="${1:-${DEPLOY_LOG:-}}"
+  if [[ -z "${deploy_log}" ]]; then
+    echo "yieldomega_export_kumbaya_addrs_from_log: need deploy log path or DEPLOY_LOG." >&2
+    return 1
+  fi
+  # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
+  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kumbaya_local_anvil_env.sh"
+  yieldomega_kumbaya_extract_from_deploy_log "${deploy_log}"
+}
+
 yieldomega_anvil_deploy_dev() {
   if [ -z "${ROOT:-}" ] || [ -z "${RPC:-}" ] || [ -z "${DEPLOY_LOG:-}" ]; then
     echo "yieldomega_anvil_deploy_dev: need ROOT, RPC, and DEPLOY_LOG set." >&2
     return 1
   fi
+  local ta pv av rr doub cred cl8y
+  local kumbaya_weth kumbaya_usdm kumbaya_router kumbaya_buy_router
+  local onchain_br exp_br
+
   echo "Building contracts and deploying DeployDev (Arena v2)..."
   cd "${ROOT}/contracts"
   export FOUNDRY_OUT="${ROOT}/contracts/out-e2e-anvil"
@@ -100,32 +135,27 @@ yieldomega_anvil_deploy_dev() {
     return 1
   fi
 
-  TA="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "TimeArena")"
-  PV="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PodiumVaults")"
-  AV="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "AdminSellVault")"
-  RR="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "ReferralRegistry")"
-  DOUB="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
-  CRED="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
+  ta="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "TimeArena")"
+  pv="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PodiumVaults")"
+  av="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "AdminSellVault")"
+  rr="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "ReferralRegistry")"
+  doub="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
+  cred="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
 
-  if [ -z "${TA}" ] || [ -z "${PV}" ] || [ -z "${AV}" ] || [ -z "${RR}" ]; then
+  if [ -z "${ta}" ] || [ -z "${pv}" ] || [ -z "${av}" ] || [ -z "${rr}" ]; then
     echo "Could not parse deploy addresses. Expected TimeArena, PodiumVaults, AdminSellVault, ReferralRegistry." >&2
     return 1
   fi
 
-  echo "Addresses: TimeArena=${TA} PodiumVaults=${PV} AdminSellVault=${AV} ReferralRegistry=${RR} Doubloon=${DOUB} PlayCred=${CRED}"
+  echo "Addresses: TimeArena=${ta} PodiumVaults=${pv} AdminSellVault=${av} ReferralRegistry=${rr} Doubloon=${doub} PlayCred=${cred}"
 
-  KUMBAYA_WETH=""
-  KUMBAYA_USDM=""
-  KUMBAYA_ROUTER=""
-  KUMBAYA_BUY_ROUTER=""
   if [ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" = "1" ]; then
     echo "Deploying Kumbaya Anvil fixtures (YIELDOMEGA_DEPLOY_KUMBAYA=1)..."
     # Let DeployDev txs settle before the second broadcast (avoids Anvil nonce races).
     sleep 2
-    KUMBAYA_LOG=$(mktemp)
     _yieldomega_kumbaya_deploy_once() {
       forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures --broadcast \
-        --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${TA}" 2>&1 | tee "${KUMBAYA_LOG}"
+        --rpc-url "${RPC}" --code-size-limit 524288 --sig "run(address)" "${ta}" 2>&1 | tee -a "${DEPLOY_LOG}"
     }
     if ! _yieldomega_kumbaya_deploy_once; then
       echo "Kumbaya deploy failed; retrying once after 3s..." >&2
@@ -134,32 +164,35 @@ yieldomega_anvil_deploy_dev() {
     fi
     # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
     source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
-    yieldomega_kumbaya_extract_from_deploy_log "${KUMBAYA_LOG}"
-    rm -f "${KUMBAYA_LOG}"
-    if [ -z "${KUMBAYA_BUY_ROUTER}" ]; then
+    yieldomega_kumbaya_extract_from_deploy_log "${DEPLOY_LOG}"
+    kumbaya_weth="${KUMBAYA_WETH:-}"
+    kumbaya_usdm="${KUMBAYA_USDM:-}"
+    kumbaya_router="${KUMBAYA_ROUTER:-}"
+    kumbaya_buy_router="${KUMBAYA_BUY_ROUTER:-}"
+    if [ -z "${kumbaya_buy_router}" ]; then
       echo "DeployKumbayaAnvilFixtures: could not parse TimeArenaBuyRouter from log." >&2
       return 1
     fi
-    ONCHAIN_BR="$(cast call "${TA}" "timeArenaBuyRouter()(address)" --rpc-url "${RPC}" 2>/dev/null | tr -d '[:space:]')"
-    ONCHAIN_BR="$(cast to-checksum "${ONCHAIN_BR}" 2>/dev/null || echo "")"
-    EXP_BR="$(cast to-checksum "${KUMBAYA_BUY_ROUTER}" 2>/dev/null || echo "${KUMBAYA_BUY_ROUTER}")"
-    if [ -z "${ONCHAIN_BR}" ] || [ "${ONCHAIN_BR,,}" != "${EXP_BR,,}" ]; then
-      echo "TimeArena.timeArenaBuyRouter (${ONCHAIN_BR}) != deployed ${EXP_BR}" >&2
+    onchain_br="$(cast call "${ta}" "timeArenaBuyRouter()(address)" --rpc-url "${RPC}" 2>/dev/null | tr -d '[:space:]')"
+    onchain_br="$(cast to-checksum "${onchain_br}" 2>/dev/null || echo "")"
+    exp_br="$(cast to-checksum "${kumbaya_buy_router}" 2>/dev/null || echo "${kumbaya_buy_router}")"
+    if [ -z "${onchain_br}" ] || [ "${onchain_br,,}" != "${exp_br,,}" ]; then
+      echo "TimeArena.timeArenaBuyRouter (${onchain_br}) != deployed ${exp_br}" >&2
       return 1
     fi
-    echo "Kumbaya: WETH=${KUMBAYA_WETH} USDM=${KUMBAYA_USDM} Router=${KUMBAYA_ROUTER} TimeArenaBuyRouter=${KUMBAYA_BUY_ROUTER}"
+    echo "Kumbaya: WETH=${kumbaya_weth} USDM=${kumbaya_usdm} Router=${kumbaya_router} TimeArenaBuyRouter=${kumbaya_buy_router}"
   fi
 
-  if [ "${YIELDOMEGA_SEED_EVM_DEV_WALLETS:-1}" = "1" ] && [ -n "${DOUB:-}" ] && [ -n "${CRED:-}" ]; then
-    CL8Y="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG}" "${ROOT}")"
+  if [ "${YIELDOMEGA_SEED_EVM_DEV_WALLETS:-1}" = "1" ] && [ -n "${doub:-}" ] && [ -n "${cred:-}" ]; then
+    cl8y="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG}" "${ROOT}")"
     # shellcheck disable=SC1091
     source "${ROOT}/scripts/lib/evm_dev_keys.sh" 2>/dev/null || true
     if command -v cast >/dev/null 2>&1; then
-      echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${CL8Y:+, CL8Y=${CL8Y}})..."
-      if ! RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y:-}" \
+      echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${cl8y:+, CL8Y=${cl8y}})..."
+      if ! RPC="${RPC}" DOUB="${doub}" CRED="${cred}" CL8Y="${cl8y:-}" \
         DEPLOYER_PK="$(yieldomega_resolve_seed_minter_pk)" \
         bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"; then
-        echo "yieldomega_anvil_deploy_dev: seed-evm-dev-wallets-anvil.sh failed (CL8Y=${CL8Y:-<unset>}). See errors above." >&2
+        echo "yieldomega_anvil_deploy_dev: seed-evm-dev-wallets-anvil.sh failed (CL8Y=${cl8y:-<unset>}). See errors above." >&2
         return 1
       fi
     fi

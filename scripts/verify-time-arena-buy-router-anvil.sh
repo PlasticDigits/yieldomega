@@ -52,7 +52,8 @@ _deploy_stack() {
   source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
   export YIELDOMEGA_DEPLOY_KUMBAYA=1
   yieldomega_anvil_deploy_dev || die "yieldomega_anvil_deploy_dev failed."
-  TA="${TA}"
+  yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
+  yieldomega_export_kumbaya_addrs_from_log "${DEPLOY_LOG}"
   rm -f "${DEPLOY_LOG}"
 }
 

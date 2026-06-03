@@ -68,7 +68,8 @@ if [ "${START_ANVIL}" -eq 1 ]; then
   fi
 fi
 
-yieldomega_anvil_deploy_dev
+ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
+yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
 
 mkdir -p "$(dirname "${OUT_FILE}")"
 umask 077

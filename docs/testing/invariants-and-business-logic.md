@@ -369,6 +369,19 @@ Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) / 
 
 Doc: [e2e-anvil.md §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-cl8y-extract-gitlab-279) · manual QA: [§279](manual-qa-checklists.md#manual-qa-issue-279).
 
+<a id="anvil-deploy-dev-caller-scope-gitlab-289"></a>
+
+### Anvil DeployDev caller scope (GitLab [#289](https://gitlab.com/PlasticDigits/yieldomega/-/issues/289))
+
+Follow-up to [#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281) / [!43](https://gitlab.com/PlasticDigits/yieldomega/-/merge_requests/43): **`yieldomega_anvil_deploy_dev`** must not assign **`TA`**, **`DOUB`**, **`CRED`**, etc. in the caller shell.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DEPLOY-289-NO-CALLER-LEAK`** | Two **`yieldomega_anvil_deploy_dev`** calls in one shell do not change caller **`DOUB`** until **`yieldomega_export_deploy_addrs_from_log`** | [`verify-evm-dev-wallet-seed-anvil.sh`](../../scripts/verify-evm-dev-wallet-seed-anvil.sh) |
+| **`INV-DEPLOY-289-EXPORT-API`** | Callers that need addresses call **`yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"`** (and **`yieldomega_export_kumbaya_addrs_from_log`** when Kumbaya fixtures ran) | [`test-anvil-deploy-caller-scope.sh`](../../scripts/test-anvil-deploy-caller-scope.sh) · [`e2e-anvil.sh`](../../scripts/e2e-anvil.sh) |
+
+Doc: [e2e-anvil.md §289](e2e-anvil.md#anvil-deploy-dev-caller-scope-gitlab-289).
+
 <a id="frontend-single-chain-wagmi-issue-81"></a>
 
 ### Frontend single-chain wagmi (GitLab [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81))
