@@ -9,12 +9,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
+# shellcheck source=scripts/lib/docker_cloud_agent.sh
+source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 
 export PATH="${HOME}/.foundry/bin:/usr/local/cargo/bin:${PATH}"
 
 fail=0
 ok() { echo "PASS  $*"; }
 bad() { echo "FAIL  $*" >&2; fail=1; }
+skip() { echo "SKIP  $*"; }
 
 command -v forge >/dev/null 2>&1 && ok "forge $(forge --version | head -1)" || bad "forge missing"
 command -v anvil >/dev/null 2>&1 && ok "anvil present" || bad "anvil missing"
@@ -34,11 +37,17 @@ command -v pkg-config >/dev/null 2>&1 && ok "pkg-config" || bad "pkg-config miss
 echo "--- native Postgres (GitLab #287) ---"
 bash "${ROOT}/scripts/verify-cloud-postgres.sh" || fail=1
 
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+# Docker: optional for most agent tasks (Foundry/indexer verify use native Postgres). GitLab #288.
+docker_rc=0
+bash "${ROOT}/scripts/verify-docker-cloud-agent.sh" || docker_rc=$?
+if [[ "${docker_rc}" -eq 0 ]]; then
   driver="$(docker info --format '{{.Driver}}' 2>/dev/null || echo unknown)"
-  docker run --rm hello-world >/dev/null 2>&1 && ok "docker (${driver})" || bad "docker run failed (${driver})"
+  ok "docker (${driver}) — required only for start-local-anvil-stack / full QA stack"
+elif [[ "${docker_rc}" -eq 2 ]]; then
+  reason="$(yieldomega_docker_unavailable_marker_present && head -1 "${YIELDOMEGA_DOCKER_UNAVAILABLE_MARKER}" || yieldomega_docker_error_kind)"
+  skip "docker (${reason}) — use native Postgres; YIELDOMEGA_DOCKER_REQUIRED=1 to hard-fail"
 else
-  echo "SKIP  docker daemon unavailable (native Postgres is the indexer QA path — AGENTS.md)" >&2
+  bad "docker required but broken (YIELDOMEGA_DOCKER_REQUIRED=1 or verify-docker-cloud-agent FAIL)"
 fi
 
 if command -v glab >/dev/null 2>&1; then
