@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
 # Smoke: DeployDev on fresh Anvil seeds KEY_EVM_1..3 (ETH + DOUB + CRED + mock CL8Y).
+# Covers idempotent double-seed and re-deploy on same chain (GitLab #281).
 # No Docker, Postgres, or indexer — Foundry only.
 #
 # Usage (repo root):
@@ -24,6 +25,8 @@ unset KEY_EVM_1 KEY_EVM_2 KEY_EVM_3 ADDR_EVM_1 ADDR_EVM_2 ADDR_EVM_3 EVM_DEV_ADD
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
 # shellcheck source=scripts/lib/evm_dev_keys.sh
 source "${ROOT}/scripts/lib/evm_dev_keys.sh"
+# shellcheck source=scripts/lib/anvil_deployer_key.sh
+source "${ROOT}/scripts/lib/anvil_deployer_key.sh"
 
 ETH_WEI="1000000000000000000000" # 1000e18 (matches seed script anvil_setBalance)
 DOUB_WANT="1000000000000000000000000"
@@ -55,6 +58,29 @@ assert_uint_gte() {
   if ! python3 -c "import sys; sys.exit(0 if int('${got}') >= int('${min}') else 1)"; then
     die "${label}: got ${got}, want >= ${min}"
   fi
+}
+
+assert_wallets_seeded() {
+  local doub="$1" cred="$2" cl8y="$3"
+  local eth_min_deployer="900000000000000000000"
+  for addr in ${EVM_DEV_ADDRS}; do
+    local eth_bal doub_bal cred_bal cl8y_bal
+    eth_bal="$(cast balance "${addr}" --rpc-url "${RPC}")"
+    doub_bal="$(erc20_balance "${doub}" "${addr}")"
+    cred_bal="$(erc20_balance "${cred}" "${addr}")"
+    cl8y_bal="$(erc20_balance "${cl8y}" "${addr}")"
+    if [[ "${addr}" == "${ADDR_EVM_1}" ]]; then
+      assert_uint_gte "${eth_bal}" "${eth_min_deployer}" "ETH balance ${addr}"
+      assert_uint_gte "${doub_bal}" "${DOUB_WANT}" "DOUB balance ${addr}"
+      assert_uint_gte "${cred_bal}" "${CRED_WANT}" "CRED balance ${addr}"
+      assert_uint_gte "${cl8y_bal}" "${CL8Y_WANT}" "CL8Y balance ${addr}"
+    else
+      assert_eq "${eth_bal}" "${ETH_WEI}" "ETH balance ${addr}"
+      assert_eq "${doub_bal}" "${DOUB_WANT}" "DOUB balance ${addr}"
+      assert_eq "${cred_bal}" "${CRED_WANT}" "CRED balance ${addr}"
+      assert_eq "${cl8y_bal}" "${CL8Y_WANT}" "CL8Y balance ${addr}"
+    fi
+  done
 }
 
 cleanup() {
@@ -91,7 +117,6 @@ export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export YIELDOMEGA_SEED_EVM_DEV_WALLETS=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
 
-# yieldomega_anvil_deploy_dev sets TA/DOUB/CRED in function scope only — re-parse log here.
 DOUB="$(_extract_deploy_addr "Doubloon")"
 CRED="$(_extract_deploy_addr "PlayCred")"
 CL8Y="$(_extract_deploy_addr "MockReserveCl8y")"
@@ -102,26 +127,34 @@ CL8Y="$(_extract_deploy_addr "MockReserveCl8y")"
 log "DOUB=${DOUB} CRED=${CRED} CL8Y=${CL8Y}"
 log "ADDR_EVM_1=${ADDR_EVM_1} ADDR_EVM_2=${ADDR_EVM_2} ADDR_EVM_3=${ADDR_EVM_3}"
 
-# Account #0 (ADDR_EVM_1) pays gas for mint txs; #1–#2 should have exact 1000 ETH after anvil_setBalance.
-ETH_MIN_DEPLOYER="900000000000000000000" # 900e18 — floor after seed mint gas
+assert_wallets_seeded "${DOUB}" "${CRED}" "${CL8Y}"
 
-for addr in ${EVM_DEV_ADDRS}; do
-  eth_bal="$(cast balance "${addr}" --rpc-url "${RPC}")"
-  doub_bal="$(erc20_balance "${DOUB}" "${addr}")"
-  cred_bal="$(erc20_balance "${CRED}" "${addr}")"
-  cl8y_bal="$(erc20_balance "${CL8Y}" "${addr}")"
-  if [[ "${addr}" == "${ADDR_EVM_1}" ]]; then
-    # DeployDev also mints to Anvil #0 (E2E mock wallet) before seed runs.
-    assert_uint_gte "${eth_bal}" "${ETH_MIN_DEPLOYER}" "ETH balance ${addr}"
-    assert_uint_gte "${doub_bal}" "${DOUB_WANT}" "DOUB balance ${addr}"
-    assert_uint_gte "${cred_bal}" "${CRED_WANT}" "CRED balance ${addr}"
-    assert_uint_gte "${cl8y_bal}" "${CL8Y_WANT}" "CL8Y balance ${addr}"
-  else
-    assert_eq "${eth_bal}" "${ETH_WEI}" "ETH balance ${addr}"
-    assert_eq "${doub_bal}" "${DOUB_WANT}" "DOUB balance ${addr}"
-    assert_eq "${cred_bal}" "${CRED_WANT}" "CRED balance ${addr}"
-    assert_eq "${cl8y_bal}" "${CL8Y_WANT}" "CL8Y balance ${addr}"
-  fi
-done
+log "double-seed idempotency"
+RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y}" \
+  DEPLOYER_PK="$(yieldomega_resolve_seed_minter_pk)" \
+  bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"
+assert_wallets_seeded "${DOUB}" "${CRED}" "${CL8Y}"
 
-log "PASS — KEY_EVM_1..3 seeded on Anvil (ETH + DOUB + CRED + CL8Y)"
+log "re-deploy on same Anvil (second DeployDev broadcast)"
+DEPLOY_LOG2="$(mktemp)"
+ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG2}" yieldomega_anvil_deploy_dev
+DOUB2="$(_extract_deploy_addr "Doubloon")"
+CRED2="$(_extract_deploy_addr "PlayCred")"
+CL8Y2="$(_extract_deploy_addr "MockReserveCl8y")"
+[[ -n "${DOUB2}" && -n "${CRED2}" && -n "${CL8Y2}" ]] || die "Second deploy missing token addresses"
+[[ "${DOUB2,,}" != "${DOUB,,}" ]] || die "Expected new Doubloon proxy after re-deploy"
+assert_wallets_seeded "${DOUB2}" "${CRED2}" "${CL8Y2}"
+rm -f "${DEPLOY_LOG2}"
+
+log "mismatched KEY_EVM_1 without extra minter grant fails clearly"
+MISMATCH_PK="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+if ! DEPLOYER_PK="${MISMATCH_PK}" RPC="${RPC}" DOUB="${DOUB2}" CRED="${CRED2}" CL8Y="${CL8Y2}" \
+  bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh" 2>/tmp/yieldomega_seed_mismatch.err; then
+  grep -q "MINTER_ROLE missing" /tmp/yieldomega_seed_mismatch.err \
+    || die "Expected clear MINTER_ROLE error for mismatched seed key"
+  log "mismatched minter diagnostic OK"
+else
+  die "Seed should fail when DEPLOYER_PK lacks MINTER_ROLE"
+fi
+
+log "PASS — KEY_EVM_1..3 seeded on Anvil (ETH + DOUB + CRED + CL8Y); idempotent + re-deploy"

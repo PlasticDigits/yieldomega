@@ -76,6 +76,12 @@ contract DeployDev is Script {
         console.log("TimeArena buyCooldownSec (dev deploy):", buyCooldownSecDev);
 
         doub.grantRole(doub.MINTER_ROLE(), deployer);
+        address seedMinter = vm.envOr("YIELDOMEGA_SEED_MINTER_ADDRESS", address(0));
+        if (seedMinter != address(0) && seedMinter != deployer) {
+            doub.grantRole(doub.MINTER_ROLE(), seedMinter);
+            playCred.grantRole(playCred.MINTER_ROLE(), seedMinter);
+            console.log("Extra dev seed minter (GitLab #281):", seedMinter);
+        }
         doub.mint(deployer, 10_000_000e18);
         doub.mint(E2E_MOCK_WALLET, 1_000_000e18);
         console.log("Doubloon MINTER_ROLE granted to deployer for local QA");

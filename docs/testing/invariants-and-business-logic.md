@@ -409,10 +409,12 @@ Product: [arena-v2 § retired surfaces](../product/arena-v2.md#retired-surfaces)
 |----|----------|-------------------|
 | **`INV-DEPLOY-259-DEV-WIRE`** | DeployDev: vaults → arena, PlayCred minter, arena live | [`DevStackIntegration.t.sol`](../../contracts/test/DevStackIntegration.t.sol) |
 | **`INV-DEPLOY-259-DEV-SEED`** | DeployDev seeds DOUB/CL8Y/CRED for E2E mock wallet | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol) |
+| **`INV-DEPLOY-281-DEV-WALLET-SEED`** | Idempotent **`KEY_EVM_1..3`** seed after DeployDev: minter PK aligned with **`PRIVATE_KEY`**, loopback-only, balance skip, clear **`MINTER_ROLE`** diagnostic | [`seed-evm-dev-wallets-anvil.sh`](../../scripts/seed-evm-dev-wallets-anvil.sh), [`verify-evm-dev-wallet-seed-anvil.sh`](../../scripts/verify-evm-dev-wallet-seed-anvil.sh) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)) |
+| **`INV-DEPLOY-281-EXTRA-MINTER`** | When seed minter ≠ deploy broadcaster, **`DeployDev`** grants **`MINTER_ROLE`** to **`YIELDOMEGA_SEED_MINTER_ADDRESS`** (dev chain only) | [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol), [`anvil_deployer_key.sh`](../../scripts/lib/anvil_deployer_key.sh) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)) |
 | **`INV-DEPLOY-259-PROD-CLEAN`** | DeployProduction: no Leprechaun/Rabbit/Presale/v1 launchpad cores | [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) |
 | **`INV-DEPLOY-259-REGISTRY`** | Registry JSON: TimeArena, PodiumVaults, AdminSellVault, PlayCred | [`scripts/lib/arena_v2_registry_from_broadcast.sh`](../../scripts/lib/arena_v2_registry_from_broadcast.sh) |
 
-Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md).
+Ops: [`deployment-guide` §259](../operations/deployment-guide.md#arena-v2-deploy-gitlab-259) · E2E: [`e2e-anvil.md`](e2e-anvil.md) · dev-wallet seed: [`e2e-anvil.md` § dev-wallet seed](e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281)).
 
 ---
 
