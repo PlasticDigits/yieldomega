@@ -35,6 +35,7 @@ done
 cast block-number --rpc-url "${RPC}" >/dev/null
 
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
+yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
 
 DEPLOY_BLOCK="$(cast block-number --rpc-url "${RPC}")"
 jq -n \

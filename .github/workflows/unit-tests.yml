@@ -145,6 +145,7 @@ jobs:
         run: |
           bash scripts/verify-e2e-anvil-trap.sh
           bash scripts/test-anvil-deploy-cl8y-extract.sh
+          bash scripts/test-anvil-deploy-caller-scope.sh
 
   bots-timecurve-test:
     runs-on: ubuntu-latest

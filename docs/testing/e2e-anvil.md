@@ -153,6 +153,27 @@ bash scripts/verify-evm-dev-wallet-seed-anvil.sh
 
 Invariants: **`INV-DEPLOY-281-DEV-WALLET-SEED`**, **`INV-DEPLOY-281-EXTRA-MINTER`** — [invariants §259](invariants-and-business-logic.md#arena-v2-deploy-gitlab-259).
 
+<a id="anvil-deploy-dev-caller-scope-gitlab-289"></a>
+
+### DeployDev caller scope ([GitLab #289](https://gitlab.com/PlasticDigits/yieldomega/-/issues/289))
+
+**`yieldomega_anvil_deploy_dev`** ([`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh)) runs DeployDev (+ optional Kumbaya + dev-wallet seed) but does **not** set **`TA`**, **`DOUB`**, **`CRED`**, or Kumbaya vars in the caller shell. After deploy, callers that need addresses must call:
+
+```bash
+yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
+# When YIELDOMEGA_DEPLOY_KUMBAYA=1:
+yieldomega_export_kumbaya_addrs_from_log "${DEPLOY_LOG}"
+```
+
+Do **not** rely on caller-scope **`DOUB`** / **`TA`** surviving a second deploy without re-exporting from that deploy’s log (or saving addresses before the second call).
+
+| Check | Command |
+|-------|---------|
+| Hermetic export API | `bash scripts/test-anvil-deploy-caller-scope.sh` |
+| Double deploy + seed | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` |
+
+Invariants: **`INV-DEPLOY-289-NO-CALLER-LEAK`**, **`INV-DEPLOY-289-EXPORT-API`** — [invariants §289](invariants-and-business-logic.md#anvil-deploy-dev-caller-scope-gitlab-289).
+
 ### Anvil E2E concurrency ([GitLab #87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87))
 
 <a id="anvil-e2e-concurrency-gitlab-87"></a>
@@ -198,7 +219,7 @@ The default **`playwright-e2e`** job in [`.github/workflows/unit-tests.yml`](../
 | Seed step fails silently | `set -e` + trap ran before stderr flushed | `yieldomega_anvil_deploy_dev` checks `seed-evm-dev-wallets-anvil.sh` exit code and prints **`CL8Y=`** context |
 | Seed **`AccessControlUnauthorizedAccount`** on Cloud Agent | Cursor **`KEY_EVM_*`** secrets override Anvil account #0–#2 | `e2e-anvil.sh` **`unset`s** `KEY_EVM_*` before deploy so seed targets default Anvil addresses |
 
-**Hermetic regressions (no Anvil):** `bash scripts/verify-e2e-anvil-trap.sh` · `bash scripts/test-anvil-deploy-cl8y-extract.sh` (CI **`scripts-smoke`**).
+**Hermetic regressions (no Anvil):** `bash scripts/verify-e2e-anvil-trap.sh` · `bash scripts/test-anvil-deploy-cl8y-extract.sh` · `bash scripts/test-anvil-deploy-caller-scope.sh` (CI **`scripts-smoke`**).
 
 **Invariant map:** [`INV-ANVIL-E2E-279-TRAP`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279) · [`INV-ANVIL-E2E-279-CL8Y-EXTRACT`](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279).
 
