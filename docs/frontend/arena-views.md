@@ -103,7 +103,7 @@ Toggle buttons: **`data-testid="arena-paywith-cl8y"`** (DOUB), **`arena-paywith-
 
 ## Wallet / chain
 
-Wrong-network write gating: [wallet-connection.md](wallet-connection.md). Session drift on multi-step buys: [invariants §144](../testing/invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144).
+Wrong-network write gating: [wallet-connection.md](wallet-connection.md). Session drift on multi-step buys: [invariants §144](../testing/invariants-and-business-logic.md#arena-buy-wallet-session-drift-gitlab-144).
 
 ## E2E
 

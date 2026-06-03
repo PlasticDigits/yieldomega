@@ -411,7 +411,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### Authoritative docs
 
-- [`INV-INDEXER-PODIUM-PREDICT-LIVE`](invariants-and-business-logic.md#indexer-live-podium-predictions-gitlab-273) · [design § live podiums](../indexer/design.md#timecurve-podiums-http)
+- [`INV-INDEXER-PODIUM-PREDICT-LIVE`](invariants-and-business-logic.md#indexer-live-podium-predictions-gitlab-273) · [design § live podiums](../indexer/design.md#arena-podiums-http)
 - [`arena_podium_live.rs`](../../indexer/src/arena_podium_live.rs) · [`usePodiumReads.ts`](../../frontend/src/pages/arena/usePodiumReads.ts)
 - [play-active-time-arena § Indexer](../../skills/play-active-time-arena/SKILL.md)
 
@@ -566,7 +566,7 @@ Participant / QA checklist: the app must **not** send calldata built from this d
 
 1. Connect on the **correct** target chain → **`/arena`**: buys work when not **`paused`**.
 2. Switch wallet to a **wrong** chain:
-   - **`/arena`:** **`timecurve-arena-buy-chain-write-gate`**, **`data-testid="switch-to-target-chain"`**, WarBow gates as documented.
+   - **`/arena`:** **`arena-simple-chain-write-gate`**, **`data-testid="switch-to-target-chain"`**, WarBow gates as documented.
    - **`/referrals`:** **`referrals-register-chain-write-gate`**.
    - **`/vesting`:** **`presale-vesting-chain-write-gate`**.
 3. **Switch to …** → return to **`VITE_CHAIN_ID`** → overlays clear.
@@ -592,7 +592,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 ### Manual steps
 
 1. Open **`/arena`** with the wallet on the **correct** target chain — **Buy CHARM** shows normal **arcade** styling and hover lift (unless reduced motion).
-2. Switch to a **wrong** chain — **`timecurve-arena-buy-chain-write-gate`** overlay; **`data-testid="arena-arena-buy-charm-cta"`** is **dimmed**, **`disabled`**, with **`chainMismatchWriteMessage`** as native **`title`**.
+2. Switch to a **wrong** chain — **`arena-simple-chain-write-gate`** overlay; **`data-testid="arena-simple-buy-charm"`** is **dimmed**, **`disabled`**, with **`chainMismatchWriteMessage`** as native **`title`**.
 3. Switch back to the build target chain — **Buy CHARM** regains normal styling.
 
 ### Code references
@@ -624,7 +624,7 @@ Same as [#95](#manual-qa-issue-95): local stack with default **31337** target (o
 
 - [`walletBuySessionGuard.ts`](../../frontend/src/lib/walletBuySessionGuard.ts) · [`arenaV2SaleSessionBridge.ts`](../../frontend/src/pages/arena/arenaV2SaleSessionBridge.ts)
 
-**Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#timecurve-buy-wallet-session-drift-gitlab-144)
+**Doc map:** [`wallet-connection.md` § #144](../frontend/wallet-connection.md#wallet-session-continuity-during-buy-gitlab-144) · [invariants — #144](invariants-and-business-logic.md#arena-buy-wallet-session-drift-gitlab-144)
 
 <a id="manual-qa-issue-155-referral-register-wallet-session-drift"></a>
 
