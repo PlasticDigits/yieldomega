@@ -115,6 +115,7 @@ pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_arena_podium_pool_top_up",
     "idx_arena_vault_funding",
     "idx_arena_buy",
+    "idx_arena_last_buy_epoch_started",
     "idx_arena_started",
     "idx_arena_podium_epoch",
     "idx_play_cred_claim",

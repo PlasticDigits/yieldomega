@@ -14,6 +14,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::decoder::{decode_rpc_log, DecodedEvent};
+use crate::last_buy_epoch_head::LastBuyEpochHead;
 use crate::persist::persist_decoded_log_conn;
 use crate::arena_podium_live;
 use crate::warbow_score;
@@ -342,12 +343,13 @@ pub async fn run(
 
             let mut tx = pool.begin().await?;
             let ingest_block = async {
+                let mut last_buy_epoch_head = LastBuyEpochHead::load(&mut tx).await?;
                 for lg in &logs {
                     if lg.removed {
                         continue;
                     }
                     if let Some(decoded) = decode_rpc_log(lg) {
-                        persist_decoded_log_conn(&mut tx, &decoded).await?;
+                        persist_decoded_log_conn(&mut tx, &mut last_buy_epoch_head, &decoded).await?;
                         if let Some(arena) = time_arena {
                             if decoded.contract == arena {
                                 let provider =

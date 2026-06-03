@@ -8,6 +8,7 @@ use sqlx::postgres::PgConnection;
 use sqlx::PgPool;
 
 use crate::decoder::{DecodedEvent, DecodedLog};
+use crate::last_buy_epoch_head::LastBuyEpochHead;
 
 fn u256_dec(n: U256) -> String {
     n.to_string()
@@ -21,7 +22,11 @@ fn b256_hex(h: alloy_primitives::B256) -> String {
     format!("{:#x}", h)
 }
 
-pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -> Result<()> {
+pub async fn persist_decoded_log_conn(
+    conn: &mut PgConnection,
+    head: &mut LastBuyEpochHead,
+    d: &DecodedLog,
+) -> Result<()> {
     let block = d.block_number as i64;
     let tx_h = b256_hex(d.tx_hash);
     let log_i = d.log_index as i32;
@@ -57,13 +62,14 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             timer_hard_reset,
             paid_with_cred,
         } => {
+            let last_buy_epoch = head.epoch_for_buy();
             sqlx::query(
                 r#"INSERT INTO idx_arena_buy (
                     block_number, block_timestamp, tx_hash, log_index, buyer,
                     charm_wad, doub_paid, new_deadline, total_doub_raised_after, buy_index,
-                    actual_seconds_added, timer_hard_reset, paid_with_cred
+                    actual_seconds_added, timer_hard_reset, paid_with_cred, last_buy_epoch
                 ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric, $7::numeric, $8::numeric,
-                    $9::numeric, $10::numeric, $11::numeric, $12, $13)
+                    $9::numeric, $10::numeric, $11::numeric, $12, $13, $14)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
@@ -79,6 +85,7 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .bind(u256_dec(*actual_seconds_added))
             .bind(*timer_hard_reset)
             .bind(*paid_with_cred)
+            .bind(last_buy_epoch)
             .execute(&mut *conn)
             .await?;
         }
@@ -324,7 +331,23 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::ArenaLastBuyEpochStarted { .. } => {}
+        DecodedEvent::ArenaLastBuyEpochStarted { epoch, deadline } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_last_buy_epoch_started (
+                    block_number, block_timestamp, tx_hash, log_index, epoch, deadline
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5::numeric, $6::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(u256_dec(*epoch))
+            .bind(u256_dec(*deadline))
+            .execute(&mut *conn)
+            .await?;
+            head.apply_epoch_started(*epoch);
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())
@@ -332,6 +355,7 @@ pub async fn persist_decoded_log_conn(conn: &mut PgConnection, d: &DecodedLog) -
 
 pub async fn persist_decoded_log_autocommit(pool: &PgPool, d: &DecodedLog) -> Result<()> {
     let mut conn = pool.acquire().await?;
-    persist_decoded_log_conn(&mut conn, d).await?;
+    let mut head = LastBuyEpochHead::load(&mut conn).await?;
+    persist_decoded_log_conn(&mut conn, &mut head, d).await?;
     Ok(())
 }

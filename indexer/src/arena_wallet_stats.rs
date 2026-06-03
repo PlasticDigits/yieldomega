@@ -89,13 +89,8 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
     } else {
         sqlx::query_scalar(
             r#"SELECT COUNT(DISTINCT last_buy_epoch)::bigint
-               FROM (
-                 SELECT SUM(CASE WHEN timer_hard_reset THEN 1 ELSE 0 END)
-                        OVER (ORDER BY block_number, log_index ROWS UNBOUNDED PRECEDING)::bigint
-                        AS last_buy_epoch
-                 FROM idx_arena_buy
-                 WHERE buyer = $1
-               ) epochs"#,
+               FROM idx_arena_buy
+               WHERE buyer = $1"#,
         )
         .bind(wallet)
         .fetch_one(pool)
@@ -215,10 +210,7 @@ async fn fetch_wallet_buys(pool: &PgPool, wallet: &str) -> Result<Vec<BuyRow>, s
     let rows = sqlx::query(
         r#"SELECT buyer, charm_wad::text, actual_seconds_added::text, new_deadline::text,
                   EXTRACT(EPOCH FROM block_timestamp)::bigint AS block_ts,
-                  timer_hard_reset, block_number, log_index,
-                  SUM(CASE WHEN timer_hard_reset THEN 1 ELSE 0 END)
-                      OVER (ORDER BY block_number, log_index ROWS UNBOUNDED PRECEDING)::bigint
-                      AS last_buy_epoch
+                  timer_hard_reset, block_number, log_index, last_buy_epoch
            FROM idx_arena_buy
            WHERE buyer = $1
            ORDER BY block_number, log_index"#,
@@ -233,10 +225,7 @@ async fn fetch_all_buys_ordered(pool: &PgPool) -> Result<Vec<BuyRow>, sqlx::Erro
     let rows = sqlx::query(
         r#"SELECT buyer, charm_wad::text, actual_seconds_added::text, new_deadline::text,
                   EXTRACT(EPOCH FROM block_timestamp)::bigint AS block_ts,
-                  timer_hard_reset, block_number, log_index,
-                  SUM(CASE WHEN timer_hard_reset THEN 1 ELSE 0 END)
-                      OVER (ORDER BY block_number, log_index ROWS UNBOUNDED PRECEDING)::bigint
-                      AS last_buy_epoch
+                  timer_hard_reset, block_number, log_index, last_buy_epoch
            FROM idx_arena_buy
            ORDER BY block_number, log_index"#,
     )
