@@ -12,6 +12,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) | [Per-podium timer params](#manual-qa-issue-271) |
 | [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275) | [Contract fork smoke (optional)](#manual-qa-issue-275) |
 | [#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87) | [Anvil E2E](#manual-qa-issue-87) |
+| [#279](https://gitlab.com/PlasticDigits/yieldomega/-/issues/279) | [Anvil E2E trap + CL8Y seed](#manual-qa-issue-279) |
 | [#88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88) | [DeployDev cooldown](#manual-qa-issue-88) |
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network writes](#manual-qa-issue-95) |
@@ -68,6 +69,26 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 - [ ] **Optional:** For **back-to-back buys** from the **same** mock wallet without real-time waits, deploy with **`YIELDOMEGA_DEPLOY_NO_COOLDOWN=1`** ([issue #88](https://gitlab.com/PlasticDigits/yieldomega/-/issues/88)) — see [e2e-anvil — buy cooldown](e2e-anvil.md#anvil-deploydev-buy-cooldown-gitlab-88) and [DeployDev buy cooldown](#manual-qa-issue-88) below.
 
 **Doc map:** [e2e-anvil — Concurrency](e2e-anvil.md#anvil-e2e-concurrency-gitlab-87) · [invariants — Anvil E2E](invariants-and-business-logic.md#anvil-e2e-playwright-concurrency-and-pay-mode-selectors-issue-87)
+
+<a id="manual-qa-issue-279"></a>
+
+## Anvil E2E trap + MockReserveCl8y seed (GitLab #279)
+
+**Why:** [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) must run through **Playwright** without mid-script **`kill 0`** on EXIT, and dev-wallet seeding should receive mock **CL8Y** when `DeployDev` deploys **`MockReserveCl8y`**.
+
+### Hermetic (no Anvil)
+
+- [ ] `bash scripts/verify-e2e-anvil-trap.sh` → **OK**
+- [ ] `bash scripts/test-anvil-deploy-cl8y-extract.sh` → **ok**
+
+### Full pipeline
+
+- [ ] `bash scripts/e2e-anvil.sh` → exit **0**; Playwright summary printed for `e2e/anvil-arena-*.spec.ts`
+- [ ] `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` → **PASS** (CL8Y balances on `KEY_EVM_1..3`)
+- [ ] `YIELDOMEGA_SEED_EVM_DEV_WALLETS=0 bash scripts/e2e-anvil.sh` still completes (seed skipped)
+- [ ] Interrupt during Playwright: only preview (:4173) + Anvil (:8545) stop — parent shell survives
+
+**Doc map:** [e2e-anvil — §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-cl8y-extract-gitlab-279) · [invariants — §279](invariants-and-business-logic.md#anvil-e2e-trap-and-mock-cl8y-gitlab-279)
 
 <a id="manual-qa-issue-88"></a>
 

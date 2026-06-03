@@ -108,18 +108,14 @@ if [[ "${REUSE_ANVIL}" != "1" ]]; then
   cast block-number --rpc-url "${RPC}" >/dev/null || die "Anvil did not start on ${RPC}"
 fi
 
-_extract_deploy_addr() {
-  local label="$1"
-  grep -E "${label}" "${DEPLOY_LOG}" | grep -oE '0x[a-fA-F0-9]{40}' | tail -1 || true
-}
-
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export YIELDOMEGA_SEED_EVM_DEV_WALLETS=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
 
-DOUB="$(_extract_deploy_addr "Doubloon")"
-CRED="$(_extract_deploy_addr "PlayCred")"
-CL8Y="$(_extract_deploy_addr "MockReserveCl8y")"
+# yieldomega_anvil_deploy_dev sets TA/DOUB/CRED in function scope only — re-parse log here.
+DOUB="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
+CRED="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
+CL8Y="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG}" "${ROOT}")"
 [[ -n "${DOUB}" ]] || die "Doubloon address missing after deploy"
 [[ -n "${CRED}" ]] || die "PlayCred address missing after deploy"
 [[ -n "${CL8Y}" ]] || die "MockReserveCl8y address missing (expected from DeployDev)"
@@ -138,9 +134,9 @@ assert_wallets_seeded "${DOUB}" "${CRED}" "${CL8Y}"
 log "re-deploy on same Anvil (second DeployDev broadcast)"
 DEPLOY_LOG2="$(mktemp)"
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG2}" yieldomega_anvil_deploy_dev
-DOUB2="$(_extract_deploy_addr "Doubloon")"
-CRED2="$(_extract_deploy_addr "PlayCred")"
-CL8Y2="$(_extract_deploy_addr "MockReserveCl8y")"
+DOUB2="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG2}" "Doubloon")"
+CRED2="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG2}" "PlayCred")"
+CL8Y2="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG2}" "${ROOT}")"
 [[ -n "${DOUB2}" && -n "${CRED2}" && -n "${CL8Y2}" ]] || die "Second deploy missing token addresses"
 [[ "${DOUB2,,}" != "${DOUB,,}" ]] || die "Expected new Doubloon proxy after re-deploy"
 assert_wallets_seeded "${DOUB2}" "${CRED2}" "${CL8Y2}"

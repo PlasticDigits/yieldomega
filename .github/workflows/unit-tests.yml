@@ -137,6 +137,11 @@ jobs:
       - name: Kumbaya env line merge regression (#154)
         run: bash scripts/test-kumbaya-env-set-line.sh
 
+      - name: Anvil E2E trap + MockReserveCl8y extract (#279)
+        run: |
+          bash scripts/verify-e2e-anvil-trap.sh
+          bash scripts/test-anvil-deploy-cl8y-extract.sh
+
   bots-timecurve-test:
     runs-on: ubuntu-latest
     defaults:

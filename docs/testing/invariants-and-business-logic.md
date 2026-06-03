@@ -325,6 +325,20 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 **INV-ANVIL-E2E-87:** With **`ANVIL_E2E=1`**, Playwright uses **`workers: 1`**. Pay mode on **`/arena`**: **`getByTestId("arena-paywith-eth")`** (and **`…-cl8y`**, **`…-usdm`**). Doc: [e2e-anvil.md](e2e-anvil.md).
 
+<a id="anvil-e2e-trap-and-mock-cl8y-gitlab-279"></a>
+
+### Anvil E2E script reliability (GitLab [#279](https://gitlab.com/PlasticDigits/yieldomega/-/issues/279))
+
+Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266) / Anvil Playwright pipeline hardening.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-ANVIL-E2E-279-TRAP`** | `scripts/e2e-anvil.sh` EXIT cleanup never invokes **`kill 0`** when **`PREVIEW_PID`** / **`ANVIL_PID`** are unset | [`verify-e2e-anvil-trap.sh`](../../scripts/verify-e2e-anvil-trap.sh) · [`_yieldomega_kill_pid_if_set`](../../scripts/lib/anvil_deploy_dev.sh) |
+| **`INV-ANVIL-E2E-279-CL8Y-EXTRACT`** | After default mock **`DeployDev`**, **`yieldomega_anvil_deploy_dev`** resolves non-empty **`CL8Y`** from deploy log **`MockReserveCl8y:`** and/or broadcast **`run-latest.json`** | [`test-anvil-deploy-cl8y-extract.sh`](../../scripts/test-anvil-deploy-cl8y-extract.sh) · [`verify-evm-dev-wallet-seed-anvil.sh`](../../scripts/verify-evm-dev-wallet-seed-anvil.sh) |
+| **`INV-ANVIL-E2E-279-SEED-ERRORS`** | Dev-wallet seed failure surfaces before EXIT trap (explicit message + non-zero exit) | [`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh) seed block |
+
+Doc: [e2e-anvil.md §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-cl8y-extract-gitlab-279) · manual QA: [§279](manual-qa-checklists.md#manual-qa-issue-279).
+
 <a id="frontend-single-chain-wagmi-issue-81"></a>
 
 ### Frontend single-chain wagmi (GitLab [#81](https://gitlab.com/PlasticDigits/yieldomega/-/issues/81))

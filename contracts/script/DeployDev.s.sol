@@ -38,7 +38,7 @@ contract DeployDev is Script {
         if (reserveAsset == address(0)) {
             mock = new MockReserveCl8y();
             reserveAsset = address(mock);
-            console.log("MockReserveCl8y deployed (dev only):", reserveAsset);
+            console.log("MockReserveCl8y:", reserveAsset);
         }
 
         Doubloon doub = new Doubloon(deployer);
@@ -89,7 +89,7 @@ contract DeployDev is Script {
         if (address(mock) != address(0)) {
             mock.mint(E2E_MOCK_WALLET, 100_000e18);
             mock.mint(deployer, 100_000e18);
-            console.log("MockReserveCl8y seeded for E2E mock wallet");
+            console.log("E2E mock wallet seeded with MockReserveCl8y");
         }
 
         vm.stopBroadcast();
