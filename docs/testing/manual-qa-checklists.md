@@ -21,8 +21,29 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [Buy session drift](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting](#manual-qa-issue-92) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
+| [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237) | [MegaETH WSS head pill](#manual-qa-issue-237) (deferred) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-views.md), [`invariants-and-business-logic.md`](invariants-and-business-logic.md).
+
+<a id="manual-qa-issue-237"></a>
+
+## MegaETH WSS mini-block head pill (GitLab #237) — deferred
+
+**Status:** Phase 1 not shipped. Run `bash scripts/verify-issue-237-wss-deferred.sh` in CI/agent verification until implementation lands.
+
+### Preconditions (when implemented)
+
+- Production or staging indexer on **MegaETH mainnet (4326)** with **`INDEXER_WSS_ENABLED=1`** and operator **`INDEXER_WSS_URL`** (VIP WSS; keepalive **`eth_chainId` ~30s**).
+- Frontend **`VITE_INDEXER_URL`** pointed at the HTTP indexer (SSE or snapshot endpoint).
+
+### Checklist (blocked until Phase 1)
+
+| Step | Pass criteria | Current |
+|------|----------------|---------|
+| Agent card — indexed pill | **`IndexerStatusBar`** shows **latest indexed block** from **`GET /v1/status`** | **PASS** (existing) |
+| Agent card — WSS pill | Second pill: mini-block **#** + **timestamp ms**, visually distinct from indexed block | **FAIL** — not implemented |
+| Kill WSS upstream | WSS pill stale/offline; indexed pill still advances via RPC | **FAIL** — not implemented |
+| Anvil local stack | No WSS required; stack healthy without **`INDEXER_WSS_*`** | **PASS** — `verify-issue-237-wss-deferred.sh` |
 
 <a id="manual-qa-issue-280"></a>
 
