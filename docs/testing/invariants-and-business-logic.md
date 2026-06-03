@@ -150,6 +150,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use **`/v1/arena/*`** only; no **`/v1/timecurve/*`** or legacy WarBow HTTP | `indexerApi.test.ts` (#266 retirement), `indexer/src/api_arena.rs` |
 | **`INV-FRONTEND-280-ARENA-CSS-NAMING`** | No `timecurve-*` CSS classes, `data-testid`s, or `/art/.../timecurve-*` paths under `frontend/src/pages/arena/**`; public art uses `arena-*` filenames; legacy `/timecurve` URL redirects unchanged ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) | `bash scripts/check-arena-naming.sh`, `ArenaSimplePodiumSection.test.tsx`, `e2e/footer-site-links.spec.ts` · [arena-views §280](../frontend/arena-views.md#arena-css-naming-gitlab-280) · [manual QA §280](manual-qa-checklists.md#manual-qa-issue-280) |
+| **`INV-FRONTEND-286-ART-README`** | [`frontend/public/art/README.md`](../../frontend/public/art/README.md) consumer links resolve to existing `frontend/src/**` files; no deleted `TimeCurve*.tsx` / `timeCurveArena/*` targets; `ArenaSimplePage` links use `pages/arena/ArenaSimplePage.tsx` ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)) | `bash scripts/check-art-readme-consumers.sh` · [design §286](../frontend/design.md#art-readme-consumer-links-gitlab-286) |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 
@@ -160,6 +161,16 @@ Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266): r
 | ID | Property | Evidence |
 |----|----------|----------|
 | **`INV-FRONTEND-280-ARENA-CSS-NAMING`** | (see summary row above) | `bash scripts/check-arena-naming.sh` |
+
+<a id="frontend-art-readme-consumer-links-gitlab-286"></a>
+
+### Frontend art README consumer links (GitLab [#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286))
+
+Follow-up to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266): keep [`frontend/public/art/README.md`](../../frontend/public/art/README.md) **“Used by”** columns aligned with live Arena surfaces (`TimeArenaPage`, `pages/arena/*`) — not deleted v1 TimeCurve pages. Source of truth for wiring: `rg "/art/" frontend/src`.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-286-ART-README`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh` |
 
 <a id="timearena-cred-buy-gitlab-268"></a>
 

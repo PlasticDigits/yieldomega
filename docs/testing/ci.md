@@ -6,8 +6,7 @@ This document maps **[testing stages](strategy.md)** to **what runs in GitHub Ac
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **Unit tests** | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) | **`check-megaevm-contract-sizes.sh`** (MegaEVM 512 KiB gate on `src/` artifacts) + `forge test` (contracts), **`cargo clippy --all-targets -- -D warnings`** then `cargo test` (indexer + Postgres: `integration_stage2` includes persist/reorg + **HTTP API** smoke), `npm test` (Vitest), **`npm run test:e2e`** (Playwright **UI smoke** on production build + preview — **no chain**), Python `unittest` in `simulations/`. **`scripts-smoke`** job runs **`check-doc-anchors.sh`** + **`check-doc-retired-terms.sh`** ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)) + **`check-doc-satellite-retired-count.sh`** ([#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276)) + **`check-doc-timecurve-satellite.sh`** ([#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284)) + **`check-arena-naming.sh`** ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)). **No repository secrets** — only `actions/checkout` and public toolchains. Anvil-backed Playwright is **not** part of this job; see [e2e-anvil.md](e2e-anvil.md). |
-| **Slither** | [`.github/workflows/slither.yml`](../../.github/workflows/slither.yml) | Static analysis on `contracts/` after `forge build`; `fail-on: high`. Complements (does not replace) audit. |
+| **Unit tests** | [`.github/workflows/unit-tests.yml`](../../.github/workflows/unit-tests.yml) | **`check-megaevm-contract-sizes.sh`** (MegaEVM 512 KiB gate on `src/` artifacts) + `forge test` (contracts), **`cargo clippy --all-targets -- -D warnings`** then `cargo test` (indexer + Postgres: `integration_stage2` includes persist/reorg + **HTTP API** smoke), `npm test` (Vitest), **`npm run test:e2e`** (Playwright **UI smoke** on production build + preview — **no chain**), Python `unittest` in `simulations/`. **`scripts-smoke`** job runs **`check-doc-anchors.sh`** + **`check-doc-retired-terms.sh`** ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274)) + **`check-doc-satellite-retired-count.sh`** ([#276](https://gitlab.com/PlasticDigits/yieldomega/-/issues/276)) + **`check-doc-timecurve-satellite.sh`** ([#284](https://gitlab.com/PlasticDigits/yieldomega/-/issues/284)) + **`check-arena-naming.sh`** ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) + **`check-art-readme-consumers.sh`** ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)). **No repository secrets** — only `actions/checkout` and public toolchains. Anvil-backed Playwright is **not** part of this job; see [e2e-anvil.md](e2e-anvil.md). || **Slither** | [`.github/workflows/slither.yml`](../../.github/workflows/slither.yml) | Static analysis on `contracts/` after `forge build`; `fail-on: high`. Complements (does not replace) audit. |
 | **Secret scanning** | [`.github/workflows/gitleaks.yml`](../../.github/workflows/gitleaks.yml) | Gitleaks on push/PR. Uses the default `GITHUB_TOKEN` for the action only; not part of the “unit” gate. |
 | **Anvil E2E (optional)** | [`.github/workflows/e2e-anvil.yml`](../../.github/workflows/e2e-anvil.yml) | **`workflow_dispatch` only** — Foundry + [`scripts/e2e-anvil.sh`](../../scripts/e2e-anvil.sh) (Anvil, `DeployDev`, Playwright `e2e/anvil-*.spec.ts`). **Not** required for merge; use for manual validation. See [e2e-anvil.md](e2e-anvil.md). |
 | **Contract fork smoke (optional)** | [`.github/workflows/contract-fork-smoke.yml`](../../.github/workflows/contract-fork-smoke.yml) | **`workflow_dispatch` only** — `forge test --match-contract TimeArenaForkTest` with live RPC via input or secret `FORK_URL`. Default **`unit-tests`** job does **not** set `FORK_URL` (fork smoke tests no-op). Policy and runbook: [contract-fork-smoke.md](contract-fork-smoke.md). |
@@ -52,11 +51,12 @@ cd frontend && npx playwright install --with-deps && npm run build && npm run te
 # export PATH="$HOME/.foundry/bin:$PATH" && source /usr/local/cargo/env 2>/dev/null || true
 # bash scripts/verify-wallet-profile-anvil.sh
 
-# Doc gates (same as scripts-smoke CI job; #274, #276, #284)
+# Doc gates (same as scripts-smoke CI job; #274, #276, #284, #286)
 bash scripts/check-doc-anchors.sh
 bash scripts/check-doc-retired-terms.sh
 bash scripts/check-doc-satellite-retired-count.sh
 bash scripts/check-doc-timecurve-satellite.sh
+bash scripts/check-art-readme-consumers.sh
 
 # Simulations (optional; same suite as Stage 1 strategy)
 cd simulations && PYTHONPATH=. python3 -m unittest discover -s tests -v
