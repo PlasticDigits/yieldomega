@@ -114,6 +114,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-INDEXER-262-DONATE-POOLS`** | `PodiumPoolsToppedUp` → `idx_arena_podium_pool_top_up`; `GET /v1/arena/podium-pool-donations` | `integration_stage2.rs` |
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
 | **`INV-FRONTEND-258-WALLET-PROFILE`** | Participant **`AddressInline`** on live buy rows + podium winners opens profile modal (`onOpenProfile`); explorer link only inside modal; modal renders all stats sections from **`GET /v1/arena/wallet/{address}/stats`** | `LiveBuyRow.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `ArenaSimplePodiumSection.test.tsx`, `WalletProfileModalSections.test.tsx` ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) · [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
+| **`INV-INDEXER-278-LAST-BUY-EPOCH`** | `LastBuyEpochStarted` → `idx_arena_last_buy_epoch_started`; each `idx_arena_buy.last_buy_epoch` from ordered global head (not per-wallet `timer_hard_reset` window); wallet stats `epochs_participated` uses stored column | `last_buy_epoch_head.rs`, `persist.rs`, `integration_stage2.rs::last_buy_epoch_global_assignment_non_resetting_participant`, `bash scripts/verify-last-buy-epoch-anvil.sh` ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)) |
 | **`INV-INDEXER-267-VAULT-FUNDING`** | `PodiumFunded` / `SeedFunded` / `AdminVaultFunded` → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows | `integration_stage2.rs` (`api_vault_funding_smoke`) · `bash scripts/verify-vault-funding-anvil.sh` |
 | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` (DOUB + ETH when Kumbaya env set) · see [§264](#arena-frontend-pay-pause-gitlab-264) |
 | **`INV-FRONTEND-266-ARENA-ROUTES`** | Canonical play at `/arena`, AUDIT at `/arena/protocol`; `/arena/*` redirects; env requires `VITE_TIME_ARENA_ADDRESS` only | `LaunchGate.tsx`, `scripts/check-frontend-vite-env.sh`, `e2e/navigation.spec.ts` |
@@ -238,6 +239,13 @@ Indexer HTTP: **`GET /v1/arena/podium-pool-donations`** (ingests **`PodiumPoolsT
 
 Participant wallet addresses on live buy feeds and podium rankings open **`WalletProfileModal`** (indexer **`GET /v1/arena/wallet/{address}/stats`**); explorer links remain inside the modal only. Sections: Overview, Podium wins, Spending, XP/Level, WarBow, Referrals, Fun facts. Frontend: [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) · **`INV-FRONTEND-258-WALLET-PROFILE`** · play skill: [play-time-arena-doub](../../skills/play-time-arena-doub/SKILL.md).
 
+
+<a id="indexer-last-buy-epoch-gitlab-278"></a>
+
+### Indexer Last Buy epoch persistence (GitLab [#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278))
+
+**`TimeArena.lastBuyEpoch`** is global. On Last Buy hard reset the contract increments epoch and emits **`LastBuyEpochStarted(epoch, deadline)`** before **`Buy`** in the same transaction. Indexer ingest assigns **`idx_arena_buy.last_buy_epoch`** from a running head updated by epoch-start events — **not** from cumulative per-wallet **`timer_hard_reset`** counts (which mis-tags participants who never reset). **`epochs_participated`** on **`GET /v1/arena/wallet/{address}/stats`** = `COUNT(DISTINCT last_buy_epoch)` for that wallet. Closes **`INV-INDEXER-112`** gap for **`LastBuyEpochStarted`**. Design: [indexer design §278](../indexer/design.md#arena-last-buy-epoch-gitlab-278).
+
 <a id="arena-vault-funding-gitlab-267"></a>
 
 ### Arena buy vault funding (GitLab [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
@@ -268,7 +276,7 @@ Forge dependencies: [contracts/README.md](../../contracts/README.md).
 
 ### Postgres integration test behavior (`indexer/tests/integration_stage2.rs`)
 
-CI sets `YIELDOMEGA_PG_TEST_URL` so `postgres_stage2_persist_all_events_and_rollback_after` runs migrations, inserts **every non-Unknown Arena v2** [`DecodedEvent`](../../indexer/src/decoder.rs) variant, checks idempotency, calls `rollback_after`, then HTTP smoke for **`GET /v1/arena/*`** and **`GET /v1/referrals/*`**. **`arena_wallet_stats_two_epochs_and_bonus_fields`** ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) asserts two Last Buy epochs + bonus fields on **`GET /v1/arena/wallet/{address}/stats`**.
+CI sets `YIELDOMEGA_PG_TEST_URL` so `postgres_stage2_persist_all_events_and_rollback_after` runs migrations, inserts **every non-Unknown Arena v2** [`DecodedEvent`](../../indexer/src/decoder.rs) variant, checks idempotency, calls `rollback_after`, then HTTP smoke for **`GET /v1/arena/*`** and **`GET /v1/referrals/*`**. **`arena_wallet_stats_two_epochs_and_bonus_fields`** ([#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255)) and **`last_buy_epoch_global_assignment_non_resetting_participant`** ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)) assert epoch assignment + wallet stats on **`GET /v1/arena/wallet/{address}/stats`**.
 
 Tests share one Postgres URL and serialize on a process-wide mutex (`PG_INTEGRATION_MUTEX`) so parallel `cargo test` does not cross-delete fixture rows.
 

@@ -22,6 +22,7 @@ use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, Timecurv
 use yieldomega_indexer::config::DEFAULT_DATABASE_POOL_MAX;
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog, VaultFundingKind};
+use yieldomega_indexer::last_buy_epoch_head::LastBuyEpochHead;
 use yieldomega_indexer::persist::{persist_decoded_log_autocommit, persist_decoded_log_conn};
 use yieldomega_indexer::reorg::{
     load_chain_pointer, rollback_after, save_chain_pointer, upsert_indexed_block, ChainPointer,
@@ -309,6 +310,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
             start_timestamp: u1,
             initial_deadline: u2,
         }),
+        next(DecodedEvent::ArenaLastBuyEpochStarted {
+            epoch: u1,
+            deadline: u2,
+        }),
         next(DecodedEvent::ArenaBuy {
             buyer: alice,
             charm_wad: u1,
@@ -388,15 +393,27 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     ];
 
     let mut conn = pool.acquire().await.expect("acquire");
+    let mut head = LastBuyEpochHead::INITIAL;
     for log in &logs {
-        persist_decoded_log_conn(&mut conn, log)
+        persist_decoded_log_conn(&mut conn, &mut head, log)
             .await
             .expect("persist");
     }
     drop(conn);
 
     assert_eq!(count_where(&pool, "idx_arena_started", 100).await, 1);
+    assert_eq!(
+        count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
+        1
+    );
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 1);
+    let buy_epoch: i64 = sqlx::query_scalar(
+        "SELECT last_buy_epoch FROM idx_arena_buy WHERE block_number = 100 LIMIT 1",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("buy epoch");
+    assert_eq!(buy_epoch, 1);
     assert_eq!(count_where(&pool, "idx_arena_referral_cred", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_player_xp", 100).await, 1);
     assert_eq!(count_where(&pool, "idx_play_cred_claim", 100).await, 1);
@@ -444,6 +461,10 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
     };
     rollback_after(&pool, ancestor).await.expect("rollback");
     assert_eq!(count_where(&pool, "idx_arena_buy", 100).await, 0);
+    assert_eq!(
+        count_where(&pool, "idx_arena_last_buy_epoch_started", 100).await,
+        0
+    );
     assert_eq!(count_where(&pool, "idx_arena_vault_funding", 100).await, 0);
 
     let ptr = load_chain_pointer(&pool).await.expect("load pointer");
@@ -801,9 +822,24 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
             log
         };
 
+    let mut reset_tx = sample_log_tx(
+        block + 2,
+        2,
+        1,
+        DecodedEvent::ArenaLastBuyEpochStarted {
+            epoch: U256::from(1u8),
+            deadline: U256::from(ts + 900),
+        },
+    );
+    reset_tx.block_timestamp = Some(ts + 2);
+    let mut reset_buy = mk_buy(2, 2, true, DOUB_1000);
+    reset_buy.tx_hash = reset_tx.tx_hash;
+    reset_buy.block_number = reset_tx.block_number;
+
     let logs = vec![
         mk_buy(1, 1, false, DOUB_100),
-        mk_buy(2, 1, true, DOUB_1000),
+        reset_tx,
+        reset_buy,
         sample_log_tx(
             block + 3,
             3,
@@ -904,6 +940,109 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
 
     let rank_dist = j.get("rank_distribution").expect("rank_distribution");
     assert_eq!(rank_dist.get("1").and_then(|v| v.as_str()), Some("1"));
+}
+
+
+/// Global Last Buy epoch on buys — wallet B in epoch 1 without hard-resetting ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)).
+#[tokio::test]
+async fn last_buy_epoch_global_assignment_non_resetting_participant() {
+    let Some(url) = pg_url() else {
+        eprintln!("skip last_buy_epoch_global_assignment: set YIELDOMEGA_PG_TEST_URL");
+        return;
+    };
+
+    let _pg = pg_integration_lock().await;
+
+    let pool = connect_and_migrate(&url, DEFAULT_DATABASE_POOL_MAX)
+        .await
+        .expect("connect_and_migrate");
+
+    clear_arena_index_for_test(&pool).await;
+
+    let alice = addr_byte(0xa1);
+    let bob = addr_byte(0xb2);
+    let bob_hex = format!("{bob:#x}");
+    let block = 600u64;
+    let ts = 1_700_200_000u64;
+
+    let mk_buy = |tx_id: u64, log_index: u64, buyer: Address, hard_reset: bool| -> DecodedLog {
+        let mut log = sample_log_tx(
+            block + tx_id,
+            tx_id,
+            log_index,
+            DecodedEvent::ArenaBuy {
+                buyer,
+                charm_wad: U256::from(1_000_000_000_000_000_000u128),
+                doub_paid: U256::from(DOUB_100),
+                new_deadline: U256::from(ts + 900),
+                total_doub_raised_after: U256::from(DOUB_100),
+                buy_index: U256::from(tx_id),
+                actual_seconds_added: U256::from(120u64),
+                timer_hard_reset: hard_reset,
+                paid_with_cred: false,
+            },
+        );
+        log.block_timestamp = Some(ts + tx_id);
+        log
+    };
+
+    let mut epoch_start = sample_log_tx(
+        block + 2,
+        2,
+        1,
+        DecodedEvent::ArenaLastBuyEpochStarted {
+            epoch: U256::from(1u8),
+            deadline: U256::from(ts + 900),
+        },
+    );
+    epoch_start.block_timestamp = Some(ts + 2);
+    let mut alice_reset_buy = mk_buy(2, 2, alice, true);
+    alice_reset_buy.tx_hash = epoch_start.tx_hash;
+    alice_reset_buy.block_number = epoch_start.block_number;
+
+    let logs = vec![
+        mk_buy(1, 1, alice, false),
+        epoch_start,
+        alice_reset_buy,
+        mk_buy(3, 1, bob, false),
+    ];
+
+    for log in &logs {
+        persist_decoded_log_autocommit(&pool, log)
+            .await
+            .expect("persist global epoch fixture");
+    }
+
+    let bob_epoch: i64 = sqlx::query_scalar(
+        "SELECT last_buy_epoch FROM idx_arena_buy WHERE buyer = $1",
+    )
+    .bind(&bob_hex)
+    .fetch_one(&pool)
+    .await
+    .expect("bob buy epoch");
+    assert_eq!(bob_epoch, 1);
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/v1/arena/wallet/{bob_hex}/stats"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    assert_eq!(j.get("epochs_participated").and_then(|v| v.as_i64()), Some(1));
+    assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(1));
 }
 
 #[tokio::test]
