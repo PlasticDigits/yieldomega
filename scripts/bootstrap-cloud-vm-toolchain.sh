@@ -18,6 +18,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
+# shellcheck source=scripts/lib/docker_cloud_agent.sh
+source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 
 YIELDOMEGA_GITLAB_HOST="${YIELDOMEGA_GITLAB_HOST:-gitlab.com}"
 YIELDOMEGA_GITLAB_PROJECT="${YIELDOMEGA_GITLAB_PROJECT:-PlasticDigits/yieldomega}"
@@ -169,21 +171,6 @@ start_dockerd_if_needed() {
   return 1
 }
 
-fix_docker_socket_permissions() {
-  if [[ ! -S /var/run/docker.sock ]]; then
-    return 1
-  fi
-  # Dev user must reach docker without sudo on Cloud Agent VMs.
-  if docker info >/dev/null 2>&1; then
-    return 0
-  fi
-  if getent group docker >/dev/null 2>&1 && [[ -n "${USER:-}" ]]; then
-    run_as_root usermod -aG docker "${USER}" 2>/dev/null || true
-  fi
-  run_as_root chmod 666 /var/run/docker.sock 2>/dev/null || true
-  docker info >/dev/null 2>&1
-}
-
 ensure_docker() {
   install_docker_packages || true
   if ! command -v docker >/dev/null 2>&1; then
@@ -194,7 +181,9 @@ ensure_docker() {
   if ! docker_daemon_responds; then
     write_docker_storage_driver "fuse-overlayfs"
     start_dockerd_if_needed || true
-    fix_docker_socket_permissions || true
+    yieldomega_fix_docker_socket_permissions || true
+  else
+    yieldomega_fix_docker_socket_permissions || true
   fi
 
   if docker_daemon_responds && ! docker_run_hello; then
@@ -203,17 +192,30 @@ ensure_docker() {
     sleep 2
     write_docker_storage_driver "vfs"
     start_dockerd_if_needed || true
-    fix_docker_socket_permissions || true
+    yieldomega_fix_docker_socket_permissions || true
   fi
 
+  if yieldomega_docker_usable_for_agent; then
+    log "Docker OK ($(docker info --format '{{.Driver}}' 2>/dev/null || echo unknown)) — verified as ${USER:-agent}"
+    yieldomega_clear_docker_unavailable
+    return 0
+  fi
+
+  local kind
+  kind="$(yieldomega_docker_error_kind)"
   if docker_daemon_responds; then
-    fix_docker_socket_permissions || true
-    if docker_run_hello; then
-      log "Docker OK ($(docker info --format '{{.Driver}}' 2>/dev/null || echo unknown))"
-    else
-      echo "bootstrap-cloud-vm-toolchain: docker daemon up but container run failed — use native Postgres (AGENTS.md)." >&2
+    yieldomega_fix_docker_socket_permissions || true
+    if yieldomega_docker_usable_for_agent; then
+      log "Docker OK after socket fix ($(docker info --format '{{.Driver}}' 2>/dev/null || echo unknown))"
+      yieldomega_clear_docker_unavailable
+      return 0
     fi
+    yieldomega_mark_docker_unavailable "daemon_up_${kind}"
+    yieldomega_docker_print_diagnosis
+    echo "bootstrap-cloud-vm-toolchain: docker daemon up but agent user cannot run containers — use native Postgres (AGENTS.md)." >&2
   else
+    yieldomega_mark_docker_unavailable "daemon_down_${kind}"
+    yieldomega_docker_print_diagnosis
     echo "bootstrap-cloud-vm-toolchain: docker daemon not reachable — use native Postgres (AGENTS.md)." >&2
   fi
 }
@@ -302,5 +304,11 @@ if [[ -x "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
 fi
 
 log "Cloud VM toolchain bootstrap finished."
+if ! yieldomega_docker_usable_for_agent; then
+  log "Docker: SKIP for agent user — bash scripts/verify-docker-cloud-agent.sh (native Postgres: AGENTS.md)"
+else
+  log "Docker: PASS for agent user"
+fi
 log "Next: bash scripts/bootstrap-cloud-agent.sh  (Playwright Chromium + Rabby + dev wallets)"
 log "Postgres smoke: bash scripts/verify-cloud-postgres.sh"
+log "Post-bootstrap smoke: bash scripts/verify-cloud-vm-toolchain.sh"

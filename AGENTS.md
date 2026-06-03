@@ -20,7 +20,29 @@ bash scripts/bootstrap-cloud-agent.sh
 - **`bootstrap-cloud-postgres-native.sh`** — **PostgreSQL 16** on host port **5433**, **`postgresql-client`** (`psql`), **`yieldomega`** role with **`CREATEDB`**, app + test databases (idempotent; primary indexer path without Docker).
 - **`bootstrap-cloud-agent.sh`** — Playwright Chromium, Rabby extension, automated import of **`KEY_EVM_1..3`**.
 
-Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh` (includes **`bash scripts/verify-cloud-postgres.sh`**).
+Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh` (includes **`bash scripts/verify-cloud-postgres.sh`**; Docker is **SKIP**, not FAIL, when the agent user cannot use the socket — see [#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)).
+
+### Docker troubleshooting (GitLab [#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288))
+
+**Symptom:** `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`
+
+| Check | Command |
+|-------|---------|
+| Diagnose + PASS/FAIL/SKIP | `bash scripts/verify-docker-cloud-agent.sh` |
+| Full toolchain (Docker optional) | `bash scripts/verify-cloud-vm-toolchain.sh` |
+| Re-apply socket + group fix | `bash scripts/bootstrap-cloud-vm-toolchain.sh` |
+
+**Remediation (in order):**
+
+1. Re-run bootstrap (applies `chmod 666` on `/var/run/docker.sock` and `usermod -aG docker "$USER"`).
+2. If `docker info` works but `docker run` fails with permission denied: socket mode is wrong or the agent shell lacks the `docker` group — open a **new** shell after bootstrap, or rely on `chmod 666` (immediate on most VMs).
+3. If overlay / `fuse-overlayfs` mount errors persist on nested VMs: bootstrap retries **`vfs`**; see `/tmp/yieldomega-dockerd.log`.
+4. **Do not block** Foundry-only or indexer-only tasks on Docker — use **native Postgres** ([§ Postgres without Docker](#postgres-without-docker-yieldomega-pg)). Bootstrap writes `/tmp/yieldomega-docker-unavailable` when the agent user still cannot run containers.
+
+**Strict gate** (full `start-local-anvil-stack` / QA stack only): `YIELDOMEGA_DOCKER_REQUIRED=1 bash scripts/verify-docker-cloud-agent.sh` must exit 0.
+
+Invariants: [`docs/testing/invariants-and-business-logic.md` §288](docs/testing/invariants-and-business-logic.md#cloud-agent-docker-gitlab-288) · library [`scripts/lib/docker_cloud_agent.sh`](scripts/lib/docker_cloud_agent.sh).
+
 
 ### Toolchain expectations on Cloud VMs
 
@@ -28,7 +50,7 @@ Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh` (includes **
 |------|--------|
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
-| **Docker** | Full-stack QA uses container `yieldomega-pg` ([`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh)). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** in `/etc/docker/daemon.json`, starts **`dockerd`** when systemd cannot, and sets **`/var/run/docker.sock`** permissions (`chmod 666` / `docker` group). If `docker run` still fails (overlay mount errors), the bootstrap script retries with storage driver **`vfs`**. If Docker remains broken, use **native Postgres** below. |
+| **Docker** | **Optional** for most agent work ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). Required only for `start-local-anvil-stack` / full QA stack (`yieldomega-pg`). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** ( **`vfs`** fallback), starts **`dockerd`**, verifies **`docker run hello-world` as `$USER`**, or writes `/tmp/yieldomega-docker-unavailable` + native Postgres hint. Verify: `bash scripts/verify-docker-cloud-agent.sh`. |
 | **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`**. Sets `remote.origin_url` to **`PlasticDigits/yieldomega`** (namespace/repo — **not** a `https://…/*.git` URL; that suffix breaks `glab mr create` with 404). Verify: `glab auth status` · `glab mr list --per-page 1`. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
@@ -99,7 +121,8 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 
 | Situation | Run | Notes |
 |-----------|-----|--------|
-| **Postgres / indexer DB** on Cloud VM (native or Docker) | `bash scripts/verify-cloud-postgres.sh` | PASS: `psql` on PATH, `pg_isready`, `SELECT 1`, **`yieldomega` CREATEDB**. SKIP Docker when native passes ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)). Bootstrap: `bash scripts/bootstrap-cloud-postgres-native.sh`. |
+| **Postgres / indexer DB** on Cloud VM (native or Docker) | `bash scripts/verify-cloud-postgres.sh` | PASS: `psql` on PATH, `pg_isready`, `SELECT 1`, **`yieldomega` CREATEDB**. Bootstrap: `bash scripts/bootstrap-cloud-postgres-native.sh` ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)). |
+| **Docker** (toolchain / full stack) | `bash scripts/verify-docker-cloud-agent.sh` | **PASS** = non-sudo `docker info` + `hello-world`. **SKIP** = use native Postgres — not a merge blocker for contract/indexer/frontend-only tasks ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). **FAIL** only when `YIELDOMEGA_DOCKER_REQUIRED=1`. |
 | Scripts touching **Anvil deploy**, **`KEY_EVM_*`**, **dev wallet seeding**, or **`anvil_deploy_dev.sh`** | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` | Foundry only: fresh Anvil → `DeployDev` → seed `KEY_EVM_1..3` (ETH + DOUB + CRED + mock CL8Y). No Docker. |
 | Contract / deploy script changes (broader) | `cd contracts && forge test` | Skip gitignored `doub.csv` fork tests if missing. |
 | Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |

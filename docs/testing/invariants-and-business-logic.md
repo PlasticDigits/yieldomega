@@ -582,6 +582,21 @@ Run `cd contracts && forge test --list` for the authoritative list. Pre–Arena 
 
 ---
 
+## Cloud Agent Docker (GitLab [#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288))
+
+<a id="cloud-agent-docker-gitlab-288"></a>
+
+DevOps invariants for Cursor Cloud Agent Docker socket access and native Postgres fallback. Runbook: [AGENTS.md § Docker troubleshooting](../../AGENTS.md#docker-troubleshooting-gitlab-288).
+
+| ID | Invariant | Verify |
+|----|-----------|--------|
+| **`INV-DEVOPS-288-DOCKER-USER`** | After bootstrap, `docker info` and `docker run --rm hello-world` succeed **without sudo** as `$USER`, **or** `/tmp/yieldomega-docker-unavailable` is written and verify exits **SKIP** (not FAIL) | `bash scripts/verify-docker-cloud-agent.sh` (0=PASS, 2=SKIP) · `bash scripts/bootstrap-cloud-vm-toolchain.sh` |
+| **`INV-DEVOPS-288-DIAGNOSE`** | Permission-denied vs overlay/daemon errors are classified; failure prints user, groups, socket mode, and remediation | `bash scripts/verify-docker-cloud-agent.sh` (stderr on FAIL) · [`docker_cloud_agent.sh`](../../scripts/lib/docker_cloud_agent.sh) |
+| **`INV-DEVOPS-288-TOOLCHAIN-SKIP`** | `verify-cloud-vm-toolchain.sh` does **not** hard-fail Docker for optional workloads; `YIELDOMEGA_DOCKER_REQUIRED=1` hard-fails | `bash scripts/verify-cloud-vm-toolchain.sh` |
+| **`INV-DEVOPS-288-STACK-HINT`** | `start-local-anvil-stack.sh` suggests native Postgres when Docker socket/run fails | Manual: run stack without docker group |
+
+---
+
 ## Gaps and non-goals
 
 - **Stage 2 wallet-signed txs:** [stage2-run-log.md](../operations/stage2-run-log.md); CI Playwright is UI smoke only unless **`ANVIL_E2E=1`**.

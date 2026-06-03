@@ -46,6 +46,8 @@ CONTRACTS="${ROOT}/contracts"
 FRONTEND="${ROOT}/frontend"
 # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
 source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
+# shellcheck source=scripts/lib/docker_cloud_agent.sh
+source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 RUN_JSON="${CONTRACTS}/broadcast/DeployDev.s.sol/31337/run-latest.json"
 REGISTRY_OUT="${CONTRACTS}/deployments/local-anvil-registry.json"
 
@@ -108,7 +110,17 @@ ensure_timecurve_bot_deps() {
   exit 1
 }
 
-command -v docker >/dev/null 2>&1 || die "Need docker for Postgres."
+if ! command -v docker >/dev/null 2>&1; then
+  echo "" >&2
+  yieldomega_docker_stack_failure_hint >&2
+  die "Need docker for Postgres (yieldomega-pg). See AGENTS.md § Postgres without Docker (#288)."
+fi
+if ! docker info >/dev/null 2>&1 || ! docker run --rm hello-world >/dev/null 2>&1; then
+  echo "" >&2
+  yieldomega_docker_stack_failure_hint >&2
+  echo "" >&2
+  die "Docker not usable for Postgres container. Fix with: bash scripts/verify-docker-cloud-agent.sh"
+fi
 command -v forge >/dev/null 2>&1 || die "Need Foundry (forge)."
 command -v cast >/dev/null 2>&1 || die "Need cast."
 command -v jq >/dev/null 2>&1 || die "Need jq."
