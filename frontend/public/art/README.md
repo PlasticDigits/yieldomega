@@ -57,7 +57,7 @@ Wide JPG scenes used as page hero backplates or feature art. **JPG only** — al
 | [`home-hero-desktop.jpg`](./scenes/home-hero-desktop.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Desktop wide hero; replaces the legacy `../hero-home-wide.jpg` for HD viewports. |
 | [`home-hero-mobile.jpg`](./scenes/home-hero-mobile.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Mobile crop variant served via `<picture>` `media`. |
 | [`arena-simple.jpg`](./scenes/arena-simple.jpg) | [`ArenaSimplePage.tsx`](../../src/pages/ArenaSimplePage.tsx) | Calm fair-launch backplate for the Simple view. |
-| [`timecurve-arena.jpg`](./scenes/timecurve-arena.jpg) | [`TimeCurvePage.tsx`](../../src/pages/TimeCurvePage.tsx) (Arena) | PvP / podium tension backplate.                |
+| [`arena-arena.jpg`](./scenes/arena-arena.jpg) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) buy panel | PvP / podium tension backplate.                |
 | [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/ArenaProtocolPage.tsx) | Neutral operator backdrop for the Protocol read-only view. |
 | [`retired-v1-reserve.jpg`](./scenes/retired-v1-reserve.jpg) | [`RetiredV1TreasuryPage.tsx`](../../src/pages/RetiredV1TreasuryPage.tsx) | Reserve / v1 reserve backplate (replaces the legacy card).               |
 | [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | [`CollectionPage.tsx`](../../src/pages/CollectionPage.tsx) | Gallery shelves backplate.                                                |
@@ -117,8 +117,8 @@ Square 256px PNG icons. Tone is consistent with the arcade palette (greens, gold
 | `fee-burn.png` / `fee-treasury.png` / `fee-referral.png` | [`FeeTransparency.tsx`](../../src/components/FeeTransparency.tsx) | Fee sink pictograms beside canonical onchain sink labels ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `ui-conversion-arrow.png` | [`ConversionArrow`](../../src/components/ui/ConversionArrow.tsx) (`TimeCurveArenaView`, `FeeTransparency`, `CharmRedemptionCurve`) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
 | `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ (inline WarBow rows) | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
-| `timecurve-podium-last-buy.png` / `timecurve-podium-warbow.png` / `timecurve-podium-defended-streak.png` / `timecurve-podium-time-booster.png` | [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | 140×140 small-slot reserve podium icons generated once for the 70px Simple card art wells. |
-| `timecurve-podium-rank-first.png` / `timecurve-podium-rank-second.png` / `timecurve-podium-rank-third.png` | [`PodiumRankingList`](../../src/pages/arena/arenaUi.tsx) | 96×96 trophy rank icons displayed at ~40px in Simple podium rows. |
+| `arena-podium-last-buy.png` / `arena-podium-warbow.png` / `arena-podium-defended-streak.png` / `arena-podium-time-booster.png` | [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | 140×140 small-slot reserve podium icons generated once for the 70px Simple card art wells. |
+| `arena-podium-rank-first.png` / `arena-podium-rank-second.png` / `arena-podium-rank-third.png` | [`PodiumRankingList`](../../src/pages/arena/arenaUi.tsx) | 96×96 trophy rank icons displayed at ~40px in Simple podium rows. |
 
 ### `cursors/`
 
@@ -168,7 +168,7 @@ Concept stills for motion / VFX. These are illustration references, **not** runt
 
 ### `podium_prizes/`
 
-Legacy single-illustration prize art kept for the Arena view. Not in the issue #45 catalog — these are pre-existing assets. The Simple podium summary now uses compact 140×140 pictograms in `icons/timecurve-podium-*.png` so the 70px card art wells stay readable without blank space.
+Legacy single-illustration prize art kept for the Arena view. Not in the issue #45 catalog — these are pre-existing assets. The Simple podium summary now uses compact 140×140 pictograms in `icons/arena-podium-*.png` so the 70px card art wells stay readable without blank space ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)).
 
 | Slug                 | Used by                                                  |
 |----------------------|----------------------------------------------------------|

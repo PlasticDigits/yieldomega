@@ -20,7 +20,7 @@ const TARGET_CHAIN_ID = configuredTargetChainId();
 
 const HEADER_ICONS = {
   home: "/art/icons/header-home.png",
-  arena: "/art/icons/header-timecurve.png",
+  arena: "/art/icons/header-arena.png",
   referrals: "/art/icons/header-referrals.png",
   networkLocal: "/art/icons/header-network-local.png",
   networkChain: "/art/icons/header-network-chain.png",

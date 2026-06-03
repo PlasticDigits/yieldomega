@@ -34,10 +34,10 @@ function usePodiumScoreClock(externalNowUnixSec: number | undefined): number {
 }
 
 const SIMPLE_PODIUM_ART = [
-  "/art/icons/timecurve-podium-last-buy.png",
-  "/art/icons/timecurve-podium-warbow.png",
-  "/art/icons/timecurve-podium-defended-streak.png",
-  "/art/icons/timecurve-podium-time-booster.png",
+  "/art/icons/arena-podium-last-buy.png",
+  "/art/icons/arena-podium-warbow.png",
+  "/art/icons/arena-podium-defended-streak.png",
+  "/art/icons/arena-podium-time-booster.png",
 ] as const;
 
 const SIMPLE_PODIUM_TONE_CLASS = [

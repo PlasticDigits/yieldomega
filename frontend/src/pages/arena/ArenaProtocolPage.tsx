@@ -126,7 +126,7 @@ export function ArenaProtocolPage() {
 
   if (!tc) {
     return (
-      <div className="page timecurve-protocol-page">
+      <div className="page arena-protocol-page">
         <ArenaSubnav active="protocol" />
         <PageHero
           title="Protocol view"
@@ -192,7 +192,7 @@ export function ArenaProtocolPage() {
   const protocolPhaseBadge = phaseBadge(protocolPhase);
 
   return (
-    <div className="page timecurve-protocol-page">
+    <div className="page arena-protocol-page">
       <ArenaSubnav active="protocol" />
 
       <PageHero
@@ -203,7 +203,7 @@ export function ArenaProtocolPage() {
         badgeIconSrc={protocolPhaseBadge.iconSrc}
         coinSrc={DOUB_TOKEN_LOGO}
         coinAlt="DOUB token glyph"
-        sceneSrc="/art/scenes/timecurve-protocol.jpg"
+        sceneSrc="/art/scenes/arena-protocol.jpg"
       />
 
       <PageSection
@@ -213,13 +213,13 @@ export function ArenaProtocolPage() {
         badgeTone="info"
         lede="Onchain TimeArena getters via JSON-RPC multicall (~1 s cadence while healthy)."
       >
-        <div className="timecurve-protocol-raise-card" aria-label="Total raised summary">
+        <div className="arena-protocol-raise-card" aria-label="Total raised summary">
           <div className="timer-hero__raise-lines">
             <div className="timer-hero__total-raise">
               TOTAL RAISE: {totalRaiseHeroDisplay.doub} DOUB
             </div>
             <div className="timer-hero__total-usd-block" title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
-              <div className="timer-hero__total-usd timecurve-protocol__total-usd-row">
+              <div className="timer-hero__total-usd arena-protocol__total-usd-row">
                 <span>TOTAL USD: {totalRaiseHeroDisplay.usd}</span>
                 <ProtocolInlineRefreshButton
                   ariaLabel="Refresh DOUB USD price"

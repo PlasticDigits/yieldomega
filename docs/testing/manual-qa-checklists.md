@@ -7,6 +7,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | Issue | Topic |
 |-------|--------|
 | [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260) | [Arena v2 QA](#manual-qa-issue-260) |
+| [#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280) | [Arena CSS & art naming](#manual-qa-issue-280) |
 | [#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265) | [XP buy-path gas](#manual-qa-issue-265) |
 | [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268) | [CRED buy + first-buy bonus](#manual-qa-issue-268) |
 | [#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271) | [Per-podium timer params](#manual-qa-issue-271) |
@@ -21,6 +22,28 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
 
 Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-views.md), [`invariants-and-business-logic.md`](invariants-and-business-logic.md).
+
+<a id="manual-qa-issue-280"></a>
+
+## Arena CSS & public art naming (GitLab #280)
+
+**Scope:** Visual parity only — no economics, routes, or indexer changes. Relates to [#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266).
+
+### Preconditions
+
+- `npm run build` from `frontend/` (or full stack with Vite on `:5173`).
+
+### Checklist
+
+| Step | Pass criteria |
+|------|----------------|
+| `bash scripts/check-arena-naming.sh` | Exit 0 |
+| Open **`/arena`** (Simple) | Podium category icons load; timer hero scene visible; no broken image icons in podium grid |
+| Open **`/arena/protocol`** | Protocol scene backdrop; donate pools card renders |
+| Footer agent panel | `data-testid="arena-simple-agent-card"` opens; site links visible below agent card |
+| Deep link **`/timecurve`** | Still redirects to **`/arena`** (unchanged) |
+| Mobile **390×844** on **`/arena`** | Layout unchanged; backgrounds not blank |
+| Production assets | `curl -sfI http://127.0.0.1:5173/art/icons/arena-podium-last-buy.png` (or built `dist/`) returns 200; old `/art/icons/timecurve-podium-last-buy.png` returns 404 |
 
 <a id="manual-qa-issue-260"></a>
 
