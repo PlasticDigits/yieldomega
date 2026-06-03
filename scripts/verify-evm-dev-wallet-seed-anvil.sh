@@ -112,13 +112,16 @@ export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 export YIELDOMEGA_SEED_EVM_DEV_WALLETS=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
 
-# yieldomega_anvil_deploy_dev sets TA/DOUB/CRED in function scope only — re-parse log here.
+# Re-parse log here (yieldomega_anvil_deploy_dev assigns DOUB/CRED in caller scope — save before re-deploy).
 DOUB="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
 CRED="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
 CL8Y="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG}" "${ROOT}")"
 [[ -n "${DOUB}" ]] || die "Doubloon address missing after deploy"
 [[ -n "${CRED}" ]] || die "PlayCred address missing after deploy"
 [[ -n "${CL8Y}" ]] || die "MockReserveCl8y address missing (expected from DeployDev)"
+DOUB_FIRST="${DOUB}"
+CRED_FIRST="${CRED}"
+CL8Y_FIRST="${CL8Y}"
 
 log "DOUB=${DOUB} CRED=${CRED} CL8Y=${CL8Y}"
 log "ADDR_EVM_1=${ADDR_EVM_1} ADDR_EVM_2=${ADDR_EVM_2} ADDR_EVM_3=${ADDR_EVM_3}"
@@ -138,7 +141,7 @@ DOUB2="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG2}" "Doubloon")"
 CRED2="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG2}" "PlayCred")"
 CL8Y2="$(_yieldomega_resolve_mock_cl8y_addr "${DEPLOY_LOG2}" "${ROOT}")"
 [[ -n "${DOUB2}" && -n "${CRED2}" && -n "${CL8Y2}" ]] || die "Second deploy missing token addresses"
-[[ "${DOUB2,,}" != "${DOUB,,}" ]] || die "Expected new Doubloon proxy after re-deploy"
+[[ "${DOUB2,,}" != "${DOUB_FIRST,,}" ]] || die "Expected new Doubloon proxy after re-deploy"
 assert_wallets_seeded "${DOUB2}" "${CRED2}" "${CL8Y2}"
 rm -f "${DEPLOY_LOG2}"
 
