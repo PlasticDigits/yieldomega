@@ -567,7 +567,7 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
     );
 }
 
-/// `GET /v1/arena/buys` exposes `actual_seconds_added` from `idx_arena_buy` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)).
+/// `GET /v1/arena/buys` exposes buy-row fields from `idx_arena_buy` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282), [#283](https://gitlab.com/PlasticDigits/yieldomega/-/issues/283)).
 async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
     let block = 301u64;
     let tx_id = 30_282u64;
@@ -627,17 +627,35 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
         row.get("actual_seconds_added").and_then(|v| v.as_str()),
         Some(seconds.to_string().as_str())
     );
+    assert_eq!(
+        row.get("new_deadline").and_then(|v| v.as_str()),
+        Some("1700000120")
+    );
+    assert_eq!(row.get("buy_index").and_then(|v| v.as_str()), Some("1"));
+    assert_eq!(
+        row.get("log_index").and_then(|v| v.as_i64()),
+        Some(buy_log.log_index as i64)
+    );
+    assert_eq!(
+        row.get("block_timestamp").and_then(|v| v.as_str()),
+        Some("1700000000")
+    );
 
-    let db_secs: String = sqlx::query_scalar(
-        r#"SELECT actual_seconds_added::text FROM idx_arena_buy
+    let db_row: (String, String, i32, Option<String>) = sqlx::query_as(
+        r#"SELECT actual_seconds_added::text, new_deadline::text, log_index,
+                  EXTRACT(EPOCH FROM block_timestamp)::text
+           FROM idx_arena_buy
            WHERE tx_hash = $1 AND log_index = $2"#,
     )
     .bind(format!("{:#x}", buy_log.tx_hash))
     .bind(buy_log.log_index as i64)
     .fetch_one(pool)
     .await
-    .expect("db actual_seconds_added");
-    assert_eq!(db_secs, seconds.to_string());
+    .expect("db buy row");
+    assert_eq!(db_row.0, seconds.to_string());
+    assert_eq!(db_row.1, "1700000120");
+    assert_eq!(db_row.2, buy_log.log_index as i32);
+    assert_eq!(db_row.3.as_deref(), Some("1700000000"));
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {

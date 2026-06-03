@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# GitLab #282 — GET /v1/arena/buys exposes actual_seconds_added; wallet stats after DOUB buy (#258 QA).
+# GitLab #282 / #283 — GET /v1/arena/buys exposes buy-row fields (seconds + log identity); wallet stats (#258 QA).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -152,6 +152,36 @@ else
 fi
 log "actual_seconds_added=${API_SECS} (matches idx_arena_buy)"
 
+parity_field() {
+  local field="$1"
+  local api_val db_val
+  api_val="$(echo "${BUYS_JSON}" | jq -r --arg tx "${BUY_TX,,}" --arg f "${field}" \
+    '.items[] | select((.tx_hash | ascii_downcase) == $tx) | .[$f]' | head -1)"
+  [[ -n "${api_val}" && "${api_val}" != "null" ]] || die "${field} missing in GET /v1/arena/buys"
+  case "${field}" in
+    new_deadline|buy_index)
+      db_val="$(psql "${PG_URL}" -tAc \
+        "SELECT ${field}::text FROM idx_arena_buy WHERE tx_hash = '${BUY_TX}' LIMIT 1")"
+      ;;
+    log_index)
+      db_val="$(psql "${PG_URL}" -tAc \
+        "SELECT log_index FROM idx_arena_buy WHERE tx_hash = '${BUY_TX}' LIMIT 1")"
+      ;;
+    block_timestamp)
+      db_val="$(psql "${PG_URL}" -tAc \
+        "SELECT EXTRACT(EPOCH FROM block_timestamp)::text FROM idx_arena_buy WHERE tx_hash = '${BUY_TX}' LIMIT 1")"
+      ;;
+    *) die "unknown parity field ${field}" ;;
+  esac
+  [[ "${api_val}" == "${db_val}" ]] || die "API/DB ${field} mismatch: api=${api_val} db=${db_val}"
+  log "${field}=${api_val} (matches idx_arena_buy)"
+}
+
+parity_field new_deadline
+parity_field buy_index
+parity_field log_index
+parity_field block_timestamp
+
 STATS="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/arena/wallet/${BUYER_LC}/stats")"
 buy_count="$(echo "${STATS}" | jq -r '.buy_count')"
 [[ "${buy_count}" =~ ^[0-9]+$ && "${buy_count}" -ge 1 ]] || die "wallet stats buy_count expected >= 1, got ${buy_count}"
@@ -182,7 +212,7 @@ log "  click buyer on extension chip or live-buy row → WalletProfileModal (sev
 export YIELDOMEGA_PG_TEST_URL="${PG_URL%/*}/yieldomega_indexer_test"
 psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS yieldomega_indexer_test;" >/dev/null 2>&1 || true
 psql "${PG_URL%/*}/postgres" -v ON_ERROR_STOP=1 -c "CREATE DATABASE yieldomega_indexer_test OWNER yieldomega;" >/dev/null
-log "integration_stage2 (includes api_arena_buys_actual_seconds_added_smoke)"
+log "integration_stage2 (includes api_arena_buys parity smoke #282/#283)"
 cargo test --test integration_stage2 --quiet
 
 echo "=== verify-wallet-profile-anvil: OK (buyer=${BUYER_LC}, actual_seconds_added=${API_SECS}, buy_count=${buy_count}) ==="

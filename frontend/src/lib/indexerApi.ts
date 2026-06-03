@@ -93,14 +93,15 @@ function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
   return {
     block_number: String(item.block_number),
     tx_hash: item.tx_hash,
-    log_index: 0,
+    log_index: item.log_index,
+    block_timestamp: item.block_timestamp ?? null,
     buyer: item.buyer,
     amount: item.doub_paid,
     charm_wad: item.charm_wad,
     price_per_charm_wad: "0",
-    new_deadline: "0",
+    new_deadline: item.new_deadline,
     total_raised_after: "0",
-    buy_index: "0",
+    buy_index: item.buy_index,
     timer_hard_reset: item.timer_hard_reset,
     actual_seconds_added: item.actual_seconds_added,
   };
@@ -726,6 +727,14 @@ export type ArenaBuyItem = {
   paid_with_cred: boolean;
   /** Effective seconds added to the Last Buy deadline this tx (post cap); from `idx_arena_buy`. */
   actual_seconds_added?: string;
+  /** Last Buy deadline after this buy (unix sec string from onchain `Buy` log). */
+  new_deadline: string;
+  /** Monotonic buy counter from onchain `Buy` log. */
+  buy_index: string;
+  /** Receipt log index; PK component with `tx_hash`. */
+  log_index: number;
+  /** RPC block time at ingest (unix sec string); null when unavailable. */
+  block_timestamp?: string | null;
 };
 
 export type ArenaTimersResponse = {

@@ -215,7 +215,7 @@ describe("fetchArenaWarbowLeaderboardAll", () => {
   });
 });
 
-describe("fetchArenaBuysAsBuyItems (#282)", () => {
+describe("fetchArenaBuysAsBuyItems (#282, #283)", () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
@@ -227,7 +227,7 @@ describe("fetchArenaBuysAsBuyItems (#282)", () => {
     vi.unstubAllEnvs();
   });
 
-  it("maps actual_seconds_added from arena buys API onto BuyItem", async () => {
+  it("maps arena buys API fields onto BuyItem", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -241,6 +241,10 @@ describe("fetchArenaBuysAsBuyItems (#282)", () => {
               timer_hard_reset: false,
               paid_with_cred: false,
               actual_seconds_added: "120",
+              new_deadline: "1700000120",
+              buy_index: "7",
+              log_index: 3,
+              block_timestamp: "1700000000",
             },
           ],
           limit: 1,
@@ -251,6 +255,11 @@ describe("fetchArenaBuysAsBuyItems (#282)", () => {
     );
 
     const page = await fetchArenaBuysAsBuyItems(1, 0);
-    expect(page?.items[0]?.actual_seconds_added).toBe("120");
+    const item = page?.items[0];
+    expect(item?.actual_seconds_added).toBe("120");
+    expect(item?.new_deadline).toBe("1700000120");
+    expect(item?.buy_index).toBe("7");
+    expect(item?.log_index).toBe(3);
+    expect(item?.block_timestamp).toBe("1700000000");
   });
 });

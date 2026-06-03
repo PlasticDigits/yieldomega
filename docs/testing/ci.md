@@ -48,7 +48,7 @@ cd frontend && npx playwright install --with-deps && npm run build && npm run te
 # Optional — Anvil-backed E2E (Foundry + deploy + Vite build with VITE_*); see e2e-anvil.md
 # bash scripts/e2e-anvil.sh
 
-# Optional — arena buys `actual_seconds_added` + wallet stats smoke (Foundry + Postgres + indexer; #282)
+# Optional — arena buys row parity + wallet stats smoke (Foundry + Postgres + indexer; #282, #283)
 # export PATH="$HOME/.foundry/bin:$PATH" && source /usr/local/cargo/env 2>/dev/null || true
 # bash scripts/verify-wallet-profile-anvil.sh
 
