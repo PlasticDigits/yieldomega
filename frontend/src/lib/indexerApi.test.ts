@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchIndexerStatus,
   fetchArenaBuys,
+  fetchArenaBuysAsBuyItems,
   fetchLegacyArenaChainTimer,
   fetchArenaWarbowLeaderboardAll,
   referralAppliedApiPath,
@@ -211,5 +212,45 @@ describe("indexer JSON bodies (issue #111)", () => {
 describe("fetchArenaWarbowLeaderboardAll", () => {
   it("returns null after TimeCurve v1 indexer retirement (#266)", async () => {
     await expect(fetchArenaWarbowLeaderboardAll()).resolves.toBeNull();
+  });
+});
+
+describe("fetchArenaBuysAsBuyItems (#282)", () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubEnv("VITE_INDEXER_URL", "http://127.0.0.1:3100");
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllEnvs();
+  });
+
+  it("maps actual_seconds_added from arena buys API onto BuyItem", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              buyer: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              charm_wad: "1000000000000000000",
+              doub_paid: "100000000000000000000",
+              block_number: 42,
+              tx_hash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              timer_hard_reset: false,
+              paid_with_cred: false,
+              actual_seconds_added: "120",
+            },
+          ],
+          limit: 1,
+          offset: 0,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+
+    const page = await fetchArenaBuysAsBuyItems(1, 0);
+    expect(page?.items[0]?.actual_seconds_added).toBe("120");
   });
 });
