@@ -26,6 +26,24 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 
 <a id="indexer-runtime-resilience-gitlab-168"></a>
 
+<a id="megaeth-wss-realtime-gitlab-237"></a>
+
+### MegaETH WSS / SSE realtime lane (GitLab [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237)) — **deferred**
+
+**Status (verification 2026-06):** Phase 1 from [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237) is **not implemented**. The original issue body referenced **TimeCurve** / **`TimeCurveSimpleAgentCard`**; Arena v2 uses **`TimeArena`**, **`GET /v1/arena/timers`**, and **`IndexerStatusBar`** on **`ArenaSimpleAgentCard`** ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Replan WSS/SSE stream IDs and Hz tables against Arena surfaces before coding (issue comment 2026-05-30).
+
+**Non-negotiable when implemented:**
+
+| Path | Role |
+|------|------|
+| **RPC `ingestion::run`** | Authoritative Postgres ingest + **`chain_pointer`** / reorg ([#140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140), [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)) |
+| **MegaETH WSS `eth_subscribe("miniBlocks")`** | Best-effort head only in Phase 1 — **no** writes to event tables without RPC reconcile |
+| **Indexer → browser** | **SSE** (or snapshot **`GET /v1/realtime/mini-block-head`**) — **not** per-user MegaETH WSS from the static frontend |
+
+**Planned config (not wired):** **`INDEXER_WSS_URL`**, **`INDEXER_WSS_ENABLED`** (default off on Anvil **31337**). Mainnet mini-block semantics require **chain 4326** WSS — Anvil does not expose **`miniBlocks`**.
+
+**Verification while deferred:** `bash scripts/verify-issue-237-wss-deferred.sh` · invariants [**§237**](../testing/invariants-and-business-logic.md#megaeth-wss-realtime-gitlab-237).
+
 **Runtime resilience ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)):** JSON-RPC HTTP clients use a **bounded per-request timeout** (**`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**, default **5s**) so hung transports fail fast instead of freezing ingestion or the chain-timer snapshot loop (**`INV-INDEXER-168`**). Ingestion errors trigger a **supervised retry loop** with backoff in [`main.rs`](../../indexer/src/main.rs). **`GET /v1/status`** exposes **`ingestion_alive`** and **`last_indexed_at_ms`** for operator smoke checks ([invariants §168](../testing/invariants-and-business-logic.md#indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168)).
 
 ## Conceptual entities

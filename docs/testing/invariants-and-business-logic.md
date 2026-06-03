@@ -406,6 +406,24 @@ Doc: [e2e-anvil.md §279 troubleshooting](e2e-anvil.md#anvil-e2e-trap-and-mock-c
 
 **INV-INDEXER-157:** JSON **`500`** bodies use stable **`{ "error": "internal server error" }`** — no raw SQL in responses.
 
+<a id="megaeth-wss-realtime-gitlab-237"></a>
+
+## MegaETH WSS realtime head (GitLab [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237)) — deferred
+
+Phase 1 (**`miniBlocks`** WSS → in-memory head → SSE/snapshot → second agent-card pill) is **open**. Arena v2 replan required before implementation (issue comment 2026-05-30). Manual mainnet QA rows: [manual QA §237](manual-qa-checklists.md#manual-qa-issue-237).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-237-WSS-NO-WRITE`** | While deferred: no WSS client, no **`miniBlocks`** / **`eth_subscribe`** in **`indexer/src`**; RPC ingest unchanged | `bash scripts/verify-issue-237-wss-deferred.sh` · `rg miniBlocks indexer/src` → empty |
+| **`INV-INDEXER-237-STATUS-SPLIT`** | While deferred: **`GET /v1/status`** exposes **`max_indexed_block`** / **`chain_pointer` only** — no WSS head mixed into indexed fields | `verify-issue-237-wss-deferred.sh` · [`api.rs`](../../indexer/src/api.rs) |
+| **`INV-INDEXER-237-REALTIME-ROUTES`** | While deferred: no **`GET /v1/realtime/*`** routes | `verify-issue-237-wss-deferred.sh` |
+| **`INV-FRONTEND-237-WSS-HEAD-PILL`** | While deferred: **`IndexerStatusBar`** shows **indexed block only** (no “latest websockets block” pill) | `verify-issue-237-wss-deferred.sh` · [`IndexerStatusBar.tsx`](../../frontend/src/components/IndexerStatusBar.tsx) |
+| **`INV-INDEXER-237-ANVIL-GRACEFUL`** | Anvil / CI: no **`miniBlocks`**; stack runs without WSS env | `verify-issue-237-wss-deferred.sh` · `unset INDEXER_WSS_URL` |
+
+**When Phase 1 ships (future):** add **`confirmation: wss_realtime`** on realtime DTOs; WSS supervision fields on status/health ([#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)); optional mainnet smoke behind **`INDEXER_WSS_URL`** secret.
+
+Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-realtime-gitlab-237) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
+
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
 
 ### Indexer ingestion liveness + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
