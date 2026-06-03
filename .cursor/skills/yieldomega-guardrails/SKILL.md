@@ -33,6 +33,6 @@ Before substantive changes in this repository:
 
 Play skills (participants): [`skills/README.md`](../../skills/README.md) — `play-active-time-arena`, `play-time-arena-doub`, `play-time-arena-warbow`.
 
-13. **Cloud agents (Cursor):** Read [`AGENTS.md`](../../AGENTS.md) § *Cloud agent verification*. When changing Anvil deploy, `KEY_EVM_*`, or dev-wallet seeding, run `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` (Foundry-only; no Docker). Use the smallest layer check per task; full stack only when indexer/UI are in scope.
+13. **Cloud agents (Cursor):** Read [`AGENTS.md`](../../AGENTS.md) § *Cloud agent verification*. When changing Anvil deploy, `KEY_EVM_*`, or dev-wallet seeding, run `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` (Foundry-only; no Docker). Dev-wallet seed minter alignment + idempotency: [GitLab #281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281) · [`e2e-anvil.md` § dev-wallet seed](../../docs/testing/e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281) · **`INV-DEPLOY-281-*`**. Use the smallest layer check per task; full stack only when indexer/UI are in scope.
 
 Prefer small, reviewable diffs.

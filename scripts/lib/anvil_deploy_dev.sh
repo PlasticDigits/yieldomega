@@ -16,6 +16,12 @@ yieldomega_anvil_deploy_dev() {
   cd "${ROOT}/contracts"
   export FOUNDRY_OUT="${ROOT}/contracts/out-e2e-anvil"
   mkdir -p "${FOUNDRY_OUT}"
+  # shellcheck source=scripts/lib/anvil_deployer_key.sh
+  source "${ROOT}/scripts/lib/anvil_deployer_key.sh"
+  yieldomega_export_deploy_private_key
+  if [[ "${YIELDOMEGA_SEED_EVM_DEV_WALLETS:-1}" = "1" ]]; then
+    yieldomega_export_seed_minter_address_if_needed
+  fi
   forge build
   if ! forge script script/DeployDev.s.sol:DeployDev --broadcast --rpc-url "${RPC}" \
     --code-size-limit 524288 -vv 2>&1 | tee "${DEPLOY_LOG}"; then
@@ -86,6 +92,7 @@ yieldomega_anvil_deploy_dev() {
     if command -v cast >/dev/null 2>&1; then
       echo "Seeding KEY_EVM_1..3 wallets (DOUB/CRED/ETH${CL8Y:+, CL8Y})..."
       RPC="${RPC}" DOUB="${DOUB}" CRED="${CRED}" CL8Y="${CL8Y:-}" \
+        DEPLOYER_PK="$(yieldomega_resolve_seed_minter_pk)" \
         bash "${ROOT}/scripts/seed-evm-dev-wallets-anvil.sh"
     fi
   fi

@@ -124,6 +124,35 @@ bash scripts/e2e-anvil.sh
 
 This starts Anvil, deploys with `DeployDev`, builds the frontend with the right `VITE_*` values, sets `ANVIL_E2E=1`, and runs Playwright against the Anvil-backed tests.
 
+<a id="anvil-dev-wallet-seed-gitlab-281"></a>
+
+### Anvil dev-wallet seed ([GitLab #281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281))
+
+After **`DeployDev`**, [`scripts/seed-evm-dev-wallets-anvil.sh`](../../scripts/seed-evm-dev-wallets-anvil.sh) (via [`anvil_deploy_dev.sh`](../../scripts/lib/anvil_deploy_dev.sh) when **`YIELDOMEGA_SEED_EVM_DEV_WALLETS=1`**, default) funds **`KEY_EVM_1..3`** / **`ADDR_EVM_1..3`** with native ETH + DOUB + Play CRED (+ mock CL8Y).
+
+| Topic | Behavior |
+|-------|----------|
+| **Minter key** | **`DEPLOYER_PK`** → **`PRIVATE_KEY`** → Anvil account #0 default — **same order as [`DeployDev.s.sol`](../../contracts/script/DeployDev.s.sol)**. **Not** **`KEY_EVM_1`** (recipient addresses only). |
+| **Extra minter** | When seed minter address ≠ deploy broadcaster, deploy sets **`YIELDOMEGA_SEED_MINTER_ADDRESS`** and **`DeployDev`** grants **`MINTER_ROLE`** on DOUB + PlayCred (dev chains only). |
+| **Idempotent** | Skips ERC-20 mint when balance already ≥ target; safe to run seed twice or re-deploy on the same Anvil. |
+| **Guards** | Loopback RPC only; chain id **31337** / **6342** / **6343**; never logs private keys. |
+| **Disable seed** | **`YIELDOMEGA_SEED_EVM_DEV_WALLETS=0`** — Playwright mock wallet E2E still passes. |
+
+**Verify (Foundry only, no Docker):**
+
+```bash
+bash scripts/verify-evm-dev-wallet-seed-anvil.sh
+```
+
+**Troubleshooting — `AccessControlUnauthorizedAccount` / `MINTER_ROLE missing`:**
+
+1. Align **`PRIVATE_KEY`** (DeployDev broadcaster) with the key used to seed — or set explicit **`DEPLOYER_PK`** to an address that received **`MINTER_ROLE`**.
+2. If **`KEY_EVM_1..3`** are Cloud secrets **different** from the deploy key, re-run deploy via **`anvil_deploy_dev.sh`** (it auto-sets **`YIELDOMEGA_SEED_MINTER_ADDRESS`** when needed) or export **`DEPLOYER_PK`** matching **`PRIVATE_KEY`**.
+3. Confirm **`DOUB`** / **`CRED`** env vars match the **latest** DeployDev log (stale addresses after re-deploy).
+4. Seed refuses non-loopback RPC — intentional (**local dev only**).
+
+Invariants: **`INV-DEPLOY-281-DEV-WALLET-SEED`**, **`INV-DEPLOY-281-EXTRA-MINTER`** — [invariants §259](invariants-and-business-logic.md#arena-v2-deploy-gitlab-259).
+
 ### Anvil E2E concurrency ([GitLab #87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87))
 
 <a id="anvil-e2e-concurrency-gitlab-87"></a>

@@ -12,7 +12,7 @@ These files help agents and humans **use** onchain **Time Arena** (Arena v2) mec
 | [`play-time-arena-doub/SKILL.md`](play-time-arena-doub/SKILL.md) | DOUB buys, Last Buy timer, podium funding split; referral flat **5 CRED** per side ([#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272)); Play CRED yield/claim ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)); optional **`topUpPodiumPools`** ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)); vault funding indexer [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267). Participant wallet stats UI: [GitLab #258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258) · [arena-views § wallet-profile](../docs/frontend/arena-views.md#wallet-profile-modal-gitlab-258). |
 | [`play-time-arena-warbow/SKILL.md`](play-time-arena-warbow/SKILL.md) | WarBow stub until [GitLab #252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252). |
 | [`why-yieldomega-participation-matters/SKILL.md`](why-yieldomega-participation-matters/SKILL.md) | Ethics framing before other play skills. |
-| [`script-with-timearena-local/SKILL.md`](script-with-timearena-local/SKILL.md) | Local scripts — env hygiene, proxies, Anvil stack (Arena v2 addresses). |
+| [`script-with-timearena-local/SKILL.md`](script-with-timearena-local/SKILL.md) | Local scripts — env hygiene, proxies, Anvil stack (Arena v2 addresses). Dev-wallet seed / minter alignment: [e2e-anvil §281](../docs/testing/e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281). |
 
 ## Retired (Arena v2 epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238))
 
@@ -23,6 +23,6 @@ TimeCurve launchpad playbooks, Rabbit Treasury, collectible NFT layer — remove
 - [`docs/testing/strategy.md`](../docs/testing/strategy.md)
 - [`docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md) — optional MegaETH RPC fork (`TimeArenaForkTest`, [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); verify `bash scripts/verify-contract-fork-smoke.sh`
 - [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../docs/qa/QA-onboarding-gitlab-issue-body.md) — QA onboarding ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))
-- [`docs/testing/invariants-and-business-logic.md` § TimeArena v2](../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) · [manual QA §260](../docs/testing/manual-qa-checklists.md#manual-qa-issue-260) · [Anvil E2E](../docs/testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260))
+- [`docs/testing/invariants-and-business-logic.md` § TimeArena v2](../docs/testing/invariants-and-business-logic.md#timearena-v2-gitlab-260) · [manual QA §260](../docs/testing/manual-qa-checklists.md#manual-qa-issue-260) · [Anvil E2E](../docs/testing/e2e-anvil.md) ([#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)) · [dev-wallet seed §281](../docs/testing/e2e-anvil.md#anvil-dev-wallet-seed-gitlab-281) ([#281](https://gitlab.com/PlasticDigits/yieldomega/-/issues/281))
 - [`bots/timearena/README.md`](../bots/timearena/README.md)
 - [`docs/onchain/fee-routing-and-governance.md`](../docs/onchain/fee-routing-and-governance.md) — DOUB arena split only
