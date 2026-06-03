@@ -21,9 +21,10 @@ _yieldomega_extract_addr_from_log() {
   local label="$2"
   # Prefer `Label: 0x…` lines; fall back to any line mentioning label (legacy forge logs).
   local addr
-  addr="$(grep -E "^[[:space:]]*${label}:" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | head -1 || true)"
+  # Last `Label:` line matches on-chain broadcast (simulation may log earlier addresses).
+  addr="$(grep -E "^[[:space:]]*${label}:" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | tail -1 || true)"
   if [[ -z "${addr}" ]]; then
-    addr="$(grep -E "${label}" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | head -1 || true)"
+    addr="$(grep -E "${label}" "${log}" 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}' | tail -1 || true)"
   fi
   printf '%s' "${addr}"
 }
