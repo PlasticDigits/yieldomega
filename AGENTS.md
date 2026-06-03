@@ -6,13 +6,19 @@ Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.curso
 
 ### Bootstrap (dependencies only)
 
-After clone or pull, refresh submodules and frontend packages:
+After clone or pull, run the full Cloud Agent bootstrap (also in [`.cursor/environment.json`](.cursor/environment.json)):
 
 ```bash
 bash scripts/bootstrap-dev.sh
+bash scripts/bootstrap-cloud-vm-toolchain.sh
+bash scripts/bootstrap-cloud-agent.sh
 ```
 
-This runs `git submodule update --init --recursive` and `npm ci` in `frontend/`. It does **not** install Foundry, Docker, or Rust.
+- **`bootstrap-dev.sh`** — `git submodule update --init --recursive` and `npm ci` in `frontend/`.
+- **`bootstrap-cloud-vm-toolchain.sh`** — Foundry (`foundryup`), Rust ≥ 1.85, `libssl-dev` / `pkg-config`, Docker (`fuse-overlayfs` with **vfs** fallback), **glab** + `GITLAB_TOKEN`, `xvfb-run`.
+- **`bootstrap-cloud-agent.sh`** — Playwright Chromium, Rabby extension, automated import of **`KEY_EVM_1..3`**.
+
+Smoke-check everything: `bash scripts/verify-cloud-vm-toolchain.sh`.
 
 ### Toolchain expectations on Cloud VMs
 
@@ -20,7 +26,8 @@ This runs `git submodule update --init --recursive` and `npm ci` in `frontend/`.
 |------|--------|
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
-| **Docker** | Full-stack QA uses container `yieldomega-pg` ([`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh)). On some Cloud VMs, `dockerd` must be started manually and the socket may need `sudo chmod 666 /var/run/docker.sock` for the dev user. Storage driver `fuse-overlayfs` is common in nested VMs. If containers fail to start (overlay mount errors), use **native Postgres** below instead of Docker. |
+| **Docker** | Full-stack QA uses container `yieldomega-pg` ([`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh)). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** in `/etc/docker/daemon.json`, starts **`dockerd`** when systemd cannot, and sets **`/var/run/docker.sock`** permissions (`chmod 666` / `docker` group). If `docker run` still fails (overlay mount errors), the bootstrap script retries with storage driver **`vfs`**. If Docker remains broken, use **native Postgres** below. |
+| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`**. Sets `remote.origin_url` to **`PlasticDigits/yieldomega`** (namespace/repo — **not** a `https://…/*.git` URL; that suffix breaks `glab mr create` with 404). Verify: `glab auth status` · `glab mr list --per-page 1`. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
 ### Postgres without Docker (`yieldomega-pg`)
@@ -137,7 +144,7 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs:
 
 ```bash
-bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-agent.sh
+bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-agent.sh
 ```
 
 That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.

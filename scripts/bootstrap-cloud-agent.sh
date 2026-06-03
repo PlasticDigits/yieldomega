@@ -32,6 +32,9 @@ if [[ -f /opt/cursor/browser-extensions/rabby/manifest.json ]]; then
   echo "==> Rabby extension already at /opt/cursor/browser-extensions/rabby"
 elif [[ "$(id -u)" -eq 0 ]]; then
   bash "${ROOT}/scripts/install-browser-extensions.sh"
+elif command -v sudo >/dev/null 2>&1; then
+  echo "==> Rabby extension (sudo install-browser-extensions.sh)"
+  sudo bash "${ROOT}/scripts/install-browser-extensions.sh"
 else
   echo "==> Rabby extension: run once with sudo:"
   echo "    sudo bash scripts/install-browser-extensions.sh"
