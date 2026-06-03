@@ -21,7 +21,8 @@ cd "${ROOT}"
 
 YIELDOMEGA_GITLAB_HOST="${YIELDOMEGA_GITLAB_HOST:-gitlab.com}"
 YIELDOMEGA_GITLAB_PROJECT="${YIELDOMEGA_GITLAB_PROJECT:-PlasticDigits/yieldomega}"
-YIELDOMEGA_GITLAB_URL="https://${YIELDOMEGA_GITLAB_HOST}/${YIELDOMEGA_GITLAB_PROJECT}.git"
+# glab `remote.origin_url` must be OWNER/REPO — not a https URL and not *.git (404 on mr create).
+YIELDOMEGA_GITLAB_GLAB_REPO="${YIELDOMEGA_GITLAB_GLAB_REPO:-${YIELDOMEGA_GITLAB_PROJECT}}"
 MIN_RUST_VERSION="1.85.0"
 DOCKER_DAEMON_JSON="/etc/docker/daemon.json"
 DOCKERD_LOG="/tmp/yieldomega-dockerd.log"
@@ -253,9 +254,9 @@ configure_glab() {
     return 0
   fi
   local token="${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
-  log "glab config: remote.origin_url=${YIELDOMEGA_GITLAB_URL}"
-  glab config set --global remote.origin_url "${YIELDOMEGA_GITLAB_URL}" 2>/dev/null \
-    || glab config set remote.origin_url "${YIELDOMEGA_GITLAB_URL}" 2>/dev/null \
+  log "glab config: remote.origin_url=${YIELDOMEGA_GITLAB_GLAB_REPO}"
+  glab config set --global remote.origin_url "${YIELDOMEGA_GITLAB_GLAB_REPO}" 2>/dev/null \
+    || glab config set remote.origin_url "${YIELDOMEGA_GITLAB_GLAB_REPO}" 2>/dev/null \
     || true
   glab config set --global host "${YIELDOMEGA_GITLAB_HOST}" 2>/dev/null || true
   if [[ -n "${token}" ]]; then
