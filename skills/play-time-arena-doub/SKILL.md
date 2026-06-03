@@ -57,7 +57,7 @@ Onchain: [`ArenaPodiumTimerConfig`](../../contracts/src/arena/libraries/ArenaPod
 
 ## Participant profiles ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258))
 
-On **`/arena`** and **`/arena/protocol`**, click any participant wallet on live buy rows or podium rankings to open **`WalletProfileModal`** — stats from **`GET /v1/arena/wallet/{address}/stats`** (Overview, Podium wins, Spending, XP/Level, WarBow, Referrals, Fun facts). Invariant: [**`INV-FRONTEND-258-WALLET-PROFILE`**](../../docs/testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258) · [arena-views § wallet-profile](../../docs/frontend/arena-views.md#wallet-profile-modal-gitlab-258).
+On **`/arena`** and **`/arena/protocol`**, click any participant wallet on live buy rows or podium rankings to open **`WalletProfileModal`** — stats from **`GET /v1/arena/wallet/{address}/stats`** (Overview, Podium wins, Spending, XP/Level, WarBow, Referrals, Fun facts). The “Just +Ns by …” timer chip needs **`actual_seconds_added`** on **`GET /v1/arena/buys`** ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)): `bash scripts/verify-wallet-profile-anvil.sh`. Invariants: [**`INV-FRONTEND-258-WALLET-PROFILE`**](../../docs/testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258), [**`INV-INDEXER-282-ARENA-BUYS-SECONDS`**](../../docs/testing/invariants-and-business-logic.md#wallet-profile-modal-gitlab-258) · [arena-views § wallet-profile](../../docs/frontend/arena-views.md#wallet-profile-modal-gitlab-258).
 
 ## Retired
 

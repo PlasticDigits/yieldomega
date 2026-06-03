@@ -437,6 +437,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
 
     api_vault_funding_smoke(&pool).await;
     api_podium_pool_donations_smoke(&pool).await;
+    api_arena_buys_actual_seconds_added_smoke(&pool).await;
 
     persist_decoded_log_autocommit(&pool, &logs[1])
         .await
@@ -564,6 +565,79 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
         rows[3].get("category").and_then(|v| v.as_str()),
         Some("time_booster")
     );
+}
+
+/// `GET /v1/arena/buys` exposes `actual_seconds_added` from `idx_arena_buy` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)).
+async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
+    let block = 301u64;
+    let tx_id = 30_282u64;
+    let alice = addr_byte(0xa1);
+    let seconds = 120u64;
+
+    let buy_log = sample_log_tx(
+        block,
+        tx_id,
+        1,
+        DecodedEvent::ArenaBuy {
+            buyer: alice,
+            charm_wad: U256::from(1_000_000_000_000_000_000u128),
+            doub_paid: U256::from(DOUB_100),
+            new_deadline: U256::from(1_700_000_120u64),
+            total_doub_raised_after: U256::from(DOUB_100),
+            buy_index: U256::from(1u8),
+            actual_seconds_added: U256::from(seconds),
+            timer_hard_reset: false,
+            paid_with_cred: false,
+        },
+    );
+    persist_decoded_log_autocommit(pool, &buy_log)
+        .await
+        .expect("persist buy for arena_buys smoke");
+
+    let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
+    let app = router(AppState {
+        pool: pool.clone(),
+        chain_timer,
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+
+    let res = app
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/buys?limit=5")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = response_json(res).await;
+    let items = j.get("items").and_then(|v| v.as_array()).expect("items");
+    let row = items
+        .iter()
+        .find(|r| {
+            r.get("tx_hash")
+                .and_then(|v| v.as_str())
+                .map(|h| h.eq_ignore_ascii_case(&format!("{:#x}", buy_log.tx_hash)))
+                .unwrap_or(false)
+        })
+        .expect("buy row in /v1/arena/buys");
+    assert_eq!(
+        row.get("actual_seconds_added").and_then(|v| v.as_str()),
+        Some(seconds.to_string().as_str())
+    );
+
+    let db_secs: String = sqlx::query_scalar(
+        r#"SELECT actual_seconds_added::text FROM idx_arena_buy
+           WHERE tx_hash = $1 AND log_index = $2"#,
+    )
+    .bind(format!("{:#x}", buy_log.tx_hash))
+    .bind(buy_log.log_index as i64)
+    .fetch_one(pool)
+    .await
+    .expect("db actual_seconds_added");
+    assert_eq!(db_secs, seconds.to_string());
 }
 
 async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {

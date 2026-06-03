@@ -71,7 +71,7 @@ SQL
 
 **Port conflicts:** if something else already listens on `5433`, either free that port or set `PG_HOST_PORT` and `DATABASE_URL` consistently when starting the stack and running verify scripts.
 
-**What works without Docker:** Arena/indexer verify scripts (`bash scripts/verify-podium-live-anvil.sh`, `verify-vault-funding-anvil.sh`, …) and `cargo test --test integration_stage2` with `YIELDOMEGA_PG_TEST_URL` — they use host `psql` and `DATABASE_URL` only.
+**What works without Docker:** Arena/indexer verify scripts (`bash scripts/verify-podium-live-anvil.sh`, `verify-vault-funding-anvil.sh`, `verify-wallet-profile-anvil.sh`, …) and `cargo test --test integration_stage2` with `YIELDOMEGA_PG_TEST_URL` — they use host `psql` and `DATABASE_URL` only.
 
 **Full product stack:** [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) still boots Postgres via **`docker run yieldomega-pg`** and `docker exec … pg_isready`; it will **not** succeed on a VM with a broken Docker daemon even if native Postgres is already listening on `:5433`. On those VMs, either restore Docker (`fuse-overlayfs` in `/etc/docker/daemon.json` is often enough) or run Anvil + DeployDev + indexer with the same env vars the stack script exports, after native Postgres is ready.
 
@@ -113,7 +113,7 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 |-----------|-----|--------|
 | Scripts touching **Anvil deploy**, **`KEY_EVM_*`**, **dev wallet seeding**, or **`anvil_deploy_dev.sh`** | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` | Foundry only: fresh Anvil → `DeployDev` → seed `KEY_EVM_1..3` (ETH + DOUB + CRED + mock CL8Y). No Docker. |
 | Contract / deploy script changes (broader) | `cd contracts && forge test` | Skip gitignored `doub.csv` fork tests if missing. |
-| Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | |
+| Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |
 | Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | |
 | Browser E2E / Playwright | `bash scripts/e2e-anvil.sh` | Needs Anvil stack or script-managed Anvil; see [`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md). |
 | Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Docker + Rust + optional Vite — only when acceptance criteria need indexer/UI. |

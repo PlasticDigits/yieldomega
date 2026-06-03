@@ -102,6 +102,7 @@ function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
     total_raised_after: "0",
     buy_index: "0",
     timer_hard_reset: item.timer_hard_reset,
+    actual_seconds_added: item.actual_seconds_added,
   };
 }
 
@@ -723,6 +724,8 @@ export type ArenaBuyItem = {
   tx_hash: string;
   timer_hard_reset: boolean;
   paid_with_cred: boolean;
+  /** Effective seconds added to the Last Buy deadline this tx (post cap); from `idx_arena_buy`. */
+  actual_seconds_added?: string;
 };
 
 export type ArenaTimersResponse = {

@@ -272,7 +272,7 @@ async fn arena_buys(
     let offset = p.offset.max(0);
     let rows = match sqlx::query(
         r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
-                  timer_hard_reset, paid_with_cred
+                  timer_hard_reset, paid_with_cred, actual_seconds_added::text
            FROM idx_arena_buy
            ORDER BY block_number DESC, log_index DESC
            LIMIT $1 OFFSET $2"#,
@@ -296,6 +296,7 @@ async fn arena_buys(
                 "tx_hash": r.get::<String, _>("tx_hash"),
                 "timer_hard_reset": r.get::<bool, _>("timer_hard_reset"),
                 "paid_with_cred": r.get::<bool, _>("paid_with_cred"),
+                "actual_seconds_added": r.get::<String, _>("actual_seconds_added"),
             })
         })
         .collect();
