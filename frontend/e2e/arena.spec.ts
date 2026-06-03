@@ -74,6 +74,18 @@ test("legacy /timecurve redirects to /arena", async ({ page }) => {
   await expect(page).toHaveURL(/\/arena$/);
 });
 
+test("legacy /timecurve/arena redirects to /arena (#266)", async ({ page }) => {
+  await ensurePostLaunch(page);
+  await page.goto("/timecurve/arena");
+  await expect(page).toHaveURL(/\/arena$/);
+});
+
+test("legacy /timecurve/protocol redirects to /arena/protocol (#266)", async ({ page }) => {
+  await ensurePostLaunch(page);
+  await page.goto("/timecurve/protocol");
+  await expect(page).toHaveURL(/\/arena\/protocol$/);
+});
+
 test("home product cards reflow without iPad Mini horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.goto("/home");
