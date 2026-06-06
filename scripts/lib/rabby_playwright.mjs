@@ -2,7 +2,8 @@
 /** Shared Playwright + unpacked Rabby helpers for Cloud agent QA. */
 
 import { createHash } from "node:crypto";
-import { existsSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, unlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,67 @@ export function rabbyExtensionIdFromPath(extensionPath) {
 export function resolvePlaywright() {
   const require = createRequire(join(ROOT, "frontend/package.json"));
   return require("playwright");
+}
+
+const SYSTEM_CHROME_CANDIDATES = [
+  process.env.CHROME_BIN,
+  "/usr/local/bin/google-chrome",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/chromium",
+].filter(Boolean);
+
+function bundledPlaywrightChromiumBin() {
+  const cacheDir = process.env.PLAYWRIGHT_BROWSERS_PATH ?? join(process.env.HOME ?? "", ".cache/ms-playwright");
+  if (!existsSync(cacheDir)) return null;
+  for (const entry of readdirSync(cacheDir)) {
+    if (!entry.startsWith("chromium-")) continue;
+    const chrome = join(cacheDir, entry, "chrome-linux", "chrome");
+    if (existsSync(chrome)) return chrome;
+  }
+  return null;
+}
+
+function systemChromeBin() {
+  for (const candidate of SYSTEM_CHROME_CANDIDATES) {
+    if (candidate && existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Install bundled Chromium when missing (bootstrap should have done this already). */
+export function ensurePlaywrightChromium() {
+  const bundled = bundledPlaywrightChromiumBin();
+  if (bundled) return bundled;
+  try {
+    execFileSync("npx", ["playwright", "install", "chromium"], {
+      cwd: join(ROOT, "frontend"),
+      stdio: "inherit",
+    });
+  } catch {
+    // fall through to system Chrome
+  }
+  return bundledPlaywrightChromiumBin() ?? systemChromeBin();
+}
+
+/** Launch options for Rabby: bundled Chromium, else system Chrome via executablePath. */
+export function chromiumLaunchOptions({ headless = false } = {}) {
+  const bundled = bundledPlaywrightChromiumBin();
+  if (bundled) return { headless };
+  const systemChrome = ensurePlaywrightChromium();
+  if (!systemChrome) {
+    throw new Error(
+      "Playwright Chromium is not installed and no system Chrome/Chromium was found. " +
+        "Run: cd frontend && npx playwright install chromium",
+    );
+  }
+  if (systemChrome !== bundledPlaywrightChromiumBin()) {
+    console.warn(
+      `Rabby helper: Playwright bundled Chromium missing; using system browser at ${systemChrome}`,
+    );
+  }
+  return { headless, executablePath: systemChrome };
 }
 
 export function assertRabbyInstalled() {
@@ -67,8 +129,9 @@ export async function launchRabbyContext({ headless = false } = {}) {
   assertRabbyInstalled();
   releaseRabbyProfileLock();
   const { chromium } = resolvePlaywright();
+  const launchOpts = chromiumLaunchOptions({ headless });
   return chromium.launchPersistentContext(RABBY_PROFILE, {
-    headless,
+    ...launchOpts,
     ignoreDefaultArgs: ["--disable-extensions"],
     args: [
       `--disable-extensions-except=${RABBY_EXT}`,

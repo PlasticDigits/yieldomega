@@ -280,6 +280,10 @@ configure_glab() {
     else
       echo "bootstrap-cloud-vm-toolchain: glab mr list failed — use: yieldomega_glab mr … or GITLAB_REPO=${repo} glab -R ${repo} …" >&2
     fi
+    pid="$(yieldomega_glab_project_id)"
+    if [[ -n "${pid}" ]]; then
+      log "GitLab project id ${pid} (MR create uses REST API — glab mr create 404s on x-access-token remotes)"
+    fi
   else
     echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN unset — set Cursor secret for glab MR/issue commands." >&2
   fi

@@ -16,6 +16,8 @@ cd "${ROOT}"
 
 # shellcheck source=scripts/lib/rabby_cloud_agent.sh
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/playwright_cloud_agent.sh
+source "${ROOT}/scripts/lib/playwright_cloud_agent.sh"
 
 if [[ ! -d frontend/node_modules ]]; then
   echo "bootstrap-cloud-agent.sh: run bash scripts/bootstrap-dev.sh first." >&2
@@ -23,13 +25,10 @@ if [[ ! -d frontend/node_modules ]]; then
 fi
 
 echo "==> Playwright Chromium (frontend/)"
-(
-  cd frontend
-  npx playwright install chromium
-  if command -v apt-get >/dev/null 2>&1; then
-    npx playwright install-deps chromium 2>/dev/null || true
-  fi
-)
+if ! yieldomega_ensure_playwright_chromium; then
+  echo "bootstrap-cloud-agent.sh: no Chromium for Rabby automation." >&2
+  exit 1
+fi
 
 echo "==> Rabby extension"
 if yieldomega_rabby_installed; then

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Create a GitLab merge request for PlasticDigits/yieldomega via glab + GITLAB_TOKEN.
+# Create a GitLab merge request for PlasticDigits/yieldomega via GITLAB_TOKEN.
 #
-# Cloud agents must use this (or yieldomega_glab mr create) — not the Cursor GitHub PR tool.
-# Cursor clones use x-access-token remotes; glab needs explicit -R PlasticDigits/yieldomega.
+# Cloud agents must use this (or yieldomega_glab_mr_create) — not the Cursor GitHub PR tool.
+# Cursor clones use x-access-token remotes; `glab mr create` 404s with PlasticDigits/yieldomega.git
+# even when `-R PlasticDigits/yieldomega` is passed. This script uses the GitLab REST API.
 #
 # Usage (repo root):
 #   bash scripts/glab-mr-create.sh --title "My MR" --description "Details" [--draft]
 #   bash scripts/glab-mr-create.sh --title "Fix" --fill   # use commit messages for description
-#   bash scripts/glab-mr-create.sh --title "Fix" --template Default  # glab loads .gitlab/merge_request_templates/Default.md
+#   bash scripts/glab-mr-create.sh --title "Fix" --template Default  # .gitlab/merge_request_templates/Default.md
 #
 # Env: GITLAB_TOKEN (Cursor secret), GITLAB_REPO (default PlasticDigits/yieldomega),
 #      MR_TARGET_BRANCH (default main).
@@ -56,7 +57,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help|-h)
-      sed -n '1,20p' "$0" | tail -n +2
+      sed -n '1,22p' "$0" | tail -n +2
       exit 0
       ;;
     *)
@@ -88,20 +89,27 @@ if [[ -z "${TITLE}" ]]; then
 fi
 
 repo="$(yieldomega_glab_repo)"
-args=(mr create --target-branch "${TARGET}" --title "${TITLE}" "${DRAFT_FLAG[@]}")
+draft_flag=0
+[[ ${#DRAFT_FLAG[@]} -gt 0 ]] && draft_flag=1
+
 if [[ "${FILL}" -eq 1 ]]; then
-  args+=(--fill)
+  DESCRIPTION="$(git log --pretty=format:'%s' "origin/${TARGET}..HEAD" 2>/dev/null | paste -sd '\n' - || git log -5 --pretty=format:'%s')"
 elif [[ -n "${TEMPLATE_NAME}" ]]; then
   tmpl="${ROOT}/.gitlab/merge_request_templates/${TEMPLATE_NAME}.md"
   if [[ ! -f "${tmpl}" ]]; then
     echo "glab-mr-create.sh: template not found: ${tmpl}" >&2
     exit 1
   fi
-  args+=(--template "${TEMPLATE_NAME}")
-elif [[ -n "${DESCRIPTION}" ]]; then
-  args+=(--description "${DESCRIPTION}")
+  DESCRIPTION="$(cat "${tmpl}")"
 fi
-args+=("${EXTRA[@]}")
 
-echo "==> glab -R ${repo} ${args[*]}"
-yieldomega_glab "${args[@]}"
+if [[ ${#EXTRA[@]} -gt 0 ]]; then
+  echo "glab-mr-create.sh: ignoring unsupported extra args: ${EXTRA[*]}" >&2
+fi
+
+echo "==> GitLab API merge request (${repo}: ${branch} → ${TARGET})"
+url="$(yieldomega_glab_mr_create "${branch}" "${TARGET}" "${TITLE}" "${DESCRIPTION}" "${draft_flag}")" || {
+  echo "glab-mr-create.sh: merge request creation failed." >&2
+  exit 1
+}
+echo "${url}"

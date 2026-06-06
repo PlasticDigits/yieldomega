@@ -15,6 +15,8 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
 # shellcheck source=scripts/lib/glab_cloud_agent.sh
 source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
+# shellcheck source=scripts/lib/playwright_cloud_agent.sh
+source "${ROOT}/scripts/lib/playwright_cloud_agent.sh"
 # shellcheck source=scripts/lib/cloud_agent_path.sh
 source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
@@ -90,10 +92,12 @@ else
 fi
 
 if [[ -d frontend/node_modules/@playwright/test ]] || [[ -d frontend/node_modules/playwright ]]; then
-  if [[ -d "${HOME}/.cache/ms-playwright" ]] && ls "${HOME}/.cache/ms-playwright"/chromium-* >/dev/null 2>&1; then
+  if yieldomega_playwright_chromium_bin >/dev/null; then
     ok "Playwright Chromium cache"
+  elif chrome="$(yieldomega_system_chrome_bin 2>/dev/null)"; then
+    ok "system Chrome fallback (${chrome})"
   else
-    bad "Playwright Chromium not installed (cd frontend && npx playwright install chromium)"
+    bad "no Chromium (cd frontend && npx playwright install chromium, or install google-chrome)"
   fi
 else
   bad "frontend npm deps missing (bash scripts/bootstrap-dev.sh)"

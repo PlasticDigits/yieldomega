@@ -7,7 +7,6 @@
  * Usage (from repo root, after frontend npm ci):
  *   cd frontend && node ../scripts/setup-rabby-dev-wallets.mjs
  */
-import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,8 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const require = createRequire(join(ROOT, "frontend/package.json"));
-const { chromium } = require("playwright");
+const { launchRabbyContext } = await import("./lib/rabby_playwright.mjs");
 
 const RABBY_EXT =
   process.env.RABBY_EXTENSION_PATH ?? "/opt/cursor/browser-extensions/rabby";
@@ -135,16 +133,7 @@ async function main() {
   mkdirSync(PROFILE, { recursive: true });
   const extId = rabbyExtensionIdFromPath(RABBY_EXT);
 
-  const context = await chromium.launchPersistentContext(PROFILE, {
-    headless: false,
-    ignoreDefaultArgs: ["--disable-extensions"],
-    args: [
-      `--disable-extensions-except=${RABBY_EXT}`,
-      `--load-extension=${RABBY_EXT}`,
-      "--no-first-run",
-      "--no-default-browser-check",
-    ],
-  });
+  const context = await launchRabbyContext({ headless: false });
 
   try {
     await importFirstPrivateKey(context, extId, KEYS[0]);
