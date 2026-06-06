@@ -31,11 +31,8 @@ test("arena command console shows the first-run path (Last Buy + buy CHARM)", as
   await expect(
     page.getByRole("heading", { name: /Last Buy|Arena Opens In/, level: 2 }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByRole("heading", { name: /(Buy CHARM|Coming soon)/, level: 2 })
-      .or(page.getByRole("group", { name: "Show live price in" })),
-  ).toBeVisible();
+  await expect(page.getByText(/Connect wallet to buy CHARM|Buy CHARM/i).first()).toBeVisible();
+  await expect(page.getByText("CHARM PRICE")).toBeVisible();
   await expect(page.locator(".arena-final-concept")).toHaveCount(0);
 });
 
