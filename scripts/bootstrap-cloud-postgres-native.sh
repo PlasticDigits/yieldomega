@@ -99,7 +99,9 @@ configure_listen_port() {
 }
 
 run_postgres_sql() {
-  run_as_root -u postgres psql -p "${PG_HOST_PORT}" -v ON_ERROR_STOP=1 "$@"
+  # Peer auth via the cluster unix socket (omit -p: client -p uses /var/run/postgresql
+  # even when the cluster sets unix_socket_directories=/tmp and port=${PG_HOST_PORT}).
+  run_as_root -u postgres psql -v ON_ERROR_STOP=1 "$@"
 }
 
 ensure_role_and_databases() {

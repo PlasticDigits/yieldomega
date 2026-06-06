@@ -13,6 +13,8 @@ cd "${ROOT}"
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 # shellcheck source=scripts/lib/rabby_cloud_agent.sh
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/glab_cloud_agent.sh
+source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
 # shellcheck source=scripts/lib/cloud_agent_path.sh
 source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
@@ -56,20 +58,13 @@ fi
 
 if command -v glab >/dev/null 2>&1; then
   ok "glab $(glab version 2>/dev/null | head -1 || true)"
-  remote_alias="$(glab config get remote_alias 2>/dev/null || true)"
-  [[ -n "${remote_alias}" ]] && ok "glab remote_alias (${remote_alias})" \
-    || bad "glab remote_alias unset (run bootstrap-cloud-vm-toolchain.sh)"
-  token="${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
+  repo="$(yieldomega_glab_repo)"
+  ok "glab repo (${repo})"
+  token="$(yieldomega_glab_token)"
   if [[ -n "${token}" ]]; then
-    curl -fsS -H "PRIVATE-TOKEN: ${token}" \
-      "https://gitlab.com/api/v4/projects/PlasticDigits%2Fyieldomega" >/dev/null \
-      && ok "GITLAB_TOKEN API" || bad "GITLAB_TOKEN API"
-    if glab mr list --per-page 1 >/dev/null 2>&1 \
-      || GITLAB_REPO=PlasticDigits/yieldomega glab mr list --per-page 1 >/dev/null 2>&1; then
-      ok "glab mr list (repo context)"
-    else
-      bad "glab mr list failed (check remote_alias, git_protocol https, GITLAB_TOKEN)"
-    fi
+    yieldomega_glab_api_ok && ok "GITLAB_TOKEN API (PlasticDigits)" || bad "GITLAB_TOKEN API"
+    yieldomega_glab_repo_context_ok && ok "glab mr list (-R ${repo})" \
+      || bad "glab mr list failed (source scripts/lib/glab_cloud_agent.sh; use yieldomega_glab or GITLAB_REPO)"
   else
     bad "GITLAB_TOKEN unset"
   fi
