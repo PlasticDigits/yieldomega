@@ -27,7 +27,7 @@ type Props = {
 const SPARK_COUNT = 8;
 
 /**
- * Big arcade-style countdown used by the Simple-view timer panel.
+ * Primary command-console countdown used by the BUY timer panel.
  *
  * This is the in-card sibling of the standalone `LaunchCountdownPage` hero —
  * it reuses the shared `formatLaunchCountdown` (so 24h+ durations render as

@@ -45,10 +45,10 @@ describe("ArenaSubnav (Arena v2 #266)", () => {
     expect(html).toContain('src="/art/icons/nav-protocol.png"');
   });
 
-  it("renders ABOUT TIME ARENA disclosure open by default", () => {
+  it("keeps mechanics in tooltips instead of default visible info copy", () => {
     const html = renderSubnav("simple", "/arena");
-    expect(html).toContain("ABOUT TIME ARENA");
-    expect(html).toContain("Time Arena");
-    expect(html).toContain('aria-expanded="true"');
+    expect(html).toContain('title="Buy CHARM with DOUB or Play CRED and compete on Time Arena podiums."');
+    expect(html).toContain('aria-label="BUY: Buy CHARM with DOUB or Play CRED and compete on Time Arena podiums."');
+    expect(html).not.toContain("ABOUT TIME ARENA");
   });
 });

@@ -68,15 +68,10 @@ export function RootLayout() {
     window.scrollTo(0, 0);
   }, [location.pathname, location.search]);
 
-  // The TimeCurve **Simple** view is a deliberately minimal first-run surface
-  // (timer + buy CTA + podiums). The global footer's indexer status pill +
-  // canonical-fee-sink table are valuable on operator / power-user surfaces
-  // (home, Arena, Protocol, etc.) but they distract from the primary buy action
-  // when always visible. We hide the footer **only** on `/timecurve` (exact);
-  // `/arena/arena` and `/arena/protocol` keep it. Agents still get the
-  // collapsed `ArenaSimpleAgentCard` at the bottom of the Simple page (same
-  // skills + fee sinks when expanded). See
-  // [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md).
+  // The default Time Arena route is a minimal buy-first surface (timer + CTA +
+  // podiums). The global footer's agent/operator readouts are useful elsewhere,
+  // but they compete with the live buy decision when always visible.
+  // See [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md).
   const showFooter = location.pathname !== "/arena";
   const isArenaPlayRoute = location.pathname === "/arena" || location.pathname.startsWith("/arena/");
   const isReferralsRoute = location.pathname === "/referrals";

@@ -785,6 +785,31 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 
 **Doc map:** [frontend design — global header layout](../frontend/design.md#accessibility-and-ux)
 
+<a id="manual-qa-issue-290"></a>
+
+## Cyberminimalist glass app shell (GitLab #290)
+
+**Goal:** Verify the shared app shell and route-level navigation present the approved dark command-console direction without stale TimeCurve/PvE/sale-end assumptions.
+
+### Invariants
+
+1. Global chrome uses `--yo-*` glass/console tokens from [`frontend/src/index.css`](../../frontend/src/index.css).
+2. RainbowKit wallet chrome is dark and cyan-accented through [`AppProviders`](../../frontend/src/providers/AppProviders.tsx).
+3. Time Arena route decisions stay compact: visible sub-nav labels are **BUY** and **AUDIT**; extra mechanics are in tooltips / aria labels and action-adjacent states.
+4. Shell/home/footer copy references current TimeArena mechanics (DOUB / Play CRED buys, podiums, WarBow, AUDIT reads) and does not frame the route as retired TimeCurve, PvE, or sale-end/redemption UX.
+
+### Checklist
+
+- [ ] Desktop (`≥1024px`): header, home cards, PageHero/PageSection panels, and footer cards read as dark glass surfaces with crisp hierarchy.
+- [ ] Mobile (`≤720px`): bottom header dock keeps the same dark glass treatment; labels and focus rings remain visible.
+- [ ] `/arena`: visible route choices are **BUY** and **AUDIT**; hover/focus reveals concise mechanics via title / aria-label; no default ABOUT paragraph.
+- [ ] Wallet modal / connect button palette matches the cyan-on-dark shell.
+- [ ] Keyboard Tab: focus rings remain high-contrast in header, sub-nav, and primary CTA controls.
+- [ ] Optional visual pass: compare `/`, `/arena`, `/arena/protocol`, `/referrals`, `/kumbaya`, `/sir` at desktop and phone widths for consistent surface language.
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`.
+
+**Doc map:** [frontend design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) · [invariants — #290](invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290)
+
 <a id="manual-qa-issue-104"></a>
 
 ## Local full stack QA orchestrator (GitLab #104)

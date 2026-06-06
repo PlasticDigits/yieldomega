@@ -608,7 +608,7 @@ export function ArenaSimplePage({
         step={1}
         value={session.spendSliderPermille}
         onChange={(e) => session.setSpendFromSliderPermille(Number(e.target.value))}
-        aria-label={`${paySpendSuffix} spend slider (targets CL8Y sale band)`}
+        aria-label={`${paySpendSuffix} spend slider (targets CHARM buy band)`}
         disabled={session.phase !== "saleActive" || !session.walletConnected}
       />
       <div className="arena-simple__amount-input">
@@ -996,7 +996,7 @@ export function ArenaSimplePage({
       <ArenaCharmCredCard />
       <ArenaSubnav active="simple" />
 
-      {/* Sale hub — timer + primary buy action share the spotlight row above the fold. */}
+      {/* Arena hub — timer + primary buy action share the spotlight row above the fold. */}
       <div className="arena-simple__hub">
         <PageSection
           title={timerSectionTitle}
@@ -1009,9 +1009,9 @@ export function ArenaSimplePage({
             countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
             foot={timerHeroFoot}
           />
-          {/* Calm "fair-launch" sidekick. The art README (`frontend/public/art/
+          {/* Command-console sidekick. The art README (`frontend/public/art/
               README.md`) earmarks this cutout for the Simple-view timer panel
-              specifically — it grounds the dark arcade stage in the Yieldomega
+              specifically — it grounds the tactical stage in the Yieldomega
               cast without competing with the digits (anchored bottom-left,
               clipped by the panel's own `overflow: hidden`). */}
           <CutoutDecoration
@@ -1023,7 +1023,7 @@ export function ArenaSimplePage({
           {/* Live "just extended" chip — anchored to the bottom-right of
               the dark stage so the most recent buy that bumped the clock
               feels alive without crowding the digits. Only renders when
-              the sale is active and the indexer has a qualifying buy. */}
+              the arena is live and the indexer has a qualifying buy. */}
           {session.phase === "saleActive" && lastExtension && (
             <span
               key={lastExtension.pulseKey}

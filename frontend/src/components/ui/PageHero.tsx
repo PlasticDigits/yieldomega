@@ -30,7 +30,7 @@ type Props = {
    * and the asset map in [`frontend/public/art/README.md`](../../../public/art/README.md).
    * Pages opt-in (e.g. Time Arena Simple uses
    * `/art/scenes/arena-simple.jpg`); cards remain crisp via the
-   * `arcade-banner--with-scene` overlay defined in `index.css`.
+   * `arcade-banner--with-scene` legacy class overlay defined in `index.css`.
    */
   sceneSrc?: string;
   sceneAlt?: string;
@@ -82,8 +82,8 @@ type PageHeroArcadeBannerProps = {
 };
 
 /**
- * Optional lede, optional scene and coin (omit coin with `coinSrc={null}`), optional mascot, and optional `children` in the action strip
- * (same layout as the lower half of a full `PageHero`).
+ * Optional lede, scene, coin, mascot, and action strip. The exported name is
+ * retained for compatibility; visuals are governed by the #290 glass console tokens.
  */
 export function PageHeroArcadeBanner({
   className,

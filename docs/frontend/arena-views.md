@@ -30,6 +30,8 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads only — no separate “Arena advanced” route |
 
+Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Route-level copy stays compact: visible choices are **BUY** and **AUDIT**; mechanics live in tooltips, state rows, and action-adjacent feedback rather than default explanatory paragraphs.
+
 Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
 
 <a id="charm-cred-card-gitlab-257"></a>

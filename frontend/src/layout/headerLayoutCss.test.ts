@@ -19,6 +19,14 @@ function cssBlock(css: string, selector: string): string {
 describe("header layout CSS (GitLab #171)", () => {
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
 
+  it("defines cyberminimalist glass shell tokens for GitLab #290", () => {
+    const root = cssBlock(css, ":root");
+    expect(root).toContain("--yo-glass-surface:");
+    expect(root).toContain("--yo-panel-gradient:");
+    expect(root).toContain("--yo-action-gradient:");
+    expect(root).toContain('font-family: "IBM Plex Sans"');
+  });
+
   it("reserves desktop header space for the decorative mascot", () => {
     expect(cssBlock(css, ".app-header")).toContain(
       "--app-header-mascot-clearance: clamp(3.65rem, 7vw, 4.75rem);",
@@ -49,9 +57,9 @@ describe("header layout CSS (GitLab #171)", () => {
     expect(css).toContain("animation: mobile-header-shimmer 3.5s ease-in-out infinite;");
   });
 
-  it("underlines the dense header primary nav active target in green", () => {
+  it("underlines the dense header primary nav active target in the console accent", () => {
     const active = cssBlock(css, ".app-header--dense .app-nav--dense .nav-link--dense.nav-link--active");
-    expect(active).toContain("border-bottom-color: var(--arcade-green-700);");
+    expect(active).toContain("border-bottom-color: var(--yo-cyan);");
     expect(active).toContain("background: transparent;");
   });
 

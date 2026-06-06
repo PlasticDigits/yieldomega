@@ -53,7 +53,7 @@ export function ArenaWarbowHeroPanel({ phase }: Props) {
       )}
 
       {!w.saleActive && phase !== "loading" && (
-        <StatusMessage variant="muted">WarBow actions unlock when the arena sale is live.</StatusMessage>
+        <StatusMessage variant="muted">WarBow actions unlock when Time Arena is live.</StatusMessage>
       )}
       {w.arenaPaused && (
         <StatusMessage variant="muted">

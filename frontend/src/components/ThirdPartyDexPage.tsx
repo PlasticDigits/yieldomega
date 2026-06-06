@@ -125,13 +125,13 @@ export function ThirdPartyDexPage({
       >
         <ul className="accent-list">
           <li>Use this page to understand where DOUB liquidity or leverage may live, then jump out to the venue itself.</li>
-          <li>Time Arena remains the canonical launch surface for the sale, charms, podiums, and WarBow competition.</li>
+          <li>Time Arena remains the canonical onchain surface for CHARM buys, podiums, and WarBow competition.</li>
           <li>When live venue reads are added, they should remain clearly marked as third-party data and never replace contract authority.</li>
         </ul>
       </PageSection>
       {externalUrl && outboundStatus}
       <p className="muted">
-        <Link to="/arena">Time Arena</Link> is the canonical DOUB launch surface.
+        <Link to="/arena">Time Arena</Link> is the canonical DOUB arena surface.
       </p>
       <div className="third-party-cutout-row" aria-hidden="true">
         <CutoutDecoration
