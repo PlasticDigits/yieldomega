@@ -93,14 +93,18 @@ fi
 
 if [[ -d frontend/node_modules/@playwright/test ]] || [[ -d frontend/node_modules/playwright ]]; then
   if yieldomega_playwright_chromium_bin >/dev/null; then
-    ok "Playwright Chromium cache"
-  elif chrome="$(yieldomega_system_chrome_bin 2>/dev/null)"; then
-    ok "system Chrome fallback (${chrome})"
+    ok "Playwright Chromium cache ($(yieldomega_playwright_chromium_bin))"
   else
-    bad "no Chromium (cd frontend && npx playwright install chromium, or install google-chrome)"
+    bad "Playwright Chromium not installed (bash scripts/bootstrap-cloud-agent.sh)"
   fi
 else
   bad "frontend npm deps missing (bash scripts/bootstrap-dev.sh)"
+fi
+
+if bash "${ROOT}/scripts/verify-rabby-playwright-injection.sh" >/dev/null 2>&1; then
+  ok "Rabby window.ethereum injection (headed Playwright Chromium)"
+else
+  bad "Rabby injection smoke failed (bash scripts/verify-rabby-playwright-injection.sh)"
 fi
 
 [[ -f "${YIELDOMEGA_RABBY_MARKER}" ]] \

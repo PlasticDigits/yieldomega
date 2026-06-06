@@ -73,8 +73,15 @@ export function ensurePlaywrightChromium() {
 
 /** Launch options for Rabby: bundled Chromium, else system Chrome via executablePath. */
 export function chromiumLaunchOptions({ headless = false } = {}) {
+  const requireBundled = process.env.YIELDOMEGA_REQUIRE_PLAYWRIGHT_CHROMIUM === "1";
   const bundled = bundledPlaywrightChromiumBin();
   if (bundled) return { headless };
+  if (requireBundled) {
+    throw new Error(
+      "Playwright bundled Chromium is required but missing. " +
+        "Run: cd frontend && npx playwright install chromium",
+    );
+  }
   const systemChrome = ensurePlaywrightChromium();
   if (!systemChrome) {
     throw new Error(

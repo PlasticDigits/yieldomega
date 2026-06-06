@@ -60,6 +60,27 @@ yieldomega_chrome_for_playwright() {
   yieldomega_playwright_chromium_bin || yieldomega_system_chrome_bin
 }
 
+# Install Playwright OS packages for Chromium (apt on Ubuntu; may need sudo).
+yieldomega_install_playwright_chromium_deps() {
+  local frontend_dir
+  frontend_dir="$(yieldomega_playwright_frontend_dir)"
+  if ! command -v apt-get >/dev/null 2>&1; then
+    echo "playwright_cloud_agent: skip install-deps (no apt-get on this image)" >&2
+    return 0
+  fi
+  (
+    cd "${frontend_dir}"
+    if npx playwright install-deps chromium; then
+      exit 0
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+      sudo npx playwright install-deps chromium
+    else
+      exit 1
+    fi
+  )
+}
+
 # Install Playwright Chromium from frontend/package-lock (idempotent).
 yieldomega_install_playwright_chromium() {
   local frontend_dir
@@ -71,10 +92,21 @@ yieldomega_install_playwright_chromium() {
   (
     cd "${frontend_dir}"
     npx playwright install chromium
-    if command -v apt-get >/dev/null 2>&1; then
-      npx playwright install-deps chromium 2>/dev/null || true
-    fi
   )
+}
+
+# Cloud bootstrap entrypoint: always install bundled Chromium + OS browser deps.
+yieldomega_bootstrap_playwright_chromium() {
+  echo "playwright_cloud_agent: cd frontend && npx playwright install chromium"
+  yieldomega_install_playwright_chromium || return 1
+  echo "playwright_cloud_agent: cd frontend && npx playwright install-deps chromium"
+  yieldomega_install_playwright_chromium_deps || return 1
+  if yieldomega_playwright_chromium_bin >/dev/null; then
+    echo "playwright_cloud_agent: bundled Chromium ready at $(yieldomega_playwright_chromium_bin)"
+    return 0
+  fi
+  echo "playwright_cloud_agent: bundled Chromium missing after install." >&2
+  return 1
 }
 
 # Ensure a launchable Chromium exists (install bundled browser or rely on system Chrome).
@@ -82,8 +114,8 @@ yieldomega_ensure_playwright_chromium() {
   if yieldomega_playwright_chromium_bin >/dev/null; then
     return 0
   fi
-  echo "playwright_cloud_agent: bundled Chromium missing — running npx playwright install chromium"
-  yieldomega_install_playwright_chromium || true
+  echo "playwright_cloud_agent: bundled Chromium missing — running bootstrap install"
+  yieldomega_bootstrap_playwright_chromium || true
   if yieldomega_playwright_chromium_bin >/dev/null; then
     return 0
   fi
