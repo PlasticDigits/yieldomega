@@ -1,5 +1,7 @@
 # Agent instructions (Yieldomega)
 
+**This file is `AGENTS.md` at the repository root** — the canonical Cursor Cloud agent runbook. It is **not** a `SKILL.md` file. Play/participant skills live under [`skills/`](skills/README.md); contributor guardrails live under [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md) (read that skill when editing the repo, but start here for VM bootstrap and verification).
+
 Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). Phased work: [`docs/agent-phases.md`](docs/agent-phases.md).
 
 ## Cursor Cloud specific instructions
@@ -16,7 +18,7 @@ bash scripts/bootstrap-cloud-agent.sh
 ```
 
 - **`bootstrap-dev.sh`** — `git submodule update --init --recursive` and `npm ci` in `frontend/`.
-- **`bootstrap-cloud-vm-toolchain.sh`** — Foundry (`foundryup`), Rust ≥ 1.85, `libssl-dev` / `pkg-config`, Docker (`fuse-overlayfs` with **vfs** fallback), **glab** + `GITLAB_TOKEN`, `xvfb-run`; also invokes native Postgres bootstrap when Docker is unavailable ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)).
+- **`bootstrap-cloud-vm-toolchain.sh`** — Foundry (`foundryup`), Rust ≥ 1.85, `libssl-dev` / `pkg-config`, **`iproute2`** (`ss` for port checks), Docker (`fuse-overlayfs` with **vfs** fallback), **glab** + `GITLAB_TOKEN`, `xvfb-run`; also invokes native Postgres bootstrap when Docker is unavailable ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287)).
 - **`bootstrap-cloud-postgres-native.sh`** — **PostgreSQL 16** on host port **5433**, **`postgresql-client`** (`psql`), **`yieldomega`** role with **`CREATEDB`**, app + test databases (idempotent; primary indexer path without Docker).
 - **`bootstrap-cloud-agent.sh`** — Playwright Chromium, Rabby extension, automated import of **`KEY_EVM_1..3`**.
 
@@ -51,7 +53,8 @@ Invariants: [`docs/testing/invariants-and-business-logic.md` §288](docs/testing
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
 | **Docker** | **Optional** for most agent work ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). Required only for `start-local-anvil-stack` / full QA stack (`yieldomega-pg`). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** ( **`vfs`** fallback), starts **`dockerd`**, verifies **`docker run hello-world` as `$USER`**, or writes `/tmp/yieldomega-docker-unavailable` + native Postgres hint. Verify: `bash scripts/verify-docker-cloud-agent.sh`. |
-| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`**. Sets `remote.origin_url` to **`PlasticDigits/yieldomega`** (namespace/repo — **not** a `https://…/*.git` URL; that suffix breaks `glab mr create` with 404). Verify: `glab auth status` · `glab mr list --per-page 1`. |
+| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`**. Modern glab (≥1.100) uses **`glab config set remote_alias origin`** plus **`git_protocol https`** (Cloud clones use HTTPS tokens, not SSH keys) — the legacy `remote.origin_url` config key is **removed**. Fallback when repo detection fails: env **`GITLAB_REPO=PlasticDigits/yieldomega`** (set in [`.cursor/environment.json`](.cursor/environment.json)). Verify: `glab config get remote_alias` · `glab mr list --per-page 1`. |
+| **ss** | From **`iproute2`** — used by [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) to detect Anvil/indexer ports. Bootstrap installs it; [`scripts/lib/tcp_port.sh`](scripts/lib/tcp_port.sh) falls back to `netstat` or a Python bind probe if missing. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
 ### Postgres without Docker (`yieldomega-pg`)
@@ -146,9 +149,17 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 
 CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 
+### Frontend env files (do not confuse with repo-root `.env`)
+
+| File | Purpose |
+|------|---------|
+| **`frontend/.env.local`** | **Vite / Anvil stack** — contract addresses, RPC, indexer URL. [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) **merges** stack-managed `VITE_*` keys here (does not delete unrelated lines such as `VITE_E2E_MOCK_WALLET`). |
+| **`frontend/.env.example`** | Documented defaults; safe to read, not auto-written. |
+| **Repo-root `.env`** | Optional ops secrets (e.g. QA SSH) — **not** used by the Anvil stack or Vite. Do not put Anvil contract addresses here. |
+
 ### Hot reload caveats
 
-- **`frontend/.env.local`** is written by the Anvil stack; **restart Vite** if you change it after `npm run dev` is already running.
+- **`frontend/.env.local`** is updated by the Anvil stack; **restart Vite** if you change it after `npm run dev` is already running.
 - Indexer reads env at process start; restart indexer after registry/RPC changes.
 
 ### Cloud agent bootstrap (Playwright + Rabby)
