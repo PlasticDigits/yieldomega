@@ -8,6 +8,7 @@
 # Usage (repo root):
 #   bash scripts/glab-mr-create.sh --title "My MR" --description "Details" [--draft]
 #   bash scripts/glab-mr-create.sh --title "Fix" --fill   # use commit messages for description
+#   bash scripts/glab-mr-create.sh --title "Fix" --template Default  # glab loads .gitlab/merge_request_templates/Default.md
 #
 # Env: GITLAB_TOKEN (Cursor secret), GITLAB_REPO (default PlasticDigits/yieldomega),
 #      MR_TARGET_BRANCH (default main).
@@ -25,6 +26,7 @@ TITLE=""
 DESCRIPTION=""
 DRAFT_FLAG=()
 FILL=0
+TEMPLATE_NAME=""
 EXTRA=()
 
 while [[ $# -gt 0 ]]; do
@@ -48,6 +50,10 @@ while [[ $# -gt 0 ]]; do
     --fill)
       FILL=1
       shift
+      ;;
+    --template)
+      TEMPLATE_NAME="${2:-Default}"
+      shift 2
       ;;
     --help|-h)
       sed -n '1,20p' "$0" | tail -n +2
@@ -85,6 +91,13 @@ repo="$(yieldomega_glab_repo)"
 args=(mr create --target-branch "${TARGET}" --title "${TITLE}" "${DRAFT_FLAG[@]}")
 if [[ "${FILL}" -eq 1 ]]; then
   args+=(--fill)
+elif [[ -n "${TEMPLATE_NAME}" ]]; then
+  tmpl="${ROOT}/.gitlab/merge_request_templates/${TEMPLATE_NAME}.md"
+  if [[ ! -f "${tmpl}" ]]; then
+    echo "glab-mr-create.sh: template not found: ${tmpl}" >&2
+    exit 1
+  fi
+  args+=(--template "${TEMPLATE_NAME}")
 elif [[ -n "${DESCRIPTION}" ]]; then
   args+=(--description "${DESCRIPTION}")
 fi

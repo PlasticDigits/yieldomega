@@ -213,7 +213,8 @@ This repository lives at **https://gitlab.com/PlasticDigits/yieldomega**. Cloud 
 git checkout -b cursor/my-feature-9c94
 # … commit …
 git push -u origin cursor/my-feature-9c94
-bash scripts/glab-mr-create.sh --title "My change" --description "Summary for reviewers."
+bash scripts/glab-mr-create.sh --title "My change" --template Default
+# Or: --description "Summary for reviewers." · template: `.gitlab/merge_request_templates/Default.md`
 ```
 
 - **`yieldomega_glab`** ([`scripts/lib/glab_cloud_agent.sh`](scripts/lib/glab_cloud_agent.sh)) exports `GITLAB_REPO` and runs `glab -R PlasticDigits/yieldomega`.
