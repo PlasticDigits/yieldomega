@@ -9,7 +9,7 @@ export const ARENA_KUMBAYA_QUOTE_TIMEOUT_MS = 45_000;
 
 export async function gotoArena(page: Page): Promise<void> {
   await page.goto("/arena");
-  await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({
+  await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
   await expect(page.locator(".arena-simple-page")).toBeVisible({

@@ -101,9 +101,9 @@ export function AgentFooterCard() {
       </summary>
       <div className="app-footer-agent__body">
         <article className="app-footer-agent__article" lang="en">
-          <h3 className="app-footer-agent__h">YieldOmega — machine-readable orientation</h3>
+          <h3 className="app-footer-agent__h">Yield Omega — machine-readable orientation</h3>
           <p className="app-footer-agent__p">
-            YieldOmega ships onchain games (Time Arena / Arena v2 DOUB sale, referrals, prize routing).{" "}
+            Yield Omega ships onchain games (Time Arena / Arena v2 DOUB sale, referrals, prize routing).{" "}
             <strong>Authoritative rules and balances live in contracts</strong>; the indexer and this UI are{" "}
             <strong>derived read models</strong> built from decoded logs and JSON-RPC (see architecture doc). Agents
             helping <em>users participate</em> should follow{" "}

@@ -8,16 +8,16 @@ import { defineConfig, loadEnv } from "vite";
 // SPDX-License-Identifier: AGPL-3.0-only
 
 const OG = {
-  title: "YieldOmega",
+  title: "Yield Omega",
   description:
     "Onchain gamefi on MegaETH — Time Arena, DOUB prizes, and bright arcade-fantasy mascots.",
-  siteName: "YieldOmega",
+  siteName: "Yield Omega",
   locale: "en_US",
   imagePath: "/art/opengraph.jpg",
   /** Square JPEG (issue #57) — Twitter/X `summary` card while Open Graph keeps the wide hero. */
   twitterSquareImagePath: "/art/opengraph-square.jpg",
   imageAlt:
-    "YieldOmega artwork: bunny mascots, glossy hat-coins, rainbow, and voxel hills in arcade cartoon style",
+    "Yield Omega artwork: arena mascots, glossy hat-coins, rainbow, and voxel hills in arcade cartoon style",
   imageType: "image/jpeg",
 } as const;
 

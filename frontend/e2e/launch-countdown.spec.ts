@@ -39,7 +39,7 @@ test("post-launch routing serves Time Arena at / and HomePage at /home", async (
 
   await page.goto("/home");
   await expect(
-    page.getByRole("heading", { name: "YieldOmega", level: 1 }),
+    page.getByRole("heading", { name: "Yield Omega", level: 1 }),
   ).toBeVisible();
 });
 
@@ -48,13 +48,13 @@ test("no-env routing keeps HomePage at / and the primary nav visible", async ({ 
   test.skip(state !== "no-env", `Build state is "${state}"; this scenario requires no VITE_LAUNCH_TIMESTAMP.`);
 
   await expect(
-    page.getByRole("heading", { name: "YieldOmega", level: 1 }),
+    page.getByRole("heading", { name: "Yield Omega", level: 1 }),
   ).toBeVisible();
   await expect(page.getByLabel("Primary")).toBeVisible();
   await expect(page.getByTestId("launch-countdown")).toHaveCount(0);
 
   await page.goto("/home");
   await expect(
-    page.getByRole("heading", { name: "YieldOmega", level: 1 }),
+    page.getByRole("heading", { name: "Yield Omega", level: 1 }),
   ).toBeVisible();
 });

@@ -88,7 +88,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
             height={72}
             decoding="async"
           />
-          <h1 className="launch-countdown__wordmark">YieldOmega</h1>
+          <h1 className="launch-countdown__wordmark">Yield Omega</h1>
         </div>
 
         <p className="launch-countdown__eyebrow">DOUB launches in</p>
@@ -113,7 +113,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
 
         <nav
           className="launch-countdown__links"
-          aria-label="YieldOmega community and documentation"
+          aria-label="Yield Omega community and documentation"
         >
           <ul className="launch-countdown__links-list">
             {LAUNCH_LINKS.map(({ label, href }) => (

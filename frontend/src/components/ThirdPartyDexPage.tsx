@@ -56,7 +56,7 @@ export function ThirdPartyDexPage({
         coinSrc="/art/hat-coin-stack.png"
         lede={
           <>
-            {title} is a <strong>third-party</strong> {venueKind}. YieldOmega does not operate or
+            {title} is a <strong>third-party</strong> {venueKind}. Yield Omega does not operate or
             custody this venue; this page keeps the art direction, hierarchy, and warnings aligned while pointing
             to the external market.
           </>
@@ -113,7 +113,7 @@ export function ThirdPartyDexPage({
             <dt>Status</dt>
             <dd>Outbound route ready, live depth readout not wired yet</dd>
             <dt>Trust boundary</dt>
-            <dd>Third-party venue, linked from YieldOmega for convenience only</dd>
+            <dd>Third-party venue, linked from Yield Omega for convenience only</dd>
           </dl>
         </PageSection>
       </div>
@@ -121,7 +121,7 @@ export function ThirdPartyDexPage({
         title="How to read this page"
         badgeLabel="Clarity first"
         badgeTone="warning"
-        lede="The goal is integration without pretending this venue is part of YieldOmega's authoritative onchain surface."
+        lede="The goal is integration without pretending this venue is part of Yield Omega's authoritative onchain surface."
       >
         <ul className="accent-list">
           <li>Use this page to understand where DOUB liquidity or leverage may live, then jump out to the venue itself.</li>

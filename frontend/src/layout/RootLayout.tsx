@@ -209,7 +209,7 @@ export function RootLayout() {
               <>
                 <div className="app-header__top">
                   <div className="app-header__brand">
-                    <NavLink to="/" className="brand-link brand-link--dense" title="YieldOmega home">
+                    <NavLink to="/" className="brand-link brand-link--dense" title="Yield Omega home">
                       <HeaderIcon src={HEADER_ICONS.home} />
                     </NavLink>
                   </div>

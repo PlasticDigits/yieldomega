@@ -92,7 +92,7 @@ function RouteFallback() {
         height={96}
         decoding="async"
       />
-      <p>Loading YieldOmega route...</p>
+      <p>Loading Yield Omega route...</p>
     </div>
   );
 }

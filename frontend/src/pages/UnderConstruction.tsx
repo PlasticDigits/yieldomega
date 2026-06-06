@@ -47,7 +47,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
         coinSrc="/art/hat-coin-stack.png"
         lede={
           <>
-            {children} This route now uses the same YieldOmega shell, spacing, and mascot system as the live app so
+            {children} This route now uses the same Yield Omega shell, spacing, and mascot system as the live app so
             it reads like part of one product instead of a generic stub.
           </>
         }

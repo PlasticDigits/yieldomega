@@ -28,7 +28,7 @@ export async function detectLaunchState(page: Page): Promise<LaunchState> {
     return "countdown";
   }
   const homeAtRoot = await page
-    .getByRole("heading", { name: "YieldOmega", level: 1 })
+    .getByRole("heading", { name: "Yield Omega", level: 1 })
     .isVisible()
     .catch(() => false);
   return homeAtRoot ? "no-env" : "post-launch";

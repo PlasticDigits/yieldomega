@@ -10,7 +10,7 @@ test.describe("Anvil Arena mount", () => {
 
   test("arena page mounts charm cred card and timer chips", async ({ page }) => {
     await page.goto("/arena");
-    await expect(page.getByText("Loading YieldOmega route...")).toBeHidden({
+    await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await expect(page.getByTestId("time-arena-page-mounted")).toBeAttached({

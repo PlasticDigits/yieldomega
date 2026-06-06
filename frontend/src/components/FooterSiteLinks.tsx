@@ -11,7 +11,7 @@ export function FooterSiteLinks() {
   return (
     <nav
       className="footer-site-links-card__nav"
-      aria-label="YieldOmega and CL8Y links"
+      aria-label="Yield Omega and CL8Y links"
       data-testid="footer-site-links"
     >
       {FOOTER_SITE_LINKS.map((link) => {

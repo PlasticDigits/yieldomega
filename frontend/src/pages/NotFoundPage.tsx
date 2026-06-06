@@ -5,8 +5,8 @@ import { Link } from "react-router-dom";
 import { PageHero } from "@/components/ui/PageHero";
 import { homeHubPath } from "@/lib/launchHubRoute";
 
-const NOT_FOUND_TITLE = "Page not found · YieldOmega";
-const DEFAULT_TITLE = "YieldOmega";
+const NOT_FOUND_TITLE = "Page not found · Yield Omega";
+const DEFAULT_TITLE = "Yield Omega";
 
 /**
  * Branded client 404 inside `RootLayout` (GitLab #223). Referral capture via
@@ -32,7 +32,7 @@ export function NotFoundPage() {
         coinSrc="/art/hat-coin-stack.png"
         lede={
           <>
-            This URL is not part of the YieldOmega app. Check the link, use a Time Arena referral path like{" "}
+            This URL is not part of the Yield Omega app. Check the link, use a Time Arena referral path like{" "}
             <code>/arena/yourcode</code>, or head back to a live surface below.
           </>
         }

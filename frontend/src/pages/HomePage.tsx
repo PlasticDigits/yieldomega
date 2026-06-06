@@ -33,7 +33,7 @@ export function HomePage() {
           <img
             className="home-hero__art"
             src="/art/scenes/home-hero-desktop.jpg"
-            alt="YieldOmega blocky arcade fantasy heroes, rainbow, and hat-token coins"
+            alt="Yield Omega arena characters, rainbow, and hat-token coins"
             width={1600}
             height={900}
             decoding="async"
@@ -55,8 +55,8 @@ export function HomePage() {
           loading="eager"
         />
         <div className="home-hero__overlay">
-          <h1>YieldOmega</h1>
-          <p className="lede">The Timed Launchpad Primitive</p>
+          <h1>Yield Omega</h1>
+          <p className="lede">The PvP TimeArena Primitive</p>
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
               <Link to="/arena" className="btn-primary btn-primary--xl btn-primary--priority">

@@ -104,7 +104,7 @@ export const wagmiConfig = useE2EMockWallet
     })
   : projectId
     ? getDefaultConfig({
-        appName: "YieldOmega",
+        appName: "Yield Omega",
         projectId,
         chains,
         transports,
@@ -115,7 +115,7 @@ export const wagmiConfig = useE2EMockWallet
         pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
       })
     : getDefaultConfig({
-        appName: "YieldOmega",
+        appName: "Yield Omega",
         // Placeholder projectId for local dev without WalletConnect. Never reaches a real WC server because walletConnectWallet is omitted from the wallets list below. See GitLab #203.
         projectId: "yieldomega-local-no-walletconnect",
         chains,

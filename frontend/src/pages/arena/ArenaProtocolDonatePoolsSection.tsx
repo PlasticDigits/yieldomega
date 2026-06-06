@@ -15,7 +15,7 @@ import { ProtocolInlineRefreshButton } from "@/pages/arena/ProtocolInlineRefresh
 import { useArenaProtocolDonatePools } from "@/pages/arena/useArenaProtocolDonatePools";
 
 const DONATE_DISCLOSURE =
-  "Donating to the pools makes YieldOmega prizes more exciting, but does not provide you with any benefit.";
+  "Donating to the pools makes Yield Omega prizes more exciting, but does not provide you with any benefit.";
 
 type Props = {
   isOffline: boolean;
