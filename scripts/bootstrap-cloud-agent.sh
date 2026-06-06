@@ -14,6 +14,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+# shellcheck source=scripts/lib/rabby_cloud_agent.sh
+source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+
 if [[ ! -d frontend/node_modules ]]; then
   echo "bootstrap-cloud-agent.sh: run bash scripts/bootstrap-dev.sh first." >&2
   exit 1
@@ -28,34 +31,33 @@ echo "==> Playwright Chromium (frontend/)"
   fi
 )
 
-if [[ -f /opt/cursor/browser-extensions/rabby/manifest.json ]]; then
-  echo "==> Rabby extension already at /opt/cursor/browser-extensions/rabby"
-elif [[ "$(id -u)" -eq 0 ]]; then
-  bash "${ROOT}/scripts/install-browser-extensions.sh"
-elif command -v sudo >/dev/null 2>&1; then
-  echo "==> Rabby extension (sudo install-browser-extensions.sh)"
-  sudo bash "${ROOT}/scripts/install-browser-extensions.sh"
+echo "==> Rabby extension"
+if yieldomega_rabby_installed; then
+  echo "    already at ${YIELDOMEGA_RABBY_EXT_DIR}"
 else
-  echo "==> Rabby extension: run once with sudo:"
-  echo "    sudo bash scripts/install-browser-extensions.sh"
+  yieldomega_ensure_rabby_extension "${ROOT}"
 fi
 
-if [[ -f /opt/cursor/browser-extensions/rabby/manifest.json ]]; then
-  if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
-    echo "==> Rabby dev wallets (KEY_EVM_1..3)"
-    if command -v xvfb-run >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
-      xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
-        echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
-      }
-    elif [[ -n "${DISPLAY:-}" ]]; then
-      (cd "${ROOT}/frontend" && node "${ROOT}/scripts/setup-rabby-dev-wallets.mjs") || {
-        echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
-      }
-    else
-      echo "    Skip automated import (no DISPLAY / xvfb-run). Use:"
-      echo "    bash scripts/launch-chrome-with-rabby.sh"
-      echo "    Import KEY_EVM_1, KEY_EVM_2, KEY_EVM_3 as private keys (Anvil dev only)."
-    fi
+if ! yieldomega_rabby_installed; then
+  echo "bootstrap-cloud-agent.sh: Rabby extension missing at ${YIELDOMEGA_RABBY_EXT_DIR}." >&2
+  echo "  Run: sudo bash scripts/install-browser-extensions.sh" >&2
+  exit 1
+fi
+
+if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
+  echo "==> Rabby dev wallets (KEY_EVM_1..3)"
+  if command -v xvfb-run >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
+    xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
+      echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
+    }
+  elif [[ -n "${DISPLAY:-}" ]]; then
+    (cd "${ROOT}/frontend" && node "${ROOT}/scripts/setup-rabby-dev-wallets.mjs") || {
+      echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
+    }
+  else
+    echo "    Skip automated import (no DISPLAY / xvfb-run). Use:"
+    echo "    bash scripts/launch-chrome-with-rabby.sh"
+    echo "    Import KEY_EVM_1, KEY_EVM_2, KEY_EVM_3 as private keys (Anvil dev only)."
   fi
 fi
 

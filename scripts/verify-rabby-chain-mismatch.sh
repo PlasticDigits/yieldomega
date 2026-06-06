@@ -14,6 +14,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/rabby_cloud_agent.sh
+source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
 RPC="${VITE_RPC_URL:-http://127.0.0.1:8545}"
 BASE_URL="${YIELDOMEGA_RABBY_BASE_URL:-http://127.0.0.1:5173}"
 PORT="${BASE_URL##*:}"
@@ -21,9 +23,12 @@ PORT="${PORT%%/*}"
 
 export PATH="${HOME}/.foundry/bin:${PATH}"
 
-if [[ ! -f /opt/cursor/browser-extensions/rabby/manifest.json ]]; then
-  echo "Rabby extension missing. Run: sudo bash scripts/install-browser-extensions.sh" >&2
-  exit 1
+if ! yieldomega_rabby_installed; then
+  echo "==> Rabby extension missing — installing via bootstrap helper…"
+  yieldomega_ensure_rabby_extension "${ROOT}" || {
+    echo "Rabby extension missing. Run: sudo bash scripts/install-browser-extensions.sh" >&2
+    exit 1
+  }
 fi
 
 if ! command -v cast >/dev/null 2>&1; then
@@ -36,7 +41,7 @@ if ! cast block-number --rpc-url "${RPC}" >/dev/null 2>&1; then
   exit 1
 fi
 
-MARKER="${CHROME_RABBY_PROFILE:-/opt/cursor/chrome-profile-rabby}/.yieldomega-rabby-dev-wallets-ready"
+MARKER="${YIELDOMEGA_RABBY_MARKER}"
 if [[ ! -f "${MARKER}" ]]; then
   echo "==> Rabby dev wallets not imported; running setup (xvfb)…"
   if command -v xvfb-run >/dev/null 2>&1; then
