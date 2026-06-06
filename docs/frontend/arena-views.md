@@ -78,6 +78,26 @@ Invariant: **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** in [invariants](..
 
 Invariant: **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-audit-surfaces-gitlab-293). Manual QA: [manual checklist §293](../testing/manual-qa-checklists.md#manual-qa-issue-293). Product rules: [Arena v2](../product/arena-v2.md#manual-podium-pool-top-up-gitlab-261) · play guidance: [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md#donate-to-pools-optional-sponsorship).
 
+<a id="shared-frontend-primitives-gitlab-294"></a>
+
+### Shared UX primitives (GitLab [#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294))
+
+The shared primitives used by `/arena`, `/arena/protocol`, and `/referrals`
+must look native to the cyberminimalist glass system while preserving current
+behavior:
+
+- Modals: `WalletProfileModal`, buy detail, all-buys, and other `Modal` users
+  share dark tactical surfaces, compact headings, and secondary explorer links.
+- Address rows: use `AddressInline` blockie + last-six hex labels. Participant
+  rows open wallet profiles where wired; contract/vault rows go to the explorer.
+- Chain gates: `ChainMismatchWriteBarrier` stays visually dominant over write
+  panels and keeps the `switch-to-target-chain` action reachable.
+- Status/empty/amount/indexer primitives: show concise state, no raw wei/WAD
+  values, no fake zeros when the indexer is unset/offline, and no stale
+  TimeCurve/sale-end framing.
+
+Invariant: **`INV-FRONTEND-294-SHARED-PRIMITIVES`** in [invariants](../testing/invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294). Manual QA: [manual checklist §294](../testing/manual-qa-checklists.md#manual-qa-issue-294). Design source: [frontend design §294](./design.md#shared-frontend-primitives-gitlab-294). Wallet gate source: [wallet connection §95](./wallet-connection.md#wrong-network-write-gating-issue-95).
+
 <a id="charm-cred-card-gitlab-257"></a>
 
 ## CHARM & Play CRED card (GitLab [#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257))

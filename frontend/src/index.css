@@ -1136,6 +1136,7 @@ label:has(input[type="radio"]:disabled) {
 /** GitLab #95 — block write surfaces until wallet `chainId` matches `VITE_CHAIN_ID`-driven target. */
 .chain-write-gate {
   position: relative;
+  border-radius: inherit;
 }
 
 .chain-write-gate__overlay {
@@ -1145,29 +1146,43 @@ label:has(input[type="radio"]:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.25rem;
-  background: rgba(8, 14, 28, 0.78);
-  backdrop-filter: blur(4px);
+  padding: clamp(0.85rem, 3vw, 1.35rem);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 107, 122, 0.18), transparent 42%),
+    rgba(3, 8, 15, 0.82);
+  backdrop-filter: blur(8px) saturate(1.1);
 }
 
 .chain-write-gate__card {
-  max-width: 28rem;
-  padding: 1.25rem 1.35rem;
-  border: 1px solid var(--yo-line);
-  border-radius: 12px;
-  background: var(--yo-glass-surface-strong);
-  box-shadow: var(--yo-glass-shadow);
+  width: min(100%, 24rem);
+  max-width: 24rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 107, 122, 0.58);
+  border-radius: 1rem;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 40%),
+    rgba(13, 24, 36, 0.94);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 20px 60px rgba(0, 0, 0, 0.42),
+    0 0 32px rgba(255, 107, 122, 0.14);
+  text-align: center;
 }
 
 .chain-write-gate__title {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.45rem;
+  color: #ffd7dc;
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .chain-write-gate__body {
-  margin: 0 0 1rem;
-  line-height: 1.45;
+  margin: 0 0 0.9rem;
+  color: var(--yo-text);
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .chain-write-gate__switch {
@@ -1175,9 +1190,12 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .chain-write-gate__hint {
-  margin: 0.65rem 0 0;
-  font-size: 0.82rem;
-  line-height: 1.35;
+  margin: 0.6rem 0 0;
+  color: var(--yo-muted);
+  font-size: 0.76rem;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .wallet-action {
@@ -1881,11 +1899,21 @@ label:has(input[type="radio"]:disabled) {
 
 /* GitLab #200 — stats/charts must read as intentional empty states, not a bare em dash */
 .empty-data-placeholder {
-  display: inline-block;
-  font-size: 0.92rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.16rem 0.48rem;
+  border: 1px solid rgba(126, 241, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(126, 241, 255, 0.06);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   line-height: 1.35;
-  color: var(--text-muted);
+  color: var(--yo-muted);
+  text-transform: uppercase;
 }
 
 .stat-card__value .empty-data-placeholder {
@@ -2656,10 +2684,12 @@ label:has(input[type="radio"]:disabled) {
   align-items: center;
   gap: 0.9rem;
   padding: 0.85rem 1rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 4px 4px 0 var(--line);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-glass-surface);
+  box-shadow: var(--yo-glass-shadow);
   cursor: url("/art/cursors/wait.png") 16 16, wait;
 }
 
@@ -2673,6 +2703,12 @@ label:has(input[type="radio"]:disabled) {
 
 .loading-state p {
   margin: 0;
+  color: var(--yo-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .lede {
@@ -3032,28 +3068,40 @@ label:has(input[type="radio"]:disabled) {
   min-height: 2.5rem;
   margin: 0;
   padding: 0.4rem 0.85rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  box-shadow: 4px 4px 0 var(--line);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    var(--yo-glow-cyan);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--yo-text);
+  background: rgba(8, 20, 32, 0.74);
 }
 
 .indexer-status--info {
-  background: linear-gradient(180deg, #ecfaff, #ccefff);
+  border-color: rgba(126, 241, 255, 0.32);
+  background: rgba(126, 241, 255, 0.1);
 }
 
 .indexer-status--warning {
-  background: linear-gradient(180deg, #fff5c5, #ffd86e);
+  border-color: rgba(248, 213, 107, 0.5);
+  background: rgba(248, 213, 107, 0.12);
+  color: #fff3bc;
 }
 
 .indexer-status--success {
-  background: linear-gradient(180deg, #c8f7db, #7fe3a5);
+  border-color: rgba(53, 240, 194, 0.5);
+  background: rgba(53, 240, 194, 0.12);
+  color: #dffef6;
 }
 
 .indexer-status--error {
-  background: linear-gradient(180deg, #ffe8e0, #ffb28a);
+  border-color: rgba(255, 107, 122, 0.56);
+  background: rgba(255, 107, 122, 0.13);
+  color: #ffd7dc;
 }
 
 .h-footer {
@@ -4115,7 +4163,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .kv dd:has(.amount-triple) {
-  font-family: "Fredoka", sans-serif;
+  font-family: "IBM Plex Sans", sans-serif;
 }
 
 .amount-triple {
@@ -4135,16 +4183,18 @@ label:has(input[type="radio"]:disabled) {
 .amount-triple__label {
   flex: 0 0 auto;
   min-width: 3.25rem;
-  font-family: "Fredoka", sans-serif;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--yo-dim);
 }
 
 .amount-triple__value {
-  font-family: "Fredoka", sans-serif;
+  color: var(--yo-text);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   word-break: break-all;
 }
@@ -6027,10 +6077,13 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .address-inline__blockie {
   flex-shrink: 0;
-  border-radius: 4px;
+  border-radius: 0.35rem;
   overflow: hidden;
-  border: 1px solid rgba(11, 31, 20, 0.28);
-  background: transparent;
+  border: 1px solid rgba(126, 241, 255, 0.34);
+  background: rgba(8, 20, 32, 0.78);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 14px rgba(53, 240, 194, 0.12);
 }
 
 .address-inline__blockie canvas {
@@ -6040,6 +6093,10 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .address-inline__label {
   min-width: 0;
+  color: var(--yo-text);
+  font-size: 0.88em;
+  font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 .address-inline__link {
@@ -6048,14 +6105,16 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.35rem;
   max-width: 100%;
   min-width: 0;
-  color: inherit;
+  color: var(--yo-cyan-soft);
   text-decoration: none;
   vertical-align: middle;
 }
 
 .address-inline__link:hover .address-inline__label,
 .address-inline__link:focus-visible .address-inline__label {
+  color: var(--yo-cyan);
   text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .live-buy-row .address-inline__blockie {
@@ -6586,7 +6645,10 @@ a.podium-address-explorer:hover .address-inline__label {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6, 40, 24, 0.72);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(126, 241, 255, 0.14), transparent 42%),
+    rgba(3, 8, 15, 0.82);
+  backdrop-filter: blur(8px) saturate(1.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6601,18 +6663,22 @@ a.podium-address-explorer:hover .address-inline__label {
 .modal-overlay--list .modal-panel {
   width: min(100%, 700px);
   background:
-    radial-gradient(circle at top right, rgba(255, 209, 102, 0.2), transparent 22%),
-    radial-gradient(circle at bottom left, rgba(58, 227, 157, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 255, 249, 0.96));
+    radial-gradient(circle at top right, rgba(248, 213, 107, 0.14), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(53, 240, 194, 0.12), transparent 32%),
+    var(--yo-panel-gradient);
 }
 
 .modal-panel {
-  background: var(--bg-cream);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-glass-surface-strong);
   color: var(--text-main);
-  border: 3px solid var(--line);
-  border-radius: 1rem;
+  border: 1px solid var(--yo-line);
+  border-radius: 1.15rem;
   overflow: hidden;
-  box-shadow: var(--shadow-hard);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    var(--yo-glass-shadow);
   max-height: min(90vh, 900px);
   width: min(100%, 520px);
   display: flex;
@@ -6625,23 +6691,27 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.6rem 0.85rem;
-  border-bottom: 2px solid var(--line);
-  background: rgba(255, 255, 255, 0.45);
-  border-radius: calc(1rem - 3px) calc(1rem - 3px) 0 0;
+  padding: 0.68rem 0.9rem;
+  border-bottom: 1px solid var(--yo-line);
+  background: rgba(126, 241, 255, 0.08);
+  border-radius: calc(1.15rem - 1px) calc(1.15rem - 1px) 0 0;
 }
 
 .modal-panel__title {
   margin: 0;
-  font-size: 1rem;
+  color: var(--yo-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .modal-panel__close {
-  border: 2px solid var(--line);
-  background: var(--bg-yellow);
-  color: var(--text-main);
-  font-size: 1.25rem;
+  border: 1px solid rgba(126, 241, 255, 0.34);
+  background: rgba(126, 241, 255, 0.1);
+  color: var(--yo-text);
+  font-size: 1.1rem;
   line-height: 1;
   width: 2rem;
   height: 2rem;
@@ -6651,6 +6721,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .modal-panel__close:hover {
+  background: rgba(126, 241, 255, 0.18);
   filter: brightness(1.05);
 }
 
@@ -6665,17 +6736,21 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .modal-overlay--list .modal-panel__head {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 255, 247, 0.82));
+  background: rgba(126, 241, 255, 0.08);
 }
 
 .modal-overlay--list .modal-panel__title {
-  color: var(--arcade-green-950);
+  color: var(--yo-text);
 }
 
 .modal-bc-placeholder {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--yo-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .modal-bc-shell {
@@ -6686,12 +6761,12 @@ a.podium-address-explorer:hover .address-inline__label {
 .modal-bc-intro {
   margin: 0;
   padding: 0.7rem 0.8rem;
-  border: 2px solid rgba(37, 59, 44, 0.14);
+  border: 1px solid rgba(126, 241, 255, 0.22);
   border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.68);
-  color: color-mix(in srgb, var(--text-muted) 82%, var(--arcade-green-900) 18%);
-  font-size: 0.83rem;
-  line-height: 1.5;
+  background: rgba(126, 241, 255, 0.06);
+  color: var(--yo-muted);
+  font-size: 0.78rem;
+  line-height: 1.42;
 }
 
 .modal-bc-list {
@@ -6715,10 +6790,11 @@ a.podium-address-explorer:hover .address-inline__label {
   margin-top: 0.65rem;
   display: flex;
   justify-content: center;
-  color: color-mix(in srgb, var(--text-muted) 74%, var(--arcade-green-800) 26%);
-  font-size: 0.8rem;
+  color: var(--yo-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -6728,8 +6804,9 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.8rem;
   padding: 0.4rem 0.85rem;
   border-radius: 0.45rem;
-  border: 2px solid var(--line);
-  background: var(--bg-yellow);
+  border: 1px solid var(--yo-line);
+  background: rgba(126, 241, 255, 0.1);
+  color: var(--yo-text);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
 }
 
@@ -6749,15 +6826,17 @@ a.podium-address-explorer:hover .address-inline__label {
   padding: 0.85rem 0.95rem;
   border-radius: 1rem;
   background:
-    linear-gradient(180deg, rgba(255, 254, 247, 0.98), rgba(240, 255, 247, 0.95));
-  border: 2px solid rgba(37, 59, 44, 0.16);
-  box-shadow: 0 12px 26px rgba(16, 24, 40, 0.08);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    rgba(8, 20, 32, 0.72);
+  border: 1px solid rgba(126, 241, 255, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-row__hit:hover {
-  border-color: rgba(37, 59, 44, 0.28);
+  border-color: rgba(126, 241, 255, 0.38);
   background:
-    linear-gradient(180deg, rgba(255, 252, 240, 1), rgba(241, 255, 247, 1));
+    linear-gradient(145deg, rgba(255, 255, 255, 0.11), transparent 42%),
+    rgba(12, 32, 48, 0.82);
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-row__identity {
@@ -6766,13 +6845,13 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .modal-bc-list .live-buy-row--modal .address-inline__label {
   font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--arcade-green-950);
+  font-weight: 800;
+  color: var(--yo-text);
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-row__age {
   font-size: 0.72rem;
-  color: var(--arcade-green-700);
+  color: var(--yo-muted);
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-row__ticks {
@@ -6784,7 +6863,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: 0.55rem;
   font-size: 0.68rem;
   border-width: 1px;
-  border-color: rgba(37, 59, 44, 0.14);
+  border-color: rgba(126, 241, 255, 0.16);
   letter-spacing: 0.02em;
 }
 
@@ -6796,8 +6875,9 @@ a.podium-address-explorer:hover .address-inline__label {
   min-width: 4.9rem;
   padding: 0.34rem 0.58rem;
   border-radius: 999px;
-  background: rgba(255, 240, 176, 0.92);
-  color: var(--arcade-gold-700);
+  border: 1px solid rgba(248, 213, 107, 0.42);
+  background: rgba(248, 213, 107, 0.12);
+  color: #fff3bc;
   font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -6812,33 +6892,33 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-tick--danger {
-  background: rgba(220, 38, 38, 0.14);
-  border-color: rgba(220, 38, 38, 0.22);
-  color: #991b1b;
+  background: rgba(255, 107, 122, 0.14);
+  border-color: rgba(255, 107, 122, 0.28);
+  color: #ffd7dc;
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-tick--warning {
-  background: rgba(245, 158, 11, 0.18);
-  border-color: rgba(245, 158, 11, 0.24);
-  color: #92400e;
+  background: rgba(248, 213, 107, 0.14);
+  border-color: rgba(248, 213, 107, 0.28);
+  color: #fff3bc;
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-tick--success {
-  background: rgba(22, 163, 74, 0.14);
-  border-color: rgba(22, 163, 74, 0.22);
-  color: #166534;
+  background: rgba(53, 240, 194, 0.12);
+  border-color: rgba(53, 240, 194, 0.28);
+  color: #dffef6;
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-tick--info {
-  background: rgba(59, 130, 246, 0.14);
-  border-color: rgba(59, 130, 246, 0.2);
-  color: #1d4ed8;
+  background: rgba(126, 241, 255, 0.1);
+  border-color: rgba(126, 241, 255, 0.24);
+  color: var(--yo-cyan-soft);
 }
 
 .modal-bc-list .live-buy-row--modal .live-buy-tick--neutral {
-  background: rgba(37, 59, 44, 0.09);
-  border-color: rgba(37, 59, 44, 0.14);
-  color: var(--arcade-green-900);
+  background: rgba(126, 241, 255, 0.06);
+  border-color: rgba(126, 241, 255, 0.16);
+  color: var(--yo-muted);
 }
 
 .modal-bc-detail__hero {
@@ -6850,7 +6930,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--text-muted);
+  color: var(--yo-muted);
   font-weight: 800;
 }
 
@@ -6863,7 +6943,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .modal-bc-detail__detail {
   margin: 0 0 0.5rem;
-  color: var(--text-muted);
+  color: var(--yo-muted);
   line-height: 1.45;
 }
 
@@ -6883,8 +6963,9 @@ a.podium-address-explorer:hover .address-inline__label {
   letter-spacing: 0.08em;
   padding: 0.15rem 0.4rem;
   border-radius: 0.35rem;
-  border: 1px solid rgba(11, 31, 20, 0.25);
-  background: rgba(31, 184, 106, 0.12);
+  border: 1px solid rgba(126, 241, 255, 0.2);
+  background: rgba(126, 241, 255, 0.08);
+  color: var(--yo-cyan-soft);
 }
 
 .modal-bc-detail__highlight {
@@ -6900,7 +6981,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .modal-bc-detail__highlight-sub {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  color: var(--yo-muted);
 }
 
 .modal-bc-detail__link {
@@ -6909,7 +6990,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .modal-bc-detail__link a {
   font-weight: 800;
-  color: var(--arcade-gold-600);
+  color: var(--yo-cyan-soft);
 }
 
 .modal-bc-detail__times {
@@ -6923,7 +7004,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--yo-muted);
   margin-bottom: 0.25rem;
 }
 
@@ -6960,13 +7041,13 @@ a.podium-address-explorer:hover .address-inline__label {
   grid-template-columns: minmax(0, 11rem) minmax(0, 1fr);
   gap: 0.35rem 0.65rem;
   padding: 0.25rem 0;
-  border-bottom: 1px solid rgba(11, 31, 20, 0.12);
+  border-bottom: 1px solid rgba(126, 241, 255, 0.14);
   font-size: 0.78rem;
 }
 
 .modal-bc-dl__row dt {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--yo-muted);
   font-weight: 700;
 }
 
@@ -13243,18 +13324,21 @@ input[type="range"]:active {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0;
+  padding: 0.12rem 0.2rem;
   margin: 0;
-  border: none;
-  background: none;
-  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(126, 241, 255, 0.04);
+  color: var(--yo-cyan-soft);
   font: inherit;
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   text-align: left;
 }
 
 .address-inline__profile-btn:hover .address-inline__label {
+  color: var(--yo-cyan);
   text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .wallet-profile-modal {
@@ -13267,18 +13351,23 @@ input[type="range"]:active {
 }
 
 .wallet-profile-modal::backdrop {
-  background: rgba(6, 40, 24, 0.72);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(126, 241, 255, 0.14), transparent 42%),
+    rgba(3, 8, 15, 0.84);
+  backdrop-filter: blur(8px) saturate(1.08);
 }
 
 .wallet-profile-modal__panel {
   background:
-    radial-gradient(circle at top right, rgba(255, 209, 102, 0.18), transparent 24%),
-    radial-gradient(circle at bottom left, rgba(58, 227, 157, 0.12), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 255, 249, 0.96));
+    radial-gradient(circle at top right, rgba(248, 213, 107, 0.12), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(53, 240, 194, 0.12), transparent 32%),
+    var(--yo-panel-gradient);
   color: var(--text-main);
-  border: 3px solid var(--line);
-  border-radius: 1rem;
-  box-shadow: var(--shadow-hard);
+  border: 1px solid var(--yo-line);
+  border-radius: 1.15rem;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    var(--yo-glass-shadow);
   max-height: min(90vh, 820px);
   display: flex;
   flex-direction: column;
@@ -13291,14 +13380,18 @@ input[type="range"]:active {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-bottom: 2px solid var(--line);
-  background: rgba(255, 255, 255, 0.45);
+  border-bottom: 1px solid var(--yo-line);
+  background: rgba(126, 241, 255, 0.08);
 }
 
 .wallet-profile-modal__header h2 {
   margin: 0;
-  font-size: 1.05rem;
+  color: var(--yo-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .wallet-profile-modal__close {
@@ -13322,7 +13415,8 @@ input[type="range"]:active {
 
 .wallet-profile-modal__loading,
 .wallet-profile-modal__error,
-.wallet-profile-modal__offline {
+.wallet-profile-modal__offline,
+.wallet-profile-modal__empty {
   margin: 0;
   padding: 0.5rem 1rem 1rem;
 }
@@ -13336,9 +13430,12 @@ input[type="range"]:active {
 
 .wallet-profile-modal__section h3 {
   margin: 0 0 0.45rem;
-  font-size: 0.92rem;
+  color: var(--yo-cyan-soft);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .wallet-profile-modal__stats {
@@ -13358,10 +13455,11 @@ input[type="range"]:active {
 }
 
 .wallet-profile-modal__stat-label {
-  color: var(--text-muted, #3d5a48);
+  color: var(--yo-muted);
 }
 
 .wallet-profile-modal__stat-value {
+  color: var(--yo-text);
   text-align: right;
 }
 
@@ -13374,7 +13472,7 @@ input[type="range"]:active {
   gap: 0.35rem;
 }
 
-/* Issue #290: route-wide cyberminimalist glass normalization for shared late-defined surfaces. */
+/* Issue #294: shared primitive glass normalization for modals, profile stats, and status rows. */
 .card-list li,
 .loading-state,
 .status-message,
@@ -13383,7 +13481,8 @@ input[type="range"]:active {
 .wallet-profile-modal__section,
 .wallet-profile-modal__loading,
 .wallet-profile-modal__error,
-.wallet-profile-modal__offline {
+.wallet-profile-modal__offline,
+.wallet-profile-modal__empty {
   border-color: var(--yo-line);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),

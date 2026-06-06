@@ -12,16 +12,16 @@ export function IndexerStatusBar() {
 
   if (!base) {
     tone = "warning";
-    line = "Indexer: set VITE_INDEXER_URL";
+    line = "INDEXER · configure VITE_INDEXER_URL";
   } else if (isOffline) {
     tone = "error";
-    line = "Indexer offline · retrying";
+    line = "INDEXER · offline · retrying";
   } else if (lastOkBanner) {
     tone = "success";
-    line = `Indexer v${lastOkBanner.schemaVersion} · latest indexed block ${lastOkBanner.maxIndexedBlockDisplay} · live`;
+    line = `INDEXER · v${lastOkBanner.schemaVersion} · block ${lastOkBanner.maxIndexedBlockDisplay} · live`;
   } else {
     tone = "info";
-    line = "Indexer: connecting…";
+    line = "INDEXER · connecting…";
   }
 
   const iconSrc =

@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 type Variant = "muted" | "placeholder" | "error" | "warning" | "loading";
 
 type Props = {
   variant?: Variant;
   children: ReactNode;
-  className?: string;
-};
+} & Omit<HTMLAttributes<HTMLElement>, "children">;
 
-export function StatusMessage({ variant = "muted", children, className }: Props) {
+export function StatusMessage({ variant = "muted", children, className, ...rest }: Props) {
   if (variant === "loading") {
     const classes = ["loading-state", className].filter(Boolean).join(" ");
     return (
-      <div className={classes}>
+      <div className={classes} {...rest}>
         <img
           src="/art/icons/loading-mascot-ring.png"
           alt=""
@@ -36,5 +35,5 @@ export function StatusMessage({ variant = "muted", children, className }: Props)
           ? "placeholder"
           : "muted";
   const classes = [variantClass, className].filter(Boolean).join(" ");
-  return <p className={classes}>{children}</p>;
+  return <p className={classes} {...rest}>{children}</p>;
 }
