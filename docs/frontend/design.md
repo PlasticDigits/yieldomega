@@ -8,16 +8,18 @@
 
 ## Pages (illustrative)
 
-- **Time Arena (`/arena`)** — unified participant surface at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)); legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Renders through [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx):
-  - **Last Buy countdown** — [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) (primary timer; RPC/indexer deadline).
-  - **Secondary podium timers** — [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) (Time Booster · Defended Streak · WarBow).
+- **Time Arena (`/arena`)** — unified participant command console at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)); legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Renders through [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) → [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx):
+  - **Last Buy countdown** — [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) in the primary console column (largest timer; RPC/indexer deadline).
+  - **Inline CHARM buy** — text entry, slider, min/max, pay picker, and direct **Buy CHARM** CTA in the primary column; no modal-first buy flow.
+  - **Decision row** — live CHARM price in DOUB, 0.99–10 CHARM buy range, and DOUB-buy CRED yield.
+  - **Secondary podium timers** — [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) in the operations rail (Time Booster · Defended Streak · WarBow).
   - **Buy hub** — DOUB-primary toggle plus ETH / USDM / Play CRED paths ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)).
   - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums` or RPC).
   - **CHARM + Play CRED** — [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) (epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`**).
   - **WarBow PvP** — [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (steal / guard / revenge with DOUB cost pills).
   - **`/arena/protocol`** — read-only operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, donate-pools). No write surface.
   - See [`docs/frontend/arena-views.md`](./arena-views.md) for the layout contract and indexer/RPC invariants.
-- **Rabbit Treasury** — deposit/withdraw flows, epoch charts, faction standings.
+- **Rabbit Treasury (retired Arena v2)** — historical only; do not route new user flows through Rabbit Treasury / Burrow.
 - **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary route is **`/arena`**.
 - **Governance links** — pointers to CL8Y interfaces (external or embedded read-only).
 
@@ -80,7 +82,7 @@
 
 ### WarBow Ladder (UX)
 
-- Frame as **adversarial PvP**, not a passive “activity” board: explain **2× BP rule** for steals, **UTC-day** steal cap + optional **50 CL8Y** bypass, **guard** (10 CL8Y → 1% drain), **revenge** window and **single** pending stealer, **flag** silence and **when** the **2×** BP penalty applies (only after silence elapses).
+- Frame as **adversarial PvP**, not a passive “activity” board: explain **2× BP rule** for steals, **UTC-day** steal cap + optional **50,000 DOUB** bypass, **guard** (10,000 DOUB → 1% drain), **revenge** window and **single** pending stealer, **flag** silence and **when** the **2×** BP penalty applies (only after silence elapses).
 - Break down **Battle Points** sources from **`Buy`** fields: base, timer-reset bonus, clutch (`< 30s` remaining), streak-break, ambush; plus flag claim / penalty events.
 - Show **eligibility and revert reasons** before users sign (read contract state + simulate where possible).
 
@@ -105,6 +107,11 @@ visual work should consume the semantic tokens and shared primitives.
   exposes **BUY** and **AUDIT** as the visible decisions. Mechanics belong in
   `title` / `aria-label` tooltips or action-adjacent states, not default body
   paragraphs.
+- Arena production surface ([#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)):
+  **`arena-command-console`** is the single `/arena` layout. The old static
+  concept mock must not be mounted above the live Arena stack. Last Buy and
+  inline CHARM buy controls are primary; CHARM/CRED state, secondary timers,
+  and WarBow are secondary operations.
 - Copy must match current TimeArena rules from
   [`time-arena.md`](../product/time-arena.md) and
   [`arena-v2.md`](../product/arena-v2.md): always-live when unpaused, DOUB /

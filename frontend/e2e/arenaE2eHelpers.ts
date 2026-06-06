@@ -12,7 +12,7 @@ export async function gotoArena(page: Page): Promise<void> {
   await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
-  await expect(page.locator(".arena-simple-page")).toBeVisible({
+  await expect(page.getByTestId("arena-command-console")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
 }
@@ -21,7 +21,7 @@ export async function connectArenaWallet(
   page: Page,
   options?: { requireDoubSpendControls?: boolean },
 ): Promise<void> {
-  const connectPitch = "Connect your Wallet to earn CHARM, reserve your DOUB, and win prizes!";
+  const connectPitch = "Connect wallet to buy CHARM.";
   await connectMockWalletIfPlaceholderVisible(page, connectPitch);
   await expect(page.getByText(connectPitch)).not.toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,

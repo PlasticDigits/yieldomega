@@ -1,6 +1,6 @@
 # Arena frontend (`/arena`)
 
-Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). Legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Arena DOM/CSS and public art paths use **`arena-*`** naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) — **`INV-FRONTEND-280-ARENA-CSS-NAMING`**, `bash scripts/check-arena-naming.sh`.
+Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/TimeArenaPage.tsx) at route **`/arena`** ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)). Legacy **`/timecurve`** redirects here ([#266](https://gitlab.com/PlasticDigits/yieldomega/-/issues/266)). Arena DOM/CSS and public art paths use **`arena-*`** naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) — **`INV-FRONTEND-280-ARENA-CSS-NAMING`**, `bash scripts/check-arena-naming.sh`.
 
 <a id="arena-css-naming-gitlab-280"></a>
 
@@ -32,7 +32,23 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 
 Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Route-level copy stays compact: visible choices are **BUY** and **AUDIT**; mechanics live in tooltips, state rows, and action-adjacent feedback rather than default explanatory paragraphs.
 
-Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
+<a id="arena-command-console-gitlab-291"></a>
+
+### Production command console (GitLab [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291))
+
+`/arena` renders a single production **`arena-command-console`** surface. `TimeArenaPage` must not mount the old static [`ArenaThemeConcepts`](../../frontend/src/pages/arena/ArenaThemeConcepts.tsx) mock above the live Arena stack.
+
+Layout priorities:
+
+- **Last Buy primary:** `ArenaTimerHero` sits in the primary console column with the largest timer treatment.
+- **Inline CHARM buy:** the buy panel remains visible in the primary column with text entry, slider, min/max controls, pay picker, and direct **Buy CHARM** CTA; no modal-first buy flow.
+- **Decision row:** action-adjacent tiles expose live **CHARM Price** in DOUB, **0.99–10 CHARM** buy range, and DOUB-buy **CRED yield**.
+- **Secondary operations:** `ArenaCharmCredCard`, `ArenaTimerChips` (Time Booster · Defended Streak · WarBow), and `ArenaWarbowHeroPanel` sit in the secondary operations rail.
+- **Characters:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents.
+
+Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291).
+
+Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
 
 <a id="charm-cred-card-gitlab-257"></a>
 
