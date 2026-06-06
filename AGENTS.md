@@ -53,7 +53,7 @@ Invariants: [`docs/testing/invariants-and-business-logic.md` §288](docs/testing
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
 | **Docker** | **Optional** for most agent work ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). Required only for `start-local-anvil-stack` / full QA stack (`yieldomega-pg`). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** ( **`vfs`** fallback), starts **`dockerd`**, verifies **`docker run hello-world` as `$USER`**, or writes `/tmp/yieldomega-docker-unavailable` + native Postgres hint. Verify: `bash scripts/verify-docker-cloud-agent.sh`. |
-| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`**. Modern glab (≥1.100) uses **`glab config set remote_alias origin`** plus **`git_protocol https`** (Cloud clones use HTTPS tokens, not SSH keys) — the legacy `remote.origin_url` config key is **removed**. Fallback when repo detection fails: env **`GITLAB_REPO=PlasticDigits/yieldomega`** (set in [`.cursor/environment.json`](.cursor/environment.json)). Verify: `glab config get remote_alias` · `glab mr list --per-page 1`. |
+| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`** (PlasticDigits account — **not** the Cursor GitHub account). Cursor clones use `x-access-token` HTTPS remotes; **`glab mr list` without `-R` often 404s**. Always use **`yieldomega_glab`** ([`scripts/lib/glab_cloud_agent.sh`](scripts/lib/glab_cloud_agent.sh)) or **`glab -R PlasticDigits/yieldomega`** / env **`GITLAB_REPO`** (set in [`.cursor/environment.json`](.cursor/environment.json) and `~/.config/yieldomega/cloud-agent.env`). Create MRs: **`bash scripts/glab-mr-create.sh --title "…"`** — do **not** use the Cursor GitHub PR tool for this GitLab repo. Verify: `bash scripts/verify-cloud-vm-toolchain.sh` (glab mr list row). |
 | **ss** | From **`iproute2`** — used by [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) to detect Anvil/indexer ports. Bootstrap installs it; [`scripts/lib/tcp_port.sh`](scripts/lib/tcp_port.sh) falls back to `netstat` or a Python bind probe if missing. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
@@ -86,7 +86,7 @@ Invariants: **`INV-CLOUD-287-NATIVE-PG`**, **`INV-CLOUD-287-PSQL-CLIENT`**, **`I
 
 **What works without Docker:** Arena/indexer verify scripts (`bash scripts/verify-podium-live-anvil.sh`, `verify-vault-funding-anvil.sh`, `verify-wallet-profile-anvil.sh`, …) and `cargo test --test integration_stage2` with `YIELDOMEGA_PG_TEST_URL` — they use host `psql` and `DATABASE_URL` only.
 
-**Full product stack:** [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) still boots Postgres via **`docker run yieldomega-pg`** and `docker exec … pg_isready`; it will **not** succeed on a VM with a broken Docker daemon even if native Postgres is already listening on `:5433`. On those VMs, either restore Docker (`fuse-overlayfs` in `/etc/docker/daemon.json` is often enough) or run Anvil + DeployDev + indexer with the same env vars the stack script exports, after native Postgres is ready.
+**Full product stack:** [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) prefers **native Postgres** on `:5433` when `yieldomega` credentials work (`bash scripts/bootstrap-cloud-postgres-native.sh`), then falls back to **`docker run yieldomega-pg`** when Docker is usable. This avoids port conflicts and Docker readiness failures on Cloud VMs ([#287](https://gitlab.com/PlasticDigits/yieldomega/-/issues/287) / [#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). If both paths fail, run `bash scripts/verify-cloud-postgres.sh` or `bash scripts/verify-docker-cloud-agent.sh`.
 
 Example indexer-focused smoke (own Anvil on **8546**, indexer on **3101**):
 
@@ -131,7 +131,8 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 | Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |
 | Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | |
 | Browser E2E / Playwright | `bash scripts/e2e-anvil.sh` | Needs Anvil stack or script-managed Anvil; see [`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md). |
-| Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Docker + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
+| Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Native or Docker Postgres + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
+| **GitLab merge requests** (Cloud agents) | `bash scripts/glab-mr-create.sh --title "…"` | Uses **`GITLAB_TOKEN`** + **`glab -R PlasticDigits/yieldomega`** — not the Cursor GitHub PR tool. |
 | Security review of **local dev keys** | Same as row 1 + confirm keys are **Anvil defaults only** and documented in [`scripts/lib/evm_dev_keys.sh`](scripts/lib/evm_dev_keys.sh) | Never use dev keys on public networks. |
 
 **MR / issue checklist:** For each touched layer, add one row: *item → command → PASS/FAIL*. If on-chain seeding is in scope, `verify-evm-dev-wallet-seed-anvil.sh` must be **PASS** before merge (not “skipped — needs Docker”).
@@ -177,7 +178,7 @@ Browsers land under `~/.cache/ms-playwright/`. Automated Playwright E2E uses the
 | Item | Details |
 |------|---------|
 | **Dev keys** | `KEY_EVM_1`, `KEY_EVM_2`, `KEY_EVM_3` — default to Foundry Anvil accounts **#0–#2** (override via Cursor Cloud secrets). Addresses: `source scripts/lib/evm_dev_keys.sh` → `ADDR_EVM_*`. |
-| **Rabby install** | `sudo bash scripts/install-browser-extensions.sh` (once per VM/snapshot) → `/opt/cursor/browser-extensions/rabby` |
+| **Rabby install** | Automatic in `bootstrap-cloud-vm-toolchain.sh` + `bootstrap-cloud-agent.sh` (calls `install-browser-extensions.sh` with sudo). Manual retry: `sudo bash scripts/install-browser-extensions.sh` → `/opt/cursor/browser-extensions/rabby/manifest.json` |
 | **Rabby import** | `node scripts/setup-rabby-dev-wallets.mjs` (from `frontend/` so Playwright resolves); password `RABBY_DEV_PASSWORD` (default `YieldomegaDevOnly1!`, **local only**). Manual fallback: `bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena` |
 | **Rabby build (no mock)** | `bash scripts/qa/build-frontend-for-rabby.sh` then `npm run preview` — **omit** `VITE_E2E_MOCK_WALLET` |
 | **Wrong-network automation** | `bash scripts/verify-rabby-chain-mismatch.sh` (requires Anvil + preview on `:5173`) |
@@ -203,3 +204,19 @@ bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena
 - Profile: `/opt/cursor/chrome-profile-rabby` (wallet state persists here across launches; **not** in git)
 
 Import an Anvil private key in Rabby (chain **31337**) for real signing against the local stack. The Cursor **Desktop** pane may use a separate Chrome profile — use the launch script when you need Rabby specifically.
+
+### GitLab merge requests (Cloud agents)
+
+This repository lives at **https://gitlab.com/PlasticDigits/yieldomega**. Cloud agents have **`GITLAB_TOKEN`** (PlasticDigits) — use **`glab`**, not the Cursor GitHub PR tool.
+
+```bash
+git checkout -b cursor/my-feature-9c94
+# … commit …
+git push -u origin cursor/my-feature-9c94
+bash scripts/glab-mr-create.sh --title "My change" --description "Summary for reviewers."
+```
+
+- **`yieldomega_glab`** ([`scripts/lib/glab_cloud_agent.sh`](scripts/lib/glab_cloud_agent.sh)) exports `GITLAB_REPO` and runs `glab -R PlasticDigits/yieldomega`.
+- **`remote_alias` alone is not enough** when `origin` is an `x-access-token` URL — bare `glab mr create` can 404 with `PlasticDigits/yieldomega.git: Not Found`.
+- Draft MR: add `--draft` to `glab-mr-create.sh` or `yieldomega_glab mr create --draft …`.
+- Recover a failed glab MR: `glab mr create --recover` from the repo root (after fixing token / `-R`).

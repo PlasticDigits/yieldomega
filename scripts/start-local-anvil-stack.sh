@@ -51,6 +51,8 @@ yieldomega_prepend_cloud_toolchain_path
 source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
 # shellcheck source=scripts/lib/docker_cloud_agent.sh
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
+# shellcheck source=scripts/lib/postgres_cloud_agent.sh
+source "${ROOT}/scripts/lib/postgres_cloud_agent.sh"
 # shellcheck source=scripts/lib/tcp_port.sh
 source "${ROOT}/scripts/lib/tcp_port.sh"
 RUN_JSON="${CONTRACTS}/broadcast/DeployDev.s.sol/31337/run-latest.json"
@@ -115,17 +117,6 @@ ensure_timecurve_bot_deps() {
   exit 1
 }
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "" >&2
-  yieldomega_docker_stack_failure_hint >&2
-  die "Need docker for Postgres (yieldomega-pg). See AGENTS.md § Postgres without Docker (#288)."
-fi
-if ! docker info >/dev/null 2>&1 || ! docker run --rm hello-world >/dev/null 2>&1; then
-  echo "" >&2
-  yieldomega_docker_stack_failure_hint >&2
-  echo "" >&2
-  die "Docker not usable for Postgres container. Fix with: bash scripts/verify-docker-cloud-agent.sh"
-fi
 command -v forge >/dev/null 2>&1 || die "Need Foundry (forge)."
 command -v cast >/dev/null 2>&1 || die "Need cast."
 command -v jq >/dev/null 2>&1 || die "Need jq."
@@ -151,32 +142,43 @@ else
   INDEXER_PORT="$(pick_indexer_port)"
 fi
 
-echo "=== Postgres (${DOCKER_PG} on localhost:${PG_HOST_PORT}) ==="
-# Host networking avoids broken Docker port-forward on some Linux hosts (indexer pool timeouts).
-if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
-  pg_net="$(docker inspect "${DOCKER_PG}" 2>/dev/null | jq -r '.[0].HostConfig.NetworkMode // ""')"
-  if [[ "${pg_net}" != "host" ]]; then
-    echo "Recreating ${DOCKER_PG} with --network host PGPORT=${PG_HOST_PORT}."
-    docker rm -f "${DOCKER_PG}" >/dev/null
+echo "=== Postgres (localhost:${PG_HOST_PORT}) ==="
+if yieldomega_native_postgres_usable; then
+  export YIELDOMEGA_PG_MODE="native"
+  echo "Using native Postgres on ${PG_HOST_PORT} (bootstrap-cloud-postgres-native.sh)."
+elif command -v docker >/dev/null 2>&1 \
+  && docker info >/dev/null 2>&1 \
+  && docker run --rm hello-world >/dev/null 2>&1; then
+  export YIELDOMEGA_PG_MODE="docker"
+  export YIELDOMEGA_PG_DOCKER_CONTAINER="${DOCKER_PG}"
+  echo "Using Docker ${DOCKER_PG} on ${PG_HOST_PORT}."
+  # Host networking avoids broken Docker port-forward on some Linux hosts (indexer pool timeouts).
+  if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
+    pg_net="$(docker inspect "${DOCKER_PG}" 2>/dev/null | jq -r '.[0].HostConfig.NetworkMode // ""')"
+    if [[ "${pg_net}" != "host" ]]; then
+      echo "Recreating ${DOCKER_PG} with --network host PGPORT=${PG_HOST_PORT}."
+      docker rm -f "${DOCKER_PG}" >/dev/null
+    fi
   fi
-fi
-if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
-  if ! docker ps --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
-    docker start "${DOCKER_PG}" >/dev/null
+  if docker ps -a --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
+    if ! docker ps --format '{{.Names}}' | grep -q "^${DOCKER_PG}$"; then
+      docker start "${DOCKER_PG}" >/dev/null
+    fi
+  else
+    docker run -d --name "${DOCKER_PG}" --network host \
+      -e POSTGRES_USER=yieldomega \
+      -e POSTGRES_PASSWORD=password \
+      -e POSTGRES_DB=yieldomega_indexer \
+      -e PGPORT="${PG_HOST_PORT}" \
+      postgres:16-alpine >/dev/null
   fi
 else
-  docker run -d --name "${DOCKER_PG}" --network host \
-    -e POSTGRES_USER=yieldomega \
-    -e POSTGRES_PASSWORD=password \
-    -e POSTGRES_DB=yieldomega_indexer \
-    -e PGPORT="${PG_HOST_PORT}" \
-    postgres:16-alpine >/dev/null
+  echo "" >&2
+  yieldomega_docker_stack_failure_hint >&2
+  echo "" >&2
+  die "Postgres not available. Run: bash scripts/bootstrap-cloud-postgres-native.sh  OR  fix Docker (bash scripts/verify-docker-cloud-agent.sh). See AGENTS.md § Postgres without Docker (#287/#288)."
 fi
-for _ in $(seq 1 30); do
-  docker exec "${DOCKER_PG}" pg_isready -U yieldomega -p "${PG_HOST_PORT}" -d yieldomega_indexer >/dev/null 2>&1 && break
-  sleep 1
-done
-docker exec "${DOCKER_PG}" pg_isready -U yieldomega -p "${PG_HOST_PORT}" -d yieldomega_indexer >/dev/null || die "Postgres not ready."
+yieldomega_pg_wait_ready 30 || die "Postgres not ready on ${PG_HOST_PORT} (mode=${YIELDOMEGA_PG_MODE:-?})."
 
 echo "=== Anvil (${RPC_URL}) ==="
 if yieldomega_tcp_port_listening "${ANVIL_PORT}"; then
@@ -306,14 +308,7 @@ if [[ -f /tmp/yieldomega_indexer_stack.pid ]]; then
 fi
 pkill -f 'yieldomega-indexer' 2>/dev/null || true
 sleep 1
-docker exec "${DOCKER_PG}" psql -U yieldomega -d postgres -v ON_ERROR_STOP=1 -c \
-  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'yieldomega_indexer' AND pid <> pg_backend_pid();" \
-  >/dev/null 2>&1 || true
-# DROP/CREATE must be separate invocations (not one transaction).
-docker exec "${DOCKER_PG}" psql -U yieldomega -d postgres -v ON_ERROR_STOP=1 -c \
-  "DROP DATABASE IF EXISTS yieldomega_indexer;" >/dev/null
-docker exec "${DOCKER_PG}" psql -U yieldomega -d postgres -v ON_ERROR_STOP=1 -c \
-  "CREATE DATABASE yieldomega_indexer OWNER yieldomega;" >/dev/null
+yieldomega_pg_reset_indexer_db
 
 echo "=== Start indexer (127.0.0.1:${INDEXER_PORT}) ==="
 export DATABASE_URL="postgres://yieldomega:password@127.0.0.1:${PG_HOST_PORT}/yieldomega_indexer"
