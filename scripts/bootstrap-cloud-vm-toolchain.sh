@@ -9,7 +9,8 @@
 #   - glab CLI + GITLAB_TOKEN auth + remote_alias for PlasticDigits/yieldomega
 #   - dockerd when systemd cannot start it; socket permissions for the dev user
 #
-# Does NOT run npm ci (see bootstrap-dev.sh) or Playwright/Rabby (bootstrap-cloud-agent.sh).
+# Does NOT run npm ci (see bootstrap-dev.sh) or Playwright/Rabby wallet import (bootstrap-cloud-agent.sh).
+# Installs unpacked Rabby extension (root) so Rabby smoke works even if agent bootstrap is skipped.
 #
 # Usage (repo root):
 #   bash scripts/bootstrap-cloud-vm-toolchain.sh
@@ -20,6 +21,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 # shellcheck source=scripts/lib/docker_cloud_agent.sh
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
+# shellcheck source=scripts/lib/rabby_cloud_agent.sh
+source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
 YIELDOMEGA_GITLAB_HOST="${YIELDOMEGA_GITLAB_HOST:-gitlab.com}"
 YIELDOMEGA_GITLAB_PROJECT="${YIELDOMEGA_GITLAB_PROJECT:-PlasticDigits/yieldomega}"
@@ -90,8 +95,9 @@ ensure_rust() {
 }
 
 ensure_foundry() {
-  export PATH="${HOME}/.foundry/bin:${PATH}"
+  yieldomega_prepend_cloud_toolchain_path
   if command -v forge >/dev/null 2>&1 && command -v anvil >/dev/null 2>&1 && command -v cast >/dev/null 2>&1; then
+    yieldomega_persist_cloud_toolchain_path
     log "Foundry $(forge --version | head -1)"
     return 0
   fi
@@ -99,12 +105,14 @@ ensure_foundry() {
   if [[ ! -x "${HOME}/.foundry/bin/foundryup" ]]; then
     curl -L https://foundry.paradigm.xyz | bash
   fi
-  export PATH="${HOME}/.foundry/bin:${PATH}"
+  yieldomega_prepend_cloud_toolchain_path
   foundryup
+  yieldomega_prepend_cloud_toolchain_path
   command -v forge >/dev/null 2>&1 || {
     echo "bootstrap-cloud-vm-toolchain: forge not on PATH after foundryup." >&2
     return 1
   }
+  yieldomega_persist_cloud_toolchain_path
   log "Foundry $(forge --version | head -1)"
 }
 
@@ -314,6 +322,17 @@ ensure_docker
 install_glab
 configure_glab
 verify_xvfb
+
+ensure_rabby_extension() {
+  if yieldomega_ensure_rabby_extension "${ROOT}"; then
+    log "Rabby extension at ${YIELDOMEGA_RABBY_EXT_DIR}"
+    return 0
+  fi
+  echo "bootstrap-cloud-vm-toolchain: Rabby extension install failed — Rabby smoke will not run." >&2
+  echo "  Retry: sudo bash scripts/install-browser-extensions.sh" >&2
+  return 1
+}
+ensure_rabby_extension || true
 
 # Native Postgres for indexer QA when Docker yieldomega-pg is unavailable (GitLab #287).
 if [[ -x "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then

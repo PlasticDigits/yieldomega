@@ -11,8 +11,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 # shellcheck source=scripts/lib/docker_cloud_agent.sh
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
+# shellcheck source=scripts/lib/rabby_cloud_agent.sh
+source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
-export PATH="${HOME}/.foundry/bin:/usr/local/cargo/bin:${PATH}"
+yieldomega_prepend_cloud_toolchain_path
 
 fail=0
 ok() { echo "PASS  $*"; }
@@ -79,8 +83,16 @@ command -v xvfb-run >/dev/null 2>&1 \
   && xvfb-run -a true \
   && ok "xvfb-run" || bad "xvfb-run"
 
-[[ -f /opt/cursor/browser-extensions/rabby/manifest.json ]] \
-  && ok "Rabby extension" || bad "Rabby extension missing (sudo bash scripts/install-browser-extensions.sh)"
+if yieldomega_rabby_installed; then
+  ok "Rabby extension"
+else
+  echo "==> Rabby extension missing — attempting install…"
+  if yieldomega_ensure_rabby_extension "${ROOT}" && yieldomega_rabby_installed; then
+    ok "Rabby extension (installed during verify)"
+  else
+    bad "Rabby extension missing (sudo bash scripts/install-browser-extensions.sh)"
+  fi
+fi
 
 if [[ -d frontend/node_modules/@playwright/test ]] || [[ -d frontend/node_modules/playwright ]]; then
   if [[ -d "${HOME}/.cache/ms-playwright" ]] && ls "${HOME}/.cache/ms-playwright"/chromium-* >/dev/null 2>&1; then
@@ -92,7 +104,7 @@ else
   bad "frontend npm deps missing (bash scripts/bootstrap-dev.sh)"
 fi
 
-[[ -f /opt/cursor/chrome-profile-rabby/.yieldomega-rabby-dev-wallets-ready ]] \
+[[ -f "${YIELDOMEGA_RABBY_MARKER}" ]] \
   && ok "Rabby dev wallets marker" || bad "Rabby dev wallets not imported (bootstrap-cloud-agent.sh)"
 
 exit "${fail}"

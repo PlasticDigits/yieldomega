@@ -44,6 +44,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS="${ROOT}/contracts"
 FRONTEND="${ROOT}/frontend"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
+yieldomega_prepend_cloud_toolchain_path
 # shellcheck source=scripts/lib/kumbaya_local_anvil_env.sh
 source "${ROOT}/scripts/lib/kumbaya_local_anvil_env.sh"
 # shellcheck source=scripts/lib/docker_cloud_agent.sh
