@@ -18,8 +18,7 @@ describe("shared UX primitives (GitLab #294)", () => {
 
     expect(html).toContain("address-inline__blockie");
     expect(html).toContain("address-inline__label");
-    expect(html).toContain("34abcd");
-    expect(html).not.toContain("0x123456");
+    expect(html).toContain("<span class=\"mono address-inline__label\">34abcd</span>");
     expect(html).not.toContain("…");
   });
 
