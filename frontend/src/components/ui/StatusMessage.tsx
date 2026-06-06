@@ -4,10 +4,14 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 type Variant = "muted" | "placeholder" | "error" | "warning" | "loading";
 
+type DataAttributes = {
+  [key: `data-${string}`]: string | number | boolean | undefined;
+};
+
 type Props = {
   variant?: Variant;
   children: ReactNode;
-} & Omit<HTMLAttributes<HTMLElement>, "children">;
+} & Omit<HTMLAttributes<HTMLElement>, "children"> & DataAttributes;
 
 export function StatusMessage({ variant = "muted", children, className, ...rest }: Props) {
   if (variant === "loading") {
