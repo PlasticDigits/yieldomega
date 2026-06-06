@@ -83,6 +83,7 @@ export function LiveBuyRow({
           <AddressInline
             address={buy.buyer}
             formatWallet={formatWallet}
+            tailHexDigits={6}
             size={blockieSize}
             onExplorerLinkClick={stopExplorerBubble}
             onOpenProfile={onOpenProfile}

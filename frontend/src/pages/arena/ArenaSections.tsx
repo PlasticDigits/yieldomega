@@ -241,8 +241,8 @@ export function WarbowSection(props: {
         <div className="accordion-panel__content">
           <StatusMessage variant="muted">
             Steals require the victim’s Battle Points to sit in the onchain **2×–10×** band versus yours. Each victim can be stolen from{" "}
-            {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass spend. WarBow CL8Y
-            uses the same fee split as buys (podium pool, LP, burn sink, Rabbit). Guard lasts
+            {formatLocaleInteger(warbowMaxSteals)} times per UTC day unless you pay the extra bypass spend. WarBow spends
+            pull DOUB directly from the player. Guard lasts
             6h and reduces the next incoming steal to 1%. Revenge lets the victim hit the pending stealer once within
             the configured window. After a buy, silence for {formatLocaleInteger(BigInt(warbowFlagSilenceSec))}s lets the buyer
             claim +{formatLocaleInteger(BigInt(warbowFlagClaimBp))} BP.

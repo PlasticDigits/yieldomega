@@ -114,6 +114,26 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 
 **Automated:** `cd frontend && npm run typecheck && npm run lint && npm test`; targeted browser smoke: `cd frontend && npm run test:e2e -- e2e/arena.spec.ts` (no Anvil) or `bash scripts/e2e-anvil.sh` when chain writes are in scope.
 
+<a id="manual-qa-issue-292"></a>
+
+## Arena production components (GitLab #292)
+
+**Scope:** Live `/arena` and `/arena/protocol` production components. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-production-components-gitlab-292`](../frontend/arena-views.md#arena-production-components-gitlab-292). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
+
+### Checklist
+
+| Step | Pass criteria |
+|------|---------------|
+| `/arena` podiums | Four cards render Last Buy, WarBow, Defended Streak, Time Booster; each shows current epoch when available and 1st/2nd/3rd prize rows in **DOUB** plus USD equivalent. |
+| Address treatment | Podium, live-buy, and activity addresses show blockie + last six hex digits (no `0x…` truncation); clicking participant rows opens wallet profile where wired. |
+| CHARM/CRED | Card labels read as epoch yield state (Epoch, CHARM weight, Accruing/Claimable CRED); no leaderboard or launchpad-price framing. |
+| WarBow actions | Operations rail groups **Steal**, **Guard**, **Revenge**, and **Flag** with DOUB cost pills (Flag 0 DOUB). |
+| `/arena/protocol` activity | With indexer schema containing `GET /v1/arena/activity`, recent feed includes buy / steal / guard / revenge rows with explicit DOUB, BP, seconds, or guard-expiry deltas. Older indexers may fall back to buys only and should be reported as a blocker for full #292 acceptance. |
+| Visual direction | Dark tactical glass surface remains compact/action-first; bunny/sniper-shark accents are recognizable but not dominant; no retired sale/redemption copy. |
+| Responsive | 390×844 mobile and desktop widths have no horizontal overflow; podium rows and action feed remain readable. |
+
+**Automated:** `cd frontend && npm run typecheck && npm run lint && npm test`; `cd indexer && cargo test postgres_stage2_persist_all_events_and_rollback_after` with `YIELDOMEGA_PG_TEST_URL`; browser/Rabby visual pass per [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md).
+
 <a id="manual-qa-issue-87"></a>
 
 ## Anvil E2E Playwright (GitLab #87)

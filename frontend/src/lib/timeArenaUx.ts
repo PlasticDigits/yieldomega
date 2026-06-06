@@ -293,7 +293,7 @@ export function buildBuyFeedNarrative(
     impactParts.push(`best defended streak ${bestStreak}`);
   }
 
-  let headline = `${buyer} hit the curve`;
+  let headline = `${buyer} bought CHARM`;
   if (buy.timer_hard_reset) {
     headline = `${buyer} pulled the timer back into safer ground`;
   } else if (streakBreakBonus > 0n) {
@@ -377,7 +377,7 @@ export function formatBuyDetailRows(buy: BuyItem): BuyDetailRow[] {
   return [
     { label: "Block", value: nz(buy.block_number) },
     { label: "Block hash", value: nz(buy.block_hash) },
-    { label: "TimeCurve contract", value: nz(buy.contract_address) },
+    { label: "TimeArena contract", value: nz(buy.contract_address) },
     { label: "Transaction", value: nz(buy.tx_hash) },
     { label: "Log index", value: String(buy.log_index) },
     { label: "Block time (unix sec)", value: nz(buy.block_timestamp) },
@@ -651,12 +651,12 @@ export function buildWarbowFeedNarrative(
       };
     case "cl8y_burned":
       if (burnPaidWad !== null) {
-        tags.push("CL8Y spend");
+        tags.push("DOUB spend");
       }
       return {
         eyebrow: "WarBow spend",
-        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You", formatShort)} spent CL8Y on WarBow`,
-        detail: "WarBow CL8Y is routed through the same FeeRouter split as buys (podium pool, LP, burn sink, Rabbit).",
+        headline: `${perspectiveLabel(detail.payer as string | undefined, viewer, "You", formatShort)} spent DOUB on WarBow`,
+        detail: "WarBow spends pull DOUB directly from the player.",
         tags,
       };
     default:

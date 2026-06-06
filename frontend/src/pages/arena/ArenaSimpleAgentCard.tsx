@@ -44,8 +44,8 @@ const DOCS_SIMPLE: { label: string; path: string }[] = [
 const INDEXER_ROUTES_SIMPLE = `GET /v1/arena/chain-timer
 GET /v1/arena/podiums
 GET /v1/arena/buys
-GET /v1/arena/warbow/leaderboard
-GET /v1/arena/warbow/battle-feed`;
+GET /v1/arena/activity
+GET /v1/arena/wallet/{address}/stats`;
 
 /** `TimeArena.podium(uint8)` category indices (see `CAT_*` view functions onchain). */
 const PODIUM_CAT_ONCHAIN = {
@@ -96,16 +96,16 @@ def load_timearena_abi():
 
 TIME_ARENA_ABI = load_timearena_abi()`;
 
-/** Shared Python: CL8Y approve → TimeArena.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow CL8Y spend. */
+/** Shared Python: DOUB approve → TimeArena.buy*, or Kumbaya single-tx buyViaKumbaya; WarBow DOUB spend. */
 const PY_SKETCH_SHARED = `# --- approvals + routing (sketch; simulate on your fork first) ---
 # Contract addresses default to MegaETH mainnet production (see PY_ABI_BOOTSTRAP). Forks: ALLOW_CHAIN_MISMATCH=1.
 # PRIVATE_KEY required. RPC_URL defaults to MegaETH public JSON-RPC; override for other providers.
 # Time Arena ABI: downloaded from GitHub raw unless TIME_ARENA_ABI_JSON (local file) or TIME_ARENA_ABI_URL is set.
-# CL8Y: approve acceptedAsset → Time Arena for gross CL8Y (price × charmWad / WAD), then buy.
+# DOUB: approve Doubloon → Time Arena for gross DOUB (price × charmWad / WAD), then buy.
 #   ERC20_APPROVE_UNLIMITED=true → approve 2**256-1 (some tokens reject; omit for exact headroom).
 #   BUY_APPROVE_SLIPPAGE_BPS (default 100) pads the approve amount when not unlimited.
 # Kumbaya single-tx: PAY_MODE=ROUTER_ETH | ROUTER_STABLE (router address baked for mainnet; ABI downloaded by default),
-#   KUMBAYA_PATH (0x-packed exactOutput path: CL8Y first token …), KUMBAYA_AMOUNT_IN_MAXIMUM (swap cap),
+#   KUMBAYA_PATH (0x-packed exactOutput path to DOUB), KUMBAYA_AMOUNT_IN_MAXIMUM (swap cap),
 #   ROUTER_ETH: KUMBAYA_MSG_VALUE_WEI (defaults to KUMBAYA_AMOUNT_IN_MAXIMUM) for msg.value.
 #   ROUTER_STABLE: approve deployment stableToken → router for KUMBAYA_AMOUNT_IN_MAXIMUM before each buy.
 # Referrals / flag: REFERRAL_CODE_HASH (bytes32 hex or empty), PLANT_WARBOW_FLAG=true|false.

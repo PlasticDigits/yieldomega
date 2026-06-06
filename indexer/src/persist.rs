@@ -134,7 +134,11 @@ pub async fn persist_decoded_log_conn(
             .execute(&mut *conn)
             .await?;
         }
-        DecodedEvent::ArenaCredClaimed { user, epoch, amount } => {
+        DecodedEvent::ArenaCredClaimed {
+            user,
+            epoch,
+            amount,
+        } => {
             sqlx::query(
                 r#"INSERT INTO idx_play_cred_claim (
                     block_number, tx_hash, log_index, claimer, epoch, amount
@@ -210,11 +214,12 @@ pub async fn persist_decoded_log_conn(
         } => {
             sqlx::query(
                 r#"INSERT INTO idx_arena_warbow_guard (
-                    block_number, tx_hash, log_index, player, doub_spent, guard_until
-                ) VALUES ($1, $2, $3, $4, $5::numeric, $6::numeric)
+                    block_number, block_timestamp, tx_hash, log_index, player, doub_spent, guard_until
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6::numeric, $7::numeric)
                 ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
             )
             .bind(block)
+            .bind(block_ts)
             .bind(&tx_h)
             .bind(log_i)
             .bind(addr_hex(*player))
@@ -304,7 +309,31 @@ pub async fn persist_decoded_log_conn(
             )
             .await?;
         }
-        DecodedEvent::ArenaWarbowRevenge { .. } | DecodedEvent::ArenaWarbowFlagClaimed { .. } => {}
+        DecodedEvent::ArenaWarbowRevenge {
+            avenger,
+            stealer,
+            bp_taken,
+            doub_spent,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_warbow_revenge (
+                    block_number, block_timestamp, tx_hash, log_index,
+                    avenger, stealer, bp_taken, doub_spent
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5, $6, $7::numeric, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(addr_hex(*avenger))
+            .bind(addr_hex(*stealer))
+            .bind(u256_dec(*bp_taken))
+            .bind(u256_dec(*doub_spent))
+            .execute(&mut *conn)
+            .await?;
+        }
+        DecodedEvent::ArenaWarbowFlagClaimed { .. } => {}
         DecodedEvent::ArenaVaultFunding {
             kind,
             podium_id,

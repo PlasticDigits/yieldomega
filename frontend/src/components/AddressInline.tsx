@@ -3,12 +3,12 @@
 import type { MouseEvent } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { WalletBlockie } from "@/components/WalletBlockie";
-import { addressTailHex, shortAddress, type WalletFormatShort } from "@/lib/addressFormat";
+import { addressTailHex, type WalletFormatShort } from "@/lib/addressFormat";
 import { explorerAddressUrl } from "@/lib/explorer";
 
 export type AddressInlineProps = {
   address: string | undefined;
-  /** When set, used for the text beside the blockie; otherwise {@link shortAddress}. */
+  /** When set, used for the text beside the blockie; otherwise last 6 hex digits. */
   formatWallet?: WalletFormatShort;
   /**
    * When set, label is the last `tailHexDigits` hex characters (no `0x`). Overrides `formatWallet`
@@ -32,8 +32,8 @@ export type AddressInlineProps = {
 };
 
 /**
- * Wallet / contract address with an ethereum-blockies identicon (same family
- * as MetaMask) plus a compact text label and optional explorer link (GitLab #98).
+ * Wallet / contract address with an ethereum-blockies identicon plus the
+ * standardized last-six-hex label and optional profile/explorer action.
  */
 export function AddressInline({
   address,
@@ -58,7 +58,7 @@ export function AddressInline({
       ? tailLabel
       : formatWallet
         ? formatWallet(raw, fallback)
-        : shortAddress(raw, fallback);
+        : addressTailHex(raw, 6) || fallback;
   const href = explorer && !onOpenProfile ? explorerAddressUrl(raw) : undefined;
 
   const labelSpan = (

@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS idx_referral_code_registered;
 DROP TABLE IF EXISTS idx_warbow_epoch_score;
+DROP TABLE IF EXISTS idx_arena_warbow_revenge;
 DROP TABLE IF EXISTS idx_arena_warbow_guard;
 DROP TABLE IF EXISTS idx_arena_warbow_steal;
 DROP TABLE IF EXISTS idx_arena_referral_applied;

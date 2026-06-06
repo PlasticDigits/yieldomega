@@ -117,7 +117,7 @@ export function ArenaCharmCredCard() {
   if (!arena) {
     return (
       <PageSection
-        title="CHARM & Play CRED"
+        title="Epoch CHARM/CRED"
         dataTestId="arena-charm-cred-card"
         className="arena-charm-cred-card"
       >
@@ -128,12 +128,12 @@ export function ArenaCharmCredCard() {
 
   return (
     <PageSection
-      title="CHARM & Play CRED"
+      title="Epoch CHARM/CRED"
       dataTestId="arena-charm-cred-card"
       className="arena-charm-cred-card"
     >
-      <p>
-        Last Buy epoch:{" "}
+      <p title="CHARM/CRED accrual follows Last Buy epochs; claim only after an epoch ends.">
+        Epoch:{" "}
         <strong data-testid="arena-charm-cred-epoch">
           {statFromContractRead(epochRead, readCtx, {
             mapSuccess: (raw) => raw,
@@ -141,8 +141,8 @@ export function ArenaCharmCredCard() {
           })}
         </strong>
       </p>
-      <p>
-        Your epoch CHARM:{" "}
+      <p title="Your current Last Buy epoch CHARM weight; this is claim weight, not a leaderboard.">
+        CHARM weight:{" "}
         <strong data-testid="arena-charm-cred-charm">
           {wadStat(charmRead, readCtx, {
             requireWallet: true,
@@ -154,8 +154,8 @@ export function ArenaCharmCredCard() {
           })}
         </strong>
       </p>
-      <p>
-        Pending CRED (this epoch):{" "}
+      <p title="Current active-epoch CRED preview from DOUB buys.">
+        Accruing CRED:{" "}
         <strong data-testid="arena-charm-cred-pending">
           {wadStat(accruingRead, readCtx, {
             requireWallet: true,
@@ -169,7 +169,7 @@ export function ArenaCharmCredCard() {
       </p>
       {claimEpoch !== undefined ? (
         <p>
-          Claimable CRED (epoch {claimEpoch.toString()}):{" "}
+          Claimable CRED:{" "}
           <strong data-testid="arena-charm-cred-claimable">
             {wadStat(claimableRead, readCtx, {
               requireWallet: true,
@@ -209,9 +209,11 @@ export function ArenaCharmCredCard() {
         </button>
       </ChainMismatchWriteBarrier>
       {!claimReady && isConnected && claimEpoch !== undefined ? (
-        <p className="muted arena-charm-cred-card__claim-hint">
-          Earn DOUB-buy CRED during the active epoch; claim after Last Buy hard reset ends the
-          epoch.
+        <p
+          className="muted arena-charm-cred-card__claim-hint"
+          title={`Claim checks ended epoch ${claimEpoch.toString()}; active-epoch CRED stays locked until a Last Buy hard reset.`}
+        >
+          Claim after epoch end.
         </p>
       ) : null}
     </PageSection>

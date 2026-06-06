@@ -89,6 +89,26 @@ export type PaginatedItems<T> = {
 /** Buys list includes total row count for the indexer table (schema ≥ 1.6.0). */
 export type ArenaBuysPageLegacy = PaginatedItems<BuyItem> & { total?: number };
 
+export type ArenaActivityKind = "buy" | "steal" | "guard" | "revenge";
+
+export type ArenaActivityItem = {
+  kind: ArenaActivityKind;
+  actor: string;
+  target?: string | null;
+  charm_wad?: string | null;
+  amount_doub_wad?: string | null;
+  seconds_delta?: string | null;
+  bp_delta?: string | null;
+  guard_until?: string | null;
+  timer_hard_reset?: boolean | null;
+  paid_with_cred?: boolean | null;
+  limit_bypass?: boolean | null;
+  block_number: number;
+  tx_hash: string;
+  log_index: number;
+  block_timestamp?: string | null;
+};
+
 function mapArenaBuyToBuyItem(item: ArenaBuyItem): BuyItem {
   return {
     block_number: String(item.block_number),
@@ -788,6 +808,14 @@ export async function fetchArenaBuys(limit = 20, offset = 0) {
   return getJson<{ items: ArenaBuyItem[]; limit: number; offset: number }>(
     `/v1/arena/buys?limit=${limit}&offset=${offset}`,
   );
+}
+
+export function arenaActivityApiPath(limit = 25, offset = 0): string {
+  return `/v1/arena/activity?limit=${limit}&offset=${offset}`;
+}
+
+export async function fetchArenaActivity(limit = 25, offset = 0) {
+  return getJson<PaginatedItems<ArenaActivityItem>>(arenaActivityApiPath(limit, offset));
 }
 
 export async function fetchArenaTimers() {

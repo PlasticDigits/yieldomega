@@ -123,7 +123,7 @@ function rankingRowsForPodium(
         <span className="arena-simple__podium-prize" aria-label={`${placeLabel} prize`}>
           <span className="arena-simple__podium-prize-main">
             <span>{prizeLabel}</span>
-            <small>CL8Y</small>
+            <small>DOUB</small>
           </span>
           {usdLabel !== undefined && (
             <span

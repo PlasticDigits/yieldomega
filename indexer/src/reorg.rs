@@ -124,6 +124,7 @@ pub const ARENA_INDEX_TABLES: &[&str] = &[
     "idx_arena_referral_applied",
     "idx_arena_warbow_steal",
     "idx_arena_warbow_guard",
+    "idx_arena_warbow_revenge",
     "idx_warbow_epoch_score",
     "idx_arena_podium_live",
 ];
@@ -161,8 +162,8 @@ pub async fn find_common_ancestor(
     from_height: u64,
     rpc_sticky_idx: &mut usize,
 ) -> Result<u64> {
-    use alloy_rpc_types::BlockTransactionsKind;
     use crate::rpc_http::rpc_first_some_sticky;
+    use alloy_rpc_types::BlockTransactionsKind;
 
     let mut n = from_height;
     for _ in 0..MAX_REORG_DEPTH {

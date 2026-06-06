@@ -12,7 +12,7 @@ type Props = {
 
 export function BuyEnvelopeMiniMeter({ ratio, amountRaw, title }: Props) {
   const t = ratio === null ? null : Math.max(0, Math.min(1, ratio));
-  const amountLabel = `${formatCompactFromRaw(amountRaw, 18, { sigfigs: 3 })} CL8Y`;
+  const amountLabel = `${formatCompactFromRaw(amountRaw, 18, { sigfigs: 3 })} DOUB`;
   const meterTitle =
     title ??
     (t === null

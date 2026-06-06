@@ -556,9 +556,8 @@ export function ArenaSimplePage({
 
   const spendAssetForPreview = session.isArenaV2 ? "DOUB" : spendAssetLabel;
 
-  // Price-tick pulse: bump a key whenever the live per-CHARM price changes
-  // so the rate row re-renders and the CSS animation re-runs. This keeps
-  // the "ticks up every block" message visceral instead of just textual.
+  // Price pulse: bump a key whenever governance-updated charmPriceWad changes
+  // so the rate row re-renders and the CSS animation re-runs.
   // We avoid setTimeout / explicit animation lifecycle management by
   // letting React's `key` prop drive the re-mount.
   const priceTickKeyRef = useRef(0);
@@ -850,9 +849,8 @@ export function ArenaSimplePage({
     prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
 
   // Rate board (top of buy panel) — the **single most-important number on
-  // the page** is the live current per-CHARM price in the selected pay asset
-  // (it ticks up every block; waiting costs money). Live reads refresh on
-  // every block via the hook's wagmi reads. Display uses `formatHeroRateFromWad`
+  // the page** is the current onchain per-CHARM price in the selected pay asset.
+  // Live reads refresh on every block via the hook's wagmi reads. Display uses `formatHeroRateFromWad`
   // (six significant figures, truncated toward zero, trailing zeros kept).
   const rateNowDisplay = useMemo(() => {
     if (session.pricePerCharmWad === undefined) {
