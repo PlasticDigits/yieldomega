@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
+import { AddressInline } from "@/components/AddressInline";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { addresses } from "@/lib/addresses";
 
@@ -10,7 +10,7 @@ const ARENA_VAULT_ROWS: { label: string; key: keyof typeof addresses }[] = [
   { label: "Admin sell vault", key: "adminSellVault" },
 ];
 
-/** Minimal Arena v2 vault list when `VITE_TIME_ARENA_ADDRESS` is set (GitLab #244). */
+/** Minimal Arena v2 address list with the standard blockie + explorer treatment. */
 export function ArenaVaultAddressesPanel() {
   if (!addresses.timeArena) {
     return null;
@@ -31,10 +31,11 @@ export function ArenaVaultAddressesPanel() {
   }
 
   return (
-    <ul className="fee-sink-list">
+    <ul className="fee-sink-list arena-vault-addresses" aria-label="Arena contract addresses">
       {rows.map(({ label, addr }) => (
-        <li key={label}>
-          <strong>{label}</strong>: <MegaScannerAddressLink address={addr} />
+        <li key={label} className="arena-vault-addresses__row">
+          <strong>{label}</strong>
+          <AddressInline address={addr} tailHexDigits={6} size={18} className="arena-vault-addresses__addr" />
         </li>
       ))}
     </ul>

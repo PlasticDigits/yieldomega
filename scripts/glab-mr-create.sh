@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# Create a GitLab merge request for PlasticDigits/yieldomega via GITLAB_TOKEN.
+# Create a GitLab merge request for PlasticDigits/yieldomega via glab api + GITLAB_TOKEN.
 #
-# Cloud agents must use this (or yieldomega_glab_mr_create) — not the Cursor GitHub PR tool.
-# Cursor clones use x-access-token remotes; `glab mr create` 404s with PlasticDigits/yieldomega.git
-# even when `-R PlasticDigits/yieldomega` is passed. This script uses the GitLab REST API.
+# Cloud agents must use this — not the Cursor platform/GitHub PR tool.
+# Cursor clones use x-access-token remotes; glab's high-level `mr create`
+# can resolve the remote as `PlasticDigits/yieldomega.git` and 404. This
+# helper calls the GitLab REST API directly with `projects/:id/merge_requests`.
 #
 # Usage (repo root):
 #   bash scripts/glab-mr-create.sh --title "My MR" --description "Details" [--draft]
 #   bash scripts/glab-mr-create.sh --title "Fix" --fill   # use commit messages for description
-#   bash scripts/glab-mr-create.sh --title "Fix" --template Default  # .gitlab/merge_request_templates/Default.md
+#   bash scripts/glab-mr-create.sh --title "Fix" --template Default
 #
 # Env: GITLAB_TOKEN (Cursor secret), GITLAB_REPO (default PlasticDigits/yieldomega),
 #      MR_TARGET_BRANCH (default main).
@@ -25,10 +26,10 @@ source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
 TARGET="${MR_TARGET_BRANCH:-main}"
 TITLE=""
 DESCRIPTION=""
-DRAFT_FLAG=()
+DRAFT=0
 FILL=0
 TEMPLATE_NAME=""
-EXTRA=()
+LABELS=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,7 +46,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --draft)
-      DRAFT_FLAG=(--draft)
+      DRAFT=1
       shift
       ;;
     --fill)
@@ -56,13 +57,17 @@ while [[ $# -gt 0 ]]; do
       TEMPLATE_NAME="${2:-Default}"
       shift 2
       ;;
+    --label|-l)
+      LABELS="${2:-}"
+      shift 2
+      ;;
     --help|-h)
-      sed -n '1,22p' "$0" | tail -n +2
+      sed -n '1,20p' "$0" | tail -n +2
       exit 0
       ;;
     *)
-      EXTRA+=("$1")
-      shift
+      echo "glab-mr-create.sh: unsupported option for API create: $1" >&2
+      exit 1
       ;;
   esac
 done
@@ -89,27 +94,37 @@ if [[ -z "${TITLE}" ]]; then
 fi
 
 repo="$(yieldomega_glab_repo)"
-draft_flag=0
-[[ ${#DRAFT_FLAG[@]} -gt 0 ]] && draft_flag=1
-
 if [[ "${FILL}" -eq 1 ]]; then
-  DESCRIPTION="$(git log --pretty=format:'%s' "origin/${TARGET}..HEAD" 2>/dev/null | paste -sd '\n' - || git log -5 --pretty=format:'%s')"
+  DESCRIPTION="$(git log --reverse --format='### %s%n%n%b' "${TARGET}..${branch}" 2>/dev/null || git log -1 --format='### %s%n%n%b')"
 elif [[ -n "${TEMPLATE_NAME}" ]]; then
   tmpl="${ROOT}/.gitlab/merge_request_templates/${TEMPLATE_NAME}.md"
   if [[ ! -f "${tmpl}" ]]; then
     echo "glab-mr-create.sh: template not found: ${tmpl}" >&2
     exit 1
   fi
-  DESCRIPTION="$(cat "${tmpl}")"
+  DESCRIPTION="$(<"${tmpl}")"
 fi
 
-if [[ ${#EXTRA[@]} -gt 0 ]]; then
-  echo "glab-mr-create.sh: ignoring unsupported extra args: ${EXTRA[*]}" >&2
+if [[ "${DRAFT}" -eq 1 && "${TITLE}" != Draft:* && "${TITLE}" != WIP:* ]]; then
+  TITLE="Draft: ${TITLE}"
 fi
 
-echo "==> GitLab API merge request (${repo}: ${branch} → ${TARGET})"
-url="$(yieldomega_glab_mr_create "${branch}" "${TARGET}" "${TITLE}" "${DESCRIPTION}" "${draft_flag}")" || {
-  echo "glab-mr-create.sh: merge request creation failed." >&2
-  exit 1
-}
-echo "${url}"
+project="${repo//\//%2F}"
+api_args=(
+  "projects/${project}/merge_requests"
+  -X POST
+  -f "source_branch=${branch}"
+  -f "target_branch=${TARGET}"
+  -f "title=${TITLE}"
+  -f "remove_source_branch=false"
+)
+if [[ -n "${DESCRIPTION}" ]]; then
+  api_args+=(-f "description=${DESCRIPTION}")
+fi
+if [[ -n "${LABELS}" ]]; then
+  api_args+=(-f "labels=${LABELS}")
+fi
+
+echo "==> glab api projects/${project}/merge_requests -X POST (source=${branch}, target=${TARGET})"
+GITLAB_TOKEN="${token}" GLAB_TOKEN="${token}" glab api "${api_args[@]}" \
+  | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("web_url", data))'

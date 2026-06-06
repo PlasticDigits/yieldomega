@@ -48,7 +48,7 @@ test("arena simple view shows compact podiums without dense Audit feed sections"
 
   await page.getByRole("navigation", { name: "Time Arena views" }).getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
-  await expect(page.getByRole("heading", { name: "Protocol view", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
   if (await page.getByText(/VITE_TIME_ARENA_ADDRESS is not configured/).isVisible()) {
     await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
     await expect(page.getByTestId("arena-protocol-donate-pools")).toHaveCount(0);
@@ -63,7 +63,7 @@ test("arena sub-nav routes to /arena/protocol (raw reads)", async ({ page }) => 
   const subnav = page.getByRole("navigation", { name: "Time Arena views" });
   await subnav.getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
-  await expect(page.getByRole("heading", { name: "Protocol view", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
 });
 
 test("arena simple view stays usable on a 390×844 mobile viewport", async ({ page }) => {

@@ -484,7 +484,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 - [ ] **`/arena/protocol`**: **`data-testid="arena-protocol-donate-pools"`** visible; required no-benefit disclosure shown **without** connecting a wallet.
 - [ ] Indexer unset/offline: totals show **`EmptyDataPlaceholder`** (—), not fabricated zeros ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)).
-- [ ] Connected wallet on chain **31337**: DOUB approve + **Donate to pools** succeeds; card refetches **`GET /v1/arena/podium-pool-donations`** totals.
+- [ ] Connected wallet on chain **31337**: DOUB approve + **Donate** succeeds; card refetches **`GET /v1/arena/podium-pool-donations`** totals.
 - [ ] Recent donations row opens wallet profile modal when **`onOpenWalletProfile`** wired ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)).
 - [ ] Wrong network: write UI gated by **`ChainMismatchWriteBarrier`** ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)).
 
@@ -850,6 +850,24 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 - [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`.
 
 **Doc map:** [frontend design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) · [invariants — #290](invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290)
+
+<a id="manual-qa-issue-293"></a>
+
+## Arena AUDIT protocol surfaces (GitLab #293)
+
+**Goal:** Verify `/arena/protocol` presents the current Arena v2 AUDIT console with compact cyberminimalist hierarchy, truthful operator mechanics, and intact read/write gates.
+
+### Checklist
+
+- [ ] Desktop (`>=1024px`): `/arena/protocol` hero reads **AUDIT** and shows compact operator/onchain/profile pills; the **VERIFY / TRACE / WATCH** decision cards, state deck, activity feed, donate card, timer config, contract rows, and prize routing cards fit the dark glass system.
+- [ ] Mobile (`<=720px`): decision/state/routing/donate grids collapse to one column with no horizontal overflow; focus rings remain visible on AUDIT sub-nav, refresh buttons, address links, and Donate.
+- [ ] Copy review: visible copy references current TimeArena mechanics only: always-live when unpaused, DOUB/Play CRED CHARM buys, 40/30/30 buy routing, 100%-to-prizes donate top-up, WarBow activity. No TimeCurve sale-end, redemption, or legacy fee-sink framing.
+- [ ] Donate pools: required no-benefit disclosure is visible before wallet connect; wrong network is gated by `ChainMismatchWriteBarrier`; connected on 31337 can submit **Donate** and refetch `GET /v1/arena/podium-pool-donations`.
+- [ ] Activity/profile: recent buy / WarBow rows still open `WalletProfileModal` via blockie + last-six participant labels; modal explorer link remains available.
+- [ ] Contract/vault addresses: rows use blockie + last-six labels and open explorer links in a new tab.
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`; optional focused browser pass with Rabby on `/arena/protocol`.
+
+**Doc map:** [arena views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) · [frontend design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [invariants — #293](invariants-and-business-logic.md#frontend-arena-audit-surfaces-gitlab-293) · [Rabby QA](rabby-cloud-agent-qa.md) · [play donate guidance](../../skills/play-time-arena-doub/SKILL.md#donate-to-pools-optional-sponsorship)
 
 <a id="manual-qa-issue-104"></a>
 

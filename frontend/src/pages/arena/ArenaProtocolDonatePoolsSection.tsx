@@ -68,13 +68,18 @@ export function ArenaProtocolDonatePoolsSection({ isOffline, onOpenWalletProfile
 
   return (
     <PageSection
-      title="Donate to pools"
-      badgeLabel="prize sponsorship"
+      title="Donate pools"
+      badgeLabel="sponsor"
       badgeTone="info"
-      lede="Permissionless DOUB top-up across all eight prize vaults (no platform take). History is indexer-backed."
+      lede="100% to active + seed prize vaults."
       dataTestId="arena-protocol-donate-pools"
     >
-      <StatusMessage variant="warning">{DONATE_DISCLOSURE}</StatusMessage>
+      <div
+        className="donate-pools-disclosure"
+        title="Sponsorship tops up prize pools only; it does not mint CHARM, CRED, XP, or donor rewards."
+      >
+        <StatusMessage variant="warning">{DONATE_DISCLOSURE}</StatusMessage>
+      </div>
 
       {indexerUnset ? (
         <p className="muted">
@@ -85,82 +90,84 @@ export function ArenaProtocolDonatePoolsSection({ isOffline, onOpenWalletProfile
         <p className="muted">Indexer offline · donation history may be stale or unavailable.</p>
       ) : null}
 
-      <div className="donate-pools-stats">
-        <div className="donate-pools-stats__row">
-          <span className="donate-pools-stats__label">Total donated (network)</span>
-          <span className="donate-pools-stats__value" data-testid="arena-protocol-donate-pools-total">
-            {showIndexerPlaceholder ? (
-              <EmptyDataPlaceholder>—</EmptyDataPlaceholder>
-            ) : (
-              formatDoubWad(data?.total_donated_doub_wad)
-            )}
-          </span>
-          <ProtocolInlineRefreshButton
-            ariaLabel="Refresh donation stats"
-            disabled={refreshing}
-            onClick={() => void loadIndexer()}
-          />
-        </div>
-        {isConnected ? (
+      <div className="donate-pools-console">
+        <div className="donate-pools-stats" aria-label="Donation totals">
           <div className="donate-pools-stats__row">
-            <span className="donate-pools-stats__label">Your donations</span>
-            <span className="donate-pools-stats__value" data-testid="arena-protocol-donate-pools-yours">
+            <span className="donate-pools-stats__label">Network</span>
+            <span className="donate-pools-stats__value" data-testid="arena-protocol-donate-pools-total">
               {showIndexerPlaceholder ? (
                 <EmptyDataPlaceholder>—</EmptyDataPlaceholder>
               ) : (
-                formatDoubWad(data?.donor_summary?.total_donated_doub_wad ?? "0")
+                formatDoubWad(data?.total_donated_doub_wad)
               )}
             </span>
-            {!showIndexerPlaceholder && data?.donor_summary ? (
-              <span className="muted donate-pools-stats__meta">
-                {formatCount(data.donor_summary.donation_count)} donation
-                {data.donor_summary.donation_count === "1" ? "" : "s"}
-              </span>
-            ) : null}
+            <ProtocolInlineRefreshButton
+              ariaLabel="Refresh donation stats"
+              disabled={refreshing}
+              onClick={() => void loadIndexer()}
+            />
           </div>
-        ) : null}
-      </div>
-
-      <ChainMismatchWriteBarrier testId="arena-protocol-donate-pools-chain-write-gate">
-        <div className="donate-pools-write">
-          <label className="donate-pools-write__label" htmlFor="arena-protocol-donate-amount">
-            DOUB amount
-          </label>
-          <input
-            id="arena-protocol-donate-amount"
-            className="donate-pools-write__input"
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            value={amountInput}
-            onChange={(e) => setAmountInput(e.target.value)}
-            disabled={!timeArena || submitting}
-            data-testid="arena-protocol-donate-pools-amount"
-          />
-          {isConnected && doubBalanceWei != null ? (
-            <p className="muted donate-pools-write__balance">
-              Wallet balance: <AmountDisplay raw={String(doubBalanceWei)} decimals={18} /> DOUB
-            </p>
+          {isConnected ? (
+            <div className="donate-pools-stats__row">
+              <span className="donate-pools-stats__label">Wallet</span>
+              <span className="donate-pools-stats__value" data-testid="arena-protocol-donate-pools-yours">
+                {showIndexerPlaceholder ? (
+                  <EmptyDataPlaceholder>—</EmptyDataPlaceholder>
+                ) : (
+                  formatDoubWad(data?.donor_summary?.total_donated_doub_wad ?? "0")
+                )}
+              </span>
+              {!showIndexerPlaceholder && data?.donor_summary ? (
+                <span className="muted donate-pools-stats__meta">
+                  {formatCount(data.donor_summary.donation_count)} donation
+                  {data.donor_summary.donation_count === "1" ? "" : "s"}
+                </span>
+              ) : null}
+            </div>
           ) : null}
-          <button
-            type="button"
-            className="btn btn--primary donate-pools-write__cta"
-            disabled={
-              !isConnected ||
-              !timeArena ||
-              submitting ||
-              parsedAmountWei == null ||
-              parsedAmountWei <= 0n
-            }
-            onClick={() => void donate()}
-            data-testid="arena-protocol-donate-pools-submit"
-          >
-            {submitting ? "Donating…" : "Donate to pools"}
-          </button>
-          {writeErr ? <p className="error-text">{writeErr}</p> : null}
-          {writeOk ? <p className="success-text">{writeOk}</p> : null}
         </div>
-      </ChainMismatchWriteBarrier>
+
+        <ChainMismatchWriteBarrier testId="arena-protocol-donate-pools-chain-write-gate">
+          <div className="donate-pools-write">
+            <label className="donate-pools-write__label" htmlFor="arena-protocol-donate-amount">
+              DOUB amount
+            </label>
+            <input
+              id="arena-protocol-donate-amount"
+              className="donate-pools-write__input"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={amountInput}
+              onChange={(e) => setAmountInput(e.target.value)}
+              disabled={!timeArena || submitting}
+              data-testid="arena-protocol-donate-pools-amount"
+            />
+            {isConnected && doubBalanceWei != null ? (
+              <p className="muted donate-pools-write__balance">
+                Balance: <AmountDisplay raw={String(doubBalanceWei)} decimals={18} /> DOUB
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn--primary donate-pools-write__cta"
+              disabled={
+                !isConnected ||
+                !timeArena ||
+                submitting ||
+                parsedAmountWei == null ||
+                parsedAmountWei <= 0n
+              }
+              onClick={() => void donate()}
+              data-testid="arena-protocol-donate-pools-submit"
+            >
+              {submitting ? "Donating..." : "Donate"}
+            </button>
+            {writeErr ? <p className="error-text">{writeErr}</p> : null}
+            {writeOk ? <p className="success-text">{writeOk}</p> : null}
+          </div>
+        </ChainMismatchWriteBarrier>
+      </div>
 
       <div className="donate-pools-recent">
         <h3 className="donate-pools-recent__title">Recent donations</h3>
