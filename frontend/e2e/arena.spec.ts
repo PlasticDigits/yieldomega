@@ -23,18 +23,20 @@ async function expectNoHorizontalViewportOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("arena simple view shows the first-run path (timer + buy CHARM)", async ({ page }) => {
+test("arena command console shows the first-run path (Last Buy + buy CHARM)", async ({ page }) => {
   await ensurePostLaunch(page);
   await expect(page.locator("main.app-main")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Time Arena views" })).toBeVisible();
+  await expect(page.getByTestId("arena-command-console")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Time left|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /Last Buy|Arena Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(
     page
-      .getByRole("heading", { name: /(Buy CHARM|Redeem CHARM|Coming soon)/, level: 2 })
+      .getByRole("heading", { name: /(Buy CHARM|Coming soon)/, level: 2 })
       .or(page.getByRole("group", { name: "Show live price in" })),
   ).toBeVisible();
+  await expect(page.locator(".arena-final-concept")).toHaveCount(0);
 });
 
 test("arena simple view shows compact podiums without dense Audit feed sections", async ({ page }) => {
@@ -46,6 +48,12 @@ test("arena simple view shows compact podiums without dense Audit feed sections"
 
   await page.getByRole("navigation", { name: "Time Arena views" }).getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
+  await expect(page.getByRole("heading", { name: "Protocol view", level: 1 })).toBeVisible();
+  if (await page.getByText(/VITE_TIME_ARENA_ADDRESS is not configured/).isVisible()) {
+    await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
+    await expect(page.getByTestId("arena-protocol-donate-pools")).toHaveCount(0);
+    return;
+  }
   await expect(page.getByTestId("arena-live-buys-activity")).toBeVisible();
   await expect(page.getByTestId("arena-protocol-donate-pools")).toBeVisible();
 });
@@ -62,7 +70,7 @@ test("arena simple view stays usable on a 390×844 mobile viewport", async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await ensurePostLaunch(page);
   await expect(
-    page.getByRole("heading", { name: /Time left|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /Last Buy|Arena Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Time Arena views" })).toBeVisible();
   await expectNoHorizontalViewportOverflow(page);

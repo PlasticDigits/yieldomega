@@ -184,7 +184,7 @@ Invariants: **`INV-DEPLOY-289-NO-CALLER-LEAK`**, **`INV-DEPLOY-289-EXPORT-API`**
 
 When **`ANVIL_E2E=1`**, [`frontend/playwright.config.ts`](../../frontend/playwright.config.ts) sets **`workers: 1`** and **`fullyParallel: false`**. The default **CI** Playwright job (`npm run test:e2e` **without** `ANVIL_E2E`) is UI-only and may use **5** workers for speed.
 
-**Arena pay-mode E2E:** The buy panel on **`/arena`** uses **toggle buttons** for CL8Y / ETH / USDM, with stable hooks **`data-testid="arena-paywith-{cl8y,eth,usdm}"`**. Anvil wallet-write specs ([anvil-arena-03-wallet-writes.spec.ts](../../frontend/e2e/anvil-arena-03-wallet-writes.spec.ts)) use those test ids.
+**Arena pay-mode E2E:** The buy panel on **`/arena`** uses **toggle buttons** for DOUB (`data-testid="arena-paywith-cl8y"` for legacy hook stability), ETH, USDM, and CRED when Play CRED is configured. Stable hooks: **`data-testid="arena-paywith-{cl8y,eth,usdm,cred}"`**. Anvil wallet-write specs ([anvil-arena-03-wallet-writes.spec.ts](../../frontend/e2e/anvil-arena-03-wallet-writes.spec.ts), [anvil-arena-04-cred-buy.spec.ts](../../frontend/e2e/anvil-arena-04-cred-buy.spec.ts)) use those test ids.
 
 **Maps:** [invariants — Anvil E2E Playwright](invariants-and-business-logic.md#anvil-e2e-playwright-concurrency-and-pay-mode-selectors-issue-87) · play checklist: [`manual-qa-checklists.md#manual-qa-issue-87`](manual-qa-checklists.md#manual-qa-issue-87).
 

@@ -49,7 +49,8 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 | [`indexer-down-mascot.png`](./cutouts/indexer-down-mascot.png) | [`TimerHeroLiveBuys.tsx`](../../src/pages/arena/TimerHeroLiveBuys.tsx) | Soft illustration when recent buys cannot load from the indexer ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | [`sniper-shark-peek-scope.png`](./cutouts/sniper-shark-peek-scope.png) | _staged_ | Sparse issue #80 "predator in the pool" accent for the competitive buy surface; decorative (`alt=""`, `aria-hidden`) through `CutoutDecoration`. |
 | [`sniper-shark-coin-bandolier.png`](./cutouts/sniper-shark-coin-bandolier.png) | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) | Live-buy legend accent. |
-| [`sniper-shark-*.png`](./cutouts/) (remaining six files) | _staged_ | Sniper-shark mascots: ghillie prone, tactical kneel, cool suit + headset, diver harpoon, spotter, victory medal. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
+| [`sniper-shark-cool-suit-headset.png`](./cutouts/sniper-shark-cool-suit-headset.png) | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) | Low-opacity command-console operator accent for `/arena` (#291). |
+| [`sniper-shark-*.png`](./cutouts/) (remaining five files) | _staged_ | Sniper-shark mascots: ghillie prone, tactical kneel, diver harpoon, spotter, victory medal. [`sniper_shark_cutouts.py`](../../../scripts/replicate-art/sniper_shark_cutouts.py) |
 
 ### `scenes/`
 

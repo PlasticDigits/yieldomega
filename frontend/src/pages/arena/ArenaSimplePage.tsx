@@ -32,10 +32,12 @@ import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
 import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { formatUnits } from "viem";
 import { ARENA_CRED_WAD } from "@/lib/arenaCredBurn";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
 import { ArenaSubnav } from "@/pages/arena/ArenaSubnav";
+import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
 import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
 import { ArenaWarbowHeroPanel } from "@/pages/arena/ArenaWarbowHeroPanel";
@@ -392,6 +394,7 @@ export function ArenaSimplePage({
     () => payTokenOptionsForSimpleBuy({ isArenaV2: session.isArenaV2 }),
     [session.isArenaV2],
   );
+  const primarySpendAssetLabel = session.isArenaV2 ? "DOUB" : "CL8Y";
   const simpleProjectedEffectsLatchRef = useRef<SimpleProjectedEffectsLatch>(
     emptySimpleProjectedEffectsLatch(),
   );
@@ -401,14 +404,16 @@ export function ArenaSimplePage({
   const queryClient = useQueryClient();
 
   const timerSectionTitle =
-    session.phase === "saleStartPending" ? "Arena Opens In" : "Time left";
+    session.phase === "saleStartPending" ? "Arena Opens In" : "Last Buy";
 
   const heroSecondsRemaining =
     session.phase === "saleActive"
       ? session.saleCountdownSec
       : session.preStartCountdownSec;
 
-  const heroNarrative = phaseNarrative(session.phase);
+  const heroNarrative =
+    session.phase === "saleStartPending" ? phaseNarrative(session.phase) : undefined;
+  const charmRangeLabel = `${formatBuyCtaCharmAmountLabel(ARENA_CHARM_MIN_WAD)}-${formatBuyCtaCharmAmountLabel(ARENA_CHARM_MAX_WAD)} CHARM`;
 
   const warbowFlagPlantLine = useMemo(
     () =>
@@ -469,7 +474,7 @@ export function ArenaSimplePage({
 
   const spendAssetLabel =
     session.payWith === "cl8y"
-      ? "CL8Y"
+      ? primarySpendAssetLabel
       : session.payWith === "cred"
         ? "CRED"
         : session.payWith === "eth"
@@ -591,7 +596,7 @@ export function ArenaSimplePage({
 
   const paySpendSuffix =
     session.payWith === "cl8y"
-      ? "CL8Y"
+      ? primarySpendAssetLabel
       : session.payWith === "cred"
         ? "CRED"
         : session.payWith === "eth"
@@ -699,7 +704,7 @@ export function ArenaSimplePage({
           </span>
           <span className="muted">
             {" "}
-            (CL8Y&nbsp;
+            ({primarySpendAssetLabel}&nbsp;
             <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
             &nbsp;–&nbsp;
             <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>)
@@ -720,7 +725,7 @@ export function ArenaSimplePage({
         )}
       </strong>
       <span className="arena-simple__minmax-suffix">min</span>
-      <span className="muted"> (not enough CL8Y in wallet)</span>
+      <span className="muted"> (not enough {primarySpendAssetLabel} in wallet)</span>
     </span>
   ) : (
     <span className="arena-simple__minmax arena-simple__minmax--rate-card">Loading buy limits…</span>
@@ -732,13 +737,13 @@ export function ArenaSimplePage({
       data-testid="arena-simple-buy-preview-insufficient-cl8y"
     >
       <p className="arena-simple__buy-preview-blocked-lede">
-        Not enough CL8Y in your wallet to buy. The live minimum is{" "}
+        Not enough {primarySpendAssetLabel} in your wallet to buy. The live minimum is{" "}
         <strong>
           {formatBuyHubDerivedCompact(
             insufficientCl8yGate.minSpendWei,
             session.decimals,
           )}{" "}
-          CL8Y
+          {primarySpendAssetLabel}
         </strong>
         ; you have{" "}
         <strong>
@@ -746,7 +751,7 @@ export function ArenaSimplePage({
             insufficientCl8yGate.walletBalanceWei,
             session.decimals,
           )}{" "}
-          CL8Y
+          {primarySpendAssetLabel}
         </strong>
         .
       </p>
@@ -851,12 +856,12 @@ export function ArenaSimplePage({
   // (six significant figures, truncated toward zero, trailing zeros kept).
   const rateNowDisplay = useMemo(() => {
     if (session.pricePerCharmWad === undefined) {
-      return { text: "—" as const, unit: " CL8Y" as const, loading: false as const };
+      return { text: "—" as const, unit: ` ${primarySpendAssetLabel}` as const, loading: false as const };
     }
     if (session.payWith === "cl8y") {
       return {
         text: formatHeroRateFromWad(session.pricePerCharmWad),
-        unit: " CL8Y" as const,
+        unit: ` ${primarySpendAssetLabel}` as const,
         loading: false as const,
       };
     }
@@ -906,6 +911,7 @@ export function ArenaSimplePage({
     session.quotedPerCharmPayInWei,
     session.requiredCredBurnWei,
     session.charmWadSelected,
+    primarySpendAssetLabel,
   ]);
 
   const rateBoardPayOptions = payTokenOptions.map((o) => (
@@ -986,18 +992,56 @@ export function ArenaSimplePage({
     </div>
   );
 
+  const commandDecisionRow = (
+    <div className="arena-command-console__decision-row" aria-label="CHARM buy mechanics">
+      <div title="Live onchain TimeArena charmPriceWad, shown per 1 CHARM.">
+        <span>CHARM Price</span>
+        <strong>
+          {session.pricePerCharmWad !== undefined
+            ? `${formatHeroRateFromWad(session.pricePerCharmWad)} ${primarySpendAssetLabel}`
+            : `— ${primarySpendAssetLabel}`}
+        </strong>
+      </div>
+      <div title="Onchain buy bounds apply to DOUB and CRED buys.">
+        <span>Buy Range</span>
+        <strong>{charmRangeLabel}</strong>
+      </div>
+      <div title="DOUB buys add CRED to the active epoch pool; CRED burns do not fund the pool.">
+        <span>CRED Yield</span>
+        <strong>35 CRED pool</strong>
+      </div>
+    </div>
+  );
+
   const timerHeroFoot =
     session.phase === "saleStartPending"
       ? "Stay on this page — it switches to Live automatically."
       : undefined;
 
   return (
-    <div className="page arena-simple-page">
-      <ArenaCharmCredCard />
+    <div className="page arena-simple-page arena-command-console" data-testid="arena-command-console">
+      <div className="arena-command-console__ambient" aria-hidden="true" />
       <ArenaSubnav active="simple" />
 
-      {/* Arena hub — timer + primary buy action share the spotlight row above the fold. */}
-      <div className="arena-simple__hub">
+      <div className="arena-command-console__topbar">
+        <span>Yield Omega</span>
+        <strong>PvP Command Console</strong>
+        <span>{session.phase === "saleActive" ? "Live" : session.phase === "saleStartPending" ? "Arming" : "Sync"}</span>
+      </div>
+
+      <div className="arena-command-console__grid">
+        <section
+          className="arena-command-console__primary"
+          aria-labelledby="arena-command-console-primary-title"
+          data-testid="arena-command-console-primary"
+        >
+          <div className="arena-command-console__primary-head">
+            <span>Primary action</span>
+            <h1 id="arena-command-console-primary-title">Last Buy</h1>
+          </div>
+
+          {/* Timer + inline buy controls are the command console's primary decision path. */}
+          <div className="arena-simple__hub">
         <PageSection
           title={timerSectionTitle}
           spotlight
@@ -1048,8 +1092,6 @@ export function ArenaSimplePage({
           )}
         </PageSection>
 
-        <ArenaWarbowHeroPanel phase={session.phase} />
-
         <PageSection
           title={session.phase === "saleActive" ? undefined : "Buy CHARM"}
           spotlight
@@ -1067,7 +1109,7 @@ export function ArenaSimplePage({
           {!session.walletConnected && session.phase !== "loading" && (
             <div className="arena-simple__connect">
               <p className="arena-simple__connect-pitch">
-                Connect your Wallet to earn CHARM, reserve your DOUB, and win prizes!
+                Connect wallet to buy CHARM.
               </p>
               <WalletConnectButton />
             </div>
@@ -1104,7 +1146,7 @@ export function ArenaSimplePage({
                       <button
                         type="button"
                         className="arena-simple__balance-refresh"
-                        aria-label="Refresh CL8Y balance"
+                        aria-label={`Refresh ${primarySpendAssetLabel} balance`}
                         disabled={session.walletBalanceRefreshing}
                         onClick={() => session.refetchWalletBalance()}
                       >
@@ -1254,6 +1296,25 @@ export function ArenaSimplePage({
 
           </ChainMismatchWriteBarrier>
         </PageSection>
+          </div>
+          {commandDecisionRow}
+        </section>
+
+        <aside className="arena-command-console__side" aria-label="Secondary Arena operations">
+          <img
+            className="arena-command-console__character"
+            src="/art/cutouts/sniper-shark-cool-suit-headset.png"
+            width={180}
+            height={180}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+          />
+          <ArenaCharmCredCard />
+          <ArenaTimerChips />
+          <ArenaWarbowHeroPanel phase={session.phase} />
+        </aside>
       </div>
 
       <ArenaSimplePodiumSection

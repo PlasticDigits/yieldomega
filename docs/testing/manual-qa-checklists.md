@@ -18,6 +18,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64) | [Referrals](#manual-qa-issue-64) |
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network writes](#manual-qa-issue-95) |
 | [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194) | [Arena buy wrong-chain visual](#manual-qa-issue-194-arena-buy-chain-visual) |
+| [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291) | [Arena command console](#manual-qa-issue-291) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [Buy session drift](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting](#manual-qa-issue-92) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
@@ -92,6 +93,26 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 | WarBow | Steal/guard txs spend DOUB (no CL8Y burn path). |
 
 **Automated:** `TimeArena.t.sol`, `ArenaPrizeRouting.t.sol`, `e2e/anvil-arena-*.spec.ts`, `indexer` `integration_stage2`.
+
+<a id="manual-qa-issue-291"></a>
+
+## Arena command console (GitLab #291)
+
+**Scope:** Frontend `/arena` production surface. Product specs: [`time-arena.md`](../product/time-arena.md), [`arena-v2.md`](../product/arena-v2.md). Frontend contract: [`arena-views.md#arena-command-console-gitlab-291`](../frontend/arena-views.md#arena-command-console-gitlab-291). Rabby setup: [`rabby-cloud-agent-qa.md`](rabby-cloud-agent-qa.md), [`.cursor/skills/rabby-cloud-verification`](../../.cursor/skills/rabby-cloud-verification/SKILL.md).
+
+### Checklist
+
+| Step | Pass criteria |
+|------|---------------|
+| Open **`/arena`** | Exactly one `arena-command-console` surface; no `.arena-final-concept` static mock stacked above the production page. |
+| Last Buy priority | **Last Buy** is the largest/primary countdown in the primary column; secondary timer chips sit in the operations rail. |
+| Inline buy | CHARM amount text field, slider, min/max/advanced controls, pay picker, and **Buy CHARM** CTA are visible without opening a modal. |
+| Decision row | Visible compact tiles show live **CHARM Price** in DOUB, **0.99–10 CHARM** range, and DOUB-buy **CRED yield**. |
+| Characters/branding | User-facing copy says **Yield Omega**; bunny/sniper-shark accents are recognizable but low-opacity cyberminimalist treatments. |
+| Wallet/Rabby | With Rabby on the configured chain, connect wallet and confirm the buy controls remain available; wrong-chain overlay still blocks writes when applicable. |
+| Responsive | 390×844 mobile viewport has no horizontal overflow; primary → operations → podiums order remains usable. |
+
+**Automated:** `cd frontend && npm run typecheck && npm run lint && npm test`; targeted browser smoke: `cd frontend && npm run test:e2e -- e2e/arena.spec.ts` (no Anvil) or `bash scripts/e2e-anvil.sh` when chain writes are in scope.
 
 <a id="manual-qa-issue-87"></a>
 

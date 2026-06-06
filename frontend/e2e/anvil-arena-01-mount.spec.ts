@@ -8,7 +8,7 @@ test.describe("Anvil Arena mount", () => {
     "Set ANVIL_E2E=1 and build with VITE_* from scripts/e2e-anvil.sh.",
   );
 
-  test("arena page mounts charm cred card and timer chips", async ({ page }) => {
+  test("arena page mounts one command-console surface", async ({ page }) => {
     await page.goto("/arena");
     await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
@@ -16,9 +16,13 @@ test.describe("Anvil Arena mount", () => {
     await expect(page.getByTestId("time-arena-page-mounted")).toBeAttached({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
-    await expect(page.locator(".arena-simple-page")).toBeVisible({
+    await expect(page.getByTestId("arena-command-console")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
+    await expect(page.getByTestId("arena-command-console-primary")).toBeVisible({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    await expect(page.locator(".arena-final-concept")).toHaveCount(0);
     await expect(page.getByTestId("arena-charm-cred-card")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
