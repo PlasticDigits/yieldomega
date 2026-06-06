@@ -23,6 +23,8 @@ cd "${ROOT}"
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 # shellcheck source=scripts/lib/rabby_cloud_agent.sh
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
 YIELDOMEGA_GITLAB_HOST="${YIELDOMEGA_GITLAB_HOST:-gitlab.com}"
 YIELDOMEGA_GITLAB_PROJECT="${YIELDOMEGA_GITLAB_PROJECT:-PlasticDigits/yieldomega}"
@@ -93,7 +95,7 @@ ensure_rust() {
 }
 
 ensure_foundry() {
-  export PATH="${HOME}/.foundry/bin:${PATH}"
+  yieldomega_prepend_cloud_toolchain_path
   if command -v forge >/dev/null 2>&1 && command -v anvil >/dev/null 2>&1 && command -v cast >/dev/null 2>&1; then
     log "Foundry $(forge --version | head -1)"
     return 0
@@ -102,12 +104,14 @@ ensure_foundry() {
   if [[ ! -x "${HOME}/.foundry/bin/foundryup" ]]; then
     curl -L https://foundry.paradigm.xyz | bash
   fi
-  export PATH="${HOME}/.foundry/bin:${PATH}"
+  yieldomega_prepend_cloud_toolchain_path
   foundryup
+  yieldomega_prepend_cloud_toolchain_path
   command -v forge >/dev/null 2>&1 || {
     echo "bootstrap-cloud-vm-toolchain: forge not on PATH after foundryup." >&2
     return 1
   }
+  yieldomega_persist_cloud_toolchain_path
   log "Foundry $(forge --version | head -1)"
 }
 

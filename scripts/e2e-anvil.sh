@@ -4,6 +4,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
+yieldomega_prepend_cloud_toolchain_path
 PORT="${ANVIL_PORT:-8545}"
 RPC="http://127.0.0.1:${PORT}"
 DEPLOY_LOG="$(mktemp)"

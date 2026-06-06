@@ -13,8 +13,10 @@ cd "${ROOT}"
 source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 # shellcheck source=scripts/lib/rabby_cloud_agent.sh
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/cloud_agent_path.sh
+source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
-export PATH="${HOME}/.foundry/bin:/usr/local/cargo/bin:${PATH}"
+yieldomega_prepend_cloud_toolchain_path
 
 fail=0
 ok() { echo "PASS  $*"; }
