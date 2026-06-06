@@ -16,20 +16,19 @@ cd "${ROOT}"
 
 # shellcheck source=scripts/lib/rabby_cloud_agent.sh
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
+# shellcheck source=scripts/lib/playwright_cloud_agent.sh
+source "${ROOT}/scripts/lib/playwright_cloud_agent.sh"
 
 if [[ ! -d frontend/node_modules ]]; then
   echo "bootstrap-cloud-agent.sh: run bash scripts/bootstrap-dev.sh first." >&2
   exit 1
 fi
 
-echo "==> Playwright Chromium (frontend/)"
-(
-  cd frontend
-  npx playwright install chromium
-  if command -v apt-get >/dev/null 2>&1; then
-    npx playwright install-deps chromium 2>/dev/null || true
-  fi
-)
+echo "==> Playwright Chromium + browser deps (frontend/)"
+if ! yieldomega_bootstrap_playwright_chromium; then
+  echo "bootstrap-cloud-agent.sh: Playwright Chromium bootstrap failed." >&2
+  exit 1
+fi
 
 echo "==> Rabby extension"
 if yieldomega_rabby_installed; then
@@ -46,7 +45,7 @@ fi
 
 if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
   echo "==> Rabby dev wallets (KEY_EVM_1..3)"
-  if command -v xvfb-run >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
+  if command -v xvfb-run >/dev/null 2>&1; then
     xvfb-run -a bash -c "cd '${ROOT}/frontend' && node '${ROOT}/scripts/setup-rabby-dev-wallets.mjs'" || {
       echo "Warning: automated Rabby import failed; import keys manually (see AGENTS.md)." >&2
     }
@@ -59,6 +58,12 @@ if [[ -f "${ROOT}/scripts/setup-rabby-dev-wallets.mjs" ]]; then
     echo "    bash scripts/launch-chrome-with-rabby.sh"
     echo "    Import KEY_EVM_1, KEY_EVM_2, KEY_EVM_3 as private keys (Anvil dev only)."
   fi
+fi
+
+echo "==> Rabby extension injection (headed Playwright Chromium)"
+if ! bash "${ROOT}/scripts/verify-rabby-playwright-injection.sh"; then
+  echo "bootstrap-cloud-agent.sh: Rabby injection smoke failed." >&2
+  exit 1
 fi
 
 # shellcheck source=scripts/lib/evm_dev_keys.sh

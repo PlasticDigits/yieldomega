@@ -15,6 +15,8 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
 # shellcheck source=scripts/lib/glab_cloud_agent.sh
 source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
+# shellcheck source=scripts/lib/playwright_cloud_agent.sh
+source "${ROOT}/scripts/lib/playwright_cloud_agent.sh"
 # shellcheck source=scripts/lib/cloud_agent_path.sh
 source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 
@@ -90,13 +92,19 @@ else
 fi
 
 if [[ -d frontend/node_modules/@playwright/test ]] || [[ -d frontend/node_modules/playwright ]]; then
-  if [[ -d "${HOME}/.cache/ms-playwright" ]] && ls "${HOME}/.cache/ms-playwright"/chromium-* >/dev/null 2>&1; then
-    ok "Playwright Chromium cache"
+  if yieldomega_playwright_chromium_bin >/dev/null; then
+    ok "Playwright Chromium cache ($(yieldomega_playwright_chromium_bin))"
   else
-    bad "Playwright Chromium not installed (cd frontend && npx playwright install chromium)"
+    bad "Playwright Chromium not installed (bash scripts/bootstrap-cloud-agent.sh)"
   fi
 else
   bad "frontend npm deps missing (bash scripts/bootstrap-dev.sh)"
+fi
+
+if bash "${ROOT}/scripts/verify-rabby-playwright-injection.sh" >/dev/null 2>&1; then
+  ok "Rabby window.ethereum injection (headed Playwright Chromium)"
+else
+  bad "Rabby injection smoke failed (bash scripts/verify-rabby-playwright-injection.sh)"
 fi
 
 [[ -f "${YIELDOMEGA_RABBY_MARKER}" ]] \
