@@ -150,7 +150,7 @@ export async function connectRabbyToDapp(page, context) {
   page = refreshAppPage(page, context) ?? page;
   await waitForEthereumProvider(page);
 
-  const pitch = page.getByText(/Connect your Wallet/i);
+  const pitch = page.getByText(/Connect (your )?wallet/i);
   if (!(await pitch.isVisible().catch(() => false))) {
     return;
   }
