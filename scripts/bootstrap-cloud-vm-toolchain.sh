@@ -6,7 +6,7 @@
 #   - apt: libssl-dev, pkg-config, xvfb, Docker (fuse-overlayfs or vfs fallback)
 #   - Foundry (foundryup → ~/.foundry/bin)
 #   - Rust stable ≥ 1.85 (rustup)
-#   - glab CLI + GITLAB_TOKEN auth + remote.origin_url for PlasticDigits/yieldomega
+#   - glab CLI + GITLAB_TOKEN auth + remote_alias for PlasticDigits/yieldomega
 #   - dockerd when systemd cannot start it; socket permissions for the dev user
 #
 # Does NOT run npm ci (see bootstrap-dev.sh) or Playwright/Rabby (bootstrap-cloud-agent.sh).
@@ -23,8 +23,9 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 
 YIELDOMEGA_GITLAB_HOST="${YIELDOMEGA_GITLAB_HOST:-gitlab.com}"
 YIELDOMEGA_GITLAB_PROJECT="${YIELDOMEGA_GITLAB_PROJECT:-PlasticDigits/yieldomega}"
-# glab `remote.origin_url` must be OWNER/REPO — not a https URL and not *.git (404 on mr create).
+# glab ≥1.100 uses `remote_alias` (git remote name) and optional GITLAB_REPO — not remote.origin_url.
 YIELDOMEGA_GITLAB_GLAB_REPO="${YIELDOMEGA_GITLAB_GLAB_REPO:-${YIELDOMEGA_GITLAB_PROJECT}}"
+YIELDOMEGA_GITLAB_REMOTE="${YIELDOMEGA_GITLAB_REMOTE:-origin}"
 MIN_RUST_VERSION="1.85.0"
 DOCKER_DAEMON_JSON="/etc/docker/daemon.json"
 DOCKERD_LOG="/tmp/yieldomega-dockerd.log"
@@ -51,7 +52,7 @@ apt_packages_present() {
 
 ensure_apt_packages() {
   local pkgs=()
-  for pkg in libssl-dev pkg-config xvfb curl jq unzip; do
+  for pkg in libssl-dev pkg-config xvfb curl jq unzip iproute2; do
     apt_packages_present "${pkg}" || pkgs+=("${pkg}")
   done
   if [[ ${#pkgs[@]} -gt 0 ]] && need_sudo; then
@@ -256,11 +257,22 @@ configure_glab() {
     return 0
   fi
   local token="${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
-  log "glab config: remote.origin_url=${YIELDOMEGA_GITLAB_GLAB_REPO}"
-  glab config set --global remote.origin_url "${YIELDOMEGA_GITLAB_GLAB_REPO}" 2>/dev/null \
-    || glab config set remote.origin_url "${YIELDOMEGA_GITLAB_GLAB_REPO}" 2>/dev/null \
+  log "glab config: remote_alias=${YIELDOMEGA_GITLAB_REMOTE} (repo ${YIELDOMEGA_GITLAB_GLAB_REPO})"
+  glab config set --global remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
+    || glab config set remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
     || true
   glab config set --global host "${YIELDOMEGA_GITLAB_HOST}" 2>/dev/null || true
+  # Cloud clones use HTTPS + GITLAB_TOKEN; default ssh git_protocol breaks glab repo/MR resolution.
+  glab config set --global git_protocol https 2>/dev/null || true
+  if git -C "${ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    glab config set remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null || true
+    if ! git -C "${ROOT}" remote get-url "${YIELDOMEGA_GITLAB_REMOTE}" >/dev/null 2>&1; then
+      if [[ -n "${token}" ]]; then
+        glab repo remote add "${YIELDOMEGA_GITLAB_GLAB_REPO}" \
+          --remote "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null || true
+      fi
+    fi
+  fi
   if [[ -n "${token}" ]]; then
     export GITLAB_TOKEN="${token}"
     export GLAB_TOKEN="${token}"
@@ -274,8 +286,15 @@ configure_glab() {
     else
       echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN did not pass GET /projects/${YIELDOMEGA_GITLAB_PROJECT}." >&2
     fi
+    if git -C "${ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      if glab mr list --per-page 1 >/dev/null 2>&1; then
+        log "glab repo context OK (git remote ${YIELDOMEGA_GITLAB_REMOTE})"
+      else
+        echo "bootstrap-cloud-vm-toolchain: glab mr list failed — check git remote and GITLAB_TOKEN." >&2
+      fi
+    fi
   else
-    echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN unset — glab remote configured; set token for API/MR commands." >&2
+    echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN unset — glab remote_alias configured; set token for API/MR commands." >&2
   fi
 }
 

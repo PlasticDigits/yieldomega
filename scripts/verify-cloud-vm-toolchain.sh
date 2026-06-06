@@ -52,19 +52,28 @@ fi
 
 if command -v glab >/dev/null 2>&1; then
   ok "glab $(glab version 2>/dev/null | head -1 || true)"
-  origin="$(glab config get remote.origin_url 2>/dev/null || true)"
-  [[ "${origin}" == *"PlasticDigits/yieldomega"* ]] && ok "glab remote.origin_url" || bad "glab remote.origin_url (${origin:-unset})"
+  remote_alias="$(glab config get remote_alias 2>/dev/null || true)"
+  [[ -n "${remote_alias}" ]] && ok "glab remote_alias (${remote_alias})" \
+    || bad "glab remote_alias unset (run bootstrap-cloud-vm-toolchain.sh)"
   token="${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
   if [[ -n "${token}" ]]; then
     curl -fsS -H "PRIVATE-TOKEN: ${token}" \
       "https://gitlab.com/api/v4/projects/PlasticDigits%2Fyieldomega" >/dev/null \
       && ok "GITLAB_TOKEN API" || bad "GITLAB_TOKEN API"
+    if glab mr list --per-page 1 >/dev/null 2>&1 \
+      || GITLAB_REPO=PlasticDigits/yieldomega glab mr list --per-page 1 >/dev/null 2>&1; then
+      ok "glab mr list (repo context)"
+    else
+      bad "glab mr list failed (check remote_alias, git_protocol https, GITLAB_TOKEN)"
+    fi
   else
     bad "GITLAB_TOKEN unset"
   fi
 else
   bad "glab missing"
 fi
+
+command -v ss >/dev/null 2>&1 && ok "ss (iproute2)" || bad "ss missing (iproute2 — bootstrap-cloud-vm-toolchain.sh)"
 
 command -v xvfb-run >/dev/null 2>&1 \
   && xvfb-run -a true \

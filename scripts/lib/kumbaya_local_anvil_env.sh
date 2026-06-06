@@ -46,13 +46,15 @@ yieldomega_registry_merge_timecurve_buy_router() {
 # Idempotent: set or replace KEY=value with literal semantics (GitLab #154).
 # Implementation: scripts/lib/kumbaya_env_set_line.py — treats value bytes verbatim (no sed &/# metacharacters).
 _yieldomega_env_kumbaya_marker="# GitLab #84 — Kumbaya Anvil fixtures (merged by Yieldomega scripts)"
+_yieldomega_env_anvil_stack_marker="# Managed by scripts/start-local-anvil-stack.sh — Anvil stack VITE_*"
 _yieldomega_env_set_line_py="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/kumbaya_env_set_line.py"
 _yieldomega_env_set_line() {
   local file="$1" key="$2" val="$3"
+  local marker="${4:-${_yieldomega_env_kumbaya_marker}}"
   if [[ ! -f "${file}" ]]; then
     return 0
   fi
-  python3 "${_yieldomega_env_set_line_py}" "${file}" "${key}" "${val}" "${_yieldomega_env_kumbaya_marker}"
+  python3 "${_yieldomega_env_set_line_py}" "${file}" "${key}" "${val}" "${marker}"
 }
 
 # Full parity with scripts/e2e-anvil.sh after DeployKumbayaAnvilFixtures (WETH, USDM, swap router, quoter, buy router).
@@ -70,6 +72,30 @@ yieldomega_frontend_merge_kumbaya_vite_full() {
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_QUOTER" "${swap_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER" "${buy_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER" "${buy_router}"
+}
+
+# Merge stack-managed VITE_* into frontend/.env.local without clobbering unrelated keys
+# (e.g. VITE_E2E_MOCK_WALLET, VITE_WALLETCONNECT_PROJECT_ID).
+yieldomega_frontend_merge_anvil_stack_env() {
+  local env_local="$1"
+  local rpc_url="$2"
+  local ta="$3"
+  local pv="$4"
+  local av="$5"
+  local rr="$6"
+  local indexer_port="$7"
+  if [[ ! -f "${env_local}" ]]; then
+    cat >"${env_local}" <<EOF
+# Local Anvil + indexer — stack-managed VITE_* keys are merged below.
+EOF
+  fi
+  _yieldomega_env_set_line "${env_local}" "VITE_CHAIN_ID" "31337" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_RPC_URL" "${rpc_url}" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_TIME_ARENA_ADDRESS" "${ta}" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_PODIUM_VAULTS_ADDRESS" "${pv}" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_ADMIN_SELL_VAULT_ADDRESS" "${av}" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_REFERRAL_REGISTRY_ADDRESS" "${rr}" "${_yieldomega_env_anvil_stack_marker}"
+  _yieldomega_env_set_line "${env_local}" "VITE_INDEXER_URL" "http://127.0.0.1:${indexer_port}" "${_yieldomega_env_anvil_stack_marker}"
 }
 
 # When only the buy-router address is known (onchain read), align optional env check with kumbayaRoutes.ts.
