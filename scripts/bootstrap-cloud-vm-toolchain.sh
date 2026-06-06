@@ -97,6 +97,7 @@ ensure_rust() {
 ensure_foundry() {
   yieldomega_prepend_cloud_toolchain_path
   if command -v forge >/dev/null 2>&1 && command -v anvil >/dev/null 2>&1 && command -v cast >/dev/null 2>&1; then
+    yieldomega_persist_cloud_toolchain_path
     log "Foundry $(forge --version | head -1)"
     return 0
   fi
