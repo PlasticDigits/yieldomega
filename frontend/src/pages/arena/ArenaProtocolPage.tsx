@@ -126,7 +126,7 @@ export function ArenaProtocolPage() {
   }, [totalRaiseSerialized, cl8yUsd.usdPerCl8y]);
 
   const cl8ySpendBounds = useMemo(() => {
-    const priceRow = get(CORE.charmPriceWad);
+    const priceRow = reading[CORE.charmPriceWad];
     if (priceRow?.status !== "success") {
       return null;
     }
