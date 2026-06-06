@@ -28,7 +28,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` or RPC `podium` + `podiumEpoch` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
-| AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads only — no separate “Arena advanced” route |
+| AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |
 
 Global shell/design direction: [frontend design §290](./design.md#cyberminimalist-glass-app-shell-gitlab-290). Route-level copy stays compact: visible choices are **BUY** and **AUDIT**; mechanics live in tooltips, state rows, and action-adjacent feedback rather than default explanatory paragraphs.
 
@@ -63,6 +63,20 @@ The live production components must stay mechanics-first, not reskins of retired
 - [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) groups **Steal**, **Guard**, **Revenge**, and **Flag** as one PvP action cluster.
 
 Invariant: **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-production-components-gitlab-292). Manual QA: [manual checklist §292](../testing/manual-qa-checklists.md#manual-qa-issue-292).
+
+<a id="arena-audit-protocol-surfaces-gitlab-293"></a>
+
+### AUDIT protocol surfaces (GitLab [#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293))
+
+`/arena/protocol` is the production **AUDIT** console for operators and third-party verifiers:
+
+- Primary decisions are **VERIFY** state, **TRACE** vault routing, and **WATCH** indexed activity.
+- Visible copy stays compact; mechanics live in `title` / `aria-label` tooltips, state cards, and action-adjacent status.
+- Copy must reflect Arena v2: always-live when unpaused, flat DOUB CHARM buys, 40/30/30 buy routing, 100%-to-prizes donate top-up, and WarBow action activity. Do not reintroduce TimeCurve sale-end, redemption, or legacy fee-sink framing.
+- Participant rows use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) to open [`WalletProfileModal`](../../frontend/src/components/WalletProfileModal.tsx). Contract/vault rows use the same blockie + last-six address treatment and keep explorer links.
+- Donate pools remains a sponsorship action with the required no-benefit disclosure and `ChainMismatchWriteBarrier`; the write path still calls `topUpPodiumPools`.
+
+Invariant: **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-audit-surfaces-gitlab-293). Manual QA: [manual checklist §293](../testing/manual-qa-checklists.md#manual-qa-issue-293). Product rules: [Arena v2](../product/arena-v2.md#manual-podium-pool-top-up-gitlab-261) · play guidance: [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md#donate-to-pools-optional-sponsorship).
 
 <a id="charm-cred-card-gitlab-257"></a>
 

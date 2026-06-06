@@ -218,7 +218,7 @@ export function AgentFooterCard() {
         </div>
         <div className="data-panel data-panel--footer">
           <h3 className="h-footer">
-            {addresses.timeArena ? "Arena prize vaults (read-only)" : "Canonical fee sinks (read-only)"}
+            {addresses.timeArena ? "Arena prize routing (read-only)" : "Arena routing not configured"}
           </h3>
           <FeeTransparency />
         </div>

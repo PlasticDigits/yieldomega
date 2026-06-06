@@ -706,7 +706,7 @@ export function ArenaSimpleAgentCard() {
           ) : null}
         </div>
         <div className="data-panel data-panel--footer">
-          <h3 className="h-footer">Canonical fee sinks (read-only)</h3>
+          <h3 className="h-footer">Arena prize routing (read-only)</h3>
           <FeeTransparency />
         </div>
       </div>
