@@ -63,6 +63,17 @@ describe("header layout CSS (GitLab #171)", () => {
     expect(active).toContain("background: transparent;");
   });
 
+  it("styles the Arena BUY/AUDIT subnav tabs as glass controls", () => {
+    expect(css).toMatch(/\.arena-subnav__tabs,[\s\S]*?border: 1px solid var\(--yo-line\);/);
+    expect(css).toMatch(/\.arena-subnav__tab,[\s\S]*?border: 1px solid transparent;/);
+    expect(css).toMatch(/\.arena-subnav__tab--active,[\s\S]*?box-shadow: inset 0 -2px 0 var\(--yo-cyan\);/);
+  });
+
+  it("keeps Referrals route panels inside the shared thin-border glass system", () => {
+    expect(cssBlock(css, ".referrals-quest-strip")).toContain("border: 1px solid var(--yo-line);");
+    expect(cssBlock(css, ".referrals-panel.data-panel")).toContain("border-width: 1px;");
+  });
+
   it("shows dense header nav + network text labels only from tablet/desktop (header on top)", () => {
     expect(css).toContain(".app-header__nav-label,");
     expect(css).toContain(".app-header__network-label");
