@@ -54,6 +54,9 @@ describe("ArenaProtocolDonatePoolsSection (GitLab #262)", () => {
       createElement(ArenaProtocolDonatePoolsSection, { isOffline: false }),
     );
     expect(html).toContain(DONATE_DISCLOSURE);
+    expect(html).toContain("donate-pools-console");
+    expect(html).toContain("100% to active + seed prize vaults.");
+    expect(html).toContain(">Donate</button>");
     expect(html).toContain("empty-data-placeholder");
     expect(html).toContain("Donation history is unavailable right now.");
     expect(html).not.toContain('data-testid="arena-protocol-donate-pools-recent"');

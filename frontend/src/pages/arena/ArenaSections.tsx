@@ -662,9 +662,6 @@ export function RawDataAccordion(props: {
   /** Drives the raw **seconds** row label ([issue #115](https://gitlab.com/PlasticDigits/yieldomega/-/issues/115)). */
   countdownSecondsContext?: "untilOpen" | "untilRoundDeadline" | "generic";
   totalRaised: SerializableContractRead | undefined;
-  ended: SerializableContractRead | undefined;
-  maxBuyAmount: string | undefined;
-  prizesDistributedResult: SerializableContractRead | undefined;
   isConnected: boolean;
   charmWeightResult: SerializableContractRead | undefined;
   buyCountResult: SerializableContractRead | undefined;
@@ -690,9 +687,6 @@ export function RawDataAccordion(props: {
     secondsRemaining,
     countdownSecondsContext = "generic",
     totalRaised,
-    ended,
-    maxBuyAmount,
-    prizesDistributedResult,
     isConnected,
     charmWeightResult,
     buyCountResult,
@@ -716,10 +710,9 @@ export function RawDataAccordion(props: {
       <summary>
         <div className="section-heading__copy">
           <PageBadge label="Protocol detail" tone="info" />
-          <h2>Raw contract and operator context</h2>
+          <h2>Raw contract context</h2>
           <div className="section-heading__lede">
-            Player-facing buy, timer, prizes, and PvP surfaces now come first. Open this for raw onchain mirrors,
-            immutable parameters, and DOUB buy routing.
+            Open for getter mirrors, wallet stats, and DOUB routing bps.
           </div>
         </div>
       </summary>
@@ -729,7 +722,7 @@ export function RawDataAccordion(props: {
             <h3>Onchain snapshot</h3>
             {coreTcData && (
               <dl className="kv">
-                <dt>{humanizeKvLabel("saleStart")}</dt>
+                <dt>Arena start</dt>
                 <dd>
                   {saleStart?.status === "success" && saleStart.result !== undefined ? (
                     <UnixTimestampDisplay raw={saleStart.result} />
@@ -749,7 +742,7 @@ export function RawDataAccordion(props: {
                   {countdownSecondsContext === "untilOpen"
                     ? "Seconds until Time Arena opens (hero clock)"
                     : countdownSecondsContext === "untilRoundDeadline"
-                      ? "Seconds until round deadline (hero clock)"
+                      ? "Seconds until Last Buy deadline"
                       : "seconds remaining"}
                 </dt>
                 <dd>
@@ -764,16 +757,6 @@ export function RawDataAccordion(props: {
                   ) : (
                     "—"
                   )}
-                </dd>
-                <dt>{humanizeKvLabel("ended")}</dt>
-                <dd>{ended?.status === "success" && ended.result !== undefined ? ended.result : "—"}</dd>
-                <dt>max buy</dt>
-                <dd>{maxBuyAmount !== undefined ? <AmountDisplay raw={maxBuyAmount} decimals={decimals} /> : "—"}</dd>
-                <dt>{humanizeKvLabel("prizesDistributed")}</dt>
-                <dd>
-                  {prizesDistributedResult?.status === "success" && prizesDistributedResult.result !== undefined
-                    ? prizesDistributedResult.result
-                    : "—"}
                 </dd>
               </dl>
             )}
@@ -857,7 +840,7 @@ export function RawDataAccordion(props: {
             )}
           </div>
           <div className="podium-block">
-            <h3>Immutable sale parameters</h3>
+            <h3>Last Buy timer parameters</h3>
             {coreTcData && (
               <dl className="kv">
                 <dt>{humanizeKvLabel("timerExtensionSec")}</dt>

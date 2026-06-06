@@ -155,6 +155,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-290-CYBER-GLASS-SHELL`** | Global chrome uses cyberminimalist glass tokens (`--yo-*`), dark RainbowKit wallet theme, compact BUY/AUDIT route decisions, and no visible shell copy that implies retired TimeCurve/PvE/sale-end mechanics ([#290](https://gitlab.com/PlasticDigits/yieldomega/-/issues/290)) | `headerLayoutCss.test.ts`, `AppProviders.test.ts`, `ArenaSubnav.test.tsx`, `surfaceContent.test.ts` · [design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) |
 | **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** | `/arena` does **not** mount the static concept mock above the live stack; production surface uses `arena-command-console`, Last Buy primary, inline CHARM buy, DOUB price / 0.99–10 CHARM range / CRED yield decision row, secondary timers + WarBow operations rail, and recognizable cyberminimalist character treatment ([#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)) | `arenaCommandConsoleStatic.test.ts`, `e2e/anvil-arena-01-mount.spec.ts`, `e2e/arena.spec.ts` · [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291) |
 | **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** | Production Arena components present current mechanics: DOUB podium prizes + USD equivalent, current epoch per podium, blockie + last-six address labels, activity feed from **`GET /v1/arena/activity`** (buy/steal/guard/revenge deltas), epoch CHARM/CRED yield card, and grouped WarBow Steal/Guard/Revenge/Flag actions ([#292](https://gitlab.com/PlasticDigits/yieldomega/-/issues/292)) | `ArenaSimplePodiumSection.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `LiveBuyRow.test.tsx`, `indexerApi.test.ts`, `indexer/tests/integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after` · [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) · [manual QA §292](manual-qa-checklists.md#manual-qa-issue-292) |
+| **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** | `/arena/protocol` renders a compact **AUDIT** console with state/routing/activity priorities, current Arena v2 copy (no legacy TimeCurve sale/redemption/fee-sink framing), donate-pools disclosure + chain gate, wallet-profile participant actions, and blockie + explorer contract/vault addresses ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)) | `FeeTransparency.test.tsx`, `ArenaProtocolDonatePoolsSection.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `e2e/arena.spec.ts` · [arena-views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) · [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
 
 <a id="frontend-cyberminimalist-glass-shell-gitlab-290"></a>
 
@@ -187,6 +188,16 @@ Follow-up to the command-console layout: real production components must expose 
 | ID | Property | Evidence |
 |----|----------|----------|
 | **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test`; `cd indexer && cargo test postgres_stage2_persist_all_events_and_rollback_after` with `YIELDOMEGA_PG_TEST_URL`; visual/Rabby pass per [manual QA §292](manual-qa-checklists.md#manual-qa-issue-292) |
+
+<a id="frontend-arena-audit-surfaces-gitlab-293"></a>
+
+### Frontend Arena AUDIT surfaces (GitLab [#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293))
+
+Follow-up to the production component pass: the **`/arena/protocol`** route must read as the approved AUDIT console, not a reskinned legacy protocol page.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test`; visual/Rabby pass per [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 

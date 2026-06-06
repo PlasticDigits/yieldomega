@@ -17,7 +17,7 @@
   - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums` or RPC).
   - **CHARM + Play CRED** — [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) (epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`**).
   - **WarBow PvP** — [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (steal / guard / revenge with DOUB cost pills).
-  - **`/arena/protocol`** — read-only operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, donate-pools). No write surface.
+  - **`/arena/protocol`** — operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, gated donate-pools sponsorship action).
   - See [`docs/frontend/arena-views.md`](./arena-views.md) for the layout contract and indexer/RPC invariants.
 - **Rabbit Treasury (retired Arena v2)** — historical only; do not route new user flows through Rabbit Treasury / Burrow.
 - **Collection (retired [#241](https://gitlab.com/PlasticDigits/yieldomega/-/issues/241))** — removed; primary route is **`/arena`**.
@@ -112,6 +112,12 @@ visual work should consume the semantic tokens and shared primitives.
   concept mock must not be mounted above the live Arena stack. Last Buy and
   inline CHARM buy controls are primary; CHARM/CRED state, secondary timers,
   and WarBow are secondary operations.
+- AUDIT production surface ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)):
+  `/arena/protocol` uses the same cyberminimalist glass system for a compact
+  state/routing/activity console. Visible copy should be short; detailed
+  mechanics belong in tooltips, `aria-label`s, and status cards. Participant
+  rows use wallet profile actions; contract/vault rows keep blockie address
+  treatment plus explorer links.
 - Copy must match current TimeArena rules from
   [`time-arena.md`](../product/time-arena.md) and
   [`arena-v2.md`](../product/arena-v2.md): always-live when unpaused, DOUB /

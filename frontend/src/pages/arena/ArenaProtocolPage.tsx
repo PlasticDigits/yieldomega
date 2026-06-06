@@ -5,7 +5,7 @@ import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeArenaMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
-import { MegaScannerAddressLink } from "@/components/MegaScannerAddressLink";
+import { AddressInline } from "@/components/AddressInline";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
@@ -37,6 +37,24 @@ const ARENA_VAULT_LABELS = [
   "Active podium (40%)",
   "Seed podium (30%)",
   "Admin sell vault (30%)",
+] as const;
+
+const ARENA_AUDIT_DECISIONS = [
+  {
+    eyebrow: "VERIFY",
+    value: "State",
+    title: "Contract reads: pause status, Last Buy deadline, CHARM band, and DOUB total raised.",
+  },
+  {
+    eyebrow: "TRACE",
+    value: "Routing",
+    title: "ArenaBuyRouting sends DOUB buys to active podiums, seed podiums, and AdminSellVault.",
+  },
+  {
+    eyebrow: "WATCH",
+    value: "Actions",
+    title: "Indexer activity covers buys plus WarBow steal, guard, and revenge events when available.",
+  },
 ] as const;
 
 const WAD = 10n ** 18n;
@@ -108,7 +126,7 @@ export function ArenaProtocolPage() {
   }, [totalRaiseSerialized, cl8yUsd.usdPerCl8y]);
 
   const cl8ySpendBounds = useMemo(() => {
-    const priceRow = get(CORE.charmPriceWad);
+    const priceRow = reading[CORE.charmPriceWad];
     if (priceRow?.status !== "success") {
       return null;
     }
@@ -129,9 +147,9 @@ export function ArenaProtocolPage() {
       <div className="page arena-protocol-page">
         <ArenaSubnav active="protocol" />
         <PageHero
-          title="Protocol view"
-          lede="Authoritative onchain reads for TimeArena."
-          badgeLabel="Protocol"
+          title="AUDIT"
+          lede="Operator reads for TimeArena state, vault routing, and indexed actions."
+          badgeLabel="Read-only"
           badgeTone="info"
         />
         <PageSection title="Configuration missing">
@@ -174,7 +192,7 @@ export function ArenaProtocolPage() {
   const renderAddress = (i: number) => {
     const r = get(i);
     if (r?.status === "success" && r.result !== undefined) {
-      return <MegaScannerAddressLink address={String(r.result) as HexAddress} />;
+      return <AddressInline address={String(r.result) as HexAddress} tailHexDigits={6} size={18} />;
     }
     return "—";
   };
@@ -190,37 +208,86 @@ export function ArenaProtocolPage() {
     ledgerSecInt: phaseLedgerSecInt,
   });
   const protocolPhaseBadge = phaseBadge(protocolPhase);
+  const stateCards = [
+    {
+      label: "Arena start",
+      value: renderUnix(CORE.arenaStart),
+      title: "Start timestamp. Arena remains live when unpaused; no sale-end redemption flow.",
+    },
+    {
+      label: "Last Buy deadline",
+      value: renderUnix(CORE.deadline),
+      title: "Primary Last Buy timer deadline.",
+    },
+    {
+      label: "CHARM price",
+      value: renderAmount(CORE.charmPriceWad, 18),
+      title: "Flat DOUB per CHARM rate from TimeArena.",
+    },
+    {
+      label: "CHARM band",
+      value: (
+        <>
+          {renderAmount(CORE.minCharmWad, 18)} - {renderAmount(CORE.maxCharmWad, 18)}
+        </>
+      ),
+      title: "Minimum and maximum CHARM weight per buy.",
+    },
+    {
+      label: "Paused",
+      value: renderBool(CORE.paused),
+      title: "Operator pause gate. When false, Arena is live.",
+    },
+  ];
 
   return (
     <div className="page arena-protocol-page">
       <ArenaSubnav active="protocol" />
 
       <PageHero
-        title="Protocol view"
-        lede="Raw, authoritative onchain reads for TimeArena. Use this surface to verify what the simple and arena views show."
+        title="AUDIT"
+        lede="Read-only operator console for TimeArena state, vault routing, and indexed actions."
         badgeLabel={protocolPhaseBadge.label}
         badgeTone={protocolPhaseBadge.tone}
         badgeIconSrc={protocolPhaseBadge.iconSrc}
         coinSrc={DOUB_TOKEN_LOGO}
         coinAlt="DOUB token glyph"
         sceneSrc="/art/scenes/arena-protocol.jpg"
-      />
+      >
+        <span className="arena-protocol__hero-pill" title="This route exposes reads and the donation sponsorship action only.">
+          Operator
+        </span>
+        <span className="arena-protocol__hero-pill" title="TimeArena contracts remain authoritative; indexer rows are mirrors.">
+          Onchain first
+        </span>
+        <span className="arena-protocol__hero-pill" title="Wallet profiles open in-app; contract addresses open explorer links.">
+          Profile + explorer
+        </span>
+      </PageHero>
+
+      <div className="arena-protocol__decision-grid" aria-label="AUDIT priorities">
+        {ARENA_AUDIT_DECISIONS.map((item) => (
+          <article className="arena-protocol__decision-card" key={item.eyebrow} title={item.title}>
+            <span>{item.eyebrow}</span>
+            <strong>{item.value}</strong>
+          </article>
+        ))}
+      </div>
 
       <PageSection
-        title="Arena state (semilive reads)"
+        title="State deck"
         spotlight
-        badgeLabel="contract reads"
+        badgeLabel="RPC reads"
         badgeTone="info"
-        lede="Onchain TimeArena getters via JSON-RPC multicall (~1 s cadence while healthy)."
+        actions={<span className="arena-protocol__cadence" title="JSON-RPC multicall cadence while healthy.">~1s</span>}
       >
-        <div className="arena-protocol-raise-card" aria-label="Total raised summary">
-          <div className="timer-hero__raise-lines">
-            <div className="timer-hero__total-raise">
-              TOTAL RAISE: {totalRaiseHeroDisplay.doub} DOUB
-            </div>
+        <div className="arena-protocol__state-grid">
+          <article className="arena-protocol-raise-card" aria-label="Total raised summary">
+            <span className="arena-protocol__stat-kicker">Total raised</span>
+            <strong>{totalRaiseHeroDisplay.doub} DOUB</strong>
             <div className="timer-hero__total-usd-block" title={PROTOCOL_CL8Y_USD_SPOT_TITLE}>
               <div className="timer-hero__total-usd arena-protocol__total-usd-row">
-                <span>TOTAL USD: {totalRaiseHeroDisplay.usd}</span>
+                <span>{totalRaiseHeroDisplay.usd}</span>
                 <ProtocolInlineRefreshButton
                   ariaLabel="Refresh DOUB USD price"
                   disabled={cl8yUsd.loading}
@@ -229,33 +296,23 @@ export function ArenaProtocolPage() {
               </div>
               {totalRaiseUsdFreshness ? (
                 <div className="timer-hero__total-usd-affordance">
-                  DOUB total seen {totalRaiseUsdFreshness}
+                  Seen {totalRaiseUsdFreshness}
                   {cl8yUsd.usdPerCl8y !== undefined
-                    ? ` · 1 DOUB ≈ $${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })} (Kumbaya)`
+                    ? ` · 1 DOUB ~$${cl8yUsd.usdPerCl8y.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
                     : cl8yUsd.error
                       ? ` · ${cl8yUsd.error}`
                       : null}
                 </div>
               ) : null}
             </div>
-          </div>
+          </article>
+          {stateCards.map((card) => (
+            <article className="arena-protocol__stat-card" key={card.label} title={card.title}>
+              <span className="arena-protocol__stat-kicker">{card.label}</span>
+              <strong>{card.value}</strong>
+            </article>
+          ))}
         </div>
-        <dl className="kv">
-          <dt>{humanizeKvLabel("arenaStart")}</dt>
-          <dd>{renderUnix(CORE.arenaStart)}</dd>
-          <dt>{humanizeKvLabel("deadline")}</dt>
-          <dd>{renderUnix(CORE.deadline)}</dd>
-          <dt>{humanizeKvLabel("totalDoubRaised")}</dt>
-          <dd>{renderAmount(CORE.totalDoubRaised, 18)}</dd>
-          <dt>{humanizeKvLabel("charmPriceWad")}</dt>
-          <dd>{renderAmount(CORE.charmPriceWad, 18)}</dd>
-          <dt>{humanizeKvLabel("minCharmWad")}</dt>
-          <dd>{renderAmount(CORE.minCharmWad, 18)}</dd>
-          <dt>{humanizeKvLabel("maxCharmWad")}</dt>
-          <dd>{renderAmount(CORE.maxCharmWad, 18)}</dd>
-          <dt>{humanizeKvLabel("paused")}</dt>
-          <dd>{renderBool(CORE.paused)}</dd>
-        </dl>
       </PageSection>
 
       <ArenaLiveBuysActivitySection
@@ -279,7 +336,7 @@ export function ArenaProtocolPage() {
       />
 
       <PageSection
-        title="Timer parameters"
+        title="Timer config"
         badgeLabel="onchain config"
         badgeTone="info"
       >
@@ -297,7 +354,6 @@ export function ArenaProtocolPage() {
         title="Wired contracts"
         badgeLabel="addresses"
         badgeTone="info"
-        lede="Addresses that TimeArena forwards to."
       >
         <dl className="kv">
           <dt>{humanizeKvLabel("doub")}</dt>
@@ -315,11 +371,10 @@ export function ArenaProtocolPage() {
 
       <PageSection
         title="Arena prize vaults"
-        badgeLabel="Arena v2"
+        badgeLabel="40/30/30"
         badgeTone="info"
-        lede="DOUB from each buy routes 40% active podium · 30% seed podium · 30% admin sell vault (onchain ArenaBuyRouting)."
       >
-        <ul className="event-list">
+        <ul className="arena-protocol__routing-grid" title="Onchain ArenaBuyRouting: 40% active podium, 30% seed podium, 30% admin sell vault.">
           {ARENA_VAULT_LABELS.map((label) => (
             <li key={label}>
               <strong>{label}</strong>
