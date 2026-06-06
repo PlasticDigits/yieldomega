@@ -50,6 +50,20 @@ Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants](../testi
 
 Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
 
+<a id="arena-production-components-gitlab-292"></a>
+
+### Production component mechanics (GitLab [#292](https://gitlab.com/PlasticDigits/yieldomega/-/issues/292))
+
+The live production components must stay mechanics-first, not reskins of retired sale/leaderboard copy:
+
+- Podium cards show all four independent podiums, each current epoch, and 1st/2nd/3rd prize rows in **DOUB** with USD equivalent.
+- Participant addresses use [`AddressInline`](../../frontend/src/components/AddressInline.tsx): blockie + last six hex digits by default; profile modal remains the primary in-app action.
+- `/arena/protocol` activity uses **`GET /v1/arena/activity`** for recent **buy / steal / guard / revenge** actions and explicit deltas (DOUB, BP, seconds, guard expiry). Older indexers fall back to `GET /v1/arena/buys`.
+- [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) presents epoch CHARM/CRED yield state only; it is not a leaderboard.
+- [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) groups **Steal**, **Guard**, **Revenge**, and **Flag** as one PvP action cluster.
+
+Invariant: **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-production-components-gitlab-292). Manual QA: [manual checklist §292](../testing/manual-qa-checklists.md#manual-qa-issue-292).
+
 <a id="charm-cred-card-gitlab-257"></a>
 
 ## CHARM & Play CRED card (GitLab [#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257))
@@ -83,6 +97,7 @@ Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredCl
 - `GET /v1/arena/timers` — Last Buy deadline + four podium deadlines + epoch ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
 - `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category
 - `GET /v1/arena/buys` — recent buys
+- `GET /v1/arena/activity` — recent buy / WarBow steal / guard / revenge actions for AUDIT activity ([#292](#arena-production-components-gitlab-292))
 - `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)
 - `GET /v1/arena/podium-pool-donations` — donate-pools AUDIT card ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262))
 

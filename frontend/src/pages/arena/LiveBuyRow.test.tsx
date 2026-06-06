@@ -35,6 +35,8 @@ describe("LiveBuyRow (GitLab #258)", () => {
       }),
     );
     expect(html).toContain("cursor-external-link");
+    expect(html).toContain('address-inline__label">dddddd<');
+    expect(html).not.toContain("0xdddd");
     expect(html).not.toContain("address-inline__profile-btn");
   });
 

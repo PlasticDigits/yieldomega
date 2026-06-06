@@ -14,8 +14,8 @@ import {
 import { WAD } from "@/lib/timeArenaMath";
 import { listBuyImpactTicks, type BuyImpactTick } from "@/lib/timeArenaUx";
 import { buySizeColor } from "@/pages/arena/buySizeColor";
-import { CHARM_TOKEN_LOGO, CL8Y_TOKEN_LOGO } from "@/lib/tokenMedia";
-import type { BuyItem } from "@/lib/indexerApi";
+import { CHARM_TOKEN_LOGO, DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
+import type { ArenaActivityItem, BuyItem } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 
 function buyEventTone(actualSecondsAdded: string | undefined, hardReset: boolean | undefined): string {
@@ -191,6 +191,56 @@ function tickerCardTheme(buy: BuyItem, band: ReturnType<typeof buyBandPosition>)
   };
 }
 
+function activityToneClass(item: ArenaActivityItem): string {
+  switch (item.kind) {
+    case "steal":
+      return "arena-simple__ticker-row--flag";
+    case "guard":
+      return "arena-simple__ticker-row--streak";
+    case "revenge":
+      return "arena-simple__ticker-row--reset";
+    case "buy":
+    default:
+      return item.timer_hard_reset ? "arena-simple__ticker-row--reset" : "arena-simple__ticker-row--min";
+  }
+}
+
+function activityBadge(item: ArenaActivityItem): string {
+  switch (item.kind) {
+    case "steal":
+      return item.limit_bypass ? "WarBow steal + bypass" : "WarBow steal";
+    case "guard":
+      return "WarBow guard";
+    case "revenge":
+      return "WarBow revenge";
+    case "buy":
+    default:
+      return item.paid_with_cred ? "CRED buy" : "DOUB buy";
+  }
+}
+
+function activityArtSrc(item: ArenaActivityItem): string {
+  switch (item.kind) {
+    case "steal":
+    case "revenge":
+      return "/art/icons/warbow-flag.png";
+    case "guard":
+      return "/art/cutouts/bunny-guarding.png";
+    case "buy":
+    default:
+      return CHARM_TOKEN_LOGO;
+  }
+}
+
+function formatGuardUntil(raw: string | null | undefined): string | null {
+  const value = parseTickerBigInt(raw);
+  if (value === null || value <= 0n) return null;
+  return new Date(Number(value) * 1000).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export type ArenaLiveBuysActivitySectionProps = {
   /** Defaults to `arena-live-buys-activity`. */
   dataTestId?: string;
@@ -201,6 +251,8 @@ export type ArenaLiveBuysActivitySectionProps = {
   isOffline: boolean;
   /** `null` until the first poll completes; then mirrors the latest poll success. */
   buyPollLastOk: boolean | null;
+  /** Rich action feed from `GET /v1/arena/activity`; falls back to `recentBuys` on older indexers. */
+  recentActivity?: ArenaActivityItem[] | null;
   buysNextOffset: number | null;
   loadingMoreBuys: boolean;
   buyPagesExpanded: boolean;
@@ -210,7 +262,7 @@ export type ArenaLiveBuysActivitySectionProps = {
 };
 
 /**
- * Full-height “Live buys” ticker cards (formerly on `/timecurve` Simple, then Arena).
+ * Full-height Arena action ticker cards.
  * Wired on the protocol / audit view (`/arena/protocol`) so operators can
  * correlate indexed activity with raw onchain reads.
  */
@@ -222,6 +274,7 @@ export function ArenaLiveBuysActivitySection({
   cl8ySpendBounds,
   isOffline,
   buyPollLastOk,
+  recentActivity,
   buysNextOffset,
   loadingMoreBuys,
   buyPagesExpanded,
@@ -265,10 +318,142 @@ export function ArenaLiveBuysActivitySection({
     <PageSection
       className="arena-simple__activity-panel"
       dataTestId={dataTestId}
-      badgeLabel="Live buys"
+      badgeLabel="Activity"
       badgeTone="info"
     >
-      {recentBuys && recentBuys.length > 0 ? (
+      {recentActivity && recentActivity.length > 0 ? (
+        <>
+          {(isOffline || buyPollLastOk === false) && (
+            <p className="muted arena-simple__indexer-stale-hint">
+              Cannot reach indexer · cached data may be stale
+            </p>
+          )}
+          <div
+            ref={activityScrollRef}
+            className="arena-simple__activity-scroll"
+            role="region"
+            aria-label="Recent Arena actions; scroll for older activity"
+          >
+            <ul className="arena-simple__activity-list">
+              {recentActivity.map((item) => {
+                const age = formatBuyAge(item.block_timestamp, tickerWallNowSec);
+                const secondsDelta = parseTickerBigInt(item.seconds_delta);
+                const bpDelta = parseTickerBigInt(item.bp_delta);
+                const guardUntil = formatGuardUntil(item.guard_until);
+                return (
+                  <li
+                    key={`${item.tx_hash}-${item.log_index}-${item.kind}`}
+                    className={["arena-simple__ticker-row", activityToneClass(item)]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <div className="arena-simple__ticker-art" aria-hidden="true">
+                      <img src={activityArtSrc(item)} alt="" width={42} height={42} decoding="async" />
+                    </div>
+                    <div className="arena-simple__ticker-main">
+                      <span className="arena-simple__ticker-badge">{activityBadge(item)}</span>
+                      <AddressInline
+                        address={item.actor}
+                        tailHexDigits={6}
+                        size={22}
+                        className="arena-simple__ticker-buyer"
+                        onOpenProfile={onOpenWalletProfile}
+                      />
+                      {item.target ? (
+                        <span className="arena-simple__ticker-target">
+                          →{" "}
+                          <AddressInline
+                            address={item.target}
+                            tailHexDigits={6}
+                            size={16}
+                            onOpenProfile={onOpenWalletProfile}
+                          />
+                        </span>
+                      ) : null}
+                      <span className="arena-simple__ticker-age">
+                        {age ?? `block ${formatLocaleInteger(item.block_number)}`}
+                      </span>
+                    </div>
+                    <div className="arena-simple__ticker-amounts">
+                      {item.amount_doub_wad ? (
+                        <span className="arena-simple__ticker-amount">
+                          <img src={DOUB_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                          <strong>{formatBuyHubDerivedCompact(item.amount_doub_wad, 18)}</strong>
+                          <span> DOUB</span>
+                        </span>
+                      ) : null}
+                      {item.charm_wad ? (
+                        <span className="arena-simple__ticker-amount arena-simple__ticker-amount--charm">
+                          <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                          <strong>{formatBuyHubDerivedCompact(item.charm_wad, 18)}</strong>
+                          <span> CHARM</span>
+                        </span>
+                      ) : null}
+                    </div>
+                    <ul className="arena-simple__ticker-effects" aria-label="Action deltas">
+                      {secondsDelta !== null && secondsDelta > 0n ? (
+                        <li className="live-buy-tick live-buy-tick--neutral live-buy-tick--effect-tadd">
+                          <span className="live-buy-tick__glyph" aria-hidden="true">+T</span>
+                          <span className="live-buy-tick__text">
+                            <span className="live-buy-tick__label">Clock</span>
+                            <span className="live-buy-tick__sub">+{secondsDelta.toString()}s</span>
+                          </span>
+                        </li>
+                      ) : null}
+                      {item.timer_hard_reset ? (
+                        <li className="live-buy-tick live-buy-tick--warning live-buy-tick--effect-hreset">
+                          <span className="live-buy-tick__glyph" aria-hidden="true">RST</span>
+                          <span className="live-buy-tick__text">
+                            <span className="live-buy-tick__label">Hard reset</span>
+                          </span>
+                        </li>
+                      ) : null}
+                      {bpDelta !== null && bpDelta > 0n ? (
+                        <li className="live-buy-tick live-buy-tick--info live-buy-tick--effect-wb">
+                          <span className="live-buy-tick__glyph" aria-hidden="true">BP</span>
+                          <span className="live-buy-tick__text">
+                            <span className="live-buy-tick__label">Battle Points</span>
+                            <span className="live-buy-tick__sub">±{bpDelta.toString()} BP</span>
+                          </span>
+                        </li>
+                      ) : null}
+                      {guardUntil ? (
+                        <li className="live-buy-tick live-buy-tick--info live-buy-tick--effect-def">
+                          <span className="live-buy-tick__glyph" aria-hidden="true">DEF</span>
+                          <span className="live-buy-tick__text">
+                            <span className="live-buy-tick__label">Guard until</span>
+                            <span className="live-buy-tick__sub">{guardUntil}</span>
+                          </span>
+                        </li>
+                      ) : null}
+                    </ul>
+                    <div className="arena-simple__ticker-meta">
+                      <span>
+                        tx <TxHash hash={item.tx_hash} />
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {loadingMoreBuys ? (
+              <p className="muted arena-simple__activity-load-more" aria-live="polite">
+                Loading older actions…
+              </p>
+            ) : null}
+            {buysNextOffset !== null ? (
+              <div
+                ref={loadMoreSentinelRef}
+                className="arena-simple__activity-load-sentinel"
+                data-testid="arena-live-buys-scroll-sentinel"
+                aria-hidden="true"
+              />
+            ) : buyPagesExpanded ? (
+              <p className="muted arena-simple__activity-load-more">End of loaded activity</p>
+            ) : null}
+          </div>
+        </>
+      ) : recentBuys && recentBuys.length > 0 ? (
         <>
           {(isOffline || buyPollLastOk === false) && (
             <p className="muted arena-simple__indexer-stale-hint">
@@ -313,6 +498,7 @@ export function ArenaLiveBuysActivitySection({
                       <span className="arena-simple__ticker-badge">{theme.badge}</span>
                       <AddressInline
                         address={b.buyer}
+                        tailHexDigits={6}
                         size={22}
                         className="arena-simple__ticker-buyer"
                         onOpenProfile={onOpenWalletProfile}
@@ -323,9 +509,9 @@ export function ArenaLiveBuysActivitySection({
                     </div>
                     <div className="arena-simple__ticker-amounts">
                       <span className="arena-simple__ticker-amount">
-                        <img src={CL8Y_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+                        <img src={DOUB_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
                         <strong>{formatBuyHubDerivedCompact(b.amount, decimals)}</strong>
-                        <span> CL8Y</span>
+                        <span> DOUB</span>
                       </span>
                       <span className="arena-simple__ticker-amount arena-simple__ticker-amount--charm">
                         <img src={CHARM_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
@@ -409,11 +595,11 @@ export function ArenaLiveBuysActivitySection({
           </div>
         </>
       ) : buyPollLastOk === true && recentBuys && recentBuys.length === 0 && !isOffline ? (
-        <p className="muted">Waiting for the first buy of this round.</p>
+        <p className="muted">Waiting for the first Arena action.</p>
       ) : buyPollLastOk === false || isOffline ? (
         <p className="muted">Cannot reach indexer · cached data may be stale</p>
       ) : (
-        <p className="muted">Loading recent buys…</p>
+        <p className="muted">Loading recent actions…</p>
       )}
     </PageSection>
   );

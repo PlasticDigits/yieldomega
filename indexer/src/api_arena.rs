@@ -23,6 +23,7 @@ pub fn arena_routes() -> axum::Router<AppState> {
         .route("/v1/arena/timers", axum::routing::get(arena_timers))
         .route("/v1/arena/podiums", axum::routing::get(arena_podiums))
         .route("/v1/arena/buys", axum::routing::get(arena_buys))
+        .route("/v1/arena/activity", axum::routing::get(arena_activity))
         .route(
             "/v1/arena/wallet/{address}/stats",
             axum::routing::get(arena_wallet_stats),
@@ -111,7 +112,11 @@ async fn arena_podium_pool_donations(
     if let Some(donor) = p.donor.as_deref() {
         let w = donor.trim().to_ascii_lowercase();
         if !w.starts_with("0x") || w.len() != 42 {
-            return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_address" }))).into_response();
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "invalid_address" })),
+            )
+                .into_response();
         }
         let donor_row = match sqlx::query(
             r#"SELECT COALESCE(SUM(amount_doub_wad), 0)::text AS total,
@@ -161,7 +166,12 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "podium_epochs": h.timer.podium_epochs,
         "podium_deadlines_sec": h.timer.podium_deadlines_sec,
     });
-    (StatusCode::OK, with_schema_version(axum::http::HeaderMap::new()), Json(body)).into_response()
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(body),
+    )
+        .into_response()
 }
 
 fn epoch_for_category(head: &crate::chain_timer::TimecurveHeadSnapshot, cat: u8) -> String {
@@ -190,10 +200,7 @@ async fn warbow_top3_from_scores_pool(
 }
 
 fn live_to_json(row: &LivePodiumRow) -> (Vec<String>, Vec<String>) {
-    (
-        row.winners.to_vec(),
-        row.values.to_vec(),
-    )
+    (row.winners.to_vec(), row.values.to_vec())
 }
 
 async fn arena_podiums(State(state): State<AppState>) -> Response {
@@ -264,10 +271,7 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         .into_response()
 }
 
-async fn arena_buys(
-    State(state): State<AppState>,
-    Query(p): Query<PageParams>,
-) -> Response {
+async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
     let limit = p.limit.clamp(1, 200);
     let offset = p.offset.max(0);
     let rows = match sqlx::query(
@@ -287,6 +291,7 @@ async fn arena_buys(
         Ok(r) => r,
         Err(e) => return internal_db_error_response("GET /v1/arena/buys", e),
     };
+    let row_count = rows.len() as i64;
     let items: Vec<_> = rows
         .iter()
         .map(|r| {
@@ -309,7 +314,133 @@ async fn arena_buys(
     (
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
-        Json(json!({ "items": items, "limit": limit, "offset": offset })),
+        Json(json!({
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
+        })),
+    )
+        .into_response()
+}
+
+async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParams>) -> Response {
+    let limit = p.limit.clamp(1, 200);
+    let offset = p.offset.max(0);
+    let rows = match sqlx::query(
+        r#"SELECT *
+           FROM (
+               SELECT 'buy' AS kind,
+                      buyer AS actor,
+                      NULL::text AS target,
+                      charm_wad::text AS charm_wad,
+                      doub_paid::text AS amount_doub_wad,
+                      actual_seconds_added::text AS seconds_delta,
+                      NULL::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      timer_hard_reset,
+                      paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_buy
+               UNION ALL
+               SELECT 'steal' AS kind,
+                      attacker AS actor,
+                      victim AS target,
+                      NULL::text AS charm_wad,
+                      doub_spent::text AS amount_doub_wad,
+                      NULL::text AS seconds_delta,
+                      bp_taken::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_warbow_steal
+               UNION ALL
+               SELECT 'guard' AS kind,
+                      player AS actor,
+                      NULL::text AS target,
+                      NULL::text AS charm_wad,
+                      doub_spent::text AS amount_doub_wad,
+                      NULL::text AS seconds_delta,
+                      NULL::text AS bp_delta,
+                      guard_until::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_warbow_guard
+               UNION ALL
+               SELECT 'revenge' AS kind,
+                      avenger AS actor,
+                      stealer AS target,
+                      NULL::text AS charm_wad,
+                      doub_spent::text AS amount_doub_wad,
+                      NULL::text AS seconds_delta,
+                      bp_taken::text AS bp_delta,
+                      NULL::text AS guard_until,
+                      NULL::boolean AS timer_hard_reset,
+                      NULL::boolean AS paid_with_cred,
+                      NULL::boolean AS limit_bypass,
+                      block_number,
+                      tx_hash,
+                      log_index,
+                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+               FROM idx_arena_warbow_revenge
+           ) activity
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT $1 OFFSET $2"#,
+    )
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/activity", e),
+    };
+    let row_count = rows.len() as i64;
+    let items: Vec<_> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "kind": r.get::<String, _>("kind"),
+                "actor": r.get::<String, _>("actor"),
+                "target": r.get::<Option<String>, _>("target"),
+                "charm_wad": r.get::<Option<String>, _>("charm_wad"),
+                "amount_doub_wad": r.get::<Option<String>, _>("amount_doub_wad"),
+                "seconds_delta": r.get::<Option<String>, _>("seconds_delta"),
+                "bp_delta": r.get::<Option<String>, _>("bp_delta"),
+                "guard_until": r.get::<Option<String>, _>("guard_until"),
+                "timer_hard_reset": r.get::<Option<bool>, _>("timer_hard_reset"),
+                "paid_with_cred": r.get::<Option<bool>, _>("paid_with_cred"),
+                "limit_bypass": r.get::<Option<bool>, _>("limit_bypass"),
+                "block_number": r.get::<i64, _>("block_number"),
+                "tx_hash": r.get::<String, _>("tx_hash"),
+                "log_index": r.get::<i32, _>("log_index"),
+                "block_timestamp": r.get::<Option<String>, _>("block_timestamp_sec"),
+            })
+        })
+        .collect();
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "next_offset": if row_count == limit { Some(offset + limit) } else { None },
+        })),
     )
         .into_response()
 }
@@ -320,7 +451,11 @@ async fn arena_wallet_stats(
 ) -> Response {
     let w = address.trim().to_ascii_lowercase();
     if !w.starts_with("0x") || w.len() != 42 {
-        return (StatusCode::BAD_REQUEST, Json(json!({ "error": "invalid_address" }))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "invalid_address" })),
+        )
+            .into_response();
     }
 
     let body = match arena_wallet_stats::fetch_wallet_stats(&state.pool, &w).await {

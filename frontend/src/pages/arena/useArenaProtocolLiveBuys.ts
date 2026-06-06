@@ -2,9 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { indexerBaseUrl } from "@/lib/addresses";
-import { fetchArenaBuysAsBuyItems, type BuyItem } from "@/lib/indexerApi";
+import {
+  fetchArenaActivity,
+  fetchArenaBuysAsBuyItems,
+  type ArenaActivityItem,
+  type BuyItem,
+} from "@/lib/indexerApi";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
+
+function mergeActivityNewestFirst(
+  nextItems: ArenaActivityItem[],
+  prev: ArenaActivityItem[] | null,
+): ArenaActivityItem[] {
+  const seen = new Set<string>();
+  return [...nextItems, ...(prev ?? [])].filter((item) => {
+    const key = `${item.tx_hash}:${item.log_index}:${item.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 /**
  * Indexer-backed recent buys for read-only surfaces (e.g. protocol / audit view).
@@ -12,6 +30,7 @@ import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
  */
 export function useArenaProtocolLiveBuys() {
   const [buys, setBuys] = useState<BuyItem[] | null>(null);
+  const [activity, setActivity] = useState<ArenaActivityItem[] | null>(null);
   const [indexerNote, setIndexerNote] = useState<string | null>(null);
   const [buysNextOffset, setBuysNextOffset] = useState<number | null>(null);
   const [loadingMoreBuys, setLoadingMoreBuys] = useState(false);
@@ -24,27 +43,36 @@ export function useArenaProtocolLiveBuys() {
 
     const loadBuys = async () => {
       const id = ++requestSeq;
-      const data = await fetchArenaBuysAsBuyItems(25, 0);
+      const [activityData, data] = await Promise.all([
+        fetchArenaActivity(25, 0),
+        fetchArenaBuysAsBuyItems(25, 0),
+      ]);
       if (cancelled || id !== requestSeq) {
         return;
       }
-      const ok = data != null;
+      const ok = activityData != null || data != null;
       if (indexerBaseUrl()) {
         reportIndexerFetchAttempt(ok);
       }
-      if (!data) {
+      if (!activityData && !data) {
         setIndexerNote(
           indexerBaseUrl()
             ? "Could not load buys from the indexer (offline, CORS, or HTTP error). Check the indexer is running."
             : "Set VITE_INDEXER_URL to load recent buys from the indexer.",
         );
         setBuys([]);
+        setActivity([]);
         setBuysNextOffset(null);
         return;
       }
-      setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
+      if (data) {
+        setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
+      }
+      if (activityData) {
+        setActivity((prev) => mergeActivityNewestFirst(activityData.items, prev));
+      }
       if (!hasExpandedBuyPages) {
-        setBuysNextOffset(data.next_offset);
+        setBuysNextOffset(data?.next_offset ?? activityData?.next_offset ?? null);
       }
       setIndexerNote(null);
     };
@@ -77,18 +105,27 @@ export function useArenaProtocolLiveBuys() {
       return;
     }
     setLoadingMoreBuys(true);
-    const data = await fetchArenaBuysAsBuyItems(25, buysNextOffset);
+    const [activityData, data] = await Promise.all([
+      fetchArenaActivity(25, buysNextOffset),
+      fetchArenaBuysAsBuyItems(25, buysNextOffset),
+    ]);
     setLoadingMoreBuys(false);
-    if (!data) {
+    if (!activityData && !data) {
       return;
     }
     setHasExpandedBuyPages(true);
-    setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
-    setBuysNextOffset(data.next_offset);
+    if (data) {
+      setBuys((prev) => mergeBuysNewestFirst(data.items, prev));
+    }
+    if (activityData) {
+      setActivity((prev) => mergeActivityNewestFirst(activityData.items, prev));
+    }
+    setBuysNextOffset(data?.next_offset ?? activityData?.next_offset ?? null);
   }, [buysNextOffset]);
 
   return {
     buys,
+    activity,
     indexerNote,
     buysNextOffset,
     loadingMoreBuys,

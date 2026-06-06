@@ -260,6 +260,7 @@ export function ArenaProtocolPage() {
 
       <ArenaLiveBuysActivitySection
         recentBuys={liveBuys.buys}
+        recentActivity={liveBuys.activity}
         decimals={18}
         tickerEnvelopeParams={null}
         cl8ySpendBounds={cl8ySpendBounds}

@@ -156,6 +156,16 @@ export function ArenaWarbowHeroPanel({ phase }: Props) {
             </ChainMismatchWriteBarrier>
           )}
         </article>
+
+        <article className="warbow-hero-card warbow-hero-card--claim-flag" title="Flag claim costs 0 DOUB when the silence window is satisfied.">
+          <div className="warbow-hero-card__head">
+            <h3>Flag</h3>
+            <span className="status-pill status-pill--success" data-testid="warbow-hero-flag-cost">
+              0 DOUB
+            </span>
+          </div>
+          <p className="muted">Hold silence, then claim BP.</p>
+        </article>
       </div>
 
       {w.pvpErr && (

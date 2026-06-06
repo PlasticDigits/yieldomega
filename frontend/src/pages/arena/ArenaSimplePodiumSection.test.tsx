@@ -53,7 +53,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("/art/icons/arena-podium-rank-second.png");
     expect(html).toContain("/art/icons/arena-podium-rank-third.png");
     expect(html).toContain("1st prize");
-    expect(html).toContain("CL8Y");
+    expect(html).toContain("DOUB");
     expect(html).toContain("≈ $1.57 USD");
     expect(html).toContain("1.6");
     expect(html).not.toContain("predicted leader");
@@ -100,6 +100,6 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("—");
     expect(html).not.toContain("Awaiting wallet");
     expect(html).toContain("1.6");
-    expect(html).toContain("CL8Y");
+    expect(html).toContain("DOUB");
   });
 });

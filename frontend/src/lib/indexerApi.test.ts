@@ -12,6 +12,7 @@ import {
   referralRegistrationsApiPath,
   referralWalletCredSummaryApiPath,
   arenaBuyerStatsApiPath,
+  arenaActivityApiPath,
   arenaPlatformUsageApiPath,
   arenaPrizeDistributionsApiPath,
   arenaPrizePayoutsApiPath,
@@ -27,6 +28,13 @@ describe("arenaBuyerStatsApiPath", () => {
     expect(arenaBuyerStatsApiPath(buyer)).toBe(
       `/v1/arena/wallet/${buyer.toLowerCase()}/stats`,
     );
+  });
+});
+
+describe("arenaActivityApiPath", () => {
+  it("includes limit and offset for recent player actions (#292)", () => {
+    expect(arenaActivityApiPath()).toBe("/v1/arena/activity?limit=25&offset=0");
+    expect(arenaActivityApiPath(10, 30)).toBe("/v1/arena/activity?limit=10&offset=30");
   });
 });
 

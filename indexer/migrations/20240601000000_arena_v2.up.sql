@@ -108,11 +108,24 @@ CREATE TABLE IF NOT EXISTS idx_arena_warbow_steal (
 
 CREATE TABLE IF NOT EXISTS idx_arena_warbow_guard (
     block_number BIGINT NOT NULL,
+    block_timestamp TIMESTAMPTZ,
     tx_hash VARCHAR(66) NOT NULL,
     log_index INT NOT NULL,
     player VARCHAR(42) NOT NULL,
     doub_spent NUMERIC(78, 0) NOT NULL,
     guard_until NUMERIC(78, 0) NOT NULL,
+    PRIMARY KEY (tx_hash, log_index)
+);
+
+CREATE TABLE IF NOT EXISTS idx_arena_warbow_revenge (
+    block_number BIGINT NOT NULL,
+    block_timestamp TIMESTAMPTZ,
+    tx_hash VARCHAR(66) NOT NULL,
+    log_index INT NOT NULL,
+    avenger VARCHAR(42) NOT NULL,
+    stealer VARCHAR(42) NOT NULL,
+    bp_taken NUMERIC(78, 0) NOT NULL,
+    doub_spent NUMERIC(78, 0) NOT NULL,
     PRIMARY KEY (tx_hash, log_index)
 );
 
