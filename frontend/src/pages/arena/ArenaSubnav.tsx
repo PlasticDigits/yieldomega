@@ -1,30 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useLayoutEffect, useState, type SyntheticEvent } from "react";
 import { NavLink } from "react-router-dom";
-
-/** Persisted disclosure state across reloads (`localStorage`). */
-const ARENA_ABOUT_OPEN_STORAGE_KEY = "yieldomega.arena.aboutOpen.v1";
-
-function readArenaAboutOpenFromStorage(): boolean | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(ARENA_ABOUT_OPEN_STORAGE_KEY);
-    if (raw === "0") return false;
-    if (raw === "1") return true;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function writeArenaAboutOpenToStorage(open: boolean): void {
-  try {
-    window.localStorage.setItem(ARENA_ABOUT_OPEN_STORAGE_KEY, open ? "1" : "0");
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
 
 /**
  * Shared sub-navigation for Time Arena: BUY (play) and AUDIT (protocol).
@@ -38,6 +14,7 @@ const TABS: ReadonlyArray<{
   key: ArenaSubnavTab;
   label: string;
   iconSrc: string;
+  description: string;
 }> = [
   {
     to: "/arena",
@@ -45,34 +22,18 @@ const TABS: ReadonlyArray<{
     key: "simple",
     label: "BUY",
     iconSrc: "/art/icons/nav-simple.png",
+    description: "Buy CHARM with DOUB or Play CRED and compete on Time Arena podiums.",
   },
   {
     to: "/arena/protocol",
     key: "protocol",
     label: "AUDIT",
     iconSrc: "/art/icons/nav-protocol.png",
+    description: "Inspect Time Arena contract reads, indexer tables, and operator activity.",
   },
 ];
 
-const ABOUT_COPY: Record<ArenaSubnavTab, string> = {
-  simple:
-    "Buy Charm with DOUB on Time Arena. Timer extensions and podium prizes follow onchain rules in Arena v2.",
-  protocol:
-    "Check onchain reads, indexer tables, and donate-pools activity. Useful for operators and auditors.",
-};
-
 export function ArenaSubnav({ active }: { active: ArenaSubnavTab }) {
-  const [aboutOpen, setAboutOpen] = useState(() => readArenaAboutOpenFromStorage() ?? true);
-
-  useLayoutEffect(() => {
-    writeArenaAboutOpenToStorage(aboutOpen);
-  }, [aboutOpen]);
-
-  const toggleAbout = (e: SyntheticEvent) => {
-    e.preventDefault();
-    setAboutOpen((v) => !v);
-  };
-
   return (
     <nav className="arena-subnav" aria-label="Time Arena views">
       <ul className="arena-subnav__tabs">
@@ -84,6 +45,8 @@ export function ArenaSubnav({ active }: { active: ArenaSubnavTab }) {
               className={({ isActive }) =>
                 `arena-subnav__tab${isActive || active === tab.key ? " arena-subnav__tab--active" : ""}`
               }
+              aria-label={`${tab.label}: ${tab.description}`}
+              title={tab.description}
             >
               <img src={tab.iconSrc} alt="" width={28} height={28} decoding="async" />
               <span>{tab.label}</span>
@@ -91,17 +54,6 @@ export function ArenaSubnav({ active }: { active: ArenaSubnavTab }) {
           </li>
         ))}
       </ul>
-      <button
-        type="button"
-        className="arena-subnav__about-toggle"
-        aria-expanded={aboutOpen}
-        onClick={toggleAbout}
-      >
-        ABOUT TIME ARENA
-      </button>
-      {aboutOpen ? (
-        <p className="arena-subnav__about-copy">{ABOUT_COPY[active]}</p>
-      ) : null}
     </nav>
   );
 }

@@ -152,6 +152,19 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-266-ARENA-INDEXER`** | Browser reads use **`/v1/arena/*`** only; no **`/v1/timecurve/*`** or legacy WarBow HTTP | `indexerApi.test.ts` (#266 retirement), `indexer/src/api_arena.rs` |
 | **`INV-FRONTEND-280-ARENA-CSS-NAMING`** | No `timecurve-*` CSS classes, `data-testid`s, or `/art/.../timecurve-*` paths under `frontend/src/pages/arena/**`; public art uses `arena-*` filenames; legacy `/timecurve` URL redirects unchanged ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) | `bash scripts/check-arena-naming.sh`, `ArenaSimplePodiumSection.test.tsx`, `e2e/footer-site-links.spec.ts` · [arena-views §280](../frontend/arena-views.md#arena-css-naming-gitlab-280) · [manual QA §280](manual-qa-checklists.md#manual-qa-issue-280) |
 | **`INV-FRONTEND-286-ART-README`** | [`frontend/public/art/README.md`](../../frontend/public/art/README.md) consumer links resolve to existing `frontend/src/**` files; no deleted `TimeCurve*.tsx` / `timeCurveArena/*` targets; `ArenaSimplePage` links use `pages/arena/ArenaSimplePage.tsx` ([#286](https://gitlab.com/PlasticDigits/yieldomega/-/issues/286)) | `bash scripts/check-art-readme-consumers.sh` · [design §286](../frontend/design.md#art-readme-consumer-links-gitlab-286) |
+| **`INV-FRONTEND-290-CYBER-GLASS-SHELL`** | Global chrome uses cyberminimalist glass tokens (`--yo-*`), dark RainbowKit wallet theme, compact BUY/AUDIT route decisions, and no visible shell copy that implies retired TimeCurve/PvE/sale-end mechanics ([#290](https://gitlab.com/PlasticDigits/yieldomega/-/issues/290)) | `headerLayoutCss.test.ts`, `AppProviders.test.ts`, `ArenaSubnav.test.tsx`, `surfaceContent.test.ts` · [design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) |
+
+<a id="frontend-cyberminimalist-glass-shell-gitlab-290"></a>
+
+### Frontend cyberminimalist glass shell (GitLab [#290](https://gitlab.com/PlasticDigits/yieldomega/-/issues/290))
+
+Follow-up to the Arena v2 route cleanup: shared app chrome, design tokens, wallet
+theme, and route labels must reflect the current TimeArena mechanics rather than
+legacy arcade / TimeCurve / PvE assumptions.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-290-CYBER-GLASS-SHELL`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test` |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 

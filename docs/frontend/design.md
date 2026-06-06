@@ -86,8 +86,34 @@
 
 ## Art assets and theming
 
-The "arcade" palette in `frontend/src/index.css` (greens, golds, hard
-shadows, panel gloss) is supported by a curated raster pack under
+<a id="cyberminimalist-glass-app-shell-gitlab-290"></a>
+
+### Cyberminimalist glass app shell (GitLab #290)
+
+The approved platform direction is a **cyberminimalist command console**:
+dark tactical surfaces, thin glass borders, compact action-first copy, and
+consistent Yield Omega character/token branding. Global tokens live in
+[`frontend/src/index.css`](../../frontend/src/index.css) as semantic `--yo-*`
+variables; legacy class names and aliases may remain for compatibility, but new
+visual work should consume the semantic tokens and shared primitives.
+
+- Shared chrome: [`RootLayout`](../../frontend/src/layout/RootLayout.tsx) keeps
+  route decisions compact (`Time Arena`, `Referrals`, wallet/network/music).
+- Wallet chrome: [`AppProviders`](../../frontend/src/providers/AppProviders.tsx)
+  uses a dark RainbowKit theme aligned to the console accent palette.
+- Arena route IA: [`ArenaSubnav`](../../frontend/src/pages/arena/ArenaSubnav.tsx)
+  exposes **BUY** and **AUDIT** as the visible decisions. Mechanics belong in
+  `title` / `aria-label` tooltips or action-adjacent states, not default body
+  paragraphs.
+- Copy must match current TimeArena rules from
+  [`time-arena.md`](../product/time-arena.md) and
+  [`arena-v2.md`](../product/arena-v2.md): always-live when unpaused, DOUB /
+  Play CRED CHARM buys, four podiums, WarBow PvP, and AUDIT reads. Do not
+  reintroduce TimeCurve sale-end, PvE, redemption, or launchpad framing.
+
+Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290).
+
+The cyberminimalist palette in `frontend/src/index.css` is supported by a curated raster pack under
 [`frontend/public/art/`](../../frontend/public/art/README.md). Assets are
 organized into **purpose-named subfolders** so each consumer maps to one
 shape constraint:

@@ -205,7 +205,7 @@ export function describeTimerPreview(
     return {
       tone: "calm",
       label: "Waiting for live timer data",
-      detail: "Timer pressure will appear once the sale is readable from chain.",
+      detail: "Timer pressure will appear once Time Arena is readable from chain.",
     };
   }
 

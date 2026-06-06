@@ -1,66 +1,88 @@
-@import url("https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;500;700&family=Fredoka:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap");
 
 /* SPDX-License-Identifier: AGPL-3.0-only */
 
-/* Blocky arcade: saturated greens & golds, chunky outlines, glossy token feel */
+/* Cyberminimalist glass console: dark tactical surfaces, crisp hierarchy, compact actions. */
 :root {
-  --arcade-green-900: #063d24;
-  --arcade-green-800: #0a5c36;
-  --arcade-green-700: #0f7a47;
-  --arcade-green-500: #1fb86a;
-  --arcade-green-300: #5ee89a;
-  --arcade-gold-600: #d4a012;
-  --arcade-gold-400: #f5c842;
-  --arcade-gold-200: #ffe566;
-  --arcade-sky: #5ec8ff;
-  --arcade-magenta: #ff6eb4;
-  --bg-lime: var(--arcade-green-300);
-  --bg-lime-deep: var(--arcade-green-500);
-  --bg-yellow: var(--arcade-gold-400);
-  --bg-cream: #fffef5;
-  --bg-pink: #ffb8d9;
-  --bg-purple: #6b4fd8;
-  --bg-ink: var(--arcade-green-900);
-  --bg-sky: var(--arcade-sky);
-  --line: #0b1f14;
-  --text-main: #0f2418;
-  --text-muted: #2d4a38;
-  --shadow-hard: 8px 8px 0 var(--line);
-  --shadow-soft: 0 18px 40px rgba(6, 61, 36, 0.22);
-  --panel-gloss: linear-gradient(145deg, rgba(255, 255, 255, 0.55) 0%, transparent 42%);
+  --yo-void: #050a12;
+  --yo-ink: #07121d;
+  --yo-ink-2: #0b1b29;
+  --yo-ink-3: #11283a;
+  --yo-line: rgba(126, 241, 255, 0.28);
+  --yo-line-strong: rgba(126, 241, 255, 0.52);
+  --yo-text: #ecfbff;
+  --yo-muted: #9fb8c8;
+  --yo-dim: #668092;
+  --yo-cyan: #35f0c2;
+  --yo-cyan-soft: #7ef1ff;
+  --yo-gold: #f8d56b;
+  --yo-magenta: #ff5ec4;
+  --yo-danger: #ff6b7a;
+  --yo-glass-surface: rgba(8, 20, 32, 0.76);
+  --yo-glass-surface-strong: rgba(10, 27, 42, 0.9);
+  --yo-glass-highlight: rgba(255, 255, 255, 0.08);
+  --yo-glass-shadow: 0 18px 56px rgba(0, 0, 0, 0.34);
+  --yo-glow-cyan: 0 0 30px rgba(53, 240, 194, 0.18);
+  --yo-action-gradient: linear-gradient(135deg, rgba(53, 240, 194, 0.95), rgba(126, 241, 255, 0.72));
+  --yo-panel-gradient: linear-gradient(145deg, rgba(15, 37, 55, 0.88), rgba(7, 18, 29, 0.76));
+  --arcade-green-900: var(--yo-ink);
+  --arcade-green-800: var(--yo-ink-2);
+  --arcade-green-700: var(--yo-cyan);
+  --arcade-green-500: var(--yo-cyan);
+  --arcade-green-300: var(--yo-cyan-soft);
+  --arcade-gold-600: var(--yo-gold);
+  --arcade-gold-400: var(--yo-gold);
+  --arcade-gold-200: rgba(248, 213, 107, 0.74);
+  --arcade-sky: var(--yo-cyan-soft);
+  --arcade-magenta: var(--yo-magenta);
+  --bg-lime: var(--yo-cyan-soft);
+  --bg-lime-deep: var(--yo-cyan);
+  --bg-yellow: var(--yo-gold);
+  --bg-cream: rgba(12, 30, 46, 0.88);
+  --bg-pink: rgba(255, 94, 196, 0.22);
+  --bg-purple: #6f67ff;
+  --bg-ink: var(--yo-void);
+  --bg-sky: var(--yo-cyan-soft);
+  --line: var(--yo-line-strong);
+  --text-main: var(--yo-text);
+  --text-muted: var(--yo-muted);
+  --shadow-hard: 0 0 0 1px var(--yo-line), var(--yo-glass-shadow);
+  --shadow-soft: var(--yo-glass-shadow);
+  --panel-gloss: linear-gradient(145deg, var(--yo-glass-highlight) 0%, transparent 46%);
   --motion-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --scrollbar-track: rgba(8, 49, 30, 0.74);
-  --scrollbar-thumb: linear-gradient(180deg, #2ac779 0%, #11824c 100%);
-  --scrollbar-thumb-border: rgba(255, 230, 102, 0.55);
+  --scrollbar-track: rgba(4, 11, 18, 0.9);
+  --scrollbar-thumb: linear-gradient(180deg, rgba(53, 240, 194, 0.82) 0%, rgba(36, 108, 125, 0.92) 100%);
+  --scrollbar-thumb-border: rgba(126, 241, 255, 0.18);
   /* Charts / SVG fallbacks */
-  --accent: var(--arcade-gold-600);
+  --accent: var(--yo-cyan);
   /* WCAG 2.4.7 keyboard focus ring; override per host if needed (GitLab #97). */
-  --yo-focus-ring: var(--arcade-gold-600);
-  --muted-line: #3d6b52;
-  --border: rgba(11, 31, 20, 0.35);
-  font-family: "Fredoka", "Sora", system-ui, sans-serif;
+  --yo-focus-ring: var(--yo-cyan-soft);
+  --muted-line: rgba(126, 241, 255, 0.22);
+  --border: var(--yo-line);
+  font-family: "IBM Plex Sans", "Inter", "Sora", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--text-main);
-  background-color: var(--arcade-green-800);
+  background-color: var(--yo-void);
   background-image:
+    linear-gradient(180deg, rgba(5, 10, 18, 0.66), rgba(5, 10, 18, 0.94)),
     repeating-linear-gradient(
       0deg,
       transparent,
       transparent 23px,
-      rgba(11, 31, 20, 0.06) 23px,
-      rgba(11, 31, 20, 0.06) 24px
+      rgba(126, 241, 255, 0.035) 23px,
+      rgba(126, 241, 255, 0.035) 24px
     ),
     repeating-linear-gradient(
       90deg,
       transparent,
       transparent 23px,
-      rgba(11, 31, 20, 0.06) 23px,
-      rgba(11, 31, 20, 0.06) 24px
+      rgba(126, 241, 255, 0.03) 23px,
+      rgba(126, 241, 255, 0.03) 24px
     ),
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255, 229, 102, 0.35), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 30%, rgba(94, 200, 255, 0.2), transparent 45%),
-    linear-gradient(168deg, var(--arcade-green-700) 0%, var(--arcade-green-800) 45%, #0a3d28 100%);
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(53, 240, 194, 0.2), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 30%, rgba(111, 103, 255, 0.18), transparent 45%),
+    linear-gradient(168deg, #06131f 0%, #081521 45%, #03070d 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -290,14 +312,16 @@ label:has(input[type="radio"]:disabled) {
   padding-bottom: 5em;
 }
 
-/* Chunky floating “blocks” */
+/* Tactical ambient panes behind the route stage. */
 .app-shell::before,
 .app-shell::after {
   content: "";
   position: fixed;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   pointer-events: none;
   z-index: 0;
+  opacity: 0.58;
+  filter: blur(0.2px);
 }
 
 .app-shell::before {
@@ -305,8 +329,8 @@ label:has(input[type="radio"]:disabled) {
   right: -3rem;
   width: 14rem;
   height: 14rem;
-  border-radius: 1.25rem;
-  background: linear-gradient(135deg, var(--arcade-gold-200), var(--arcade-gold-400));
+  border-radius: 2rem;
+  background: radial-gradient(circle at 30% 20%, rgba(53, 240, 194, 0.16), rgba(8, 20, 32, 0.04) 68%);
   transform: rotate(-11deg);
 }
 
@@ -315,8 +339,8 @@ label:has(input[type="radio"]:disabled) {
   bottom: 4rem;
   width: 11rem;
   height: 11rem;
-  border-radius: 0.75rem;
-  background: linear-gradient(135deg, var(--arcade-green-300), var(--arcade-green-500));
+  border-radius: 1.5rem;
+  background: radial-gradient(circle at 70% 30%, rgba(111, 103, 255, 0.16), rgba(8, 20, 32, 0.04) 70%);
   transform: rotate(8deg);
 }
 
@@ -334,11 +358,15 @@ label:has(input[type="radio"]:disabled) {
   max-width: 100%;
   min-width: 0;
   padding: 1rem 1.2rem;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.75rem;
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fffef8 0%, var(--bg-cream) 100%);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), transparent 28%),
+    var(--yo-panel-gradient);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    var(--yo-glass-shadow);
+  backdrop-filter: blur(18px) saturate(1.15);
   box-sizing: border-box;
 }
 
@@ -346,7 +374,7 @@ label:has(input[type="radio"]:disabled) {
 .app-header--dense {
   padding: 0.45rem 0.65rem;
   gap: 0.35rem;
-  border-width: 2px;
+  border-width: 1px;
 }
 
 .app-header--dense .app-header__top {
@@ -376,7 +404,7 @@ label:has(input[type="radio"]:disabled) {
   font-family: "Bungee", cursive;
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--arcade-green-900);
+  color: var(--yo-text);
   text-decoration: none;
   text-transform: none;
   letter-spacing: 0.02em;
@@ -386,11 +414,11 @@ label:has(input[type="radio"]:disabled) {
 
 .app-header--dense .brand-link--dense:hover {
   transform: none;
-  background: color-mix(in srgb, var(--arcade-gold-200) 45%, transparent);
+  background: rgba(126, 241, 255, 0.1);
 }
 
 .app-header--dense .brand-link--dense[aria-current="page"] {
-  border-bottom-color: var(--arcade-green-700);
+  border-bottom-color: var(--yo-cyan);
 }
 
 .app-header--dense .app-nav--dense {
@@ -416,7 +444,7 @@ label:has(input[type="radio"]:disabled) {
 
 .app-header--dense .app-nav--dense .nav-link--dense.nav-link--active {
   background: transparent;
-  border-bottom-color: var(--arcade-green-700);
+  border-bottom-color: var(--yo-cyan);
 }
 
 .app-header--dense .app-header__wallet--dense {
@@ -490,7 +518,7 @@ label:has(input[type="radio"]:disabled) {
     font-weight: 800;
     font-size: 0.74rem;
     font-family: "IBM Plex Mono", monospace;
-    color: var(--arcade-green-900);
+    color: var(--yo-text);
     white-space: nowrap;
     line-height: 1.1;
   }
@@ -507,7 +535,7 @@ label:has(input[type="radio"]:disabled) {
     font-size: 0.68rem;
     font-family: "IBM Plex Mono", monospace;
     letter-spacing: 0.05em;
-    color: var(--arcade-green-900);
+    color: var(--yo-text);
     white-space: nowrap;
     line-height: 1.1;
     text-transform: uppercase;
@@ -563,7 +591,7 @@ label:has(input[type="radio"]:disabled) {
   content: "";
   position: absolute;
   inset: -18%;
-  background: linear-gradient(105deg, transparent 26%, rgba(255, 255, 255, 0.72) 47%, transparent 68%);
+  background: linear-gradient(105deg, transparent 26%, rgba(126, 241, 255, 0.45) 47%, transparent 68%);
   pointer-events: none;
   animation: app-header-icon-shimmer 3.5s ease-in-out infinite;
   will-change: transform, opacity;
@@ -603,7 +631,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .app-header--dense :is(.brand-link--dense, .nav-link--dense, .header-network-btn, .wallet-action--dense, .app-header__music-btn):hover {
-  background: color-mix(in srgb, var(--arcade-gold-200) 45%, transparent);
+  background: rgba(126, 241, 255, 0.1);
   transform: none;
 }
 
@@ -646,7 +674,7 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 800;
   font-size: 0.82rem;
   font-family: "IBM Plex Mono", monospace;
-  color: var(--arcade-green-900);
+  color: var(--yo-text);
 }
 
 .app-header--dense .wallet-action__blockie canvas {
@@ -674,9 +702,9 @@ label:has(input[type="radio"]:disabled) {
   letter-spacing: 0.06em;
   padding: 0.28rem 0.4rem;
   border-radius: 0.45rem;
-  border: 2px solid #c0392b;
-  background: linear-gradient(180deg, #ffecec, #ffd6d6);
-  color: #5c1010;
+  border: 1px solid rgba(255, 107, 122, 0.72);
+  background: rgba(55, 12, 22, 0.88);
+  color: #ffd7dc;
 }
 
 .app-header__top {
@@ -1035,9 +1063,9 @@ label:has(input[type="radio"]:disabled) {
   align-items: center;
   min-height: 2.75rem;
   padding: 0.45rem 0.85rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  background: #fff;
+  background: rgba(8, 20, 32, 0.7);
   color: var(--text-main);
   text-decoration: none;
   font-weight: 700;
@@ -1053,7 +1081,9 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .nav-link--active {
-  background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
+  background: rgba(53, 240, 194, 0.16);
+  color: var(--yo-text);
+  box-shadow: inset 0 -2px 0 var(--yo-cyan);
 }
 
 .app-header__wallet {
@@ -1072,9 +1102,9 @@ label:has(input[type="radio"]:disabled) {
   gap: 0.35rem;
   min-height: 2.75rem;
   padding: 0.3rem 0.8rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
+  background: rgba(53, 240, 194, 0.12);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   font-family: "IBM Plex Mono", monospace;
@@ -1123,10 +1153,10 @@ label:has(input[type="radio"]:disabled) {
 .chain-write-gate__card {
   max-width: 28rem;
   padding: 1.25rem 1.35rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 12px;
-  background: var(--panel, #0f1628);
-  box-shadow: 6px 6px 0 var(--line);
+  background: var(--yo-glass-surface-strong);
+  box-shadow: var(--yo-glass-shadow);
 }
 
 .chain-write-gate__title {
@@ -1156,12 +1186,12 @@ label:has(input[type="radio"]:disabled) {
   justify-content: center;
   min-height: 2.85rem;
   padding: 0.48rem 0.95rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
   color: var(--text-main);
   font-weight: 800;
   letter-spacing: 0.01em;
-  background: #fff;
+  background: rgba(8, 20, 32, 0.78);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
     transform 150ms ease,
@@ -1174,9 +1204,9 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .wallet-action--connect {
-  background: linear-gradient(180deg, #1a5c3a, var(--arcade-green-900));
-  color: #fff;
-  text-shadow: 0 1px 0 var(--line);
+  background: var(--yo-action-gradient);
+  color: var(--yo-void);
+  text-shadow: none;
 }
 
 .wallet-action--priority {
@@ -1184,15 +1214,15 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .wallet-action--chain {
-  background: linear-gradient(180deg, #9ee5ff, var(--arcade-sky));
+  background: rgba(126, 241, 255, 0.14);
 }
 
 .wallet-action--account {
-  background: linear-gradient(180deg, #ffd0e8, var(--arcade-magenta));
+  background: rgba(255, 94, 196, 0.14);
 }
 
 .wallet-action--warning {
-  background: #fca5a5;
+  background: rgba(255, 107, 122, 0.2);
 }
 
 .wallet-action__text-short {
@@ -1244,23 +1274,24 @@ label:has(input[type="radio"]:disabled) {
 
 .page h1 {
   margin: 0;
-  font-family: "Bungee", cursive;
+  font-family: "IBM Plex Mono", monospace;
   font-size: clamp(2.1rem, 5vw, 4.4rem);
   line-height: 0.95;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--arcade-green-900);
-  text-shadow: 3px 3px 0 var(--arcade-gold-400);
+  letter-spacing: 0.04em;
+  color: var(--yo-text);
+  text-shadow: 0 0 22px rgba(53, 240, 194, 0.22);
 }
 
 .home-hero {
   position: relative;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.75rem;
   overflow: hidden;
-  box-shadow: var(--shadow-hard), var(--shadow-soft);
+  box-shadow: var(--yo-glass-shadow);
   min-height: min(52vw, 22rem);
-  background: var(--arcade-green-800);
+  background: var(--yo-ink-2);
+  backdrop-filter: blur(14px) saturate(1.08);
 }
 
 .home-hero:hover .home-hero__cutout--heroine {
@@ -1377,12 +1408,13 @@ label:has(input[type="radio"]:disabled) {
   box-sizing: border-box;
   min-width: 0;
   padding: 0.85rem;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.35rem;
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fff 0%, var(--bg-cream) 100%);
-  box-shadow: 6px 6px 0 var(--line);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 40%),
+    var(--yo-panel-gradient);
+  box-shadow: var(--yo-glass-shadow);
+  backdrop-filter: blur(14px) saturate(1.12);
   text-decoration: none;
   color: inherit;
   transition:
@@ -1392,16 +1424,16 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .home-cta-card:hover {
-  transform: translate(-3px, -4px) scale(1.01);
-  box-shadow: 9px 10px 0 var(--line);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--yo-glass-shadow), var(--yo-glow-cyan);
 }
 
 .home-cta-card__media {
   border-radius: 1rem;
   overflow: hidden;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   aspect-ratio: 4 / 3;
-  background: var(--arcade-green-800);
+  background: var(--yo-ink-2);
 }
 
 .home-cta-card__media img {
@@ -1422,7 +1454,7 @@ label:has(input[type="radio"]:disabled) {
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: var(--arcade-green-900);
+  color: var(--yo-text);
   overflow-wrap: anywhere;
 }
 
@@ -1442,17 +1474,17 @@ label:has(input[type="radio"]:disabled) {
   text-transform: uppercase;
   padding: 0.25rem 0.5rem;
   border-radius: 999px;
-  border: 2px solid var(--line);
+  border: 1px solid var(--yo-line);
 }
 
 .home-cta-card__badge--live {
-  background: linear-gradient(180deg, var(--arcade-green-300), var(--arcade-green-500));
-  color: #fff;
+  background: rgba(53, 240, 194, 0.16);
+  color: var(--yo-cyan-soft);
   animation: pulse-glow 2.8s ease-in-out infinite;
 }
 
 .home-cta-card__badge--soon {
-  background: var(--bg-cream);
+  background: rgba(8, 20, 32, 0.78);
   color: var(--text-muted);
 }
 
@@ -1464,19 +1496,19 @@ label:has(input[type="radio"]:disabled) {
   width: fit-content;
   min-height: 2rem;
   padding: 0.35rem 0.75rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  box-shadow: 4px 4px 0 var(--line);
+  box-shadow: none;
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  background: #fff;
+  background: rgba(8, 20, 32, 0.78);
 }
 
 .ui-badge--live {
-  background: linear-gradient(180deg, var(--arcade-green-300), var(--arcade-green-500));
-  color: #fff;
+  background: rgba(53, 240, 194, 0.16);
+  color: var(--yo-cyan-soft);
 }
 
 .ui-badge--soon {
@@ -1594,7 +1626,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .section-heading__lede {
-  color: rgba(6, 61, 36, 0.8);
+  color: var(--text-muted);
   font-size: 0.96rem;
   line-height: 1.5;
 }
@@ -2345,12 +2377,13 @@ label:has(input[type="radio"]:disabled) {
   gap: 1rem;
   overflow: hidden;
   padding: 1rem 1.15rem;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.5rem;
   background:
-    var(--panel-gloss),
-    linear-gradient(135deg, rgba(255, 229, 102, 0.35), rgba(31, 184, 106, 0.2));
-  box-shadow: 5px 5px 0 var(--line);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-panel-gradient);
+  box-shadow: var(--yo-glass-shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
   position: relative;
   transition:
     transform 180ms ease,
@@ -2369,7 +2402,7 @@ label:has(input[type="radio"]:disabled) {
   width: 4.5rem;
   height: 4.5rem;
   object-fit: contain;
-  filter: drop-shadow(3px 3px 0 var(--line));
+  filter: drop-shadow(0 0 14px rgba(53, 240, 194, 0.28));
   animation: coin-wobble 4s ease-in-out infinite;
 }
 
@@ -2397,7 +2430,7 @@ label:has(input[type="radio"]:disabled) {
 
 .arcade-banner:hover {
   transform: translateY(-2px);
-  box-shadow: 7px 8px 0 var(--line);
+  box-shadow: var(--yo-glass-shadow), var(--yo-glow-cyan);
 }
 
 .arcade-banner--with-sidekick {
@@ -2424,7 +2457,7 @@ label:has(input[type="radio"]:disabled) {
 .arcade-banner > .lede {
   margin: 0;
   border: 0;
-  color: rgba(6, 61, 36, 0.8);
+  color: var(--text-muted);
   line-height: 1.55;
   text-shadow: none;
 }
@@ -3010,12 +3043,13 @@ label:has(input[type="radio"]:disabled) {
   overflow: hidden;
   margin: 0;
   padding: 1.1rem 1.15rem;
-  border: 4px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.5rem;
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fffef8 0%, var(--bg-cream) 100%);
-  box-shadow: var(--shadow-hard), var(--shadow-soft);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-panel-gradient);
+  box-shadow: var(--yo-glass-shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -3025,25 +3059,25 @@ label:has(input[type="radio"]:disabled) {
 
 .data-panel:hover {
   transform: translateY(-2px);
-  box-shadow: 10px 10px 0 var(--line), var(--shadow-soft);
+  box-shadow: var(--yo-glass-shadow), var(--yo-glow-cyan);
 }
 
 .data-panel:nth-of-type(3n + 1) {
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fff 0%, #f0fff6 100%);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-panel-gradient);
 }
 
 .data-panel:nth-of-type(3n + 2) {
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fffef8 0%, #fff5e0 100%);
+    linear-gradient(145deg, rgba(248, 213, 107, 0.1), transparent 42%),
+    var(--yo-panel-gradient);
 }
 
 .data-panel:nth-of-type(3n + 3) {
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #f5fdff 0%, #dff6ff 100%);
+    linear-gradient(145deg, rgba(126, 241, 255, 0.1), transparent 42%),
+    var(--yo-panel-gradient);
 }
 
 .data-panel::after {
@@ -3053,41 +3087,40 @@ label:has(input[type="radio"]:disabled) {
   right: 1rem;
   width: 1rem;
   height: 1rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, #fff 0%, var(--arcade-gold-400) 45%, var(--arcade-gold-600) 100%);
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.15);
+  background: radial-gradient(circle at 30% 30%, var(--yo-cyan-soft) 0%, var(--yo-cyan) 48%, rgba(53, 240, 194, 0.08) 100%);
+  box-shadow: 0 0 18px rgba(53, 240, 194, 0.28);
 }
 
 
 /* ── WarBow arena containment (#24) ────────────────────────────── */
 .data-panel.data-panel--warbow {
-  border: 5px solid var(--arcade-gold-600);
+  border: 1px solid rgba(248, 213, 107, 0.58);
   border-radius: 1.5rem;
   background:
-    var(--panel-gloss),
-    linear-gradient(180deg, #fff5f5 0%, #ffe8e0 50%, #fff0e6 100%);
+    linear-gradient(145deg, rgba(248, 213, 107, 0.12), rgba(255, 94, 196, 0.07) 42%, transparent 68%),
+    var(--yo-panel-gradient);
   box-shadow:
-    6px 6px 0 var(--arcade-gold-600),
-    var(--shadow-soft),
-    inset 0 0 20px rgba(255, 100, 50, 0.06);
+    var(--yo-glass-shadow),
+    inset 0 0 28px rgba(248, 213, 107, 0.06);
   padding-right: min(7.5rem, 22vw);
 }
 .data-panel.data-panel--warbow::after {
-  background: radial-gradient(circle at 30% 30%, #fff 0%, #ff6644 45%, #cc3311 100%);
-  border-color: var(--arcade-gold-600);
+  background: radial-gradient(circle at 30% 30%, var(--yo-gold) 0%, var(--yo-magenta) 64%, rgba(255, 94, 196, 0.08) 100%);
+  border-color: rgba(248, 213, 107, 0.58);
 }
 .data-panel.data-panel--warbow h2 {
-  color: #cc3311;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
+  color: var(--yo-gold);
+  text-shadow: 0 0 18px rgba(248, 213, 107, 0.2);
 }
 .data-panel.data-panel--warbow .btn-secondary--critical {
-  border-color: #cc3311;
-  color: #cc3311;
+  border-color: var(--yo-danger);
+  color: #ffd7dc;
 }
 .data-panel.data-panel--warbow .btn-secondary--priority {
-  border-color: var(--arcade-gold-600);
-  color: var(--arcade-gold-600);
+  border-color: var(--yo-gold);
+  color: var(--yo-gold);
 }
 
 .data-panel--spotlight {
@@ -3122,12 +3155,12 @@ label:has(input[type="radio"]:disabled) {
 
 .data-panel h2 {
   margin: 0 0 0.75rem;
-  font-family: "Bungee", cursive;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 1.15rem;
   line-height: 1.1;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: var(--arcade-green-900);
+  color: var(--yo-text);
 }
 
 /* Referrals dashboard (GitLab #94 design pass). */
@@ -3173,30 +3206,31 @@ label:has(input[type="radio"]:disabled) {
   gap: clamp(0.85rem, 2vw, 1.25rem);
   align-items: center;
   padding: clamp(1rem, 2.4vw, 1.35rem);
-  border: 5px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1.45rem;
   background:
-    radial-gradient(circle at 8% 0%, rgba(255, 229, 102, 0.46), transparent 30%),
-    radial-gradient(circle at 95% 100%, rgba(94, 200, 255, 0.26), transparent 34%),
+    radial-gradient(circle at 8% 0%, rgba(248, 213, 107, 0.16), transparent 30%),
+    radial-gradient(circle at 95% 100%, rgba(126, 241, 255, 0.14), transparent 34%),
     var(--panel-gloss),
-    linear-gradient(135deg, #f8fff2 0%, #dfffea 58%, #fff1b8 100%);
-  box-shadow: 7px 7px 0 var(--line), var(--shadow-soft);
+    var(--yo-panel-gradient);
+  box-shadow: var(--yo-glass-shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
   overflow: hidden;
 }
 
 .referrals-quest-strip h2 {
   margin: 0;
-  font-family: "Bungee", cursive;
+  font-family: "IBM Plex Mono", monospace;
   font-size: clamp(1rem, 2vw, 1.45rem);
   line-height: 1.05;
-  color: var(--arcade-green-900);
+  color: var(--yo-text);
   text-transform: uppercase;
 }
 
 .referrals-quest-strip p {
   max-width: 68ch;
   margin: 0.45rem 0 0;
-  color: rgba(6, 61, 36, 0.82);
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -3214,11 +3248,11 @@ label:has(input[type="radio"]:disabled) {
   align-items: center;
   min-height: 2.2rem;
   padding: 0.3rem 0.65rem;
-  border: 2px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
-  box-shadow: 2px 2px 0 var(--line);
-  color: var(--arcade-green-900);
+  background: rgba(8, 20, 32, 0.72);
+  box-shadow: none;
+  color: var(--yo-cyan-soft);
   font-weight: 800;
   font-size: 0.82rem;
 }
@@ -3231,7 +3265,7 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .referrals-panel.data-panel {
-  border-width: 5px;
+  border-width: 1px;
   isolation: isolate;
 }
 
@@ -3247,9 +3281,9 @@ label:has(input[type="radio"]:disabled) {
   margin-right: auto;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at 100% 0%, rgba(94, 200, 255, 0.26), transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(126, 241, 255, 0.12), transparent 30%),
     var(--panel-gloss),
-    linear-gradient(180deg, #fffdf5 0%, #fff0c0 100%);
+    var(--yo-panel-gradient);
 }
 
 .referrals-panel--earnings .referrals-earnings-charm-line,
@@ -4078,10 +4112,11 @@ label:has(input[type="radio"]:disabled) {
 .form-input {
   font: inherit;
   padding: 0.7rem 0.85rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 1rem;
-  background: #fff;
-  box-shadow: 4px 4px 0 var(--line);
+  background: rgba(4, 11, 18, 0.72);
+  color: var(--yo-text);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   max-width: 20rem;
 }
 
@@ -4089,13 +4124,13 @@ label:has(input[type="radio"]:disabled) {
   font: inherit;
   font-weight: 800;
   padding: 0.75rem 1.35rem;
-  border: 3px solid var(--line);
+  border: 1px solid rgba(126, 241, 255, 0.62);
   border-radius: 999px;
-  background: linear-gradient(180deg, #1a5c3a, var(--arcade-green-900));
-  color: #fff;
+  background: var(--yo-action-gradient);
+  color: var(--yo-void);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
-  box-shadow: 6px 6px 0 var(--line);
-  text-shadow: 0 1px 0 var(--line);
+  box-shadow: 0 10px 26px rgba(53, 240, 194, 0.16);
+  text-shadow: none;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -4112,8 +4147,8 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translate(-2px, -2px) scale(1.01);
-  box-shadow: 8px 8px 0 var(--line);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 14px 34px rgba(53, 240, 194, 0.24);
 }
 
 .btn-primary:disabled {
@@ -4122,8 +4157,8 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .btn-primary:active:not(:disabled) {
-  transform: translate(2px, 2px) scale(0.98);
-  box-shadow: 3px 3px 0 var(--line);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 7px 18px rgba(53, 240, 194, 0.16);
 }
 
 .btn-primary--priority {
@@ -4133,7 +4168,7 @@ label:has(input[type="radio"]:disabled) {
   /* Cancel the priority-bounce animation while disabled so the button
      doesn't visually read as "interactable" when the disabled prop is
      set (e.g. wrong-chain, insufficient bounds). The opacity dim from
-     .btn-primary:disabled and the grayscale from arcade-variant
+     .btn-primary:disabled and the grayscale from legacy variant
      :disabled stay in effect. GitLab #184. */
   animation: none;
 }
@@ -4142,12 +4177,12 @@ label:has(input[type="radio"]:disabled) {
   font: inherit;
   font-weight: 700;
   padding: 0.6rem 1rem;
-  border: 3px solid var(--line);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
-  background: linear-gradient(180deg, #fff, var(--bg-cream));
+  background: rgba(8, 20, 32, 0.76);
   color: var(--text-main);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
-  box-shadow: 4px 4px 0 var(--line);
+  box-shadow: none;
   transition:
     transform 140ms ease,
     box-shadow 140ms ease,
@@ -4156,13 +4191,13 @@ label:has(input[type="radio"]:disabled) {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--line);
+  transform: translateY(-2px);
+  box-shadow: var(--yo-glow-cyan);
 }
 
 .btn-secondary:active:not(:disabled) {
-  transform: translate(2px, 2px) scale(0.98);
-  box-shadow: 2px 2px 0 var(--line);
+  transform: translateY(1px) scale(0.98);
+  box-shadow: none;
 }
 
 .btn-ghost {
@@ -4170,14 +4205,14 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 800;
   min-width: 5.6rem;
   padding: 0.46rem 0.85rem;
-  border: 3px solid var(--arcade-green-900);
+  border: 1px solid var(--yo-line);
   border-radius: 999px;
   background:
     var(--panel-gloss),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, var(--bg-cream) 100%);
-  color: var(--arcade-green-900);
+    rgba(8, 20, 32, 0.72);
+  color: var(--yo-text);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
-  box-shadow: 4px 4px 0 var(--line);
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4779,15 +4814,15 @@ code {
     margin: 0;
     padding: 0.34rem 0.48rem;
     gap: 0.2rem;
-    border-width: 2px;
+    border-width: 1px;
     border-radius: 1.25rem;
     background:
-      linear-gradient(110deg, rgba(255, 255, 255, 0.58), transparent 22%, transparent 78%, rgba(255, 229, 102, 0.34)),
-      var(--panel-gloss),
-      linear-gradient(180deg, rgba(255, 255, 248, 0.98) 0%, rgba(238, 252, 244, 0.98) 100%);
+      linear-gradient(110deg, rgba(126, 241, 255, 0.18), transparent 22%, transparent 78%, rgba(248, 213, 107, 0.14)),
+      var(--yo-panel-gradient);
     box-shadow:
-      3px 3px 0 var(--line),
-      0 10px 24px rgba(6, 61, 36, 0.22);
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+      0 10px 30px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(18px) saturate(1.15);
     overflow: hidden;
   }
 
@@ -4799,8 +4834,8 @@ code {
     background: linear-gradient(
       100deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.62) 42%,
-      rgba(255, 229, 102, 0.34) 52%,
+      rgba(126, 241, 255, 0.34) 42%,
+      rgba(248, 213, 107, 0.18) 52%,
       transparent 100%
     );
     pointer-events: none;
@@ -7155,6 +7190,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
+.arena-subnav__tabs,
 .arena-subnav__list {
   list-style: none;
   margin: 0;
@@ -7163,24 +7199,30 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: stretch;
-  gap: 0;
-  border: 3px solid var(--line);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 4px 4px 0 var(--line);
+  gap: 0.4rem;
+  border: 1px solid var(--yo-line);
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    rgba(8, 20, 32, 0.72);
+  box-shadow: var(--yo-glass-shadow);
+  backdrop-filter: blur(14px) saturate(1.1);
   overflow: hidden;
 }
 
+.arena-subnav__tabs li,
 .arena-subnav__item {
   margin: 0;
   flex: 1 1 0;
   min-width: 0;
 }
 
+.arena-subnav__tabs li:not(:last-child),
 .arena-subnav__item:not(:last-child) {
-  border-right: 2px solid var(--line);
+  border-right: 1px solid var(--yo-line);
 }
 
+.arena-subnav__tab,
 .arena-subnav__link {
   display: flex;
   flex-direction: row;
@@ -7191,9 +7233,9 @@ a.podium-address-explorer:hover .address-inline__label {
   height: 100%;
   box-sizing: border-box;
   padding: 0.55rem 0.65rem;
-  border: none;
-  border-radius: 0;
-  background: #fff;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
   box-shadow: none;
   color: var(--text-main);
   text-decoration: none;
@@ -7201,26 +7243,30 @@ a.podium-address-explorer:hover .address-inline__label {
   justify-content: center;
 }
 
+.arena-subnav__tab:hover,
 .arena-subnav__link:hover {
-  transform: translate(-1px, -1px);
+  transform: translateY(-1px);
+  background: rgba(126, 241, 255, 0.1);
 }
 
+.arena-subnav__tab--active,
 .arena-subnav__link--active {
-  background: #fff;
+  border-color: rgba(126, 241, 255, 0.56);
+  background: rgba(53, 240, 194, 0.14);
+  box-shadow: inset 0 -2px 0 var(--yo-cyan);
 }
 
+.arena-subnav__tab span,
 .arena-subnav__label {
   font-weight: 400;
   letter-spacing: 0.04em;
   flex: 0 1 auto;
 }
 
+.arena-subnav__tab--active span,
 .arena-subnav__link--active .arena-subnav__label {
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: var(--arcade-green-500);
-  text-decoration-thickness: 3px;
-  text-underline-offset: 0.18em;
+  font-weight: 800;
+  color: var(--yo-cyan-soft);
 }
 
 .arena-subnav__icon {
@@ -12254,13 +12300,13 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-/* Scene backplate inside .arcade-banner (PageHero). A subtle white scrim
- * on the whole banner keeps copy readable against busy art (issue #45). */
+/* Scene backplate inside .arcade-banner (PageHero). A dark glass scrim keeps
+ * copy readable while preserving branded scene art (issues #45, #290). */
 .arcade-banner--with-scene {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.5)),
+    linear-gradient(180deg, rgba(5, 10, 18, 0.82), rgba(5, 10, 18, 0.64)),
     var(--panel-gloss),
-    linear-gradient(135deg, rgba(255, 229, 102, 0.55), rgba(31, 184, 106, 0.4));
+    linear-gradient(135deg, rgba(53, 240, 194, 0.18), rgba(111, 103, 255, 0.16));
 }
 .arcade-banner__scene {
   position: absolute;
@@ -12268,11 +12314,11 @@ a.podium-address-explorer:hover .address-inline__label {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.22;
+  opacity: 0.28;
   pointer-events: none;
   z-index: 0;
-  mix-blend-mode: multiply;
-  filter: saturate(1.05);
+  mix-blend-mode: screen;
+  filter: saturate(0.82) contrast(1.08);
 }
 .arcade-banner--with-scene > :not(.arcade-banner__scene) {
   position: relative;
@@ -12796,6 +12842,29 @@ input[type="range"]:active {
   font-size: 0.84rem;
   display: grid;
   gap: 0.35rem;
+}
+
+/* Issue #290: route-wide cyberminimalist glass normalization for shared late-defined surfaces. */
+.card-list li,
+.loading-state,
+.status-message,
+.wallet-profile-modal__panel,
+.wallet-profile-modal__address,
+.wallet-profile-modal__section,
+.wallet-profile-modal__loading,
+.wallet-profile-modal__error,
+.wallet-profile-modal__offline {
+  border-color: var(--yo-line);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-panel-gradient);
+  color: var(--yo-text);
+  box-shadow: var(--yo-glass-shadow);
+}
+
+.wallet-profile-modal__explorer-link,
+.card-list a {
+  color: var(--yo-cyan-soft);
 }
 
 @media (max-width: 600px) {

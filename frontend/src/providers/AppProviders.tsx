@@ -1,6 +1,6 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RainbowKitProvider, lightTheme } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import type { ReactNode } from "react";
 import { wagmiConfig } from "@/wagmi-config";
@@ -20,9 +20,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const arcadeWalletTheme = lightTheme({
-  accentColor: "#0f7a47",
-  accentColorForeground: "#ffffff",
+const cyberWalletTheme = darkTheme({
+  accentColor: "#35f0c2",
+  accentColorForeground: "#061318",
   borderRadius: "large",
   fontStack: "system",
   overlayBlur: "small",
@@ -34,7 +34,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RpcFilterCapabilityBootstrap>
           <LatestBlockProvider>
-            <RainbowKitProvider theme={arcadeWalletTheme}>
+            <RainbowKitProvider theme={cyberWalletTheme}>
               <IndexerConnectivityProvider>
                 <AudioEngineProvider>{children}</AudioEngineProvider>
               </IndexerConnectivityProvider>

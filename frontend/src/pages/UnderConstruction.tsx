@@ -13,7 +13,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-/** Placeholder surface while TimeCurve is the active launch milestone. */
+/** Placeholder surface for routes that are not wired into live onchain reads yet. */
 export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-wave.jpg", children }: Props) {
   const cutouts = PLACEHOLDER_CUTOUTS_BY_SLUG[slug as keyof typeof PLACEHOLDER_CUTOUTS_BY_SLUG]
     ?? PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
@@ -74,14 +74,14 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
           />
         </div>
         <PageSection
-          title="Launch Track"
+          title="Arena Track"
           badgeLabel="What exists now"
           badgeTone="warning"
-          lede="The launch track is still centered on the live Time Arena surface, but the rest of the product now shares its framing and design language."
+          lede="The active onchain surface is Time Arena; adjacent routes share its command-console framing until their own reads are wired."
         >
           <ul className="accent-list">
-            <li>Time Arena remains the active launch surface for onchain buying, charms, podiums, and WarBow PvP.</li>
-            <li>This page is intentionally polished now so Collection and Referrals still feel first-party while functionality catches up.</li>
+            <li>Time Arena remains the active surface for onchain buys, CHARM, podiums, and WarBow PvP.</li>
+            <li>This page is intentionally polished now so adjacent routes feel first-party while functionality catches up.</li>
             <li>When the next milestone lands, this route should plug into the same badges, panels, and state patterns instead of starting over visually.</li>
           </ul>
         </PageSection>

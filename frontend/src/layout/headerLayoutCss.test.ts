@@ -19,6 +19,14 @@ function cssBlock(css: string, selector: string): string {
 describe("header layout CSS (GitLab #171)", () => {
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
 
+  it("defines cyberminimalist glass shell tokens for GitLab #290", () => {
+    const root = cssBlock(css, ":root");
+    expect(root).toContain("--yo-glass-surface:");
+    expect(root).toContain("--yo-panel-gradient:");
+    expect(root).toContain("--yo-action-gradient:");
+    expect(root).toContain('font-family: "IBM Plex Sans"');
+  });
+
   it("reserves desktop header space for the decorative mascot", () => {
     expect(cssBlock(css, ".app-header")).toContain(
       "--app-header-mascot-clearance: clamp(3.65rem, 7vw, 4.75rem);",
@@ -49,10 +57,21 @@ describe("header layout CSS (GitLab #171)", () => {
     expect(css).toContain("animation: mobile-header-shimmer 3.5s ease-in-out infinite;");
   });
 
-  it("underlines the dense header primary nav active target in green", () => {
+  it("underlines the dense header primary nav active target in the console accent", () => {
     const active = cssBlock(css, ".app-header--dense .app-nav--dense .nav-link--dense.nav-link--active");
-    expect(active).toContain("border-bottom-color: var(--arcade-green-700);");
+    expect(active).toContain("border-bottom-color: var(--yo-cyan);");
     expect(active).toContain("background: transparent;");
+  });
+
+  it("styles the Arena BUY/AUDIT subnav tabs as glass controls", () => {
+    expect(css).toMatch(/\.arena-subnav__tabs,[\s\S]*?border: 1px solid var\(--yo-line\);/);
+    expect(css).toMatch(/\.arena-subnav__tab,[\s\S]*?border: 1px solid transparent;/);
+    expect(css).toMatch(/\.arena-subnav__tab--active,[\s\S]*?box-shadow: inset 0 -2px 0 var\(--yo-cyan\);/);
+  });
+
+  it("keeps Referrals route panels inside the shared thin-border glass system", () => {
+    expect(cssBlock(css, ".referrals-quest-strip")).toContain("border: 1px solid var(--yo-line);");
+    expect(cssBlock(css, ".referrals-panel.data-panel")).toContain("border-width: 1px;");
   });
 
   it("shows dense header nav + network text labels only from tablet/desktop (header on top)", () => {
