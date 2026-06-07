@@ -886,9 +886,11 @@ profile behavior.
 - [ ] `/arena` desktop and mobile: live-buy rows, podium rows, amount displays,
   empty/loading states, and indexer status read as dark tactical glass surfaces
   with compact copy; no raw wei/WAD or fake-zero empty states.
-- [ ] `/arena` all-buys and buy-detail modals: modal shell is dark glass,
-  headings are compact, detail rows remain readable, and row clicks/profile
-  buttons still work.
+- [ ] `/arena/protocol` activity feed (`arena-live-buys-activity`): ticker rows
+  use blockie + last-six participant labels, glass activity panel styling, and
+  wallet-profile actions where wired. Legacy hero-strip buy list/detail modals
+  (`ArenaBuyModals`) were retired with the #291 command console — do not expect
+  them on `/arena`.
 - [ ] Wallet profile: click participant blockie/last-six address from a live row
   or podium row; `WalletProfileModal` opens, sections remain readable, empty
   sections use the shared placeholder, and **View on explorer** remains a
@@ -906,8 +908,10 @@ profile behavior.
   keyboard focus remains visible on profile buttons, explorer links, modal close
   buttons, and switch-chain controls.
 - [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
-  optional focused Playwright UI smoke with 5 workers for non-Anvil specs:
-  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena-live-buys-modals.spec.ts e2e/referrals-surface.spec.ts`.
+  focused Playwright UI smoke with 5 workers:
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/referrals-surface.spec.ts`.
+  (`e2e/arena-live-buys-modals.spec.ts` targets the pre-#291 hero live-buys
+  strip and is not a #294 merge gate.)
 
 **Doc map:** [frontend design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) · [arena views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) · [wallet gate §95](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [wallet profile §258](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) · [invariants — #294](invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · [Rabby QA](rabby-cloud-agent-qa.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
