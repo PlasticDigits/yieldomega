@@ -257,8 +257,8 @@ def on_last_buy_podium(winners):
 POLL = float(os.environ.get("POLL_SEC", "3"))
 
 while True:
-    if tc.functions.ended().call():
-        print("sale ended — exiting"); break
+    if tc.functions.paused().call():
+        print("arena paused — waiting"); time.sleep(POLL); continue
     now = chain_ts()
     dl = int(tc.functions.deadline().call())
     if now >= dl:
@@ -319,8 +319,8 @@ def send(fn_tx):
 POLL = float(os.environ.get("POLL_SEC", "8"))
 
 while True:
-    if tc.functions.ended().call():
-        print("sale ended — exiting"); break
+    if tc.functions.paused().call():
+        print("arena paused — waiting"); time.sleep(POLL); continue
     if int(w3.eth.get_block("latest")["timestamp"]) > int(tc.functions.deadline().call()):
         time.sleep(POLL); continue
     head = head_addr()
@@ -388,8 +388,8 @@ def last_buy_age():
     return chain_ts() - int(tsb)
 
 while True:
-    if tc.functions.ended().call():
-        print("sale ended — exiting"); break
+    if tc.functions.paused().call():
+        print("arena paused — waiting"); time.sleep(POLL); continue
     now = chain_ts()
     dl = int(tc.functions.deadline().call())
     if now >= dl:
@@ -433,8 +433,8 @@ POLL = float(os.environ.get("POLL_SEC", "5"))
 BOOST_REM_MAX = int(os.environ.get("TIME_BOOSTER_MAX_REM_SEC", "180"))  # 3 minutes
 
 while True:
-    if tc.functions.ended().call():
-        print("sale ended — exiting"); break
+    if tc.functions.paused().call():
+        print("arena paused — waiting"); time.sleep(POLL); continue
     now = chain_ts()
     dl = int(tc.functions.deadline().call())
     if now >= dl:
@@ -520,7 +520,7 @@ export function ArenaSimpleAgentCard() {
             <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeArena.buy</code> /
             referral hash variant, <code className="app-footer-agent__code-inline">buyWithCred</code>, or{" "}
             <code className="app-footer-agent__code-inline">TimeArenaBuyRouter.buyViaKumbaya</code> for ETH/USDM.{" "}
-            <strong>Podium pools</strong> receive DOUB via onchain ArenaBuyRouting (40/30/30).
+            <strong>Podium pools</strong> receive 100% of DOUB buys via onchain ArenaBuyRouting (25% per track · 70/20/10 epoch tranches).
           </p>
 
           <h4 className="app-footer-agent__h">

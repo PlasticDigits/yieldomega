@@ -40,6 +40,11 @@ export function xpToNextLevel(xp: bigint): bigint {
 }
 
 export const MAX_LEVEL_UPS_PER_BUY = 5;
+export const MAX_PLAYER_LEVEL = 5n;
+
+export function clampLevel(level: bigint): bigint {
+  return level > MAX_PLAYER_LEVEL ? MAX_PLAYER_LEVEL : level;
+}
 
 /** Buy-path incremental update (mirrors `ArenaXp.applyXpGain`, GitLab #265). */
 export function applyXpGain(
@@ -51,13 +56,14 @@ export function applyXpGain(
   let newLevel = level;
   let newToward = xpTowardNext + xpGain;
   let levelsGained = 0;
-  while (levelsGained < MAX_LEVEL_UPS_PER_BUY) {
+  while (levelsGained < MAX_LEVEL_UPS_PER_BUY && newLevel < MAX_PLAYER_LEVEL) {
     const need = xpToAdvance(newLevel);
     if (newToward < need) break;
     newToward -= need;
     newLevel += 1n;
     levelsGained += 1;
   }
+  if (newLevel > MAX_PLAYER_LEVEL) newLevel = MAX_PLAYER_LEVEL;
   return { level: newLevel, xpTowardNext: newToward };
 }
 

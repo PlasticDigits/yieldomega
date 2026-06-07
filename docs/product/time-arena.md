@@ -48,11 +48,10 @@ Each qualifying **buy** extends **all four** podium deadlines (Last Buy uses the
 
 | Destination | Share | Notes |
 |-------------|-------|--------|
-| Each of 4 **active** podium pools | 10% | 40% total |
-| Each of 4 **seed** podium pools | 7.5% | 30% total |
-| **`AdminSellVault`** | 30% | Integer remainder |
+| Each of 4 podium categories | 25% | 100% to prizes ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) |
+| Per category → epoch / +1 / +2 | 70% / 20% / 10% | `activePools` / `seedPools` / `futurePools` |
 
-**70% total to prizes** (40% active + 30% seed). Library: [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol). Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer: **`GET /v1/arena/vault-funding/*`** ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)).
+**0%** admin take on buys. Library: [`ArenaBuyRouting`](../../contracts/src/arena/libraries/ArenaBuyRouting.sol). Events: **`PodiumEpochFunded`**. Indexer: **`GET /v1/arena/vault-funding/*`** ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)).
 
 <a id="manual-podium-pool-top-up-gitlab-261"></a>
 

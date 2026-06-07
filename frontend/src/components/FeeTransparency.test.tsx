@@ -18,13 +18,15 @@ vi.mock("@/lib/explorer", () => ({
 
 import { FeeTransparency } from "@/components/FeeTransparency";
 
-describe("FeeTransparency (GitLab #293)", () => {
-  it("renders compact Arena routing and blockie explorer address rows", () => {
+describe("FeeTransparency (GitLab #293 / #300)", () => {
+  it("renders 100% podium routing and blockie explorer address rows", () => {
     const html = renderToStaticMarkup(createElement(FeeTransparency));
 
     expect(html).toContain("Arena DOUB routing");
-    expect(html).toContain("<strong>40%</strong>");
-    expect(html).toContain("<strong>30%</strong>");
+    expect(html).toContain("<strong>100%</strong>");
+    expect(html).toContain("<strong>25%</strong>");
+    expect(html).toContain("<strong>70/20/10</strong>");
+    expect(html).not.toContain("<strong>30%</strong>");
     expect(html).toContain("arena-vault-addresses__row");
     expect(html).toContain("address-inline__blockie");
     expect(html).toContain("address-inline__label\">111111<");

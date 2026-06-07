@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Dark Time Arena command-console timer bay">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#041112"/>
+      <stop offset="0.52" stop-color="#071827"/>
+      <stop offset="1" stop-color="#04070d"/>
+    </linearGradient>
+    <radialGradient id="acid" cx="24%" cy="18%" r="62%">
+      <stop offset="0" stop-color="#b9ff6a" stop-opacity=".34"/>
+      <stop offset=".48" stop-color="#35f0c2" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#35f0c2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="amber" cx="82%" cy="14%" r="48%">
+      <stop offset="0" stop-color="#ffb14d" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#ffb14d" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0v48" fill="none" stroke="#7ef1ff" stroke-opacity=".11" stroke-width="1"/>
+    </pattern>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#acid)"/>
+  <rect width="1600" height="900" fill="url(#amber)"/>
+  <rect width="1600" height="900" fill="url(#grid)"/>
+  <path d="M110 720c290-210 720-228 1380-56" fill="none" stroke="#b9ff6a" stroke-opacity=".16" stroke-width="3"/>
+  <path d="M118 760c314-148 735-160 1360-36" fill="none" stroke="#ffb14d" stroke-opacity=".18" stroke-width="2"/>
+  <g fill="none" stroke="#7ef1ff" stroke-opacity=".18">
+    <circle cx="770" cy="430" r="174"/>
+    <circle cx="770" cy="430" r="260"/>
+    <path d="M770 156v548M496 430h548"/>
+  </g>
+  <g filter="url(#blur)" opacity=".58">
+    <ellipse cx="468" cy="266" rx="220" ry="72" fill="#35f0c2" fill-opacity=".22"/>
+    <ellipse cx="1062" cy="252" rx="230" ry="78" fill="#ffb14d" fill-opacity=".16"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M406 605h728" stroke="#b9ff6a" stroke-opacity=".42" stroke-width="6"/>
+    <path d="M506 648h520" stroke="#7ef1ff" stroke-opacity=".26" stroke-width="3"/>
+    <path d="M646 692h240" stroke="#ffb14d" stroke-opacity=".34" stroke-width="4"/>
+  </g>
+  <g fill="#ecfbff" font-family="IBM Plex Mono, monospace" font-size="26" opacity=".42">
+    <text x="128" y="144">LAST BUY</text>
+    <text x="128" y="182">TIMER BAY</text>
+    <text x="1180" y="734">DOUB ROUTE ONLINE</text>
+  </g>
+</svg>

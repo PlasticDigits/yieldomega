@@ -32,7 +32,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
     >
       <img
         className="launch-countdown__scene"
-        src="/art/scenes/launch-countdown.jpg"
+        src="/art/scenes/launch-countdown-command-console.svg"
         alt=""
         aria-hidden="true"
         decoding="async"

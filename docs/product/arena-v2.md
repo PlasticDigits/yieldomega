@@ -41,15 +41,19 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 
 **WarBow (cat 3):** steps 1 and 3–5 apply; step 2 (auto 4∶2∶1 pay) is **skipped** — owner **`finalizeWarbowPodium(epoch, …)`** pays that epoch’s pool ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). Live BP resets via **`warbowBpGeneration`** on roll.
 
-## DOUB prize routing (per buy)
+## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 
-| Destination | Bps | Notes |
-|-------------|-----|--------|
-| Each of 4 **active** podium pools | 1000 (10% each) | 40% total |
-| Each of 4 **seed** podium pools | 750 (7.5% each) | 30% total |
-| **`AdminSellVault`** | 3000 (30%) | Integer remainder |
+**100%** of paid DOUB routes to **four podium prize vaults** (**0%** admin take on buys). Each category receives **25%** of the buy; within each category the share splits **70% / 20% / 10%** to **`podiumEpoch[cat]`**, **`+1`**, **`+2`** pools (active / seed / future). Remainder wei: category split residue → **Time Booster (cat 1)**; within-category residue → **+2 tranche**.
 
-Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer ingest + **`GET /v1/arena/vault-funding/*`**: [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267) · [invariants §267](../testing/invariants-and-business-logic.md#arena-vault-funding-gitlab-267).
+| Tranche | Pool | Share of category |
+|---------|------|-------------------|
+| Current epoch | `activePools[cat]` | 70% |
+| Next epoch | `seedPools[cat]` | 20% |
+| Epoch +2 | `futurePools[cat]` | 10% (absorbs remainder) |
+
+On **`rollPodiumEpoch`**: pay active 4∶2∶1 (except WarBow auto-pay), then **`rollEpochTranches`** (future → seed → active). **`totalDoubRaised`** still records full **`received`** DOUB.
+
+Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`PodiumFunded` / `SeedFunded`** remain for **`topUpPodiumPools`** only. Indexer: **`GET /v1/arena/vault-funding/*`** ([#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267)) · **`INV-ARENA-PRIZE-ROUTING-300-*`** · [invariants §300](../testing/invariants-and-business-logic.md#arena-prize-routing-gitlab-300).
 
 <a id="manual-podium-pool-top-up-gitlab-261"></a>
 
@@ -72,7 +76,9 @@ Events: **`PodiumFunded`**, **`SeedFunded`**, **`AdminVaultFunded`**. Indexer in
 
 - Per buy: `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor; **1–10** at band ends).
 - Level **L** requires cumulative XP; step **L→L+1**: `min(20 + (L-1)*5, 100)` XP (**L1 = 20** total to reach level 2).
-- Uncapped level; views **`xp`** (lifetime cumulative), **`level`** (cached, O(1)), **`xpTowardNext`** (progress within current level), **`xpToNextLevel`** (O(1)). Onchain library: [`ArenaXp`](../../contracts/src/arena/libraries/ArenaXp.sol); frontend mirror: [`arenaXpMath.ts`](../../frontend/src/lib/arenaXpMath.ts) ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)).
+- **Player level cap 5** ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)): `MAX_PLAYER_LEVEL = 5`; surplus XP **banks** in **`xpTowardNext`** at max level. Views **`level`**, **`unlockedLevel`**, **`xp`**, **`xpTowardNext`**, **`xpToNextLevel`**. Onchain: [`ArenaXp`](../../contracts/src/arena/libraries/ArenaXp.sol); frontend: [`arenaXpMath.ts`](../../frontend/src/lib/arenaXpMath.ts), [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts).
+- **Progressive unlocks (#299):** buyer **level** gates **their** buy side effects — L1 Last Buy only; L2 Time Booster timer/scoring; L3 Defended Streak; L4 WarBow timer/BP + steal/guard/revenge; L5 flag plant/cancel. Other players’ buys always run full mechanics. **`grandfatherProgression(address[])`** one-shot migration for pre-ship wallets with `buyCount > 0`.
+- **Onboarding (#299):** `ONBOARDING_STARTER_CHARM_WAD = 10e18`; `FIRST_BUY_CRED_BONUS = 1100e18` (110% of starter `buyWithCred` burn) so two starter buys reach **level ≥ 2**.
 - **Buy path ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)):** each buy adds charm XP to **`xpTowardNext`**, subtracts threshold XP on level-up, and applies **at most five** level-ups per buy; surplus progress carries to the next buy. **`levelFromXp` full recompute is not used on the hot path.**
 - **Timer hard-reset / `lastBuyEpoch` roll** does **not** reset **`level`**, **`xpTowardNext`**, or lifetime **`xp`** — progression is independent of podium/timer state ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250)).
 

@@ -387,14 +387,14 @@ export type WarbowRefreshCandidatesResponse = {
   total: number;
   next_offset: number | null;
   podium_warbow_hint_count: number;
-  /** Head chain-timer reports sale ended — indexer omits WarBow podium hints ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
+  /** Legacy field name: head timer expired / settlement pending, so the indexer omits WarBow podium hints ([GitLab #170](https://gitlab.com/PlasticDigits/yieldomega/-/issues/170)). */
   sale_ended: boolean;
   note?: string;
 };
 
 /**
  * Deduped wallet list for operator tooling: indexer WarBow tables + buys with `battle_points_after > 0`, optionally
- * merged with head WarBow podium hints while `!sale_ended` ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)).
+ * merged with head WarBow podium hints while the legacy `sale_ended` field is false ([GitLab #160](https://gitlab.com/PlasticDigits/yieldomega/-/issues/160), [GitLab #172](https://gitlab.com/PlasticDigits/yieldomega/-/issues/172)).
  * Paginate with `offset` when `next_offset` is set. Uses `VITE_INDEXER_URL`.
  */
 /** Retired with TimeCurve v1 indexer HTTP (#266). */
@@ -778,6 +778,8 @@ export type ArenaWalletStats = {
   first_buy_at: string | null;
   xp: string;
   level: string;
+  /** Capped progression tier (#299); mirrors onchain `unlockedLevel`. */
+  unlocked_level?: string;
   prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;
   highest_scores: ArenaWalletHighestScore[];

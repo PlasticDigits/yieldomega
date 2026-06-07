@@ -120,4 +120,21 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     });
     expect(lines.some((s) => s.includes("Replace") && s.includes("pending flag"))).toBe(true);
   });
+
+  it("hides WarBow flag preview below level 5 (#299)", () => {
+    const rival = "0x1111111111111111111111111111111111111111" as const;
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: 1n * 10n ** 18n,
+      estimatedSpendWei: 1n,
+      decimals: 18,
+      secondsRemaining: 900,
+      plantWarBowFlag: true,
+      flagOwnerAddr: rival,
+      flagPlantAtSec: 1n,
+      walletAddress: "0x2222222222222222222222222222222222222222",
+      playerLevel: 4,
+      formatRivalWallet: fmt,
+    });
+    expect(lines.some((s) => s.includes("pending flag"))).toBe(false);
+  });
 });

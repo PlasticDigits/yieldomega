@@ -4,7 +4,7 @@ import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel"
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { addresses } from "@/lib/addresses";
 
-/** DOUB buy routing targets (40% active · 30% seed · 30% admin). */
+/** DOUB buy routing: 100% to four podiums (25% each · 70/20/10 epoch tranches). */
 export function FeeTransparency() {
   if (!addresses.timeArena) {
     return (
@@ -19,20 +19,20 @@ export function FeeTransparency() {
   return (
     <div
       className="fee-transparency"
-      title="Each DOUB buy routes through onchain ArenaBuyRouting: 40% active podium, 30% seed podium, 30% admin sell vault."
+      title="Each DOUB buy routes 100% to podium prize vaults: 25% per category, split 70% / 20% / 10% across current and next two epochs."
     >
       <div className="fee-transparency__rail" aria-label="Arena DOUB routing">
         <span>
-          <strong>40%</strong>
-          <em>active</em>
+          <strong>100%</strong>
+          <em>podiums</em>
         </span>
         <span>
-          <strong>30%</strong>
-          <em>seed</em>
+          <strong>25%</strong>
+          <em>per track</em>
         </span>
         <span>
-          <strong>30%</strong>
-          <em>admin</em>
+          <strong>70/20/10</strong>
+          <em>epoch tranches</em>
         </span>
       </div>
       <ArenaVaultAddressesPanel />

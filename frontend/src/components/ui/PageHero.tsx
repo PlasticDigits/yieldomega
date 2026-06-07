@@ -25,11 +25,10 @@ type Props = {
     className?: string;
   };
   /**
-   * Optional issue-#45 wide JPG scene used as a soft backplate for the hero
+   * Optional wide scene used as a soft backplate for the hero
    * banner. See [`frontend/public/art/scenes/`](../../../public/art/scenes/)
    * and the asset map in [`frontend/public/art/README.md`](../../../public/art/README.md).
-   * Pages opt-in (e.g. Time Arena Simple uses
-   * `/art/scenes/arena-simple.jpg`); cards remain crisp via the
+   * Pages opt in with cyberminimalist console backplates; cards remain crisp via the
    * `arcade-banner--with-scene` legacy class overlay defined in `index.css`.
    */
   sceneSrc?: string;

@@ -81,12 +81,12 @@ export function ArenaTimerHero({
       aria-live="polite"
       data-testid="arena-simple-timer-hero"
     >
-      {/* Backplate scene — low-opacity wash of the Simple-view hero art.
+      {/* Backplate scene: low-opacity command-console wash.
           Decorative only; alt text is empty + aria-hidden so screen readers
           skip straight to the countdown text below. */}
       <img
         className="arena-simple__timer-hero-scene"
-        src="/art/scenes/arena-simple.jpg"
+        src="/art/scenes/arena-simple-command-console.svg"
         alt=""
         aria-hidden="true"
         decoding="async"

@@ -10,6 +10,7 @@ import {
   formatPreviewTimerPill,
   previewWarbowBuyEffects,
 } from "@/lib/timeArenaBuyPreview";
+import { isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
 import { formatUnits } from "viem";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
@@ -49,6 +50,8 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
   /** Indexer head for defended-streak holder inference (GitLab #227). */
   recentBuys?: readonly BuyItem[] | null;
   previewPolicy?: ArenaBuyPreviewPolicy;
+  /** Effective onchain player level for progression-gated preview lines (#299). */
+  playerLevel?: bigint | number;
   /** `formatWallet(addr, "rival")` on Arena; Simple may use {@link shortAddress}. */
   formatRivalWallet: (addr: HexAddress) => string;
 };
@@ -59,8 +62,7 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
  * reads (issue #82 / #191 / #227).
  *
  * Timer/scoring pills mirror **Last Buy (cat 0)** only ([#271](https://gitlab.com/PlasticDigits/yieldomega/-/issues/271)).
- * Every qualifying buy also extends all four podium settlement deadlines onchain
- * (see `ArenaPodiumTimerConfig`); secondary countdowns live on `ArenaTimerChips`.
+ * Secondary podium extensions and scoring lines follow player level ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)).
  */
 export function buildArenaBuyProjectedEffectLines(
   args: BuildArenaBuyProjectedEffectLinesArgs,
@@ -79,8 +81,12 @@ export function buildArenaBuyProjectedEffectLines(
     walletAddress,
     recentBuys,
     previewPolicy,
+    playerLevel = MAX_PLAYER_LEVEL,
     formatRivalWallet,
   } = args;
+
+  const levelNum =
+    typeof playerLevel === "bigint" ? Number(playerLevel) : playerLevel ?? MAX_PLAYER_LEVEL;
 
   const items: string[] = [];
 
@@ -108,15 +114,17 @@ export function buildArenaBuyProjectedEffectLines(
     } else if (secondsRemaining > 300) {
       items.push("Timer capped");
     }
-    if (fx.streak) {
+    if (fx.streak && isFeatureUnlocked(levelNum, "defended_streak")) {
       items.push(formatPreviewStreakPill(fx.streak));
     }
-    for (const bp of fx.bpPills) {
-      items.push(formatPreviewBpPill(bp));
+    if (isFeatureUnlocked(levelNum, "warbow")) {
+      for (const bp of fx.bpPills) {
+        items.push(formatPreviewBpPill(bp));
+      }
     }
   }
 
-  if (plantWarBowFlag) {
+  if (plantWarBowFlag && isFeatureUnlocked(levelNum, "warbow_flag")) {
     const plantAt = flagPlantAtSec ?? 0n;
     const hasPendingFlag =
       flagOwnerAddr !== undefined &&

@@ -127,7 +127,7 @@ log "DOUB buy tx=${BUY_TX}"
 synced=0
 for _ in $(seq 1 90); do
   count="$(psql "${PG_URL}" -tAc "SELECT COUNT(*) FROM idx_arena_vault_funding WHERE tx_hash = '${BUY_TX}'")"
-  if [[ "${count}" -ge 9 ]]; then
+  if [[ "${count}" -ge 12 ]]; then
     synced=1
     break
   fi
@@ -135,21 +135,21 @@ for _ in $(seq 1 90); do
 done
 [[ "${synced}" -eq 1 ]] || {
   tail -40 /tmp/yieldomega_verify267_indexer.log >&2
-  die "indexer did not ingest 9 vault funding rows for buy tx"
+  die "indexer did not ingest 12 vault funding rows for buy tx"
 }
 
 BY_TX="$(curl -sf "http://127.0.0.1:${INDEXER_PORT}/v1/arena/vault-funding/by-tx/${BUY_TX}")"
-echo "${BY_TX}" | jq -e '.items | length == 9' >/dev/null
+echo "${BY_TX}" | jq -e '.items | length == 12' >/dev/null
 echo "${BY_TX}" | jq -e ".total_funded_doub_wad == \"${BUY_DOUB}\"" >/dev/null
-echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "podium_active")) | length) == 4' >/dev/null
-echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "podium_seed")) | length) == 4' >/dev/null
-echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "admin")) | length) == 1' >/dev/null
+echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "podium_epoch")) | length) == 12' >/dev/null
+echo "${BY_TX}" | jq -e '[.items[].target_epoch] | map(select(. != null)) | length == 12' >/dev/null
+echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "admin")) | length) == 0' >/dev/null
 
 RECEIPT_LOGS="$(cast receipt "${BUY_TX}" --json --rpc-url "${RPC}")"
 CAST_VAULT_COUNT="$(echo "${RECEIPT_LOGS}" | jq -r \
   --arg pv "${PV,,}" --arg av "${AV,,}" \
   '[.logs[] | select((.address | ascii_downcase) == $pv or (.address | ascii_downcase) == $av)] | length')"
-[[ "${CAST_VAULT_COUNT}" -eq 9 ]] || die "expected 9 vault funding logs in buy receipt, got ${CAST_VAULT_COUNT}"
+[[ "${CAST_VAULT_COUNT}" -eq 12 ]] || die "expected 12 PodiumEpochFunded logs in buy receipt, got ${CAST_VAULT_COUNT}"
 
 DB_SUM="$(psql "${PG_URL}" -tAc "SELECT COALESCE(SUM(amount_doub_wad), 0)::text FROM idx_arena_vault_funding WHERE tx_hash = '${BUY_TX}'")"
 [[ "${DB_SUM}" == "${BUY_DOUB}" ]] || die "DB sum ${DB_SUM} != buy amount ${BUY_DOUB}"

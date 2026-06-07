@@ -7,14 +7,18 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
-import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
+import { ArenaLevelGate } from "@/components/ArenaLevelGate";
+import type { ArenaFeatureKey } from "@/lib/arenaProgression";
 import { useArenaWarbowHero } from "@/pages/arena/useArenaWarbowHero";
+import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 
 type Props = {
   phase: SaleSessionPhase;
+  playerLevel?: bigint | number;
+  onFeatureHelp?: (feature: ArenaFeatureKey) => void;
 };
 
-export function ArenaWarbowHeroPanel({ phase }: Props) {
+export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Props) {
   const w = useArenaWarbowHero(phase);
   if (!w.ready) return null;
 
@@ -29,6 +33,13 @@ export function ArenaWarbowHeroPanel({ phase }: Props) {
       : undefined;
 
   return (
+    <ArenaLevelGate
+      playerLevel={playerLevel}
+      feature="warbow"
+      onHelp={onFeatureHelp ? () => onFeatureHelp("warbow") : undefined}
+      className="warbow-hero-actions-wrap"
+      testId="warbow-hero-level-gate"
+    >
     <section
       className="warbow-hero-actions"
       aria-label="WarBow hero actions"
@@ -183,5 +194,6 @@ export function ArenaWarbowHeroPanel({ phase }: Props) {
         <AmountDisplay raw={w.revengeDoubWad} decimals={18} />
       </p>
     </section>
+    </ArenaLevelGate>
   );
 }

@@ -988,6 +988,33 @@ TimeArena mechanics, and avoid stale TimeCurve/sale/PvE cross-sell copy.
 
 **Doc map:** [frontend design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) · [product referrals](../product/referrals.md#referrals-dashboard-issue-94) · [product TimeArena](../product/time-arena.md#referrals) · [Arena v2](../product/arena-v2.md) · [invariants — #296](invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [play-time-arena-doub referrals](../../skills/play-time-arena-doub/SKILL.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
+<a id="manual-qa-issue-297"></a>
+
+## Art, Motion, And Audio Treatment (GitLab #297)
+
+**Goal:** Verify existing Yield Omega characters, scene backplates, ambient
+motion, and SFX match the dark cyberminimalist command-console direction without
+replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
+
+### Checklist
+
+- [ ] Home + countdown: scene backplates are dark command-console SVGs, not
+  bright arcade JPGs; bunny character elements remain recognizable but subdued.
+- [ ] `/arena`: Last Buy and BUY controls remain primary; sniper-shark and
+  mascot pair are low-opacity console accents; movement reads as drift/pulse,
+  not bounce.
+- [ ] `/arena/protocol`: AUDIT scene uses a dark verify/trace/watch console;
+  blockie address treatment and compact copy remain unchanged.
+- [ ] `/referrals`: referral card/route treatment stays first-party and dark;
+  referral CRED mechanics remain flat **5 + 5 CRED**.
+- [ ] Audio: peer-buy and timer cues are sparse and do not create a bell loop
+  during active feeds; reduced motion / user audio controls remain respected.
+- [ ] Automated: `bash scripts/check-art-readme-consumers.sh`; `cd frontend &&
+  npm run typecheck && npm run lint && npm test`; focused Playwright with 5
+  workers for visual routes as needed.
+
+**Doc map:** [frontend design §290/#297](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [arena views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [sound recommendations](../frontend/sound-effects-recommendations.md) · [art README](../../frontend/public/art/README.md) · [invariants — #297](invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
 <a id="manual-qa-issue-298"></a>
 
 ## Frontend UX docs + E2E redesign gate (GitLab #298)
