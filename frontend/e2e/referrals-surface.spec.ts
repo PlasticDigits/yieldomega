@@ -41,9 +41,21 @@ test("referrals page shell renders when not behind launch countdown", async ({ p
   await page.goto("/referrals");
   await expect(page.getByTestId("referrals-surface")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Referrals", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Claim your guide code", level: 2 })).toBeVisible();
+  await expect(page.getByText("CRED Network")).toBeVisible();
+  await expect(page.getByText("Register. Share. Track CRED.")).toBeVisible();
+  await expect(page.getByText("Flat referral CRED on referred DOUB buys.")).toBeVisible();
+  await expect(page.getByText("5 + 5 CRED")).toBeVisible();
+  await expect(
+    page
+      .getByRole("heading", { name: "Claim your guide code", level: 2 })
+      .or(page.getByRole("heading", { name: "Registry", level: 2 })),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Guide leaderboard", level: 2 })).toBeVisible();
-  await expect(page.getByText("Codes registered (global)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Codes", { exact: true })).toBeVisible();
+  await expect(page.getByText("Guide CRED", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("referrals-surface")).not.toContainText(
+    /\bTimeCurve path\b|\bsale\b|sale-end|redeem|redemption|launchpad|\bPvE\b/i,
+  );
 
   const gated =
     page.getByText("Connect a wallet", { exact: false }).or(page.getByText(/No registry address/i));

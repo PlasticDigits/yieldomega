@@ -27,15 +27,10 @@ export function NotFoundPage() {
     <main className="page page--not-found" data-testid="not-found-page" role="main">
       <PageHero
         title="404"
-        badgeLabel="Off the map"
+        badgeLabel="Route miss"
         badgeTone="warning"
         coinSrc="/art/hat-coin-stack.png"
-        lede={
-          <>
-            This URL is not part of the Yield Omega app. Check the link, use a Time Arena referral path like{" "}
-            <code>/arena/yourcode</code>, or head back to a live surface below.
-          </>
-        }
+        lede="No surface at this route."
         mascot={{
           src: "/art/mascot-bunny-wave.jpg",
           width: 208,
@@ -44,7 +39,10 @@ export function NotFoundPage() {
         }}
       >
         <Link to="/arena" className="btn-primary">
-          Open Time Arena
+          Time Arena
+        </Link>
+        <Link to="/arena/protocol" className="btn-secondary">
+          AUDIT
         </Link>
         <Link to={homePath} className="btn-secondary">
           {homePath === "/" ? "Go home" : "Go to hub"}

@@ -13,7 +13,7 @@ type Props = {
   children: React.ReactNode;
 };
 
-/** Placeholder surface for routes that are not wired into live onchain reads yet. */
+/** Fallback surface for routes that are not wired into live onchain reads yet. */
 export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-wave.jpg", children }: Props) {
   const cutouts = PLACEHOLDER_CUTOUTS_BY_SLUG[slug as keyof typeof PLACEHOLDER_CUTOUTS_BY_SLUG]
     ?? PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
@@ -47,8 +47,7 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
         coinSrc="/art/hat-coin-stack.png"
         lede={
           <>
-            {children} This route now uses the same Yield Omega shell, spacing, and mascot system as the live app so
-            it reads like part of one product instead of a generic stub.
+            {children} Route not wired yet.
           </>
         }
         mascot={{
@@ -59,7 +58,10 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
         }}
       >
         <Link to="/arena" className="btn-primary">
-          Open Time Arena
+          Time Arena
+        </Link>
+        <Link to="/arena/protocol" className="btn-secondary">
+          AUDIT
         </Link>
       </PageHero>
       <div className="split-layout">
@@ -77,12 +79,15 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
           title="Arena Track"
           badgeLabel="What exists now"
           badgeTone="warning"
-          lede="The active onchain surface is Time Arena; adjacent routes share its command-console framing until their own reads are wired."
+          lede={undefined}
         >
           <ul className="accent-list">
-            <li>Time Arena remains the active surface for onchain buys, CHARM, podiums, and WarBow PvP.</li>
-            <li>This page is intentionally polished now so adjacent routes feel first-party while functionality catches up.</li>
-            <li>When the next milestone lands, this route should plug into the same badges, panels, and state patterns instead of starting over visually.</li>
+            <li title="TimeArena remains the live onchain surface for CHARM buys, podiums, CRED, and WarBow.">
+              TimeArena is live.
+            </li>
+            <li title="Future route reads should reuse shared badges, panels, address rows, and state patterns.">
+              Wire future reads into shared panels.
+            </li>
           </ul>
         </PageSection>
       </div>

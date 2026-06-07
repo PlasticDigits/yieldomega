@@ -40,7 +40,9 @@ export function ThirdPartyDexPage({
   const cutouts = THIRD_PARTY_CUTOUTS_BY_SLUG[slug as keyof typeof THIRD_PARTY_CUTOUTS_BY_SLUG]
     ?? THIRD_PARTY_CUTOUTS_BY_SLUG.kumbaya;
   const outboundStatus = externalUrl ? (
-    <p className="muted">Outbound link configured for this build.</p>
+    <p className="muted" title="The external venue URL is supplied by this build's Vite env.">
+      External link configured.
+    </p>
   ) : (
     <StatusMessage variant="muted">
       Set <code>{envVarName}</code> at build time to add the outbound venue link.
@@ -54,13 +56,7 @@ export function ThirdPartyDexPage({
         badgeLabel="External venue"
         badgeTone="external"
         coinSrc="/art/hat-coin-stack.png"
-        lede={
-          <>
-            {title} is a <strong>third-party</strong> {venueKind}. Yield Omega does not operate or
-            custody this venue; this page keeps the art direction, hierarchy, and warnings aligned while pointing
-            to the external market.
-          </>
-        }
+        lede="Third-party venue. Verify off-site."
         mascot={{
           src: cutouts.banner,
           width: 208,
@@ -80,6 +76,12 @@ export function ThirdPartyDexPage({
         ) : (
           outboundStatus
         )}
+        <Link to="/arena" className="btn-secondary">
+          Time Arena
+        </Link>
+        <Link to="/arena/protocol" className="btn-secondary">
+          AUDIT
+        </Link>
       </PageHero>
       <div className="split-layout">
         <div className="placeholder-figure placeholder-figure--wide">
@@ -103,30 +105,33 @@ export function ThirdPartyDexPage({
             height: 248,
             className: "panel-cutout panel-cutout--lower-right cutout-decoration--float",
           }}
-          lede="This stays intentionally light until we wire a trustworthy onchain or venue-backed readout."
+          lede={undefined}
         >
           <dl className="kv">
-            <dt>Venue type</dt>
+            <dt title="Classified by the route configuration, not by Yield Omega custody.">Venue</dt>
             <dd>{venueKind}</dd>
-            <dt>Pair / product</dt>
+            <dt title="External market or product surfaced for quick orientation.">Market</dt>
             <dd>{venueDescription}</dd>
-            <dt>Status</dt>
-            <dd>Outbound route ready, live depth readout not wired yet</dd>
-            <dt>Trust boundary</dt>
-            <dd>Third-party venue, linked from Yield Omega for convenience only</dd>
+            <dt title="Yield Omega does not operate or custody third-party venue flows.">Boundary</dt>
+            <dd>External custody and execution</dd>
+            <dt title="Live venue reads must be explicitly sourced before this field changes.">Reads</dt>
+            <dd>Outbound only</dd>
           </dl>
         </PageSection>
       </div>
       <PageSection
-        title="How to read this page"
-        badgeLabel="Clarity first"
+        title="Arena handoff"
+        badgeLabel="Canonical"
         badgeTone="warning"
-        lede="The goal is integration without pretending this venue is part of Yield Omega's authoritative onchain surface."
+        lede={undefined}
       >
         <ul className="accent-list">
-          <li>Use this page to understand where DOUB liquidity or leverage may live, then jump out to the venue itself.</li>
-          <li>Time Arena remains the canonical onchain surface for CHARM buys, podiums, and WarBow competition.</li>
-          <li>When live venue reads are added, they should remain clearly marked as third-party data and never replace contract authority.</li>
+          <li title="TimeArena contracts remain authoritative for CHARM buys, podiums, CRED, and WarBow.">
+            Arena contracts remain the source of truth.
+          </li>
+          <li title="Third-party reads, when added, must stay labeled as external data and never replace onchain authority.">
+            Venue reads stay labeled external.
+          </li>
         </ul>
       </PageSection>
       {externalUrl && outboundStatus}
