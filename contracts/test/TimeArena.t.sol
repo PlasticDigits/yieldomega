@@ -80,30 +80,113 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(charm);
 
-        assertEq(doub.balanceOf(address(vaults)), 700e18);
-        assertEq(doub.balanceOf(address(adminVault)), 300e18);
+        assertEq(doub.balanceOf(address(vaults)), owed);
+        assertEq(doub.balanceOf(address(adminVault)), 0);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), owed);
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        uint256 podiumEvents;
-        uint256 seedEvents;
+        uint256 epochFundedEvents;
+        uint256 sum175;
+        uint256 sum50;
+        uint256 sum25;
         bool sawAdminFunded;
+        bool sawLegacyPodiumFunded;
         for (uint256 i; i < entries.length; ++i) {
-            if (entries[i].topics[0] == keccak256("PodiumFunded(uint8,uint256,address)")) {
-                podiumEvents++;
-                assertEq(abi.decode(entries[i].data, (uint256)), 100e18);
-            } else if (entries[i].topics[0] == keccak256("SeedFunded(uint8,uint256,address)")) {
-                seedEvents++;
-                assertEq(abi.decode(entries[i].data, (uint256)), 75e18);
+            if (entries[i].topics[0] == keccak256("PodiumEpochFunded(uint8,uint256,uint256,address)")) {
+                epochFundedEvents++;
+                uint256 amount = abi.decode(entries[i].data, (uint256));
+                if (amount == 175e18) sum175++;
+                else if (amount == 50e18) sum50++;
+                else if (amount == 25e18) sum25++;
+            } else if (entries[i].topics[0] == keccak256("PodiumFunded(uint8,uint256,address)")) {
+                sawLegacyPodiumFunded = true;
             } else if (entries[i].topics[0] == keccak256("AdminVaultFunded(uint256)")) {
-                assertEq(abi.decode(entries[i].data, (uint256)), 300e18);
                 sawAdminFunded = true;
             }
         }
-        assertEq(podiumEvents, 4);
-        assertEq(seedEvents, 4);
-        assertTrue(sawAdminFunded);
+        assertEq(epochFundedEvents, 12);
+        assertEq(sum175, 4);
+        assertEq(sum50, 4);
+        assertEq(sum25, 4);
+        assertFalse(sawAdminFunded);
+        assertFalse(sawLegacyPodiumFunded);
+    }
+
+    /// GitLab #300: worked example epochs 3/4/2/5 for LB / Streak / WarBow / Booster.
+    function test_buy_routes_epoch_tranches_worked_example() public {
+        _rollCategoryToEpoch(arena.CAT_LAST_BUYERS(), 3);
+        _rollCategoryToEpoch(arena.CAT_DEFENDED_STREAK(), 4);
+        _rollCategoryToEpoch(arena.CAT_WARBOW(), 2);
+        _rollCategoryToEpoch(arena.CAT_TIME_BOOSTER(), 5);
+
+        assertEq(arena.podiumEpoch(0), 3);
+        assertEq(arena.podiumEpoch(2), 4);
+        assertEq(arena.podiumEpoch(3), 2);
+        assertEq(arena.podiumEpoch(1), 5);
+
+        uint256 buyAmount = 1000e18;
+        vm.recordLogs();
+        vm.prank(alice);
+        arena.buy(1e18);
+
+        uint256[4] memory expectedEpochs = [uint256(3), 5, 4, 2];
+        uint256[3] memory trancheAmounts = [uint256(175e18), 50e18, 25e18];
+        uint256[4] memory epochOffsets = [uint256(0), 1, 2, 0];
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256[3][4] memory seen;
+        for (uint256 i; i < entries.length; ++i) {
+            if (entries[i].topics[0] != keccak256("PodiumEpochFunded(uint8,uint256,uint256,address)")) {
+                continue;
+            }
+            uint8 cat = uint8(uint256(entries[i].topics[1]));
+            uint256 epoch = uint256(entries[i].topics[2]);
+            uint256 amount = abi.decode(entries[i].data, (uint256));
+            for (uint256 t; t < 3; ++t) {
+                if (epoch == expectedEpochs[cat] + epochOffsets[t] && amount == trancheAmounts[t]) {
+                    seen[cat][t]++;
+                }
+            }
+        }
+        for (uint8 c; c < 4; ++c) {
+            for (uint256 t; t < 3; ++t) {
+                assertEq(seen[c][t], 1, "cat/tranche funded once");
+            }
+        }
+        assertEq(doub.balanceOf(address(vaults)), buyAmount);
+    }
+
+    function _rollCategoryToEpoch(uint8 cat, uint256 targetEpoch) internal {
+        while (arena.podiumEpoch(cat) < targetEpoch) {
+            vm.warp(arena.podiumDeadline(cat) + 1);
+            arena.rollPodiumEpoch(cat);
+            _warpPastBuyCooldown();
+        }
+    }
+
+    /// GitLab #300: fund epoch N/N+1/N+2 tranches; roll pays active (70%) and promotes seed/future.
+    function test_roll_promotes_epoch_tranches_and_pays_active() public {
+        uint8 cat = arena.CAT_LAST_BUYERS();
+        vm.prank(alice);
+        arena.buy(1e18);
+        _warpPastBuyCooldown();
+        vm.prank(bob);
+        arena.buy(1e18);
+
+        address pool = vaults.activePools(cat);
+        uint256 activeBefore = doub.balanceOf(pool);
+        assertGt(activeBefore, 0);
+
+        (address[3] memory winners,) = arena.podium(cat);
+        uint256 firstBefore = doub.balanceOf(winners[0]);
+
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+
+        assertEq(arena.podiumEpoch(cat), 1);
+        assertTrue(doub.balanceOf(winners[0]) > firstBefore, "4:2:1 payout from rolled active pool");
+        assertGt(doub.balanceOf(pool), 0, "former seed tranche promoted to active");
     }
 
     function test_timer_hard_reset_increments_epoch() public {
@@ -870,8 +953,8 @@ contract TimeArenaTest is Test {
         assertEq(doub.balanceOf(address(adminVault)), adminBefore);
     }
 
-    /// GitLab #261: 700 DOUB top-up prize slice equals DOUB prize portion of a 1000 DOUB buy.
-    function test_topUpPodiumPools_equivalent_to_buy_prize_vaults() public {
+    /// GitLab #300: buy routes 100% to podiums; top-up (#261) uses legacy 10:7.5 active:seed — distinct paths.
+    function test_topUpPodiumPools_distinct_from_buy_routing() public {
         TimeArena buyArena = _newArena();
         vm.prank(alice);
         buyArena.buy(1e18);
@@ -880,8 +963,9 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         topUpArena.topUpPodiumPools(700e18);
 
-        assertEq(doub.balanceOf(address(_vaultsFor(buyArena))), doub.balanceOf(address(_vaultsFor(topUpArena))));
-        assertEq(doub.balanceOf(address(_adminFor(buyArena))), 300e18);
+        assertEq(doub.balanceOf(address(_vaultsFor(buyArena))), 1000e18);
+        assertEq(doub.balanceOf(address(_adminFor(buyArena))), 0);
+        assertEq(doub.balanceOf(address(_vaultsFor(topUpArena))), 700e18);
         assertEq(doub.balanceOf(address(_adminFor(topUpArena))), 0);
     }
 

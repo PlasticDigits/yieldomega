@@ -222,7 +222,9 @@ for ux in 0 1 2 3; do
 done
 
 SCHEMA="$(curl -sfI "http://127.0.0.1:${INDEXER_PORT}/v1/arena/podiums" | tr -d '\r' | awk -F': ' '/^[Xx]-[Ss]chema-[Vv]ersion/{print $2}')"
-[[ "${SCHEMA}" == "2.5.0" ]] || die "expected schema 2.5.0, got ${SCHEMA:-unset}"
+[[ -n "${SCHEMA}" ]] || die "missing x-schema-version header"
+[[ "$(printf '%s\n' "2.5.0" "${SCHEMA}" | sort -V | head -1)" == "2.5.0" ]] \
+  || die "expected schema >= 2.5.0, got ${SCHEMA}"
 
 LIVE_COUNT="$(psql "${PG_URL}" -tAc 'SELECT COUNT(*) FROM idx_arena_podium_live')"
 [[ "${LIVE_COUNT}" -gt 0 ]] || die "idx_arena_podium_live empty after buys"

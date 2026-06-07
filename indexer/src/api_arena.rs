@@ -486,7 +486,8 @@ async fn arena_vault_funding_recent(
     let offset = p.offset.max(0);
 
     let rows = match sqlx::query(
-        r#"SELECT kind, podium_id, amount_doub_wad::text AS amount,
+        r#"SELECT kind, podium_id, target_epoch::text AS target_epoch,
+                  amount_doub_wad::text AS amount,
                   pool_address, block_number, tx_hash,
                   EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
            FROM idx_arena_vault_funding
@@ -508,6 +509,7 @@ async fn arena_vault_funding_recent(
             json!({
                 "kind": r.get::<String, _>("kind"),
                 "podium_id": r.get::<Option<i16>, _>("podium_id").map(|p| p.to_string()),
+                "target_epoch": r.get::<Option<String>, _>("target_epoch"),
                 "amount_doub_wad": r.get::<String, _>("amount"),
                 "pool_address": r.get::<Option<String>, _>("pool_address"),
                 "block_number": r.get::<i64, _>("block_number"),
@@ -538,7 +540,8 @@ async fn arena_vault_funding_by_tx(
     };
 
     let rows = match sqlx::query(
-        r#"SELECT kind, podium_id, amount_doub_wad::text AS amount, pool_address, log_index
+        r#"SELECT kind, podium_id, target_epoch::text AS target_epoch,
+                  amount_doub_wad::text AS amount, pool_address, log_index
            FROM idx_arena_vault_funding
            WHERE tx_hash = $1
            ORDER BY log_index ASC"#,
@@ -569,6 +572,7 @@ async fn arena_vault_funding_by_tx(
             json!({
                 "kind": r.get::<String, _>("kind"),
                 "podium_id": r.get::<Option<i16>, _>("podium_id").map(|p| p.to_string()),
+                "target_epoch": r.get::<Option<String>, _>("target_epoch"),
                 "amount_doub_wad": r.get::<String, _>("amount"),
                 "pool_address": r.get::<Option<String>, _>("pool_address"),
                 "log_index": r.get::<i32, _>("log_index"),

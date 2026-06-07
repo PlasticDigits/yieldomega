@@ -520,7 +520,7 @@ export function ArenaSimpleAgentCard() {
             <strong>Buy</strong> uses <code className="app-footer-agent__code-inline">TimeArena.buy</code> /
             referral hash variant, <code className="app-footer-agent__code-inline">buyWithCred</code>, or{" "}
             <code className="app-footer-agent__code-inline">TimeArenaBuyRouter.buyViaKumbaya</code> for ETH/USDM.{" "}
-            <strong>Podium pools</strong> receive DOUB via onchain ArenaBuyRouting (40/30/30).
+            <strong>Podium pools</strong> receive 100% of DOUB buys via onchain ArenaBuyRouting (25% per track · 70/20/10 epoch tranches).
           </p>
 
           <h4 className="app-footer-agent__h">

@@ -327,7 +327,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             (uint256 a, uint256 b, uint256 c) = ArenaPodiumSettlement.payoutShares(poolBal);
             podiumVaults.payPodiumWinners(category, winners[0], winners[1], winners[2], a, b, c);
         }
-        podiumVaults.rollSeedToActive(category);
+        podiumVaults.rollEpochTranches(category);
 
         podiumEpoch[category] += 1;
         podiumDeadline[category] = block.timestamp + podiumInitialTimerSec[category];
@@ -619,12 +619,27 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function _routeDoubPrizeSplit(uint256 amount) private returns (uint256 routed) {
-        (uint256[4] memory act, uint256[4] memory sed, uint256 adminShare) = ArenaBuyRouting.splitBuyAmount(amount);
-        routed = _routeActiveAndSeedVaults(act, sed);
-        if (adminShare > 0) {
-            doub.safeTransfer(address(adminSellVault), adminShare);
-            adminSellVault.notifyFunded(adminShare);
-            routed += adminShare;
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) = ArenaBuyRouting.splitBuyAmount(amount);
+        for (uint8 i; i < ArenaBuyRouting.NUM_PODIUMS; ++i) {
+            uint256 ep = podiumEpoch[i];
+            if (cur[i] > 0) {
+                address pool = podiumVaults.activePools(i);
+                doub.safeTransfer(pool, cur[i]);
+                podiumVaults.notifyPodiumEpochFunded(i, ep, cur[i], pool);
+                routed += cur[i];
+            }
+            if (nxt[i] > 0) {
+                address pool = podiumVaults.seedPools(i);
+                doub.safeTransfer(pool, nxt[i]);
+                podiumVaults.notifyPodiumEpochFunded(i, ep + 1, nxt[i], pool);
+                routed += nxt[i];
+            }
+            if (nxt2[i] > 0) {
+                address pool = podiumVaults.futurePools(i);
+                doub.safeTransfer(pool, nxt2[i]);
+                podiumVaults.notifyPodiumEpochFunded(i, ep + 2, nxt2[i], pool);
+                routed += nxt2[i];
+            }
         }
     }
 

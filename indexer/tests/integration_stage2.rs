@@ -55,53 +55,33 @@ fn sample_log_tx(block: u64, tx_id: u64, log_index: u64, event: DecodedEvent) ->
 
 const DOUB_1000: u128 = 1_000_000_000_000_000_000_000;
 const DOUB_100: u128 = 100_000_000_000_000_000_000;
-const DOUB_75: u128 = 75_000_000_000_000_000_000;
+const DOUB_175: u128 = 175_000_000_000_000_000_000;
+const DOUB_50: u128 = 50_000_000_000_000_000_000;
+const DOUB_25: u128 = 25_000_000_000_000_000_000;
 const DOUB_300: u128 = 300_000_000_000_000_000_000;
 
 fn vault_funding_rows_for_buy_tx(block: u64, tx_id: u64, start_log_index: u64) -> Vec<DecodedLog> {
     let pool = |i: u8| addr_byte(0x50 + i);
-    let mut rows = Vec::with_capacity(9);
+    let tranches: [(u128, u64); 3] = [(DOUB_175, 0), (DOUB_50, 1), (DOUB_25, 2)];
+    let mut rows = Vec::with_capacity(12);
     let mut li = start_log_index;
     for podium in 0u8..4 {
-        li += 1;
-        rows.push(sample_log_tx(
-            block,
-            tx_id,
-            li,
-            DecodedEvent::ArenaVaultFunding {
-                kind: VaultFundingKind::PodiumActive,
-                podium_id: Some(podium),
-                amount_doub_wad: U256::from(DOUB_100),
-                pool_address: Some(pool(podium)),
-            },
-        ));
+        for (amount, epoch_off) in tranches {
+            li += 1;
+            rows.push(sample_log_tx(
+                block,
+                tx_id,
+                li,
+                DecodedEvent::ArenaVaultFunding {
+                    kind: VaultFundingKind::PodiumEpoch,
+                    podium_id: Some(podium),
+                    target_epoch: Some(U256::from(epoch_off)),
+                    amount_doub_wad: U256::from(amount),
+                    pool_address: Some(pool(podium)),
+                },
+            ));
+        }
     }
-    for podium in 0u8..4 {
-        li += 1;
-        rows.push(sample_log_tx(
-            block,
-            tx_id,
-            li,
-            DecodedEvent::ArenaVaultFunding {
-                kind: VaultFundingKind::PodiumSeed,
-                podium_id: Some(podium),
-                amount_doub_wad: U256::from(DOUB_75),
-                pool_address: Some(pool(podium)),
-            },
-        ));
-    }
-    li += 1;
-    rows.push(sample_log_tx(
-        block,
-        tx_id,
-        li,
-        DecodedEvent::ArenaVaultFunding {
-            kind: VaultFundingKind::Admin,
-            podium_id: None,
-            amount_doub_wad: U256::from(DOUB_300),
-            pool_address: None,
-        },
-    ));
     rows
 }
 
@@ -390,6 +370,7 @@ async fn postgres_stage2_persist_all_events_and_rollback_after() {
         next(DecodedEvent::ArenaVaultFunding {
             kind: VaultFundingKind::Admin,
             podium_id: None,
+            target_epoch: None,
             amount_doub_wad: U256::from(DOUB_300),
             pool_address: None,
         }),
@@ -840,7 +821,7 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
 
     assert_eq!(
         count_where(pool, "idx_arena_vault_funding", block as i64).await,
-        9
+        12
     );
 
     let chain_timer = Arc::new(RwLock::new(Some(arena_head_snapshot())));
@@ -865,7 +846,7 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
     assert_eq!(res.status(), StatusCode::OK);
     let j = response_json(res).await;
     let items = j.get("items").and_then(|v| v.as_array()).expect("items");
-    assert_eq!(items.len(), 9);
+    assert_eq!(items.len(), 12);
     assert_eq!(
         j.get("total_funded_doub_wad").and_then(|v| v.as_str()),
         Some("1000000000000000000000")
@@ -905,12 +886,17 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
         .get("by_kind")
         .and_then(|v| v.as_array())
         .expect("by_kind");
-    assert_eq!(by_kind.len(), 3);
+    assert_eq!(by_kind.len(), 2);
     let admin_total = by_kind
         .iter()
         .find(|r| r.get("kind").and_then(|v| v.as_str()) == Some("admin"))
         .and_then(|r| r.get("total_doub_wad").and_then(|v| v.as_str()));
-    assert_eq!(admin_total, Some("600000000000000000000")); // fixture row + buy row
+    assert_eq!(admin_total, Some("300000000000000000000")); // fixture row only (#300: buys skip admin)
+    let epoch_total = by_kind
+        .iter()
+        .find(|r| r.get("kind").and_then(|v| v.as_str()) == Some("podium_epoch"))
+        .and_then(|r| r.get("total_doub_wad").and_then(|v| v.as_str()));
+    assert_eq!(epoch_total, Some("1000000000000000000000"));
 
     let res = app
         .clone()
@@ -942,7 +928,7 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
         .expect("idempotent funding replay");
     assert_eq!(
         count_where(pool, "idx_arena_vault_funding", block as i64).await,
-        9
+        12
     );
 }
 

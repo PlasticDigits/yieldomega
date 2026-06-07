@@ -19,6 +19,7 @@ mod contracts {
         contract PodiumVaultsEvents {
             event PodiumFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
             event SeedFunded(uint8 indexed podiumId, uint256 amount, address indexed pool);
+            event PodiumEpochFunded(uint8 indexed category, uint256 indexed epoch, uint256 amount, address indexed pool);
         }
     }
 
@@ -93,6 +94,7 @@ use contracts::{
 pub enum VaultFundingKind {
     PodiumActive,
     PodiumSeed,
+    PodiumEpoch,
     Admin,
 }
 
@@ -101,6 +103,7 @@ impl VaultFundingKind {
         match self {
             Self::PodiumActive => "podium_active",
             Self::PodiumSeed => "podium_seed",
+            Self::PodiumEpoch => "podium_epoch",
             Self::Admin => "admin",
         }
     }
@@ -211,6 +214,7 @@ pub enum DecodedEvent {
     ArenaVaultFunding {
         kind: VaultFundingKind,
         podium_id: Option<u8>,
+        target_epoch: Option<U256>,
         amount_doub_wad: U256,
         pool_address: Option<Address>,
     },
@@ -383,6 +387,7 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::ArenaVaultFunding {
                 kind: VaultFundingKind::PodiumActive,
                 podium_id: Some(e.podiumId),
+                target_epoch: None,
                 amount_doub_wad: e.amount,
                 pool_address: Some(e.pool),
             };
@@ -393,6 +398,18 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::ArenaVaultFunding {
                 kind: VaultFundingKind::PodiumSeed,
                 podium_id: Some(e.podiumId),
+                target_epoch: None,
+                amount_doub_wad: e.amount,
+                pool_address: Some(e.pool),
+            };
+        }
+    }
+    if topic0 == PodiumVaultsEvents::PodiumEpochFunded::SIGNATURE_HASH {
+        if let Ok(e) = PodiumVaultsEvents::PodiumEpochFunded::decode_log(log, true) {
+            return DecodedEvent::ArenaVaultFunding {
+                kind: VaultFundingKind::PodiumEpoch,
+                podium_id: Some(e.category),
+                target_epoch: Some(e.epoch),
                 amount_doub_wad: e.amount,
                 pool_address: Some(e.pool),
             };
@@ -403,6 +420,7 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::ArenaVaultFunding {
                 kind: VaultFundingKind::Admin,
                 podium_id: None,
+                target_epoch: None,
                 amount_doub_wad: e.amount,
                 pool_address: None,
             };
