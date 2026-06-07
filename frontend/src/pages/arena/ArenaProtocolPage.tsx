@@ -34,9 +34,9 @@ import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
 
 const ARENA_VAULT_LABELS = [
-  "Active podium (40%)",
-  "Seed podium (30%)",
-  "Admin sell vault (30%)",
+  "100% podium prize vaults",
+  "25% per competitive track",
+  "70% / 20% / 10% epoch tranches",
 ] as const;
 
 const ARENA_AUDIT_DECISIONS = [
@@ -48,7 +48,7 @@ const ARENA_AUDIT_DECISIONS = [
   {
     eyebrow: "TRACE",
     value: "Routing",
-    title: "ArenaBuyRouting sends DOUB buys to active podiums, seed podiums, and AdminSellVault.",
+    title: "ArenaBuyRouting sends 100% of DOUB buys to four podium tracks (70/20/10 epoch tranches).",
   },
   {
     eyebrow: "WATCH",
@@ -371,10 +371,10 @@ export function ArenaProtocolPage() {
 
       <PageSection
         title="Arena prize vaults"
-        badgeLabel="40/30/30"
+        badgeLabel="100% podiums"
         badgeTone="info"
       >
-        <ul className="arena-protocol__routing-grid" title="Onchain ArenaBuyRouting: 40% active podium, 30% seed podium, 30% admin sell vault.">
+        <ul className="arena-protocol__routing-grid" title="Onchain ArenaBuyRouting: 100% to podium vaults — 25% per category, 70/20/10 across current and next two epochs.">
           {ARENA_VAULT_LABELS.map((label) => (
             <li key={label}>
               <strong>{label}</strong>

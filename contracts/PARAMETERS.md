@@ -16,11 +16,13 @@ Replaces legacy **FeeRouter** five-sink CL8Y table ([#244](https://gitlab.com/Pl
 
 | Destination | Bps (of gross DOUB in) | Share |
 |-------------|------------------------|-------|
-| Each of 4 **active** podium pools | 1000 | 10% × 4 = **40%** |
-| Each of 4 **seed** podium pools | 750 | 7.5% × 4 = **30%** |
-| **`AdminSellVault`** | 3000 | **30%** |
+| Each of 4 podium categories | 2500 | **25%** each (remainder → Time Booster) |
+| Per category → current epoch (`activePools`) | 7000 of category share | **70%** |
+| Per category → next epoch (`seedPools`) | 2000 of category share | **20%** |
+| Per category → epoch+2 (`futurePools`) | remainder of category share | **10%** |
+| **`AdminSellVault`** on **`buy`** | 0 | **0%** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) |
 
-Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`, `AdminSellVault.t.sol` ([#249](https://gitlab.com/PlasticDigits/yieldomega/-/issues/249)). Manual top-up (`topUpPodiumPools`): 100% to eight prize vaults, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
+Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol). Forge: `ArenaPrizeRouting.t.sol`, `TimeArena.t.sol::test_buy_routes_doub_split`, `test_buy_routes_epoch_tranches_worked_example` ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). Manual top-up (`topUpPodiumPools`): legacy 10:7.5 active:seed per category, **0%** admin — [#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261).
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|

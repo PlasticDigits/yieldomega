@@ -5,19 +5,35 @@ import {Test} from "forge-std/Test.sol";
 import {ArenaBuyRouting} from "../src/arena/libraries/ArenaBuyRouting.sol";
 
 contract ArenaPrizeRoutingTest is Test {
-    function test_split_1000_doub() public pure {
-        (uint256[4] memory act, uint256[4] memory sed, uint256 admin) = ArenaBuyRouting.splitBuyAmount(1000e18);
-        assertEq(act[0], 100e18);
-        assertEq(sed[0], 75e18);
-        assertEq(admin, 300e18);
-        uint256 sum = admin;
+    function test_split_1000_doub_epoch_tranches() public pure {
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
+            ArenaBuyRouting.splitBuyAmount(1000e18);
         for (uint8 i; i < 4; ++i) {
-            sum += act[i] + sed[i];
+            assertEq(cur[i], 175e18, "70% of 250e18");
+            assertEq(nxt[i], 50e18, "20% of 250e18");
+            assertEq(nxt2[i], 25e18, "10% of 250e18");
+        }
+        uint256 sum;
+        for (uint8 i; i < 4; ++i) {
+            sum += cur[i] + nxt[i] + nxt2[i];
         }
         assertEq(sum, 1000e18);
     }
 
-    function test_splitPrizeTopUp_700_matches_buy_prize_slice() public pure {
+    function test_split_remainder_to_last_category_and_t10_tranche() public pure {
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
+            ArenaBuyRouting.splitBuyAmount(1003);
+        // 1003 / 4 = 250 rem 3 → cat 3 share = 253
+        assertEq(cur[0] + nxt[0] + nxt2[0], 250);
+        assertEq(cur[3] + nxt[3] + nxt2[3], 253);
+        uint256 sum;
+        for (uint8 i; i < 4; ++i) {
+            sum += cur[i] + nxt[i] + nxt2[i];
+        }
+        assertEq(sum, 1003);
+    }
+
+    function test_splitPrizeTopUp_700_matches_legacy_ratio() public pure {
         (uint256[4] memory act, uint256[4] memory sed) = ArenaBuyRouting.splitPrizeTopUpAmount(700e18);
         uint256 sum;
         for (uint8 i; i < 4; ++i) {
@@ -30,13 +46,13 @@ contract ArenaPrizeRoutingTest is Test {
 
     function testFuzz_splitBuy_no_dust(uint256 amount) public pure {
         amount = bound(amount, 1, type(uint128).max);
-        (uint256[4] memory act, uint256[4] memory sed, uint256 admin) = ArenaBuyRouting.splitBuyAmount(amount);
-        uint256 sum = admin;
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
+            ArenaBuyRouting.splitBuyAmount(amount);
+        uint256 sum;
         for (uint8 i; i < 4; ++i) {
-            sum += act[i] + sed[i];
+            sum += cur[i] + nxt[i] + nxt2[i];
         }
         assertEq(sum, amount);
-        assertGe(admin, amount * 3000 / 10_000);
     }
 
     function testFuzz_splitPrizeTopUp_no_dust(uint256 amount) public pure {
@@ -47,5 +63,20 @@ contract ArenaPrizeRoutingTest is Test {
             sum += act[i] + sed[i];
         }
         assertEq(sum, amount);
+    }
+
+    function testFuzz_epoch_split_per_category_bps(uint256 amount) public pure {
+        amount = bound(amount, 4, type(uint128).max);
+        (uint256[4] memory cur, uint256[4] memory nxt, uint256[4] memory nxt2) =
+            ArenaBuyRouting.splitBuyAmount(amount);
+        uint256 baseShare = amount / 4;
+        uint256 catRem = amount % 4;
+        for (uint8 i; i < 4; ++i) {
+            uint256 share = baseShare + (i == 3 ? catRem : 0);
+            assertLe(cur[i], share);
+            assertLe(nxt[i], share);
+            assertLe(nxt2[i], share);
+            assertEq(cur[i] + nxt[i] + nxt2[i], share);
+        }
     }
 }
