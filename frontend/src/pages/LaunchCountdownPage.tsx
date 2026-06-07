@@ -3,6 +3,10 @@
 import { useMemo, type CSSProperties } from "react";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import {
+  LAUNCH_COUNTDOWN_LINKS,
+  LAUNCH_COUNTDOWN_SIGNALS,
+} from "@/lib/surfaceContent";
+import {
   formatLaunchCountdown,
   timerUrgencyClass,
 } from "@/pages/arena/formatTimer";
@@ -12,19 +16,6 @@ type Props = {
 };
 
 const SPARK_COUNT = 10;
-
-const LAUNCH_LINKS = [
-  { label: "Telegram", href: "https://t.me/yieldomega" },
-  { label: "X.com", href: "https://x.com/yieldomega" },
-  {
-    label: "Docs",
-    href: "https://github.com/PlasticDigits/yieldomega/tree/main/docs",
-  },
-  {
-    label: "Agent Skills",
-    href: "https://github.com/PlasticDigits/yieldomega/blob/main/skills/README.md",
-  },
-] as const;
 
 export function LaunchCountdownPage({ secondsRemaining }: Props) {
   const { days, clock } = useMemo(
@@ -91,7 +82,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
           <h1 className="launch-countdown__wordmark">Yield Omega</h1>
         </div>
 
-        <p className="launch-countdown__eyebrow">DOUB launches in</p>
+        <p className="launch-countdown__eyebrow">Time Arena opens in</p>
 
         <div className="launch-countdown__clock" aria-hidden="true">
           {days > 0 && (
@@ -104,25 +95,37 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
         </div>
         <p className="launch-countdown__sr" aria-live="polite">
           {days > 0 ? `${days} days ` : ""}
-          {clock} remaining until launch.
+          {clock} remaining until Time Arena opens.
         </p>
 
-        <p className="launch-countdown__supporting">
-          Time Arena goes live the moment this hits zero.
+        <p
+          className="launch-countdown__supporting"
+          title="TimeArena is always-live when unpaused; this build gate controls when the frontend routes open."
+        >
+          PvP console gate. No sale arc.
         </p>
+
+        <ul className="launch-countdown__signals" aria-label="Countdown handoff mechanics">
+          {LAUNCH_COUNTDOWN_SIGNALS.map((signal) => (
+            <li key={signal.label} title={signal.tooltip}>
+              {signal.label}
+            </li>
+          ))}
+        </ul>
 
         <nav
           className="launch-countdown__links"
           aria-label="Yield Omega community and documentation"
         >
           <ul className="launch-countdown__links-list">
-            {LAUNCH_LINKS.map(({ label, href }) => (
+            {LAUNCH_COUNTDOWN_LINKS.map(({ label, href, tooltip }) => (
               <li key={href}>
                 <a
                   className="launch-countdown__link"
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title={tooltip}
                 >
                   {label}
                 </a>
