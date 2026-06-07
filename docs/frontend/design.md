@@ -198,6 +198,20 @@ the approved command-console visual language without becoming copies of `/arena`
 
 Evidence: [`INV-FRONTEND-296-SECONDARY-SURFACES`](../testing/invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · manual QA [§296](../testing/manual-qa-checklists.md#manual-qa-issue-296) · `referrals-surface.spec.ts`, `navigation.spec.ts`, `footer-site-links.spec.ts`.
 
+<a id="frontend-ux-docs-e2e-gitlab-298"></a>
+
+### Frontend UX docs + E2E gate (GitLab #298)
+
+Follow-up consolidating the cyberminimalist redesign ([#290](https://gitlab.com/PlasticDigits/yieldomega/-/issues/290)–[#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296)) into reviewer-ready artifacts:
+
+- **Layout contract** — this file + [`arena-views.md`](./arena-views.md) describe the command-console component map.
+- **Content audit** — [`frontend-content-audit.md`](../testing/frontend-content-audit.md) lists every routed surface with pass criteria tied to [`time-arena.md`](../product/time-arena.md).
+- **Manual QA** — [manual QA §298](../testing/manual-qa-checklists.md#manual-qa-issue-298) visual + mechanics smoke.
+- **Playwright** — `e2e/*.spec.ts` selectors and **Yield Omega** branding strings; run with **5 workers** on non-Anvil specs.
+- **CSS naming** — `arena-*` convention per [#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280); `bash scripts/check-arena-naming.sh`.
+
+Evidence: [`INV-FRONTEND-298-UX-DOCS-E2E`](../testing/invariants-and-business-logic.md#frontend-ux-docs-e2e-gitlab-298) · play skills [`skills/README.md`](../../skills/README.md).
+
 The cyberminimalist palette in `frontend/src/index.css` is supported by a curated raster pack under
 [`frontend/public/art/`](../../frontend/public/art/README.md). Assets are
 organized into **purpose-named subfolders** so each consumer maps to one

@@ -988,6 +988,40 @@ TimeArena mechanics, and avoid stale TimeCurve/sale/PvE cross-sell copy.
 
 **Doc map:** [frontend design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) · [product referrals](../product/referrals.md#referrals-dashboard-issue-94) · [product TimeArena](../product/time-arena.md#referrals) · [Arena v2](../product/arena-v2.md) · [invariants — #296](invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [play-time-arena-doub referrals](../../skills/play-time-arena-doub/SKILL.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
+<a id="manual-qa-issue-298"></a>
+
+## Frontend UX docs + E2E redesign gate (GitLab #298)
+
+**Goal:** Confirm documentation, invariants, manual QA, and Playwright coverage reflect the approved cyberminimalist PvP command-console UX across every routed surface. Product mechanics remain canonical in [`time-arena.md`](../product/time-arena.md) — this pass audits UI copy and layout only.
+
+**Page-by-page audit:** [frontend-content-audit.md](frontend-content-audit.md)
+
+### Visual smoke (cyberminimalist glass)
+
+- [ ] Global shell: dark `--yo-*` glass tokens, compact nav (**Time Arena**, **Referrals**), **Yield Omega** brand in header/home/countdown.
+- [ ] `/arena`: single `arena-command-console`; Last Buy primary; inline CHARM buy; decision row; secondary operations rail; four podiums; recognizable low-opacity character accents.
+- [ ] `/arena/protocol`: compact **AUDIT** hierarchy; state/routing/activity cards; donate-pools disclosure when configured.
+- [ ] `/`, `/home`, launch countdown: **PLAY TIME ARENA** first, **AUDIT** verification, current mechanics chips only.
+- [ ] `/referrals`, `/kumbaya`, `/sir`, 404: same glass system; compact action-first copy; external venue trust boundaries on venue routes.
+- [ ] Responsive: 390×844 and desktop widths — no horizontal overflow on `/arena`, `/home`, `/referrals`.
+
+### Mechanics smoke (copy vs canonical TimeArena)
+
+- [ ] Visible copy describes current Arena v2 only: CHARM buys (DOUB / Play CRED), four independent podiums, 40/30/30 buy routing, flat **5 CRED + 5 CRED** referrals, WarBow PvP, AUDIT reads.
+- [ ] No visible **TimeCurve**, sale-end, redemption, launchpad, PvE, worldbuilding, or legacy fee-sink framing on any routed surface.
+- [ ] User-facing branding strings say **Yield Omega** (with space) on home, countdown, arena console, and footer agent card.
+- [ ] `arena-*` CSS / `data-testid` naming only under Arena pages (`bash scripts/check-arena-naming.sh`).
+
+### Automated
+
+- [ ] `cd frontend && npm run typecheck && npm run lint && npm test`
+- [ ] `bash scripts/check-arena-naming.sh`
+- [ ] `cd frontend && npm run build` then focused Playwright with **5 workers**:
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts`
+- [ ] Optional chain writes: `bash scripts/e2e-anvil.sh` (Anvil specs, single worker).
+
+**Doc map:** [frontend-content-audit](frontend-content-audit.md) · [arena-views §291/292/293](../frontend/arena-views.md#arena-command-console-gitlab-291) · [design §290/294/295/296](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [invariants — #298](invariants-and-business-logic.md#frontend-ux-docs-e2e-gitlab-298) · [e2e-anvil](e2e-anvil.md) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
 <a id="manual-qa-issue-104"></a>
 
 ## Local full stack QA orchestrator (GitLab #104)

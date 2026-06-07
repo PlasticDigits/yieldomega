@@ -4,7 +4,7 @@
 
 **Business logic + invariant map:** [invariants-and-business-logic.md](invariants-and-business-logic.md) (Arena v2; legacy v1 launchpad sections removed — [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263)).
 
-**Contributor manual QA:** [manual-qa-checklists.md](manual-qa-checklists.md). Root [`skills/`](../../skills/) is **player-facing only**.
+**Contributor manual QA:** [manual-qa-checklists.md](manual-qa-checklists.md). **Frontend UX content audit (redesign gate):** [frontend-content-audit.md](frontend-content-audit.md) ([#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298)). Root [`skills/`](../../skills/) is **player-facing only**.
 
 **Doc anchor CI (local):** `bash scripts/check-doc-anchors.sh` — fails on broken `invariants-and-business-logic.md#…` links under `docs/`.
 
