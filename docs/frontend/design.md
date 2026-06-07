@@ -1,5 +1,7 @@
 # Frontend design (Vite static)
 
+**YieldOmega Glass Arena** — canonical visual system: [`yieldomega-glass-arena.md`](./yieldomega-glass-arena.md). Index `/` is play-first Time Arena; `/home` is the brand hub.
+
 ## Goals
 
 - **Static site** built with **Vite**, deployable to **CDN or IPFS** without a trusted application server.

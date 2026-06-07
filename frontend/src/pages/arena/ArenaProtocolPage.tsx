@@ -144,7 +144,7 @@ export function ArenaProtocolPage() {
 
   if (!tc) {
     return (
-      <div className="page arena-protocol-page">
+      <div className="page arena-protocol-page yga-secondary-page">
         <ArenaSubnav active="protocol" />
         <PageHero
           title="AUDIT"

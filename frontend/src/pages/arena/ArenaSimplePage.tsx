@@ -14,7 +14,6 @@ import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { AddressInline } from "@/components/AddressInline";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
 import { formatLocaleInteger } from "@/lib/formatAmount";
@@ -64,6 +63,12 @@ import {
 } from "@/pages/arena/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
 import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
+import { ArenaShell, GlassDeck, GlassRail } from "@/components/glass";
+import {
+  ActivePlayerIndicator,
+  EpochStatus,
+  PlayerIdentity,
+} from "@/components/arena";
 
 /** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
 const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
@@ -391,9 +396,12 @@ function ArenaSimpleAmountPayTokenSelect({
  */
 export function ArenaSimplePage({
   mountAsArenaV2 = false,
+  playFirst = false,
   onOpenWalletProfile,
 }: {
   mountAsArenaV2?: boolean;
+  /** Homepage `/` — gameplay above the fold with tighter shell spacing. */
+  playFirst?: boolean;
   /** Opens wallet profile modal on participant address click (#258). */
   onOpenWalletProfile?: (address: string) => void;
 }) {
@@ -1057,20 +1065,25 @@ export function ArenaSimplePage({
       ? "Stay on this page — it switches to Live automatically."
       : undefined;
 
+  const epochLabel =
+    session.phase === "saleActive"
+      ? "Live"
+      : session.phase === "saleStartPending"
+        ? "Arming"
+        : "Sync";
+
   return (
-    <div className="page arena-simple-page arena-command-console" data-testid="arena-command-console">
-      <div className="arena-command-console__ambient" aria-hidden="true" />
+    <ArenaShell playFirst={playFirst}>
+    <div
+      className="page arena-simple-page arena-command-console glass-arena-console"
+      data-testid="arena-command-console"
+    >
       <ArenaSubnav active="simple" />
 
-      <div className="arena-command-console__topbar">
-        <span>Yield Omega</span>
-        <strong>PvP Command Console</strong>
-        <span>{session.phase === "saleActive" ? "Live" : session.phase === "saleStartPending" ? "Arming" : "Sync"}</span>
-      </div>
+      <EpochStatus epochLabel={epochLabel} live={session.phase === "saleActive"} />
 
       <div className="arena-command-console__grid">
-        <section
-          className="arena-command-console__primary"
+        <GlassDeck
           aria-labelledby="arena-command-console-primary-title"
           data-testid="arena-command-console-primary"
         >
@@ -1109,26 +1122,22 @@ export function ArenaSimplePage({
               feels alive without crowding the digits. Only renders when
               the arena is live and the indexer has a qualifying buy. */}
           {session.phase === "saleActive" && lastExtension && (
-            <span
+            <ActivePlayerIndicator
               key={lastExtension.pulseKey}
               className={
                 lastExtension.reset
                   ? "arena-simple__last-extension arena-simple__last-extension--reset"
                   : "arena-simple__last-extension"
               }
-              aria-live="polite"
               data-testid="arena-simple-last-extension"
             >
-              <span className="arena-simple__last-extension-dot" aria-hidden="true" />
               Just +{formatLocaleInteger(lastExtension.secs)}s by{" "}
-              <AddressInline
+              <PlayerIdentity
                 address={lastExtension.buyer}
-                tailHexDigits={6}
-                size={14}
                 className="arena-simple__last-extension-addr"
                 onOpenProfile={onOpenWalletProfile}
               />
-            </span>
+            </ActivePlayerIndicator>
           )}
         </PageSection>
 
@@ -1337,9 +1346,9 @@ export function ArenaSimplePage({
         </PageSection>
           </div>
           {commandDecisionRow}
-        </section>
+        </GlassDeck>
 
-        <aside className="arena-command-console__side" aria-label="Secondary Arena operations">
+        <GlassRail>
           <img
             className="arena-command-console__character"
             src="/art/cutouts/sniper-shark-cool-suit-headset.png"
@@ -1357,7 +1366,7 @@ export function ArenaSimplePage({
             playerLevel={playerLevelRaw}
             onFeatureHelp={openFeatureHelp}
           />
-        </aside>
+        </GlassRail>
       </div>
 
       <ArenaSimplePodiumSection
@@ -1366,6 +1375,7 @@ export function ArenaSimplePage({
         podiumPayoutPreview={undefined}
         decimals={session.decimals}
         address={session.walletAddress}
+        playerLevel={playerLevelRaw}
         recentBuys={recentBuys}
         podiumNowUnixSec={tickerWallNowSec}
         onOpenWalletProfile={onOpenWalletProfile}
@@ -1375,6 +1385,7 @@ export function ArenaSimplePage({
       <FooterSiteLinksCard />
       <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />
     </div>
+    </ArenaShell>
   );
 }
 

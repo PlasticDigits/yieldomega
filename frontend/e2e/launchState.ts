@@ -13,8 +13,8 @@ import type { Page } from "@playwright/test";
  * - `"post-launch"` — `VITE_LAUNCH_TIMESTAMP` is set but already in the past.
  *   Index `/` lands on `ArenaSimplePage` (issue #40); HomePage moves to
  *   `/home`. Secondary surfaces render normally.
- * - `"no-env"` — `VITE_LAUNCH_TIMESTAMP` is unset. The shell renders normally
- *   with HomePage at `/`; `/home` is the same hub surface (alias — GitLab #199).
+ * - `"no-env"` — `VITE_LAUNCH_TIMESTAMP` is unset. Routing matches post-launch:
+ *   index `/` lands on `ArenaSimplePage`; HomePage lives at `/home`.
  *
  * `detectLaunchState` is the single source of truth for this branching across
  * the e2e suite; new specs that assume a particular shell should call it and
@@ -29,6 +29,8 @@ export async function detectLaunchState(page: Page): Promise<LaunchState> {
       () =>
         Boolean(
           document.querySelector('[data-testid="launch-countdown"]') ||
+            document.querySelector('[data-testid="arena-command-console"]') ||
+            document.querySelector('[data-testid="time-arena-page-mounted"]') ||
             document.querySelector('main [aria-label="Primary"]') ||
             document.querySelector("main h1"),
         ),
@@ -39,9 +41,9 @@ export async function detectLaunchState(page: Page): Promise<LaunchState> {
   if (await page.getByTestId("launch-countdown").isVisible().catch(() => false)) {
     return "countdown";
   }
-  const homeAtRoot = await page
-    .getByRole("heading", { name: "Yield Omega", level: 1 })
-    .isVisible()
-    .catch(() => false);
-  return homeAtRoot ? "no-env" : "post-launch";
+  const arenaAtRoot = await page.getByTestId("arena-command-console").isVisible().catch(() => false);
+  if (arenaAtRoot) {
+    return "post-launch";
+  }
+  return "no-env";
 }

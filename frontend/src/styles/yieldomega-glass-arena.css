@@ -1,0 +1,322 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+
+/*
+ * YieldOmega Glass Arena — semantic tokens and shared surface primitives.
+ * Maps onto legacy --yo-* aliases in index.css for incremental migration.
+ */
+
+:root {
+  /* Base architecture */
+  --yga-void: #040810;
+  --yga-navy: #07121f;
+  --yga-navy-elevated: #0c1a2a;
+  --yga-navy-rail: #091622;
+
+  /* Brand accents */
+  --yga-emerald: #2dd4a8;
+  --yga-emerald-soft: rgba(45, 212, 168, 0.16);
+  --yga-teal: #4de7c8;
+  --yga-teal-live: #7ef1ff;
+  --yga-gold: #e8c04a;
+  --yga-gold-soft: rgba(232, 192, 74, 0.14);
+  --yga-purple: #8b7cf6;
+  --yga-purple-soft: rgba(139, 124, 246, 0.12);
+  --yga-danger: #ff6b7a;
+  --yga-warning: #ffb14d;
+
+  /* Glass material */
+  --yga-glass-fill: rgba(8, 18, 32, 0.72);
+  --yga-glass-fill-strong: rgba(10, 24, 38, 0.88);
+  --yga-glass-border: rgba(126, 241, 255, 0.14);
+  --yga-glass-border-live: rgba(45, 212, 168, 0.32);
+  --yga-glass-highlight: rgba(255, 255, 255, 0.06);
+  --yga-glass-blur: 18px;
+  --yga-glass-shadow: 0 1rem 2.8rem rgba(0, 0, 0, 0.38);
+  --yga-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  /* Typography */
+  --yga-font-display: "IBM Plex Mono", ui-monospace, monospace;
+  --yga-font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --yga-font-data: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Layout */
+  --yga-console-max: 1180px;
+  --yga-console-gap: 0.75rem;
+  --yga-rail-min: 17rem;
+
+  /* Motion */
+  --yga-motion-fast: 140ms ease;
+  --yga-motion-medium: 280ms ease-out;
+  --yga-motion-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Bridge legacy arena console vars to Glass Arena palette */
+  --arena-console-acid: var(--yga-emerald);
+  --arena-console-amber: var(--yga-gold);
+  --arena-console-ink: #eef8ff;
+  --arena-console-muted: rgba(238, 248, 255, 0.62);
+  --arena-console-panel: var(--yga-glass-fill);
+}
+
+/* Shell — physical arena console frame */
+.yga-arena-shell {
+  position: relative;
+  isolation: isolate;
+  width: min(var(--yga-console-max), calc(100% - 2rem));
+  margin-inline: auto;
+  color: var(--arena-console-ink);
+  font-family: var(--yga-font-data);
+}
+
+.yga-arena-shell--play-first {
+  padding-top: 0;
+}
+
+/* Glass surfaces */
+.glass-arena-console,
+.arena-command-console.glass-arena-console {
+  border: 1px solid var(--yga-glass-border);
+  border-radius: clamp(1rem, 2vw, 1.35rem);
+  background:
+    linear-gradient(rgba(45, 212, 168, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 212, 168, 0.025) 1px, transparent 1px),
+    radial-gradient(circle at 18% 14%, rgba(45, 212, 168, 0.12), transparent 38%),
+    radial-gradient(circle at 82% 8%, rgba(232, 192, 74, 0.08), transparent 32%),
+    linear-gradient(168deg, rgba(4, 8, 16, 0.96), rgba(7, 18, 31, 0.94));
+  background-size: 24px 24px, 24px 24px, auto, auto, auto;
+  box-shadow: var(--yga-glass-shadow), var(--yga-glass-inset);
+}
+
+.glass-deck,
+.glass-rail,
+.glass-panel {
+  border: 1px solid var(--yga-glass-border);
+  border-radius: 0.75rem;
+  background: var(--yga-glass-fill);
+  backdrop-filter: blur(var(--yga-glass-blur)) saturate(1.12);
+  box-shadow: var(--yga-glass-inset), 0 0.8rem 1.8rem rgba(0, 0, 0, 0.2);
+}
+
+.glass-panel--live {
+  border-color: var(--yga-glass-border-live);
+  box-shadow:
+    var(--yga-glass-inset),
+    0 0 1.2rem rgba(45, 212, 168, 0.1),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.2);
+}
+
+.glass-panel--gold {
+  border-color: rgba(232, 192, 74, 0.28);
+}
+
+.glass-panel--purple {
+  border-color: rgba(139, 124, 246, 0.24);
+}
+
+.glass-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--yga-glass-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.glass-status--live {
+  border-color: var(--yga-glass-border-live);
+  color: var(--yga-teal-live);
+}
+
+.glass-status--gold {
+  border-color: rgba(232, 192, 74, 0.35);
+  color: var(--yga-gold);
+}
+
+.glass-status--purple {
+  border-color: rgba(139, 124, 246, 0.35);
+  color: var(--yga-purple);
+}
+
+/* Topbar / epoch strip */
+.glass-arena-topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.2rem 0 0.75rem;
+  border-bottom: 1px solid rgba(45, 212, 168, 0.12);
+  color: var(--arena-console-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.glass-arena-topbar strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+.glass-arena-topbar__live {
+  justify-self: end;
+  color: var(--yga-emerald);
+}
+
+/* Character placement */
+.yga-character-anchor {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 1.2rem 1.6rem rgba(0, 0, 0, 0.42)) saturate(1.05);
+}
+
+.yga-character-anchor--host {
+  opacity: 0.28;
+}
+
+.yga-brand-art-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.yga-brand-art-frame__scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  object-fit: cover;
+}
+
+/* Active player pulse */
+.yga-active-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: min(60%, 22rem);
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--yga-glass-border-live);
+  border-radius: 999px;
+  background: rgba(4, 12, 20, 0.78);
+  font-family: var(--yga-font-data);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.yga-active-player__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--yga-emerald);
+  box-shadow: 0 0 8px rgba(45, 212, 168, 0.52);
+  flex-shrink: 0;
+}
+
+/* DOUB prize emphasis */
+.yga-podium-prize {
+  display: grid;
+  gap: 0.1rem;
+  text-align: right;
+}
+
+.yga-podium-prize__amount {
+  color: var(--yga-gold);
+  font-weight: 800;
+}
+
+.yga-podium-prize__token {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--yga-gold);
+}
+
+/* Level / XP meter */
+.yga-level-meter {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(45, 212, 168, 0.16);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.yga-level-meter__badge {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.yga-level-meter__bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.yga-level-meter__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--yga-emerald), var(--yga-gold));
+  transition: width var(--yga-motion-medium);
+}
+
+/* Mobile: focused vertical control flow */
+@media (max-width: 720px) {
+  .yga-arena-shell {
+    width: min(100%, calc(100% - 1rem));
+  }
+
+  .yga-arena-shell--play-first {
+    margin-top: -0.35rem;
+  }
+
+  .yga-arena-shell--play-first .arena-command-console__primary-head {
+    display: none;
+  }
+
+  .glass-arena-topbar {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .glass-arena-topbar__live {
+    justify-self: start;
+  }
+}
+
+/* Homepage play-first: timer + buy visible without scroll on common laptop viewports */
+.app-main--arena:has(.yga-arena-shell--play-first) {
+  padding-top: 0.35rem;
+}
+
+.yga-arena-shell--play-first .arena-simple__hub {
+  gap: 0.65rem;
+}
+
+@media (min-width: 721px) {
+  .yga-arena-shell--play-first .arena-command-console__grid {
+    align-items: start;
+  }
+}
+
+.yga-secondary-page .page-hero,
+.yga-secondary-page .data-panel,
+.yga-secondary-page .referrals-quest-strip {
+  border-color: var(--yga-glass-border);
+  background: var(--yga-glass-fill);
+  backdrop-filter: blur(var(--yga-glass-blur)) saturate(1.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yga-level-meter__fill {
+    transition: none;
+  }
+
+  .yga-active-player__dot {
+    animation: none;
+  }
+}

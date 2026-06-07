@@ -69,7 +69,7 @@ const ARENA_ROUTES: Surface[] = [
 ];
 
 const ROUTES_NO_ENV: Surface[] = [
-  { path: undefined, element: <HomePage /> },
+  { path: undefined, element: <TimeArenaPage /> },
   { path: "home", element: <HomePage /> },
   ...ARENA_ROUTES,
   ...SECONDARY_ROUTES,

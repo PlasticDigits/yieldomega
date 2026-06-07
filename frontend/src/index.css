@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap");
+@import "./styles/yieldomega-glass-arena.css";
 
 /* SPDX-License-Identifier: AGPL-3.0-only */
 
@@ -8359,6 +8360,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-panel-aurora-c: rgba(31, 184, 106, 0.48);
   --podium-panel-aurora-d: rgba(40, 165, 255, 0.36);
   margin-top: 0;
+  padding-right: 1.15rem;
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -8467,12 +8469,19 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-grid {
+  display: grid;
+  align-self: stretch;
   margin-top: 1rem;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  width: 100%;
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .arena-simple__podium-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   --podium-card-accent: var(--arcade-green);
   --podium-card-glow: rgba(31, 184, 106, 0.22);
   --podium-art-a: #fff3a8;
@@ -8647,18 +8656,34 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-simple__podium-card .ranking-list {
   gap: 0.48rem;
+  width: 100%;
 }
 
 .arena-simple__podium-card .ranking-list__item {
-  grid-template-columns: 2.8rem minmax(7.3rem, auto) minmax(0, 1fr);
-  gap: 0.52rem;
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: 2.65rem minmax(0, 1fr);
+  grid-template-areas:
+    "rank identity"
+    "prize prize"
+    "meta meta";
+  gap: 0.42rem 0.55rem;
   padding: 0.56rem 0.64rem;
   border-width: 2px;
   box-shadow: 2px 2px 0 rgba(11, 31, 20, 0.84);
-  align-items: start;
+  align-items: center;
+}
+
+.arena-simple__podium-card .ranking-list__item > strong {
+  grid-area: prize;
+  justify-self: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 .arena-simple__podium-card .ranking-list__rank {
+  grid-area: rank;
   position: relative;
   isolation: isolate;
   width: 2.65rem;
@@ -8712,18 +8737,13 @@ a.podium-address-explorer:hover .address-inline__label {
   height: 100%;
   object-fit: contain;
   transform-origin: 50% 76%;
-  animation: podium-trophy-float 3.9s ease-in-out infinite;
   transition:
     transform 180ms ease,
     filter 180ms ease;
 }
 
-.arena-simple__podium-card .ranking-list__item--second .ranking-list__rank img {
-  animation-delay: 0.28s;
-}
-
-.arena-simple__podium-card .ranking-list__item--third .ranking-list__rank img {
-  animation-delay: 0.54s;
+.arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
+  animation: podium-trophy-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35);
 }
 
 .arena-simple__podium-card .ranking-list__item:hover .ranking-list__rank img,
@@ -8732,8 +8752,13 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: saturate(1.14) brightness(1.06);
 }
 
+.arena-simple__podium-card .ranking-list__item > div:not(.ranking-list__meta) {
+  grid-area: identity;
+  min-width: 0;
+}
+
 .arena-simple__podium-card .ranking-list__item > .ranking-list__meta {
-  grid-column: 1 / -1;
+  grid-area: meta;
   justify-self: stretch;
   text-align: left;
   font-size: 0.68rem;
@@ -8741,7 +8766,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-card .ranking-list__item strong {
-  min-width: max-content;
+  display: block;
+  min-width: 0;
   padding: 0.26rem 0.48rem 0.22rem;
   border-radius: 0.9rem;
   background:
@@ -8758,18 +8784,28 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-prize {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.14rem;
+  width: 100%;
+  min-width: 0;
   font-family: "Bungee", cursive;
   white-space: nowrap;
 }
 
 .arena-simple__podium-prize-main {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 0.22rem;
+  min-width: 0;
+}
+
+.arena-simple__podium-prize-main > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arena-simple__podium-prize small {
@@ -8881,17 +8917,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__item {
-  animation: podium-rank-spark 0.72s ease-out;
-}
-
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__rank img {
-  animation:
-    podium-trophy-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35),
-    podium-trophy-float 3.9s ease-in-out 0.78s infinite;
-}
-
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__rank::after {
+.arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after {
   animation: podium-trophy-burst 0.82s ease-out;
 }
 
@@ -8980,14 +9006,18 @@ a.podium-address-explorer:hover .address-inline__label {
     animation: none;
   }
 
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__item,
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__rank::after,
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__rank img {
+  .arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after,
+  .arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
     animation: none;
   }
 }
 
 @media (max-width: 720px) {
+  .arena-simple__podium-grid,
+  .arena-command-console .arena-simple__podium-grid {
+    grid-template-columns: 1fr;
+  }
+
   .arena-simple__podium-card-head {
     grid-template-columns: 3.1rem minmax(0, 1fr);
     gap: 0.55rem;
@@ -9009,7 +9039,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__podium-card .ranking-list__item {
-    grid-template-columns: 2.45rem minmax(6.75rem, auto) minmax(0, 1fr);
+    grid-template-columns: 2.45rem minmax(0, 1fr);
     gap: 0.42rem 0.5rem;
     padding: 0.5rem 0.52rem;
   }
@@ -9020,9 +9050,9 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__podium-card .ranking-list__item strong {
-    justify-self: start;
-    width: fit-content;
-    max-width: 100%;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
     white-space: normal;
   }
 }
@@ -12015,29 +12045,167 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-simple__podium-panel {
   margin-top: 0;
-  border: 1px solid rgba(185, 255, 106, 0.16);
+  border: 1px solid rgba(77, 231, 200, 0.26);
   background:
-    radial-gradient(circle at 16% 12%, rgba(185, 255, 106, 0.13), transparent 28%),
-    radial-gradient(circle at 86% 8%, rgba(255, 177, 77, 0.12), transparent 28%),
-    rgba(2, 12, 12, 0.78);
+    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 16% 12%, rgba(45, 212, 168, 0.22), transparent 32%),
+    radial-gradient(circle at 86% 8%, rgba(232, 192, 74, 0.14), transparent 30%),
+    radial-gradient(circle at 50% 120%, rgba(139, 124, 246, 0.12), transparent 42%),
+    linear-gradient(145deg, rgba(4, 12, 22, 0.95), rgba(7, 30, 34, 0.9));
+  background-size: 28px 28px, 28px 28px, auto, auto, auto, auto;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 1rem 2.4rem rgba(0, 0, 0, 0.22);
+    0 1.2rem 3rem rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(77, 231, 200, 0.06);
+}
+
+.arena-command-console .arena-simple__podium-panel::before {
+  background:
+    linear-gradient(115deg, transparent 0 18%, rgba(255, 255, 255, 0.12) 26%, transparent 38%),
+    radial-gradient(circle at 72% 20%, rgba(232, 192, 74, 0.16), transparent 24%),
+    radial-gradient(circle at 26% 76%, rgba(77, 231, 200, 0.14), transparent 36%);
+  opacity: 0.5;
+}
+
+.arena-command-console .arena-simple__podium-panel::after {
+  display: none;
+}
+
+.arena-command-console .arena-simple__podium-panel .section-heading {
+  border: 1px solid rgba(232, 192, 74, 0.24);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(232, 192, 74, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(10, 35, 40, 0.86), rgba(5, 18, 28, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.18);
 }
 
 .arena-command-console .arena-simple__podium-card {
-  border-color: rgba(185, 255, 106, 0.14);
-  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(77, 231, 200, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.028)),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--podium-card-accent) 26%, transparent), transparent 36%),
+    rgba(4, 18, 26, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.8rem 1.9rem rgba(0, 0, 0, 0.24);
 }
 
 .arena-command-console .arena-simple__podium-card h3,
 .arena-command-console .arena-simple__podium-panel .section-heading h2 {
   color: #ffffff;
+  text-shadow: 0 0 1rem color-mix(in srgb, var(--podium-card-accent, var(--yga-gold)) 22%, transparent);
 }
 
 .arena-command-console .arena-simple__podium-card-head p,
 .arena-command-console .arena-simple__podium-panel .section-heading__lede {
   color: var(--arena-console-muted);
+}
+
+.arena-command-console .arena-simple__podium-art {
+  background:
+    radial-gradient(circle at 34% 25%, rgba(255, 255, 255, 0.36) 0 10%, transparent 12%),
+    radial-gradient(circle at 50% 54%, rgba(6, 32, 38, 0.94) 0 44%, transparent 46%),
+    conic-gradient(from 210deg, color-mix(in srgb, var(--podium-card-accent) 44%, #4de7c8), rgba(232, 192, 74, 0.72), rgba(8, 28, 42, 0.92), color-mix(in srgb, var(--podium-card-accent) 44%, #4de7c8));
+  box-shadow:
+    0 0 0 1px rgba(77, 231, 200, 0.28),
+    inset 0 5px 12px rgba(255, 255, 255, 0.14),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.34),
+    0 0 1.05rem color-mix(in srgb, var(--podium-card-accent) 32%, transparent);
+}
+
+.arena-command-console .arena-simple__podium-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--first,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--second,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--third {
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  background:
+    radial-gradient(circle at 5% 0%, color-mix(in srgb, var(--podium-card-accent) 18%, transparent), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035)),
+    rgba(6, 22, 31, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.45rem 1.1rem rgba(0, 0, 0, 0.18);
+  color: #eefcff;
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item--first {
+  border-color: rgba(232, 192, 74, 0.34);
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item strong {
+  border: 1px solid rgba(232, 192, 74, 0.28);
+  background:
+    radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(232, 192, 74, 0.18), rgba(45, 212, 168, 0.08));
+  color: var(--yga-gold);
+  box-shadow: 0 0 0.8rem rgba(232, 192, 74, 0.12);
+}
+
+.arena-command-console .arena-simple__podium-prize-usd,
+.arena-command-console .arena-simple__podium-card .ranking-list__meta {
+  color: rgba(238, 248, 255, 0.62);
+}
+
+.arena-simple__podium-card--locked {
+  min-height: 17rem;
+}
+
+.arena-simple__podium-card--locked .arena-simple__podium-card-head,
+.arena-simple__podium-card--locked .ranking-list {
+  filter: saturate(0.58) brightness(0.66);
+  opacity: 0.5;
+}
+
+.arena-simple__podium-lock {
+  position: absolute;
+  inset: 0.7rem;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px solid rgba(232, 192, 74, 0.3);
+  border-radius: 0.9rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(232, 192, 74, 0.2), transparent 38%),
+    rgba(3, 10, 16, 0.72);
+  color: #f7f1c6;
+  text-align: center;
+  backdrop-filter: blur(6px) saturate(1.1);
+}
+
+.arena-simple__podium-lock-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid rgba(232, 192, 74, 0.36);
+  border-radius: 999px;
+  color: var(--yga-gold);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.arena-simple__podium-lock strong {
+  color: #ffffff;
+  font-family: var(--yga-font-display);
+  font-size: 1rem;
+}
+
+.arena-simple__podium-lock span:last-child {
+  max-width: 18rem;
+  color: rgba(238, 248, 255, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 @media (max-width: 980px) {

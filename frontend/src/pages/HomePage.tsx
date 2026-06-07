@@ -23,7 +23,7 @@ export function HomePage() {
       };
 
   return (
-    <section className="page page--home">
+    <section className="page page--home yga-secondary-page">
       <div className="home-hero">
         <picture className="home-hero__picture">
           <source
