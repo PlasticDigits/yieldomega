@@ -72,7 +72,7 @@ Invariant: **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** in [invariants](..
 
 - Primary decisions are **VERIFY** state, **TRACE** vault routing, and **WATCH** indexed activity.
 - Visible copy stays compact; mechanics live in `title` / `aria-label` tooltips, state cards, and action-adjacent status.
-- Copy must reflect Arena v2: always-live when unpaused, flat DOUB CHARM buys, 40/30/30 buy routing, 100%-to-prizes donate top-up, and WarBow action activity. Do not reintroduce TimeCurve sale-end, redemption, or legacy fee-sink framing.
+- Copy must reflect Arena v2: always-live when unpaused, flat DOUB CHARM buys, 100% podium buy routing (25% × 4 · 70/20/10 epoch tranches), 100%-to-prizes donate top-up, and WarBow action activity. Do not reintroduce TimeCurve sale-end, redemption, or legacy fee-sink framing.
 - Participant rows use [`AddressInline`](../../frontend/src/components/AddressInline.tsx) to open [`WalletProfileModal`](../../frontend/src/components/WalletProfileModal.tsx). Contract/vault rows use the same blockie + last-six address treatment and keep explorer links.
 - Donate pools remains a sponsorship action with the required no-benefit disclosure and `ChainMismatchWriteBarrier`; the write path still calls `topUpPodiumPools`.
 

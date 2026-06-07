@@ -66,7 +66,7 @@ This document is the **code-delivery roadmap** after [`agent-phases.md`](agent-p
 
 **Deliverables**
 
-- Written list (issue or short `contracts/README.md` / design note): podium timer params, buy cooldown, 40/30/30 routing shares, charm price band, governance addresses vs placeholders.
+- Written list (issue or short `contracts/README.md` / design note): podium timer params, buy cooldown, 100% podium routing shares (70/20/10 epoch tranches per [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)), charm price band, governance addresses vs placeholders.
 
 **Exit criteria**
 
@@ -111,7 +111,7 @@ Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1.
 
 **Docs:** [product/time-arena.md](product/time-arena.md), [product/arena-v2.md](product/arena-v2.md), [onchain/security-and-threat-model.md](onchain/security-and-threat-model.md)
 
-**Goal:** Onchain TimeArena matches the spec: four podium timers, DOUB buys, 40/30/30 vault routing, permissionless `rollPodiumEpoch` settlement, events for indexers.
+**Goal:** Onchain TimeArena matches the spec: four podium timers, DOUB buys, 100% podium vault routing ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)), permissionless `rollPodiumEpoch` settlement, events for indexers.
 
 **Deliverables**
 
@@ -126,7 +126,7 @@ Read docs/contracts/foundry-and-megaeth.md and docs/testing/strategy.md Stage 1.
 **Agent prompt (copy-paste):**
 
 ```text
-Implement the TimeArena primitive per docs/product/time-arena.md, docs/product/arena-v2.md, and docs/onchain/security-and-threat-model.md. Emit indexer-friendly events (Buy, PodiumEpochRolled, PodiumFunded, etc.). Add fuzz/invariant tests for edge cases including rollPodiumEpoch after expiry. Document 40/30/30 routing invariants. Run forge test.
+Implement the TimeArena primitive per docs/product/time-arena.md, docs/product/arena-v2.md, and docs/onchain/security-and-threat-model.md. Emit indexer-friendly events (Buy, PodiumEpochRolled, PodiumFunded, etc.). Add fuzz/invariant tests for edge cases including rollPodiumEpoch after expiry. Document 100% podium routing invariants ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). Run forge test.
 ```
 
 ---
@@ -157,7 +157,7 @@ Do not implement RabbitTreasury for Arena v2 unless explicitly scoped for histor
 
 **Docs:** [onchain/fee-routing-and-governance.md](onchain/fee-routing-and-governance.md), [onchain/treasury-contracts.md](onchain/treasury-contracts.md), [product/arena-v2.md](product/arena-v2.md)
 
-**Goal:** Explicit **PodiumVaults** (active + seed) and **AdminSellVault** destinations; **40/30/30** split enforced on each DOUB buy via **ArenaBuyRouting**.
+**Goal:** Explicit **PodiumVaults** (active + seed + future epoch pools) destinations; **100%** podium split enforced on each DOUB buy via **ArenaBuyRouting** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)).
 
 **Deliverables**
 
@@ -171,7 +171,7 @@ Do not implement RabbitTreasury for Arena v2 unless explicitly scoped for histor
 **Agent prompt (copy-paste):**
 
 ```text
-Wire Arena v2 buy routing per docs/product/arena-v2.md and docs/onchain/fee-routing-and-governance.md. Implement PodiumVaults and AdminSellVault; TimeArena buy sends 40% active / 30% seed / 30% admin per buy. Add tests for routing invariants and governance roles. Document any TODO for AdminSellVault distribution policy.
+Wire Arena v2 buy routing per docs/product/arena-v2.md and docs/onchain/fee-routing-and-governance.md. Implement PodiumVaults and AdminSellVault; TimeArena buy sends 100% to podium vaults (25% × 4 · 70/20/10 epoch tranches; 0% admin on buys). Add tests for routing invariants and governance roles. Document any TODO for AdminSellVault distribution policy.
 ```
 
 ---

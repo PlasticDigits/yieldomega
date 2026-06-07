@@ -17,7 +17,7 @@ Authoritative game rules and balances remain onchain. The indexer and frontend o
 | `Doubloon` | DOUB ERC-20 |
 | `PlayCred` | Non-transferable arena CRED |
 | `PodiumVaults` | Eight podium prize pools |
-| `AdminSellVault` | 30% admin take per buy |
+| `AdminSellVault` | Owner-only DOUB liquidation (not funded by buys — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) |
 | `ReferralRegistry` | UUPS — CL8Y burn to register codes |
 | `TimeArena` | UUPS — timers, buys, CRED, XP, WarBow |
 

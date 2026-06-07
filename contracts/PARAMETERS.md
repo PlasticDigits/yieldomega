@@ -98,7 +98,7 @@ Forge: `TimeArena.t.sol::test_warbow_*`, `test_finalize_warbow_podium_pays_after
 
 ## TimeCurve fee split (retired v1 — [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244))
 
-**Not used in Arena v2.** Canonical routing is **TimeArena** 40/30/30 DOUB above. Historical **FeeRouter** five-sink table (30/40/20/0/10 CL8Y) for archaeology only:
+**Not used in Arena v2.** Canonical routing is **TimeArena** 100% podium DOUB ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) above. Historical **FeeRouter** five-sink table (30/40/20/0/10 CL8Y) for archaeology only:
 
 | Sink | Testnet default (bps) | Bounds |
 |------|-----------------------|--------|
