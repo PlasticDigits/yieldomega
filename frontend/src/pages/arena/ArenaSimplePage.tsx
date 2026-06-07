@@ -37,6 +37,15 @@ import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismat
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { phaseNarrative } from "@/pages/arena/arenaSimplePhase";
 import { ArenaSubnav } from "@/pages/arena/ArenaSubnav";
+import { ArenaXpHero } from "@/components/ArenaXpHero";
+import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
+import {
+  type ArenaFeatureKey,
+  featureKeyForUnlockLevel,
+  readFeatureTutorialSeen,
+} from "@/lib/arenaProgression";
+import { timeArenaReadAbi } from "@/lib/abis";
+import { useAccount, useReadContract } from "wagmi";
 import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
 import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
@@ -403,6 +412,36 @@ export function ArenaSimplePage({
   const [buyFeedRefreshNonce, setBuyFeedRefreshNonce] = useState(0);
   const queryClient = useQueryClient();
 
+  const { address: connectedAddress } = useAccount();
+  const { data: playerLevelRaw } = useReadContract({
+    address: tc ?? undefined,
+    abi: timeArenaReadAbi,
+    functionName: "level",
+    args: connectedAddress ? [connectedAddress] : undefined,
+    query: { enabled: Boolean(tc && connectedAddress) },
+  });
+  const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
+  const prevLevelRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (playerLevelRaw === undefined) return;
+    const lvl = Number(playerLevelRaw);
+    const prev = prevLevelRef.current;
+    prevLevelRef.current = lvl;
+    if (prev === undefined || lvl <= prev) return;
+    for (let unlock = prev + 1; unlock <= lvl; unlock += 1) {
+      const key = featureKeyForUnlockLevel(unlock);
+      if (key && !readFeatureTutorialSeen(key)) {
+        setFeatureModal(key);
+        break;
+      }
+    }
+  }, [playerLevelRaw]);
+
+  const openFeatureHelp = useCallback((feature: ArenaFeatureKey) => {
+    setFeatureModal(feature);
+  }, []);
+
   const timerSectionTitle =
     session.phase === "saleStartPending" ? "Arena Opens In" : "Last Buy";
 
@@ -498,10 +537,12 @@ export function ArenaSimplePage({
       flagOwnerAddr: session.warbowPendingFlagOwner ?? latch.warbowPendingFlagOwner,
       flagPlantAtSec: session.warbowPendingFlagPlantAt,
       walletAddress: session.walletAddress,
+      playerLevel: playerLevelRaw,
       formatRivalWallet: (addr) => shortAddress(addr),
     });
   }, [
     recentBuys,
+    playerLevelRaw,
     session.activeDefendedStreak,
     session.buyCheckoutCharmWeightWad,
     session.buyPreviewPolicy,
@@ -1051,6 +1092,7 @@ export function ArenaSimplePage({
             countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
             foot={timerHeroFoot}
           />
+          <ArenaXpHero />
           {/* Command-console sidekick. The art README (`frontend/public/art/
               README.md`) earmarks this cutout for the Simple-view timer panel
               specifically — it grounds the tactical stage in the Yieldomega
@@ -1310,8 +1352,12 @@ export function ArenaSimplePage({
             decoding="async"
           />
           <ArenaCharmCredCard />
-          <ArenaTimerChips />
-          <ArenaWarbowHeroPanel phase={session.phase} />
+          <ArenaTimerChips playerLevel={playerLevelRaw} onFeatureHelp={openFeatureHelp} />
+          <ArenaWarbowHeroPanel
+            phase={session.phase}
+            playerLevel={playerLevelRaw}
+            onFeatureHelp={openFeatureHelp}
+          />
         </aside>
       </div>
 
@@ -1328,6 +1374,7 @@ export function ArenaSimplePage({
 
       <ArenaSimpleAgentCard />
       <FooterSiteLinksCard />
+      <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />
     </div>
   );
 }

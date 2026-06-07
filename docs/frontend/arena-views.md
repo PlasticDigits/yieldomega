@@ -114,6 +114,19 @@ Component: [`ArenaCharmCredCard.tsx`](../../frontend/src/pages/arena/ArenaCharmC
 
 Claim helper: [`arenaCharmCredClaim.ts`](../../frontend/src/lib/arenaCharmCredClaim.ts). Empty / loading copy uses **`EmptyDataPlaceholder`** ([#200](https://gitlab.com/PlasticDigits/yieldomega/-/issues/200)). Invariant: **`INV-FRONTEND-257-CHARM-CRED-CARD`**. Play skill: [play-time-arena-doub § CRED claim](../../skills/play-time-arena-doub/SKILL.md).
 
+<a id="arena-player-progression-gitlab-299"></a>
+
+## Arena player progression (GitLab [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299))
+
+| Surface | Component / module | Notes |
+|---------|-------------------|--------|
+| XP hero | [`ArenaXpHero.tsx`](../../frontend/src/components/ArenaXpHero.tsx) · **`data-testid="arena-xp-hero"`** | On main `/arena` timer panel; reads `level` + `xpTowardNext` |
+| Lock overlays | [`ArenaLevelGate.tsx`](../../frontend/src/components/ArenaLevelGate.tsx) | `Locked until Level N` + lock icon on Time Booster / Streak / WarBow sections |
+| Mechanic modal | [`FeatureMechanicModal.tsx`](../../frontend/src/components/FeatureMechanicModal.tsx) | First unlock + `?` help; tutorial seen in `localStorage` via [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts) |
+| Buy preview | [`arenaBuyProjectedEffects.ts`](../../frontend/src/pages/arena/arenaBuyProjectedEffects.ts) | Filters streak/BP/flag chips by onchain `level` |
+
+Invariants: **`INV-ARENA-PROGRESSION-*`** in [invariants §299](../testing/invariants-and-business-logic.md#arena-player-progression-gitlab-299). Product: [arena-v2 § XP](../product/arena-v2.md#xp).
+
 ## Env
 
 | Variable | Role |

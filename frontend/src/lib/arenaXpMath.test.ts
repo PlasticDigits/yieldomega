@@ -3,7 +3,6 @@ import {
   applyXpGain,
   levelFromXp,
   xpForCharm,
-  xpRemainingToNextLevel,
   xpToAdvance,
   xpToNextLevel,
 } from "./arenaXpMath";
@@ -26,19 +25,17 @@ describe("arenaXpMath", () => {
     for (const g of gains) {
       lifetime += g;
       state = applyXpGain(state.level, state.xpTowardNext, g);
-      expect(state.level).toBe(levelFromXp(lifetime));
-      expect(xpRemainingToNextLevel(state.level, state.xpTowardNext)).toBe(
-        xpToNextLevel(lifetime),
-      );
+      const capped = levelFromXp(lifetime) > 5n ? 5n : levelFromXp(lifetime);
+      expect(state.level).toBe(capped);
     }
   });
 
-  it("caps five level-ups per buy", () => {
+  it("caps player level at five (#299)", () => {
     const state = applyXpGain(1n, 0n, 200n);
-    expect(state.level).toBe(6n);
+    expect(state.level).toBe(5n);
     expect(state.level).toBeLessThan(levelFromXp(200n));
     const caughtUp = applyXpGain(state.level, state.xpTowardNext, 50n);
-    expect(caughtUp.level).toBe(levelFromXp(250n));
+    expect(caughtUp.level).toBe(5n);
   });
 
   it("table-test level thresholds L1–L10 (GitLab #250)", () => {

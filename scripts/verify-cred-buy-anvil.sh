@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-only
-# GitLab #268 — CRED buy burn (100/CHARM) + first-buy 150 CRED bonus on fresh Anvil DeployDev.
+# GitLab #268 / #299 — CRED buy burn (100/CHARM) + first-buy 1100 CRED onboarding bonus.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -102,16 +102,16 @@ epoch="$(cast_u256 "${TA}" "lastBuyEpoch()(uint256)")"
 target="$(python3 -c "print(int('${epoch}') + 1)")"
 bonus="$(cast call "${TA}" "epochFixedCredBonus(uint256,address)(uint256)" "${target}" "${ALICE}" \
   --rpc-url "${RPC}" | awk '{print $1}')"
-assert_eq "${bonus}" "150000000000000000000" "first-buy epochFixedCredBonus"
+assert_eq "${bonus}" "1100000000000000000000" "first-buy epochFixedCredBonus"
 pending="$(cast call "${TA}" "pendingCred(address,uint256)(uint256)" "${ALICE}" "${target}" \
   --rpc-url "${RPC}" | awk '{print $1}')"
-assert_eq "${pending}" "150000000000000000000" "first-buy pendingCred"
+assert_eq "${pending}" "1100000000000000000000" "first-buy pendingCred"
 
 warp_past_cooldown
 anvil_send "${ALICE}" "${TA}" "buyWithCred(uint256)" "${WAD}"
 bonus2="$(cast call "${TA}" "epochFixedCredBonus(uint256,address)(uint256)" "${target}" "${ALICE}" \
   --rpc-url "${RPC}" | awk '{print $1}')"
-assert_eq "${bonus2}" "150000000000000000000" "second buy must not add bonus"
+assert_eq "${bonus2}" "1100000000000000000000" "second buy must not add bonus"
 
 bal_before="$(cred_balance "${BOB}")"
 ten_charm="10000000000000000000"
@@ -127,6 +127,20 @@ anvil_send "${BOB}" "${TA}" "buyWithCred(uint256)" "${min_charm}"
 bal_after="$(cred_balance "${BOB}")"
 burned="$(python3 -c "print(int('${bal_before}') - int('${bal_after}'))")"
 assert_eq "${burned}" "99000000000000000000" "buyWithCred(99e16) burn"
+
+starter="$(cast_u256 "${TA}" "ONBOARDING_STARTER_CHARM_WAD()(uint256)")"
+assert_eq "${starter}" "10000000000000000000" "ONBOARDING_STARTER_CHARM_WAD"
+
+CAROL="${ANVIL_ACCOUNTS[2]:-}"
+[[ -n "${CAROL}" ]] || die "need third Anvil account for onboarding progression"
+anvil_send_mint "${CAROL}" "10000000000000000000000"
+anvil_send "${CAROL}" "${TA}" "buyWithCred(uint256)" "${starter}"
+level1="$(cast call "${TA}" "level(address)(uint256)" "${CAROL}" --rpc-url "${RPC}" | awk '{print $1}')"
+assert_eq "${level1}" "1" "first starter buy level 1"
+warp_past_cooldown
+anvil_send "${CAROL}" "${TA}" "buyWithCred(uint256)" "${starter}"
+level2="$(cast call "${TA}" "level(address)(uint256)" "${CAROL}" --rpc-url "${RPC}" | awk '{print $1}')"
+[[ "$(python3 -c "print(int('${level2}') >= 2)")" == "True" ]] || die "two starter buys must reach level >= 2"
 
 log "forge test --match-contract TimeArena"
 cd "${ROOT}/contracts"
