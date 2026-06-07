@@ -159,6 +159,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-294-SHARED-PRIMITIVES`** | Shared modals, wallet profile, address rows, chain gates, status/empty states, amount displays, and indexer status use the cyberminimalist glass system across `/arena`, `/arena/protocol`, `/referrals`, and secondary routes while preserving #95/#258 behavior and frontend formatting policies ([#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294)) | `SharedUxPrimitives.test.tsx`, `AmountDisplay.test.ts`, `WalletProfileModalSections.test.tsx`, `chainMismatchWriteGuard.test.ts`, `cd frontend && npm run typecheck && npm run lint && npm test`; visual/Rabby pass per [manual QA §294](manual-qa-checklists.md#manual-qa-issue-294) · [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) · [arena-views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) |
 | **`INV-FRONTEND-295-HOME-COUNTDOWN-BRAND`** | Home and launch countdown entry surfaces use the approved cyberminimalist glass direction, route users toward immediate PvP TimeArena play and AUDIT verification, preserve recognizable Yield Omega characters as tactical accents, and contain no visible TimeCurve/sale/PvE/worldbuilding framing ([#295](https://gitlab.com/PlasticDigits/yieldomega/-/issues/295)) | `surfaceContent.test.ts`, `LaunchCountdownPage.test.tsx`, `e2e/home.spec.ts`, `e2e/launch-countdown.spec.ts`, `cd frontend && npm run typecheck && npm run lint && npm test`; visual/Rabby pass per [manual QA §295](manual-qa-checklists.md#manual-qa-issue-295) · [design §290/#295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) |
 | **`INV-FRONTEND-296-SECONDARY-SURFACES`** | `/referrals`, Kumbaya/Sir venue pages, 404, and under-construction fallbacks use the approved cyberminimalist glass direction, compact action-first copy, flat referral CRED mechanics (**5 CRED + 5 CRED** on referred DOUB buys), canonical `/arena/{code}` share links, external venue trust boundaries, and no stale TimeCurve/sale/PvE cross-sell framing ([#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296)) | `e2e/referrals-surface.spec.ts`, `e2e/navigation.spec.ts`, `e2e/footer-site-links.spec.ts`, `cd frontend && npm run typecheck && npm run lint && npm test`; focused Playwright `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/referrals-surface.spec.ts e2e/navigation.spec.ts e2e/footer-site-links.spec.ts`; Rabby/Chromium visual pass per [manual QA §296](manual-qa-checklists.md#manual-qa-issue-296) · [design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) · [product referrals](../product/referrals.md#referrals-dashboard-issue-94) |
+| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | Existing bunny/sniper-shark cast remains recognizable across routes, consumed scene backplates use dark cyberminimalist command-console SVGs instead of the older bright arcade JPGs, motion stays subtle, and Arena SFX are sparse enough for active feeds ([#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)) | `arenaCommandConsoleStatic.test.ts`, `bash scripts/check-art-readme-consumers.sh`, `cd frontend && npm run typecheck && npm run lint && npm test`; visual pass of Home, countdown, `/arena`, `/arena/protocol`, and Referrals per [manual QA §297](manual-qa-checklists.md#manual-qa-issue-297) |
 
 <a id="frontend-cyberminimalist-glass-shell-gitlab-290"></a>
 
@@ -238,6 +239,18 @@ copy.
 | ID | Property | Evidence |
 |----|----------|----------|
 | **`INV-FRONTEND-296-SECONDARY-SURFACES`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test`; `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/referrals-surface.spec.ts e2e/navigation.spec.ts e2e/footer-site-links.spec.ts`; Rabby/Chromium visual pass per [manual QA §296](manual-qa-checklists.md#manual-qa-issue-296) |
+
+<a id="frontend-art-motion-audio-gitlab-297"></a>
+
+### Frontend art, motion, and audio treatment (GitLab [#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297))
+
+Follow-up to the cyberminimalist shell and route passes: production art and
+ambient chrome must reinforce the dark tactical command-console aesthetic
+without replacing the established Yield Omega cast.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh`; `cd frontend && npm run typecheck && npm run lint && npm test`; visual/browser pass of Home, countdown, `/arena`, `/arena/protocol`, and Referrals |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 

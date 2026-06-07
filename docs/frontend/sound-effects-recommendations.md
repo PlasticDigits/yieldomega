@@ -22,7 +22,7 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 | *Rainbow Switchback* | **Surprise and pivot** — ambush, phase changes, “route updated” | Comedy slide-whistle |
 | *Moss and Brass* | **Tactile UI** — mallet-y, round | Plastic tick-tock |
 | *Jig Generator* | **Bouncy micro-win** — streak, BP tick, small celebrations | Full Irish reel loops |
-| *Starline Overworld* | **Epic but sparse** — sale end approaching, final minutes | Over-scoring every click |
+| *Starline Overworld* | **Epic but sparse** — final Last Buy seconds, high-stakes podium moments | Over-scoring every click |
 | *Lucky Run* | **Charms, confirms, you’re in** — 5th / rising motifs | Applause beds |
 | *Kumbaya Campfire* | **Connection / swap / bridge** — whoosh + warmth | Obvious guitar samples |
 
@@ -62,16 +62,16 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 | **CHARM / spend slider** | **On release** only: soft tick or 40 ms chime; optional tick every **whole CHARM** step, not per fraction | Fidelity to slider use |
 | **Per-wallet buy cooldown active** (button disabled) | **Dull, damped mallet thud** or single low tick when user presses disabled control | “Door still locked” without anger |
 | **Timer healthy** (> 13 min feel) | **Silent** or an **ultra-rare** ambient (see accessibility) | Default is calm — *Hills at Dawn* energy |
-| **Timer “attention”** (e.g. &lt; 13 m to sale dynamics) | **Sporadic 0.1–0.2 s heartbeats** at 30–60 s spacing (user setting) | *Jig* pulse without drumming; reference: `timer_heartbeat_calm.wav` |
+| **Timer “attention”** (e.g. &lt; 13 m to hard-reset band) | **Sporadic 0.1–0.2 s heartbeats** at 60–90 s spacing (user setting) | Tension pulse without turning the console into a metronome; reference: `timer_heartbeat_calm.wav` |
 | **Timer urgent** (e.g. &lt; 1–2 m or user “stakes high”) | **Faster, brighter** heartbeat, still **round**; optional UI-only toggle | *Starline* / tension; `timer_heartbeat_urgent.wav` |
 | **13 m / 15 m hard reset** (onchain) | **Distinct** “**clock latches**” 200–400 ms: short drop + **sweep up**; **separate** from standard buy (community-wide moment) | Major mechanic; deserves *Rainbow Switchback* pivot feel |
 | **“Clutch”** buy (&lt; 30 s remaining, BP) | **Tiny** extra **sparkle** or 30 ms high harmonic on your confirm | Ties to WarBow clutch without spoiling *Last buy* suspense |
 | **Ambush** (streak break + hard reset) | **Snappy** mid **twang** (not comedy) 150–200 ms, **staccato** | *Jig* accent; PvP bite |
 | **Streak break (yours, lost)** | **Sinking** minor 2nd, **120 ms**, no long reverb | Legible without shame |
 | **Streak break (caused by you, on you)** | Optional **satisfying** tiny “latch” on **you**; **softer** “hiss down” for victim’s client if we ever do multi-tab | PvP semantics |
-| **Sale ended** (timer to zero) | **Single held brass / pad** 1.5–3 s **fading** + very subtle crowd-like bed **optional, off by default** | *Starline* closure without overwhelming |
-| **Prize / podium availability** (post-`distributePrizes` messaging) | **Horn stack** or **major chord swell** 0.8–1.2 s, **rare** | *Moss and Brass* hero moment |
-| **CHARM → DOUB redeem** (claim) | **Coin pour** 0.3–0.5 s (granular) + **warm** resolve; **separate** from in-sale buy | Post-sale new chapter |
+| **Podium deadline reached** (settlement available) | **Single held brass / pad** 1.0–1.8 s **fading**, optional and off by default | Signals a permissionless `rollPodiumEpoch(category)` opportunity without implying sale closure |
+| **Prize / podium settlement observed** (`PodiumEpochRolled`) | **Horn stack** or **major chord swell** 0.8–1.2 s, **rare** | *Moss and Brass* hero moment |
+| **CRED claim confirmed** | **Coin pour** 0.25–0.45 s (granular) + **warm** resolve; separate from buy confirmation | Claim is epoch CRED, not retired CHARM redemption |
 
 ---
 
@@ -114,7 +114,7 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 
 ## 6. Accessibility, preferences, and safety
 
-- **“Reduce sound”** mode: only **error**, **end sale**, **redeem**, and **(optional) high-stakes** timer cues.
+- **“Reduce sound”** mode: only **error**, **CRED claim**, and **optional high-stakes** timer / settlement cues.
 - **Master volume** + sub-mix: **UI**, **game**, **social/peers** (so users can follow or mute the “others buying” bed).
 - **Respect** `prefers-reduced-motion` (pair with **no** timer heartbeat, or a **single** visual flash substitute — design detail outside this doc).
 - **Cooldown** and **Kumbaya quote** paths can fire **often** — default those to **quiet or silent**.
@@ -145,7 +145,7 @@ This document proposes **in-game and UI** sound for the frontend. It is aligned 
 - **Autoplay:** On load, the app **attempts** to start BGM (`playBgm` after implicit `AudioContext` setup). Many browsers **block** audio until a **user gesture**; in that case the **first pointer** interaction unlocks the context, prefetches core SFX, and **starts BGM** if it is not already playing. The floating **AlbumPlayerBar** play/pause control still toggles playback after unlock.
 - **BGM resume (#71):** Under the same `yieldomega:audio:v1:` prefix, **`playbackState`** JSON stores **`trackId`** (manifest-stable id), **`trackIndex`**, **`positionSec`**, and **`savedAt`**. The mixer restores **track + offset** after reload (including the autoplay-blocked path: seek is applied in **`playBgm`** after **`loadedmetadata`**, before **`play()`**). Writes are **throttled** (about every **4s** on `timeupdate` while playing), plus **pause**, **skip**, **natural track end**, **`visibilitychange` → hidden**, **`pagehide` / `beforeunload`**. Snapshots older than **7 days** keep the resolved **track** but reset **offset to 0**; corrupt or missing storage fails closed to track **1** at **0:00** with no console noise. **Contributor / agent verification:** [`manual-qa-checklists.md#manual-qa-issue-71`](../testing/manual-qa-checklists.md#manual-qa-issue-71) ([GitLab #100](https://gitlab.com/PlasticDigits/yieldomega/-/issues/100) superseded **`skills/verify-yo-album-bgm-resume/SKILL.md`**).
 - **Defaults:** BGM fader **25%** of full scale (`localStorage` key namespace `yieldomega:audio:v1:`); SFX use a gentle **square-law** curve from the SFX slider so mid values are not harsh.
-- **Time Arena Simple + Arena buy:** `coin_hit_shallow` immediately after the wallet returns a **`tx` hash** for **`TimeArena.buy`** or **`buyViaKumbaya`** (before receipt); `charmed_confirm` after **successful receipt** · **Time Arena:** `warbow_twang` (throttled ~**18 s** in `WebAudioMixer`) on **indexed‑ladder podium** moments only — **`shouldPlayWarbowRankStinger`** ([`warbowRankSfxPolicy.ts`](../../frontend/src/audio/warbowRankSfxPolicy.ts)): **enter top 3** from unranked/deeper **or climb within top 3** (**not** shallow rank moves like **10 → 4**). **`kumbaya_whoosh`** is **reserved** for ETH/USDM/CL8Y pay‑mode / route deltas — **not** played on quote refetch until explicitly wired ([#68 discussion](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68); inventory [#108](https://gitlab.com/PlasticDigits/yieldomega/-/issues/108)).
+- **Time Arena Simple + Arena buy:** `coin_hit_shallow` immediately after the wallet returns a **`tx` hash** for **`TimeArena.buy`** or **`buyViaKumbaya`** (before receipt, subdued gain); `charmed_confirm` after **successful receipt** · **Time Arena:** `warbow_twang` (throttled ~**18 s** in `WebAudioMixer`) on **indexed-ladder podium** moments only — **`shouldPlayWarbowRankStinger`** ([`warbowRankSfxPolicy.ts`](../../frontend/src/audio/warbowRankSfxPolicy.ts)): **enter top 3** from unranked/deeper **or climb within top 3** (**not** shallow rank moves like **10 → 4**). Peer buys and timer heartbeats are intentionally sparse (`WebAudioMixer` gates peer buys at ~5 s, calm timer at ~75 s, urgent timer at ~40 s). **`kumbaya_whoosh`** is **reserved** for ETH/USDM/CL8Y pay-mode / route deltas — **not** played on quote refetch until explicitly wired ([#68 discussion](https://gitlab.com/PlasticDigits/yieldomega/-/issues/68); inventory [#108](https://gitlab.com/PlasticDigits/yieldomega/-/issues/108); art/audio treatment [#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)).
 - **Wallet:** `charmed_confirm` on **false → true** `isConnected` (no sound on cold load when already connected).
 - **Global UI:** delegated **`ui_button_click`** on primary chrome (`button`, `[role="button"]`, main nav links); **disabled** buttons use a **softer** gain; **range inputs** are excluded (slider-drag silence per §1).
 - **Mobile dock vs nav:** **`INV-AUDIO-103`** ([GitLab #103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)) — on **`max-width: 720px`**, **`RootLayout`** **`.app-header`** uses extra **`margin-top`** so the bordered menu card clears the fixed **`AlbumPlayerBar`** bubble; tablet/desktop unchanged. Token + Vitest: [`mobileAlbumDockLayout.ts`](../../frontend/src/audio/mobileAlbumDockLayout.ts); map: invariants §103.

@@ -141,6 +141,13 @@ visual work should consume the semantic tokens and shared primitives.
   Visible referral copy must say flat **5 CRED + 5 CRED** for referred DOUB buys;
   detailed mechanics stay in tooltips / labels. Do not reintroduce TimeCurve,
   sale-end, PvE, redemption, or launchpad cross-sell framing.
+- Art, motion, and audio pass ([#297](https://gitlab.com/PlasticDigits/yieldomega/-/issues/297)):
+  keep the existing bunny / sniper-shark cast recognizable across Home,
+  countdown, `/arena`, `/arena/protocol`, and Referrals, but render them as
+  subdued command-console accents. Consumed scene backplates use dark
+  cyberminimalist SVGs in `frontend/public/art/scenes/`, not the older bright
+  arcade JPGs. Motion stays radar/drift/subtle pulse; audio cues are sparse and
+  quieter during active feeds.
 
 Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290).
 
@@ -198,14 +205,16 @@ the approved command-console visual language without becoming copies of `/arena`
 
 Evidence: [`INV-FRONTEND-296-SECONDARY-SURFACES`](../testing/invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · manual QA [§296](../testing/manual-qa-checklists.md#manual-qa-issue-296) · `referrals-surface.spec.ts`, `navigation.spec.ts`, `footer-site-links.spec.ts`.
 
-The cyberminimalist palette in `frontend/src/index.css` is supported by a curated raster pack under
+The cyberminimalist palette in `frontend/src/index.css` is supported by a curated art pack under
 [`frontend/public/art/`](../../frontend/public/art/README.md). Assets are
 organized into **purpose-named subfolders** so each consumer maps to one
 shape constraint:
 
 - `cutouts/` — transparent PNG mascot poses (hero, podium, banner cutouts).
-- `scenes/` — wide JPG backplates for `PageHero` (`sceneSrc` prop) and the
-  `LaunchCountdown` scene backdrop.
+- `scenes/` — wide SVG/JPG backplates for `PageHero` (`sceneSrc` prop),
+  `LaunchCountdown`, Home cards, and Arena console panels. Current TimeArena
+  production scene consumers use the `*-command-console.svg` backplates from
+  #297; older bright JPGs are reference-only unless explicitly reapproved.
 - `icons/` — 256px square PNG pictograms used inside `PageBadge` (status,
   phase), `IndexerStatusBar`, `ArenaSubnav`, and the WarBow legend.
 - `public/tokens/` — canonical **CHARM / CL8Y / DOUB / ETH / USDM** logos and

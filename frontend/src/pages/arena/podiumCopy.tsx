@@ -13,5 +13,5 @@ export const PODIUM_HELP: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   "Add the most time to the clock to win!",
 ];
 
-/** Maps each {@link PODIUM_LABELS} slot to `TimeCurve.podium(category)` index. */
+/** Maps each {@link PODIUM_LABELS} slot to `TimeArena.podium(category)` index. */
 export const PODIUM_CONTRACT_CATEGORY_INDEX: readonly number[] = [0, 3, 2, 1];

@@ -1183,10 +1183,9 @@ export function ArenaSimplePage({
                 onClick={() => void session.submitBuy()}
                 {...buyButtonMotion}
               >
-                {/* Inline CHARM coin glyph turns the CTA into a clear "do
-                    the thing with the coin" arcade lever — newbies don't
-                    need to read the label to know which button mints
-                    CHARM. Decorative; label remains the source of truth. */}
+                {/* Inline CHARM coin glyph makes the primary transaction path
+                    readable at a glance. Decorative; label remains the source
+                    of truth. */}
                 <img
                   className="arena-simple__cta-glyph"
                   src={CHARM_TOKEN_LOGO}
