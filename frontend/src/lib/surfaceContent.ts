@@ -119,7 +119,7 @@ export const LAUNCH_COUNTDOWN_SIGNALS: LaunchCountdownSignal[] = [
   },
   {
     label: "PVP",
-    tooltip: "WarBow actions make the launch surface adversarial, not PvE.",
+    tooltip: "WarBow actions make the entry surface adversarial player-vs-player.",
   },
   {
     label: "AUDIT",

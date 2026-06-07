@@ -45,6 +45,6 @@ describe("HOME_SURFACE_CARDS", () => {
       ...LAUNCH_COUNTDOWN_LINKS.flatMap((link) => [link.label, link.tooltip]),
     ].join(" ");
 
-    expect(copy).not.toMatch(/\bTimeCurve\b|sale-end|redeem|redemption|launchpad|worldbuilding|\bPvE\b/i);
+    expect(copy).not.toMatch(/\bTimeCurve\b|\bsale\b|sale-end|redeem|redemption|launchpad|worldbuilding|\bPvE\b/i);
   });
 });

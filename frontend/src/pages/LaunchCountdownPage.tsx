@@ -102,7 +102,7 @@ export function LaunchCountdownPage({ secondsRemaining }: Props) {
           className="launch-countdown__supporting"
           title="TimeArena is always-live when unpaused; this build gate controls when the frontend routes open."
         >
-          PvP console gate. No sale arc.
+          PvP console gate. Prepare to play.
         </p>
 
         <ul className="launch-countdown__signals" aria-label="Countdown handoff mechanics">

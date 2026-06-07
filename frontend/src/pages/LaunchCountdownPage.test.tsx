@@ -9,11 +9,11 @@ describe("LaunchCountdownPage", () => {
     const html = renderToStaticMarkup(<LaunchCountdownPage secondsRemaining={90_061} />);
 
     expect(html).toContain("Time Arena opens in");
-    expect(html).toContain("PvP console gate. No sale arc.");
+    expect(html).toContain("PvP console gate. Prepare to play.");
     expect(html).toContain("PLAY");
     expect(html).toContain("CRED");
     expect(html).toContain("PVP");
     expect(html).toContain("AUDIT");
-    expect(html).not.toMatch(/DOUB launches|goes live|TimeCurve|launchpad|worldbuilding|\bPvE\b/i);
+    expect(html).not.toMatch(/DOUB launches|goes live|TimeCurve|\bsale\b|launchpad|worldbuilding|\bPvE\b/i);
   });
 });

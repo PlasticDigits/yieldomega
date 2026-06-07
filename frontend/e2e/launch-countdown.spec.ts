@@ -19,10 +19,10 @@ test("countdown gate locks every route when VITE_LAUNCH_TIMESTAMP is in the futu
   const countdown = page.getByTestId("launch-countdown");
   await expect(countdown).toBeVisible();
   await expect(countdown.getByText("Time Arena opens in")).toBeVisible();
-  await expect(countdown.getByText("PvP console gate. No sale arc.")).toBeVisible();
+  await expect(countdown.getByText("PvP console gate. Prepare to play.")).toBeVisible();
   await expect(countdown.getByText("PLAY")).toBeVisible();
   await expect(countdown.getByText("PVP")).toBeVisible();
-  await expect(countdown).not.toContainText(/DOUB launches|goes live|TimeCurve|launchpad|worldbuilding|\bPvE\b/i);
+  await expect(countdown).not.toContainText(/DOUB launches|goes live|TimeCurve|\bsale\b|launchpad|worldbuilding|\bPvE\b/i);
   await expect(page.locator(".app-header")).toHaveCount(0);
   await expect(page.locator(".app-footer")).toHaveCount(0);
   await expect(page.getByLabel("Primary")).toHaveCount(0);
