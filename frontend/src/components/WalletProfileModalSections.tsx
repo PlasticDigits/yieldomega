@@ -5,6 +5,7 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
+import { CRED_TOKEN_LOGO } from "@/lib/tokenMedia";
 import {
   formatWalletProfileRankLabel,
   formatWalletProfileUnixSec,
@@ -26,7 +27,12 @@ function DoubAmount({ raw }: { raw: string }) {
 }
 
 function CredAmount({ raw }: { raw: string }) {
-  return <AmountDisplay raw={raw} decimals={18} valueMono={false} />;
+  return (
+    <span className="token-amount token-amount--cred">
+      <img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
+      <AmountDisplay raw={raw} decimals={18} valueMono={false} />
+    </span>
+  );
 }
 
 function formatHighestScoreValue(podium: string, score: string): ReactNode {

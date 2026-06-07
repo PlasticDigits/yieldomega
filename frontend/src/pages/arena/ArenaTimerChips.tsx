@@ -2,11 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useReadContracts } from "wagmi";
-import { ArenaLevelGate } from "@/components/ArenaLevelGate";
+import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { fetchArenaTimers } from "@/lib/indexerApi";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { timeArenaReadAbi } from "@/lib/abis";
-import type { ArenaFeatureKey } from "@/lib/arenaProgression";
+import {
+  FEATURE_UNLOCK_LEVEL,
+  isFeatureUnlocked,
+  type ArenaFeatureKey,
+} from "@/lib/arenaProgression";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 
 /** Secondary podium timers beside the Last Buy hero (#256). Contract category indices per arena-v2.md. */
@@ -65,22 +69,51 @@ export function ArenaTimerChips({ playerLevel, onFeatureHelp }: Props) {
         const idx = indexerOn ? chip.contractIndex : i;
         const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
         const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
-        const chipEl = (
-          <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${chip.contractIndex}`}>
-            {chip.label}: {rem !== undefined ? formatMmSsCountdown(rem) : "—"}
-          </span>
-        );
-        return (
-          <ArenaLevelGate
-            key={chip.label}
-            playerLevel={playerLevel}
-            feature={chip.feature}
-            onHelp={onFeatureHelp ? () => onFeatureHelp(chip.feature) : undefined}
-            className="arena-timer-chips__gate"
-            testId={`arena-timer-chip-gate-${chip.contractIndex}`}
+        const unlocked = playerLevel !== undefined && isFeatureUnlocked(playerLevel, chip.feature);
+        const requiredLevel = FEATURE_UNLOCK_LEVEL[chip.feature];
+        const helpButton = onFeatureHelp ? (
+          <button
+            type="button"
+            className="arena-timer-chips__help"
+            aria-label={`Open ${chip.label} tutorial`}
+            onClick={() => onFeatureHelp(chip.feature)}
           >
-            {chipEl}
-          </ArenaLevelGate>
+            ?
+          </button>
+        ) : null;
+        const chipContents = (
+          <>
+            <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${chip.contractIndex}`}>
+              <span className="arena-timer-chips__label">{chip.label}</span>
+              <span className="arena-timer-chips__value">{rem !== undefined ? formatMmSsCountdown(rem) : "—"}</span>
+            </span>
+            <span className="arena-timer-chips__lock">{unlocked ? "LIVE" : `L${requiredLevel}`}</span>
+            {unlocked ? helpButton : null}
+          </>
+        );
+        if (!unlocked) {
+          return (
+            <LockedUntilLevel
+              key={chip.label}
+              requiredLevel={requiredLevel}
+              variant="compact"
+              className="arena-timer-chips__gate arena-timer-chips__gate--locked"
+              testId={`arena-timer-chip-gate-${chip.contractIndex}`}
+              overlayTestId={`arena-timer-chip-lock-${chip.contractIndex}`}
+              action={helpButton}
+            >
+              {chipContents}
+            </LockedUntilLevel>
+          );
+        }
+        return (
+          <div
+            key={chip.label}
+            className="arena-timer-chips__gate arena-timer-chips__gate--unlocked"
+            data-testid={`arena-timer-chip-gate-${chip.contractIndex}`}
+          >
+            {chipContents}
+          </div>
         );
       })}
     </div>

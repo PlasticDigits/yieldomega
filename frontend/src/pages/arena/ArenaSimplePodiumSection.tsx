@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { isAddress, zeroAddress } from "viem";
 import { PlayerIdentity } from "@/components/arena";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
+import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { clampPlayerLevel, lockedUntilLevelCopy } from "@/lib/arenaProgression";
+import { clampPlayerLevel } from "@/lib/arenaProgression";
 import { SIMPLE_PODIUM_USD_EQUIV_TITLE } from "@/lib/cl8yUsdEquivalentDisplay";
 import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
@@ -229,21 +230,18 @@ function SimplePodiumCard({
   );
   const locked = viewerLevel !== undefined && viewerLevel < requiredLevel;
 
-  return (
-    <div
-      className={[
-        "podium-block",
-        "arena-simple__podium-card",
-        "glass-panel",
-        "glass-panel--gold",
-        locked ? "arena-simple__podium-card--locked" : "",
-        toneClass,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      data-locked-level={locked ? requiredLevel : undefined}
-      aria-disabled={locked ? true : undefined}
-    >
+  const cardClassName = [
+    "podium-block",
+    "arena-simple__podium-card",
+    "glass-panel",
+    "glass-panel--gold",
+    locked ? "arena-simple__podium-card--locked" : "",
+    toneClass,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const cardContents = (
+    <>
       <div className="arena-simple__podium-card-head">
         <span className="arena-simple__podium-art" aria-hidden="true">
           <img src={artSrc} alt="" width={140} height={140} loading="lazy" decoding="async" />
@@ -263,19 +261,23 @@ function SimplePodiumCard({
         emptyText="No onchain winners yet."
         rankBurst={rankBurst}
       />
-      {locked ? (
-        <div
-          className="arena-simple__podium-lock"
-          data-testid={`arena-podium-lock-${categoryIndex}`}
-          role="note"
-        >
-          <span className="arena-simple__podium-lock-icon" aria-hidden="true">LOCK</span>
-          <strong>{lockedUntilLevelCopy(requiredLevel)}</strong>
-          <span>Buy CHARM to level up this wallet and activate this podium.</span>
-        </div>
-      ) : null}
-    </div>
+    </>
   );
+
+  if (locked) {
+    return (
+      <LockedUntilLevel
+        requiredLevel={requiredLevel}
+        className={cardClassName}
+        overlayTestId={`arena-podium-lock-${categoryIndex}`}
+        detail="Buy CHARM to level up this wallet and activate this podium."
+      >
+        {cardContents}
+      </LockedUntilLevel>
+    );
+  }
+
+  return <div className={cardClassName}>{cardContents}</div>;
 }
 
 export function ArenaSimplePodiumSection({

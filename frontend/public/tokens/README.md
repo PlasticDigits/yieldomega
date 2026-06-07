@@ -8,6 +8,7 @@ Static files here are served by Vite as **`/tokens/<filename>`** (no bundler has
 | File | Role |
 |------|------|
 | `charm.png` | CHARM |
+| `cred.png` | Play CRED |
 | `cl8y.svg` | CL8Y |
 | `doub.png` | DOUB |
 | `eth.svg` | ETH (pay-with glyph) |

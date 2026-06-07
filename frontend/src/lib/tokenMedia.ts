@@ -6,8 +6,8 @@ export const CL8Y_TOKEN_LOGO = "/tokens/cl8y.svg";
 export const DOUB_TOKEN_LOGO = "/tokens/doub.png";
 export const ETH_TOKEN_LOGO = "/tokens/eth.svg";
 export const USDM_TOKEN_LOGO = "/tokens/usdm.svg";
-/** Play CRED — arena-only pay token (#269); reuses CHARM art until dedicated asset exists. */
-export const CRED_TOKEN_LOGO = CHARM_TOKEN_LOGO;
+/** Play CRED — arena-only pay token (#269). */
+export const CRED_TOKEN_LOGO = "/tokens/cred.png";
 
 /** MegaETH / Mega-branded surfaces (`frontend/public/tokens/mega.svg`). */
 export const MEGA_MARK = "/tokens/mega.svg";

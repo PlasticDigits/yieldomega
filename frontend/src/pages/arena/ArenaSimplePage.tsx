@@ -8,7 +8,6 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { AmountTripleStack } from "@/components/AmountTripleStack";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { ArenaBuySpendRangeInput } from "@/components/ArenaBuySpendRangeInput";
-import { ArenaDoubUnlimitedApprovalFieldset } from "@/components/ArenaDoubUnlimitedApprovalFieldset";
 import { Cl8yAcquireExternalLinks } from "@/components/Cl8yAcquireExternalLinks";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -29,7 +28,7 @@ import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { payTokenOptionsForSimpleBuy } from "@/lib/arenaPayTokenOptions";
 import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
 import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
-import { formatUnits } from "viem";
+import { formatUnits, isAddress, maxUint256, zeroAddress } from "viem";
 import { ARENA_CRED_WAD } from "@/lib/arenaCredBurn";
 import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
@@ -40,29 +39,37 @@ import { ArenaXpHero } from "@/components/ArenaXpHero";
 import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
 import {
   type ArenaFeatureKey,
+  FEATURE_UNLOCK_LEVEL,
   featureKeyForUnlockLevel,
+  isFeatureUnlocked,
+  lockedUntilLevelCopy,
   readFeatureTutorialSeen,
 } from "@/lib/arenaProgression";
-import { timeArenaReadAbi } from "@/lib/abis";
-import { useAccount, useReadContract } from "wagmi";
+import { erc20Abi, timeArenaReadAbi } from "@/lib/abis";
+import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
+import { wagmiConfig } from "@/wagmi-config";
+import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
+import { writeCl8yArenaUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
+import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
+import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
+import { asWriteContractAsyncFn, writeContractWithGasBuffer } from "@/lib/writeContractWithGasBuffer";
 import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
 import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
-import { ArenaWarbowHeroPanel } from "@/pages/arena/ArenaWarbowHeroPanel";
+import { ArenaWarbowHeroPanel, type WarbowTarget } from "@/pages/arena/ArenaWarbowHeroPanel";
 import { useArenaSaleSession } from "@/pages/arena/useArenaSaleSession";
 import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
 import { useArenaSimplePageSfx } from "@/pages/arena/useArenaSimplePageSfx";
 import { FooterSiteLinksCard } from "@/components/FooterSiteLinksCard";
 import { ArenaSimpleAgentCard } from "@/pages/arena/ArenaSimpleAgentCard";
-import { ArenaBuyProjectedEffects } from "@/pages/arena/ArenaBuyProjectedEffects";
 import { ArenaSimplePodiumSection } from "@/pages/arena/ArenaSimplePodiumSection";
 import { buildArenaBuyProjectedEffectLines } from "@/pages/arena/arenaBuyProjectedEffects";
 import {
+  type PodiumReadRow,
   usePodiumReads,
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/arena/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
-import { warbowFlagPlantMutedLine } from "@/lib/warbowFlagPlantCopy";
 import { ArenaShell, GlassDeck, GlassRail } from "@/components/glass";
 import {
   ActivePlayerIndicator,
@@ -72,6 +79,9 @@ import {
 
 /** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
 const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
+const WARBOW_PODIUM_SLOT = 1;
+const ZERO_ADDRESS_LOWER = zeroAddress.toLowerCase();
+const UNLIMITED_APPROVAL_THRESHOLD = maxUint256 / 2n;
 
 /**
  * Last good RPC/indexer inputs for projected-effects chips — avoids pill flicker when
@@ -97,6 +107,48 @@ function emptySimpleProjectedEffectsLatch(): SimpleProjectedEffectsLatch {
     activeDefendedStreak: undefined,
     warbowPendingFlagOwner: undefined,
   };
+}
+
+function buildWarbowTargets(
+  podiumRows: readonly PodiumReadRow[] | undefined,
+  recentBuys: readonly BuyItem[] | null,
+  viewerAddress: string | undefined,
+): WarbowTarget[] {
+  const viewer = viewerAddress?.toLowerCase();
+  const byAddress = new Map<string, WarbowTarget>();
+
+  const add = (address: string | undefined, target: Omit<WarbowTarget, "address">) => {
+    const raw = address?.trim();
+    if (!raw || !isAddress(raw)) return;
+    const lower = raw.toLowerCase();
+    if (lower === ZERO_ADDRESS_LOWER || lower === viewer) return;
+    const existing = byAddress.get(lower);
+    if (!existing || (target.source === "podium" && existing.source !== "podium")) {
+      byAddress.set(lower, { address: raw as `0x${string}`, ...target });
+      return;
+    }
+    if (existing.battlePoints === undefined && target.battlePoints !== undefined) {
+      byAddress.set(lower, { ...existing, battlePoints: target.battlePoints });
+    }
+  };
+
+  const warbowRow = podiumRows?.[WARBOW_PODIUM_SLOT];
+  warbowRow?.winners.forEach((winner, index) => {
+    add(winner, {
+      battlePoints: warbowRow.values[index],
+      source: "podium",
+      rank: index + 1,
+    });
+  });
+
+  for (const buy of recentBuys ?? []) {
+    add(buy.buyer, {
+      battlePoints: buy.battle_points_after,
+      source: "recent",
+    });
+  }
+
+  return [...byAddress.values()].slice(0, 24);
 }
 
 function ArenaSimpleRatePayTokenPicker({
@@ -421,6 +473,8 @@ export function ArenaSimplePage({
   const queryClient = useQueryClient();
 
   const { address: connectedAddress } = useAccount();
+  const chainId = useChainId();
+  const { writeContractAsync: writeApprovalContractAsync, isPending: approvalWalletPending } = useWriteContract();
   const { data: playerLevelRaw } = useReadContract({
     address: tc ?? undefined,
     abi: timeArenaReadAbi,
@@ -428,8 +482,81 @@ export function ArenaSimplePage({
     args: connectedAddress ? [connectedAddress] : undefined,
     query: { enabled: Boolean(tc && connectedAddress) },
   });
+  const {
+    data: doubAllowance,
+    refetch: refetchDoubAllowance,
+    isFetching: doubAllowanceFetching,
+  } = useReadContract({
+    address: session.acceptedAsset ?? undefined,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: connectedAddress && tc ? [connectedAddress, tc] : undefined,
+    query: { enabled: Boolean(session.acceptedAsset && connectedAddress && tc) },
+  });
+  const [approvalWriteBusy, setApprovalWriteBusy] = useState(false);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
   const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
   const prevLevelRef = useRef<number | undefined>(undefined);
+  const unlimitedApproved =
+    doubAllowance !== undefined && (doubAllowance as bigint) >= UNLIMITED_APPROVAL_THRESHOLD;
+  const approvalToggleBusy = approvalWalletPending || approvalWriteBusy || doubAllowanceFetching;
+  const approvalToggleDisabled =
+    approvalToggleBusy ||
+    !session.walletConnected ||
+    !connectedAddress ||
+    !tc ||
+    !session.acceptedAsset ||
+    chainMismatch;
+  const warbowFlagUnlocked =
+    playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow_flag");
+  const warbowFlagDisabled =
+    !session.walletConnected ||
+    session.phase !== "saleActive" ||
+    session.arenaPaused === true ||
+    !warbowFlagUnlocked;
+  const warbowFlagLockCopy = lockedUntilLevelCopy(FEATURE_UNLOCK_LEVEL.warbow_flag);
+
+  const toggleUnlimitedApproval = useCallback(
+    async (next: boolean) => {
+      setApprovalError(null);
+      const netErr = chainMismatchWriteMessage(chainId);
+      if (netErr) {
+        setApprovalError(netErr);
+        return;
+      }
+      if (!connectedAddress || !tc || !session.acceptedAsset) {
+        setApprovalError("Connect a wallet and wait for DOUB approval reads.");
+        return;
+      }
+      setApprovalWriteBusy(true);
+      try {
+        const { hash } = await writeContractWithGasBuffer({
+          wagmiConfig,
+          writeContractAsync: asWriteContractAsyncFn(writeApprovalContractAsync),
+          account: connectedAddress,
+          chainId,
+          address: session.acceptedAsset,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [tc, next ? maxUint256 : 0n],
+        });
+        await waitForWriteReceipt(wagmiConfig, { hash });
+        writeCl8yArenaUnlimitedApproval(next);
+        await refetchDoubAllowance();
+      } catch (e) {
+        setApprovalError(friendlyRevertFromUnknown(e));
+      } finally {
+        setApprovalWriteBusy(false);
+      }
+    },
+    [chainId, connectedAddress, refetchDoubAllowance, session.acceptedAsset, tc, writeApprovalContractAsync],
+  );
+
+  useEffect(() => {
+    if (playerLevelRaw !== undefined && !warbowFlagUnlocked && session.plantWarBowFlag) {
+      session.setPlantWarBowFlag(false);
+    }
+  }, [playerLevelRaw, session, warbowFlagUnlocked]);
 
   useEffect(() => {
     if (playerLevelRaw === undefined) return;
@@ -461,15 +588,6 @@ export function ArenaSimplePage({
   const heroNarrative =
     session.phase === "saleStartPending" ? phaseNarrative(session.phase) : undefined;
   const charmRangeLabel = `${formatBuyCtaCharmAmountLabel(ARENA_CHARM_MIN_WAD)}-${formatBuyCtaCharmAmountLabel(ARENA_CHARM_MAX_WAD)} CHARM`;
-
-  const warbowFlagPlantLine = useMemo(
-    () =>
-      warbowFlagPlantMutedLine({
-        claimBp: session.warbowFlagClaimBp ?? 1000n,
-        silenceSec: session.warbowFlagSilenceSec ?? 300n,
-      }),
-    [session.warbowFlagClaimBp, session.warbowFlagSilenceSec],
-  );
 
   useEffect(() => {
     if (session.phase !== "saleActive" || !session.walletConnected) {
@@ -530,11 +648,15 @@ export function ArenaSimplePage({
 
   const buyProjectedEffects = useMemo(() => {
     const latch = simpleProjectedEffectsLatchRef.current;
+    const estimatedSpendWei =
+      session.payWith === "cred"
+        ? session.requiredCredBurnWei
+        : session.estimatedSpendWei ?? latch.estimatedSpendWei;
     return buildArenaBuyProjectedEffectLines({
       charmWadSelected: session.charmWadSelected ?? latch.charmWadSelected,
       charmWeightTotalWad: session.buyCheckoutCharmWeightWad ?? latch.buyCheckoutCharmWeightWad,
-      estimatedSpendWei: session.estimatedSpendWei ?? latch.estimatedSpendWei,
-      decimals: session.decimals,
+      estimatedSpendWei,
+      decimals: session.payWith === "cred" ? 18 : session.decimals,
       spendAssetLabel,
       secondsRemaining: session.saleCountdownSec ?? latch.saleCountdownSec,
       timerExtensionPreview: session.timerExtensionPreviewSec ?? latch.timerExtensionPreviewSec,
@@ -557,7 +679,9 @@ export function ArenaSimplePage({
     session.charmWadSelected,
     session.decimals,
     session.estimatedSpendWei,
+    session.payWith,
     session.plantWarBowFlag,
+    session.requiredCredBurnWei,
     session.saleCountdownSec,
     session.timerExtensionPreviewSec,
     session.walletAddress,
@@ -603,8 +727,6 @@ export function ArenaSimplePage({
     };
   }, [buyFeedRefreshNonce]);
 
-  const spendAssetForPreview = session.isArenaV2 ? "DOUB" : spendAssetLabel;
-
   // Price pulse: bump a key whenever governance-updated charmPriceWad changes
   // so the rate row re-renders and the CSS animation re-runs.
   // We avoid setTimeout / explicit animation lifecycle management by
@@ -641,6 +763,11 @@ export function ArenaSimplePage({
     }
     return null;
   }, [recentBuys]);
+
+  const warbowTargets = useMemo(
+    () => buildWarbowTargets(podiumReads.data, recentBuys, session.walletAddress),
+    [podiumReads.data, recentBuys, session.walletAddress],
+  );
 
   const paySpendSuffix =
     session.payWith === "cl8y"
@@ -707,78 +834,6 @@ export function ArenaSimplePage({
   const insufficientCredForBuy =
     session.payWith === "cred" && insufficientCredGate !== null;
 
-  const minMaxPill = session.cl8ySpendBounds ? (
-    <span className="arena-simple__minmax arena-simple__minmax--rate-card">
-      {session.payWith === "cl8y" ? (
-        <>
-          Buy Limits:&nbsp;
-          <span className="arena-simple__minmax-pair">
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
-            <span className="arena-simple__minmax-suffix">min</span>
-          </span>
-          <span className="arena-simple__minmax-pair">
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
-            <span className="arena-simple__minmax-suffix">max</span>
-          </span>
-        </>
-      ) : session.bandBoundaryQuotesLoading ||
-        session.quotedBandMinPayInWei === undefined ||
-        session.quotedBandMaxPayInWei === undefined ? (
-        <>
-          Buy Limits:&nbsp;
-          <span className="arena-simple__minmax-pair">
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
-            <span className="arena-simple__minmax-suffix">min</span>
-          </span>
-          <span className="arena-simple__minmax-pair">
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>
-            <span className="arena-simple__minmax-suffix">max</span>
-          </span>
-        </>
-      ) : (
-        <>
-          Buy Limits:&nbsp;≈&nbsp;
-          <span className="arena-simple__minmax-pair">
-            <strong>
-              {formatBuyHubDerivedCompact(session.quotedBandMinPayInWei, session.payTokenDecimals)}
-            </strong>
-            <span className="arena-simple__minmax-suffix">min</span>
-          </span>
-          <span className="arena-simple__minmax-pair">
-            <strong>
-              {formatBuyHubDerivedCompact(session.quotedBandMaxPayInWei, session.payTokenDecimals)}
-            </strong>
-            <span className="arena-simple__minmax-suffix">max</span>
-          </span>
-          <span className="muted">
-            {" "}
-            ({primarySpendAssetLabel}&nbsp;
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.minS, session.decimals)}</strong>
-            &nbsp;–&nbsp;
-            <strong>{formatBuyHubDerivedCompact(session.cl8ySpendBounds.maxS, session.decimals)}</strong>)
-          </span>
-        </>
-      )}
-    </span>
-  ) : insufficientCl8yForBuy ? (
-    <span
-      className="arena-simple__minmax arena-simple__minmax--rate-card arena-simple__minmax--blocked"
-      data-testid="arena-simple-buy-limits-insufficient-cl8y"
-    >
-      Buy Limits:&nbsp;
-      <strong>
-        {formatBuyHubDerivedCompact(
-          insufficientCl8yGate.minSpendWei,
-          session.decimals,
-        )}
-      </strong>
-      <span className="arena-simple__minmax-suffix">min</span>
-      <span className="muted"> (not enough {primarySpendAssetLabel} in wallet)</span>
-    </span>
-  ) : (
-    <span className="arena-simple__minmax arena-simple__minmax--rate-card">Loading buy limits…</span>
-  );
-
   const buyPreview = insufficientCl8yForBuy ? (
     <div
       className="arena-simple__buy-preview arena-simple__buy-preview--blocked"
@@ -823,38 +878,18 @@ export function ArenaSimplePage({
         <strong>{formatUnits(insufficientCredGate.walletBalanceWei, 18)} CRED</strong>.
       </p>
     </div>
-  ) : session.payWith === "cred" && session.credBalanceWei !== undefined ? (
-    <div className="arena-simple__buy-preview" data-testid="arena-simple-buy-preview-cred">
-      <p className="muted">
-        Wallet CRED: <strong>{formatUnits(session.credBalanceWei, 18)}</strong>
-        {session.requiredCredBurnWei !== undefined ? (
-          <>
-            {" · "}
-            Burn for this buy:{" "}
-            <strong>{formatUnits(session.requiredCredBurnWei, 18)} CRED</strong>
-          </>
-        ) : (
-          " · Pick a CHARM amount to see burn."
-        )}
-      </p>
-    </div>
   ) : session.charmWadSelected === undefined ? (
       <div className="arena-simple__buy-preview arena-simple__buy-preview--loading">
         Loading CHARM preview…
       </div>
     ) : (
       <div className="arena-simple__buy-preview" data-testid="arena-simple-buy-preview">
-        <p className="muted">
-          CHARM: <strong>{formatBuyCtaCharmAmountLabel(session.charmWadSelected)}</strong>
-          {session.estimatedSpendWei !== undefined && session.estimatedSpendWei > 0n ? (
-            <>
-              {" · "}
-              {spendAssetForPreview}:{" "}
-              <strong>
-                {formatBuyHubDerivedCompact(session.estimatedSpendWei, session.decimals)}
-              </strong>
-            </>
-          ) : null}
+        <p className="arena-simple__buy-preview-line" aria-label="Projected buy effects">
+          {buyProjectedEffects.map((item, i) => (
+            <span key={`${i}:${item}`} className="arena-simple__buy-preview-item">
+              {item}
+            </span>
+          ))}
         </p>
         {session.buyCharmBonusPreviewLines.length > 0 ? (
           <div
@@ -960,25 +995,6 @@ export function ArenaSimplePage({
     session.charmWadSelected,
     primarySpendAssetLabel,
   ]);
-
-  const rateBoardPayOptions = payTokenOptions.map((o) => (
-    <button
-      key={o.value}
-      type="button"
-      data-testid={`arena-paywith-${o.value}`}
-      className={
-        session.payWith === o.value
-          ? "arena-simple__rate-paywith-btn arena-simple__rate-paywith-btn--active"
-          : "arena-simple__rate-paywith-btn"
-      }
-      aria-pressed={session.payWith === o.value}
-      aria-label={`Show price in ${o.label}`}
-      onClick={() => session.setPayWith(o.value)}
-    >
-      <img src={o.logo} alt="" width={16} height={16} decoding="async" aria-hidden="true" />
-      {o.label}
-    </button>
-  ));
 
   const rateBoard = (
     <div
@@ -1259,51 +1275,67 @@ export function ArenaSimplePage({
                 </span>
               </motion.button>
               {buyPreview}
-              <details
-                className="arena-simple__buy-advanced accordion-panel"
-                data-testid="arena-simple-buy-advanced"
-              >
-                <summary>ADVANCED</summary>
-                <div className="accordion-panel__content">
-                  <div
-                    className="arena-simple__rate-paywith arena-simple__rate-paywith--buy-heading arena-simple__rate-paywith--segmented"
-                    role="group"
-                    aria-label="Show live price in"
-                  >
-                    {rateBoardPayOptions}
-                  </div>
-                  {minMaxPill}
-                  <div className="arena-simple__referral muted">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={session.plantWarBowFlag}
-                        onChange={(e) => session.setPlantWarBowFlag(e.target.checked)}
-                      />{" "}
-                      Plant WarBow flag (opt-in)
-                    </label>
-                    <p className="muted" style={{ marginTop: "0.5rem" }}>
-                      {warbowFlagPlantLine}
-                    </p>
-                    {session.plantWarBowFlag ? (
-                      <p className="muted" style={{ marginTop: "0.5rem" }}>
-                        This buy can put you in the global pending-flag slot. Another buyer after the silence window
-                        may trigger Battle Point penalties if you do not claim in time. Leave unchecked for a plain
-                        CHARM purchase.
-                      </p>
-                    ) : null}
-                  </div>
-                  {session.payWith !== "cred" ? (
-                    <ArenaDoubUnlimitedApprovalFieldset
-                      disabled={session.phase !== "saleActive" || !session.walletConnected}
-                    />
-                  ) : null}
-                </div>
-              </details>
-              <ArenaBuyProjectedEffects
-                className="arena-simple__buy-projected-effects"
-                items={buyProjectedEffects}
-              />
+              <div className="arena-simple__buy-options" data-testid="arena-simple-buy-options">
+                <label
+                  className={[
+                    "arena-simple__buy-option",
+                    unlimitedApproved ? "arena-simple__buy-option--active" : "",
+                    approvalToggleDisabled ? "arena-simple__buy-option--disabled" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={unlimitedApproved}
+                    disabled={approvalToggleDisabled}
+                    onChange={(e) => void toggleUnlimitedApproval(e.target.checked)}
+                    data-testid="arena-simple-unlimited-approve"
+                  />
+                  <span className="arena-simple__buy-option-body">
+                    <span className="arena-simple__buy-option-head">
+                      <span>Unlimited approve</span>
+                      <span className="arena-simple__buy-option-chip">
+                        {approvalToggleBusy ? "SYNC" : unlimitedApproved ? "ON" : "OFF"}
+                      </span>
+                    </span>
+                    <span className="arena-simple__buy-option-copy">One approval for future DOUB buys.</span>
+                  </span>
+                </label>
+                <label
+                  className={[
+                    "arena-simple__buy-option",
+                    "arena-simple__buy-option--flag",
+                    session.plantWarBowFlag && warbowFlagUnlocked ? "arena-simple__buy-option--active" : "",
+                    warbowFlagDisabled ? "arena-simple__buy-option--disabled" : "",
+                    !warbowFlagUnlocked ? "arena-simple__buy-option--locked" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  data-locked-level={!warbowFlagUnlocked ? FEATURE_UNLOCK_LEVEL.warbow_flag : undefined}
+                  title={!warbowFlagUnlocked ? warbowFlagLockCopy : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={session.plantWarBowFlag && warbowFlagUnlocked}
+                    disabled={warbowFlagDisabled}
+                    onChange={(e) => session.setPlantWarBowFlag(e.target.checked)}
+                    data-testid="arena-simple-warbow-flag-toggle"
+                  />
+                  <span className="arena-simple__buy-option-body">
+                    <span className="arena-simple__buy-option-head">
+                      <span>WarBow flag</span>
+                      <span className="arena-simple__buy-option-chip">
+                        {warbowFlagUnlocked ? "L5" : "LOCKED"}
+                      </span>
+                    </span>
+                    <span className="arena-simple__buy-option-copy">
+                      {warbowFlagUnlocked ? "Plant flag on this buy." : warbowFlagLockCopy}
+                    </span>
+                  </span>
+                </label>
+                {approvalError ? <StatusMessage variant="error">{approvalError}</StatusMessage> : null}
+              </div>
               {session.buyError && (
                 <StatusMessage variant="error">
                   {session.buyError}{" "}
@@ -1349,6 +1381,19 @@ export function ArenaSimplePage({
         </GlassDeck>
 
         <GlassRail>
+          <div className="arena-command-console__side-head">
+            <div>
+              <span>Secondary Ops</span>
+              <strong>Playbook Rail</strong>
+            </div>
+            <button
+              type="button"
+              className="arena-command-console__side-help"
+              onClick={() => openFeatureHelp("warbow")}
+            >
+              Help
+            </button>
+          </div>
           <img
             className="arena-command-console__character"
             src="/art/cutouts/sniper-shark-cool-suit-headset.png"
@@ -1365,6 +1410,7 @@ export function ArenaSimplePage({
             phase={session.phase}
             playerLevel={playerLevelRaw}
             onFeatureHelp={openFeatureHelp}
+            warbowTargets={warbowTargets}
           />
         </GlassRail>
       </div>

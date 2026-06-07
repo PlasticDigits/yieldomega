@@ -142,7 +142,7 @@ export type UseArenaSaleSession = {
   saleStartSec: number | undefined;
   deadlineSec: number | undefined;
   ended: boolean | undefined;
-  /** Decimals of the accepted asset (CL8Y at launch). 18 until reads land. */
+  /** Decimals of the accepted spend asset (DOUB on Arena v2). 18 until reads land. */
   decimals: number;
   /** Last-good `acceptedAsset()` address (latched across flaky multicall rows). */
   acceptedAsset: HexAddress | undefined;
@@ -157,11 +157,11 @@ export type UseArenaSaleSession = {
   refetchWalletBalance: () => void;
   walletBalanceRefreshing: boolean;
   cl8ySpendBounds: { minS: bigint; maxS: bigint } | null;
-  /** Distinguishes live bounds loading from insufficient CL8Y when paying with CL8Y. */
+  /** Distinguishes live bounds loading from insufficient direct spend token. */
   cl8yCheckoutBoundsGate: Cl8yCheckoutBoundsGate;
   spendWei: bigint;
   spendInputStr: string;
-  /** Decimals for the spend amount text field (CL8Y or pay token). */
+  /** Decimals for the spend amount text field (direct spend token or routed pay token). */
   spendInputDecimals: number;
   setSpendFromInput: (raw: string) => void;
   setSpendFromInputFocus: () => void;
@@ -214,7 +214,7 @@ export type UseArenaSaleSession = {
   /** Opt-in: this tx sets `warbowPendingFlag*` onchain ([issue #63](https://gitlab.com/PlasticDigits/yieldomega/-/issues/63)). */
   plantWarBowFlag: boolean;
   setPlantWarBowFlag: (next: boolean) => void;
-  /** WarBow flag silence + claim BP reads (ADVANCED panel copy); undefined until core reads succeed. */
+  /** WarBow flag silence + claim BP policy reads; undefined until core reads succeed. */
   warbowFlagClaimBp: bigint | undefined;
   warbowFlagSilenceSec: bigint | undefined;
   /** Pending flag holder with an active plant timestamp during a live sale. */
@@ -248,8 +248,8 @@ export type UseArenaSaleSession = {
   swapQuoteDisplayLoading: boolean;
   swapQuoteFailed: boolean;
   /**
-   * Kumbaya `quoteExactOutput` for **one CHARM** (amount out = `pricePerCharmWad` CL8Y), for the rate board.
-   * Undefined while loading, on error, or when pay mode is CL8Y / routing unavailable.
+   * Kumbaya `quoteExactOutput` for **one CHARM** (amount out = direct spend token), for the rate board.
+   * Undefined while loading, on error, or when pay mode is direct spend / routing unavailable.
    */
   quotedPerCharmPayInWei: bigint | undefined;
   /** True until the first per-CHARM quoter value exists (rate board); avoids “…” on every background refetch. */
@@ -264,7 +264,7 @@ export type UseArenaSaleSession = {
   quotedBandMinPayInWei: bigint | undefined;
   quotedBandMaxPayInWei: bigint | undefined;
   bandBoundaryQuotesLoading: boolean;
-  /** Connected-wallet balance for the active pay asset (CL8Y / native ETH / USDM). */
+  /** Connected-wallet balance for the active pay asset (DOUB/CL8Y / native ETH / USDM). */
   payWalletBalance: { raw: bigint | undefined; decimals: number; symbol: string };
   /** Submits optional Kumbaya `exactOutput` + approve + `buy(charmWad)` — same onchain buy as Arena. */
   submitBuy: () => Promise<void>;
@@ -437,7 +437,7 @@ export function useArenaSaleSession(
   /**
    * Last successful `acceptedAsset()` for **this** `tc`. Core multicall refetches (~1 Hz) occasionally return a
    * transient **failure** row; without this, `acceptedAsset` disappears, `balanceOf` disables briefly, and the
-   * buy panel flashes `YOUR CL8Y: —` even though that read already uses `placeholderData`.
+   * buy panel flashes `YOUR DOUB: —` even though that read already uses `placeholderData`.
    */
   const acceptedAssetLastGoodRef = useRef<{ tc: HexAddress; asset: HexAddress } | null>(null);
 
@@ -573,7 +573,7 @@ export function useArenaSaleSession(
     args: acceptedAsset && address ? [address] : undefined,
     query: {
       enabled: Boolean(acceptedAsset && address && isConnected),
-      // Avoid buy-panel flicker: background refetches otherwise clear `data` briefly (`YOUR CL8Y: —`).
+      // Avoid buy-panel flicker: background refetches otherwise clear `data` briefly (`YOUR DOUB: —`).
       placeholderData: keepPreviousData,
       refetchInterval: false,
     },
@@ -1040,7 +1040,7 @@ export function useArenaSaleSession(
 
   const payWalletBalance = useMemo(() => {
     if (payWith === "cl8y") {
-      return { raw: walletBalanceWei, decimals, symbol: "CL8Y" };
+      return { raw: walletBalanceWei, decimals, symbol: isArenaV2 ? "DOUB" : "CL8Y" };
     }
     if (payWith === "cred") {
       return { raw: credBalanceWei, decimals: 18, symbol: "CRED" };
@@ -1057,7 +1057,7 @@ export function useArenaSaleSession(
       decimals: payTokenDecimals,
       symbol: "USDM",
     };
-  }, [payWith, walletBalanceWei, credBalanceWei, decimals, nativeEthBal, usdmWalletBal, payTokenDecimals]);
+  }, [payWith, walletBalanceWei, credBalanceWei, decimals, isArenaV2, nativeEthBal, usdmWalletBal, payTokenDecimals]);
 
   const spendInputDecimals =
     payWith === "cl8y" ? decimals : payWith === "cred" ? 18 : payTokenDecimals;
@@ -1339,7 +1339,7 @@ export function useArenaSaleSession(
       return;
     }
     if (charmWadSelected === undefined || charmWadSelected <= 0n) {
-      setBuyError("Pick a CL8Y amount inside the live min–max band (and your balance).");
+      setBuyError(`Pick a ${isArenaV2 ? "DOUB" : "CL8Y"} amount inside the live min–max band (and your balance).`);
       return;
     }
     if (

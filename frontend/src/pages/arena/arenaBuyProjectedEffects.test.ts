@@ -9,9 +9,12 @@ import {
 const fmt = (a: `0x${string}`) => `${a.slice(0, 6)}…`;
 
 describe("formatBuyProjectedSpendLine", () => {
-  it("formats spend as negative 3-decimal asset amount", () => {
+  it("formats spend as a negative compact asset amount", () => {
     expect(formatBuyProjectedSpendLine(2_260_000_000_000_000_000n, 18, "CL8Y")).toBe(
-      "-2.260 CL8Y",
+      "-2.26 CL8Y",
+    );
+    expect(formatBuyProjectedSpendLine(1_000_000_000_000_000_000_000n, 18, "DOUB")).toBe(
+      "-1k DOUB",
     );
   });
 });
@@ -37,7 +40,7 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     expect(lines).not.toContain("+120s timer");
     expect(lines).not.toContain("time-booster");
     expect(lines).toContain("+250 BP Base");
-    expect(lines[lines.length - 1]).toBe("Become Last Buyer");
+    expect(lines[lines.length - 1]).toBe("Last Buyer");
   });
 
   it("shows +{900-remaining}s under 13 minutes with separate Reset BP pill", () => {
@@ -118,7 +121,7 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       walletAddress: "0x2222222222222222222222222222222222222222",
       formatRivalWallet: fmt,
     });
-    expect(lines.some((s) => s.includes("Replace") && s.includes("pending flag"))).toBe(true);
+    expect(lines.some((s) => s.includes("Replace flag"))).toBe(true);
   });
 
   it("hides WarBow flag preview below level 5 (#299)", () => {
@@ -135,6 +138,6 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       playerLevel: 4,
       formatRivalWallet: fmt,
     });
-    expect(lines.some((s) => s.includes("pending flag"))).toBe(false);
+    expect(lines.some((s) => s.includes("flag"))).toBe(false);
   });
 });
