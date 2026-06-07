@@ -126,6 +126,37 @@ visual work should consume the semantic tokens and shared primitives.
 
 Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290).
 
+<a id="shared-frontend-primitives-gitlab-294"></a>
+
+### Shared frontend primitives (GitLab #294)
+
+Shared UX primitives carry the approved cyberminimalist glass direction across
+`/arena`, `/arena/protocol`, `/referrals`, and secondary routes without changing
+onchain, indexer, or wallet behavior:
+
+- [`AddressInline`](../../frontend/src/components/AddressInline.tsx) is the
+  canonical participant/contract identity row: blockie plus **last six hex
+  digits** by default. Participant rows with `onOpenProfile` open
+  [`WalletProfileModal`](../../frontend/src/components/WalletProfileModal.tsx);
+  contract/vault/referral rows keep explorer links.
+- [`Modal`](../../frontend/src/components/ui/Modal.tsx) and
+  `WalletProfileModal` use the same dark glass hierarchy. Keep modal titles
+  compact, keep explorer links secondary, and keep mechanics in `title` /
+  `aria-label` / action-adjacent state instead of long paragraphs.
+- [`ChainMismatchWriteBarrier`](../../frontend/src/components/ChainMismatchWriteBarrier.tsx)
+  must remain visible and actionable with
+  [`SwitchToTargetChainButton`](../../frontend/src/components/SwitchToTargetChainButton.tsx);
+  the overlay blocks writes until the wallet chain matches the configured target
+  ([wallet gating #95](wallet-connection.md#wrong-network-write-gating-issue-95)).
+- [`EmptyDataPlaceholder`](../../frontend/src/components/EmptyDataPlaceholder.tsx),
+  [`StatusMessage`](../../frontend/src/components/ui/StatusMessage.tsx),
+  [`AmountDisplay`](../../frontend/src/components/AmountDisplay.tsx), and
+  [`IndexerStatusBar`](../../frontend/src/components/IndexerStatusBar.tsx)
+  stay phrasing-safe where needed, use human-readable amounts/status only, and
+  consume `--yo-*` glass tokens.
+
+Evidence: [`INV-FRONTEND-294-SHARED-PRIMITIVES`](../testing/invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · manual QA [§294](../testing/manual-qa-checklists.md#manual-qa-issue-294) · `SharedUxPrimitives.test.tsx`.
+
 The cyberminimalist palette in `frontend/src/index.css` is supported by a curated raster pack under
 [`frontend/public/art/`](../../frontend/public/art/README.md). Assets are
 organized into **purpose-named subfolders** so each consumer maps to one

@@ -35,14 +35,18 @@ export function ChainMismatchWriteBarrier({
           <div className="chain-write-gate__card" role="dialog" aria-modal="true" aria-label="Wrong network for writes">
             <p className="chain-write-gate__title">Wrong network</p>
             {overlayBody ?? (
-              <p className="chain-write-gate__body">
-                This build targets <strong>{meta.name}</strong> (<strong>chain {meta.id}</strong>). Signing here on your
-                current network would ship calldata that belongs on chain {meta.id} — switch before you transact (issue
-                #95).
+              <p
+                className="chain-write-gate__body"
+                title={`Writes are blocked until the connected wallet chain matches ${meta.name} (${meta.id}).`}
+              >
+                Target: <strong>{meta.name}</strong> · chain <strong>{meta.id}</strong>. Writes stay locked until your
+                wallet matches.
               </p>
             )}
             <SwitchToTargetChainButton className="btn-primary chain-write-gate__switch" />
-            <p className="chain-write-gate__hint muted">You can also switch manually in your wallet extension.</p>
+            <p className="chain-write-gate__hint muted" title="You can also switch manually in Rabby or another wallet.">
+              Required before signing.
+            </p>
           </div>
         </div>
       ) : null}

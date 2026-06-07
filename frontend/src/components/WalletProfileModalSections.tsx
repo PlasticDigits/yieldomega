@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import {
@@ -76,7 +77,9 @@ export function WalletProfilePodiumWinsSection({ data }: { data: ArenaWalletStat
         </StatRow>
       </ul>
       {data.prizes_won.length === 0 ? (
-        <p className="muted">No podium placements yet.</p>
+        <p className="wallet-profile-modal__empty">
+          <EmptyDataPlaceholder>No podium placements yet.</EmptyDataPlaceholder>
+        </p>
       ) : (
         <ul className="wallet-profile-modal__prize-list">
           {data.prizes_won.map((p) => (
@@ -160,7 +163,9 @@ export function WalletProfileFunFactsSection({ data }: { data: ArenaWalletStats 
         </StatRow>
       </ul>
       {data.highest_scores.length === 0 ? (
-        <p className="muted">No peak scores recorded yet.</p>
+        <p className="wallet-profile-modal__empty">
+          <EmptyDataPlaceholder>No peak scores recorded yet.</EmptyDataPlaceholder>
+        </p>
       ) : (
         <ul className="wallet-profile-modal__score-list">
           {data.highest_scores.map((row) => (
@@ -197,18 +202,20 @@ export function WalletProfileStatsBody({ data }: { data: ArenaWalletStats }) {
 
 export function WalletProfileLoadingState() {
   return (
-    <p className="wallet-profile-modal__loading muted" aria-live="polite">
-      Loading stats…
+    <p className="wallet-profile-modal__loading" aria-live="polite">
+      <EmptyDataPlaceholder>Loading stats…</EmptyDataPlaceholder>
     </p>
   );
 }
 
 export function WalletProfileErrorState({ indexerUnset }: { indexerUnset: boolean }) {
   return (
-    <p className="wallet-profile-modal__error error-text" role="alert">
-      {indexerUnset
-        ? "Indexer URL is not configured — wallet stats unavailable."
-        : "Stats unavailable (indexer offline or empty)."}
+    <p className="wallet-profile-modal__error" role="alert">
+      <EmptyDataPlaceholder role="presentation">
+        {indexerUnset
+          ? "Indexer URL is not configured — wallet stats unavailable."
+          : "Stats unavailable (indexer offline or empty)."}
+      </EmptyDataPlaceholder>
     </p>
   );
 }

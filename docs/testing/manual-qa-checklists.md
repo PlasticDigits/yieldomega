@@ -19,6 +19,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95) | [Wrong-network writes](#manual-qa-issue-95) |
 | [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194) | [Arena buy wrong-chain visual](#manual-qa-issue-194-arena-buy-chain-visual) |
 | [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291) | [Arena command console](#manual-qa-issue-291) |
+| [#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294) | [Shared frontend UX primitives](#manual-qa-issue-294) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [Buy session drift](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting](#manual-qa-issue-92) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
@@ -868,6 +869,45 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 - [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`; optional focused browser pass with Rabby on `/arena/protocol`.
 
 **Doc map:** [arena views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) · [frontend design §290](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [invariants — #293](invariants-and-business-logic.md#frontend-arena-audit-surfaces-gitlab-293) · [Rabby QA](rabby-cloud-agent-qa.md) · [play donate guidance](../../skills/play-time-arena-doub/SKILL.md#donate-to-pools-optional-sponsorship)
+
+<a id="manual-qa-issue-294"></a>
+
+## Shared frontend UX primitives (GitLab #294)
+
+**Goal:** Verify modals, wallet profile, address rows, chain gates,
+status/empty states, amount displays, and the indexer status bar match the
+cyberminimalist glass system without changing #95 wrong-network or #258 wallet
+profile behavior.
+
+### Checklist
+
+- [ ] `/arena` desktop and mobile: live-buy rows, podium rows, amount displays,
+  empty/loading states, and indexer status read as dark tactical glass surfaces
+  with compact copy; no raw wei/WAD or fake-zero empty states.
+- [ ] `/arena` all-buys and buy-detail modals: modal shell is dark glass,
+  headings are compact, detail rows remain readable, and row clicks/profile
+  buttons still work.
+- [ ] Wallet profile: click participant blockie/last-six address from a live row
+  or podium row; `WalletProfileModal` opens, sections remain readable, empty
+  sections use the shared placeholder, and **View on explorer** remains a
+  secondary link.
+- [ ] Address treatment: participant and contract rows consistently show a
+  blockie plus the last six hex digits by default; participant rows open profile
+  where wired, while contract/vault/referral rows open explorer links.
+- [ ] Wrong-network gate with Rabby: when wallet `chainId` differs from
+  `VITE_CHAIN_ID`, `ChainMismatchWriteBarrier` visibly blocks write panels and
+  the **Switch to target chain** button (`switch-to-target-chain`) is reachable.
+- [ ] `/referrals`: register-code chain gate, leaderboard address rows, empty
+  states, and status messages match the shared primitive styling without
+  converting leaderboard explorer links into wallet-profile actions.
+- [ ] Responsive/a11y: 390×844 and desktop widths have no horizontal overflow;
+  keyboard focus remains visible on profile buttons, explorer links, modal close
+  buttons, and switch-chain controls.
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  optional focused Playwright UI smoke with 5 workers for non-Anvil specs:
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena-live-buys-modals.spec.ts e2e/referrals-surface.spec.ts`.
+
+**Doc map:** [frontend design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) · [arena views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) · [wallet gate §95](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [wallet profile §258](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) · [invariants — #294](invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · [Rabby QA](rabby-cloud-agent-qa.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
 <a id="manual-qa-issue-104"></a>
 

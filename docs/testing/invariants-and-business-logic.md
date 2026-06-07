@@ -156,6 +156,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** | `/arena` does **not** mount the static concept mock above the live stack; production surface uses `arena-command-console`, Last Buy primary, inline CHARM buy, DOUB price / 0.99–10 CHARM range / CRED yield decision row, secondary timers + WarBow operations rail, and recognizable cyberminimalist character treatment ([#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)) | `arenaCommandConsoleStatic.test.ts`, `e2e/anvil-arena-01-mount.spec.ts`, `e2e/arena.spec.ts` · [arena-views §291](../frontend/arena-views.md#arena-command-console-gitlab-291) · [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291) |
 | **`INV-FRONTEND-292-ARENA-PRODUCTION-COMPONENTS`** | Production Arena components present current mechanics: DOUB podium prizes + USD equivalent, current epoch per podium, blockie + last-six address labels, activity feed from **`GET /v1/arena/activity`** (buy/steal/guard/revenge deltas), epoch CHARM/CRED yield card, and grouped WarBow Steal/Guard/Revenge/Flag actions ([#292](https://gitlab.com/PlasticDigits/yieldomega/-/issues/292)) | `ArenaSimplePodiumSection.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `LiveBuyRow.test.tsx`, `indexerApi.test.ts`, `indexer/tests/integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after` · [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) · [manual QA §292](manual-qa-checklists.md#manual-qa-issue-292) |
 | **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** | `/arena/protocol` renders a compact **AUDIT** console with state/routing/activity priorities, current Arena v2 copy (no legacy TimeCurve sale/redemption/fee-sink framing), donate-pools disclosure + chain gate, wallet-profile participant actions, and blockie + explorer contract/vault addresses ([#293](https://gitlab.com/PlasticDigits/yieldomega/-/issues/293)) | `FeeTransparency.test.tsx`, `ArenaProtocolDonatePoolsSection.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `e2e/arena.spec.ts` · [arena-views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) · [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
+| **`INV-FRONTEND-294-SHARED-PRIMITIVES`** | Shared modals, wallet profile, address rows, chain gates, status/empty states, amount displays, and indexer status use the cyberminimalist glass system across `/arena`, `/arena/protocol`, `/referrals`, and secondary routes while preserving #95/#258 behavior and frontend formatting policies ([#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294)) | `SharedUxPrimitives.test.tsx`, `AmountDisplay.test.ts`, `WalletProfileModalSections.test.tsx`, `chainMismatchWriteGuard.test.ts`, `cd frontend && npm run typecheck && npm run lint && npm test`; visual/Rabby pass per [manual QA §294](manual-qa-checklists.md#manual-qa-issue-294) · [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) · [arena-views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) |
 
 <a id="frontend-cyberminimalist-glass-shell-gitlab-290"></a>
 
@@ -198,6 +199,18 @@ Follow-up to the production component pass: the **`/arena/protocol`** route must
 | ID | Property | Evidence |
 |----|----------|----------|
 | **`INV-FRONTEND-293-ARENA-AUDIT-SURFACES`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test`; visual/Rabby pass per [manual QA §293](manual-qa-checklists.md#manual-qa-issue-293) |
+
+<a id="frontend-shared-primitives-gitlab-294"></a>
+
+### Frontend shared UX primitives (GitLab [#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294))
+
+Follow-up to the approved cyberminimalist shell and production Arena passes:
+shared primitives must look native everywhere they appear, without changing
+indexer/API contracts or wallet-write behavior.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-FRONTEND-294-SHARED-PRIMITIVES`** | (see summary row above) | `cd frontend && npm run typecheck && npm run lint && npm test`; Rabby/Chromium visual pass per [manual QA §294](manual-qa-checklists.md#manual-qa-issue-294) |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 
