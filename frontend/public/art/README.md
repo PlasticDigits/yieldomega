@@ -54,19 +54,27 @@ Transparent-background PNG mascots, stickers, and small character art. Imported 
 
 ### `scenes/`
 
-Wide JPG scenes used as page hero backplates or feature art. **JPG only** — alpha is provided by the page composition, not by the asset.
+Wide scene backplates used by page heroes, cards, and console panels. Current
+TimeArena production consumers use dark cyberminimalist SVG backplates so route
+surfaces do not depend on the older bright arcade JPG pack.
 
 | File                                                  | Used by                                              | Notes                                              |
 |-------------------------------------------------------|------------------------------------------------------|----------------------------------------------------|
-| [`home-hero-desktop.jpg`](./scenes/home-hero-desktop.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Desktop wide hero; replaces the legacy `../hero-home-wide.jpg` for HD viewports. |
-| [`home-hero-mobile.jpg`](./scenes/home-hero-mobile.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Mobile crop variant served via `<picture>` `media`. |
-| [`arena-simple.jpg`](./scenes/arena-simple.jpg) | [`ArenaTimerHero.tsx`](../../src/pages/arena/ArenaTimerHero.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`index.css`](../../src/index.css) | Calm fair-launch backplate for the Time Arena timer hero. |
-| [`arena-arena.jpg`](./scenes/arena-arena.jpg) | [`index.css`](../../src/index.css) (buy panel background) | PvP / podium tension backplate.                |
-| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home AUDIT card) | Neutral operator backdrop for the Protocol read-only view and Home AUDIT entry card. |
+| [`home-command-console.svg`](./scenes/home-command-console.svg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx) | Dark PLAY / AUDIT / REFER entry backdrop for the home hero. |
+| [`arena-simple-command-console.svg`](./scenes/arena-simple-command-console.svg) | [`ArenaTimerHero.tsx`](../../src/pages/arena/ArenaTimerHero.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`index.css`](../../src/index.css) | Last Buy timer bay and Home Time Arena card backplate. |
+| [`arena-arena-command-console.svg`](./scenes/arena-arena-command-console.svg) | [`index.css`](../../src/index.css) (buy panel background) | PvP / WarBow operation-lane backplate. |
+| [`arena-protocol-command-console.svg`](./scenes/arena-protocol-command-console.svg) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home AUDIT card) | VERIFY / TRACE / WATCH audit console backplate. |
+| [`referrals-network-command-console.svg`](./scenes/referrals-network-command-console.svg) | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home card) | Dark referral CRED network card backplate. |
+| [`launch-countdown-command-console.svg`](./scenes/launch-countdown-command-console.svg) | [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx) | Frontend gate / Time Arena readiness backdrop. |
+| [`home-hero-desktop.jpg`](./scenes/home-hero-desktop.jpg) | _reference_       | Previous bright home hero; not a current production consumer. |
+| [`home-hero-mobile.jpg`](./scenes/home-hero-mobile.jpg) | _reference_       | Previous bright mobile crop; not a current production consumer. |
+| [`arena-simple.jpg`](./scenes/arena-simple.jpg) | _reference_ | Previous bright timer scene; replaced in production by `arena-simple-command-console.svg`. |
+| [`arena-arena.jpg`](./scenes/arena-arena.jpg) | _reference_ | Previous bright PvP / podium scene; replaced in production by `arena-arena-command-console.svg`. |
+| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | _reference_ | Previous bright protocol scene; replaced in production by `arena-protocol-command-console.svg`. |
 | [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | _staged_ | Gallery shelves backplate — Collection route not shipped.                                                |
-| [`referrals-network.jpg`](./scenes/referrals-network.jpg) | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home card) | Home grid card art; same motif family as `referrals-hero.jpg`.        |
+| [`referrals-network.jpg`](./scenes/referrals-network.jpg) | _reference_ | Previous bright referrals card art; replaced in production by `referrals-network-command-console.svg`. |
 | [`referrals-hero.jpg`](./scenes/referrals-hero.jpg) | _reference_ | 1600×900 hero variant ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)); live Referrals surface uses cutout placeholders. |
-| [`launch-countdown.jpg`](./scenes/launch-countdown.jpg) | [`LaunchCountdownPage.tsx`](../../src/pages/LaunchCountdownPage.tsx) | Launch countdown key art.                                                 |
+| [`launch-countdown.jpg`](./scenes/launch-countdown.jpg) | _reference_ | Previous bright launch countdown art; replaced in production by `launch-countdown-command-console.svg`. |
 | [`error-indexer-down.jpg`](./scenes/error-indexer-down.jpg) | _staged_ | Empty/error illustration for indexer down (issue #44 wiring).                |
 | [`error-wrong-network.jpg`](./scenes/error-wrong-network.jpg) | _staged_ | Wrong-network scene art; live shell uses `icons/header-wrong-network.png` in [`RootLayout.tsx`](../../src/layout/RootLayout.tsx).       |
 | [`error-wrong-network-portrait.jpg`](./scenes/error-wrong-network-portrait.jpg) | _reserved_ (future full-screen wrong-network overlay) | Tall portrait crop from the landscape error art ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
@@ -93,7 +101,12 @@ On-chain ticker art for **CHARM**, **CL8Y**, **DOUB**, **ETH**, **USDM**, plus a
 
 ### `icons/`
 
-Square 256px PNG icons. Tone is consistent with the arcade palette (greens, golds, hard outlines). When a vector trace is required (per issue #45 export spec), keep the PNG here as the source-of-truth raster and add the SVG alongside with the same stem.
+Square 256px PNG icons. Older issue #45 icons keep their original greens,
+golds, and hard outlines for path stability; new product wiring should treat
+them through the cyberminimalist glass UI rather than expanding the old arcade
+palette. When a vector trace is required (per issue #45 export spec), keep the
+PNG here as the source-of-truth raster and add the SVG alongside with the same
+stem.
 
 | Slug                              | Used by                                                                    | Notes                                                                |
 |-----------------------------------|----------------------------------------------------------------------------|----------------------------------------------------------------------|

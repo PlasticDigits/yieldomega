@@ -21,6 +21,12 @@ When you add a **new** gap:
 
 ## Lower priority / nice-to-have
 
+- **Generated raster refresh for #297** — live production consumers now use the
+  dark `*-command-console.svg` scene backplates in
+  [`frontend/public/art/scenes/`](../../frontend/public/art/scenes/) and keep the
+  older bright JPGs as reference-only. If maintainers want painterly raster
+  replacements later, generate a reviewed batch from the same cast and promote
+  only approved files through the art README consumer map.
 - **Cursor polish** — [issue #60](https://gitlab.com/PlasticDigits/yieldomega/-/issues/60) ships the expanded pack + wiring; optional Replicate refresh via `scripts/replicate-art/issue60_batch.py` when `REPLICATE_API_TOKEN` is set.
 - **Route transition motion sprite** — `motion/route-transition-fade.webp`
   could replace the current still `motion/route-transition.jpg` if/when we
@@ -43,3 +49,4 @@ When you add a **new** gap:
 - [`frontend/public/art/README.md`](../../frontend/public/art/README.md)
 - [`scripts/replicate-art/issue57_batch.py`](../../scripts/replicate-art/issue57_batch.py)
 - [`docs/frontend/design.md`](./design.md)
+- [`docs/frontend/arena-views.md`](./arena-views.md)

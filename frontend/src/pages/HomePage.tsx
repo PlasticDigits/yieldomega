@@ -28,11 +28,11 @@ export function HomePage() {
         <picture className="home-hero__picture">
           <source
             media="(max-width: 720px)"
-            srcSet="/art/scenes/home-hero-mobile.jpg"
+            srcSet="/art/scenes/home-command-console.svg"
           />
           <img
             className="home-hero__art"
-            src="/art/scenes/home-hero-desktop.jpg"
+            src="/art/scenes/home-command-console.svg"
             alt="Yield Omega Time Arena operators and token coins in a dark command console"
             width={1600}
             height={900}

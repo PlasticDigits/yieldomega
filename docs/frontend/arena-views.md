@@ -9,10 +9,10 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | Area | Convention | Examples |
 |------|------------|----------|
 | Simple agent footer | `arena-simple-agent-card` · `data-testid="arena-simple-agent-card"` | [`ArenaSimpleAgentCard.tsx`](../../frontend/src/pages/arena/ArenaSimpleAgentCard.tsx) |
-| Protocol AUDIT | `arena-protocol-page`, `arena-protocol-raise-card` | [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) · scene `/art/scenes/arena-protocol.jpg` |
+| Protocol AUDIT | `arena-protocol-page`, `arena-protocol-raise-card` | [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) · scene `/art/scenes/arena-protocol-command-console.svg` |
 | Buy projected effects | `arena-buy-projected-effects*` | [`ArenaBuyProjectedEffects.tsx`](../../frontend/src/pages/arena/ArenaBuyProjectedEffects.tsx) |
 | Podium pictograms | `/art/icons/arena-podium-*.png` | [`ArenaSimplePodiumSection.tsx`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx), [`arenaUi.tsx`](../../frontend/src/pages/arena/arenaUi.tsx) |
-| Scenes | `arena-simple.jpg`, `arena-arena.jpg`, `arena-protocol.jpg` | [`ArenaTimerHero.tsx`](../../frontend/src/pages/arena/ArenaTimerHero.tsx), `index.css` buy-panel backplate |
+| Scenes | `arena-simple-command-console.svg`, `arena-arena-command-console.svg`, `arena-protocol-command-console.svg` | [`ArenaTimerHero.tsx`](../../frontend/src/pages/arena/ArenaTimerHero.tsx), `index.css` buy-panel backplate, [`ArenaProtocolPage.tsx`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) |
 
 **Unchanged:** `/timecurve` → `/arena` redirects in [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx). **Do not** rename onchain revert substrings in [`revertMessage.ts`](../../src/lib/revertMessage.ts).
 
@@ -44,11 +44,11 @@ Layout priorities:
 - **Inline CHARM buy:** the buy panel remains visible in the primary column with text entry, slider, min/max controls, pay picker, and direct **Buy CHARM** CTA; no modal-first buy flow.
 - **Decision row:** action-adjacent tiles expose live **CHARM Price** in DOUB, **0.99–10 CHARM** buy range, and DOUB-buy **CRED yield**.
 - **Secondary operations:** `ArenaCharmCredCard`, `ArenaTimerChips` (Time Booster · Defended Streak · WarBow), and `ArenaWarbowHeroPanel` sit in the secondary operations rail.
-- **Characters:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents.
+- **Characters and art:** existing bunny + sniper-shark assets remain recognizable but render as low-opacity cyberminimalist console accents; consumed Arena scene backplates use the dark command-console SVGs from #297, not the older bright arcade JPG pack.
 
-Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291).
+Invariant: **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** in [invariants §291](../testing/invariants-and-business-logic.md#frontend-arena-command-console-gitlab-291) · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** in [invariants §297](../testing/invariants-and-business-logic.md#frontend-art-motion-audio-gitlab-297). QA: [manual checklist §291](../testing/manual-qa-checklists.md#manual-qa-issue-291) · [manual checklist §297](../testing/manual-qa-checklists.md#manual-qa-issue-297).
 
-Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
+Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-COMMAND-CONSOLE`** · **`INV-FRONTEND-297-ART-MOTION-AUDIO`** · play skills [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md), [`skills/play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
 
 <a id="arena-production-components-gitlab-292"></a>
 

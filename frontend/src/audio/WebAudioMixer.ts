@@ -17,10 +17,10 @@ import { SFX_FILES, type SfxId } from "./sfxUrls";
 
 export type PlaySfxOptions = { gainMul?: number };
 
-/** Drop accidental double-triggers; head-row dedupe + exclusive bell handle real spacing. */
-const PEER_BUY_MIN_GAP_MS = 220;
-const TIMER_CALM_MIN_GAP_MS = 48_000;
-const TIMER_URGENT_MIN_GAP_MS = 26_000;
+/** Tactical audio spacing: event cues confirm state without turning active feeds into a bell loop. */
+const PEER_BUY_MIN_GAP_MS = 5_000;
+const TIMER_CALM_MIN_GAP_MS = 75_000;
+const TIMER_URGENT_MIN_GAP_MS = 40_000;
 
 /** WarBow ladder stinger — keep sparse under indexer jitter. */
 const WARBOW_TWANG_MIN_GAP_MS = 18_000;
@@ -321,7 +321,7 @@ export class WebAudioMixer {
     const now = performance.now();
     if (now - this.lastPeerBuySfxAt < PEER_BUY_MIN_GAP_MS) return;
     this.lastPeerBuySfxAt = now;
-    void this.unlock().then(() => this.playPeerBuyBellDing(0.82));
+    void this.unlock().then(() => this.playPeerBuyBellDing(0.58));
   }
 
   private stopPeerBuyBellVoice(): void {
@@ -397,14 +397,14 @@ export class WebAudioMixer {
     const now = performance.now();
     if (now - this.lastTimerCalmAt < TIMER_CALM_MIN_GAP_MS) return;
     this.lastTimerCalmAt = now;
-    void this.playSfx("timer_heartbeat_calm", { gainMul: 0.9 });
+    void this.playSfx("timer_heartbeat_calm", { gainMul: 0.62 });
   }
 
   playTimerUrgentThrottled(): void {
     const now = performance.now();
     if (now - this.lastTimerUrgentAt < TIMER_URGENT_MIN_GAP_MS) return;
     this.lastTimerUrgentAt = now;
-    void this.playSfx("timer_heartbeat_urgent", { gainMul: 0.95 });
+    void this.playSfx("timer_heartbeat_urgent", { gainMul: 0.72 });
   }
 
   playWarbowTwangThrottled(): void {

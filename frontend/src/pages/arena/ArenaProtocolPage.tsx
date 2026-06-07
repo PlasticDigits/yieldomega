@@ -252,7 +252,7 @@ export function ArenaProtocolPage() {
         badgeIconSrc={protocolPhaseBadge.iconSrc}
         coinSrc={DOUB_TOKEN_LOGO}
         coinAlt="DOUB token glyph"
-        sceneSrc="/art/scenes/arena-protocol.jpg"
+        sceneSrc="/art/scenes/arena-protocol-command-console.svg"
       >
         <span className="arena-protocol__hero-pill" title="This route exposes reads and the donation sponsorship action only.">
           Operator

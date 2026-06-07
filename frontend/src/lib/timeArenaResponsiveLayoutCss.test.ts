@@ -42,7 +42,7 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
 
   it("sets a desktop min-height on the Simple hub timer panel (881px+)", () => {
     const anchor =
-      "/* Desktop hub: give the arcade timer stage a stable vertical footprint so the";
+      "/* Desktop hub: give the command-console timer bay a stable vertical footprint so the";
     const idx = css.indexOf(anchor);
     expect(idx).toBeGreaterThanOrEqual(0);
     const block = css.slice(idx, idx + 520);
