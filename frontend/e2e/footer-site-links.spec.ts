@@ -23,7 +23,7 @@ test("footer site links card on footer-enabled routes (GitLab #232)", async ({ p
   await expect(ribbon.locator(".footer-link-pill__icon").first()).toBeVisible();
 });
 
-test("/timecurve Simple shows site links card below agent card (GitLab #232)", async ({ page }) => {
+test("/arena shows site links card below agent card (GitLab #232)", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Launch countdown hides Time Arena surfaces.");
 

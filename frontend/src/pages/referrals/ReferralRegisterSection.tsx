@@ -141,7 +141,7 @@ export function ReferralRegisterSection({ className }: Props) {
     isSuccess: priceQuery.isSuccess,
     error: priceQuery.error,
   });
-  const { data: regFromTimeCurve } = useReadContract({
+  const { data: regFromTimeArena } = useReadContract({
     address: tc,
     abi: timeArenaReadAbi,
     functionName: "referralRegistry",
@@ -154,13 +154,13 @@ export function ReferralRegisterSection({ className }: Props) {
       return a;
     }
     if (
-      regFromTimeCurve &&
-      regFromTimeCurve !== "0x0000000000000000000000000000000000000000"
+      regFromTimeArena &&
+      regFromTimeArena !== "0x0000000000000000000000000000000000000000"
     ) {
-      return regFromTimeCurve as `0x${string}`;
+      return regFromTimeArena as `0x${string}`;
     }
     return undefined;
-  }, [regFromTimeCurve]);
+  }, [regFromTimeArena]);
 
   const bundleQuery = useReadContracts({
     contracts: registry
@@ -204,8 +204,8 @@ export function ReferralRegisterSection({ className }: Props) {
     if (burnWad === undefined) return null;
     const raw = pricePerCharmWad;
     const p = raw == null ? undefined : BigInt(raw);
-    const hasSaleCl8yPrice = p !== undefined && p > 0n;
-    if (hasSaleCl8yPrice) {
+    const hasArenaPriceRead = p !== undefined && p > 0n;
+    if (hasArenaPriceRead) {
       const usdmWei = fallbackPayTokenWeiForCl8y(burnWad, "usdm");
       const compact = formatCompactFromRaw(usdmWei.toString(), 18, {
         sigfigs: 3,
@@ -354,7 +354,7 @@ export function ReferralRegisterSection({ className }: Props) {
     }
     const b = (path: string) => `${origin}${path}`;
     return {
-      timecurve: b(`/timecurve/${displayCode}`),
+      arena: b(`/arena/${displayCode}`),
       query: b(`/?ref=${encodeURIComponent(displayCode)}`),
     };
   }, [displayCode, origin]);
@@ -534,14 +534,10 @@ export function ReferralRegisterSection({ className }: Props) {
         <PageSection
           title={
             isConnected && hasRegistered
-              ? "Your guide code claimed!"
+              ? "Guide code claimed"
               : "Claim your guide code"
           }
-          lede={
-            isConnected && hasRegistered
-              ? undefined
-              : "Choose the name people will see in your share link. Codes use 3–16 letters or digits and are stored as lowercase."
-          }
+          lede={undefined}
         >
           {!isConnected && (
             <StatusMessage variant="placeholder">
@@ -653,18 +649,13 @@ export function ReferralRegisterSection({ className }: Props) {
                   </div>
                 ) : null}
               </div>
-              <p
-                className="muted"
-                style={{ marginTop: copyBanner ? "0.5rem" : 0 }}
-              >
-                These routes also store the code as a pending referral for new
-                visitors. When a visitor uses your link, it locks the code into
-                their browser.
+              <p className="muted" style={{ marginTop: copyBanner ? "0.5rem" : 0 }} title="Both links store the code as a pending browser referral before the referred wallet buys with DOUB.">
+                Pending referral capture link.
               </p>
               {(
                 [
-                  ["TimeCurve path", referLinks.timecurve],
-                  ["Query string", referLinks.query],
+                  ["Arena path", referLinks.arena],
+                  ["Query ref", referLinks.query],
                 ] as const
               ).map(([label, url]) => (
                 <div
@@ -699,7 +690,7 @@ export function ReferralRegisterSection({ className }: Props) {
                   className="referrals-register-cost"
                   aria-label="Referral registration cost"
                 >
-                  <span>Claim cost</span>
+                  <span title="ReferralRegistry burns this CL8Y amount only after registerCode succeeds.">Claim cost</span>
                   <strong data-testid="referrals-register-cost-amount">
                     {
                       formatAmountTriple(
@@ -718,7 +709,7 @@ export function ReferralRegisterSection({ className }: Props) {
                       {registerCostUsdHint.text}
                     </small>
                   ) : null}
-                  <small>Burned only once on success</small>
+                  <small title="The burn happens only when registerCode succeeds onchain.">One-time burn</small>
 
                   <a
                     href={buyTokenOnKumbayaUrl(cl8yToken)}
@@ -753,7 +744,7 @@ export function ReferralRegisterSection({ className }: Props) {
               )}
               <div className="form-row">
                 <div className="form-label">
-                  <span>New code</span>
+                  <span title="Codes use 3-16 lowercase letters or digits after normalization.">New code</span>
                   <input
                     className="form-input"
                     value={codeInput}
@@ -778,7 +769,7 @@ export function ReferralRegisterSection({ className }: Props) {
                 >
                   {isWritePending
                     ? "Confirm in wallet…"
-                    : "Register & burn CL8Y"}
+                    : "Register code"}
                 </button>
               </div>
               {/* Pre-submit availability indicator — GitLab #208 */}

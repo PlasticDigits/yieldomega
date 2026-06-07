@@ -40,6 +40,16 @@ v1 launchpad referral CHARM-weight boosts and presale-attached attribution were 
 
 The frontend may surface **derived** referral metrics for UX. They must map to **measurable indexer fields** or **direct contract views** — never invented scores.
 
+GitLab [#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296) adds the
+secondary-route design contract: `/referrals` must stay compact and action-first
+(`register`, `share`, `track CRED`), use the cyberminimalist glass system from
+[frontend design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296),
+and keep detailed mechanics in tooltips / labels. Visible copy should only claim
+current Arena v2 rules: **1 CL8Y** one-time registration burn, one code per
+wallet, and flat **5 CRED to referrer + 5 CRED to buyer** on referred **DOUB**
+buys. It must not revive legacy CHARM boost, BPS, presale, TimeCurve sale, or
+PvE framing.
+
 | Surface | Authority | Indexer / RPC |
 |--------|-----------|---------------|
 | **Referrer leaderboard** | **Σ `referrer_cred`** per referrer from indexed **`ReferralCredApplied`** (`idx_arena_referral_cred`), plus **onchain code registrations** from **`ReferralCodeRegistered`** so guides appear before the first qualifying buy ([GitLab #204](https://gitlab.com/PlasticDigits/yieldomega/-/issues/204), [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)) | `GET /v1/referrals/referrer-leaderboard?limit=&offset=` (schema **≥ 2.3.0** for CRED fields; global summary **≥ 1.25.0** — [GitLab #225](https://gitlab.com/PlasticDigits/yieldomega/-/issues/225)) — distinct **`referrer`** keys = **`UNION(owner_address from idx_referral_code_registered, referrer from idx_arena_referral_cred)`**; **`codes_registered_count`** counts registry rows per owner; **`referred_buy_count`** / CRED totals from **`idx_arena_referral_cred`**; response includes **`total_codes_registered`**, **`total_referred_buys`**, **`total_referrer_cred_wad`**, and **`total`**; row order **`Σ CRED DESC, referrer ASC`** |
@@ -52,7 +62,7 @@ Indexer implementation keeps **`buyer` / `referrer`** as **lowercase** hex at in
 
 ## Automated checks (frontend)
 
-Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), CRED fields [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-cred-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. Manual QA: [`docs/testing/manual-qa-checklists.md`](../testing/manual-qa-checklists.md#manual-qa-issue-64). Third-party agents: [`skills/play-time-arena-doub/SKILL.md`](../../skills/play-time-arena-doub/SKILL.md) · [`docs/testing/manual-qa-checklists.md#manual-qa-issue-253`](../testing/manual-qa-checklists.md#manual-qa-issue-253).
+Playwright maps the **YO Referrals visual verification** checklist ([GitLab #64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)): shell + `?ref=` in [`frontend/e2e/referrals-surface.spec.ts`](../../frontend/e2e/referrals-surface.spec.ts); register + share links + clipboard with **Anvil + DeployDev** in [`frontend/e2e/anvil-referrals.spec.ts`](../../frontend/e2e/anvil-referrals.spec.ts) (`bash scripts/e2e-anvil.sh`). **Copy confirmation** (visible banner + error path when clipboard is unavailable) is specified in [GitLab #86](https://gitlab.com/PlasticDigits/yieldomega/-/issues/86). **Leaderboard + earnings** ([GitLab #94](https://gitlab.com/PlasticDigits/yieldomega/-/issues/94), CRED fields [#253](https://gitlab.com/PlasticDigits/yieldomega/-/issues/253)): indexer routes **`/v1/referrals/referrer-leaderboard`** and **`/v1/referrals/wallet-cred-summary`** — see [§ Dashboard](#referrals-dashboard-issue-94) above. **Secondary-route design** ([#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296)): `referrals-surface.spec.ts`, `navigation.spec.ts`, and `footer-site-links.spec.ts` plus manual QA [§296](../testing/manual-qa-checklists.md#manual-qa-issue-296). Third-party agents: [`skills/play-time-arena-doub/SKILL.md`](../../skills/play-time-arena-doub/SKILL.md) · [`docs/testing/manual-qa-checklists.md#manual-qa-issue-253`](../testing/manual-qa-checklists.md#manual-qa-issue-253).
 
 ---
 

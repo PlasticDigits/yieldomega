@@ -55,18 +55,29 @@ export function ReferralProgramEarningsSection({ className }: Props) {
     return { totalCred };
   }, [summary]);
 
-  const guideCredHumanized = useMemo(() => {
+  const credHumanized = useMemo(() => {
     if (!summary) {
-      return "";
+      return null;
     }
-    return formatCompactFromRaw(summary.referrer_cred_wad, 18, { sigfigs: REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS });
+    return {
+      guide: formatCompactFromRaw(summary.referrer_cred_wad, 18, {
+        sigfigs: REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS,
+      }),
+      buyer: formatCompactFromRaw(summary.buyer_cred_wad, 18, {
+        sigfigs: REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS,
+      }),
+      total: formatCompactFromRaw(
+        (BigInt(summary.referrer_cred_wad) + BigInt(summary.buyer_cred_wad)).toString(),
+        18,
+        { sigfigs: REFERRAL_GUIDE_CRED_DISPLAY_SIGFIGS },
+      ),
+    };
   }, [summary]);
 
   return (
     <PageSection
       className={className}
-      title="Your earnings"
-      lede="Track Play CRED earned when people buy on TimeArena after clicking your link (5 CRED per referred DOUB buy per side)"
+      title="Your CRED"
     >
       {!isConnected || !address ? (
         <div className="referrals-empty-state referrals-empty-state--charm">
@@ -75,7 +86,9 @@ export function ReferralProgramEarningsSection({ className }: Props) {
           </span>
           <div>
             <strong>Connect to see your CRED</strong>
-            <p>The page will load guide CRED and referral buy counts from the indexer.</p>
+            <p title="Reads GET /v1/referrals/wallet-cred-summary for referrer and buyer CRED totals.">
+              Indexer-backed referral totals.
+            </p>
           </div>
         </div>
       ) : loadErr ? (
@@ -88,13 +101,32 @@ export function ReferralProgramEarningsSection({ className }: Props) {
         <div className="data-panel data-panel--stack" data-testid="referrals-program-earnings">
           {totals.totalCred === 0n ? (
             <StatusMessage variant="muted" data-testid="referrals-earnings-zero-banner">
-              <strong>No referral CRED yet.</strong> Totals stay at zero until qualifying referral purchases show up
-              here for this wallet.
+              <strong>No referral CRED yet.</strong>
             </StatusMessage>
           ) : null}
-          <p className="data-panel__label referrals-earnings-charm-line" data-testid="referrals-earnings-guide-cred">
-            <span>YOUR CRED EARNED (GUIDE):</span>{" "}
-            <strong className="tabular-nums">{guideCredHumanized}</strong>
+          <p
+            className="data-panel__label referrals-earnings-cred-line"
+            data-testid="referrals-earnings-guide-cred"
+            title="CRED minted to this wallet as the referrer side of ReferralCredApplied."
+          >
+            <span>GUIDE CRED:</span>{" "}
+            <strong className="tabular-nums">{credHumanized?.guide}</strong>
+          </p>
+          <p
+            className="data-panel__label referrals-earnings-cred-line"
+            data-testid="referrals-earnings-buyer-cred"
+            title="CRED minted to this wallet as the referred buyer side of ReferralCredApplied."
+          >
+            <span>BUYER CRED:</span>{" "}
+            <strong className="tabular-nums">{credHumanized?.buyer}</strong>
+          </p>
+          <p
+            className="data-panel__label referrals-earnings-cred-line"
+            data-testid="referrals-earnings-total-cred"
+            title="Guide-side plus buyer-side referral Play CRED for this wallet."
+          >
+            <span>TOTAL CRED:</span>{" "}
+            <strong className="tabular-nums">{credHumanized?.total}</strong>
           </p>
           <p
             className="data-panel__label referrals-earnings-recorded-buys-line"
@@ -103,12 +135,6 @@ export function ReferralProgramEarningsSection({ className }: Props) {
             <span>RECORDED BUYS:</span>{" "}
             <strong className="tabular-nums">{summary.referred_buy_count}</strong>
           </p>
-          {totals.totalCred === 0n ? (
-            <p className="muted" style={{ marginTop: "0.75rem", marginBottom: 0 }}>
-              No referral activity recorded for this wallet yet — buys with your code (or a code you used) appear here
-              shortly after they settle onchain.
-            </p>
-          ) : null}
         </div>
       )}
     </PageSection>

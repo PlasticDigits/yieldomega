@@ -19,7 +19,6 @@ import {
   referralLeaderboardTotalPages,
 } from "@/lib/referralLeaderboardPagination";
 import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
-import { truncateHexAddress } from "@/pages/referrals/referralAddressDisplay";
 import { ReferralLeaderboardPagination } from "@/pages/referrals/ReferralLeaderboardPagination";
 
 const REF_CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
@@ -129,7 +128,6 @@ export function ReferralLeaderboardSection({ className }: Props) {
       title="Guide leaderboard"
       badgeLabel="Guides"
       badgeTone="live"
-      lede="Ranked by Play CRED earned from qualifying referred buys (indexed ReferralCredApplied). Guides who registered a code on ReferralRegistry appear as soon as that event is indexed—even before the first qualifying buy."
       cutout={{
         src: REF_CUT.tertiary,
         width: 108,
@@ -145,8 +143,7 @@ export function ReferralLeaderboardSection({ className }: Props) {
           <LeaderboardSummary globals={globals} topCredAbbrev={topCred.abbrev} />
           {showEmpty ? (
             <StatusMessage variant="muted">
-              No indexed guide registrations or referral buys yet. Register a code (ReferralRegistry) or
-              link buys (TimeArena ReferralCredApplied) to appear here.
+              No indexed guide registrations or referral buys yet.
             </StatusMessage>
           ) : null}
           {showList ? (
@@ -176,21 +173,27 @@ function LeaderboardSummary({
   return (
     <div className="referrals-leaderboard__summary" aria-label="Referral leaderboard totals">
       <SummaryCell
-        label="Codes registered (global)"
+        label="Codes"
         value={formatLocaleInteger(globals?.totalCodesRegistered ?? 0n)}
+        title="Global ReferralCodeRegistered rows indexed for ReferralRegistry."
       />
       <SummaryCell
-        label="Recorded referral buys (global)"
+        label="Referred buys"
         value={formatLocaleInteger(globals?.totalBuys ?? 0n)}
+        title="Global referred DOUB buys indexed from TimeArena ReferralCredApplied events."
       />
-      <SummaryCell label="Total guide CRED (global)" value={topCredAbbrev} />
+      <SummaryCell
+        label="Guide CRED"
+        value={topCredAbbrev}
+        title="Total referrer-side Play CRED indexed from ReferralCredApplied."
+      />
     </div>
   );
 }
 
-function SummaryCell({ label, value }: { label: string; value: string }) {
+function SummaryCell({ label, value, title }: { label: string; value: string; title: string }) {
   return (
-    <div>
+    <div title={title}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -242,15 +245,14 @@ function LeaderboardList({
             <div className="referrals-leaderboard-row__identity">
               <AddressInline
                 address={row.referrer}
-                formatWallet={(addr, fb) => (addr ? truncateHexAddress(addr, 8, 6) : fb)}
                 size={22}
               />
               <span>
-                {formatLocaleInteger(row.codes_registered_count)} onchain{" "}
-                {row.codes_registered_count === "1" ? "code" : "codes"} registered
+                {formatLocaleInteger(row.codes_registered_count)}{" "}
+                {row.codes_registered_count === "1" ? "code" : "codes"}
                 <br />
-                {formatLocaleInteger(row.referred_buy_count)} recorded{" "}
-                {row.referred_buy_count === "1" ? "buy" : "buys"} with this referrer code
+                {formatLocaleInteger(row.referred_buy_count)} referred{" "}
+                {row.referred_buy_count === "1" ? "buy" : "buys"}
               </span>
             </div>
             <div className="referrals-leaderboard-row__score">

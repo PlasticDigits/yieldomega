@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { CutoutDecoration } from "@/components/CutoutDecoration";
-import { PageHeroHeading } from "@/components/ui/PageHero";
+import { PageHero } from "@/components/ui/PageHero";
 import { PLACEHOLDER_CUTOUTS_BY_SLUG } from "@/lib/surfaceContent";
 import { ReferralLeaderboardSection } from "@/pages/referrals/ReferralLeaderboardSection";
 import { ReferralProgramEarningsSection } from "@/pages/referrals/ReferralProgramEarningsSection";
@@ -11,18 +11,18 @@ const CUT = PLACEHOLDER_CUTOUTS_BY_SLUG.referrals;
 
 function ReferralQuestStrip() {
   return (
-    <aside className="referrals-quest-strip" aria-label="Referral quest guide">
+    <aside className="referrals-quest-strip" aria-label="Referral command summary">
       <div>
-        <h2>Guide new buyers into the arena</h2>
-        <p>
-          When someone uses your referral link, each qualifying Time Arena DOUB buy mints you and them Play CRED right away
+        <h2>Register. Share. Track CRED.</h2>
+        <p title="ReferralCredApplied mints 5 Play CRED to the referrer and 5 Play CRED to the buyer on each referred TimeArena DOUB buy.">
+          Flat referral CRED on referred DOUB buys.
         </p>
       </div>
       <div className="referrals-quest-strip__badges" aria-label="Referral facts">
-        <span>3-16 letters or digits</span>
-        <span>1 CL8Y burn</span>
-        <span>One code per wallet</span>
-        <span>5 CRED each side</span>
+        <span title="Referral codes normalize to lowercase and accept 3-16 letters or digits.">3-16 chars</span>
+        <span title="ReferralRegistry registration burns 1 CL8Y once when the code is claimed.">1 CL8Y burn</span>
+        <span title="ReferralRegistry stores one owner code per wallet.">One code</span>
+        <span title="ReferralCredApplied mints 5 CRED to the guide and 5 CRED to the referred buyer.">5 + 5 CRED</span>
       </div>
     </aside>
   );
@@ -51,9 +51,20 @@ export function ReferralsPage() {
           height={144}
         />
       </div>
-      <header className="page-hero">
-        <PageHeroHeading title="Referrals" />
-      </header>
+      <PageHero
+        title="Referrals"
+        badgeLabel="CRED Network"
+        badgeTone="live"
+        coinSrc="/tokens/cl8y.svg"
+        coinAlt="CL8Y"
+        lede="Guide codes for TimeArena DOUB buys."
+        mascot={{
+          src: CUT.primary,
+          width: 300,
+          height: 320,
+          className: "cutout-decoration--float",
+        }}
+      />
       <ReferralQuestStrip />
       <ReferralRegisterSection className="referral-register" />
       <div className="referrals-dashboard-grid">

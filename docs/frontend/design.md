@@ -131,6 +131,16 @@ visual work should consume the semantic tokens and shared primitives.
   path, referrals/venues as secondary routes, and countdown copy as a frontend
   access gate rather than a DOUB sale launch. Visible copy stays compact; longer
   mechanics belong in `title` / `aria-label` tooltips.
+- Secondary product routes ([#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296)):
+  [`ReferralsPage`](../../frontend/src/pages/ReferralsPage.tsx),
+  referral dashboard sections, [`ThirdPartyDexPage`](../../frontend/src/components/ThirdPartyDexPage.tsx),
+  [`NotFoundPage`](../../frontend/src/pages/NotFoundPage.tsx), and
+  [`UnderConstruction`](../../frontend/src/pages/UnderConstruction.tsx) use the
+  same cyberminimalist glass system. Primary actions are **register/share/track
+  CRED**, **open external venue**, **return to Time Arena**, and **AUDIT**.
+  Visible referral copy must say flat **5 CRED + 5 CRED** for referred DOUB buys;
+  detailed mechanics stay in tooltips / labels. Do not reintroduce TimeCurve,
+  sale-end, PvE, redemption, or launchpad cross-sell framing.
 
 Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290).
 
@@ -164,6 +174,29 @@ onchain, indexer, or wallet behavior:
   consume `--yo-*` glass tokens.
 
 Evidence: [`INV-FRONTEND-294-SHARED-PRIMITIVES`](../testing/invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · manual QA [§294](../testing/manual-qa-checklists.md#manual-qa-issue-294) · `SharedUxPrimitives.test.tsx`.
+
+<a id="secondary-product-surfaces-gitlab-296"></a>
+
+### Secondary product surfaces (GitLab #296)
+
+`/referrals`, `/kumbaya`, `/sir`, 404, and under-construction fallbacks inherit
+the approved command-console visual language without becoming copies of `/arena`.
+
+- Referrals: compact hero + command strip, guide-code registration, share links,
+  wallet CRED, and guide leaderboard. Canonical share path is `/arena/{code}`;
+  legacy `/timecurve/{code}` redirects remain route compatibility only.
+- Referral mechanics: visible copy says **5 CRED to guide + 5 CRED to buyer** on
+  referred **DOUB** buys, **1 CL8Y** one-time registration burn, one code per
+  wallet; indexer reads remain derived from `ReferralCredApplied` and
+  `ReferralCodeRegistered`.
+- Venues: Kumbaya and Sir are labeled third-party off-ramps with direct external
+  actions and Time Arena / AUDIT recovery actions. Venue reads are external until
+  explicitly sourced and must not replace onchain authority.
+- Fallbacks: 404 and under-construction pages provide immediate recovery actions
+  to Time Arena and AUDIT using compact copy and the same subdued character
+  treatment.
+
+Evidence: [`INV-FRONTEND-296-SECONDARY-SURFACES`](../testing/invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · manual QA [§296](../testing/manual-qa-checklists.md#manual-qa-issue-296) · `referrals-surface.spec.ts`, `navigation.spec.ts`, `footer-site-links.spec.ts`.
 
 The cyberminimalist palette in `frontend/src/index.css` is supported by a curated raster pack under
 [`frontend/public/art/`](../../frontend/public/art/README.md). Assets are

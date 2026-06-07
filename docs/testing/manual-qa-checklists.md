@@ -21,6 +21,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291) | [Arena command console](#manual-qa-issue-291) |
 | [#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294) | [Shared frontend UX primitives](#manual-qa-issue-294) |
 | [#295](https://gitlab.com/PlasticDigits/yieldomega/-/issues/295) | [Home + launch countdown brand surfaces](#manual-qa-issue-295) |
+| [#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296) | [Secondary product surfaces](#manual-qa-issue-296) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [Buy session drift](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting](#manual-qa-issue-92) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
@@ -324,11 +325,11 @@ Use when an agent or human needs to **produce evidence** (screenshots or tx hash
 ### Checklist
 
 - [ ] With indexer **schema ≥ 1.25.0** (CRED fields **≥ 2.3.0**), **`GET /v1/referrals/referrer-leaderboard?limit=20&offset=0`** returns **`total`**, **`total_codes_registered`**, **`total_referred_buys`**, and **`total_referrer_cred_wad`** matching full-table counts (not sums of the current page **`items`**).
-- [ ] `/referrals` summary strip labels read **“(global)”** and stay stable when changing pages (no flicker back to page-local sums).
+- [ ] `/referrals` summary strip labels are compact (**Codes**, **Referred buys**, **Guide CRED**) and stay stable when changing pages (no flicker back to page-local sums).
 - [ ] When **`total > 20`**, numbered page controls appear at the bottom; page **2** fetches **`offset=20`** and row **`rank`** values remain dense competitive ranks from JSON (not **`21, 22, …`** ordinals).
 - [ ] Connected wallet **“you”** row highlight still works when your address appears on the current page.
 
-**Automated:** `cargo test` **`postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination`** · `npm test -- referralLeaderboardPagination` · Playwright **`referrals-surface.spec.ts`** (mocked global label).
+**Automated:** `cargo test` **`postgres_gitlab225_referrer_leaderboard_global_totals_and_pagination`** · `npm test -- referralLeaderboardPagination` · Playwright **`referrals-surface.spec.ts`** (mocked compact summary labels).
 
 <a id="manual-qa-issue-121-referrals-register-disclosure"></a>
 
@@ -943,6 +944,49 @@ compact copy, and recognizable Yield Omega character accents.
   `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/home.spec.ts e2e/launch-countdown.spec.ts`.
 
 **Doc map:** [frontend design §290/#295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [product TimeArena](../product/time-arena.md) · [Arena v2](../product/arena-v2.md) · [invariants — #295](invariants-and-business-logic.md#frontend-home-countdown-brand-gitlab-295) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
+<a id="manual-qa-issue-296"></a>
+
+## Secondary product surfaces (GitLab #296)
+
+**Goal:** Verify `/referrals`, third-party venues, 404, and fallback patterns
+match the approved cyberminimalist glass direction, surface current referral and
+TimeArena mechanics, and avoid stale TimeCurve/sale/PvE cross-sell copy.
+
+### Checklist
+
+- [ ] `/referrals` desktop: hero badge says **CRED Network**, command strip says
+  **Register. Share. Track CRED.**, badges include **1 CL8Y burn**, **One code**,
+  and **5 + 5 CRED**; detailed mechanics are in `title` / ARIA labels rather
+  than long paragraphs.
+- [ ] `/referrals` register/share: connected registered wallet surfaces canonical
+  **`/arena/{code}`** and **`?ref=`** share links; no visible **TimeCurve path**
+  label. Chain gate and registration write behavior remain unchanged.
+- [ ] `/referrals` leaderboard/earnings: leaderboard uses blockie + last-six
+  `AddressInline` rows; wallet panel separates **Guide CRED**, **Buyer CRED**,
+  **Total CRED**, and recorded buys from
+  `GET /v1/referrals/wallet-cred-summary`.
+- [ ] Kumbaya and Sir routes: hero says **Third-party venue. Verify off-site.**,
+  external CTA is primary when configured, and **Time Arena** / **AUDIT** recovery
+  actions are visible. Venue snapshot labels the trust boundary as external.
+- [ ] 404 and under-construction fallbacks: compact dark glass treatment,
+  recognizable Yield Omega character accents, and immediate **Time Arena** +
+  **AUDIT** recovery actions; no generic arcade stub feel.
+- [ ] Copy review: visible secondary-route copy contains current TimeArena /
+  referral mechanics only. No stale TimeCurve, sale-end, redemption, launchpad,
+  PvE, legacy BPS, or CHARM-referral-boost framing.
+- [ ] Responsive/a11y: 390×844 and desktop widths have no horizontal overflow;
+  focus rings remain visible on referral copy buttons, external venue links,
+  and fallback recovery actions.
+- [ ] Rabby/Chromium visual pass: launch Chromium with the installed Rabby
+  profile and inspect `/referrals`, `/kumbaya`, `/sir`, and an unknown route.
+  Wallet connection must not be required to understand the primary actions;
+  wrong-chain write barriers on registration remain visible when applicable.
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  focused Playwright with 5 workers:
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/referrals-surface.spec.ts e2e/navigation.spec.ts e2e/footer-site-links.spec.ts`.
+
+**Doc map:** [frontend design §296](../frontend/design.md#secondary-product-surfaces-gitlab-296) · [product referrals](../product/referrals.md#referrals-dashboard-issue-94) · [product TimeArena](../product/time-arena.md#referrals) · [Arena v2](../product/arena-v2.md) · [invariants — #296](invariants-and-business-logic.md#frontend-secondary-surfaces-gitlab-296) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [play-time-arena-doub referrals](../../skills/play-time-arena-doub/SKILL.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
 <a id="manual-qa-issue-104"></a>
 

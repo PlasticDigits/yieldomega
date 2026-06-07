@@ -20,6 +20,9 @@ test("deep link from home to each surface", async ({ page }) => {
   for (const path of ["/kumbaya", "/sir"] as const) {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.getByText("Third-party venue. Verify off-site.")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Time Arena" }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "AUDIT" }).first()).toBeVisible();
   }
 });
 
@@ -30,6 +33,8 @@ test("unknown routes show branded 404 inside RootLayout", async ({ page }) => {
   await page.goto("/definitely-not-a-route");
   await expect(page.getByTestId("not-found-page")).toBeVisible();
   await expect(page.getByRole("heading", { name: "404", level: 1 })).toBeVisible();
+  await expect(page.getByText("No surface at this route.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "AUDIT" })).toBeVisible();
   await expect(page.getByLabel("Primary")).toBeVisible();
 });
 
