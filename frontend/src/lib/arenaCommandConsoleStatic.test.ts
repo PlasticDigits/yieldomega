@@ -45,7 +45,8 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(arenaSimplePage).toContain("CHARM Price");
     expect(arenaSimplePage).toContain("Buy Range");
     expect(arenaSimplePage).toContain("CRED Yield");
-    expect(arenaSimplePage).toContain("<ArenaTimerChips />");
+    expect(arenaSimplePage).toContain("<ArenaTimerChips playerLevel");
+    expect(arenaSimplePage).toContain("<ArenaXpHero />");
     expect(arenaSimplePage).toContain("<ArenaWarbowHeroPanel");
   });
 

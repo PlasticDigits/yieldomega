@@ -8,6 +8,10 @@ library ArenaXp {
     uint256 internal constant CHARM_MIN_WAD = 99e16;
     uint256 internal constant CHARM_MAX_WAD = 10e18;
     uint256 internal constant MAX_LEVEL_UPS_PER_BUY = 5;
+    /// @dev Player progression cap (#299); XP banks toward future cap raises.
+    uint256 internal constant MAX_PLAYER_LEVEL = 5;
+    /// @dev Onboarding reference CHARM for first-buy CRED tuning (#299).
+    uint256 internal constant ONBOARDING_STARTER_CHARM_WAD = 10e18;
 
     /// @dev Maps charm in [0.99, 10] CHARM to [1, 10] XP (floor).
     function xpForCharm(uint256 charmWad) internal pure returns (uint256) {
@@ -57,13 +61,18 @@ library ArenaXp {
         newLevel = level;
         newXpTowardNext = xpTowardNext + xpGain;
         uint256 levelsGained;
-        while (levelsGained < MAX_LEVEL_UPS_PER_BUY) {
+        while (levelsGained < MAX_LEVEL_UPS_PER_BUY && newLevel < MAX_PLAYER_LEVEL) {
             uint256 need = xpToAdvance(newLevel);
             if (newXpTowardNext < need) break;
             newXpTowardNext -= need;
             newLevel += 1;
             levelsGained += 1;
         }
+        if (newLevel > MAX_PLAYER_LEVEL) newLevel = MAX_PLAYER_LEVEL;
+    }
+
+    function clampLevel(uint256 level) internal pure returns (uint256) {
+        return level > MAX_PLAYER_LEVEL ? MAX_PLAYER_LEVEL : level;
     }
 
     function xpRemainingToNextLevel(uint256 level, uint256 xpTowardNext) internal pure returns (uint256) {

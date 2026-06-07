@@ -32,8 +32,11 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     uint256 public constant CRED_PER_BUY = 35e18;
     /// @dev CRED burned per 1e18 CHARM on `buyWithCred` (GitLab #268).
     uint256 public constant CRED_PER_CHARM_WAD = 100e18;
-    /// @dev One-time CRED credited to the next Last Buy epoch on a wallet's first buy (#268).
-    uint256 public constant FIRST_BUY_CRED_BONUS = 150e18;
+    /// @dev One-time CRED credited to the next Last Buy epoch on a wallet's first buy (#268, #299).
+    /// credBurn(ONBOARDING_STARTER_CHARM) × 110% — covers second `buyWithCred` at starter CHARM + headroom.
+    uint256 public constant FIRST_BUY_CRED_BONUS = 1100e18;
+    /// @dev Documented onboarding CHARM for progression math (#299).
+    uint256 public constant ONBOARDING_STARTER_CHARM_WAD = 10e18;
     /// @dev Flat Play CRED minted to referrer and buyer per referred DOUB buy (GitLab #272).
     uint256 public constant REFERRAL_CRED_FLAT_WAD = 5e18;
     uint256 public constant SECONDS_PER_DAY = 86_400;
@@ -162,6 +165,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     event CredClaimed(address indexed user, uint256 indexed epoch, uint256 amount);
     event FirstBuyCredScheduled(address indexed buyer, uint256 indexed targetEpoch, uint256 amount);
     event XpGained(address indexed player, uint256 amount, uint256 newLevel);
+    event LevelUp(address indexed player, uint256 newLevel);
+    event FeatureUnlocked(address indexed player, uint256 featureLevel);
     event PausedSet(bool paused);
     event WarBowSteal(
         address indexed attacker,
@@ -362,6 +367,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     function warbowSteal(address victim, bool payBypassBurn) external nonReentrant {
         _requireLive();
+        _requireWarbowLevel(msg.sender);
         require(victim != address(0) && victim != msg.sender, "TimeArena: bad victim");
         uint256 day = block.timestamp / SECONDS_PER_DAY;
         uint8 victimSteals = stealsReceivedOnDay[victim][day];
@@ -396,6 +402,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     function warbowRevenge(address stealer) external nonReentrant {
         _requireLive();
+        _requireWarbowLevel(msg.sender);
         uint256 exp = warbowPendingRevengeExpiryExclusive[msg.sender][stealer];
         require(exp != 0 && block.timestamp < exp, "TimeArena: revenge");
 
@@ -411,6 +418,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     function warbowActivateGuard() external nonReentrant {
         _requireLive();
+        _requireWarbowLevel(msg.sender);
         uint256 spent = _pullDoubExact(msg.sender, WARBOW_GUARD_DOUB);
         warbowGuardUntil[msg.sender] = block.timestamp + WARBOW_GUARD_DURATION_SEC;
         emit WarBowGuard(msg.sender, spent, warbowGuardUntil[msg.sender]);
@@ -427,16 +435,19 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         emit WarBowFlagClaimed(msg.sender, WARBOW_FLAG_CLAIM_BP);
     }
 
-    function _maybePlantWarBowFlag(address buyer, bool plant) internal {
-        if (plant) {
-            warbowPendingFlagOwner = buyer;
-            warbowPendingFlagPlantAt = block.timestamp;
-        }
+    function level(address user) external view returns (uint256) {
+        return _playerLevel(user);
     }
 
-    function level(address user) external view returns (uint256) {
+    /// @dev Highest feature tier unlocked by progression (#299); mirrors capped `level`.
+    function unlockedLevel(address user) external view returns (uint256) {
+        return _playerLevel(user);
+    }
+
+    function _playerLevel(address user) internal view returns (uint256) {
         uint256 cached = _cachedLevel[user];
-        return cached == 0 ? 1 : cached;
+        uint256 lvl = cached == 0 ? 1 : cached;
+        return ArenaXp.clampLevel(lvl);
     }
 
     function xpToNextLevel(address user) external view returns (uint256) {
@@ -482,8 +493,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _accrueCharmAndCred(buyer, charmWad, codeHash);
         _routeDoubPrizeSplit(received);
         totalDoubRaised += received;
-        _maybePlantWarBowFlag(buyer, plantWarBowFlag);
-        _finishBuy(buyer, charmWad, received, false);
+        _finishBuy(buyer, charmWad, received, false, plantWarBowFlag);
     }
 
     function _buyCred(address buyer, uint256 charmWad) internal {
@@ -495,10 +505,12 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(credBurn > 0, "TimeArena: zero cred burn");
         playCred.burn(buyer, credBurn);
         _accrueCharmOnly(buyer, charmWad);
-        _finishBuy(buyer, charmWad, 0, true);
+        _finishBuy(buyer, charmWad, 0, true, false);
     }
 
-    function _finishBuy(address buyer, uint256 charmWad, uint256 received, bool paidWithCred) internal {
+    function _finishBuy(address buyer, uint256 charmWad, uint256 received, bool paidWithCred, bool plantWarBowFlag)
+        internal
+    {
         bool isFirstBuy = buyCount[buyer] == 0;
         buyCount[buyer] += 1;
         _totalBuys += 1;
@@ -528,27 +540,47 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             emit FirstBuyCredScheduled(buyer, targetEpoch, FIRST_BUY_CRED_BONUS);
         }
 
-        _extendOtherPodiumTimers();
-
         uint256 actualSecondsAdded = deadline > deadlineBefore ? deadline - deadlineBefore : 0;
-        _trackLastBuyer(buyer);
 
-        if (actualSecondsAdded > 0) {
-            totalEffectiveTimerSecAdded[buyer] += actualSecondsAdded;
-            _updateTopThree(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
-        }
-        _processDefendedStreak(buyer, remainingBefore, actualSecondsAdded);
-        _applyBuyWarBowBp(buyer, remainingBefore, hardReset);
-
+        uint256 lvlBefore = _cachedLevel[buyer];
+        if (lvlBefore == 0) lvlBefore = 1;
         uint256 xpGain = ArenaXp.xpForCharm(charmWad);
         xp[buyer] += xpGain;
-        uint256 lvl = _cachedLevel[buyer];
-        if (lvl == 0) lvl = 1;
         uint256 toward = xpTowardNext[buyer];
-        (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, xpGain);
-        _cachedLevel[buyer] = lvl;
+        uint256 lvlAfter;
+        (lvlAfter, toward) = ArenaXp.applyXpGain(lvlBefore, toward, xpGain);
+        _cachedLevel[buyer] = lvlAfter;
         xpTowardNext[buyer] = toward;
-        emit XpGained(buyer, xpGain, lvl);
+        emit XpGained(buyer, xpGain, lvlAfter);
+        if (lvlAfter > lvlBefore) {
+            emit LevelUp(buyer, lvlAfter);
+            for (uint256 f = lvlBefore + 1; f <= lvlAfter; ++f) {
+                emit FeatureUnlocked(buyer, f);
+            }
+        }
+
+        uint256 gateLevel = lvlAfter;
+
+        _trackLastBuyer(buyer);
+
+        if (gateLevel >= 2) {
+            _extendPodiumTimer(CAT_TIME_BOOSTER);
+            if (actualSecondsAdded > 0) {
+                totalEffectiveTimerSecAdded[buyer] += actualSecondsAdded;
+                _updateTopThree(CAT_TIME_BOOSTER, buyer, totalEffectiveTimerSecAdded[buyer]);
+            }
+        }
+        if (gateLevel >= 3) {
+            _extendPodiumTimer(CAT_DEFENDED_STREAK);
+            _processDefendedStreak(buyer, remainingBefore, actualSecondsAdded);
+        }
+        if (gateLevel >= 4) {
+            _extendPodiumTimer(CAT_WARBOW);
+            _applyBuyWarBowBp(buyer, remainingBefore, hardReset);
+        }
+        if (gateLevel >= 5) {
+            _applyWarBowFlagOnBuy(buyer, plantWarBowFlag);
+        }
 
         emit Buy(
             buyer,
@@ -563,17 +595,41 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         );
     }
 
-    function _extendOtherPodiumTimers() internal {
-        for (uint8 c = 1; c < NUM_PODIUM_CATEGORIES; ++c) {
-            (uint256 nd,) = TimeMath.extendDeadlineOrResetBelowThreshold(
-                podiumDeadline[c],
-                block.timestamp,
-                podiumTimerExtensionSec[c],
-                podiumTimerCapSec[c],
-                podiumResetBelowRemainingSec[c],
-                podiumResetToRemainingSec[c]
-            );
-            podiumDeadline[c] = nd;
+    function _extendPodiumTimer(uint8 category) internal {
+        (uint256 nd,) = TimeMath.extendDeadlineOrResetBelowThreshold(
+            podiumDeadline[category],
+            block.timestamp,
+            podiumTimerExtensionSec[category],
+            podiumTimerCapSec[category],
+            podiumResetBelowRemainingSec[category],
+            podiumResetToRemainingSec[category]
+        );
+        podiumDeadline[category] = nd;
+    }
+
+    function _applyWarBowFlagOnBuy(address buyer, bool plant) internal {
+        if (plant) {
+            warbowPendingFlagOwner = buyer;
+            warbowPendingFlagPlantAt = block.timestamp;
+            return;
+        }
+        if (warbowPendingFlagOwner != address(0) && warbowPendingFlagOwner != buyer) {
+            warbowPendingFlagOwner = address(0);
+            warbowPendingFlagPlantAt = 0;
+        }
+    }
+
+    function _requireWarbowLevel(address player) internal view {
+        require(_playerLevel(player) >= 4, "TimeArena: level");
+    }
+
+    /// @dev One-shot migration (#299): full unlock for wallets that bought before progression shipped.
+    function grandfatherProgression(address[] calldata wallets) external onlyOwner {
+        for (uint256 i; i < wallets.length; ++i) {
+            address w = wallets[i];
+            if (buyCount[w] > 0) {
+                _cachedLevel[w] = ArenaXp.MAX_PLAYER_LEVEL;
+            }
         }
     }
 

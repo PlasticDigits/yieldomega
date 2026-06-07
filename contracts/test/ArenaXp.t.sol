@@ -77,10 +77,18 @@ contract ArenaXpTest is Test {
         uint256 lvl = 1;
         uint256 toward;
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 200);
-        assertEq(lvl, 6);
+        assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
         assertLt(lvl, ArenaXp.levelFromXp(200));
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 50);
-        assertEq(lvl, ArenaXp.levelFromXp(250));
+        assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+    }
+
+    function test_applyXpGain_banks_xp_at_max_level() public pure {
+        uint256 lvl = ArenaXp.MAX_PLAYER_LEVEL;
+        uint256 toward = 5;
+        (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 10);
+        assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+        assertEq(toward, 15);
     }
 
     function test_applyXpGain_eight_levels_two_steps() public pure {

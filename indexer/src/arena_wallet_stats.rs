@@ -171,6 +171,9 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         &placements,
     );
 
+    let level_cap = level.parse::<u64>().unwrap_or(1).min(5);
+    let level_s = level_cap.to_string();
+
     Ok(json!({
         "address": wallet,
         "epochs_participated": epochs_participated,
@@ -180,7 +183,8 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         "max_single_buy_doub": max_buy,
         "first_buy_at": first_buy_sec,
         "xp": xp,
-        "level": level,
+        "level": level_s,
+        "unlocked_level": level_s,
         "prizes_won": prizes_won,
         "total_won_doub": total_won_doub,
         "highest_scores": highest_scores,

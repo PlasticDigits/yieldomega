@@ -778,6 +778,8 @@ export type ArenaWalletStats = {
   first_buy_at: string | null;
   xp: string;
   level: string;
+  /** Capped progression tier (#299); mirrors onchain `unlockedLevel`. */
+  unlocked_level?: string;
   prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;
   highest_scores: ArenaWalletHighestScore[];
