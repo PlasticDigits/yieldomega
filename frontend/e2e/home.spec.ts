@@ -14,7 +14,7 @@ test("home shows title and nav links", async ({ page }) => {
     page.getByLabel("Primary").getByRole("link", { name: "Time Arena" }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "PLAY TIME ARENA" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "AUDIT" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "AUDIT", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Arena AUDIT/i })).toBeVisible();
   await expect(page.getByText("Buy CHARM. Move timers. Take the podium.")).toBeVisible();
   await expect(page.getByText("WARBOW")).toBeVisible();
