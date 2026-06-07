@@ -2,7 +2,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Link } from "react-router-dom";
 import { CutoutDecoration } from "@/components/CutoutDecoration";
 import { PageBadge } from "@/components/ui/PageBadge";
-import { HOME_SURFACE_CARDS } from "@/lib/surfaceContent";
+import { HOME_HERO_SIGNALS, HOME_SURFACE_CARDS } from "@/lib/surfaceContent";
 
 // SPDX-License-Identifier: AGPL-3.0-only
 
@@ -33,7 +33,7 @@ export function HomePage() {
           <img
             className="home-hero__art"
             src="/art/scenes/home-hero-desktop.jpg"
-            alt="Yield Omega arena characters, rainbow, and hat-token coins"
+            alt="Yield Omega Time Arena operators and token coins in a dark command console"
             width={1600}
             height={900}
             decoding="async"
@@ -56,13 +56,27 @@ export function HomePage() {
         />
         <div className="home-hero__overlay">
           <h1>Yield Omega</h1>
-          <p className="lede">The PvP TimeArena Primitive</p>
+          <p className="lede">Buy CHARM. Move timers. Take the podium.</p>
+          <ul className="home-hero__signals" aria-label="Time Arena mechanics">
+            {HOME_HERO_SIGNALS.map((signal) => (
+              <li key={signal.label} title={signal.tooltip}>
+                {signal.label}
+              </li>
+            ))}
+          </ul>
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
               <Link to="/arena" className="btn-primary btn-primary--xl btn-primary--priority">
-                Open Time Arena
+                PLAY TIME ARENA
               </Link>
             </motion.div>
+            <Link
+              to="/arena/protocol"
+              className="btn-secondary home-hero__secondary"
+              title="Open the AUDIT console for TimeArena state, vault routing, and indexed activity."
+            >
+              AUDIT
+            </Link>
             <img
               className="hat-coin-hero"
               src="/art/hat-coin-front.png"
@@ -86,7 +100,7 @@ export function HomePage() {
             transition={prefersReducedMotion ? undefined : { duration: 0.28, delay: index * 0.04 }}
             {...cardMotion}
           >
-            <Link to={c.to} className="home-cta-card">
+            <Link to={c.to} className="home-cta-card" title={c.tooltip}>
               <div className="home-cta-card__media">
                 <img
                   src={c.image}

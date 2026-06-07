@@ -20,6 +20,7 @@ Procedural checklists for **maintainers and QA** live here. Root [`skills/`](../
 | [#194](https://gitlab.com/PlasticDigits/yieldomega/-/issues/194) | [Arena buy wrong-chain visual](#manual-qa-issue-194-arena-buy-chain-visual) |
 | [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291) | [Arena command console](#manual-qa-issue-291) |
 | [#294](https://gitlab.com/PlasticDigits/yieldomega/-/issues/294) | [Shared frontend UX primitives](#manual-qa-issue-294) |
+| [#295](https://gitlab.com/PlasticDigits/yieldomega/-/issues/295) | [Home + launch countdown brand surfaces](#manual-qa-issue-295) |
 | [#144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144) | [Buy session drift](#manual-qa-issue-144-wallet-session-drift-on-buy) |
 | [#92](https://gitlab.com/PlasticDigits/yieldomega/-/issues/92) | [Presale vesting](#manual-qa-issue-92) |
 | [#96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96) | [Indexer offline](#manual-qa-issue-96) |
@@ -908,6 +909,40 @@ profile behavior.
   `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena-live-buys-modals.spec.ts e2e/referrals-surface.spec.ts`.
 
 **Doc map:** [frontend design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) · [arena views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) · [wallet gate §95](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) · [wallet profile §258](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) · [invariants — #294](invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · [Rabby QA](rabby-cloud-agent-qa.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
+
+<a id="manual-qa-issue-295"></a>
+
+## Home + launch countdown brand surfaces (GitLab #295)
+
+**Goal:** Verify `/` / `/home` and the build-time launch countdown present
+current PvP TimeArena mechanics with the approved dark glass visual language,
+compact copy, and recognizable Yield Omega character accents.
+
+### Checklist
+
+- [ ] Home desktop (`>=1024px`): hero reads **Yield Omega** with **PLAY TIME
+  ARENA** as the primary action and **AUDIT** as the verification action; cards
+  prioritize Time Arena, Arena AUDIT, Referrals, Kumbaya, and Sir.
+- [ ] Home mobile (`<=720px`): hero chips, primary CTA, AUDIT link, and cards
+  wrap without horizontal overflow; focus rings remain visible on links.
+- [ ] Countdown desktop/mobile: the gate says **Time Arena opens in**, keeps the
+  clock as the largest element, shows compact **PLAY / CRED / PVP / AUDIT**
+  chips, and uses dark tactical glass treatment.
+- [ ] Copy review: visible entry-surface copy contains current TimeArena
+  mechanics only: CHARM buys, four podiums, DOUB prizes/routes, Play CRED,
+  WarBow PvP, and AUDIT reads. No TimeCurve, sale-end, redemption, launchpad,
+  PvE, or worldbuilding framing.
+- [ ] Characters/brand: bunny/coin character elements remain recognizable but
+  render as cyberminimalist tactical accents; user-facing strings use
+  **Yield Omega**.
+- [ ] Rabby/Chromium visual pass: launch Chromium with the installed Rabby
+  profile and inspect `/`, `/home`, and `/arena/protocol` handoff; wallet state
+  must not be required to understand the entry actions.
+- [ ] Automated: `cd frontend && npm run typecheck && npm run lint && npm test`;
+  focused Playwright with 5 workers:
+  `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/home.spec.ts e2e/launch-countdown.spec.ts`.
+
+**Doc map:** [frontend design §290/#295](../frontend/design.md#cyberminimalist-glass-app-shell-gitlab-290) · [product TimeArena](../product/time-arena.md) · [Arena v2](../product/arena-v2.md) · [invariants — #295](invariants-and-business-logic.md#frontend-home-countdown-brand-gitlab-295) · [Rabby QA](rabby-cloud-agent-qa.md) · [play skills](../../skills/README.md) · [guardrails](../../.cursor/skills/yieldomega-guardrails/SKILL.md)
 
 <a id="manual-qa-issue-104"></a>
 

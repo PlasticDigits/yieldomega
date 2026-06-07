@@ -13,4 +13,12 @@ test("home shows title and nav links", async ({ page }) => {
   await expect(
     page.getByLabel("Primary").getByRole("link", { name: "Time Arena" }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: "PLAY TIME ARENA" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "AUDIT", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Arena AUDIT/i })).toBeVisible();
+  await expect(page.getByText("Buy CHARM. Move timers. Take the podium.")).toBeVisible();
+  await expect(page.getByLabel("Time Arena mechanics").getByText("WARBOW", { exact: true })).toBeVisible();
+
+  const visibleCopy = await page.locator(".page--home").innerText();
+  expect(visibleCopy).not.toMatch(/\bTimeCurve\b|sale-end|redeem|redemption|launchpad|worldbuilding|\bPvE\b/i);
 });

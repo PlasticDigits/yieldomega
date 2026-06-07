@@ -123,6 +123,14 @@ visual work should consume the semantic tokens and shared primitives.
   [`arena-v2.md`](../product/arena-v2.md): always-live when unpaused, DOUB /
   Play CRED CHARM buys, four podiums, WarBow PvP, and AUDIT reads. Do not
   reintroduce TimeCurve sale-end, PvE, redemption, or launchpad framing.
+- Home and launch countdown entry surfaces ([#295](https://gitlab.com/PlasticDigits/yieldomega/-/issues/295)):
+  [`HomePage`](../../frontend/src/pages/HomePage.tsx),
+  [`LaunchCountdownPage`](../../frontend/src/pages/LaunchCountdownPage.tsx),
+  and [`surfaceContent`](../../frontend/src/lib/surfaceContent.ts) use the same
+  action-first IA: **PLAY TIME ARENA** first, **AUDIT** as the verification
+  path, referrals/venues as secondary routes, and countdown copy as a frontend
+  access gate rather than a DOUB sale launch. Visible copy stays compact; longer
+  mechanics belong in `title` / `aria-label` tooltips.
 
 Evidence: [`INV-FRONTEND-290-CYBER-GLASS-SHELL`](../testing/invariants-and-business-logic.md#frontend-cyberminimalist-glass-shell-gitlab-290).
 

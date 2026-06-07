@@ -23,7 +23,19 @@ import type { Page } from "@playwright/test";
 export type LaunchState = "countdown" | "post-launch" | "no-env";
 
 export async function detectLaunchState(page: Page): Promise<LaunchState> {
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page
+    .waitForFunction(
+      () =>
+        Boolean(
+          document.querySelector('[data-testid="launch-countdown"]') ||
+            document.querySelector('main [aria-label="Primary"]') ||
+            document.querySelector("main h1"),
+        ),
+      undefined,
+      { timeout: 15_000 },
+    )
+    .catch(() => {});
   if (await page.getByTestId("launch-countdown").isVisible().catch(() => false)) {
     return "countdown";
   }

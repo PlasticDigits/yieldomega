@@ -62,7 +62,7 @@ Wide JPG scenes used as page hero backplates or feature art. **JPG only** — al
 | [`home-hero-mobile.jpg`](./scenes/home-hero-mobile.jpg) | [`HomePage.tsx`](../../src/pages/HomePage.tsx)       | Mobile crop variant served via `<picture>` `media`. |
 | [`arena-simple.jpg`](./scenes/arena-simple.jpg) | [`ArenaTimerHero.tsx`](../../src/pages/arena/ArenaTimerHero.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts), [`index.css`](../../src/index.css) | Calm fair-launch backplate for the Time Arena timer hero. |
 | [`arena-arena.jpg`](./scenes/arena-arena.jpg) | [`index.css`](../../src/index.css) (buy panel background) | PvP / podium tension backplate.                |
-| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx) | Neutral operator backdrop for the Protocol read-only view. |
+| [`arena-protocol.jpg`](./scenes/arena-protocol.jpg) | [`ArenaProtocolPage.tsx`](../../src/pages/arena/ArenaProtocolPage.tsx), [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home AUDIT card) | Neutral operator backdrop for the Protocol read-only view and Home AUDIT entry card. |
 | [`collection-gallery.jpg`](./scenes/collection-gallery.jpg) | _staged_ | Gallery shelves backplate — Collection route not shipped.                                                |
 | [`referrals-network.jpg`](./scenes/referrals-network.jpg) | [`surfaceContent.ts`](../../src/lib/surfaceContent.ts) (Home card) | Home grid card art; same motif family as `referrals-hero.jpg`.        |
 | [`referrals-hero.jpg`](./scenes/referrals-hero.jpg) | _reference_ | 1600×900 hero variant ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)); live Referrals surface uses cutout placeholders. |
