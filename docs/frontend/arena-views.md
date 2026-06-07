@@ -189,4 +189,21 @@ Wrong-network write gating: [wallet-connection.md](wallet-connection.md). Sessio
 
 `bash scripts/e2e-anvil.sh` — `e2e/anvil-arena-*.spec.ts`, **`ANVIL_E2E=1`**, single worker ([#87](https://gitlab.com/PlasticDigits/yieldomega/-/issues/87)).
 
+Non-Anvil UI smoke (5 workers): `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts` ([#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298)).
+
+<a id="frontend-ux-docs-e2e-gitlab-298"></a>
+
+### Frontend UX docs + E2E gate (GitLab [#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298))
+
+Consolidates layout documentation ([#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)–[#296](https://gitlab.com/PlasticDigits/yieldomega/-/issues/296)) with a **page-by-page content audit** against canonical TimeArena mechanics. UI copy must not redefine onchain rules.
+
+| Artifact | Role |
+|----------|------|
+| [frontend-content-audit.md](../testing/frontend-content-audit.md) | Route-by-route visible copy + layout checklist |
+| [manual QA §298](../testing/manual-qa-checklists.md#manual-qa-issue-298) | Visual + mechanics smoke for reviewers |
+| Playwright `e2e/arena*.spec.ts`, `e2e/home.spec.ts`, `e2e/navigation.spec.ts`, … | Selector + **Yield Omega** branding expectations |
+| `bash scripts/check-arena-naming.sh` | `arena-*` CSS naming ([#280](https://gitlab.com/PlasticDigits/yieldomega/-/issues/280)) |
+
+Invariant: **`INV-FRONTEND-298-UX-DOCS-E2E`** in [invariants](../testing/invariants-and-business-logic.md#frontend-ux-docs-e2e-gitlab-298). Play skills: [`skills/README.md`](../../skills/README.md).
+
 **Product rules:** [arena-v2.md](../product/arena-v2.md) · **Invariants:** [invariants-and-business-logic.md](../testing/invariants-and-business-logic.md#timearena-v2-gitlab-260)

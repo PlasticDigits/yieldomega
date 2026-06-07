@@ -34,6 +34,7 @@ test("arena command console shows the first-run path (Last Buy + buy CHARM)", as
   await expect(page.getByText(/Connect wallet to buy CHARM|Buy CHARM/i).first()).toBeVisible();
   await expect(page.getByText("CHARM PRICE")).toBeVisible();
   await expect(page.locator(".arena-final-concept")).toHaveCount(0);
+  await expect(page.getByText("Yield Omega", { exact: true })).toBeVisible();
 });
 
 test("arena simple view shows compact podiums without dense Audit feed sections", async ({ page }) => {

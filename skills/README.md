@@ -20,6 +20,7 @@ TimeCurve launchpad playbooks, Rabbit Treasury, collectible NFT layer — remove
 
 ## Contributor docs
 
+- [`docs/testing/frontend-content-audit.md`](../docs/testing/frontend-content-audit.md) — page-by-page UI copy/layout audit vs canonical TimeArena ([#298](https://gitlab.com/PlasticDigits/yieldomega/-/issues/298))
 - [`docs/testing/strategy.md`](../docs/testing/strategy.md)
 - [`docs/testing/contract-fork-smoke.md`](../docs/testing/contract-fork-smoke.md) — optional MegaETH RPC fork (`TimeArenaForkTest`, [#275](https://gitlab.com/PlasticDigits/yieldomega/-/issues/275)); verify `bash scripts/verify-contract-fork-smoke.sh`
 - [`docs/qa/QA-onboarding-gitlab-issue-body.md`](../docs/qa/QA-onboarding-gitlab-issue-body.md) — QA onboarding ([#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274))
