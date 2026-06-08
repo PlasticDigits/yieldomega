@@ -75,7 +75,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Check | Pass criteria | Canonical source |
 |-------|---------------|------------------|
 | Heading | **AUDIT** H1; compact VERIFY / TRACE / WATCH hierarchy | [arena-views §293](../frontend/arena-views.md#arena-audit-protocol-surfaces-gitlab-293) |
-| Mechanics copy | Always-live when unpaused; flat DOUB CHARM buys; 40/30/30 routing; 100% donate top-up; WarBow activity | [arena-v2.md](../product/arena-v2.md) |
+| Mechanics copy | Always-live when unpaused; flat DOUB CHARM buys; **100%** podium routing (**25%** per track · **70/20/10** epochs; [#300](../product/arena-v2.md#doub-prize-routing-per-buy--300)); 100% donate top-up; WarBow activity | [arena-v2.md](../product/arena-v2.md) |
 | Activity feed | `GET /v1/arena/activity` buy / steal / guard / revenge with explicit deltas | [arena-views §292](../frontend/arena-views.md#arena-production-components-gitlab-292) |
 | Donate pools | Required no-benefit disclosure; `topUpPodiumPools` write gated | [arena-views donate](../frontend/arena-views.md#protocol-donate-pools-gitlab-262) |
 | Addresses | Participant rows → wallet profile; contract/vault rows → explorer | [arena-views §294](../frontend/arena-views.md#shared-frontend-primitives-gitlab-294) |
