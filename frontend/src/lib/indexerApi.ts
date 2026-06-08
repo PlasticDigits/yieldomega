@@ -234,7 +234,7 @@ export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null
     current_charm_bounds_min_wad: ZERO_DEC,
     current_charm_bounds_max_wad: ZERO_DEC,
     current_price_per_charm_wad: priceWad,
-    charm_price: priceWad,
+    charm_price: ZERO_ADDR,
     total_raised: t.total_doub_raised,
     total_charm_weight: ZERO_DEC,
     total_tokens_for_sale: ZERO_DEC,

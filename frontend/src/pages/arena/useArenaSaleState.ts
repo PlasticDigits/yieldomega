@@ -145,8 +145,12 @@ export function arenaWarbowPolicyRowsFromSaleState(
   ];
 }
 
-export function useArenaSaleStateQuery(tc: `0x${string}` | undefined) {
+export function useArenaSaleStateQuery(
+  tc: `0x${string}` | undefined,
+  options?: { enabled?: boolean },
+) {
   const indexerOn = Boolean(indexerBaseUrl());
+  const extraEnabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ARENA_SALE_STATE_QUERY_KEY,
     queryFn: async () => {
@@ -154,7 +158,7 @@ export function useArenaSaleStateQuery(tc: `0x${string}` | undefined) {
       reportIndexerFetchAttempt(body != null);
       return body;
     },
-    enabled: indexerOn && Boolean(tc),
+    enabled: indexerOn && Boolean(tc) && extraEnabled,
     staleTime: 0,
     refetchInterval: () => getIndexerBackoffPollMs(2000),
     placeholderData: (previous) => previous,

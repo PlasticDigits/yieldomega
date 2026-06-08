@@ -318,7 +318,7 @@ export function useArenaSaleSession(
   const isArenaV2 = Boolean(options?.forceArenaV2) || isTimeArenaV2(tc);
   const indexerOn = Boolean(indexerBaseUrl());
   const timersQuery = useArenaTimersQuery(tc);
-  const saleStateQuery = useArenaSaleStateQuery(tc);
+  const saleStateQuery = useArenaSaleStateQuery(tc, { enabled: !isArenaV2 });
 
   const coreContracts = tc ? [...arenaV2CoreContracts(tc)] : [];
 
