@@ -18,7 +18,7 @@ use sqlx::Row;
 use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
-use yieldomega_indexer::chain_timer::{ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
+use yieldomega_indexer::chain_timer::{ArenaSaleHeadFields, ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 use yieldomega_indexer::config::DEFAULT_DATABASE_POOL_MAX;
 use yieldomega_indexer::db::connect_and_migrate;
 use yieldomega_indexer::decoder::{DecodedEvent, DecodedLog, VaultFundingKind};
@@ -168,6 +168,15 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
                 values: ["1".into(), "2".into(), "3".into()],
             }
         }),
+        sale_head: ArenaSaleHeadFields {
+            charm_price_wad: "1000000000000000000".into(),
+            doub: "0xdddddddddddddddddddddddddddddddddddddddd".into(),
+            referral_registry: "0x0000000000000000000000000000000000000000".into(),
+            buy_cooldown_sec: "300".into(),
+            timer_extension_sec: "120".into(),
+            time_arena_buy_router: "0x0000000000000000000000000000000000000000".into(),
+            referral_cred_flat_wad: "5000000000000000000".into(),
+        },
     }
 }
 
