@@ -4,15 +4,19 @@
 
 Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). Phased work: [`docs/agent-phases.md`](docs/agent-phases.md).
 
-### Commit messages (agents)
+### Git commits (agents)
 
-**Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” / author credits.
-
-After clone, enable hooks (also strips violations if Cursor adds them anyway):
+**Identity — not an AI bot account.** Commits and pushes must appear under the **PlasticDigits developer** identity: the **dev machine** `git config user.name` / `user.email` when working locally, or the **GitLab account behind `GITLAB_TOKEN`** on Cloud VMs. Do **not** commit or push as Cursor, Claude, Codex, Composer, or other AI agent accounts (`project_*_bot@noreply.gitlab.com`, `*@users.noreply.github.com` for bots, platform noreply identities, etc.). Before the first commit in a session, set identity explicitly when the VM default is wrong:
 
 ```bash
+git config user.name "Your Name"
+git config user.email "<email on dev machine or GITLAB_TOKEN GitLab profile>"
 git config core.hooksPath .githooks
 ```
+
+Use `git push` / `glab` with **`GITLAB_TOKEN`** (PlasticDigits) — not a separate AI-agent GitLab OAuth or bot credential. Never add `Co-authored-by` (or similar) trailers naming AI tools.
+
+**Message body — no emails or attribution.** **Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” credits.
 
 The **commit-msg** hook rejects subjects with emails/`author` and strips offending body lines ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303) hygiene). Do **not** bypass with `YIELDOMEGA_SKIP_COMMIT_MSG_HOOK` except a one-off human-directed emergency.
 
