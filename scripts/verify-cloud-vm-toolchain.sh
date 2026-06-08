@@ -65,8 +65,8 @@ if command -v glab >/dev/null 2>&1; then
   token="$(yieldomega_glab_token)"
   if [[ -n "${token}" ]]; then
     yieldomega_glab_api_ok && ok "GITLAB_TOKEN API (PlasticDigits)" || bad "GITLAB_TOKEN API"
-    yieldomega_glab_repo_context_ok && ok "glab mr list (-R ${repo})" \
-      || bad "glab mr list failed (source scripts/lib/glab_cloud_agent.sh; use yieldomega_glab or GITLAB_REPO)"
+    yieldomega_glab_repo_context_ok && ok "glab mr list" \
+      || bad "glab mr list failed (re-run bootstrap-cloud-vm-toolchain.sh)"
   else
     bad "GITLAB_TOKEN unset"
   fi

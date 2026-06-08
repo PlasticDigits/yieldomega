@@ -2,11 +2,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # Create a GitLab merge request for PlasticDigits/yieldomega via glab api + GITLAB_TOKEN.
 #
-# Cloud agents must use this — not the Cursor platform/GitHub PR tool.
-# Cursor clones use x-access-token remotes; glab's high-level `mr create`
-# can resolve the remote as `PlasticDigits/yieldomega.git` and 404. This
-# helper calls the GitLab REST API directly with `projects/:id/merge_requests`.
-#
 # Usage (repo root):
 #   bash scripts/glab-mr-create.sh --title "My MR" --description "Details" [--draft]
 #   bash scripts/glab-mr-create.sh --title "Fix" --fill   # use commit messages for description

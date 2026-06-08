@@ -31,6 +31,9 @@ assert_eq "$(yieldomega_glab_normalize_repo 'PlasticDigits/yieldomega')" \
 GITLAB_REPO='PlasticDigits/yieldomega.git' \
   assert_eq "$(yieldomega_glab_repo)" "PlasticDigits/yieldomega" "yieldomega_glab_repo normalizes env"
 
+assert_eq "$(yieldomega_glab_remote_origin_url)" \
+  "https://gitlab.com/PlasticDigits/yieldomega" "remote.origin_url"
+
 if [[ -n "${GITLAB_TOKEN:-}" ]]; then
   yieldomega_glab_api_ok && echo "PASS  GITLAB_TOKEN API" || {
     echo "FAIL  GITLAB_TOKEN API" >&2

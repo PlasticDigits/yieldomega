@@ -53,7 +53,7 @@ Invariants: [`docs/testing/invariants-and-business-logic.md` §288](docs/testing
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
 | **Docker** | **Optional** for most agent work ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). Required only for `start-local-anvil-stack` / full QA stack (`yieldomega-pg`). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** ( **`vfs`** fallback), starts **`dockerd`**, verifies **`docker run hello-world` as `$USER`**, or writes `/tmp/yieldomega-docker-unavailable` + native Postgres hint. Verify: `bash scripts/verify-docker-cloud-agent.sh`. |
-| **glab** | Installed by `bootstrap-cloud-vm-toolchain.sh`. Requires Cursor secret **`GITLAB_TOKEN`** (PlasticDigits account — **not** the Cursor GitHub account). Cursor clones use `x-access-token` HTTPS remotes; **`glab mr list` without `-R` often 404s** and high-level **`glab mr create` can 404 as `PlasticDigits/yieldomega.git`**. Always use **`yieldomega_glab`** ([`scripts/lib/glab_cloud_agent.sh`](scripts/lib/glab_cloud_agent.sh)) or **`glab -R PlasticDigits/yieldomega`** / env **`GITLAB_REPO`** for reads. Create MRs with **`bash scripts/glab-mr-create.sh --title "…"`**, which calls **`glab api projects/:id/merge_requests`** directly — do **not** use the Cursor platform/GitHub PR tool for this GitLab repo. Verify: `bash scripts/verify-cloud-vm-toolchain.sh` (glab mr list row). |
+| **glab** | Installed and configured by `bootstrap-cloud-vm-toolchain.sh` when Cursor secret **`GITLAB_TOKEN`** (PlasticDigits account) is set. Use **`glab`** for GitLab issues, MRs, and comments — **not** GitLab MCP or the GitHub PR tool. MR helper: `bash scripts/glab-mr-create.sh --title "…"`. Verify: `glab api "projects/PlasticDigits%2Fyieldomega"`. |
 | **ss** | From **`iproute2`** — used by [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) to detect Anvil/indexer ports. Bootstrap installs it; [`scripts/lib/tcp_port.sh`](scripts/lib/tcp_port.sh) falls back to `netstat` or a Python bind probe if missing. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
@@ -132,7 +132,7 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 | Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | Arena display: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** — no browser RPC mirrors for podiums/timers/sale head when `VITE_INDEXER_URL` set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)); `indexerFirstDisplay.test.ts` |
 | Browser E2E / Playwright | `bash scripts/e2e-anvil.sh` | Needs Anvil stack or script-managed Anvil; see [`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md). |
 | Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Native or Docker Postgres + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
-| **GitLab merge requests** (Cloud agents) | `bash scripts/glab-mr-create.sh --title "…"` | Uses **`GITLAB_TOKEN`** + **`glab api projects/:id/merge_requests`** — not the Cursor platform/GitHub PR tool or high-level `glab mr create`. |
+| **GitLab merge requests** (Cloud agents) | `bash scripts/glab-mr-create.sh --title "…"` | PlasticDigits GitLab — use **`glab`**, not GitHub PR tooling. |
 | Security review of **local dev keys** | Same as row 1 + confirm keys are **Anvil defaults only** and documented in [`scripts/lib/evm_dev_keys.sh`](scripts/lib/evm_dev_keys.sh) | Never use dev keys on public networks. |
 
 **MR / issue checklist:** For each touched layer, add one row: *item → command → PASS/FAIL*. If on-chain seeding is in scope, `verify-evm-dev-wallet-seed-anvil.sh` must be **PASS** before merge (not “skipped — needs Docker”).
@@ -204,20 +204,3 @@ bash scripts/launch-chrome-with-rabby.sh http://127.0.0.1:5173/arena
 - Profile: `/opt/cursor/chrome-profile-rabby` (wallet state persists here across launches; **not** in git)
 
 Import an Anvil private key in Rabby (chain **31337**) for real signing against the local stack. The Cursor **Desktop** pane may use a separate Chrome profile — use the launch script when you need Rabby specifically.
-
-### GitLab merge requests (Cloud agents)
-
-This repository lives at **https://gitlab.com/PlasticDigits/yieldomega**. Cloud agents have **`GITLAB_TOKEN`** (PlasticDigits) — use **`glab api`**, not the Cursor platform/GitHub PR tool. In Cursor Cloud, high-level `glab mr create` can still mis-resolve the HTTPS token remote as `PlasticDigits/yieldomega.git` and return 404 even when `glab api` can read the project and branch.
-
-```bash
-git checkout -b cursor/my-feature-9c94
-# … commit …
-git push -u origin cursor/my-feature-9c94
-bash scripts/glab-mr-create.sh --title "My change" --template Default
-# Or: --description "Summary for reviewers." · template: `.gitlab/merge_request_templates/Default.md`
-```
-
-- **`yieldomega_glab`** ([`scripts/lib/glab_cloud_agent.sh`](scripts/lib/glab_cloud_agent.sh)) exports `GITLAB_REPO` and runs `glab -R PlasticDigits/yieldomega`.
-- **`remote_alias` alone is not enough** when `origin` is an `x-access-token` URL — bare `glab mr create` can 404 with `PlasticDigits/yieldomega.git: Not Found`.
-- Draft MR: add `--draft` to `glab-mr-create.sh` (the helper prefixes the title with `Draft:` for API creation).
-- If API creation fails, verify `glab api projects/PlasticDigits%2Fyieldomega` and the pushed branch with `glab api 'projects/PlasticDigits%2Fyieldomega/repository/branches/<url-encoded-branch>'`.

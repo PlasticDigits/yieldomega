@@ -6,7 +6,7 @@
 #   - apt: libssl-dev, pkg-config, xvfb, Docker (fuse-overlayfs or vfs fallback)
 #   - Foundry (foundryup → ~/.foundry/bin)
 #   - Rust stable ≥ 1.85 (rustup)
-#   - glab CLI + GITLAB_TOKEN auth + remote_alias for PlasticDigits/yieldomega
+#   - glab CLI + GITLAB_TOKEN auth + remote.origin_url for PlasticDigits/yieldomega
 #   - dockerd when systemd cannot start it; socket permissions for the dev user
 #
 # Does NOT run npm ci (see bootstrap-dev.sh) or Playwright/Rabby wallet import (bootstrap-cloud-agent.sh).
@@ -263,7 +263,7 @@ configure_glab() {
   local token repo
   token="$(yieldomega_glab_token)"
   repo="$(yieldomega_glab_repo)"
-  log "glab config: PlasticDigits account, repo ${repo} (-R / GITLAB_REPO)"
+  log "glab config: ${repo} (remote.origin_url + GITLAB_REPO)"
   yieldomega_configure_glab_auth
   yieldomega_persist_glab_env
   if [[ -n "${token}" ]]; then
@@ -271,21 +271,17 @@ configure_glab() {
     export GLAB_TOKEN="${token}"
     export GITLAB_REPO="${repo}"
     if yieldomega_glab_api_ok; then
-      log "GitLab API token OK for ${repo} (PlasticDigits)"
+      log "GitLab API OK (${repo})"
     else
       echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN did not pass GET /projects/${repo}." >&2
     fi
     if yieldomega_glab_repo_context_ok; then
-      log "glab repo context OK (-R ${repo})"
+      log "glab repo context OK"
     else
-      echo "bootstrap-cloud-vm-toolchain: glab mr list failed — use: yieldomega_glab mr … or GITLAB_REPO=${repo} glab -R ${repo} …" >&2
-    fi
-    pid="$(yieldomega_glab_project_id)"
-    if [[ -n "${pid}" ]]; then
-      log "GitLab project id ${pid} (MR create uses REST API — glab mr create 404s on x-access-token remotes)"
+      echo "bootstrap-cloud-vm-toolchain: glab mr list failed — re-run bootstrap or check GITLAB_TOKEN." >&2
     fi
   else
-    echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN unset — set Cursor secret for glab MR/issue commands." >&2
+    echo "bootstrap-cloud-vm-toolchain: GITLAB_TOKEN unset — set Cursor Cloud secret (PlasticDigits)." >&2
   fi
 }
 

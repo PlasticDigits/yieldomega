@@ -2,12 +2,8 @@
 # Cloud Agent GitLab (glab) helpers for PlasticDigits/yieldomega.
 # Source from bootstrap / verify scripts — do not execute directly.
 #
-# Cursor Cloud clones use x-access-token HTTPS remotes; glab repo detection from
-# `origin` alone often 404s (path includes `.git`). Always pass -R PlasticDigits/yieldomega
-# (or GITLAB_REPO). `glab mr create` still resolves PlasticDigits/yieldomega.git from the
-# remote on Cloud VMs — use yieldomega_glab_mr_create (API fallback).
-#
-# See AGENTS.md § glab / merge requests.
+# Cursor Cloud clones use x-access-token HTTPS remotes; bootstrap sets a clean
+# remote.origin_url and GITLAB_REPO so glab works without GitLab MCP.
 
 : "${YIELDOMEGA_GITLAB_HOST:=gitlab.com}"
 : "${YIELDOMEGA_GITLAB_PROJECT:=PlasticDigits/yieldomega}"
@@ -29,6 +25,13 @@ yieldomega_glab_token() {
   echo "${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
 }
 
+# Credential-free project URL for glab (x-access-token remotes break repo auto-detect).
+yieldomega_glab_remote_origin_url() {
+  local repo
+  repo="$(yieldomega_glab_repo)"
+  echo "https://${YIELDOMEGA_GITLAB_HOST}/${repo}"
+}
+
 # Export token + repo env and invoke glab with explicit -R (PlasticDigits account).
 yieldomega_glab() {
   local token repo
@@ -43,15 +46,17 @@ yieldomega_glab() {
 }
 
 yieldomega_configure_glab_auth() {
-  local token repo
+  local token repo clean_url
   token="$(yieldomega_glab_token)"
   repo="$(yieldomega_glab_repo)"
+  clean_url="$(yieldomega_glab_remote_origin_url)"
   command -v glab >/dev/null 2>&1 || return 0
   glab config set --global host "${YIELDOMEGA_GITLAB_HOST}" 2>/dev/null || true
   glab config set --global git_protocol https 2>/dev/null || true
   glab config set --global remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
     || glab config set remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
     || true
+  glab config set remote.origin_url "${clean_url}" 2>/dev/null || true
   if [[ -n "${token}" ]]; then
     glab config set --host "${YIELDOMEGA_GITLAB_HOST}" token "${token}" 2>/dev/null \
       || glab config set token "${token}" 2>/dev/null \
@@ -118,7 +123,7 @@ yieldomega_glab_repo_context_ok() {
   yieldomega_glab mr list --per-page 1 >/dev/null 2>&1
 }
 
-# Create an MR via GitLab REST API (avoids glab mr create + x-access-token .git 404).
+# Create an MR via GitLab REST API (used by scripts/glab-mr-create.sh).
 yieldomega_glab_mr_create_api() {
   local source_branch="$1"
   local target_branch="$2"
@@ -156,7 +161,6 @@ yieldomega_glab_mr_create_api() {
   return 1
 }
 
-# Prefer GitLab API for MR create (glab mr create 404s on Cursor x-access-token remotes).
 yieldomega_glab_mr_create() {
   local source_branch="$1"
   local target_branch="$2"
