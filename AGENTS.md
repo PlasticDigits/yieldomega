@@ -6,15 +6,22 @@ Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.curso
 
 ### Git commits (agents)
 
-**Identity — not an AI bot account.** Commits and pushes must appear under the **PlasticDigits developer** identity: the **dev machine** `git config user.name` / `user.email` when working locally, or the **GitLab account behind `GITLAB_TOKEN`** on Cloud VMs. Do **not** commit or push as Cursor, Claude, Codex, Composer, or other AI agent accounts (`project_*_bot@noreply.gitlab.com`, `*@users.noreply.github.com` for bots, platform noreply identities, etc.). Before the first commit in a session, set identity explicitly when the VM default is wrong:
+**Do not commit as an AI or automation product account** (Cursor, Claude, Codex, Copilot, or similar agent/bot identities). Commits must use a **human dev identity**:
+
+| Environment | Use |
+|-------------|-----|
+| **Local dev machine** | The developer’s normal `git config user.name` / `user.email` for that checkout |
+| **Cloud Agent VM** | The **GitLab user tied to `GITLAB_TOKEN`** (or the project’s designated dev/bot service account if explicitly configured for deploys — not a generic AI agent login) |
+
+Before the first commit in a session, set identity explicitly when the VM default is wrong, then enable hooks:
 
 ```bash
-git config user.name "Your Name"
-git config user.email "<email on dev machine or GITLAB_TOKEN GitLab profile>"
+git config user.name "Human Dev Name"
+git config user.email "<human dev email — per table above>"
 git config core.hooksPath .githooks
 ```
 
-Use `git push` / `glab` with **`GITLAB_TOKEN`** (PlasticDigits) — not a separate AI-agent GitLab OAuth or bot credential. Never add `Co-authored-by` (or similar) trailers naming AI tools.
+Use `git push` / `glab` with **`GITLAB_TOKEN`** for that human dev — not a separate AI-agent GitLab OAuth or bot credential. Never add `Co-authored-by` (or similar) trailers naming AI tools.
 
 **Message body — no emails or attribution.** **Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” credits.
 
