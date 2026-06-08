@@ -28,7 +28,8 @@ echo "==> Git submodules (contracts/lib/)"
 git submodule update --init --recursive
 
 echo "==> Frontend (npm ci)"
-(cd frontend && npm ci)
+# --no-audit/--no-fund reduce install time and peak memory on Cloud Agent VMs.
+(cd frontend && npm ci --no-audit --no-fund)
 
 echo "==> Bootstrap finished."
 echo "    Optional — bot swarm deps: cd bots/timearena && python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[dev]'"

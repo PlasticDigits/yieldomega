@@ -33,10 +33,17 @@ The **commit-msg** hook rejects subjects with emails/`author` and strips offendi
 After clone or pull, run the full Cloud Agent bootstrap (also in [`.cursor/environment.json`](.cursor/environment.json)):
 
 ```bash
+bash scripts/bootstrap-cloud-install.sh
+```
+
+Equivalent steps (do **not** hardcode `/workspace` or `/home/ubuntu` on `PATH` — that can drop `/usr/bin` and break `git` / `npm`):
+
+```bash
 bash scripts/bootstrap-dev.sh
 bash scripts/bootstrap-cloud-vm-toolchain.sh
 bash scripts/bootstrap-cloud-postgres-native.sh
 bash scripts/bootstrap-cloud-agent.sh
+bash scripts/verify-cloud-vm-toolchain.sh
 ```
 
 - **`bootstrap-dev.sh`** — `git submodule update --init --recursive` and `npm ci` in `frontend/`.
@@ -187,13 +194,11 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 
 ### Cloud agent bootstrap (Playwright + Rabby)
 
-On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs:
+On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs `bash scripts/bootstrap-cloud-install.sh` (all five bootstrap/verify scripts in order; verify is best-effort).
 
-```bash
-bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-postgres-native.sh && bash scripts/bootstrap-cloud-agent.sh; bash scripts/verify-cloud-vm-toolchain.sh || true
-```
+Do **not** prepend a hardcoded `export PATH="/workspace/scripts/bin:…"` before bootstrap — use `bash scripts/bootstrap-cloud-install.sh` or `yieldomega_prepend_cloud_toolchain_path` from [`scripts/lib/cloud_agent_path.sh`](scripts/lib/cloud_agent_path.sh) so `/usr/bin` stays on `PATH`.
 
-Bootstrap steps must succeed; verify is best-effort (non-zero verify does not fail install). That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.
+That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.
 
 Browsers land under `~/.cache/ms-playwright/`. Automated Playwright E2E uses the wagmi **mock** connector ([`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md)) — it **cannot switch chains**. For **wrong-network** gates ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)), real signing, and full issue/MR verification, use **Rabby** ([`docs/testing/rabby-cloud-agent-qa.md`](docs/testing/rabby-cloud-agent-qa.md) · [`.cursor/skills/rabby-cloud-verification/SKILL.md`](.cursor/skills/rabby-cloud-verification/SKILL.md)).
 

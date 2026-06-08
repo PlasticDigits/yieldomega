@@ -149,16 +149,8 @@ yieldomega_persist_glab_env() {
   else
     rm -f "${env_file}.tmp"
   fi
-  local marker='# yieldomega-cloud-agent-env'
-  for rc in "${HOME}/.bashrc" "${HOME}/.profile"; do
-    if [[ -f "${rc}" ]] && ! grep -qF "${marker}" "${rc}" 2>/dev/null; then
-      {
-        echo ""
-        echo "${marker}"
-        echo "[[ -f ${env_file} ]] && source ${env_file}"
-      } >>"${rc}"
-    fi
-  done
+  # cloud-agent.env is sourced from ~/.config/yieldomega/cloud-agent-path.sh
+  # (yieldomega_persist_cloud_toolchain_path) with shell-secret preservation.
 }
 
 # Wait for apt/dpkg lock (Cloud VM install races are common).
