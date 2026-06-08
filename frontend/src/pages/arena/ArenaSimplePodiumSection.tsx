@@ -13,7 +13,7 @@ import { formatCompactFromRaw, rawToBigIntForFormat } from "@/lib/compactNumberF
 import { fallbackPayTokenWeiForCl8y } from "@/lib/kumbayaDisplayFallback";
 import type { BuyItem } from "@/lib/indexerApi";
 import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
-import type { PodiumReadRow } from "./usePodiumReads";
+import type { PodiumPayoutPreview, PodiumReadRow } from "./usePodiumReads";
 import { formatSimplePodiumScoreLine } from "./arenaSimplePodiumScore";
 import { PodiumRankingList, type RankingRow } from "./arenaUi";
 
@@ -57,7 +57,7 @@ const SIMPLE_PODIUM_REQUIRED_LEVEL = [1, 4, 3, 2] as const;
 export type ArenaSimplePodiumSectionProps = {
   podiumRows: readonly PodiumReadRow[];
   podiumLoading: boolean;
-  podiumPayoutPreview?: readonly { places: readonly [string, string, string] }[];
+  podiumPayoutPreview?: PodiumPayoutPreview | null;
   decimals: number;
   address: string | undefined;
   /** Newest-first buy head (same order as indexer last-buy prediction); used only for Last Buy score ages. */
@@ -87,7 +87,7 @@ function rankingRowsForPodium(
   row: PodiumReadRow | undefined,
   categoryIndex: number,
   viewerAddress: string | undefined,
-  podiumPayoutPreview: ArenaSimplePodiumSectionProps["podiumPayoutPreview"],
+  podiumPayoutPreview: PodiumPayoutPreview | null | undefined,
   decimals: number,
   podiumNowUnixSec: number,
   recentBuys: ArenaSimplePodiumSectionProps["recentBuys"],
@@ -103,6 +103,8 @@ function rankingRowsForPodium(
     const prizeLabel =
       prizeRaw !== undefined ? (
         formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })
+      ) : podiumPayoutPreview === null ? (
+        <span className="muted">Prizes unavailable</span>
       ) : (
         <EmptyDataPlaceholder>Prizes loading</EmptyDataPlaceholder>
       );

@@ -120,4 +120,18 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("1.6");
     expect(html).toContain("DOUB");
   });
+
+  it("shows muted unavailable copy when prize preview is explicitly null (legacy indexer)", () => {
+    const html = renderSimplePodiums({ podiumPayoutPreview: null });
+    expect(html).toContain("Prizes unavailable");
+    expect(html).not.toContain("Prizes loading");
+  });
+
+  it("shows zero DOUB prizes when preview places are zero wad strings", () => {
+    const html = renderSimplePodiums({
+      podiumPayoutPreview: [{ places: ["0", "0", "0"] }],
+    });
+    expect(html).toContain("0 DOUB");
+    expect(html).not.toContain("Prizes loading");
+  });
 });

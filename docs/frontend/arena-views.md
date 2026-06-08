@@ -25,7 +25,7 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 | Last Buy countdown | [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) inside [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) | Primary timer; RPC/indexer deadline |
 | Secondary podium timers | [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) | Time Booster · Defended Streak · WarBow (`podiumDeadline[1..3]`) |
 | Buy hub | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) buy panel | DOUB-primary toggle (`arena-paywith-cl8y` → **DOUB** label on v2); ETH / USDM / CRED ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
-| Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` or RPC `podium` + `podiumEpoch` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) |
+| Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` or RPC `podium` + `podiumEpoch` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)); DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |
@@ -56,7 +56,7 @@ Invariants: **`INV-FRONTEND-256-UNIFIED-ARENA`** · **`INV-FRONTEND-291-ARENA-CO
 
 The live production components must stay mechanics-first, not reskins of retired sale/leaderboard copy:
 
-- Podium cards show all four independent podiums, each current epoch, and 1st/2nd/3rd prize rows in **DOUB** with USD equivalent.
+- Podium cards show all four independent podiums, each current epoch, and 1st/2nd/3rd prize rows in **DOUB** with USD equivalent (indexer **`prize_places_doub_wad`** at head block — preview only, not guaranteed payout ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302))).
 - Participant addresses use [`AddressInline`](../../frontend/src/components/AddressInline.tsx): blockie + last six hex digits by default; profile modal remains the primary in-app action.
 - `/arena/protocol` activity uses **`GET /v1/arena/activity`** for recent **buy / steal / guard / revenge** actions and explicit deltas (DOUB, BP, seconds, guard expiry). Older indexers fall back to `GET /v1/arena/buys`.
 - [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) presents epoch CHARM/CRED yield state only; it is not a leaderboard.
@@ -145,7 +145,7 @@ Invariants: **`INV-ARENA-PROGRESSION-*`** in [invariants §299](../testing/invar
 ## Indexer reads
 
 - `GET /v1/arena/timers` — Last Buy deadline + four podium deadlines + epoch ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254))
-- `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category
+- `GET /v1/arena/podiums` — head `podium()` rows + indexed `epoch` per category; **`prize_places_doub_wad`** + **`active_pool_balance_doub_wad`** (schema ≥ 2.8.0, [#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302))
 - `GET /v1/arena/buys` — recent buys
 - `GET /v1/arena/activity` — recent buy / WarBow steal / guard / revenge actions for AUDIT activity ([#292](#arena-production-components-gitlab-292))
 - `GET /v1/arena/wallet/{address}/stats` — participant profile aggregates (XP, buy count, WarBow steals; [#255](https://gitlab.com/PlasticDigits/yieldomega/-/issues/255); schema **≥ 2.4.0**)

@@ -26,6 +26,8 @@ pub const SEL_PODIUM: [u8; 4] = [0x14, 0x58, 0xd4, 0xad];
 pub const SEL_LAST_BUY_EPOCH: [u8; 4] = [0x6a, 0x9e, 0xa0, 0x67];
 /// `podiumEpoch(uint256)` — public array getter on `TimeArena` (not `uint8`).
 pub const SEL_PODIUM_EPOCH: [u8; 4] = [0x66, 0x11, 0xfd, 0x1b];
+/// `PodiumVaults.activePoolBalance(uint8)` ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)).
+pub const SEL_ACTIVE_POOL_BALANCE: [u8; 4] = [0x2f, 0xd2, 0xac, 0xfb];
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainTimerSnapshot {
@@ -52,6 +54,8 @@ pub struct TimecurveHeadSnapshot {
     pub timer: ChainTimerSnapshot,
     pub sale_ended: bool,
     pub podium_contract: [PodiumRpcRow; 4],
+    /// Head `PodiumVaults.activePoolBalance(cat)` at `read_block_number` ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)).
+    pub active_pool_balance_doub_wad: [String; 4],
     pub sale_state: TimecurveSaleStateSnapshot,
 }
 
@@ -145,6 +149,7 @@ pub async fn podium_at_block_id(
 pub async fn run_poll_loop(
     rpc_urls: &[String],
     time_arena: Address,
+    podium_vaults: Option<Address>,
     cache: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
     rpc_request_timeout: Duration,
 ) {
@@ -165,7 +170,7 @@ pub async fn run_poll_loop(
 
     let mut health = RpcPollHealth::new();
     loop {
-        match poll_any_provider(&providers, time_arena).await {
+        match poll_any_provider(&providers, time_arena, podium_vaults).await {
             Ok(snap) => {
                 health.report_success();
                 *cache.write().await = Some(snap);
@@ -186,10 +191,11 @@ pub async fn run_poll_loop(
 async fn poll_any_provider(
     providers: &[ReqwestProvider],
     arena: Address,
+    podium_vaults: Option<Address>,
 ) -> Result<TimecurveHeadSnapshot> {
     let mut last_err = None;
     for p in providers {
-        match poll_once(p, arena).await {
+        match poll_once(p, arena, podium_vaults).await {
             Ok(s) => return Ok(s),
             Err(e) => last_err = Some(e),
         }
@@ -215,7 +221,11 @@ async fn eth_call_u256(
     decode_return_u256(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
-async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<TimecurveHeadSnapshot> {
+async fn poll_once(
+    provider: &ReqwestProvider,
+    arena: Address,
+    podium_vaults: Option<Address>,
+) -> Result<TimecurveHeadSnapshot> {
     let bn = provider.get_block_number().await?;
     let block = provider
         .get_block_by_number(bn.into(), BlockTransactionsKind::Hashes)
@@ -290,6 +300,21 @@ async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<Timecur
         podium_rows[cat as usize] = podium_at_block_id(provider, arena, block_id, cat).await?;
     }
 
+    let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
+    if let Some(pv) = podium_vaults.filter(|a| *a != Address::ZERO) {
+        for cat in 0u8..=3 {
+            let bal = eth_call_u256(
+                provider,
+                pv,
+                block_id,
+                encode_u8_call(SEL_ACTIVE_POOL_BALANCE, cat),
+                &format!("activePoolBalance({cat})"),
+            )
+            .await?;
+            active_pool_balance_doub_wad[cat as usize] = u256_to_decimal_string(bal);
+        }
+    }
+
     let polled_at_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -321,6 +346,7 @@ async fn poll_once(provider: &ReqwestProvider, arena: Address) -> Result<Timecur
         timer,
         sale_ended: false,
         podium_contract: podium_rows,
+        active_pool_balance_doub_wad,
         sale_state,
     })
 }

@@ -12,7 +12,7 @@ import {
 } from "@/lib/abis";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
-import { fetchArenaPodiums } from "@/lib/indexerApi";
+import { fetchArenaPodiums, type ArenaPodiumApiRow } from "@/lib/indexerApi";
 import {
   INDEXER_EVENT_COALESCE_MS,
   getIndexerBackoffPollMs,
@@ -53,9 +53,37 @@ function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
   };
 }
 
-function rowsFromIndexerData(
-  raw: readonly { winners?: string[]; values?: string[]; epoch?: string | null }[],
-): PodiumReadRow[] {
+export type PodiumPayoutPreviewRow = { places: readonly [string, string, string] };
+export type PodiumPayoutPreview = readonly PodiumPayoutPreviewRow[];
+
+function buildPayoutPreviewFromIndexerRows(
+  rows: readonly ArenaPodiumApiRow[],
+): PodiumPayoutPreview | null {
+  if (rows.length === 0) {
+    return null;
+  }
+  const hasPrizeField = rows.some((row) => row.prize_places_doub_wad !== undefined);
+  if (!hasPrizeField) {
+    return null;
+  }
+  const preview: PodiumPayoutPreviewRow[] = [];
+  for (const row of rows) {
+    const cat = row.category_index;
+    const prizes = row.prize_places_doub_wad;
+    if (cat === undefined || cat < 0 || cat > 3 || !prizes || prizes.length < 3) {
+      continue;
+    }
+    preview[cat] = [prizes[0]!, prizes[1]!, prizes[2]!] as const;
+  }
+  for (let cat = 0; cat < 4; cat += 1) {
+    if (!preview[cat]) {
+      preview[cat] = ["0", "0", "0"] as const;
+    }
+  }
+  return preview;
+}
+
+function rowsFromIndexerData(raw: readonly ArenaPodiumApiRow[]): PodiumReadRow[] {
   return [0, 1, 2, 3].map((i) => {
     const row = asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []);
     const ep = raw[i]?.epoch;
@@ -233,19 +261,25 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   const rows: PodiumReadRow[] = useMemo(() => {
     if (indexerOn) {
-      return rowsFromIndexerData(
-        (indexerQuery.data?.rows ?? []) as readonly {
-          winners?: string[];
-          values?: string[];
-        }[],
-      );
+      return rowsFromIndexerData(indexerQuery.data?.rows ?? []);
     }
     return rowsFromRpcData(rpc.data as readonly ContractReadRow[] | undefined);
   }, [indexerOn, indexerQuery.data, rpc.data]);
 
+  const podiumPayoutPreview: PodiumPayoutPreview | null | undefined = useMemo(() => {
+    if (!indexerOn) {
+      return null;
+    }
+    if (indexerQuery.isLoading && !indexerQuery.data) {
+      return undefined;
+    }
+    return buildPayoutPreviewFromIndexerRows(indexerQuery.data?.rows ?? []);
+  }, [indexerOn, indexerQuery.data, indexerQuery.isLoading]);
+
   if (indexerOn) {
     return {
       data: rows,
+      podiumPayoutPreview,
       isLoading: indexerQuery.isLoading,
       isFetching: indexerQuery.isFetching,
       refetch: indexerQuery.refetch,
@@ -255,6 +289,7 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
 
   return {
     data: rows,
+    podiumPayoutPreview: null,
     isLoading: rpc.isLoading,
     isFetching: rpc.isFetching,
     refetch: rpc.refetch,
