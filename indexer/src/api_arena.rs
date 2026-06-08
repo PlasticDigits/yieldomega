@@ -166,6 +166,13 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "last_buy_epoch": h.timer.last_buy_epoch,
         "podium_epochs": h.timer.podium_epochs,
         "podium_deadlines_sec": h.timer.podium_deadlines_sec,
+        "charm_price_wad": h.sale_head.charm_price_wad,
+        "doub": h.sale_head.doub,
+        "referral_registry": h.sale_head.referral_registry,
+        "buy_cooldown_sec": h.sale_head.buy_cooldown_sec,
+        "timer_extension_sec": h.sale_head.timer_extension_sec,
+        "time_arena_buy_router": h.sale_head.time_arena_buy_router,
+        "referral_cred_flat_wad": h.sale_head.referral_cred_flat_wad,
     });
     (
         StatusCode::OK,

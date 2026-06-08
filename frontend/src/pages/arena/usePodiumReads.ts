@@ -3,38 +3,27 @@
 import { useCallback, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { useReadContracts, useWatchContractEvent } from "wagmi";
-import { zeroAddress } from "viem";
+import { useWatchContractEvent } from "wagmi";
 import {
   timeArenaBuyEventAbi,
-  timeArenaReadAbi,
   timeArenaWarbowBpEventAbi,
 } from "@/lib/abis";
 import { indexerBaseUrl } from "@/lib/addresses";
-import { rawToBigIntForFormat } from "@/lib/compactNumberFormat";
 import { fetchArenaPodiums, type ArenaPodiumApiRow } from "@/lib/indexerApi";
 import {
   INDEXER_EVENT_COALESCE_MS,
   getIndexerBackoffPollMs,
   reportIndexerFetchAttempt,
 } from "@/lib/indexerConnectivity";
-import { useRpcBackoffPollInterval, useRpcConnectivity } from "@/hooks/useRpcConnectivity";
-import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
-import { rpcBackedReadQueryOptions } from "@/lib/rpcReadQueryOptions";
 import { PODIUM_CONTRACT_CATEGORY_INDEX } from "./podiumCopy";
 
 export const ARENA_PODIUMS_QUERY_KEY = ["arena-podiums"] as const;
-
-type ContractReadRow = {
-  status: "success" | "failure";
-  result?: unknown;
-};
 
 export type PodiumReadRow = {
   winners: [`0x${string}`, `0x${string}`, `0x${string}`];
   /** Base-10 onchain podium scores as strings (React props JSON-safe). */
   values: readonly [string, string, string];
-  /** Head `lastBuyEpoch` (cat 0) or `podiumEpoch[cat]` when indexer/RPC provides it ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). */
+  /** Head `lastBuyEpoch` (cat 0) or `podiumEpoch[cat]` when indexer provides it ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). */
   epoch?: string;
 };
 
@@ -42,7 +31,7 @@ function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
   const pad = (i: number) => {
     const w = (winnersIn[i] ?? "").trim();
     if (!w || w === "0x") {
-      return zeroAddress;
+      return "0x0000000000000000000000000000000000000000" as `0x${string}`;
     }
     return w as `0x${string}`;
   };
@@ -91,49 +80,22 @@ function rowsFromIndexerData(raw: readonly ArenaPodiumApiRow[]): PodiumReadRow[]
   });
 }
 
-function rowsFromRpcData(rawData: readonly ContractReadRow[] | undefined): PodiumReadRow[] {
-  const rows: PodiumReadRow[] = [];
-  for (let ux = 0; ux < 4; ux++) {
-    const podiumR = rawData?.[ux * 2];
-    const epochR = rawData?.[ux * 2 + 1];
-    if (podiumR?.status !== "success") {
-      rows.push(asPodiumRow([], []));
-      continue;
-    }
-    const result = podiumR.result as readonly [readonly `0x${string}`[], readonly (bigint | string)[]];
-    const winners = result[0] as [`0x${string}`, `0x${string}`, `0x${string}`];
-    const values = result[1];
-    const base: PodiumReadRow = {
-      winners: [winners[0], winners[1], winners[2]],
-      values: [
-        rawToBigIntForFormat(values[0]).toString(),
-        rawToBigIntForFormat(values[1]).toString(),
-        rawToBigIntForFormat(values[2]).toString(),
-      ] as const,
-    };
-    if (epochR?.status === "success" && epochR.result !== undefined) {
-      rows.push({ ...base, epoch: rawToBigIntForFormat(epochR.result as bigint | string).toString() });
-    } else {
-      rows.push(base);
-    }
-  }
-  return rows;
-}
+const EMPTY_PODIUM_ROWS: PodiumReadRow[] = PODIUM_CONTRACT_CATEGORY_INDEX.map(() =>
+  asPodiumRow([], []),
+);
 
 /**
  * Invalidate live reads when WarBow-related Time Arena logs arrive (BP-moving txs, guard activations).
  * Shared by Simple (podium panel + buy feed) and Arena (WarBow leaderboard + battle feed).
  *
- * Skipped when **`VITE_INDEXER_URL`** is set (indexer polls + coalesced HTTP refresh cover live WarBow)
- * or when shared RPC health is offline-tier ([#221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221)).
+ * Disabled under indexer-first policy ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)):
+ * indexer polls + coalesced HTTP invalidation cover live WarBow without browser RPC subscriptions.
  */
 export function useWarbowBpMovingEventWatch(
   tc: `0x${string}` | undefined,
   onBpMovingEvent: () => void,
 ) {
-  const indexerOn = Boolean(indexerBaseUrl());
-  const { isOffline: isRpcOffline } = useRpcConnectivity();
-  const rpcEventsEnabled = Boolean(tc) && !indexerOn && !isRpcOffline;
+  const rpcEventsEnabled = false;
 
   const handleLogs = useCallback(() => {
     onBpMovingEvent();
@@ -206,11 +168,9 @@ export function useWarbowPodiumLiveInvalidation(
   useWarbowBpMovingEventWatch(tc, onBpMovingEvent);
 }
 
-/** Prefer indexer head cache (~1s RPC poll server-side); fall back to direct reads when `VITE_INDEXER_URL` is unset. */
+/** Indexer-only podium head reads — no browser RPC mirror ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
 export function usePodiumReads(tc: `0x${string}` | undefined) {
   const indexerOn = Boolean(indexerBaseUrl());
-  const { isOffline: isRpcOffline } = useRpcConnectivity();
-  const rpcPollMs = useRpcBackoffPollInterval(1000);
 
   const indexerQuery = useQuery({
     queryKey: ARENA_PODIUMS_QUERY_KEY,
@@ -225,46 +185,12 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
     placeholderData: (previousData) => previousData,
   });
 
-  const contracts = tc
-    ? PODIUM_CONTRACT_CATEGORY_INDEX.flatMap((category) => [
-        {
-          address: tc,
-          abi: timeArenaReadAbi,
-          functionName: "podium" as const,
-          args: [category],
-        },
-        {
-          address: tc,
-          abi: timeArenaReadAbi,
-          functionName: category === 0 ? ("lastBuyEpoch" as const) : ("podiumEpoch" as const),
-          args: category === 0 ? [] : [category],
-        },
-      ])
-    : [];
-
-  const rpc = useReadContracts({
-    contracts: contracts as readonly unknown[],
-    query: {
-      enabled: Boolean(tc) && !indexerOn,
-      ...rpcBackedReadQueryOptions(rpcPollMs, isRpcOffline),
-      placeholderData: (previous) => previous,
-    },
-  });
-
-  useRpcQueryHealthForRefetch({
-    isFetched: rpc.isFetched,
-    isFetching: rpc.isFetching,
-    isError: rpc.isError,
-    isSuccess: rpc.isSuccess,
-    error: rpc.error,
-  });
-
   const rows: PodiumReadRow[] = useMemo(() => {
-    if (indexerOn) {
-      return rowsFromIndexerData(indexerQuery.data?.rows ?? []);
+    if (!indexerOn) {
+      return EMPTY_PODIUM_ROWS;
     }
-    return rowsFromRpcData(rpc.data as readonly ContractReadRow[] | undefined);
-  }, [indexerOn, indexerQuery.data, rpc.data]);
+    return rowsFromIndexerData(indexerQuery.data?.rows ?? []);
+  }, [indexerOn, indexerQuery.data]);
 
   const podiumPayoutPreview: PodiumPayoutPreview | null | undefined = useMemo(() => {
     if (!indexerOn) {
@@ -290,9 +216,9 @@ export function usePodiumReads(tc: `0x${string}` | undefined) {
   return {
     data: rows,
     podiumPayoutPreview: null,
-    isLoading: rpc.isLoading,
-    isFetching: rpc.isFetching,
-    refetch: rpc.refetch,
-    source: "rpc" as const,
+    isLoading: false,
+    isFetching: false,
+    refetch: async () => undefined,
+    source: "unavailable" as const,
   };
 }

@@ -1111,5 +1111,33 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 
 **Doc map:** [indexer README](../../indexer/README.md) · [invariants — #142](invariants-and-business-logic.md#indexer-production-database-url-placeholders-gitlab-142)
 
+<a id="manual-qa-issue-301"></a>
+
+## Indexer-first Arena display (GitLab #301)
+
+**Goal:** Arena display surfaces use the indexer only; browser RPC is limited to wallet writes and submit-time preflight.
+
+### Full stack (indexer healthy)
+
+- [ ] `bash scripts/start-qa-local-full-stack.sh --no-swarm` (or reuse stack); confirm `VITE_INDEXER_URL` in `frontend/.env.local`.
+- [ ] Open `/arena`: podiums, hero timer, secondary timer chips, and buy hub populated.
+- [ ] With `VITE_RPC_DEBUG=1`, DevTools network: **no** recurring `eth_call` multicalls for `podium`, `podiumDeadline`, `deadline`, or sale-head getters (~1 Hz).
+
+### Indexer down (URL still set)
+
+- [ ] Stop indexer process; reload `/arena`.
+- [ ] `IndexerStatusBar` shows offline/retrying; podiums do **not** repopulate via browser RPC.
+
+### Indexer URL unset (dev/E2E)
+
+- [ ] Remove `VITE_INDEXER_URL`; restart Vite.
+- [ ] Degraded banner visible; no hidden 1 Hz podium multicall.
+
+### Buy still works
+
+- [ ] Connected wallet + healthy indexer: buy submits via RPC; allowance/balance reads only around CTA.
+
+**Doc map:** [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301) · [e2e-anvil §301](e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301) · [invariants §301](invariants-and-business-logic.md#frontend-indexer-first-display-gitlab-301)
+
 <a id="manual-qa-issue-156"></a>
 

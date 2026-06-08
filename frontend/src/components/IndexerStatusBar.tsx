@@ -12,7 +12,7 @@ export function IndexerStatusBar() {
 
   if (!base) {
     tone = "warning";
-    line = "INDEXER · configure VITE_INDEXER_URL";
+    line = "INDEXER · dev-only · set VITE_INDEXER_URL for live Arena data";
   } else if (isOffline) {
     tone = "error";
     line = "INDEXER · offline · retrying";

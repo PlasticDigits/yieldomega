@@ -5,6 +5,7 @@ import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
 import { WAD } from "@/lib/timeArenaMath";
 import { timeArenaReadAbi } from "@/lib/abis";
 import type { ContractReadRow } from "@/pages/arena/useArenaSaleState";
+import type { ArenaTimersResponse } from "@/lib/indexerApi";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const CHARM_MIN_WAD = ARENA_CHARM_MIN_WAD;
@@ -113,4 +114,61 @@ export function mapArenaV2UserRows(
   if (!raw?.[0] || raw[0].status !== "success") return undefined;
   const nextBuy = raw[0].result as bigint;
   return [row(nextBuy), row(0n)];
+}
+
+/** Maps `GET /v1/arena/timers` into Arena v2 `useArenaSaleSession` core rows ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+export function coreReadRowsFromArenaTimers(
+  t: ArenaTimersResponse,
+): readonly ContractReadRow[] | undefined {
+  const priceRaw = t.charm_price_wad;
+  const doubRaw = t.doub;
+  if (!priceRaw || !doubRaw) {
+    return undefined;
+  }
+  let price: bigint;
+  let doub: HexAddress;
+  try {
+    price = BigInt(priceRaw);
+    doub = doubRaw as HexAddress;
+  } catch {
+    return undefined;
+  }
+  if (price <= 0n) {
+    return undefined;
+  }
+
+  const referral = (t.referral_registry ?? ZERO) as HexAddress;
+  const buyCooldown = BigInt(t.buy_cooldown_sec ?? "300");
+  const timerExt = BigInt(t.timer_extension_sec ?? "120");
+  const buyRouter = (t.time_arena_buy_router ?? ZERO) as HexAddress;
+  const referralFlat = BigInt(t.referral_cred_flat_wad ?? String(5n * 10n ** 18n));
+  const podiumPool = parseHexAddress(addresses.podiumVaults) ?? ZERO;
+  const minDoubSpend = (CHARM_MIN_WAD * price) / WAD;
+  const maxDoubSpend = (CHARM_MAX_WAD * price) / WAD;
+
+  return [
+    row(BigInt(t.arena_start_sec)),
+    row(BigInt(t.last_buy_deadline_sec)),
+    row(false),
+    row(minDoubSpend),
+    row(maxDoubSpend),
+    row([CHARM_MIN_WAD, CHARM_MAX_WAD]),
+    row(price),
+    row(doub),
+    row(referral),
+    row(BigInt(t.total_doub_raised)),
+    row(timerExt),
+    row(BigInt(t.timer_cap_sec)),
+    row(buyCooldown),
+    row(ZERO),
+    row(t.paused),
+    row(buyRouter),
+    row(podiumPool),
+    row(ZERO),
+    row(0n),
+    row(0n),
+    row(0n),
+    row(referralFlat),
+    row(0n),
+  ];
 }

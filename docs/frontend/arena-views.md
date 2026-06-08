@@ -18,14 +18,39 @@ Primary participant surface: [`TimeArenaPage.tsx`](../../frontend/src/pages/Time
 
 <a id="unified-arena-page-gitlab-256"></a>
 
+<a id="indexer-first-display-gitlab-301"></a>
+
+## Indexer-first display reads (GitLab [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301))
+
+Production Arena surfaces treat the indexer as the **only** source for recurring **display** head state. Browser JSON-RPC must **not** mirror podiums, podium deadlines, hero timer, or core sale head fields when `VITE_INDEXER_URL` is set — and must **not** silently poll those reads when the URL is unset.
+
+| Data | Source | Browser RPC |
+|------|--------|-------------|
+| Podium leaders + epochs | `GET /v1/arena/podiums` | **Never** (no `podium` / `podiumEpoch` multicall) |
+| Last Buy + secondary podium deadlines | `GET /v1/arena/timers` | **Never** (no `podiumDeadline` / `deadline` poll) |
+| Buy hub head (price, bounds, paused, raised, timers) | `GET /v1/arena/timers` (schema ≥ 2.6.0 sale-head fields) | **Never** for display refresh |
+| Activity / buys / wallet stats | `GET /v1/arena/*` | **Never** for lists |
+| WarBow live refresh | Indexer poll + query invalidation | **Never** (`useWatchContractEvent` disabled) |
+| Tx submit (`buy`, `claimCred`, WarBow writes, donate) | Wallet RPC | **Required** |
+| Submit-time preflight (allowance, `balanceOf`, `nextBuyAllowedAt`, simulate) | Wallet RPC at click | **Allowed exception** |
+| Wagmi transport URL fallbacks | Config only | **Keep** for write reliability ([#221](https://gitlab.com/PlasticDigits/yieldomega/-/issues/221)) |
+
+**Production:** `VITE_INDEXER_URL` is **required** for live Arena data. When unset, [`IndexerStatusBar`](../../frontend/src/components/IndexerStatusBar.tsx) shows a dev/degraded banner and display hooks return empty/stale placeholders — not hidden RPC backfill.
+
+**Indexer outage:** stale cached React Query data + status bar (`INDEXER · offline · retrying`); UI must **not** repopulate via browser RPC.
+
+Hooks: [`usePodiumReads`](../../frontend/src/pages/arena/usePodiumReads.ts), [`useArenaHeroTimer`](../../frontend/src/pages/arena/useArenaHeroTimer.ts), [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx), [`useArenaSaleSession`](../../frontend/src/pages/arena/useArenaSaleSession.ts) (Arena v2 uses [`coreReadRowsFromArenaTimers`](../../frontend/src/pages/arena/arenaV2SaleSessionBridge.ts)).
+
+Invariant: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** · static gate `indexerFirstDisplay.test.ts` · [indexer design §301](../indexer/design.md#indexer-first-api-guidelines-gitlab-301) · [e2e-anvil §301](../testing/e2e-anvil.md#indexer-first-vs-minimal-e2e-gitlab-301).
+
 ## Unified arena page (GitLab [#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256))
 
 | Surface | Component | Notes |
 |---------|-----------|--------|
-| Last Buy countdown | [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) inside [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) | Primary timer; RPC/indexer deadline |
-| Secondary podium timers | [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) | Time Booster · Defended Streak · WarBow (`podiumDeadline[1..3]`) |
-| Buy hub | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) buy panel | DOUB-primary toggle (`arena-paywith-cl8y` → **DOUB** label on v2); ETH / USDM / CRED ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) |
-| Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` or RPC `podium` + `podiumEpoch` ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)); DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
+| Last Buy countdown | [`ArenaTimerHero`](../../frontend/src/pages/arena/ArenaTimerHero.tsx) inside [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) | Primary timer; indexer `GET /v1/arena/timers` only ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
+| Secondary podium timers | [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) | Time Booster · Defended Streak · WarBow — indexer `podium_deadlines_sec` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
+| Buy hub | [`ArenaSimplePage`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) buy panel | DOUB-primary toggle (`arena-paywith-cl8y` → **DOUB** label on v2); ETH / USDM / CRED ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); sale head from indexer timers ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)) |
+| Four podiums | [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) | Epoch id + live rankings via `GET /v1/arena/podiums` only ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)); DOUB prize preview + USD equiv from **`prize_places_doub_wad`** when indexer schema ≥ 2.8.0 ([#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)) |
 | CHARM + Play CRED | [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) | Current Last Buy epoch, epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`** ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)) |
 | WarBow PvP | [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) | Steal / guard / revenge with **`WARBOW_*_DOUB`** cost pills ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | AUDIT | [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) at **`/arena/protocol`** | Operator reads plus the gated donate-pools sponsorship action — no separate “Arena advanced” route |

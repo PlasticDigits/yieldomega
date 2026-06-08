@@ -3,6 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   ARENA_SESSION_CORE_ROW_COUNT,
+  coreReadRowsFromArenaTimers,
   mapArenaV2CoreRows,
 } from "./arenaV2SaleSessionBridge";
 
@@ -45,6 +46,48 @@ describe("mapArenaV2CoreRows", () => {
     expect(mapArenaV2CoreRows(undefined)).toBeUndefined();
     expect(
       mapArenaV2CoreRows([{ status: "failure" }, { status: "success", result: 1n }]),
+    ).toBeUndefined();
+  });
+});
+
+describe("coreReadRowsFromArenaTimers", () => {
+  it("maps extended timers JSON into 23 core session rows", () => {
+    const rows = coreReadRowsFromArenaTimers({
+      read_block_number: "1",
+      block_timestamp_sec: "100",
+      last_buy_deadline_sec: "200",
+      timer_cap_sec: "86400",
+      arena_start_sec: "50",
+      paused: false,
+      total_doub_raised: "1000",
+      podium_deadlines_sec: ["0", "1", "2", "3"],
+      charm_price_wad: "1000000000000000000",
+      doub: DOUB,
+      referral_registry: REF,
+      buy_cooldown_sec: "300",
+      timer_extension_sec: "120",
+      time_arena_buy_router: BUY_ROUTER,
+      referral_cred_flat_wad: "5000000000000000000",
+    });
+    expect(rows).toBeDefined();
+    expect(rows).toHaveLength(ARENA_SESSION_CORE_ROW_COUNT);
+    expect(rows![7]?.result).toBe(DOUB);
+    expect(rows![8]?.result).toBe(REF);
+    expect(rows![15]?.result).toBe(BUY_ROUTER);
+  });
+
+  it("returns undefined when sale-head fields are missing", () => {
+    expect(
+      coreReadRowsFromArenaTimers({
+        read_block_number: "1",
+        block_timestamp_sec: "100",
+        last_buy_deadline_sec: "200",
+        timer_cap_sec: "86400",
+        arena_start_sec: "50",
+        paused: false,
+        total_doub_raised: "0",
+        podium_deadlines_sec: ["0", "1", "2", "3"],
+      }),
     ).toBeUndefined();
   });
 });

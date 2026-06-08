@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { indexerBaseUrl } from "@/lib/addresses";
 import {
   fetchLegacyArenaSaleState,
+  fetchArenaTimers,
   type ArenaSaleState,
 } from "@/lib/indexerApi";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/indexerConnectivity";
 
 export const ARENA_SALE_STATE_QUERY_KEY = ["arena-sale-state"] as const;
+export const ARENA_TIMERS_QUERY_KEY = ["arena-timers"] as const;
 
 /** Wagmi multicall row shape shared by Simple and Arena sale-state mappers. */
 export type ContractReadRow = {
@@ -143,12 +145,33 @@ export function arenaWarbowPolicyRowsFromSaleState(
   ];
 }
 
-export function useArenaSaleStateQuery(tc: `0x${string}` | undefined) {
+export function useArenaSaleStateQuery(
+  tc: `0x${string}` | undefined,
+  options?: { enabled?: boolean },
+) {
   const indexerOn = Boolean(indexerBaseUrl());
+  const extraEnabled = options?.enabled ?? true;
   return useQuery({
     queryKey: ARENA_SALE_STATE_QUERY_KEY,
     queryFn: async () => {
       const body = await fetchLegacyArenaSaleState();
+      reportIndexerFetchAttempt(body != null);
+      return body;
+    },
+    enabled: indexerOn && Boolean(tc) && extraEnabled,
+    staleTime: 0,
+    refetchInterval: () => getIndexerBackoffPollMs(2000),
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Indexer head poll shared by hero timer, timer chips, and Arena v2 sale session ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+export function useArenaTimersQuery(tc: `0x${string}` | undefined) {
+  const indexerOn = Boolean(indexerBaseUrl());
+  return useQuery({
+    queryKey: ARENA_TIMERS_QUERY_KEY,
+    queryFn: async () => {
+      const body = await fetchArenaTimers();
       reportIndexerFetchAttempt(body != null);
       return body;
     },

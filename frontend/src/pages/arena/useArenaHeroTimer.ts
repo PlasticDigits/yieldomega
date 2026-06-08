@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePublicClient } from "wagmi";
 import { fetchLegacyArenaChainTimer, type ArenaChainTimer } from "@/lib/indexerApi";
 import { indexerBaseUrl } from "@/lib/addresses";
-import { timeArenaReadAbi } from "@/lib/abis";
-import { isTimeArenaV2 } from "@/pages/arena/arenaV2SaleSessionBridge";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 
 export type HeroTimerState = {
@@ -62,13 +59,13 @@ export type UseArenaHeroTimerResult = {
 };
 
 /**
- * Time Arena hero countdown from indexer `/v1/arena/chain-timer`.
+ * Time Arena hero countdown from indexer `GET /v1/arena/timers`.
  * Wall-vs-chain skew is fixed on first load and on `refresh()`; polls only update deadline / display fields so the skew does not drift tick-to-tick.
  *
+ * Indexer-first ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)): no browser RPC backfill when the indexer is unset or failing.
  * Poll cadence backs off when the shared indexer health streak is open ([issue #96](https://gitlab.com/PlasticDigits/yieldomega/-/issues/96)).
  */
 export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): UseArenaHeroTimerResult {
-  const publicClient = usePublicClient();
   const [heroTimer, setHeroTimer] = useState<HeroTimerState | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState<number | undefined>(undefined);
@@ -101,7 +98,9 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
 
   const loadSnapshot = useCallback(
     async (resetSkew: boolean) => {
-      if (!timeArenaAddress) return;
+      if (!timeArenaAddress || !indexerBaseUrl()) {
+        return;
+      }
       if (resetSkew) setIsBusy(true);
       try {
         const fetchedAtSec = Math.floor(Date.now() / 1000);
@@ -113,37 +112,8 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
             base = fromIdx;
           }
         }
-        if (!base && isTimeArenaV2(timeArenaAddress) && publicClient) {
-          const [saleStart, deadline, timerCap, block] = await Promise.all([
-            publicClient.readContract({
-              address: timeArenaAddress,
-              abi: timeArenaReadAbi,
-              functionName: "arenaStart",
-            }),
-            publicClient.readContract({
-              address: timeArenaAddress,
-              abi: timeArenaReadAbi,
-              functionName: "deadline",
-            }),
-            publicClient.readContract({
-              address: timeArenaAddress,
-              abi: timeArenaReadAbi,
-              functionName: "timerCapSec",
-            }),
-            publicClient.getBlock(),
-          ]);
-          base = {
-            saleStartSec: Number(saleStart),
-            deadlineSec: Number(deadline),
-            blockTimestampSec: Number(block.timestamp),
-            timerCapSec: Number(timerCap),
-            readBlockNumber: block.number,
-          };
-        }
         const ok = Boolean(base && isFiniteHeroBase(base));
-        if (indexerBaseUrl()) {
-          reportIndexerFetchAttempt(ok);
-        }
+        reportIndexerFetchAttempt(ok);
         if (!ok || !base) {
           return;
         }
@@ -154,14 +124,12 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
 
         setHeroTimer({ ...base, fetchedAtSec });
       } catch {
-        if (indexerBaseUrl()) {
-          reportIndexerFetchAttempt(false);
-        }
+        reportIndexerFetchAttempt(false);
       } finally {
         if (resetSkew) setIsBusy(false);
       }
     },
-    [timeArenaAddress, publicClient],
+    [timeArenaAddress],
   );
 
   const refresh = useCallback(() => void loadSnapshot(true), [loadSnapshot]);
@@ -177,7 +145,7 @@ export function useArenaHeroTimer(timeArenaAddress: `0x${string}` | undefined): 
   }, [loadSnapshot]);
 
   useEffect(() => {
-    if (!timeArenaAddress) {
+    if (!timeArenaAddress || !indexerBaseUrl()) {
       setHeroTimer(null);
       skewWallMinusChainRef.current = null;
       return;

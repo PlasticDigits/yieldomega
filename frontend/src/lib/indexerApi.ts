@@ -217,6 +217,8 @@ export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null
   if (!t) {
     return null;
   }
+  const doub = t.doub ?? ZERO_ADDR;
+  const priceWad = t.charm_price_wad ?? ZERO_DEC;
   return {
     read_block_number: t.read_block_number,
     block_timestamp_sec: t.block_timestamp_sec,
@@ -224,27 +226,27 @@ export async function fetchLegacyArenaSaleState(): Promise<ArenaSaleState | null
     sale_start_sec: t.arena_start_sec,
     deadline_sec: t.last_buy_deadline_sec,
     ended: false,
-    timer_extension_sec: ZERO_DEC,
+    timer_extension_sec: t.timer_extension_sec ?? ZERO_DEC,
     timer_cap_sec: t.timer_cap_sec,
-    buy_cooldown_sec: ZERO_DEC,
+    buy_cooldown_sec: t.buy_cooldown_sec ?? ZERO_DEC,
     current_min_buy_amount: ZERO_DEC,
     current_max_buy_amount: ZERO_DEC,
     current_charm_bounds_min_wad: ZERO_DEC,
     current_charm_bounds_max_wad: ZERO_DEC,
-    current_price_per_charm_wad: ZERO_DEC,
+    current_price_per_charm_wad: priceWad,
     charm_price: ZERO_ADDR,
     total_raised: t.total_doub_raised,
     total_charm_weight: ZERO_DEC,
     total_tokens_for_sale: ZERO_DEC,
     initial_min_buy: ZERO_DEC,
     growth_rate_wad: ZERO_DEC,
-    accepted_asset: ZERO_ADDR,
-    referral_registry: ZERO_ADDR,
-    launched_token: ZERO_ADDR,
+    accepted_asset: doub,
+    referral_registry: t.referral_registry ?? ZERO_ADDR,
+    launched_token: doub,
     buy_fee_routing_enabled: !t.paused,
     charm_redemption_enabled: false,
     reserve_podium_payouts_enabled: false,
-    time_curve_buy_router: ZERO_ADDR,
+    time_curve_buy_router: t.time_arena_buy_router ?? ZERO_ADDR,
     podium_pool: ZERO_ADDR,
     doub_presale_vesting: ZERO_ADDR,
     referral_each_bps: ZERO_DEC,
@@ -770,6 +772,14 @@ export type ArenaTimersResponse = {
   paused: boolean;
   total_doub_raised: string;
   podium_deadlines_sec: string[];
+  /** Arena v2 buy-hub head fields (schema ≥ 2.6.0 · [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+  charm_price_wad?: string;
+  doub?: string;
+  referral_registry?: string;
+  buy_cooldown_sec?: string;
+  timer_extension_sec?: string;
+  time_arena_buy_router?: string;
+  referral_cred_flat_wad?: string;
 };
 
 export type ArenaWalletStats = {

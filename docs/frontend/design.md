@@ -16,7 +16,7 @@
   - **Decision row** — live CHARM price in DOUB, 0.99–10 CHARM buy range, and DOUB-buy CRED yield.
   - **Secondary podium timers** — [`ArenaTimerChips`](../../frontend/src/pages/arena/ArenaTimerChips.tsx) in the operations rail (Time Booster · Defended Streak · WarBow).
   - **Buy hub** — DOUB-primary toggle plus ETH / USDM / Play CRED paths ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)).
-  - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums` or RPC).
+  - **Four podiums** — [`ArenaSimplePodiumSection`](../../frontend/src/pages/arena/ArenaSimplePodiumSection.tsx) (epoch id + live rankings via `GET /v1/arena/podiums`; indexer-first [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
   - **CHARM + Play CRED** — [`ArenaCharmCredCard`](../../frontend/src/pages/arena/ArenaCharmCredCard.tsx) (epoch CHARM, accruing + claimable CRED; **`claimCred(endedEpoch)`**).
   - **WarBow PvP** — [`ArenaWarbowHeroPanel`](../../frontend/src/pages/arena/ArenaWarbowHeroPanel.tsx) (steal / guard / revenge with DOUB cost pills).
   - **`/arena/protocol`** — operator AUDIT view via [`ArenaProtocolPage`](../../frontend/src/pages/arena/ArenaProtocolPage.tsx) (`TimeArena`, vault reads, live buy ticker, gated donate-pools sponsorship action).
