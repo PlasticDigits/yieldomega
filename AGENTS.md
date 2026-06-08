@@ -129,7 +129,7 @@ Use the **smallest** check that proves your change. Do **not** require Docker, P
 | Scripts touching **Anvil deploy**, **`KEY_EVM_*`**, **dev wallet seeding**, or **`anvil_deploy_dev.sh`** | `bash scripts/verify-evm-dev-wallet-seed-anvil.sh` | Foundry only: fresh Anvil → `DeployDev` → seed `KEY_EVM_1..3` (ETH + DOUB + CRED + mock CL8Y). No Docker. |
 | Contract / deploy script changes (broader) | `cd contracts && forge test` | Skip gitignored `doub.csv` fork tests if missing. |
 | Indexer changes | `cd indexer && cargo clippy --all-targets -- -D warnings && cargo test` | Arena buys + wallet profile: `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |
-| Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | |
+| Frontend changes | `cd frontend && npm run typecheck && npm run lint && npm test` | Arena display: **`INV-FRONTEND-301-INDEXER-FIRST-DISPLAY`** — no browser RPC mirrors for podiums/timers/sale head when `VITE_INDEXER_URL` set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)); `indexerFirstDisplay.test.ts` |
 | Browser E2E / Playwright | `bash scripts/e2e-anvil.sh` | Needs Anvil stack or script-managed Anvil; see [`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md). |
 | Full product stack (indexer ingest, `/arena` UI) | `bash scripts/start-qa-local-full-stack.sh …` | Native or Docker Postgres + Rust + optional Vite — only when acceptance criteria need indexer/UI. |
 | **GitLab merge requests** (Cloud agents) | `bash scripts/glab-mr-create.sh --title "…"` | Uses **`GITLAB_TOKEN`** + **`glab api projects/:id/merge_requests`** — not the Cursor platform/GitHub PR tool or high-level `glab mr create`. |

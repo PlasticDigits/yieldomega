@@ -13,6 +13,17 @@ This document describes **Playwright E2E tests that exercise the frontend agains
 - **Regression of the dapp stack**: static build + `vite preview` + browser hitting **real JSON-RPC** reads (`wagmi` / viem) against contracts you just deployed.
 - **Vanilla EVM semantics**: Foundry’s Anvil implements a standard EVM execution model for local development.
 
+<a id="indexer-first-vs-minimal-e2e-gitlab-301"></a>
+
+### Indexer-first vs minimal E2E ([GitLab #301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301))
+
+| Mode | Indexer | Arena display | Typical script |
+|------|---------|---------------|----------------|
+| **Minimal** | Omitted (`VITE_INDEXER_URL` unset) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` (mock wallet + contract writes still PASS) |
+| **Full stack** | Running + URL in `frontend/.env.local` | Live podiums, timers, buy hub from `GET /v1/arena/*` | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
+
+Production requires **`VITE_INDEXER_URL`**. E2E minimal mode documents the degraded path; it is not a substitute for full-stack Arena display QA. Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301).
+
 ## What this is **not** for
 
 Anvil E2E does **not** validate **MegaEVM** execution, **multidimensional gas** (compute vs storage), intrinsic gas floors, or production RPC behavior. Those require **MegaETH testnet** (or mainnet) checks and RPC-native `eth_estimateGas`. See [research/megaeth.md](../research/megaeth.md) and [contracts/README.md](../../contracts/README.md).

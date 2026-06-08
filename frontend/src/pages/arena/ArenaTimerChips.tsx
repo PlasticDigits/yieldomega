@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useQuery } from "@tanstack/react-query";
-import { useReadContracts } from "wagmi";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
-import { fetchArenaTimers } from "@/lib/indexerApi";
-import { addresses, indexerBaseUrl } from "@/lib/addresses";
-import { timeArenaReadAbi } from "@/lib/abis";
+import { addresses } from "@/lib/addresses";
 import {
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
   type ArenaFeatureKey,
 } from "@/lib/arenaProgression";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
+import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
 
 /** Secondary podium timers beside the Last Buy hero (#256). Contract category indices per arena-v2.md. */
 const SECONDARY_PODIUM_CHIPS = [
@@ -27,46 +24,17 @@ type Props = {
 
 export function ArenaTimerChips({ playerLevel, onFeatureHelp }: Props) {
   const arena = addresses.timeArena;
-  const indexerOn = Boolean(indexerBaseUrl());
 
-  const { data: indexerData } = useQuery({
-    queryKey: ["arena-timers", indexerBaseUrl()],
-    queryFn: fetchArenaTimers,
-    enabled: indexerOn,
-    refetchInterval: 5_000,
-  });
+  const { data: indexerData } = useArenaTimersQuery(arena ?? undefined);
 
-  const { data: rpcRows } = useReadContracts({
-    contracts: arena
-      ? [
-          { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [1] },
-          { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [2] },
-          { address: arena, abi: timeArenaReadAbi, functionName: "podiumDeadline", args: [3] },
-        ]
-      : [],
-    query: { enabled: Boolean(arena) && !indexerOn },
-  });
-
-  const data = indexerData ?? (() => {
-    if (!rpcRows?.length) return null;
-    const podium = SECONDARY_PODIUM_CHIPS.map((_chip, i) => {
-      const row = rpcRows[i];
-      return row?.status === "success" ? Number(row.result as bigint) : undefined;
-    });
-    if (podium.every((d) => d === undefined)) return null;
-    return {
-      block_timestamp_sec: String(Math.floor(Date.now() / 1000)),
-      podium_deadlines_sec: podium.map((d) => String(d ?? 0)),
-    };
-  })();
-
+  const data = indexerData ?? null;
   const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
   const deadlines = data?.podium_deadlines_sec ?? [];
 
   return (
     <div className="arena-timer-chips" data-testid="arena-timer-chips" aria-label="Podium timers">
-      {SECONDARY_PODIUM_CHIPS.map((chip, i) => {
-        const idx = indexerOn ? chip.contractIndex : i;
+      {SECONDARY_PODIUM_CHIPS.map((chip) => {
+        const idx = chip.contractIndex;
         const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
         const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
         const unlocked = playerLevel !== undefined && isFeatureUnlocked(playerLevel, chip.feature);

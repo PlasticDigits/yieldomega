@@ -15,4 +15,10 @@ describe("ArenaTimerChips", () => {
     expect(src).toContain("contractIndex: 2");
     expect(src).toContain("contractIndex: 3");
   });
+
+  it("does not fall back to wagmi podiumDeadline reads (indexer-first #301)", () => {
+    const src = readFileSync(resolve(__dirname, "ArenaTimerChips.tsx"), "utf8");
+    expect(src).not.toContain("useReadContracts");
+    expect(src).toContain("useArenaTimersQuery");
+  });
 });

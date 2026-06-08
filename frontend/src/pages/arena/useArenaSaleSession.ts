@@ -68,6 +68,7 @@ import { useArenaPlayCred } from "@/hooks/useArenaPlayCred";
 import {
   arenaV2CoreContracts,
   arenaV2UserContracts,
+  coreReadRowsFromArenaTimers,
   isTimeArenaV2,
   mapArenaV2CoreRows,
   mapArenaV2UserRows,
@@ -76,6 +77,7 @@ import { useArenaHeroTimer } from "@/pages/arena/useArenaHeroTimer";
 import {
   coreReadRowsFromSaleState,
   useArenaSaleStateQuery,
+  useArenaTimersQuery,
 } from "@/pages/arena/useArenaSaleState";
 import type { EnvelopeCurveParamsWire } from "@/lib/timeArenaBuyDisplay";
 import {
@@ -128,8 +130,8 @@ function isNonZeroHexAddress(v: unknown): boolean {
  *   `buy(charmWad, codeHash)` write paths used by the legacy/Arena page, or
  *   **`TimeArenaBuyRouter.buyViaKumbaya`** when `timeArenaBuyRouter` is set and pay mode is
  *   ETH/USDM (issue #66) — one tx replacing swap + `buy` while preserving sale semantics.
- * - With `VITE_INDEXER_URL`, global sale reads use `GET /v1/arena/timers`; RPC
- *   multicall remains the fallback when the indexer is unset ([#216](https://gitlab.com/PlasticDigits/yieldomega/-/issues/216)).
+ * - With `VITE_INDEXER_URL`, global sale reads use `GET /v1/arena/timers` (Arena v2) or
+ *   legacy sale-state mapping; browser RPC multicall is not used for display head ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
  * - **`submitBuy`** latches **`getAccount(wagmi)`** after submit-time sizing and
  *   aborts when the wallet **disconnects**, **switches accounts**, or **changes
  *   chains** mid-flow ([GitLab #144](https://gitlab.com/PlasticDigits/yieldomega/-/issues/144)).
@@ -314,7 +316,8 @@ export function useArenaSaleSession(
 
   const tc = timeArenaAddress;
   const isArenaV2 = Boolean(options?.forceArenaV2) || isTimeArenaV2(tc);
-  const indexerOn = Boolean(indexerBaseUrl()) && !isArenaV2;
+  const indexerOn = Boolean(indexerBaseUrl());
+  const timersQuery = useArenaTimersQuery(tc);
   const saleStateQuery = useArenaSaleStateQuery(tc);
 
   const coreContracts = tc ? [...arenaV2CoreContracts(tc)] : [];
@@ -332,7 +335,7 @@ export function useArenaSaleSession(
   } = useReadContracts({
     contracts: coreContracts as readonly unknown[],
     query: {
-      enabled: Boolean(tc) && !indexerOn,
+      enabled: false,
       refetchInterval: false,
       placeholderData: (previous) => previous,
     },
@@ -347,11 +350,17 @@ export function useArenaSaleSession(
   });
 
   const coreDataFromIndexer = useMemo((): readonly ContractReadRow[] | undefined => {
+    if (isArenaV2) {
+      if (!timersQuery.data) {
+        return undefined;
+      }
+      return coreReadRowsFromArenaTimers(timersQuery.data);
+    }
     if (!saleStateQuery.data) {
       return undefined;
     }
     return coreReadRowsFromSaleState(saleStateQuery.data);
-  }, [saleStateQuery.data]);
+  }, [isArenaV2, timersQuery.data, saleStateQuery.data]);
 
   const coreDataRpc = mapArenaV2CoreRows(
     coreDataRaw as readonly { status: string; result?: unknown }[] | undefined,
@@ -359,16 +368,32 @@ export function useArenaSaleSession(
   const coreData = (indexerOn ? coreDataFromIndexer : coreDataRpc) as
     | readonly ContractReadRow[]
     | undefined;
-  const coreReadsLoading = indexerOn ? saleStateQuery.isLoading : coreRpcLoading;
-  const isPending = indexerOn ? saleStateQuery.isLoading : coreRpcPending;
-  const isError = indexerOn ? saleStateQuery.isError : coreRpcError;
+  const coreReadsLoading = indexerOn
+    ? isArenaV2
+      ? timersQuery.isLoading
+      : saleStateQuery.isLoading
+    : coreRpcLoading;
+  const isPending = indexerOn
+    ? isArenaV2
+      ? timersQuery.isLoading
+      : saleStateQuery.isLoading
+    : coreRpcPending;
+  const isError = indexerOn
+    ? isArenaV2
+      ? timersQuery.isError
+      : saleStateQuery.isError
+    : coreRpcError;
   const refetchCore = useCallback(() => {
     if (indexerOn) {
-      void saleStateQuery.refetch();
+      if (isArenaV2) {
+        void timersQuery.refetch();
+      } else {
+        void saleStateQuery.refetch();
+      }
     } else {
       void refetchCoreRpc();
     }
-  }, [indexerOn, saleStateQuery, refetchCoreRpc]);
+  }, [indexerOn, isArenaV2, timersQuery, saleStateQuery, refetchCoreRpc]);
 
   const userContracts = tc && address ? [...arenaV2UserContracts(tc, address)] : [];
   const {
@@ -1317,7 +1342,7 @@ export function useArenaSaleSession(
       return;
     }
     if (!address || !tc || !acceptedAsset) {
-      setBuyError("Connect a wallet and wait for contract reads.");
+      setBuyError("Connect a wallet and wait for sale state (indexer or contract reads).");
       return;
     }
     if (arenaPaused === true) {

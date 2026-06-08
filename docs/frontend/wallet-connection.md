@@ -88,7 +88,7 @@ ETH/USDM paths run **`quoteExactOutput`**, wraps/approvals, **`exactOutput`** sw
 
 **CL8Y balance** loads once on connect; Time Arena Simple exposes an inline **↻** control that triggers a single **`balanceOf`** refetch ([`refetchWalletBalance`](../../frontend/src/pages/arena/useArenaSaleSession.ts)). **`nextBuyAllowedAt`** is not polled on a timer; after a successful buy the UI refreshes wallet reads and applies the cooldown wall from the receipt block.
 
-Arena timer and buy surfaces use **`GET /v1/arena/*`** when **`VITE_INDEXER_URL`** is set; see [arena-views.md](arena-views.md) and [invariants §260](../testing/invariants-and-business-logic.md#timearena-v2-gitlab-260).
+Arena timer and buy surfaces use **`GET /v1/arena/*`** when **`VITE_INDEXER_URL`** is set; see [arena-views §301](arena-views.md#indexer-first-display-gitlab-301) and [invariants §301](../testing/invariants-and-business-logic.md#frontend-indexer-first-display-gitlab-301). **Display** head reads (podiums, deadlines, sale head) must not fall back to browser RPC polling; wallet RPC remains for **writes** and **submit-time preflight** (allowance, balances, `nextBuyAllowedAt` at click).
 
 <a id="rpc-filter-capability-probe"></a>
 
