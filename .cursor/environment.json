@@ -1,5 +1,5 @@
 {
-  "install": "bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-postgres-native.sh && bash scripts/bootstrap-cloud-agent.sh && bash scripts/verify-cloud-vm-toolchain.sh || true",
+  "install": "bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-postgres-native.sh && bash scripts/bootstrap-cloud-agent.sh; bash scripts/verify-cloud-vm-toolchain.sh || true",
   "env": {
     "PATH": "/workspace/scripts/bin:/home/ubuntu/.local/bin:/home/ubuntu/.foundry/bin:/usr/local/cargo/bin:${PATH}",
     "GITLAB_REPO": "PlasticDigits/yieldomega"

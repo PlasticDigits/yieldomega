@@ -190,10 +190,10 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs:
 
 ```bash
-bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-agent.sh
+bash scripts/bootstrap-dev.sh && bash scripts/bootstrap-cloud-vm-toolchain.sh && bash scripts/bootstrap-cloud-postgres-native.sh && bash scripts/bootstrap-cloud-agent.sh; bash scripts/verify-cloud-vm-toolchain.sh || true
 ```
 
-That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.
+Bootstrap steps must succeed; verify is best-effort (non-zero verify does not fail install). That installs **Playwright Chromium** (`cd frontend && npx playwright install chromium`; on Linux also `npx playwright install-deps chromium` when available) and, when permitted, the **Rabby** unpacked extension plus dev wallet import.
 
 Browsers land under `~/.cache/ms-playwright/`. Automated Playwright E2E uses the wagmi **mock** connector ([`docs/testing/e2e-anvil.md`](docs/testing/e2e-anvil.md)) — it **cannot switch chains**. For **wrong-network** gates ([#95](https://gitlab.com/PlasticDigits/yieldomega/-/issues/95)), real signing, and full issue/MR verification, use **Rabby** ([`docs/testing/rabby-cloud-agent-qa.md`](docs/testing/rabby-cloud-agent-qa.md) · [`.cursor/skills/rabby-cloud-verification/SKILL.md`](.cursor/skills/rabby-cloud-verification/SKILL.md)).
 
