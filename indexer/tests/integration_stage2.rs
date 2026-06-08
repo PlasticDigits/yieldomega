@@ -168,6 +168,7 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
                 values: ["1".into(), "2".into(), "3".into()],
             }
         }),
+        active_pool_balance_doub_wad: ["700".into(), "0".into(), "1400".into(), "350".into()],
         sale_head: ArenaSaleHeadFields {
             charm_price_wad: "1000000000000000000".into(),
             doub: "0xdddddddddddddddddddddddddddddddddddddddd".into(),
@@ -570,6 +571,21 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
     assert_eq!(
         rows[3].get("category").and_then(|v| v.as_str()),
         Some("time_booster")
+    );
+
+    let prize0 = rows[0]
+        .get("prize_places_doub_wad")
+        .and_then(|v| v.as_array())
+        .expect("last buy prize places");
+    assert_eq!(prize0.len(), 3);
+    assert_eq!(prize0[0].as_str(), Some("400"));
+    assert_eq!(prize0[1].as_str(), Some("200"));
+    assert_eq!(prize0[2].as_str(), Some("100"));
+    assert_eq!(
+        rows[0]
+            .get("active_pool_balance_doub_wad")
+            .and_then(|v| v.as_str()),
+        Some("700")
     );
 }
 

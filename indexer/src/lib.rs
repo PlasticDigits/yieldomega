@@ -5,6 +5,7 @@
 pub mod api;
 pub mod api_arena;
 pub mod arena_podium_live;
+pub mod arena_podium_prize;
 pub mod arena_wallet_stats;
 pub mod chain_timer;
 pub mod config;

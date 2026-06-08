@@ -327,6 +327,10 @@ export type ArenaPodiumApiRow = {
   podium_prediction?: boolean;
   /** Last Buy row only: same sale-window semantics as `podium_prediction` (legacy field; schema ≥ 1.10.0). */
   last_buy_prediction?: boolean;
+  /** Head `PodiumVaults.activePoolBalance(category_index)` wad string (schema ≥ 2.8.0, [#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)). */
+  active_pool_balance_doub_wad?: string;
+  /** 1st/2nd/3rd DOUB wad preview from active pool × 4∶2∶1 (schema ≥ 2.8.0, [#302](https://gitlab.com/PlasticDigits/yieldomega/-/issues/302)). */
+  prize_places_doub_wad?: [string, string, string];
 };
 
 export type ArenaPodiumsResponse = {

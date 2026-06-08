@@ -16,6 +16,7 @@ use crate::arena_podium_live::{
     fetch_live_podium_conn, live_row_has_entrant, warbow_top3_from_scores_conn, LivePodiumRow,
     PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
 };
+use crate::arena_podium_prize;
 use crate::arena_wallet_stats;
 
 pub fn arena_routes() -> axum::Router<AppState> {
@@ -252,6 +253,10 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             (rpc.winners.to_vec(), rpc.values.to_vec(), false)
         };
 
+        let pool_wad = h.active_pool_balance_doub_wad[cat as usize].clone();
+        let pool_u256 = pool_wad.parse::<alloy_primitives::U256>().unwrap_or_default();
+        let prize_places = arena_podium_prize::prize_places_wad_strings(pool_u256);
+
         let mut row = json!({
             "category": label,
             "category_index": cat,
@@ -259,6 +264,8 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
             "winners": winners,
             "values": values,
             "podium_prediction": podium_prediction,
+            "active_pool_balance_doub_wad": pool_wad,
+            "prize_places_doub_wad": prize_places,
         });
         if cat == 0 {
             row["last_buy_prediction"] = json!(podium_prediction);

@@ -1418,7 +1418,7 @@ export function ArenaSimplePage({
       <ArenaSimplePodiumSection
         podiumRows={podiumReads.data}
         podiumLoading={podiumReads.isLoading}
-        podiumPayoutPreview={undefined}
+        podiumPayoutPreview={podiumReads.podiumPayoutPreview}
         decimals={session.decimals}
         address={session.walletAddress}
         playerLevel={playerLevelRaw}
