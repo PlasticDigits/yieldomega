@@ -41,12 +41,15 @@ bash scripts/e2e-anvil.sh
 scripts/deploy-megaeth-contracts.sh
 ```
 
-**Env (optional — defaults match [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)):**
+**Charm price (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)):** On MegaETH **4326**, [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) computes **`charmPriceWad`** from **Kumbaya V3 TWAP** (Sir **15-minute** window) on **DOUB/WETH (fee 100)** and **WETH/USDm (fee 3000)** unless **`ARENA_CHARM_PRICE_WAD`** is set. Dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. **DeployDev / Anvil** keep **`1000e18`**.
+
+**Env (optional — timer/cooldown defaults match [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)):**
 
 ```bash
 export RESERVE_ASSET_ADDRESS='0xfBAa45A537cF07dC768c469FfaC4e88208B0098D'  # CL8Y on 4326
 export DEPLOY_ADMIN_ADDRESS='0xCd4Eb82CFC16d5785b4f7E3bFC255E735e79F39c'
-export ARENA_CHARM_PRICE_WAD='1000000000000000000000'
+# Omit ARENA_CHARM_PRICE_WAD on mainnet to use Kumbaya TWAP (Sir 15m, #303). Rehearsal override:
+# export ARENA_CHARM_PRICE_WAD='1000000000000000000000'
 export ARENA_TIMER_EXTENSION_SEC='120'
 export ARENA_INITIAL_TIMER_SEC='86400'
 export ARENA_TIMER_CAP_SEC='345600'

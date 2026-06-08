@@ -11,12 +11,14 @@ import {ReferralRegistry} from "../src/ReferralRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UUPSDeployLib} from "./UUPSDeployLib.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
+import {ArenaCharmPriceTwap} from "../src/oracle/ArenaCharmPriceTwap.sol";
 
 /// @notice Production deploy for Arena v2 (MegaETH). Set env vars before broadcast.
 /// @dev No retired v1 NFT/treasury/presale/TimeCurve/FeeRouter — GitLab #259.
 ///      Per-podium timers: product table in `ArenaPodiumTimerConfig`; optional env overrides per category (#271).
+///      Initial `charmPriceWad` on chain 4326: Kumbaya TWAP (~$1/CHARM) unless `ARENA_CHARM_PRICE_WAD` set (#303).
 contract DeployProduction is Script {
-    uint256 internal constant DEFAULT_CHARM_PRICE_WAD = 1000e18;
+    uint256 internal constant CHAIN_MEGAETH_MAINNET = 4326;
     uint256 internal constant DEFAULT_BUY_COOLDOWN_SEC = 300;
     uint256 internal constant DEFAULT_REFERRAL_BURN_WAD = 1e18;
 
@@ -26,7 +28,7 @@ contract DeployProduction is Script {
         address admin = vm.envOr("DEPLOY_ADMIN_ADDRESS", deployer);
         address reserveAsset = vm.envAddress("RESERVE_ASSET_ADDRESS");
 
-        uint256 charmPriceWad = vm.envOr("ARENA_CHARM_PRICE_WAD", DEFAULT_CHARM_PRICE_WAD);
+        uint256 charmPriceWad = _resolveCharmPriceWad();
         uint256 buyCooldownSec = vm.envOr("ARENA_BUY_COOLDOWN_SEC", DEFAULT_BUY_COOLDOWN_SEC);
         uint256 referralBurnWad = vm.envOr("REFERRAL_REGISTRATION_BURN_WAD", DEFAULT_REFERRAL_BURN_WAD);
         bool startArenaNow = vm.envOr("START_ARENA", uint256(0)) == 1;
@@ -96,5 +98,28 @@ contract DeployProduction is Script {
         console.log("Arena started:", startArenaNow);
 
         vm.stopBroadcast();
+    }
+
+    function _resolveCharmPriceWad() internal returns (uint256 charmPriceWad) {
+        uint256 charmOverride = vm.envOr("ARENA_CHARM_PRICE_WAD", uint256(0));
+        if (charmOverride > 0) {
+            charmPriceWad = charmOverride;
+            console.log("charmPriceWad source: ARENA_CHARM_PRICE_WAD override");
+            console.log("charmPriceWad", charmPriceWad);
+            return charmPriceWad;
+        }
+
+        require(block.chainid == CHAIN_MEGAETH_MAINNET, "DeployProduction: set ARENA_CHARM_PRICE_WAD");
+        ArenaCharmPriceTwap.Result memory twap = ArenaCharmPriceTwap.computeMegaethMainnet();
+        charmPriceWad = twap.charmPriceWad;
+        console.log("charmPriceWad source: Kumbaya TWAP (Sir 15m)");
+        console.log("twapSeconds", twap.twapSeconds);
+        console.log("doubWethPool", twap.doubWethPool);
+        console.log("wethUsdmPool", twap.wethUsdmPool);
+        console.log("doubUsdWad", twap.doubUsdWad);
+        console.log("charmPriceWad", charmPriceWad);
+        console.log("minDoubSpendWad", twap.minDoubSpendWad);
+        console.log("maxDoubSpendWad", twap.maxDoubSpendWad);
+        console.log("twapBlockNumber", twap.blockNumber);
     }
 }
