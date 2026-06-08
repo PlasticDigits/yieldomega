@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-only
+# Cloud Agent glab wrapper — always uses GITLAB_TOKEN and explicit -R repo.
+# Prepended to PATH via .cursor/environment.json and cloud_agent_path.sh.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=scripts/lib/glab_cloud_agent.sh
+source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
+
+yieldomega_glab "$@"

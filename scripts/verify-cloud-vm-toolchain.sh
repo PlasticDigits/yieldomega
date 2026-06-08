@@ -15,6 +15,8 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
 # shellcheck source=scripts/lib/glab_cloud_agent.sh
 source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
+# shellcheck source=scripts/lib/git_cloud_agent.sh
+source "${ROOT}/scripts/lib/git_cloud_agent.sh"
 # shellcheck source=scripts/lib/playwright_cloud_agent.sh
 source "${ROOT}/scripts/lib/playwright_cloud_agent.sh"
 # shellcheck source=scripts/lib/cloud_agent_path.sh
@@ -58,20 +60,26 @@ else
   bad "docker required but broken (YIELDOMEGA_DOCKER_REQUIRED=1 or verify-docker-cloud-agent FAIL)"
 fi
 
-if command -v glab >/dev/null 2>&1; then
-  ok "glab $(glab version 2>/dev/null | head -1 || true)"
-  repo="$(yieldomega_glab_repo)"
-  ok "glab repo (${repo})"
-  token="$(yieldomega_glab_token)"
-  if [[ -n "${token}" ]]; then
-    yieldomega_glab_api_ok && ok "GITLAB_TOKEN API (PlasticDigits)" || bad "GITLAB_TOKEN API"
-    yieldomega_glab_repo_context_ok && ok "glab mr list" \
-      || bad "glab mr list failed (re-run bootstrap-cloud-vm-toolchain.sh)"
-  else
-    bad "GITLAB_TOKEN unset"
-  fi
+yieldomega_git_identity_ok && ok "git identity (${YIELDOMEGA_GIT_USER_NAME})" \
+  || bad "git identity wrong (run bootstrap-cloud-vm-toolchain.sh)"
+
+if yieldomega_glab_real_bin >/dev/null 2>&1; then
+  ok "glab binary ($($(yieldomega_glab_real_bin) version 2>/dev/null | head -1 || true))"
 else
-  bad "glab missing"
+  bad "glab binary missing (run bootstrap-cloud-vm-toolchain.sh)"
+fi
+
+command -v glab >/dev/null 2>&1 && ok "glab on PATH ($(command -v glab))" || bad "glab wrapper missing from PATH"
+
+repo="$(yieldomega_glab_repo)"
+ok "glab repo (${repo})"
+token="$(yieldomega_glab_token)"
+if [[ -n "${token}" ]]; then
+  yieldomega_glab_api_ok && ok "GITLAB_TOKEN API (PlasticDigits)" || bad "GITLAB_TOKEN API"
+  yieldomega_glab_repo_context_ok && ok "glab mr list (GITLAB_TOKEN)" \
+    || bad "glab mr list failed (re-run bootstrap-cloud-vm-toolchain.sh)"
+else
+  bad "GITLAB_TOKEN unset"
 fi
 
 command -v ss >/dev/null 2>&1 && ok "ss (iproute2)" || bad "ss missing (iproute2 — bootstrap-cloud-vm-toolchain.sh)"

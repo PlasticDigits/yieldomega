@@ -8,6 +8,31 @@
 : "${YIELDOMEGA_GITLAB_HOST:=gitlab.com}"
 : "${YIELDOMEGA_GITLAB_PROJECT:=PlasticDigits/yieldomega}"
 : "${YIELDOMEGA_GITLAB_REMOTE:=origin}"
+: "${YIELDOMEGA_CLOUD_AGENT_ENV:=${HOME}/.config/yieldomega/cloud-agent.env}"
+
+# Load GITLAB_TOKEN from persisted bootstrap env when the shell secret is missing.
+yieldomega_glab_load_persisted_token() {
+  if [[ -n "${GITLAB_TOKEN:-}" || -n "${GLAB_TOKEN:-}" ]]; then
+    return 0
+  fi
+  if [[ -f "${YIELDOMEGA_CLOUD_AGENT_ENV}" ]]; then
+    # shellcheck source=/dev/null
+    source "${YIELDOMEGA_CLOUD_AGENT_ENV}"
+  fi
+}
+
+# Export GITLAB_TOKEN + GLAB_TOKEN for every glab invocation (required on Cloud VMs).
+yieldomega_glab_export_token() {
+  yieldomega_glab_load_persisted_token
+  local token
+  token="$(yieldomega_glab_token)"
+  if [[ -z "${token}" ]]; then
+    echo "yieldomega_glab: GITLAB_TOKEN unset — set Cursor Cloud secret (PlasticDigits)." >&2
+    return 1
+  fi
+  export GITLAB_TOKEN="${token}"
+  export GLAB_TOKEN="${token}"
+}
 
 # Strip trailing slashes and a .git suffix (x-access-token remotes confuse glab mr create).
 yieldomega_glab_normalize_repo() {
@@ -22,6 +47,7 @@ yieldomega_glab_repo() {
 }
 
 yieldomega_glab_token() {
+  yieldomega_glab_load_persisted_token
   echo "${GITLAB_TOKEN:-${GLAB_TOKEN:-}}"
 }
 
@@ -34,35 +60,55 @@ yieldomega_glab_remote_origin_url() {
 
 # Export token + repo env and invoke glab with explicit -R (PlasticDigits account).
 yieldomega_glab() {
-  local token repo
+  local token repo glab_bin
+  yieldomega_glab_export_token
   token="$(yieldomega_glab_token)"
   repo="$(yieldomega_glab_repo)"
-  if [[ -n "${token}" ]]; then
-    export GITLAB_TOKEN="${token}"
-    export GLAB_TOKEN="${token}"
-  fi
   export GITLAB_REPO="${repo}"
-  glab -R "${repo}" "$@"
+  glab_bin="$(yieldomega_glab_real_bin)"
+  GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" -R "${repo}" "$@"
+}
+
+# Resolve the system glab binary (not scripts/bin/glab wrapper).
+yieldomega_glab_real_bin() {
+  local path entry
+  for path in /usr/bin/glab /usr/local/bin/glab "${HOME}/.local/bin/glab-real"; do
+    if [[ -x "${path}" ]]; then
+      echo "${path}"
+      return 0
+    fi
+  done
+  IFS=':' read -r -a _path_parts <<<"${PATH}"
+  for entry in "${_path_parts[@]}"; do
+    [[ "${entry}" == *"/scripts/bin" ]] && continue
+    if [[ -x "${entry}/glab" && "${entry}/glab" != "${BASH_SOURCE[0]:-}" ]]; then
+      echo "${entry}/glab"
+      return 0
+    fi
+  done
+  command -v glab
 }
 
 yieldomega_configure_glab_auth() {
-  local token repo clean_url
+  local token repo clean_url glab_bin
+  yieldomega_glab_export_token || true
   token="$(yieldomega_glab_token)"
   repo="$(yieldomega_glab_repo)"
   clean_url="$(yieldomega_glab_remote_origin_url)"
-  command -v glab >/dev/null 2>&1 || return 0
-  glab config set --global host "${YIELDOMEGA_GITLAB_HOST}" 2>/dev/null || true
-  glab config set --global git_protocol https 2>/dev/null || true
-  glab config set --global remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
-    || glab config set remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
+  glab_bin="$(yieldomega_glab_real_bin 2>/dev/null || true)"
+  [[ -n "${glab_bin}" && -x "${glab_bin}" ]] || return 0
+  GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set --global host "${YIELDOMEGA_GITLAB_HOST}" 2>/dev/null || true
+  GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set --global git_protocol https 2>/dev/null || true
+  GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set --global remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
+    || GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set remote_alias "${YIELDOMEGA_GITLAB_REMOTE}" 2>/dev/null \
     || true
-  glab config set remote.origin_url "${clean_url}" 2>/dev/null || true
+  GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set remote.origin_url "${clean_url}" 2>/dev/null || true
   if [[ -n "${token}" ]]; then
-    glab config set --host "${YIELDOMEGA_GITLAB_HOST}" token "${token}" 2>/dev/null \
-      || glab config set token "${token}" 2>/dev/null \
+    GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set --host "${YIELDOMEGA_GITLAB_HOST}" token "${token}" 2>/dev/null \
+      || GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" config set token "${token}" 2>/dev/null \
       || true
-    glab auth login --hostname "${YIELDOMEGA_GITLAB_HOST}" --token "${token}" 2>/dev/null \
-      || glab auth status 2>/dev/null || true
+    GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" auth login --hostname "${YIELDOMEGA_GITLAB_HOST}" --token "${token}" 2>/dev/null \
+      || GLAB_TOKEN="${token}" GITLAB_TOKEN="${token}" "${glab_bin}" auth status 2>/dev/null || true
   fi
   if git rev-parse --git-dir >/dev/null 2>&1; then
     git config --local "remote.${YIELDOMEGA_GITLAB_REMOTE}.glab-resolved" base 2>/dev/null || true
@@ -70,9 +116,9 @@ yieldomega_configure_glab_auth() {
   fi
 }
 
-# Persist GITLAB_REPO for interactive shells (idempotent).
+# Persist GITLAB_REPO + GITLAB_TOKEN for interactive shells (idempotent).
 yieldomega_persist_glab_env() {
-  local env_file="${HOME}/.config/yieldomega/cloud-agent.env"
+  local env_file="${YIELDOMEGA_CLOUD_AGENT_ENV}"
   local repo token
   repo="$(yieldomega_glab_repo)"
   token="$(yieldomega_glab_token)"
@@ -81,7 +127,10 @@ yieldomega_persist_glab_env() {
     echo "# Yieldomega Cloud Agent — sourced by bootstrap-cloud-vm-toolchain.sh"
     echo "export GITLAB_REPO='${repo}'"
     echo "export YIELDOMEGA_GITLAB_PROJECT='${repo}'"
-    [[ -n "${token}" ]] && echo "export GITLAB_TOKEN='${token}'"
+    if [[ -n "${token}" ]]; then
+      echo "export GITLAB_TOKEN='${token}'"
+      echo "export GLAB_TOKEN='${token}'"
+    fi
   } >"${env_file}.tmp"
   if [[ ! -f "${env_file}" ]] || ! cmp -s "${env_file}" "${env_file}.tmp"; then
     mv "${env_file}.tmp" "${env_file}"
@@ -89,13 +138,83 @@ yieldomega_persist_glab_env() {
     rm -f "${env_file}.tmp"
   fi
   local marker='# yieldomega-cloud-agent-env'
-  if [[ -f "${HOME}/.bashrc" ]] && ! grep -qF "${marker}" "${HOME}/.bashrc" 2>/dev/null; then
-    {
-      echo ""
-      echo "${marker}"
-      echo "[[ -f ${env_file} ]] && source ${env_file}"
-    } >>"${HOME}/.bashrc"
+  for rc in "${HOME}/.bashrc" "${HOME}/.profile"; do
+    if [[ -f "${rc}" ]] && ! grep -qF "${marker}" "${rc}" 2>/dev/null; then
+      {
+        echo ""
+        echo "${marker}"
+        echo "[[ -f ${env_file} ]] && source ${env_file}"
+      } >>"${rc}"
+    fi
+  done
+}
+
+# Wait for apt/dpkg lock (Cloud VM install races are common).
+yieldomega_wait_for_apt_lock() {
+  local i
+  for i in $(seq 1 60); do
+    if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+      && ! fuser /var/lib/dpkg/lock >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "yieldomega_wait_for_apt_lock: timed out waiting for apt lock." >&2
+  return 1
+}
+
+# Install glab via .deb (apt) or tarball to ~/.local/bin/glab-real.
+yieldomega_install_glab() {
+  if yieldomega_glab_real_bin >/dev/null 2>&1; then
+    return 0
   fi
+  local need_sudo=0
+  [[ "$(id -u)" -eq 0 ]] || command -v sudo >/dev/null 2>&1 || need_sudo=1
+  if [[ "${need_sudo}" -eq 0 ]]; then
+    yieldomega_wait_for_apt_lock || true
+    local arch deb tmp run_as_root
+    arch="$(dpkg --print-architecture)"
+    tmp="$(mktemp -d)"
+    trap 'rm -rf "${tmp}"' RETURN
+    deb="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
+      | jq -r '.[0].assets.links[] | select(.name | test("\\.deb$")) | select(.name | contains("'"${arch}"'")) | .direct_asset_url' \
+      | head -1)"
+    if [[ -z "${deb}" || "${deb}" == "null" ]]; then
+      deb="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
+        | jq -r '.[0].assets.links[] | select(.name | test("glab_.*linux_amd64\\.deb$")) | .direct_asset_url' \
+        | head -1)"
+    fi
+    if [[ -n "${deb}" && "${deb}" != "null" ]]; then
+      curl -fsSL -o "${tmp}/glab.deb" "${deb}"
+      if [[ "$(id -u)" -eq 0 ]]; then
+        DEBIAN_FRONTEND=noninteractive apt-get install -y "${tmp}/glab.deb"
+      else
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${tmp}/glab.deb"
+      fi
+      yieldomega_glab_real_bin >/dev/null 2>&1 && return 0
+    fi
+  fi
+  # Fallback: user-local binary (no sudo).
+  local arch tar_url tmp
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64) arch="amd64" ;;
+    aarch64) arch="arm64" ;;
+  esac
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "${tmp}"' RETURN
+  tar_url="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
+    | jq -r '.[0].assets.links[] | select(.name | test("glab_.*linux_'"${arch}"'\\.tar\\.gz$")) | .direct_asset_url' \
+    | head -1)"
+  [[ -n "${tar_url}" && "${tar_url}" != "null" ]] || {
+    echo "yieldomega_install_glab: could not resolve glab release asset." >&2
+    return 1
+  }
+  curl -fsSL -o "${tmp}/glab.tar.gz" "${tar_url}"
+  tar -xzf "${tmp}/glab.tar.gz" -C "${tmp}"
+  mkdir -p "${HOME}/.local/bin"
+  install -m 0755 "${tmp}/bin/glab" "${HOME}/.local/bin/glab-real"
+  yieldomega_glab_real_bin >/dev/null 2>&1
 }
 
 yieldomega_glab_api_ok() {

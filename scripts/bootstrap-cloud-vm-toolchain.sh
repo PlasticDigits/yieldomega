@@ -25,6 +25,8 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 source "${ROOT}/scripts/lib/rabby_cloud_agent.sh"
 # shellcheck source=scripts/lib/glab_cloud_agent.sh
 source "${ROOT}/scripts/lib/glab_cloud_agent.sh"
+# shellcheck source=scripts/lib/git_cloud_agent.sh
+source "${ROOT}/scripts/lib/git_cloud_agent.sh"
 # shellcheck source=scripts/lib/cloud_agent_path.sh
 source "${ROOT}/scripts/lib/cloud_agent_path.sh"
 MIN_RUST_VERSION="1.85.0"
@@ -226,44 +228,28 @@ ensure_docker() {
 }
 
 install_glab() {
-  if command -v glab >/dev/null 2>&1; then
-    log "glab $(glab version 2>/dev/null | head -1 || true)"
+  if yieldomega_glab_real_bin >/dev/null 2>&1; then
+    log "glab $($(yieldomega_glab_real_bin) version 2>/dev/null | head -1 || true)"
     return 0
   fi
-  if ! need_sudo; then
-    echo "bootstrap-cloud-vm-toolchain: glab missing and no sudo to install." >&2
-    return 1
-  fi
   log "Installing glab from GitLab releases"
-  local arch deb tmp
-  arch="$(dpkg --print-architecture)"
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "${tmp}"' RETURN
-  deb="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
-    | jq -r '.[0].assets.links[] | select(.name | test("\\.deb$")) | select(.name | contains("'"${arch}"'")) | .direct_asset_url' \
-    | head -1)"
-  if [[ -z "${deb}" || "${deb}" == "null" ]]; then
-    deb="$(curl -fsSL "https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases" \
-      | jq -r '.[0].assets.links[] | select(.name | test("glab_.*linux_amd64\\.deb$")) | .direct_asset_url' \
-      | head -1)"
-  fi
-  [[ -n "${deb}" && "${deb}" != "null" ]] || {
-    echo "bootstrap-cloud-vm-toolchain: could not resolve glab .deb URL." >&2
+  yieldomega_install_glab || {
+    echo "bootstrap-cloud-vm-toolchain: glab install failed." >&2
     return 1
   }
-  curl -fsSL -o "${tmp}/glab.deb" "${deb}"
-  run_as_root DEBIAN_FRONTEND=noninteractive apt-get install -y "${tmp}/glab.deb"
-  log "glab $(glab version 2>/dev/null | head -1 || true)"
+  log "glab $($(yieldomega_glab_real_bin) version 2>/dev/null | head -1 || true)"
 }
 
 configure_glab() {
-  if ! command -v glab >/dev/null 2>&1; then
+  if ! yieldomega_glab_real_bin >/dev/null 2>&1; then
     return 0
   fi
   local token repo
+  yieldomega_persist_glab_env
+  yieldomega_glab_export_token || true
   token="$(yieldomega_glab_token)"
   repo="$(yieldomega_glab_repo)"
-  log "glab config: ${repo} (remote.origin_url + GITLAB_REPO)"
+  log "glab config: ${repo} (GITLAB_TOKEN + remote.origin_url)"
   yieldomega_configure_glab_auth
   yieldomega_persist_glab_env
   if [[ -n "${token}" ]]; then
@@ -285,6 +271,11 @@ configure_glab() {
   fi
 }
 
+configure_git_identity() {
+  log "git identity: ${YIELDOMEGA_GIT_USER_NAME} <${YIELDOMEGA_GIT_USER_EMAIL}>"
+  yieldomega_configure_git_identity
+}
+
 verify_xvfb() {
   if ! command -v xvfb-run >/dev/null 2>&1; then
     echo "bootstrap-cloud-vm-toolchain: xvfb-run missing (needed for headless Rabby import)." >&2
@@ -294,12 +285,15 @@ verify_xvfb() {
   log "xvfb-run OK"
 }
 
+yieldomega_prepend_cloud_toolchain_path
+configure_git_identity
 ensure_apt_packages
 ensure_rust
 ensure_foundry
 ensure_docker
 install_glab
 configure_glab
+yieldomega_persist_cloud_toolchain_path
 verify_xvfb
 
 ensure_rabby_extension() {
