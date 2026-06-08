@@ -93,6 +93,8 @@ git config core.hooksPath .githooks
 
 Pre-commit runs `gitleaks protect --staged` using [`.gitleaks.toml`](.gitleaks.toml). Allowlist only **verified** false positives there. If you stage changes under `frontend/`, the hook also runs `npm run typecheck` after `cd frontend && npm ci` (local `tsc` must exist in `frontend/node_modules`).
 
+Commit-msg strips **body** lines that contain an email address, the keyword `author` (word boundary, case-insensitive), or a `Co-authored-by:` trailer; the **subject** line is rejected instead of rewritten. Skip in an emergency: `YIELDOMEGA_SKIP_COMMIT_MSG_HOOK=1`. Tests: `bash scripts/test-commit-message-sanitize.sh`.
+
 ## Git ignore
 
 See [`.gitignore`](.gitignore) for Foundry, Rust, Node/Vite, env files, and other generated paths.

@@ -4,6 +4,18 @@
 
 Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.cursor/skills/yieldomega-guardrails/SKILL.md). Phased work: [`docs/agent-phases.md`](docs/agent-phases.md).
 
+### Commit messages (agents)
+
+**Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” / author credits.
+
+After clone, enable hooks (also strips violations if Cursor adds them anyway):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The **commit-msg** hook rejects subjects with emails/`author` and strips offending body lines ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303) hygiene). Do **not** bypass with `YIELDOMEGA_SKIP_COMMIT_MSG_HOOK` except a one-off human-directed emergency.
+
 ## Cursor Cloud specific instructions
 
 ### Bootstrap (dependencies only)

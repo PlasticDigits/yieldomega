@@ -1,0 +1,11 @@
+#!/bin/sh
+# Strip emails and the keyword "author" from commit message bodies; reject if
+# the subject line contains either. Install: git config core.hooksPath .githooks
+set -eu
+
+if [ "${YIELDOMEGA_SKIP_COMMIT_MSG_HOOK:-}" = "1" ]; then
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+exec python3 "${ROOT}/scripts/lib/sanitize_commit_message.py" --file "$1"
