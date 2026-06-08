@@ -69,10 +69,17 @@ async fn main() -> Result<()> {
         }
         s.parse::<Address>().ok()
     }) {
+        let podium_vaults = config.address_registry.as_ref().and_then(|r| {
+            let s = r.contracts.podium_vaults.trim();
+            if s.is_empty() {
+                return None;
+            }
+            s.parse::<Address>().ok()
+        });
         let rpc_urls = config.rpc_urls.clone();
         let cache = chain_timer_cache.clone();
         tokio::spawn(async move {
-            chain_timer::run_poll_loop(&rpc_urls, addr, cache, rpc_timeout).await;
+            chain_timer::run_poll_loop(&rpc_urls, addr, podium_vaults, cache, rpc_timeout).await;
         });
     } else {
         tracing::warn!(
