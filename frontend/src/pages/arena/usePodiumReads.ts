@@ -73,11 +73,11 @@ function buildPayoutPreviewFromIndexerRows(
     if (cat === undefined || cat < 0 || cat > 3 || !prizes || prizes.length < 3) {
       continue;
     }
-    preview[cat] = [prizes[0]!, prizes[1]!, prizes[2]!] as const;
+    preview[cat] = { places: [prizes[0]!, prizes[1]!, prizes[2]!] as const };
   }
   for (let cat = 0; cat < 4; cat += 1) {
     if (!preview[cat]) {
-      preview[cat] = ["0", "0", "0"] as const;
+      preview[cat] = { places: ["0", "0", "0"] as const };
     }
   }
   return preview;

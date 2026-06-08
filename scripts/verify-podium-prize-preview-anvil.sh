@@ -9,7 +9,7 @@ INDEXER_PORT="${INDEXER_PORT:-3102}"
 RPC="http://127.0.0.1:${PORT}"
 PG_URL="${DATABASE_URL:-postgres://yieldomega:password@127.0.0.1:5433/yieldomega_indexer}"
 DEPLOY_LOG="$(mktemp)"
-REGISTRY="${ROOT}/contracts/deployments/local-anvil-registry-prize302.json"
+REGISTRY="$(mktemp)"
 CHARM_WAD=1000000000000000000
 # UX order → onchain category index (Last Buy · WarBow · Defended · Time Booster)
 PODIUM_CATS=(0 3 2 1)
@@ -81,7 +81,7 @@ assert_prize_row() {
 }
 
 cleanup() {
-  rm -f "${DEPLOY_LOG}" /tmp/yieldomega_verify302_podiums.json
+  rm -f "${DEPLOY_LOG}" /tmp/yieldomega_verify302_podiums.json "${REGISTRY}"
   if [[ -n "${INDEXER_PID:-}" ]]; then kill "${INDEXER_PID}" 2>/dev/null || true; fi
   if [[ -n "${ANVIL_PID:-}" ]]; then kill "${ANVIL_PID}" 2>/dev/null || true; fi
 }

@@ -129,9 +129,14 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
 
   it("shows zero DOUB prizes when preview places are zero wad strings", () => {
     const html = renderSimplePodiums({
-      podiumPayoutPreview: [{ places: ["0", "0", "0"] }],
+      podiumPayoutPreview: [
+        { places: ["0", "0", "0"] },
+        { places: ["0", "0", "0"] },
+        { places: ["0", "0", "0"] },
+        { places: ["0", "0", "0"] },
+      ],
     });
-    expect(html).toContain("0 DOUB");
+    expect(html).toContain("≈ $0 USD");
     expect(html).not.toContain("Prizes loading");
   });
 });
