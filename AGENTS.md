@@ -11,17 +11,16 @@ Contributor guardrails: [`.cursor/skills/yieldomega-guardrails/SKILL.md`](.curso
 | Environment | Use |
 |-------------|-----|
 | **Local dev machine** | The developer’s normal `git config user.name` / `user.email` for that checkout |
-| **Cloud Agent VM** | The **GitLab user tied to `GITLAB_TOKEN`** (or the project’s designated dev/bot service account if explicitly configured for deploys — not a generic AI agent login) |
+| **Cloud Agent VM** | **`PlasticDigits`** / **`plasticdigits@protonmail.com`** (set globally by `bootstrap-cloud-vm-toolchain.sh`) |
 
-Before the first commit in a session, set identity explicitly when the VM default is wrong, then enable hooks:
+Bootstrap sets git identity and hooks automatically. Manual override only when debugging:
 
 ```bash
-git config user.name "Human Dev Name"
-git config user.email "<human dev email — per table above>"
-git config core.hooksPath .githooks
+bash scripts/bootstrap-cloud-vm-toolchain.sh   # sets PlasticDigits identity + glab + GITLAB_TOKEN
+git config core.hooksPath .githooks            # local repo hook path (also set by bootstrap)
 ```
 
-Use `git push` / `glab` with **`GITLAB_TOKEN`** for that human dev — not a separate AI-agent GitLab OAuth or bot credential. Never add `Co-authored-by` (or similar) trailers naming AI tools.
+Use **`glab`** (wrapper on `PATH` via `scripts/bin/glab`) and **`GITLAB_TOKEN`** (Cursor Cloud secret for PlasticDigits) for all GitLab CLI actions — not a separate AI-agent OAuth or bot credential. Never add `Co-authored-by` (or similar) trailers naming AI tools.
 
 **Message body — no emails or attribution.** **Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” credits.
 
@@ -76,7 +75,7 @@ Invariants: [`docs/testing/invariants-and-business-logic.md` §288](docs/testing
 | **Foundry** | Install via [foundryup](https://book.getfoundry.sh/getting-started/installation); binaries live under `~/.foundry/bin` (add to `PATH`). |
 | **Rust** | Indexer needs **Cargo ≥ 1.85** (edition 2024 deps). Cloud image may provide `/usr/local/cargo/env` — `source` it before `cargo` in `indexer/`. Ubuntu also needs **`libssl-dev`** and **`pkg-config`** for `openssl-sys`. |
 | **Docker** | **Optional** for most agent work ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)). Required only for `start-local-anvil-stack` / full QA stack (`yieldomega-pg`). [`scripts/bootstrap-cloud-vm-toolchain.sh`](scripts/bootstrap-cloud-vm-toolchain.sh) configures **`fuse-overlayfs`** ( **`vfs`** fallback), starts **`dockerd`**, verifies **`docker run hello-world` as `$USER`**, or writes `/tmp/yieldomega-docker-unavailable` + native Postgres hint. Verify: `bash scripts/verify-docker-cloud-agent.sh`. |
-| **glab** | Installed and configured by `bootstrap-cloud-vm-toolchain.sh` when Cursor secret **`GITLAB_TOKEN`** (PlasticDigits account) is set. Use **`glab`** for GitLab issues, MRs, and comments — **not** GitLab MCP or the GitHub PR tool. MR helper: `bash scripts/glab-mr-create.sh --title "…"`. Verify: `glab api "projects/PlasticDigits%2Fyieldomega"`. |
+| **glab** | Always on `PATH` (`scripts/bin/glab` wrapper + system binary). **`GITLAB_TOKEN`** (PlasticDigits Cursor secret) is exported at bootstrap and used for **every** `glab` call. Configure: `bootstrap-cloud-vm-toolchain.sh`. Use **`glab`** for issues, MRs, and comments — **not** GitLab MCP or GitHub PR tooling. MR helper: `bash scripts/glab-mr-create.sh --title "…"`. Verify: `bash scripts/verify-cloud-vm-toolchain.sh`. |
 | **ss** | From **`iproute2`** — used by [`scripts/start-local-anvil-stack.sh`](scripts/start-local-anvil-stack.sh) to detect Anvil/indexer ports. Bootstrap installs it; [`scripts/lib/tcp_port.sh`](scripts/lib/tcp_port.sh) falls back to `netstat` or a Python bind probe if missing. |
 | **Node** | `npm ci` in `frontend/` (lockfile: `package-lock.json`). |
 
