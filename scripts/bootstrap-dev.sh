@@ -29,6 +29,8 @@ git submodule update --init --recursive
 
 echo "==> Frontend (npm ci)"
 # --no-audit/--no-fund reduce install time and peak memory on Cloud Agent VMs.
+# Cap Node heap during install to reduce OOM risk alongside Playwright/Docker bootstrap.
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 (cd frontend && npm ci --no-audit --no-fund)
 
 echo "==> Bootstrap finished."

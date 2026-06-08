@@ -194,7 +194,7 @@ CI mapping: [`docs/testing/ci.md`](docs/testing/ci.md).
 
 ### Cloud agent bootstrap (Playwright + Rabby)
 
-On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs `bash scripts/bootstrap-cloud-install.sh` (all five bootstrap/verify scripts in order; verify is best-effort).
+On each Cloud Agent boot, [`.cursor/environment.json`](.cursor/environment.json) runs `bash scripts/bootstrap-cloud-install.sh` (dev + toolchain + Postgres are strict; Playwright/Rabby + verify are **best-effort** so browser OOM does not crash the pod). Docker bootstrap is skipped during install ([#288](https://gitlab.com/PlasticDigits/yieldomega/-/issues/288)); run `bash scripts/verify-docker-cloud-agent.sh` when you need containers.
 
 Do **not** prepend a hardcoded `export PATH="/workspace/scripts/bin:…"` before bootstrap — use `bash scripts/bootstrap-cloud-install.sh` or `yieldomega_prepend_cloud_toolchain_path` from [`scripts/lib/cloud_agent_path.sh`](scripts/lib/cloud_agent_path.sh) so `/usr/bin` stays on `PATH`.
 

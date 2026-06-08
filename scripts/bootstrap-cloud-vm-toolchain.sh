@@ -294,11 +294,17 @@ configure_git_identity
 ensure_apt_packages
 ensure_rust
 ensure_foundry
-ensure_docker
+if [[ "${YIELDOMEGA_CLOUD_INSTALL_SKIP_DOCKER:-0}" == "1" ]]; then
+  log "Docker bootstrap skipped (YIELDOMEGA_CLOUD_INSTALL_SKIP_DOCKER=1 — run verify-docker-cloud-agent.sh later)"
+else
+  ensure_docker
+fi
 install_glab
 configure_glab
 yieldomega_persist_cloud_toolchain_path
-verify_xvfb
+verify_xvfb || {
+  echo "bootstrap-cloud-vm-toolchain: xvfb-run check failed — Rabby automation may not run." >&2
+}
 
 ensure_rabby_extension() {
   if yieldomega_ensure_rabby_extension "${ROOT}"; then
@@ -311,8 +317,9 @@ ensure_rabby_extension() {
 }
 ensure_rabby_extension || true
 
-# Native Postgres for indexer QA when Docker yieldomega-pg is unavailable (GitLab #287).
-if [[ -x "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
+# Native Postgres (GitLab #287). bootstrap-cloud-install.sh runs this as its own step.
+if [[ "${YIELDOMEGA_CLOUD_INSTALL:-0}" != "1" ]] \
+  && [[ -x "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
   bash "${ROOT}/scripts/bootstrap-cloud-postgres-native.sh" || {
     echo "bootstrap-cloud-vm-toolchain: native Postgres bootstrap failed (see above)." >&2
   }
