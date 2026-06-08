@@ -30,7 +30,7 @@ function ReferralQuestStrip() {
 
 export function ReferralsPage() {
   return (
-    <section className="page page--referrals" data-testid="referrals-surface">
+    <section className="page page--referrals yga-secondary-page" data-testid="referrals-surface">
       <div className="placeholder-cutout-layer" aria-hidden="true">
         <CutoutDecoration
           className="placeholder-cutout placeholder-cutout--left cutout-decoration--float"

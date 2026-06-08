@@ -455,7 +455,7 @@ export function describeStealPreflight(
     return {
       tone: "muted",
       title: "Pick a rival",
-      detail: "Enter a victim address to compare BP, daily cap pressure, and pre-sign steal eligibility.",
+      detail: "Choose a target from the WarBow list to compare BP, daily cap pressure, and pre-sign steal eligibility.",
     };
   }
   if (sameAddress(viewer, victim)) {

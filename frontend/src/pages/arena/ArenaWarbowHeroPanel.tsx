@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { useMemo, useState } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
+import { PlayerIdentity } from "@/components/arena";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -16,10 +18,68 @@ type Props = {
   phase: SaleSessionPhase;
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  warbowTargets?: readonly WarbowTarget[];
 };
 
-export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Props) {
+export type WarbowTarget = {
+  address: `0x${string}`;
+  battlePoints?: string;
+  source: "podium" | "recent";
+  rank?: number;
+};
+
+type TargetFilter = "eligible" | "podium" | "recent" | "all";
+type TargetSort = "bp-desc" | "bp-asc" | "source";
+
+function parseBp(raw: string | undefined): bigint | undefined {
+  if (raw === undefined || raw.trim() === "") return undefined;
+  try {
+    return BigInt(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+function sameAddress(a: string | undefined, b: string | undefined): boolean {
+  return Boolean(a && b && a.toLowerCase() === b.toLowerCase());
+}
+
+function isEligibleTarget(target: WarbowTarget, viewerBattlePoints: string | undefined): boolean {
+  const viewer = parseBp(viewerBattlePoints);
+  const targetBp = parseBp(target.battlePoints);
+  if (viewer === undefined || targetBp === undefined || viewer === 0n) return false;
+  return targetBp >= viewer * 2n && targetBp <= viewer * 10n;
+}
+
+export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbowTargets = [] }: Props) {
   const w = useArenaWarbowHero(phase);
+  const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
+  const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
+  const selectedTarget = w.stealVictimInput.trim();
+  const visibleTargets = useMemo(() => {
+    const filtered = warbowTargets.filter((target) => {
+      if (sameAddress(target.address, w.stealVictimInput)) return true;
+      if (targetFilter === "all") return true;
+      if (targetFilter === "podium") return target.source === "podium";
+      if (targetFilter === "recent") return target.source === "recent";
+      return isEligibleTarget(target, w.viewerBattlePoints);
+    });
+    return [...filtered].sort((a, b) => {
+      if (targetSort === "source") {
+        const sourceDelta = (a.source === "podium" ? 0 : 1) - (b.source === "podium" ? 0 : 1);
+        if (sourceDelta !== 0) return sourceDelta;
+        return (a.rank ?? 99) - (b.rank ?? 99);
+      }
+      const aBp = parseBp(a.battlePoints);
+      const bBp = parseBp(b.battlePoints);
+      if (aBp === undefined && bBp === undefined) return (a.rank ?? 99) - (b.rank ?? 99);
+      if (aBp === undefined) return 1;
+      if (bBp === undefined) return -1;
+      if (aBp === bBp) return (a.rank ?? 99) - (b.rank ?? 99);
+      return targetSort === "bp-asc" ? (aBp < bBp ? -1 : 1) : (aBp > bBp ? -1 : 1);
+    });
+  }, [targetFilter, targetSort, warbowTargets, w.stealVictimInput, w.viewerBattlePoints]);
+
   if (!w.ready) return null;
 
   const stealCost = formatCompactFromRaw(BigInt(w.stealDoubWad), 18, { sigfigs: 4 });
@@ -79,25 +139,86 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Prop
             <span className="status-pill status-pill--warning" data-testid="warbow-hero-steal-cost">
               {stealCost} DOUB
             </span>
+            {onFeatureHelp ? (
+              <button
+                type="button"
+                className="warbow-hero-card__help"
+                aria-label="Open WarBow tutorial"
+                onClick={() => onFeatureHelp("warbow")}
+              >
+                ?
+              </button>
+            ) : null}
           </div>
-          <p className="muted">Drain 10% BP from a victim in the 2×–10× band (1% if guarded).</p>
+          <div className="warbow-target-toolbar" aria-label="WarBow target filters">
+            <label>
+              <span>Show</span>
+              <select value={targetFilter} onChange={(event) => setTargetFilter(event.target.value as TargetFilter)}>
+                <option value="eligible">Eligible</option>
+                <option value="podium">Podium</option>
+                <option value="recent">Recent</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select value={targetSort} onChange={(event) => setTargetSort(event.target.value as TargetSort)}>
+                <option value="bp-desc">BP high</option>
+                <option value="bp-asc">BP low</option>
+                <option value="source">Source</option>
+              </select>
+            </label>
+          </div>
+          {visibleTargets.length > 0 ? (
+            <div className="warbow-target-list" role="listbox" aria-label="WarBow steal targets">
+              {visibleTargets.map((target) => {
+                const selected = sameAddress(selectedTarget, target.address);
+                const eligible = isEligibleTarget(target, w.viewerBattlePoints);
+                const targetBp = parseBp(target.battlePoints);
+                return (
+                  <button
+                    key={`${target.source}-${target.address}`}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={[
+                      "warbow-target-row",
+                      selected ? "warbow-target-row--selected" : "",
+                    ].filter(Boolean).join(" ")}
+                    onClick={() => w.setStealVictimInput(target.address)}
+                    data-testid={`warbow-target-${target.address.toLowerCase()}`}
+                  >
+                    <span className="warbow-target-row__main">
+                      <PlayerIdentity
+                        address={target.address}
+                        tailHexDigits={6}
+                        size={18}
+                        className="warbow-target-row__identity"
+                      />
+                      <span className="warbow-target-row__meta">
+                        {target.source === "podium" && target.rank ? `#${target.rank} WarBow` : "Recent buyer"}
+                      </span>
+                    </span>
+                    <span className={eligible ? "warbow-target-row__bp warbow-target-row__bp--eligible" : "warbow-target-row__bp"}>
+                      {targetBp !== undefined
+                        ? `${formatLocaleInteger(targetBp)} BP`
+                        : "BP read on click"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <StatusMessage variant="muted">No indexed WarBow targets yet.</StatusMessage>
+          )}
           {w.isConnected && w.saleActive && (
             <ChainMismatchWriteBarrier>
-              <label className="form-label">
-                <span>Victim address</span>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="0x…"
-                  value={w.stealVictimInput}
-                  onChange={(e) => w.setStealVictimInput(e.target.value)}
-                  spellCheck={false}
-                  data-testid="warbow-hero-steal-victim"
-                />
-              </label>
               {w.stealVictimFormatError && (
                 <StatusMessage variant="error">{w.stealVictimFormatError}</StatusMessage>
               )}
+              <p className="warbow-target-selection">
+                Target: <strong>{w.stealVictim ? <PlayerIdentity address={w.stealVictim} tailHexDigits={6} size={16} /> : "Select a rival"}</strong>
+              </p>
               <label className="warbow-hero-actions__checkbox">
                 <input
                   type="checkbox"
@@ -110,7 +231,7 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Prop
               <button
                 type="button"
                 className="btn-secondary btn-secondary--critical"
-                disabled={!w.canPress}
+                disabled={!w.canPress || !w.stealVictim}
                 onClick={() => void w.runWarBowSteal()}
                 data-testid="warbow-hero-steal-submit"
               >
@@ -127,7 +248,7 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Prop
               {guardCost} DOUB
             </span>
           </div>
-          <p className="muted">6h shield — next steal against you drains 1% instead of 10%.</p>
+          <p className="muted">6h shield · 1% incoming drain.</p>
           {w.isConnected && w.saleActive && (
             <ChainMismatchWriteBarrier>
               <button
@@ -150,9 +271,7 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Prop
               {revengeCost} DOUB
             </span>
           </div>
-          <p className="muted">
-            One-shot counter-steal when indexed revenge windows are open. Enter stealer address:
-          </p>
+          <p className="muted">Counter the selected stealer window.</p>
           {w.isConnected && w.saleActive && (
             <ChainMismatchWriteBarrier>
               <button
@@ -175,7 +294,7 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp }: Prop
               0 DOUB
             </span>
           </div>
-          <p className="muted">Hold silence, then claim BP.</p>
+          <p className="muted">Claim after silence.</p>
         </article>
       </div>
 

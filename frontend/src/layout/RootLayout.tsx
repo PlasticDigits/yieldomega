@@ -72,8 +72,10 @@ export function RootLayout() {
   // podiums). The global footer's agent/operator readouts are useful elsewhere,
   // but they compete with the live buy decision when always visible.
   // See [`docs/frontend/arena-views.md`](../../docs/frontend/arena-views.md).
-  const showFooter = location.pathname !== "/arena";
-  const isArenaPlayRoute = location.pathname === "/arena" || location.pathname.startsWith("/arena/");
+  const isArenaPlayRoute =
+    location.pathname === "/" ||
+    location.pathname === "/arena" ||
+    location.pathname.startsWith("/arena/");
   const isReferralsRoute = location.pathname === "/referrals";
 
   const shellClassName = [
@@ -91,6 +93,9 @@ export function RootLayout() {
   ]
     .filter(Boolean)
     .join(" ");
+
+  const showFooter =
+    !isArenaPlayRoute || location.pathname.startsWith("/arena/protocol");
 
   return (
     <div className={shellClassName}>

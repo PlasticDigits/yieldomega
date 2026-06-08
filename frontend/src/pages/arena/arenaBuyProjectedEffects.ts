@@ -11,20 +11,16 @@ import {
   previewWarbowBuyEffects,
 } from "@/lib/timeArenaBuyPreview";
 import { isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
-import { formatUnits } from "viem";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
-/** Spend chip: negative fixed 3-decimal amount + asset label (GitLab #227). */
+/** Spend preview: negative compact amount + asset label (GitLab #227). */
 export function formatBuyProjectedSpendLine(
   spendWei: bigint,
   decimals: number,
   assetLabel: string,
 ): string {
-  const plain = formatUnits(spendWei, decimals);
-  const [whole, frac = ""] = plain.split(".");
-  const frac3 = frac.padEnd(3, "0").slice(0, 3);
-  return `-${whole}.${frac3} ${assetLabel}`;
+  return `-${formatBuyHubDerivedCompact(spendWei, decimals)} ${assetLabel}`;
 }
 
 export type BuildArenaBuyProjectedEffectLinesArgs = {
@@ -99,7 +95,7 @@ export function buildArenaBuyProjectedEffectLines(
   }
 
   if (secondsRemaining === undefined) {
-    items.push("Timer effect pending");
+    items.push("Timer pending");
   } else {
     const fx = previewWarbowBuyEffects({
       secondsRemaining,
@@ -136,15 +132,15 @@ export function buildArenaBuyProjectedEffectLines(
         walletAddress.toLowerCase() === flagOwnerAddr.toLowerCase(),
     );
     if (hasPendingFlag && iHoldPlantFlag) {
-      items.push("Refresh your pending WarBow flag (resets silence timer)");
+      items.push("Refresh flag");
     } else if (hasPendingFlag && flagOwnerAddr !== undefined) {
-      items.push(`Replace ${formatRivalWallet(flagOwnerAddr)}'s pending flag`);
+      items.push(`Replace flag ${formatRivalWallet(flagOwnerAddr)}`);
     } else {
-      items.push("Plant pending WarBow flag");
+      items.push("Plant flag");
     }
   }
 
-  items.push("Become Last Buyer");
+  items.push("Last Buyer");
 
   return items;
 }

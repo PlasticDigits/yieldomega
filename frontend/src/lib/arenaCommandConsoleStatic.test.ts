@@ -52,10 +52,12 @@ describe("Arena command-console production surface (GitLab #291)", () => {
 
   it("uses the cyberminimalist console CSS and character treatment", () => {
     expect(css).toContain("Arena production command console (GitLab #291)");
+    expect(css).toContain("yieldomega-glass-arena.css");
     expect(css).toContain(".arena-command-console__grid");
     expect(css).toContain(".arena-command-console .arena-simple__hub");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr)");
-    expect(arenaSimplePage).toContain("/art/cutouts/sniper-shark-cool-suit-headset.png");
+    expect(arenaSimplePage).toContain("glass-arena-console");
+    expect(arenaSimplePage).toContain("<EpochStatus");
   });
 
   it("uses cyberminimalist scene backplates instead of arcade JPGs (GitLab #297)", () => {

@@ -24,7 +24,7 @@ export function NotFoundPage() {
   const homePath = homeHubPath();
 
   return (
-    <main className="page page--not-found" data-testid="not-found-page" role="main">
+    <main className="page page--not-found yga-secondary-page" data-testid="not-found-page" role="main">
       <PageHero
         title="404"
         badgeLabel="Route miss"
@@ -45,7 +45,7 @@ export function NotFoundPage() {
           AUDIT
         </Link>
         <Link to={homePath} className="btn-secondary">
-          {homePath === "/" ? "Go home" : "Go to hub"}
+          Go to hub
         </Link>
         <Link to="/referrals" className="btn-secondary">
           Referrals
