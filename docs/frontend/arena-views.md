@@ -86,8 +86,11 @@ The shared primitives used by `/arena`, `/arena/protocol`, and `/referrals`
 must look native to the cyberminimalist glass system while preserving current
 behavior:
 
-- Modals: `WalletProfileModal`, buy detail, all-buys, and other `Modal` users
+- Modals: `WalletProfileModal`, `FeatureMechanicModal`, and other `Modal` users
   share dark tactical surfaces, compact headings, and secondary explorer links.
+  Live activity on `/arena/protocol` uses the inline `arena-live-buys-activity`
+  feed (not the legacy hero-strip `ArenaBuyModals` list/detail stack retired in
+  #291).
 - Address rows: use `AddressInline` blockie + last-six hex labels. Participant
   rows open wallet profiles where wired; contract/vault rows go to the explorer.
 - Chain gates: `ChainMismatchWriteBarrier` stays visually dominant over write
