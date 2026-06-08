@@ -60,8 +60,12 @@ else
   bad "docker required but broken (YIELDOMEGA_DOCKER_REQUIRED=1 or verify-docker-cloud-agent FAIL)"
 fi
 
-yieldomega_git_identity_ok && ok "git identity (${YIELDOMEGA_GIT_USER_NAME})" \
-  || bad "git identity wrong (run bootstrap-cloud-vm-toolchain.sh)"
+if yieldomega_git_identity_env_ok; then
+  yieldomega_git_identity_ok && ok "git identity (${GIT_USERNAME})" \
+    || bad "git identity wrong (run bootstrap-cloud-vm-toolchain.sh)"
+else
+  bad "GIT_USERNAME and GIT_EMAIL unset (set Cursor Cloud secrets)"
+fi
 
 if yieldomega_glab_real_bin >/dev/null 2>&1; then
   ok "glab binary ($($(yieldomega_glab_real_bin) version 2>/dev/null | head -1 || true))"

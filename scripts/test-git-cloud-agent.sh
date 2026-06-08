@@ -7,6 +7,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export GIT_USERNAME="PlasticDigits"
+export GIT_EMAIL="plasticdigits@protonmail.com"
 # shellcheck source=scripts/lib/git_cloud_agent.sh
 source "${ROOT}/scripts/lib/git_cloud_agent.sh"
 
@@ -21,10 +23,15 @@ assert_eq() {
   fi
 }
 
+yieldomega_git_identity_env_ok && echo "PASS  yieldomega_git_identity_env_ok" || {
+  echo "FAIL  yieldomega_git_identity_env_ok" >&2
+  fail=1
+}
+
 yieldomega_configure_git_identity
 
-assert_eq "$(git config --global user.name)" "${YIELDOMEGA_GIT_USER_NAME}" "global user.name"
-assert_eq "$(git config --global user.email)" "${YIELDOMEGA_GIT_USER_EMAIL}" "global user.email"
+assert_eq "$(git config --global user.name)" "${GIT_USERNAME}" "global user.name"
+assert_eq "$(git config --global user.email)" "${GIT_EMAIL}" "global user.email"
 yieldomega_git_identity_ok && echo "PASS  yieldomega_git_identity_ok" || {
   echo "FAIL  yieldomega_git_identity_ok" >&2
   fail=1
