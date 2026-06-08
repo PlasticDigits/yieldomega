@@ -4,6 +4,7 @@ import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import {
   CL8Y_TOKEN_LOGO,
   CRED_TOKEN_LOGO,
+  DOUB_TOKEN_LOGO,
   ETH_TOKEN_LOGO,
   USDM_TOKEN_LOGO,
 } from "@/lib/tokenMedia";
@@ -21,7 +22,7 @@ const CRED_OPTION: PayTokenOption = { value: "cred", label: "CRED", logo: CRED_T
 const DOUB_PRIMARY_OPTION: PayTokenOption = {
   value: "cl8y",
   label: "DOUB",
-  logo: CL8Y_TOKEN_LOGO,
+  logo: DOUB_TOKEN_LOGO,
 };
 
 /** Buy-panel pay tokens — CRED on Arena v2 mounts (#269); submit gated when `playCred` unset. */

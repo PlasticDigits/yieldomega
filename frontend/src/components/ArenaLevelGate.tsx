@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ReactNode } from "react";
+import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
   type ArenaFeatureKey,
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
-  lockedUntilLevelCopy,
 } from "@/lib/arenaProgression";
 
 type Props = {
@@ -50,20 +50,13 @@ export function ArenaLevelGate({
   }
 
   return (
-    <div
+    <LockedUntilLevel
+      requiredLevel={required}
       className={className ? `${className} arena-level-gate arena-level-gate--locked` : "arena-level-gate arena-level-gate--locked"}
-      data-testid={testId ?? `arena-level-gate-${feature}`}
-      data-locked-level={required}
+      testId={testId ?? `arena-level-gate-${feature}`}
+      detail="Buy CHARM to activate this mechanic."
     >
-      <div className="arena-level-gate__overlay" aria-hidden="true">
-        <span className="arena-level-gate__lock" aria-hidden="true">
-          🔒
-        </span>
-        <span className="arena-level-gate__copy">{lockedUntilLevelCopy(required)}</span>
-      </div>
-      <div className="arena-level-gate__content" aria-hidden="true">
-        {children}
-      </div>
-    </div>
+      {children}
+    </LockedUntilLevel>
   );
 }

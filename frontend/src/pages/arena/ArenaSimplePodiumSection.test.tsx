@@ -43,6 +43,13 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Prize podiums");
     expect(html).toContain("Last Buy");
     expect(html).toContain("WarBow");
+    const lastBuyPos = html.indexOf("Last Buy");
+    const timeBoosterPos = html.indexOf("Time Booster");
+    const defendedPos = html.indexOf("Defended Streak");
+    const warbowPos = html.indexOf("WarBow");
+    expect(lastBuyPos).toBeLessThan(timeBoosterPos);
+    expect(timeBoosterPos).toBeLessThan(defendedPos);
+    expect(defendedPos).toBeLessThan(warbowPos);
     expect(html).toContain('data-testid="arena-podium-epoch-0"');
     expect(html).toContain("Epoch");
     expect(html).toContain("<strong>12</strong>");
@@ -73,6 +80,17 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
   it("highlights placements that match the connected wallet", () => {
     const html = renderSimplePodiums({ address: ALICE });
     expect(html).toContain("ranking-list__item--you");
+  });
+
+  it("locks secondary podiums above the connected wallet level", () => {
+    const html = renderSimplePodiums({ address: ALICE, playerLevel: 1 });
+    expect(html).not.toContain('data-testid="arena-podium-lock-0"');
+    expect(html).toContain('data-testid="arena-podium-lock-1"');
+    expect(html).toContain('data-testid="arena-podium-lock-2"');
+    expect(html).toContain('data-testid="arena-podium-lock-3"');
+    expect(html).toContain("Locked until Level 4");
+    expect(html).toContain("Locked until Level 3");
+    expect(html).toContain("Locked until Level 2");
   });
 
   it("wires onOpenWalletProfile to podium winner addresses (#258)", () => {

@@ -1,5 +1,7 @@
 # Frontend design (Vite static)
 
+**YieldOmega Glass Arena** — canonical visual system: [`yieldomega-glass-arena.md`](./yieldomega-glass-arena.md). Index `/` is play-first Time Arena; `/home` is the brand hub.
+
 ## Goals
 
 - **Static site** built with **Vite**, deployable to **CDN or IPFS** without a trusted application server.
@@ -180,7 +182,7 @@ onchain, indexer, or wallet behavior:
   stay phrasing-safe where needed, use human-readable amounts/status only, and
   consume `--yo-*` glass tokens.
 
-Evidence: [`INV-FRONTEND-294-SHARED-PRIMITIVES`](../testing/invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · manual QA [§294](../testing/manual-qa-checklists.md#manual-qa-issue-294) · `SharedUxPrimitives.test.tsx`.
+Evidence: [`INV-FRONTEND-294-SHARED-PRIMITIVES`](../testing/invariants-and-business-logic.md#frontend-shared-primitives-gitlab-294) · manual QA [§294](../testing/manual-qa-checklists.md#manual-qa-issue-294) · `SharedUxPrimitives.test.tsx` · `e2e/arena.spec.ts` · `e2e/referrals-surface.spec.ts`.
 
 <a id="secondary-product-surfaces-gitlab-296"></a>
 

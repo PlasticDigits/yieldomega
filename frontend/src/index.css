@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;500;700;800&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap");
+@import "./styles/yieldomega-glass-arena.css";
 
 /* SPDX-License-Identifier: AGPL-3.0-only */
 
@@ -3554,6 +3555,23 @@ label:has(input[type="radio"]:disabled) {
   margin: 0 0 0.35rem;
 }
 
+.referrals-earnings-cred-line > span:first-child,
+.token-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.referrals-earnings-cred-line img,
+.referrals-empty-state__token,
+.token-amount img {
+  flex-shrink: 0;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0 0.45rem rgba(77, 231, 200, 0.24))
+    drop-shadow(0 0.08rem 0.18rem rgba(0, 0, 0, 0.32));
+}
+
 .referrals-panel--earnings .referrals-earnings-recorded-buys-line {
   margin: 0;
 }
@@ -5753,8 +5771,7 @@ code {
   filter: drop-shadow(1px 1px 0 var(--line));
 }
 
-.arena-buy-panel__checkout-head span,
-.arena-buy-projected-effects__title {
+.arena-buy-panel__checkout-head span {
   display: block;
   margin: 0;
   font-size: 0.72rem;
@@ -5882,53 +5899,6 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--arcade-green-900);
-}
-
-.arena-buy-projected-effects {
-  display: grid;
-  gap: 0.45rem;
-  padding: 0.62rem 0.68rem;
-  border: 2px solid rgba(11, 31, 20, 0.18);
-  border-radius: 0.85rem;
-  background: rgba(255, 255, 255, 0.62);
-}
-
-.arena-buy-projected-effects__head {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.arena-buy-projected-effects__head img {
-  width: 1.1rem;
-  height: 1.1rem;
-  image-rendering: pixelated;
-  filter: drop-shadow(1px 1px 0 var(--line));
-}
-
-.arena-buy-projected-effects ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.arena-buy-projected-effects li {
-  margin: 0;
-  padding: 0.26rem 0.48rem;
-  border: 2px solid rgba(11, 31, 20, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 248, 220, 0.8);
-  color: var(--arcade-green-900);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.arena-simple__buy-projected-effects {
-  margin-top: 0.55rem;
 }
 
 @media (max-width: 720px) {
@@ -8307,7 +8277,7 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .arena-simple__minmax:not(.arena-simple__minmax--rate-card) {
+  .arena-simple__minmax {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -8320,7 +8290,7 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .arena-simple__minmax:not(.arena-simple__minmax--rate-card) {
+  .arena-simple__minmax {
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
@@ -8359,6 +8329,7 @@ a.podium-address-explorer:hover .address-inline__label {
   --podium-panel-aurora-c: rgba(31, 184, 106, 0.48);
   --podium-panel-aurora-d: rgba(40, 165, 255, 0.36);
   margin-top: 0;
+  padding-right: 1.15rem;
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -8467,12 +8438,19 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-grid {
+  display: grid;
+  align-self: stretch;
   margin-top: 1rem;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  width: 100%;
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .arena-simple__podium-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   --podium-card-accent: var(--arcade-green);
   --podium-card-glow: rgba(31, 184, 106, 0.22);
   --podium-art-a: #fff3a8;
@@ -8647,18 +8625,34 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-simple__podium-card .ranking-list {
   gap: 0.48rem;
+  width: 100%;
 }
 
 .arena-simple__podium-card .ranking-list__item {
-  grid-template-columns: 2.8rem minmax(7.3rem, auto) minmax(0, 1fr);
-  gap: 0.52rem;
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: 2.65rem minmax(0, 1fr);
+  grid-template-areas:
+    "rank identity"
+    "prize prize"
+    "meta meta";
+  gap: 0.42rem 0.55rem;
   padding: 0.56rem 0.64rem;
   border-width: 2px;
   box-shadow: 2px 2px 0 rgba(11, 31, 20, 0.84);
-  align-items: start;
+  align-items: center;
+}
+
+.arena-simple__podium-card .ranking-list__item > strong {
+  grid-area: prize;
+  justify-self: stretch;
+  width: 100%;
+  min-width: 0;
 }
 
 .arena-simple__podium-card .ranking-list__rank {
+  grid-area: rank;
   position: relative;
   isolation: isolate;
   width: 2.65rem;
@@ -8712,18 +8706,13 @@ a.podium-address-explorer:hover .address-inline__label {
   height: 100%;
   object-fit: contain;
   transform-origin: 50% 76%;
-  animation: podium-trophy-float 3.9s ease-in-out infinite;
   transition:
     transform 180ms ease,
     filter 180ms ease;
 }
 
-.arena-simple__podium-card .ranking-list__item--second .ranking-list__rank img {
-  animation-delay: 0.28s;
-}
-
-.arena-simple__podium-card .ranking-list__item--third .ranking-list__rank img {
-  animation-delay: 0.54s;
+.arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
+  animation: podium-trophy-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35);
 }
 
 .arena-simple__podium-card .ranking-list__item:hover .ranking-list__rank img,
@@ -8732,8 +8721,13 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: saturate(1.14) brightness(1.06);
 }
 
+.arena-simple__podium-card .ranking-list__item > div:not(.ranking-list__meta) {
+  grid-area: identity;
+  min-width: 0;
+}
+
 .arena-simple__podium-card .ranking-list__item > .ranking-list__meta {
-  grid-column: 1 / -1;
+  grid-area: meta;
   justify-self: stretch;
   text-align: left;
   font-size: 0.68rem;
@@ -8741,7 +8735,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-card .ranking-list__item strong {
-  min-width: max-content;
+  display: block;
+  min-width: 0;
   padding: 0.26rem 0.48rem 0.22rem;
   border-radius: 0.9rem;
   background:
@@ -8758,18 +8753,28 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-prize {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 0.14rem;
+  width: 100%;
+  min-width: 0;
   font-family: "Bungee", cursive;
   white-space: nowrap;
 }
 
 .arena-simple__podium-prize-main {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 0.22rem;
+  min-width: 0;
+}
+
+.arena-simple__podium-prize-main > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arena-simple__podium-prize small {
@@ -8881,17 +8886,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__item {
-  animation: podium-rank-spark 0.72s ease-out;
-}
-
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__rank img {
-  animation:
-    podium-trophy-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35),
-    podium-trophy-float 3.9s ease-in-out 0.78s infinite;
-}
-
-.ranking-list--podium-motion[data-podium-burst] .ranking-list__rank::after {
+.arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after {
   animation: podium-trophy-burst 0.82s ease-out;
 }
 
@@ -8980,14 +8975,18 @@ a.podium-address-explorer:hover .address-inline__label {
     animation: none;
   }
 
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__item,
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__rank::after,
-  .ranking-list--podium-motion[data-podium-burst] .ranking-list__rank img {
+  .arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after,
+  .arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
     animation: none;
   }
 }
 
 @media (max-width: 720px) {
+  .arena-simple__podium-grid,
+  .arena-command-console .arena-simple__podium-grid {
+    grid-template-columns: 1fr;
+  }
+
   .arena-simple__podium-card-head {
     grid-template-columns: 3.1rem minmax(0, 1fr);
     gap: 0.55rem;
@@ -9009,7 +9008,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__podium-card .ranking-list__item {
-    grid-template-columns: 2.45rem minmax(6.75rem, auto) minmax(0, 1fr);
+    grid-template-columns: 2.45rem minmax(0, 1fr);
     gap: 0.42rem 0.5rem;
     padding: 0.5rem 0.52rem;
   }
@@ -9020,9 +9019,9 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__podium-card .ranking-list__item strong {
-    justify-self: start;
-    width: fit-content;
-    max-width: 100%;
+    justify-self: stretch;
+    width: 100%;
+    max-width: none;
     white-space: normal;
   }
 }
@@ -9591,29 +9590,10 @@ a.podium-address-explorer:hover .address-inline__label {
   font-variant-numeric: tabular-nums;
 }
 
-.arena-simple__buy-panel .arena-simple__buy-advanced > summary {
-  justify-content: center;
-  position: relative;
-  padding-inline: 2.85rem;
-}
-
-.arena-simple__buy-panel .arena-simple__buy-advanced > summary::after {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
 .arena-simple__buy-panel .section-heading h2 {
   margin: 0;
   color: var(--arcade-green-900);
   text-shadow: 2px 3px 0 rgba(255, 255, 255, 0.55);
-}
-
-/* Pay-asset toggles: top of Simple buy hub ADVANCED accordion during active sale (no H2). */
-.arena-simple__buy-panel .arena-simple__rate-paywith--buy-heading {
-  margin: 0;
-  padding-bottom: 0;
 }
 
 .arena-simple__connect {
@@ -9634,10 +9614,6 @@ a.podium-address-explorer:hover .address-inline__label {
   margin: 0.35rem 0;
 }
 
-.arena-simple__minmax-row {
-  margin: 0.5rem 0;
-}
-
 .arena-simple__minmax {
   display: inline-flex;
   align-items: center;
@@ -9649,45 +9625,12 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(255, 255, 255, 0.85);
 }
 
-/* Buy limits as flat supporting copy inside the Simple buy panel ADVANCED accordion.
-   Flat text — no pill chrome — so it reads as supporting copy. */
-.arena-simple__minmax--rate-card {
-  border: none;
-  background: none;
-  padding: 0;
-  margin: 0 0 0.35rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: rgba(60, 40, 0, 0.78);
-  border-radius: 0;
-  flex-wrap: wrap;
-  align-self: stretch;
-}
-
-.arena-simple__minmax--rate-card strong {
-  font-weight: 800;
-  color: var(--arcade-green-800, #166534);
-}
-
-/* Keep amount + min/max label visually tight; parent span uses flex gap for separation between pairs. */
-.arena-simple__minmax--rate-card .arena-simple__minmax-pair {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-}
-
-.arena-simple__minmax--rate-card .arena-simple__minmax-suffix {
-  margin-left: 0.04em;
-  font-weight: inherit;
-}
-
 .arena-simple__slider-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
   align-items: stretch;
-  /* Buy limits moved under ADVANCED; keep a little air before balance + preview margins. */
+  /* Keep a little air before balance + preview margins. */
   margin: 0.35rem 0 0.12rem;
 }
 
@@ -9704,7 +9647,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__amount-field {
-  font-family: monospace;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 1rem;
   width: 100%;
   min-width: 0;
@@ -9750,7 +9693,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border: 0;
   border-radius: 0.35rem;
   font: inherit;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 0.85rem;
   color: var(--text-main);
   background: transparent;
@@ -9845,7 +9788,7 @@ a.podium-address-explorer:hover .address-inline__label {
   cursor: not-allowed;
 }
 
-/* Inline pay-token balance: `YOUR CL8Y:` (caption) + larger sans value; `display:flex` on `.amount-triple` is block-level and breaks `<p>` flow (GitLab #9). */
+/* Inline pay-token balance: caption + larger sans value; `display:flex` on `.amount-triple` is block-level and breaks `<p>` flow (GitLab #9). */
 .arena-simple__pay-balance .amount-triple {
   display: inline-flex;
   flex-direction: column;
@@ -9919,6 +9862,32 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(60, 40, 0, 0.88);
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+.arena-simple__buy-preview-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.28rem 0.45rem;
+  margin: 0;
+  color: rgba(177, 213, 230, 0.88);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.72rem, 1.6vw, 0.9rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+}
+
+.arena-simple__buy-preview-item {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.arena-simple__buy-preview-item:not(:last-child)::after {
+  content: "·";
+  margin-left: 0.45rem;
+  color: rgba(177, 213, 230, 0.52);
 }
 
 .arena-simple__buy-preview-blocked-lede {
@@ -10156,7 +10125,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 /* CHARM glyph + "1 CHARM =" + hero digits + selected pay-token logo on one
-   wrapping flex line (`/tokens/charm.png` + `/tokens/cl8y.png`, etc.). */
+   wrapping flex line (`/tokens/charm.png` + `/tokens/doub.png`, etc.). */
 .arena-simple__rate-now-line {
   display: flex;
   flex-wrap: wrap;
@@ -10243,12 +10212,14 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.15rem;
   padding: 0.35rem;
   margin: 0;
-  border: 2px solid rgba(40, 90, 40, 0.45);
-  border-radius: 0.55rem;
-  background: rgba(255, 253, 246, 0.98);
+  border: 1px solid rgba(77, 231, 200, 0.26);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(77, 231, 200, 0.1), transparent 36%),
+    rgba(3, 14, 21, 0.98);
   box-shadow:
-    4px 4px 0 rgba(40, 90, 40, 0.25),
-    0 8px 24px rgba(0, 0, 0, 0.12);
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .arena-simple__rate-pay-picker-option {
@@ -10265,24 +10236,24 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(60, 40, 0, 0.88);
+  color: rgba(238, 248, 255, 0.82);
   cursor: pointer;
   text-align: left;
 }
 
 .arena-simple__rate-pay-picker-option:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(77, 231, 200, 0.1);
 }
 
 .arena-simple__rate-pay-picker-option--active {
-  background: rgba(241, 251, 233, 0.95);
-  color: var(--arcade-green-800, #166534);
+  background: rgba(232, 192, 74, 0.12);
+  color: #ffffff;
 }
 
 .arena-simple__rate-pay-picker-option img {
   flex-shrink: 0;
   object-fit: contain;
-  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.1));
+  filter: drop-shadow(0 0.08rem 0.18rem rgba(0, 0, 0, 0.34));
 }
 
 .arena-simple__rate-pay-picker-label {
@@ -10290,7 +10261,7 @@ a.podium-address-explorer:hover .address-inline__label {
   min-width: 0;
 }
 
-/* Pay-asset toggle on the live rate row (CL8Y / ETH / USDM). */
+/* Pay-asset toggle on the live rate row (DOUB / ETH / USDM / CRED). */
 .arena-simple__rate-paywith {
   display: flex;
   flex-wrap: wrap;
@@ -10882,19 +10853,43 @@ a.podium-address-explorer:hover .address-inline__label {
    Hover/active interactions are inherited from .btn-primary, with the #297
    motion pass keeping movement restrained. */
 .arena-simple__cta--arcade {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
-  font-family: "Bungee", "Fredoka", system-ui, sans-serif;
-  font-size: clamp(1.15rem, 2.3vw, 1.45rem);
-  letter-spacing: 0.06em;
+  gap: 0.75rem;
+  font-family: "IBM Plex Mono", "Bungee", ui-monospace, monospace;
+  font-size: clamp(1rem, 2vw, 1.32rem);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 1rem 1.6rem;
+  padding: 1rem 1.35rem;
   border-width: 1px;
-  border-radius: 0.95rem;
-  box-shadow: 0 0.85rem 1.7rem rgba(185, 255, 106, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border-radius: 0.78rem;
+  box-shadow:
+    0 0.85rem 1.7rem rgba(77, 231, 200, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
   text-shadow: none;
+}
+
+.arena-simple__cta--arcade::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent) -120% 0 / 42% 100% no-repeat,
+    radial-gradient(circle at 16% 0%, rgba(185, 255, 106, 0.2), transparent 34%),
+    radial-gradient(circle at 84% 100%, rgba(232, 192, 74, 0.18), transparent 38%);
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  transition: background-position 260ms ease, opacity 160ms ease;
+}
+
+.arena-simple__cta--arcade:hover:not(:disabled)::before {
+  background-position: 160% 0, 0 0, 0 0;
+  opacity: 1;
 }
 
 .arena-simple__cta--arcade:disabled {
@@ -10929,18 +10924,24 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__cta-glyph {
-  width: clamp(1.5rem, 3vw, 2rem);
-  height: clamp(1.5rem, 3vw, 2rem);
+  position: relative;
+  z-index: 1;
+  width: clamp(1.75rem, 3.4vw, 2.35rem);
+  height: clamp(1.75rem, 3.4vw, 2.35rem);
   object-fit: contain;
   flex-shrink: 0;
-  filter: drop-shadow(2px 2px 0 var(--line));
-  image-rendering: pixelated;
+  filter:
+    drop-shadow(0 0 0.55rem rgba(185, 255, 106, 0.3))
+    drop-shadow(0 0.14rem 0.24rem rgba(0, 0, 0, 0.42));
+  image-rendering: auto;
   /* Subtle wobble matches the rate-board glyph; ties the two CHARM coins
      together as the "currency you mint" through the panel. */
   animation: coin-wobble 3.6s ease-in-out infinite;
 }
 
 .arena-simple__cta-label {
+  position: relative;
+  z-index: 1;
   display: inline-block;
   line-height: 1.05;
 }
@@ -11817,12 +11818,103 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__rate-board {
-  border-color: rgba(185, 255, 106, 0.22);
-  background: rgba(185, 255, 106, 0.08);
+  position: relative;
+  overflow: hidden;
+  align-items: stretch;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 0.78rem;
+  background:
+    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 12% 0%, rgba(185, 255, 106, 0.18), transparent 36%),
+    radial-gradient(circle at 88% 100%, rgba(232, 192, 74, 0.14), transparent 40%),
+    rgba(3, 14, 21, 0.86);
+  background-size: 24px 24px, 24px 24px, auto, auto, auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0.75rem 1.7rem rgba(3, 14, 21, 0.28);
+}
+
+.arena-command-console .arena-simple__rate-board::before {
+  content: "";
+  position: absolute;
+  inset: 0.45rem;
+  pointer-events: none;
+  border: 1px solid rgba(185, 255, 106, 0.08);
+  border-radius: 0.52rem;
+}
+
+.arena-command-console .arena-simple__rate-now-line {
+  position: relative;
+  justify-content: center;
+  gap: 0.42rem 0.62rem;
+  min-height: 3.15rem;
+  padding: 0.42rem 0.6rem;
+  border: 1px solid rgba(185, 255, 106, 0.12);
+  border-radius: 0.52rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(185, 255, 106, 0.08), transparent 38%),
+    rgba(8, 24, 18, 0.62);
+}
+
+.arena-command-console .arena-simple__rate-label {
+  color: rgba(177, 213, 230, 0.76);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.68rem, 1.4vw, 0.86rem);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.arena-command-console .arena-simple__rate-value {
+  color: #f2ffe7;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(1.85rem, 4.8vw, 3.05rem);
+  letter-spacing: 0.05em;
+  text-shadow:
+    0 0 0.7rem rgba(185, 255, 106, 0.2),
+    0 0.12rem 0.35rem rgba(0, 0, 0, 0.42);
+}
+
+.arena-command-console .arena-simple__rate-glyph,
+.arena-command-console .arena-simple__rate-pay-logo {
+  image-rendering: auto;
+  filter:
+    drop-shadow(0 0 0.45rem rgba(77, 231, 200, 0.22))
+    drop-shadow(0 0.12rem 0.25rem rgba(0, 0, 0, 0.36));
+}
+
+.arena-command-console .arena-simple__rate-pay-picker-trigger {
+  padding: 0.16rem 0.22rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 999px;
+  background: rgba(3, 14, 21, 0.78);
+}
+
+.arena-command-console .arena-simple__rate-pay-picker-chevron {
+  color: rgba(177, 213, 230, 0.76);
 }
 
 .arena-command-console .arena-simple__slider-row {
   grid-template-columns: minmax(0, 1fr);
+  gap: 0.78rem;
+  margin: 0.42rem 0 0.2rem;
+}
+
+.arena-command-console .arena-simple__amount-input {
+  gap: 0.5rem;
+  min-height: 3.1rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  border: 1px solid rgba(77, 231, 200, 0.42);
+  border-radius: 0.78rem;
+  background:
+    linear-gradient(90deg, rgba(185, 255, 106, 0.1), transparent 38%),
+    rgba(3, 14, 21, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(77, 231, 200, 0.1),
+    0 0 1.4rem rgba(77, 231, 200, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .arena-command-console .arena-simple__amount-field,
@@ -11832,11 +11924,103 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(0, 0, 0, 0.32);
 }
 
+.arena-command-console .arena-simple__amount-field {
+  color: #f6fff9;
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  border-color: transparent;
+  background: transparent;
+}
+
+.arena-command-console .arena-simple__amount-field::placeholder {
+  color: rgba(177, 213, 230, 0.46);
+}
+
+.arena-command-console .arena-simple__amount-token-combobox {
+  gap: 0.34rem;
+  max-width: none;
+  min-height: 2.15rem;
+  padding: 0.28rem 0.42rem;
+  border: 1px solid rgba(185, 255, 106, 0.16);
+  border-radius: 999px;
+  color: #f6fff9;
+  background: rgba(5, 18, 24, 0.74);
+}
+
+.arena-command-console .arena-simple__amount-token-dropdown-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  image-rendering: auto;
+  filter:
+    drop-shadow(0 0 0.4rem rgba(77, 231, 200, 0.2))
+    drop-shadow(0 0.08rem 0.18rem rgba(0, 0, 0, 0.34));
+}
+
+.arena-command-console .arena-simple__amount-token-combobox-label {
+  color: rgba(238, 248, 255, 0.9);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.arena-command-console .arena-simple__amount-token-combobox-chevron {
+  color: rgba(177, 213, 230, 0.72);
+}
+
+.arena-command-console .arena-simple__amount-token-list,
+.arena-command-console .arena-simple__rate-pay-picker-menu {
+  border: 1px solid rgba(77, 231, 200, 0.26);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(77, 231, 200, 0.1), transparent 36%),
+    rgba(3, 14, 21, 0.98);
+  box-shadow: 0 0.8rem 1.8rem rgba(0, 0, 0, 0.38);
+}
+
+.arena-command-console .arena-simple__amount-token-option,
+.arena-command-console .arena-simple__rate-pay-picker-option {
+  color: rgba(238, 248, 255, 0.82);
+}
+
+.arena-command-console .arena-simple__amount-token-option:hover,
+.arena-command-console .arena-simple__rate-pay-picker-option:hover {
+  background: rgba(77, 231, 200, 0.1);
+}
+
+.arena-command-console .arena-simple__amount-token-option--active,
+.arena-command-console .arena-simple__rate-pay-picker-option--active {
+  color: #ffffff;
+  background: rgba(232, 192, 74, 0.12);
+}
+
 .arena-command-console .arena-simple__cta.btn-primary {
-  color: #071008;
-  border: 0;
-  background: linear-gradient(135deg, var(--arena-console-acid), #ecffd4 48%, var(--arena-console-amber));
-  box-shadow: 0 0.8rem 1.8rem rgba(185, 255, 106, 0.16);
+  color: #f6fff9;
+  border: 1px solid rgba(77, 231, 200, 0.38);
+  background:
+    linear-gradient(135deg, rgba(185, 255, 106, 0.18), rgba(77, 231, 200, 0.08) 42%, rgba(232, 192, 74, 0.16)),
+    radial-gradient(circle at 16% 0%, rgba(185, 255, 106, 0.26), transparent 34%),
+    radial-gradient(circle at 88% 100%, rgba(232, 192, 74, 0.22), transparent 42%),
+    rgba(3, 14, 21, 0.94);
+  box-shadow:
+    0 0 0 1px rgba(185, 255, 106, 0.08),
+    0 0.8rem 1.8rem rgba(3, 14, 21, 0.42),
+    0 0 1.4rem rgba(77, 231, 200, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.36);
+  animation: none;
+  text-shadow: 0 0 0.8rem rgba(185, 255, 106, 0.24);
+}
+
+.arena-command-console .arena-simple__cta.btn-primary:hover:not(:disabled) {
+  border-color: rgba(185, 255, 106, 0.46);
+  box-shadow:
+    0 0 0 1px rgba(185, 255, 106, 0.14),
+    0 1rem 2.1rem rgba(3, 14, 21, 0.48),
+    0 0 1.8rem rgba(77, 231, 200, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.36);
 }
 
 .arena-command-console__decision-row {
@@ -11863,8 +12047,15 @@ a.podium-address-explorer:hover .address-inline__label {
   position: relative;
   display: grid;
   align-content: start;
-  gap: 0.65rem;
-  padding: 0.75rem;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border-color: rgba(77, 231, 200, 0.24);
+  background:
+    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 90% 4%, rgba(77, 231, 200, 0.18), transparent 26%),
+    rgba(3, 14, 21, 0.84);
+  background-size: 24px 24px, 24px 24px, auto, auto;
 }
 
 .arena-command-console__character {
@@ -11883,6 +12074,71 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console__side > :not(.arena-command-console__character) {
   position: relative;
   z-index: 1;
+}
+
+.arena-command-console__side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 0.55rem;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(77, 231, 200, 0.16), transparent 40%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.arena-command-console__side-head div {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.arena-command-console__side-head span {
+  color: var(--arena-console-muted);
+  font-size: 0.61rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.arena-command-console__side-head strong {
+  color: #ffffff;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.arena-command-console__side-help,
+.warbow-hero-card__help,
+.arena-timer-chips__help {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(77, 231, 200, 0.34);
+  border-radius: 999px;
+  background: rgba(77, 231, 200, 0.1);
+  color: #d8fff7;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.arena-command-console__side-help {
+  min-height: 1.75rem;
+  padding: 0 0.62rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.warbow-hero-card__help,
+.arena-timer-chips__help {
+  width: 1.45rem;
+  height: 1.45rem;
+  font-size: 0.82rem;
 }
 
 .arena-command-console .arena-charm-cred-card.data-panel,
@@ -11908,7 +12164,69 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-timer-chips {
-  padding: 0.65rem;
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.55rem;
+}
+
+.arena-command-console .arena-timer-chips__gate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid rgba(77, 231, 200, 0.14);
+  border-radius: 0.5rem;
+  background: rgba(4, 18, 26, 0.72);
+}
+
+.arena-command-console .arena-timer-chips__gate--locked {
+  border-color: rgba(232, 192, 74, 0.2);
+  background:
+    linear-gradient(135deg, rgba(232, 192, 74, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(4, 18, 26, 0.76);
+}
+
+.arena-command-console .arena-timer-chips__chip {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-timer-chips__label {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 0.73rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__value {
+  color: rgba(238, 248, 255, 0.64);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-command-console .arena-timer-chips__lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.8rem;
+  min-height: 1.35rem;
+  padding: 0 0.35rem;
+  border: 1px solid rgba(232, 192, 74, 0.28);
+  border-radius: 999px;
+  color: var(--yga-gold);
+  background: rgba(232, 192, 74, 0.08);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
 }
 
 .arena-xp-hero {
@@ -11942,31 +12260,93 @@ a.podium-address-explorer:hover .address-inline__label {
   position: relative;
 }
 
-.arena-level-gate--locked .arena-level-gate__content {
-  opacity: 0.35;
-  filter: grayscale(0.4);
+.locked-until-level {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.locked-until-level__content {
+  opacity: 0.42;
+  filter: blur(2.5px) saturate(0.62) brightness(0.7);
   pointer-events: none;
   user-select: none;
+  transform: translateZ(0);
 }
 
-.arena-level-gate__overlay {
+.locked-until-level__overlay {
   position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
+  inset: 0.55rem;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 0.34rem;
+  padding: 0.8rem;
+  border: 1px solid rgba(232, 192, 74, 0.28);
+  border-radius: 0.78rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(232, 192, 74, 0.2), transparent 38%),
+    rgba(3, 10, 16, 0.76);
+  color: #f7f1c6;
+  text-align: center;
+  backdrop-filter: blur(7px) saturate(1.12);
+}
+
+.locked-until-level__icon {
+  width: clamp(2.15rem, 18%, 3.2rem);
+  height: auto;
+  filter:
+    drop-shadow(0 0 0.65rem rgba(232, 192, 74, 0.22))
+    drop-shadow(0 0.18rem 0.35rem rgba(0, 0, 0, 0.34));
+}
+
+.locked-until-level__overlay strong {
+  color: #ffffff;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.94rem;
+  line-height: 1.1;
+  text-shadow: 0 0 0.8rem rgba(232, 192, 74, 0.24);
+}
+
+.locked-until-level__overlay span {
+  max-width: 18rem;
+  color: rgba(238, 248, 255, 0.68);
+  font-size: 0.74rem;
+  line-height: 1.34;
+}
+
+.locked-until-level__action {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.35rem;
-  text-align: center;
-  background: rgba(2, 12, 12, 0.72);
-  border-radius: 0.45rem;
+  max-width: none;
+  line-height: 1;
 }
 
-.arena-level-gate__copy {
-  font-size: 0.78rem;
-  font-weight: 600;
+.locked-until-level--compact .locked-until-level__overlay {
+  inset: 0.28rem;
+  grid-template-columns: auto minmax(0, auto) auto;
+  grid-auto-flow: column;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.52rem;
+}
+
+.locked-until-level--compact .locked-until-level__icon {
+  width: 1.45rem;
+}
+
+.locked-until-level--compact .locked-until-level__overlay strong {
+  font-size: 0.72rem;
+}
+
+.arena-command-console .arena-timer-chips__gate.locked-until-level--compact .locked-until-level__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
 .arena-level-gate__help-row {
@@ -11986,6 +12366,18 @@ a.podium-address-explorer:hover .address-inline__label {
   cursor: pointer;
 }
 
+.arena-command-console .warbow-hero-actions-wrap.locked-until-level--panel .locked-until-level__overlay {
+  inset: 0.5rem;
+  border-color: rgba(232, 192, 74, 0.24);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(232, 192, 74, 0.14), transparent 36%),
+    rgba(2, 10, 16, 0.8);
+}
+
+.arena-command-console .warbow-hero-actions-wrap .locked-until-level__content {
+  display: block;
+}
+
 .feature-mechanic-modal::backdrop {
   background: rgba(0, 0, 0, 0.55);
 }
@@ -12000,44 +12392,284 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .warbow-hero-actions {
-  padding: 0.65rem;
+  gap: 0.48rem;
+  padding: 0.55rem;
 }
 
 .arena-command-console .warbow-hero-actions__grid {
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .arena-command-console .warbow-hero-card {
-  border-color: rgba(185, 255, 106, 0.14);
-  background: rgba(255, 255, 255, 0.04);
+  gap: 0.48rem;
+  padding: 0.58rem;
+  border: 1px solid rgba(77, 231, 200, 0.14);
+  border-radius: 0.56rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(77, 231, 200, 0.11), transparent 36%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+  color: var(--arena-console-ink);
+}
+
+.arena-command-console .warbow-hero-card--steal {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 124, 246, 0.13), transparent 36%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.arena-command-console .warbow-hero-card__head {
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.arena-command-console .warbow-hero-card h3 {
+  color: #ffffff;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.arena-command-console .warbow-hero-card p.muted {
+  margin: 0;
+  color: rgba(238, 248, 255, 0.58);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.arena-command-console .warbow-hero-viewer-summary__line {
+  font-size: 0.76rem;
+}
+
+.arena-command-console .warbow-hero-actions__checkbox {
+  padding: 0.42rem 0.48rem;
+  border: 1px solid rgba(77, 231, 200, 0.14);
+  border-radius: 0.5rem;
+  background: rgba(4, 18, 26, 0.7);
+  color: rgba(238, 248, 255, 0.72);
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+
+.warbow-target-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.warbow-target-toolbar label {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.warbow-target-toolbar span {
+  color: var(--arena-console-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.warbow-target-toolbar select {
+  min-width: 0;
+  width: 100%;
+  padding: 0.32rem 0.42rem;
+  border: 1px solid rgba(77, 231, 200, 0.22);
+  border-radius: 0.42rem;
+  background: rgba(2, 12, 18, 0.86);
+  color: #ffffff;
+  font: 700 0.7rem "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.warbow-target-list {
+  display: grid;
+  gap: 0.32rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  padding-right: 0.16rem;
+}
+
+.warbow-target-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.42rem 0.48rem;
+  border: 1px solid rgba(77, 231, 200, 0.14);
+  border-radius: 0.48rem;
+  background: rgba(4, 18, 26, 0.74);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.warbow-target-row--selected {
+  border-color: rgba(232, 192, 74, 0.42);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(232, 192, 74, 0.14), transparent 44%),
+    rgba(4, 18, 26, 0.86);
+}
+
+.warbow-target-row__main {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+
+.warbow-target-row__meta {
+  color: rgba(238, 248, 255, 0.48);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.warbow-target-row__bp {
+  color: rgba(238, 248, 255, 0.6);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.64rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.warbow-target-row__bp--eligible {
+  color: var(--yga-gold);
+}
+
+.warbow-target-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: rgba(238, 248, 255, 0.62);
+  font-size: 0.68rem;
+}
+
+.warbow-target-selection strong {
+  color: #ffffff;
 }
 
 .arena-command-console .arena-simple__podium-panel {
   margin-top: 0;
-  border: 1px solid rgba(185, 255, 106, 0.16);
+  border: 1px solid rgba(77, 231, 200, 0.26);
   background:
-    radial-gradient(circle at 16% 12%, rgba(185, 255, 106, 0.13), transparent 28%),
-    radial-gradient(circle at 86% 8%, rgba(255, 177, 77, 0.12), transparent 28%),
-    rgba(2, 12, 12, 0.78);
+    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 16% 12%, rgba(45, 212, 168, 0.22), transparent 32%),
+    radial-gradient(circle at 86% 8%, rgba(232, 192, 74, 0.14), transparent 30%),
+    radial-gradient(circle at 50% 120%, rgba(139, 124, 246, 0.12), transparent 42%),
+    linear-gradient(145deg, rgba(4, 12, 22, 0.95), rgba(7, 30, 34, 0.9));
+  background-size: 28px 28px, 28px 28px, auto, auto, auto, auto;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 1rem 2.4rem rgba(0, 0, 0, 0.22);
+    0 1.2rem 3rem rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(77, 231, 200, 0.06);
+}
+
+.arena-command-console .arena-simple__podium-panel::before {
+  background:
+    linear-gradient(115deg, transparent 0 18%, rgba(255, 255, 255, 0.12) 26%, transparent 38%),
+    radial-gradient(circle at 72% 20%, rgba(232, 192, 74, 0.16), transparent 24%),
+    radial-gradient(circle at 26% 76%, rgba(77, 231, 200, 0.14), transparent 36%);
+  opacity: 0.5;
+}
+
+.arena-command-console .arena-simple__podium-panel::after {
+  display: none;
+}
+
+.arena-command-console .arena-simple__podium-panel .section-heading {
+  border: 1px solid rgba(232, 192, 74, 0.24);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(232, 192, 74, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(10, 35, 40, 0.86), rgba(5, 18, 28, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.18);
 }
 
 .arena-command-console .arena-simple__podium-card {
-  border-color: rgba(185, 255, 106, 0.14);
-  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(77, 231, 200, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.028)),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--podium-card-accent) 26%, transparent), transparent 36%),
+    rgba(4, 18, 26, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.8rem 1.9rem rgba(0, 0, 0, 0.24);
 }
 
 .arena-command-console .arena-simple__podium-card h3,
 .arena-command-console .arena-simple__podium-panel .section-heading h2 {
   color: #ffffff;
+  text-shadow: 0 0 1rem color-mix(in srgb, var(--podium-card-accent, var(--yga-gold)) 22%, transparent);
 }
 
 .arena-command-console .arena-simple__podium-card-head p,
 .arena-command-console .arena-simple__podium-panel .section-heading__lede {
   color: var(--arena-console-muted);
+}
+
+.arena-command-console .arena-simple__podium-art {
+  background:
+    radial-gradient(circle at 34% 25%, rgba(255, 255, 255, 0.36) 0 10%, transparent 12%),
+    radial-gradient(circle at 50% 54%, rgba(6, 32, 38, 0.94) 0 44%, transparent 46%),
+    conic-gradient(from 210deg, color-mix(in srgb, var(--podium-card-accent) 44%, #4de7c8), rgba(232, 192, 74, 0.72), rgba(8, 28, 42, 0.92), color-mix(in srgb, var(--podium-card-accent) 44%, #4de7c8));
+  box-shadow:
+    0 0 0 1px rgba(77, 231, 200, 0.28),
+    inset 0 5px 12px rgba(255, 255, 255, 0.14),
+    inset 0 -10px 18px rgba(0, 0, 0, 0.34),
+    0 0 1.05rem color-mix(in srgb, var(--podium-card-accent) 32%, transparent);
+}
+
+.arena-command-console .arena-simple__podium-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--first,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--second,
+.arena-command-console .arena-simple__podium-card .ranking-list__item--third {
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  background:
+    radial-gradient(circle at 5% 0%, color-mix(in srgb, var(--podium-card-accent) 18%, transparent), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035)),
+    rgba(6, 22, 31, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.45rem 1.1rem rgba(0, 0, 0, 0.18);
+  color: #eefcff;
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item--first {
+  border-color: rgba(232, 192, 74, 0.34);
+}
+
+.arena-command-console .arena-simple__podium-card .ranking-list__item strong {
+  border: 1px solid rgba(232, 192, 74, 0.28);
+  background:
+    radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(232, 192, 74, 0.18), rgba(45, 212, 168, 0.08));
+  color: var(--yga-gold);
+  box-shadow: 0 0 0.8rem rgba(232, 192, 74, 0.12);
+}
+
+.arena-command-console .arena-simple__podium-prize-usd,
+.arena-command-console .arena-simple__podium-card .ranking-list__meta {
+  color: rgba(238, 248, 255, 0.62);
+}
+
+.arena-simple__podium-card--locked {
+  min-height: 17rem;
+}
+
+.arena-simple__podium-card--locked .locked-until-level__overlay {
+  inset: 0.7rem;
+  border-radius: 0.9rem;
 }
 
 @media (max-width: 980px) {
@@ -13002,21 +13634,111 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Buy hub — WarBow plant + CL8Y approval prefs (collapsed by default).
-   Sits under the primary Buy CTA on Simple view. */
-.arena-simple__buy-advanced {
-  margin-top: 0.85rem;
-  border: 2px dashed rgba(11, 31, 20, 0.2);
-  border-radius: 0.75rem;
-  padding: calc(0.4rem + 3px) 0.6rem;
-  background: rgba(255, 255, 255, 0.55);
+/* Buy hub — compact transaction options below the primary Buy CTA. */
+.arena-simple__buy-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.72rem;
 }
 
-.arena-simple__buy-advanced > summary {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--arcade-green-900);
+.arena-simple__buy-options > .status-message {
+  grid-column: 1 / -1;
+}
+
+.arena-simple__buy-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.56rem;
+  min-width: 0;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 0.62rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(77, 231, 200, 0.11), transparent 38%),
+    rgba(4, 18, 26, 0.72);
+  color: rgba(238, 248, 255, 0.88);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.arena-simple__buy-option--flag {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(139, 124, 246, 0.13), transparent 38%),
+    rgba(4, 18, 26, 0.72);
+}
+
+.arena-simple__buy-option--active {
+  border-color: rgba(232, 192, 74, 0.38);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(232, 192, 74, 0.14), transparent 46%),
+    rgba(4, 18, 26, 0.86);
+}
+
+.arena-simple__buy-option--disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.arena-simple__buy-option--locked {
+  border-color: rgba(232, 192, 74, 0.22);
+}
+
+.arena-simple__buy-option input {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--yga-gold, #e8c04a);
+}
+
+.arena-simple__buy-option input:disabled {
+  cursor: not-allowed;
+}
+
+.arena-simple__buy-option-body {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.arena-simple__buy-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  color: #ffffff;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.arena-simple__buy-option-head > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-simple__buy-option-chip {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.32rem;
+  border: 1px solid rgba(232, 192, 74, 0.28);
+  border-radius: 999px;
+  color: var(--yga-gold, #e8c04a);
+  background: rgba(232, 192, 74, 0.08);
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
+
+.arena-simple__buy-option-copy {
+  overflow: hidden;
+  color: rgba(238, 248, 255, 0.6);
+  font-size: 0.67rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---- "Want more?" explore tiles ---- */
@@ -13028,6 +13750,10 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (max-width: 720px) {
+  .arena-simple__buy-options {
+    grid-template-columns: 1fr;
+  }
+
   .arena-simple__slider-row {
     grid-template-columns: 1fr;
   }

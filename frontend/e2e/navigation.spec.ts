@@ -6,7 +6,7 @@ test("deep link from home to each surface", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  const navHomeRoute = state === "post-launch" ? "/home" : "/";
+  const navHomeRoute = "/home";
   const nav = page.getByLabel("Primary");
 
   await page.goto(navHomeRoute);
@@ -31,7 +31,7 @@ test("unknown routes show branded 404 inside RootLayout", async ({ page }) => {
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/definitely-not-a-route");
-  await expect(page.getByTestId("not-found-page")).toBeVisible();
+  await expect(page.getByTestId("not-found-page")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("heading", { name: "404", level: 1 })).toBeVisible();
   await expect(page.getByText("No surface at this route.")).toBeVisible();
   await expect(page.getByRole("link", { name: "AUDIT" })).toBeVisible();

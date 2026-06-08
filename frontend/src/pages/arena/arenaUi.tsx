@@ -34,9 +34,9 @@ export type RankingRow = {
 };
 
 const PODIUM_RANK_TROPHY_SRC = [
-  "/art/icons/arena-podium-rank-first.png?v=2",
-  "/art/icons/arena-podium-rank-second.png?v=2",
-  "/art/icons/arena-podium-rank-third.png?v=2",
+  "/art/icons/arena-podium-rank-first.png?v=glass3",
+  "/art/icons/arena-podium-rank-second.png?v=glass3",
+  "/art/icons/arena-podium-rank-third.png?v=glass3",
 ] as const;
 
 export function RankingList({ rows, emptyText }: { rows: RankingRow[]; emptyText: string }) {
@@ -79,11 +79,11 @@ export function RankingList({ rows, emptyText }: { rows: RankingRow[]; emptyText
 export function PodiumRankingList({
   rows,
   emptyText,
-  burstNonce = 0,
+  rankBurst,
 }: {
   rows: RankingRow[];
   emptyText: string;
-  burstNonce?: number;
+  rankBurst?: { rank: number; nonce: number };
 }) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -92,11 +92,9 @@ export function PodiumRankingList({
   }
 
   return (
-    <ol
-      className="ranking-list ranking-list--podium-motion"
-      data-podium-burst={burstNonce > 0 ? String(burstNonce % 1000) : undefined}
-    >
+    <ol className="ranking-list ranking-list--podium-motion">
       {rows.map((row) => {
+        const rankBurstNonce = rankBurst?.rank === row.rank ? rankBurst.nonce : undefined;
         const classes = [
           "ranking-list__item",
           row.rank === 1 ? "ranking-list__item--first" : "",
@@ -112,9 +110,7 @@ export function PodiumRankingList({
             key={row.key}
             layout={!prefersReducedMotion}
             className={classes}
-            initial={
-              prefersReducedMotion ? false : { opacity: 0.45, y: 10, filter: "brightness(1.22)" }
-            }
+            initial={false}
             animate={{ opacity: 1, y: 0, filter: "brightness(1)" }}
             transition={
               prefersReducedMotion
@@ -122,8 +118,13 @@ export function PodiumRankingList({
                 : { type: "spring", stiffness: 520, damping: 36, mass: 0.82 }
             }
           >
-            <span className="ranking-list__rank" aria-label={`Rank ${row.rank}`}>
+            <span
+              className="ranking-list__rank"
+              aria-label={`Rank ${row.rank}`}
+              data-rank-burst={rankBurstNonce !== undefined ? String(rankBurstNonce % 1000) : undefined}
+            >
               <img
+                key={`rank-${row.rank}-${rankBurstNonce ?? "steady"}`}
                 src={PODIUM_RANK_TROPHY_SRC[row.rank - 1] ?? PODIUM_RANK_TROPHY_SRC[2]}
                 alt=""
                 width={96}

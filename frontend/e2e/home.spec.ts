@@ -6,9 +6,7 @@ test("home shows title and nav links", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
-  if (state === "post-launch") {
-    await page.goto("/home");
-  }
+  await page.goto("/home");
   await expect(page.getByRole("heading", { name: "Yield Omega", level: 1 })).toBeVisible();
   await expect(
     page.getByLabel("Primary").getByRole("link", { name: "Time Arena" }),

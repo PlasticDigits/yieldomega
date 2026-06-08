@@ -86,8 +86,7 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
   });
 
   it("stacks Simple buy slider + amount on all breakpoints (no side-by-side on tablet/desktop)", () => {
-    const anchor =
-      "/* Buy limits moved under ADVANCED; keep a little air before balance + preview margins. */";
+    const anchor = "/* Keep a little air before balance + preview margins. */";
     const idx = css.indexOf(anchor);
     expect(idx).toBeGreaterThanOrEqual(0);
     const block = css.slice(Math.max(0, idx - 220), idx + anchor.length);
