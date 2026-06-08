@@ -42,8 +42,20 @@ yieldomega_prepend_cloud_toolchain_path() {
     export PATH="${prepend}${PATH}"
   fi
   if [[ -f "${HOME}/.config/yieldomega/cloud-agent.env" ]]; then
+    local _gitlab_token="${GITLAB_TOKEN:-}"
+    local _glab_token="${GLAB_TOKEN:-}"
+    local _git_username="${GIT_USERNAME:-}"
+    local _git_email="${GIT_EMAIL:-}"
+    local _gitlab_repo="${GITLAB_REPO:-}"
+    local _gitlab_project="${YIELDOMEGA_GITLAB_PROJECT:-}"
     # shellcheck source=/dev/null
     source "${HOME}/.config/yieldomega/cloud-agent.env"
+    if [[ -n "${_gitlab_token}" ]]; then export GITLAB_TOKEN="${_gitlab_token}"; fi
+    if [[ -n "${_glab_token}" ]]; then export GLAB_TOKEN="${_glab_token}"; fi
+    if [[ -n "${_git_username}" ]]; then export GIT_USERNAME="${_git_username}"; fi
+    if [[ -n "${_git_email}" ]]; then export GIT_EMAIL="${_git_email}"; fi
+    if [[ -n "${_gitlab_repo}" ]]; then export GITLAB_REPO="${_gitlab_repo}"; fi
+    if [[ -n "${_gitlab_project}" ]]; then export YIELDOMEGA_GITLAB_PROJECT="${_gitlab_project}"; fi
   fi
   if [[ -f "${HOME}/.config/yieldomega/cloud-agent-git.sh" ]]; then
     # shellcheck source=/dev/null

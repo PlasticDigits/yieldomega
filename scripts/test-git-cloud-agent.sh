@@ -28,6 +28,26 @@ yieldomega_git_identity_env_ok && echo "PASS  yieldomega_git_identity_env_ok" ||
   fail=1
 }
 
+# Stale cloud-agent.env must not override Cursor Cloud secrets already in the shell.
+_stale_env="$(mktemp -d)"
+export YIELDOMEGA_CLOUD_AGENT_ENV="${_stale_env}/cloud-agent.env"
+{
+  echo "export GIT_USERNAME='StaleUser'"
+  echo "export GIT_EMAIL='stale@example.com'"
+} >"${YIELDOMEGA_CLOUD_AGENT_ENV}"
+export GIT_USERNAME="PlasticDigits"
+export GIT_EMAIL="plasticdigits@protonmail.com"
+yieldomega_load_git_identity_env
+assert_eq "${GIT_USERNAME}" "PlasticDigits" "shell GIT_USERNAME wins over file"
+assert_eq "${GIT_EMAIL}" "plasticdigits@protonmail.com" "shell GIT_EMAIL wins over file"
+unset GIT_USERNAME GIT_EMAIL
+yieldomega_load_git_identity_env
+assert_eq "${GIT_USERNAME}" "StaleUser" "file GIT_USERNAME when shell unset"
+assert_eq "${GIT_EMAIL}" "stale@example.com" "file GIT_EMAIL when shell unset"
+rm -rf "${_stale_env}"
+export GIT_USERNAME="PlasticDigits"
+export GIT_EMAIL="plasticdigits@protonmail.com"
+
 yieldomega_configure_git_identity
 
 assert_eq "$(git config --global user.name)" "${GIT_USERNAME}" "global user.name"

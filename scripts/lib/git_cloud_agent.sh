@@ -6,10 +6,24 @@
 
 : "${YIELDOMEGA_CLOUD_AGENT_ENV:=${HOME}/.config/yieldomega/cloud-agent.env}"
 
+# Load GIT_USERNAME / GIT_EMAIL from cloud-agent.env only when missing in the shell.
+# Cursor Cloud secrets in the environment must win over stale on-disk values.
 yieldomega_load_git_identity_env() {
-  if [[ -f "${YIELDOMEGA_CLOUD_AGENT_ENV}" ]]; then
-    # shellcheck source=/dev/null
-    source "${YIELDOMEGA_CLOUD_AGENT_ENV}"
+  if [[ -n "${GIT_USERNAME:-}" && -n "${GIT_EMAIL:-}" ]]; then
+    return 0
+  fi
+  if [[ ! -f "${YIELDOMEGA_CLOUD_AGENT_ENV}" ]]; then
+    return 0
+  fi
+  local saved_username="${GIT_USERNAME:-}"
+  local saved_email="${GIT_EMAIL:-}"
+  # shellcheck source=/dev/null
+  source "${YIELDOMEGA_CLOUD_AGENT_ENV}"
+  if [[ -n "${saved_username}" ]]; then
+    export GIT_USERNAME="${saved_username}"
+  fi
+  if [[ -n "${saved_email}" ]]; then
+    export GIT_EMAIL="${saved_email}"
   fi
 }
 
