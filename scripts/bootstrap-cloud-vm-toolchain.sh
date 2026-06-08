@@ -272,7 +272,11 @@ configure_glab() {
 }
 
 configure_git_identity() {
-  log "git identity: ${YIELDOMEGA_GIT_USER_NAME} <${YIELDOMEGA_GIT_USER_EMAIL}>"
+  if ! yieldomega_git_identity_env_ok; then
+    echo "bootstrap-cloud-vm-toolchain: GIT_USERNAME and GIT_EMAIL unset — set Cursor Cloud secrets." >&2
+    return 0
+  fi
+  log "git identity: ${GIT_USERNAME} <${GIT_EMAIL}>"
   yieldomega_configure_git_identity
 }
 

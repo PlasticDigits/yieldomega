@@ -45,6 +45,10 @@ yieldomega_prepend_cloud_toolchain_path() {
     # shellcheck source=/dev/null
     source "${HOME}/.config/yieldomega/cloud-agent.env"
   fi
+  if [[ -f "${HOME}/.config/yieldomega/cloud-agent-git.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${HOME}/.config/yieldomega/cloud-agent-git.sh"
+  fi
 }
 
 # Write ~/.config/yieldomega/cloud-agent-path.sh and hook into login/interactive shells.
@@ -57,6 +61,7 @@ yieldomega_persist_cloud_toolchain_path() {
 # yieldomega Cloud Agent toolchain — do not edit by hand.
 export PATH="${scripts_bin}:\${HOME}/.local/bin:\${HOME}/.foundry/bin:/usr/local/cargo/bin:\${PATH}"
 [[ -f "\${HOME}/.config/yieldomega/cloud-agent.env" ]] && source "\${HOME}/.config/yieldomega/cloud-agent.env"
+[[ -f "\${HOME}/.config/yieldomega/cloud-agent-git.sh" ]] && source "\${HOME}/.config/yieldomega/cloud-agent-git.sh"
 EOF
   hook='[[ -f "${HOME}/.config/yieldomega/cloud-agent-path.sh" ]] && source "${HOME}/.config/yieldomega/cloud-agent-path.sh"'
   for rc in "${HOME}/.bashrc" "${HOME}/.profile"; do

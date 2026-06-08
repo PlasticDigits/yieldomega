@@ -116,12 +116,20 @@ yieldomega_configure_glab_auth() {
   fi
 }
 
-# Persist GITLAB_REPO + GITLAB_TOKEN for interactive shells (idempotent).
+# Persist GITLAB_REPO + GITLAB_TOKEN (+ GIT_USERNAME/GIT_EMAIL when present) for interactive shells (idempotent).
 yieldomega_persist_glab_env() {
   local env_file="${YIELDOMEGA_CLOUD_AGENT_ENV}"
-  local repo token
+  local repo token git_username git_email
   repo="$(yieldomega_glab_repo)"
   token="$(yieldomega_glab_token)"
+  git_username="${GIT_USERNAME:-}"
+  git_email="${GIT_EMAIL:-}"
+  if [[ -z "${git_username}" || -z "${git_email}" ]] && [[ -f "${env_file}" ]]; then
+    # shellcheck source=/dev/null
+    source "${env_file}"
+    git_username="${GIT_USERNAME:-}"
+    git_email="${GIT_EMAIL:-}"
+  fi
   mkdir -p "$(dirname "${env_file}")"
   {
     echo "# Yieldomega Cloud Agent — sourced by bootstrap-cloud-vm-toolchain.sh"
@@ -130,6 +138,10 @@ yieldomega_persist_glab_env() {
     if [[ -n "${token}" ]]; then
       echo "export GITLAB_TOKEN='${token}'"
       echo "export GLAB_TOKEN='${token}'"
+    fi
+    if [[ -n "${git_username}" && -n "${git_email}" ]]; then
+      echo "export GIT_USERNAME='${git_username}'"
+      echo "export GIT_EMAIL='${git_email}'"
     fi
   } >"${env_file}.tmp"
   if [[ ! -f "${env_file}" ]] || ! cmp -s "${env_file}" "${env_file}.tmp"; then
