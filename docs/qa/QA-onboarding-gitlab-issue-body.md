@@ -239,7 +239,7 @@ See [arena-v2.md § DOUB prize routing](../product/arena-v2.md#doub-prize-routin
 - [ ] **C2** — CHARM bounds and price display consistent with onchain reads.
 - [ ] **C3** — Podium / leaderboard panels for **four** categories; live predictions from **`GET /v1/arena/podiums`** when wired ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
 - [ ] **C4** — WarBow stats + battle feed (indexer-backed where wired).
-- [ ] **C5** — Prize routing / vault transparency matches **40/30/30** Arena split — not legacy five-sink labels.
+- [ ] **C5** — Prize routing / vault transparency matches **100% podium** Arena split (25% × 4 · 70/20/10 epoch tranches) — not legacy five-sink labels.
 - [ ] **C6** — **`WalletProfileModal`** from participant addresses ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)); **`ArenaCharmCredCard`** CRED claim UX ([#257](https://gitlab.com/PlasticDigits/yieldomega/-/issues/257)).
 
 ---

@@ -14,7 +14,7 @@ The long-term thesis: crypto should move beyond institutional finance, passive s
 
 ## Primitives in one paragraph
 
-- **Time Arena** is the **flagship game primitive**: skill- and timing-forward participation on **`TimeArena`** — DOUB (or Play CRED) buys, four independent podium timers, **40/30/30** vault routing, epoch CRED, XP, and DOUB WarBow. Arena is **always live** when not paused — no sale-end or CHARM redemption gates ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)). Canonical rules: [time-arena.md](time-arena.md) · [arena-v2.md](arena-v2.md). Retired v1 launchpad semantics: [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
+- **Time Arena** is the **flagship game primitive**: skill- and timing-forward participation on **`TimeArena`** — DOUB (or Play CRED) buys, four independent podium timers, **100% podium** vault routing (25% × 4 · 70/20/10 epoch tranches), epoch CRED, XP, and DOUB WarBow. Arena is **always live** when not paused — no sale-end or CHARM redemption gates ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)). Canonical rules: [time-arena.md](time-arena.md) · [arena-v2.md](arena-v2.md). Retired v1 launchpad semantics: [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244).
 
 - **Rabbit Treasury** is the **treasury game layer** that receives ecosystem value and retains users over time. It should be understood as **reserve-linked** with **internal accounting** and **honest repricing** when reserve health weakens—avoiding brittle collapse narratives while admitting sustainability depends on **real usage and fees**.
 

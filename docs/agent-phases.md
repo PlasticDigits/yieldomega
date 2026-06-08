@@ -61,7 +61,7 @@ Read docs/licensing.md and the root LICENSE (AGPL-3.0). Explain in plain languag
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/architecture/overview.md and docs/architecture/data-flows.md. Draw (in text/mermaid) the data flow for: (1) a permissionless caller settling an expired podium via rollPodiumEpoch(category) on TimeArena, and (2) a user executing a DOUB buy(charmWad) that routes 40/30/30 to PodiumVaults and AdminSellVault. For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
+Read docs/architecture/overview.md and docs/architecture/data-flows.md. Draw (in text/mermaid) the data flow for: (1) a permissionless caller settling an expired podium via rollPodiumEpoch(category) on TimeArena, and (2) a user executing a DOUB buy(charmWad) that routes 100% to PodiumVaults (25% × 4 · 70/20/10 epoch tranches; 0% AdminSellVault on buys — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). For each step, label whether state is authoritative onchain or derived offchain. List failure modes if the indexer is wrong or stale. No code.
 ```
 
 ---
@@ -109,7 +109,7 @@ Read docs/product/vision.md. Write a short “non-goals” list (what this ecosy
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitives.md, and docs/glossary.md. Produce a requirements checklist for a Foundry TimeArena implementation: state variables, events, and edge cases (four independent podium timers, timer caps, buy cooldown, 40/30/30 DOUB routing, rollPodiumEpoch settlement with 4∶2∶1 payouts). Flag any underspecified numeric policy (for example per-podium timer params or CRED accrual) as TODOs needing human parameters. Do not write Solidity yet unless asked.
+Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitives.md, and docs/glossary.md. Produce a requirements checklist for a Foundry TimeArena implementation: state variables, events, and edge cases (four independent podium timers, timer caps, buy cooldown, 100% podium DOUB routing (70/20/10 epoch tranches), rollPodiumEpoch settlement with 4∶2∶1 payouts). Flag any underspecified numeric policy (for example per-podium timer params or CRED accrual) as TODOs needing human parameters. Do not write Solidity yet unless asked.
 ```
 
 ---
@@ -145,7 +145,7 @@ Read docs/product/time-arena.md, docs/product/arena-v2.md, docs/product/primitiv
 **Agent prompt (copy-paste):**
 
 ```text
-Read docs/onchain/fee-routing-and-governance.md. List every Arena v2 buy destination (active podium pools, seed podium pools, AdminSellVault) and the governance actor allowed to change routing parameters or vault addresses. Propose invariant checks (plain English) that should hold after any parameter update (e.g. 40/30/30 shares sum to 100% of gross DOUB). No code.
+Read docs/onchain/fee-routing-and-governance.md. List every Arena v2 buy destination (active podium pools, seed podium pools, AdminSellVault) and the governance actor allowed to change routing parameters or vault addresses. Propose invariant checks (plain English) that should hold after any parameter update (e.g. 100% podium shares sum to 100% of gross DOUB per [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)). No code.
 ```
 
 ---

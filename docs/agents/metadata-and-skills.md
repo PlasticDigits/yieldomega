@@ -35,7 +35,7 @@ Agents (and humans driving them) who want to **use** **Time Arena** (Arena v2) n
 | [../../skills/play-active-time-arena/SKILL.md](../../skills/play-active-time-arena/SKILL.md) | Route by live / paused Arena timers on `TimeArena`. |
 | [../../skills/why-yieldomega-participation-matters/SKILL.md](../../skills/why-yieldomega-participation-matters/SKILL.md) | Ethics framing before other play skills. |
 | [../../skills/script-with-timearena-local/SKILL.md](../../skills/script-with-timearena-local/SKILL.md) | Local scripts vs deployed contracts (env, Anvil stack). |
-| [../../skills/play-time-arena-doub/SKILL.md](../../skills/play-time-arena-doub/SKILL.md) | DOUB buys, Last Buy timer, 40/30/30 podium routing. |
+| [../../skills/play-time-arena-doub/SKILL.md](../../skills/play-time-arena-doub/SKILL.md) | DOUB buys, Last Buy timer, 100% podium routing (70/20/10 epoch tranches). |
 | [../../skills/play-time-arena-warbow/SKILL.md](../../skills/play-time-arena-warbow/SKILL.md) | DOUB WarBow PvP — steal/guard/revenge/flag, epoch BP reset, admin finalize ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)). |
 
 ### Contributor manual QA (not play skills)

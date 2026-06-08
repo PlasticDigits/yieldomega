@@ -14,7 +14,7 @@ Authoritative onchain gate for user-facing arena value movement: **`TimeArena.pa
 | **ReferralRegistry** | `registerCode` (CL8Y burn) | Always live when registry deployed | n/a |
 | **Podium settlement** | `rollPodiumEpoch`, `finalizeWarbowPodium` | Permissionless liveness; **no** owner enable gate | n/a |
 
-DOUB from each **`buy`** routes immediately to **`PodiumVaults`** and **`AdminSellVault`** per the 40/30/30 split — there is no separate “distribution enable” latch ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
+DOUB from each **`buy`** routes immediately to **`PodiumVaults`** (**100%** podium prize vaults; **0%** **`AdminSellVault`** on buys ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))) — there is no separate “distribution enable” latch ([#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244)).
 
 ## Suggested go-live order (example)
 

@@ -2,7 +2,7 @@
 
 > **Retired:** This audit covered **retired v1** launchpad / five-sink **CL8Y** paths removed in [#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243) / [#244](https://gitlab.com/PlasticDigits/yieldomega/-/issues/244). **Arena v2** arena economics use **DOUB** buys and vault splits, not in-app CL8Y fee routing. Historical findings (2026-05) enumerated public fee distribution, launchpad CL8Y ingress, and podium CL8Y payouts — hardened in [#70](https://gitlab.com/PlasticDigits/yieldomega/-/issues/70), [#117](https://gitlab.com/PlasticDigits/yieldomega/-/issues/117), [#122](https://gitlab.com/PlasticDigits/yieldomega/-/issues/122); full audit text in git history before [#274](https://gitlab.com/PlasticDigits/yieldomega/-/issues/274).
 
-**Canonical Arena v2 routing:** [fee-routing-and-governance.md](fee-routing-and-governance.md) — 40% active + 30% seed + 30% admin per **`TimeArena.buy`**.
+**Canonical Arena v2 routing:** [fee-routing-and-governance.md](fee-routing-and-governance.md) — **100%** to podium vaults per **`TimeArena.buy`** (25% per category · 70/20/10 epoch tranches; **0%** admin take ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))).
 
 **Remaining CL8Y touchpoints (production):**
 

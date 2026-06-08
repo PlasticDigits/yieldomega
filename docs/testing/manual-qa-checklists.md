@@ -88,7 +88,7 @@ Also see: [`e2e-anvil.md`](e2e-anvil.md), [`arena-views.md`](../frontend/arena-v
 |------|----------------|
 | Open **`/arena`** | `arena-timer-chips` shows four labels (Last Buy, Time Booster, Streak, WarBow); `arena-charm-cred-card` visible. |
 | Indexer running | Timer chips show non-`—` deadlines from `GET /v1/arena/timers` (four `podium_deadlines_sec`). |
-| DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move 40/30/30 (Forge / explorer). |
+| DOUB buy | Connect wallet; slider + **Buy** succeeds; vault balances move per 100% podium routing (25% × 4 · 70/20/10 epoch tranches; Forge / explorer). |
 | CRED | After DOUB buy, epoch pool accrues; **claim** prior epoch when eligible. |
 | CRED pay ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)) | Select **CRED** in buy picker; balance + burn preview; **Buy** calls `buyWithCred`; insufficient CRED disables submit with copy. |
 | Wallet profile ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) | Click participant **`AddressInline`** on live buy row or podium winner → **`WalletProfileModal`** opens; sections Overview / Podium wins / Spending / XP / WarBow / Referrals / Fun facts load from **`GET /v1/arena/wallet/{address}/stats`**. |
@@ -497,7 +497,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 ### Arena buy vault funding indexer ([GitLab #267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267))
 
-**Scope:** Per-buy DOUB prize routing (**40% active · 30% seed · 30% admin**) from **`PodiumVaults`** / **`AdminSellVault`** events — distinct from donate-pools ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)).
+**Scope:** Per-buy DOUB prize routing (**100% podiums** · **`PodiumEpochFunded`** per epoch tranche ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300))) from **`PodiumVaults`** — distinct from donate-pools ([#262](https://gitlab.com/PlasticDigits/yieldomega/-/issues/262)).
 
 ### Authoritative docs
 
@@ -1038,7 +1038,7 @@ replacing the cast or reviving stale TimeCurve / sale lifecycle assumptions.
 
 ### Mechanics smoke (copy vs canonical TimeArena)
 
-- [ ] Visible copy describes current Arena v2 only: CHARM buys (DOUB / Play CRED), four independent podiums, 40/30/30 buy routing, flat **5 CRED + 5 CRED** referrals, WarBow PvP, AUDIT reads.
+- [ ] Visible copy describes current Arena v2 only: CHARM buys (DOUB / Play CRED), four independent podiums, 100% podium buy routing (no admin take on buys), flat **5 CRED + 5 CRED** referrals, WarBow PvP, AUDIT reads.
 - [ ] No visible **TimeCurve**, sale-end, redemption, launchpad, PvE, worldbuilding, or legacy fee-sink framing on any routed surface.
 - [ ] User-facing branding strings say **Yield Omega** (with space) on home, countdown, arena console, and footer agent card.
 - [ ] `arena-*` CSS / `data-testid` naming only under Arena pages (`bash scripts/check-arena-naming.sh`).

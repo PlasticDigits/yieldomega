@@ -2,7 +2,7 @@
 
 ## Arena v2 (canonical)
 
-**Time Arena** economics — DOUB buys, four podium timers, 40/30/30 vault routing, epoch CRED, XP, DOUB WarBow — are specified in [`arena-v2.md`](arena-v2.md). Automated invariant map: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md) (section **TimeArena v2** · GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
+**Time Arena** economics — DOUB buys, four podium timers, 100% podium vault routing (25% × 4 · 70/20/10 epoch tranches), epoch CRED, XP, DOUB WarBow — are specified in [`arena-v2.md`](arena-v2.md). Automated invariant map: [`docs/testing/invariants-and-business-logic.md`](../testing/invariants-and-business-logic.md) (section **TimeArena v2** · GitLab [#260](https://gitlab.com/PlasticDigits/yieldomega/-/issues/260)).
 
 Epic: [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). Documentation cleanup of retired v1 launchpad prose: [#263](https://gitlab.com/PlasticDigits/yieldomega/-/issues/263).
 
