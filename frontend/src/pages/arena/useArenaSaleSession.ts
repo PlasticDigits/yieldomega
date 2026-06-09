@@ -19,6 +19,7 @@ import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
 import {
   erc20Abi,
   timeArenaBuyEventAbi,
+  timeArenaReadAbi,
   timeArenaWriteAbi,
 } from "@/lib/abis";
 import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
@@ -254,20 +255,19 @@ export type UseArenaSaleSession = {
    * Undefined while loading, on error, or when pay mode is direct spend / routing unavailable.
    */
   quotedPerCharmPayInWei: bigint | undefined;
-  /** True until the first per-CHARM quoter value exists (rate board); avoids “…” on every background refetch. */
+  /** True until the first per-CHARM quoter value exists; avoids flicker on background refetch. */
   perCharmPayQuoteLoading: boolean;
   perCharmPayQuoteFailed: boolean;
-  /**
-   * When paying with ETH/USDM, true if the rate board is using static fallback rates or the per-CHARM quote failed.
-   * Drives the yellow “kumbaya route failed” affordance (display only; buy still uses live swap quotes).
-   */
-  rateBoardKumbayaWarning: boolean;
   /** Kumbaya-quoted pay token for `cl8ySpendBounds.minS` / `maxS` (ETH/USDM band row). */
   quotedBandMinPayInWei: bigint | undefined;
   quotedBandMaxPayInWei: bigint | undefined;
   bandBoundaryQuotesLoading: boolean;
   /** Connected-wallet balance for the active pay asset (DOUB/CL8Y / native ETH / USDM). */
   payWalletBalance: { raw: bigint | undefined; decimals: number; symbol: string };
+  /** Current Last Buy epoch CHARM weight for the connected wallet (`epochCharmWad`). */
+  charmWalletBalanceWad: bigint | undefined;
+  refetchCharmWalletBalance: () => void;
+  charmWalletBalanceRefreshing: boolean;
   /** Submits optional Kumbaya `exactOutput` + approve + `buy(charmWad)` — same onchain buy as Arena. */
   submitBuy: () => Promise<void>;
   /** TimeArena operator pause — `true` when `paused()` onchain. */
@@ -427,6 +427,8 @@ export function useArenaSaleSession(
     onLogs: () => {
       void refetchCore();
       void refetchUser();
+      void refetchLastBuyEpoch();
+      void refetchCharmWalletBalance();
       refreshHeroTimerSoft();
     },
   });
@@ -605,15 +607,41 @@ export function useArenaSaleSession(
   });
   const walletBalanceWei = walletBalance as bigint | undefined;
 
+  const { data: lastBuyEpoch, refetch: refetchLastBuyEpoch } = useReadContract({
+    address: tc,
+    abi: timeArenaReadAbi,
+    functionName: "lastBuyEpoch",
+    query: { enabled: Boolean(tc) },
+  });
+
+  const charmBalanceReadEnabled = Boolean(tc && address && lastBuyEpoch !== undefined);
+  const {
+    data: charmWalletBalance,
+    refetch: refetchCharmWalletBalance,
+    isFetching: charmWalletBalanceFetching,
+  } = useReadContract({
+    address: tc,
+    abi: timeArenaReadAbi,
+    functionName: "epochCharmWad",
+    args: lastBuyEpoch !== undefined && address ? [lastBuyEpoch, address] : undefined,
+    query: {
+      enabled: charmBalanceReadEnabled,
+      placeholderData: keepPreviousData,
+      refetchInterval: false,
+    },
+  });
+  const charmWalletBalanceWad = charmWalletBalance as bigint | undefined;
+
   const prevWalletRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     const cur = address?.toLowerCase();
     if (cur && prevWalletRef.current && prevWalletRef.current !== cur) {
       void refetchUser();
       void refetchWalletBalance();
+      void refetchCharmWalletBalance();
     }
     prevWalletRef.current = cur;
-  }, [address, refetchUser, refetchWalletBalance]);
+  }, [address, refetchUser, refetchWalletBalance, refetchCharmWalletBalance]);
 
   const referralRegistryOn =
     referralRegistryR?.status === "success"
@@ -982,18 +1010,6 @@ export function useArenaSaleSession(
     (charmPriceQuotePending || charmPriceQuoteFetching);
   const perCharmPayQuoteFailed = charmPriceQuoteIsError;
 
-  const rateBoardKumbayaWarning =
-    payUsesKumbaya &&
-    phase === "saleActive" &&
-    (kumbayaRoutingBlocker !== null ||
-      swapRoute?.ok === false ||
-      charmPriceQuoteIsError ||
-      (pricePerCharmWad !== undefined &&
-        pricePerCharmWad > 0n &&
-        !perCharmPayQuoteLoading &&
-        charmPriceQuoteEnabled &&
-        quotedPerCharmPayInWei === undefined));
-
   const payTokenInAddr =
     payUsesKumbaya && swapRoute !== null && swapRoute.ok ? swapRoute.tokenIn : undefined;
 
@@ -1325,9 +1341,11 @@ export function useArenaSaleSession(
   const refetchAll = useCallback(() => {
     void refetchCore();
     void refetchUser();
+    void refetchLastBuyEpoch();
+    void refetchCharmWalletBalance();
     void refreshHeroTimer();
     refetchCred();
-  }, [refetchCore, refetchUser, refreshHeroTimer, refetchCred]);
+  }, [refetchCore, refetchUser, refetchLastBuyEpoch, refetchCharmWalletBalance, refreshHeroTimer, refetchCred]);
 
   const arenaPaused =
     arenaPausedRowR?.status === "success"
@@ -1690,11 +1708,16 @@ export function useArenaSaleSession(
     quotedPerCharmPayInWei,
     perCharmPayQuoteLoading,
     perCharmPayQuoteFailed,
-    rateBoardKumbayaWarning,
     quotedBandMinPayInWei,
     quotedBandMaxPayInWei,
     bandBoundaryQuotesLoading,
     payWalletBalance,
+    charmWalletBalanceWad,
+    refetchCharmWalletBalance: () => {
+      void refetchLastBuyEpoch();
+      void refetchCharmWalletBalance();
+    },
+    charmWalletBalanceRefreshing: charmWalletBalanceFetching,
     submitBuy,
     arenaPaused,
     onchainTimeArenaBuyRouter,

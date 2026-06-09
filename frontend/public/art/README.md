@@ -124,9 +124,9 @@ stem.
 | `warbow-steal.png`                | _staged_                                                                 | Steal action pictogram.                                                     |
 | `warbow-revenge.png`              | _staged_                                                                 | Revenge action pictogram.                                                   |
 | `warbow-flag.png`                 | [`ArenaLiveBuysActivitySection.tsx`](../../src/pages/arena/ArenaLiveBuysActivitySection.tsx) | Silence flag in live-buy legend.                                             |
-| `nav-simple.png`                  | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (BUY).                                      |
+| `nav-simple.png`                  | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (BUY); regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py). |
 | `nav-arena.png`                   | _staged_ (#266: unified `/arena` — sub-nav is BUY + AUDIT only) | Legacy Arena tab pictogram.                                       |
-| `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (AUDIT).                                    |
+| `nav-protocol.png`                | [`ArenaSubnav.tsx`](../../src/pages/arena/ArenaSubnav.tsx)     | Sub-nav pictogram (AUDIT); regenerate via [`glass_arena_nav_icons.py`](../../../scripts/replicate-art/glass_arena_nav_icons.py). |
 | `chart-accessibility.png`         | _staged_ for charts in retired v1 player reserve                                    | Color-blind safe pair swatch reference.                          |
 | `loading-mascot-ring.png`         | [`LaunchGate.tsx`](../../src/app/LaunchGate.tsx), [`ArenaBranchPage.tsx`](../../src/pages/ArenaBranchPage.tsx), [`StatusMessage.tsx`](../../src/components/ui/StatusMessage.tsx) | Square loading glyph ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `token-cl8y-24.png` / `token-doub-24.png` / `token-charm-24.png` / `token-usdm-24.png` | _staged_ (dense rows, charts), [`issue57_batch.py`](../../../scripts/replicate-art/issue57_batch.py) | 24×24 crops of the 256² token icons ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). Time Arena **CL8Y** micro-glyphs now use **`/tokens/cl8y.svg`** at 24×24 instead of `token-cl8y-24.png`. Canonical Glass Arena CHARM/CRED marks live in [`public/tokens`](../tokens/README.md) and regenerate via [`glass_arena_token_icons.py`](../../../scripts/replicate-art/glass_arena_token_icons.py). |
@@ -134,12 +134,15 @@ stem.
 | `ui-conversion-arrow.png` | [`ConversionArrow.tsx`](../../src/components/ui/ConversionArrow.tsx), [`footerSiteLinks.ts`](../../src/lib/footerSiteLinks.ts) | Arcade “A → B” arrow between pay rails / sinks; regenerate via [`ui_conversion_arrow_batch.py`](../../../scripts/replicate-art/ui_conversion_arrow_batch.py) or `--fetch-prediction-id`. |
 | `warbow-flag-20.png` / `warbow-guard-20.png` / `warbow-revenge-20.png` / `warbow-steal-20.png` | _staged_ | 20×20 crops of `warbow-*.png` ([issue #57](https://gitlab.com/PlasticDigits/yieldomega/-/issues/57)). |
 | `arena-lock-level.png` | [`LockedUntilLevel`](../../src/components/LockedUntilLevel.tsx) | Glass Arena lock overlay icon; regenerate via [`glass_arena_lock_icon.py`](../../../scripts/replicate-art/glass_arena_lock_icon.py). |
+| `arena-player-identity.png` | [`ArenaSimplePage.tsx`](../../src/pages/arena/ArenaSimplePage.tsx) (Last Buy extension chip via [`PlayerIdentity`](../../src/components/arena/PlayerIdentity.tsx)) | 16px Glass Arena player badge replacing blockie in the timer extension pill; regenerate via [`glass_arena_player_identity_icon.py`](../../../scripts/replicate-art/glass_arena_player_identity_icon.py). |
 | `arena-podium-last-buy.png` / `arena-podium-warbow.png` / `arena-podium-defended-streak.png` / `arena-podium-time-booster.png` | [`ArenaSimplePodiumSection.tsx`](../../src/pages/arena/ArenaSimplePodiumSection.tsx) | 140×140 small-slot Glass Arena podium icons; regenerate via [`glass_arena_podium_icons.py`](../../../scripts/replicate-art/glass_arena_podium_icons.py). |
 | `arena-podium-rank-first.png` / `arena-podium-rank-second.png` / `arena-podium-rank-third.png` | [`PodiumRankingList`](../../src/pages/arena/arenaUi.tsx) | 96×96 trophy rank icons displayed at ~40px in Simple podium rows; regenerate via [`glass_arena_podium_rank_icons.py`](../../../scripts/replicate-art/glass_arena_podium_rank_icons.py). |
 
 ### `cursors/`
 
 Custom mouse pointers wired through CSS (`cursor: url('/art/cursors/<name>.png') <hotspot-x> <hotspot-y>, <fallback>;`). This folder intentionally contains only the canonical cursor names below; do not add legacy aliases or experimental variants here.
+
+**Style:** cyberminimalist **Glass Arena** glassmorphism (#290) — navy glass, teal/emerald glow, gold accents — not the legacy blocky arcade-cartoon pack. Regenerate via [`cursor_batch.py`](../../../scripts/replicate-art/cursor_batch.py) (Replicate + MDN affordance refs) or local glass fallbacks with `--derivatives-only`.
 
 | Slug                | Hotspot       | Used in                                                    | Fallback when blocked / on mobile |
 |---------------------|---------------|------------------------------------------------------------|-----------------------------------|

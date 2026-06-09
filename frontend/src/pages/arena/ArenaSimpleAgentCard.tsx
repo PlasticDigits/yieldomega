@@ -503,7 +503,10 @@ export function ArenaSimpleAgentCard() {
   const abiBuyRouterApp = `${abisBase}/TimeArenaBuyRouter.json`;
 
   return (
-    <details className="app-footer-agent arena-simple-agent-card" data-testid="arena-simple-agent-card">
+    <details
+      className="app-footer-agent arena-simple-agent-card data-panel"
+      data-testid="arena-simple-agent-card"
+    >
       <summary className="app-footer-agent__summary">
         <span className="app-footer-agent__summary-title">AGENT CARD: Time Arena Simple</span>
         <span className="app-footer-agent__summary-hint">

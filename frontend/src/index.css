@@ -348,6 +348,11 @@ label:has(input[type="radio"]:disabled) {
   transform: rotate(8deg);
 }
 
+.app-shell.app-shell--arena::before,
+.app-shell.app-shell--arena::after {
+  content: none;
+}
+
 .app-header {
   --app-header-mascot-clearance: clamp(3.65rem, 7vw, 4.75rem);
   --app-header-icon-size: 1.8125rem;
@@ -558,7 +563,7 @@ label:has(input[type="radio"]:disabled) {
     font-size: 0.68rem;
     font-family: "IBM Plex Mono", monospace;
     letter-spacing: 0.05em;
-    color: var(--arcade-green-900);
+    color: var(--yo-text);
     white-space: nowrap;
     line-height: 1.1;
     text-transform: uppercase;
@@ -807,22 +812,20 @@ label:has(input[type="radio"]:disabled) {
   gap: 0.28rem;
   min-width: 0;
   max-width: 100%;
-  padding: 0.34rem 0.42rem 0.38rem;
-  border-radius: 1.05rem;
-  border: 2px solid var(--line);
+  padding: 0.38rem 0.48rem 0.42rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--yo-line);
   background:
-    var(--panel-gloss),
-    linear-gradient(
-      165deg,
-      var(--arcade-green-300) 0%,
-      var(--arcade-green-500) 42%,
-      var(--arcade-green-700) 100%
-    );
+    radial-gradient(circle at 88% 8%, rgba(53, 240, 194, 0.1), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 30%),
+    var(--yo-panel-gradient);
   box-shadow:
-    4px 4px 0 var(--line),
-    0 0 0 1px rgba(255, 255, 255, 0.22) inset,
-    0 7px 16px rgba(6, 61, 36, 0.28);
-  font-size: 0.78rem;
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    var(--yo-glass-shadow);
+  backdrop-filter: blur(var(--yga-glass-blur, 18px)) saturate(1.12);
+  font-family: var(--yga-font-data, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.72rem;
+  color: var(--yo-text);
 }
 
 .album-player__details {
@@ -871,9 +874,9 @@ label:has(input[type="radio"]:disabled) {
   pointer-events: none;
   display: inline-block;
   white-space: nowrap;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
 }
 
 .album-player__ticker-inner {
@@ -881,11 +884,10 @@ label:has(input[type="radio"]:disabled) {
   width: max-content;
   max-width: none;
   white-space: nowrap;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  color: rgba(255, 254, 248, 0.96);
-  text-shadow: 0 1px 0 rgba(11, 31, 20, 0.45);
+  letter-spacing: 0.05em;
+  color: var(--yo-muted);
 }
 
 .album-player__badge {
@@ -894,14 +896,15 @@ label:has(input[type="radio"]:disabled) {
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
-  padding: 0.06rem 0.38rem;
+  padding: 0.12rem 0.42rem;
   border-radius: 999px;
-  border: 1px solid rgba(11, 31, 20, 0.35);
-  background: rgba(6, 61, 36, 0.28);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: rgba(255, 254, 248, 0.92);
+  border: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--yo-text);
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -931,44 +934,45 @@ label:has(input[type="radio"]:disabled) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.65rem;
-  height: 1.65rem;
+  min-width: 1.55rem;
+  height: 1.55rem;
   padding: 0;
-  border: 2px solid rgba(11, 31, 20, 0.5);
-  border-radius: 0.45rem;
-  background: rgba(255, 254, 248, 0.22);
-  color: #fff;
-  font-size: 0.72rem;
+  border: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--yo-text);
+  font-size: 0.68rem;
   line-height: 1;
-  text-shadow: 0 1px 0 var(--line);
   cursor: url("/art/cursors/pointer.png") 10 2, pointer;
   transition:
-    transform 120ms ease,
-    background 120ms ease,
-    filter 120ms ease;
+    background var(--yga-motion-fast, 140ms ease),
+    border-color var(--yga-motion-fast, 140ms ease);
 }
 
 .album-player__icon-btn:hover {
-  transform: scale(1.06);
-  background: rgba(255, 254, 248, 0.35);
+  background: rgba(126, 241, 255, 0.1);
+  border-color: var(--yo-line);
 }
 
 .album-player__icon-btn:active {
-  transform: scale(0.96);
+  background: rgba(126, 241, 255, 0.16);
+}
+
+.album-player__icon-btn:focus-visible {
+  outline: 2px solid var(--yo-focus-ring, var(--yo-cyan-soft));
+  outline-offset: 2px;
 }
 
 .album-player__icon-btn--head {
-  min-width: 1.55rem;
-  height: 1.55rem;
-  border-radius: 0.42rem;
-  font-size: 0.9rem;
-  line-height: 1;
-  border-width: 1px;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  font-size: 0.78rem;
 }
 
 .album-player__icon-btn--head.album-player__icon-btn--muted {
-  background: rgba(6, 61, 36, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(255, 229, 102, 0.45);
+  background: rgba(255, 107, 122, 0.1);
+  border-color: rgba(255, 107, 122, 0.32);
+  color: var(--yo-danger);
 }
 
 .album-player__title {
@@ -977,8 +981,7 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.3;
-  color: rgba(255, 254, 248, 0.96);
-  text-shadow: 0 1px 0 rgba(11, 31, 20, 0.45);
+  color: var(--yo-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -989,24 +992,26 @@ label:has(input[type="radio"]:disabled) {
   align-items: center;
   gap: 0.45rem;
   font-weight: 600;
-  color: rgba(255, 254, 245, 0.9);
+  color: var(--yo-muted);
 }
 
 .album-player__vol-label {
   flex: 0 0 auto;
   min-width: 3.1rem;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
+  color: var(--yo-dim);
 }
 
 .album-player__vol input[type="range"] {
-  --album-range-track-h: 0.4rem;
-  --album-range-knob: 22px;
+  --album-range-track-h: 0.28rem;
+  --album-range-knob: 0.72rem;
   flex: 1 1 auto;
   min-width: 0;
   height: var(--album-range-knob);
-  accent-color: var(--arcade-gold-600);
+  accent-color: var(--yo-cyan);
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
@@ -1015,9 +1020,9 @@ label:has(input[type="radio"]:disabled) {
 .album-player__vol input[type="range"]::-webkit-slider-runnable-track {
   height: var(--album-range-track-h);
   border-radius: 999px;
-  border: 2px solid rgba(11, 31, 20, 0.45);
-  background: rgba(6, 61, 36, 0.35);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+  background: rgba(4, 12, 20, 0.72);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
 .album-player__vol input[type="range"]::-webkit-slider-thumb {
@@ -1026,28 +1031,28 @@ label:has(input[type="radio"]:disabled) {
   width: var(--album-range-knob);
   height: var(--album-range-knob);
   margin-top: calc((var(--album-range-track-h) - var(--album-range-knob)) / 2);
-  border: none;
-  border-radius: 0;
-  background: url("/art/icons/icon-slider-knob.png") center / contain no-repeat;
-  box-shadow: none;
+  border: 1px solid var(--yo-cyan-soft);
+  border-radius: 999px;
+  background: var(--yo-cyan);
+  box-shadow: 0 0 6px rgba(53, 240, 194, 0.42);
   cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 
 .album-player__vol input[type="range"]::-moz-range-track {
   height: var(--album-range-track-h);
   border-radius: 999px;
-  border: 2px solid rgba(11, 31, 20, 0.45);
-  background: rgba(6, 61, 36, 0.35);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+  background: rgba(4, 12, 20, 0.72);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
 .album-player__vol input[type="range"]::-moz-range-thumb {
   width: var(--album-range-knob);
   height: var(--album-range-knob);
-  border: none;
-  border-radius: 0;
-  background: url("/art/icons/icon-slider-knob.png") center / contain no-repeat;
-  box-shadow: none;
+  border: 1px solid var(--yo-cyan-soft);
+  border-radius: 999px;
+  background: var(--yo-cyan);
+  box-shadow: 0 0 6px rgba(53, 240, 194, 0.42);
   cursor: url("/art/cursors/grab.png") 16 16, grab;
 }
 
@@ -1955,6 +1960,24 @@ label:has(input[type="radio"]:disabled) {
   line-height: 1.35;
   color: var(--yo-muted);
   text-transform: uppercase;
+}
+
+button.empty-data-placeholder {
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  text-align: inherit;
+}
+
+button.empty-data-placeholder--connect:not(:disabled):hover {
+  border-color: rgba(126, 241, 255, 0.38);
+  background: rgba(126, 241, 255, 0.12);
+  color: var(--yo-text);
+}
+
+button.empty-data-placeholder--connect:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .stat-card__value .empty-data-placeholder {
@@ -3332,20 +3355,6 @@ label:has(input[type="radio"]:disabled) {
     var(--yo-panel-gradient);
 }
 
-.data-panel::after {
-  content: "";
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--yo-line);
-  border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, var(--yo-cyan-soft) 0%, var(--yo-cyan) 48%, rgba(53, 240, 194, 0.08) 100%);
-  box-shadow: 0 0 18px rgba(53, 240, 194, 0.28);
-}
-
-
 /* ── WarBow arena containment (#24) ────────────────────────────── */
 .data-panel.data-panel--warbow {
   border: 1px solid rgba(248, 213, 107, 0.58);
@@ -3357,10 +3366,6 @@ label:has(input[type="radio"]:disabled) {
     var(--yo-glass-shadow),
     inset 0 0 28px rgba(248, 213, 107, 0.06);
   padding-right: min(7.5rem, 22vw);
-}
-.data-panel.data-panel--warbow::after {
-  background: radial-gradient(circle at 30% 30%, var(--yo-gold) 0%, var(--yo-magenta) 64%, rgba(255, 94, 196, 0.08) 100%);
-  border-color: rgba(248, 213, 107, 0.58);
 }
 .data-panel.data-panel--warbow h2 {
   color: var(--yo-gold);
@@ -3524,10 +3529,6 @@ label:has(input[type="radio"]:disabled) {
 .referrals-panel.data-panel {
   border-width: 1px;
   isolation: isolate;
-}
-
-.referrals-panel.data-panel::after {
-  display: none;
 }
 
 .referrals-panel--earnings.data-panel {
@@ -4107,10 +4108,6 @@ label:has(input[type="radio"]:disabled) {
     radial-gradient(circle at 100% 0%, rgba(53, 240, 194, 0.12), transparent 34%),
     var(--panel-gloss),
     var(--yo-panel-gradient);
-}
-
-.referral-register .chain-write-gate > .data-panel::after {
-  display: none;
 }
 
 /* Nested share-links card: default `.data-panel` top pad reads as excess air above the H4. */
@@ -5656,10 +5653,6 @@ code {
   pointer-events: none;
 }
 
-.arena-buy-panel.data-panel::after {
-  display: none;
-}
-
 .arena-buy-panel > :not(.panel-cutout) {
   position: relative;
   z-index: 2;
@@ -5678,16 +5671,6 @@ code {
   height: auto;
   opacity: 0.95;
   filter: drop-shadow(4px 6px 0 rgba(35, 24, 8, 0.2));
-}
-
-.panel-cutout--arena-sniper-shark {
-  right: -0.75rem;
-  bottom: -0.55rem;
-  width: clamp(6rem, 13vw, 8.5rem);
-  opacity: 0.9;
-  filter:
-    drop-shadow(4px 6px 0 rgba(9, 30, 42, 0.26))
-    saturate(1.06);
 }
 
 .arena-buy-panel__conversion {
@@ -5802,7 +5785,6 @@ input[type="range"].form-input.arena-buy-spend-range {
     linear-gradient(90deg, var(--arcade-green-800), var(--arcade-green-500)) 0 / var(--arena-buy-spend-fill, 50%) 100% no-repeat,
     linear-gradient(180deg, #0f3a22, var(--arcade-green-900));
   box-shadow:
-    4px 4px 0 var(--line),
     inset 0 2px 0 rgba(255, 255, 255, 0.16),
     inset 0 -2px 0 rgba(0, 0, 0, 0.22);
   cursor: url("/art/cursors/grab.png") 16 16, grab;
@@ -7734,12 +7716,80 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 1rem;
 }
 
-/* In-page agent `<details>` — mirrors global footer card styling without occupying the shell footer. */
-.arena-simple-agent-card.app-footer-agent {
-  padding: 0.75rem 0.95rem;
-  border-radius: 0.9rem;
-  border: 2px solid color-mix(in srgb, var(--line) 85%, var(--arcade-green-700));
-  background: color-mix(in srgb, var(--bg-cream) 88%, #e8f4ec);
+/* In-page agent `<details>` — glass panel on the Arena command console (#290 / #291). */
+.arena-simple-agent-card.app-footer-agent.data-panel {
+  padding: 0.85rem 1.05rem;
+  border-radius: 0.75rem;
+}
+
+.arena-simple-agent-card.data-panel:hover {
+  transform: none;
+  box-shadow: var(--yo-glass-shadow);
+}
+
+.arena-simple-agent-card .app-footer-agent__summary {
+  font-family: var(--yga-font-data, "IBM Plex Mono", monospace);
+  color: var(--yo-text);
+}
+
+.arena-simple-agent-card .app-footer-agent__summary-title {
+  color: var(--yga-teal-live, var(--yo-cyan-soft));
+  letter-spacing: 0.08em;
+}
+
+.arena-simple-agent-card .app-footer-agent__summary-hint {
+  color: var(--arena-console-muted, var(--yo-muted));
+  font-weight: 500;
+}
+
+.arena-simple-agent-card .app-footer-agent__body {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+}
+
+.arena-simple-agent-card .app-footer-agent__h {
+  font-family: var(--yga-font-data, "IBM Plex Mono", monospace);
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--yo-text);
+}
+
+.arena-simple-agent-card .app-footer-agent__p,
+.arena-simple-agent-card .app-footer-agent__article {
+  color: var(--arena-console-muted, var(--yo-muted));
+}
+
+.arena-simple-agent-card .app-footer-agent__p a,
+.arena-simple-agent-card .app-footer-agent__list a {
+  color: var(--yga-teal-live, var(--yo-cyan-soft));
+}
+
+.arena-simple-agent-card .app-footer-agent__code-inline {
+  border: 1px solid rgba(126, 241, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--yo-cyan-soft);
+}
+
+.arena-simple-agent-card .app-footer-agent__route-block {
+  border: 1px solid var(--yo-line);
+  background: rgba(4, 10, 18, 0.72);
+  color: var(--yo-cyan-soft);
+}
+
+.arena-simple-agent-card .app-footer-agent__dl dt {
+  color: var(--yo-cyan-soft);
+}
+
+.arena-simple-agent-card .app-footer-agent__dl dd {
+  color: var(--arena-console-muted, var(--yo-muted));
+}
+
+.arena-simple-agent-card .footer-link-pill {
+  border: 1px solid var(--yo-line);
+  background: rgba(8, 20, 32, 0.74);
+  color: var(--yo-text);
 }
 
 /* =============================================================
@@ -7758,10 +7808,6 @@ a.podium-address-explorer:hover .address-inline__label {
  *     as one continuous billboard.
  *   - `.arena-simple__buy-panel` becomes a compact BUY execution bay,
  *     distinct from the timer while keeping the same acid/amber glass.
- *   - The generic `.data-panel::after` gold dot is hidden on both panels;
- *     it competes with the new chrome and indicates nothing.
- *   - The existing mascot pair anchors the timer panel to the Yield Omega
- *     cast without overpowering the digits.
  *
  * Sibling spec: see `docs/frontend/arena-views.md` and the standalone
  * `.launch-countdown` hero (same digit rhythm, urgency colours, days chip,
@@ -7771,21 +7817,14 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Outer panel chrome -> tactical timer bay. The dark gradient continues all
    the way to the panel border so the timer reads as one immersive surface
    instead of "cream box wrapping a dark inset". A thin glass border and
-   restrained shadow keep the console hierarchy crisp. The scene art
-   bleeds into the whole panel via a `::before` layer (not just
-   the inner timer-hero region) so there's no visible "window-in-a-wall"
-   rectangle around the scene. */
+   restrained shadow keep the console hierarchy crisp. */
 .arena-simple__timer-panel.data-panel {
   position: relative;
   isolation: isolate;
-  /* Hub panels are column flex (`.arena-simple__hub > .data-panel`). The
-     timer stage sets a desktop `min-height` so it matches the buy column;
-     without this, the heading + clock hug the top above empty stage space. */
-  justify-content: center;
-  /* `.data-panel--spotlight` reserves a wide right rail (for cutouts on the
-     right). The timer mascot is bottom-left, so that extra `padding-right`
-     only shoves the heading + clock left of centre. Use symmetric insets. */
-  padding: 1.1rem 1.15rem;
+  /* Hub panels are column flex (`.arena-simple__hub > .data-panel`). Content
+     stacks from the top; bottom padding (below) reserves the extension chip. */
+  justify-content: flex-start;
+  padding: 0.45rem 0.75rem;
   border: 1px solid rgba(185, 255, 106, 0.28);
   border-radius: 1.1rem;
   background:
@@ -7800,56 +7839,15 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-.arena-simple__timer-panel.data-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("/art/scenes/arena-simple-command-console.svg");
-  background-size: cover;
-  background-position: center 35%;
-  background-repeat: no-repeat;
-  /* Vignette mask: fade the scene into the panel chrome on every side so
-     no hard rectangle is visible. Keeps the scene as ambient atmosphere
-     while the digits stay the brightest thing on the stage. */
-  -webkit-mask-image: radial-gradient(
-    ellipse at 50% 45%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.6) 55%,
-    rgba(0, 0, 0, 0) 88%
-  );
-  mask-image: radial-gradient(
-    ellipse at 50% 45%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.6) 55%,
-    rgba(0, 0, 0, 0) 88%
-  );
-  opacity: 0.18;
-  mix-blend-mode: screen;
-  filter: saturate(0.92) contrast(1.05);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Hide the inner-hero scene <img> on the simple timer panel — the scene
-   now lives at the panel level (above) for a seamless backplate. The img
-   is kept in the component for the (legacy) standalone case but is just
-   noise here. */
+/* Hide the inner-hero scene <img> on the simple timer panel — the panel
+   gradient is the backplate; the img is kept for the legacy standalone case. */
 .arena-simple__timer-panel .arena-simple__timer-hero-scene {
   display: none;
 }
 
-/* Layering inside the timer panel: scene `::before` sits at z-index 0,
-   so the section heading, the timer hero, and the mascot cutout all need
-   to sit above it. Keeping the mascot just under the digits (z-index 1
-   vs 2) so the bunny pair doesn't ever cover the H:M:S readout if the
-   panel ever shrinks past expected widths. */
 .arena-simple__timer-panel .section-heading,
 .arena-simple__timer-panel .timer-hero {
   position: relative;
-  z-index: 2;
-}
-
-.arena-simple__timer-panel .panel-cutout--pair-mascot {
   z-index: 1;
 }
 
@@ -7962,13 +7960,6 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-shrink: 0;
 }
 
-/* Hide the generic gold-dot status indicator on the spotlight panels —
-   it competes with the command-console chrome and indicates nothing. */
-.arena-simple__timer-panel.data-panel::after,
-.arena-simple__buy-panel.data-panel::after {
-  display: none;
-}
-
 /* Section heading ON the dark stage: invert text colours so the H2 + lede
    stay legible against the deep green. The badge is left as-is (it already
    has its own bordered chip styling). */
@@ -8021,8 +8012,8 @@ a.podium-address-explorer:hover .address-inline__label {
    panel itself. */
 .arena-simple__timer-panel .timer-hero {
   margin: 0;
-  /* No top inset — lede sits flush on the digit stage; keep breathing room below the clock. */
-  padding: 0 clamp(0.5rem, 1.6vw, 1.25rem) clamp(1.15rem, 2.2vw, 1.85rem)
+  /* No top inset — lede sits flush on the digit stage. */
+  padding: 0 clamp(0.5rem, 1.6vw, 1.25rem) clamp(0.35rem, 1vw, 0.65rem)
     clamp(0.5rem, 1.6vw, 1.25rem);
   isolation: isolate;
   background: transparent;
@@ -8100,7 +8091,7 @@ a.podium-address-explorer:hover .address-inline__label {
    where the chip is hidden. */
 .arena-simple__timer-panel:has(.arena-simple__last-extension)
   .arena-simple__timer-clock {
-  margin-bottom: 1em;
+  margin-bottom: 0.35em;
 }
 
 .arena-simple__timer-digits {
@@ -8115,35 +8106,32 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0 22px rgba(0, 0, 0, 0.45);
 }
 
-/* "1d" / "12d" chip mirrors the `.launch-countdown__days` bordered pill —
-   same palette + box shadow so the two timers read as siblings; only the
-   border + corner radius are tighter so the chip fits the in-card scale. */
+/* "1d" / "12d" chip mirrors `.launch-countdown__days` — dark glass pill, teal
+   border, gold digits — so the in-card timer and launch gate read as siblings. */
 .arena-simple__timer-days {
   display: inline-flex;
   align-items: baseline;
   gap: 0.15em;
-  padding: 0.05em 0.45em;
-  border: 3px solid var(--line);
-  border-radius: 0.6rem;
-  background: linear-gradient(160deg, var(--arcade-gold-400) 0%, var(--arcade-gold-600) 100%);
-  color: var(--text-main);
-  text-shadow: 2px 3px 0 rgba(11, 31, 20, 0.18);
-  box-shadow: 4px 4px 0 var(--line);
-  /* Optical nudge: baseline alignment leaves the chip ~4px low vs HH:MM:SS. */
-  transform: translateY(-4px);
+  padding: 0.1em 0.45em;
+  border: 1px solid rgba(126, 241, 255, 0.42);
+  border-radius: 0.85rem;
+  background: rgba(8, 20, 32, 0.82);
+  color: var(--yo-gold);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  text-shadow: 0 0 18px rgba(248, 213, 107, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .arena-simple__timer-days-num {
   font-size: clamp(1.85rem, 6vw, 3.5rem);
   font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.02em;
 }
 
 .arena-simple__timer-days-unit {
   font-size: clamp(0.9rem, 2vw, 1.3rem);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: lowercase;
 }
 
@@ -8210,7 +8198,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__timer-days {
-    padding: 0.05em 0.4em;
+    padding: 0.08em 0.4em;
   }
 }
 
@@ -8236,20 +8224,12 @@ a.podium-address-explorer:hover .address-inline__label {
     flex-wrap: nowrap;
     align-items: center;
   }
-
-  .arena-simple__timer-clock .arena-simple__timer-days {
-    transform: none;
-  }
 }
 
 @media (min-width: 541px) {
   .arena-simple__timer-clock {
     flex-wrap: nowrap;
     align-items: center;
-  }
-
-  .arena-simple__timer-clock .arena-simple__timer-days {
-    transform: none;
   }
 }
 
@@ -8298,7 +8278,8 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.arena-simple__hub > .data-panel {
+.arena-simple__hub > .data-panel,
+.arena-simple__hub > .arena-simple__buy-panel {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -8316,11 +8297,6 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-/* Hide generic `.data-panel::after` gold dot — it sits on the badge header and adds no signal. */
-.arena-simple__activity-panel.data-panel::after {
-  display: none;
 }
 
 .arena-simple__podium-panel {
@@ -8404,11 +8380,6 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0.8rem 1.8rem rgba(11, 31, 20, 0.08);
 }
 
-.arena-simple__podium-panel .page-section__standalone-badge {
-  position: relative;
-  z-index: 1;
-}
-
 .arena-simple__podium-panel .section-heading h2 {
   color: color-mix(in srgb, var(--arcade-green-900) 76%, #ff4a9d);
   text-shadow:
@@ -8448,6 +8419,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-card {
+  container-type: inline-size;
+  container-name: podiumCard;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -8632,11 +8605,10 @@ a.podium-address-explorer:hover .address-inline__label {
   display: grid;
   width: 100%;
   box-sizing: border-box;
-  grid-template-columns: 2.65rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    "rank identity"
     "prize prize"
-    "meta meta";
+    "identity meta";
   gap: 0.42rem 0.55rem;
   padding: 0.56rem 0.64rem;
   border-width: 2px;
@@ -8646,17 +8618,18 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-simple__podium-card .ranking-list__item > strong {
   grid-area: prize;
-  justify-self: stretch;
-  width: 100%;
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
 }
 
 .arena-simple__podium-card .ranking-list__rank {
-  grid-area: rank;
   position: relative;
   isolation: isolate;
-  width: 2.65rem;
-  height: 2.65rem;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -8711,19 +8684,21 @@ a.podium-address-explorer:hover .address-inline__label {
     filter 180ms ease;
 }
 
-.arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
-  animation: podium-trophy-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35);
-}
-
 .arena-simple__podium-card .ranking-list__item:hover .ranking-list__rank img,
 .arena-simple__podium-card .ranking-list__item:focus-within .ranking-list__rank img {
   transform: translateY(-0.12rem) rotate(-4deg) scale(1.09);
   filter: saturate(1.14) brightness(1.06);
 }
 
-.arena-simple__podium-card .ranking-list__item > div:not(.ranking-list__meta) {
+.arena-simple__podium-card .ranking-list__item > .ranking-list__identity {
   grid-area: identity;
+  justify-self: end;
   min-width: 0;
+}
+
+.arena-simple__podium-card .ranking-list__identity[data-rank-burst] .address-inline {
+  animation: podium-address-pop 0.78s cubic-bezier(0.18, 0.9, 0.28, 1.35);
+  transform-origin: 100% 50%;
 }
 
 .arena-simple__podium-card .ranking-list__item > .ranking-list__meta {
@@ -8734,8 +8709,35 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.25;
 }
 
+/* Wide podium cards: prize pill (with rank icon), address, and score timer on one row. */
+@container podiumCard (min-width: 20rem) {
+  .arena-simple__podium-card .ranking-list__item {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "prize identity meta";
+    align-items: center;
+  }
+
+  .arena-simple__podium-card .ranking-list__item > strong {
+    justify-self: start;
+    width: fit-content;
+    max-width: none;
+  }
+
+  .arena-simple__podium-card .ranking-list__item > .ranking-list__identity {
+    justify-self: end;
+  }
+
+  .arena-simple__podium-card .ranking-list__item > .ranking-list__meta {
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+}
+
 .arena-simple__podium-card .ranking-list__item strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
   min-width: 0;
   padding: 0.26rem 0.48rem 0.22rem;
   border-radius: 0.9rem;
@@ -8755,20 +8757,23 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-simple__podium-prize {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 0.14rem;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
   font-family: "Bungee", cursive;
+  text-align: left;
   white-space: nowrap;
 }
 
 .arena-simple__podium-prize-main {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 0.22rem;
+  justify-content: flex-start;
+  gap: 0.28rem;
   min-width: 0;
+  max-width: 100%;
 }
 
 .arena-simple__podium-prize-main > span:first-child {
@@ -8778,6 +8783,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__podium-prize small {
+  flex-shrink: 0;
   font-family: "Inter", sans-serif;
   font-size: 0.54em;
   font-weight: 950;
@@ -8847,47 +8853,22 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-@keyframes podium-trophy-pop {
+@keyframes podium-address-pop {
   0% {
     opacity: 0.66;
-    transform: translateY(0.28rem) rotate(-10deg) scale(0.74);
+    transform: translateX(0.35rem) scale(0.82);
     filter: brightness(1.28) saturate(1.35);
   }
   58% {
     opacity: 1;
-    transform: translateY(-0.22rem) rotate(7deg) scale(1.18);
+    transform: translateX(-0.12rem) scale(1.12);
     filter: brightness(1.14) saturate(1.22);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) rotate(-1.5deg) scale(1);
+    transform: translateX(0) scale(1);
     filter: brightness(1) saturate(1);
   }
-}
-
-@keyframes podium-trophy-burst {
-  0% {
-    opacity: 0.95;
-    transform: translate(0, 0) scale(0.72);
-    box-shadow:
-      -0.3rem -0.18rem 0 0 rgba(255, 255, 255, 0.96),
-      -1.2rem 0.2rem 0 0 color-mix(in srgb, var(--podium-card-accent, #ff6fd8) 72%, white),
-      -2rem 1.3rem 0 0 rgba(255, 230, 109, 0.88),
-      0.22rem 1.55rem 0 0 rgba(255, 255, 255, 0.86);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-0.36rem, -0.72rem) scale(1.35);
-    box-shadow:
-      -0.9rem -0.95rem 0 -0.08rem transparent,
-      -2.15rem -0.25rem 0 -0.08rem transparent,
-      -2.75rem 1.8rem 0 -0.08rem transparent,
-      0.58rem 2.2rem 0 -0.08rem transparent;
-  }
-}
-
-.arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after {
-  animation: podium-trophy-burst 0.82s ease-out;
 }
 
 @keyframes podium-sparkle {
@@ -8975,8 +8956,7 @@ a.podium-address-explorer:hover .address-inline__label {
     animation: none;
   }
 
-  .arena-simple__podium-card .ranking-list__rank[data-rank-burst]::after,
-  .arena-simple__podium-card .ranking-list__rank[data-rank-burst] img {
+  .arena-simple__podium-card .ranking-list__identity[data-rank-burst] .address-inline {
     animation: none;
   }
 }
@@ -9008,20 +8988,19 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 
   .arena-simple__podium-card .ranking-list__item {
-    grid-template-columns: 2.45rem minmax(0, 1fr);
     gap: 0.42rem 0.5rem;
     padding: 0.5rem 0.52rem;
   }
 
   .arena-simple__podium-card .ranking-list__rank {
-    width: 2.35rem;
-    height: 2.35rem;
+    width: 1.85rem;
+    height: 1.85rem;
   }
 
   .arena-simple__podium-card .ranking-list__item strong {
-    justify-self: stretch;
-    width: 100%;
-    max-width: none;
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
     white-space: normal;
   }
 }
@@ -9079,19 +9058,7 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-/* Desktop hub: give the command-console timer bay a stable vertical footprint so the
-   mascot + digits + extension chip layout does not feel vertically cramped. */
-@container arenaSimplePage (min-width: 881px) {
-  .arena-simple__hub > .arena-simple__timer-panel {
-    min-height: 392px;
-  }
-}
-
-@media (min-width: 881px) {
-  .arena-simple__hub > .arena-simple__timer-panel {
-    min-height: 392px;
-  }
-}
+/* Timer panel height is content-driven; bottom padding reserves the mascot lane. */
 
 .arena-simple__ticker-row {
   --ticker-accent: var(--arcade-green);
@@ -9504,15 +9471,15 @@ a.podium-address-explorer:hover .address-inline__label {
 /* Buy panel -> execution bay. Distinct warm acid/amber gradient (vs the
    timer bay's dark green) so the two panels read as separate actions:
    watch the clock, then execute the buy. */
-.arena-simple__buy-panel.data-panel {
+.arena-simple__buy-panel {
   position: relative;
   isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Undo `.data-panel--spotlight`’s wide right rail (cutout reserve). This panel
-     hides `::after` and has no right mascot — extra `padding-right` only
-     shoves slider + amount bar + CTA left of centre (same fix as timer panel). */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 1.1rem 1.15rem;
   border: 4px solid var(--arcade-gold-600);
   border-radius: 1.5rem;
@@ -9527,26 +9494,13 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
 }
 
-/* Buy hub: column-align interactive chrome (rate, slider, CTA) on the vending
-   panel's centerline. Gate wrapper stays full width (overlay + E2E guardrail
-   in timeArenaResponsiveLayoutCss.test.ts forbids `.buy-panel .chain-write-gate`
-   as a substring — use `.buy-panel.data-panel > .chain-write-gate` only). */
-.arena-simple__buy-panel.data-panel > .chain-write-gate {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.arena-simple__buy-panel > * {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-.arena-simple__buy-panel.data-panel > .chain-write-gate > * {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-.arena-simple__buy-panel.data-panel > .chain-write-gate > p {
+.arena-simple__buy-panel > p {
   text-align: center;
 }
 
@@ -9572,7 +9526,7 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
 }
 
-.arena-simple__buy-panel .arena-simple__rate-now-line {
+.arena-simple__buy-panel .arena-simple__rate-row--now {
   justify-content: center;
 }
 
@@ -9812,6 +9766,41 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.2;
 }
 
+.arena-simple__receive-balance {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.92rem;
+}
+
+.arena-simple__receive-balance-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.arena-simple__receive-balance .amount-triple {
+  display: inline-flex;
+  flex-direction: column;
+  vertical-align: baseline;
+  max-width: 100%;
+}
+
+.arena-simple__receive-balance .amount-triple__row {
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+.arena-simple__receive-balance .amount-triple__label {
+  font-size: 0.78em;
+  min-width: 0;
+}
+
+.arena-simple__receive-balance .amount-triple__value {
+  font-size: 1.12em;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
 .arena-simple__amount-field--quoted {
   display: inline-flex;
   align-items: center;
@@ -9823,17 +9812,20 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-cl8y-buy-controls__slider-label--pay-cl8y input[type="range"].form-input.arena-buy-spend-range,
-.arena-simple__slider-row--pay-cl8y .arena-buy-spend-range {
+.arena-simple__slider-row--pay-cl8y .arena-buy-spend-range,
+.arena-simple__pay-slider-row--pay-cl8y .arena-buy-spend-range {
   accent-color: var(--arcade-green-600, #15803d);
 }
 
 .arena-cl8y-buy-controls__slider-label--pay-eth input[type="range"].form-input.arena-buy-spend-range,
-.arena-simple__slider-row--pay-eth .arena-buy-spend-range {
+.arena-simple__slider-row--pay-eth .arena-buy-spend-range,
+.arena-simple__pay-slider-row--pay-eth .arena-buy-spend-range {
   accent-color: #627eea;
 }
 
 .arena-cl8y-buy-controls__slider-label--pay-usdm input[type="range"].form-input.arena-buy-spend-range,
-.arena-simple__slider-row--pay-usdm .arena-buy-spend-range {
+.arena-simple__slider-row--pay-usdm .arena-buy-spend-range,
+.arena-simple__pay-slider-row--pay-usdm .arena-buy-spend-range {
   accent-color: #0d9488;
 }
 
@@ -9868,26 +9860,25 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.28rem 0.45rem;
-  margin: 0;
+  gap: 4px;
+  margin: 6px 0;
   color: rgba(177, 213, 230, 0.88);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: clamp(0.72rem, 1.6vw, 0.9rem);
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.1;
   letter-spacing: 0.04em;
 }
 
 .arena-simple__buy-preview-item {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   white-space: nowrap;
-}
-
-.arena-simple__buy-preview-item:not(:last-child)::after {
-  content: "·";
-  margin-left: 0.45rem;
-  color: rgba(177, 213, 230, 0.52);
+  padding: 0.16rem 0.42rem;
+  border: 1px solid rgba(77, 231, 200, 0.22);
+  border-radius: 999px;
+  background: rgba(3, 14, 21, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .arena-simple__buy-preview-blocked-lede {
@@ -9994,10 +9985,14 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.18rem;
 }
 
-/* Live "now" row: inline CHARM glyph + label + price + pay-token logo; Arena
-   stacks the pay-asset toggle on a second line below. */
+/* Live "now" row: inline CHARM glyph + label + price + pay-token logo on one
+   wrapping flex line (`/tokens/charm.png` + `/tokens/doub.png`, etc.). */
 .arena-simple__rate-row--now {
-  gap: 0.45rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  min-width: 0;
 }
 
 .arena-simple__rate-row--now > .arena-simple__rate-paywith {
@@ -10122,16 +10117,6 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 1.15rem;
   font-weight: 900;
   color: rgba(60, 40, 0, 0.6);
-}
-
-/* CHARM glyph + "1 CHARM =" + hero digits + selected pay-token logo on one
-   wrapping flex line (`/tokens/charm.png` + `/tokens/doub.png`, etc.). */
-.arena-simple__rate-now-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.55rem;
-  min-width: 0;
 }
 
 .arena-simple__rate-pay-logo {
@@ -10392,43 +10377,10 @@ a.podium-address-explorer:hover .address-inline__label {
   animation: bob-loop 4.2s ease-in-out infinite;
 }
 
-/* When the hub flips to a single column (the `arenaSimplePage`
-   container shrinks below 880px, see line 4463), the panel narrows to
-   the point where the centred digits collide with the leprechaun-bunny
-   mascot's silhouette. The mascot is portrait (682x1024) and there's no
-   safe way to keep it bottom-left without overlapping the countdown, so
-   we just hide it below the breakpoint and reclaim the padding. The
-   panel still reads as a "yieldomega" stage thanks to the bleed-through
-   scene `::before` and the gold "SALE LIVE" pill. We also fall back to
-   a viewport media query so older user agents that don't support
-   container queries still get the safe layout. */
-@container arenaSimplePage (max-width: 880px) {
-  .arena-simple__timer-panel .panel-cutout--pair-mascot {
-    display: none;
-  }
-
-  .arena-simple__timer-panel.data-panel {
-    padding-bottom: clamp(1.25rem, 3vw, 1.85rem);
-  }
-}
-
-@media (max-width: 880px) {
-  .arena-simple__timer-panel .panel-cutout--pair-mascot {
-    display: none;
-  }
-
-  .arena-simple__timer-panel.data-panel {
-    padding-bottom: clamp(1.25rem, 3vw, 1.85rem);
-  }
-}
-
-/* Reserve the bottom-right of the timer panel and the bottom-left of the
-   buy panel so the section heading badge / lede / digits don't crash into
-   the mascot decorations. Padding stays inside the panel chrome so the
-   absolute-positioned cutouts can extend slightly outside (clipped by the
-   panel's own `overflow: hidden`). */
+/* Reserve the bottom-right of the timer panel so the section heading / digits
+   don't crash into the absolute "just extended" chip. */
 .arena-simple__timer-panel.data-panel {
-  padding-bottom: clamp(1.5rem, 3vw, 2.25rem);
+  padding-bottom: clamp(2rem, 4.5vw, 2.75rem);
 }
 
 /* Advanced disclosure: pay-with, slippage, referral. Hidden by default to
@@ -10544,11 +10496,6 @@ a.podium-address-explorer:hover .address-inline__label {
     radial-gradient(circle at 0 0, transparent 0 0.92rem, rgba(255, 255, 255, 0.62) 0.96rem 1.25rem, transparent 1.3rem),
     radial-gradient(circle at 100% 100%, transparent 0 0.92rem, rgba(255, 255, 255, 0.5) 0.96rem 1.25rem, transparent 1.3rem);
   pointer-events: none;
-}
-
-/* Same as timer/buy simple panels: hide generic `.data-panel::after` gold dot — it overlaps the inner stake card and adds no signal. */
-.arena-simple__stake-panel.data-panel::after {
-  display: none;
 }
 
 .arena-simple__stake-panel--has-charm.data-panel {
@@ -11693,10 +11640,14 @@ a.podium-address-explorer:hover .address-inline__label {
   grid-template-columns: minmax(0, 1.05fr) minmax(17rem, 0.52fr);
   gap: 0.75rem;
   margin-top: 0.75rem;
+  /* Side rail (WarBow + cred) is often taller than timer+buy — default stretch
+     would inflate the primary column and leave dead air between hub panels. */
+  align-items: start;
 }
 
-.arena-command-console__primary,
-.arena-command-console__side {
+.arena-command-console__primary {
+  grid-column: 1;
+  grid-row: 1 / -1;
   border: 1px solid rgba(185, 255, 106, 0.15);
   border-radius: 0.75rem;
   background: var(--arena-console-panel);
@@ -11704,22 +11655,25 @@ a.podium-address-explorer:hover .address-inline__label {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 1rem 2.4rem rgba(0, 0, 0, 0.22);
-}
-
-.arena-command-console__primary {
   display: grid;
   gap: 0.75rem;
   padding: clamp(0.8rem, 1.8vw, 1rem);
+  align-content: start;
+  align-items: start;
 }
 
-.arena-command-console__primary-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  align-items: baseline;
+/* Single grid cell so timer chips stack under YOUR WALLET instead of row 2 stretching with primary. */
+.arena-command-console__side-rail {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  align-self: start;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
-.arena-command-console__primary-head span,
 .arena-command-console__decision-row span {
   color: var(--arena-console-muted);
   font-size: 0.68rem;
@@ -11728,27 +11682,58 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
-.arena-command-console__primary-head h1 {
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(1.6rem, 3vw, 2.6rem);
-  line-height: 0.96;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
 .arena-command-console .arena-simple__hub {
   grid-template-columns: minmax(0, 1fr);
   gap: 0.7rem;
+  align-content: start;
+  align-items: start;
 }
 
-.arena-command-console .arena-simple__hub > .data-panel {
+.arena-command-console .arena-simple__timer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 0.7rem;
+  align-items: start;
   min-width: 0;
 }
 
+.arena-command-console .arena-simple__timer-row > .data-panel,
+.arena-command-console .arena-simple__timer-row > .arena-simple__last-buy-chip {
+  min-width: 0;
+  align-self: start;
+}
+
+.arena-command-console .arena-simple__last-buy-chip {
+  display: grid;
+  gap: 0;
+  padding: 0.55rem;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__gate {
+  min-height: 100%;
+}
+
+.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__head {
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+}
+
+.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__chip--hero-owned {
+  display: none;
+}
+
+.arena-command-console .arena-simple__hub > .data-panel,
+.arena-command-console .arena-simple__hub > .arena-simple__buy-panel {
+  min-width: 0;
+  align-self: start;
+}
+
 .arena-command-console .arena-simple__timer-panel.data-panel,
-.arena-command-console .arena-simple__buy-panel.data-panel,
+.arena-command-console .arena-simple__last-buy-chip,
+.arena-command-console .arena-simple__buy-panel,
 .arena-command-console .arena-charm-cred-card.data-panel,
+.arena-command-console .footer-site-links-card.data-panel,
 .arena-command-console .arena-timer-chips,
 .arena-command-console .warbow-hero-actions {
   border: 1px solid rgba(185, 255, 106, 0.16);
@@ -11762,8 +11747,15 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--arena-console-ink);
 }
 
+/* Compact command-console timer bay: prize hook + countdown stacked and centred. */
 .arena-command-console .arena-simple__timer-panel.data-panel {
-  min-height: clamp(18rem, 34vw, 24rem);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.28rem;
+  padding: clamp(0.55rem, 1.2vw, 0.72rem) clamp(0.38rem, 0.85vw, 0.52rem);
   border-color: rgba(185, 255, 106, 0.28);
   background:
     radial-gradient(circle at 24% 18%, rgba(185, 255, 106, 0.16), transparent 34%),
@@ -11772,17 +11764,32 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__timer-panel .section-heading {
-  justify-content: flex-start;
-  text-align: left;
+  width: 100%;
+  justify-content: center;
+  text-align: center;
 }
 
 .arena-command-console .arena-simple__timer-panel .section-heading__copy {
-  justify-items: start;
-  text-align: left;
+  justify-items: center;
+  text-align: center;
   margin: 0;
 }
 
-.arena-command-console .arena-simple__timer-panel .section-heading h2,
+.arena-command-console .arena-simple__timer-panel .section-heading__lede {
+  display: none;
+}
+
+.arena-command-console .arena-simple__timer-panel .section-heading h2 {
+  color: rgba(240, 255, 246, 0.92);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: clamp(0.72rem, 2.1vw, 0.88rem);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  text-shadow: 0 0 0.75rem rgba(185, 255, 106, 0.18);
+}
+
 .arena-command-console .arena-simple__buy-panel .section-heading h2 {
   color: #ffffff;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -11796,32 +11803,99 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__timer-panel .timer-hero {
-  padding-block: clamp(1.1rem, 2.2vw, 1.6rem);
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__timer-hero-inner {
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.arena-command-console .arena-simple__timer-clock {
+  justify-content: center;
+  gap: clamp(0.14rem, 0.42vw, 0.28rem);
 }
 
 .arena-command-console .arena-simple__timer-digits {
   color: #ffffff;
-  font-size: clamp(3.1rem, 9vw, 6.4rem);
-  letter-spacing: -0.08em;
+  font-size: clamp(2.15rem, 6.3vw, 4.4rem);
+  letter-spacing: -0.11em;
   text-shadow:
     0 0 1.2rem rgba(185, 255, 106, 0.26),
     0 0 2.8rem rgba(255, 177, 77, 0.14);
 }
 
-.arena-command-console .panel-cutout--pair-mascot {
-  opacity: 0.46;
-  filter: drop-shadow(0 1.2rem 1.6rem rgba(0, 0, 0, 0.44)) saturate(1.05);
+.arena-command-console .arena-simple__timer-days {
+  gap: 0.06em;
+  padding: 0.08em 0.28em;
+  border-color: rgba(77, 231, 200, 0.28);
+  border-radius: 0.52rem;
+  background: rgba(8, 20, 32, 0.58);
+  box-shadow: none;
 }
 
-.arena-command-console .arena-simple__buy-panel.data-panel {
-  padding: clamp(0.75rem, 1.7vw, 1rem);
+.arena-command-console .arena-simple__timer-days-num {
+  font-size: clamp(1.25rem, 3.2vw, 2.2rem);
+}
+
+.arena-command-console .arena-simple__timer-days-unit {
+  font-size: clamp(0.72rem, 1.4vw, 0.95rem);
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__last-extension {
+  position: static;
+  align-self: center;
+  max-width: 100%;
+  padding: 0.26rem 0.58rem;
+  font-size: 0.72rem;
+}
+
+.arena-command-console
+  .arena-simple__timer-panel:has(.arena-simple__last-extension)
+  .arena-simple__timer-clock {
+  margin-bottom: 0;
+}
+
+@media (max-width: 620px) {
+  .arena-command-console .arena-simple__timer-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arena-command-console .arena-simple__timer-panel .section-heading__copy,
+  .arena-command-console .arena-simple__timer-panel .section-heading {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .arena-command-console .arena-simple__timer-hero-inner {
+    align-items: center;
+  }
+
+  .arena-command-console .arena-simple__timer-clock {
+    justify-content: center;
+  }
+}
+
+
+.arena-command-console .arena-simple__buy-panel {
+  display: grid;
+  gap: 0.58rem;
+  padding: clamp(0.78rem, 1.7vw, 1rem);
+  border-color: rgba(77, 231, 200, 0.24);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(77, 231, 200, 0.16), transparent 34%),
+    radial-gradient(circle at 96% 12%, rgba(232, 192, 74, 0.12), transparent 34%),
+    rgba(3, 14, 21, 0.82);
 }
 
 .arena-command-console .arena-simple__rate-board {
   position: relative;
   overflow: hidden;
   align-items: stretch;
-  padding: 0.72rem 0.82rem;
+  padding: 0.58rem 0.7rem;
+  margin: 0;
   border: 1px solid rgba(77, 231, 200, 0.18);
   border-radius: 0.78rem;
   background:
@@ -11846,17 +11920,10 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: 0.52rem;
 }
 
-.arena-command-console .arena-simple__rate-now-line {
-  position: relative;
+.arena-command-console .arena-simple__rate-row--now {
   justify-content: center;
   gap: 0.42rem 0.62rem;
-  min-height: 3.15rem;
-  padding: 0.42rem 0.6rem;
-  border: 1px solid rgba(185, 255, 106, 0.12);
-  border-radius: 0.52rem;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(185, 255, 106, 0.08), transparent 38%),
-    rgba(8, 24, 18, 0.62);
+  min-height: 2.65rem;
 }
 
 .arena-command-console .arena-simple__rate-label {
@@ -11870,7 +11937,7 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console .arena-simple__rate-value {
   color: #f2ffe7;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: clamp(1.85rem, 4.8vw, 3.05rem);
+  font-size: clamp(1.45rem, 3.8vw, 2.35rem);
   letter-spacing: 0.05em;
   text-shadow:
     0 0 0.7rem rgba(185, 255, 106, 0.2),
@@ -11896,18 +11963,25 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(177, 213, 230, 0.76);
 }
 
-.arena-command-console .arena-simple__slider-row {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.78rem;
-  margin: 0.42rem 0 0.2rem;
+.arena-command-console .arena-simple__swap-field {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.25rem;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 0.82rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(4, 18, 26, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-.arena-command-console .arena-simple__amount-input {
-  gap: 0.5rem;
-  min-height: 3.1rem;
-  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
-  border: 1px solid rgba(77, 231, 200, 0.42);
-  border-radius: 0.78rem;
+.arena-command-console .arena-simple__swap-field--pay {
+  position: relative;
+  z-index: 0;
+  border-color: rgba(77, 231, 200, 0.42);
+  border-bottom: none;
+  border-radius: 0.82rem 0.82rem 0 0;
   background:
     linear-gradient(90deg, rgba(185, 255, 106, 0.1), transparent 38%),
     rgba(3, 14, 21, 0.88);
@@ -11915,6 +11989,235 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0 0 1px rgba(77, 231, 200, 0.1),
     0 0 1.4rem rgba(77, 231, 200, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.arena-command-console .arena-simple__swap-field--receive {
+  border-color: rgba(232, 192, 74, 0.2);
+  border-radius: 0 0 0.82rem 0.82rem;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(232, 192, 74, 0.1), transparent 38%),
+    rgba(4, 18, 26, 0.72);
+}
+
+.arena-command-console .arena-simple__swap-field-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: rgba(177, 213, 230, 0.74);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.arena-command-console .arena-simple__slider-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.58rem;
+  margin: 0;
+}
+
+.arena-command-console .arena-simple__swap-stack {
+  --arena-swap-field-min-h: 6.85rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "pay"
+    "receive";
+  grid-template-rows: repeat(2, minmax(var(--arena-swap-field-min-h), 1fr));
+  gap: 0;
+  margin: 0.15rem 0 0.4rem;
+}
+
+.arena-command-console .arena-simple__swap-pay {
+  grid-area: pay;
+  display: flex;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__swap-pay > .arena-simple__swap-field--pay {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 100%;
+}
+
+.arena-command-console .arena-simple__swap-field--receive {
+  grid-area: receive;
+  position: relative;
+  z-index: 0;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.arena-command-console .arena-simple__swap-field-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__swap-field-footer {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__swap-direction {
+  grid-area: pay / pay / receive / receive;
+  place-self: center;
+  position: relative;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.arena-command-console .arena-simple__swap-direction-badge {
+  position: relative;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.54rem;
+  height: 1.54rem;
+  border-radius: 999px;
+  border: 1px solid rgba(77, 231, 200, 0.42);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(77, 231, 200, 0.12), transparent 55%),
+    rgba(3, 14, 21, 0.96);
+  color: rgba(120, 230, 205, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(4, 18, 26, 0.92),
+    0 0 0.6rem rgba(77, 231, 200, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.arena-command-console .arena-simple__swap-direction-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.arena-simple__pay-token-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  max-width: 48%;
+}
+
+.arena-command-console .arena-simple__pay-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__pay-token-stack {
+  gap: 0.22rem;
+  max-width: 42%;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__amount-token-dropdown {
+  margin-inline-start: 0;
+}
+
+.arena-command-console .arena-simple__pay-row .arena-simple__amount-field {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.arena-command-console .arena-simple__pay-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__pay-slider-row::before {
+  content: "";
+  flex: 0 0 54%;
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__pay-slider-minmax {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.38rem;
+  flex: 0 0 auto;
+}
+
+.arena-command-console .arena-simple__pay-slider-bound {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(177, 213, 230, 0.68);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+}
+
+.arena-command-console .arena-simple__pay-slider-bound:hover:not(:disabled) {
+  color: rgba(120, 230, 205, 0.95);
+}
+
+.arena-command-console .arena-simple__pay-slider-bound:disabled {
+  opacity: 0.45;
+  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 0.22rem;
+  margin: 0.34rem 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(77, 231, 200, 0.82), rgba(77, 231, 200, 0.5)) 0 / var(--arena-buy-spend-fill, 50%) 100% no-repeat,
+    rgba(177, 213, 230, 0.16);
+  box-shadow: none;
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range::-webkit-slider-runnable-track {
+  height: 0.22rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range::-webkit-slider-thumb {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: -0.565rem;
+  filter:
+    drop-shadow(0 0 0.35rem rgba(77, 231, 200, 0.28))
+    drop-shadow(0 0.08rem 0.16rem rgba(0, 0, 0, 0.34));
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range::-moz-range-track {
+  height: 0.22rem;
+  border-radius: 999px;
+  background: rgba(177, 213, 230, 0.16);
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range::-moz-range-progress {
+  height: 0.22rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(77, 231, 200, 0.82), rgba(77, 231, 200, 0.5));
+}
+
+.arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
+  width: 1.35rem;
+  height: 1.35rem;
+  filter:
+    drop-shadow(0 0 0.35rem rgba(77, 231, 200, 0.28))
+    drop-shadow(0 0.08rem 0.16rem rgba(0, 0, 0, 0.34));
 }
 
 .arena-command-console .arena-simple__amount-field,
@@ -11970,6 +12273,49 @@ a.podium-address-explorer:hover .address-inline__label {
   color: rgba(177, 213, 230, 0.72);
 }
 
+.arena-command-console .arena-simple__receive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__receive-amount {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(1.15rem, 2.8vw, 1.55rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-command-console .arena-simple__receive-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  flex: 0 0 auto;
+  padding: 0.28rem 0.48rem;
+  border: 1px solid rgba(232, 192, 74, 0.24);
+  border-radius: 999px;
+  color: #f6fff9;
+  background: rgba(5, 18, 24, 0.74);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.arena-command-console .arena-simple__receive-token-logo {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0 0.4rem rgba(232, 192, 74, 0.2))
+    drop-shadow(0 0.08rem 0.18rem rgba(0, 0, 0, 0.34));
+}
+
 .arena-command-console .arena-simple__amount-token-list,
 .arena-command-console .arena-simple__rate-pay-picker-menu {
   border: 1px solid rgba(77, 231, 200, 0.26);
@@ -11995,7 +12341,118 @@ a.podium-address-explorer:hover .address-inline__label {
   background: rgba(232, 192, 74, 0.12);
 }
 
-.arena-command-console .arena-simple__cta.btn-primary {
+.arena-command-console .arena-simple__pay-balance {
+  margin: 0;
+  color: rgba(177, 213, 230, 0.7);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance {
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance-row {
+  justify-content: flex-end;
+  gap: 0.22rem;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__balance-refresh {
+  padding: 0.04rem 0.22rem;
+  font-size: 0.68rem;
+  border-color: rgba(77, 231, 200, 0.22);
+  color: rgba(177, 213, 230, 0.78);
+}
+
+.arena-command-console .arena-simple__receive-token-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__receive-balance {
+  margin: 0;
+  color: rgba(177, 213, 230, 0.7);
+  font-size: 0.58rem;
+  line-height: 1.15;
+  text-align: right;
+}
+
+.arena-command-console .arena-simple__receive-balance-row {
+  justify-content: flex-end;
+  gap: 0.22rem;
+}
+
+.arena-command-console .arena-simple__receive-token-stack .arena-simple__balance-refresh {
+  padding: 0.04rem 0.22rem;
+  font-size: 0.68rem;
+  border-color: rgba(232, 192, 74, 0.22);
+  color: rgba(177, 213, 230, 0.78);
+}
+
+.arena-command-console .arena-simple__buy-preview {
+  align-items: flex-start;
+  margin: 0.05rem 0 0;
+  padding: 0.52rem 0.62rem;
+  border: 1px solid rgba(77, 231, 200, 0.12);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.arena-command-console .arena-simple__buy-preview-line {
+  justify-content: flex-start;
+  color: rgba(177, 213, 230, 0.78);
+  font-size: 0.72rem;
+}
+
+.arena-command-console .arena-simple__buy-preview-item {
+  padding: 0.14rem 0.36rem;
+  border-color: rgba(77, 231, 200, 0.26);
+  background: rgba(3, 14, 21, 0.66);
+  font-size: 0.68rem;
+}
+
+.arena-command-console .arena-simple__buy-preview-bonuses {
+  align-items: flex-start;
+  color: rgba(238, 248, 255, 0.62);
+}
+
+.arena-command-console .arena-simple__buy-preview-bonus-line {
+  text-align: left;
+}
+
+.arena-command-console .arena-simple__buy-options {
+  gap: 0.42rem;
+  margin-top: 0.18rem;
+}
+
+.arena-command-console .arena-simple__buy-option {
+  padding: 0.48rem 0.55rem;
+}
+
+.arena-command-console .arena-simple__buy-option-copy {
+  display: none;
+}
+
+.arena-command-console .arena-simple__buy-option-gate.locked-until-level--compact {
+  min-height: 2.55rem;
+  border-radius: 0.62rem;
+}
+
+.arena-command-console .arena-simple__buy-option-gate.locked-until-level--compact .locked-until-level__content {
+  display: block;
+}
+
+.arena-command-console .arena-simple__buy-option-gate .locked-until-level__content .arena-simple__buy-option {
+  margin: 0;
+}
+
+.arena-command-console .arena-simple__cta.btn-primary,
+.arena-command-console .arena-charm-cred-card__claim.btn-primary,
+.arena-command-console .arena-simple__connect .wallet-action--connect {
   color: #f6fff9;
   border: 1px solid rgba(77, 231, 200, 0.38);
   background:
@@ -12013,7 +12470,9 @@ a.podium-address-explorer:hover .address-inline__label {
   text-shadow: 0 0 0.8rem rgba(185, 255, 106, 0.24);
 }
 
-.arena-command-console .arena-simple__cta.btn-primary:hover:not(:disabled) {
+.arena-command-console .arena-simple__cta.btn-primary:hover:not(:disabled),
+.arena-command-console .arena-charm-cred-card__claim.btn-primary:hover:not(:disabled),
+.arena-command-console .arena-simple__connect .wallet-action--connect:hover:not(:disabled) {
   border-color: rgba(185, 255, 106, 0.46);
   box-shadow:
     0 0 0 1px rgba(185, 255, 106, 0.14),
@@ -12021,6 +12480,41 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0 1.8rem rgba(77, 231, 200, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -1px 0 rgba(0, 0, 0, 0.36);
+}
+
+/* Buy-panel connect gate — glass console pitch + CTA (not legacy arcade box / pill). */
+.arena-command-console .arena-simple__connect {
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.arena-command-console .arena-simple__connect-pitch {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 0.52rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(185, 255, 106, 0.08), transparent 38%),
+    rgba(8, 24, 18, 0.62);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.68rem, 1.4vw, 0.82rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(238, 248, 255, 0.82);
+  text-align: center;
+}
+
+.arena-command-console .arena-simple__connect .wallet-action--connect {
+  width: 100%;
+  min-height: 3.1rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: 0.78rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .arena-command-console__decision-row {
@@ -12043,21 +12537,6 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.9rem;
 }
 
-.arena-command-console__side {
-  position: relative;
-  display: grid;
-  align-content: start;
-  gap: 0.55rem;
-  padding: 0.7rem;
-  border-color: rgba(77, 231, 200, 0.24);
-  background:
-    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 90% 4%, rgba(77, 231, 200, 0.18), transparent 26%),
-    rgba(3, 14, 21, 0.84);
-  background-size: 24px 24px, 24px 24px, auto, auto;
-}
-
 .arena-command-console__character {
   position: absolute;
   right: -0.9rem;
@@ -12071,47 +12550,6 @@ a.podium-address-explorer:hover .address-inline__label {
   filter: drop-shadow(0 1.4rem 1.8rem rgba(0, 0, 0, 0.42)) saturate(1.08);
 }
 
-.arena-command-console__side > :not(.arena-command-console__character) {
-  position: relative;
-  z-index: 1;
-}
-
-.arena-command-console__side-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.55rem;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid rgba(77, 231, 200, 0.18);
-  border-radius: 0.55rem;
-  background:
-    radial-gradient(circle at 92% 0%, rgba(77, 231, 200, 0.16), transparent 40%),
-    rgba(255, 255, 255, 0.045);
-}
-
-.arena-command-console__side-head div {
-  display: grid;
-  gap: 0.08rem;
-  min-width: 0;
-}
-
-.arena-command-console__side-head span {
-  color: var(--arena-console-muted);
-  font-size: 0.61rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.arena-command-console__side-head strong {
-  color: #ffffff;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.82rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.arena-command-console__side-help,
 .warbow-hero-card__help,
 .arena-timer-chips__help {
   display: inline-grid;
@@ -12124,14 +12562,6 @@ a.podium-address-explorer:hover .address-inline__label {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-weight: 900;
   cursor: pointer;
-}
-
-.arena-command-console__side-help {
-  min-height: 1.75rem;
-  padding: 0 0.62rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .warbow-hero-card__help,
@@ -12149,8 +12579,61 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-charm-cred-card.data-panel {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.42rem;
   padding: 0.75rem;
+}
+
+.arena-command-console .arena-charm-cred-card .section-heading {
+  margin-bottom: 0.15rem;
+}
+
+.arena-command-console .arena-charm-cred-card .arena-xp-hero {
+  margin: 0 0 0.55rem;
+}
+
+.arena-command-console .arena-charm-cred-card .section-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.arena-command-console .arena-charm-cred-card__stats {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.arena-command-console .arena-charm-cred-card__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-charm-cred-card__label {
+  overflow: hidden;
+  color: var(--arena-console-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-charm-cred-card__value {
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 0;
+  color: #ffffff;
+  font-family: var(--yga-font-data, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .arena-command-console .arena-charm-cred-card p {
@@ -12159,8 +12642,56 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.74rem;
 }
 
-.arena-command-console .arena-charm-cred-card strong {
+.arena-command-console .arena-charm-cred-card__claim.btn-primary {
+  width: 100%;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Community & tools — dark glass chips (cream footer pills are for `.app-footer` only). */
+.arena-command-console .footer-site-links-card.data-panel {
+  margin-top: 0;
+  padding: 0.75rem;
+}
+
+.arena-command-console .footer-site-links-card .h-footer {
+  margin-bottom: 0.65rem;
   color: #ffffff;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.arena-command-console .footer-site-links-card__nav {
+  gap: 0.42rem 0.55rem;
+}
+
+.arena-command-console .footer-link-pill {
+  min-height: 2.1rem;
+  padding: 0.32rem 0.72rem;
+  border: 1px solid rgba(77, 231, 200, 0.18);
+  border-radius: 999px;
+  background: rgba(4, 18, 26, 0.72);
+  color: rgba(238, 248, 255, 0.88);
+  font-family: var(--yga-font-data, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.arena-command-console .footer-link-pill:hover {
+  border-color: rgba(77, 231, 200, 0.36);
+  background: rgba(8, 28, 38, 0.88);
+  color: #ffffff;
+}
+
+.arena-command-console .footer-link-pill__icon--brand {
+  color: var(--yga-teal-live, #7ef1ff);
 }
 
 .arena-command-console .arena-timer-chips {
@@ -12171,14 +12702,43 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-timer-chips__gate {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.28rem;
   min-width: 0;
   padding: 0.45rem 0.5rem;
   border: 1px solid rgba(77, 231, 200, 0.14);
   border-radius: 0.5rem;
   background: rgba(4, 18, 26, 0.72);
+}
+
+.arena-command-console .arena-timer-chips__title {
+  margin: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 0.75rem rgba(232, 192, 74, 0.2);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.arena-command-console .arena-timer-chips__body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding-top: 0.06rem;
+  border-top: 1px solid rgba(77, 231, 200, 0.08);
 }
 
 .arena-command-console .arena-timer-chips__gate--locked {
@@ -12198,10 +12758,9 @@ a.podium-address-explorer:hover .address-inline__label {
   overflow: hidden;
   color: #ffffff;
   font-size: 0.73rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -12210,6 +12769,102 @@ a.podium-address-explorer:hover .address-inline__label {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
+}
+
+.arena-command-console .arena-timer-chips__viewer-score {
+  margin: 0;
+  overflow: hidden;
+  color: rgba(238, 248, 255, 0.58);
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__viewer-score strong {
+  color: rgba(240, 255, 246, 0.9);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-command-console .arena-timer-chips__places {
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.12rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arena-command-console .arena-timer-chips__place {
+  display: table-row;
+}
+
+.arena-command-console .arena-timer-chips__place-rank,
+.arena-command-console .arena-timer-chips__place-prize-amount,
+.arena-command-console .arena-timer-chips__place-prize-unit,
+.arena-command-console .arena-timer-chips__place-score,
+.arena-command-console .arena-timer-chips__place-identity {
+  display: table-cell;
+  vertical-align: middle;
+  padding: 0;
+  line-height: 1.15;
+}
+
+.arena-command-console .arena-timer-chips__place-rank {
+  width: 1.35rem;
+  padding-right: 0.28rem;
+  color: rgba(232, 192, 74, 0.9);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__place-prize-amount {
+  padding-right: 0.28rem;
+  color: rgba(240, 255, 246, 0.88);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__place-prize-unit {
+  padding-right: 0.28rem;
+  color: rgba(185, 255, 106, 0.72);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__place-score {
+  padding-right: 0.28rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.64rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__place-identity {
+  width: 1%;
+  font-size: 0.66rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-timer-chips__place-identity .address-inline__label {
+  font-size: inherit;
 }
 
 .arena-command-console .arena-timer-chips__lock {
@@ -12343,9 +12998,7 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-timer-chips__gate.locked-until-level--compact .locked-until-level__content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.4rem;
+  gap: 0.28rem;
   min-width: 0;
 }
 
@@ -12378,17 +13031,73 @@ a.podium-address-explorer:hover .address-inline__label {
   display: block;
 }
 
+.feature-mechanic-modal {
+  border: none;
+  padding: 0;
+  margin: auto;
+  max-width: min(100vw - 1.5rem, 28rem);
+  width: 100%;
+  background: transparent;
+}
+
 .feature-mechanic-modal::backdrop {
-  background: rgba(0, 0, 0, 0.55);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(126, 241, 255, 0.14), transparent 42%),
+    rgba(3, 8, 15, 0.84);
+  backdrop-filter: blur(8px) saturate(1.08);
 }
 
 .feature-mechanic-modal__panel {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   max-width: 28rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(185, 255, 106, 0.25);
-  border-radius: 0.65rem;
-  background: #071010;
-  color: #f5f5f5;
+  padding: 0;
+  border: 1px solid var(--yo-line);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(circle at top right, rgba(248, 213, 107, 0.12), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(53, 240, 194, 0.12), transparent 32%),
+    var(--yo-panel-gradient);
+  color: var(--text-main);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    var(--yo-glass-shadow);
+  backdrop-filter: blur(var(--yga-glass-blur, 18px)) saturate(1.12);
+  overflow: hidden;
+}
+
+.feature-mechanic-modal__content {
+  padding: 1rem 1.1rem 0.85rem;
+}
+
+.feature-mechanic-modal__title {
+  margin: 0 0 0.65rem;
+  color: var(--yo-text);
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feature-mechanic-modal__body {
+  margin: 0;
+  color: var(--yo-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.feature-mechanic-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1.1rem 1rem;
+  border-top: 1px solid var(--yo-line);
+  background: rgba(126, 241, 255, 0.06);
+}
+
+.feature-mechanic-modal__action {
+  min-width: 5.5rem;
 }
 
 .arena-command-console .warbow-hero-actions {
@@ -12396,9 +13105,47 @@ a.podium-address-explorer:hover .address-inline__label {
   padding: 0.55rem;
 }
 
+.arena-command-console__warbow-lane {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  min-width: 0;
+}
+
+.arena-command-console__warbow-lane .warbow-hero-actions-wrap.arena-level-gate--locked {
+  min-height: 9.5rem;
+}
+
+.arena-command-console__warbow-lane .warbow-hero-actions-wrap.arena-level-gate--locked .locked-until-level__content {
+  max-height: 12rem;
+  overflow: hidden;
+}
+
+.arena-command-console__warbow-lane .warbow-hero-card--viewer-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.5rem;
+}
+
 .arena-command-console .warbow-hero-actions__grid {
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.45rem;
+  gap: 0.55rem;
+}
+
+@media (min-width: 721px) {
+  .arena-command-console .warbow-hero-actions__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 961px) {
+  .arena-command-console .warbow-hero-actions__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.arena-command-console .warbow-hero-card--steal {
+  grid-column: 1 / -1;
 }
 
 .arena-command-console .warbow-hero-card {
@@ -12674,15 +13421,19 @@ a.podium-address-explorer:hover .address-inline__label {
 
 @media (max-width: 980px) {
   .arena-command-console__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .arena-command-console__side {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .arena-command-console__side .warbow-hero-actions {
+  .arena-command-console__primary {
     grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .arena-command-console__side-rail {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
 }
 
@@ -12694,8 +13445,13 @@ a.podium-address-explorer:hover .address-inline__label {
 
   .arena-command-console__topbar,
   .arena-command-console__decision-row,
-  .arena-command-console__side {
+  .arena-command-console__grid {
     grid-template-columns: 1fr;
+  }
+
+  .arena-command-console__side-rail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
   }
 
   .arena-command-console__topbar {
@@ -12706,9 +13462,6 @@ a.podium-address-explorer:hover .address-inline__label {
     justify-self: start;
   }
 
-  .arena-command-console__character {
-    width: 42%;
-  }
 }
 
 /* ---- TimeArena UX concept chooser: cyberminimalist glass PvP directions ---- */
@@ -14246,83 +14999,72 @@ input[type="range"]:active {
 }
 
 .wallet-profile-modal__panel {
+  width: min(100%, 560px);
+  max-height: min(90vh, 820px);
   background:
     radial-gradient(circle at top right, rgba(248, 213, 107, 0.12), transparent 24%),
     radial-gradient(circle at bottom left, rgba(53, 240, 194, 0.12), transparent 32%),
-    var(--yo-panel-gradient);
-  color: var(--text-main);
-  border: 1px solid var(--yo-line);
-  border-radius: 1.15rem;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-    var(--yo-glass-shadow);
-  max-height: min(90vh, 820px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-glass-surface-strong);
+  backdrop-filter: blur(var(--yga-glass-blur, 18px)) saturate(1.12);
 }
 
-.wallet-profile-modal__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+.wallet-profile-modal__identity {
+  padding: 0.75rem 0.9rem 0.65rem;
   border-bottom: 1px solid var(--yo-line);
-  background: rgba(126, 241, 255, 0.08);
-}
-
-.wallet-profile-modal__header h2 {
-  margin: 0;
-  color: var(--yo-text);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.wallet-profile-modal__close {
-  flex-shrink: 0;
+  background: rgba(126, 241, 255, 0.04);
 }
 
 .wallet-profile-modal__address,
 .wallet-profile-modal__explorer-link {
   margin: 0;
-  padding: 0 1rem;
 }
 
 .wallet-profile-modal__address {
-  padding-top: 0.75rem;
+  font-size: 0.92rem;
 }
 
 .wallet-profile-modal__explorer-link {
-  padding-bottom: 0.5rem;
-  font-size: 0.88rem;
+  margin-top: 0.35rem;
+  font-size: 0.82rem;
 }
 
 .wallet-profile-modal__loading,
 .wallet-profile-modal__error,
-.wallet-profile-modal__offline,
-.wallet-profile-modal__empty {
+.wallet-profile-modal__offline {
   margin: 0;
-  padding: 0.5rem 1rem 1rem;
+  padding: 0.75rem 0.9rem 1rem;
+}
+
+.wallet-profile-modal__empty {
+  margin: 0.45rem 0 0;
+  padding: 0;
 }
 
 .wallet-profile-modal__sections {
   overflow-y: auto;
-  padding: 0 1rem 1rem;
+  padding: 0.35rem 0.9rem 0.85rem;
   display: grid;
-  gap: 1rem;
+  gap: 0;
+}
+
+.wallet-profile-modal__section {
+  padding: 0.7rem 0;
+  border-top: 1px solid rgba(126, 241, 255, 0.14);
+}
+
+.wallet-profile-modal__section:first-child {
+  border-top: none;
+  padding-top: 0.35rem;
 }
 
 .wallet-profile-modal__section h3 {
   margin: 0 0 0.45rem;
   color: var(--yo-cyan-soft);
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 0.78rem;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -14360,17 +15102,10 @@ input[type="range"]:active {
   gap: 0.35rem;
 }
 
-/* Issue #294: shared primitive glass normalization for modals, profile stats, and status rows. */
+/* Issue #294: shared primitive glass normalization for status rows and list cards. */
 .card-list li,
 .loading-state,
-.status-message,
-.wallet-profile-modal__panel,
-.wallet-profile-modal__address,
-.wallet-profile-modal__section,
-.wallet-profile-modal__loading,
-.wallet-profile-modal__error,
-.wallet-profile-modal__offline,
-.wallet-profile-modal__empty {
+.status-message {
   border-color: var(--yo-line);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
@@ -14379,9 +15114,16 @@ input[type="range"]:active {
   box-shadow: var(--yo-glass-shadow);
 }
 
-.wallet-profile-modal__explorer-link,
+.wallet-profile-modal__explorer-link a,
 .card-list a {
   color: var(--yo-cyan-soft);
+  text-decoration: none;
+}
+
+.wallet-profile-modal__explorer-link a:hover {
+  color: var(--yo-cyan);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 @media (max-width: 600px) {
@@ -14394,9 +15136,7 @@ input[type="range"]:active {
     border-radius: 0.85rem;
   }
 
-  .wallet-profile-modal__header,
-  .wallet-profile-modal__address,
-  .wallet-profile-modal__explorer-link,
+  .wallet-profile-modal__identity,
   .wallet-profile-modal__sections,
   .wallet-profile-modal__loading,
   .wallet-profile-modal__error,

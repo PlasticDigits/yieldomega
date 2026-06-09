@@ -12,6 +12,8 @@ type Props = {
   contentClassName?: string;
   overlayTestId?: string;
   testId?: string;
+  /** Overrides default “Locked until Level N” headline. */
+  title?: ReactNode;
   detail?: ReactNode;
   action?: ReactNode;
   variant?: "panel" | "compact";
@@ -24,11 +26,13 @@ export function LockedUntilLevel({
   contentClassName,
   overlayTestId,
   testId,
+  title,
   detail,
   action,
   variant = "panel",
 }: Props) {
-  const copy = lockedUntilLevelCopy(requiredLevel);
+  const copy = title ?? lockedUntilLevelCopy(requiredLevel);
+  const ariaLabel = typeof copy === "string" ? copy : lockedUntilLevelCopy(requiredLevel);
   return (
     <div
       className={["locked-until-level", `locked-until-level--${variant}`, className]
@@ -41,7 +45,7 @@ export function LockedUntilLevel({
       <div className={["locked-until-level__content", contentClassName].filter(Boolean).join(" ")} aria-hidden="true">
         {children}
       </div>
-      <div className="locked-until-level__overlay" data-testid={overlayTestId} role="note" aria-label={copy}>
+      <div className="locked-until-level__overlay" data-testid={overlayTestId} role="note" aria-label={ariaLabel}>
         <img
           className="locked-until-level__icon"
           src={LOCK_ICON_SRC}

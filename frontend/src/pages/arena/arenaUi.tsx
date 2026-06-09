@@ -118,24 +118,34 @@ export function PodiumRankingList({
                 : { type: "spring", stiffness: 520, damping: 36, mass: 0.82 }
             }
           >
-            <span
-              className="ranking-list__rank"
-              aria-label={`Rank ${row.rank}`}
+            <strong>
+              <span className="ranking-list__rank" aria-label={`Rank ${row.rank}`}>
+                <img
+                  src={PODIUM_RANK_TROPHY_SRC[row.rank - 1] ?? PODIUM_RANK_TROPHY_SRC[2]}
+                  alt=""
+                  width={96}
+                  height={96}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span className="visually-hidden">{row.rank}</span>
+              </span>
+              {row.value}
+            </strong>
+            <div
+              className="ranking-list__identity"
               data-rank-burst={rankBurstNonce !== undefined ? String(rankBurstNonce % 1000) : undefined}
             >
-              <img
-                key={`rank-${row.rank}-${rankBurstNonce ?? "steady"}`}
-                src={PODIUM_RANK_TROPHY_SRC[row.rank - 1] ?? PODIUM_RANK_TROPHY_SRC[2]}
-                alt=""
-                width={96}
-                height={96}
-                loading="lazy"
-                decoding="async"
-              />
-              <span className="visually-hidden">{row.rank}</span>
-            </span>
-            <strong>{row.value}</strong>
-            <div>{row.label}</div>
+              <span
+                key={
+                  rankBurstNonce !== undefined
+                    ? `addr-burst-${row.rank}-${rankBurstNonce}`
+                    : `addr-${row.rank}`
+                }
+              >
+                {row.label}
+              </span>
+            </div>
             {row.meta && <div className="ranking-list__meta">{row.meta}</div>}
           </motion.li>
         );

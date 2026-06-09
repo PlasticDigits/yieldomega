@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+
 /**
  * Pure helpers for the **simple TimeCurve view** (issue #40). Extracted so
  * unit tests can exercise the small state machine that drives the simple
@@ -113,6 +115,34 @@ export function phaseNarrative(phase: SaleSessionPhase): string {
     default:
       return "Loading arena state…";
   }
+}
+
+export type TimerPayoutPreviewState = "loading" | "unavailable" | "ready";
+
+/** Primary timer bay `<h2>` — pre-open label or Last Buy 1st-prize hook. */
+export function formatTimerSectionTitle(
+  phase: SaleSessionPhase,
+  opts: {
+    firstPrizeDoubWad?: string;
+    decimals: number;
+    payoutPreview: TimerPayoutPreviewState;
+  },
+): string {
+  if (phase === "saleStartPending") {
+    return "Arena Opens In";
+  }
+
+  const prizeSegment = (() => {
+    if (opts.payoutPreview === "loading" || opts.firstPrizeDoubWad === undefined) {
+      return "…";
+    }
+    if (opts.payoutPreview === "unavailable") {
+      return "—";
+    }
+    return formatCompactFromRaw(opts.firstPrizeDoubWad, opts.decimals, { sigfigs: 3 });
+  })();
+
+  return `You might win ${prizeSegment} DOUB in:`;
 }
 
 export type PhaseFlags = {

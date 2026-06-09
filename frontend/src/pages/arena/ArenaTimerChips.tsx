@@ -1,28 +1,62 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { addresses } from "@/lib/addresses";
+import { type ArenaFeatureKey } from "@/lib/arenaProgression";
+import type { BuyItem } from "@/lib/indexerApi";
+import { ArenaPodiumTimerChip } from "@/pages/arena/ArenaPodiumTimerChip";
 import {
-  FEATURE_UNLOCK_LEVEL,
-  isFeatureUnlocked,
-  type ArenaFeatureKey,
-} from "@/lib/arenaProgression";
-import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
+  PODIUM_CONTRACT_TO_UX_CATEGORY,
+} from "@/pages/arena/arenaSimplePodiumRanking";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
+import type { PodiumPayoutPreview, PodiumReadRow } from "@/pages/arena/usePodiumReads";
 
 /** Secondary podium timers beside the Last Buy hero (#256). Contract category indices per arena-v2.md. */
 const SECONDARY_PODIUM_CHIPS = [
-  { label: "Time Booster", contractIndex: 1, feature: "time_booster" as ArenaFeatureKey },
-  { label: "Defended Streak", contractIndex: 2, feature: "defended_streak" as ArenaFeatureKey },
-  { label: "WarBow", contractIndex: 3, feature: "warbow" as ArenaFeatureKey },
+  {
+    podiumName: "Time Booster",
+    contractIndex: 1,
+    categoryIndex: PODIUM_CONTRACT_TO_UX_CATEGORY[1],
+    feature: "time_booster" as ArenaFeatureKey,
+  },
+  {
+    podiumName: "Defended Streak",
+    contractIndex: 2,
+    categoryIndex: PODIUM_CONTRACT_TO_UX_CATEGORY[2],
+    feature: "defended_streak" as ArenaFeatureKey,
+  },
+  {
+    podiumName: "WarBow",
+    contractIndex: 3,
+    categoryIndex: PODIUM_CONTRACT_TO_UX_CATEGORY[3],
+    feature: "warbow" as ArenaFeatureKey,
+  },
 ] as const;
 
 type Props = {
   playerLevel?: bigint | number;
+  address?: string;
+  decimals: number;
+  podiumRows: readonly PodiumReadRow[];
+  podiumPayoutPreview?: PodiumPayoutPreview | null;
+  recentBuys?: readonly BuyItem[] | null;
+  activeDefendedStreak?: bigint;
+  podiumNowUnixSec?: number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  onOpenWalletProfile?: (address: string) => void;
 };
 
-export function ArenaTimerChips({ playerLevel, onFeatureHelp }: Props) {
+export function ArenaTimerChips({
+  playerLevel,
+  address,
+  decimals,
+  podiumRows,
+  podiumPayoutPreview,
+  recentBuys = null,
+  activeDefendedStreak,
+  podiumNowUnixSec,
+  onFeatureHelp,
+  onOpenWalletProfile,
+}: Props) {
   const arena = addresses.timeArena;
 
   const { data: indexerData } = useArenaTimersQuery(arena ?? undefined);
@@ -35,53 +69,30 @@ export function ArenaTimerChips({ playerLevel, onFeatureHelp }: Props) {
     <div className="arena-timer-chips" data-testid="arena-timer-chips" aria-label="Podium timers">
       {SECONDARY_PODIUM_CHIPS.map((chip) => {
         const idx = chip.contractIndex;
+        const categoryIndex = chip.categoryIndex;
+        const podiumRow = podiumRows[categoryIndex];
         const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
         const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
-        const unlocked = playerLevel !== undefined && isFeatureUnlocked(playerLevel, chip.feature);
-        const requiredLevel = FEATURE_UNLOCK_LEVEL[chip.feature];
-        const helpButton = onFeatureHelp ? (
-          <button
-            type="button"
-            className="arena-timer-chips__help"
-            aria-label={`Open ${chip.label} tutorial`}
-            onClick={() => onFeatureHelp(chip.feature)}
-          >
-            ?
-          </button>
-        ) : null;
-        const chipContents = (
-          <>
-            <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${chip.contractIndex}`}>
-              <span className="arena-timer-chips__label">{chip.label}</span>
-              <span className="arena-timer-chips__value">{rem !== undefined ? formatMmSsCountdown(rem) : "—"}</span>
-            </span>
-            <span className="arena-timer-chips__lock">{unlocked ? "LIVE" : `L${requiredLevel}`}</span>
-            {unlocked ? helpButton : null}
-          </>
-        );
-        if (!unlocked) {
-          return (
-            <LockedUntilLevel
-              key={chip.label}
-              requiredLevel={requiredLevel}
-              variant="compact"
-              className="arena-timer-chips__gate arena-timer-chips__gate--locked"
-              testId={`arena-timer-chip-gate-${chip.contractIndex}`}
-              overlayTestId={`arena-timer-chip-lock-${chip.contractIndex}`}
-              action={helpButton}
-            >
-              {chipContents}
-            </LockedUntilLevel>
-          );
-        }
+
         return (
-          <div
-            key={chip.label}
-            className="arena-timer-chips__gate arena-timer-chips__gate--unlocked"
-            data-testid={`arena-timer-chip-gate-${chip.contractIndex}`}
-          >
-            {chipContents}
-          </div>
+          <ArenaPodiumTimerChip
+            key={chip.podiumName}
+            podiumName={chip.podiumName}
+            contractIndex={chip.contractIndex}
+            categoryIndex={categoryIndex}
+            feature={chip.feature}
+            playerLevel={playerLevel}
+            address={address}
+            decimals={decimals}
+            podiumRow={podiumRow}
+            podiumPayoutPreview={podiumPayoutPreview}
+            recentBuys={recentBuys}
+            activeDefendedStreak={activeDefendedStreak}
+            podiumNowUnixSec={podiumNowUnixSec}
+            onFeatureHelp={onFeatureHelp}
+            onOpenWalletProfile={onOpenWalletProfile}
+            countdownRemainingSec={rem}
+          />
         );
       })}
     </div>

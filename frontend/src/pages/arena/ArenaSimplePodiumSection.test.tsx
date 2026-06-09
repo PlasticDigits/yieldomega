@@ -37,10 +37,28 @@ function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> =
 }
 
 describe("ArenaSimplePodiumSection (issue #113)", () => {
+  it("shows live Last Buy seconds from indexer winnerBuySec", () => {
+    const html = renderSimplePodiums({
+      podiumRows: [
+        {
+          winners: [ALICE, BOB, CAROL],
+          values: ["3", "2", "1"],
+          winnerBuySec: ["1700000000", "1699999990", "1699999980"],
+        },
+        { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"] },
+        { winners: [CAROL, BOB, ALICE], values: ["4", "3", "2"] },
+        { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
+      ],
+      podiumNowUnixSec: 1_700_000_020,
+    });
+    expect(html).toContain("20s");
+    expect(html).toContain("30s");
+    expect(html).toContain("40s");
+  });
+
   it("renders all four canonical podium categories and three placements", () => {
     const html = renderSimplePodiums();
     expect(html).toContain('data-testid="arena-simple-podiums"');
-    expect(html).toContain("Prize podiums");
     expect(html).toContain("Last Buy");
     expect(html).toContain("WarBow");
     const lastBuyPos = html.indexOf("Last Buy");
@@ -66,13 +84,13 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).not.toContain("predicted leader");
     expect(html).not.toContain("Indexer-backed snapshot");
     expect(html.indexOf("1.6")).toBeLessThan(html.indexOf("0x1111"));
-    expect(html).toContain("Score: —");
-    expect(html).toContain("Score: 1200 Battle Points");
-    expect(html).toContain("Score: 900 Battle Points");
-    expect(html).toContain("Score: 4 sequential buys");
-    expect(html).toContain("Score: 05:00 added");
-    expect(html).toContain("Score: 04:00 added");
-    expect(html).toContain("Score: 01:00 added");
+    expect(html).toContain("—");
+    expect(html).toContain("1.2k BP");
+    expect(html).toContain("900 BP");
+    expect(html).toContain("4 sequential buys");
+    expect(html).toContain("+05:00");
+    expect(html).toContain("+04:00");
+    expect(html).toContain("+01:00");
     expect(html).toMatch(/address-inline__label">111111</);
     expect(html).not.toMatch(/address-inline__label">0x/);
   });
@@ -80,6 +98,17 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
   it("highlights placements that match the connected wallet", () => {
     const html = renderSimplePodiums({ address: ALICE });
     expect(html).toContain("ranking-list__item--you");
+  });
+
+  it("locks secondary podiums when wallet is not connected", () => {
+    const html = renderSimplePodiums({ address: undefined });
+    expect(html).not.toContain('data-testid="arena-podium-lock-0"');
+    expect(html).toContain('data-testid="arena-podium-lock-1"');
+    expect(html).toContain('data-testid="arena-podium-lock-2"');
+    expect(html).toContain('data-testid="arena-podium-lock-3"');
+    expect(html).toContain("Connect wallet");
+    expect(html).toContain("Connect wallet to buy CHARM.");
+    expect(html).not.toContain("Locked until Level");
   });
 
   it("locks secondary podiums above the connected wallet level", () => {
@@ -91,6 +120,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("Locked until Level 4");
     expect(html).toContain("Locked until Level 3");
     expect(html).toContain("Locked until Level 2");
+    expect(html).not.toContain("Connect wallet to buy CHARM.");
   });
 
   it("wires onOpenWalletProfile to podium winner addresses (#258)", () => {
@@ -108,7 +138,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
         { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
       ],
     });
-    expect(html).toContain("No buy streaks until timer under 15 minutes!");
+    expect(html).toContain("Opens when Last Buy under 15 minutes");
   });
 
   it("shows a neutral em dash for empty winner slots (no wallet-connect wording)", () => {

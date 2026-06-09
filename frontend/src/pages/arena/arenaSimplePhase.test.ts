@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import {
   derivePhase,
+  formatTimerSectionTitle,
   ledgerSecIntForPhase,
   phaseBadge,
   phaseFlags,
@@ -91,5 +92,29 @@ describe("arenaSimplePhase (Arena v2)", () => {
   it("phaseNarrative mentions CHARM / DOUB for arena", () => {
     expect(phaseNarrative("saleStartPending")).toMatch(/CHARM/);
     expect(phaseNarrative("saleActive")).toMatch(/win/i);
+  });
+
+  it("formatTimerSectionTitle uses pre-open copy or Last Buy 1st-prize hook", () => {
+    expect(
+      formatTimerSectionTitle("saleStartPending", {
+        decimals: 18,
+        payoutPreview: "ready",
+      }),
+    ).toBe("Arena Opens In");
+
+    expect(
+      formatTimerSectionTitle("saleActive", {
+        decimals: 18,
+        payoutPreview: "loading",
+      }),
+    ).toBe("You might win … DOUB in:");
+
+    expect(
+      formatTimerSectionTitle("saleActive", {
+        firstPrizeDoubWad: "4000000000000000000",
+        decimals: 18,
+        payoutPreview: "ready",
+      }),
+    ).toBe("You might win 4 DOUB in:");
   });
 });

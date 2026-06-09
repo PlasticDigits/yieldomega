@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { ReactNode } from "react";
+import { ConnectWalletPlaceholder } from "@/components/ConnectWalletPlaceholder";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
 
@@ -35,11 +36,11 @@ export function statFromContractRead(
   const { requireWallet = false, mapSuccess, labels = {} } = options;
   const loading = labels.loading ?? "Loading…";
   const missing = labels.missing ?? "No data yet";
-  const connect = labels.connect ?? "Connect a wallet to see this.";
+  const connect = labels.connect ?? "Connect";
   const isConnected = ctx.isConnected ?? true;
 
   if (requireWallet && !isConnected) {
-    return ph(connect);
+    return <ConnectWalletPlaceholder label={connect} />;
   }
   const pending = ctx.isPending;
   if (!read) {

@@ -13,6 +13,10 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     path.resolve(__dirname, "../pages/arena/ArenaSimplePage.tsx"),
     "utf8",
   );
+  const arenaCharmCredCard = fs.readFileSync(
+    path.resolve(__dirname, "../pages/arena/ArenaCharmCredCard.tsx"),
+    "utf8",
+  );
   const css = fs.readFileSync(path.resolve(__dirname, "../index.css"), "utf8");
   const arenaE2e = fs.readFileSync(path.resolve(__dirname, "../../e2e/arena.spec.ts"), "utf8");
   const homePage = fs.readFileSync(path.resolve(__dirname, "../pages/HomePage.tsx"), "utf8");
@@ -40,24 +44,30 @@ describe("Arena command-console production surface (GitLab #291)", () => {
   });
 
   it("keeps Last Buy and inline CHARM purchase mechanics surfaced", () => {
-    expect(arenaSimplePage).toContain('id="arena-command-console-primary-title">Last Buy');
-    expect(arenaSimplePage).toContain("commandDecisionRow");
-    expect(arenaSimplePage).toContain("CHARM Price");
-    expect(arenaSimplePage).toContain("Buy Range");
-    expect(arenaSimplePage).toContain("CRED Yield");
-    expect(arenaSimplePage).toContain("<ArenaTimerChips playerLevel");
-    expect(arenaSimplePage).toContain("<ArenaXpHero />");
+    expect(arenaSimplePage).toContain('aria-label="Last Buy"');
+    expect(arenaSimplePage).not.toContain("commandDecisionRow");
+    expect(arenaSimplePage).not.toContain("arena-command-console__decision-row");
+    expect(arenaSimplePage).toContain("arena-simple__slider-row--pay-");
+    expect(arenaSimplePage).toContain('data-testid="arena-simple-buy-receive"');
+    expect(arenaSimplePage).toContain("<ArenaLastBuyPodiumChip");
+    expect(arenaSimplePage).toContain("<ArenaTimerChips");
+    expect(arenaSimplePage).toContain("podiumRows={podiumReads.data}");
+    expect(arenaSimplePage).toContain("onOpenWalletProfile={onOpenWalletProfile}");
+    expect(arenaCharmCredCard).toContain("<ArenaXpHero />");
+    expect(arenaSimplePage).toContain('data-testid="arena-command-console-warbow"');
     expect(arenaSimplePage).toContain("<ArenaWarbowHeroPanel");
   });
 
-  it("uses the cyberminimalist console CSS and character treatment", () => {
+  it("uses the cyberminimalist console CSS", () => {
     expect(css).toContain("Arena production command console (GitLab #291)");
     expect(css).toContain("yieldomega-glass-arena.css");
     expect(css).toContain(".arena-command-console__grid");
+    expect(css).toContain(".arena-command-console__warbow-lane");
     expect(css).toContain(".arena-command-console .arena-simple__hub");
+    expect(css).toContain(".arena-command-console .arena-simple__connect-pitch");
+    expect(css).toContain(".arena-command-console .arena-simple__connect .wallet-action--connect");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr)");
     expect(arenaSimplePage).toContain("glass-arena-console");
-    expect(arenaSimplePage).toContain("<EpochStatus");
   });
 
   it("uses cyberminimalist scene backplates instead of arcade JPGs (GitLab #297)", () => {

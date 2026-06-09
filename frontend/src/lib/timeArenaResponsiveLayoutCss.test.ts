@@ -35,21 +35,82 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     expect(block).toContain("align-self: start");
   });
 
-  it("vertically centers Simple hub timer heading + countdown inside the min-height stage", () => {
+  it("stacks Simple hub timer heading + countdown from the top of the panel", () => {
     const block = cssBlock(css, ".arena-simple__timer-panel.data-panel", 420);
-    expect(block).toContain("justify-content: center");
+    expect(block).toContain("justify-content: flex-start");
   });
 
-  it("sets a desktop min-height on the Simple hub timer panel (881px+)", () => {
+  it("reserves bottom padding on the Simple hub timer panel for the extension chip", () => {
     const anchor =
-      "/* Desktop hub: give the command-console timer bay a stable vertical footprint so the";
+      "/* Reserve the bottom-right of the timer panel so the section heading / digits";
     const idx = css.indexOf(anchor);
     expect(idx).toBeGreaterThanOrEqual(0);
-    const block = css.slice(idx, idx + 520);
-    expect(block).toContain("@container arenaSimplePage (min-width: 881px)");
-    expect(block).toContain(".arena-simple__hub > .arena-simple__timer-panel");
-    expect(block).toContain("min-height: 392px");
-    expect(block).toContain("@media (min-width: 881px)");
+    const block = css.slice(idx, idx + 280);
+    expect(block).toContain("padding-bottom: clamp(2rem, 4.5vw, 2.75rem)");
+  });
+
+  it("keeps the command-console timer panel content-height instead of a fixed min-height", () => {
+    const anchor = ".arena-command-console .arena-simple__timer-panel.data-panel {\n  min-height: 0;";
+    expect(css).toContain(anchor);
+    expect(css).not.toContain("min-height: clamp(18rem, 34vw, 24rem)");
+  });
+
+  it("stacks and centres the command-console timer heading above the countdown", () => {
+    const block = cssBlock(
+      css,
+      ".arena-command-console .arena-simple__timer-panel.data-panel {\n  min-height: 0;",
+      420,
+    );
+    expect(block).toContain("display: flex");
+    expect(block).toContain("flex-direction: column");
+    expect(block).toContain("align-items: center");
+    expect(block).toContain("padding: clamp(0.55rem, 1.2vw, 0.72rem) clamp(0.38rem, 0.85vw, 0.52rem)");
+
+    const headingBlock = cssBlock(
+      css,
+      ".arena-command-console .arena-simple__timer-panel .section-heading {",
+      180,
+    );
+    expect(headingBlock).toContain("text-align: center");
+
+    const clockBlock = cssBlock(css, ".arena-command-console .arena-simple__timer-clock {", 180);
+    expect(clockBlock).toContain("justify-content: center");
+  });
+
+  it("keeps the command-console hub from stretching when the side rail is taller", () => {
+    const gridBlock = cssBlock(css, ".arena-command-console__grid {", 420);
+    expect(gridBlock).toContain("align-items: start");
+
+    const hubBlock = cssBlock(css, ".arena-command-console .arena-simple__hub {", 280);
+    expect(hubBlock).toContain("align-content: start");
+    expect(hubBlock).toContain("align-items: start");
+
+    const panelBlock = cssBlock(
+      css,
+      ".arena-command-console .arena-simple__hub > .data-panel,\n.arena-command-console .arena-simple__hub > .arena-simple__buy-panel {",
+      220,
+    );
+    expect(panelBlock).toContain("align-self: start");
+  });
+
+  it("lays out Last Buy leaders beside the command-console timer bay", () => {
+    expect(simplePage).toContain("arena-simple__timer-row");
+    expect(simplePage).toContain("ArenaLastBuyPodiumChip");
+
+    const rowBlock = cssBlock(css, ".arena-command-console .arena-simple__timer-row {", 320);
+    expect(rowBlock).toContain("grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr)");
+
+    const mobileBlock = cssBlock(css, "@media (max-width: 620px)", 420);
+    expect(mobileBlock).toContain(".arena-command-console .arena-simple__timer-row");
+    expect(mobileBlock).toContain("grid-template-columns: minmax(0, 1fr)");
+  });
+
+  it("stacks timer chips flush under the YOUR WALLET side-rail card when vertical", () => {
+    const block = cssBlock(css, ".arena-command-console__side-rail {", 280);
+    expect(block).toContain("display: grid");
+    expect(block).toContain("gap: 0.35rem");
+    expect(block).toContain("align-self: start");
+    expect(simplePage).toContain('className="arena-command-console__side-rail"');
   });
 
   it("keeps Simple timer days chip + HH:MM:SS on one row from page width 541px up", () => {
@@ -65,6 +126,18 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     const mqBlock = css.slice(mqIdx, mqIdx + 280);
     expect(mqBlock).toContain(".arena-simple__timer-clock");
     expect(mqBlock).toContain("flex-wrap: nowrap");
+  });
+
+  it("lays out wide podium ranking rows inline (prize pill, identity, meta)", () => {
+    const cardBlock = cssBlock(css, ".arena-simple__podium-card {", 120);
+    expect(cardBlock).toContain("container-type: inline-size");
+    expect(cardBlock).toContain("container-name: podiumCard");
+
+    const cqIdx = css.indexOf("@container podiumCard (min-width: 20rem)");
+    expect(cqIdx).toBeGreaterThanOrEqual(0);
+    const cqBlock = css.slice(cqIdx, cqIdx + 620);
+    expect(cqBlock).toContain('grid-template-areas: "prize identity meta"');
+    expect(cqBlock).toContain("white-space: nowrap");
   });
 
   it("uses a two-column live-buys grid only above the Simple page desktop breakpoint", () => {

@@ -17,7 +17,6 @@ import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
 import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { ArenaLiveBuysActivitySection } from "@/pages/arena/ArenaLiveBuysActivitySection";
 import { RawDataAccordion } from "@/pages/arena/ArenaSections";
-import { ArenaSubnav } from "@/pages/arena/ArenaSubnav";
 import { ArenaProtocolDonatePoolsSection } from "@/pages/arena/ArenaProtocolDonatePoolsSection";
 import { WalletProfileModal } from "@/components/WalletProfileModal";
 import { derivePhase, ledgerSecIntForPhase, phaseBadge } from "@/pages/arena/arenaSimplePhase";
@@ -145,7 +144,6 @@ export function ArenaProtocolPage() {
   if (!tc) {
     return (
       <div className="page arena-protocol-page yga-secondary-page">
-        <ArenaSubnav active="protocol" />
         <PageHero
           title="AUDIT"
           lede="Operator reads for TimeArena state, vault routing, and indexed actions."
@@ -242,8 +240,6 @@ export function ArenaProtocolPage() {
 
   return (
     <div className="page arena-protocol-page">
-      <ArenaSubnav active="protocol" />
-
       <PageHero
         title="AUDIT"
         lede="Read-only operator console for TimeArena state, vault routing, and indexed actions."

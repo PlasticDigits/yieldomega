@@ -65,9 +65,13 @@ export function AddressInline({
     <span className={["mono", "address-inline__label", labelClassName].filter(Boolean).join(" ")}>{label}</span>
   );
 
+  const identityMark = (
+    <WalletBlockie address={raw} size={size} className="address-inline__blockie" title={raw} />
+  );
+
   const cluster = (
     <>
-      <WalletBlockie address={raw} size={size} className="address-inline__blockie" title={raw} />
+      {identityMark}
       {labelSpan}
     </>
   );

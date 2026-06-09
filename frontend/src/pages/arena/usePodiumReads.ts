@@ -25,6 +25,8 @@ export type PodiumReadRow = {
   values: readonly [string, string, string];
   /** Head `lastBuyEpoch` (cat 0) or `podiumEpoch[cat]` when indexer provides it ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256)). */
   epoch?: string;
+  /** Last Buy only: buy unix sec per placement from indexer (schema ≥ 2.9.0). */
+  winnerBuySec?: readonly [string | null, string | null, string | null];
 };
 
 function asPodiumRow(winnersIn: string[], valuesIn: string[]): PodiumReadRow {
@@ -72,11 +74,23 @@ function buildPayoutPreviewFromIndexerRows(
   return preview;
 }
 
+function normalizeWinnerBuySec(
+  raw: ArenaPodiumApiRow["winner_buy_sec"],
+): PodiumReadRow["winnerBuySec"] | undefined {
+  if (!raw || raw.length < 3) {
+    return undefined;
+  }
+  return [raw[0] ?? null, raw[1] ?? null, raw[2] ?? null] as const;
+}
+
 function rowsFromIndexerData(raw: readonly ArenaPodiumApiRow[]): PodiumReadRow[] {
   return [0, 1, 2, 3].map((i) => {
     const row = asPodiumRow(raw[i]?.winners ?? [], raw[i]?.values ?? []);
     const ep = raw[i]?.epoch;
-    return ep != null && ep !== "" ? { ...row, epoch: ep } : row;
+    const winnerBuySec = i === 0 ? normalizeWinnerBuySec(raw[i]?.winner_buy_sec) : undefined;
+    const base =
+      ep != null && ep !== "" ? { ...row, epoch: ep } : row;
+    return winnerBuySec !== undefined ? { ...base, winnerBuySec } : base;
   });
 }
 

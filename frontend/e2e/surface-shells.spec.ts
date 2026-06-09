@@ -14,5 +14,5 @@ test("placeholder and third-party routes use the shared branded shell", async ({
   await expect(page.getByText(/canonical DOUB arena surface/i)).toBeVisible();
   const venue = page.getByTestId("third-party-dex-kumbaya");
   await expect(venue.getByRole("link", { name: "Time Arena" }).first()).toBeVisible();
-  await expect(venue.getByRole("link", { name: "AUDIT" }).first()).toBeVisible();
+  await expect(page.getByLabel("Primary").getByRole("link", { name: "AUDIT" })).toBeVisible();
 });

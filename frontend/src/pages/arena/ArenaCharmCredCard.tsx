@@ -2,9 +2,12 @@
 
 import type { ReactNode } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { ArenaXpHero } from "@/components/ArenaXpHero";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
+import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import { PageSection } from "@/components/ui/PageSection";
+import { useArenaPlayCred } from "@/hooks/useArenaPlayCred";
 import { timeArenaReadAbi } from "@/lib/abis";
 import { addresses } from "@/lib/addresses";
 import { canClaimCred, claimableCredEpoch } from "@/lib/arenaCharmCredClaim";
@@ -21,6 +24,24 @@ function wadStat(
     labels: options.labels,
     mapSuccess: (raw) => <AmountDisplay raw={raw} decimals={18} />,
   });
+}
+
+type CharmCredRowProps = {
+  label: string;
+  title?: string;
+  testId: string;
+  children: ReactNode;
+};
+
+function CharmCredRow({ label, title, testId, children }: CharmCredRowProps) {
+  return (
+    <div className="arena-charm-cred-card__row" title={title}>
+      <span className="arena-charm-cred-card__label">{label}</span>
+      <span className="arena-charm-cred-card__value" data-testid={testId}>
+        {children}
+      </span>
+    </div>
+  );
 }
 
 export function ArenaCharmCredCard() {
@@ -79,6 +100,12 @@ export function ArenaCharmCredCard() {
     query: { enabled: claimReadEnabled },
   });
 
+  const { credBalanceWei, playCredConfigured } = useArenaPlayCred({
+    arenaAddress: arena,
+    charmWad: charm,
+    enabled: Boolean(arena),
+  });
+
   const { writeContractAsync, isPending: claimWritePending } = useWriteContract();
 
   const readCtx = {
@@ -94,19 +121,19 @@ export function ArenaCharmCredCard() {
     isConnected,
   };
 
-  const epochRead: SerializableContractRead | undefined =
-    currentEpoch !== undefined ? { status: "success", result: currentEpoch.toString() } : undefined;
-
   const charmRead: SerializableContractRead | undefined =
     charm !== undefined ? { status: "success", result: charm.toString() } : undefined;
 
   const accruingRead: SerializableContractRead | undefined =
     accruingPending !== undefined ? { status: "success", result: accruingPending.toString() } : undefined;
 
-  const claimableRead: SerializableContractRead | undefined =
-    claimPending !== undefined && claimPending > 0n
-      ? { status: "success", result: claimPending.toString() }
-      : undefined;
+  const balanceRead: SerializableContractRead | undefined =
+    credBalanceWei !== undefined ? { status: "success", result: credBalanceWei.toString() } : undefined;
+
+  const balanceCtx = {
+    ...readCtx,
+    isPending: readCtx.isPending || (isConnected && playCredConfigured && credBalanceWei === undefined),
+  };
 
   const claimReady = canClaimCred({
     address,
@@ -117,7 +144,7 @@ export function ArenaCharmCredCard() {
   if (!arena) {
     return (
       <PageSection
-        title="Epoch CHARM/CRED"
+        title="YOUR WALLET"
         dataTestId="arena-charm-cred-card"
         className="arena-charm-cred-card"
       >
@@ -128,64 +155,60 @@ export function ArenaCharmCredCard() {
 
   return (
     <PageSection
-      title="Epoch CHARM/CRED"
+      title="YOUR WALLET"
       dataTestId="arena-charm-cred-card"
       className="arena-charm-cred-card"
     >
-      <p title="CHARM/CRED accrual follows Last Buy epochs; claim only after an epoch ends.">
-        Epoch:{" "}
-        <strong data-testid="arena-charm-cred-epoch">
-          {statFromContractRead(epochRead, readCtx, {
-            mapSuccess: (raw) => raw,
-            labels: { loading: "Loading epoch…", missing: "No epoch yet" },
-          })}
-        </strong>
-      </p>
-      <p title="Your current Last Buy epoch CHARM weight; this is claim weight, not a leaderboard.">
-        CHARM weight:{" "}
-        <strong data-testid="arena-charm-cred-charm">
+      <ArenaXpHero />
+      <div className="arena-charm-cred-card__stats">
+        <CharmCredRow
+          label="Charm Weight"
+          title="Your current Last Buy epoch CHARM weight; this is claim weight, not a leaderboard."
+          testId="arena-charm-cred-charm"
+        >
           {wadStat(charmRead, readCtx, {
             requireWallet: true,
             labels: {
               loading: "Loading CHARM…",
               missing: "No CHARM this epoch yet",
-              connect: "Connect a wallet to see epoch CHARM.",
             },
           })}
-        </strong>
-      </p>
-      <p title="Current active-epoch CRED preview from DOUB buys.">
-        Accruing CRED:{" "}
-        <strong data-testid="arena-charm-cred-pending">
+        </CharmCredRow>
+        <CharmCredRow
+          label="Accruing CRED"
+          title="Current active-epoch CRED preview from DOUB buys."
+          testId="arena-charm-cred-pending"
+        >
           {wadStat(accruingRead, readCtx, {
             requireWallet: true,
             labels: {
               loading: "Loading pending CRED…",
               missing: "No pending CRED this epoch yet",
-              connect: "Connect a wallet to see pending CRED.",
             },
           })}
-        </strong>
-      </p>
-      {claimEpoch !== undefined ? (
-        <p>
-          Claimable CRED:{" "}
-          <strong data-testid="arena-charm-cred-claimable">
-            {wadStat(claimableRead, readCtx, {
+        </CharmCredRow>
+        <CharmCredRow
+          label="CRED balance"
+          title="Play CRED token balance in your connected wallet."
+          testId="arena-charm-cred-balance"
+        >
+          {isConnected && !playCredConfigured ? (
+            <EmptyDataPlaceholder>CRED unavailable</EmptyDataPlaceholder>
+          ) : (
+            wadStat(balanceRead, balanceCtx, {
               requireWallet: true,
               labels: {
-                loading: "Loading claimable CRED…",
-                missing: "Nothing to claim from last epoch",
-                connect: "Connect a wallet to see claimable CRED.",
+                loading: "Loading CRED…",
+                missing: "No CRED yet",
               },
-            })}
-          </strong>
-        </p>
-      ) : null}
+            })
+          )}
+        </CharmCredRow>
+      </div>
       <ChainMismatchWriteBarrier>
         <button
           type="button"
-          className="btn btn--primary"
+          className="btn-primary arena-charm-cred-card__claim"
           data-testid="arena-charm-cred-claim"
           disabled={!claimReady || claimWritePending || !address}
           title={

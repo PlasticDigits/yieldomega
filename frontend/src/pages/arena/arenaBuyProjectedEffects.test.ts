@@ -1,30 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it } from "vitest";
+import { xpForCharm } from "@/lib/arenaXpMath";
 import {
   buildArenaBuyProjectedEffectLines,
-  formatBuyProjectedSpendLine,
+  formatBuyProjectedXpLine,
 } from "./arenaBuyProjectedEffects";
 
 const fmt = (a: `0x${string}`) => `${a.slice(0, 6)}…`;
 
-describe("formatBuyProjectedSpendLine", () => {
-  it("formats spend as a negative compact asset amount", () => {
-    expect(formatBuyProjectedSpendLine(2_260_000_000_000_000_000n, 18, "CL8Y")).toBe(
-      "-2.26 CL8Y",
-    );
-    expect(formatBuyProjectedSpendLine(1_000_000_000_000_000_000_000n, 18, "DOUB")).toBe(
-      "-1k DOUB",
+describe("formatBuyProjectedXpLine", () => {
+  it("formats XP from cleared CHARM weight", () => {
+    const charmWad = 5_515_000_000_000_000_000n;
+    expect(formatBuyProjectedXpLine(charmWad)).toBe(
+      `+${xpForCharm(charmWad).toString()}xp`,
     );
   });
 });
 
 describe("buildArenaBuyProjectedEffectLines", () => {
-  it("includes CHARM, spend, timer, BP base, and last buyer for a calm-timer CL8Y buy", () => {
+  it("includes XP, timer, BP base, and last buyer for a calm-timer CL8Y buy", () => {
+    const charmWad = 5_515_000_000_000_000_000n;
     const lines = buildArenaBuyProjectedEffectLines({
-      charmWadSelected: 5_515_000_000_000_000_000n,
-      estimatedSpendWei: 5_523_000_000_000_000_000n,
-      decimals: 18,
+      charmWadSelected: charmWad,
       secondsRemaining: 900,
       timerExtensionPreview: 120,
       activeDefendedStreak: 2n,
@@ -34,8 +32,9 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       walletAddress: undefined,
       formatRivalWallet: fmt,
     });
-    expect(lines[0]).toMatch(/\+5\.515 CHARM/);
-    expect(lines[1]).toBe("-5.523 CL8Y");
+    expect(lines[0]).toBe(formatBuyProjectedXpLine(charmWad));
+    expect(lines[0]).not.toMatch(/CHARM/);
+    expect(lines.some((line) => line.startsWith("-"))).toBe(false);
     expect(lines).toContain("+120s");
     expect(lines).not.toContain("+120s timer");
     expect(lines).not.toContain("time-booster");
@@ -46,8 +45,6 @@ describe("buildArenaBuyProjectedEffectLines", () => {
   it("shows +{900-remaining}s under 13 minutes with separate Reset BP pill", () => {
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
-      estimatedSpendWei: 1n,
-      decimals: 18,
       secondsRemaining: 600,
       timerExtensionPreview: 0,
       plantWarBowFlag: false,
@@ -64,8 +61,6 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     const wallet = "0x1111111111111111111111111111111111111111" as const;
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
-      estimatedSpendWei: 1n,
-      decimals: 18,
       secondsRemaining: 800,
       activeDefendedStreak: 1n,
       walletAddress: wallet,
@@ -93,26 +88,22 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     expect(lines).not.toContain("Continue your streak");
   });
 
-  it("uses charmWeightTotalWad for the +CHARM chip when provided (referral / presale bonus weight)", () => {
+  it("uses charmWeightTotalWad for the +xp chip when provided (referral / presale bonus weight)", () => {
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 10n * 10n ** 18n,
       charmWeightTotalWad: 12n * 10n ** 18n,
-      estimatedSpendWei: 1n,
-      decimals: 18,
       secondsRemaining: 900,
       timerExtensionPreview: 0,
       plantWarBowFlag: false,
       formatRivalWallet: fmt,
     });
-    expect(lines[0]).toMatch(/\+12 CHARM/);
+    expect(lines[0]).toBe(formatBuyProjectedXpLine(12n * 10n ** 18n));
   });
 
   it("adds replace-flag copy when planting over another holder", () => {
     const rival = "0x1111111111111111111111111111111111111111" as const;
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
-      estimatedSpendWei: 1n,
-      decimals: 18,
       secondsRemaining: 900,
       timerExtensionPreview: 10,
       plantWarBowFlag: true,
@@ -128,8 +119,6 @@ describe("buildArenaBuyProjectedEffectLines", () => {
     const rival = "0x1111111111111111111111111111111111111111" as const;
     const lines = buildArenaBuyProjectedEffectLines({
       charmWadSelected: 1n * 10n ** 18n,
-      estimatedSpendWei: 1n,
-      decimals: 18,
       secondsRemaining: 900,
       plantWarBowFlag: true,
       flagOwnerAddr: rival,

@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { statFromContractRead, statFromOptionalString } from "./statDisplayFromContractRead";
+
+vi.mock("@/components/ConnectWalletPlaceholder", () => ({
+  ConnectWalletPlaceholder: ({ label = "Connect" }: { label?: string }) => (
+    <button type="button" className="empty-data-placeholder empty-data-placeholder--connect" aria-label="Connect wallet">
+      {label}
+    </button>
+  ),
+}));
 
 describe("statFromContractRead", () => {
   it("renders success mapping", () => {
@@ -14,15 +22,16 @@ describe("statFromContractRead", () => {
     expect(html).toContain('data-v="1000"');
   });
 
-  it("shows connect copy when wallet required but disconnected", () => {
+  it("shows connect CTA when wallet required but disconnected", () => {
     const html = renderToStaticMarkup(
       statFromContractRead(undefined, { isPending: false, isConnected: false }, {
         requireWallet: true,
         mapSuccess: () => <span>no</span>,
-        labels: { connect: "Please connect." },
       }),
     );
-    expect(html).toContain("Please connect.");
+    expect(html).toContain("empty-data-placeholder--connect");
+    expect(html).toContain("Connect");
+    expect(html).toContain('aria-label="Connect wallet"');
   });
 
   it("uses loading vs missing based on isPending when read absent", () => {

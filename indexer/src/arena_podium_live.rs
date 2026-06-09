@@ -176,6 +176,29 @@ pub async fn fetch_live_podium_conn(
     Ok(Some(out))
 }
 
+/// Unix-second strings for the newest three buys in `last_buy_epoch`, slot-aligned (1st = head).
+pub async fn last_buy_winner_buy_sec_pool(
+    pool: &sqlx::PgPool,
+    epoch: &str,
+) -> Result<[Option<String>; 3], SqlxError> {
+    let rows = sqlx::query(
+        r#"SELECT FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
+           FROM idx_arena_buy
+           WHERE last_buy_epoch = $1::bigint
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT 3"#,
+    )
+    .bind(epoch)
+    .fetch_all(pool)
+    .await?;
+
+    let mut out: [Option<String>; 3] = [None, None, None];
+    for (i, r) in rows.iter().enumerate().take(3) {
+        out[i] = r.get::<Option<String>, _>("block_timestamp_sec");
+    }
+    Ok(out)
+}
+
 pub fn live_row_has_entrant(row: &LivePodiumRow) -> bool {
     row.winners.iter().any(|w| {
         let w = w.trim().to_ascii_lowercase();

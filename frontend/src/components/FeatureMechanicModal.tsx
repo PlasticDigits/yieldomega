@@ -63,11 +63,15 @@ export function FeatureMechanicModal({ feature, onClose }: Props) {
       onClose={onClose}
     >
       <form method="dialog" className="feature-mechanic-modal__panel">
-        <h2>{title}</h2>
-        <p>{body}</p>
-        <button type="submit" className="btn btn--primary">
-          Got it
-        </button>
+        <div className="feature-mechanic-modal__content">
+          <h2 className="feature-mechanic-modal__title">{title}</h2>
+          <p className="feature-mechanic-modal__body">{body}</p>
+        </div>
+        <footer className="feature-mechanic-modal__actions">
+          <button type="submit" className="btn-secondary feature-mechanic-modal__action">
+            Got it
+          </button>
+        </footer>
       </form>
     </dialog>
   );

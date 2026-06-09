@@ -13,8 +13,8 @@ use sqlx::Row;
 
 use crate::api::{internal_db_error_response, with_schema_version, AppState, PageParams};
 use crate::arena_podium_live::{
-    fetch_live_podium_conn, live_row_has_entrant, warbow_top3_from_scores_conn, LivePodiumRow,
-    PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
+    fetch_live_podium_conn, last_buy_winner_buy_sec_pool, live_row_has_entrant,
+    warbow_top3_from_scores_conn, LivePodiumRow, PODIUM_CATEGORY_LABELS, PODIUM_UX_CATEGORY_ORDER,
 };
 use crate::arena_podium_prize;
 use crate::arena_wallet_stats;
@@ -269,6 +269,12 @@ async fn arena_podiums(State(state): State<AppState>) -> Response {
         });
         if cat == 0 {
             row["last_buy_prediction"] = json!(podium_prediction);
+            match last_buy_winner_buy_sec_pool(&state.pool, &epoch).await {
+                Ok(secs) => {
+                    row["winner_buy_sec"] = json!(secs);
+                }
+                Err(e) => return internal_db_error_response("GET /v1/arena/podiums", e),
+            }
         }
         rows.push(row);
     }
@@ -294,7 +300,7 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<PageParams>) 
                   new_deadline::text, buy_index::text, log_index,
                   EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
            FROM idx_arena_buy
-           ORDER BY block_number DESC, log_index DESC
+           ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
            LIMIT $1 OFFSET $2"#,
     )
     .bind(limit)

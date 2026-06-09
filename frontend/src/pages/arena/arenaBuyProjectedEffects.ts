@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { HexAddress } from "@/lib/addresses";
+import { xpForCharm } from "@/lib/arenaXpMath";
+import { formatLocaleInteger } from "@/lib/formatAmount";
 import type { BuyItem } from "@/lib/indexerApi";
-import { formatBuyHubDerivedCompact } from "@/lib/timeArenaBuyHubFormat";
 import {
   type ArenaBuyPreviewPolicy,
   formatPreviewBpPill,
@@ -14,26 +15,18 @@ import { isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
-/** Spend preview: negative compact amount + asset label (GitLab #227). */
-export function formatBuyProjectedSpendLine(
-  spendWei: bigint,
-  decimals: number,
-  assetLabel: string,
-): string {
-  return `-${formatBuyHubDerivedCompact(spendWei, decimals)} ${assetLabel}`;
+/** XP preview from cleared CHARM weight (mirrors onchain `ArenaXp.xpForCharm`). */
+export function formatBuyProjectedXpLine(charmWad: bigint): string {
+  return `+${formatLocaleInteger(xpForCharm(charmWad).toString())}xp`;
 }
 
 export type BuildArenaBuyProjectedEffectLinesArgs = {
   charmWadSelected?: bigint;
   /**
-   * When set, used for the "+X CHARM" chip instead of {@link charmWadSelected}
+   * When set, used for the "+Xxp" chip instead of {@link charmWadSelected}
    * (e.g. cleared `charmWad` plus referral / presale CHARM-weight bonuses).
    */
   charmWeightTotalWad?: bigint;
-  estimatedSpendWei?: bigint;
-  decimals: number;
-  /** Pay asset label for spend chip, e.g. `CL8Y`, `ETH`, `USDM`. */
-  spendAssetLabel?: string;
   secondsRemaining?: number;
   /** @deprecated Timer preview uses {@link previewPolicy} + {@link secondsRemaining}; kept for latch compat. */
   timerExtensionPreview?: number;
@@ -66,9 +59,6 @@ export function buildArenaBuyProjectedEffectLines(
   const {
     charmWadSelected,
     charmWeightTotalWad,
-    estimatedSpendWei,
-    decimals,
-    spendAssetLabel = "CL8Y",
     secondsRemaining,
     activeDefendedStreak,
     plantWarBowFlag,
@@ -88,10 +78,7 @@ export function buildArenaBuyProjectedEffectLines(
 
   const charmLineWad = charmWeightTotalWad ?? charmWadSelected;
   if (charmLineWad !== undefined && charmLineWad > 0n) {
-    items.push(`+${formatBuyHubDerivedCompact(charmLineWad, 18)} CHARM`);
-  }
-  if (estimatedSpendWei !== undefined && estimatedSpendWei > 0n) {
-    items.push(formatBuyProjectedSpendLine(estimatedSpendWei, decimals, spendAssetLabel));
+    items.push(formatBuyProjectedXpLine(charmLineWad));
   }
 
   if (secondsRemaining === undefined) {

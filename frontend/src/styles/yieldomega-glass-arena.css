@@ -141,30 +141,6 @@
   color: var(--yga-purple);
 }
 
-/* Topbar / epoch strip */
-.glass-arena-topbar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 0.75rem;
-  align-items: center;
-  padding: 0.2rem 0 0.75rem;
-  border-bottom: 1px solid rgba(45, 212, 168, 0.12);
-  color: var(--arena-console-muted);
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.glass-arena-topbar strong {
-  color: #fff;
-  font-weight: 800;
-}
-
-.glass-arena-topbar__live {
-  justify-self: end;
-  color: var(--yga-emerald);
-}
-
 /* Character placement */
 .yga-character-anchor {
   position: absolute;
@@ -274,18 +250,6 @@
     margin-top: -0.35rem;
   }
 
-  .yga-arena-shell--play-first .arena-command-console__primary-head {
-    display: none;
-  }
-
-  .glass-arena-topbar {
-    grid-template-columns: 1fr;
-    justify-items: start;
-  }
-
-  .glass-arena-topbar__live {
-    justify-self: start;
-  }
 }
 
 /* Homepage play-first: timer + buy visible without scroll on common laptop viewports */

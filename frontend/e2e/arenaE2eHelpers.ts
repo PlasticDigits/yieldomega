@@ -28,7 +28,7 @@ export async function connectArenaWallet(
   });
   const buyPanel = arenaBuyPanel(page);
   await expect(buyPanel).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
-  await expect(buyPanel.getByTestId("arena-simple-rate-board")).toBeVisible({
+  await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
   if (options?.requireDoubSpendControls) {
@@ -48,7 +48,7 @@ export function arenaBuyCharmButton(page: Page) {
 
 /** Waits until DeployDev `startArena()` reads resolve to the live buy surface. */
 export async function waitArenaSaleLive(page: Page): Promise<void> {
-  await expect(page.getByTestId("arena-simple-rate-board")).toBeVisible({
+  await expect(page.getByTestId("arena-simple-buy-charm")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,
   });
 }

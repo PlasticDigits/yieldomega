@@ -5,6 +5,7 @@ import {
   formatCountdown,
   formatLaunchCountdown,
   formatMmSsCountdown,
+  formatPodiumChipCountdown,
   timerUrgencyClass,
 } from "./formatTimer";
 
@@ -62,6 +63,17 @@ describe("formatLaunchCountdown", () => {
     const { days, clock } = formatLaunchCountdown(totalSec);
     expect(days).toBe(1);
     expect(clock).toBe("01:01:01");
+  });
+});
+
+describe("formatPodiumChipCountdown", () => {
+  it("uses HH:MM:SS under 24h (matches Last Buy hero clock)", () => {
+    expect(formatPodiumChipCountdown(86308)).toBe("23:58:28");
+    expect(formatPodiumChipCountdown(3661)).toBe("01:01:01");
+  });
+
+  it("prepends a day count when ≥ 24h", () => {
+    expect(formatPodiumChipCountdown(90061)).toBe("1d 01:01:01");
   });
 });
 

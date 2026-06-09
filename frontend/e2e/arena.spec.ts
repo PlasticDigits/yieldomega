@@ -4,7 +4,7 @@ import { detectLaunchState } from "./launchState";
 
 /**
  * Issue #40 / #256: `/arena` is the simple, first-run path. AUDIT (protocol)
- * lives behind the sub-nav.
+ * lives in the primary header nav.
  */
 async function ensurePostLaunch(page: Page) {
   const state = await detectLaunchState(page);
@@ -26,13 +26,11 @@ async function expectNoHorizontalViewportOverflow(page: Page) {
 test("arena command console shows the first-run path (Last Buy + buy CHARM)", async ({ page }) => {
   await ensurePostLaunch(page);
   await expect(page.locator("main.app-main")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Time Arena views" })).toBeVisible();
   await expect(page.getByTestId("arena-command-console")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /Last Buy|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /You might win|Arena Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(page.getByText(/Connect wallet to buy CHARM|Buy CHARM/i).first()).toBeVisible();
-  await expect(page.getByText("CHARM PRICE")).toBeVisible();
   await expect(page.locator(".arena-final-concept")).toHaveCount(0);
   await expect(page.getByText("Yield Omega", { exact: true })).toBeVisible();
 });
@@ -41,10 +39,9 @@ test("arena simple view shows compact podiums without dense Audit feed sections"
   await ensurePostLaunch(page);
   const simplePodiums = page.getByTestId("arena-simple-podiums");
   await expect(simplePodiums).toBeVisible();
-  await expect(simplePodiums.getByText(/Prize podiums/i)).toBeVisible();
   await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
 
-  await page.getByRole("navigation", { name: "Time Arena views" }).getByRole("link", { name: /AUDIT/ }).click();
+  await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
   await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
   if (await page.getByText(/VITE_TIME_ARENA_ADDRESS is not configured/).isVisible()) {
@@ -56,10 +53,9 @@ test("arena simple view shows compact podiums without dense Audit feed sections"
   await expect(page.getByTestId("arena-protocol-donate-pools")).toBeVisible();
 });
 
-test("arena sub-nav routes to /arena/protocol (raw reads)", async ({ page }) => {
+test("primary nav routes to /arena/protocol (raw reads)", async ({ page }) => {
   await ensurePostLaunch(page);
-  const subnav = page.getByRole("navigation", { name: "Time Arena views" });
-  await subnav.getByRole("link", { name: /AUDIT/ }).click();
+  await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
   await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
 });
@@ -68,9 +64,8 @@ test("arena simple view stays usable on a 390×844 mobile viewport", async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await ensurePostLaunch(page);
   await expect(
-    page.getByRole("heading", { name: /Last Buy|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /You might win|Arena Opens In/, level: 2 }),
   ).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Time Arena views" })).toBeVisible();
   await expectNoHorizontalViewportOverflow(page);
 });
 

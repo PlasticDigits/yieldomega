@@ -2,7 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 import type { BuyItem } from "@/lib/indexerApi";
-import { formatSimplePodiumScoreLine } from "./arenaSimplePodiumScore";
+import {
+  formatSimplePodiumScoreLine,
+  formatViewerPodiumScoreLine,
+  resolveViewerPodiumValueRaw,
+} from "./arenaSimplePodiumScore";
+import type { PodiumReadRow } from "./usePodiumReads";
 
 const ALICE = "0x1111111111111111111111111111111111111111";
 const BOB = "0x2222222222222222222222222222222222222222";
@@ -23,6 +28,27 @@ function buy(partial: Partial<BuyItem> & Pick<BuyItem, "buyer" | "block_timestam
 }
 
 describe("formatSimplePodiumScoreLine", () => {
+  it("Defended Streak compact mode shows em dash when streak value is zero or slot has no winner", () => {
+    expect(
+      formatSimplePodiumScoreLine(2, 0, {
+        winner: ALICE,
+        winnerReady: true,
+        valueRaw: "0",
+        nowUnixSec: 0,
+        compact: true,
+      }),
+    ).toBe("—");
+    expect(
+      formatSimplePodiumScoreLine(2, 0, {
+        winner: "0x0000000000000000000000000000000000000000",
+        winnerReady: false,
+        valueRaw: "0",
+        nowUnixSec: 0,
+        compact: true,
+      }),
+    ).toBe("—");
+  });
+
   it("Defended Streak uses guidance copy when streak value is zero or slot has no winner", () => {
     expect(
       formatSimplePodiumScoreLine(2, 0, {
@@ -31,7 +57,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("No buy streaks until timer under 15 minutes!");
+    ).toBe("Opens when Last Buy under 15 minutes");
     expect(
       formatSimplePodiumScoreLine(2, 0, {
         winner: "0x0000000000000000000000000000000000000000",
@@ -39,7 +65,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("No buy streaks until timer under 15 minutes!");
+    ).toBe("Opens when Last Buy under 15 minutes");
   });
 
   it("formats WarBow BP, defended streak, and time booster from raw values", () => {
@@ -50,7 +76,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "1200",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: 1200 Battle Points");
+    ).toBe("1.2k BP");
     expect(
       formatSimplePodiumScoreLine(2, 1, {
         winner: BOB,
@@ -58,7 +84,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "4",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: 4 sequential buys");
+    ).toBe("4 sequential buys");
     expect(
       formatSimplePodiumScoreLine(3, 2, {
         winner: ALICE,
@@ -66,7 +92,19 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "60",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: 01:00 added");
+    ).toBe("+01:00");
+  });
+
+  it("prefers indexer winnerBuySec for Last Buy", () => {
+    expect(
+      formatSimplePodiumScoreLine(0, 0, {
+        winner: ALICE,
+        winnerReady: true,
+        valueRaw: "3",
+        nowUnixSec: 1_700_000_042,
+        winnerBuySec: "1700000000",
+      }),
+    ).toBe("42s");
   });
 
   it("uses recentBuys head + block_timestamp for Last Buy when buyers align", () => {
@@ -82,7 +120,7 @@ describe("formatSimplePodiumScoreLine", () => {
         nowUnixSec: 1_700_000_007,
         recentBuys: recent,
       }),
-    ).toBe("Score: 7 seconds ago");
+    ).toBe("7s");
     expect(
       formatSimplePodiumScoreLine(0, 1, {
         winner: BOB,
@@ -91,7 +129,7 @@ describe("formatSimplePodiumScoreLine", () => {
         nowUnixSec: 1_700_000_007,
         recentBuys: recent,
       }),
-    ).toBe("Score: 17 seconds ago");
+    ).toBe("17s");
   });
 
   it("returns em dash score when last-buy head does not match the podium wallet", () => {
@@ -104,7 +142,7 @@ describe("formatSimplePodiumScoreLine", () => {
         nowUnixSec: 1_700_000_060,
         recentBuys: recent,
       }),
-    ).toBe("Score: —");
+    ).toBe("—");
   });
 
   it("returns em dash for zero time booster score", () => {
@@ -115,7 +153,31 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: —");
+    ).toBe("—");
+  });
+
+  it("resolveViewerPodiumValueRaw prefers on-podium values for the connected wallet", () => {
+    const row: PodiumReadRow = {
+      winners: [ALICE, BOB, "0x0000000000000000000000000000000000000000"],
+      values: ["900", "500", "0"],
+    };
+    expect(resolveViewerPodiumValueRaw(1, row, BOB, {})).toBe("500");
+    expect(resolveViewerPodiumValueRaw(1, row, ALICE, {})).toBe("900");
+  });
+
+  it("formatViewerPodiumScoreLine mirrors podium score copy for the connected wallet", () => {
+    expect(
+      formatViewerPodiumScoreLine(1, "900", {
+        nowUnixSec: 0,
+        walletConnected: true,
+      }),
+    ).toBe("900 BP");
+    expect(
+      formatViewerPodiumScoreLine(1, null, {
+        nowUnixSec: 0,
+        walletConnected: false,
+      }),
+    ).toBe("—");
   });
 
   it("returns em dash when wallet slot is empty", () => {
@@ -126,6 +188,6 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("Score: —");
+    ).toBe("—");
   });
 });

@@ -587,6 +587,47 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
             .and_then(|v| v.as_str()),
         Some("700")
     );
+
+    sqlx::query(
+        r#"INSERT INTO idx_arena_buy (
+            block_number, block_timestamp, tx_hash, log_index, buyer,
+            charm_wad, doub_paid, new_deadline, total_doub_raised_after, buy_index,
+            actual_seconds_added, timer_hard_reset, paid_with_cred, last_buy_epoch
+        ) VALUES
+            (60, to_timestamp(1700000100), '0x10', 1, $1, 1, 1, 1, 1, 1, 120, false, false, 1),
+            (59, to_timestamp(1700000090), '0x11', 1, $2, 1, 1, 1, 1, 1, 120, false, false, 1)"#,
+    )
+    .bind(&alice)
+    .bind(&bob)
+    .execute(pool)
+    .await
+    .expect("seed epoch buys for winner_buy_sec");
+
+    let app2 = router(AppState {
+        pool: pool.clone(),
+        chain_timer: Arc::new(RwLock::new(Some(arena_head_snapshot()))),
+        ingestion_alive: Arc::new(AtomicBool::new(true)),
+        last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+    });
+    let res2 = app2
+        .oneshot(
+            Request::builder()
+                .uri("/v1/arena/podiums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res2.status(), StatusCode::OK);
+    let j2 = response_json(res2).await;
+    let winner_buy_sec = j2["rows"][0]
+        .get("winner_buy_sec")
+        .and_then(|v| v.as_array())
+        .expect("winner_buy_sec");
+    assert_eq!(winner_buy_sec.len(), 3);
+    assert_eq!(winner_buy_sec[0].as_str(), Some("1700000100"));
+    assert_eq!(winner_buy_sec[1].as_str(), Some("1700000090"));
+    assert_eq!(winner_buy_sec[2].as_str(), None);
 }
 
 /// `GET /v1/arena/buys` exposes buy-row fields from `idx_arena_buy` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282), [#283](https://gitlab.com/PlasticDigits/yieldomega/-/issues/283)).

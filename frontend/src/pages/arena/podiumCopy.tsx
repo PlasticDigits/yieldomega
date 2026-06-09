@@ -8,9 +8,9 @@ export const PODIUM_LABELS = ["Last Buy", "WarBow", "Defended Streak", "Time Boo
 /** Help blurbs beside each reserve podium category (simple page, protocol page, arena spotlights). */
 export const PODIUM_HELP: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
   "Last 3 Buyers Win!",
-  "Battle for WarBow points with steals on the unified arena page.",
+  "Steal BP to win!",
   "Buy streaks under 15 minutes win!",
-  "Add the most time to the clock to win!",
+  "Add Last Buy Time to Win!",
 ];
 
 /** Maps each {@link PODIUM_LABELS} slot to `TimeArena.podium(category)` index. */

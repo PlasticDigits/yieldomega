@@ -38,6 +38,12 @@ export function formatLaunchCountdown(totalSec: number): {
   return { days, clock: formatCountdown(remainder) };
 }
 
+/** Compact countdown for secondary podium chips — same `HH:MM:SS` rhythm as {@link ArenaTimerHero}. */
+export function formatPodiumChipCountdown(totalSec: number): string {
+  const { days, clock } = formatLaunchCountdown(totalSec);
+  return days > 0 ? `${days}d ${clock}` : clock;
+}
+
 export function timerUrgencyClass(sec: number | undefined): string {
   if (sec === undefined) return "";
   const floorSec = Math.floor(sec);

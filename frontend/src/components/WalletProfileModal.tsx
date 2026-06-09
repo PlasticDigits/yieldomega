@@ -56,22 +56,26 @@ export function WalletProfileModal({ address, onClose }: Props) {
         if (e.target === dialogRef.current) onClose();
       }}
     >
-      <div className="wallet-profile-modal__panel" role="document">
-        <header className="wallet-profile-modal__header">
-          <h2 id={titleId}>Participant profile</h2>
-          <button type="button" className="btn btn--ghost wallet-profile-modal__close" onClick={onClose} aria-label="Close">
-            Close
+      <div className="modal-panel wallet-profile-modal__panel" role="document">
+        <header className="modal-panel__head wallet-profile-modal__header">
+          <h2 id={titleId} className="modal-panel__title">
+            Participant profile
+          </h2>
+          <button type="button" className="modal-panel__close" onClick={onClose} aria-label="Close dialog">
+            ×
           </button>
         </header>
 
-        <p className="wallet-profile-modal__address">
-          <AddressInline address={address} explorer={false} />
-        </p>
-        <p className="wallet-profile-modal__explorer-link">
-          <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer noopener">
-            View on explorer
-          </a>
-        </p>
+        <div className="wallet-profile-modal__identity">
+          <p className="wallet-profile-modal__address">
+            <AddressInline address={address} explorer={false} />
+          </p>
+          <p className="wallet-profile-modal__explorer-link">
+            <a href={explorerAddressUrl(address)} target="_blank" rel="noreferrer noopener">
+              View on explorer
+            </a>
+          </p>
+        </div>
 
         {isLoading ? <WalletProfileLoadingState /> : null}
         {!isLoading && (isError || indexerUnset) ? (
