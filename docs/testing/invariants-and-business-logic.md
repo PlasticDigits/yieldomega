@@ -383,14 +383,26 @@ Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). On
 
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
-| **`INV-TIME-ARENA-DOUB-PRICE`** | `buy(charmWad)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18`; **DeployDev / Anvil** default **`1000e18`** per 1e18 CHARM | `test_buy_routes_doub_split`, `testFuzz_buy_charmInBand_doubPullParity`, `testFuzz_setCharmPriceWad_doubOwed` |
-| **`INV-TIME-ARENA-CHARM-TWAP-INIT`** | **MegaETH production** initial **`charmPriceWad`** from **Sir-parity Kumbaya V3 TWAP** (15m) on **DOUB/WETH (100)** + **WETH/USDm (3000)**; **`charmPriceWad = floor(1e36 / doubUsdTwap)`** (~**$1** DOUB notional per 1 CHARM); spend band **`0.99×`–`10× charmPriceWad`**; **`ARENA_CHARM_PRICE_WAD`** override or fail-closed (no silent `1000e18` on 4326) ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)) | `ArenaCharmPriceTwap.t.sol`, `ArenaCharmPriceTwapFork.t.sol` (skip without `FORK_URL` / DOUB pool), `bash scripts/compute-arena-charm-price-twap.sh`, `DeployProduction.s.sol` |
+| **`INV-TIME-ARENA-DOUB-PRICE`** | `buy(charmWad)` pulls **DOUB** = `charmWad × charmPriceWad / 1e18`; **DeployDev / Anvil** default **`1000e18`** per 1e18 CHARM; production init via **`INV-TIME-ARENA-CHARM-TWAP-INIT`** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)) | `test_buy_routes_doub_split`, `testFuzz_buy_charmInBand_doubPullParity`, `testFuzz_setCharmPriceWad_doubOwed` |
+| **`INV-TIME-ARENA-CHARM-TWAP-INIT`** | **MegaETH production** initial **`charmPriceWad`** from **Sir-parity Kumbaya V3 TWAP** (15m) on **DOUB/WETH (100)** + **WETH/USDm (3000)**; **`charmPriceWad = floor(1e36 / doubUsdTwap)`** (~**$1** DOUB notional per 1 CHARM); spend band **`0.99×`–`10× charmPriceWad`**; **`ARENA_CHARM_PRICE_WAD`** override or fail-closed (no silent `1000e18` on 4326) ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)) | `ArenaCharmPriceTwap.t.sol`, `ArenaCharmPriceTwapFork.t.sol` (skip without `FORK_URL` / DOUB pool), `bash scripts/compute-arena-charm-price-twap.sh`, `DeployProduction.s.sol`, `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
 | **`INV-TIME-ARENA-SET-PRICE`** | Governance **`setCharmPriceWad`** (mutable, > 0) | `test_setCharmPriceWad_changes_doub_owed` |
 | **`INV-TIME-ARENA-CHARM-BAND`** | Fixed **0.99–10** CHARM (WAD) envelope | `test_buy_reverts_charm_*`, `testFuzz_buy_charmBelowMin_reverts`, `testFuzz_buy_charmAboveMax_reverts` |
 | **`INV-TIME-ARENA-COOLDOWN`** | Rolling per-wallet **`buyCooldownSec`** | `test_buy_reverts_on_cooldown` |
 | **`INV-TIME-ARENA-EPOCH-EVENT`** | **`LastBuyEpochStarted`** on hard reset | `test_emits_LastBuyEpochStarted_on_hard_reset` |
 
 Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)). ERC-20 ingress: **`INV-ERC20-123`** below · `test_feeOnTransfer_buy_reverts_erc20Parity`.
+
+<a id="arena-charm-twap-init-gitlab-303"></a>
+
+### Arena production charm TWAP init (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303))
+
+Onchain: [`ArenaCharmPriceTwap.sol`](../../contracts/src/oracle/ArenaCharmPriceTwap.sol) · [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol). Ops dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. Integrator: [kumbaya.md § TWAP](../integrations/kumbaya.md). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-CHARM-TWAP-INIT`** | Sir **15m** Kumbaya V3 TWAP on **DOUB/WETH (100)** + **WETH/USDm (3000)**; **`charmPriceWad = floor(1e36 / doubUsdTwap)`**; spend band **`0.99×`–`10× charmPriceWad`**; **`ARENA_CHARM_PRICE_WAD`** override; fail-closed on 4326 (no silent `1000e18`) | `ArenaCharmPriceTwap.t.sol`, `ArenaCharmPriceTwapFork.t.sol`, `bash scripts/compute-arena-charm-price-twap.sh`, `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
+
+**Live mainnet note:** TWAP dry-run and production deploy require a deployed **DOUB/WETH** pool at fee **100** on MegaETH; until then use **`ARENA_CHARM_PRICE_WAD`** for rehearsal or abort deploy.
 
 **Pay-mode E2E:** `arena-paywith-{cl8y,cred,eth,usdm}` on [`ArenaSimplePage.tsx`](../../frontend/src/pages/arena/ArenaSimplePage.tsx) (`/arena`). **DOUB** direct `buy`; **CRED** `buyWithCred` — `e2e/anvil-arena-04-cred-buy.spec.ts` ([#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269)); **ETH/USDM** use `TimeArenaBuyRouter.buyViaKumbaya` when `timeArenaBuyRouter` is set ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251), frontend [#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)). Env: `VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER` must match onchain when set (legacy alias `VITE_KUMBAYA_TIMECURVE_BUY_ROUTER`). **Pause:** `TimeArena.paused` only — **`INV-FRONTEND-264-ARENA-PAY-PAUSE`**.
 

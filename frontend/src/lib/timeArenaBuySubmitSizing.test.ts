@@ -64,6 +64,28 @@ describe("reconcileFreshBuySizingFromReads", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("derives spend from TWAP-like charmPriceWad (2500 DOUB per CHARM, not dev 1000)", () => {
+    const price = 2500n * WAD;
+    const minC = 99n * (WAD / 100n);
+    const maxC = 10n * WAD;
+    const minS = (minC * price) / WAD;
+    const maxS = (maxC * price) / WAD;
+    const r = reconcileFreshBuySizingFromReads({
+      spendWeiIntent: 5n * price,
+      minSpendWei: minS,
+      maxSpendWei: maxS,
+      pricePerCharmWad: price,
+      minCharmWad: minC,
+      maxCharmWad: maxC,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.spendWei).toBe((r.charmWad * price) / WAD);
+      expect(r.spendWei >= minS).toBe(true);
+      expect(r.spendWei <= maxS).toBe(true);
+    }
+  });
+
   it("bumps implied charm above raw min when spend targets the lower envelope edge", () => {
     const price = WAD;
     const minS = 1n * WAD;

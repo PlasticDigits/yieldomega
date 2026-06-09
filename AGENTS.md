@@ -24,7 +24,7 @@ Use **`glab`** (wrapper on `PATH` via `scripts/bin/glab`) and **`GITLAB_TOKEN`**
 
 **Message body — no emails or attribution.** **Never** put emails, `Co-authored-by:` trailers, or the word **`author`** in a commit message (subject or body). Use a short imperative subject and an optional body with *what* changed and *why* — no attribution lines, no mail addresses, no “written by …” credits.
 
-The **commit-msg** hook rejects subjects with emails/`author` and strips offending body lines ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303) hygiene). Do **not** bypass with `YIELDOMEGA_SKIP_COMMIT_MSG_HOOK` except a one-off human-directed emergency.
+The **commit-msg** hook rejects subjects with emails/`author` and strips offending body lines (`.githooks/commit-msg` · `bash scripts/test-commit-message-sanitize.sh`). Do **not** bypass with `YIELDOMEGA_SKIP_COMMIT_MSG_HOOK` except a one-off human-directed emergency.
 
 ## Cursor Cloud specific instructions
 
