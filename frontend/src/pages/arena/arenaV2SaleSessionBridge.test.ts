@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { describe, expect, it, vi } from "vitest";
+import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
+import { WAD } from "@/lib/timeArenaMath";
 import {
   ARENA_SESSION_CORE_ROW_COUNT,
   coreReadRowsFromArenaTimers,
@@ -42,6 +44,29 @@ describe("mapArenaV2CoreRows", () => {
     expect(rows![21]?.result).toBe(5n * 10n ** 18n);
   });
 
+  it("derives spend envelope from TWAP-like onchain charmPriceWad (2500 DOUB/CHARM)", () => {
+    const price = 2500n * WAD;
+    const raw = [
+      { status: "success", result: 100n },
+      { status: "success", result: 200n },
+      { status: "success", result: false },
+      { status: "success", result: price },
+      { status: "success", result: DOUB },
+      { status: "success", result: REF },
+      { status: "success", result: 0n },
+      { status: "success", result: 300n },
+      { status: "success", result: 120n },
+      { status: "success", result: 86_400n },
+      { status: "success", result: BUY_ROUTER },
+      { status: "success", result: 5n * 10n ** 18n },
+    ] as const;
+    const rows = mapArenaV2CoreRows(raw);
+    expect(rows).toBeDefined();
+    expect(rows![3]?.result).toBe((ARENA_CHARM_MIN_WAD * price) / WAD);
+    expect(rows![4]?.result).toBe((ARENA_CHARM_MAX_WAD * price) / WAD);
+    expect(rows![6]?.result).toBe(price);
+  });
+
   it("returns undefined when required reads are missing", () => {
     expect(mapArenaV2CoreRows(undefined)).toBeUndefined();
     expect(
@@ -74,6 +99,33 @@ describe("coreReadRowsFromArenaTimers", () => {
     expect(rows![7]?.result).toBe(DOUB);
     expect(rows![8]?.result).toBe(REF);
     expect(rows![15]?.result).toBe(BUY_ROUTER);
+  });
+
+  it("derives min/max DOUB spend from non-dev charmPriceWad (TWAP-like 2500 DOUB/CHARM)", () => {
+    const price = 2500n * WAD;
+    const rows = coreReadRowsFromArenaTimers({
+      read_block_number: "1",
+      block_timestamp_sec: "100",
+      last_buy_deadline_sec: "200",
+      timer_cap_sec: "86400",
+      arena_start_sec: "50",
+      paused: false,
+      total_doub_raised: "0",
+      podium_deadlines_sec: ["0", "1", "2", "3"],
+      charm_price_wad: String(price),
+      doub: DOUB,
+      referral_registry: REF,
+      buy_cooldown_sec: "300",
+      timer_extension_sec: "120",
+      time_arena_buy_router: BUY_ROUTER,
+      referral_cred_flat_wad: "5000000000000000000",
+    });
+    expect(rows).toBeDefined();
+    const minSpend = (ARENA_CHARM_MIN_WAD * price) / WAD;
+    const maxSpend = (ARENA_CHARM_MAX_WAD * price) / WAD;
+    expect(rows![3]?.result).toBe(minSpend);
+    expect(rows![4]?.result).toBe(maxSpend);
+    expect(rows![6]?.result).toBe(price);
   });
 
   it("returns undefined when sale-head fields are missing", () => {
