@@ -53,23 +53,24 @@ export async function waitArenaSaleLive(page: Page): Promise<void> {
   });
 }
 
-export async function openBuyAdvanced(page: Page): Promise<void> {
-  const buyPanel = arenaBuyPanel(page);
-  await buyPanel.locator('[data-testid="arena-simple-buy-advanced"] summary').click();
-}
-
 export async function selectPayWith(
   page: Page,
   asset: "cl8y" | "eth" | "usdm" | "cred",
 ): Promise<void> {
   const buyPanel = arenaBuyPanel(page);
-  const btn = buyPanel.getByTestId(`arena-paywith-${asset}`);
-  if (!(await btn.isVisible().catch(() => false))) {
-    await openBuyAdvanced(page);
+  // Menu options render in a document.body portal, not inside the buy panel.
+  const option = page.getByTestId(`arena-simple-rate-pay-option-${asset}`);
+  if (await option.isVisible().catch(() => false)) {
+    await option.click();
+    return;
   }
-  await btn.scrollIntoViewIfNeeded();
-  await btn.click({ force: true });
-  await expect(btn).toHaveAttribute("aria-pressed", "true");
+  const trigger = buyPanel.getByTestId("arena-simple-rate-pay-picker-trigger");
+  await expect(trigger).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  await trigger.click();
+  await expect(option).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
+  await option.click();
+  const labelPattern = asset === "cl8y" ? /DOUB|CL8Y/i : new RegExp(asset, "i");
+  await expect(trigger).toHaveAttribute("aria-label", labelPattern);
 }
 
 /** Sets minimum valid spend so `charmWadSelected` resolves and the buy CTA enables. */

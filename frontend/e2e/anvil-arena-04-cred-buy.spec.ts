@@ -26,7 +26,7 @@ test.describe("Anvil Arena CRED buy", () => {
     const buyPanel = arenaBuyPanel(page);
     await selectPayWith(page, "cred");
     await setCharmSliderMin(page);
-    await expect(buyPanel.getByTestId("arena-simple-buy-preview-cred")).toBeVisible({
+    await expect(buyPanel.getByTestId("arena-simple-buy-preview")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await buyPanel.getByRole("button", { name: /buy/i }).click();
