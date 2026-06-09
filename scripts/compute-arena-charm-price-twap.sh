@@ -31,8 +31,8 @@ set -e
 echo "${OUT}"
 
 if [[ ${STATUS} -ne 0 ]]; then
-  if grep -q "missing DOUB/WETH pool" <<<"${OUT}"; then
-    echo "FAIL: DOUB/WETH Kumbaya pool not deployed — create pool or set ARENA_CHARM_PRICE_WAD for rehearsal." >&2
+  if grep -qE "missing DOUB/CL8Y pool|missing CL8Y/WETH pool" <<<"${OUT}"; then
+    echo "FAIL: DOUB/CL8Y or CL8Y/WETH Kumbaya pool not deployed — create pools or set ARENA_CHARM_PRICE_WAD for rehearsal." >&2
   fi
   exit "${STATUS}"
 fi
