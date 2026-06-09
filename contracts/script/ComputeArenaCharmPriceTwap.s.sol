@@ -12,7 +12,8 @@ contract ComputeArenaCharmPriceTwap is Script {
         console.log("chainId", r.chainId);
         console.log("blockNumber", r.blockNumber);
         console.log("twapSeconds", r.twapSeconds);
-        console.log("doubWethPool", r.doubWethPool);
+        console.log("doubCl8yPool", r.doubCl8yPool);
+        console.log("cl8yWethPool", r.cl8yWethPool);
         console.log("wethUsdmPool", r.wethUsdmPool);
         console.log("doubUsdWad", r.doubUsdWad);
         console.log("charmPriceWad", r.charmPriceWad);

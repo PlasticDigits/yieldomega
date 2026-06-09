@@ -41,7 +41,7 @@ bash scripts/e2e-anvil.sh
 scripts/deploy-megaeth-contracts.sh
 ```
 
-**Charm price (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)):** On MegaETH **4326**, [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) computes **`charmPriceWad`** from **Kumbaya V3 TWAP** (Sir **15-minute** window) on **DOUB/WETH (fee 100)** and **WETH/USDm (fee 3000)** unless **`ARENA_CHARM_PRICE_WAD`** is set. Dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. **DeployDev / Anvil** keep **`1000e18`**.
+**Charm price (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)):** On MegaETH **4326**, [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol) computes **`charmPriceWad`** from **Kumbaya V3 TWAP** (Sir **15-minute** window) on **DOUB/CL8Y (fee 100)** → **CL8Y/WETH (fee 100)** → **WETH/USDm (fee 3000)** — reserve-asset bridge, **not** direct DOUB/WETH — unless **`ARENA_CHARM_PRICE_WAD`** is set. Dry-run: `bash scripts/compute-arena-charm-price-twap.sh`. **DeployDev / Anvil** keep **`1000e18`**.
 
 **Env (optional — timer/cooldown defaults match [`DeployProduction.s.sol`](../../contracts/script/DeployProduction.s.sol)):**
 

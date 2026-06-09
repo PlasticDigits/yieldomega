@@ -8,8 +8,9 @@ import {IUniswapV3Pool} from "./v3/IUniswapV3Pool.sol";
 import {OracleLibrary} from "./v3/OracleLibrary.sol";
 
 /// @notice TWAP-derived initial `charmPriceWad` for Arena production deploy (GitLab #303).
-/// @dev Matches Sir Trading Kumbaya V3 oracle recipe: 15-minute TWAP on DOUB/WETH (fee 100)
-///      and WETH/USDm (fee 3000). USDm ≈ $1. Floor rounding on `charmPriceWad` (protocol-favorable).
+/// @dev Sir-parity Kumbaya V3 oracle: 15-minute TWAP on **DOUB/CL8Y** (fee 100) and **CL8Y/WETH** (fee 100),
+///      then **WETH/USDm** (fee 3000) for the USD leg. Reserve-asset bridge replaces direct DOUB/WETH.
+///      USDm ≈ $1. Floor rounding on `charmPriceWad` (protocol-favorable).
 library ArenaCharmPriceTwap {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant CHARM_MIN_WAD = 99e16;
@@ -24,24 +25,28 @@ library ArenaCharmPriceTwap {
     /// @dev Reject when spot tick deviates from TWAP tick by more than this (basis points of price).
     uint16 internal constant MAX_SPOT_TWAP_DEVIATION_BPS = 500;
 
-    /// @dev Plausible DOUB/USD TWAP band (WAD). Anchoring still targets ~$1/CHARM at deploy.
-    uint256 internal constant MIN_DOUB_USD_WAD = 1e14; // $0.0001
-    uint256 internal constant MAX_DOUB_USD_WAD = 1e17; // $0.10
+    /// @dev Plausible DOUB/USD TWAP band (WAD). Reserve-asset path can mark DOUB well below $0.0001.
+    uint256 internal constant MIN_DOUB_USD_WAD = 1e10; // $0.00000001
+    uint256 internal constant MAX_DOUB_USD_WAD = 1e18; // $1.00
 
     // MegaETH mainnet (4326) — Kumbaya integrator-kit + default-token-list.
     address internal constant MEGAETH_KUMBAYA_FACTORY = 0x68b34591f662508076927803c567Cc8006988a09;
     address internal constant MEGAETH_DOUB = 0xc3654B4f879937B767aFBB64B7C230FF436d2342;
+    address internal constant MEGAETH_CL8Y = 0xfBAa45A537cF07dC768c469FfaC4e88208B0098D;
     address internal constant MEGAETH_WETH = 0x4200000000000000000000000000000000000006;
     address internal constant MEGAETH_USDM = 0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7;
-    uint24 internal constant MEGAETH_DOUB_WETH_FEE = 100;
+    uint24 internal constant MEGAETH_DOUB_CL8Y_FEE = 100;
+    uint24 internal constant MEGAETH_CL8Y_WETH_FEE = 100;
     uint24 internal constant MEGAETH_WETH_USDM_FEE = 3000;
 
     struct Config {
         address factory;
         address doub;
+        address cl8y;
         address weth;
         address usdm;
-        uint24 doubWethFee;
+        uint24 doubCl8yFee;
+        uint24 cl8yWethFee;
         uint24 wethUsdmFee;
         uint32 twapSeconds;
         uint16 minObservationCardinality;
@@ -55,9 +60,11 @@ library ArenaCharmPriceTwap {
         uint256 charmPriceWad;
         uint256 minDoubSpendWad;
         uint256 maxDoubSpendWad;
-        address doubWethPool;
+        address doubCl8yPool;
+        address cl8yWethPool;
         address wethUsdmPool;
-        int24 doubWethTwapTick;
+        int24 doubCl8yTwapTick;
+        int24 cl8yWethTwapTick;
         int24 wethUsdmTwapTick;
         uint32 twapSeconds;
         uint256 blockNumber;
@@ -68,9 +75,11 @@ library ArenaCharmPriceTwap {
         cfg = Config({
             factory: MEGAETH_KUMBAYA_FACTORY,
             doub: MEGAETH_DOUB,
+            cl8y: MEGAETH_CL8Y,
             weth: MEGAETH_WETH,
             usdm: MEGAETH_USDM,
-            doubWethFee: MEGAETH_DOUB_WETH_FEE,
+            doubCl8yFee: MEGAETH_DOUB_CL8Y_FEE,
+            cl8yWethFee: MEGAETH_CL8Y_WETH_FEE,
             wethUsdmFee: MEGAETH_WETH_USDM_FEE,
             twapSeconds: SIR_TWAP_SECONDS,
             minObservationCardinality: MIN_OBSERVATION_CARDINALITY,
@@ -89,25 +98,35 @@ library ArenaCharmPriceTwap {
         result.blockNumber = block.number;
         result.twapSeconds = cfg.twapSeconds;
 
-        address doubWethPool = IUniswapV3Factory(cfg.factory).getPool(cfg.doub, cfg.weth, cfg.doubWethFee);
+        address doubCl8yPool = IUniswapV3Factory(cfg.factory).getPool(cfg.doub, cfg.cl8y, cfg.doubCl8yFee);
+        address cl8yWethPool = IUniswapV3Factory(cfg.factory).getPool(cfg.cl8y, cfg.weth, cfg.cl8yWethFee);
         address wethUsdmPool = IUniswapV3Factory(cfg.factory).getPool(cfg.weth, cfg.usdm, cfg.wethUsdmFee);
-        require(doubWethPool != address(0), "ArenaCharmPriceTwap: missing DOUB/WETH pool");
+        require(doubCl8yPool != address(0), "ArenaCharmPriceTwap: missing DOUB/CL8Y pool");
+        require(cl8yWethPool != address(0), "ArenaCharmPriceTwap: missing CL8Y/WETH pool");
         require(wethUsdmPool != address(0), "ArenaCharmPriceTwap: missing WETH/USDm pool");
-        result.doubWethPool = doubWethPool;
+        result.doubCl8yPool = doubCl8yPool;
+        result.cl8yWethPool = cl8yWethPool;
         result.wethUsdmPool = wethUsdmPool;
 
-        _assertObservationCardinality(doubWethPool, cfg.minObservationCardinality);
+        _assertObservationCardinality(doubCl8yPool, cfg.minObservationCardinality);
+        _assertObservationCardinality(cl8yWethPool, cfg.minObservationCardinality);
         _assertObservationCardinality(wethUsdmPool, cfg.minObservationCardinality);
 
-        result.doubWethTwapTick = OracleLibrary.consult(doubWethPool, cfg.twapSeconds);
+        result.doubCl8yTwapTick = OracleLibrary.consult(doubCl8yPool, cfg.twapSeconds);
+        result.cl8yWethTwapTick = OracleLibrary.consult(cl8yWethPool, cfg.twapSeconds);
         result.wethUsdmTwapTick = OracleLibrary.consult(wethUsdmPool, cfg.twapSeconds);
 
-        _assertSpotTwapDeviation(doubWethPool, result.doubWethTwapTick, cfg.maxSpotTwapDeviationBps);
+        _assertSpotTwapDeviation(doubCl8yPool, result.doubCl8yTwapTick, cfg.maxSpotTwapDeviationBps);
+        _assertSpotTwapDeviation(cl8yWethPool, result.cl8yWethTwapTick, cfg.maxSpotTwapDeviationBps);
         _assertSpotTwapDeviation(wethUsdmPool, result.wethUsdmTwapTick, cfg.maxSpotTwapDeviationBps);
 
+        uint256 cl8yPerDoub =
+            OracleLibrary.getQuoteAtTick(result.doubCl8yTwapTick, uint128(WAD), cfg.doub, cfg.cl8y);
+        require(cl8yPerDoub > 0, "ArenaCharmPriceTwap: zero DOUB/CL8Y");
+
         uint256 wethPerDoub =
-            OracleLibrary.getQuoteAtTick(result.doubWethTwapTick, uint128(WAD), cfg.doub, cfg.weth);
-        require(wethPerDoub > 0, "ArenaCharmPriceTwap: zero DOUB/WETH");
+            OracleLibrary.getQuoteAtTick(result.cl8yWethTwapTick, uint128(cl8yPerDoub), cfg.cl8y, cfg.weth);
+        require(wethPerDoub > 0, "ArenaCharmPriceTwap: zero CL8Y/WETH");
 
         uint256 usdmPerDoub =
             OracleLibrary.getQuoteAtTick(result.wethUsdmTwapTick, uint128(wethPerDoub), cfg.weth, cfg.usdm);

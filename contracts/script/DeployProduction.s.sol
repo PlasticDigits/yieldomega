@@ -114,7 +114,8 @@ contract DeployProduction is Script {
         charmPriceWad = twap.charmPriceWad;
         console.log("charmPriceWad source: Kumbaya TWAP (Sir 15m)");
         console.log("twapSeconds", twap.twapSeconds);
-        console.log("doubWethPool", twap.doubWethPool);
+        console.log("doubCl8yPool", twap.doubCl8yPool);
+        console.log("cl8yWethPool", twap.cl8yWethPool);
         console.log("wethUsdmPool", twap.wethUsdmPool);
         console.log("doubUsdWad", twap.doubUsdWad);
         console.log("charmPriceWad", charmPriceWad);
