@@ -9,9 +9,10 @@ import {
 } from "./arenaXpMath";
 
 describe("arenaXpMath", () => {
-  it("maps charm band to 1–10 XP", () => {
+  it("maps charm band to 1–10 XP (#304)", () => {
     expect(xpForCharm(99n * 10n ** 16n)).toBe(1n);
     expect(xpForCharm(10n * 10n ** 18n)).toBe(10n);
+    expect(xpForCharm(5n * 10n ** 18n + (495n * 10n ** 15n))).toBe(5n);
   });
 
   it("level 2 at 10 XP", () => {

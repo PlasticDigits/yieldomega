@@ -74,7 +74,7 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 
 ## XP
 
-- Per buy: `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor; **1–10** at band ends).
+- Per buy, **scaled by CHARM weight cleared** ([#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304)): `xp = 1 + (charmWad - CHARM_MIN) * 9 / (CHARM_MAX - CHARM_MIN)` (integer floor; **1–10** at band ends — min band → 1 XP, max band → 10 XP).
 - Level **L** requires cumulative XP; step **L→L+1**: `min(10 + (L-1)*5, 100)` XP (**L1 = 10** total to reach level 2).
 - **Player level cap 5** ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)): `MAX_PLAYER_LEVEL = 5`; surplus XP at max level is **discarded** (`xpTowardNext` stays **0**). Views **`level`**, **`unlockedLevel`**, **`xp`**, **`xpTowardNext`**, **`xpToNextLevel`**. Onchain: [`ArenaXp`](../../contracts/src/arena/libraries/ArenaXp.sol); frontend: [`arenaXpMath.ts`](../../frontend/src/lib/arenaXpMath.ts), [`arenaProgression.ts`](../../frontend/src/lib/arenaProgression.ts).
 - **Progressive unlocks (#299):** each buyer’s **level** gates **that wallet’s** buy side effects — L1 Last Buy only; L2 Time Booster timer/scoring; L3 Defended Streak; L4 WarBow timer/BP + steal/guard/revenge; L5 flag plant/cancel. Gating is per **buyer**, not per observer (a level-1 opponent’s buy only extends Last Buy). **`grandfatherProgression(address[])`** one-shot migration for pre-ship wallets with `buyCount > 0`.

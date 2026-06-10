@@ -130,6 +130,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-ARENA-PROGRESSION-UX`** | `/arena` XP hero; lock overlays + `Locked until Level N`; mechanic modal on first unlock / help | `arenaProgression.test.ts`, `arenaBuyProjectedEffects.test.ts`, `ArenaXpHero` ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)) · [arena-views §299](../frontend/arena-views.md#arena-player-progression-gitlab-299) |
 | **`INV-ARENA-PROGRESSION-GRANDFATHER`** | `grandfatherProgression` sets level 5 for wallets with prior `buyCount > 0` | `test_grandfather_progression` ([#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)) |
 | **`INV-TIME-ARENA-XP`** | XP 1–10 linear in CHARM band; level steps per `ArenaXp`; capped at 5; `XpGained` / `LevelUp` / `FeatureUnlocked` events | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#250](https://gitlab.com/PlasticDigits/yieldomega/-/issues/250), [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299)) |
+| **`INV-TIME-ARENA-XP-CHARM-SCALE`** | Each buy awards **`ArenaXp.xpForCharm(charmWad)`** (1 at min band → 10 at max); DOUB and CRED paths identical; indexer **`xp_gained`** = event `amount`; frontend preview **`+Xxp`** tracks cleared CHARM weight | `ArenaXp.t.sol::test_xpForCharm_linear_band`, `TimeArena.t.sol::test_xp_emits_XpGained`, `test_xp_buy_with_cred_same_as_doub`, `arenaXpMath.test.ts`, `arenaBuyProjectedEffects.test.ts`, `integration_stage2.rs` ([#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304)) · [detail §304](#timearena-xp-charm-scale-gitlab-304) |
 | **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) · [manual QA §265](manual-qa-checklists.md#manual-qa-issue-265) · [detail §265](#timearena-xp-gas-gitlab-265) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls (steal 1000 / guard 10000 / override 50000 / revenge 1000; flag claim 0) | `test_warbow_steal_pulls_doub`, `test_warbow_guard_pulls_doub`, `test_warbow_revenge_pulls_doub`, `test_warbow_steal_limit_override_pulls_doub`, `test_warbow_flag_claim_zero_doub` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | **`INV-TIME-ARENA-WARBOW-EPOCH-RESET`** | WarBow `rollPodiumEpoch` clears live BP (`warbowBpGeneration` bump) and podium; does **not** auto-pay (admin `finalizeWarbowPodium(epoch, …)` pays retained pool) | `test_warbow_epoch_roll_clears_battle_points`, `test_finalize_warbow_podium_pays_after_roll` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
@@ -360,6 +361,22 @@ Parent: [#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254) (Arena 
 | **`INV-INDEXER-PODIUM-LIVE-INGEST`** | Block-tagged `podium()` snapshots on `Buy`, WarBow BP logs, `LastBuyEpochStarted`, `PodiumEpochRolled`; WarBow rollup from `idx_warbow_epoch_score` | `arena_podium_live.rs`, `ingestion.rs` |
 | **`INV-INDEXER-PODIUM-LIVE-HTTP`** | UX order (Last Buy · WarBow · Defended · Time Booster); per-row `epoch` from head `lastBuyEpoch` / `podiumEpoch[cat]`; `podium_prediction: true` only when Postgres supplies entrants | `api_arena.rs`, `integration_stage2.rs::arena_podiums_live_predictions_smoke` |
 | **`INV-INDEXER-273-CHAIN-TIMER-SELECTORS`** | `chain_timer` + ingest epoch reads call **`podiumDeadline(uint256)`** / **`podiumEpoch(uint256)`** (Solidity public-array getters), not `uint8` overloads that revert | `chain_timer.rs`, `warbow_score.rs`, `bash scripts/verify-podium-live-anvil.sh` |
+
+<a id="timearena-xp-charm-scale-gitlab-304"></a>
+
+### TimeArena XP CHARM scaling (GitLab [#304](https://gitlab.com/PlasticDigits/yieldomega/-/issues/304))
+
+End-to-end verification that player XP scales with **CHARM weight cleared per buy** (not flat per transaction). Formula: `xp = 1 + (charmWad - CHARM_MIN_WAD) * 9 / (CHARM_MAX_WAD - CHARM_MIN_WAD)` (integer floor).
+
+| ID | Rule | Verify |
+|----|------|--------|
+| **`INV-TIME-ARENA-XP-CHARM-MIN-MAX`** | `xpForCharm(99e16) == 1`; `xpForCharm(10e18) == 10`; mid-band spot checks | `ArenaXp.t.sol::test_xpForCharm_linear_band`, `arenaXpMath.test.ts` |
+| **`INV-TIME-ARENA-XP-CHARM-ONCHAIN`** | `_finishBuy` emits `XpGained(buyer, xpGain, newLevel)` with charm-scaled `xpGain`; no flat `+1` path | `TimeArena.t.sol::test_xp_emits_XpGained`, `test_xp_max_charm_first_buy` |
+| **`INV-TIME-ARENA-XP-CHARM-CRED-PARITY`** | `buyWithCred(charmWad)` awards same XP as `buy(charmWad)` for identical weight | `TimeArena.t.sol::test_xp_buy_with_cred_same_as_doub` |
+| **`INV-TIME-ARENA-XP-CHARM-INDEXER`** | `idx_player_xp.xp_gained` stores event `amount`; wallet stats `xp` = `SUM(xp_gained)` | `integration_stage2.rs`, `arena_wallet_stats.rs` tests |
+| **`INV-TIME-ARENA-XP-CHARM-PREVIEW`** | Checkout projected effects `+Xxp` uses `xpForCharm(charmWadSelected)` | `arenaBuyProjectedEffects.test.ts` |
+
+Crosslinks: [`ArenaXp.sol`](../../contracts/src/arena/libraries/ArenaXp.sol) · [`arenaXpMath.ts`](../../frontend/src/lib/arenaXpMath.ts) · [`arena-v2.md` § XP](../product/arena-v2.md#xp) · play skill [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
 
 <a id="timearena-xp-gas-gitlab-265"></a>
 
