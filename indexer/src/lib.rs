@@ -17,6 +17,7 @@ pub mod last_buy_epoch_head;
 pub mod persist;
 pub mod reorg;
 pub mod rpc_http;
+pub mod rpc_metrics;
 pub mod sale_state;
 pub mod warbow_score;
 

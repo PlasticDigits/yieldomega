@@ -24,14 +24,26 @@ use crate::reorg::{
 };
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_has_transport_rpc, error_chain_transport_http_status,
-    parse_http_rpc_urls, rpc_first_ok, rpc_first_ok_sticky, rpc_first_some_sticky,
-    transport_err_http_status,
+    parse_http_rpc_urls, rpc_first_ok_instrumented, rpc_first_ok_sticky_instrumented,
+    rpc_first_some_sticky_instrumented, transport_err_http_status,
 };
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 use crate::rpc_poll_health::RpcPollHealth;
 
 /// Best-effort `eth_blockNumber` across fallback RPCs — only for stalled-ingestion diagnostics.
-async fn rpc_tip_block_number_for_logs(providers: &[ReqwestProvider]) -> Option<u64> {
-    match rpc_first_ok(providers, |p| p.get_block_number()).await {
+async fn rpc_tip_block_number_for_logs(
+    providers: &[ReqwestProvider],
+    metrics: &RpcMetrics,
+) -> Option<u64> {
+    match rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::BlockNumber,
+        RpcCaller::Ingestion,
+        |p| p.get_block_number(),
+    )
+    .await
+    {
         Ok(n) => Some(n),
         Err(e) => {
             tracing::debug!(
@@ -78,6 +90,7 @@ async fn bootstrap_pointer(
     pointer: &mut ChainPointer,
     effective_start: u64,
     rpc_sticky_idx: &mut usize,
+    metrics: &RpcMetrics,
 ) -> Result<()> {
     if effective_start == 0 {
         return Ok(());
@@ -87,9 +100,14 @@ async fn bootstrap_pointer(
     }
 
     let parent = effective_start.saturating_sub(1);
-    let block = rpc_first_some_sticky(providers, rpc_sticky_idx, |p| {
-        p.get_block_by_number(parent.into(), BlockTransactionsKind::Hashes)
-    })
+    let block = rpc_first_some_sticky_instrumented(
+        providers,
+        rpc_sticky_idx,
+        Some(metrics),
+        RpcMethod::GetBlockByNumber,
+        RpcCaller::Ingestion,
+        |p| p.get_block_by_number(parent.into(), BlockTransactionsKind::Hashes),
+    )
     .await?
     .ok_or_else(|| eyre::eyre!("bootstrap: missing block {parent}"))?;
 
@@ -115,6 +133,7 @@ pub async fn run(
     pool: &PgPool,
     config: &Config,
     progress: Option<&IngestionProgress>,
+    rpc_metrics: &RpcMetrics,
 ) -> Result<()> {
     if !config.ingestion_enabled {
         if let Some(p) = progress {
@@ -162,6 +181,7 @@ pub async fn run(
         &mut pointer,
         effective,
         &mut rpc_sticky_idx,
+        rpc_metrics,
     )
     .await?;
 
@@ -186,9 +206,14 @@ pub async fn run(
         loop {
             let next = next_block_to_process(&pointer, effective);
 
-            let block = match rpc_first_some_sticky(&providers, &mut rpc_sticky_idx, |p| {
-                p.get_block_by_number(next.into(), BlockTransactionsKind::Hashes)
-            })
+            let block = match rpc_first_some_sticky_instrumented(
+                &providers,
+                &mut rpc_sticky_idx,
+                Some(rpc_metrics),
+                RpcMethod::GetBlockByNumber,
+                RpcCaller::Ingestion,
+                |p| p.get_block_by_number(next.into(), BlockTransactionsKind::Hashes),
+            )
             .await
             {
                 Ok(Some(b)) => b,
@@ -199,7 +224,7 @@ pub async fn run(
                     let due = last_null_block_diag_at
                         .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(15));
                     if due {
-                        let rpc_tip = rpc_tip_block_number_for_logs(&providers).await;
+                        let rpc_tip = rpc_tip_block_number_for_logs(&providers, rpc_metrics).await;
                         let tip_vs_next = rpc_tip.map(|tip| tip as i128 - next as i128);
                         tracing::info!(
                             next_block = next,
@@ -246,6 +271,7 @@ pub async fn run(
                     &providers,
                     pointer.block_number,
                     &mut rpc_sticky_idx,
+                    rpc_metrics,
                 )
                 .await
                 {
@@ -264,9 +290,14 @@ pub async fn run(
                         return Err(e);
                     }
                 };
-                let ab = match rpc_first_some_sticky(&providers, &mut rpc_sticky_idx, |p| {
-                    p.get_block_by_number(anc.into(), BlockTransactionsKind::Hashes)
-                })
+                let ab = match rpc_first_some_sticky_instrumented(
+                    &providers,
+                    &mut rpc_sticky_idx,
+                    Some(rpc_metrics),
+                    RpcMethod::GetBlockByNumber,
+                    RpcCaller::Reorg,
+                    |p| p.get_block_by_number(anc.into(), BlockTransactionsKind::Hashes),
+                )
                 .await
                 {
                     Ok(Some(b)) => b,
@@ -305,9 +336,14 @@ pub async fn run(
             }
 
             let filter = Filter::new().select(next).address(addrs.clone());
-            let logs = match rpc_first_ok_sticky(&providers, &mut rpc_sticky_idx, |p| {
-                p.get_logs(&filter)
-            })
+            let logs = match rpc_first_ok_sticky_instrumented(
+                &providers,
+                &mut rpc_sticky_idx,
+                Some(rpc_metrics),
+                RpcMethod::GetLogs,
+                RpcCaller::Ingestion,
+                |p| p.get_logs(&filter),
+            )
             .await
             {
                 Ok(logs) => logs,
@@ -366,6 +402,7 @@ pub async fn run(
                                         &decoded,
                                         &mut tx,
                                         &players,
+                                        rpc_metrics,
                                     )
                                     .await
                                     {
@@ -383,6 +420,7 @@ pub async fn run(
                                         arena,
                                         &decoded,
                                         &mut tx,
+                                        rpc_metrics,
                                     )
                                     .await
                                     {

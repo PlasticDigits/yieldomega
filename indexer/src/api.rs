@@ -18,8 +18,9 @@ use sqlx::{PgPool, Row};
 use tokio::sync::RwLock;
 
 use crate::chain_timer::TimecurveHeadSnapshot;
+use crate::rpc_metrics::RpcMetrics;
 
-const SCHEMA_VERSION: &str = "2.10.0";
+const SCHEMA_VERSION: &str = "2.11.0";
 
 #[derive(Clone)]
 pub struct AppState {
@@ -27,6 +28,7 @@ pub struct AppState {
     pub chain_timer: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
     pub ingestion_alive: Arc<AtomicBool>,
     pub last_indexed_at_ms: Arc<AtomicU64>,
+    pub rpc_metrics: RpcMetrics,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -112,6 +114,7 @@ async fn status(State(state): State<AppState>) -> Response {
     .ok()
     .flatten();
 
+    let rpc_snap = state.rpc_metrics.snapshot();
     let body = json!({
         "schema_version": SCHEMA_VERSION,
         "database_connected": db_ok,
@@ -119,6 +122,17 @@ async fn status(State(state): State<AppState>) -> Response {
         "max_indexed_block": max_block,
         "ingestion_alive": state.ingestion_alive.load(Ordering::Acquire),
         "last_indexed_at_ms": state.last_indexed_at_ms.load(Ordering::Acquire),
+        "rpc_metrics": {
+            "total_calls": rpc_snap.total_calls,
+            "calls_last_1m": rpc_snap.calls_last_1m,
+            "calls_last_5m": rpc_snap.calls_last_5m,
+            "calls_per_min_1m": rpc_snap.calls_per_min_1m,
+            "calls_per_min_5m": rpc_snap.calls_per_min_5m,
+            "peak_calls_10s": rpc_snap.peak_calls_10s,
+            "by_method": rpc_snap.by_method,
+            "by_caller": rpc_snap.by_caller,
+            "by_method_caller": rpc_snap.by_method_caller,
+        },
     });
 
     let mut res = Json(body).into_response();

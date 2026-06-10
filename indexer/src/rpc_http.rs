@@ -11,6 +11,8 @@ use alloy_transport::{HttpError, TransportError, TransportErrorKind, TransportRe
 use alloy_transport_http::Http;
 use eyre::{bail, Result, WrapErr};
 
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
+
 /// Build a [`ReqwestProvider`] using a [`reqwest::Client`] with a per-request timeout.
 ///
 /// Without this, hung RPC calls can block the indexer indefinitely ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)).
@@ -60,12 +62,30 @@ pub fn build_reqwest_providers(
 /// Try each provider in order (viem-style `fallback`, same order as frontend comma-separated RPC).
 pub async fn rpc_first_ok<'a, T, F, Fut>(
     providers: &'a [ReqwestProvider],
+    f: F,
+) -> TransportResult<T>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<T>>,
+{
+    rpc_first_ok_instrumented(providers, None, RpcMethod::EthCall, RpcCaller::Ingestion, f).await
+}
+
+/// Like [`rpc_first_ok`], recording one logical call in [`RpcMetrics`] when `metrics` is `Some`.
+pub async fn rpc_first_ok_instrumented<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    metrics: Option<&RpcMetrics>,
+    method: RpcMethod,
+    caller: RpcCaller,
     mut f: F,
 ) -> TransportResult<T>
 where
     F: FnMut(&'a ReqwestProvider) -> Fut,
     Fut: std::future::Future<Output = TransportResult<T>>,
 {
+    if let Some(m) = metrics {
+        m.record(method, caller);
+    }
     let mut last_err: Option<TransportError> = None;
     for p in providers {
         match f(p).await {
@@ -112,12 +132,39 @@ where
 pub async fn rpc_first_some_sticky<'a, T, F, Fut>(
     providers: &'a [ReqwestProvider],
     sticky_idx: &mut usize,
+    f: F,
+) -> TransportResult<Option<T>>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<Option<T>>>,
+{
+    rpc_first_some_sticky_instrumented(
+        providers,
+        sticky_idx,
+        None,
+        RpcMethod::GetBlockByNumber,
+        RpcCaller::Ingestion,
+        f,
+    )
+    .await
+}
+
+/// Like [`rpc_first_some_sticky`], recording one logical call when `metrics` is `Some`.
+pub async fn rpc_first_some_sticky_instrumented<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    sticky_idx: &mut usize,
+    metrics: Option<&RpcMetrics>,
+    method: RpcMethod,
+    caller: RpcCaller,
     mut f: F,
 ) -> TransportResult<Option<T>>
 where
     F: FnMut(&'a ReqwestProvider) -> Fut,
     Fut: std::future::Future<Output = TransportResult<Option<T>>>,
 {
+    if let Some(m) = metrics {
+        m.record(method, caller);
+    }
     let n = providers.len();
     if n == 0 {
         return Ok(None);
@@ -145,12 +192,39 @@ where
 pub async fn rpc_first_ok_sticky<'a, T, F, Fut>(
     providers: &'a [ReqwestProvider],
     sticky_idx: &mut usize,
+    f: F,
+) -> TransportResult<T>
+where
+    F: FnMut(&'a ReqwestProvider) -> Fut,
+    Fut: std::future::Future<Output = TransportResult<T>>,
+{
+    rpc_first_ok_sticky_instrumented(
+        providers,
+        sticky_idx,
+        None,
+        RpcMethod::GetLogs,
+        RpcCaller::Ingestion,
+        f,
+    )
+    .await
+}
+
+/// Like [`rpc_first_ok_sticky`], recording one logical call when `metrics` is `Some`.
+pub async fn rpc_first_ok_sticky_instrumented<'a, T, F, Fut>(
+    providers: &'a [ReqwestProvider],
+    sticky_idx: &mut usize,
+    metrics: Option<&RpcMetrics>,
+    method: RpcMethod,
+    caller: RpcCaller,
     mut f: F,
 ) -> TransportResult<T>
 where
     F: FnMut(&'a ReqwestProvider) -> Fut,
     Fut: std::future::Future<Output = TransportResult<T>>,
 {
+    if let Some(m) = metrics {
+        m.record(method, caller);
+    }
     let n = providers.len();
     assert!(n > 0, "rpc_first_ok_sticky requires non-empty providers");
     let mut last_err: Option<TransportError> = None;

@@ -7,6 +7,8 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::{Result, WrapErr};
 
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
+
 /// JSON body for `GET /v1/timecurve/sale-state` (schema ≥ 1.24.0, trimmed for Arena v2).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TimecurveSaleStateSnapshot {
@@ -43,7 +45,9 @@ async fn eth_call_u256(
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
+    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
     let req = TransactionRequest::default()
         .to(contract)
         .input(Bytes::copy_from_slice(&selector).into());
@@ -61,7 +65,9 @@ async fn eth_call_bool(
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
+    metrics: &RpcMetrics,
 ) -> Result<bool> {
+    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
     let req = TransactionRequest::default()
         .to(contract)
         .input(Bytes::copy_from_slice(&selector).into());
@@ -81,21 +87,23 @@ pub async fn poll_sale_state_at_block(
     block_ts: u64,
     read_block_number: u64,
     polled_at_ms: u64,
+    metrics: &RpcMetrics,
 ) -> Result<TimecurveSaleStateSnapshot> {
     const SEL_DEADLINE: [u8; 4] = [0x29, 0xdc, 0xb0, 0xcf];
     const SEL_TOTAL_DOUB_RAISED: [u8; 4] = [0x6d, 0xc8, 0x4f, 0xb3];
     const SEL_PAUSED: [u8; 4] = [0x5c, 0x97, 0x5a, 0xbb];
 
     let (deadline, total_doub_raised, paused) = tokio::try_join!(
-        eth_call_u256(provider, arena, block_id, SEL_DEADLINE, "deadline"),
+        eth_call_u256(provider, arena, block_id, SEL_DEADLINE, "deadline", metrics),
         eth_call_u256(
             provider,
             arena,
             block_id,
             SEL_TOTAL_DOUB_RAISED,
-            "totalDoubRaised"
+            "totalDoubRaised",
+            metrics,
         ),
-        eth_call_bool(provider, arena, block_id, SEL_PAUSED, "paused"),
+        eth_call_bool(provider, arena, block_id, SEL_PAUSED, "paused", metrics),
     )?;
 
     Ok(TimecurveSaleStateSnapshot {

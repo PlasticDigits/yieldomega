@@ -1,0 +1,276 @@
+{
+  "issue": 306,
+  "generated_at": "20260610T111415Z",
+  "rpc_url": "http://127.0.0.1:8548",
+  "scenario_sec": 30,
+  "sample_sec": 10,
+  "scenarios": [
+    {
+      "scenario": "idle",
+      "duration_sec": 30,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 34,
+            "ingestion": 5
+          },
+          "by_method": {
+            "eth_blockNumber": 2,
+            "eth_call": 32,
+            "eth_getBlockByNumber": 4,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 1,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 32,
+            "eth_getBlockByNumber:chain_timer": 1,
+            "eth_getBlockByNumber:ingestion": 3,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 39,
+          "calls_last_5m": 39,
+          "calls_per_min_1m": 39.0,
+          "calls_per_min_5m": 7.8,
+          "peak_calls_10s": 39,
+          "total_calls": 39
+        },
+        {
+          "by_caller": {
+            "chain_timer": 374,
+            "ingestion": 15
+          },
+          "by_method": {
+            "eth_blockNumber": 12,
+            "eth_call": 352,
+            "eth_getBlockByNumber": 24,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 11,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 352,
+            "eth_getBlockByNumber:chain_timer": 11,
+            "eth_getBlockByNumber:ingestion": 13,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 389,
+          "calls_last_5m": 389,
+          "calls_per_min_1m": 389.0,
+          "calls_per_min_5m": 77.8,
+          "peak_calls_10s": 354,
+          "total_calls": 389
+        },
+        {
+          "by_caller": {
+            "chain_timer": 714,
+            "ingestion": 26
+          },
+          "by_method": {
+            "eth_blockNumber": 23,
+            "eth_call": 672,
+            "eth_getBlockByNumber": 44,
+            "eth_getLogs": 1
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 21,
+            "eth_blockNumber:ingestion": 2,
+            "eth_call:chain_timer": 672,
+            "eth_getBlockByNumber:chain_timer": 21,
+            "eth_getBlockByNumber:ingestion": 23,
+            "eth_getLogs:ingestion": 1
+          },
+          "calls_last_1m": 740,
+          "calls_last_5m": 740,
+          "calls_per_min_1m": 740.0,
+          "calls_per_min_5m": 148.0,
+          "peak_calls_10s": 354,
+          "total_calls": 740
+        }
+      ]
+    },
+    {
+      "scenario": "catch_up",
+      "duration_sec": 30,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 34,
+            "ingestion": 85
+          },
+          "by_method": {
+            "eth_blockNumber": 2,
+            "eth_call": 32,
+            "eth_getBlockByNumber": 44,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 1,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 32,
+            "eth_getBlockByNumber:chain_timer": 1,
+            "eth_getBlockByNumber:ingestion": 43,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 119,
+          "calls_last_5m": 119,
+          "calls_per_min_1m": 119.0,
+          "calls_per_min_5m": 23.8,
+          "peak_calls_10s": 119,
+          "total_calls": 119
+        },
+        {
+          "by_caller": {
+            "chain_timer": 374,
+            "ingestion": 95
+          },
+          "by_method": {
+            "eth_blockNumber": 12,
+            "eth_call": 352,
+            "eth_getBlockByNumber": 64,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 11,
+            "eth_blockNumber:ingestion": 1,
+            "eth_call:chain_timer": 352,
+            "eth_getBlockByNumber:chain_timer": 11,
+            "eth_getBlockByNumber:ingestion": 53,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 469,
+          "calls_last_5m": 469,
+          "calls_per_min_1m": 469.0,
+          "calls_per_min_5m": 93.8,
+          "peak_calls_10s": 434,
+          "total_calls": 469
+        },
+        {
+          "by_caller": {
+            "chain_timer": 714,
+            "ingestion": 106
+          },
+          "by_method": {
+            "eth_blockNumber": 23,
+            "eth_call": 672,
+            "eth_getBlockByNumber": 84,
+            "eth_getLogs": 41
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 21,
+            "eth_blockNumber:ingestion": 2,
+            "eth_call:chain_timer": 672,
+            "eth_getBlockByNumber:chain_timer": 21,
+            "eth_getBlockByNumber:ingestion": 63,
+            "eth_getLogs:ingestion": 41
+          },
+          "calls_last_1m": 820,
+          "calls_last_5m": 820,
+          "calls_per_min_1m": 820.0,
+          "calls_per_min_5m": 164.0,
+          "peak_calls_10s": 434,
+          "total_calls": 820
+        }
+      ]
+    },
+    {
+      "scenario": "active_arena",
+      "duration_sec": 30,
+      "sample_interval_sec": 10,
+      "samples": [
+        {
+          "by_caller": {
+            "chain_timer": 1088,
+            "ingestion": 133,
+            "podium_live": 3,
+            "warbow_score": 6
+          },
+          "by_method": {
+            "eth_blockNumber": 36,
+            "eth_call": 1033,
+            "eth_getBlockByNumber": 113,
+            "eth_getLogs": 48
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 32,
+            "eth_blockNumber:ingestion": 4,
+            "eth_call:chain_timer": 1024,
+            "eth_call:podium_live": 3,
+            "eth_call:warbow_score": 6,
+            "eth_getBlockByNumber:chain_timer": 32,
+            "eth_getBlockByNumber:ingestion": 81,
+            "eth_getLogs:ingestion": 48
+          },
+          "calls_last_1m": 1230,
+          "calls_last_5m": 1230,
+          "calls_per_min_1m": 1230.0,
+          "calls_per_min_5m": 246.0,
+          "peak_calls_10s": 434,
+          "total_calls": 1230
+        },
+        {
+          "by_caller": {
+            "chain_timer": 1428,
+            "ingestion": 154,
+            "podium_live": 9,
+            "warbow_score": 18
+          },
+          "by_method": {
+            "eth_blockNumber": 47,
+            "eth_call": 1371,
+            "eth_getBlockByNumber": 138,
+            "eth_getLogs": 53
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 42,
+            "eth_blockNumber:ingestion": 5,
+            "eth_call:chain_timer": 1344,
+            "eth_call:podium_live": 9,
+            "eth_call:warbow_score": 18,
+            "eth_getBlockByNumber:chain_timer": 42,
+            "eth_getBlockByNumber:ingestion": 96,
+            "eth_getLogs:ingestion": 53
+          },
+          "calls_last_1m": 1609,
+          "calls_last_5m": 1609,
+          "calls_per_min_1m": 1609.0,
+          "calls_per_min_5m": 321.8,
+          "peak_calls_10s": 434,
+          "total_calls": 1609
+        },
+        {
+          "by_caller": {
+            "chain_timer": 1768,
+            "ingestion": 177,
+            "podium_live": 18,
+            "warbow_score": 36
+          },
+          "by_method": {
+            "eth_blockNumber": 58,
+            "eth_call": 1718,
+            "eth_getBlockByNumber": 164,
+            "eth_getLogs": 59
+          },
+          "by_method_caller": {
+            "eth_blockNumber:chain_timer": 52,
+            "eth_blockNumber:ingestion": 6,
+            "eth_call:chain_timer": 1664,
+            "eth_call:podium_live": 18,
+            "eth_call:warbow_score": 36,
+            "eth_getBlockByNumber:chain_timer": 52,
+            "eth_getBlockByNumber:ingestion": 112,
+            "eth_getLogs:ingestion": 59
+          },
+          "calls_last_1m": 1999,
+          "calls_last_5m": 1999,
+          "calls_per_min_1m": 1999.0,
+          "calls_per_min_5m": 399.8,
+          "peak_calls_10s": 434,
+          "total_calls": 1999
+        }
+      ]
+    }
+  ]
+}

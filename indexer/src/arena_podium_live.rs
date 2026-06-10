@@ -11,6 +11,7 @@ use sqlx::Row;
 
 use crate::chain_timer::{podium_at_block, PodiumRpcRow};
 use crate::decoder::{DecodedEvent, DecodedLog};
+use crate::rpc_metrics::{RpcCaller, RpcMetrics};
 
 /// Onchain category indices in frontend UX order (Last Buy · WarBow · Defended · Time Booster).
 pub const PODIUM_UX_CATEGORY_ORDER: [u8; 4] = [0, 3, 2, 1];
@@ -94,8 +95,17 @@ pub async fn snapshot_podium_rpc_at_block(
     d: &DecodedLog,
     category: u8,
     epoch: U256,
+    metrics: &RpcMetrics,
 ) -> Result<()> {
-    let rpc = podium_at_block(provider, arena, d.block_number, category).await?;
+    let rpc = podium_at_block(
+        provider,
+        arena,
+        d.block_number,
+        category,
+        metrics,
+        RpcCaller::PodiumLive,
+    )
+    .await?;
     let row = row_from_rpc(&rpc);
     let block = d.block_number as i64;
     let tx_h = b256_hex(d.tx_hash);
@@ -225,26 +235,34 @@ pub async fn snapshot_live_podium_after_log(
     arena: Address,
     d: &DecodedLog,
     conn: &mut PgConnection,
+    metrics: &RpcMetrics,
 ) -> Result<()> {
     let block = d.block_number;
     match &d.event {
         DecodedEvent::ArenaPodiumEpochRolled { category, epoch, .. } => {
-            snapshot_podium_rpc_at_block(conn, provider, arena, d, *category, *epoch).await?;
+            snapshot_podium_rpc_at_block(conn, provider, arena, d, *category, *epoch, metrics)
+                .await?;
             if *category == 3 {
                 rebuild_warbow_live_from_scores_conn(conn, d, *epoch).await?;
             }
         }
         DecodedEvent::ArenaLastBuyEpochStarted { epoch, .. } => {
-            snapshot_podium_rpc_at_block(conn, provider, arena, d, 0, *epoch).await?;
+            snapshot_podium_rpc_at_block(conn, provider, arena, d, 0, *epoch, metrics).await?;
         }
         DecodedEvent::ArenaBuy { .. } => {
-            let lb_ep = crate::warbow_score::last_buy_epoch_at_block(provider, arena, block).await?;
-            snapshot_podium_rpc_at_block(conn, provider, arena, d, 0, lb_ep).await?;
+            let lb_ep =
+                crate::warbow_score::last_buy_epoch_at_block(provider, arena, block, metrics).await?;
+            snapshot_podium_rpc_at_block(conn, provider, arena, d, 0, lb_ep, metrics).await?;
             for cat in 1u8..=2 {
-                let ep = crate::warbow_score::podium_epoch_at_block(provider, arena, block, cat).await?;
-                snapshot_podium_rpc_at_block(conn, provider, arena, d, cat, ep).await?;
+                let ep = crate::warbow_score::podium_epoch_at_block(
+                    provider, arena, block, cat, metrics,
+                )
+                .await?;
+                snapshot_podium_rpc_at_block(conn, provider, arena, d, cat, ep, metrics).await?;
             }
-            let wb_ep = crate::warbow_score::podium_epoch_at_block(provider, arena, block, 3).await?;
+            let wb_ep =
+                crate::warbow_score::podium_epoch_at_block(provider, arena, block, 3, metrics)
+                    .await?;
             rebuild_warbow_live_from_scores_conn(conn, d, wb_ep).await?;
         }
         DecodedEvent::ArenaWarbowSteal { .. }
@@ -252,7 +270,9 @@ pub async fn snapshot_live_podium_after_log(
         | DecodedEvent::ArenaWarbowFlagClaimed { .. }
         | DecodedEvent::ArenaWarbowGuard { .. }
         | DecodedEvent::ArenaWarbowEpochScore { .. } => {
-            let wb_ep = crate::warbow_score::podium_epoch_at_block(provider, arena, block, 3).await?;
+            let wb_ep =
+                crate::warbow_score::podium_epoch_at_block(provider, arena, block, 3, metrics)
+                    .await?;
             rebuild_warbow_live_from_scores_conn(conn, d, wb_ep).await?;
         }
         _ => {}

@@ -15,6 +15,7 @@ use tokio::time::Duration;
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
 };
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 use crate::rpc_poll_health::RpcPollHealth;
 use crate::sale_state::TimecurveSaleStateSnapshot;
 
@@ -166,8 +167,18 @@ pub async fn podium_at_block(
     arena: Address,
     block: u64,
     category: u8,
+    metrics: &RpcMetrics,
+    caller: RpcCaller,
 ) -> Result<PodiumRpcRow> {
-    podium_at_block_id(provider, arena, BlockId::Number(block.into()), category).await
+    podium_at_block_id(
+        provider,
+        arena,
+        BlockId::Number(block.into()),
+        category,
+        metrics,
+        caller,
+    )
+    .await
 }
 
 pub async fn podium_at_block_id(
@@ -175,7 +186,10 @@ pub async fn podium_at_block_id(
     arena: Address,
     block_id: BlockId,
     category: u8,
+    metrics: &RpcMetrics,
+    caller: RpcCaller,
 ) -> Result<PodiumRpcRow> {
+    metrics.record(RpcMethod::EthCall, caller);
     let p_req = TransactionRequest::default()
         .to(arena)
         .input(encode_u8_call(SEL_PODIUM, category).into());
@@ -193,6 +207,7 @@ pub async fn run_poll_loop(
     podium_vaults: Option<Address>,
     cache: Arc<RwLock<Option<TimecurveHeadSnapshot>>>,
     rpc_request_timeout: Duration,
+    rpc_metrics: RpcMetrics,
 ) {
     let parsed = match parse_http_rpc_urls(rpc_urls) {
         Ok(u) => u,
@@ -211,7 +226,7 @@ pub async fn run_poll_loop(
 
     let mut health = RpcPollHealth::new();
     loop {
-        match poll_any_provider(&providers, time_arena, podium_vaults).await {
+        match poll_any_provider(&providers, time_arena, podium_vaults, &rpc_metrics).await {
             Ok(snap) => {
                 health.report_success();
                 *cache.write().await = Some(snap);
@@ -233,10 +248,11 @@ async fn poll_any_provider(
     providers: &[ReqwestProvider],
     arena: Address,
     podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
 ) -> Result<TimecurveHeadSnapshot> {
     let mut last_err = None;
     for p in providers {
-        match poll_once(p, arena, podium_vaults).await {
+        match poll_once(p, arena, podium_vaults, metrics).await {
             Ok(s) => return Ok(s),
             Err(e) => last_err = Some(e),
         }
@@ -250,7 +266,9 @@ async fn eth_call_u256(
     block_id: BlockId,
     input: Bytes,
     label: &str,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
+    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
     let req = TransactionRequest::default()
         .to(contract)
         .input(input.into());
@@ -268,7 +286,9 @@ async fn eth_call_address(
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
+    metrics: &RpcMetrics,
 ) -> Result<Address> {
+    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
     let req = TransactionRequest::default()
         .to(contract)
         .input(Bytes::copy_from_slice(&selector).into());
@@ -284,8 +304,11 @@ async fn poll_once(
     provider: &ReqwestProvider,
     arena: Address,
     podium_vaults: Option<Address>,
+    metrics: &RpcMetrics,
 ) -> Result<TimecurveHeadSnapshot> {
+    metrics.record(RpcMethod::BlockNumber, RpcCaller::ChainTimer);
     let bn = provider.get_block_number().await?;
+    metrics.record(RpcMethod::GetBlockByNumber, RpcCaller::ChainTimer);
     let block = provider
         .get_block_by_number(bn.into(), BlockTransactionsKind::Hashes)
         .await?
@@ -300,6 +323,7 @@ async fn poll_once(
         block_id,
         Bytes::copy_from_slice(&SEL_ARENA_START),
         "arenaStart",
+        metrics,
     )
     .await?;
     let deadline = eth_call_u256(
@@ -308,6 +332,7 @@ async fn poll_once(
         block_id,
         Bytes::copy_from_slice(&SEL_DEADLINE),
         "deadline",
+        metrics,
     )
     .await?;
     let cap = eth_call_u256(
@@ -316,6 +341,7 @@ async fn poll_once(
         block_id,
         Bytes::copy_from_slice(&SEL_TIMER_CAP),
         "timerCapSec",
+        metrics,
     )
     .await?;
 
@@ -327,6 +353,7 @@ async fn poll_once(
             block_id,
             encode_u8_call(SEL_PODIUM_DEADLINE, cat),
             &format!("podiumDeadline({cat})"),
+            metrics,
         )
         .await?;
         podium_deadlines[cat as usize] = u256_to_decimal_string(dl);
@@ -338,6 +365,7 @@ async fn poll_once(
         block_id,
         Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
         "lastBuyEpoch",
+        metrics,
     )
     .await?;
 
@@ -349,6 +377,7 @@ async fn poll_once(
             block_id,
             encode_u8_call(SEL_PODIUM_EPOCH, cat),
             &format!("podiumEpoch({cat})"),
+            metrics,
         )
         .await?;
         podium_epochs[cat as usize] = u256_to_decimal_string(ep);
@@ -356,7 +385,15 @@ async fn poll_once(
 
     let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
     for cat in 0u8..=3 {
-        podium_rows[cat as usize] = podium_at_block_id(provider, arena, block_id, cat).await?;
+        podium_rows[cat as usize] = podium_at_block_id(
+            provider,
+            arena,
+            block_id,
+            cat,
+            metrics,
+            RpcCaller::ChainTimer,
+        )
+        .await?;
     }
 
     let mut active_pool_balance_doub_wad = std::array::from_fn(|_| String::from("0"));
@@ -368,6 +405,7 @@ async fn poll_once(
                 block_id,
                 encode_u8_call(SEL_ACTIVE_POOL_BALANCE, cat),
                 &format!("activePoolBalance({cat})"),
+                metrics,
             )
             .await?;
             active_pool_balance_doub_wad[cat as usize] = u256_to_decimal_string(bal);
@@ -398,6 +436,7 @@ async fn poll_once(
         block_ts,
         bn,
         polled_at_ms,
+        metrics,
     )
     .await?;
 
@@ -418,6 +457,7 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_EFFECTIVE_CHARM_PRICE_WAD),
             "effectiveCharmPriceWad",
+            metrics,
         ),
         eth_call_u256(
             provider,
@@ -425,6 +465,7 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_EPOCH_CHARM_ANCHOR_WAD),
             "epochCharmAnchorWad",
+            metrics,
         ),
         eth_call_u256(
             provider,
@@ -432,14 +473,16 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_EPOCH_ANCHOR_TIMESTAMP),
             "epochAnchorTimestamp",
+            metrics,
         ),
-        eth_call_address(provider, arena, block_id, SEL_DOUB, "doub"),
+        eth_call_address(provider, arena, block_id, SEL_DOUB, "doub", metrics),
         eth_call_address(
             provider,
             arena,
             block_id,
             SEL_REFERRAL_REGISTRY,
             "referralRegistry",
+            metrics,
         ),
         eth_call_u256(
             provider,
@@ -447,6 +490,7 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_BUY_COOLDOWN_SEC),
             "buyCooldownSec",
+            metrics,
         ),
         eth_call_u256(
             provider,
@@ -454,6 +498,7 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_TIMER_EXTENSION_SEC),
             "timerExtensionSec",
+            metrics,
         ),
         eth_call_address(
             provider,
@@ -461,6 +506,7 @@ async fn poll_once(
             block_id,
             SEL_TIME_ARENA_BUY_ROUTER,
             "timeArenaBuyRouter",
+            metrics,
         ),
         eth_call_u256(
             provider,
@@ -468,6 +514,7 @@ async fn poll_once(
             block_id,
             Bytes::copy_from_slice(&SEL_REFERRAL_CRED_FLAT_WAD),
             "REFERRAL_CRED_FLAT_WAD",
+            metrics,
         ),
     )?;
 

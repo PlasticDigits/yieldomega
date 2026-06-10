@@ -10,6 +10,7 @@ use sqlx::postgres::PgConnection;
 
 use crate::chain_timer::{encode_u8_call, SEL_PODIUM_EPOCH};
 use crate::decoder::{DecodedEvent, DecodedLog};
+use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
 /// `battlePoints(address)`
 const SEL_BATTLE_POINTS: [u8; 4] = [0xb2, 0x10, 0xd9, 0xf2];
@@ -48,7 +49,9 @@ async fn eth_call_u256(
     arena: Address,
     block: u64,
     input: Bytes,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
+    metrics.record(RpcMethod::EthCall, RpcCaller::WarbowScore);
     let block_id = BlockId::Number(block.into());
     let req = TransactionRequest::default()
         .to(arena)
@@ -61,8 +64,9 @@ pub async fn warbow_epoch_at_block(
     provider: &ReqwestProvider,
     arena: Address,
     block: u64,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
-    podium_epoch_at_block(provider, arena, block, CAT_WARBOW).await
+    podium_epoch_at_block(provider, arena, block, CAT_WARBOW, metrics).await
 }
 
 pub async fn podium_epoch_at_block(
@@ -70,12 +74,14 @@ pub async fn podium_epoch_at_block(
     arena: Address,
     block: u64,
     category: u8,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
     eth_call_u256(
         provider,
         arena,
         block,
         encode_u8_call(SEL_PODIUM_EPOCH, category),
+        metrics,
     )
     .await
 }
@@ -84,6 +90,7 @@ pub async fn last_buy_epoch_at_block(
     provider: &ReqwestProvider,
     arena: Address,
     block: u64,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
     use crate::chain_timer::SEL_LAST_BUY_EPOCH;
     eth_call_u256(
@@ -91,6 +98,7 @@ pub async fn last_buy_epoch_at_block(
         arena,
         block,
         Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
+        metrics,
     )
     .await
 }
@@ -100,12 +108,14 @@ pub async fn battle_points_at_block(
     arena: Address,
     block: u64,
     player: Address,
+    metrics: &RpcMetrics,
 ) -> Result<U256> {
     eth_call_u256(
         provider,
         arena,
         block,
         encode_address_call(SEL_BATTLE_POINTS, player),
+        metrics,
     )
     .await
 }
@@ -144,13 +154,15 @@ pub async fn snapshot_warbow_players_after_log(
     d: &DecodedLog,
     conn: &mut PgConnection,
     players: &[Address],
+    metrics: &RpcMetrics,
 ) -> Result<()> {
     if players.is_empty() {
         return Ok(());
     }
-    let epoch = warbow_epoch_at_block(provider, arena, d.block_number).await?;
+    let epoch = warbow_epoch_at_block(provider, arena, d.block_number, metrics).await?;
     for (i, player) in players.iter().enumerate() {
-        let bp = battle_points_at_block(provider, arena, d.block_number, *player).await?;
+        let bp =
+            battle_points_at_block(provider, arena, d.block_number, *player, metrics).await?;
         let mut row = d.clone();
         // Derivative rows: avoid PK clash with the source log's `log_index`.
         row.log_index = d
