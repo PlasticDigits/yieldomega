@@ -146,7 +146,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         kumbaya.setOwner(address(0));
         (uint256 charmPriceWad,) =
             AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(feeStable));
-        arena.setCharmAnchorOracle(address(kumbaya), address(cl8y), address(weth), address(usdm));
+        arena.setCharmAnchorOracle(address(kumbaya), address(cl8y), address(weth), address(feeStable));
         arena.setEpochCharmAnchorWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(

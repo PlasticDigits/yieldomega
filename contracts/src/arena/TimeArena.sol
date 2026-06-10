@@ -308,6 +308,15 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
     }
 
+    /// @dev DOUB wei owed for a buy at the current block — previews hard-reset re-anchor (#305).
+    function doubOwedForBuy(uint256 charmWad) external returns (uint256) {
+        if (_willLastBuyHardReset()) {
+            (uint256 anchorWad,) = _sampleCharmAnchor();
+            return Math.mulDiv(charmWad, anchorWad, WAD);
+        }
+        return Math.mulDiv(charmWad, effectiveCharmPriceWad(), WAD);
+    }
+
     function buy(uint256 charmWad) external nonReentrant {
         _buyDoub(msg.sender, charmWad, bytes32(0), false);
     }
