@@ -3,9 +3,12 @@
 import { describe, expect, it } from "vitest";
 import { xpForCharm } from "@/lib/arenaXpMath";
 import {
+  buildArenaBuyActualEffectLines,
   buildArenaBuyProjectedEffectLines,
   formatBuyProjectedXpLine,
+  inferSecondsRemainingBeforeBuy,
 } from "./arenaBuyProjectedEffects";
+import type { BuyItem } from "@/lib/indexerApi";
 
 const fmt = (a: `0x${string}`) => `${a.slice(0, 6)}…`;
 
@@ -128,5 +131,34 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       formatRivalWallet: fmt,
     });
     expect(lines.some((s) => s.includes("flag"))).toBe(false);
+  });
+});
+
+describe("buildArenaBuyActualEffectLines", () => {
+  const baseBuy: BuyItem = {
+    block_number: "100",
+    tx_hash: "0xabc",
+    log_index: 1,
+    block_timestamp: "1700000000",
+    buyer: "0x1111111111111111111111111111111111111111",
+    amount: "5500",
+    charm_wad: "5515000000000000000",
+    price_per_charm_wad: "0",
+    new_deadline: "1700001000",
+    total_raised_after: "0",
+    buy_index: "42",
+    actual_seconds_added: "120",
+    timer_hard_reset: false,
+  };
+
+  it("includes XP, actual timer seconds, and Last Buyer from indexed buy rows", () => {
+    const lines = buildArenaBuyActualEffectLines(baseBuy, { playerLevel: 5 });
+    expect(lines[0]).toBe(formatBuyProjectedXpLine(5515000000000000000n));
+    expect(lines).toContain("+120s");
+    expect(lines[lines.length - 1]).toBe("Last Buyer");
+  });
+
+  it("infers pre-buy remaining from deadline, actual seconds, and block time", () => {
+    expect(inferSecondsRemainingBeforeBuy(baseBuy)).toBe(880);
   });
 });

@@ -47,6 +47,8 @@ import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
 import {
   captureWalletBuySession,
   WALLET_BUY_SESSION_DRIFT_MESSAGE,
+  WALLET_WRITE_NOT_READY_MESSAGE,
+  resolveLiveWriteConnector,
 } from "@/lib/walletBuySessionGuard";
 import { finalizeCharmSpendForBuy, reconcileSpendWeiToCl8yBounds } from "@/lib/timeArenaBuyAmount";
 import { assertSuccessfulBuyReceipt } from "@/lib/timeArenaBuyReceipt";
@@ -281,7 +283,7 @@ export function useArenaSaleSession(
   options?: { forceArenaV2?: boolean },
 ): UseArenaSaleSession {
   const chainId = useChainId();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, status: walletStatus } = useAccount();
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
   const { data: latestBlock } = useLatestBlock();
 
@@ -1354,6 +1356,10 @@ export function useArenaSaleSession(
 
   const submitBuy = useCallback(async () => {
     setBuyError(null);
+    if (walletStatus !== "connected" || !resolveLiveWriteConnector(wagmiConfig)) {
+      setBuyError(WALLET_WRITE_NOT_READY_MESSAGE);
+      return;
+    }
     const netErr = chainMismatchWriteMessage(chainId);
     if (netErr) {
       setBuyError(netErr);
@@ -1584,6 +1590,7 @@ export function useArenaSaleSession(
     playCredConfigured,
     credPerCharmWad,
     credCheckoutBoundsGate,
+    walletStatus,
   ]);
 
   const submitClaimWarBowFlag = useCallback(async () => {
@@ -1642,7 +1649,7 @@ export function useArenaSaleSession(
     acceptedAsset,
     podiumPoolAddress,
     launchedDec,
-    walletConnected: Boolean(isConnected && address),
+    walletConnected: walletStatus === "connected" && Boolean(address),
     walletAddress: (address as HexAddress | undefined) ?? undefined,
     walletBalanceWei,
     refetchWalletBalance: () => {

@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { detectLaunchState } from "./launchState";
 
 /**
- * Issue #40 / #256: `/arena` is the simple, first-run path. AUDIT (protocol)
+ * Issue #40 / #256: `/` is the simple, first-run play surface. AUDIT (protocol)
  * lives in the primary header nav.
  */
 async function ensurePostLaunch(page: Page) {
@@ -12,7 +12,7 @@ async function ensurePostLaunch(page: Page) {
     state === "countdown",
     "Build is locked behind LaunchCountdownPage; rebuild with a past or unset VITE_LAUNCH_TIMESTAMP to exercise the simple view.",
   );
-  await page.goto("/arena");
+  await page.goto("/");
 }
 
 async function expectNoHorizontalViewportOverflow(page: Page) {
@@ -28,7 +28,7 @@ test("arena command console shows the first-run path (Last Buy + buy CHARM)", as
   await expect(page.locator("main.app-main")).toBeVisible();
   await expect(page.getByTestId("arena-command-console")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: /You might win|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /You might win .* DOUB in:|Arena Opens In/, level: 2 }),
   ).toBeVisible();
   await expect(page.getByText(/Connect wallet to buy CHARM|Buy CHARM/i).first()).toBeVisible();
   await expect(page.locator(".arena-final-concept")).toHaveCount(0);
@@ -64,21 +64,21 @@ test("arena simple view stays usable on a 390×844 mobile viewport", async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await ensurePostLaunch(page);
   await expect(
-    page.getByRole("heading", { name: /You might win|Arena Opens In/, level: 2 }),
+    page.getByRole("heading", { name: /You might win .* DOUB in:|Arena Opens In/, level: 2 }),
   ).toBeVisible();
   await expectNoHorizontalViewportOverflow(page);
 });
 
-test("legacy /timecurve redirects to /arena", async ({ page }) => {
+test("legacy /timecurve redirects to /", async ({ page }) => {
   await ensurePostLaunch(page);
   await page.goto("/timecurve");
-  await expect(page).toHaveURL(/\/arena$/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
-test("legacy /timecurve/arena redirects to /arena (#266)", async ({ page }) => {
+test("legacy /timecurve/arena redirects to / (#266)", async ({ page }) => {
   await ensurePostLaunch(page);
   await page.goto("/timecurve/arena");
-  await expect(page).toHaveURL(/\/arena$/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("legacy /timecurve/protocol redirects to /arena/protocol (#266)", async ({ page }) => {

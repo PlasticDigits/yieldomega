@@ -57,8 +57,8 @@ export function UnderConstruction({ title, slug, imageSrc = "/art/mascot-bunny-w
           className: "cutout-decoration--peek",
         }}
       >
-        <Link to="/arena" className="btn-primary">
-          Time Arena
+        <Link to="/" className="btn-primary">
+          Home
         </Link>
         <Link to="/arena/protocol" className="btn-secondary">
           AUDIT

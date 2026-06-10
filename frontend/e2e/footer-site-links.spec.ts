@@ -23,11 +23,11 @@ test("footer site links card on footer-enabled routes (GitLab #232)", async ({ p
   await expect(ribbon.locator(".footer-link-pill__icon").first()).toBeVisible();
 });
 
-test("/arena shows site links card below agent card (GitLab #232)", async ({ page }) => {
+test("home play surface shows site links card below agent card (GitLab #232)", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Launch countdown hides Time Arena surfaces.");
 
-  await page.goto("/arena");
+  await page.goto("/");
   const card = page.getByTestId("footer-site-links-card");
   await expect(card).toBeVisible();
   const ribbon = card.getByTestId("footer-site-links");

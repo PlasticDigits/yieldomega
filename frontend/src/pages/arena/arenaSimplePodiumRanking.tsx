@@ -13,6 +13,9 @@ import type { RankingRow } from "./arenaUi";
 import type { PodiumPayoutPreview, PodiumReadRow } from "./usePodiumReads";
 
 export const PODIUM_PLACE_LABELS = ["1st", "2nd", "3rd"] as const;
+
+/** Podium stand layout: 2nd, 1st, 3rd left-to-right (1st tallest in center). */
+export const PODIUM_STAND_VISUAL_ORDER = [1, 0, 2] as const;
 const ZERO_ADDR = zeroAddress as `0x${string}`;
 
 /** Onchain category index → UX podium row slot (Last Buy · WarBow · Defended · Time Booster). */
@@ -172,7 +175,7 @@ export function compactPodiumPrizeNode(
     );
 
   return (
-    <>
+    <span className="arena-timer-chips__place-prize">
       <span
         className="arena-timer-chips__place-prize-amount"
         aria-label={`${placeLabel} prize amount`}
@@ -182,6 +185,6 @@ export function compactPodiumPrizeNode(
       <span className="arena-timer-chips__place-prize-unit" aria-hidden="true">
         DOUB
       </span>
-    </>
+    </span>
   );
 }

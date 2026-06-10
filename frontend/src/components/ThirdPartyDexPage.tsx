@@ -76,8 +76,8 @@ export function ThirdPartyDexPage({
         ) : (
           outboundStatus
         )}
-        <Link to="/arena" className="btn-secondary">
-          Time Arena
+        <Link to="/" className="btn-secondary">
+          Home
         </Link>
         <Link to="/arena/protocol" className="btn-secondary">
           AUDIT
@@ -136,7 +136,7 @@ export function ThirdPartyDexPage({
       </PageSection>
       {externalUrl && outboundStatus}
       <p className="muted">
-        <Link to="/arena">Time Arena</Link> is the canonical DOUB arena surface.
+        <Link to="/">Yield Omega</Link> is the canonical DOUB arena surface.
       </p>
       <div className="third-party-cutout-row" aria-hidden="true">
         <CutoutDecoration

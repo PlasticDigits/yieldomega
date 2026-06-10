@@ -163,8 +163,8 @@ export function ArenaProtocolDonatePoolsSection({ isOffline, onOpenWalletProfile
             >
               {submitting ? "Donating..." : "Donate"}
             </button>
-            {writeErr ? <p className="error-text">{writeErr}</p> : null}
-            {writeOk ? <p className="success-text">{writeOk}</p> : null}
+            {writeErr ? <StatusMessage variant="error">{writeErr}</StatusMessage> : null}
+            {writeOk ? <StatusMessage variant="muted">{writeOk}</StatusMessage> : null}
           </div>
         </ChainMismatchWriteBarrier>
       </div>

@@ -9,7 +9,7 @@ test.describe("Anvil Arena mount", () => {
   );
 
   test("arena page mounts one command-console surface", async ({ page }) => {
-    await page.goto("/arena");
+    await page.goto("/");
     await expect(page.getByText("Loading Yield Omega route...")).toBeHidden({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
@@ -26,7 +26,10 @@ test.describe("Anvil Arena mount", () => {
     await expect(page.getByTestId("arena-charm-cred-card")).toBeVisible({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
-    await expect(page.getByTestId("arena-timer-chips")).toBeAttached({
+    await expect(page.getByTestId("arena-last-buy-chip")).toBeAttached({
+      timeout: ARENA_E2E_TIMEOUT_MS,
+    });
+    await expect(page.getByTestId("arena-timer-chip-gate-1")).toBeAttached({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
     await expect(page.getByTestId("warbow-hero-actions")).toBeAttached({
@@ -37,8 +40,8 @@ test.describe("Anvil Arena mount", () => {
     });
   });
 
-  test("redirects /timecurve to /arena", async ({ page }) => {
+  test("redirects /timecurve to /", async ({ page }) => {
     await page.goto("/timecurve");
-    await expect(page).toHaveURL(/\/arena$/);
+    await expect(page).toHaveURL(/\/$/);
   });
 });

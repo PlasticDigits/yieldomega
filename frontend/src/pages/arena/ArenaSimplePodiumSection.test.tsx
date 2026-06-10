@@ -13,7 +13,7 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
 function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> = {}): string {
   return renderToStaticMarkup(
-    createElement(MemoryRouter, { initialEntries: ["/arena"] }, createElement(ArenaSimplePodiumSection, {
+    createElement(MemoryRouter, { initialEntries: ["/"] }, createElement(ArenaSimplePodiumSection, {
       podiumRows: [
         { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"], epoch: "12" },
         { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"], epoch: "3" },
@@ -138,7 +138,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
         { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
       ],
     });
-    expect(html).toContain("Opens when Last Buy under 15 minutes");
+    expect(html).toContain("Starts Under 15 Min");
   });
 
   it("shows a neutral em dash for empty winner slots (no wallet-connect wording)", () => {

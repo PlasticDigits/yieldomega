@@ -14,6 +14,8 @@ import { canClaimCred, claimableCredEpoch } from "@/lib/arenaCharmCredClaim";
 import type { SerializableContractRead } from "@/lib/serializeContractRead";
 import { statFromContractRead } from "@/lib/statDisplayFromContractRead";
 
+const ARENA_CHARM_CRED_STAT_SIGFIGS = 3;
+
 function wadStat(
   read: SerializableContractRead | undefined,
   ctx: { isPending: boolean; isConnected: boolean },
@@ -22,7 +24,9 @@ function wadStat(
   return statFromContractRead(read, ctx, {
     requireWallet: options.requireWallet,
     labels: options.labels,
-    mapSuccess: (raw) => <AmountDisplay raw={raw} decimals={18} />,
+    mapSuccess: (raw) => (
+      <AmountDisplay raw={raw} decimals={18} sigfigs={ARENA_CHARM_CRED_STAT_SIGFIGS} />
+    ),
   });
 }
 
@@ -162,7 +166,9 @@ export function ArenaCharmCredCard() {
       <ArenaXpHero />
       <div className="arena-charm-cred-card__stats">
         <CharmCredRow
-          label="Charm Weight"
+          label={
+            currentEpoch !== undefined ? `CHARM Epoch ${currentEpoch.toString()}` : "CHARM Epoch —"
+          }
           title="Your current Last Buy epoch CHARM weight; this is claim weight, not a leaderboard."
           testId="arena-charm-cred-charm"
         >
@@ -175,7 +181,7 @@ export function ArenaCharmCredCard() {
           })}
         </CharmCredRow>
         <CharmCredRow
-          label="Accruing CRED"
+          label="CRED Accrual"
           title="Current active-epoch CRED preview from DOUB buys."
           testId="arena-charm-cred-pending"
         >
@@ -188,7 +194,7 @@ export function ArenaCharmCredCard() {
           })}
         </CharmCredRow>
         <CharmCredRow
-          label="CRED balance"
+          label="CRED Balance"
           title="Play CRED token balance in your connected wallet."
           testId="arena-charm-cred-balance"
         >

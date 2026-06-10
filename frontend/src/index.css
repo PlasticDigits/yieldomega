@@ -254,53 +254,53 @@ body {
   min-height: 100vh;
   background: transparent;
   color: var(--text-main);
-  /* Custom bitmap cursors are kept <=32px so browsers accept them reliably. */
-  cursor: url("/art/cursors/default.png") 4 4, auto;
+  /* Custom neon PNG cursors (22x22) generated from high-definition source art. */
+  cursor: url("/art/cursors/default.png") 3 3, auto;
 }
 
 input[type="text"],
 input[type="search"],
 input[type="number"],
 textarea {
-  cursor: url("/art/cursors/text.png") 16 16, text;
+  cursor: url("/art/cursors/text.png") 11 11, text;
 }
 
 a[href],
 button:not(:disabled):not([aria-disabled="true"]),
 [role="button"]:not([aria-disabled="true"]):not([data-disabled]),
 summary {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 button:disabled,
 [aria-disabled="true"],
 [data-disabled],
 .is-disabled {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled) {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 input[type="checkbox"]:disabled,
 input[type="radio"]:disabled {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 label:has(input[type="checkbox"]:not(:disabled)),
 label:has(input[type="radio"]:not(:disabled)) {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 label:has(input[type="checkbox"]:disabled),
 label:has(input[type="radio"]:disabled) {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 [aria-busy="true"] {
-  cursor: url("/art/cursors/progress.png") 6 5, progress;
+  cursor: url("/art/cursors/progress.png") 4 4, progress;
 }
 
 #root {
@@ -418,7 +418,7 @@ label:has(input[type="radio"]:disabled) {
   text-transform: none;
   letter-spacing: 0.02em;
   text-shadow: none;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .app-header--dense .brand-link--dense:hover {
@@ -479,7 +479,7 @@ label:has(input[type="radio"]:disabled) {
   border: none;
   border-radius: 0.35rem;
   background: transparent;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   line-height: 0;
 }
 
@@ -582,7 +582,7 @@ label:has(input[type="radio"]:disabled) {
   border-radius: 0.35rem;
   background: transparent;
   line-height: 0;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .app-header__icon-wrap {
@@ -748,7 +748,7 @@ label:has(input[type="radio"]:disabled) {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   text-shadow: 1px 2px 0 var(--line);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   transition:
     transform 160ms ease,
     filter 160ms ease;
@@ -943,7 +943,7 @@ label:has(input[type="radio"]:disabled) {
   color: var(--yo-text);
   font-size: 0.68rem;
   line-height: 1;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   transition:
     background var(--yga-motion-fast, 140ms ease),
     border-color var(--yga-motion-fast, 140ms ease);
@@ -1035,7 +1035,7 @@ label:has(input[type="radio"]:disabled) {
   border-radius: 999px;
   background: var(--yo-cyan);
   box-shadow: 0 0 6px rgba(53, 240, 194, 0.42);
-  cursor: url("/art/cursors/grab.png") 16 16, grab;
+  cursor: url("/art/cursors/grab.png") 11 11, grab;
 }
 
 .album-player__vol input[type="range"]::-moz-range-track {
@@ -1053,18 +1053,18 @@ label:has(input[type="radio"]:disabled) {
   border-radius: 999px;
   background: var(--yo-cyan);
   box-shadow: 0 0 6px rgba(53, 240, 194, 0.42);
-  cursor: url("/art/cursors/grab.png") 16 16, grab;
+  cursor: url("/art/cursors/grab.png") 11 11, grab;
 }
 
 .album-player__vol input[type="range"]:active,
 .album-player__vol input[type="range"]:active::-webkit-slider-thumb,
 .album-player__vol input[type="range"]::-webkit-slider-thumb:active {
-  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 11 11, grabbing;
 }
 
 .album-player__vol input[type="range"]:active::-moz-range-thumb,
 .album-player__vol input[type="range"]::-moz-range-thumb:active {
-  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 11 11, grabbing;
 }
 
 .nav-link {
@@ -1078,7 +1078,7 @@ label:has(input[type="radio"]:disabled) {
   color: var(--text-main);
   text-decoration: none;
   font-weight: 700;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   transition:
     transform 150ms ease,
     background 150ms ease,
@@ -1219,7 +1219,7 @@ label:has(input[type="radio"]:disabled) {
   font-weight: 800;
   letter-spacing: 0.01em;
   background: rgba(8, 20, 32, 0.78);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   transition:
     transform 150ms ease,
     filter 150ms ease,
@@ -1583,7 +1583,7 @@ label:has(input[type="radio"]:disabled) {
 .ui-badge--external {
   background: linear-gradient(180deg, #bfe9ff, var(--arcade-sky));
   color: var(--text-main);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .ui-badge--warning {
@@ -1606,7 +1606,6 @@ label:has(input[type="radio"]:disabled) {
 }
 
 /* Protocol AUDIT: compact operator cards on the shared glass console system. */
-.arena-protocol__hero-pill,
 .arena-protocol__cadence {
   display: inline-flex;
   align-items: center;
@@ -1623,18 +1622,12 @@ label:has(input[type="radio"]:disabled) {
   text-transform: uppercase;
 }
 
-.arena-protocol__decision-grid,
 .arena-protocol__state-grid,
 .arena-protocol__routing-grid {
   display: grid;
   gap: 0.75rem;
 }
 
-.arena-protocol__decision-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.arena-protocol__decision-card,
 .arena-protocol__stat-card,
 .arena-protocol__routing-grid > li {
   min-width: 0;
@@ -1647,12 +1640,6 @@ label:has(input[type="radio"]:disabled) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.arena-protocol__decision-card {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.arena-protocol__decision-card span,
 .arena-protocol__stat-kicker {
   color: var(--yo-muted);
   font-family: "IBM Plex Mono", monospace;
@@ -1662,7 +1649,6 @@ label:has(input[type="radio"]:disabled) {
   text-transform: uppercase;
 }
 
-.arena-protocol__decision-card strong,
 .arena-protocol__stat-card strong,
 .arena-protocol-raise-card strong {
   color: var(--yo-text);
@@ -1729,7 +1715,6 @@ label:has(input[type="radio"]:disabled) {
 }
 
 @media (max-width: 840px) {
-  .arena-protocol__decision-grid,
   .arena-protocol__state-grid,
   .arena-protocol__routing-grid {
     grid-template-columns: 1fr;
@@ -2354,7 +2339,7 @@ button.empty-data-placeholder--connect:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   list-style: none;
 }
 
@@ -2758,7 +2743,7 @@ button.empty-data-placeholder--connect:disabled {
     linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
     var(--yo-glass-surface);
   box-shadow: var(--yo-glass-shadow);
-  cursor: url("/art/cursors/wait.png") 16 16, wait;
+  cursor: url("/art/cursors/wait.png") 11 11, wait;
 }
 
 .loading-state img {
@@ -2777,6 +2762,96 @@ button.empty-data-placeholder--connect:disabled {
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* StatusMessage — cyberminimalist glass (#294). */
+.status-message {
+  display: block;
+  margin: 0;
+  padding: 0.62rem 0.82rem;
+  border: 1px solid var(--yo-line);
+  border-radius: 0.75rem;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    var(--yo-panel-gradient);
+  backdrop-filter: blur(12px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    var(--yo-glass-shadow);
+  color: var(--yo-text);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  max-width: 100%;
+}
+
+.status-message--muted {
+  border-color: rgba(126, 241, 255, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), transparent 42%),
+    var(--yo-glass-surface);
+  color: var(--yo-muted);
+  font-size: 0.84rem;
+}
+
+.status-message--placeholder {
+  border-style: dashed;
+  border-color: rgba(126, 241, 255, 0.2);
+  background:
+    linear-gradient(145deg, rgba(126, 241, 255, 0.05), transparent 46%),
+    var(--yo-glass-surface);
+  color: var(--yo-muted);
+  font-size: 0.88rem;
+}
+
+.status-message--error,
+.error-text {
+  border-color: rgba(255, 107, 122, 0.38);
+  background:
+    linear-gradient(145deg, rgba(255, 107, 122, 0.12), transparent 48%),
+    var(--yo-panel-gradient);
+  color: var(--yo-danger);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 107, 122, 0.14),
+    0 0 1.1rem rgba(255, 107, 122, 0.08),
+    var(--yo-glass-shadow);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.status-message--warning,
+.warning-text {
+  border-color: rgba(255, 177, 77, 0.38);
+  background:
+    linear-gradient(145deg, rgba(255, 177, 77, 0.12), transparent 48%),
+    var(--yo-panel-gradient);
+  color: var(--yga-warning);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 177, 77, 0.14),
+    0 0 1.1rem rgba(255, 177, 77, 0.08),
+    var(--yo-glass-shadow);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.status-message .btn-secondary {
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+  padding: 0.22rem 0.55rem;
+  vertical-align: baseline;
+}
+
+.status-message--error .btn-secondary,
+.status-message--warning .btn-secondary {
+  margin-top: 0;
+  margin-left: 0.45rem;
+}
+
+.status-message.muted,
+.status-message.placeholder {
+  margin: 0;
+  max-width: none;
 }
 
 .lede {
@@ -2888,11 +2963,11 @@ button.empty-data-placeholder--connect:disabled {
 .app-footer a {
   color: var(--arcade-green-800);
   font-weight: 700;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .app-footer a[target="_blank"] {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .app-footer-agent {
@@ -2901,7 +2976,7 @@ button.empty-data-placeholder--connect:disabled {
 }
 
 .app-footer-agent__summary {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
@@ -3306,7 +3381,7 @@ button.empty-data-placeholder--connect:disabled {
 .card-list a {
   font-weight: 700;
   color: var(--arcade-green-800);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .card-list a:hover {
@@ -4288,26 +4363,6 @@ button.empty-data-placeholder--connect:disabled {
   font-size: 0.9em;
 }
 
-.error-text {
-  display: inline-block;
-  padding: 0.5rem 0.75rem;
-  border: 3px solid var(--line);
-  border-radius: 0.9rem;
-  background: linear-gradient(180deg, #fecaca, #fca5a5);
-  color: #7f1d1d;
-  box-shadow: 4px 4px 0 var(--line);
-}
-
-.warning-text {
-  display: inline-block;
-  padding: 0.5rem 0.75rem;
-  border: 3px solid var(--line);
-  border-radius: 0.9rem;
-  background: linear-gradient(180deg, #fef3c7, #fde68a);
-  color: #78350f;
-  box-shadow: 4px 4px 0 var(--line);
-}
-
 .podium-preview {
   display: grid;
   gap: 1rem;
@@ -4399,7 +4454,7 @@ button.empty-data-placeholder--connect:disabled {
   border-radius: 999px;
   background: var(--yo-action-gradient);
   color: var(--yo-void);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   box-shadow: 0 10px 26px rgba(53, 240, 194, 0.16);
   text-shadow: none;
   text-decoration: none;
@@ -4424,7 +4479,7 @@ button.empty-data-placeholder--connect:disabled {
 
 .btn-primary:disabled {
   opacity: 0.65;
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 .btn-primary:active:not(:disabled) {
@@ -4452,7 +4507,7 @@ button.empty-data-placeholder--connect:disabled {
   border-radius: 999px;
   background: rgba(8, 20, 32, 0.76);
   color: var(--text-main);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   box-shadow: none;
   transition:
     transform 140ms ease,
@@ -4482,7 +4537,7 @@ button.empty-data-placeholder--connect:disabled {
     var(--panel-gloss),
     rgba(8, 20, 32, 0.72);
   color: var(--yo-text);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   box-shadow: none;
   display: inline-flex;
   align-items: center;
@@ -4511,7 +4566,7 @@ button.empty-data-placeholder--connect:disabled {
 .btn-ghost:disabled {
   opacity: 0.62;
   filter: grayscale(0.25);
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 .btn-secondary--priority {
@@ -4522,7 +4577,7 @@ button.empty-data-placeholder--connect:disabled {
   background: linear-gradient(180deg, var(--arcade-gold-200), var(--arcade-gold-400));
   animation: priority-bounce 3.35s var(--motion-bounce) infinite;
   /* PvP / WarBow danger surface — issue #45 danger cursor on hover. */
-  cursor: url("/art/cursors/pointer.png") 10 2, crosshair;
+  cursor: url("/art/cursors/pointer.png") 7 1, crosshair;
 }
 
 .arena-action-row {
@@ -5787,16 +5842,16 @@ input[type="range"].form-input.arena-buy-spend-range {
   box-shadow:
     inset 0 2px 0 rgba(255, 255, 255, 0.16),
     inset 0 -2px 0 rgba(0, 0, 0, 0.22);
-  cursor: url("/art/cursors/grab.png") 16 16, grab;
+  cursor: url("/art/cursors/grab.png") 11 11, grab;
 }
 
 input[type="range"].form-input.arena-buy-spend-range:disabled {
   opacity: 0.65;
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 input[type="range"].form-input.arena-buy-spend-range:active:not(:disabled) {
-  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 11 11, grabbing;
 }
 
 input[type="range"].form-input.arena-buy-spend-range::-webkit-slider-runnable-track {
@@ -5877,7 +5932,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
 }
 
 .arena-buy-panel__advanced summary {
-  cursor: url("/art/cursors/default.png") 4 4, pointer;
+  cursor: url("/art/cursors/default.png") 3 3, pointer;
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--arcade-green-900);
@@ -5959,7 +6014,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   border: 2px solid rgba(255, 255, 255, 0.35);
   background: rgba(0, 0, 0, 0.25);
   color: #fde68a;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   font-family: inherit;
 }
 
@@ -6036,7 +6091,7 @@ input[type="range"].form-input.arena-buy-spend-range::-moz-range-thumb {
   padding: 0;
   margin: 0;
   color: inherit;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   text-align: left;
   font: inherit;
 }
@@ -6413,7 +6468,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .timer-hero__subtext--deadline-read[aria-busy="true"] {
-  cursor: url("/art/cursors/progress.png") 6 5, progress;
+  cursor: url("/art/cursors/progress.png") 4 4, progress;
 }
 
 .timer-hero__deadline-read-stack {
@@ -6474,7 +6529,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: 0.35rem;
   background: rgba(0, 0, 0, 0.2);
   color: #a8d5b8;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   line-height: 0;
   transition:
     background 0.15s ease,
@@ -6731,7 +6786,7 @@ a.podium-address-explorer:hover .address-inline__label {
   width: 2rem;
   height: 2rem;
   border-radius: 0.4rem;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   font-weight: 800;
 }
 
@@ -6822,12 +6877,12 @@ a.podium-address-explorer:hover .address-inline__label {
   border: 1px solid var(--yo-line);
   background: rgba(126, 241, 255, 0.1);
   color: var(--yo-text);
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .modal-bc-more__btn:disabled {
   opacity: 0.55;
-  cursor: url("/art/cursors/wait.png") 16 16, wait;
+  cursor: url("/art/cursors/wait.png") 11 11, wait;
 }
 
 .modal-bc-list .live-buy-row--modal {
@@ -7828,9 +7883,10 @@ a.podium-address-explorer:hover .address-inline__label {
   border: 1px solid rgba(185, 255, 106, 0.28);
   border-radius: 1.1rem;
   background:
-    radial-gradient(ellipse at 50% 115%, rgba(255, 177, 77, 0.14), transparent 55%),
-    radial-gradient(circle at 12% 8%, rgba(185, 255, 106, 0.14), transparent 30%),
-    linear-gradient(165deg, rgba(1, 12, 10, 0.94), rgba(3, 10, 18, 0.9));
+    radial-gradient(ellipse at 50% 115%, rgba(255, 177, 77, 0.1), transparent 55%),
+    radial-gradient(circle at 12% 8%, rgba(185, 255, 106, 0.1), transparent 30%),
+    linear-gradient(165deg, rgba(1, 12, 10, 0.42), rgba(3, 10, 18, 0.48)),
+    url("/art/scenes/arena-simple-timer-panel.jpg") center / cover no-repeat;
   box-shadow:
     0 1.2rem 2.4rem rgba(0, 0, 0, 0.28),
     var(--shadow-soft),
@@ -7862,9 +7918,10 @@ a.podium-address-explorer:hover .address-inline__label {
   right: clamp(0.65rem, 2vw, 1.1rem);
   bottom: clamp(0.65rem, 2vw, 1.1rem);
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  max-width: min(60%, 22rem);
+  gap: 0.35rem 0.4rem;
+  max-width: min(92%, 36rem);
   padding: 0.35rem 0.7rem;
   border: 1px solid rgba(185, 255, 106, 0.32);
   border-radius: 999px;
@@ -7875,10 +7932,20 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
   animation: arena-simple-extension-wiggle 0.58s ease-out both;
+}
+
+.arena-simple__last-extension-effects {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.arena-simple__last-extension-effect {
+  font-size: 0.72rem;
 }
 
 .arena-simple__last-extension-dot {
@@ -8297,115 +8364,6 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.arena-simple__podium-panel {
-  --podium-panel-aurora-a: rgba(255, 217, 91, 0.72);
-  --podium-panel-aurora-b: rgba(255, 78, 190, 0.4);
-  --podium-panel-aurora-c: rgba(31, 184, 106, 0.48);
-  --podium-panel-aurora-d: rgba(40, 165, 255, 0.36);
-  margin-top: 0;
-  padding-right: 1.15rem;
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  background:
-    var(--panel-gloss),
-    radial-gradient(circle at 10% 10%, var(--podium-panel-aurora-a) 0 15%, transparent 34%),
-    radial-gradient(circle at 88% 8%, var(--podium-panel-aurora-b) 0 18%, transparent 39%),
-    radial-gradient(circle at 46% 106%, var(--podium-panel-aurora-c) 0 22%, transparent 48%),
-    linear-gradient(135deg, rgba(255, 244, 156, 0.96), rgba(188, 252, 213, 0.9) 48%, rgba(205, 239, 255, 0.94));
-  box-shadow:
-    8px 8px 0 rgba(11, 31, 20, 0.94),
-    0 1.2rem 3.4rem rgba(11, 31, 20, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.68),
-    inset 0 1.2rem 3rem rgba(255, 255, 255, 0.3);
-}
-
-.arena-simple__podium-panel::before,
-.arena-simple__podium-panel::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  border-radius: inherit;
-}
-
-.arena-simple__podium-panel::before {
-  inset: 0;
-  z-index: 0;
-  background:
-    linear-gradient(115deg, transparent 0 12%, rgba(255, 255, 255, 0.48) 22%, transparent 36%),
-    conic-gradient(from 205deg at 24% 22%, transparent 0 10%, rgba(255, 230, 109, 0.7) 18%, transparent 30%, rgba(255, 74, 157, 0.36) 43%, transparent 58%, rgba(31, 184, 106, 0.44) 72%, transparent 88%),
-    radial-gradient(circle at 68% 36%, var(--podium-panel-aurora-d), transparent 34%);
-  background-size: 220% 100%, 140% 140%, 120% 120%;
-  opacity: 0.62;
-  animation: podium-panel-aurora 10s ease-in-out infinite alternate;
-}
-
-.arena-simple__podium-panel::after {
-  top: 1rem;
-  right: 1rem;
-  z-index: 0;
-  width: 0.48rem;
-  height: 0.48rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--arcade-gold);
-  box-shadow:
-    -7.4rem 0.25rem 0 0.02rem rgba(255, 255, 255, 0.72),
-    -4.2rem 1.55rem 0 -0.03rem rgba(255, 74, 157, 0.44),
-    -1.2rem 3.1rem 0 0 rgba(31, 184, 106, 0.52),
-    -9.1rem 4.35rem 0 -0.02rem rgba(40, 165, 255, 0.42),
-    -13.2rem 2.85rem 0 -0.05rem rgba(255, 230, 109, 0.68),
-    -18rem 5.3rem 0 0 rgba(255, 255, 255, 0.62),
-    -22.4rem 1.65rem 0 -0.04rem rgba(255, 74, 157, 0.35),
-    -27.5rem 4.2rem 0 0.01rem rgba(31, 184, 106, 0.46);
-  opacity: 0.72;
-  filter: drop-shadow(0 0 0.5rem rgba(255, 217, 91, 0.36));
-  animation: podium-panel-particles 5.8s ease-in-out infinite;
-}
-
-.arena-simple__podium-panel .section-heading {
-  position: relative;
-  z-index: 1;
-  padding: 0.88rem 1rem;
-  border: 2px solid rgba(11, 31, 20, 0.14);
-  border-radius: 1.25rem;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.48)),
-    radial-gradient(circle at 12% 0%, rgba(255, 230, 109, 0.48), transparent 45%),
-    radial-gradient(circle at 96% 0%, rgba(255, 74, 157, 0.18), transparent 44%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 0.8rem 1.8rem rgba(11, 31, 20, 0.08);
-}
-
-.arena-simple__podium-panel .section-heading h2 {
-  color: color-mix(in srgb, var(--arcade-green-900) 76%, #ff4a9d);
-  text-shadow:
-    2px 3px 0 rgba(255, 255, 255, 0.72),
-    0 0 1rem rgba(255, 217, 91, 0.26);
-}
-
-.arena-simple__podium-panel .section-heading__lede,
-.arena-simple__podium-panel .section-heading__lede p {
-  color: rgba(6, 61, 36, 0.86);
-}
-
-.arena-simple__podium-panel > :not(.panel-cutout) {
-  position: relative;
-  z-index: 1;
-}
-
-.panel-cutout--simple-podium {
-  right: -0.5rem;
-  bottom: -0.85rem;
-  width: clamp(5.8rem, 10vw, 7.2rem);
-  height: auto;
-  max-height: min(16rem, 36%);
-  object-fit: contain;
-  z-index: 0;
-  opacity: 0.9;
 }
 
 .arena-simple__podium-grid {
@@ -8883,37 +8841,6 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-@keyframes podium-panel-aurora {
-  0% {
-    background-position: 0% 50%, 0% 0%, 100% 10%;
-    filter: hue-rotate(0deg) saturate(1);
-  }
-  50% {
-    background-position: 64% 50%, 48% 20%, 42% 70%;
-    filter: hue-rotate(8deg) saturate(1.08);
-  }
-  100% {
-    background-position: 100% 50%, 82% 82%, 0% 100%;
-    filter: hue-rotate(-5deg) saturate(1.16);
-  }
-}
-
-@keyframes podium-panel-particles {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(0.9);
-    opacity: 0.42;
-  }
-  45% {
-    transform: translate3d(-0.35rem, -0.55rem, 0) scale(1.12);
-    opacity: 0.88;
-  }
-  72% {
-    transform: translate3d(0.25rem, -0.25rem, 0) scale(1);
-    opacity: 0.66;
-  }
-}
-
 @keyframes podium-icon-float {
   0%,
   100% {
@@ -8943,8 +8870,6 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .arena-simple__podium-panel::before,
-  .arena-simple__podium-panel::after,
   .arena-simple__podium-card::before,
   .arena-simple__podium-card::after,
   .arena-simple__podium-art::before,
@@ -9623,13 +9548,13 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: center;
   gap: 0.28rem;
   flex-shrink: 0;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   /* `.form-input` caps field width (20rem); pin token select to the input bar's right edge. */
   margin-inline-start: auto;
 }
 
 .arena-simple__amount-token-dropdown:has(.arena-simple__amount-token-combobox:disabled) {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 .arena-simple__amount-token-dropdown-icon {
@@ -9668,7 +9593,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__amount-token-combobox:disabled {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
   opacity: 0.62;
 }
 
@@ -9702,7 +9627,7 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--text-main);
   text-align: start;
   background: transparent;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .arena-simple__amount-token-option:hover {
@@ -10394,7 +10319,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-simple__advanced-summary {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   font-weight: 700;
   font-size: 0.9rem;
   letter-spacing: 0.04em;
@@ -10431,7 +10356,7 @@ a.podium-address-explorer:hover .address-inline__label {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .arena-simple__paywith-icon {
@@ -10788,12 +10713,60 @@ a.podium-address-explorer:hover .address-inline__label {
   grid-column: 3;
 }
 
+/* Effect pills left, BUY CTA right — flush under YOU RECEIVE in receive-slot. */
+.arena-simple__buy-cta-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.65rem;
+  width: 100%;
+  margin: 0;
+}
+
+.arena-simple__buy-cta-effects {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.arena-simple__buy-cta-row .arena-simple__buy-preview {
+  margin: 0;
+}
+
+.arena-simple__buy-cta-row .arena-simple__buy-preview-line {
+  justify-content: flex-start;
+  margin: 0;
+}
+
+.arena-simple__buy-cta-row .arena-simple__buy-preview-bonuses {
+  align-items: flex-start;
+  margin-top: 0.12rem;
+}
+
+.arena-simple__buy-cta-row .arena-simple__buy-preview-bonus-line {
+  text-align: left;
+}
+
 .arena-simple__cta {
   font-size: 1.1rem;
   font-weight: 800;
   padding: 0.85rem 1.4rem;
+  margin-top: 0;
+}
+
+.arena-simple__buy-cta-anchor {
+  flex: 0 0 50%;
+  width: 50%;
+  margin: 0;
+  padding: 0;
+}
+
+.arena-simple__buy-cta-anchor .arena-simple__cta {
   width: 100%;
-  margin-top: 0.4rem;
+  margin: 0;
+  border-radius: 0 0 0.78rem 0.78rem;
+  border-top: none;
 }
 
 /* Primary BUY CTA: compact command button with a CHARM glyph beside the label.
@@ -10814,7 +10787,7 @@ a.podium-address-explorer:hover .address-inline__label {
   border-width: 1px;
   border-radius: 0.78rem;
   box-shadow:
-    0 0.85rem 1.7rem rgba(77, 231, 200, 0.14),
+    0 0 0.85rem var(--arena-neon-cyan-glow, rgba(77, 231, 200, 0.18)),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
   text-shadow: none;
 }
@@ -10826,9 +10799,9 @@ a.podium-address-explorer:hover .address-inline__label {
   border-radius: inherit;
   pointer-events: none;
   background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent) -120% 0 / 42% 100% no-repeat,
-    radial-gradient(circle at 16% 0%, rgba(185, 255, 106, 0.2), transparent 34%),
-    radial-gradient(circle at 84% 100%, rgba(232, 192, 74, 0.18), transparent 38%);
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent) -120% 0 / 42% 100% no-repeat,
+    radial-gradient(circle at 18% 0%, rgba(77, 231, 200, 0.14), transparent 36%),
+    radial-gradient(circle at 82% 100%, rgba(77, 231, 200, 0.1), transparent 40%);
   mix-blend-mode: screen;
   opacity: 0.78;
   transition: background-position 260ms ease, opacity 160ms ease;
@@ -11573,21 +11546,11 @@ a.podium-address-explorer:hover .address-inline__label {
   isolation: isolate;
   width: min(1180px, calc(100% - 2rem));
   margin-inline: auto;
-  padding: clamp(0.9rem, 2.2vw, 1.25rem);
-  overflow: hidden;
+  padding: 0;
   color: var(--arena-console-ink);
-  border: 1px solid var(--arena-console-line);
-  border-radius: clamp(1rem, 2vw, 1.35rem);
-  background:
-    linear-gradient(rgba(185, 255, 106, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(185, 255, 106, 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 18% 16%, rgba(185, 255, 106, 0.17), transparent 36%),
-    radial-gradient(circle at 82% 10%, rgba(255, 177, 77, 0.14), transparent 30%),
-    linear-gradient(145deg, rgba(2, 12, 12, 0.96), rgba(5, 7, 16, 0.93));
-  background-size: 24px 24px, 24px 24px, auto, auto, auto;
-  box-shadow:
-    0 1.4rem 3.8rem rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: none;
+  box-shadow: none;
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -11645,27 +11608,8 @@ a.podium-address-explorer:hover .address-inline__label {
   align-items: start;
 }
 
-.arena-command-console__primary {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  border: 1px solid rgba(185, 255, 106, 0.15);
-  border-radius: 0.75rem;
-  background: var(--arena-console-panel);
-  backdrop-filter: blur(22px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 1rem 2.4rem rgba(0, 0, 0, 0.22);
-  display: grid;
-  gap: 0.75rem;
-  padding: clamp(0.8rem, 1.8vw, 1rem);
-  align-content: start;
-  align-items: start;
-}
-
 /* Single grid cell so timer chips stack under YOUR WALLET instead of row 2 stretching with primary. */
 .arena-command-console__side-rail {
-  grid-column: 2;
-  grid-row: 1 / -1;
   align-self: start;
   display: grid;
   gap: 0.35rem;
@@ -11682,59 +11626,60 @@ a.podium-address-explorer:hover .address-inline__label {
   text-transform: uppercase;
 }
 
-.arena-command-console .arena-simple__hub {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.7rem;
-  align-content: start;
-  align-items: start;
+@media (min-width: 981px) {
+  .arena-command-console__grid {
+    grid-template-areas:
+      "console-timer console-side"
+      "console-buy console-side"
+      "console-warbow console-side";
+  }
+
+  .arena-command-console__grid:not(:has(> .arena-command-console__hub-warbow)) {
+    grid-template-areas:
+      "console-timer console-side"
+      "console-buy console-side";
+  }
+
+  .arena-command-console__grid > .arena-simple__timer-row {
+    grid-area: console-timer;
+  }
+
+  .arena-command-console__grid > .arena-simple__buy-panel {
+    grid-area: console-buy;
+  }
+
+  .arena-command-console__grid > .arena-command-console__hub-warbow {
+    grid-area: console-warbow;
+  }
+
+  .arena-command-console__side-rail {
+    grid-area: console-side;
+  }
 }
 
-.arena-command-console .arena-simple__timer-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 0.7rem;
-  align-items: start;
-  min-width: 0;
-}
-
-.arena-command-console .arena-simple__timer-row > .data-panel,
-.arena-command-console .arena-simple__timer-row > .arena-simple__last-buy-chip {
+.arena-command-console__grid > .arena-simple__timer-row,
+.arena-command-console__grid > .arena-simple__buy-panel,
+.arena-command-console__grid > .arena-command-console__hub-warbow {
   min-width: 0;
   align-self: start;
 }
 
-.arena-command-console .arena-simple__last-buy-chip {
+.arena-command-console .arena-simple__timer-row {
   display: grid;
-  gap: 0;
-  padding: 0.55rem;
-  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+  min-width: 0;
 }
 
-.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__gate {
-  min-height: 100%;
-}
-
-.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__head {
-  grid-template-columns: auto auto;
-  justify-content: space-between;
-}
-
-.arena-command-console .arena-simple__last-buy-chip .arena-timer-chips__chip--hero-owned {
-  display: none;
-}
-
-.arena-command-console .arena-simple__hub > .data-panel,
-.arena-command-console .arena-simple__hub > .arena-simple__buy-panel {
+.arena-command-console .arena-simple__timer-row > .data-panel {
   min-width: 0;
   align-self: start;
 }
 
 .arena-command-console .arena-simple__timer-panel.data-panel,
-.arena-command-console .arena-simple__last-buy-chip,
-.arena-command-console .arena-simple__buy-panel,
 .arena-command-console .arena-charm-cred-card.data-panel,
 .arena-command-console .footer-site-links-card.data-panel,
-.arena-command-console .arena-timer-chips,
 .arena-command-console .warbow-hero-actions {
   border: 1px solid rgba(185, 255, 106, 0.16);
   border-radius: 0.65rem;
@@ -11754,13 +11699,52 @@ a.podium-address-explorer:hover .address-inline__label {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.28rem;
+  gap: 0.12rem;
   padding: clamp(0.55rem, 1.2vw, 0.72rem) clamp(0.38rem, 0.85vw, 0.52rem);
   border-color: rgba(185, 255, 106, 0.28);
   background:
-    radial-gradient(circle at 24% 18%, rgba(185, 255, 106, 0.16), transparent 34%),
-    radial-gradient(circle at 78% 16%, rgba(255, 177, 77, 0.13), transparent 30%),
-    linear-gradient(145deg, rgba(1, 12, 10, 0.9), rgba(3, 10, 18, 0.84));
+    radial-gradient(circle at 24% 18%, rgba(185, 255, 106, 0.12), transparent 34%),
+    radial-gradient(circle at 78% 16%, rgba(255, 177, 77, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(1, 12, 10, 0.42), rgba(3, 10, 18, 0.48)),
+    url("/art/scenes/arena-simple-timer-panel.jpg") center / cover no-repeat;
+}
+
+/* Last Buy epoch stamp — top-right of timer bay; absolute so centred hero layout is unchanged. */
+.arena-simple__timer-panel-epoch-corner {
+  position: absolute;
+  z-index: 2;
+  top: clamp(0.55rem, 1.2vw, 0.72rem);
+  right: clamp(0.38rem, 0.85vw, 0.52rem);
+  display: grid;
+  gap: 0.04rem;
+  margin: 0;
+  padding: 0;
+  text-align: right;
+  pointer-events: none;
+}
+
+.arena-command-console .arena-simple__timer-panel-epoch-corner__title {
+  display: block;
+  color: #ffffff;
+  font-family: var(--yga-font-display, "IBM Plex Mono", ui-monospace, monospace);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+  text-shadow: 0 0 0.75rem rgba(232, 192, 74, 0.2);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.arena-command-console .arena-simple__timer-panel-epoch-corner__epoch {
+  display: block;
+  color: var(--yga-gold);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .arena-command-console .arena-simple__timer-panel .section-heading {
@@ -11852,6 +11836,271 @@ a.podium-address-explorer:hover .address-inline__label {
   font-size: 0.72rem;
 }
 
+.arena-simple__timer-panel-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Last Buy podium stands — 2nd · 1st · 3rd; one connected row below the timer hero. */
+.arena-simple__last-buy-podiums {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 5px;
+  --arena-last-buy-podium-radius: calc(0.65rem - 1px);
+}
+
+.arena-simple__last-buy-podium {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  padding: 0.34rem 0.24rem 0.3rem;
+  overflow: hidden;
+  border: 0;
+  border-top: 1px solid rgba(185, 255, 106, 0.12);
+  border-bottom: 1px solid rgba(185, 255, 106, 0.12);
+  border-inline-end: 1px solid rgba(185, 255, 106, 0.12);
+  border-radius: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.24)),
+    rgba(2, 10, 14, 0.42);
+  text-align: center;
+}
+
+.arena-simple__last-buy-podium-inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.14rem;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.arena-simple__last-buy-podium--first .arena-simple__last-buy-podium-inner {
+  transform: scale(1.2);
+  transform-origin: bottom center;
+}
+
+.arena-simple__last-buy-podium--second {
+  border-inline-start: 1px solid rgba(185, 255, 106, 0.12);
+  border-radius: var(--arena-last-buy-podium-radius) 0 0 var(--arena-last-buy-podium-radius);
+}
+
+.arena-simple__last-buy-podium--first {
+  flex: 1.28 1 0;
+  min-height: clamp(7.4rem, 22vw, 9.2rem);
+  padding: 0.46rem 0.3rem 0.36rem;
+  border-radius: var(--arena-last-buy-podium-radius) var(--arena-last-buy-podium-radius) 0 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 215, 80, 0.14), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.3)),
+    rgba(2, 10, 14, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 215, 80, 0.22);
+}
+
+.arena-simple__last-buy-podium--third {
+  border-radius: 0 var(--arena-last-buy-podium-radius) var(--arena-last-buy-podium-radius) 0;
+}
+
+.arena-simple__last-buy-podium--second,
+.arena-simple__last-buy-podium--third {
+  min-height: clamp(6.2rem, 18vw, 7.6rem);
+}
+
+.arena-simple__last-buy-podium-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.55rem, 4.2vw, 2rem);
+  height: clamp(1.55rem, 4.2vw, 2rem);
+  flex-shrink: 0;
+}
+
+.arena-simple__last-buy-podium--first .arena-simple__last-buy-podium-rank {
+  width: clamp(1.85rem, 5vw, 2.35rem);
+  height: clamp(1.85rem, 5vw, 2.35rem);
+}
+
+.arena-simple__last-buy-podium-rank img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 0.45rem rgba(255, 215, 80, 0.22));
+}
+
+@keyframes arena-last-buy-podium-rank-shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg) scale(1);
+  }
+  12% {
+    transform: translateX(-3px) rotate(-10deg) scale(1.08);
+  }
+  24% {
+    transform: translateX(3px) rotate(10deg) scale(1.1);
+  }
+  36% {
+    transform: translateX(-2px) rotate(-6deg) scale(1.06);
+  }
+  48% {
+    transform: translateX(2px) rotate(6deg) scale(1.04);
+  }
+  60% {
+    transform: translateX(-1px) rotate(-3deg) scale(1.02);
+  }
+  72% {
+    transform: translateX(1px) rotate(3deg) scale(1.01);
+  }
+}
+
+.arena-simple__last-buy-podium-rank-icon--shake {
+  animation: arena-last-buy-podium-rank-shake 0.58s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  transform-origin: 50% 85%;
+}
+
+.arena-simple__last-buy-podium-prize {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.04rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.arena-simple__last-buy-podium-prize-main {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.18rem;
+  min-width: 0;
+  max-width: 100%;
+  font-weight: 700;
+  line-height: 1.1;
+  color: rgba(240, 255, 246, 0.96);
+}
+
+.arena-simple__last-buy-podium--first .arena-simple__last-buy-podium-prize-main {
+  font-size: clamp(0.82rem, 2.2vw, 0.98rem);
+}
+
+.arena-simple__last-buy-podium--second .arena-simple__last-buy-podium-prize-main,
+.arena-simple__last-buy-podium--third .arena-simple__last-buy-podium-prize-main {
+  font-size: clamp(0.72rem, 1.9vw, 0.86rem);
+}
+
+.arena-simple__last-buy-podium-prize-main > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-simple__last-buy-podium-prize-main small {
+  flex-shrink: 0;
+  font-size: 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(185, 255, 106, 0.82);
+}
+
+.arena-simple__last-buy-podium-prize-usd {
+  font-size: clamp(0.58rem, 1.5vw, 0.68rem);
+  line-height: 1.2;
+  color: rgba(185, 255, 106, 0.62);
+}
+
+.arena-simple__last-buy-podium-age {
+  font-size: clamp(0.62rem, 1.6vw, 0.72rem);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.arena-simple__last-buy-podium-identity {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.arena-simple__last-buy-podium-identity .address-inline__label {
+  font-size: clamp(0.62rem, 1.55vw, 0.72rem);
+}
+
+.arena-simple__last-buy-podium--you {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 74, 157, 0.16), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.28)),
+    rgba(18, 4, 16, 0.58);
+  animation: arena-last-buy-podium-you-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes arena-last-buy-podium-you-glow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 74, 157, 0.22),
+      0 0 0.35rem rgba(255, 74, 157, 0.14);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 74, 157, 0.42),
+      0 0 0.85rem rgba(255, 74, 157, 0.34),
+      0 0 1.35rem rgba(185, 255, 106, 0.12);
+  }
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__timer-panel-stack {
+  align-self: stretch;
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__last-buy-podiums {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-simple__last-buy-podium--you {
+    animation: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 74, 157, 0.34),
+      0 0 0.55rem rgba(255, 74, 157, 0.22);
+  }
+
+  .arena-simple__last-buy-podium-rank-icon--shake {
+    animation: none;
+  }
+}
+
+.arena-command-console .arena-simple__last-extension-effects {
+  justify-content: center;
+}
+
+.arena-command-console .arena-simple__last-extension-effect {
+  padding: 0.14rem 0.36rem;
+  font-size: 0.68rem;
+}
+
 .arena-command-console
   .arena-simple__timer-panel:has(.arena-simple__last-extension)
   .arena-simple__timer-clock {
@@ -11882,12 +12131,12 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console .arena-simple__buy-panel {
   display: grid;
   gap: 0.58rem;
-  padding: clamp(0.78rem, 1.7vw, 1rem);
-  border-color: rgba(77, 231, 200, 0.24);
-  background:
-    radial-gradient(circle at 8% 0%, rgba(77, 231, 200, 0.16), transparent 34%),
-    radial-gradient(circle at 96% 12%, rgba(232, 192, 74, 0.12), transparent 34%),
-    rgba(3, 14, 21, 0.82);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .arena-command-console .arena-simple__rate-board {
@@ -11966,37 +12215,27 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console .arena-simple__swap-field {
   display: grid;
   grid-template-rows: auto auto auto;
-  gap: 0.25rem;
-  padding: 0.42rem 0.72rem;
-  border: 1px solid rgba(77, 231, 200, 0.18);
+  gap: 0.12rem;
+  padding: 0.28rem 0.72rem 0.32rem;
+  border: 1px solid var(--arena-neon-cyan-border, rgba(77, 231, 200, 0.46));
   border-radius: 0.82rem;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
-    rgba(4, 18, 26, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    var(--arena-neon-cyan-panel-grad, linear-gradient(135deg, rgba(77, 231, 200, 0.07), transparent 72%)),
+    var(--arena-neon-cyan-panel-fill, rgba(4, 18, 26, 0.78));
+  box-shadow:
+    0 0 0.85rem var(--arena-neon-cyan-glow, rgba(77, 231, 200, 0.18)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .arena-command-console .arena-simple__swap-field--pay {
   position: relative;
   z-index: 0;
-  border-color: rgba(77, 231, 200, 0.42);
   border-bottom: none;
   border-radius: 0.82rem 0.82rem 0 0;
-  background:
-    linear-gradient(90deg, rgba(185, 255, 106, 0.1), transparent 38%),
-    rgba(3, 14, 21, 0.88);
-  box-shadow:
-    0 0 0 1px rgba(77, 231, 200, 0.1),
-    0 0 1.4rem rgba(77, 231, 200, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .arena-command-console .arena-simple__swap-field--receive {
-  border-color: rgba(232, 192, 74, 0.2);
   border-radius: 0 0 0.82rem 0.82rem;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(232, 192, 74, 0.1), transparent 38%),
-    rgba(4, 18, 26, 0.72);
 }
 
 .arena-command-console .arena-simple__swap-field-head {
@@ -12018,15 +12257,24 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__swap-stack {
-  --arena-swap-field-min-h: 6.85rem;
+  --arena-neon-cyan: 77, 231, 200;
+  --arena-neon-cyan-border: rgba(var(--arena-neon-cyan), 0.46);
+  --arena-neon-cyan-glow: rgba(var(--arena-neon-cyan), 0.18);
+  --arena-neon-cyan-panel-grad: linear-gradient(
+    135deg,
+    rgba(var(--arena-neon-cyan), 0.07) 0%,
+    rgba(var(--arena-neon-cyan), 0.025) 40%,
+    transparent 72%
+  );
+  --arena-neon-cyan-panel-fill: rgba(4, 18, 26, 0.78);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "pay"
     "receive";
-  grid-template-rows: repeat(2, minmax(var(--arena-swap-field-min-h), 1fr));
+  grid-template-rows: auto auto;
   gap: 0;
-  margin: 0.15rem 0 0.4rem;
+  margin: 0.1rem 0 0.28rem;
 }
 
 .arena-command-console .arena-simple__swap-pay {
@@ -12036,16 +12284,45 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__swap-pay > .arena-simple__swap-field--pay {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   width: 100%;
-  min-height: 100%;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__receive-slot {
+  grid-area: receive;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+}
+
+.arena-command-console .arena-simple__receive-slot .arena-simple__swap-field--receive {
+  flex: 0 1 auto;
+  border-radius: 0 0 0 0.82rem;
+  border-bottom: none;
+}
+
+.arena-command-console .arena-simple__receive-slot .arena-simple__buy-cta-row {
+  flex: 0 0 auto;
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.arena-command-console .arena-simple__receive-slot .arena-simple__buy-cta-effects {
+  padding: 0.28rem 0 0.28rem 0.08rem;
+}
+
+.arena-command-console .arena-simple__receive-slot .arena-simple__buy-preview {
+  margin: 0;
+  padding: 0.42rem 0.52rem;
 }
 
 .arena-command-console .arena-simple__swap-field--receive {
-  grid-area: receive;
   position: relative;
   z-index: 0;
-  min-height: 100%;
+  min-height: 0;
   box-sizing: border-box;
 }
 
@@ -12113,7 +12390,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__pay-token-stack {
-  gap: 0.22rem;
+  gap: 0.12rem;
   max-width: 42%;
 }
 
@@ -12159,7 +12436,7 @@ a.podium-address-explorer:hover .address-inline__label {
   font-weight: 900;
   letter-spacing: 0.1em;
   line-height: 1;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 .arena-command-console .arena-simple__pay-slider-bound:hover:not(:disabled) {
@@ -12168,14 +12445,14 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-simple__pay-slider-bound:disabled {
   opacity: 0.45;
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 
 .arena-command-console .arena-simple__pay-slider-row input[type="range"].form-input.arena-buy-spend-range {
   flex: 1 1 auto;
   min-width: 0;
   height: 0.22rem;
-  margin: 0.34rem 0;
+  margin: 0.18rem 0;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -12450,7 +12727,28 @@ a.podium-address-explorer:hover .address-inline__label {
   margin: 0;
 }
 
-.arena-command-console .arena-simple__cta.btn-primary,
+.arena-command-console .arena-simple__cta.btn-primary {
+  color: #f6fff9;
+  border: 1px solid var(--arena-neon-cyan-border, rgba(77, 231, 200, 0.46));
+  background:
+    var(--arena-neon-cyan-panel-grad, linear-gradient(135deg, rgba(77, 231, 200, 0.07), transparent 72%)),
+    var(--arena-neon-cyan-panel-fill, rgba(4, 18, 26, 0.88));
+  box-shadow:
+    0 0 0.85rem var(--arena-neon-cyan-glow, rgba(77, 231, 200, 0.18)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32);
+  animation: none;
+  text-shadow: none;
+}
+
+.arena-command-console .arena-simple__cta.btn-primary:hover:not(:disabled) {
+  border-color: rgba(var(--arena-neon-cyan, 77, 231, 200), 0.58);
+  box-shadow:
+    0 0 1.1rem rgba(var(--arena-neon-cyan, 77, 231, 200), 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32);
+}
+
 .arena-command-console .arena-charm-cred-card__claim.btn-primary,
 .arena-command-console .arena-simple__connect .wallet-action--connect {
   color: #f6fff9;
@@ -12470,7 +12768,6 @@ a.podium-address-explorer:hover .address-inline__label {
   text-shadow: 0 0 0.8rem rgba(185, 255, 106, 0.24);
 }
 
-.arena-command-console .arena-simple__cta.btn-primary:hover:not(:disabled),
 .arena-command-console .arena-charm-cred-card__claim.btn-primary:hover:not(:disabled),
 .arena-command-console .arena-simple__connect .wallet-action--connect:hover:not(:disabled) {
   border-color: rgba(185, 255, 106, 0.46);
@@ -12572,7 +12869,6 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-charm-cred-card.data-panel,
-.arena-command-console .arena-timer-chips,
 .arena-command-console .warbow-hero-actions {
   margin: 0;
 }
@@ -12694,12 +12990,6 @@ a.podium-address-explorer:hover .address-inline__label {
   color: var(--yga-teal-live, #7ef1ff);
 }
 
-.arena-command-console .arena-timer-chips {
-  display: grid;
-  gap: 0.42rem;
-  padding: 0.55rem;
-}
-
 .arena-command-console .arena-timer-chips__gate {
   display: grid;
   gap: 0.28rem;
@@ -12708,9 +12998,15 @@ a.podium-address-explorer:hover .address-inline__label {
   border: 1px solid rgba(77, 231, 200, 0.14);
   border-radius: 0.5rem;
   background: rgba(4, 18, 26, 0.72);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "chip-title chip-aside"
+    "chip-epoch chip-aside"
+    "chip-body chip-body";
 }
 
 .arena-command-console .arena-timer-chips__title {
+  grid-area: chip-title;
   margin: 0;
   overflow: hidden;
   color: #ffffff;
@@ -12726,14 +13022,20 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-timer-chips__head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.4rem;
+  display: contents;
+}
+
+.arena-command-console .arena-timer-chips__aside {
+  grid-area: chip-aside;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  justify-self: end;
   min-width: 0;
 }
 
 .arena-command-console .arena-timer-chips__body {
+  grid-area: chip-body;
   display: grid;
   gap: 0.2rem;
   min-width: 0;
@@ -12752,6 +13054,7 @@ a.podium-address-explorer:hover .address-inline__label {
   display: grid;
   gap: 0.08rem;
   min-width: 0;
+  text-align: right;
 }
 
 .arena-command-console .arena-timer-chips__label {
@@ -12790,75 +13093,83 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-timer-chips__places {
-  display: table;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.12rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .arena-command-console .arena-timer-chips__place {
-  display: table-row;
-}
-
-.arena-command-console .arena-timer-chips__place-rank,
-.arena-command-console .arena-timer-chips__place-prize-amount,
-.arena-command-console .arena-timer-chips__place-prize-unit,
-.arena-command-console .arena-timer-chips__place-score,
-.arena-command-console .arena-timer-chips__place-identity {
-  display: table-cell;
-  vertical-align: middle;
-  padding: 0;
-  line-height: 1.15;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  font-size: 0.66rem;
 }
 
 .arena-command-console .arena-timer-chips__place-rank {
-  width: 1.35rem;
-  padding-right: 0.28rem;
+  flex: 0 0 1.35rem;
+  padding-right: 0.12rem;
   color: rgba(232, 192, 74, 0.9);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.62rem;
+  font-size: inherit;
   font-weight: 800;
   letter-spacing: 0.03em;
+  line-height: 1;
   text-align: left;
   white-space: nowrap;
 }
 
+.arena-command-console .arena-timer-chips__place-prize {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
 .arena-command-console .arena-timer-chips__place-prize-amount {
-  padding-right: 0.28rem;
+  flex: 0 0 5ch;
+  width: 5ch;
   color: rgba(240, 255, 246, 0.88);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.66rem;
+  font-size: inherit;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   text-align: right;
   white-space: nowrap;
 }
 
 .arena-command-console .arena-timer-chips__place-prize-unit {
-  padding-right: 0.28rem;
+  flex: 0 0 auto;
   color: rgba(185, 255, 106, 0.72);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.58rem;
+  font-size: inherit;
   font-weight: 800;
   letter-spacing: 0.05em;
-  text-align: right;
+  line-height: 1;
+  text-align: left;
   white-space: nowrap;
 }
 
 .arena-command-console .arena-timer-chips__place-score {
+  flex: 1 1 0;
+  min-width: 0;
   padding-right: 0.28rem;
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.64rem;
+  font-size: inherit;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   text-align: right;
   white-space: nowrap;
 }
 
 .arena-command-console .arena-timer-chips__place-identity {
-  width: 1%;
-  font-size: 0.66rem;
+  flex: 0 0 auto;
+  font-size: inherit;
   text-align: right;
   white-space: nowrap;
 }
@@ -12868,20 +13179,21 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-timer-chips__lock {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.8rem;
-  min-height: 1.35rem;
-  padding: 0 0.35rem;
-  border: 1px solid rgba(232, 192, 74, 0.28);
-  border-radius: 999px;
+  grid-area: chip-epoch;
+  display: block;
+  justify-self: start;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
   color: var(--yga-gold);
-  background: rgba(232, 192, 74, 0.08);
   font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0.08em;
+  text-align: left;
 }
 
 .arena-xp-hero {
@@ -12917,36 +13229,72 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .locked-until-level {
   position: relative;
+  display: block;
   isolation: isolate;
   overflow: hidden;
 }
 
 .locked-until-level__content {
-  opacity: 0.42;
-  filter: blur(2.5px) saturate(0.62) brightness(0.7);
+  min-width: 0;
+  opacity: 0.55;
+  filter: blur(5px) saturate(0.65) brightness(0.75);
   pointer-events: none;
   user-select: none;
-  transform: translateZ(0);
+}
+
+.locked-until-level.podium-block {
+  padding: 0;
+}
+
+.locked-until-level.podium-block .locked-until-level__content {
+  padding: 0.85rem 1rem;
+}
+
+.locked-until-level.glass-panel,
+.locked-until-level.glass-panel.glass-panel--gold {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.arena-command-console .locked-until-level.arena-timer-chips__gate {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.arena-command-console .locked-until-level.arena-timer-chips__gate .locked-until-level__content {
+  padding: 0.45rem 0.5rem;
 }
 
 .locked-until-level__overlay {
   position: absolute;
-  inset: 0.55rem;
-  z-index: 4;
+  inset: 0;
+  z-index: 1;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   align-content: center;
   justify-items: center;
   gap: 0.34rem;
+  min-width: 0;
+  min-height: 0;
   padding: 0.8rem;
-  border: 1px solid rgba(232, 192, 74, 0.28);
-  border-radius: 0.78rem;
+  border: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
+  border-radius: inherit;
   background:
-    radial-gradient(circle at 50% 0%, rgba(232, 192, 74, 0.2), transparent 38%),
-    rgba(3, 10, 16, 0.76);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent 50%),
+    rgba(8, 18, 32, 0.05);
   color: #f7f1c6;
   text-align: center;
-  backdrop-filter: blur(7px) saturate(1.12);
+  backdrop-filter: blur(var(--yga-glass-blur, 18px)) saturate(1.12);
+  box-shadow: var(--yga-glass-inset, inset 0 1px 0 rgba(255, 255, 255, 0.07));
+}
+
+.locked-until-level.glass-panel--gold .locked-until-level__overlay,
+.arena-command-console .locked-until-level.arena-timer-chips__gate--locked .locked-until-level__overlay {
+  border-color: rgba(232, 192, 74, 0.28);
 }
 
 .locked-until-level__icon {
@@ -12981,11 +13329,9 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .locked-until-level--compact .locked-until-level__overlay {
-  inset: 0.28rem;
   grid-template-columns: auto minmax(0, auto) auto;
   grid-auto-flow: column;
   padding: 0.35rem 0.45rem;
-  border-radius: 0.52rem;
 }
 
 .locked-until-level--compact .locked-until-level__icon {
@@ -13000,6 +13346,11 @@ a.podium-address-explorer:hover .address-inline__label {
   display: grid;
   gap: 0.28rem;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "chip-title chip-aside"
+    "chip-epoch chip-aside"
+    "chip-body chip-body";
 }
 
 .arena-level-gate__help-row {
@@ -13017,14 +13368,6 @@ a.podium-address-explorer:hover .address-inline__label {
   color: inherit;
   font-weight: 700;
   cursor: pointer;
-}
-
-.arena-command-console .warbow-hero-actions-wrap.locked-until-level--panel .locked-until-level__overlay {
-  inset: 0.5rem;
-  border-color: rgba(232, 192, 74, 0.24);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(232, 192, 74, 0.14), transparent 36%),
-    rgba(2, 10, 16, 0.8);
 }
 
 .arena-command-console .warbow-hero-actions-wrap .locked-until-level__content {
@@ -13105,20 +13448,33 @@ a.podium-address-explorer:hover .address-inline__label {
   padding: 0.55rem;
 }
 
+/* Locked WarBow gate sits in the primary hub below Buy CHARM (left of side rail). */
+.arena-command-console__hub-warbow {
+  min-width: 0;
+}
+
+.arena-command-console .arena-simple__warbow-gate.arena-level-gate--locked {
+  min-height: 8.5rem;
+  border: 1px solid rgba(185, 255, 106, 0.16);
+  border-radius: 0.65rem;
+  background:
+    linear-gradient(135deg, rgba(185, 255, 106, 0.08), rgba(255, 177, 77, 0.055)),
+    rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.55rem 1.35rem rgba(0, 0, 0, 0.18);
+}
+
+.arena-command-console .arena-simple__warbow-gate-preview {
+  gap: 0.48rem;
+  padding: 0.55rem;
+}
+
 .arena-command-console__warbow-lane {
   position: relative;
   z-index: 1;
   margin-top: 0.75rem;
   min-width: 0;
-}
-
-.arena-command-console__warbow-lane .warbow-hero-actions-wrap.arena-level-gate--locked {
-  min-height: 9.5rem;
-}
-
-.arena-command-console__warbow-lane .warbow-hero-actions-wrap.arena-level-gate--locked .locked-until-level__content {
-  max-height: 12rem;
-  overflow: hidden;
 }
 
 .arena-command-console__warbow-lane .warbow-hero-card--viewer-summary {
@@ -13300,45 +13656,6 @@ a.podium-address-explorer:hover .address-inline__label {
   color: #ffffff;
 }
 
-.arena-command-console .arena-simple__podium-panel {
-  margin-top: 0;
-  border: 1px solid rgba(77, 231, 200, 0.26);
-  background:
-    linear-gradient(rgba(77, 231, 200, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(77, 231, 200, 0.03) 1px, transparent 1px),
-    radial-gradient(circle at 16% 12%, rgba(45, 212, 168, 0.22), transparent 32%),
-    radial-gradient(circle at 86% 8%, rgba(232, 192, 74, 0.14), transparent 30%),
-    radial-gradient(circle at 50% 120%, rgba(139, 124, 246, 0.12), transparent 42%),
-    linear-gradient(145deg, rgba(4, 12, 22, 0.95), rgba(7, 30, 34, 0.9));
-  background-size: 28px 28px, 28px 28px, auto, auto, auto, auto;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 1.2rem 3rem rgba(0, 0, 0, 0.28),
-    0 0 0 1px rgba(77, 231, 200, 0.06);
-}
-
-.arena-command-console .arena-simple__podium-panel::before {
-  background:
-    linear-gradient(115deg, transparent 0 18%, rgba(255, 255, 255, 0.12) 26%, transparent 38%),
-    radial-gradient(circle at 72% 20%, rgba(232, 192, 74, 0.16), transparent 24%),
-    radial-gradient(circle at 26% 76%, rgba(77, 231, 200, 0.14), transparent 36%);
-  opacity: 0.5;
-}
-
-.arena-command-console .arena-simple__podium-panel::after {
-  display: none;
-}
-
-.arena-command-console .arena-simple__podium-panel .section-heading {
-  border: 1px solid rgba(232, 192, 74, 0.24);
-  background:
-    radial-gradient(circle at 12% 0%, rgba(232, 192, 74, 0.18), transparent 42%),
-    linear-gradient(180deg, rgba(10, 35, 40, 0.86), rgba(5, 18, 28, 0.72));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0.8rem 1.8rem rgba(0, 0, 0, 0.18);
-}
-
 .arena-command-console .arena-simple__podium-card {
   border-color: rgba(77, 231, 200, 0.2);
   background:
@@ -13350,14 +13667,12 @@ a.podium-address-explorer:hover .address-inline__label {
     0 0.8rem 1.9rem rgba(0, 0, 0, 0.24);
 }
 
-.arena-command-console .arena-simple__podium-card h3,
-.arena-command-console .arena-simple__podium-panel .section-heading h2 {
+.arena-command-console .arena-simple__podium-card h3 {
   color: #ffffff;
   text-shadow: 0 0 1rem color-mix(in srgb, var(--podium-card-accent, var(--yga-gold)) 22%, transparent);
 }
 
-.arena-command-console .arena-simple__podium-card-head p,
-.arena-command-console .arena-simple__podium-panel .section-heading__lede {
+.arena-command-console .arena-simple__podium-card-head p {
   color: var(--arena-console-muted);
 }
 
@@ -13414,17 +13729,18 @@ a.podium-address-explorer:hover .address-inline__label {
   min-height: 17rem;
 }
 
-.arena-simple__podium-card--locked .locked-until-level__overlay {
-  inset: 0.7rem;
-  border-radius: 0.9rem;
-}
 
 @media (max-width: 980px) {
   .arena-command-console__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: none;
   }
 
-  .arena-command-console__primary {
+  .arena-command-console__grid > .arena-simple__timer-row,
+  .arena-command-console__grid > .arena-simple__buy-panel,
+  .arena-command-console__grid > .arena-command-console__hub-warbow,
+  .arena-command-console__side-rail {
+    grid-area: auto;
     grid-column: 1 / -1;
     grid-row: auto;
   }
@@ -13440,7 +13756,7 @@ a.podium-address-explorer:hover .address-inline__label {
 @media (max-width: 720px) {
   .arena-command-console {
     width: min(100%, calc(100% - 1rem));
-    padding: 0.75rem;
+    padding: 0;
   }
 
   .arena-command-console__topbar,
@@ -14872,75 +15188,75 @@ a.podium-address-explorer:hover .address-inline__label {
   mix-blend-mode: screen;
 }
 
-/* Custom cursor utilities. Production cursor PNGs are normalized to 32px with transparent backgrounds. */
+/* Custom cursor utilities. Production cursors are 22×22 neon PNGs (transparent). */
 .cursor-default {
-  cursor: url("/art/cursors/default.png") 4 4, auto;
+  cursor: url("/art/cursors/default.png") 3 3, auto;
 }
 .cursor-primary-cta {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 .cursor-danger-pvp {
-  cursor: url("/art/cursors/pointer.png") 10 2, crosshair;
+  cursor: url("/art/cursors/pointer.png") 7 1, crosshair;
 }
 .cursor-grab,
 .cursor-slider-grab {
-  cursor: url("/art/cursors/grab.png") 16 16, grab;
+  cursor: url("/art/cursors/grab.png") 11 11, grab;
 }
 .cursor-grabbing,
 .cursor-grab:active,
 .cursor-slider-grab:active {
-  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 11 11, grabbing;
 }
 
 /* Apply grab cursors to native range sliders used by buy controls. */
 input[type="range"] {
-  cursor: url("/art/cursors/grab.png") 16 16, grab;
+  cursor: url("/art/cursors/grab.png") 11 11, grab;
 }
 input[type="range"]:active {
-  cursor: url("/art/cursors/grabbing.png") 16 16, grabbing;
+  cursor: url("/art/cursors/grabbing.png") 11 11, grabbing;
 }
 
 /* Outbound links that leave the dapp (issue #57). Pair with `rel` + target on anchors. */
 .cursor-external-link {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 /* Issue #60 — additional cursor roles (see GitLab #60 + art/README § cursors). */
 .cursor-link {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 .cursor-loading {
-  cursor: url("/art/cursors/progress.png") 6 5, progress;
+  cursor: url("/art/cursors/progress.png") 4 4, progress;
 }
 .cursor-wait {
-  cursor: url("/art/cursors/wait.png") 16 16, wait;
+  cursor: url("/art/cursors/wait.png") 11 11, wait;
 }
 .cursor-progress {
-  cursor: url("/art/cursors/progress.png") 6 5, progress;
+  cursor: url("/art/cursors/progress.png") 4 4, progress;
 }
 .cursor-text {
-  cursor: url("/art/cursors/text.png") 16 16, text;
+  cursor: url("/art/cursors/text.png") 11 11, text;
 }
 .cursor-not-allowed {
-  cursor: url("/art/cursors/not-allowed.png") 16 16, not-allowed;
+  cursor: url("/art/cursors/not-allowed.png") 11 11, not-allowed;
 }
 .cursor-context-menu {
-  cursor: url("/art/cursors/context-menu.png") 6 5, context-menu;
+  cursor: url("/art/cursors/context-menu.png") 4 4, context-menu;
 }
 .cursor-cancel {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 .cursor-copy {
-  cursor: url("/art/cursors/pointer.png") 10 2, copy;
+  cursor: url("/art/cursors/pointer.png") 7 1, copy;
 }
 .cursor-help {
-  cursor: url("/art/cursors/help.png") 16 16, help;
+  cursor: url("/art/cursors/help.png") 11 11, help;
 }
 
 /* RainbowKit modal / account chrome — keep same affordances as in-app links. */
 [data-rk] button:not(:disabled):not([aria-disabled="true"]),
 [data-rk] [role="button"]:not([aria-disabled="true"]):not([data-disabled]) {
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -14972,7 +15288,7 @@ input[type="range"]:active {
   background: rgba(126, 241, 255, 0.04);
   color: var(--yo-cyan-soft);
   font: inherit;
-  cursor: url("/art/cursors/pointer.png") 10 2, pointer;
+  cursor: url("/art/cursors/pointer.png") 7 1, pointer;
   text-align: left;
 }
 
@@ -15102,10 +15418,8 @@ input[type="range"]:active {
   gap: 0.35rem;
 }
 
-/* Issue #294: shared primitive glass normalization for status rows and list cards. */
-.card-list li,
-.loading-state,
-.status-message {
+/* Issue #294: shared primitive glass normalization for list cards. */
+.card-list li {
   border-color: var(--yo-line);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 42%),

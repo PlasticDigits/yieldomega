@@ -74,16 +74,9 @@
 /* Glass surfaces */
 .glass-arena-console,
 .arena-command-console.glass-arena-console {
-  border: 1px solid var(--yga-glass-border);
-  border-radius: clamp(1rem, 2vw, 1.35rem);
-  background:
-    linear-gradient(rgba(45, 212, 168, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(45, 212, 168, 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 18% 14%, rgba(45, 212, 168, 0.12), transparent 38%),
-    radial-gradient(circle at 82% 8%, rgba(232, 192, 74, 0.08), transparent 32%),
-    linear-gradient(168deg, rgba(4, 8, 16, 0.96), rgba(7, 18, 31, 0.94));
-  background-size: 24px 24px, 24px 24px, auto, auto, auto;
-  box-shadow: var(--yga-glass-shadow), var(--yga-glass-inset);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .glass-deck,
@@ -172,9 +165,10 @@
 /* Active player pulse */
 .yga-active-player {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  max-width: min(60%, 22rem);
+  max-width: min(92%, 36rem);
   padding: 0.35rem 0.7rem;
   border: 1px solid var(--yga-glass-border-live);
   border-radius: 999px;
@@ -257,7 +251,7 @@
   padding-top: 0.35rem;
 }
 
-.yga-arena-shell--play-first .arena-simple__hub {
+.yga-arena-shell--play-first .arena-command-console__grid {
   gap: 0.65rem;
 }
 

@@ -90,22 +90,24 @@ def _save_ledger_entry(path: Path, key: str, prediction_id: str) -> None:
     tmp.replace(path)
 
 
-def _reload_prediction_resilient(prediction: Any, *, job_label: str) -> None:
-    """``prediction.reload()`` with retries — same prediction id, no duplicate creates."""
+def _reload_prediction_resilient(
+    prediction: Any, *, job_label: str, max_net_errors: int = 40
+) -> None:
+    """``prediction.reload()`` with bounded retries — same prediction id, no duplicate creates."""
     net_errors = 0
     while True:
         try:
             prediction.reload()
             return
         except Exception as exc:
-            if not _is_transient_network_error(exc) or net_errors >= 40:
+            if not _is_transient_network_error(exc) or net_errors >= max_net_errors:
                 raise
             net_errors += 1
             wait = min(8.0, 0.35 * net_errors + 0.15 * (net_errors**1.5))
             print(
                 f"[{job_label}] reload flake ({exc!s}); same prediction "
                 f"https://replicate.com/p/{getattr(prediction, 'id', '?')} "
-                f"retry {net_errors}/40 in {wait:.1f}s…",
+                f"retry {net_errors}/{max_net_errors} in {wait:.1f}s…",
                 file=sys.stderr,
             )
             time.sleep(wait)
@@ -118,6 +120,7 @@ def wait_prediction_bounded(
     max_seconds: float,
     job_label: str,
     poll_progress: bool = False,
+    reload_retries: int = 40,
 ) -> None:
     """Poll until terminal state or ``max_seconds``, then cancel and raise."""
     t0 = time.monotonic()
@@ -150,7 +153,9 @@ def wait_prediction_bounded(
                 f"https://replicate.com/p/{pid}"
             )
         time.sleep(client.poll_interval)
-        _reload_prediction_resilient(prediction, job_label=job_label)
+        _reload_prediction_resilient(
+            prediction, job_label=job_label, max_net_errors=reload_retries
+        )
 
 
 def run_model_bounded(
@@ -166,6 +171,7 @@ def run_model_bounded(
     poll_progress: bool = False,
     ledger_path: Path | None = None,
     ledger_key: str = "",
+    reload_retries: int = 40,
 ) -> Any:
     """
     Create a model prediction, poll with a wall-clock cap, return file output like ``replicate.run``.
@@ -215,7 +221,12 @@ def run_model_bounded(
             file=sys.stderr,
         )
     wait_prediction_bounded(
-        prediction, client, max_seconds=deadline, job_label=label, poll_progress=poll_progress
+        prediction,
+        client,
+        max_seconds=deadline,
+        job_label=label,
+        poll_progress=poll_progress,
+        reload_retries=reload_retries,
     )
 
     if prediction.status == "failed":

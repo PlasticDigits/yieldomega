@@ -33,7 +33,7 @@ export async function ensureDoubTimeArenaAllowance({
   doubAddress,
   timeArenaAddress,
   needWei,
-  unlimitedPreferred = false,
+  unlimitedPreferred = true,
 }: EnsureDoubTimeArenaAllowanceParams): Promise<void> {
   if (needWei <= 0n) {
     return;

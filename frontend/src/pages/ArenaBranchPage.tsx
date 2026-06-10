@@ -33,7 +33,7 @@ export function ArenaBranchPage() {
     return <Navigate to="/arena/protocol" replace />;
   }
   if (isReferralSlugReservedForRouting(s)) {
-    return <Navigate to="/arena" replace />;
+    return <Navigate to="/" replace />;
   }
   return (
     <Suspense fallback={<ArenaRouteFallback />}>

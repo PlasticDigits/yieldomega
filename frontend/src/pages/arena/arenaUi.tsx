@@ -33,7 +33,7 @@ export type RankingRow = {
   highlight?: boolean;
 };
 
-const PODIUM_RANK_TROPHY_SRC = [
+export const PODIUM_RANK_TROPHY_SRC = [
   "/art/icons/arena-podium-rank-first.png?v=glass3",
   "/art/icons/arena-podium-rank-second.png?v=glass3",
   "/art/icons/arena-podium-rank-third.png?v=glass3",

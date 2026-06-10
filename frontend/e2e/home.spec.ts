@@ -8,9 +8,7 @@ test("home shows title and nav links", async ({ page }) => {
 
   await page.goto("/home");
   await expect(page.getByRole("heading", { name: "Yield Omega", level: 1 })).toBeVisible();
-  await expect(
-    page.getByLabel("Primary").getByRole("link", { name: "Time Arena" }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Primary").getByRole("link", { name: "Time Arena" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "PLAY TIME ARENA" })).toBeVisible();
   await expect(page.getByRole("link", { name: "AUDIT", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /Arena AUDIT/i })).toBeVisible();

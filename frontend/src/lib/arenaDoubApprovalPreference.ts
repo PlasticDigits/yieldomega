@@ -2,10 +2,9 @@
 //
 // CL8Y → Time Arena ERC-20 approval sizing (GitLab #143 / audit H-01 coupling).
 
-import { useCallback, useEffect, useState } from "react";
 import { maxUint256 } from "viem";
 
-/** Local preference: opt-in unlimited `approve(TimeArena, type(uint256).max)` ([GitLab #143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143)). */
+/** Retired localStorage keys from the removed unlimited-approve toggle ([#277](https://gitlab.com/PlasticDigits/yieldomega/-/issues/277)). */
 export const CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY = [
   "yieldomega",
   "erc20",
@@ -20,18 +19,9 @@ export const CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY = [
   "v1",
 ].join(".");
 
+/** Arena spend paths always approve `type(uint256).max` for Time Arena ([#143](https://gitlab.com/PlasticDigits/yieldomega/-/issues/143)). */
 export function readArenaDoubUnlimitedApproval(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  try {
-    return (
-      window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY) === "1" ||
-      window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY) === "1"
-    );
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export function writeCl8yArenaUnlimitedApproval(enabled: boolean): void {
@@ -61,7 +51,7 @@ export function writeCl8yArenaUnlimitedApproval(enabled: boolean): void {
 export const CL8Y_ARENA_APPROVE_INCLUSION_HEADROOM_BPS = 50n;
 
 /**
- * Size for `approve(TimeArena, amount)` on CL8Y: **`needWei` + inclusion headroom** unless unlimited is opted in (`maxUint256`).
+ * Size for `approve(TimeArena, amount)` on CL8Y: **`maxUint256`** when unlimited (default), else **`needWei` + inclusion headroom**.
  */
 export function arenaDoubApprovalAmountWei(needWei: bigint, unlimitedPreferred: boolean): bigint {
   if (needWei <= 0n) {
@@ -76,13 +66,5 @@ export function arenaDoubApprovalAmountWei(needWei: bigint, unlimitedPreferred: 
 }
 
 export function useCl8yArenaUnlimitedApproval(): readonly [boolean, (next: boolean) => void] {
-  const [value, setValue] = useState(false);
-  useEffect(() => {
-    setValue(readArenaDoubUnlimitedApproval());
-  }, []);
-  const set = useCallback((next: boolean) => {
-    writeCl8yArenaUnlimitedApproval(next);
-    setValue(next);
-  }, []);
-  return [value, set] as const;
+  return [true, () => {}] as const;
 }

@@ -16,19 +16,10 @@ import { AlbumPlayerBar } from "@/audio/AlbumPlayerBar";
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "nav-link nav-link--dense nav-link--active" : "nav-link nav-link--dense";
 
-function isArenaPlayPath(pathname: string): boolean {
-  return (
-    pathname === "/" ||
-    pathname === "/arena" ||
-    (pathname.startsWith("/arena/") && !pathname.startsWith("/arena/protocol"))
-  );
-}
-
 const TARGET_CHAIN_ID = configuredTargetChainId();
 
 const HEADER_ICONS = {
   home: "/art/icons/header-home.png",
-  arena: "/art/icons/header-arena.png",
   audit: "/art/icons/nav-protocol.png",
   referrals: "/art/icons/header-referrals.png",
   networkLocal: "/art/icons/header-network-local.png",
@@ -223,21 +214,6 @@ export function RootLayout() {
                     </NavLink>
                   </div>
                   <nav className="app-nav app-nav--dense" aria-label="Primary">
-                    <NavLink
-                      to="/arena"
-                      className={() =>
-                        isArenaPlayPath(location.pathname)
-                          ? "nav-link nav-link--dense nav-link--active"
-                          : "nav-link nav-link--dense"
-                      }
-                      aria-label="Time Arena"
-                      title="Time Arena"
-                    >
-                      <HeaderIcon src={HEADER_ICONS.arena} />
-                      <span className="app-header__nav-label" aria-hidden="true">
-                        Time Arena
-                      </span>
-                    </NavLink>
                     <NavLink
                       to="/arena/protocol"
                       className={navLinkClass}

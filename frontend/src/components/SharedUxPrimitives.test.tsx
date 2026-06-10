@@ -47,6 +47,8 @@ describe("shared UX primitives (GitLab #294)", () => {
 
     expect(html).toContain("data-testid=\"primitive-status\"");
     expect(html).toContain("role=\"alert\"");
+    expect(html).toContain("status-message");
+    expect(html).toContain("status-message--error");
     expect(html).toContain("error-text");
   });
 

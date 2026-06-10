@@ -1,118 +1,112 @@
 {
   "model": "openai/gpt-image-2",
-  "style": "cyberminimalist-glass-arena",
+  "style": "cyberminimalist-neon",
+  "source": "text-only fresh HD prompts; no reference images required",
   "output": "frontend/public/art/cursors",
-  "size": "32x32",
+  "size": "22x22",
+  "parallel_workers": 10,
+  "retry_max": 1,
+  "reload_retries": 0,
   "jobs": [
     {
       "filename": "default.png",
       "css_name": "default",
       "fallback": "auto",
       "hotspot": [
-        4,
-        4
+        3,
+        3
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/default.gif",
-      "subject": "CSS default cursor: slim glass arrow pointer with navy core, teal rim light, tiny gold tip highlight. Classic idle-navigation arrow; hotspot at arrow tip (top-left). Minimal detail."
+      "subject": "Default arrow cursor: sharp top-left arrow tip, hollow dark navy fill, electric cyan rim."
     },
     {
       "filename": "pointer.png",
       "css_name": "pointer",
       "fallback": "pointer",
       "hotspot": [
-        10,
-        2
+        7,
+        1
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/pointer.gif",
-      "subject": "CSS pointer cursor: minimalist glass pointing hand OR chevron-hand hybrid \u2014 index extended, emerald/teal luminous edge, gold knuckle accent. One hand only, clearly clickable, not cartoon."
+      "subject": "Pointer hand cursor: simplified raised index-finger silhouette, cyan rim, no finger detail."
     },
     {
       "filename": "grab.png",
       "css_name": "grab",
       "fallback": "grab",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/grab.gif",
-      "subject": "CSS grab cursor: open glass grip brackets or half-closed tactical hand ready to drag a slider. Emerald edge glow, navy glass fill, gold hinge accent."
+      "subject": "Grab cursor: standard open hand cursor silhouette, palm and fingers readable, teal neon rim, dark navy fill."
     },
     {
       "filename": "grabbing.png",
       "css_name": "grabbing",
       "fallback": "grabbing",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/grabbing.gif",
-      "subject": "CSS grabbing cursor: closed glass grip / clenched tactical hand actively dragging. Same glass material language as grab state but clearly closed."
+      "subject": "Grabbing cursor: standard closed fist hand cursor silhouette, clenched fingers readable, teal neon rim, dark navy fill."
     },
     {
       "filename": "wait.png",
       "css_name": "wait",
       "fallback": "wait",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/wait.gif",
-      "subject": "CSS wait cursor: tiny glass hourglass or teal spinning wait ring. Blocking busy state, no digits."
+      "subject": "Wait cursor: tiny hourglass or spinner ring, single cyan outline, no sand detail."
     },
     {
       "filename": "context-menu.png",
       "css_name": "context-menu",
       "fallback": "context-menu",
       "hotspot": [
-        6,
-        5
+        4,
+        4
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/context-menu.png",
-      "subject": "CSS context-menu cursor: glass arrow pointer plus a small stacked glass menu tile beside it. Teal borders, navy fill, no text lines that read as letters."
+      "subject": "Context-menu cursor: small arrow plus one tiny menu tile, minimal cyan/teal lines."
     },
     {
       "filename": "help.png",
       "css_name": "help",
       "fallback": "help",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/help.gif",
-      "subject": "CSS help cursor: glossy glass coin-badge with a single teal question-mark symbol. Token-logo buckle language, no other text."
+      "subject": "Help cursor: compact question-mark symbol in a ring, cyan neon outline, readable at 22px."
     },
     {
       "filename": "progress.png",
       "css_name": "progress",
       "fallback": "progress",
       "hotspot": [
-        6,
-        5
+        4,
+        4
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/progress.gif",
-      "subject": "CSS progress cursor: glass default arrow plus a small partial teal progress ring. Working but still interactive; extremely simple."
+      "subject": "Progress cursor: arrow plus tiny partial activity ring, cyan arrow and teal ring."
     },
     {
       "filename": "text.png",
       "css_name": "text",
       "fallback": "text",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/text.gif",
-      "subject": "CSS text cursor: tall glass I-beam caret with teal stem, gold cap highlights, navy outline. Very narrow, no letters."
+      "subject": "Text cursor: thin I-beam with small caps, electric cyan stroke, dark navy core."
     },
     {
       "filename": "not-allowed.png",
       "css_name": "not-allowed",
       "fallback": "not-allowed",
       "hotspot": [
-        16,
-        16
+        11,
+        11
       ],
-      "mdn_example": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/not-allowed.gif",
-      "subject": "CSS not-allowed cursor: glass prohibition disc with warm gold rim and coral-red diagonal slash. Friendly but clear; no words."
+      "subject": "Not-allowed cursor: circle with diagonal slash, cyan ring and coral slash."
     }
   ]
 }

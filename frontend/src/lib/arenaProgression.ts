@@ -4,6 +4,7 @@
 export const MAX_PLAYER_LEVEL = 5;
 
 export type ArenaFeatureKey =
+  | "last_buy"
   | "time_booster"
   | "defended_streak"
   | "warbow"
@@ -11,6 +12,7 @@ export type ArenaFeatureKey =
 
 /** Minimum level required to unlock each mechanic (#299 matrix). */
 export const FEATURE_UNLOCK_LEVEL: Record<ArenaFeatureKey, number> = {
+  last_buy: 1,
   time_booster: 2,
   defended_streak: 3,
   warbow: 4,

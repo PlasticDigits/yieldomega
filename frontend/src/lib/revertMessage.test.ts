@@ -98,6 +98,11 @@ describe("friendlyRevertFromUnknown", () => {
     expect(msg).not.toContain("supersecretapikey");
     expect(msg).toContain(REDACTED_RPC_URL_MARKER);
   });
+
+  it("maps stale wagmi connector errors to wallet-not-ready copy", () => {
+    const err = new Error("connection.connector.getChainId is not a function");
+    expect(friendlyRevertFromUnknown(err)).toMatch(/wait a moment and retry/i);
+  });
 });
 
 describe("friendlyRevertFromUnknown — GasSoftCapExceededError (issue #176)", () => {

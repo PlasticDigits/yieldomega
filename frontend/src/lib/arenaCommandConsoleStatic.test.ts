@@ -47,14 +47,19 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(arenaSimplePage).toContain('aria-label="Last Buy"');
     expect(arenaSimplePage).not.toContain("commandDecisionRow");
     expect(arenaSimplePage).not.toContain("arena-command-console__decision-row");
-    expect(arenaSimplePage).toContain("arena-simple__slider-row--pay-");
+    expect(arenaSimplePage).toContain("arena-simple__pay-slider-row--pay-");
     expect(arenaSimplePage).toContain('data-testid="arena-simple-buy-receive"');
-    expect(arenaSimplePage).toContain("<ArenaLastBuyPodiumChip");
+    expect(arenaSimplePage).toContain("<ArenaTimerHero");
+    expect(arenaSimplePage).toContain("<ArenaLastBuyPodiumLeaderboard");
+    expect(arenaSimplePage).toContain("arena-simple__timer-panel-stack");
+    expect(arenaSimplePage).not.toContain("<ArenaLastBuyPodiumChip");
     expect(arenaSimplePage).toContain("<ArenaTimerChips");
     expect(arenaSimplePage).toContain("podiumRows={podiumReads.data}");
     expect(arenaSimplePage).toContain("onOpenWalletProfile={onOpenWalletProfile}");
     expect(arenaCharmCredCard).toContain("<ArenaXpHero />");
     expect(arenaSimplePage).toContain('data-testid="arena-command-console-warbow"');
+    expect(arenaSimplePage).toContain("arena-command-console__hub-warbow");
+    expect(arenaSimplePage).toContain("arena-simple__warbow-gate");
     expect(arenaSimplePage).toContain("<ArenaWarbowHeroPanel");
   });
 
@@ -62,8 +67,10 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(css).toContain("Arena production command console (GitLab #291)");
     expect(css).toContain("yieldomega-glass-arena.css");
     expect(css).toContain(".arena-command-console__grid");
+    expect(css).toContain(".arena-command-console__hub-warbow");
     expect(css).toContain(".arena-command-console__warbow-lane");
-    expect(css).toContain(".arena-command-console .arena-simple__hub");
+    expect(css).toContain("grid-area: console-buy");
+    expect(css).toContain("grid-area: console-side");
     expect(css).toContain(".arena-command-console .arena-simple__connect-pitch");
     expect(css).toContain(".arena-command-console .arena-simple__connect .wallet-action--connect");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr)");

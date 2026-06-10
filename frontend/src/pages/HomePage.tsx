@@ -66,7 +66,7 @@ export function HomePage() {
           </ul>
           <div className="home-hero__actions">
             <motion.div className="home-hero__cta-wrap" {...ctaMotion}>
-              <Link to="/arena" className="btn-primary btn-primary--xl btn-primary--priority">
+              <Link to="/" className="btn-primary btn-primary--xl btn-primary--priority">
                 PLAY TIME ARENA
               </Link>
             </motion.div>

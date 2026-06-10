@@ -239,7 +239,7 @@ shape constraint:
   [`frontend/public/art/README.md`](../../frontend/public/art/README.md)
   **Canonical token marks**). Legacy `art/icons/token-*.png` rasters remain
   for replicate-art pipelines, not new product wiring for those tickers.
-- `cursors/` — 32px PNG bitmap cursors wired through `index.css`
+- `cursors/` — 22px PNG bitmap cursors wired through `index.css`
   (`.btn-primary`, `.btn-secondary--critical`, `input[type="range"]`).
 - `social/` — OG / Twitter / favicon source rasters consumed by
   `frontend/index.html` and `frontend/vite.config.ts`.

@@ -2,13 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Generate and normalize the frontend cursor pack.
 
-Cursors follow the approved **cyberminimalist Glass Arena** direction (#290):
-deep navy glass material, emerald/teal live glow, warm gold accents, crisp
-silhouettes — not the legacy blocky arcade-cartoon style.
+Cursors follow the **cyberminimalist neon** direction (#290): simple luminous icon
+silhouettes, high-definition source renders, transparent 22px PNG delivery.
 
-The Replicate path sends Glass Arena icon references plus the MDN unstyled
-cursor example for each CSS role. When REPLICATE_API_TOKEN is unavailable,
-``--derivatives-only`` still emits small local glass fallbacks.
+The Replicate path creates fresh icons from text-only briefs by default. When
+REPLICATE_API_TOKEN is unavailable, ``--derivatives-only`` still emits small local
+neon fallbacks.
 
 Run from repo root or scripts/replicate-art::
 
@@ -24,8 +23,8 @@ import json
 import os
 import subprocess
 import sys
-import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,25 +48,32 @@ import generate_assets as ga  # noqa: E402
 import replicate_bounded_run as _bounded  # noqa: E402
 
 
-CURSOR_SIZE = 32
-ICONS_DIR = ga.REPO_ROOT / "frontend" / "public" / "art" / "icons"
+CURSOR_SIZE = 22
+PARALLEL_WORKERS = 10
+RETRY_MAX = 1
+RELOAD_RETRIES = 0
 
-# Glass Arena palette (--yga-* / --yo-* in index.css)
-_GLASS_NAVY = (7, 18, 31, 255)
-_GLASS_FILL = (8, 18, 32, 210)
-_GLASS_TEAL = (126, 241, 255, 255)
-_GLASS_EMERALD = (45, 212, 168, 255)
-_GLASS_GOLD = (232, 192, 74, 255)
-_GLASS_DANGER = (255, 107, 122, 255)
-_GLASS_HIGHLIGHT = (255, 255, 255, 72)
+# Cyberminimalist neon palette (--yga-* / --yo-* in index.css)
+_NEON_NAVY = (7, 18, 31, 255)
+_NEON_FILL = (12, 28, 48, 220)
+_NEON_CYAN = (126, 241, 255, 255)
+_NEON_TEAL = (45, 212, 168, 255)
+_NEON_DANGER = (255, 107, 122, 255)
 
-GLASS_CURSOR_STYLE = """
-Yield Omega Glass Arena UI cursor sprite (32x32 display).
-Cyberminimalist glassmorphism command-console finish: deep navy glass body,
-emerald/teal rim glow, warm gold accent highlights, subtle luminous bevel,
-crisp readable silhouette. No arcade cartoon gloves, no chunky mascot outlines,
-no blocky hills, no characters, no text, no watermark, no photorealism.
-Transparent background only; one cursor affordance per image.
+CURSOR_NEGATIVE = """
+no old cursor pack style, no stock operating-system cursor, no glassmorphism, no bevel,
+no gold accents, no bulky shadow, no glow blob, no photorealism, no 3D shading,
+no texture, no character, no words, no watermark, no complex detail, no scene,
+no background art, no pixelated edges, no low-resolution jaggies
+""".strip()
+
+NEON_CURSOR_STYLE = """
+Fresh Yield Omega UI cursor icon.
+Render a high-definition source icon at native model resolution, centered and isolated for
+later local downscaling to 22x22. Make the silhouette extremely simple and legible: one
+neon cursor affordance, crisp vector-like geometry, 1-2 luminous stroke colors
+(electric cyan, teal, or coral) over a very dark navy interior fill. Use clean negative
+space, no interior decoration, and edges that will stay sharp after downscaling.
 """.strip()
 
 
@@ -107,90 +113,81 @@ def jobs() -> list[CursorJob]:
             "default",
             "default",
             "auto",
-            (4, 4),
+            (3, 3),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/default.gif",
-            "CSS default cursor: slim glass arrow pointer with navy core, teal rim light, tiny gold tip "
-            "highlight. Classic idle-navigation arrow; hotspot at arrow tip (top-left). Minimal detail.",
+            "Default arrow cursor: sharp top-left arrow tip, hollow dark navy fill, electric cyan rim.",
         ),
         CursorJob(
             "pointer",
             "pointer",
             "pointer",
-            (10, 2),
+            (7, 1),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/pointer.gif",
-            "CSS pointer cursor: minimalist glass pointing hand OR chevron-hand hybrid — index extended, "
-            "emerald/teal luminous edge, gold knuckle accent. One hand only, clearly clickable, not cartoon.",
+            "Pointer hand cursor: simplified raised index-finger silhouette, cyan rim, no finger detail.",
         ),
         CursorJob(
             "grab",
             "grab",
             "grab",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/grab.gif",
-            "CSS grab cursor: open glass grip brackets or half-closed tactical hand ready to drag a slider. "
-            "Emerald edge glow, navy glass fill, gold hinge accent.",
+            "Grab cursor: standard open hand cursor silhouette, palm and fingers readable, teal neon rim, dark navy fill.",
         ),
         CursorJob(
             "grabbing",
             "grabbing",
             "grabbing",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/grabbing.gif",
-            "CSS grabbing cursor: closed glass grip / clenched tactical hand actively dragging. Same glass "
-            "material language as grab state but clearly closed.",
+            "Grabbing cursor: standard closed fist hand cursor silhouette, clenched fingers readable, teal neon rim, dark navy fill.",
         ),
         CursorJob(
             "wait",
             "wait",
             "wait",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/wait.gif",
-            "CSS wait cursor: tiny glass hourglass or teal spinning wait ring. Blocking busy state, no digits.",
+            "Wait cursor: tiny hourglass or spinner ring, single cyan outline, no sand detail.",
         ),
         CursorJob(
             "context-menu",
             "context-menu",
             "context-menu",
-            (6, 5),
+            (4, 4),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/context-menu.png",
-            "CSS context-menu cursor: glass arrow pointer plus a small stacked glass menu tile beside it. "
-            "Teal borders, navy fill, no text lines that read as letters.",
+            "Context-menu cursor: small arrow plus one tiny menu tile, minimal cyan/teal lines.",
         ),
         CursorJob(
             "help",
             "help",
             "help",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/help.gif",
-            "CSS help cursor: glossy glass coin-badge with a single teal question-mark symbol. Token-logo "
-            "buckle language, no other text.",
+            "Help cursor: compact question-mark symbol in a ring, cyan neon outline, readable at 22px.",
         ),
         CursorJob(
             "progress",
             "progress",
             "progress",
-            (6, 5),
+            (4, 4),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/progress.gif",
-            "CSS progress cursor: glass default arrow plus a small partial teal progress ring. Working but "
-            "still interactive; extremely simple.",
+            "Progress cursor: arrow plus tiny partial activity ring, cyan arrow and teal ring.",
         ),
         CursorJob(
             "text",
             "text",
             "text",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/text.gif",
-            "CSS text cursor: tall glass I-beam caret with teal stem, gold cap highlights, navy outline. "
-            "Very narrow, no letters.",
+            "Text cursor: thin I-beam with small caps, electric cyan stroke, dark navy core.",
         ),
         CursorJob(
             "not-allowed",
             "not-allowed",
             "not-allowed",
-            (16, 16),
+            (11, 11),
             "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/cursor/not-allowed.gif",
-            "CSS not-allowed cursor: glass prohibition disc with warm gold rim and coral-red diagonal slash. "
-            "Friendly but clear; no words.",
+            "Not-allowed cursor: circle with diagonal slash, cyan ring and coral slash.",
         ),
     ]
 
@@ -259,123 +256,126 @@ def _save_drawn(slug: str, draw_fn) -> None:
     normalize_cursor(tmp, cursor_dir() / f"{slug}.png")
 
 
-def _draw_glass_arrow(draw: ImageDraw.ImageDraw, *, offset: tuple[int, int] = (0, 0)) -> None:
+def _draw_neon_arrow(draw: ImageDraw.ImageDraw, *, offset: tuple[int, int] = (0, 0)) -> None:
     ox, oy = offset
-    outline = _GLASS_NAVY
-    body = _GLASS_FILL
     pts = [
-        (10 + ox, 5 + oy),
-        (56 + ox, 48 + oy),
-        (37 + ox, 52 + oy),
-        (48 + ox, 86 + oy),
-        (31 + ox, 91 + oy),
-        (20 + ox, 58 + oy),
-        (5 + ox, 72 + oy),
+        (12 + ox, 8 + oy),
+        (50 + ox, 44 + oy),
+        (36 + ox, 48 + oy),
+        (44 + ox, 80 + oy),
+        (30 + ox, 84 + oy),
+        (22 + ox, 52 + oy),
+        (8 + ox, 64 + oy),
     ]
-    draw.polygon(pts, fill=outline)
-    inner = [
-        (17 + ox, 18 + oy),
-        (45 + ox, 45 + oy),
-        (29 + ox, 48 + oy),
-        (39 + ox, 78 + oy),
-        (33 + ox, 80 + oy),
-        (23 + ox, 50 + oy),
-        (12 + ox, 60 + oy),
-    ]
-    draw.polygon(inner, fill=body)
-    draw.line([(22 + ox, 21 + oy), (39 + ox, 38 + oy)], fill=_GLASS_HIGHLIGHT, width=3)
-    draw.line([(10 + ox, 8 + oy), (18 + ox, 16 + oy)], fill=_GLASS_GOLD, width=4)
+    draw.polygon(pts, outline=_NEON_CYAN, fill=_NEON_FILL, width=3)
 
 
-def _draw_glass_pointer_hand(draw: ImageDraw.ImageDraw) -> None:
+def _draw_neon_pointer(draw: ImageDraw.ImageDraw) -> None:
     draw.polygon(
-        [(18, 88), (34, 24), (48, 22), (52, 52), (64, 18), (78, 20), (72, 58), (86, 62), (58, 96)],
-        fill=_GLASS_NAVY,
+        [(22, 90), (36, 28), (46, 26), (50, 56), (62, 22), (74, 24), (68, 60), (80, 64), (54, 94)],
+        outline=_NEON_CYAN,
+        fill=_NEON_FILL,
+        width=3,
     )
-    draw.polygon(
-        [(24, 82), (38, 32), (48, 30), (52, 54), (66, 26), (74, 28), (68, 58), (80, 60), (58, 88)],
-        fill=_GLASS_FILL,
-    )
-    draw.line([(38, 32), (48, 30)], fill=_GLASS_TEAL, width=4)
-    draw.ellipse((30, 78, 42, 90), fill=_GLASS_GOLD)
 
 
-def _draw_glass_grab(draw: ImageDraw.ImageDraw, *, closed: bool = False) -> None:
-    gap = 6 if closed else 14
-    draw.rounded_rectangle((28, 34, 52, 94), radius=10, fill=_GLASS_NAVY)
-    draw.rounded_rectangle((76, 34, 100, 94), radius=10, fill=_GLASS_NAVY)
-    draw.rounded_rectangle((32, 38, 48, 90), radius=8, fill=_GLASS_FILL)
-    draw.rounded_rectangle((80, 38, 96, 90), radius=8, fill=_GLASS_FILL)
-    draw.arc((40, 52, 88, 78), 0, 180, fill=_GLASS_EMERALD, width=6)
+def _draw_neon_grab(draw: ImageDraw.ImageDraw, *, closed: bool = False) -> None:
     if closed:
-        draw.line((52, 64, 76, 64), fill=_GLASS_GOLD, width=5)
+        pts = [
+            (30, 54),
+            (38, 36),
+            (48, 34),
+            (52, 46),
+            (58, 32),
+            (68, 32),
+            (70, 48),
+            (78, 38),
+            (88, 42),
+            (84, 60),
+            (96, 64),
+            (90, 88),
+            (74, 102),
+            (48, 98),
+            (34, 82),
+        ]
     else:
-        draw.line((52, 64 - gap // 2, 76, 64 + gap // 2), fill=_GLASS_TEAL, width=4)
+        pts = [
+            (30, 94),
+            (34, 46),
+            (44, 42),
+            (48, 72),
+            (52, 32),
+            (62, 30),
+            (64, 70),
+            (70, 34),
+            (80, 36),
+            (78, 72),
+            (86, 48),
+            (96, 52),
+            (88, 92),
+            (68, 106),
+            (46, 104),
+        ]
+    draw.polygon(pts, outline=_NEON_TEAL, fill=_NEON_FILL, width=4)
+    if closed:
+        draw.line((42, 60, 82, 64), fill=_NEON_CYAN, width=3)
+    else:
+        draw.line((44, 46, 46, 80), fill=_NEON_CYAN, width=3)
+        draw.line((62, 34, 62, 78), fill=_NEON_CYAN, width=3)
+        draw.line((78, 40, 76, 78), fill=_NEON_CYAN, width=3)
 
 
 def deliver_fallbacks() -> None:
-    """Emit programmatic Glass Arena cursor fallbacks for every canonical slug."""
-    cdir = cursor_dir()
-    cdir.mkdir(parents=True, exist_ok=True)
+    """Emit programmatic cyberminimalist neon cursor fallbacks for every canonical slug."""
+    cursor_dir().mkdir(parents=True, exist_ok=True)
 
-    _save_drawn("default", lambda d: _draw_glass_arrow(d))
-    _save_drawn("pointer", _draw_glass_pointer_hand)
-    _save_drawn("grab", lambda d: _draw_glass_grab(d, closed=False))
-    _save_drawn("grabbing", lambda d: _draw_glass_grab(d, closed=True))
+    _save_drawn("default", lambda d: _draw_neon_arrow(d))
+    _save_drawn("pointer", _draw_neon_pointer)
+    _save_drawn("grab", lambda d: _draw_neon_grab(d, closed=False))
+    _save_drawn("grabbing", lambda d: _draw_neon_grab(d, closed=True))
     _save_drawn(
         "wait",
         lambda d: (
-            d.polygon([(64, 18), (88, 54), (64, 90), (40, 54)], fill=_GLASS_NAVY),
-            d.polygon([(64, 26), (80, 54), (64, 82), (48, 54)], fill=_GLASS_FILL),
-            d.line((64, 34, 64, 74), fill=_GLASS_TEAL, width=4),
-            d.ellipse((58, 48, 70, 60), fill=_GLASS_GOLD),
+            d.polygon([(64, 20), (84, 54), (64, 88), (44, 54)], outline=_NEON_CYAN, fill=_NEON_FILL, width=3),
+            d.line((64, 32, 64, 76), fill=_NEON_CYAN, width=3),
         ),
     )
     _save_drawn(
         "context-menu",
         lambda d: (
-            _draw_glass_arrow(d),
-            d.rounded_rectangle((59, 28, 116, 80), radius=8, fill=_GLASS_NAVY),
-            d.rounded_rectangle((65, 34, 110, 74), radius=5, fill=_GLASS_FILL),
-            d.line((72, 46, 104, 46), fill=_GLASS_TEAL, width=4),
-            d.line((72, 59, 104, 59), fill=_GLASS_GOLD, width=4),
+            _draw_neon_arrow(d),
+            d.rectangle((62, 32, 108, 72), outline=_NEON_CYAN, fill=_NEON_FILL, width=3),
         ),
     )
     _save_drawn(
         "help",
         lambda d: (
-            d.ellipse((18, 18, 110, 110), fill=_GLASS_NAVY),
-            d.ellipse((27, 27, 101, 101), fill=_GLASS_FILL),
-            d.arc((43, 36, 85, 74), 195, 35, fill=_GLASS_TEAL, width=11),
-            d.line((65, 72, 65, 82), fill=_GLASS_TEAL, width=9),
-            d.ellipse((58, 90, 72, 104), fill=_GLASS_EMERALD),
+            d.ellipse((24, 24, 104, 104), outline=_NEON_CYAN, fill=_NEON_FILL, width=3),
+            d.arc((44, 38, 84, 72), 200, 340, fill=_NEON_CYAN, width=6),
+            d.line((64, 74, 64, 82), fill=_NEON_CYAN, width=5),
+            d.ellipse((58, 88, 70, 100), fill=_NEON_CYAN),
         ),
     )
     _save_drawn(
         "progress",
         lambda d: (
-            _draw_glass_arrow(d),
-            d.ellipse((66, 54, 116, 104), fill=_GLASS_NAVY),
-            d.arc((74, 62, 108, 96), 25, 310, fill=_GLASS_TEAL, width=8),
-            d.polygon([(108, 61), (117, 61), (113, 70)], fill=_GLASS_GOLD),
+            _draw_neon_arrow(d),
+            d.arc((70, 58, 110, 98), 30, 300, fill=_NEON_TEAL, width=4),
         ),
     )
     _save_drawn(
         "text",
         lambda d: (
-            d.rounded_rectangle((52, 10, 76, 118), radius=8, fill=_GLASS_NAVY),
-            d.rounded_rectangle((58, 19, 70, 109), radius=4, fill=_GLASS_EMERALD),
-            d.rounded_rectangle((39, 10, 89, 26), radius=7, fill=_GLASS_GOLD, outline=_GLASS_NAVY, width=4),
-            d.rounded_rectangle((39, 102, 89, 118), radius=7, fill=_GLASS_GOLD, outline=_GLASS_NAVY, width=4),
+            d.rectangle((56, 14, 72, 114), outline=_NEON_CYAN, fill=_NEON_FILL, width=3),
+            d.line((42, 14, 86, 14), fill=_NEON_CYAN, width=4),
+            d.line((42, 114, 86, 114), fill=_NEON_CYAN, width=4),
         ),
     )
     _save_drawn(
         "not-allowed",
         lambda d: (
-            d.ellipse((18, 18, 110, 110), fill=_GLASS_NAVY),
-            d.ellipse((27, 27, 101, 101), fill=_GLASS_FILL, outline=_GLASS_GOLD, width=4),
-            d.line((40, 40, 88, 88), fill=_GLASS_DANGER, width=16),
-            d.line((40, 40, 88, 88), fill=_GLASS_NAVY, width=4),
+            d.ellipse((24, 24, 104, 104), outline=_NEON_CYAN, fill=_NEON_FILL, width=3),
+            d.line((44, 44, 84, 84), fill=_NEON_DANGER, width=6),
         ),
     )
 
@@ -392,34 +392,38 @@ def fetch_examples() -> None:
 
 
 def _refs_for_job(job: CursorJob) -> list[Path]:
-    refs = [
-        ga.DEFAULT_TOKEN_REF,
-        ga.REPO_ROOT / "frontend" / "public" / "tokens" / "doub.png",
-        ICONS_DIR / "header-arena.png",
-    ]
+    """MDN silhouette example only — no heavy style refs that add complexity."""
     examples = sorted(example_dir().glob(f"{job.slug}.*"))
-    refs.extend(examples[:1])
+    refs = examples[:1]
     return _flagged_inputs.filter_reference_paths(refs, ga.REPO_ROOT, job_label=job.slug)
 
 
-def _build_glass_cursor_prompt(job: CursorJob) -> str:
+def _build_neon_cursor_prompt(job: CursorJob) -> str:
     return ga.augment_prompt_chroma_backdrop(
-        f"{GLASS_CURSOR_STYLE}\n\n"
-        "Use the supplied unstyled cursor example only for affordance/silhouette, not for style. "
-        "Convert it into a transparent Yield Omega Glass Arena cursor.\n\n"
+        f"{NEON_CURSOR_STYLE}\n\n"
+        "Create this cursor icon from scratch. Do not reuse previous Yield Omega cursor prompts, "
+        "do not imitate the old SVGs, and do not copy any browser or OS cursor artwork.\n\n"
         f"CSS cursor role: {job.css_name}\n"
         f"Hotspot target after resize: {job.hotspot}\n"
         f"Subject: {job.subject}\n\n"
-        "Hard requirements: one cursor only, transparent background, no shadow blob, no scene, "
-        "no UI panel, no words, no watermark, very simple and legible at 32px.\n\n"
-        f"Strictly avoid:\n{ga.NEGATIVE_GUIDE}"
+        "Hard requirements: high-definition source image, one cursor icon only, centered with generous "
+        "padding, max 2 neon colors plus dark navy fill, no interior detail, no shadow, no scene, "
+        "no words, no watermark, must remain simple and legible after local 22px downscale.\n\n"
+        f"Strictly avoid:\n{CURSOR_NEGATIVE}"
     )
 
 
-def run_replicate_job(job: CursorJob, *, retry_max: int, retry_delay: float, no_refs: bool) -> None:
+def run_replicate_job(
+    job: CursorJob,
+    *,
+    retry_max: int,
+    retry_delay: float,
+    no_refs: bool,
+    reload_retries: int,
+) -> None:
     import replicate
 
-    prompt = _build_glass_cursor_prompt(job)
+    prompt = _build_neon_cursor_prompt(job)
     inp: dict = {
         "prompt": prompt,
         "aspect_ratio": "1:1",
@@ -438,8 +442,13 @@ def run_replicate_job(job: CursorJob, *, retry_max: int, retry_delay: float, no_
     )
 
     def call_model() -> object:
+        bounded_kw = dict(
+            prefer_wait=1,
+            job_label=job.slug,
+            reload_retries=reload_retries,
+        )
         if no_refs:
-            return _bounded.run_model_bounded(client, ga.MODEL, inp, prefer_wait=1, job_label=job.slug)
+            return _bounded.run_model_bounded(client, ga.MODEL, inp, **bounded_kw)
         refs = _refs_for_job(job)
         missing = [p for p in refs if not p.is_file()]
         if missing:
@@ -447,12 +456,14 @@ def run_replicate_job(job: CursorJob, *, retry_max: int, retry_delay: float, no_
         handles = [open(p, "rb") for p in refs]
         try:
             inp["input_images"] = handles
-            return _bounded.run_model_bounded(client, ga.MODEL, inp, prefer_wait=1, job_label=job.slug)
+            return _bounded.run_model_bounded(client, ga.MODEL, inp, **bounded_kw)
         finally:
             for handle in handles:
                 handle.close()
 
-    output = ga.run_with_retries(call_model, max_attempts=retry_max, base_delay_sec=retry_delay, job_label=job.slug)
+    output = ga.run_with_retries(
+        call_model, max_attempts=retry_max, base_delay_sec=retry_delay, job_label=job.slug
+    )
     raw = ga.postprocess_chroma_to_transparent(ga._read_output_bytes(output))
     scratch = scratch_dir() / f"{job.slug}-raw.png"
     scratch.parent.mkdir(parents=True, exist_ok=True)
@@ -461,21 +472,54 @@ def run_replicate_job(job: CursorJob, *, retry_max: int, retry_delay: float, no_
     print(f"Promoted cursors/{job.filename}")
 
 
+def _run_job_wrapper(
+    idx: int,
+    job: CursorJob,
+    *,
+    dry_run: bool,
+    skip_existing: bool,
+    no_refs: bool,
+) -> tuple[str, str | None]:
+    """Returns (slug, error_message_or_None)."""
+    final = cursor_dir() / job.filename
+    if skip_existing and final.is_file():
+        print(f"Skip existing {final.name}")
+        return job.slug, None
+    print(f"[{idx + 1}/{len(jobs())}] {job.slug}")
+    if dry_run:
+        return job.slug, None
+    try:
+        run_replicate_job(
+            job,
+            retry_max=RETRY_MAX,
+            retry_delay=0.0,
+            no_refs=no_refs,
+            reload_retries=RELOAD_RETRIES,
+        )
+        return job.slug, None
+    except Exception as exc:
+        print(f"[{job.slug}] FAILED: {exc}", file=sys.stderr)
+        return job.slug, str(exc)
+
+
 def write_prompts_json() -> None:
     manifest = SCRIPT_DIR / "cursors" / "prompts.json"
     manifest.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "model": ga.MODEL,
-        "style": "cyberminimalist-glass-arena",
+        "style": "cyberminimalist-neon",
+        "source": "text-only fresh HD prompts; no reference images required",
         "output": "frontend/public/art/cursors",
         "size": f"{CURSOR_SIZE}x{CURSOR_SIZE}",
+        "parallel_workers": PARALLEL_WORKERS,
+        "retry_max": RETRY_MAX,
+        "reload_retries": RELOAD_RETRIES,
         "jobs": [
             {
                 "filename": job.filename,
                 "css_name": job.css_name,
                 "fallback": job.fallback,
                 "hotspot": job.hotspot,
-                "mdn_example": job.mdn_url,
                 "subject": job.subject,
             }
             for job in jobs()
@@ -486,7 +530,7 @@ def write_prompts_json() -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Yieldomega Glass Arena cursor pack")
+    parser = argparse.ArgumentParser(description="Yieldomega cyberminimalist neon cursor pack")
     parser.add_argument("--derivatives-only", action="store_true")
     parser.add_argument("--generate-only", action="store_true")
     parser.add_argument("--fetch-examples", action="store_true")
@@ -495,8 +539,17 @@ def main() -> int:
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--start-from", type=int, default=0, help="0-based job index to start from")
     parser.add_argument("--max-jobs", type=int, default=0, help="Stop after N generated jobs (0 = no limit)")
-    parser.add_argument("--sleep", type=float, default=22.0)
-    parser.add_argument("--no-ref-images", action="store_true")
+    parser.add_argument("--workers", type=int, default=PARALLEL_WORKERS)
+    parser.add_argument(
+        "--with-ref-images",
+        action="store_true",
+        help="Opt in to MDN affordance references; default is fresh text-only prompts.",
+    )
+    parser.add_argument(
+        "--no-ref-images",
+        action="store_true",
+        help="Deprecated no-op kept for old command lines; text-only is now the default.",
+    )
     args = parser.parse_args()
 
     if args.write_prompts_json:
@@ -514,28 +567,40 @@ def main() -> int:
 
     token = os.environ.get("REPLICATE_API_TOKEN", "").strip()
     if not args.dry_run and not token:
-        print("REPLICATE_API_TOKEN unset - kept local glass cursor fallbacks.", file=sys.stderr)
+        print("REPLICATE_API_TOKEN unset - kept local neon cursor fallbacks.", file=sys.stderr)
         return 0
     if not args.dry_run:
         os.environ["REPLICATE_API_TOKEN"] = token
 
-    finished = 0
-    for idx, job in enumerate(jobs()):
-        if idx < args.start_from:
-            continue
-        final = cursor_dir() / job.filename
-        if args.skip_existing and final.is_file():
-            print(f"Skip existing {final.name}")
-            continue
-        print(f"[{idx + 1}/{len(jobs())}] {job.slug}")
-        if not args.dry_run:
-            run_replicate_job(job, retry_max=8, retry_delay=20.0, no_refs=args.no_ref_images)
-            finished += 1
-            if args.max_jobs and finished >= args.max_jobs:
-                print(f"--max-jobs {args.max_jobs} reached; stopping.")
-                break
-        if idx < len(jobs()) - 1 and args.sleep > 0:
-            time.sleep(args.sleep)
+    job_list = list(enumerate(jobs()))
+    if args.start_from:
+        job_list = [(i, j) for i, j in job_list if i >= args.start_from]
+    if args.max_jobs:
+        job_list = job_list[: args.max_jobs]
+
+    failures: list[tuple[str, str]] = []
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {
+            pool.submit(
+                _run_job_wrapper,
+                idx,
+                job,
+                dry_run=args.dry_run,
+                skip_existing=args.skip_existing,
+                no_refs=not args.with_ref_images,
+            ): job
+            for idx, job in job_list
+        }
+        for fut in as_completed(futures):
+            slug, err = fut.result()
+            if err:
+                failures.append((slug, err))
+
+    if failures:
+        print(f"\n{len(failures)} cursor(s) failed:", file=sys.stderr)
+        for slug, err in failures:
+            print(f"  {slug}: {err}", file=sys.stderr)
+        return 1
     return 0
 
 

@@ -4,14 +4,20 @@ import { addresses } from "@/lib/addresses";
 import { type ArenaFeatureKey } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
 import { ArenaPodiumTimerChip } from "@/pages/arena/ArenaPodiumTimerChip";
-import {
-  PODIUM_CONTRACT_TO_UX_CATEGORY,
-} from "@/pages/arena/arenaSimplePodiumRanking";
+import { PODIUM_CONTRACT_TO_UX_CATEGORY } from "@/pages/arena/arenaSimplePodiumRanking";
 import { useArenaTimersQuery } from "@/pages/arena/useArenaSaleState";
 import type { PodiumPayoutPreview, PodiumReadRow } from "@/pages/arena/usePodiumReads";
 
-/** Secondary podium timers beside the Last Buy hero (#256). Contract category indices per arena-v2.md. */
-const SECONDARY_PODIUM_CHIPS = [
+/** All four podium timer chips in command-console side rail order (#256). */
+const PODIUM_CHIPS = [
+  {
+    podiumName: "Last Buy",
+    contractIndex: 0,
+    categoryIndex: 0,
+    feature: "last_buy" as ArenaFeatureKey,
+    testId: "arena-last-buy-chip",
+    ariaLabel: "Last Buy leaders",
+  },
   {
     podiumName: "Time Booster",
     contractIndex: 1,
@@ -65,36 +71,34 @@ export function ArenaTimerChips({
   const now = data ? Number(data.block_timestamp_sec) : Math.floor(Date.now() / 1000);
   const deadlines = data?.podium_deadlines_sec ?? [];
 
-  return (
-    <div className="arena-timer-chips" data-testid="arena-timer-chips" aria-label="Podium timers">
-      {SECONDARY_PODIUM_CHIPS.map((chip) => {
-        const idx = chip.contractIndex;
-        const categoryIndex = chip.categoryIndex;
-        const podiumRow = podiumRows[categoryIndex];
-        const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
-        const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
+  return PODIUM_CHIPS.map((chip) => {
+    const idx = chip.contractIndex;
+    const categoryIndex = chip.categoryIndex;
+    const podiumRow = podiumRows[categoryIndex];
+    const dl = data ? Number(deadlines[idx] ?? 0) : undefined;
+    const rem = dl !== undefined ? Math.max(0, dl - now) : undefined;
 
-        return (
-          <ArenaPodiumTimerChip
-            key={chip.podiumName}
-            podiumName={chip.podiumName}
-            contractIndex={chip.contractIndex}
-            categoryIndex={categoryIndex}
-            feature={chip.feature}
-            playerLevel={playerLevel}
-            address={address}
-            decimals={decimals}
-            podiumRow={podiumRow}
-            podiumPayoutPreview={podiumPayoutPreview}
-            recentBuys={recentBuys}
-            activeDefendedStreak={activeDefendedStreak}
-            podiumNowUnixSec={podiumNowUnixSec}
-            onFeatureHelp={onFeatureHelp}
-            onOpenWalletProfile={onOpenWalletProfile}
-            countdownRemainingSec={rem}
-          />
-        );
-      })}
-    </div>
-  );
+    return (
+      <ArenaPodiumTimerChip
+        key={chip.podiumName}
+        podiumName={chip.podiumName}
+        contractIndex={chip.contractIndex}
+        categoryIndex={categoryIndex}
+        feature={chip.feature}
+        playerLevel={playerLevel}
+        address={address}
+        decimals={decimals}
+        podiumRow={podiumRow}
+        podiumPayoutPreview={podiumPayoutPreview}
+        recentBuys={recentBuys}
+        activeDefendedStreak={activeDefendedStreak}
+        podiumNowUnixSec={podiumNowUnixSec}
+        onFeatureHelp={onFeatureHelp}
+        onOpenWalletProfile={onOpenWalletProfile}
+        countdownRemainingSec={rem}
+        testId={"testId" in chip ? chip.testId : undefined}
+        ariaLabel={"ariaLabel" in chip ? chip.ariaLabel : undefined}
+      />
+    );
+  });
 }

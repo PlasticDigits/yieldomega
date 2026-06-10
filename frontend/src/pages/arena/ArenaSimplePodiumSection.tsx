@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { zeroAddress } from "viem";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
-import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { clampPlayerLevel } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
@@ -197,15 +196,14 @@ export function ArenaSimplePodiumSection({
   const viewerLevel = walletConnected ? clampPlayerLevel(playerLevel ?? 1) : undefined;
 
   return (
-    <PageSection
-      className="arena-simple__podium-panel"
-      dataTestId="arena-simple-podiums"
-      spotlight
-    >
+    <>
       {podiumLoading && (
         <StatusMessage variant="loading">Loading the four onchain podium categories…</StatusMessage>
       )}
-      <div className="podium-preview arena-simple__podium-grid">
+      <div
+        className="podium-preview arena-simple__podium-grid"
+        data-testid="arena-simple-podiums"
+      >
         {SIMPLE_PODIUM_DISPLAY_ORDER.map((categoryIndex) => (
           <SimplePodiumCard
             key={PODIUM_LABELS[categoryIndex]}
@@ -227,6 +225,6 @@ export function ArenaSimplePodiumSection({
           />
         ))}
       </div>
-    </PageSection>
+    </>
   );
 }

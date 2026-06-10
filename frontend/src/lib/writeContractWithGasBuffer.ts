@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { estimateContractGas as defaultEstimateContractGas } from "viem/actions";
-import { getPublicClient as defaultGetPublicClient } from "wagmi/actions";
+import {
+  getPublicClient as defaultGetPublicClient,
+  writeContract as defaultWriteContract,
+} from "wagmi/actions";
 import type { Abi } from "viem";
 import type { Config } from "wagmi";
+import {
+  assertWalletWriteSessionReady,
+  resolveLiveWriteConnector,
+  WALLET_WRITE_NOT_READY_MESSAGE,
+} from "@/lib/walletBuySessionGuard";
+import { getAccount } from "wagmi/actions";
 import { wagmiConfig as defaultWagmiConfig } from "@/wagmi-config";
 
 type GetPublicClientFn = typeof defaultGetPublicClient;
 type EstimateContractGasFn = typeof defaultEstimateContractGas;
+type WriteContractFn = typeof defaultWriteContract;
 
 /**
  * Writer signature compatible with `useWriteContract().writeContractAsync` plus an optional
@@ -66,6 +76,8 @@ export type WriteContractWithGasBufferParams<TAbi extends Abi = Abi, TFn extends
   getPublicClient?: GetPublicClientFn;
   /** Override for tests; defaults to viem's `estimateContractGas`. */
   estimateContractGas?: EstimateContractGasFn;
+  /** Override for tests; defaults to wagmi's `writeContract`. */
+  writeContract?: WriteContractFn;
 };
 
 export type WriteContractWithGasBufferResult = {
@@ -118,6 +130,7 @@ export async function writeContractWithGasBuffer<TAbi extends Abi, TFn extends s
     onEstimateRevert = "submit-without-override",
     getPublicClient = defaultGetPublicClient,
     estimateContractGas = defaultEstimateContractGas,
+    writeContract = defaultWriteContract,
   } = params;
 
   const client = chainId !== undefined ? getPublicClient(wagmiConfig, { chainId }) : getPublicClient(wagmiConfig);
@@ -149,10 +162,34 @@ export async function writeContractWithGasBuffer<TAbi extends Abi, TFn extends s
     }
   }
 
-  const hash = await writeContractAsync(
+  const writeRequest =
     bufferedGas !== undefined
       ? { address, abi, functionName, args, value, gas: bufferedGas }
-      : { address, abi, functionName, args, value },
-  );
+      : { address, abi, functionName, args, value };
+
+  const hasConnectorRegistry =
+    chainId !== undefined && Array.isArray(wagmiConfig.connectors);
+  const liveConnector = hasConnectorRegistry
+    ? resolveLiveWriteConnector(wagmiConfig)
+    : undefined;
+
+  let hash: `0x${string}`;
+  if (liveConnector && chainId !== undefined) {
+    assertWalletWriteSessionReady(wagmiConfig);
+    hash = await writeContract(wagmiConfig, {
+      ...writeRequest,
+      account,
+      chainId,
+      connector: liveConnector,
+    } as Parameters<WriteContractFn>[1]);
+  } else if (hasConnectorRegistry) {
+    const accountState = getAccount(wagmiConfig);
+    if (accountState.status !== "disconnected") {
+      throw new Error(WALLET_WRITE_NOT_READY_MESSAGE);
+    }
+    hash = await writeContractAsync(writeRequest);
+  } else {
+    hash = await writeContractAsync(writeRequest);
+  }
   return { hash, gasUsedOverride: bufferedGas, estimatedGas };
 }

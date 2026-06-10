@@ -35,7 +35,7 @@ export type LaunchCountdownLink = {
 export const HOME_HERO_SIGNALS: HomeHeroSignal[] = [
   {
     label: "BUY CHARM",
-    tooltip: "Open /arena to buy CHARM with DOUB or Play CRED.",
+    tooltip: "Buy CHARM with DOUB or Play CRED on the home play surface.",
   },
   {
     label: "4 PODIUMS",
@@ -53,7 +53,7 @@ export const HOME_HERO_SIGNALS: HomeHeroSignal[] = [
 
 export const HOME_SURFACE_CARDS: HomeSurfaceCard[] = [
   {
-    to: "/arena",
+    to: "/",
     title: "Time Arena",
     blurb: "Buy CHARM, pressure four timers, fight for DOUB podiums.",
     image: "/art/scenes/arena-simple-command-console.svg",

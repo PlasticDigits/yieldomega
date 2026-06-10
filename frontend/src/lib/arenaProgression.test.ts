@@ -16,6 +16,7 @@ describe("arenaProgression", () => {
   });
 
   it("gates features by unlock matrix", () => {
+    expect(isFeatureUnlocked(1, "last_buy")).toBe(true);
     expect(isFeatureUnlocked(1, "time_booster")).toBe(false);
     expect(isFeatureUnlocked(2, "time_booster")).toBe(true);
     expect(isFeatureUnlocked(3, "defended_streak")).toBe(true);

@@ -13,7 +13,6 @@ import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { addresses, indexerBaseUrl, type HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
-import { formatLocaleInteger } from "@/lib/formatAmount";
 import { getIndexerBackoffPollMs, reportIndexerFetchAttempt } from "@/lib/indexerConnectivity";
 import { fetchArenaBuysAsBuyItems, type BuyItem } from "@/lib/indexerApi";
 import {
@@ -24,7 +23,7 @@ import type { PayWithAsset } from "@/lib/kumbayaRoutes";
 import { payTokenOptionsForSimpleBuy } from "@/lib/arenaPayTokenOptions";
 import type { PayTokenOption } from "@/lib/arenaPayTokenOptions";
 import { CHARM_TOKEN_LOGO } from "@/lib/tokenMedia";
-import { formatUnits, isAddress, maxUint256, zeroAddress } from "viem";
+import { formatUnits, isAddress, zeroAddress } from "viem";
 import { useWalletTargetChainMismatch } from "@/hooks/useWalletTargetChainMismatch";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { formatTimerSectionTitle, phaseNarrative } from "@/pages/arena/arenaSimplePhase";
@@ -37,18 +36,14 @@ import {
   isFeatureUnlocked,
   readFeatureTutorialSeen,
 } from "@/lib/arenaProgression";
-import { erc20Abi, timeArenaReadAbi } from "@/lib/abis";
-import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
-import { wagmiConfig } from "@/wagmi-config";
-import { chainMismatchWriteMessage } from "@/lib/chainMismatchWriteGuard";
-import { writeCl8yArenaUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
-import { friendlyRevertFromUnknown } from "@/lib/revertMessage";
-import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
-import { asWriteContractAsyncFn, writeContractWithGasBuffer } from "@/lib/writeContractWithGasBuffer";
-import { ArenaLastBuyPodiumChip } from "@/pages/arena/ArenaLastBuyPodiumChip";
+import { timeArenaReadAbi } from "@/lib/abis";
+import { useAccount, useReadContract } from "wagmi";
+import { ArenaTimerPanelEpochCorner } from "@/pages/arena/ArenaTimerPanelEpochCorner";
+import { ArenaLastBuyPodiumLeaderboard } from "@/pages/arena/ArenaLastBuyPodiumLeaderboard";
 import { ArenaTimerChips } from "@/pages/arena/ArenaTimerChips";
 import { ArenaTimerHero } from "@/pages/arena/ArenaTimerHero";
 import { ArenaCharmCredCard } from "@/pages/arena/ArenaCharmCredCard";
+import { ArenaWarbowGatePreview } from "@/pages/arena/ArenaWarbowGatePreview";
 import { ArenaWarbowHeroPanel, type WarbowTarget } from "@/pages/arena/ArenaWarbowHeroPanel";
 import { useArenaSaleSession } from "@/pages/arena/useArenaSaleSession";
 import { WarbowClaimFlagButton } from "@/components/WarbowClaimFlagButton";
@@ -63,17 +58,12 @@ import {
   useWarbowPodiumLiveInvalidation,
 } from "@/pages/arena/usePodiumReads";
 import { mergeBuysNewestFirst } from "@/lib/arenaPageHelpers";
-import { ArenaShell, GlassDeck } from "@/components/glass";
-import {
-  ActivePlayerIndicator,
-  PlayerIdentity,
-} from "@/components/arena";
+import { ArenaShell } from "@/components/glass";
 
-/** Indexer page size for Simple head poll (podium ages, SFX, timer extension chip). */
+/** Indexer page size for Simple head poll (podium ages, SFX). */
 const SIMPLE_RECENT_BUYS_PAGE_LIMIT = 15;
 const WARBOW_PODIUM_SLOT = 1;
 const ZERO_ADDRESS_LOWER = zeroAddress.toLowerCase();
-const UNLIMITED_APPROVAL_THRESHOLD = maxUint256 / 2n;
 
 /**
  * Last good RPC/indexer inputs for projected-effects chips — avoids pill flicker when
@@ -311,8 +301,6 @@ export function ArenaSimplePage({
   const queryClient = useQueryClient();
 
   const { address: connectedAddress } = useAccount();
-  const chainId = useChainId();
-  const { writeContractAsync: writeApprovalContractAsync, isPending: approvalWalletPending } = useWriteContract();
   const { data: playerLevelRaw } = useReadContract({
     address: tc ?? undefined,
     abi: timeArenaReadAbi,
@@ -320,31 +308,10 @@ export function ArenaSimplePage({
     args: connectedAddress ? [connectedAddress] : undefined,
     query: { enabled: Boolean(tc && connectedAddress) },
   });
-  const {
-    data: doubAllowance,
-    refetch: refetchDoubAllowance,
-    isFetching: doubAllowanceFetching,
-  } = useReadContract({
-    address: session.acceptedAsset ?? undefined,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args: connectedAddress && tc ? [connectedAddress, tc] : undefined,
-    query: { enabled: Boolean(session.acceptedAsset && connectedAddress && tc) },
-  });
-  const [approvalWriteBusy, setApprovalWriteBusy] = useState(false);
-  const [approvalError, setApprovalError] = useState<string | null>(null);
   const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
   const prevLevelRef = useRef<number | undefined>(undefined);
-  const unlimitedApproved =
-    doubAllowance !== undefined && (doubAllowance as bigint) >= UNLIMITED_APPROVAL_THRESHOLD;
-  const approvalToggleBusy = approvalWalletPending || approvalWriteBusy || doubAllowanceFetching;
-  const approvalToggleDisabled =
-    approvalToggleBusy ||
-    !session.walletConnected ||
-    !connectedAddress ||
-    !tc ||
-    !session.acceptedAsset ||
-    chainMismatch;
+  const warbowUnlocked =
+    playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow");
   const warbowFlagUnlocked =
     playerLevelRaw !== undefined && isFeatureUnlocked(playerLevelRaw as bigint, "warbow_flag");
   const warbowFlagDisabled =
@@ -352,41 +319,6 @@ export function ArenaSimplePage({
     session.phase !== "saleActive" ||
     session.arenaPaused === true ||
     !warbowFlagUnlocked;
-  const toggleUnlimitedApproval = useCallback(
-    async (next: boolean) => {
-      setApprovalError(null);
-      const netErr = chainMismatchWriteMessage(chainId);
-      if (netErr) {
-        setApprovalError(netErr);
-        return;
-      }
-      if (!connectedAddress || !tc || !session.acceptedAsset) {
-        setApprovalError("Connect a wallet and wait for DOUB approval reads.");
-        return;
-      }
-      setApprovalWriteBusy(true);
-      try {
-        const { hash } = await writeContractWithGasBuffer({
-          wagmiConfig,
-          writeContractAsync: asWriteContractAsyncFn(writeApprovalContractAsync),
-          account: connectedAddress,
-          chainId,
-          address: session.acceptedAsset,
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [tc, next ? maxUint256 : 0n],
-        });
-        await waitForWriteReceipt(wagmiConfig, { hash });
-        writeCl8yArenaUnlimitedApproval(next);
-        await refetchDoubAllowance();
-      } catch (e) {
-        setApprovalError(friendlyRevertFromUnknown(e));
-      } finally {
-        setApprovalWriteBusy(false);
-      }
-    },
-    [chainId, connectedAddress, refetchDoubAllowance, session.acceptedAsset, tc, writeApprovalContractAsync],
-  );
 
   useEffect(() => {
     if (playerLevelRaw !== undefined && !warbowFlagUnlocked && session.plantWarBowFlag) {
@@ -547,28 +479,6 @@ export function ArenaSimplePage({
       window.clearTimeout(timeoutId);
     };
   }, [buyFeedRefreshNonce]);
-
-  // "Just extended" chip on the timer panel — the most recent buy that
-  // actually moved the clock (any extension ≥ 1s, including hard resets).
-  // Sourced from the already-fetched `recentBuys` so this is free; only
-  // renders when the sale is active and the indexer has at least one buy.
-  const lastExtension = useMemo(() => {
-    if (!recentBuys || recentBuys.length === 0) return null;
-    for (const b of recentBuys) {
-      const reset = Boolean(b.timer_hard_reset);
-      let secs = 0;
-      try {
-        secs = b.actual_seconds_added ? Number(BigInt(b.actual_seconds_added)) : 0;
-      } catch {
-        secs = 0;
-      }
-      if (reset || secs > 0) {
-        const pulseKey = `${b.tx_hash}:${b.log_index}:${b.block_number}`;
-        return { buyer: b.buyer, reset, secs, pulseKey };
-      }
-    }
-    return null;
-  }, [recentBuys]);
 
   const warbowTargets = useMemo(
     () => buildWarbowTargets(podiumReads.data, recentBuys, session.walletAddress),
@@ -802,6 +712,49 @@ export function ArenaSimplePage({
 
   const buyOnCooldown = session.walletCooldownRemainingSec > 0;
 
+  const buyDisabled =
+    session.phase !== "saleActive" ||
+    session.buySubmitBusy ||
+    session.isWriting ||
+    !session.walletConnected ||
+    chainMismatch ||
+    buyOnCooldown ||
+    session.charmWadSelected === undefined ||
+    nonCl8yBlocked ||
+    insufficientCredForBuy ||
+    (session.payWith === "cred" && session.credCheckoutBoundsGate.kind === "unavailable") ||
+    session.arenaPaused === true;
+
+  const buyButtonMotion =
+    prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
+
+  const buyCharmButton = (
+    <motion.button
+      type="button"
+      data-testid="arena-simple-buy-charm"
+      className={[
+        "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
+        buyOnCooldown ? "arena-simple__cta--cooldown" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      disabled={buyDisabled}
+      title={buyOnCooldown ? "Wallet buy cooldown (matches onchain pacing)" : undefined}
+      onClick={() => void session.submitBuy()}
+      {...buyButtonMotion}
+    >
+      <span className="arena-simple__cta-label">
+        {session.buySubmitBusy || session.isWriting
+          ? "Processing transaction…"
+          : payUsesKumbaya && session.swapQuoteLoading
+            ? "Refreshing quote…"
+            : buyOnCooldown
+              ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
+              : "Buy"}
+      </span>
+    </motion.button>
+  );
+
   const receiveCharmLabel =
     session.buyCheckoutCharmWeightWad !== undefined
       ? formatBuyCtaCharmAmountLabel(session.buyCheckoutCharmWeightWad)
@@ -872,22 +825,6 @@ export function ArenaSimplePage({
       </div>
     ) : null;
 
-  const buyDisabled =
-    session.phase !== "saleActive" ||
-    session.buySubmitBusy ||
-    session.isWriting ||
-    !session.walletConnected ||
-    chainMismatch ||
-    buyOnCooldown ||
-    session.charmWadSelected === undefined ||
-    nonCl8yBlocked ||
-    insufficientCredForBuy ||
-    (session.payWith === "cred" && session.credCheckoutBoundsGate.kind === "unavailable") ||
-    session.arenaPaused === true;
-
-  const buyButtonMotion =
-    prefersReducedMotion || buyOnCooldown ? {} : { whileHover: { y: -2 }, whileTap: { scale: 0.985 } };
-
   const timerHeroFoot =
     session.phase === "saleStartPending"
       ? "Stay on this page — it switches to Live automatically."
@@ -900,58 +837,37 @@ export function ArenaSimplePage({
       data-testid="arena-command-console"
     >
       <div className="arena-command-console__grid">
-        <GlassDeck
+        <div
+          className="arena-simple__timer-row"
           aria-label="Last Buy"
           data-testid="arena-command-console-primary"
         >
-          {/* Timer + inline buy controls are the command console's primary decision path. */}
-          <div className="arena-simple__hub">
-        <div className="arena-simple__timer-row">
           <PageSection
             title={timerSectionTitle}
             spotlight
             className="arena-simple__timer-panel"
             lede={heroNarrative}
           >
-            <ArenaTimerHero
-              secondsRemaining={heroSecondsRemaining}
-              countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
-              foot={timerHeroFoot}
-            />
-            {/* Live "just extended" chip — anchored to the bottom-right of
-                the dark stage so the most recent buy that bumped the clock
-                feels alive without crowding the digits. Only renders when
-                the arena is live and the indexer has a qualifying buy. */}
-            {session.phase === "saleActive" && lastExtension && (
-              <ActivePlayerIndicator
-                key={lastExtension.pulseKey}
-                className={
-                  lastExtension.reset
-                    ? "arena-simple__last-extension arena-simple__last-extension--reset"
-                    : "arena-simple__last-extension"
-                }
-                data-testid="arena-simple-last-extension"
-              >
-                +{formatLocaleInteger(lastExtension.secs)}s{" "}
-                <PlayerIdentity
-                  address={lastExtension.buyer}
-                  className="arena-simple__last-extension-addr"
-                  onOpenProfile={onOpenWalletProfile}
+            <ArenaTimerPanelEpochCorner epoch={podiumReads.data?.[0]?.epoch} />
+            <div className="arena-simple__timer-panel-stack">
+              <ArenaTimerHero
+                secondsRemaining={heroSecondsRemaining}
+                countdownKind={session.phase === "saleStartPending" ? "open" : "round"}
+                foot={timerHeroFoot}
+              />
+              {session.phase === "saleActive" && (
+                <ArenaLastBuyPodiumLeaderboard
+                  address={session.walletAddress}
+                  decimals={session.decimals}
+                  podiumRow={podiumReads.data?.[0]}
+                  podiumPayoutPreview={podiumReads.podiumPayoutPreview}
+                  recentBuys={recentBuys}
+                  podiumNowUnixSec={tickerWallNowSec}
+                  onOpenWalletProfile={onOpenWalletProfile}
                 />
-              </ActivePlayerIndicator>
-            )}
+              )}
+            </div>
           </PageSection>
-
-          <ArenaLastBuyPodiumChip
-            address={session.walletAddress}
-            decimals={session.decimals}
-            podiumRow={podiumReads.data?.[0]}
-            podiumPayoutPreview={podiumReads.podiumPayoutPreview}
-            recentBuys={recentBuys}
-            activeDefendedStreak={session.activeDefendedStreak}
-            podiumNowUnixSec={tickerWallNowSec}
-            onOpenWalletProfile={onOpenWalletProfile}
-          />
         </div>
 
         <ChainMismatchWriteBarrier
@@ -1015,79 +931,22 @@ export function ArenaSimplePage({
                     </span>
                   </div>
                 ) : null}
-                {receiveField}
+                {receiveField ? (
+                  <div className="arena-simple__receive-slot">
+                    {receiveField}
+                    <div className="arena-simple__buy-cta-row">
+                      <div className="arena-simple__buy-cta-effects">{buyPreview}</div>
+                      <div className="arena-simple__buy-cta-anchor">{buyCharmButton}</div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
               {session.arenaPaused === true && (
                 <StatusMessage variant="muted">
                   Time Arena is paused onchain — buys and WarBow DOUB spend are disabled until operators unpause.
                 </StatusMessage>
               )}
-              <motion.button
-                type="button"
-                data-testid="arena-simple-buy-charm"
-                className={[
-                  "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
-                  buyOnCooldown ? "arena-simple__cta--cooldown" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                disabled={buyDisabled}
-                title={buyOnCooldown ? "Wallet buy cooldown (matches onchain pacing)" : undefined}
-                onClick={() => void session.submitBuy()}
-                {...buyButtonMotion}
-              >
-                {/* Inline CHARM coin glyph makes the primary transaction path
-                    readable at a glance. Decorative; label remains the source
-                    of truth. */}
-                <img
-                  className="arena-simple__cta-glyph"
-                  src={CHARM_TOKEN_LOGO}
-                  alt=""
-                  aria-hidden="true"
-                  width={28}
-                  height={28}
-                  decoding="async"
-                />
-                <span className="arena-simple__cta-label">
-                  {session.buySubmitBusy || session.isWriting
-                    ? "Processing transaction…"
-                    : payUsesKumbaya && session.swapQuoteLoading
-                      ? "Refreshing quote…"
-                      : buyOnCooldown
-                        ? `${formatMmSsCountdown(session.walletCooldownRemainingSec)} cooldown`
-                        : session.buyCheckoutCharmWeightWad !== undefined
-                          ? `Buy ${formatBuyCtaCharmAmountLabel(session.buyCheckoutCharmWeightWad)} CHARM`
-                          : "Buy CHARM"}
-                </span>
-              </motion.button>
-              {buyPreview}
               <div className="arena-simple__buy-options" data-testid="arena-simple-buy-options">
-                <label
-                  className={[
-                    "arena-simple__buy-option",
-                    unlimitedApproved ? "arena-simple__buy-option--active" : "",
-                    approvalToggleDisabled ? "arena-simple__buy-option--disabled" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <input
-                    type="checkbox"
-                    checked={unlimitedApproved}
-                    disabled={approvalToggleDisabled}
-                    onChange={(e) => void toggleUnlimitedApproval(e.target.checked)}
-                    data-testid="arena-simple-unlimited-approve"
-                  />
-                  <span className="arena-simple__buy-option-body">
-                    <span className="arena-simple__buy-option-head">
-                      <span>Unlimited approve</span>
-                      <span className="arena-simple__buy-option-chip">
-                        {approvalToggleBusy ? "SYNC" : unlimitedApproved ? "ON" : "OFF"}
-                      </span>
-                    </span>
-                    <span className="arena-simple__buy-option-copy">One approval for future DOUB buys.</span>
-                  </span>
-                </label>
                 {!warbowFlagUnlocked ? (
                   <LockedUntilLevel
                     requiredLevel={FEATURE_UNLOCK_LEVEL.warbow_flag}
@@ -1146,7 +1005,6 @@ export function ArenaSimplePage({
                     </span>
                   </label>
                 )}
-                {approvalError ? <StatusMessage variant="error">{approvalError}</StatusMessage> : null}
               </div>
               {session.buyError && (
                 <StatusMessage variant="error">
@@ -1187,8 +1045,23 @@ export function ArenaSimplePage({
           )}
 
         </ChainMismatchWriteBarrier>
+
+        {!warbowUnlocked ? (
+          <div
+            className="arena-command-console__hub-warbow"
+            data-testid="arena-command-console-warbow"
+          >
+            <LockedUntilLevel
+              requiredLevel={FEATURE_UNLOCK_LEVEL.warbow}
+              className="arena-simple__warbow-gate arena-level-gate arena-level-gate--locked"
+              testId="warbow-hero-level-gate"
+              overlayTestId="warbow-hero-level-lock"
+              detail="Buy CHARM to activate this mechanic."
+            >
+              <ArenaWarbowGatePreview />
+            </LockedUntilLevel>
           </div>
-        </GlassDeck>
+        ) : null}
 
         <div className="arena-command-console__side-rail">
           <ArenaCharmCredCard />
@@ -1207,17 +1080,19 @@ export function ArenaSimplePage({
         </div>
       </div>
 
-      <div
-        className="arena-command-console__warbow-lane"
-        data-testid="arena-command-console-warbow"
-      >
-        <ArenaWarbowHeroPanel
-          phase={session.phase}
-          playerLevel={playerLevelRaw}
-          onFeatureHelp={openFeatureHelp}
-          warbowTargets={warbowTargets}
-        />
-      </div>
+      {warbowUnlocked ? (
+        <div
+          className="arena-command-console__warbow-lane"
+          data-testid="arena-command-console-warbow"
+        >
+          <ArenaWarbowHeroPanel
+            phase={session.phase}
+            playerLevel={playerLevelRaw}
+            onFeatureHelp={openFeatureHelp}
+            warbowTargets={warbowTargets}
+          />
+        </div>
+      ) : null}
 
       <ArenaSimplePodiumSection
         podiumRows={podiumReads.data}

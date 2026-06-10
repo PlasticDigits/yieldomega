@@ -9,9 +9,9 @@ import {
 } from "./surfaceContent";
 
 describe("HOME_SURFACE_CARDS", () => {
-  it("points the primary home card at /arena (GitLab #243)", () => {
+  it("points the primary home card at / (GitLab #243)", () => {
     const arena = HOME_SURFACE_CARDS.find((c) => c.title === "Time Arena");
-    expect(arena?.to).toBe("/arena");
+    expect(arena?.to).toBe("/");
   });
 
   it("uses current Time Arena command-console copy for the primary card (GitLab #290)", () => {
@@ -23,7 +23,7 @@ describe("HOME_SURFACE_CARDS", () => {
 
   it("surfaces immediate play, audit, referral, and venue decisions (GitLab #295)", () => {
     expect(HOME_SURFACE_CARDS.map((c) => [c.title, c.to])).toEqual([
-      ["Time Arena", "/arena"],
+      ["Time Arena", "/"],
       ["Arena AUDIT", "/arena/protocol"],
       ["Referrals", "/referrals"],
       ["Kumbaya", "/kumbaya"],

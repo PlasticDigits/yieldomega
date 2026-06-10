@@ -2,6 +2,7 @@
 
 import { BaseError } from "viem";
 import { parseCommaSeparatedRpcUrls } from "@/lib/chain";
+import { WALLET_WRITE_NOT_READY_MESSAGE } from "@/lib/walletBuySessionGuard";
 import { GasSoftCapExceededError } from "@/lib/writeContractWithGasBuffer";
 
 /** Placeholder when RPC URLs or hosted keys would otherwise appear in UI ([GitLab #145](https://gitlab.com/PlasticDigits/yieldomega/-/issues/145)). */
@@ -178,6 +179,12 @@ export function friendlyRevertFromUnknown(err: unknown, opts?: FriendlyRevertOpt
   }
   raw = redactSensitiveUrlsInUserMessage(raw);
   const loweredFull = raw.toLowerCase();
+  if (
+    loweredFull.includes("connection.connector.getchainid is not a function") ||
+    loweredFull.includes("connection.connector.getprovider is not a function")
+  ) {
+    return WALLET_WRITE_NOT_READY_MESSAGE;
+  }
   if (
     loweredFull.includes(ERC20_INSUFFICIENT_ALLOWANCE_SELECTOR.slice(2).toLowerCase()) ||
     loweredFull.includes("erc20insufficientallowance")

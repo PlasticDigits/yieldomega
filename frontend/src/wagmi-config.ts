@@ -36,13 +36,29 @@ const envRpcUrls = parseCommaSeparatedRpcUrls(import.meta.env.VITE_RPC_URL);
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID?.trim();
 const useE2EMockWallet = import.meta.env.VITE_E2E_MOCK_WALLET === "1";
 
+function browserHasInjectedProvider(): boolean {
+  if (typeof window === "undefined") return true;
+  return Boolean((window as Window & { ethereum?: unknown }).ethereum);
+}
+
+/** Anvil local dev without Rabby/MetaMask (e.g. Cursor Glass preview) — same mock connector as E2E. */
+const useAnvilDevMockWallet =
+  useE2EMockWallet ||
+  (import.meta.env.DEV && chainId === 31337 && !browserHasInjectedProvider());
+
 if (isRpcDebugEnabled()) {
   console.info("[yieldomega/rpc] VITE_RPC_DEBUG=1 — logging each JSON-RPC request and fallback switches");
 }
 
-if (!projectId && !useE2EMockWallet) {
+if (!projectId && !useAnvilDevMockWallet) {
   console.info(
     "[yieldomega] VITE_WALLETCONNECT_PROJECT_ID is empty — using injected-detection wallets only (no WalletConnect mobile flow). Set the env var to enable mobile WC. See GitLab #203.",
+  );
+}
+
+if (useAnvilDevMockWallet && !useE2EMockWallet) {
+  console.info(
+    "[yieldomega] No browser wallet extension — using Anvil dev mock connector (account #0). Import Rabby or set VITE_E2E_MOCK_WALLET=1 to override.",
   );
 }
 
@@ -84,24 +100,28 @@ const rainbowKitWalletGroups = [
   },
 ];
 
+function anvilMockWagmiConfig() {
+  return createConfig({
+    chains,
+    connectors: [
+      mock({
+        accounts: [ANVIL_DEFAULT_ACCOUNT],
+        features: { defaultConnected: true, reconnect: true },
+      }),
+    ],
+    transports,
+    ssr: false,
+    pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
+  });
+}
+
 /**
- * Playwright Anvil E2E only: wagmi `mock` connector forwards JSON-RPC to the chain URL (see
- * `@wagmi/core` mock connector). MegaETH behavior still differs; do not ship production builds
+ * Playwright Anvil E2E (`VITE_E2E_MOCK_WALLET=1`) and local Anvil dev without an extension:
+ * wagmi `mock` connector forwards JSON-RPC to the chain URL. Do not ship production builds
  * with `VITE_E2E_MOCK_WALLET=1`.
  */
-export const wagmiConfig = useE2EMockWallet
-  ? createConfig({
-      chains,
-      connectors: [
-        mock({
-          accounts: [ANVIL_DEFAULT_ACCOUNT],
-          features: { defaultConnected: true, reconnect: true },
-        }),
-      ],
-      transports,
-      ssr: false,
-      pollingInterval: { [MEGAETH_MAINNET_CHAIN_ID]: 1000 },
-    })
+export const wagmiConfig = useAnvilDevMockWallet
+  ? anvilMockWagmiConfig()
   : projectId
     ? getDefaultConfig({
         appName: "Yield Omega",

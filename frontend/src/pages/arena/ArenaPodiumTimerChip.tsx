@@ -32,7 +32,7 @@ export type ArenaPodiumTimerChipProps = {
   podiumName: string;
   contractIndex: number;
   categoryIndex: number;
-  /** When set, chip is locked below this feature level (#299). Omit for always-unlocked (Last Buy). */
+  /** When set, chip is locked below this feature level (#299). */
   feature?: ArenaFeatureKey;
   playerLevel?: bigint | number;
   address?: string;
@@ -48,6 +48,8 @@ export type ArenaPodiumTimerChipProps = {
   showCountdown?: boolean;
   countdownRemainingSec?: number;
   className?: string;
+  testId?: string;
+  ariaLabel?: string;
 };
 
 export function ArenaPodiumTimerChip({
@@ -68,6 +70,8 @@ export function ArenaPodiumTimerChip({
   showCountdown = true,
   countdownRemainingSec,
   className,
+  testId,
+  ariaLabel,
 }: ArenaPodiumTimerChipProps) {
   const walletConnected = Boolean(address?.trim());
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
@@ -111,18 +115,6 @@ export function ArenaPodiumTimerChip({
         {podiumName}
       </p>
       <div className="arena-timer-chips__head">
-        {showCountdown ? (
-          <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${contractIndex}`}>
-            <span className="arena-timer-chips__label">{CHIP_COUNTDOWN_LABEL}</span>
-            <span className="arena-timer-chips__value">
-              {countdownRemainingSec !== undefined
-                ? formatPodiumChipCountdown(countdownRemainingSec)
-                : "—"}
-            </span>
-          </span>
-        ) : (
-          <span className="arena-timer-chips__chip arena-timer-chips__chip--hero-owned" aria-hidden="true" />
-        )}
         <span className="arena-timer-chips__lock">
           {unlocked
             ? podiumRow?.epoch !== undefined
@@ -130,7 +122,21 @@ export function ArenaPodiumTimerChip({
               : "EPOCH —"
             : `L${requiredLevel}`}
         </span>
-        {unlocked ? helpButton : null}
+        <div className="arena-timer-chips__aside">
+          {showCountdown ? (
+            <span className="arena-timer-chips__chip" data-testid={`arena-timer-chip-${contractIndex}`}>
+              <span className="arena-timer-chips__label">{CHIP_COUNTDOWN_LABEL}</span>
+              <span className="arena-timer-chips__value">
+                {countdownRemainingSec !== undefined
+                  ? formatPodiumChipCountdown(countdownRemainingSec)
+                  : "—"}
+              </span>
+            </span>
+          ) : (
+            <span className="arena-timer-chips__chip arena-timer-chips__chip--hero-owned" aria-hidden="true" />
+          )}
+          {unlocked ? helpButton : null}
+        </div>
       </div>
 
       <div className="arena-timer-chips__body">
@@ -186,6 +192,7 @@ export function ArenaPodiumTimerChip({
   ]
     .filter(Boolean)
     .join(" ");
+  const gateTestId = testId ?? `arena-timer-chip-gate-${contractIndex}`;
 
   if (!unlocked && feature !== undefined) {
     return (
@@ -193,7 +200,7 @@ export function ArenaPodiumTimerChip({
         requiredLevel={requiredLevel}
         variant="compact"
         className={`${gateClassName} arena-timer-chips__gate--locked`}
-        testId={`arena-timer-chip-gate-${contractIndex}`}
+        testId={gateTestId}
         overlayTestId={`arena-timer-chip-lock-${contractIndex}`}
       >
         {chipContents}
@@ -202,7 +209,7 @@ export function ArenaPodiumTimerChip({
   }
 
   return (
-    <div className={gateClassName} data-testid={`arena-timer-chip-gate-${contractIndex}`}>
+    <div className={gateClassName} data-testid={gateTestId} aria-label={ariaLabel}>
       {chipContents}
     </div>
   );

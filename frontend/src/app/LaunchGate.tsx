@@ -34,7 +34,7 @@ function LegacyArenaSegmentRedirect() {
   const { arenaLegacySegment } = useParams<{ arenaLegacySegment: string }>();
   const seg = arenaLegacySegment?.trim() ?? "";
   if (!seg) {
-    return <Navigate to="/arena" replace />;
+    return <Navigate to="/" replace />;
   }
   return <Navigate to={`/arena/${encodeURIComponent(seg)}`} replace />;
 }
@@ -47,9 +47,9 @@ const SECONDARY_ROUTES: Surface[] = [
   { path: "sir", element: <SirPage /> },
 ];
 
-/** Canonical Arena routes (#256, #266). Legacy `/arena/*` redirects here. */
+/** Arena sub-routes and legacy `/arena` redirect (#256, #266). Play surface is index `/`. */
 const ARENA_ROUTES: Surface[] = [
-  { path: "arena", element: <TimeArenaPage /> },
+  { path: "arena", element: <Navigate to="/" replace /> },
   {
     path: "arena/protocol",
     element: (
@@ -59,8 +59,8 @@ const ARENA_ROUTES: Surface[] = [
     ),
   },
   { path: "arena/:arenaSegment", element: <ArenaBranchPage /> },
-  { path: "timecurve", element: <Navigate to="/arena" replace /> },
-  { path: "timecurve/arena", element: <Navigate to="/arena" replace /> },
+  { path: "timecurve", element: <Navigate to="/" replace /> },
+  { path: "timecurve/arena", element: <Navigate to="/" replace /> },
   {
     path: "timecurve/protocol",
     element: <Navigate to="/arena/protocol" replace />,

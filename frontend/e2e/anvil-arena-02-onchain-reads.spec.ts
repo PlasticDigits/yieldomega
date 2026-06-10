@@ -26,7 +26,8 @@ test.describe("Anvil Arena onchain reads", () => {
     ).toHaveCount(0);
 
     await expect(page.getByTestId("arena-charm-cred-card")).toBeVisible();
-    await expect(page.getByTestId("arena-timer-chips")).toBeVisible();
+    await expect(page.getByTestId("arena-last-buy-chip")).toBeVisible();
+    await expect(page.getByTestId("arena-timer-chip-gate-1")).toBeVisible();
     await expect(page.getByText("Last Buy epoch:", { exact: false })).toBeVisible();
   });
 });

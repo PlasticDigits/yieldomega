@@ -5,16 +5,20 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("ArenaTimerChips", () => {
-  it("renders three secondary podium chips (not Last Buy — hero owns primary countdown)", () => {
+  it("renders all four podium chips from one shared config", () => {
     const src = readFileSync(resolve(__dirname, "ArenaTimerChips.tsx"), "utf8");
+    expect(src).toContain("podiumName: \"Last Buy\"");
     expect(src).toContain("podiumName: \"Time Booster\"");
     expect(src).toContain("podiumName: \"Defended Streak\"");
     expect(src).toContain("podiumName: \"WarBow\"");
     expect(src).toContain("ArenaPodiumTimerChip");
-    expect(src).not.toMatch(/LABELS.*Last Buy/);
+    expect(src).toContain("feature: \"last_buy\"");
+    expect(src).toContain("contractIndex: 0");
     expect(src).toContain("contractIndex: 1");
     expect(src).toContain("contractIndex: 2");
     expect(src).toContain("contractIndex: 3");
+    expect(src).toContain("testId: \"arena-last-buy-chip\"");
+    expect(src).toContain("onFeatureHelp={onFeatureHelp}");
   });
 
   it("does not fall back to wagmi podiumDeadline reads (indexer-first #301)", () => {
@@ -42,6 +46,7 @@ describe("ArenaPodiumTimerChip", () => {
     expect(prizeIdx).toBeGreaterThan(0);
     expect(scoreIdx).toBeGreaterThan(prizeIdx);
     expect(identityIdx).toBeGreaterThan(scoreIdx);
+    expect(src).toContain("arena-timer-chips__aside");
     expect(src).toContain("unlocked ? helpButton : null");
     expect(src).not.toMatch(/LockedUntilLevel[\s\S]*?action=\{helpButton\}/);
   });

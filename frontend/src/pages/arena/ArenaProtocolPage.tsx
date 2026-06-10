@@ -7,14 +7,13 @@ import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
 import { AddressInline } from "@/components/AddressInline";
 import { AmountDisplay } from "@/components/AmountDisplay";
-import { PageHero } from "@/components/ui/PageHero";
+import { PageHeroHeading } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { UnixTimestampDisplay } from "@/components/UnixTimestampDisplay";
 import { addresses, type HexAddress } from "@/lib/addresses";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { humanizeKvLabel } from "@/lib/humanizeIdentifier";
-import { DOUB_TOKEN_LOGO } from "@/lib/tokenMedia";
 import { ArenaLiveBuysActivitySection } from "@/pages/arena/ArenaLiveBuysActivitySection";
 import { RawDataAccordion } from "@/pages/arena/ArenaSections";
 import { ArenaProtocolDonatePoolsSection } from "@/pages/arena/ArenaProtocolDonatePoolsSection";
@@ -36,24 +35,6 @@ const ARENA_VAULT_LABELS = [
   "100% podium prize vaults",
   "25% per competitive track",
   "70% / 20% / 10% epoch tranches",
-] as const;
-
-const ARENA_AUDIT_DECISIONS = [
-  {
-    eyebrow: "VERIFY",
-    value: "State",
-    title: "Contract reads: pause status, Last Buy deadline, CHARM band, and DOUB total raised.",
-  },
-  {
-    eyebrow: "TRACE",
-    value: "Routing",
-    title: "ArenaBuyRouting sends 100% of DOUB buys to four podium tracks (70/20/10 epoch tranches).",
-  },
-  {
-    eyebrow: "WATCH",
-    value: "Actions",
-    title: "Indexer activity covers buys plus WarBow steal, guard, and revenge events when available.",
-  },
 ] as const;
 
 const WAD = 10n ** 18n;
@@ -144,12 +125,9 @@ export function ArenaProtocolPage() {
   if (!tc) {
     return (
       <div className="page arena-protocol-page yga-secondary-page">
-        <PageHero
-          title="AUDIT"
-          lede="Operator reads for TimeArena state, vault routing, and indexed actions."
-          badgeLabel="Read-only"
-          badgeTone="info"
-        />
+        <header className="page-hero">
+          <PageHeroHeading title="AUDIT" badgeLabel="Read-only" badgeTone="info" />
+        </header>
         <PageSection title="Configuration missing">
           <StatusMessage variant="error">
             VITE_TIME_ARENA_ADDRESS is not configured. Update <code>frontend/.env.local</code>.
@@ -240,35 +218,14 @@ export function ArenaProtocolPage() {
 
   return (
     <div className="page arena-protocol-page">
-      <PageHero
-        title="AUDIT"
-        lede="Read-only operator console for TimeArena state, vault routing, and indexed actions."
-        badgeLabel={protocolPhaseBadge.label}
-        badgeTone={protocolPhaseBadge.tone}
-        badgeIconSrc={protocolPhaseBadge.iconSrc}
-        coinSrc={DOUB_TOKEN_LOGO}
-        coinAlt="DOUB token glyph"
-        sceneSrc="/art/scenes/arena-protocol-command-console.svg"
-      >
-        <span className="arena-protocol__hero-pill" title="This route exposes reads and the donation sponsorship action only.">
-          Operator
-        </span>
-        <span className="arena-protocol__hero-pill" title="TimeArena contracts remain authoritative; indexer rows are mirrors.">
-          Onchain first
-        </span>
-        <span className="arena-protocol__hero-pill" title="Wallet profiles open in-app; contract addresses open explorer links.">
-          Profile + explorer
-        </span>
-      </PageHero>
-
-      <div className="arena-protocol__decision-grid" aria-label="AUDIT priorities">
-        {ARENA_AUDIT_DECISIONS.map((item) => (
-          <article className="arena-protocol__decision-card" key={item.eyebrow} title={item.title}>
-            <span>{item.eyebrow}</span>
-            <strong>{item.value}</strong>
-          </article>
-        ))}
-      </div>
+      <header className="page-hero">
+        <PageHeroHeading
+          title="AUDIT"
+          badgeLabel={protocolPhaseBadge.label}
+          badgeTone={protocolPhaseBadge.tone}
+          badgeIconSrc={protocolPhaseBadge.iconSrc}
+        />
+      </header>
 
       <PageSection
         title="State deck"

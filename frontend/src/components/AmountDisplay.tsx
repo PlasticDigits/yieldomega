@@ -23,6 +23,8 @@ export type AmountDisplayProps = {
   raw: string;
   /** ERC-20 `decimals()` (or 18 for WAD fixed-point). */
   decimals: number;
+  /** Significant figures for compact display; defaults to {@link AMOUNT_DISPLAY_COMPACT_SIGFIGS}. */
+  sigfigs?: number;
   /**
    * Optional caption on the same row as the formatted amount (e.g. `YOUR CL8Y:`). Keeps phrasing-safe `<span>`s for `<p>` parents.
    */
@@ -33,7 +35,13 @@ export type AmountDisplayProps = {
   valueMono?: boolean;
 };
 
-export function AmountDisplay({ raw, decimals, leadingLabel, valueMono = true }: AmountDisplayProps) {
+export function AmountDisplay({
+  raw,
+  decimals,
+  sigfigs = AMOUNT_DISPLAY_COMPACT_SIGFIGS,
+  leadingLabel,
+  valueMono = true,
+}: AmountDisplayProps) {
   const n = parseBigIntString(raw);
   const label = leadingLabel?.trim();
   return (
@@ -41,7 +49,7 @@ export function AmountDisplay({ raw, decimals, leadingLabel, valueMono = true }:
       rows={[
         {
           ...(label ? { label } : {}),
-          value: formatCompactFromRaw(n, decimals, { sigfigs: AMOUNT_DISPLAY_COMPACT_SIGFIGS }),
+          value: formatCompactFromRaw(n, decimals, { sigfigs }),
           monoValue: valueMono,
         },
       ]}

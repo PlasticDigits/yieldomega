@@ -10,6 +10,11 @@ const COPY: Record<
   ArenaFeatureKey,
   { title: string; body: string }
 > = {
+  last_buy: {
+    title: "Last Buy podium",
+    body:
+      "The three most recent buyers when the Last Buy timer hits zero share the epoch prize pool. Each buy moves you into 1st place and adds time to all four podium clocks.",
+  },
   time_booster: {
     title: "Time Booster unlocked",
     body:

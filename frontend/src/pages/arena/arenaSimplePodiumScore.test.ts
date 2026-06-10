@@ -57,7 +57,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("Opens when Last Buy under 15 minutes");
+    ).toBe("Starts Under 15 Min");
     expect(
       formatSimplePodiumScoreLine(2, 0, {
         winner: "0x0000000000000000000000000000000000000000",
@@ -65,7 +65,7 @@ describe("formatSimplePodiumScoreLine", () => {
         valueRaw: "0",
         nowUnixSec: 0,
       }),
-    ).toBe("Opens when Last Buy under 15 minutes");
+    ).toBe("Starts Under 15 Min");
   });
 
   it("formats WarBow BP, defended streak, and time booster from raw values", () => {

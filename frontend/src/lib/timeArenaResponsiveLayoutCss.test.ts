@@ -81,28 +81,42 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     const gridBlock = cssBlock(css, ".arena-command-console__grid {", 420);
     expect(gridBlock).toContain("align-items: start");
 
-    const hubBlock = cssBlock(css, ".arena-command-console .arena-simple__hub {", 280);
-    expect(hubBlock).toContain("align-content: start");
-    expect(hubBlock).toContain("align-items: start");
+    expect(css).toContain("grid-area: console-buy");
+    expect(css).toContain("grid-area: console-side");
 
-    const panelBlock = cssBlock(
+    const primaryBlock = cssBlock(
       css,
-      ".arena-command-console .arena-simple__hub > .data-panel,\n.arena-command-console .arena-simple__hub > .arena-simple__buy-panel {",
-      220,
+      ".arena-command-console__grid > .arena-simple__timer-row,\n.arena-command-console__grid > .arena-simple__buy-panel,\n.arena-command-console__grid > .arena-command-console__hub-warbow {",
+      320,
     );
-    expect(panelBlock).toContain("align-self: start");
+    expect(primaryBlock).toContain("align-self: start");
   });
 
-  it("lays out Last Buy leaders beside the command-console timer bay", () => {
-    expect(simplePage).toContain("arena-simple__timer-row");
-    expect(simplePage).toContain("ArenaLastBuyPodiumChip");
+  it("stacks Last Buy leaders in the command-console side rail with the other podium chips", () => {
+    expect(simplePage).toContain("arena-command-console__side-rail");
+    expect(simplePage).toContain("<ArenaTimerChips");
+    expect(simplePage).not.toContain("ArenaLastBuyPodiumChip");
 
     const rowBlock = cssBlock(css, ".arena-command-console .arena-simple__timer-row {", 320);
-    expect(rowBlock).toContain("grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr)");
+    expect(rowBlock).toContain("grid-template-columns: minmax(0, 1fr)");
+  });
 
-    const mobileBlock = cssBlock(css, "@media (max-width: 620px)", 420);
-    expect(mobileBlock).toContain(".arena-command-console .arena-simple__timer-row");
-    expect(mobileBlock).toContain("grid-template-columns: minmax(0, 1fr)");
+  it("anchors podium chip countdown in the top-right beside title and epoch", () => {
+    const block = cssBlock(css, ".arena-command-console .arena-timer-chips__gate {", 900);
+    expect(block).toContain("chip-title chip-aside");
+    expect(block).toContain("chip-epoch chip-aside");
+
+    const asideBlock = cssBlock(css, ".arena-command-console .arena-timer-chips__aside {", 320);
+    expect(asideBlock).toContain("grid-area: chip-aside");
+
+    const chipBlock = cssBlock(css, ".arena-command-console .arena-timer-chips__chip {", 320);
+    expect(chipBlock).toContain("text-align: right");
+
+    const epochBlock = cssBlock(css, ".arena-command-console .arena-timer-chips__lock {", 480);
+    expect(epochBlock).toContain("grid-area: chip-epoch");
+    expect(epochBlock).toContain("text-align: left");
+    expect(epochBlock).toContain("background: none");
+    expect(epochBlock).toContain("border: none");
   });
 
   it("stacks timer chips flush under the YOUR WALLET side-rail card when vertical", () => {

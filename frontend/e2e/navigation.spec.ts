@@ -10,8 +10,8 @@ test("deep link from home to each surface", async ({ page }) => {
   const nav = page.getByLabel("Primary");
 
   await page.goto(navHomeRoute);
-  await nav.getByRole("link", { name: "Time Arena" }).click();
-  await expect(page).toHaveURL(/\/arena$/);
+  await page.getByRole("link", { name: "PLAY TIME ARENA" }).click();
+  await expect(page).toHaveURL(/\/$/);
 
   await page.goto(navHomeRoute);
   await nav.getByRole("link", { name: "Referrals" }).click();
@@ -25,7 +25,6 @@ test("deep link from home to each surface", async ({ page }) => {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByText("Third-party venue. Verify off-site.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Time Arena" }).first()).toBeVisible();
     await expect(page.getByLabel("Primary").getByRole("link", { name: "AUDIT" })).toBeVisible();
   }
 });
@@ -51,10 +50,18 @@ test("valid arena referral path does not show 404", async ({ page }) => {
   await expect(page.getByTestId("not-found-page")).toHaveCount(0);
 });
 
-test("legacy /timecurve referral path redirects to /arena", async ({ page }) => {
+test("legacy /timecurve referral path redirects to /arena/:code", async ({ page }) => {
   const state = await detectLaunchState(page);
   test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
 
   await page.goto("/timecurve/abc12");
   await expect(page).toHaveURL(/\/arena\/abc12/);
+});
+
+test("legacy /arena root redirects to /", async ({ page }) => {
+  const state = await detectLaunchState(page);
+  test.skip(state === "countdown", "Build is locked behind LaunchCountdownPage.");
+
+  await page.goto("/arena");
+  await expect(page).toHaveURL(/\/$/);
 });

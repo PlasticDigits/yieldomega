@@ -13,9 +13,18 @@ type Props = {
   children: ReactNode;
 } & Omit<HTMLAttributes<HTMLElement>, "children"> & DataAttributes;
 
+const VARIANT_CLASS: Record<Exclude<Variant, "loading">, string> = {
+  muted: "status-message--muted muted",
+  placeholder: "status-message--placeholder placeholder",
+  error: "status-message--error error-text",
+  warning: "status-message--warning warning-text",
+};
+
 export function StatusMessage({ variant = "muted", children, className, ...rest }: Props) {
   if (variant === "loading") {
-    const classes = ["loading-state", className].filter(Boolean).join(" ");
+    const classes = ["status-message", "status-message--loading", "loading-state", className]
+      .filter(Boolean)
+      .join(" ");
     return (
       <div className={classes} {...rest}>
         <img
@@ -30,14 +39,10 @@ export function StatusMessage({ variant = "muted", children, className, ...rest 
     );
   }
 
-  const variantClass =
-    variant === "error"
-      ? "error-text"
-      : variant === "warning"
-        ? "warning-text"
-        : variant === "placeholder"
-          ? "placeholder"
-          : "muted";
-  const classes = [variantClass, className].filter(Boolean).join(" ");
-  return <p className={classes} {...rest}>{children}</p>;
+  const classes = ["status-message", VARIANT_CLASS[variant], className].filter(Boolean).join(" ");
+  return (
+    <p className={classes} {...rest}>
+      {children}
+    </p>
+  );
 }

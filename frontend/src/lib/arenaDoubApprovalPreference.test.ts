@@ -53,36 +53,24 @@ describe("arenaDoubApprovalPreference", () => {
     expect(arenaDoubApprovalAmountWei(1n, true)).toBe(maxUint256);
   });
 
-  it("storage roundtrip", () => {
-    expect(readArenaDoubUnlimitedApproval()).toBe(false);
-    writeCl8yArenaUnlimitedApproval(true);
-    expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBe("1");
+  it("readArenaDoubUnlimitedApproval: always true (unlimited is default)", () => {
     expect(readArenaDoubUnlimitedApproval()).toBe(true);
     writeCl8yArenaUnlimitedApproval(false);
-    expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBeNull();
-    expect(readArenaDoubUnlimitedApproval()).toBe(false);
-  });
-
-  it("readArenaDoubUnlimitedApproval: true when only legacy key is set (#277)", () => {
+    expect(readArenaDoubUnlimitedApproval()).toBe(true);
     window.localStorage.setItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY, "1");
-    expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBeNull();
     expect(readArenaDoubUnlimitedApproval()).toBe(true);
   });
 
-  it("writeCl8yArenaUnlimitedApproval(true): migrates legacy key to canonical (#277)", () => {
+  it("writeCl8yArenaUnlimitedApproval: still migrates/clears legacy keys (#277)", () => {
     window.localStorage.setItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY, "1");
     writeCl8yArenaUnlimitedApproval(true);
     expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBe("1");
     expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY)).toBeNull();
-    expect(readArenaDoubUnlimitedApproval()).toBe(true);
-  });
 
-  it("writeCl8yArenaUnlimitedApproval(false): clears both keys (#277)", () => {
     window.localStorage.setItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY, "1");
     window.localStorage.setItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY, "1");
     writeCl8yArenaUnlimitedApproval(false);
     expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_STORAGE_KEY)).toBeNull();
     expect(window.localStorage.getItem(CL8Y_ARENA_UNLIMITED_APPROVAL_LEGACY_KEY)).toBeNull();
-    expect(readArenaDoubUnlimitedApproval()).toBe(false);
   });
 });
