@@ -96,7 +96,8 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         kumbaya.setOwner(address(0));
         (uint256 charmPriceWad,) =
             AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(usdm));
-        arena.setCharmPriceWad(charmPriceWad);
+        arena.setCharmAnchorOracle(address(kumbaya), address(cl8y), address(weth), address(usdm));
+        arena.setEpochCharmAnchorWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(
             arena, address(kumbaya), address(doub), address(cl8y), address(weth), address(usdm), address(adminVault), address(this)
@@ -145,7 +146,8 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         kumbaya.setOwner(address(0));
         (uint256 charmPriceWad,) =
             AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(feeStable));
-        arena.setCharmPriceWad(charmPriceWad);
+        arena.setCharmAnchorOracle(address(kumbaya), address(cl8y), address(weth), address(usdm));
+        arena.setEpochCharmAnchorWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(
             arena,
@@ -161,7 +163,7 @@ abstract contract TimeArenaBuyRouterFixture is Test {
     }
 
     function _grossDoub(uint256 charmWad) internal view returns (uint256) {
-        return (charmWad * arena.charmPriceWad()) / WAD;
+        return (charmWad * arena.effectiveCharmPriceWad()) / WAD;
     }
 
     function _pathUsdmToDoub() internal view returns (bytes memory) {

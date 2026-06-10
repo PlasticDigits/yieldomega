@@ -33,6 +33,12 @@ mod contracts {
         contract TimeArenaEvents {
             event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
             event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
+            event LastBuyEpochCharmAnchored(
+                uint256 indexed epoch,
+                uint256 anchorWad,
+                uint256 doubUsdWad,
+                uint256 anchorTimestamp
+            );
             event Buy(
                 address indexed buyer,
                 uint256 charmWad,
@@ -166,6 +172,12 @@ pub enum DecodedEvent {
         epoch: U256,
         deadline: U256,
     },
+    ArenaLastBuyEpochCharmAnchored {
+        epoch: U256,
+        anchor_wad: U256,
+        doub_usd_wad: U256,
+        anchor_timestamp: U256,
+    },
     ArenaWarbowSteal {
         attacker: Address,
         victim: Address,
@@ -296,6 +308,16 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
                 second: e.second,
                 third: e.third,
                 pool_paid: e.poolPaid,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::LastBuyEpochCharmAnchored::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::LastBuyEpochCharmAnchored::decode_log(log, true) {
+            return DecodedEvent::ArenaLastBuyEpochCharmAnchored {
+                epoch: e.epoch,
+                anchor_wad: e.anchorWad,
+                doub_usd_wad: e.doubUsdWad,
+                anchor_timestamp: e.anchorTimestamp,
             };
         }
     }

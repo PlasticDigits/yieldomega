@@ -22,6 +22,10 @@ use crate::arena_wallet_stats;
 pub fn arena_routes() -> axum::Router<AppState> {
     axum::Router::new()
         .route("/v1/arena/timers", axum::routing::get(arena_timers))
+        .route(
+            "/v1/arena/last-buy-epoch-pricing",
+            axum::routing::get(arena_last_buy_epoch_pricing),
+        )
         .route("/v1/arena/podiums", axum::routing::get(arena_podiums))
         .route("/v1/arena/buys", axum::routing::get(arena_buys))
         .route("/v1/arena/activity", axum::routing::get(arena_activity))
@@ -171,6 +175,8 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         "podium_epochs": h.timer.podium_epochs,
         "podium_deadlines_sec": h.timer.podium_deadlines_sec,
         "charm_price_wad": h.sale_head.charm_price_wad,
+        "epoch_charm_anchor_wad": h.sale_head.epoch_charm_anchor_wad,
+        "epoch_anchor_timestamp_sec": h.sale_head.epoch_anchor_timestamp_sec,
         "doub": h.sale_head.doub,
         "referral_registry": h.sale_head.referral_registry,
         "buy_cooldown_sec": h.sale_head.buy_cooldown_sec,
@@ -182,6 +188,50 @@ async fn arena_timers(State(state): State<AppState>) -> Response {
         StatusCode::OK,
         with_schema_version(axum::http::HeaderMap::new()),
         Json(body),
+    )
+        .into_response()
+}
+
+async fn arena_last_buy_epoch_pricing(State(state): State<AppState>) -> Response {
+    let rows = match sqlx::query(
+        r#"SELECT epoch::text,
+                  MAX(anchor_charm_price_wad)::text AS anchor_charm_price_wad,
+                  MAX(doub_usd_wad)::text AS doub_usd_wad,
+                  MAX(anchor_timestamp_sec)::text AS anchor_timestamp_sec,
+                  MAX(deadline)::text AS deadline,
+                  MAX(block_number)::text AS block_number,
+                  (array_agg(tx_hash ORDER BY log_index))[1] AS tx_hash
+           FROM idx_arena_last_buy_epoch_started
+           GROUP BY epoch
+           ORDER BY epoch DESC
+           LIMIT 200"#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/last-buy-epoch-pricing", e),
+    };
+
+    let epochs: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "epoch": r.get::<String, _>("epoch"),
+                "anchor_charm_price_wad": r.get::<Option<String>, _>("anchor_charm_price_wad"),
+                "doub_usd_wad": r.get::<Option<String>, _>("doub_usd_wad"),
+                "anchor_timestamp_sec": r.get::<Option<String>, _>("anchor_timestamp_sec"),
+                "deadline_sec": r.get::<Option<String>, _>("deadline"),
+                "block_number": r.get::<Option<String>, _>("block_number"),
+                "tx_hash": r.get::<Option<String>, _>("tx_hash"),
+            })
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({ "epochs": epochs })),
     )
         .into_response()
 }

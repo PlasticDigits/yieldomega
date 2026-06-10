@@ -98,7 +98,7 @@ contract TimeArenaBuyRouter is ReentrancyGuard, Ownable2Step {
         }
         if (charmWad < 99e16 || charmWad > 10e18) revert TimeArenaBuyRouter__CharmBounds();
 
-        uint256 grossDoub = Math.mulDiv(charmWad, ta.charmPriceWad(), WAD);
+        uint256 grossDoub = Math.mulDiv(charmWad, ta.effectiveCharmPriceWad(), WAD);
         if (grossDoub == 0) revert TimeArenaBuyRouter__BadPhase();
         if (block.timestamp > swapDeadline) revert TimeArenaBuyRouter__SwapExpired();
 

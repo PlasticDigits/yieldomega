@@ -171,6 +171,8 @@ fn arena_head_snapshot() -> TimecurveHeadSnapshot {
         active_pool_balance_doub_wad: ["700".into(), "0".into(), "1400".into(), "350".into()],
         sale_head: ArenaSaleHeadFields {
             charm_price_wad: "1000000000000000000".into(),
+            epoch_charm_anchor_wad: "1000000000000000000".into(),
+            epoch_anchor_timestamp_sec: "1".into(),
             doub: "0xdddddddddddddddddddddddddddddddddddddddd".into(),
             referral_registry: "0x0000000000000000000000000000000000000000".into(),
             buy_cooldown_sec: "300".into(),

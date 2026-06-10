@@ -380,6 +380,30 @@ pub async fn persist_decoded_log_conn(
             .await?;
             head.apply_epoch_started(*epoch);
         }
+        DecodedEvent::ArenaLastBuyEpochCharmAnchored {
+            epoch,
+            anchor_wad,
+            doub_usd_wad,
+            anchor_timestamp,
+        } => {
+            sqlx::query(
+                r#"INSERT INTO idx_arena_last_buy_epoch_started (
+                    block_number, block_timestamp, tx_hash, log_index, epoch, deadline,
+                    anchor_charm_price_wad, doub_usd_wad, anchor_timestamp_sec
+                ) VALUES ($1, to_timestamp($2), $3, $4, $5::numeric, 0, $6::numeric, $7::numeric, $8::numeric)
+                ON CONFLICT (tx_hash, log_index) DO NOTHING"#,
+            )
+            .bind(block)
+            .bind(block_ts)
+            .bind(&tx_h)
+            .bind(log_i)
+            .bind(u256_dec(*epoch))
+            .bind(u256_dec(*anchor_wad))
+            .bind(u256_dec(*doub_usd_wad))
+            .bind(u256_dec(*anchor_timestamp))
+            .execute(&mut *conn)
+            .await?;
+        }
         DecodedEvent::Unknown { .. } => {}
     }
     Ok(())

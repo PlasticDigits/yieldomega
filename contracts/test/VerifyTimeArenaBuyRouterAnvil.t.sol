@@ -40,7 +40,7 @@ contract VerifyTimeArenaBuyRouterAnvil is Test {
     }
 
     function _grossDoub(TimeArena arena, uint256 charmWad) internal view returns (uint256) {
-        return (charmWad * arena.charmPriceWad()) / WAD;
+        return (charmWad * arena.effectiveCharmPriceWad()) / WAD;
     }
 
     function test_Forked_issue251_eth_usdm_cl8y_paths() public {

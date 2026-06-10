@@ -27,6 +27,10 @@ pub const SEL_LAST_BUY_EPOCH: [u8; 4] = [0x6a, 0x9e, 0xa0, 0x67];
 /// `podiumEpoch(uint256)` — public array getter on `TimeArena` (not `uint8`).
 pub const SEL_PODIUM_EPOCH: [u8; 4] = [0x66, 0x11, 0xfd, 0x1b];
 pub const SEL_CHARM_PRICE_WAD: [u8; 4] = [0xe8, 0x8f, 0x90, 0x01];
+/// `effectiveCharmPriceWad()` — epoch anchor + 10%/day growth ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)).
+pub const SEL_EFFECTIVE_CHARM_PRICE_WAD: [u8; 4] = [0x3d, 0x0f, 0x20, 0x1d];
+pub const SEL_EPOCH_CHARM_ANCHOR_WAD: [u8; 4] = [0xd8, 0x77, 0xe8, 0x58];
+pub const SEL_EPOCH_ANCHOR_TIMESTAMP: [u8; 4] = [0x21, 0x5e, 0xb1, 0xfb];
 pub const SEL_DOUB: [u8; 4] = [0x8e, 0x9a, 0x61, 0x22];
 pub const SEL_REFERRAL_REGISTRY: [u8; 4] = [0x4e, 0x62, 0x7e, 0x62];
 pub const SEL_BUY_COOLDOWN_SEC: [u8; 4] = [0xb9, 0xa5, 0x68, 0x4f];
@@ -39,7 +43,10 @@ pub const SEL_ACTIVE_POOL_BALANCE: [u8; 4] = [0x2f, 0xd2, 0xac, 0xfb];
 /// Head sale fields for Arena v2 buy hub — batched at `read_block_number` ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)).
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ArenaSaleHeadFields {
+    /// Effective DOUB/CHARM at head (`effectiveCharmPriceWad()` — [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)).
     pub charm_price_wad: String,
+    pub epoch_charm_anchor_wad: String,
+    pub epoch_anchor_timestamp_sec: String,
     pub doub: String,
     pub referral_registry: String,
     pub buy_cooldown_sec: String,
@@ -396,6 +403,8 @@ async fn poll_once(
 
     let (
         charm_price_wad,
+        epoch_charm_anchor_wad,
+        epoch_anchor_timestamp,
         doub,
         referral_registry,
         buy_cooldown_sec,
@@ -407,8 +416,22 @@ async fn poll_once(
             provider,
             arena,
             block_id,
-            Bytes::copy_from_slice(&SEL_CHARM_PRICE_WAD),
-            "charmPriceWad",
+            Bytes::copy_from_slice(&SEL_EFFECTIVE_CHARM_PRICE_WAD),
+            "effectiveCharmPriceWad",
+        ),
+        eth_call_u256(
+            provider,
+            arena,
+            block_id,
+            Bytes::copy_from_slice(&SEL_EPOCH_CHARM_ANCHOR_WAD),
+            "epochCharmAnchorWad",
+        ),
+        eth_call_u256(
+            provider,
+            arena,
+            block_id,
+            Bytes::copy_from_slice(&SEL_EPOCH_ANCHOR_TIMESTAMP),
+            "epochAnchorTimestamp",
         ),
         eth_call_address(provider, arena, block_id, SEL_DOUB, "doub"),
         eth_call_address(
@@ -450,6 +473,8 @@ async fn poll_once(
 
     let sale_head = ArenaSaleHeadFields {
         charm_price_wad: u256_to_decimal_string(charm_price_wad),
+        epoch_charm_anchor_wad: u256_to_decimal_string(epoch_charm_anchor_wad),
+        epoch_anchor_timestamp_sec: u256_to_decimal_string(epoch_anchor_timestamp),
         doub: addr_word_hex(doub),
         referral_registry: addr_word_hex(referral_registry),
         buy_cooldown_sec: u256_to_decimal_string(buy_cooldown_sec),
