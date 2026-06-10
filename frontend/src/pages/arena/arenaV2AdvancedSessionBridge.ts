@@ -27,7 +27,7 @@ export function arenaV2AdvancedCoreContracts(tc: HexAddress) {
     { address: tc, abi: timeArenaReadAbi, functionName: "deadline" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "totalDoubRaised" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "paused" as const },
-    { address: tc, abi: timeArenaReadAbi, functionName: "charmPriceWad" as const },
+    { address: tc, abi: timeArenaReadAbi, functionName: "effectiveCharmPriceWad" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "doub" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "referralRegistry" as const },
     { address: tc, abi: timeArenaReadAbi, functionName: "timerExtensionSec" as const },

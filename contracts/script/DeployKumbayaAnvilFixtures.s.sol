@@ -65,7 +65,8 @@ contract DeployKumbayaAnvilFixtures is Script {
 
         (uint256 charmPriceWad, uint256 doubUsdWad) =
             AnvilKumbayaPools.charmPriceWadFromSpot(router, address(doub), address(cl8y), address(weth), address(usdm));
-        arena.setCharmPriceWad(charmPriceWad);
+        arena.setCharmAnchorOracle(address(router), address(cl8y), address(weth), address(usdm));
+        arena.setEpochCharmAnchorWad(charmPriceWad);
 
         TimeArenaBuyRouter buyRouter = new TimeArenaBuyRouter(
             arena,

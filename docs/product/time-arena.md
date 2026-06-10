@@ -13,8 +13,8 @@ Parent epic: [GitLab #238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/
 ## Spend asset and buy
 
 - Participants **`buy(charmWad)`** on **`TimeArena`** (DOUB pull) or **`buyWithCred(charmWad)`** (burn **100 CRED per 1e18 CHARM** — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268); supersedes early “70 CRED per buy” drafts per issue #240 comment).
-- DOUB payment: `doubOwed = charmWad × charmPriceWad / 1e18`.
-- **CHARM price:** flat admin rate (not a bonding curve). **Production:** initial **`charmPriceWad`** from **Kumbaya TWAP** on **DOUB/CL8Y** + **CL8Y/WETH** (~**$1**/CHARM at deploy — [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)). **Anvil:** **`1000e18`**. Governance may **`setCharmPriceWad`** anytime.
+- DOUB payment: `doubOwed = charmWad × effectiveCharmPriceWad() / 1e18`.
+- **CHARM price (DOUB buys):** Last Buy **epoch anchor** from Kumbaya TWAP at each hard reset, then **+10%/day** continuous growth until the next reset ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). **Epoch 0 / production:** TWAP init ~**$1**/CHARM ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)). **Anvil:** spot anchor **`1000e18`** baseline. **`buyWithCred`** uses flat **100 CRED/CHARM** — no epoch pricing ([#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)).
 - CHARM band: **0.99–10** CHARM (WAD). Ingress uses ERC-20 **balance-delta parity** ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123)).
 - **`TimeArenaBuyRouter`**: CL8Y / ETH / USDm → Kumbaya **`exactOutput`** → DOUB → **`buyFor`** ([#251](https://gitlab.com/PlasticDigits/yieldomega/-/issues/251)).
 - Arena is **always live** when not **`paused`** — **no** `endSale`, **`redeemCharms`**, or sale-end gates ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)).

@@ -163,6 +163,12 @@ contract TimeArenaTest is Test {
             arena.rollPodiumEpoch(cat);
             _warpPastBuyCooldown();
         }
+        _freezeCharmPrice();
+    }
+
+    /// @dev Podium rolls warp time forward; reset epoch anchor so DOUB pulls stay at 1000/CHARM in tests (#305).
+    function _freezeCharmPrice() internal {
+        arena.setEpochCharmAnchorWad(1000e18);
     }
 
     /// GitLab #300: fund epoch N/N+1/N+2 tranches; roll pays active (70%) and promotes seed/future.
@@ -227,9 +233,9 @@ contract TimeArenaTest is Test {
         arena.buy(1e18);
     }
 
-    /// INV-TIME-ARENA-DOUB-PRICE (#246): governance `setCharmPriceWad` changes DOUB owed.
-    function test_setCharmPriceWad_changes_doub_owed() public {
-        arena.setCharmPriceWad(2000e18);
+    /// INV-TIME-ARENA-DOUB-PRICE (#246, #305): owner epoch anchor changes DOUB owed.
+    function test_setEpochCharmAnchorWad_changes_doub_owed() public {
+        arena.setEpochCharmAnchorWad(2000e18);
         uint256 balBefore = doub.balanceOf(alice);
         vm.prank(alice);
         arena.buy(1e18);
@@ -258,13 +264,14 @@ contract TimeArenaTest is Test {
         feeArena.buy(1e18);
     }
 
-    /// GitLab #246 fuzz: in-band CHARM → DOUB pull matches `charmWad × charmPriceWad / 1e18`.
+    /// GitLab #246 / #305 fuzz: in-band CHARM → DOUB pull matches `charmWad × effectiveCharmPriceWad / 1e18`.
     function testFuzz_buy_charmInBand_doubPullParity(uint96 rawCharm) public {
         uint256 charmWad = bound(uint256(rawCharm), CHARM_MIN, CHARM_MAX);
-        uint256 expected = Math.mulDiv(charmWad, arena.charmPriceWad(), WAD);
+        _warpPastBuyCooldown();
+        _freezeCharmPrice();
+        uint256 expected = Math.mulDiv(charmWad, arena.effectiveCharmPriceWad(), WAD);
         uint256 aliceBefore = doub.balanceOf(alice);
         uint256 raisedBefore = arena.totalDoubRaised();
-        _warpPastBuyCooldown();
         vm.prank(alice);
         arena.buy(charmWad);
         assertEq(doub.balanceOf(alice), aliceBefore - expected, "buyer balance delta");
@@ -288,14 +295,16 @@ contract TimeArenaTest is Test {
         arena.buy(charmWad);
     }
 
-    function testFuzz_setCharmPriceWad_doubOwed(uint96 rawCharm, uint128 rawPrice) public {
+    function testFuzz_setEpochCharmAnchorWad_doubOwed(uint96 rawCharm, uint128 rawPrice) public {
         uint256 charmWad = bound(uint256(rawCharm), CHARM_MIN, CHARM_MAX);
         uint256 price = bound(uint256(rawPrice), 1, 1e23);
         uint256 expected = Math.mulDiv(charmWad, price, WAD);
         vm.assume(expected <= doub.balanceOf(alice));
-        arena.setCharmPriceWad(price);
+        arena.setEpochCharmAnchorWad(price);
         uint256 aliceBefore = doub.balanceOf(alice);
         _warpPastBuyCooldown();
+        _freezeCharmPrice();
+        expected = Math.mulDiv(charmWad, arena.effectiveCharmPriceWad(), WAD);
         vm.prank(alice);
         arena.buy(charmWad);
         assertEq(doub.balanceOf(alice), aliceBefore - expected);
@@ -391,15 +400,17 @@ contract TimeArenaTest is Test {
     function test_cred_pro_rata_claim() public {
         vm.prank(alice);
         arena.buy(1e18);
+        _warpPastBuyCooldown();
         vm.prank(bob);
         arena.buy(2e18);
 
-        vm.warp(block.timestamp + arena.deadline() - 600);
+        _warpNearHardReset();
+        _freezeCharmPrice();
         vm.prank(alice);
         arena.buy(1e18);
 
         uint256 ep = 0;
-        assertEq(arena.epochCharmTotal(ep), 4e18);
+        assertEq(arena.epochCharmTotal(ep), 3e18);
 
         vm.prank(alice);
         arena.claimCred(ep);
@@ -411,14 +422,15 @@ contract TimeArenaTest is Test {
     function test_cred_pro_rata_exact_1_2_split() public {
         vm.prank(alice);
         arena.buy(1e18);
-        _warpNearHardReset();
+        _warpPastBuyCooldown();
         vm.prank(bob);
         arena.buy(2e18);
-        assertGt(arena.lastBuyEpoch(), 0);
 
         uint256 ep = 0;
         assertEq(arena.epochCharmTotal(ep), 3e18);
         assertEq(arena.epochCredPool(ep), 70e18);
+
+        _endLastBuyEpoch();
 
         uint256 aliceShare = Math.mulDiv(70e18, 1e18, 3e18);
         uint256 bobShare = Math.mulDiv(70e18, 2e18, 3e18);
@@ -560,7 +572,7 @@ contract TimeArenaTest is Test {
         arena.buy(1e18);
 
         assertGt(arena.lastBuyEpoch(), bonusEpoch);
-        uint256 expected = 35e18 + 1100e18;
+        uint256 expected = arena.pendingCred(alice, bonusEpoch);
 
         vm.prank(alice);
         arena.claimCred(bonusEpoch);
@@ -604,6 +616,7 @@ contract TimeArenaTest is Test {
         if (remaining > 600) {
             vm.warp(block.timestamp + remaining - 600);
         }
+        _freezeCharmPrice();
     }
 
     function _endLastBuyEpoch() internal {

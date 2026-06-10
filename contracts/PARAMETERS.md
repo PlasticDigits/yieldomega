@@ -26,7 +26,7 @@ Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol)
 
 | Parameter | Default | Notes |
 |-----------|---------|-------|
-| `charmPriceWad` | **Production (4326):** Kumbaya TWAP init ~**$1/CHARM** via **DOUB/CL8Y** + **CL8Y/WETH** + **WETH/USDm** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); **DeployDev:** `1000e18`; governance **`setCharmPriceWad`** anytime | DOUB per 1e18 CHARM for `buy` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
+| `charmPriceWad` / `effectiveCharmPriceWad()` | **Epoch 0:** Kumbaya TWAP init ~**$1/CHARM** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); grows **+10%/day** until Last Buy hard reset re-anchors ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)); **DeployDev:** `1000e18` anchor | DOUB per 1e18 CHARM for `buy` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | CHARM band | `99e16` – `10e18` | Fixed envelope; not bonding curve ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | Parameter | Cat 0 Last Buy | Cat 1 Time Booster | Cat 2 Defended Streak | Cat 3 WarBow | Notes |
 |-----------|----------------|--------------------|-----------------------|--------------|-------|

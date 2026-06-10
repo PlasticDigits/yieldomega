@@ -111,7 +111,7 @@ export async function readFreshArenaBuySizing(params: {
   const price = (await readContract(wagmiConfig, {
     address: timeArenaAddress,
     abi: timeArenaReadAbi,
-    functionName: "charmPriceWad",
+    functionName: "effectiveCharmPriceWad",
   })) as bigint;
 
   const minC = ARENA_CHARM_MIN_WAD;

@@ -209,9 +209,10 @@ export function ArenaProtocolPage() {
       title: "Primary Last Buy timer deadline.",
     },
     {
-      label: "CHARM price",
+      label: "DOUB / CHARM (effective)",
       value: renderAmount(CORE.charmPriceWad, 18),
-      title: "Flat DOUB per CHARM rate from TimeArena.",
+      title:
+        "Current DOUB per CHARM for DOUB buys: epoch TWAP anchor + ~10%/day growth until Last Buy hard reset ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). CRED buys use flat 100 CRED/CHARM.",
     },
     {
       label: "CHARM band",

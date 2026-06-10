@@ -24,7 +24,7 @@ export async function readGrossDoubForCharmWad(
   const price = (await readContract(wagmiConfig, {
     address: timeArenaAddress,
     abi: timeArenaReadAbi,
-    functionName: "charmPriceWad",
+    functionName: "effectiveCharmPriceWad",
   })) as bigint;
   const gross = (charmWad * price) / WAD;
   kumbayaBuyDebugLog("readGrossDoubForCharmWad", {

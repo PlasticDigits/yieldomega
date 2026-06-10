@@ -13,6 +13,9 @@ import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
 import {ArenaPodiumTimerConfig} from "./libraries/ArenaPodiumTimerConfig.sol";
 import {ArenaXp} from "./libraries/ArenaXp.sol";
+import {AnvilKumbayaRouter} from "../fixtures/AnvilKumbayaFixture.sol";
+import {AnvilKumbayaPools} from "../fixtures/AnvilKumbayaPools.sol";
+import {ArenaCharmPriceTwap} from "../oracle/ArenaCharmPriceTwap.sol";
 import {PodiumVaults} from "./PodiumVaults.sol";
 import {AdminSellVault} from "./AdminSellVault.sol";
 import {IReferralRegistry} from "../interfaces/IReferralRegistry.sol";
@@ -40,6 +43,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Flat Play CRED minted to referrer and buyer per referred DOUB buy (GitLab #272).
     uint256 public constant REFERRAL_CRED_FLAT_WAD = 5e18;
     uint256 public constant SECONDS_PER_DAY = 86_400;
+    /// @dev ln(1.1) in WAD — DOUB/CHARM grows ~10%/day within a Last Buy epoch (#305).
+    uint256 public constant CHARM_GROWTH_RATE_WAD = TimeMath.CHARM_GROWTH_RATE_10PCT_WAD;
 
     uint256 public constant WARBOW_BASE_BUY_BP = 250;
     uint256 public constant WARBOW_TIMER_RESET_BONUS_BP = 500;
@@ -69,6 +74,14 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     IPlayCred public playCred;
 
     uint256 public charmPriceWad;
+    /// @dev TWAP/spot anchor at current Last Buy epoch start; grows via `effectiveCharmPriceWad` (#305).
+    uint256 public epochCharmAnchorWad;
+    uint256 public epochAnchorTimestamp;
+    /// @dev Anvil Kumbaya router for spot re-anchor; zero on production until configured.
+    address public charmAnchorKumbayaRouter;
+    address public charmAnchorCl8y;
+    address public charmAnchorWeth;
+    address public charmAnchorUsdm;
     /// @dev Cat-0 shims for ABI compat; authoritative values are per-category arrays (#271).
     uint256 public timerExtensionSec;
     uint256 public initialTimerSec;
@@ -136,6 +149,9 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
+    event LastBuyEpochCharmAnchored(
+        uint256 indexed epoch, uint256 anchorWad, uint256 doubUsdWad, uint256 anchorTimestamp
+    );
     event PodiumEpochRolled(
         uint8 indexed category,
         uint256 indexed epoch,
@@ -226,6 +242,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             playCred = IPlayCred(_playCred);
         }
         charmPriceWad = _charmPriceWad;
+        epochCharmAnchorWad = _charmPriceWad;
         for (uint8 i; i < NUM_PODIUM_CATEGORIES; ++i) {
             podiumTimerExtensionSec[i] = _podiumTimerExtensionSec[i];
             podiumInitialTimerSec[i] = _podiumInitialTimerSec[i];
@@ -247,8 +264,21 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     }
 
     function setCharmPriceWad(uint256 wad) external onlyOwner {
-        require(wad > 0, "TimeArena: zero price");
-        charmPriceWad = wad;
+        require(arenaStart == 0, "TimeArena: use setEpochCharmAnchorWad");
+        _setEpochCharmAnchor(wad);
+    }
+
+    /// @dev Owner break-glass: set epoch anchor and reset growth clock (#305).
+    function setEpochCharmAnchorWad(uint256 wad) external onlyOwner {
+        _setEpochCharmAnchor(wad);
+        emit LastBuyEpochCharmAnchored(lastBuyEpoch, wad, 0, block.timestamp);
+    }
+
+    function setCharmAnchorOracle(address router, address cl8y, address weth, address usdm) external onlyOwner {
+        charmAnchorKumbayaRouter = router;
+        charmAnchorCl8y = cl8y;
+        charmAnchorWeth = weth;
+        charmAnchorUsdm = usdm;
     }
 
     function setTimeArenaBuyRouter(address router) external onlyOwner {
@@ -258,11 +288,33 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function startArena() external onlyOwner {
         require(arenaStart == 0, "TimeArena: started");
         arenaStart = block.timestamp;
+        epochAnchorTimestamp = block.timestamp;
         for (uint8 i; i < NUM_PODIUM_CATEGORIES; ++i) {
             podiumDeadline[i] = block.timestamp + podiumInitialTimerSec[i];
         }
         deadline = podiumDeadline[CAT_LAST_BUYERS];
         emit ArenaStarted(arenaStart, deadline);
+    }
+
+    /// @dev Current DOUB wei per 1e18 CHARM for DOUB buys — epoch anchor + 10%/day growth (#305).
+    function effectiveCharmPriceWad() public view returns (uint256) {
+        uint256 anchor = epochCharmAnchorWad;
+        if (anchor == 0) anchor = charmPriceWad;
+        if (anchor == 0) return 0;
+        if (epochAnchorTimestamp == 0 || block.timestamp <= epochAnchorTimestamp) {
+            return anchor;
+        }
+        uint256 elapsed = block.timestamp - epochAnchorTimestamp;
+        return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
+    }
+
+    /// @dev DOUB wei owed for a buy at the current block — previews hard-reset re-anchor (#305).
+    function doubOwedForBuy(uint256 charmWad) external returns (uint256) {
+        if (_willLastBuyHardReset()) {
+            (uint256 anchorWad,) = _sampleCharmAnchor();
+            return Math.mulDiv(charmWad, anchorWad, WAD);
+        }
+        return Math.mulDiv(charmWad, effectiveCharmPriceWad(), WAD);
     }
 
     function buy(uint256 charmWad) external nonReentrant {
@@ -485,7 +537,9 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
 
-        uint256 doubOwed = Math.mulDiv(charmWad, charmPriceWad, WAD);
+        _prepareBuyBeforeTimer();
+
+        uint256 doubOwed = Math.mulDiv(charmWad, effectiveCharmPriceWad(), WAD);
         // `buyFor` is router-only: DOUB was swapped onto `timeArenaBuyRouter`, not the participant wallet (#251 / #270).
         address doubPayer = msg.sender == timeArenaBuyRouter ? msg.sender : buyer;
         uint256 received = _pullDoubExact(doubPayer, doubOwed);
@@ -500,6 +554,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         _requireLive();
         require(block.timestamp >= nextBuyAllowedAt[buyer], "TimeArena: buy cooldown");
         _validateCharm(charmWad);
+        _prepareBuyBeforeTimer();
         require(address(playCred) != address(0), "TimeArena: no cred");
         uint256 credBurn = Math.mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD);
         require(credBurn > 0, "TimeArena: zero cred burn");
@@ -530,8 +585,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         deadline = newDl;
         podiumDeadline[CAT_LAST_BUYERS] = newDl;
         if (hardReset) {
-            lastBuyEpoch += 1;
-            emit LastBuyEpochStarted(lastBuyEpoch, deadline);
+            emit LastBuyEpochStarted(lastBuyEpoch, newDl);
         }
 
         if (isFirstBuy && address(playCred) != address(0)) {
@@ -729,6 +783,49 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         doub.safeTransferFrom(from, address(this), expected);
         received = doub.balanceOf(address(this)) - balBefore;
         require(received == expected, "TimeArena: ERC20 parity");
+    }
+
+    function _willLastBuyHardReset() internal view returns (bool) {
+        if (arenaStart == 0) return false;
+        uint256 remaining = deadline > block.timestamp ? deadline - block.timestamp : 0;
+        return remaining < podiumResetBelowRemainingSec[CAT_LAST_BUYERS];
+    }
+
+    function _prepareBuyBeforeTimer() internal {
+        if (!_willLastBuyHardReset()) return;
+        _reanchorEpochCharmPrice();
+    }
+
+    function _reanchorEpochCharmPrice() internal {
+        (uint256 anchorWad, uint256 doubUsdWad) = _sampleCharmAnchor();
+        lastBuyEpoch += 1;
+        _setEpochCharmAnchor(anchorWad);
+        emit LastBuyEpochCharmAnchored(lastBuyEpoch, anchorWad, doubUsdWad, block.timestamp);
+    }
+
+    function _setEpochCharmAnchor(uint256 wad) internal {
+        require(wad > 0, "TimeArena: zero price");
+        epochCharmAnchorWad = wad;
+        epochAnchorTimestamp = block.timestamp;
+        charmPriceWad = wad;
+    }
+
+    function _sampleCharmAnchor() internal returns (uint256 anchorWad, uint256 doubUsdWad) {
+        if (charmAnchorKumbayaRouter != address(0) && charmAnchorCl8y != address(0)) {
+            return AnvilKumbayaPools.charmPriceWadFromSpot(
+                AnvilKumbayaRouter(charmAnchorKumbayaRouter),
+                address(doub),
+                charmAnchorCl8y,
+                charmAnchorWeth,
+                charmAnchorUsdm
+            );
+        }
+        if (block.chainid == 4326) {
+            ArenaCharmPriceTwap.Result memory r = ArenaCharmPriceTwap.compute(ArenaCharmPriceTwap.megaethMainnetConfig());
+            return (r.charmPriceWad, r.doubUsdWad);
+        }
+        anchorWad = epochCharmAnchorWad != 0 ? epochCharmAnchorWad : charmPriceWad;
+        doubUsdWad = 0;
     }
 
     function _requireLive() internal view {

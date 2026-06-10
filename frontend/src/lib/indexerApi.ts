@@ -775,7 +775,10 @@ export type ArenaTimersResponse = {
   total_doub_raised: string;
   podium_deadlines_sec: string[];
   /** Arena v2 buy-hub head fields (schema ≥ 2.6.0 · [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+  /** Effective DOUB/CHARM at head (`effectiveCharmPriceWad()` · [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). */
   charm_price_wad?: string;
+  epoch_charm_anchor_wad?: string;
+  epoch_anchor_timestamp_sec?: string;
   doub?: string;
   referral_registry?: string;
   buy_cooldown_sec?: string;

@@ -12,6 +12,19 @@ library TimeMath {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant SECONDS_PER_DAY = 86_400;
 
+    /// @notice Compute grown WAD value: anchor * exp(growthRateWad * elapsed / 86400).
+    /// @dev Alias for `currentMinBuy` — used by TimeArena epoch DOUB/CHARM pricing (#305).
+    function growWad(uint256 anchorWad, uint256 growthRateWad, uint256 elapsed)
+        internal
+        pure
+        returns (uint256 grownWad)
+    {
+        return currentMinBuy(anchorWad, growthRateWad, elapsed);
+    }
+
+    /// @dev ln(1.1) in WAD — continuous ~10%/day growth (#305).
+    uint256 internal constant CHARM_GROWTH_RATE_10PCT_WAD = 95_310_179_804_352_786;
+
     /// @notice Compute current minimum buy: initialMinBuy * exp(growthRateWad * elapsed / 86400).
     /// @param initialMinBuy Starting minimum buy amount (asset decimals).
     /// @param growthRateWad  ln(1 + dailyGrowthFrac) in WAD. For 20%/day: ~182_321_556_793_954_592.
