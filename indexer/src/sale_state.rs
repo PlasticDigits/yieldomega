@@ -7,6 +7,7 @@ use alloy_provider::{Provider, ReqwestProvider};
 use alloy_rpc_types::{BlockId, TransactionRequest};
 use eyre::{Result, WrapErr};
 
+use crate::rpc_http::rpc_first_ok_instrumented;
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 
 /// JSON body for `GET /v1/timecurve/sale-state` (schema ≥ 1.24.0, trimmed for Arena v2).
@@ -40,48 +41,58 @@ fn decode_return_bool(data: &[u8]) -> Result<bool> {
 }
 
 async fn eth_call_u256(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     contract: Address,
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
     metrics: &RpcMetrics,
 ) -> Result<U256> {
-    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
-    let req = TransactionRequest::default()
-        .to(contract)
-        .input(Bytes::copy_from_slice(&selector).into());
-    let raw = provider
-        .call(&req)
-        .block(block_id)
-        .await
-        .wrap_err_with(|| format!("{label} eth_call"))?;
+    let raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::ChainTimer,
+        |p| {
+            let req = TransactionRequest::default()
+                .to(contract)
+                .input(Bytes::copy_from_slice(&selector).into());
+            async move { p.call(&req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("{label} eth_call"))?;
     decode_return_u256(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
 async fn eth_call_bool(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     contract: Address,
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
     metrics: &RpcMetrics,
 ) -> Result<bool> {
-    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
-    let req = TransactionRequest::default()
-        .to(contract)
-        .input(Bytes::copy_from_slice(&selector).into());
-    let raw = provider
-        .call(&req)
-        .block(block_id)
-        .await
-        .wrap_err_with(|| format!("{label} eth_call"))?;
+    let raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::ChainTimer,
+        |p| {
+            let req = TransactionRequest::default()
+                .to(contract)
+                .input(Bytes::copy_from_slice(&selector).into());
+            async move { p.call(&req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("{label} eth_call"))?;
     decode_return_bool(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
 /// Poll arena timer basics at `block_id` (shared head with chain-timer).
 pub async fn poll_sale_state_at_block(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     arena: Address,
     block_id: BlockId,
     block_ts: u64,
@@ -94,16 +105,16 @@ pub async fn poll_sale_state_at_block(
     const SEL_PAUSED: [u8; 4] = [0x5c, 0x97, 0x5a, 0xbb];
 
     let (deadline, total_doub_raised, paused) = tokio::try_join!(
-        eth_call_u256(provider, arena, block_id, SEL_DEADLINE, "deadline", metrics),
+        eth_call_u256(providers, arena, block_id, SEL_DEADLINE, "deadline", metrics),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             SEL_TOTAL_DOUB_RAISED,
             "totalDoubRaised",
             metrics,
         ),
-        eth_call_bool(provider, arena, block_id, SEL_PAUSED, "paused", metrics),
+        eth_call_bool(providers, arena, block_id, SEL_PAUSED, "paused", metrics),
     )?;
 
     Ok(TimecurveSaleStateSnapshot {

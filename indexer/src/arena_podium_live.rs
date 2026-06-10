@@ -98,7 +98,7 @@ pub async fn snapshot_podium_rpc_at_block(
     metrics: &RpcMetrics,
 ) -> Result<()> {
     let rpc = podium_at_block(
-        provider,
+        std::slice::from_ref(provider),
         arena,
         d.block_number,
         category,

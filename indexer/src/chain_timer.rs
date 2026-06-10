@@ -14,6 +14,7 @@ use tokio::time::Duration;
 
 use crate::rpc_http::{
     build_reqwest_providers, error_chain_transport_http_status, parse_http_rpc_urls,
+    rpc_first_ok_instrumented,
 };
 use crate::rpc_metrics::{RpcCaller, RpcMethod, RpcMetrics};
 use crate::rpc_poll_health::RpcPollHealth;
@@ -163,7 +164,7 @@ fn empty_podium_row() -> PodiumRpcRow {
 
 /// Block-tagged `TimeArena.podium(category)` for ingest snapshots ([#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)).
 pub async fn podium_at_block(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     arena: Address,
     block: u64,
     category: u8,
@@ -171,7 +172,7 @@ pub async fn podium_at_block(
     caller: RpcCaller,
 ) -> Result<PodiumRpcRow> {
     podium_at_block_id(
-        provider,
+        providers,
         arena,
         BlockId::Number(block.into()),
         category,
@@ -182,22 +183,27 @@ pub async fn podium_at_block(
 }
 
 pub async fn podium_at_block_id(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     arena: Address,
     block_id: BlockId,
     category: u8,
     metrics: &RpcMetrics,
     caller: RpcCaller,
 ) -> Result<PodiumRpcRow> {
-    metrics.record(RpcMethod::EthCall, caller);
-    let p_req = TransactionRequest::default()
-        .to(arena)
-        .input(encode_u8_call(SEL_PODIUM, category).into());
-    let p_raw = provider
-        .call(&p_req)
-        .block(block_id)
-        .await
-        .wrap_err_with(|| format!("podium({category}) eth_call"))?;
+    let p_raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        caller,
+        |p| {
+            let p_req = TransactionRequest::default()
+                .to(arena)
+                .input(encode_u8_call(SEL_PODIUM, category).into());
+            async move { p.call(&p_req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("podium({category}) eth_call"))?;
     decode_podium_return(&p_raw).wrap_err_with(|| format!("decode podium({category})"))
 }
 
@@ -226,7 +232,7 @@ pub async fn run_poll_loop(
 
     let mut health = RpcPollHealth::new();
     loop {
-        match poll_any_provider(&providers, time_arena, podium_vaults, &rpc_metrics).await {
+        match poll_once(&providers, time_arena, podium_vaults, &rpc_metrics).await {
             Ok(snap) => {
                 health.report_success();
                 *cache.write().await = Some(snap);
@@ -244,81 +250,85 @@ pub async fn run_poll_loop(
     }
 }
 
-async fn poll_any_provider(
-    providers: &[ReqwestProvider],
-    arena: Address,
-    podium_vaults: Option<Address>,
-    metrics: &RpcMetrics,
-) -> Result<TimecurveHeadSnapshot> {
-    let mut last_err = None;
-    for p in providers {
-        match poll_once(p, arena, podium_vaults, metrics).await {
-            Ok(s) => return Ok(s),
-            Err(e) => last_err = Some(e),
-        }
-    }
-    Err(last_err.expect("chain_timer: non-empty RPC providers"))
-}
-
 async fn eth_call_u256(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     contract: Address,
     block_id: BlockId,
     input: Bytes,
     label: &str,
     metrics: &RpcMetrics,
 ) -> Result<U256> {
-    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
-    let req = TransactionRequest::default()
-        .to(contract)
-        .input(input.into());
-    let raw = provider
-        .call(&req)
-        .block(block_id)
-        .await
-        .wrap_err_with(|| format!("{label} eth_call"))?;
+    let raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::ChainTimer,
+        |p| {
+            let req = TransactionRequest::default()
+                .to(contract)
+                .input(input.clone().into());
+            async move { p.call(&req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("{label} eth_call"))?;
     decode_return_u256(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
 async fn eth_call_address(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     contract: Address,
     block_id: BlockId,
     selector: [u8; 4],
     label: &str,
     metrics: &RpcMetrics,
 ) -> Result<Address> {
-    metrics.record(RpcMethod::EthCall, RpcCaller::ChainTimer);
-    let req = TransactionRequest::default()
-        .to(contract)
-        .input(Bytes::copy_from_slice(&selector).into());
-    let raw = provider
-        .call(&req)
-        .block(block_id)
-        .await
-        .wrap_err_with(|| format!("{label} eth_call"))?;
+    let raw = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::EthCall,
+        RpcCaller::ChainTimer,
+        |p| {
+            let req = TransactionRequest::default()
+                .to(contract)
+                .input(Bytes::copy_from_slice(&selector).into());
+            async move { p.call(&req).block(block_id).await }
+        },
+    )
+    .await
+    .wrap_err_with(|| format!("{label} eth_call"))?;
     decode_return_address(&raw).wrap_err_with(|| format!("decode {label}"))
 }
 
 async fn poll_once(
-    provider: &ReqwestProvider,
+    providers: &[ReqwestProvider],
     arena: Address,
     podium_vaults: Option<Address>,
     metrics: &RpcMetrics,
 ) -> Result<TimecurveHeadSnapshot> {
-    metrics.record(RpcMethod::BlockNumber, RpcCaller::ChainTimer);
-    let bn = provider.get_block_number().await?;
-    metrics.record(RpcMethod::GetBlockByNumber, RpcCaller::ChainTimer);
-    let block = provider
-        .get_block_by_number(bn.into(), BlockTransactionsKind::Hashes)
-        .await?
-        .ok_or_else(|| eyre::eyre!("chain_timer: missing block {bn}"))?;
+    let bn = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::BlockNumber,
+        RpcCaller::ChainTimer,
+        |p| p.get_block_number(),
+    )
+    .await?;
+    let block = rpc_first_ok_instrumented(
+        providers,
+        Some(metrics),
+        RpcMethod::GetBlockByNumber,
+        RpcCaller::ChainTimer,
+        |p| p.get_block_by_number(bn.into(), BlockTransactionsKind::Hashes),
+    )
+    .await?
+    .ok_or_else(|| eyre::eyre!("chain_timer: missing block {bn}"))?;
 
     let block_ts = block.header.timestamp;
     let block_id = BlockId::Number(bn.into());
 
     let arena_start = eth_call_u256(
-        provider,
+        providers,
         arena,
         block_id,
         Bytes::copy_from_slice(&SEL_ARENA_START),
@@ -327,7 +337,7 @@ async fn poll_once(
     )
     .await?;
     let deadline = eth_call_u256(
-        provider,
+        providers,
         arena,
         block_id,
         Bytes::copy_from_slice(&SEL_DEADLINE),
@@ -336,7 +346,7 @@ async fn poll_once(
     )
     .await?;
     let cap = eth_call_u256(
-        provider,
+        providers,
         arena,
         block_id,
         Bytes::copy_from_slice(&SEL_TIMER_CAP),
@@ -348,7 +358,7 @@ async fn poll_once(
     let mut podium_deadlines = std::array::from_fn(|_| String::new());
     for cat in 0u8..=3 {
         let dl = eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             encode_u8_call(SEL_PODIUM_DEADLINE, cat),
@@ -360,7 +370,7 @@ async fn poll_once(
     }
 
     let last_buy_epoch = eth_call_u256(
-        provider,
+        providers,
         arena,
         block_id,
         Bytes::copy_from_slice(&SEL_LAST_BUY_EPOCH),
@@ -372,7 +382,7 @@ async fn poll_once(
     let mut podium_epochs = std::array::from_fn(|_| String::new());
     for cat in 0u8..=3 {
         let ep = eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             encode_u8_call(SEL_PODIUM_EPOCH, cat),
@@ -386,7 +396,7 @@ async fn poll_once(
     let mut podium_rows = std::array::from_fn(|_| empty_podium_row());
     for cat in 0u8..=3 {
         podium_rows[cat as usize] = podium_at_block_id(
-            provider,
+            providers,
             arena,
             block_id,
             cat,
@@ -400,7 +410,7 @@ async fn poll_once(
     if let Some(pv) = podium_vaults.filter(|a| *a != Address::ZERO) {
         for cat in 0u8..=3 {
             let bal = eth_call_u256(
-                provider,
+                providers,
                 pv,
                 block_id,
                 encode_u8_call(SEL_ACTIVE_POOL_BALANCE, cat),
@@ -430,7 +440,7 @@ async fn poll_once(
     };
 
     let sale_state = crate::sale_state::poll_sale_state_at_block(
-        provider,
+        providers,
         arena,
         block_id,
         block_ts,
@@ -452,7 +462,7 @@ async fn poll_once(
         referral_cred_flat_wad,
     ) = tokio::try_join!(
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_EFFECTIVE_CHARM_PRICE_WAD),
@@ -460,7 +470,7 @@ async fn poll_once(
             metrics,
         ),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_EPOCH_CHARM_ANCHOR_WAD),
@@ -468,16 +478,16 @@ async fn poll_once(
             metrics,
         ),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_EPOCH_ANCHOR_TIMESTAMP),
             "epochAnchorTimestamp",
             metrics,
         ),
-        eth_call_address(provider, arena, block_id, SEL_DOUB, "doub", metrics),
+        eth_call_address(providers, arena, block_id, SEL_DOUB, "doub", metrics),
         eth_call_address(
-            provider,
+            providers,
             arena,
             block_id,
             SEL_REFERRAL_REGISTRY,
@@ -485,7 +495,7 @@ async fn poll_once(
             metrics,
         ),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_BUY_COOLDOWN_SEC),
@@ -493,7 +503,7 @@ async fn poll_once(
             metrics,
         ),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_TIMER_EXTENSION_SEC),
@@ -501,7 +511,7 @@ async fn poll_once(
             metrics,
         ),
         eth_call_address(
-            provider,
+            providers,
             arena,
             block_id,
             SEL_TIME_ARENA_BUY_ROUTER,
@@ -509,7 +519,7 @@ async fn poll_once(
             metrics,
         ),
         eth_call_u256(
-            provider,
+            providers,
             arena,
             block_id,
             Bytes::copy_from_slice(&SEL_REFERRAL_CRED_FLAT_WAD),
