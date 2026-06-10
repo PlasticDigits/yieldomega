@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAccount } from "wagmi";
-import { BLOCKIE_HILLS_PLAYLIST } from "./albumPlaylist";
+import { GLASS_ARENA_PLAYLIST } from "./albumPlaylist";
 import { loadAudioPlaybackState } from "./audioPlaybackState";
 import { AudioEngineContext, type AudioEngineApi } from "./audioEngineContext";
 import { loadAudioPrefs, saveAudioPrefs, type AudioPrefsV1 } from "./audioPreferences";
@@ -37,7 +37,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
   const [bgmPlaying, setBgmPlaying] = useState(false);
   const [trackIndex, setTrackIndex] = useState(() =>
-    typeof window !== "undefined" ? loadAudioPlaybackState(BLOCKIE_HILLS_PLAYLIST).trackIndex : 0,
+    typeof window !== "undefined" ? loadAudioPlaybackState(GLASS_ARENA_PLAYLIST).trackIndex : 0,
   );
   const mixerRef = useRef<WebAudioMixer | null>(null);
   const prefsRef = useRef(prefs);
@@ -156,7 +156,7 @@ export function AudioEngineProvider({ children }: { children: ReactNode }) {
   }, [unlockFromGesture]);
 
   const api = useMemo<AudioEngineApi>(() => {
-    const currentTrack = BLOCKIE_HILLS_PLAYLIST[trackIndex] ?? BLOCKIE_HILLS_PLAYLIST[0];
+    const currentTrack = GLASS_ARENA_PLAYLIST[trackIndex] ?? GLASS_ARENA_PLAYLIST[0];
     return {
       unlocked,
       bgmPlaying,

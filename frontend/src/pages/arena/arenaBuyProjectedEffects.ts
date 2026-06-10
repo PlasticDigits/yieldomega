@@ -2,7 +2,8 @@
 
 import type { HexAddress } from "@/lib/addresses";
 import { shortAddress } from "@/lib/addressFormat";
-import { xpForCharm } from "@/lib/arenaXpMath";
+import { clampPlayerLevel, isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
+import { applyXpGain, xpForCharm } from "@/lib/arenaXpMath";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import type { BuyItem } from "@/lib/indexerApi";
 import {
@@ -13,13 +14,35 @@ import {
   previewWarbowBuyEffects,
 } from "@/lib/timeArenaBuyPreview";
 import { buildBuyBattlePointBreakdown } from "@/lib/timeArenaUx";
-import { isFeatureUnlocked, MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
 
 const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 /** XP preview from cleared CHARM weight (mirrors onchain `ArenaXp.xpForCharm`). */
 export function formatBuyProjectedXpLine(charmWad: bigint): string {
   return `+${formatLocaleInteger(xpForCharm(charmWad).toString())}xp`;
+}
+
+/** Level transition chip when a buy crosses an XP threshold (e.g. `1->2 Level`). */
+export function formatBuyProjectedLevelLine(levelBefore: number, levelAfter: number): string | undefined {
+  const before = clampPlayerLevel(levelBefore);
+  const after = clampPlayerLevel(levelAfter);
+  if (after <= before) return undefined;
+  return `${before}->${after} Level`;
+}
+
+/** Post-buy level after applying charm XP to cached `level` + `xpTowardNext` (#265 / #299). */
+export function previewBuyPlayerLevelAfterCharm(
+  playerLevel: bigint | number,
+  xpTowardNext: bigint | number | undefined,
+  charmWeightWad: bigint | undefined,
+): { levelBefore: number; levelAfter: number } {
+  const levelBefore = clampPlayerLevel(playerLevel);
+  if (charmWeightWad === undefined || charmWeightWad <= 0n) {
+    return { levelBefore, levelAfter: levelBefore };
+  }
+  const toward = BigInt(xpTowardNext ?? 0);
+  const { level } = applyXpGain(BigInt(levelBefore), toward, xpForCharm(charmWeightWad));
+  return { levelBefore, levelAfter: clampPlayerLevel(Number(level)) };
 }
 
 export type BuildArenaBuyProjectedEffectLinesArgs = {
@@ -43,6 +66,8 @@ export type BuildArenaBuyProjectedEffectLinesArgs = {
   previewPolicy?: ArenaBuyPreviewPolicy;
   /** Effective onchain player level for progression-gated preview lines (#299). */
   playerLevel?: bigint | number;
+  /** Cached progress toward next level; used for level-up chip + post-buy feature gates (#265). */
+  xpTowardNext?: bigint | number;
   /** `formatWallet(addr, "rival")` on Arena; Simple may use {@link shortAddress}. */
   formatRivalWallet: (addr: HexAddress) => string;
 };
@@ -70,17 +95,26 @@ export function buildArenaBuyProjectedEffectLines(
     recentBuys,
     previewPolicy,
     playerLevel = MAX_PLAYER_LEVEL,
+    xpTowardNext,
     formatRivalWallet,
   } = args;
-
-  const levelNum =
-    typeof playerLevel === "bigint" ? Number(playerLevel) : playerLevel ?? MAX_PLAYER_LEVEL;
 
   const items: string[] = [];
 
   const charmLineWad = charmWeightTotalWad ?? charmWadSelected;
+  const { levelBefore, levelAfter } = previewBuyPlayerLevelAfterCharm(
+    playerLevel,
+    xpTowardNext,
+    charmLineWad,
+  );
+  const levelNum = levelAfter;
+
   if (charmLineWad !== undefined && charmLineWad > 0n) {
     items.push(formatBuyProjectedXpLine(charmLineWad));
+    const levelLine = formatBuyProjectedLevelLine(levelBefore, levelAfter);
+    if (levelLine) {
+      items.push(levelLine);
+    }
   }
 
   if (secondsRemaining === undefined) {

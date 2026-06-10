@@ -55,7 +55,7 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     expect(css).not.toContain("min-height: clamp(18rem, 34vw, 24rem)");
   });
 
-  it("stacks and centres the command-console timer heading above the countdown", () => {
+  it("anchors the command-console timer prize hook top-left and centres the countdown", () => {
     const block = cssBlock(
       css,
       ".arena-command-console .arena-simple__timer-panel.data-panel {\n  min-height: 0;",
@@ -68,10 +68,12 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
 
     const headingBlock = cssBlock(
       css,
-      ".arena-command-console .arena-simple__timer-panel .section-heading {",
-      180,
+      "/* Prize hook — top-left of timer bay",
+      420,
     );
-    expect(headingBlock).toContain("text-align: center");
+    expect(headingBlock).toContain("position: absolute");
+    expect(headingBlock).toContain("text-align: left");
+    expect(headingBlock).toContain("left: clamp(0.38rem, 0.85vw, 0.52rem)");
 
     const clockBlock = cssBlock(css, ".arena-command-console .arena-simple__timer-clock {", 180);
     expect(clockBlock).toContain("justify-content: center");
@@ -81,15 +83,19 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     const gridBlock = cssBlock(css, ".arena-command-console__grid {", 420);
     expect(gridBlock).toContain("align-items: start");
 
-    expect(css).toContain("grid-area: console-buy");
+    expect(css).toContain("grid-area: console-primary");
     expect(css).toContain("grid-area: console-side");
 
-    const primaryBlock = cssBlock(
+    const primaryBlock = cssBlock(css, ".arena-command-console__primary-column {", 500);
+    expect(primaryBlock).toContain("flex-direction: column");
+    expect(primaryBlock).toContain("gap: 0.75rem");
+
+    const gridChildBlock = cssBlock(
       css,
-      ".arena-command-console__grid > .arena-simple__timer-row,\n.arena-command-console__grid > .arena-simple__buy-panel,\n.arena-command-console__grid > .arena-command-console__hub-warbow {",
+      ".arena-command-console__grid > .arena-command-console__primary-column,\n.arena-command-console__grid > .arena-command-console__hub-warbow {",
       320,
     );
-    expect(primaryBlock).toContain("align-self: start");
+    expect(gridChildBlock).toContain("align-self: start");
   });
 
   it("stacks Last Buy leaders in the command-console side rail with the other podium chips", () => {
@@ -249,6 +255,30 @@ describe("Time Arena responsive layout CSS (GitLab #201)", () => {
     expect(rootLayout).toContain("app-shell--referrals");
     expect(rootLayout).toContain("app-main--referrals");
     expect(css).toContain(".app-main.app-main--referrals");
+  });
+
+  it("stacks command-console pay amount above token+balance when the swap field is narrow", () => {
+    const fieldBlock = cssBlock(css, ".arena-command-console .arena-simple__swap-field {", 320);
+    expect(fieldBlock).toContain("container-type: inline-size");
+    expect(fieldBlock).toContain("container-name: arenaSwapField");
+    expect(fieldBlock).toContain("min-width: 0");
+
+    const cqIdx = css.indexOf("@container arenaSwapField (max-width: 20rem)");
+    expect(cqIdx).toBeGreaterThanOrEqual(0);
+    const cqBlock = css.slice(cqIdx, cqIdx + 720);
+    expect(cqBlock).toContain(".arena-command-console .arena-simple__pay-row");
+    expect(cqBlock).toContain("flex-wrap: wrap");
+    expect(cqBlock).toContain("flex: 1 1 100%");
+    expect(cqBlock).toContain(".arena-command-console .arena-simple__pay-slider-row::before");
+    expect(cqBlock).toContain("display: none");
+
+    const amountBlock = cssBlock(
+      css,
+      ".arena-command-console .arena-simple__pay-row .arena-simple__amount-field {",
+      220,
+    );
+    expect(amountBlock).toContain("min-width: 0");
+    expect(amountBlock).toContain("text-overflow: ellipsis");
   });
 
   it("keeps mobile Arena content clear of the fixed audio dock and wraps long values", () => {

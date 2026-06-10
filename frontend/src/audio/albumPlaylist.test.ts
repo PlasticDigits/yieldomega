@@ -2,28 +2,28 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  BLOCKIE_HILLS_PLAYLIST,
+  GLASS_ARENA_PLAYLIST,
   manifestToPlaylist,
-  type BlockieHillsManifest,
+  type GlassArenaManifest,
 } from "./albumPlaylist";
 
-describe("BLOCKIE_HILLS_PLAYLIST", () => {
-  it("has sixteen Blockie Hills tracks from manifest", () => {
-    expect(BLOCKIE_HILLS_PLAYLIST).toHaveLength(16);
-    expect(BLOCKIE_HILLS_PLAYLIST[0].id).toBe("blockie_hills/01-hills-dawn.mp3");
-    expect(BLOCKIE_HILLS_PLAYLIST[0].src).toContain("/music/albums/blockie_hills/01-hills-dawn.mp3");
-    expect(BLOCKIE_HILLS_PLAYLIST[7].title).toBe("Kumbaya Campfire");
-    expect(BLOCKIE_HILLS_PLAYLIST[8].src).toContain("09-emerald-gate.mp3");
-    expect(BLOCKIE_HILLS_PLAYLIST[15].src).toContain("16-logging-off-lullaby.mp3");
+describe("GLASS_ARENA_PLAYLIST", () => {
+  it("has sixteen Glass Arena tracks from manifest", () => {
+    expect(GLASS_ARENA_PLAYLIST).toHaveLength(16);
+    expect(GLASS_ARENA_PLAYLIST[0].id).toBe("glass_arena/01-console-boot.mp3");
+    expect(GLASS_ARENA_PLAYLIST[0].src).toContain("/music/albums/glass_arena/01-console-boot.mp3");
+    expect(GLASS_ARENA_PLAYLIST[5].title).toBe("Last Buy");
+    expect(GLASS_ARENA_PLAYLIST[8].src).toContain("09-arena-gate.mp3");
+    expect(GLASS_ARENA_PLAYLIST[15].src).toContain("16-logout-lullaby.mp3");
   });
 });
 
 describe("manifestToPlaylist", () => {
   it("joins publicBasePath and file", () => {
-    const m: BlockieHillsManifest = {
-      albumId: "x",
-      albumTitle: "X",
-      publicBasePath: "/music/albums/blockie_hills/",
+    const m: GlassArenaManifest = {
+      albumId: "glass_arena",
+      albumTitle: "Glass Arena",
+      publicBasePath: "/music/albums/glass_arena/",
       tracks: [
         { index: 1, file: "a.mp3", title: "A", durationSec: 1 },
         { index: 2, file: "b.mp3", title: "B", durationSec: 2 },
@@ -31,15 +31,15 @@ describe("manifestToPlaylist", () => {
     };
     const pl = manifestToPlaylist(m);
     expect(pl[0]).toEqual({
-      src: "/music/albums/blockie_hills/a.mp3",
+      src: "/music/albums/glass_arena/a.mp3",
       title: "A",
-      id: "x/a.mp3",
+      id: "glass_arena/a.mp3",
       durationSec: 1,
     });
     expect(pl[1]).toEqual({
-      src: "/music/albums/blockie_hills/b.mp3",
+      src: "/music/albums/glass_arena/b.mp3",
       title: "B",
-      id: "x/b.mp3",
+      id: "glass_arena/b.mp3",
       durationSec: 2,
     });
   });

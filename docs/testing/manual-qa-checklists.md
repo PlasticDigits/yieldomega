@@ -359,7 +359,7 @@ Brief row for **INV-REFERRAL-121-UX** (pairs with audit [L‑02](../../audits/au
 
 - [ ] **`forge test --match-test test_xp_`** and **`forge test --match-path test/ArenaXp.t.sol`** pass.
 - [ ] **`npm test -- --run src/lib/arenaXpMath.test.ts`** passes (mirrors `applyXpGain`).
-- [ ] Fresh Anvil **`DeployDev`**: max-CHARM buy → `cast call level` = **1**, `xpTowardNext` = **10**, `xpToNextLevel` = **10** (10 XP toward L2 threshold 20).
+- [ ] Fresh Anvil **`DeployDev`**: max-CHARM buy → `cast call level` = **2**, `xpTowardNext` = **0**, `xpToNextLevel` = **15** (10 XP reaches L2 threshold 10).
 - [ ] After many buys from one wallet, a non-level-up buy gas does **not** scale vs a fresh wallet (`test_xp_high_level_buy_gas_bounded_no_level_up`).
 - [ ] Timer hard-reset buy: `lastBuyEpoch` increments; **`level`** / **`xpTowardNext`** unchanged (`test_xp_survives_timer_hard_reset`).
 - [ ] **`buyWithCred`** at same CHARM yields same level/progress as DOUB (`test_xp_buy_with_cred_same_as_doub`).
@@ -791,7 +791,7 @@ Spot-check after changing **`playGameSfx*`**, **`submitArenaKumbayaSingleTxBuy`*
 
 ## Mobile album dock vs nav chrome (GitLab #103)
 
-**Goal:** On phone-sized breakpoints, the fixed **Blockie Hills** dock must **not** overlap the bordered **`RootLayout`** nav card (**`INV-AUDIO-103`**).
+**Goal:** On phone-sized breakpoints, the fixed **Glass Arena** album dock must **not** overlap the bordered **`RootLayout`** nav card (**`INV-AUDIO-103`**).
 
 ### Invariants
 

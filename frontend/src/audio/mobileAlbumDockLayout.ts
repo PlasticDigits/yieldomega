@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 /**
- * Mobile layout tokens for the Blockie Hills dock (`.album-player-dock`) vs the
+ * Mobile layout tokens for the Glass Arena album dock (`.album-player-dock`) vs the
  * fixed bottom `.app-header` card ([GitLab #103](https://gitlab.com/PlasticDigits/yieldomega/-/work_items/103)).
  *
  * **Invariant (`INV-AUDIO-103`):** On viewports `≤720px`, `.album-player-dock`

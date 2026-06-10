@@ -19,10 +19,11 @@ import {
 import type { PodiumPayoutPreview, PodiumReadRow } from "@/pages/arena/usePodiumReads";
 import { useLastBuyHeadShakeNonce } from "@/pages/arena/useLastBuyHeadShakeNonce";
 
-const LAST_BUY_CATEGORY_INDEX = 0;
 const ZERO_ADDR = zeroAddress as `0x${string}`;
 
 export type ArenaLastBuyPodiumLeaderboardProps = {
+  /** UX podium slot: 0 Last Buy · 1 WarBow · 2 Defended · 3 Time Booster. */
+  categoryIndex?: number;
   address?: string;
   decimals: number;
   podiumRow: PodiumReadRow | undefined;
@@ -33,6 +34,7 @@ export type ArenaLastBuyPodiumLeaderboardProps = {
 };
 
 export function ArenaLastBuyPodiumLeaderboard({
+  categoryIndex = 0,
   address,
   decimals,
   podiumRow,
@@ -41,11 +43,13 @@ export function ArenaLastBuyPodiumLeaderboard({
   podiumNowUnixSec,
   onOpenWalletProfile,
 }: ArenaLastBuyPodiumLeaderboardProps) {
-  const firstPlaceShakeNonce = useLastBuyHeadShakeNonce(recentBuys);
+  const firstPlaceShakeNonce = useLastBuyHeadShakeNonce(
+    categoryIndex === 0 ? recentBuys : null,
+  );
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const rankingRows = rankingRowsForPodium(
     podiumRow,
-    LAST_BUY_CATEGORY_INDEX,
+    categoryIndex,
     address,
     podiumPayoutPreview,
     decimals,
@@ -61,7 +65,8 @@ export function ArenaLastBuyPodiumLeaderboard({
     <div
       className="arena-simple__last-buy-podiums"
       data-testid="arena-last-buy-podium-leaderboard"
-      aria-label="Last Buy podium standings"
+      data-podium-category={categoryIndex}
+      aria-label={`Podium ${categoryIndex + 1} standings`}
     >
       {PODIUM_STAND_VISUAL_ORDER.map((placeIndex) => {
         const placeLabel = PODIUM_PLACE_LABELS[placeIndex]!;
@@ -69,7 +74,7 @@ export function ArenaLastBuyPodiumLeaderboard({
         const winner = winners[placeIndex] ?? ZERO_ADDR;
         const winnerReady = hasPodiumWinner(winner);
         const row = rankingRows[placeIndex]!;
-        const prizeRaw = podiumPayoutPreview?.[LAST_BUY_CATEGORY_INDEX]?.places[placeIndex];
+        const prizeRaw = podiumPayoutPreview?.[categoryIndex]?.places[placeIndex];
         const prizeLabel =
           prizeRaw !== undefined ? (
             formatCompactFromRaw(prizeRaw, decimals, { sigfigs: 3 })
@@ -86,7 +91,7 @@ export function ArenaLastBuyPodiumLeaderboard({
                 { sigfigs: 3 },
               )
             : undefined;
-        const scoreLine = formatSimplePodiumScoreLine(LAST_BUY_CATEGORY_INDEX, placeIndex, {
+        const scoreLine = formatSimplePodiumScoreLine(categoryIndex, placeIndex, {
           winner,
           winnerReady,
           valueRaw: values[placeIndex] ?? "0",
@@ -140,7 +145,7 @@ export function ArenaLastBuyPodiumLeaderboard({
                   className="arena-simple__last-buy-podium-prize-usd"
                   title={SIMPLE_PODIUM_USD_EQUIV_TITLE}
                 >
-                  ≈ ${usdLabel} USD
+                  {`≈$${usdLabel} USD`}
                 </span>
               )}
             </div>

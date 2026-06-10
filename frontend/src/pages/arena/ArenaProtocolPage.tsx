@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useMemo, useState } from "react";
+import { useAccount } from "wagmi";
+import { useArenaPlayerLevel } from "@/hooks/useArenaPlayerLevel";
 import { ARENA_CHARM_MAX_WAD, ARENA_CHARM_MIN_WAD } from "@/lib/arenaConstants";
+import type { ArenaFeatureKey } from "@/lib/arenaProgression";
+import { FeatureMechanicModal } from "@/components/FeatureMechanicModal";
 import { minCl8ySpendBroadcastHeadroom } from "@/lib/timeArenaMinSpendHeadroom";
 import { useIndexerConnectivity } from "@/hooks/useIndexerConnectivity";
 import { ArenaVaultAddressesPanel } from "@/components/ArenaVaultAddressesPanel";
@@ -30,6 +34,8 @@ import { useProtocolCl8yUsdSpotPrice } from "@/hooks/useProtocolCl8yUsdSpotPrice
 import { ProtocolInlineRefreshButton } from "@/pages/arena/ProtocolInlineRefreshButton";
 import { useLatestBlock } from "@/providers/LatestBlockContext";
 import { useArenaProtocolData } from "@/pages/arena/ArenaProtocolDataContext";
+import { ArenaSimplePodiumSection } from "@/pages/arena/ArenaSimplePodiumSection";
+import { usePodiumReads } from "@/pages/arena/usePodiumReads";
 
 const ARENA_VAULT_LABELS = [
   "100% podium prize vaults",
@@ -60,11 +66,18 @@ const CORE = {
 
 export function ArenaProtocolPage() {
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
+  const [featureModal, setFeatureModal] = useState<ArenaFeatureKey | null>(null);
   const onOpenWalletProfile = useCallback((addr: string) => setProfileAddress(addr), []);
+  const openFeatureHelp = useCallback((feature: ArenaFeatureKey) => {
+    setFeatureModal(feature);
+  }, []);
 
   const tc = addresses.timeArena;
+  const { address: connectedAddress } = useAccount();
   const { protocolReading: reading, latchedAcceptedAssetAddr, heroChainNowSec } =
     useArenaProtocolData();
+  const podiumReads = usePodiumReads(tc ?? undefined);
+  const { levelBigint: playerLevelRaw } = useArenaPlayerLevel(connectedAddress);
 
   const cl8yUsd = useProtocolCl8yUsdSpotPrice(latchedAcceptedAssetAddr);
   const get = (i: number) => reading[i];
@@ -227,6 +240,19 @@ export function ArenaProtocolPage() {
         />
       </header>
 
+      <ArenaSimplePodiumSection
+        podiumRows={podiumReads.data}
+        podiumLoading={podiumReads.isLoading}
+        podiumPayoutPreview={podiumReads.podiumPayoutPreview}
+        decimals={18}
+        address={connectedAddress}
+        playerLevel={playerLevelRaw}
+        recentBuys={liveBuys.buys}
+        podiumNowUnixSec={heroChainNowSec}
+        onOpenWalletProfile={onOpenWalletProfile}
+        onFeatureHelp={openFeatureHelp}
+      />
+
       <PageSection
         title="State deck"
         spotlight
@@ -340,6 +366,7 @@ export function ArenaProtocolPage() {
       <RawDataAccordion {...protocolRawAccordion} />
 
       <WalletProfileModal address={profileAddress} onClose={() => setProfileAddress(null)} />
+      <FeatureMechanicModal feature={featureModal} onClose={() => setFeatureModal(null)} />
     </div>
   );
 }

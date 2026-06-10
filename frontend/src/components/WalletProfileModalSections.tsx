@@ -5,7 +5,14 @@ import { AmountDisplay } from "@/components/AmountDisplay";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import { formatLocaleInteger } from "@/lib/formatAmount";
-import { CRED_TOKEN_LOGO } from "@/lib/tokenMedia";
+import {
+  CHARM_TOKEN_LOGO,
+  CRED_TOKEN_LOGO,
+  DOUB_TOKEN_LOGO,
+  ETH_TOKEN_LOGO,
+  USDM_TOKEN_LOGO,
+} from "@/lib/tokenMedia";
+import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
 import {
   formatWalletProfileRankLabel,
   formatWalletProfileUnixSec,
@@ -32,6 +39,65 @@ function CredAmount({ raw }: { raw: string }) {
       <img src={CRED_TOKEN_LOGO} alt="" width={18} height={18} decoding="async" />
       <AmountDisplay raw={raw} decimals={18} valueMono={false} />
     </span>
+  );
+}
+
+function TokenBalanceValue({
+  logo,
+  raw,
+  decimals,
+  symbol,
+}: {
+  logo: string;
+  raw: bigint | undefined;
+  decimals: number;
+  symbol: string;
+}) {
+  if (raw === undefined) {
+    return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+  }
+  return (
+    <span className="token-amount">
+      <img src={logo} alt="" width={18} height={18} decoding="async" />
+      <AmountDisplay raw={String(raw)} decimals={decimals} valueMono={false} /> {symbol}
+    </span>
+  );
+}
+
+export function WalletProfileBalancesSection({
+  balances,
+}: {
+  balances: WalletProfileBalancesSnapshot;
+}) {
+  return (
+    <section className="wallet-profile-modal__section" data-testid="wallet-profile-balances">
+      <h3 id="wallet-profile-balances">Wallet balances</h3>
+      {balances.isLoading ? (
+        <p className="wallet-profile-modal__empty">
+          <EmptyDataPlaceholder>Loading balances…</EmptyDataPlaceholder>
+        </p>
+      ) : (
+        <ul className="wallet-profile-modal__stats">
+          <StatRow label="CHARM">
+            <TokenBalanceValue logo={CHARM_TOKEN_LOGO} raw={balances.charmWad} decimals={18} symbol="CHARM" />
+          </StatRow>
+          <StatRow label="CRED">
+            <TokenBalanceValue logo={CRED_TOKEN_LOGO} raw={balances.credWei} decimals={18} symbol="CRED" />
+          </StatRow>
+          <StatRow label="DOUB">
+            <TokenBalanceValue logo={DOUB_TOKEN_LOGO} raw={balances.doubWei} decimals={18} symbol="DOUB" />
+          </StatRow>
+          <StatRow label="ETH">
+            <TokenBalanceValue logo={ETH_TOKEN_LOGO} raw={balances.ethWei} decimals={18} symbol="ETH" />
+          </StatRow>
+          {balances.showUsdm ? (
+            <StatRow label="USDM">
+              <TokenBalanceValue logo={USDM_TOKEN_LOGO} raw={balances.usdmWei} decimals={18} symbol="USDM" />
+            </StatRow>
+          ) : null}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -192,7 +258,11 @@ export function WalletProfileFunFactsSection({ data }: { data: ArenaWalletStats 
   );
 }
 
-export function WalletProfileStatsBody({ data }: { data: ArenaWalletStats }) {
+export function WalletProfileStatsBody({
+  data,
+}: {
+  data: ArenaWalletStats;
+}) {
   return (
     <div className="wallet-profile-modal__sections">
       <WalletProfileOverviewSection data={data} />

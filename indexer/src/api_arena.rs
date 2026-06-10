@@ -30,6 +30,10 @@ pub fn arena_routes() -> axum::Router<AppState> {
             axum::routing::get(arena_wallet_stats),
         )
         .route(
+            "/v1/arena/warbow/latest-bp",
+            axum::routing::get(arena_warbow_latest_bp),
+        )
+        .route(
             "/v1/arena/podium-pool-donations",
             axum::routing::get(arena_podium_pool_donations),
         )
@@ -461,6 +465,67 @@ async fn arena_activity(State(state): State<AppState>, Query(p): Query<PageParam
             "offset": offset,
             "next_offset": if row_count == limit { Some(offset + limit) } else { None },
         })),
+    )
+        .into_response()
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct WarbowLatestBpQuery {
+    players: String,
+}
+
+/// Latest indexed `battlePoints` snapshot per player (`idx_warbow_epoch_score`).
+async fn arena_warbow_latest_bp(
+    State(state): State<AppState>,
+    Query(p): Query<WarbowLatestBpQuery>,
+) -> Response {
+    let players: Vec<String> = p
+        .players
+        .split(',')
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| s.starts_with("0x") && s.len() == 42)
+        .take(32)
+        .collect();
+    if players.is_empty() {
+        return (
+            StatusCode::OK,
+            with_schema_version(axum::http::HeaderMap::new()),
+            Json(json!({ "items": [] })),
+        )
+            .into_response();
+    }
+
+    let rows = match sqlx::query(
+        r#"SELECT player, battle_points::text AS bp
+           FROM (
+               SELECT DISTINCT ON (player) player, battle_points, block_number, log_index
+               FROM idx_warbow_epoch_score
+               WHERE player = ANY($1)
+               ORDER BY player, block_number DESC, log_index DESC
+           ) latest"#,
+    )
+    .bind(&players)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => return internal_db_error_response("GET /v1/arena/warbow/latest-bp", e),
+    };
+
+    let items: Vec<_> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "player": r.get::<String, _>("player"),
+                "battle_points": r.get::<String, _>("bp"),
+            })
+        })
+        .collect();
+
+    (
+        StatusCode::OK,
+        with_schema_version(axum::http::HeaderMap::new()),
+        Json(json!({ "items": items })),
     )
         .into_response()
 }

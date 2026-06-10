@@ -7,11 +7,20 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { formatCompactFromRaw } from "@/lib/compactNumberFormat";
+import { formatWarbowViewerBattlePointsDisplay } from "@/lib/arenaPageHelpers";
 import { formatLocaleInteger } from "@/lib/formatAmount";
 import { formatMmSsCountdown } from "@/pages/arena/formatTimer";
 import { ArenaLevelGate } from "@/components/ArenaLevelGate";
-import type { ArenaFeatureKey } from "@/lib/arenaProgression";
-import { useArenaWarbowHero } from "@/pages/arena/useArenaWarbowHero";
+import { LockedUntilLevel } from "@/components/LockedUntilLevel";
+import {
+  type ArenaFeatureKey,
+  FEATURE_UNLOCK_LEVEL,
+  isFeatureUnlocked,
+} from "@/lib/arenaProgression";
+import {
+  type IndexerWarbowHeroHead,
+  useArenaWarbowHero,
+} from "@/pages/arena/useArenaWarbowHero";
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 
 type Props = {
@@ -19,6 +28,13 @@ type Props = {
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
   warbowTargets?: readonly WarbowTarget[];
+  /** Indexer-sourced viewer BP when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
+  indexerViewerBattlePoints?: bigint;
+  /** Indexer head + wallet guard for display when browser RPC is inactive (#301). */
+  indexerWarbowHead?: IndexerWarbowHeroHead;
+  plantWarBowFlag?: boolean;
+  onPlantWarBowFlagChange?: (checked: boolean) => void;
+  plantFlagDisabled?: boolean;
 };
 
 export type WarbowTarget = {
@@ -51,8 +67,23 @@ function isEligibleTarget(target: WarbowTarget, viewerBattlePoints: string | und
   return targetBp >= viewer * 2n && targetBp <= viewer * 10n;
 }
 
-export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbowTargets = [] }: Props) {
-  const w = useArenaWarbowHero(phase);
+export function ArenaWarbowHeroPanel({
+  phase,
+  playerLevel,
+  onFeatureHelp,
+  warbowTargets = [],
+  indexerViewerBattlePoints,
+  indexerWarbowHead,
+  plantWarBowFlag = false,
+  onPlantWarBowFlagChange,
+  plantFlagDisabled = true,
+}: Props) {
+  const w = useArenaWarbowHero(phase, { indexerViewerBattlePoints, indexerWarbowHead });
+  const viewerBattlePointsDisplay = formatWarbowViewerBattlePointsDisplay(
+    parseBp(w.viewerBattlePoints),
+  );
+  const warbowFlagUnlocked =
+    playerLevel !== undefined && isFeatureUnlocked(playerLevel, "warbow_flag");
   const [targetFilter, setTargetFilter] = useState<TargetFilter>("eligible");
   const [targetSort, setTargetSort] = useState<TargetSort>("bp-desc");
   const selectedTarget = w.stealVictimInput.trim();
@@ -96,7 +127,6 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbow
     <ArenaLevelGate
       playerLevel={playerLevel}
       feature="warbow"
-      onHelp={onFeatureHelp ? () => onFeatureHelp("warbow") : undefined}
       className="warbow-hero-actions-wrap"
       testId="warbow-hero-level-gate"
     >
@@ -105,12 +135,24 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbow
       aria-label="WarBow hero actions"
       data-testid="warbow-hero-actions"
     >
+      {onFeatureHelp ? (
+        <button
+          type="button"
+          className="warbow-hero-card__help warbow-hero-actions__help"
+          aria-label="Open WarBow tutorial"
+          data-testid="warbow-hero-help"
+          onClick={() => onFeatureHelp("warbow")}
+        >
+          ?
+        </button>
+      ) : null}
+
       {!w.isConnected ? <WalletConnectButton /> : null}
 
       {w.isConnected && (
         <article className="warbow-hero-card warbow-hero-card--viewer-summary" data-testid="warbow-hero-viewer-summary">
           <p className="warbow-hero-viewer-summary__line">
-            YOUR BP: <strong>{w.viewerBattlePoints ?? "—"}</strong>
+            YOUR BP: <strong>{viewerBattlePointsDisplay}</strong>
           </p>
           <p className="warbow-hero-viewer-summary__line">
             GUARD:{" "}
@@ -139,16 +181,6 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbow
             <span className="status-pill status-pill--warning" data-testid="warbow-hero-steal-cost">
               {stealCost} DOUB
             </span>
-            {onFeatureHelp ? (
-              <button
-                type="button"
-                className="warbow-hero-card__help"
-                aria-label="Open WarBow tutorial"
-                onClick={() => onFeatureHelp("warbow")}
-              >
-                ?
-              </button>
-            ) : null}
           </div>
           <div className="warbow-target-toolbar" aria-label="WarBow target filters">
             <label>
@@ -295,6 +327,35 @@ export function ArenaWarbowHeroPanel({ phase, playerLevel, onFeatureHelp, warbow
             </span>
           </div>
           <p className="muted">Claim after silence.</p>
+          {w.isConnected && w.saleActive ? (
+            !warbowFlagUnlocked ? (
+              <LockedUntilLevel
+                requiredLevel={FEATURE_UNLOCK_LEVEL.warbow_flag}
+                variant="compact"
+                className="warbow-hero-card__plant-flag-gate"
+                testId="arena-simple-warbow-flag-gate"
+                overlayTestId="arena-simple-warbow-flag-lock"
+              >
+                <label className="warbow-hero-actions__checkbox">
+                  <input type="checkbox" checked={false} disabled data-testid="arena-simple-warbow-flag-toggle" />{" "}
+                  Plant Flag on Next Buy
+                </label>
+              </LockedUntilLevel>
+            ) : (
+              <ChainMismatchWriteBarrier>
+                <label className="warbow-hero-actions__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={plantWarBowFlag}
+                    disabled={plantFlagDisabled}
+                    onChange={(e) => onPlantWarBowFlagChange?.(e.target.checked)}
+                    data-testid="arena-simple-warbow-flag-toggle"
+                  />{" "}
+                  Plant Flag on Next Buy
+                </label>
+              </ChainMismatchWriteBarrier>
+            )
+          ) : null}
         </article>
       </div>
 

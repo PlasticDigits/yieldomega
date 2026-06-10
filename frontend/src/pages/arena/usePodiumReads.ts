@@ -8,6 +8,7 @@ import {
   timeArenaBuyEventAbi,
   timeArenaWarbowBpEventAbi,
 } from "@/lib/abis";
+import { ARENA_WALLET_STATS_QUERY_KEY } from "@/hooks/useWalletStats";
 import { indexerBaseUrl } from "@/lib/addresses";
 import { fetchArenaPodiums, type ArenaPodiumApiRow } from "@/lib/indexerApi";
 import {
@@ -176,6 +177,7 @@ export function useWarbowPodiumLiveInvalidation(
     setBuyFeedRefreshNonce((n) => n + 1);
     if (indexerBaseUrl()) {
       void queryClient.invalidateQueries({ queryKey: ARENA_PODIUMS_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: [ARENA_WALLET_STATS_QUERY_KEY] });
     }
   }, [queryClient, setBuyFeedRefreshNonce]);
 

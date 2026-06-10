@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { BLOCKIE_HILLS_PLAYLIST, type AlbumTrack } from "./albumPlaylist";
+import { GLASS_ARENA_PLAYLIST, type AlbumTrack } from "./albumPlaylist";
 import {
   buildPlaybackSnapshot,
   createMinIntervalGate,
@@ -77,7 +77,7 @@ export class WebAudioMixer {
     this.flushPlaybackFromElement();
   };
 
-  constructor(initialPrefs: AudioPrefsV1, playlist: readonly AlbumTrack[] = BLOCKIE_HILLS_PLAYLIST) {
+  constructor(initialPrefs: AudioPrefsV1, playlist: readonly AlbumTrack[] = GLASS_ARENA_PLAYLIST) {
     this.prefs = { ...initialPrefs };
     this.playlist = playlist;
     const h = loadAudioPlaybackState(this.playlist);

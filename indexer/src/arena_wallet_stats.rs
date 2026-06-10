@@ -14,6 +14,187 @@ const WARBOW_CLUTCH_REMAINING_SEC: i64 = 30;
 
 const PODIUM_LABELS: [&str; 4] = ["last_buy", "time_booster", "defended_streak", "warbow"];
 
+/// Mirrors `ArenaXp` onchain (#250, #265).
+const MAX_LEVEL_UPS_PER_BUY: u128 = 5;
+const MAX_PLAYER_LEVEL: u128 = 5;
+
+/// Mirrors `TimeArena` CRED constants (#248, #268).
+const CRED_PER_BUY_WAD: u128 = 35_000_000_000_000_000_000;
+const FIRST_BUY_CRED_BONUS_WAD: u128 = 1_100_000_000_000_000_000_000;
+const CRED_PER_CHARM_WAD: u128 = 100_000_000_000_000_000_000;
+const WAD: u128 = 1_000_000_000_000_000_000;
+
+fn xp_to_advance(level: u128) -> u128 {
+    if level == 0 {
+        return 10;
+    }
+    let mut step = 10 + (level - 1) * 5;
+    if step > 100 {
+        step = 100;
+    }
+    step
+}
+
+fn apply_xp_gain(level: u128, xp_toward_next: u128, xp_gain: u128) -> (u128, u128) {
+    debug_assert!(level >= 1);
+    if level >= MAX_PLAYER_LEVEL {
+        return (MAX_PLAYER_LEVEL, 0);
+    }
+    let mut new_level = level;
+    let mut new_toward = xp_toward_next.saturating_add(xp_gain);
+    let mut levels_gained = 0u128;
+    while levels_gained < MAX_LEVEL_UPS_PER_BUY && new_level < MAX_PLAYER_LEVEL {
+        let need = xp_to_advance(new_level);
+        if new_toward < need {
+            break;
+        }
+        new_toward -= need;
+        new_level += 1;
+        levels_gained += 1;
+    }
+    if new_level >= MAX_PLAYER_LEVEL {
+        new_level = MAX_PLAYER_LEVEL;
+        new_toward = 0;
+    }
+    (new_level, new_toward)
+}
+
+fn parse_u128_decimal(s: &str) -> u128 {
+    s.parse::<u128>().unwrap_or(0)
+}
+
+fn pending_cred_from_epoch_parts(weight: u128, total: u128, doub_buys: u64, bonus: u128) -> u128 {
+    let pool = (doub_buys as u128).saturating_mul(CRED_PER_BUY_WAD);
+    let pro_rata = if weight > 0 && total > 0 {
+        pool.saturating_mul(weight) / total
+    } else {
+        0
+    };
+    pro_rata.saturating_add(bonus)
+}
+
+async fn fetch_global_last_buy_epoch(pool: &PgPool) -> Result<u64, sqlx::Error> {
+    let epoch: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(MAX(epoch), 0)::bigint FROM idx_arena_last_buy_epoch_started"#,
+    )
+    .fetch_one(pool)
+    .await?;
+    Ok(epoch.max(0) as u64)
+}
+
+struct EpochCharmCredParts {
+    weight: u128,
+    total: u128,
+    doub_buys: u64,
+}
+
+async fn fetch_epoch_charm_cred_parts(
+    pool: &PgPool,
+    wallet: &str,
+    epoch: u64,
+) -> Result<EpochCharmCredParts, sqlx::Error> {
+    let row = sqlx::query(
+        r#"SELECT COALESCE(SUM(CASE WHEN buyer = $1 THEN charm_wad ELSE 0 END), 0)::text AS weight,
+                  COALESCE(SUM(charm_wad), 0)::text AS total,
+                  COUNT(*) FILTER (WHERE NOT paid_with_cred)::bigint AS doub_buys
+           FROM idx_arena_buy
+           WHERE last_buy_epoch = $2"#,
+    )
+    .bind(wallet)
+    .bind(epoch as i64)
+    .fetch_one(pool)
+    .await?;
+    Ok(EpochCharmCredParts {
+        weight: parse_u128_decimal(&row.get::<String, _>("weight")),
+        total: parse_u128_decimal(&row.get::<String, _>("total")),
+        doub_buys: row.get::<i64, _>("doub_buys").max(0) as u64,
+    })
+}
+
+async fn fetch_first_buy_bonus_epoch(pool: &PgPool, wallet: &str) -> Result<Option<u64>, sqlx::Error> {
+    let epoch: Option<i64> = sqlx::query_scalar(
+        r#"SELECT (last_buy_epoch + 1)::bigint
+           FROM idx_arena_buy
+           WHERE buyer = $1
+           ORDER BY block_number ASC, log_index ASC
+           LIMIT 1"#,
+    )
+    .bind(wallet)
+    .fetch_optional(pool)
+    .await?;
+    Ok(epoch.map(|e| e.max(0) as u64))
+}
+
+async fn cred_epoch_claimed(pool: &PgPool, wallet: &str, epoch: u64) -> Result<bool, sqlx::Error> {
+    let claimed: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(
+               SELECT 1 FROM idx_play_cred_claim
+               WHERE claimer = $1 AND epoch = $2::numeric
+           )"#,
+    )
+    .bind(wallet)
+    .bind(epoch.to_string())
+    .fetch_one(pool)
+    .await?;
+    Ok(claimed)
+}
+
+async fn pending_cred_for_epoch(
+    pool: &PgPool,
+    wallet: &str,
+    epoch: u64,
+    bonus_epoch: Option<u64>,
+) -> Result<String, sqlx::Error> {
+    let parts = fetch_epoch_charm_cred_parts(pool, wallet, epoch).await?;
+    let bonus = if bonus_epoch == Some(epoch) {
+        FIRST_BUY_CRED_BONUS_WAD
+    } else {
+        0
+    };
+    Ok(pending_cred_from_epoch_parts(parts.weight, parts.total, parts.doub_buys, bonus).to_string())
+}
+
+async fn fetch_cred_balance_wad(pool: &PgPool, wallet: &str) -> Result<String, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"SELECT (
+              COALESCE((SELECT SUM(referrer_cred) FROM idx_arena_referral_cred WHERE referrer = $1), 0)
+            + COALESCE((SELECT SUM(buyer_cred) FROM idx_arena_referral_cred WHERE buyer = $1), 0)
+            + COALESCE((SELECT SUM(amount) FROM idx_play_cred_claim WHERE claimer = $1), 0)
+            - COALESCE((
+                SELECT SUM((charm_wad * $2::numeric) / $3::numeric)
+                FROM idx_arena_buy
+                WHERE buyer = $1 AND paid_with_cred
+              ), 0)
+           )::text"#,
+    )
+    .bind(wallet)
+    .bind(CRED_PER_CHARM_WAD.to_string())
+    .bind(WAD.to_string())
+    .fetch_one(pool)
+    .await
+}
+
+async fn fetch_xp_progression(pool: &PgPool, wallet: &str) -> Result<(String, String), sqlx::Error> {
+    let rows = sqlx::query(
+        r#"SELECT xp_gained::text AS xp_gained
+           FROM idx_player_xp
+           WHERE player = $1
+           ORDER BY block_number ASC, log_index ASC"#,
+    )
+    .bind(wallet)
+    .fetch_all(pool)
+    .await?;
+
+    let mut level = 1u128;
+    let mut toward = 0u128;
+    for row in rows {
+        let gain_s: String = row.get("xp_gained");
+        let gain = gain_s.parse::<u128>().unwrap_or(0);
+        (level, toward) = apply_xp_gain(level, toward, gain);
+    }
+    Ok((level.to_string(), toward.to_string()))
+}
+
 #[derive(Debug, Clone)]
 struct BuyRow {
     buyer: String,
@@ -98,23 +279,18 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
     };
 
     let xp_row = sqlx::query(
-        r#"SELECT COALESCE(SUM(xp_gained), 0)::text AS total_xp,
-                  (ARRAY_AGG(new_level ORDER BY block_number DESC, log_index DESC))[1]::text AS level
+        r#"SELECT COALESCE(SUM(xp_gained), 0)::text AS total_xp
            FROM idx_player_xp WHERE player = $1"#,
     )
     .bind(wallet)
     .fetch_optional(pool)
     .await?;
 
-    let (xp, level) = xp_row
-        .map(|r| {
-            (
-                r.get::<String, _>("total_xp"),
-                r.get::<Option<String>, _>("level")
-                    .unwrap_or_else(|| "1".into()),
-            )
-        })
-        .unwrap_or_else(|| ("0".into(), "1".into()));
+    let xp = xp_row
+        .map(|r| r.get::<String, _>("total_xp"))
+        .unwrap_or_else(|| "0".into());
+
+    let (level, xp_toward_next) = fetch_xp_progression(pool, wallet).await?;
 
     let cred_claimed: String = sqlx::query_scalar(
         r#"SELECT COALESCE(SUM(amount), 0)::text FROM idx_play_cred_claim WHERE claimer = $1"#,
@@ -162,6 +338,10 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
     let rank_distribution = rank_distribution_from_placements(&placements);
     let podium_win_rate = podium_win_rate(epochs_participated, &placements);
 
+    let warbow_battle_points =
+        resolve_warbow_battle_points(wallet, pool, &global_buys, &steals, &warbow_resets).await?;
+    let warbow_guard_until = fetch_latest_warbow_guard_until(pool, wallet).await?;
+
     let highest_scores = compute_highest_scores(
         wallet,
         &wallet_buys,
@@ -174,6 +354,31 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
     let level_cap = level.parse::<u64>().unwrap_or(1).min(5);
     let level_s = level_cap.to_string();
 
+    let last_buy_epoch = fetch_global_last_buy_epoch(pool).await?;
+    let bonus_epoch = fetch_first_buy_bonus_epoch(pool, wallet).await?;
+    let epoch_parts = fetch_epoch_charm_cred_parts(pool, wallet, last_buy_epoch).await?;
+    let epoch_charm_wad = epoch_parts.weight.to_string();
+    let epoch_charm_total_wad = epoch_parts.total.to_string();
+    let pending_cred_accrual =
+        pending_cred_for_epoch(pool, wallet, last_buy_epoch, bonus_epoch).await?;
+
+    let (claimable_cred_epoch, claimable_cred) = if last_buy_epoch > 0 {
+        let ended = last_buy_epoch - 1;
+        let claimed = cred_epoch_claimed(pool, wallet, ended).await?;
+        let pending = if claimed {
+            0u128
+        } else {
+            parse_u128_decimal(
+                &pending_cred_for_epoch(pool, wallet, ended, bonus_epoch).await?,
+            )
+        };
+        (Some(ended.to_string()), pending.to_string())
+    } else {
+        (None, "0".into())
+    };
+
+    let cred_balance_wad = fetch_cred_balance_wad(pool, wallet).await?;
+
     Ok(json!({
         "address": wallet,
         "epochs_participated": epochs_participated,
@@ -184,10 +389,21 @@ pub async fn fetch_wallet_stats(pool: &PgPool, wallet: &str) -> Result<Value, sq
         "first_buy_at": first_buy_sec,
         "xp": xp,
         "level": level_s,
+        "xp_toward_next": xp_toward_next,
         "unlocked_level": level_s,
+        "last_buy_epoch": last_buy_epoch.to_string(),
+        "epoch_charm_wad": epoch_charm_wad,
+        "epoch_charm_total_wad": epoch_charm_total_wad,
+        "epoch_doub_buy_count": epoch_parts.doub_buys.to_string(),
+        "pending_cred_accrual": pending_cred_accrual,
+        "claimable_cred_epoch": claimable_cred_epoch,
+        "claimable_cred": claimable_cred,
+        "cred_balance_wad": cred_balance_wad,
         "prizes_won": prizes_won,
         "total_won_doub": total_won_doub,
         "highest_scores": highest_scores,
+        "warbow_battle_points": warbow_battle_points,
+        "warbow_guard_until": warbow_guard_until,
         "warbow_steals": warbow_steals,
         "warbow_guards": warbow_guards,
         "cred_claimed": cred_claimed,
@@ -417,12 +633,13 @@ fn build_timeline(
     events
 }
 
-fn simulate_peak_warbow_bp(
+/// Returns `(current_bp, peak_bp, peak_epoch)` after replaying global WarBow timeline.
+fn simulate_warbow_bp(
     wallet: &str,
     global_buys: &[BuyRow],
     steals: &[StealRow],
     warbow_resets: &[u64],
-) -> (u128, String) {
+) -> (u128, u128, String) {
     let timeline = build_timeline(global_buys, steals, warbow_resets);
     let mut bp: u128 = 0;
     let mut peak: u128 = 0;
@@ -458,7 +675,54 @@ fn simulate_peak_warbow_bp(
         }
     }
 
-    (peak, peak_epoch)
+    (bp, peak, peak_epoch)
+}
+
+async fn fetch_latest_warbow_guard_until(
+    pool: &PgPool,
+    wallet: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"SELECT guard_until::text
+           FROM idx_arena_warbow_guard
+           WHERE player = $1
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT 1"#,
+    )
+    .bind(wallet)
+    .fetch_optional(pool)
+    .await
+}
+
+async fn fetch_latest_warbow_battle_points(
+    pool: &PgPool,
+    wallet: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"SELECT battle_points::text
+           FROM idx_warbow_epoch_score
+           WHERE player = $1
+           ORDER BY block_number DESC, log_index DESC
+           LIMIT 1"#,
+    )
+    .bind(wallet)
+    .fetch_optional(pool)
+    .await
+}
+
+/// Latest indexed on-chain snapshot, else simulated current BP from arena timeline.
+async fn resolve_warbow_battle_points(
+    wallet: &str,
+    pool: &PgPool,
+    global_buys: &[BuyRow],
+    steals: &[StealRow],
+    warbow_resets: &[u64],
+) -> Result<String, sqlx::Error> {
+    if let Some(db_bp) = fetch_latest_warbow_battle_points(pool, wallet).await? {
+        return Ok(db_bp);
+    }
+    let (current, _, _) = simulate_warbow_bp(wallet, global_buys, steals, warbow_resets);
+    Ok(current.to_string())
 }
 
 fn payout_shares(pool: u128) -> (u128, u128, u128) {
@@ -572,7 +836,7 @@ fn compute_highest_scores(
             .map(|p| p.rank),
     });
 
-    let (peak_bp, bp_epoch) = simulate_peak_warbow_bp(wallet, global_buys, steals, warbow_resets);
+    let (_, peak_bp, bp_epoch) = simulate_warbow_bp(wallet, global_buys, steals, warbow_resets);
     scores.push(HighestScore {
         podium: "warbow",
         epoch: bp_epoch,
@@ -655,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn simulate_peak_warbow_bp_tracks_steals() {
+    fn simulate_warbow_bp_tracks_steals() {
         let wallet = "0xalice";
         let other = "0xother";
         let buys = vec![BuyRow {
@@ -674,12 +938,40 @@ mod tests {
             bp_taken: 100,
             order_key: 20,
         }];
-        let (peak, _) = simulate_peak_warbow_bp(wallet, &buys, &steals, &[]);
+        let (current, peak, _) = simulate_warbow_bp(wallet, &buys, &steals, &[]);
+        assert_eq!(current, WARBOW_BASE_BUY_BP + 100);
         assert_eq!(peak, WARBOW_BASE_BUY_BP + 100);
     }
 
     #[test]
     fn podium_win_rate_zero_when_no_epochs() {
         assert_eq!(podium_win_rate(0, &[]), "0");
+    }
+
+    #[test]
+    fn apply_xp_gain_caps_level_ups_per_buy() {
+        let (level, toward) = apply_xp_gain(1, 0, 200);
+        assert_eq!(level, 5);
+        assert_eq!(toward, 0);
+    }
+
+    #[test]
+    fn apply_xp_gain_discards_xp_at_max_level() {
+        let (level, toward) = apply_xp_gain(5, 5, 10);
+        assert_eq!(level, 5);
+        assert_eq!(toward, 0);
+    }
+
+    #[test]
+    fn apply_xp_gain_matches_lv4_one_of_twenty_five_progress() {
+        let (level, toward) = apply_xp_gain(1, 0, 46);
+        assert_eq!(level, 4);
+        assert_eq!(toward, 1);
+    }
+
+    #[test]
+    fn pending_cred_pro_rata_plus_bonus() {
+        let pending = pending_cred_from_epoch_parts(WAD, WAD * 2, 2, FIRST_BUY_CRED_BONUS_WAD);
+        assert_eq!(pending, CRED_PER_BUY_WAD + FIRST_BUY_CRED_BONUS_WAD);
     }
 }

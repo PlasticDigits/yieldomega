@@ -159,12 +159,20 @@ async function quoteArenaEthPathAmountIn(
   doubAddress: HexAddress,
   doubAmountOut: bigint,
 ): Promise<bigint> {
+  const cl8yIn = await quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.cl8y,
+    doubAddress,
+    doubAmountOut,
+    kConfig.doubCl8yFee,
+  );
   return quoteExactOutputSingleAmountIn(
     wagmiConfig,
     quoter,
     kConfig.weth,
-    doubAddress,
-    doubAmountOut,
+    kConfig.cl8y,
+    cl8yIn,
     kConfig.cl8yWethFee,
   );
 }
@@ -176,12 +184,20 @@ async function quoteArenaUsdmPathAmountIn(
   doubAddress: HexAddress,
   doubAmountOut: bigint,
 ): Promise<bigint> {
+  const cl8yIn = await quoteExactOutputSingleAmountIn(
+    wagmiConfig,
+    quoter,
+    kConfig.cl8y,
+    doubAddress,
+    doubAmountOut,
+    kConfig.doubCl8yFee,
+  );
   const wethIn = await quoteExactOutputSingleAmountIn(
     wagmiConfig,
     quoter,
     kConfig.weth,
-    doubAddress,
-    doubAmountOut,
+    kConfig.cl8y,
+    cl8yIn,
     kConfig.cl8yWethFee,
   );
   return quoteExactOutputSingleAmountIn(

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ArenaWalletStats } from "@/lib/indexerApi";
 import {
+  WalletProfileBalancesSection,
   WalletProfileFunFactsSection,
   WalletProfileOverviewSection,
   WalletProfilePodiumWinsSection,
@@ -14,6 +15,7 @@ import {
   WalletProfileWarbowSection,
   WalletProfileXpSection,
 } from "./WalletProfileModalSections";
+import type { WalletProfileBalancesSnapshot } from "@/hooks/useWalletProfileBalances";
 
 const mockStats: ArenaWalletStats = {
   address: "0xdddddddddddddddddddddddddddddddddddddddd",
@@ -41,7 +43,29 @@ const mockStats: ArenaWalletStats = {
   rank_distribution: { "1": "1", "2": "0", "3": "0" },
 };
 
+const mockBalances: WalletProfileBalancesSnapshot = {
+  charmWad: 5_000_000_000_000_000_000n,
+  credWei: 150_000_000_000_000_000_000n,
+  doubWei: 1_038_000_000_000_000_000_000n,
+  ethWei: 10_000_000_000_000_000_000n,
+  usdmWei: 500_000_000_000_000_000_000n,
+  showUsdm: true,
+  isLoading: false,
+};
+
 describe("WalletProfileModalSections (GitLab #258)", () => {
+  it("renders wallet balances for CHARM, CRED, DOUB, ETH, and USDM", () => {
+    const html = renderToStaticMarkup(
+      createElement(WalletProfileBalancesSection, { balances: mockBalances }),
+    );
+    expect(html).toContain("Wallet balances");
+    expect(html).toContain("CHARM");
+    expect(html).toContain("CRED");
+    expect(html).toContain("DOUB");
+    expect(html).toContain("ETH");
+    expect(html).toContain("USDM");
+  });
+
   it("renders all required section headings", () => {
     const html = renderToStaticMarkup(
       createElement(WalletProfileStatsBody, { data: mockStats }),

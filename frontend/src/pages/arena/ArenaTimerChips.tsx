@@ -91,11 +91,13 @@ export function ArenaTimerChips({
         podiumRow={podiumRow}
         podiumPayoutPreview={podiumPayoutPreview}
         recentBuys={recentBuys}
+        podiumRows={podiumRows}
         activeDefendedStreak={activeDefendedStreak}
         podiumNowUnixSec={podiumNowUnixSec}
         onFeatureHelp={onFeatureHelp}
         onOpenWalletProfile={onOpenWalletProfile}
         countdownRemainingSec={rem}
+        showFeatureHelp={chip.contractIndex !== 0}
         testId={"testId" in chip ? chip.testId : undefined}
         ariaLabel={"ariaLabel" in chip ? chip.ariaLabel : undefined}
       />

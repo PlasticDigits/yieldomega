@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { zeroAddress } from "viem";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { StatusMessage } from "@/components/ui/StatusMessage";
-import { clampPlayerLevel } from "@/lib/arenaProgression";
+import { clampPlayerLevel, type ArenaFeatureKey } from "@/lib/arenaProgression";
 import type { BuyItem } from "@/lib/indexerApi";
 import { rankingRowsForPodium, usePodiumScoreClock } from "./arenaSimplePodiumRanking";
-import { PODIUM_HELP, PODIUM_LABELS } from "./podiumCopy";
+import { PODIUM_LABELS, podiumFeatureForUxIndex } from "./podiumCopy";
 import type { PodiumPayoutPreview, PodiumReadRow } from "./usePodiumReads";
 import { PodiumRankingList } from "./arenaUi";
 
@@ -50,6 +50,8 @@ export type ArenaSimplePodiumSectionProps = {
   playerLevel?: bigint | number;
   /** Opens wallet profile modal on participant address click (#258). */
   onOpenWalletProfile?: (address: string) => void;
+  /** Opens podium mechanic tutorial modal for the matching feature. */
+  onFeatureHelp?: (feature: ArenaFeatureKey) => void;
 };
 
 function useChangedRankBurst(winnersSig: string): { rank: number; nonce: number } | undefined {
@@ -77,7 +79,6 @@ function useChangedRankBurst(winnersSig: string): { rank: number; nonce: number 
 function SimplePodiumCard({
   label,
   categoryIndex,
-  help,
   artSrc,
   toneClass,
   row,
@@ -90,10 +91,10 @@ function SimplePodiumCard({
   viewerLevel,
   requiredLevel,
   onOpenWalletProfile,
+  onFeatureHelp,
 }: {
   label: string;
   categoryIndex: number;
-  help: ReactNode;
   artSrc: string;
   toneClass: string;
   row: PodiumReadRow | undefined;
@@ -106,6 +107,7 @@ function SimplePodiumCard({
   viewerLevel: number | undefined;
   requiredLevel: number;
   onOpenWalletProfile: ArenaSimplePodiumSectionProps["onOpenWalletProfile"];
+  onFeatureHelp: ArenaSimplePodiumSectionProps["onFeatureHelp"];
 }) {
   const winners = row?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
   const winnersSig = winners.join(":");
@@ -135,49 +137,65 @@ function SimplePodiumCard({
   ]
     .filter(Boolean)
     .join(" ");
-  const cardContents = (
-    <>
+  const feature = podiumFeatureForUxIndex(categoryIndex);
+  const helpButton =
+    onFeatureHelp !== undefined ? (
+      <button
+        type="button"
+        className="arena-simple__podium-card-help"
+        data-testid={`arena-podium-help-${categoryIndex}`}
+        aria-label={`Open ${label} tutorial`}
+        onClick={() => onFeatureHelp(feature)}
+      >
+        ?
+      </button>
+    ) : null;
+
+  const rankingList = (
+    <PodiumRankingList
+      rows={rankingRows}
+      emptyText="No onchain winners yet."
+      rankBurst={rankBurst}
+    />
+  );
+
+  return (
+    <div className={cardClassName}>
       <div className="arena-simple__podium-card-head">
         <span className="arena-simple__podium-art" aria-hidden="true">
           <img src={artSrc} alt="" width={140} height={140} loading="lazy" decoding="async" />
         </span>
-        <div>
-          <h3>{label}</h3>
+        <div className="arena-simple__podium-card-head-text">
+          <div className="arena-simple__podium-card-title-row">
+            <h3>{label}</h3>
+            {helpButton}
+          </div>
           {row?.epoch !== undefined && (
             <p className="muted arena-simple__podium-epoch" data-testid={`arena-podium-epoch-${categoryIndex}`}>
               Epoch <strong>{row.epoch}</strong>
             </p>
           )}
-          <p className="muted">{help}</p>
         </div>
       </div>
-      <PodiumRankingList
-        rows={rankingRows}
-        emptyText="No onchain winners yet."
-        rankBurst={rankBurst}
-      />
-    </>
+      {locked ? (
+        <LockedUntilLevel
+          requiredLevel={requiredLevel}
+          className="arena-simple__podium-card-body-gate"
+          overlayTestId={`arena-podium-lock-${categoryIndex}`}
+          title={lockedForConnection ? "Connect wallet" : undefined}
+          detail={
+            lockedForConnection
+              ? "Connect wallet to buy CHARM."
+              : "Buy CHARM to level up this wallet and activate this podium."
+          }
+        >
+          {rankingList}
+        </LockedUntilLevel>
+      ) : (
+        rankingList
+      )}
+    </div>
   );
-
-  if (locked) {
-    return (
-      <LockedUntilLevel
-        requiredLevel={requiredLevel}
-        className={cardClassName}
-        overlayTestId={`arena-podium-lock-${categoryIndex}`}
-        title={lockedForConnection ? "Connect wallet" : undefined}
-        detail={
-          lockedForConnection
-            ? "Connect wallet to buy CHARM."
-            : "Buy CHARM to level up this wallet and activate this podium."
-        }
-      >
-        {cardContents}
-      </LockedUntilLevel>
-    );
-  }
-
-  return <div className={cardClassName}>{cardContents}</div>;
 }
 
 export function ArenaSimplePodiumSection({
@@ -190,6 +208,7 @@ export function ArenaSimplePodiumSection({
   playerLevel,
   recentBuys = null,
   onOpenWalletProfile,
+  onFeatureHelp,
 }: ArenaSimplePodiumSectionProps) {
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const walletConnected = Boolean(address);
@@ -209,7 +228,6 @@ export function ArenaSimplePodiumSection({
             key={PODIUM_LABELS[categoryIndex]}
             label={PODIUM_LABELS[categoryIndex]}
             categoryIndex={categoryIndex}
-            help={PODIUM_HELP[categoryIndex]}
             artSrc={SIMPLE_PODIUM_ART[categoryIndex]}
             toneClass={SIMPLE_PODIUM_TONE_CLASS[categoryIndex]}
             row={podiumRows[categoryIndex]}
@@ -222,6 +240,7 @@ export function ArenaSimplePodiumSection({
             viewerLevel={viewerLevel}
             requiredLevel={SIMPLE_PODIUM_REQUIRED_LEVEL[categoryIndex]}
             onOpenWalletProfile={onOpenWalletProfile}
+            onFeatureHelp={onFeatureHelp}
           />
         ))}
       </div>

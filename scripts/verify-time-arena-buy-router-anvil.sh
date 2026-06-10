@@ -113,7 +113,7 @@ fi
 
 FRONTEND_ENV="${ROOT}/frontend/.env.local"
 if [[ -n "${KUMBAYA_WETH:-}" && -n "${KUMBAYA_USDM:-}" && -n "${KUMBAYA_ROUTER:-}" ]]; then
-  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND_ENV}" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${BR_READ}"
+  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND_ENV}" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${BR_READ}" "${KUMBAYA_CL8Y:-}"
 else
   yieldomega_frontend_merge_vite_kumbaya_buy_router_only "${FRONTEND_ENV}" "${BR_READ}"
 fi

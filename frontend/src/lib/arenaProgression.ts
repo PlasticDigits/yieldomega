@@ -49,6 +49,18 @@ export function markFeatureTutorialSeen(feature: ArenaFeatureKey): void {
   localStorage.setItem(featureTutorialStorageKey(feature), "1");
 }
 
+/** Progression tiers shown in the XP hero lock row (#299). */
+export const ARENA_PROGRESSION_TIERS: ReadonlyArray<{
+  feature: ArenaFeatureKey;
+  shortLabel: string;
+}> = [
+  { feature: "last_buy", shortLabel: "Last Buy" },
+  { feature: "time_booster", shortLabel: "Booster" },
+  { feature: "defended_streak", shortLabel: "Streak" },
+  { feature: "warbow", shortLabel: "WarBow" },
+  { feature: "warbow_flag", shortLabel: "Flag" },
+];
+
 /** Map unlock level (2–5) to the feature key surfaced at that tier. */
 export function featureKeyForUnlockLevel(level: number): ArenaFeatureKey | undefined {
   switch (level) {

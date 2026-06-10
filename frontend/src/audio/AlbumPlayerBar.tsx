@@ -13,7 +13,7 @@ const GLYPH = {
   chevronDown: "\u25BE",
 } as const;
 
-const ALBUM_DISPLAY_NAME = "Blockie Hills";
+const ALBUM_DISPLAY_NAME = "Glass Arena";
 /** Collapsed ticker + details title when the audio graph is not yet running (BGM stays paused until ▶). */
 const LOCKED_PLAYER_HEADLINE = "Tap a control or ▶ to unlock (music starts paused)";
 /** Pause (ms) at the **start** of each cycle before scrolling (then again at end). */

@@ -44,13 +44,14 @@ describe("Arena command-console production surface (GitLab #291)", () => {
   });
 
   it("keeps Last Buy and inline CHARM purchase mechanics surfaced", () => {
-    expect(arenaSimplePage).toContain('aria-label="Last Buy"');
+    expect(arenaSimplePage).toContain('aria-label="Arena podium timers"');
     expect(arenaSimplePage).not.toContain("commandDecisionRow");
     expect(arenaSimplePage).not.toContain("arena-command-console__decision-row");
     expect(arenaSimplePage).toContain("arena-simple__pay-slider-row--pay-");
     expect(arenaSimplePage).toContain('data-testid="arena-simple-buy-receive"');
     expect(arenaSimplePage).toContain("<ArenaTimerHero");
-    expect(arenaSimplePage).toContain("<ArenaLastBuyPodiumLeaderboard");
+    expect(arenaSimplePage).toContain("<ArenaTimerPodiumCarousel");
+    expect(arenaSimplePage).toContain("useTimerPodiumSlideMeta");
     expect(arenaSimplePage).toContain("arena-simple__timer-panel-stack");
     expect(arenaSimplePage).not.toContain("<ArenaLastBuyPodiumChip");
     expect(arenaSimplePage).toContain("<ArenaTimerChips");
@@ -69,7 +70,8 @@ describe("Arena command-console production surface (GitLab #291)", () => {
     expect(css).toContain(".arena-command-console__grid");
     expect(css).toContain(".arena-command-console__hub-warbow");
     expect(css).toContain(".arena-command-console__warbow-lane");
-    expect(css).toContain("grid-area: console-buy");
+    expect(css).toContain("grid-area: console-primary");
+    expect(css).toContain(".arena-command-console__primary-column");
     expect(css).toContain("grid-area: console-side");
     expect(css).toContain(".arena-command-console .arena-simple__connect-pitch");
     expect(css).toContain(".arena-command-console .arena-simple__connect .wallet-action--connect");

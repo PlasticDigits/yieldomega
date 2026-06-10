@@ -26,6 +26,8 @@ interface ImportMetaEnv {
   readonly VITE_KUMBAYA_QUOTER?: string;
   readonly VITE_KUMBAYA_WETH?: string;
   readonly VITE_KUMBAYA_USDM?: string;
+  readonly VITE_KUMBAYA_CL8Y?: string;
+  readonly VITE_KUMBAYA_FEE_DOUB_CL8Y?: string;
   readonly VITE_KUMBAYA_FEE_CL8Y_WETH?: string;
   readonly VITE_KUMBAYA_FEE_USDM_WETH?: string;
   /** TimeArenaBuyRouter for Kumbaya single-tx buys (#251). */

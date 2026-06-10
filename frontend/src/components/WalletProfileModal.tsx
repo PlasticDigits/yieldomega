@@ -3,9 +3,11 @@
 import { useEffect, useId, useRef } from "react";
 import { explorerAddressUrl } from "@/lib/explorer";
 import { indexerBaseUrl } from "@/lib/addresses";
+import { useWalletProfileBalances } from "@/hooks/useWalletProfileBalances";
 import { useWalletStats } from "@/hooks/useWalletStats";
 import { AddressInline } from "@/components/AddressInline";
 import {
+  WalletProfileBalancesSection,
   WalletProfileErrorState,
   WalletProfileLoadingState,
   WalletProfileStatsBody,
@@ -21,6 +23,7 @@ export function WalletProfileModal({ address, onClose }: Props) {
   const titleId = useId();
   const indexerUnset = !indexerBaseUrl();
   const { data, isLoading, isError } = useWalletStats(indexerUnset ? undefined : (address ?? undefined));
+  const balances = useWalletProfileBalances(address ?? undefined);
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -75,6 +78,10 @@ export function WalletProfileModal({ address, onClose }: Props) {
               View on explorer
             </a>
           </p>
+        </div>
+
+        <div className="wallet-profile-modal__sections wallet-profile-modal__sections--balances-only">
+          <WalletProfileBalancesSection balances={balances} />
         </div>
 
         {isLoading ? <WalletProfileLoadingState /> : null}

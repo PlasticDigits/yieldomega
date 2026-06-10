@@ -13,6 +13,7 @@ import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
 import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {AnvilWETH9, AnvilMockUSDM, AnvilKumbayaRouter} from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {AnvilKumbayaPools} from "../src/fixtures/AnvilKumbayaPools.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
 
 contract MockReserveCl8y is ERC20 {
@@ -91,10 +92,11 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         usdm.transfer(address(kumbaya), 100_000_000e18);
         cl8y.transfer(address(kumbaya), 50_000_000e18);
 
-        kumbaya.setPair(address(usdm), address(weth), 80_000_000e18, 80_000_000e18);
-        kumbaya.setPair(address(weth), address(doub), 8000e18, 8_000_000e18);
-        kumbaya.setPair(address(cl8y), address(doub), 8_000_000e18, 8_000_000e18);
+        AnvilKumbayaPools.wireLiquidity(kumbaya, address(doub), address(cl8y), address(weth), address(usdm));
         kumbaya.setOwner(address(0));
+        (uint256 charmPriceWad,) =
+            AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(usdm));
+        arena.setCharmPriceWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(
             arena, address(kumbaya), address(doub), address(cl8y), address(weth), address(usdm), address(adminVault), address(this)
@@ -137,9 +139,13 @@ abstract contract TimeArenaBuyRouterFixture is Test {
         feeStable.transfer(address(kumbaya), 100_000_000e18);
         cl8y.transfer(address(kumbaya), 50_000_000e18);
 
-        kumbaya.setPair(address(feeStable), address(weth), 80_000_000e18, 80_000_000e18);
-        kumbaya.setPair(address(weth), address(doub), 8000e18, 8_000_000e18);
+        kumbaya.setPair(address(feeStable), address(weth), 1_600_000e18, 1_000e18);
+        kumbaya.setPair(address(weth), address(cl8y), 1_000e18, 1_600_000e18);
+        kumbaya.setPair(address(cl8y), address(doub), 100_000e18, 3_100_000_000e18);
         kumbaya.setOwner(address(0));
+        (uint256 charmPriceWad,) =
+            AnvilKumbayaPools.charmPriceWadFromSpot(kumbaya, address(doub), address(cl8y), address(weth), address(feeStable));
+        arena.setCharmPriceWad(charmPriceWad);
 
         buyRouter = new TimeArenaBuyRouter(
             arena,
@@ -159,15 +165,29 @@ abstract contract TimeArenaBuyRouterFixture is Test {
     }
 
     function _pathUsdmToDoub() internal view returns (bytes memory) {
-        return abi.encodePacked(address(doub), uint24(3000), address(weth), uint24(3000), address(usdm));
+        return abi.encodePacked(
+            address(doub),
+            AnvilKumbayaPools.DOUB_CL8Y_FEE,
+            address(cl8y),
+            AnvilKumbayaPools.CL8Y_WETH_FEE,
+            address(weth),
+            AnvilKumbayaPools.WETH_USDM_FEE,
+            address(usdm)
+        );
     }
 
     function _pathEthToDoub() internal view returns (bytes memory) {
-        return abi.encodePacked(address(doub), uint24(3000), address(weth));
+        return abi.encodePacked(
+            address(doub),
+            AnvilKumbayaPools.DOUB_CL8Y_FEE,
+            address(cl8y),
+            AnvilKumbayaPools.CL8Y_WETH_FEE,
+            address(weth)
+        );
     }
 
     function _pathCl8yToDoub() internal view returns (bytes memory) {
-        return abi.encodePacked(address(doub), uint24(3000), address(cl8y));
+        return abi.encodePacked(address(doub), AnvilKumbayaPools.DOUB_CL8Y_FEE, address(cl8y));
     }
 }
 
@@ -262,8 +282,15 @@ contract TimeArenaBuyRouterTest is TimeArenaBuyRouterFixture {
     function test_stableIngressParity_revertsOnFeeOnTransfer() public {
         deployBuyRouterFixtureFeeStable();
         uint256 charmWad = 1e18;
-        bytes memory path =
-            abi.encodePacked(address(doub), uint24(3000), address(weth), uint24(3000), address(feeStable));
+        bytes memory path = abi.encodePacked(
+            address(doub),
+            AnvilKumbayaPools.DOUB_CL8Y_FEE,
+            address(cl8y),
+            AnvilKumbayaPools.CL8Y_WETH_FEE,
+            address(weth),
+            AnvilKumbayaPools.WETH_USDM_FEE,
+            address(feeStable)
+        );
         uint256 gross = _grossDoub(charmWad);
         (uint256 quotedIn,,,) = kumbaya.quoteExactOutput(path, gross);
         uint256 maxIn = (quotedIn * 110) / 100 + 1;

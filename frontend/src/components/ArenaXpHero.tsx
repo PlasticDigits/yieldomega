@@ -1,58 +1,42 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useMemo } from "react";
-import { useAccount, useReadContracts } from "wagmi";
-import { addresses } from "@/lib/addresses";
-import { timeArenaReadAbi } from "@/lib/abis";
+import { useAccount } from "wagmi";
+import { useArenaPlayerLevel } from "@/hooks/useArenaPlayerLevel";
 import { formatLocaleInteger } from "@/lib/formatAmount";
-import {
-  clampPlayerLevel,
-  MAX_PLAYER_LEVEL,
-} from "@/lib/arenaProgression";
-import { xpToAdvance } from "@/lib/arenaXpMath";
+import { MAX_PLAYER_LEVEL } from "@/lib/arenaProgression";
+import { normalizeXpProgress, xpToAdvance } from "@/lib/arenaXpMath";
 
 export function ArenaXpHero() {
   const { address, isConnected } = useAccount();
-  const arena = addresses.timeArena;
+  const { level, stats, isLoading, indexerOn } = useArenaPlayerLevel(address);
 
-  const { data: rows } = useReadContracts({
-    contracts:
-      arena && address
-        ? [
-            { address: arena, abi: timeArenaReadAbi, functionName: "level", args: [address] },
-            {
-              address: arena,
-              abi: timeArenaReadAbi,
-              functionName: "xpTowardNext",
-              args: [address],
-            },
-          ]
-        : [],
-    query: { enabled: Boolean(arena && address) },
-  });
-
-  const { level, progressPct, xpLabel } = useMemo(() => {
-    if (!rows?.[0] || rows[0].status !== "success") {
-      return { level: 1, progressPct: 0, xpLabel: "—" };
+  const { progressPct, xpLabel } = useMemo(() => {
+    if (!indexerOn) {
+      return { progressPct: 0, xpLabel: "Indexer unavailable" };
     }
-    const lvl = clampPlayerLevel(rows[0].result as bigint);
-    const toward =
-      rows[1]?.status === "success" ? (rows[1].result as bigint) : 0n;
-    if (lvl >= Number(MAX_PLAYER_LEVEL)) {
+    if (!stats) {
+      return { progressPct: 0, xpLabel: isLoading ? "Loading XP…" : "—" };
+    }
+    if (level >= Number(MAX_PLAYER_LEVEL)) {
       return {
-        level: lvl,
         progressPct: 100,
-        xpLabel: `${formatLocaleInteger(toward.toString())} XP banked`,
+        xpLabel: "Max level",
       };
     }
-    const need = xpToAdvance(BigInt(lvl));
+    const indexedLevel = BigInt(stats.level || String(level));
+    const indexedToward = BigInt(stats.xp_toward_next ?? "0");
+    const { level: displayLevel, xpTowardNext: toward } = normalizeXpProgress(
+      indexedLevel,
+      indexedToward,
+    );
+    const need = xpToAdvance(displayLevel);
     const pct = need > 0n ? Number((toward * 100n) / need) : 0;
     return {
-      level: lvl,
       progressPct: Math.min(100, Math.max(0, pct)),
       xpLabel: `${formatLocaleInteger(toward.toString())} / ${formatLocaleInteger(need.toString())} XP`,
     };
-  }, [rows]);
+  }, [indexerOn, stats, isLoading, level]);
 
   if (!isConnected) return null;
 

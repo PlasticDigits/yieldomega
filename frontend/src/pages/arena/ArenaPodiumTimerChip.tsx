@@ -4,6 +4,9 @@ import { zeroAddress } from "viem";
 import { PlayerIdentity } from "@/components/arena";
 import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import {
+  isArenaLastBuyWalletSurfaceUnlocked,
+} from "@/lib/arenaPageHelpers";
+import {
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
   type ArenaFeatureKey,
@@ -40,12 +43,16 @@ export type ArenaPodiumTimerChipProps = {
   podiumRow: PodiumReadRow | undefined;
   podiumPayoutPreview?: PodiumPayoutPreview | null;
   recentBuys?: readonly BuyItem[] | null;
+  /** All UX podium rows — used to detect arena activity for Last Buy lock. */
+  podiumRows?: readonly PodiumReadRow[] | null;
   activeDefendedStreak?: bigint;
   podiumNowUnixSec?: number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
   onOpenWalletProfile?: (address: string) => void;
   /** When false, the hero timer owns the countdown (Last Buy bay). */
   showCountdown?: boolean;
+  /** When false, timer bay owns the feature tutorial trigger (Last Buy bay). */
+  showFeatureHelp?: boolean;
   countdownRemainingSec?: number;
   className?: string;
   testId?: string;
@@ -63,11 +70,13 @@ export function ArenaPodiumTimerChip({
   podiumRow,
   podiumPayoutPreview,
   recentBuys = null,
+  podiumRows = null,
   activeDefendedStreak,
   podiumNowUnixSec,
   onFeatureHelp,
   onOpenWalletProfile,
   showCountdown = true,
+  showFeatureHelp = true,
   countdownRemainingSec,
   className,
   testId,
@@ -77,10 +86,23 @@ export function ArenaPodiumTimerChip({
   const scoreNowUnixSec = usePodiumScoreClock(podiumNowUnixSec);
   const walletStatsQuery = useWalletStats(address);
   const walletHighestScores = walletStatsQuery.data?.highest_scores ?? null;
+  const walletStats = walletStatsQuery.data;
+  const walletStatsPending =
+    Boolean(address?.trim()) &&
+    (walletStatsQuery.isLoading || walletStatsQuery.isFetching) &&
+    !walletStats;
+
+  const lastBuyWalletUnlocked = isArenaLastBuyWalletSurfaceUnlocked({
+    walletConnected,
+    walletStats,
+    arenaUsers: { recentBuys, podiumRows },
+  });
 
   const unlocked =
-    feature === undefined ||
-    (playerLevel !== undefined && isFeatureUnlocked(playerLevel, feature));
+    feature === "last_buy"
+      ? walletStatsPending || lastBuyWalletUnlocked
+      : feature === undefined ||
+        (playerLevel !== undefined && isFeatureUnlocked(playerLevel, feature));
   const requiredLevel = feature !== undefined ? FEATURE_UNLOCK_LEVEL[feature] : 1;
 
   const viewerValueRaw = resolveViewerPodiumValueRaw(categoryIndex, podiumRow, address, {
@@ -95,7 +117,7 @@ export function ArenaPodiumTimerChip({
   const winners = podiumRow?.winners ?? [ZERO_ADDR, ZERO_ADDR, ZERO_ADDR];
 
   const helpButton =
-    onFeatureHelp && feature !== undefined ? (
+    showFeatureHelp && onFeatureHelp && feature !== undefined ? (
       <button
         type="button"
         className="arena-timer-chips__help"

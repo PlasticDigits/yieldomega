@@ -5,8 +5,10 @@ import { xpForCharm } from "@/lib/arenaXpMath";
 import {
   buildArenaBuyActualEffectLines,
   buildArenaBuyProjectedEffectLines,
+  formatBuyProjectedLevelLine,
   formatBuyProjectedXpLine,
   inferSecondsRemainingBeforeBuy,
+  previewBuyPlayerLevelAfterCharm,
 } from "./arenaBuyProjectedEffects";
 import type { BuyItem } from "@/lib/indexerApi";
 
@@ -18,6 +20,17 @@ describe("formatBuyProjectedXpLine", () => {
     expect(formatBuyProjectedXpLine(charmWad)).toBe(
       `+${xpForCharm(charmWad).toString()}xp`,
     );
+  });
+});
+
+describe("previewBuyPlayerLevelAfterCharm", () => {
+  it("levels up when charm XP crosses the cached threshold", () => {
+    const charmWad = 5_515_000_000_000_000_000n;
+    expect(previewBuyPlayerLevelAfterCharm(1, 5, charmWad)).toEqual({
+      levelBefore: 1,
+      levelAfter: 2,
+    });
+    expect(formatBuyProjectedLevelLine(1, 2)).toBe("1->2 Level");
   });
 });
 
@@ -116,6 +129,33 @@ describe("buildArenaBuyProjectedEffectLines", () => {
       formatRivalWallet: fmt,
     });
     expect(lines.some((s) => s.includes("Replace flag"))).toBe(true);
+  });
+
+  it("shows level-up chip after the XP pill when a buy crosses a threshold", () => {
+    const charmWad = 5_515_000_000_000_000_000n;
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: charmWad,
+      secondsRemaining: 900,
+      playerLevel: 1,
+      xpTowardNext: 5n,
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines[0]).toBe(formatBuyProjectedXpLine(charmWad));
+    expect(lines[1]).toBe("1->2 Level");
+  });
+
+  it("uses post-buy level for WarBow BP preview (#299)", () => {
+    const lines = buildArenaBuyProjectedEffectLines({
+      charmWadSelected: 10n * 10n ** 18n,
+      secondsRemaining: 600,
+      playerLevel: 3,
+      xpTowardNext: 18n,
+      plantWarBowFlag: false,
+      formatRivalWallet: fmt,
+    });
+    expect(lines).toContain("3->4 Level");
+    expect(lines.some((line) => line.includes("BP"))).toBe(true);
   });
 
   it("hides WarBow flag preview below level 5 (#299)", () => {

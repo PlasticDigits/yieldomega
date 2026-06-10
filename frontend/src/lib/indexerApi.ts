@@ -794,11 +794,33 @@ export type ArenaWalletStats = {
   first_buy_at: string | null;
   xp: string;
   level: string;
+  /** Progress toward next level; mirrors onchain `xpTowardNext` (#301). */
+  xp_toward_next?: string;
   /** Capped progression tier (#299); mirrors onchain `unlockedLevel`. */
   unlocked_level?: string;
+  /** Global Last Buy epoch head (schema ≥ 2.10.0). */
+  last_buy_epoch?: string;
+  /** Wallet CHARM weight in `last_buy_epoch` (schema ≥ 2.10.0). */
+  epoch_charm_wad?: string;
+  /** Global CHARM total in `last_buy_epoch` (schema ≥ 2.10.0). */
+  epoch_charm_total_wad?: string;
+  /** DOUB buy count in `last_buy_epoch` (schema ≥ 2.10.0). */
+  epoch_doub_buy_count?: string;
+  /** Active-epoch CRED preview — mirrors `pendingCred(wallet, lastBuyEpoch)` (schema ≥ 2.10.0). */
+  pending_cred_accrual?: string;
+  /** Ended epoch with claimable CRED, if any (schema ≥ 2.10.0). */
+  claimable_cred_epoch?: string | null;
+  /** Claimable CRED in `claimable_cred_epoch` (schema ≥ 2.10.0). */
+  claimable_cred?: string;
+  /** Derived Play CRED balance from referral mints, claims, and CRED buys (schema ≥ 2.10.0). */
+  cred_balance_wad?: string;
   prizes_won: ArenaWalletPrizeWon[];
   total_won_doub: string;
   highest_scores: ArenaWalletHighestScore[];
+  /** Current WarBow BP — latest indexed snapshot or simulated timeline (#301). */
+  warbow_battle_points?: string;
+  /** Latest indexed `warbowGuardUntil` unix sec, when the wallet activated guard (#301). */
+  warbow_guard_until?: string;
   warbow_steals: number;
   warbow_guards: number;
   cred_claimed: string;
@@ -851,5 +873,28 @@ export function arenaWalletStatsPath(address: string) {
 
 export async function fetchArenaWalletStats(address: string) {
   return getJson<ArenaWalletStats>(arenaWalletStatsPath(address));
+}
+
+export type ArenaWarbowLatestBpItem = {
+  player: string;
+  battle_points: string;
+};
+
+/** Latest indexed WarBow BP per player (`GET /v1/arena/warbow/latest-bp`, #301). */
+export async function fetchArenaWarbowLatestBp(players: readonly string[]) {
+  const unique = [
+    ...new Set(
+      players
+        .map((p) => p.trim().toLowerCase())
+        .filter((p) => p.startsWith("0x") && p.length === 42),
+    ),
+  ].slice(0, 32);
+  if (unique.length === 0) {
+    return { items: [] as ArenaWarbowLatestBpItem[] };
+  }
+  const body = await getJson<{ items: ArenaWarbowLatestBpItem[] }>(
+    `/v1/arena/warbow/latest-bp?players=${encodeURIComponent(unique.join(","))}`,
+  );
+  return body ?? { items: [] as ArenaWarbowLatestBpItem[] };
 }
 

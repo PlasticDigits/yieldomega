@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAccount, useBlock, useChainId, useConfig, useReadContract, useWriteContract } from "wagmi";
 import { isAddress } from "viem";
-import { addresses } from "@/lib/addresses";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { timeArenaReadAbi, timeArenaWriteAbi } from "@/lib/abis";
 import { readArenaDoubUnlimitedApproval } from "@/lib/arenaDoubApprovalPreference";
 import { ensureDoubTimeArenaAllowance } from "@/lib/ensureDoubTimeArenaAllowance";
@@ -22,14 +22,39 @@ import {
   asWriteContractAsyncFn,
   writeContractWithGasBuffer,
 } from "@/lib/writeContractWithGasBuffer";
+import {
+  WARBOW_GUARD_DOUB_WAD,
+  WARBOW_MAX_STEALS_PER_DAY,
+  WARBOW_REVENGE_DOUB_WAD,
+  WARBOW_SECONDS_PER_DAY,
+  WARBOW_STEAL_DOUB_WAD,
+  WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD,
+} from "@/lib/arenaWarbowConstants";
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 
-export function useArenaWarbowHero(phase: SaleSessionPhase) {
+export type IndexerWarbowHeroHead = {
+  chainNowSec?: number;
+  paused?: boolean;
+  guardUntilSec?: bigint;
+};
+
+export function useArenaWarbowHero(
+  phase: SaleSessionPhase,
+  opts?: {
+    indexerViewerBattlePoints?: bigint;
+    indexerWarbowHead?: IndexerWarbowHeroHead;
+  },
+) {
   const tc = addresses.timeArena;
   const wagmiConfig = useConfig();
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
-  const { data: block } = useBlock({ watch: true });
+  const indexerOn = Boolean(indexerBaseUrl());
+  const indexerWarbowHead = opts?.indexerWarbowHead;
+  const { data: block } = useBlock({
+    watch: true,
+    query: { enabled: !indexerOn },
+  });
   const { writeContractAsync, isPending: isWriting } = useWriteContract();
 
   const [stealVictimInput, setStealVictimInput] = useState("");
@@ -37,42 +62,77 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
   const [pvpErr, setPvpErr] = useState<string | null>(null);
 
   const saleActive = phase === "saleActive";
-  const chainNowSec = block?.timestamp !== undefined ? Number(block.timestamp) : undefined;
+  const chainNowSecFromBlock =
+    block?.timestamp !== undefined ? Number(block.timestamp) : undefined;
+  const chainNowSec = indexerWarbowHead?.chainNowSec ?? chainNowSecFromBlock;
+  const indexerViewerBattlePoints = opts?.indexerViewerBattlePoints;
 
   const readOpts = { address: tc, abi: timeArenaReadAbi, query: { enabled: Boolean(tc) } };
   const { data: doub } = useReadContract({ ...readOpts, functionName: "doub" });
-  const { data: paused } = useReadContract({ ...readOpts, functionName: "paused" });
-  const { data: stealDoub } = useReadContract({ ...readOpts, functionName: "WARBOW_STEAL_DOUB" });
-  const { data: guardDoub } = useReadContract({ ...readOpts, functionName: "WARBOW_GUARD_DOUB" });
+  const { data: paused } = useReadContract({
+    ...readOpts,
+    functionName: "paused",
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
+  const { data: stealDoub } = useReadContract({
+    ...readOpts,
+    functionName: "WARBOW_STEAL_DOUB",
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
+  const { data: guardDoub } = useReadContract({
+    ...readOpts,
+    functionName: "WARBOW_GUARD_DOUB",
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
   const { data: bypassDoub } = useReadContract({
     ...readOpts,
     functionName: "WARBOW_STEAL_LIMIT_BYPASS_DOUB",
+    query: { enabled: Boolean(tc) && !indexerOn },
   });
-  const { data: revengeDoub } = useReadContract({ ...readOpts, functionName: "WARBOW_REVENGE_DOUB" });
+  const { data: revengeDoub } = useReadContract({
+    ...readOpts,
+    functionName: "WARBOW_REVENGE_DOUB",
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
   const { data: maxStealsRaw } = useReadContract({
     ...readOpts,
     functionName: "WARBOW_MAX_STEALS_PER_DAY",
+    query: { enabled: Boolean(tc) && !indexerOn },
   });
-  const { data: secsPerDay } = useReadContract({ ...readOpts, functionName: "SECONDS_PER_DAY" });
+  const { data: secsPerDay } = useReadContract({
+    ...readOpts,
+    functionName: "SECONDS_PER_DAY",
+    query: { enabled: Boolean(tc) && !indexerOn },
+  });
   const { data: viewerBp, refetch: refetchBp } = useReadContract({
     ...readOpts,
     functionName: "battlePoints",
     args: address ? [address] : undefined,
-    query: { enabled: Boolean(tc && address) },
+    query: { enabled: Boolean(tc && address && !indexerOn) },
   });
+  const viewerBattlePointsEffective = indexerViewerBattlePoints ?? viewerBp;
   const { data: guardUntil, refetch: refetchGuard } = useReadContract({
     ...readOpts,
     functionName: "warbowGuardUntil",
     args: address ? [address] : undefined,
-    query: { enabled: Boolean(tc && address) },
+    query: { enabled: Boolean(tc && address && !indexerOn) },
   });
+  const guardUntilEffective = indexerWarbowHead?.guardUntilSec ?? guardUntil;
 
-  const stealDoubWei = stealDoub ?? 1000n * 10n ** 18n;
-  const guardDoubWei = guardDoub ?? 10_000n * 10n ** 18n;
-  const bypassDoubWei = bypassDoub ?? 50_000n * 10n ** 18n;
-  const revengeDoubWei = revengeDoub ?? 1000n * 10n ** 18n;
-  const maxSteals = maxStealsRaw !== undefined ? Number(maxStealsRaw) : 3;
-  const daySec = secsPerDay ?? 86_400n;
+  const stealDoubWei = indexerOn ? WARBOW_STEAL_DOUB_WAD : (stealDoub ?? WARBOW_STEAL_DOUB_WAD);
+  const guardDoubWei = indexerOn ? WARBOW_GUARD_DOUB_WAD : (guardDoub ?? WARBOW_GUARD_DOUB_WAD);
+  const bypassDoubWei = indexerOn
+    ? WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD
+    : (bypassDoub ?? WARBOW_STEAL_LIMIT_BYPASS_DOUB_WAD);
+  const revengeDoubWei = indexerOn
+    ? WARBOW_REVENGE_DOUB_WAD
+    : (revengeDoub ?? WARBOW_REVENGE_DOUB_WAD);
+  const maxSteals = indexerOn
+    ? WARBOW_MAX_STEALS_PER_DAY
+    : maxStealsRaw !== undefined
+      ? Number(maxStealsRaw)
+      : WARBOW_MAX_STEALS_PER_DAY;
+  const daySec = indexerOn ? WARBOW_SECONDS_PER_DAY : (secsPerDay ?? WARBOW_SECONDS_PER_DAY);
 
   const utcDayId =
     chainNowSec !== undefined ? BigInt(Math.floor(chainNowSec / Number(daySec))) : 0n;
@@ -84,12 +144,14 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
 
   const stealVictimFormatError = warbowStealVictimInputFormatError(stealVictimInput);
   const wrongChain = chainMismatchWriteMessage(chainId) !== null;
-  const writesPaused = paused === true;
+  const writesPaused = indexerOn ? indexerWarbowHead?.paused === true : paused === true;
   const canPress = isConnected && saleActive && !writesPaused && !wrongChain && !isWriting;
 
   const guardedActive =
-    chainNowSec !== undefined && guardUntil !== undefined && guardUntil > 0n
-      ? BigInt(chainNowSec) < guardUntil
+    chainNowSec !== undefined &&
+    guardUntilEffective !== undefined &&
+    guardUntilEffective > 0n
+      ? BigInt(chainNowSec) < guardUntilEffective
       : false;
 
   const refetch = useCallback(async () => {
@@ -131,7 +193,7 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
           saleActive,
           viewer: address,
           victim: stealVictim,
-          viewerBattlePoints: viewerBp,
+          viewerBattlePoints: viewerBattlePointsEffective,
           victimBattlePoints: fresh.victimBattlePoints,
           victimStealsToday: fresh.victimStealsToday,
           attackerStealsToday: undefined,
@@ -183,7 +245,7 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
     chainNowSec,
     isConnected,
     saleActive,
-    viewerBp,
+    viewerBattlePointsEffective,
     maxSteals,
     utcDayId,
     stealDoubWei,
@@ -297,9 +359,9 @@ export function useArenaWarbowHero(phase: SaleSessionPhase) {
     canPress,
     stealVictim,
     guardedActive,
-    guardUntilSec: (guardUntil ?? 0n).toString(),
+    guardUntilSec: (guardUntilEffective ?? 0n).toString(),
     chainNowSec,
-    viewerBattlePoints: viewerBp?.toString(),
+    viewerBattlePoints: viewerBattlePointsEffective?.toString(),
     stealDoubWad: stealDoubWei.toString(),
     guardDoubWad: guardDoubWei.toString(),
     bypassDoubWad: bypassDoubWei.toString(),

@@ -20,7 +20,7 @@ function isPodiumWinnerAddress(address: string | undefined): boolean {
 const WALLET_STATS_PODIUM_BY_UX_CATEGORY = ["last_buy", "warbow", "defended_streak", "time_booster"] as const;
 
 /** Shown under Defended Streak when the on-chain podium value is zero or the slot has no winner yet. */
-const SIMPLE_PODIUM_NO_DEFENDED_STREAK_SCORE_MSG = "Starts Under 15 Min";
+const SIMPLE_PODIUM_NO_DEFENDED_STREAK_SCORE_MSG = "< 15MIN";
 
 /**
  * Plain-text score line for Simple reserve podium rows (shown under the address).

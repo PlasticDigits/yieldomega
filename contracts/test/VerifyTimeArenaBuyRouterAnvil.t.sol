@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {TimeArenaBuyRouter} from "../src/arena/TimeArenaBuyRouter.sol";
 import {AnvilKumbayaRouter} from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {AnvilKumbayaPools} from "../src/fixtures/AnvilKumbayaPools.sol";
 
 /// @dev Fork-local Anvil matrix for issue #251 — run via `scripts/verify-time-arena-buy-router-anvil.sh`.
 contract VerifyTimeArenaBuyRouterAnvil is Test {
@@ -70,7 +71,13 @@ contract VerifyTimeArenaBuyRouterAnvil is Test {
         uint256 weightBefore = arena.totalCharmWeight();
 
         // ETH
-        bytes memory pathEth = abi.encodePacked(address(doub), uint24(3000), address(weth));
+        bytes memory pathEth = abi.encodePacked(
+            address(doub),
+            AnvilKumbayaPools.DOUB_CL8Y_FEE,
+            address(cl8y),
+            AnvilKumbayaPools.CL8Y_WETH_FEE,
+            address(weth)
+        );
         (uint256 ethIn,,,) = kumbaya.quoteExactOutput(pathEth, gross);
         uint256 ethMax = (ethIn * 110) / 100 + 1;
         vm.deal(ethBuyer, ethMax);
@@ -83,8 +90,15 @@ contract VerifyTimeArenaBuyRouterAnvil is Test {
         weightBefore = arena.totalCharmWeight();
 
         // USDM
-        bytes memory pathUsdm =
-            abi.encodePacked(address(doub), uint24(3000), address(weth), uint24(3000), address(usdm));
+        bytes memory pathUsdm = abi.encodePacked(
+            address(doub),
+            AnvilKumbayaPools.DOUB_CL8Y_FEE,
+            address(cl8y),
+            AnvilKumbayaPools.CL8Y_WETH_FEE,
+            address(weth),
+            AnvilKumbayaPools.WETH_USDM_FEE,
+            address(usdm)
+        );
         (uint256 usdmIn,,,) = kumbaya.quoteExactOutput(pathUsdm, gross);
         uint256 usdmMax = (usdmIn * 110) / 100 + 1;
         deal(address(usdm), usdmBuyer, usdmMax);
@@ -98,7 +112,7 @@ contract VerifyTimeArenaBuyRouterAnvil is Test {
         weightBefore = arena.totalCharmWeight();
 
         // CL8Y
-        bytes memory pathCl8y = abi.encodePacked(address(doub), uint24(3000), address(cl8y));
+        bytes memory pathCl8y = abi.encodePacked(address(doub), AnvilKumbayaPools.DOUB_CL8Y_FEE, address(cl8y));
         (uint256 cl8yIn,,,) = kumbaya.quoteExactOutput(pathCl8y, gross);
         uint256 cl8yMax = (cl8yIn * 110) / 100 + 1;
         deal(address(cl8y), cl8yBuyer, cl8yMax);

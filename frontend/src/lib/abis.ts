@@ -7,6 +7,11 @@ export const timeArenaBuyEventAbi = parseAbi([
   "event Buy(address indexed buyer, uint256 charmWad, uint256 amount, uint256 pricePerCharmWad, uint256 newDeadline, uint256 totalRaisedAfter, uint256 buyIndex, uint256 actualSecondsAdded, bool timerHardReset, uint256 battlePointsAfter, uint256 bpBaseBuy, uint256 bpTimerResetBonus, uint256 bpClutchBonus, uint256 bpStreakBreakBonus, uint256 bpAmbushBonus, uint256 bpFlagPenalty, bool flagPlanted, uint256 buyerTotalEffectiveTimerSecAdded, uint256 buyerActiveDefendedStreak, uint256 buyerBestDefendedStreak)",
 ]);
 
+/** Buy receipt log — mirrors onchain `XpGained` for optimistic wallet XP (#301). */
+export const timeArenaXpGainedEventAbi = parseAbi([
+  "event XpGained(address indexed player, uint256 amount, uint256 newLevel)",
+]);
+
 /**
  * WarBow events that should refresh live reads (podium / leaderboard / per-wallet `warbowGuardUntil`).
  * Includes BP-moving txs plus **`WarBowGuardActivated`** (guard windows; GitLab #101 follow-up).

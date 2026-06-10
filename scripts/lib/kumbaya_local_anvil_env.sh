@@ -15,6 +15,7 @@ yieldomega_kumbaya_extract_from_deploy_log() {
   }
   KUMBAYA_WETH="$(_yieldomega_k_line "AnvilWETH9:")"
   KUMBAYA_USDM="$(_yieldomega_k_line "AnvilMockUSDM:")"
+  KUMBAYA_CL8Y="$(_yieldomega_k_line "MockReserveCl8y (router CL8Y leg):")"
   KUMBAYA_ROUTER="$(_yieldomega_k_line "AnvilKumbayaRouter")"
   KUMBAYA_BUY_ROUTER="$(_yieldomega_k_line "TimeArenaBuyRouter (single-tx")"
   if [[ -z "${KUMBAYA_BUY_ROUTER}" ]]; then
@@ -64,6 +65,7 @@ yieldomega_frontend_merge_kumbaya_vite_full() {
   local usdm="$3"
   local swap_router="$4"
   local buy_router="$5"
+  local cl8y="${6:-}"
   [[ -f "${env_local}" ]] || return 0
   [[ -n "${weth}" && -n "${usdm}" && -n "${swap_router}" && -n "${buy_router}" ]] || return 0
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_WETH" "${weth}"
@@ -72,6 +74,12 @@ yieldomega_frontend_merge_kumbaya_vite_full() {
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_QUOTER" "${swap_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIME_ARENA_BUY_ROUTER" "${buy_router}"
   _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_TIMECURVE_BUY_ROUTER" "${buy_router}"
+  if [[ -n "${cl8y}" ]]; then
+    _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_CL8Y" "${cl8y}"
+  fi
+  _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_FEE_DOUB_CL8Y" "100"
+  _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_FEE_CL8Y_WETH" "100"
+  _yieldomega_env_set_line "${env_local}" "VITE_KUMBAYA_FEE_USDM_WETH" "3000"
 }
 
 # Merge stack-managed VITE_* into frontend/.env.local without clobbering unrelated keys

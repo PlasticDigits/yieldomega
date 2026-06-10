@@ -264,6 +264,7 @@ DEPLOY_BLOCK="$(cast to-dec "${MIN_HEX}")"
 
 KUMBAYA_WETH=""
 KUMBAYA_USDM=""
+KUMBAYA_CL8Y=""
 KUMBAYA_ROUTER=""
 KUMBAYA_BUY_ROUTER=""
 if [[ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" == "1" ]]; then
@@ -335,7 +336,7 @@ yieldomega_frontend_merge_anvil_stack_env \
   "${FRONTEND}/.env.local" "${RPC_URL}" "${TA}" "${PV}" "${AV}" "${RR}" "${INDEXER_PORT}"
 
 if [[ -n "${KUMBAYA_WETH}" && -n "${KUMBAYA_USDM}" && -n "${KUMBAYA_ROUTER}" && -n "${KUMBAYA_BUY_ROUTER}" ]]; then
-  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND}/.env.local" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${KUMBAYA_BUY_ROUTER}"
+  yieldomega_frontend_merge_kumbaya_vite_full "${FRONTEND}/.env.local" "${KUMBAYA_WETH}" "${KUMBAYA_USDM}" "${KUMBAYA_ROUTER}" "${KUMBAYA_BUY_ROUTER}" "${KUMBAYA_CL8Y}"
   echo "  Kumbaya VITE_* merged into ${FRONTEND}/.env.local (GitLab #84)."
 fi
 

@@ -8,7 +8,7 @@ library ArenaXp {
     uint256 internal constant CHARM_MIN_WAD = 99e16;
     uint256 internal constant CHARM_MAX_WAD = 10e18;
     uint256 internal constant MAX_LEVEL_UPS_PER_BUY = 5;
-    /// @dev Player progression cap (#299); XP banks toward future cap raises.
+    /// @dev Player progression cap (#299); surplus XP at max level is discarded.
     uint256 internal constant MAX_PLAYER_LEVEL = 5;
     /// @dev Onboarding reference CHARM for first-buy CRED tuning (#299).
     uint256 internal constant ONBOARDING_STARTER_CHARM_WAD = 10e18;
@@ -34,8 +34,8 @@ library ArenaXp {
     }
 
     function xpToAdvance(uint256 level) internal pure returns (uint256) {
-        if (level == 0) return 20;
-        uint256 step = 20 + (level - 1) * 5;
+        if (level == 0) return 10;
+        uint256 step = 10 + (level - 1) * 5;
         if (step > 100) step = 100;
         return step;
     }
@@ -58,6 +58,9 @@ library ArenaXp {
         returns (uint256 newLevel, uint256 newXpTowardNext)
     {
         require(level >= 1, "ArenaXp: level");
+        if (level >= MAX_PLAYER_LEVEL) {
+            return (MAX_PLAYER_LEVEL, 0);
+        }
         newLevel = level;
         newXpTowardNext = xpTowardNext + xpGain;
         uint256 levelsGained;
@@ -68,7 +71,10 @@ library ArenaXp {
             newLevel += 1;
             levelsGained += 1;
         }
-        if (newLevel > MAX_PLAYER_LEVEL) newLevel = MAX_PLAYER_LEVEL;
+        if (newLevel >= MAX_PLAYER_LEVEL) {
+            newLevel = MAX_PLAYER_LEVEL;
+            newXpTowardNext = 0;
+        }
     }
 
     function clampLevel(uint256 level) internal pure returns (uint256) {
@@ -77,6 +83,7 @@ library ArenaXp {
 
     function xpRemainingToNextLevel(uint256 level, uint256 xpTowardNext) internal pure returns (uint256) {
         require(level >= 1, "ArenaXp: level");
+        if (level >= MAX_PLAYER_LEVEL) return 0;
         uint256 need = xpToAdvance(level);
         return need > xpTowardNext ? need - xpTowardNext : 0;
     }

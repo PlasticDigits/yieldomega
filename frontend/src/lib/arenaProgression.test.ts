@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  ARENA_PROGRESSION_TIERS,
   clampPlayerLevel,
   FEATURE_UNLOCK_LEVEL,
   isFeatureUnlocked,
@@ -13,6 +14,17 @@ describe("arenaProgression", () => {
   it("caps level at 5", () => {
     expect(clampPlayerLevel(99n)).toBe(MAX_PLAYER_LEVEL);
     expect(clampPlayerLevel(1)).toBe(1);
+  });
+
+  it("lists five progression tiers for the XP hero lock row", () => {
+    expect(ARENA_PROGRESSION_TIERS).toHaveLength(5);
+    expect(ARENA_PROGRESSION_TIERS.map((tier) => tier.feature)).toEqual([
+      "last_buy",
+      "time_booster",
+      "defended_streak",
+      "warbow",
+      "warbow_flag",
+    ]);
   });
 
   it("gates features by unlock matrix", () => {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { keepPreviousData } from "@tanstack/react-query";
-import { formatUnits, parseUnits } from "viem";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
+import { formatUnits, parseUnits, type TransactionReceipt } from "viem";
 import {
   useAccount,
   useBalance,
@@ -13,6 +13,9 @@ import {
   useWriteContract,
 } from "wagmi";
 import { readContract } from "wagmi/actions";
+import { optimisticArenaWalletBuyStats } from "@/hooks/useWalletStats";
+import { xpGainFromBuyReceiptLogs } from "@/lib/arenaWalletXpOptimistic";
+import { xpForCharm } from "@/lib/arenaXpMath";
 import { useRpcQueryHealthForRefetch } from "@/hooks/useRpcQueryHealth";
 import { addresses, indexerBaseUrl } from "@/lib/addresses";
 import { waitForWriteReceipt } from "@/lib/realtimeTransaction";
@@ -304,6 +307,8 @@ export function useArenaSaleSession(
   /** Bumps once per second while `buyCooldownUxWallUntilMs` is set so wall-clock countdown recomputes. */
   const [buyCooldownUxTick, setBuyCooldownUxTick] = useState(0);
   const [buySubmitBusy, setBuySubmitBusy] = useState(false);
+  const queryClient = useQueryClient();
+  const lastWalletXpBumpTxRef = useRef<string | null>(null);
 
   useEffect(() => {
     logKumbayaBuyDebugHelpOnce();
@@ -317,6 +322,25 @@ export function useArenaSaleSession(
   }, [isConnected, address]);
 
   const tc = timeArenaAddress;
+  const bumpWalletXpAfterBuy = useCallback(
+    (
+      txHash: string,
+      charmWad: bigint,
+      options?: { receipt?: Pick<TransactionReceipt, "logs">; paidWithCred?: boolean },
+    ) => {
+      if (!address || !tc || charmWad <= 0n) return;
+      if (lastWalletXpBumpTxRef.current === txHash) return;
+      lastWalletXpBumpTxRef.current = txHash;
+      const paidWithCred = options?.paidWithCred === true;
+      const fromReceipt =
+        options?.receipt != null
+          ? xpGainFromBuyReceiptLogs(options.receipt.logs, tc, address)
+          : null;
+      const gain = fromReceipt ?? xpForCharm(charmWad);
+      optimisticArenaWalletBuyStats(queryClient, address, charmWad, paidWithCred, gain);
+    },
+    [address, queryClient, tc],
+  );
   const isArenaV2 = Boolean(options?.forceArenaV2) || isTimeArenaV2(tc);
   const indexerOn = Boolean(indexerBaseUrl());
   const timersQuery = useArenaTimersQuery(tc);
@@ -426,7 +450,23 @@ export function useArenaSaleSession(
     abi: timeArenaBuyEventAbi,
     eventName: "Buy",
     enabled: Boolean(tc),
-    onLogs: () => {
+    onLogs: (logs) => {
+      if (address) {
+        const w = address.toLowerCase();
+        for (const log of logs) {
+          const buyer = log.args?.buyer;
+          const charmWad = log.args?.charmWad;
+          if (
+            buyer &&
+            charmWad !== undefined &&
+            charmWad > 0n &&
+            buyer.toLowerCase() === w &&
+            log.transactionHash
+          ) {
+            bumpWalletXpAfterBuy(log.transactionHash, charmWad);
+          }
+        }
+      }
       void refetchCore();
       void refetchUser();
       void refetchLastBuyEpoch();
@@ -1434,6 +1474,7 @@ export function useArenaSaleSession(
           });
           const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
           assertSuccessfulBuyReceipt(receipt);
+          bumpWalletXpAfterBuy(buyHash, cw, { receipt, paidWithCred: true });
           setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
           const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
           setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
@@ -1543,6 +1584,7 @@ export function useArenaSaleSession(
         });
         const receipt = await waitForWriteReceipt(wagmiConfig, { hash: buyHash });
         assertSuccessfulBuyReceipt(receipt);
+        bumpWalletXpAfterBuy(buyHash, cw, { receipt });
         setBuyCooldownUxWallUntilMs(buyCooldownWallUntilMsFromNow(buyCooldownSecResolved));
         const chainSec = await chainSecondsAtReceiptBlock(wagmiConfig, receipt);
         setPreemptiveCooldownUntilChainSec(chainSec + buyCooldownSecResolved);
@@ -1574,6 +1616,7 @@ export function useArenaSaleSession(
     pendingReferralCode,
     plantWarBowFlag,
     writeContractAsync,
+    bumpWalletXpAfterBuy,
     refetchAll,
     payWith,
     chainId,
@@ -1649,7 +1692,9 @@ export function useArenaSaleSession(
     acceptedAsset,
     podiumPoolAddress,
     launchedDec,
-    walletConnected: walletStatus === "connected" && Boolean(address),
+    // UI gating: match RainbowKit / CharmCred (`isConnected`). Wagmi stays `reconnecting` when
+    // RPC is unreachable even though the connector has an address; writes stay strict below.
+    walletConnected: isConnected && Boolean(address),
     walletAddress: (address as HexAddress | undefined) ?? undefined,
     walletBalanceWei,
     refetchWalletBalance: () => {

@@ -48,7 +48,7 @@ describe("ArenaLastBuyPodiumLeaderboard", () => {
     expect(html).toContain("/art/icons/arena-podium-rank-second.png");
     expect(html).toContain("/art/icons/arena-podium-rank-third.png");
     expect(html).toContain("DOUB");
-    expect(html).toContain("≈ $1.57 USD");
+    expect(html).toContain("≈$1.57 USD");
 
     const secondPos = html.indexOf('data-testid="arena-last-buy-podium-2"');
     const firstPos = html.indexOf('data-testid="arena-last-buy-podium-1"');

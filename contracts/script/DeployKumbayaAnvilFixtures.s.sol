@@ -9,6 +9,7 @@ import {
     AnvilMockUSDM,
     AnvilKumbayaRouter
 } from "../src/fixtures/AnvilKumbayaFixture.sol";
+import {AnvilKumbayaPools} from "../src/fixtures/AnvilKumbayaPools.sol";
 import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {TimeArenaBuyRouter} from "../src/arena/TimeArenaBuyRouter.sol";
@@ -22,9 +23,7 @@ contract MockReserveCl8yFixture is ERC20 {
 }
 
 /// @notice Deploy WETH, USDM, AnvilKumbayaRouter (DOUB pools), and `TimeArenaBuyRouter` for Arena v2 E2E ([#270](https://gitlab.com/PlasticDigits/yieldomega/-/issues/270)).
-/// @dev Run after `DeployDev`. Usage:
-///      forge script script/DeployKumbayaAnvilFixtures.s.sol:DeployKumbayaAnvilFixtures
-///        --broadcast --rpc-url <RPC> --sig run(address) <TimeArena>
+/// @dev Run after `DeployDev`. Liquidity: **DOUB/CL8Y**, **CL8Y/WETH**, **WETH/USDM** only. Sets `charmPriceWad` from spot (#303).
 contract DeployKumbayaAnvilFixtures is Script {
     function run(address timeArena) external {
         DevOnlyChainGuard.assertDevScriptChain();
@@ -61,13 +60,12 @@ contract DeployKumbayaAnvilFixtures is Script {
 
         cl8y.transfer(address(router), 50_000_000e18);
 
-        // USDM -> WETH (~1:1 deep pool); WETH -> DOUB (~1000 DOUB per 1 WETH).
-        router.setPair(address(usdm), address(weth), 80_000_000e18, 80_000_000e18);
-        router.setPair(address(weth), address(doub), 8000e18, 8_000_000e18);
-        // CL8Y -> DOUB for PAY_CL8Y single-hop tests.
-        router.setPair(address(cl8y), address(doub), 8_000_000e18, 8_000_000e18);
-
+        AnvilKumbayaPools.wireLiquidity(router, address(doub), address(cl8y), address(weth), address(usdm));
         router.setOwner(address(0));
+
+        (uint256 charmPriceWad, uint256 doubUsdWad) =
+            AnvilKumbayaPools.charmPriceWadFromSpot(router, address(doub), address(cl8y), address(weth), address(usdm));
+        arena.setCharmPriceWad(charmPriceWad);
 
         TimeArenaBuyRouter buyRouter = new TimeArenaBuyRouter(
             arena,
@@ -89,5 +87,10 @@ contract DeployKumbayaAnvilFixtures is Script {
         console.log("TimeArenaBuyRouter (single-tx ETH/USDM buy):", address(buyRouter));
         console.log("MockReserveCl8y (router CL8Y leg):", address(cl8y));
         console.log("TimeArena doubSurplusRecipient (AdminSellVault):", surplusRecipient);
+        console.log("charmPriceWad source: Anvil Kumbaya spot (#303)");
+        console.log("doubUsdWad", doubUsdWad);
+        console.log("charmPriceWad", charmPriceWad);
+        console.log("minDoubSpendWad", (99e16 * charmPriceWad) / 1e18);
+        console.log("maxDoubSpendWad", (10e18 * charmPriceWad) / 1e18);
     }
 }

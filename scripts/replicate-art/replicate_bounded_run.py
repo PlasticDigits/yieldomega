@@ -10,6 +10,7 @@ Override with env ``REPLICATE_MAX_GENERATION_SECONDS`` (default ``600``).
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import sys
@@ -82,12 +83,28 @@ def _load_ledger(path: Path) -> dict[str, str]:
 
 
 def _save_ledger_entry(path: Path, key: str, prediction_id: str) -> None:
-    data = _load_ledger(path)
-    data[key] = prediction_id
+    """Merge one ledger row; flock so parallel album workers do not clobber each other."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    tmp.replace(path)
+    if not path.is_file():
+        path.write_text("{}\n", encoding="utf-8")
+    with path.open("r+", encoding="utf-8") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            f.seek(0)
+            raw = f.read()
+            try:
+                data = json.loads(raw) if raw.strip() else {}
+            except json.JSONDecodeError:
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            data[key] = prediction_id
+            f.seek(0)
+            f.truncate()
+            f.write(json.dumps(data, indent=2) + "\n")
+            f.flush()
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def _reload_prediction_resilient(
@@ -207,11 +224,39 @@ def run_model_bounded(
                     file=sys.stderr,
                 )
     if prediction is None:
-        prediction = client.models.predictions.create(
-            model=(owner, name),
-            input=inp,
-            wait=create_wait,
-        )
+        try:
+            prediction = client.models.predictions.create(
+                model=(owner, name),
+                input=inp,
+                wait=create_wait,
+            )
+        except Exception as exc:
+            # Music jobs often outlive the HTTP read window. A ReadTimeout / disconnect here
+            # frequently means Replicate already accepted the prediction — not that create failed.
+            if ledger_path is not None and ledger_key and _is_transient_network_error(exc):
+                existing_id = _load_ledger(ledger_path).get(ledger_key)
+                if existing_id:
+                    prediction = client.predictions.get(existing_id)
+                    if log_monitor:
+                        print(
+                            f"[{label}] create flake ({exc!s}); resuming ledger prediction "
+                            f"{existing_id} (status={prediction.status!r}) — "
+                            f"https://replicate.com/p/{existing_id}",
+                            file=sys.stderr,
+                        )
+                else:
+                    print(
+                        f"[{label}] create flake ({exc!s}): network timeouts during Replicate "
+                        f"create/poll are common for music and usually mean the job was accepted. "
+                        f"Check the dashboard before starting a second prediction for the same track. "
+                        f"If one is processing or succeeded, pin its id in the ledger "
+                        f"({ledger_path}, key {ledger_key!r}) or use "
+                        f"scripts/replicate-music/download_replicate_prediction.py — do not re-run blind.",
+                        file=sys.stderr,
+                    )
+                    raise
+            else:
+                raise
         if ledger_path is not None and ledger_key:
             _save_ledger_entry(ledger_path, ledger_key, str(prediction.id))
     pid = getattr(prediction, "id", "?")

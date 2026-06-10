@@ -24,8 +24,10 @@ function sampleConfig(over?: Partial<KumbayaChainConfigResolved>): KumbayaChainC
     chainId: 31337,
     weth: WETH,
     usdm: USDM,
+    cl8y: CL8Y,
     swapRouter: ROUTER,
     quoter: QUOTER,
+    doubCl8yFee: 100,
     cl8yWethFee: 3000,
     usdmWethFee: 500,
     ...over,
@@ -49,6 +51,7 @@ describe("resolveKumbayaRouting", () => {
     const r = resolveKumbayaRouting(31337, {
       VITE_KUMBAYA_WETH: WETH,
       VITE_KUMBAYA_USDM: USDM,
+      VITE_KUMBAYA_CL8Y: CL8Y,
       VITE_KUMBAYA_SWAP_ROUTER: ROUTER,
       VITE_KUMBAYA_QUOTER: QUOTER,
       VITE_KUMBAYA_FEE_CL8Y_WETH: "500",
@@ -56,8 +59,10 @@ describe("resolveKumbayaRouting", () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.config.weth).toBe(WETH);
+      expect(r.config.cl8y).toBe(CL8Y);
       expect(r.config.cl8yWethFee).toBe(500);
       expect(r.config.usdmWethFee).toBe(3000);
+      expect(r.config.doubCl8yFee).toBe(100);
     }
   });
 
@@ -69,6 +74,7 @@ describe("resolveKumbayaRouting", () => {
     expect(r.config.swapRouter).toBe("0xE5BbEF8De2DB447a7432A47EBa58924d94eE470e");
     expect(r.config.quoter).toBe("0x1F1a8dC7E138C34b503Ca080962aC10B75384a27");
     expect(r.config.usdm).toBe("0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7");
+    expect(r.config.doubCl8yFee).toBe(100);
     expect(r.config.cl8yWethFee).toBe(100);
     expect(r.config.usdmWethFee).toBe(3000);
   });

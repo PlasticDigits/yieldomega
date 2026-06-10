@@ -5,6 +5,13 @@
 This script is **instrumental-only**: it always sets ``is_instrumental: true`` and never
 sends ``lyrics``. See README.md for full model parameter documentation.
 
+**Replicate network timeouts:** ``httpx.ReadTimeout`` / disconnect errors during
+``predictions.create`` or ``reload()`` are common for ``minimax/music-2.6`` and often mean
+the prediction is **already running** on Replicate (the HTTP client gave up waiting, not
+the model). Check the dashboard before retrying the same track; use a per-track **ledger**
+(``generate_album.py`` writes ``ledger_part_*.json``) plus ``--resume`` so retries poll
+the same prediction id instead of creating duplicates.
+
   cd scripts/replicate-music
   python3 -m venv .venv && source .venv/bin/activate
   pip install -r requirements.txt
@@ -65,13 +72,12 @@ EP_CONCEPTS: tuple[dict[str, Any], ...] = (
     },
     {
         "id": 3,
-        "slug": "concept-03-hills-adventure",
+        "slug": "concept-03-glass-arena",
         "prompt": (
-            "G major, 104 BPM, cheerful fantasy arcade hybrid, bright and playful not moody, "
-            "bouncy quantized groove with light chiptune-style lead hooks layered over warm pennywhistle "
-            "and fiddle lines, sparkly plucky synth arps, gentle orchestral strings for lift, "
-            "tight punchy drums with a casual mobile-game lobby bounce, glossy polished mix, "
-            "whimsical mascot-hills adventure energy, wide happy soundstage, "
+            "E minor, 100 BPM, cyberminimalist command-console instrumental, dark tactical navy "
+            "atmosphere with emerald and teal live accents, warm gold DOUB motifs sparingly, "
+            "restrained glassy synth textures, soft sub bass, hypnotic quantized groove low "
+            "distraction for long Arena sessions, wide controlled mix, PvP glass arena energy, "
             "instrumental only, no vocals, no singing, no voice, no choir, no spoken word"
         ),
     },
@@ -170,6 +176,8 @@ def run_generation(
     job_label: str,
     prefer_wait: int,
     max_wall_seconds: float | None,
+    ledger_path: Path | None = None,
+    ledger_key: str = "",
 ) -> Path | None:
     if dry_run:
         print(f"[dry-run] {job_label} -> would write {out_path}")
@@ -199,6 +207,8 @@ def run_generation(
         use_file_output=True,
         log_monitor=True,
         poll_progress=True,
+        ledger_path=ledger_path,
+        ledger_key=ledger_key,
     )
     data = _read_output_bytes_robust(output, job_label=job_label)
     out_path.write_bytes(data)

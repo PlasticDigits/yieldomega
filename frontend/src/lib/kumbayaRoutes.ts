@@ -24,8 +24,12 @@ export type KumbayaChainConfigResolved = {
   weth: HexAddress;
   /** USDM (or chain reserve stable); required for `usdm` pay mode. */
   usdm: HexAddress;
+  /** Reserve CL8Y on the buy-router Kumbaya leg (DOUB/CL8Y pool). */
+  cl8y: HexAddress;
   swapRouter: HexAddress;
   quoter: HexAddress;
+  /** Pool fee tier DOUB ↔ CL8Y (uint24). */
+  doubCl8yFee: number;
   /** Pool fee tier CL8Y ↔ WETH (uint24). */
   cl8yWethFee: number;
   /** Pool fee tier USDM ↔ WETH (uint24). */
@@ -61,14 +65,15 @@ function parseFee(key: string, env: KumbayaEnv, fallback: number): number {
 const CHAIN_DEFAULTS: Partial<
   Record<
     number,
-    Pick<KumbayaChainConfigResolved, "cl8yWethFee" | "usdmWethFee"> &
-      Partial<Pick<KumbayaChainConfigResolved, "weth" | "usdm" | "swapRouter" | "quoter">>
+    Pick<KumbayaChainConfigResolved, "doubCl8yFee" | "cl8yWethFee" | "usdmWethFee"> &
+      Partial<Pick<KumbayaChainConfigResolved, "weth" | "usdm" | "cl8y" | "swapRouter" | "quoter">>
   >
 > = {
-  // Anvil: addresses come from deploy + VITE_*; fee tiers only here.
-  31337: { cl8yWethFee: 3000, usdmWethFee: 3000 },
+  // Anvil: addresses come from deploy + VITE_*; fee tiers match mainnet pools.
+  31337: { doubCl8yFee: 100, cl8yWethFee: 100, usdmWethFee: 3000 },
   /** MegaETH testnet — integrator-kit `megaETH-testnet.json`. No default USDm on token list; set `VITE_KUMBAYA_USDM` when stable pools exist. */
   6343: {
+    doubCl8yFee: 100,
     cl8yWethFee: 3000,
     usdmWethFee: 3000,
     weth: "0x4200000000000000000000000000000000000006",
@@ -77,6 +82,7 @@ const CHAIN_DEFAULTS: Partial<
   },
   /** MegaETH mainnet — integrator-kit `megaETH-mainnet.json`; USDm (MegaUSD) per default-token-list. */
   4326: {
+    doubCl8yFee: 100,
     /** CL8Y/WETH v3 pool on Kumbaya mainnet is 0.01% (100), not 0.3% (3000). */
     cl8yWethFee: 100,
     usdmWethFee: 3000,
@@ -108,8 +114,10 @@ export function resolveKumbayaRouting(chainId: number, env: KumbayaEnv): Kumbaya
 
   const weth = envAddr(env, "VITE_KUMBAYA_WETH") ?? defaults.weth;
   const usdm = envAddr(env, "VITE_KUMBAYA_USDM") ?? defaults.usdm;
+  const cl8y = envAddr(env, "VITE_KUMBAYA_CL8Y") ?? defaults.cl8y;
   const swapRouter = envAddr(env, "VITE_KUMBAYA_SWAP_ROUTER") ?? defaults.swapRouter;
   const quoter = envAddr(env, "VITE_KUMBAYA_QUOTER") ?? defaults.quoter;
+  const doubCl8yFee = parseFee("VITE_KUMBAYA_FEE_DOUB_CL8Y", env, defaults.doubCl8yFee);
   const cl8yWethFee = parseFee("VITE_KUMBAYA_FEE_CL8Y_WETH", env, defaults.cl8yWethFee);
   const usdmWethFee = parseFee("VITE_KUMBAYA_FEE_USDM_WETH", env, defaults.usdmWethFee);
 
@@ -141,8 +149,10 @@ export function resolveKumbayaRouting(chainId: number, env: KumbayaEnv): Kumbaya
       chainId,
       weth: weth!,
       usdm: usdm ?? ZERO,
+      cl8y: cl8y ?? ZERO,
       swapRouter: swapRouter!,
       quoter: quoter!,
+      doubCl8yFee,
       cl8yWethFee,
       usdmWethFee,
     },
@@ -314,9 +324,19 @@ export function routingForArenaPayAsset(
   if (payWith === "cl8y") {
     return { ok: true, path: "0x" as `0x${string}`, tokenIn: doubAddress };
   }
+  if (isZeroAddr(config.cl8y)) {
+    return {
+      ok: false,
+      reason: "no_route",
+      message: "Reserve CL8Y is not configured for Kumbaya routing on this chain.",
+    };
+  }
   if (payWith === "eth") {
     try {
-      const path = buildV3PathExactOutput([doubAddress, config.weth], [config.cl8yWethFee]);
+      const path = buildV3PathExactOutput(
+        [doubAddress, config.cl8y, config.weth],
+        [config.doubCl8yFee, config.cl8yWethFee],
+      );
       return { ok: true, path, tokenIn: config.weth };
     } catch {
       return { ok: false, reason: "no_route", message: "Could not build ETH → DOUB routing path." };
@@ -332,8 +352,8 @@ export function routingForArenaPayAsset(
     }
     try {
       const path = buildV3PathExactOutput(
-        [doubAddress, config.weth, config.usdm],
-        [config.cl8yWethFee, config.usdmWethFee],
+        [doubAddress, config.cl8y, config.weth, config.usdm],
+        [config.doubCl8yFee, config.cl8yWethFee, config.usdmWethFee],
       );
       return { ok: true, path, tokenIn: config.usdm };
     } catch {

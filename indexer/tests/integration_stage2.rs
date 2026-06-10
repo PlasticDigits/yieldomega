@@ -1136,8 +1136,18 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
     );
     assert_eq!(j.get("buy_count").and_then(|v| v.as_i64()), Some(2));
     assert_eq!(j.get("xp").and_then(|v| v.as_str()), Some("5"));
-    assert_eq!(j.get("level").and_then(|v| v.as_str()), Some("2"));
+    assert_eq!(j.get("level").and_then(|v| v.as_str()), Some("1"));
+    assert_eq!(j.get("xp_toward_next").and_then(|v| v.as_str()), Some("5"));
     assert_eq!(j.get("warbow_guards").and_then(|v| v.as_i64()), Some(1));
+    assert_eq!(
+        j.get("warbow_battle_points").and_then(|v| v.as_str()),
+        Some("750")
+    );
+    let guard_until = j
+        .get("warbow_guard_until")
+        .and_then(|v| v.as_str())
+        .expect("warbow_guard_until");
+    assert_eq!(guard_until, (ts + 3600).to_string());
     assert_eq!(
         j.get("referral_cred_earned").and_then(|v| v.as_str()),
         Some("5000000000000000000")

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-// Keep `blockie_hills.manifest.json` in sync with `public/music/albums/blockie_hills/manifest.json` (autodiscovery / tooling).
-import blockieHillsManifest from "./blockie_hills.manifest.json";
+// Keep `glass_arena.manifest.json` in sync with `public/music/albums/glass_arena/manifest.json` (autodiscovery / tooling).
+import glassArenaManifest from "./glass_arena.manifest.json";
 
 export type AlbumTrack = {
   src: string;
@@ -12,21 +12,21 @@ export type AlbumTrack = {
   durationSec: number;
 };
 
-export type BlockieHillsManifestTrack = {
+export type GlassArenaManifestTrack = {
   index: number;
   file: string;
   title: string;
   durationSec: number;
 };
 
-export type BlockieHillsManifest = {
+export type GlassArenaManifest = {
   albumId: string;
   albumTitle: string;
   publicBasePath: string;
-  tracks: BlockieHillsManifestTrack[];
+  tracks: GlassArenaManifestTrack[];
 };
 
-export function manifestToPlaylist(m: BlockieHillsManifest): readonly AlbumTrack[] {
+export function manifestToPlaylist(m: GlassArenaManifest): readonly AlbumTrack[] {
   const raw = m.publicBasePath.replace(/\/$/, "");
   return m.tracks.map((t) => ({
     src: `${raw}/${t.file}`,
@@ -36,7 +36,7 @@ export function manifestToPlaylist(m: BlockieHillsManifest): readonly AlbumTrack
   }));
 }
 
-/** Full **Blockie Hills** album (16 tracks); canonical metadata in `blockie_hills.manifest.json` (also under `public/music/albums/blockie_hills/`). */
-export const BLOCKIE_HILLS_PLAYLIST: readonly AlbumTrack[] = manifestToPlaylist(
-  blockieHillsManifest as BlockieHillsManifest,
+/** Full **Glass Arena** BGM album (16 tracks). */
+export const GLASS_ARENA_PLAYLIST: readonly AlbumTrack[] = manifestToPlaylist(
+  glassArenaManifest as GlassArenaManifest,
 );

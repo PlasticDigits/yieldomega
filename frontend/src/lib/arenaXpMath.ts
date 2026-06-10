@@ -10,8 +10,8 @@ export function xpForCharm(charmWad: bigint): bigint {
 }
 
 export function xpToAdvance(level: bigint): bigint {
-  if (level === 0n) return 20n;
-  let step = 20n + (level - 1n) * 5n;
+  if (level === 0n) return 10n;
+  let step = 10n + (level - 1n) * 5n;
   if (step > 100n) step = 100n;
   return step;
 }
@@ -53,6 +53,9 @@ export function applyXpGain(
   xpGain: bigint,
 ): { level: bigint; xpTowardNext: bigint } {
   if (level < 1n) throw new Error("level");
+  if (level >= MAX_PLAYER_LEVEL) {
+    return { level: MAX_PLAYER_LEVEL, xpTowardNext: 0n };
+  }
   let newLevel = level;
   let newToward = xpTowardNext + xpGain;
   let levelsGained = 0;
@@ -63,12 +66,36 @@ export function applyXpGain(
     newLevel += 1n;
     levelsGained += 1;
   }
-  if (newLevel > MAX_PLAYER_LEVEL) newLevel = MAX_PLAYER_LEVEL;
+  if (newLevel >= MAX_PLAYER_LEVEL) {
+    newLevel = MAX_PLAYER_LEVEL;
+    newToward = 0n;
+  }
   return { level: newLevel, xpTowardNext: newToward };
 }
 
 export function xpRemainingToNextLevel(level: bigint, xpTowardNext: bigint): bigint {
   if (level < 1n) throw new Error("level");
+  if (level >= MAX_PLAYER_LEVEL) return 0n;
   const need = xpToAdvance(level);
   return need > xpTowardNext ? need - xpTowardNext : 0n;
+}
+
+/** Reconcile stale level with inflated `xp_toward_next` after optimistic/indexer drift. */
+export function normalizeXpProgress(
+  level: bigint,
+  xpTowardNext: bigint,
+): { level: bigint; xpTowardNext: bigint } {
+  let lvl = level < 1n ? 1n : clampLevel(level);
+  let toward = xpTowardNext < 0n ? 0n : xpTowardNext;
+  if (lvl >= MAX_PLAYER_LEVEL) {
+    return { level: MAX_PLAYER_LEVEL, xpTowardNext: 0n };
+  }
+  while (toward >= xpToAdvance(lvl) && lvl < MAX_PLAYER_LEVEL) {
+    toward -= xpToAdvance(lvl);
+    lvl += 1n;
+  }
+  if (lvl >= MAX_PLAYER_LEVEL) {
+    return { level: MAX_PLAYER_LEVEL, xpTowardNext: 0n };
+  }
+  return { level: lvl, xpTowardNext: toward };
 }

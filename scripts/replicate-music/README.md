@@ -18,6 +18,26 @@ Authentication: set `REPLICATE_API_TOKEN` in the environment or in (first match 
 
 Long generations: if predictions hit the wall-clock cap, raise `REPLICATE_MAX_GENERATION_SECONDS` (default `600`). Music can approach several minutes plus queue time.
 
+### Replicate network timeouts (expected — job is usually still running)
+
+`minimax/music-2.6` often runs several minutes. The Python client may raise **`httpx.ReadTimeout`** or disconnect errors while **creating** or **polling** a prediction. That usually means Replicate **already accepted** the job; check [your predictions dashboard](https://replicate.com/predictions) before starting another run for the same track.
+
+**Avoid duplicate predictions:**
+
+1. Run **one album part per command** — do not chain `python generate_album.py --part 1 --all; python generate_album.py --part 2 --all` (`;` runs part 2 even when part 1 failed).
+2. Each track writes a prediction id to `output/album_part_<N>/ledger_part_<N>.json`. Retries with **`--resume`** reuse that id instead of creating a new job.
+3. If create timed out before the id was saved, **pin** the dashboard id then resume:
+   `python generate_album.py --part 1 --pin-prediction 01-hills-dawn <prediction_id>`
+4. Or download a succeeded file only: `python download_replicate_prediction.py <id> --out output/...`
+
+Promote trimmed MP3s to the frontend **in a separate step** after both parts finish:
+
+```bash
+python trim_lead_in.py --dir output/album_part_1 --skip 0.15
+python trim_lead_in.py --dir output/album_part_2 --skip 0.15
+bash promote_album_to_public.sh
+```
+
 ### Why Replicate shows the “same” prompt several times
 
 `--all-concepts` runs **concept 1, then 2, then 3** in order. If the process is **stopped or retried** before concepts 2–3 start, the next run **starts concept 1 again**, so the dashboard can show **multiple `concept-01` jobs** (same first prompt). That is not one Python loop firing the same prompt three times in parallel; it is **several separate runs** each beginning at concept 1. Cancel stray jobs you do not need in the Replicate UI.
@@ -30,7 +50,7 @@ python generate_instrumental.py --all-concepts --resume
 
 ### Full album (8 tracks per part; unified style bible)
 
-`generate_album.py` runs **album part 1** or **part 2**: the same **style bible** on every track (cheerful fantasy arcade + hills / hat-coin energy), with **unique** BPM, key, and arrangement per song. Part 2 uses **new titles and scenes** in the same world.
+`generate_album.py` runs **album part 1** or **part 2**: the same **style bible** on every track (Yield Omega **Glass Arena** — cyberminimalist command-console bed with emerald/teal/gold accents), with **unique** BPM, key, and arrangement per song. Part 2 uses **new titles and scenes** in the same world.
 
 | Part | Output dir | Manifest |
 |------|------------|----------|
@@ -43,9 +63,14 @@ python generate_album.py --part 2 --list        # part 2 track list
 python generate_album.py --all                  # part 1: generate 01–08
 python generate_album.py --part 2 --all         # part 2: generate 01–08
 python generate_album.py --part 2 --track 5     # one part-2 track only
-python generate_album.py --part 2 --all --resume
+python generate_album.py --part 2 --all --resume --max-workers 8
+python generate_album.py --both-parts --all --resume --max-workers 8
+python generate_album.py --part 1 --pin-prediction 01-console-boot <prediction_id>
 python generate_album.py --all --dry-run
+bash promote_album_to_public.sh
 ```
+
+Failed tracks are listed in `output/album_part_<N>/failed_part_<N>.json` and are **not** retried on `--resume` until you remove the slug from that file.
 
 ### Download a succeeded prediction (missing local file)
 

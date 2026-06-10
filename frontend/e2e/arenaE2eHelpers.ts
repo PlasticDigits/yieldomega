@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { expect, type Page } from "@playwright/test";
-import { connectMockWalletIfPlaceholderVisible } from "./pwMockWallet";
 
 /** Anvil E2E: fail fast when RPC/env is wrong (was 120s; keep low for local iteration). */
 export const ARENA_E2E_TIMEOUT_MS = 15_000;
@@ -21,12 +20,12 @@ export async function connectArenaWallet(
   page: Page,
   options?: { requireDoubSpendControls?: boolean },
 ): Promise<void> {
-  const connectPitch = "Connect wallet to buy CHARM.";
-  await connectMockWalletIfPlaceholderVisible(page, connectPitch);
-  await expect(page.getByText(connectPitch)).not.toBeVisible({
-    timeout: ARENA_E2E_TIMEOUT_MS,
-  });
   const buyPanel = arenaBuyPanel(page);
+  const connectButton = buyPanel.getByRole("button", { name: /connect/i });
+  if (await connectButton.isVisible().catch(() => false)) {
+    await connectButton.first().click();
+    await page.getByRole("button", { name: /Mock Connector/i }).click();
+  }
   await expect(buyPanel).toBeVisible({ timeout: ARENA_E2E_TIMEOUT_MS });
   await expect(buyPanel.getByTestId("arena-simple-buy-charm")).toBeVisible({
     timeout: ARENA_E2E_TIMEOUT_MS,

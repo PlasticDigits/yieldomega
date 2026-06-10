@@ -616,8 +616,8 @@ contract TimeArenaTest is Test {
     function test_xp_levels() public {
         assertEq(ArenaXp.xpForCharm(99e16), 1);
         assertEq(ArenaXp.xpForCharm(10e18), 10);
-        assertEq(ArenaXp.levelFromXp(20), 2);
-        assertEq(ArenaXp.xpToAdvance(10), 65);
+        assertEq(ArenaXp.levelFromXp(10), 2);
+        assertEq(ArenaXp.xpToAdvance(10), 55);
         assertEq(ArenaXp.xpToAdvance(20), 100);
     }
 
@@ -651,15 +651,15 @@ contract TimeArenaTest is Test {
     function test_xp_max_charm_first_buy() public {
         vm.prank(alice);
         arena.buy(10e18);
-        assertEq(arena.level(alice), 1);
-        assertEq(arena.xpTowardNext(alice), 10);
-        assertEq(arena.xpToNextLevel(alice), 10);
+        assertEq(arena.level(alice), 2);
+        assertEq(arena.xpTowardNext(alice), 0);
+        assertEq(arena.xpToNextLevel(alice), 15);
     }
 
     /// GitLab #250: `_finishBuy` emits `XpGained(buyer, amount, newLevel)`.
     function test_xp_emits_XpGained() public {
         vm.expectEmit(true, false, false, true);
-        emit TimeArena.XpGained(alice, 10, 1);
+        emit TimeArena.XpGained(alice, 10, 2);
         vm.prank(alice);
         arena.buy(10e18);
         assertEq(arena.xp(alice), 10);
@@ -1151,7 +1151,8 @@ contract TimeArenaTest is Test {
         vm.prank(alice);
         arena.buy(CHARM_MAX);
         assertEq(arena.level(alice), 5);
-        assertGt(arena.xpTowardNext(alice), 0);
+        assertEq(arena.xpTowardNext(alice), 0);
+        assertEq(arena.xpToNextLevel(alice), 0);
     }
 
     /// GitLab #299: level-1 buy extends only Last Buy timer.
@@ -1242,7 +1243,7 @@ contract TimeArenaTest is Test {
         uint256 starter = arena.ONBOARDING_STARTER_CHARM_WAD();
         vm.startPrank(alice);
         arena.buyWithCred(starter);
-        assertEq(arena.level(alice), 1);
+        assertEq(arena.level(alice), 2);
         _warpPastBuyCooldown();
         arena.buyWithCred(starter);
         vm.stopPrank();

@@ -7,16 +7,16 @@ import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 contract ArenaXpTest is Test {
     /// GitLab #250: table-test level thresholds L1–L10 (step grows +5 until cap).
     function test_level_thresholds_table_levels_1_through_10() public pure {
-        assertEq(ArenaXp.xpToAdvance(1), 20);
-        assertEq(ArenaXp.xpToAdvance(2), 25);
-        assertEq(ArenaXp.xpToAdvance(3), 30);
-        assertEq(ArenaXp.xpToAdvance(4), 35);
-        assertEq(ArenaXp.xpToAdvance(5), 40);
-        assertEq(ArenaXp.xpToAdvance(6), 45);
-        assertEq(ArenaXp.xpToAdvance(7), 50);
-        assertEq(ArenaXp.xpToAdvance(8), 55);
-        assertEq(ArenaXp.xpToAdvance(9), 60);
-        assertEq(ArenaXp.xpToAdvance(10), 65);
+        assertEq(ArenaXp.xpToAdvance(1), 10);
+        assertEq(ArenaXp.xpToAdvance(2), 15);
+        assertEq(ArenaXp.xpToAdvance(3), 20);
+        assertEq(ArenaXp.xpToAdvance(4), 25);
+        assertEq(ArenaXp.xpToAdvance(5), 30);
+        assertEq(ArenaXp.xpToAdvance(6), 35);
+        assertEq(ArenaXp.xpToAdvance(7), 40);
+        assertEq(ArenaXp.xpToAdvance(8), 45);
+        assertEq(ArenaXp.xpToAdvance(9), 50);
+        assertEq(ArenaXp.xpToAdvance(10), 55);
 
         uint256 cumulative;
         for (uint256 level = 1; level <= 10; ++level) {
@@ -28,8 +28,8 @@ contract ArenaXpTest is Test {
 
     /// GitLab #250: level 17+ uses flat 100 XP/level; level 50+ unchanged.
     function test_level_50_plus_flat_100_xp_per_level() public pure {
-        assertEq(ArenaXp.xpToAdvance(16), 95);
-        assertEq(ArenaXp.xpToAdvance(17), 100);
+        assertEq(ArenaXp.xpToAdvance(18), 95);
+        assertEq(ArenaXp.xpToAdvance(19), 100);
         assertEq(ArenaXp.xpToAdvance(50), 100);
         assertEq(ArenaXp.xpToAdvance(100), 100);
 
@@ -78,26 +78,30 @@ contract ArenaXpTest is Test {
         uint256 toward;
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 200);
         assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+        assertEq(toward, 0);
         assertLt(lvl, ArenaXp.levelFromXp(200));
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 50);
         assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+        assertEq(toward, 0);
     }
 
-    function test_applyXpGain_banks_xp_at_max_level() public pure {
+    function test_applyXpGain_discards_xp_at_max_level() public pure {
         uint256 lvl = ArenaXp.MAX_PLAYER_LEVEL;
         uint256 toward = 5;
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 10);
         assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
-        assertEq(toward, 15);
+        assertEq(toward, 0);
     }
 
     function test_applyXpGain_eight_levels_two_steps() public pure {
         uint256 lvl = 1;
         uint256 toward;
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 150);
-        assertEq(lvl, 6);
+        assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+        assertEq(toward, 0);
         (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, 50);
-        assertEq(lvl, ArenaXp.levelFromXp(200));
+        assertEq(lvl, ArenaXp.MAX_PLAYER_LEVEL);
+        assertEq(toward, 0);
     }
 
     function testFuzz_applyXpGain_matches_reference(uint8 rawGain, uint8 steps) public pure {
@@ -110,7 +114,9 @@ contract ArenaXpTest is Test {
         for (uint256 i = 0; i < n; ++i) {
             lifetime += xpGain;
             (lvl, toward) = ArenaXp.applyXpGain(lvl, toward, xpGain);
-            assertEq(lvl, ArenaXp.levelFromXp(lifetime));
+            uint256 refLevel = ArenaXp.levelFromXp(lifetime);
+            if (refLevel > ArenaXp.MAX_PLAYER_LEVEL) refLevel = ArenaXp.MAX_PLAYER_LEVEL;
+            assertEq(lvl, refLevel);
         }
     }
 

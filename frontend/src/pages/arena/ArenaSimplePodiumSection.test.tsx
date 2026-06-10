@@ -11,9 +11,12 @@ const BOB = "0x2222222222222222222222222222222222222222" as const;
 const CAROL = "0x3333333333333333333333333333333333333333" as const;
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
+const noopFeatureHelp = () => {};
+
 function renderSimplePodiums(overrides: Partial<ArenaSimplePodiumSectionProps> = {}): string {
   return renderToStaticMarkup(
     createElement(MemoryRouter, { initialEntries: ["/"] }, createElement(ArenaSimplePodiumSection, {
+      onFeatureHelp: noopFeatureHelp,
       podiumRows: [
         { winners: [ALICE, BOB, CAROL], values: ["9", "8", "7"], epoch: "12" },
         { winners: [BOB, ALICE, CAROL], values: ["1200", "900", "400"], epoch: "3" },
@@ -54,6 +57,17 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
     expect(html).toContain("20s");
     expect(html).toContain("30s");
     expect(html).toContain("40s");
+  });
+
+  it("renders help buttons instead of inline podium rule blurbs", () => {
+    const html = renderSimplePodiums();
+    expect(html).toContain('data-testid="arena-podium-help-0"');
+    expect(html).toContain('data-testid="arena-podium-help-1"');
+    expect(html).toContain('data-testid="arena-podium-help-2"');
+    expect(html).toContain('data-testid="arena-podium-help-3"');
+    expect(html).not.toContain("Top 3 most recent buyers win when this timer hits zero.");
+    expect(html).not.toContain("Most total Last Buy time added wins when this timer hits zero.");
+    expect(html).not.toContain("Highest defended-streak count wins when this timer hits zero.");
   });
 
   it("renders all four canonical podium categories and three placements", () => {
@@ -138,7 +152,7 @@ describe("ArenaSimplePodiumSection (issue #113)", () => {
         { winners: [ALICE, CAROL, BOB], values: ["300", "240", "60"] },
       ],
     });
-    expect(html).toContain("Starts Under 15 Min");
+    expect(html).toContain("&lt; 15MIN");
   });
 
   it("shows a neutral em dash for empty winner slots (no wallet-connect wording)", () => {

@@ -11,7 +11,6 @@ import {
 type Props = {
   playerLevel: bigint | number | undefined;
   feature: ArenaFeatureKey;
-  onHelp?: () => void;
   children: ReactNode;
   className?: string;
   testId?: string;
@@ -20,7 +19,6 @@ type Props = {
 export function ArenaLevelGate({
   playerLevel,
   feature,
-  onHelp,
   children,
   className,
   testId,
@@ -32,18 +30,6 @@ export function ArenaLevelGate({
   if (unlocked) {
     return (
       <div className={className} data-testid={testId}>
-        {onHelp ? (
-          <div className="arena-level-gate__help-row">
-            <button
-              type="button"
-              className="arena-level-gate__help"
-              aria-label={`Help: ${feature}`}
-              onClick={onHelp}
-            >
-              ?
-            </button>
-          </div>
-        ) : null}
         {children}
       </div>
     );

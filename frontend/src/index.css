@@ -52,8 +52,9 @@
   --panel-gloss: linear-gradient(145deg, var(--yo-glass-highlight) 0%, transparent 46%);
   --motion-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --scrollbar-track: rgba(4, 11, 18, 0.9);
-  --scrollbar-thumb: linear-gradient(180deg, rgba(53, 240, 194, 0.82) 0%, rgba(36, 108, 125, 0.92) 100%);
-  --scrollbar-thumb-border: rgba(126, 241, 255, 0.18);
+  --scrollbar-thumb-solid: rgba(53, 240, 194, 0.58);
+  --scrollbar-thumb: linear-gradient(180deg, rgba(126, 241, 255, 0.52) 0%, rgba(53, 240, 194, 0.62) 100%);
+  --scrollbar-thumb-border: rgba(126, 241, 255, 0.14);
   /* Charts / SVG fallbacks */
   --accent: var(--yo-cyan);
   /* WCAG 2.4.7 keyboard focus ring; override per host if needed (GitLab #97). */
@@ -93,7 +94,7 @@ html,
 body,
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1aa15f rgba(8, 49, 30, 0.72);
+  scrollbar-color: var(--scrollbar-thumb-solid) var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar {
@@ -1790,32 +1791,49 @@ label:has(input[type="radio"]:disabled) {
   margin: 0 0 1rem;
 }
 
+/* Status pill — cyberminimalist glass (#294); tone map matches .indexer-status. */
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.42rem 0.72rem;
-  border: 3px solid var(--line);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 3px 3px 0 var(--line);
-  font-weight: 700;
+  gap: 0.35rem;
+  padding: 0.34rem 0.68rem;
+  border: 1px solid var(--yo-line);
+  border-radius: 999px;
+  background: rgba(8, 20, 32, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  backdrop-filter: blur(8px) saturate(1.08);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--yo-text);
+  white-space: nowrap;
 }
 
 .status-pill--warning {
-  background: linear-gradient(180deg, #fff5c5, #ffd86e);
+  border-color: rgba(248, 213, 107, 0.5);
+  background: rgba(248, 213, 107, 0.12);
+  color: #fff3bc;
 }
 
 .status-pill--danger {
-  background: linear-gradient(180deg, #fecaca, #fca5a5);
+  border-color: rgba(255, 107, 122, 0.56);
+  background: rgba(255, 107, 122, 0.13);
+  color: #ffd7dc;
 }
 
 .status-pill--success {
-  background: linear-gradient(180deg, #c8f7db, #7fe3a5);
+  border-color: rgba(53, 240, 194, 0.5);
+  background: rgba(53, 240, 194, 0.12);
+  color: #dffef6;
 }
 
 .status-pill--info {
-  background: linear-gradient(180deg, #ecfaff, #ccefff);
+  border-color: rgba(126, 241, 255, 0.32);
+  background: rgba(126, 241, 255, 0.1);
+  color: var(--yo-cyan-soft);
 }
 
 .stats-grid {
@@ -7771,82 +7789,6 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 1rem;
 }
 
-/* In-page agent `<details>` — glass panel on the Arena command console (#290 / #291). */
-.arena-simple-agent-card.app-footer-agent.data-panel {
-  padding: 0.85rem 1.05rem;
-  border-radius: 0.75rem;
-}
-
-.arena-simple-agent-card.data-panel:hover {
-  transform: none;
-  box-shadow: var(--yo-glass-shadow);
-}
-
-.arena-simple-agent-card .app-footer-agent__summary {
-  font-family: var(--yga-font-data, "IBM Plex Mono", monospace);
-  color: var(--yo-text);
-}
-
-.arena-simple-agent-card .app-footer-agent__summary-title {
-  color: var(--yga-teal-live, var(--yo-cyan-soft));
-  letter-spacing: 0.08em;
-}
-
-.arena-simple-agent-card .app-footer-agent__summary-hint {
-  color: var(--arena-console-muted, var(--yo-muted));
-  font-weight: 500;
-}
-
-.arena-simple-agent-card .app-footer-agent__body {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--yga-glass-border, rgba(126, 241, 255, 0.14));
-}
-
-.arena-simple-agent-card .app-footer-agent__h {
-  font-family: var(--yga-font-data, "IBM Plex Mono", monospace);
-  font-size: 0.92rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--yo-text);
-}
-
-.arena-simple-agent-card .app-footer-agent__p,
-.arena-simple-agent-card .app-footer-agent__article {
-  color: var(--arena-console-muted, var(--yo-muted));
-}
-
-.arena-simple-agent-card .app-footer-agent__p a,
-.arena-simple-agent-card .app-footer-agent__list a {
-  color: var(--yga-teal-live, var(--yo-cyan-soft));
-}
-
-.arena-simple-agent-card .app-footer-agent__code-inline {
-  border: 1px solid rgba(126, 241, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--yo-cyan-soft);
-}
-
-.arena-simple-agent-card .app-footer-agent__route-block {
-  border: 1px solid var(--yo-line);
-  background: rgba(4, 10, 18, 0.72);
-  color: var(--yo-cyan-soft);
-}
-
-.arena-simple-agent-card .app-footer-agent__dl dt {
-  color: var(--yo-cyan-soft);
-}
-
-.arena-simple-agent-card .app-footer-agent__dl dd {
-  color: var(--arena-console-muted, var(--yo-muted));
-}
-
-.arena-simple-agent-card .footer-link-pill {
-  border: 1px solid var(--yo-line);
-  background: rgba(8, 20, 32, 0.74);
-  color: var(--yo-text);
-}
-
 /* =============================================================
  * Time Arena Simple — sale hub spotlight panels (Iteration 1)
  *
@@ -8464,6 +8406,42 @@ a.podium-address-explorer:hover .address-inline__label {
   gap: 0.7rem;
   align-items: start;
   margin-bottom: 0.8rem;
+}
+
+.arena-simple__podium-card-head-text {
+  min-width: 0;
+}
+
+.arena-simple__podium-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.arena-simple__podium-card-title-row h3 {
+  margin: 0;
+}
+
+.arena-simple__podium-card-help {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid rgba(77, 231, 200, 0.34);
+  border-radius: 999px;
+  background: rgba(77, 231, 200, 0.1);
+  color: #d8fff7;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.arena-simple__podium-card-body-gate {
+  position: relative;
+  min-height: 9.5rem;
 }
 
 .arena-simple__podium-card-head p {
@@ -9417,6 +9395,15 @@ a.podium-address-explorer:hover .address-inline__label {
     var(--shadow-soft),
     inset 0 0 24px rgba(212, 160, 18, 0.08);
   overflow: hidden;
+}
+
+.arena-simple__buy-panel:has(.arena-simple__amount-token-dropdown[data-open]) {
+  overflow: visible;
+}
+
+.arena-simple__swap-field--pay:has(.arena-simple__amount-token-dropdown[data-open]) {
+  position: relative;
+  z-index: 30;
 }
 
 .arena-simple__buy-panel > * {
@@ -11629,23 +11616,16 @@ a.podium-address-explorer:hover .address-inline__label {
 @media (min-width: 981px) {
   .arena-command-console__grid {
     grid-template-areas:
-      "console-timer console-side"
-      "console-buy console-side"
+      "console-primary console-side"
       "console-warbow console-side";
   }
 
   .arena-command-console__grid:not(:has(> .arena-command-console__hub-warbow)) {
-    grid-template-areas:
-      "console-timer console-side"
-      "console-buy console-side";
+    grid-template-areas: "console-primary console-side";
   }
 
-  .arena-command-console__grid > .arena-simple__timer-row {
-    grid-area: console-timer;
-  }
-
-  .arena-command-console__grid > .arena-simple__buy-panel {
-    grid-area: console-buy;
+  .arena-command-console__grid > .arena-command-console__primary-column {
+    grid-area: console-primary;
   }
 
   .arena-command-console__grid > .arena-command-console__hub-warbow {
@@ -11657,8 +11637,15 @@ a.podium-address-explorer:hover .address-inline__label {
   }
 }
 
-.arena-command-console__grid > .arena-simple__timer-row,
-.arena-command-console__grid > .arena-simple__buy-panel,
+.arena-command-console__primary-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  align-self: start;
+}
+
+.arena-command-console__grid > .arena-command-console__primary-column,
 .arena-command-console__grid > .arena-command-console__hub-warbow {
   min-width: 0;
   align-self: start;
@@ -11723,6 +11710,17 @@ a.podium-address-explorer:hover .address-inline__label {
   pointer-events: none;
 }
 
+/* Feature tutorial — bottom-left of timer bay; absolute so centred hero layout is unchanged.
+   Above carousel carets/dots (z-index 2) and lock-chrome so the ? stays clickable. */
+.arena-simple__timer-panel-help-corner {
+  position: absolute;
+  z-index: 3;
+  bottom: clamp(0.55rem, 1.2vw, 0.72rem);
+  left: clamp(0.38rem, 0.85vw, 0.52rem);
+  margin: 0;
+  padding: 0;
+}
+
 .arena-command-console .arena-simple__timer-panel-epoch-corner__title {
   display: block;
   color: #ffffff;
@@ -11747,15 +11745,23 @@ a.podium-address-explorer:hover .address-inline__label {
   white-space: nowrap;
 }
 
+/* Prize hook — top-left of timer bay; absolute so centred countdown layout is unchanged. */
 .arena-command-console .arena-simple__timer-panel .section-heading {
-  width: 100%;
-  justify-content: center;
-  text-align: center;
+  position: absolute;
+  z-index: 2;
+  top: clamp(0.72rem, 1.45vw, 0.95rem);
+  left: clamp(0.38rem, 0.85vw, 0.52rem);
+  width: auto;
+  max-width: min(14rem, calc(100% - 6.5rem));
+  margin: 0;
+  justify-content: flex-start;
+  text-align: left;
+  pointer-events: none;
 }
 
 .arena-command-console .arena-simple__timer-panel .section-heading__copy {
-  justify-items: center;
-  text-align: center;
+  justify-items: start;
+  text-align: left;
   margin: 0;
 }
 
@@ -11795,6 +11801,11 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console .arena-simple__timer-panel .arena-simple__timer-hero-inner {
   align-items: center;
   gap: 0.22rem;
+  padding-top: 20px;
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__timer-hero-eyebrow {
+  margin-top: 5px;
 }
 
 .arena-command-console .arena-simple__timer-clock {
@@ -12079,6 +12090,237 @@ a.podium-address-explorer:hover .address-inline__label {
   padding: 5px;
 }
 
+/* Timer bay podium carousel — carets flank stands; dots below (#299). */
+.arena-simple__timer-podium-carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-podium-carousel-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.42rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-podium-carousel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-podium-carousel-caret {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  width: 1.35rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: rgba(185, 255, 106, 0.72);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+
+.arena-simple__timer-podium-carousel-caret:hover {
+  color: rgba(185, 255, 106, 0.95);
+  background: rgba(185, 255, 106, 0.08);
+}
+
+.arena-simple__timer-podium-carousel-caret:focus-visible {
+  outline: 2px solid rgba(40, 220, 255, 0.72);
+  outline-offset: 1px;
+}
+
+.arena-simple__timer-podium-carousel-stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+.arena-simple__timer-podium-carousel-chrome-layout {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.arena-simple__timer-podium-carousel-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Locked timer bay: glass overlay spans the full spotlight panel; carousel carets/dots stay above it. */
+.arena-simple__timer-panel.arena-simple__timer-panel--slide-locked {
+  position: relative;
+  overflow: hidden;
+}
+
+.arena-simple__timer-panel-lock-frame {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-panel-lock-frame > .arena-simple__timer-panel-lock,
+.arena-simple__timer-panel-lock-frame > .arena-simple__timer-panel-lock-chrome {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-panel--slide-locked .arena-simple__timer-panel-lock.locked-until-level {
+  position: static;
+  overflow: visible;
+  isolation: auto;
+}
+
+.arena-simple__timer-panel-lock-content {
+  position: static;
+  width: 100%;
+  min-width: 0;
+}
+
+.arena-simple__timer-panel-lock-chrome {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  pointer-events: none;
+}
+
+.arena-simple__timer-panel-lock-chrome-heading {
+  visibility: hidden;
+}
+
+.arena-simple__timer-panel-lock-chrome .arena-simple__timer-podium-carousel-caret,
+.arena-simple__timer-panel-lock-chrome .arena-simple__timer-podium-carousel-dot {
+  pointer-events: auto;
+}
+
+.arena-simple__timer-panel--slide-locked .arena-simple__timer-panel-lock .locked-until-level__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-color: rgba(185, 255, 106, 0.28);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.arena-simple__timer-panel-lock .locked-until-level__overlay strong {
+  font-size: 0.78rem;
+}
+
+.arena-simple__timer-panel-lock .locked-until-level__overlay span {
+  font-size: 0.68rem;
+}
+
+.arena-command-console .arena-simple__buy-preview-item--level {
+  border-color: rgba(232, 192, 74, 0.42);
+  background: rgba(232, 192, 74, 0.12);
+  color: #fff4c8;
+}
+
+.arena-simple__timer-podium-carousel-caret-gutter {
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
+}
+
+.arena-simple__timer-podium-carousel-dots-rail {
+  flex: 0 0 auto;
+  min-height: 0.42rem;
+  padding-bottom: 0.08rem;
+}
+
+.arena-simple__timer-podium-carousel-lock {
+  position: static;
+  overflow: visible;
+  isolation: auto;
+  width: 100%;
+}
+
+.arena-simple__timer-podium-carousel--locked .arena-simple__timer-podium-carousel-stage {
+  position: static;
+}
+
+.arena-simple__timer-podium-carousel-lock .locked-until-level__overlay {
+  border-color: rgba(185, 255, 106, 0.28);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.arena-simple__timer-podium-carousel-lock .locked-until-level__overlay strong {
+  font-size: 0.78rem;
+}
+
+.arena-simple__timer-podium-carousel-lock .locked-until-level__overlay span {
+  font-size: 0.68rem;
+}
+
+.arena-simple__timer-podium-carousel-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.42rem;
+  padding-bottom: 0.08rem;
+  position: relative;
+  z-index: 2;
+  /* Full-width flex rail must not swallow clicks on the help ? in the bottom-left corner. */
+  pointer-events: none;
+}
+
+.arena-simple__timer-podium-carousel-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  padding: 0;
+  border: 1px solid rgba(40, 220, 255, 0.72);
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    transform 120ms ease;
+}
+
+.arena-simple__timer-podium-carousel-dot:hover {
+  border-color: rgba(40, 220, 255, 0.95);
+  transform: scale(1.08);
+}
+
+.arena-simple__timer-podium-carousel-dot--active {
+  border-color: rgba(40, 220, 255, 0.95);
+  background: rgba(40, 220, 255, 0.95);
+}
+
+.arena-simple__timer-podium-carousel-dot:focus-visible {
+  outline: 2px solid rgba(40, 220, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.arena-command-console .arena-simple__timer-panel .arena-simple__timer-podium-carousel {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .arena-simple__last-buy-podium--you {
     animation: none;
@@ -12089,6 +12331,22 @@ a.podium-address-explorer:hover .address-inline__label {
 
   .arena-simple__last-buy-podium-rank-icon--shake {
     animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .arena-simple__last-buy-podiums {
+    --arena-last-buy-podium-mobile-scale: 0.9;
+  }
+
+  .arena-simple__last-buy-podium-inner {
+    transform: scale(var(--arena-last-buy-podium-mobile-scale));
+    transform-origin: bottom center;
+  }
+
+  .arena-simple__last-buy-podium--first .arena-simple__last-buy-podium-inner {
+    transform: scale(calc(1.2 * var(--arena-last-buy-podium-mobile-scale)));
+    transform-origin: bottom center;
   }
 }
 
@@ -12114,8 +12372,8 @@ a.podium-address-explorer:hover .address-inline__label {
 
   .arena-command-console .arena-simple__timer-panel .section-heading__copy,
   .arena-command-console .arena-simple__timer-panel .section-heading {
-    justify-items: center;
-    text-align: center;
+    justify-items: start;
+    text-align: left;
   }
 
   .arena-command-console .arena-simple__timer-hero-inner {
@@ -12213,9 +12471,12 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .arena-simple__swap-field {
+  container-type: inline-size;
+  container-name: arenaSwapField;
   display: grid;
   grid-template-rows: auto auto auto;
   gap: 0.12rem;
+  min-width: 0;
   padding: 0.28rem 0.72rem 0.32rem;
   border: 1px solid var(--arena-neon-cyan-border, rgba(77, 231, 200, 0.46));
   border-radius: 0.82rem;
@@ -12232,6 +12493,11 @@ a.podium-address-explorer:hover .address-inline__label {
   z-index: 0;
   border-bottom: none;
   border-radius: 0.82rem 0.82rem 0 0;
+}
+
+/* Spend-token listbox drops below the pay row; lift pay field above receive (CHARM). */
+.arena-command-console .arena-simple__swap-field--pay:has(.arena-simple__amount-token-dropdown[data-open]) {
+  z-index: 30;
 }
 
 .arena-command-console .arena-simple__swap-field--receive {
@@ -12330,18 +12596,22 @@ a.podium-address-explorer:hover .address-inline__label {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  min-width: 0;
   min-height: 0;
 }
 
 .arena-command-console .arena-simple__swap-field-footer {
   display: flex;
   align-items: center;
+  min-width: 0;
   min-height: 0;
 }
 
 .arena-command-console .arena-simple__swap-direction {
-  grid-area: pay / pay / receive / receive;
-  place-self: center;
+  grid-area: pay;
+  align-self: end;
+  justify-self: center;
+  transform: translateY(50%);
   position: relative;
   z-index: 20;
   pointer-events: none;
@@ -12391,16 +12661,22 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-simple__pay-token-stack {
   gap: 0.12rem;
+  flex-shrink: 1;
+  min-width: 0;
   max-width: 42%;
 }
 
 .arena-command-console .arena-simple__pay-token-stack .arena-simple__amount-token-dropdown {
   margin-inline-start: 0;
+  max-width: 100%;
 }
 
 .arena-command-console .arena-simple__pay-row .arena-simple__amount-field {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   width: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .arena-command-console .arena-simple__pay-slider-row {
@@ -12495,6 +12771,32 @@ a.podium-address-explorer:hover .address-inline__label {
   filter:
     drop-shadow(0 0 0.35rem rgba(77, 231, 200, 0.28))
     drop-shadow(0 0.08rem 0.16rem rgba(0, 0, 0, 0.34));
+}
+
+/* Narrow swap pay bay: stack amount above token+balance so long spend strings
+   use vertical space instead of clipping balance / MIN MAX past the neon frame. */
+@container arenaSwapField (max-width: 20rem) {
+  .arena-command-console .arena-simple__pay-row {
+    flex-wrap: wrap;
+    gap: 0.28rem 0.55rem;
+  }
+
+  .arena-command-console .arena-simple__pay-row .arena-simple__amount-field {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .arena-command-console .arena-simple__pay-token-stack {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 100%;
+    align-items: flex-end;
+  }
+
+  .arena-command-console .arena-simple__pay-slider-row::before {
+    display: none;
+  }
 }
 
 .arena-command-console .arena-simple__amount-field,
@@ -12628,6 +12930,17 @@ a.podium-address-explorer:hover .address-inline__label {
 .arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance {
   font-size: 0.58rem;
   line-height: 1.15;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance .amount-triple {
+  max-width: 100%;
+}
+
+.arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance .amount-triple__row {
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .arena-command-console .arena-simple__pay-token-stack .arena-simple__pay-balance-row {
@@ -12848,7 +13161,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .warbow-hero-card__help,
-.arena-timer-chips__help {
+.arena-timer-chips__help,
+.arena-charm-cred-card__help {
   display: inline-grid;
   place-items: center;
   flex: 0 0 auto;
@@ -12862,7 +13176,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .warbow-hero-card__help,
-.arena-timer-chips__help {
+.arena-timer-chips__help,
+.arena-charm-cred-card__help {
   width: 1.45rem;
   height: 1.45rem;
   font-size: 0.82rem;
@@ -12881,6 +13196,28 @@ a.podium-address-explorer:hover .address-inline__label {
 
 .arena-command-console .arena-charm-cred-card .section-heading {
   margin-bottom: 0.15rem;
+  align-items: center;
+}
+
+.arena-command-console .locked-until-level.arena-charm-cred-card {
+  margin: 0;
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(185, 255, 106, 0.16);
+  border-radius: 0.65rem;
+  background:
+    linear-gradient(135deg, rgba(185, 255, 106, 0.08), rgba(255, 177, 77, 0.055)),
+    rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.18);
+  color: var(--arena-console-ink);
+}
+
+.arena-command-console .locked-until-level.arena-charm-cred-card .locked-until-level__overlay {
+  border-color: rgba(185, 255, 106, 0.28);
+  border-radius: inherit;
 }
 
 .arena-command-console .arena-charm-cred-card .arena-xp-hero {
@@ -13353,21 +13690,11 @@ a.podium-address-explorer:hover .address-inline__label {
     "chip-body chip-body";
 }
 
-.arena-level-gate__help-row {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.25rem;
-}
-
-.arena-level-gate__help {
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  border: 1px solid rgba(185, 255, 106, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-  font-weight: 700;
-  cursor: pointer;
+.arena-command-console .warbow-hero-actions__help {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 2;
 }
 
 .arena-command-console .warbow-hero-actions-wrap .locked-until-level__content {
@@ -13431,6 +13758,10 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.45;
 }
 
+.feature-mechanic-modal__body + .feature-mechanic-modal__body {
+  margin-top: 0.65rem;
+}
+
 .feature-mechanic-modal__actions {
   display: flex;
   justify-content: flex-end;
@@ -13444,6 +13775,7 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .arena-command-console .warbow-hero-actions {
+  position: relative;
   gap: 0.48rem;
   padding: 0.55rem;
 }
@@ -13555,16 +13887,26 @@ a.podium-address-explorer:hover .address-inline__label {
   line-height: 1.3;
 }
 
+.arena-command-console .warbow-hero-card__plant-flag-gate.locked-until-level--compact {
+  min-height: 0;
+  border-radius: 0.5rem;
+}
+
+.arena-command-console .warbow-hero-card__plant-flag-gate .locked-until-level__overlay {
+  border-radius: inherit;
+}
+
 .warbow-target-toolbar {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
+  align-items: end;
 }
 
 .warbow-target-toolbar label {
   display: grid;
   gap: 0.16rem;
-  min-width: 0;
+  width: auto;
 }
 
 .warbow-target-toolbar span {
@@ -13576,8 +13918,8 @@ a.podium-address-explorer:hover .address-inline__label {
 }
 
 .warbow-target-toolbar select {
-  min-width: 0;
-  width: 100%;
+  width: auto;
+  min-width: 5.5rem;
   padding: 0.32rem 0.42rem;
   border: 1px solid rgba(77, 231, 200, 0.22);
   border-radius: 0.42rem;
@@ -13736,8 +14078,7 @@ a.podium-address-explorer:hover .address-inline__label {
     grid-template-areas: none;
   }
 
-  .arena-command-console__grid > .arena-simple__timer-row,
-  .arena-command-console__grid > .arena-simple__buy-panel,
+  .arena-command-console__grid > .arena-command-console__primary-column,
   .arena-command-console__grid > .arena-command-console__hub-warbow,
   .arena-command-console__side-rail {
     grid-area: auto;
@@ -15362,6 +15703,12 @@ input[type="range"]:active {
   padding: 0.35rem 0.9rem 0.85rem;
   display: grid;
   gap: 0;
+}
+
+.wallet-profile-modal__sections--balances-only {
+  overflow: visible;
+  padding-bottom: 0;
+  border-bottom: 1px solid rgba(126, 241, 255, 0.14);
 }
 
 .wallet-profile-modal__section {

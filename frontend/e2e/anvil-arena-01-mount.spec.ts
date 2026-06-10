@@ -35,6 +35,10 @@ test.describe("Anvil Arena mount", () => {
     await expect(page.getByTestId("warbow-hero-actions")).toBeAttached({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });
+    await expect(page.getByTestId("arena-simple-podiums")).toHaveCount(0);
+
+    await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
+    await expect(page).toHaveURL(/\/arena\/protocol$/);
     await expect(page.getByTestId("arena-simple-podiums")).toBeAttached({
       timeout: ARENA_E2E_TIMEOUT_MS,
     });

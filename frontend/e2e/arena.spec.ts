@@ -30,25 +30,31 @@ test("arena command console shows the first-run path (Last Buy + buy CHARM)", as
   await expect(
     page.getByRole("heading", { name: /You might win .* DOUB in:|Arena Opens In/, level: 2 }),
   ).toBeVisible();
-  await expect(page.getByText(/Connect wallet to buy CHARM|Buy CHARM/i).first()).toBeVisible();
+  await expect(
+    page
+      .getByRole("button", { name: /connect wallet/i })
+      .or(page.getByTestId("arena-simple-buy-charm"))
+      .first(),
+  ).toBeVisible();
   await expect(page.locator(".arena-final-concept")).toHaveCount(0);
   await expect(page.getByText("Yield Omega", { exact: true })).toBeVisible();
 });
 
-test("arena simple view shows compact podiums without dense Audit feed sections", async ({ page }) => {
+test("arena simple view omits podium grid; AUDIT shows podiums and dense feed sections", async ({ page }) => {
   await ensurePostLaunch(page);
-  const simplePodiums = page.getByTestId("arena-simple-podiums");
-  await expect(simplePodiums).toBeVisible();
+  await expect(page.getByTestId("arena-simple-podiums")).toHaveCount(0);
   await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
 
   await page.getByLabel("Primary").getByRole("link", { name: /AUDIT/ }).click();
   await expect(page).toHaveURL(/\/arena\/protocol$/);
   await expect(page.getByRole("heading", { name: "AUDIT", level: 1 })).toBeVisible();
   if (await page.getByText(/VITE_TIME_ARENA_ADDRESS is not configured/).isVisible()) {
+    await expect(page.getByTestId("arena-simple-podiums")).toHaveCount(0);
     await expect(page.getByTestId("arena-live-buys-activity")).toHaveCount(0);
     await expect(page.getByTestId("arena-protocol-donate-pools")).toHaveCount(0);
     return;
   }
+  await expect(page.getByTestId("arena-simple-podiums")).toBeVisible();
   await expect(page.getByTestId("arena-live-buys-activity")).toBeVisible();
   await expect(page.getByTestId("arena-protocol-donate-pools")).toBeVisible();
 });

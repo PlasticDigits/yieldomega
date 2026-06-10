@@ -1,34 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { ReactNode } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useMemo, useState, type ReactNode } from "react";
+import { ArenaWalletHelpModal } from "@/components/ArenaWalletHelpModal";
+import { useAccount, useWriteContract } from "wagmi";
 import { ArenaXpHero } from "@/components/ArenaXpHero";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { ChainMismatchWriteBarrier } from "@/components/ChainMismatchWriteBarrier";
 import { EmptyDataPlaceholder } from "@/components/EmptyDataPlaceholder";
+import { LockedUntilLevel } from "@/components/LockedUntilLevel";
 import { PageSection } from "@/components/ui/PageSection";
-import { useArenaPlayCred } from "@/hooks/useArenaPlayCred";
+import { useWalletStats } from "@/hooks/useWalletStats";
 import { timeArenaReadAbi } from "@/lib/abis";
-import { addresses } from "@/lib/addresses";
-import { canClaimCred, claimableCredEpoch } from "@/lib/arenaCharmCredClaim";
-import type { SerializableContractRead } from "@/lib/serializeContractRead";
-import { statFromContractRead } from "@/lib/statDisplayFromContractRead";
+import { addresses, indexerBaseUrl } from "@/lib/addresses";
+import { canClaimCred } from "@/lib/arenaCharmCredClaim";
+import {
+  ARENA_LAST_BUY_WALLET_LOCK_LEVEL,
+  isArenaLastBuyWalletSurfaceUnlocked,
+} from "@/lib/arenaPageHelpers";
+import type { BuyItem } from "@/lib/indexerApi";
+import { walletCharmCredHelpCopy } from "@/pages/arena/walletCharmCredCopy";
+import type { PodiumReadRow } from "@/pages/arena/usePodiumReads";
 
 const ARENA_CHARM_CRED_STAT_SIGFIGS = 3;
-
-function wadStat(
-  read: SerializableContractRead | undefined,
-  ctx: { isPending: boolean; isConnected: boolean },
-  options: { requireWallet?: boolean; labels?: { loading?: string; missing?: string; connect?: string } },
-): ReactNode {
-  return statFromContractRead(read, ctx, {
-    requireWallet: options.requireWallet,
-    labels: options.labels,
-    mapSuccess: (raw) => (
-      <AmountDisplay raw={raw} decimals={18} sigfigs={ARENA_CHARM_CRED_STAT_SIGFIGS} />
-    ),
-  });
-}
 
 type CharmCredRowProps = {
   label: string;
@@ -48,96 +41,77 @@ function CharmCredRow({ label, title, testId, children }: CharmCredRowProps) {
   );
 }
 
-export function ArenaCharmCredCard() {
+function ArenaCharmCredHelpButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="arena-charm-cred-card__help"
+      data-testid="arena-charm-cred-help"
+      aria-label="Open wallet tutorial"
+      onClick={onClick}
+    >
+      ?
+    </button>
+  );
+}
+
+function ArenaCharmCredCardHeading({ actions }: { actions: ReactNode }) {
+  return (
+    <div className="section-heading">
+      <div className="section-heading__copy">
+        <h2>YOUR WALLET</h2>
+      </div>
+      <div className="section-heading__actions">{actions}</div>
+    </div>
+  );
+}
+
+function wadAmount(raw: string | undefined): ReactNode {
+  if (raw === undefined) return <EmptyDataPlaceholder>—</EmptyDataPlaceholder>;
+  return (
+    <AmountDisplay raw={raw} decimals={18} sigfigs={ARENA_CHARM_CRED_STAT_SIGFIGS} />
+  );
+}
+
+type ArenaCharmCredCardProps = {
+  recentBuys?: readonly BuyItem[] | null;
+  podiumRows?: readonly PodiumReadRow[] | null;
+};
+
+export function ArenaCharmCredCard({
+  recentBuys = null,
+  podiumRows = null,
+}: ArenaCharmCredCardProps = {}) {
+  const [walletHelpOpen, setWalletHelpOpen] = useState(false);
+  const walletHelpCopy = walletCharmCredHelpCopy();
   const { address, isConnected } = useAccount();
   const arena = addresses.timeArena;
-
-  const {
-    data: currentEpoch,
-    isPending: epochPending,
-    isFetching: epochFetching,
-  } = useReadContract({
-    address: arena,
-    abi: timeArenaReadAbi,
-    functionName: "lastBuyEpoch",
-    query: { enabled: Boolean(arena) },
-  });
-
-  const claimEpoch = claimableCredEpoch(currentEpoch);
-
-  const charmReadEnabled = Boolean(arena && address && currentEpoch !== undefined);
-  const {
-    data: charm,
-    isPending: charmPending,
-    isFetching: charmFetching,
-  } = useReadContract({
-    address: arena,
-    abi: timeArenaReadAbi,
-    functionName: "epochCharmWad",
-    args: currentEpoch !== undefined && address ? [currentEpoch, address] : undefined,
-    query: { enabled: charmReadEnabled },
-  });
-
-  const accruingReadEnabled = Boolean(arena && address && currentEpoch !== undefined);
-  const {
-    data: accruingPending,
-    isPending: accruingPendingLoading,
-    isFetching: accruingFetching,
-  } = useReadContract({
-    address: arena,
-    abi: timeArenaReadAbi,
-    functionName: "pendingCred",
-    args: currentEpoch !== undefined && address ? [address, currentEpoch] : undefined,
-    query: { enabled: accruingReadEnabled },
-  });
-
-  const claimReadEnabled = Boolean(arena && address && claimEpoch !== undefined);
-  const {
-    data: claimPending,
-    isPending: claimPendingLoading,
-    isFetching: claimPendingFetching,
-  } = useReadContract({
-    address: arena,
-    abi: timeArenaReadAbi,
-    functionName: "pendingCred",
-    args: claimEpoch !== undefined && address ? [address, claimEpoch] : undefined,
-    query: { enabled: claimReadEnabled },
-  });
-
-  const { credBalanceWei, playCredConfigured } = useArenaPlayCred({
-    arenaAddress: arena,
-    charmWad: charm,
-    enabled: Boolean(arena),
-  });
-
+  const indexerOn = Boolean(indexerBaseUrl());
+  const { data: stats, isLoading, isFetching } = useWalletStats(address);
   const { writeContractAsync, isPending: claimWritePending } = useWriteContract();
 
-  const readCtx = {
-    isPending:
-      epochPending ||
-      epochFetching ||
-      charmPending ||
-      charmFetching ||
-      accruingPendingLoading ||
-      accruingFetching ||
-      claimPendingLoading ||
-      claimPendingFetching,
-    isConnected,
-  };
+  const lastBuyEpoch = useMemo(
+    () => (stats?.last_buy_epoch !== undefined ? BigInt(stats.last_buy_epoch) : undefined),
+    [stats?.last_buy_epoch],
+  );
 
-  const charmRead: SerializableContractRead | undefined =
-    charm !== undefined ? { status: "success", result: charm.toString() } : undefined;
+  const claimEpoch = useMemo(() => {
+    const raw = stats?.claimable_cred_epoch;
+    if (raw === undefined || raw === null || raw === "") return undefined;
+    return BigInt(raw);
+  }, [stats?.claimable_cred_epoch]);
 
-  const accruingRead: SerializableContractRead | undefined =
-    accruingPending !== undefined ? { status: "success", result: accruingPending.toString() } : undefined;
+  const claimPending = useMemo(() => {
+    const raw = stats?.claimable_cred;
+    if (raw === undefined) return undefined;
+    return BigInt(raw);
+  }, [stats?.claimable_cred]);
 
-  const balanceRead: SerializableContractRead | undefined =
-    credBalanceWei !== undefined ? { status: "success", result: credBalanceWei.toString() } : undefined;
-
-  const balanceCtx = {
-    ...readCtx,
-    isPending: readCtx.isPending || (isConnected && playCredConfigured && credBalanceWei === undefined),
-  };
+  const readPending = isLoading || isFetching;
+  const credConfigured =
+    stats?.cred_balance_wad !== undefined ||
+    stats?.pending_cred_accrual !== undefined ||
+    stats?.claimable_cred !== undefined;
 
   const claimReady = canClaimCred({
     address,
@@ -145,69 +119,73 @@ export function ArenaCharmCredCard() {
     claimPending,
   });
 
-  if (!arena) {
-    return (
-      <PageSection
-        title="YOUR WALLET"
-        dataTestId="arena-charm-cred-card"
-        className="arena-charm-cred-card"
-      >
-        <p className="muted">Time Arena address is not configured (VITE_TIME_ARENA_ADDRESS).</p>
-      </PageSection>
-    );
-  }
+  const walletHelpButton = (
+    <ArenaCharmCredHelpButton onClick={() => setWalletHelpOpen(true)} />
+  );
 
-  return (
-    <PageSection
-      title="YOUR WALLET"
-      dataTestId="arena-charm-cred-card"
-      className="arena-charm-cred-card"
-    >
+  const walletBuyKnown = !isConnected || stats !== undefined || !readPending;
+  const walletSurfaceUnlocked =
+    walletBuyKnown &&
+    isArenaLastBuyWalletSurfaceUnlocked({
+      walletConnected: isConnected,
+      walletStats: stats,
+      arenaUsers: { recentBuys, podiumRows },
+    });
+  const lockWalletSurface = walletBuyKnown && !walletSurfaceUnlocked;
+
+  const walletBody = (
+    <>
       <ArenaXpHero />
       <div className="arena-charm-cred-card__stats">
         <CharmCredRow
           label={
-            currentEpoch !== undefined ? `CHARM Epoch ${currentEpoch.toString()}` : "CHARM Epoch —"
+            lastBuyEpoch !== undefined
+              ? `CHARM Epoch ${lastBuyEpoch.toString()}`
+              : "CHARM Epoch —"
           }
           title="Your current Last Buy epoch CHARM weight; this is claim weight, not a leaderboard."
           testId="arena-charm-cred-charm"
         >
-          {wadStat(charmRead, readCtx, {
-            requireWallet: true,
-            labels: {
-              loading: "Loading CHARM…",
-              missing: "No CHARM this epoch yet",
-            },
-          })}
+          {!isConnected ? (
+            <EmptyDataPlaceholder>Connect wallet</EmptyDataPlaceholder>
+          ) : readPending && !stats ? (
+            <EmptyDataPlaceholder>Loading CHARM…</EmptyDataPlaceholder>
+          ) : stats?.epoch_charm_wad && BigInt(stats.epoch_charm_wad) > 0n ? (
+            wadAmount(stats.epoch_charm_wad)
+          ) : (
+            <EmptyDataPlaceholder>No CHARM this epoch yet</EmptyDataPlaceholder>
+          )}
         </CharmCredRow>
         <CharmCredRow
           label="CRED Accrual"
           title="Current active-epoch CRED preview from DOUB buys."
           testId="arena-charm-cred-pending"
         >
-          {wadStat(accruingRead, readCtx, {
-            requireWallet: true,
-            labels: {
-              loading: "Loading pending CRED…",
-              missing: "No pending CRED this epoch yet",
-            },
-          })}
+          {!isConnected ? (
+            <EmptyDataPlaceholder>Connect wallet</EmptyDataPlaceholder>
+          ) : readPending && !stats ? (
+            <EmptyDataPlaceholder>Loading pending CRED…</EmptyDataPlaceholder>
+          ) : stats?.pending_cred_accrual && BigInt(stats.pending_cred_accrual) > 0n ? (
+            wadAmount(stats.pending_cred_accrual)
+          ) : (
+            <EmptyDataPlaceholder>No pending CRED this epoch yet</EmptyDataPlaceholder>
+          )}
         </CharmCredRow>
         <CharmCredRow
           label="CRED Balance"
           title="Play CRED token balance in your connected wallet."
           testId="arena-charm-cred-balance"
         >
-          {isConnected && !playCredConfigured ? (
+          {!isConnected ? (
+            <EmptyDataPlaceholder>Connect wallet</EmptyDataPlaceholder>
+          ) : !credConfigured ? (
             <EmptyDataPlaceholder>CRED unavailable</EmptyDataPlaceholder>
+          ) : readPending && !stats ? (
+            <EmptyDataPlaceholder>Loading CRED…</EmptyDataPlaceholder>
+          ) : stats?.cred_balance_wad && BigInt(stats.cred_balance_wad) > 0n ? (
+            wadAmount(stats.cred_balance_wad)
           ) : (
-            wadStat(balanceRead, balanceCtx, {
-              requireWallet: true,
-              labels: {
-                loading: "Loading CRED…",
-                missing: "No CRED yet",
-              },
-            })
+            <EmptyDataPlaceholder>No CRED yet</EmptyDataPlaceholder>
           )}
         </CharmCredRow>
       </div>
@@ -225,7 +203,7 @@ export function ArenaCharmCredCard() {
                 : "Nothing to claim from the last ended epoch."
           }
           onClick={() => {
-            if (claimEpoch === undefined) return;
+            if (claimEpoch === undefined || !arena) return;
             void writeContractAsync({
               address: arena,
               abi: timeArenaReadAbi,
@@ -245,6 +223,89 @@ export function ArenaCharmCredCard() {
           Claim after epoch end.
         </p>
       ) : null}
-    </PageSection>
+    </>
+  );
+
+  if (!arena) {
+    return (
+      <>
+        <PageSection
+          title="YOUR WALLET"
+          dataTestId="arena-charm-cred-card"
+          className="arena-charm-cred-card"
+          actions={walletHelpButton}
+        >
+          <p className="muted">Time Arena address is not configured (VITE_TIME_ARENA_ADDRESS).</p>
+        </PageSection>
+        <ArenaWalletHelpModal
+          open={walletHelpOpen}
+          title={walletHelpCopy.title}
+          sections={walletHelpCopy.sections}
+          onClose={() => setWalletHelpOpen(false)}
+        />
+      </>
+    );
+  }
+
+  if (!indexerOn) {
+    return (
+      <>
+        <PageSection
+          title="YOUR WALLET"
+          dataTestId="arena-charm-cred-card"
+          className="arena-charm-cred-card"
+          actions={walletHelpButton}
+        >
+          <p className="muted">Indexer URL is not configured — wallet stats unavailable.</p>
+        </PageSection>
+        <ArenaWalletHelpModal
+          open={walletHelpOpen}
+          title={walletHelpCopy.title}
+          sections={walletHelpCopy.sections}
+          onClose={() => setWalletHelpOpen(false)}
+        />
+      </>
+    );
+  }
+
+  const walletHelpModal = (
+    <ArenaWalletHelpModal
+      open={walletHelpOpen}
+      title={walletHelpCopy.title}
+      sections={walletHelpCopy.sections}
+      onClose={() => setWalletHelpOpen(false)}
+    />
+  );
+
+  if (lockWalletSurface) {
+    return (
+      <>
+        <LockedUntilLevel
+          requiredLevel={ARENA_LAST_BUY_WALLET_LOCK_LEVEL}
+          className="data-panel arena-charm-cred-card arena-charm-cred-card__gate arena-level-gate arena-level-gate--locked"
+          testId="arena-charm-cred-card"
+          overlayTestId="arena-charm-cred-lock"
+          detail="Buy CHARM to activate this mechanic."
+        >
+          <ArenaCharmCredCardHeading actions={walletHelpButton} />
+          {walletBody}
+        </LockedUntilLevel>
+        {walletHelpModal}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageSection
+        title="YOUR WALLET"
+        dataTestId="arena-charm-cred-card"
+        className="arena-charm-cred-card"
+        actions={walletHelpButton}
+      >
+        {walletBody}
+      </PageSection>
+      {walletHelpModal}
+    </>
   );
 }

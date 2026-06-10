@@ -1,0 +1,103 @@
+{
+  "albumId": "glass_arena",
+  "albumTitle": "Glass Arena",
+  "publicBasePath": "/music/albums/glass_arena",
+  "tracks": [
+    {
+      "index": 1,
+      "file": "01-console-boot.mp3",
+      "title": "Console Boot",
+      "durationSec": 142.632
+    },
+    {
+      "index": 2,
+      "file": "02-doub-route.mp3",
+      "title": "DOUB Route",
+      "durationSec": 177.192
+    },
+    {
+      "index": 3,
+      "file": "03-pay-switch.mp3",
+      "title": "Pay Switch",
+      "durationSec": 188.892
+    },
+    {
+      "index": 4,
+      "file": "04-audit-hub.mp3",
+      "title": "Audit Hub",
+      "durationSec": 145.116
+    },
+    {
+      "index": 5,
+      "file": "05-podium-pulse.mp3",
+      "title": "Podium Pulse",
+      "durationSec": 161.352
+    },
+    {
+      "index": 6,
+      "file": "06-last-buy.mp3",
+      "title": "Last Buy",
+      "durationSec": 137.916
+    },
+    {
+      "index": 7,
+      "file": "07-streak-lock.mp3",
+      "title": "Streak Lock",
+      "durationSec": 280.404
+    },
+    {
+      "index": 8,
+      "file": "08-session-close.mp3",
+      "title": "Session Close",
+      "durationSec": 135.612
+    },
+    {
+      "index": 9,
+      "file": "09-arena-gate.mp3",
+      "title": "Arena Gate",
+      "durationSec": 105.948
+    },
+    {
+      "index": 10,
+      "file": "10-warbow-scout.mp3",
+      "title": "WarBow Scout",
+      "durationSec": 138.816
+    },
+    {
+      "index": 11,
+      "file": "11-prize-pulse.mp3",
+      "title": "Prize Pulse",
+      "durationSec": 136.692
+    },
+    {
+      "index": 12,
+      "file": "12-indexer-sync.mp3",
+      "title": "Indexer Sync",
+      "durationSec": 194.94
+    },
+    {
+      "index": 13,
+      "file": "13-warbow-scuffle.mp3",
+      "title": "WarBow Scuffle",
+      "durationSec": 188.856
+    },
+    {
+      "index": 14,
+      "file": "14-charm-vault.mp3",
+      "title": "CHARM Vault",
+      "durationSec": 140.292
+    },
+    {
+      "index": 15,
+      "file": "15-bridge-span.mp3",
+      "title": "Bridge Span",
+      "durationSec": 253.872
+    },
+    {
+      "index": 16,
+      "file": "16-logout-lullaby.mp3",
+      "title": "Logout Lullaby",
+      "durationSec": 90.756
+    }
+  ]
+}
