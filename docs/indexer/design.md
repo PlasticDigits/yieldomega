@@ -46,6 +46,12 @@ It must **never** be the **authority** for balances, winners, or treasury outcom
 
 **Runtime resilience ([GitLab #168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)):** JSON-RPC HTTP clients use a **bounded per-request timeout** (**`INDEXER_RPC_REQUEST_TIMEOUT_SEC`**, default **5s**) so hung transports fail fast instead of freezing ingestion or the chain-timer snapshot loop (**`INV-INDEXER-168`**). Ingestion errors trigger a **supervised retry loop** with backoff in [`main.rs`](../../indexer/src/main.rs). **`GET /v1/status`** exposes **`ingestion_alive`** and **`last_indexed_at_ms`** for operator smoke checks ([invariants §168](../testing/invariants-and-business-logic.md#indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168)).
 
+<a id="indexer-json-rpc-load-benchmark-gitlab-306"></a>
+
+### JSON-RPC load metrics + localnet benchmark (GitLab [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306))
+
+**`INV-INDEXER-306-STATUS-METRICS`:** **`GET /v1/status`** (schema **≥ 2.11.0**) includes **`rpc_metrics`** — rolling **`calls_per_min_1m`**, **`calls_per_min_5m`**, **`peak_calls_10s`**, and per-**method** / per-**caller** counters. Hooks live in [`rpc_http.rs`](../../indexer/src/rpc_http.rs) and [`rpc_metrics.rs`](../../indexer/src/rpc_metrics.rs); structured logs every **`INDEXER_RPC_METRICS_LOG_SEC`** (default **60**). Smoke: `bash scripts/verify-indexer-rpc-metrics.sh`. Full scenario matrix: [`rpc-load-benchmark.md`](rpc-load-benchmark.md) · `bash scripts/benchmark-indexer-rpc-anvil.sh`. Related mitigations: [#237](https://gitlab.com/PlasticDigits/yieldomega/-/issues/237) (WSS hints), [#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301) (browser RPC). Invariants: [§306](../testing/invariants-and-business-logic.md#indexer-json-rpc-load-benchmark-gitlab-306).
+
 ## Conceptual entities
 
 Arena v2 Postgres projections (fresh DB only — see [Arena v2 schema](#arena-v2-schema-http-gitlab-254) and [arena-v2.md](../product/arena-v2.md)):

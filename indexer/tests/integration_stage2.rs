@@ -18,6 +18,7 @@ use sqlx::Row;
 use tokio::sync::RwLock;
 use tower::ServiceExt;
 use yieldomega_indexer::api::{router, AppState};
+use yieldomega_indexer::rpc_metrics::RpcMetrics;
 use yieldomega_indexer::chain_timer::{ArenaSaleHeadFields, ChainTimerSnapshot, PodiumRpcRow, TimecurveHeadSnapshot};
 use yieldomega_indexer::config::DEFAULT_DATABASE_POOL_MAX;
 use yieldomega_indexer::db::connect_and_migrate;
@@ -190,6 +191,7 @@ async fn api_http_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     for path in ["/healthz", "/v1/status"] {
@@ -512,6 +514,7 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -610,6 +613,7 @@ async fn arena_podiums_live_predictions_smoke(pool: &sqlx::PgPool) {
         chain_timer: Arc::new(RwLock::new(Some(arena_head_snapshot()))),
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
     let res2 = app2
         .oneshot(
@@ -665,6 +669,7 @@ async fn api_arena_buys_actual_seconds_added_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -738,6 +743,7 @@ async fn api_arena_activity_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -791,6 +797,7 @@ async fn api_podium_pool_donations_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -898,6 +905,7 @@ async fn api_vault_funding_smoke(pool: &sqlx::PgPool) {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let buy_tx_hash = format!("{:#x}", b256_lo(buy_tx_id));
@@ -1118,6 +1126,7 @@ async fn arena_wallet_stats_two_epochs_and_bonus_fields() {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -1270,6 +1279,7 @@ async fn last_buy_epoch_global_assignment_non_resetting_participant() {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     let res = app
@@ -1309,6 +1319,7 @@ async fn api_legacy_player_reserve_routes_return_404() {
         chain_timer,
         ingestion_alive: Arc::new(AtomicBool::new(true)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(1)),
+        rpc_metrics: RpcMetrics::default(),
     });
 
     for path in ["/v1/rabbit/deposits", "/v1/rabbit/health-epochs"] {

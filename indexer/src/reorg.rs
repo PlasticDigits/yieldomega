@@ -161,15 +161,22 @@ pub async fn find_common_ancestor(
     providers: &[alloy_provider::ReqwestProvider],
     from_height: u64,
     rpc_sticky_idx: &mut usize,
+    rpc_metrics: &crate::rpc_metrics::RpcMetrics,
 ) -> Result<u64> {
-    use crate::rpc_http::rpc_first_some_sticky;
+    use crate::rpc_http::rpc_first_some_sticky_instrumented;
+    use crate::rpc_metrics::{RpcCaller, RpcMethod};
     use alloy_rpc_types::BlockTransactionsKind;
 
     let mut n = from_height;
     for _ in 0..MAX_REORG_DEPTH {
-        let block = rpc_first_some_sticky(providers, rpc_sticky_idx, |p| {
-            p.get_block_by_number(n.into(), BlockTransactionsKind::Hashes)
-        })
+        let block = rpc_first_some_sticky_instrumented(
+            providers,
+            rpc_sticky_idx,
+            Some(rpc_metrics),
+            RpcMethod::GetBlockByNumber,
+            RpcCaller::Reorg,
+            |p| p.get_block_by_number(n.into(), BlockTransactionsKind::Hashes),
+        )
         .await
         .wrap_err("reorg walk RPC")?
         .ok_or_else(|| eyre::eyre!("missing block {n} from RPC during reorg"))?;

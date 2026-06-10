@@ -10,7 +10,7 @@ use alloy_primitives::Address;
 use eyre::Result;
 use tokio::sync::RwLock;
 use tower_http::trace::TraceLayer;
-use yieldomega_indexer::{api, chain_timer, config, cors_config, db, ingestion};
+use yieldomega_indexer::{api, chain_timer, config, cors_config, db, ingestion, rpc_metrics};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,8 +33,36 @@ async fn main() -> Result<()> {
 
     let pool = db::connect_and_migrate(&config.database_url, config.database_pool_max).await?;
 
+    let rpc_metrics = rpc_metrics::RpcMetrics::new();
+    let metrics_for_log = rpc_metrics.clone();
+    tokio::spawn(async move {
+        let interval = Duration::from_secs(
+            std::env::var("INDEXER_RPC_METRICS_LOG_SEC")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(60),
+        );
+        loop {
+            tokio::time::sleep(interval).await;
+            let snap = metrics_for_log.snapshot();
+            if snap.total_calls == 0 {
+                continue;
+            }
+            tracing::info!(
+                total_calls = snap.total_calls,
+                calls_per_min_1m = snap.calls_per_min_1m,
+                calls_per_min_5m = snap.calls_per_min_5m,
+                peak_calls_10s = snap.peak_calls_10s,
+                by_method = ?snap.by_method,
+                by_caller = ?snap.by_caller,
+                "indexer_rpc_metrics"
+            );
+        }
+    });
+
     let ingest_pool = pool.clone();
     let ingest_config = config.clone();
+    let ingest_metrics = rpc_metrics.clone();
     let ingestion_progress = ingestion::IngestionProgress {
         ingestion_alive: Arc::new(AtomicBool::new(false)),
         last_indexed_at_ms: Arc::new(AtomicU64::new(0)),
@@ -44,7 +72,14 @@ async fn main() -> Result<()> {
         let mut backoff = Duration::from_secs(1);
         const MAX_BACKOFF: Duration = Duration::from_secs(60);
         loop {
-            match ingestion::run(&ingest_pool, &ingest_config, Some(&ingest_progress)).await {
+            match ingestion::run(
+                &ingest_pool,
+                &ingest_config,
+                Some(&ingest_progress),
+                &ingest_metrics,
+            )
+            .await
+            {
                 Ok(()) => {
                     tracing::warn!("ingestion::run returned Ok unexpectedly; resetting backoff");
                     backoff = Duration::from_secs(1);
@@ -78,8 +113,17 @@ async fn main() -> Result<()> {
         });
         let rpc_urls = config.rpc_urls.clone();
         let cache = chain_timer_cache.clone();
+        let timer_metrics = rpc_metrics.clone();
         tokio::spawn(async move {
-            chain_timer::run_poll_loop(&rpc_urls, addr, podium_vaults, cache, rpc_timeout).await;
+            chain_timer::run_poll_loop(
+                &rpc_urls,
+                addr,
+                podium_vaults,
+                cache,
+                rpc_timeout,
+                timer_metrics,
+            )
+            .await;
         });
     } else {
         tracing::warn!(
@@ -92,6 +136,7 @@ async fn main() -> Result<()> {
         chain_timer: chain_timer_cache,
         ingestion_alive: ingestion_progress.ingestion_alive.clone(),
         last_indexed_at_ms: ingestion_progress.last_indexed_at_ms.clone(),
+        rpc_metrics,
     };
     let app = api::router(state)
         .layer(cors_config::cors_layer_for_runtime()?)

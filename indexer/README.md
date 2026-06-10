@@ -10,6 +10,12 @@ Offchain read model: MegaETH RPC → decoded logs → Postgres → HTTP API. Aut
 - **`RPC_URL`** may list several **`http`/`https`** endpoints separated by commas (same semantics as frontend **`VITE_RPC_URL`**): the indexer tries them in order per JSON-RPC call. When **`CHAIN_ID=4326`** (MegaETH mainnet), it also appends the same public fallback URLs as the frontend after your env list (deduped).
 - **RPC resilience:** ingestion and the **`TimeArena`** head poller ([`chain_timer.rs`](src/chain_timer.rs), **`GET /v1/arena/timers`**) use a **1s** cadence while healthy, then **5s → 15s → 30s** backoff after debounced failure streaks (matching **`frontend/src/lib/rpcConnectivity.ts`**), with **HTTP 429** jumping straight to the offline-tier interval.
 
+### JSON-RPC load metrics + benchmark (GitLab [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306))
+
+<a id="json-rpc-load-metrics--benchmark-gitlab-306"></a>
+
+**`INV-INDEXER-306-STATUS-METRICS`:** **`GET /v1/status`** (schema **≥ 2.11.0**) includes **`rpc_metrics`** — rolling **`calls_per_min_1m`**, **`calls_per_min_5m`**, **`peak_calls_10s`**, and **`by_method`** / **`by_caller`** breakdowns. Counters hook at [`rpc_http.rs`](src/rpc_http.rs) / [`rpc_metrics.rs`](src/rpc_metrics.rs). Structured logs every **`INDEXER_RPC_METRICS_LOG_SEC`** (default **60**). Smoke: `bash scripts/verify-indexer-rpc-metrics.sh`. Scenario harness: `bash scripts/benchmark-indexer-rpc-anvil.sh` · [rpc-load-benchmark.md](../docs/indexer/rpc-load-benchmark.md). Map: [design §306](../docs/indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · [invariants §306](../docs/testing/invariants-and-business-logic.md#indexer-json-rpc-load-benchmark-gitlab-306).
+
 ### Ingestion supervision + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
 
 <a id="ingestion-supervision--rpc-timeouts-gitlab-168"></a>

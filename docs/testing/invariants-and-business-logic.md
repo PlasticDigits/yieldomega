@@ -675,6 +675,18 @@ Phase 1 (**`miniBlocks`** WSS → in-memory head → SSE/snapshot → second age
 
 Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-realtime-gitlab-237) · [`.cursor/skills/yieldomega-guardrails/SKILL.md`](../../.cursor/skills/yieldomega-guardrails/SKILL.md).
 
+<a id="indexer-json-rpc-load-benchmark-gitlab-306"></a>
+
+### Indexer JSON-RPC load benchmark (GitLab [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-306-STATUS-METRICS`** | **`GET /v1/status`** (schema **≥ 2.11.0**) exposes **`rpc_metrics`** with **`calls_per_min_1m`**, **`peak_calls_10s`**, **`by_method`**, **`by_caller`** after warm-up | `bash scripts/verify-indexer-rpc-metrics.sh` · [`api.rs`](../../indexer/src/api.rs) · [`rpc_metrics.rs`](../../indexer/src/rpc_metrics.rs) |
+| **`INV-INDEXER-306-BENCHMARK-HARNESS`** | Reproducible localnet scenario script (idle, catch-up, active arena) samples status metrics | `bash scripts/benchmark-indexer-rpc-anvil.sh` · [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
+| **`INV-INDEXER-306-NO-REGRESSION`** | Ingestion liveness ([#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)) and arena head APIs ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) unchanged | `bash scripts/verify-podium-live-anvil.sh` · `cd indexer && cargo test` |
+
+Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
+
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
 
 ### Indexer ingestion liveness + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))
