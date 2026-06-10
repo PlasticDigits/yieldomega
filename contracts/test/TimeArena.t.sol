@@ -677,6 +677,18 @@ contract TimeArenaTest is Test {
         assertEq(arena.xpTowardNext(bob), towardDoub);
     }
 
+    /// GitLab #304: min-band buy → 1 XP; max-band buy → 10 XP (~10× delta).
+    function test_xp_min_vs_max_charm_single_buy() public {
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
+        assertEq(arena.xp(alice), 1);
+
+        vm.prank(bob);
+        arena.buy(CHARM_MAX);
+        assertEq(arena.xp(bob), 10);
+        assertEq(arena.xp(bob) / arena.xp(alice), 10);
+    }
+
     /// INV-TIME-ARENA-XP-GAS: timer hard-reset does not clear progression.
     function test_xp_survives_timer_hard_reset() public {
         vm.prank(alice);
