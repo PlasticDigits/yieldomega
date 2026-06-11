@@ -361,7 +361,8 @@ export function useArenaSaleSession(
   } = useReadContracts({
     contracts: coreContracts as readonly unknown[],
     query: {
-      enabled: false,
+      // Indexer-first when configured (#301); RPC fallback for Anvil E2E (`VITE_INDEXER_URL=`).
+      enabled: Boolean(tc) && !indexerOn,
       refetchInterval: false,
       placeholderData: (previous) => previous,
     },

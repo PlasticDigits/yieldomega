@@ -23,10 +23,10 @@ describe("indexer-first display reads (#301)", () => {
     expect(src).not.toContain("readContract");
   });
 
-  it("useArenaSaleSession disables core display multicall", () => {
+  it("useArenaSaleSession disables core display multicall when indexer is on", () => {
     const src = readArena("useArenaSaleSession.ts");
     expect(src).not.toMatch(/indexerOn\s*=\s*Boolean\(indexerBaseUrl\(\)\)\s*&&\s*!isArenaV2/);
-    expect(src).toContain("enabled: false");
+    expect(src).toContain("enabled: Boolean(tc) && !indexerOn");
     expect(src).toContain("coreReadRowsFromArenaTimers");
   });
 
