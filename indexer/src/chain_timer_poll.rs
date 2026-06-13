@@ -117,7 +117,7 @@ pub fn idle_short_circuit_applicable(
     let Some(prev) = previous else {
         return false;
     };
-    if health.failure_streak() >= RPC_OFFLINE_FAILURE_STREAK {
+    if health.failure_streak() > 0 {
         return false;
     }
     chain_timer_poll_mode(Some(prev), prev, now_wall_sec, deadline_proximity_sec)
