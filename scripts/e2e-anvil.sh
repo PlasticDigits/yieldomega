@@ -174,8 +174,12 @@ _e2e_start_indexer_if_requested() {
   _e2e_note "Starting indexer on http://127.0.0.1:${INDEXER_PORT}..."
   (
     cd "${ROOT}/indexer"
+    cargo build --release 2>/dev/null || cargo build
+  ) >/tmp/yieldomega_e2e_indexer.log 2>&1
+  (
+    cd "${ROOT}/indexer"
     cargo run --release
-  ) >/tmp/yieldomega_e2e_indexer.log 2>&1 &
+  ) >>/tmp/yieldomega_e2e_indexer.log 2>&1 &
   INDEXER_PID=$!
   echo "${INDEXER_PID}" >"${INDEXER_PID_FILE}"
 
