@@ -422,6 +422,19 @@ Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](ht
 | **`INV-TIME-ARENA-INDEXER-EPOCH-PRICE`** | **`GET /v1/arena/timers`** exposes effective + anchor fields; **`GET /v1/arena/last-buy-epoch-pricing`** lists epoch anchors | `integration_stage2.rs`, `chain_timer.rs` |
 | **`INV-TIME-ARENA-FRONTEND-EFFECTIVE-PRICE`** | Buy sizing / Kumbaya quoter read **`effectiveCharmPriceWad`** (indexer-first via `charm_price_wad`) | `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
 
+<a id="timearena-doub-owed-preview-gitlab-315"></a>
+
+### TimeArena `doubOwedForBuy` preview (GitLab [#315](https://gitlab.com/PlasticDigits/yieldomega/-/issues/315))
+
+Onchain: [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · router: [`TimeArenaBuyRouter.sol`](../../contracts/src/arena/TimeArenaBuyRouter.sol). Integrator: [kumbaya.md § doubOwedForBuy](../integrations/kumbaya.md). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+| ID | Rule | Verify |
+|----|------|--------|
+| **`INV-TIME-ARENA-DOUB-OWED-PREVIEW`** | **`doubOwedForBuy(charmWad)`** is **`view`** / **`eth_call`**-safe; equals immediate **`buy`** DOUB pull within epoch and at Last Buy hard-reset boundary (samples TWAP/spot anchor without state write) | `TimeArenaEpochCharmPrice.t.sol::test_doubOwedForBuy_matches_buy_within_epoch`, `test_doubOwedForBuy_matches_buy_at_hard_reset_boundary` |
+| **`INV-TIME-ARENA-DOUB-OWED-ROUTER`** | **`TimeArenaBuyRouter.buyViaKumbaya`** sizes **`exactOutput`** from **`doubOwedForBuy`**, not **`effectiveCharmPriceWad`** alone | `TimeArenaBuyRouter.t.sol`, `VerifyTimeArenaBuyRouterAnvil.t.sol` |
+
+**TWAP manipulation:** hard-reset anchor uses **15-minute** V3 TWAP on production ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); same-block spot sandwich cannot reduce DOUB owed below the sampled anchor for that transaction.
+
 <a id="arena-charm-twap-init-gitlab-303"></a>
 
 ### Arena production charm TWAP init (GitLab [#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303))

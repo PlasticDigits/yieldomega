@@ -308,8 +308,13 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         return TimeMath.growWad(anchor, CHARM_GROWTH_RATE_WAD, elapsed);
     }
 
-    /// @dev DOUB wei owed for a buy at the current block — previews hard-reset re-anchor (#305).
-    function doubOwedForBuy(uint256 charmWad) external returns (uint256) {
+    /// @notice Gross DOUB wei for `buy` / `buyFor` at the current block — `eth_call` / `staticcall` safe (#315).
+    /// @dev When Last Buy is in the hard-reset band (`remaining < podiumResetBelowRemainingSec[0]`),
+    ///      samples the same TWAP/spot anchor as `_reanchorEpochCharmPrice` **without** writing state.
+    ///      Otherwise uses `effectiveCharmPriceWad()` (epoch anchor + 10%/day growth).
+    ///      External reads only: Anvil Kumbaya `quoteExactOutput` or MegaETH `ArenaCharmPriceTwap.compute` (#303).
+    ///      Integrators: prefer this over `effectiveCharmPriceWad` for swap sizing at the reset boundary.
+    function doubOwedForBuy(uint256 charmWad) external view returns (uint256) {
         if (_willLastBuyHardReset()) {
             (uint256 anchorWad,) = _sampleCharmAnchor();
             return Math.mulDiv(charmWad, anchorWad, WAD);
@@ -810,7 +815,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         charmPriceWad = wad;
     }
 
-    function _sampleCharmAnchor() internal returns (uint256 anchorWad, uint256 doubUsdWad) {
+    function _sampleCharmAnchor() internal view returns (uint256 anchorWad, uint256 doubUsdWad) {
         if (charmAnchorKumbayaRouter != address(0) && charmAnchorCl8y != address(0)) {
             return AnvilKumbayaPools.charmPriceWadFromSpot(
                 AnvilKumbayaRouter(charmAnchorKumbayaRouter),

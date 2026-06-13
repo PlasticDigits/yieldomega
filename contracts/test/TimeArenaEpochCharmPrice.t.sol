@@ -107,6 +107,38 @@ contract TimeArenaEpochCharmPriceTest is Test {
         assertApproxEqRel(before - doub.balanceOf(alice), expected, 1e12);
     }
 
+    /// GitLab #315 — `doubOwedForBuy` is `view` and matches immediate `buy` DOUB pull within epoch.
+    function test_doubOwedForBuy_matches_buy_within_epoch() public {
+        vm.warp(arena.epochAnchorTimestamp() + ONE_DAY / 2);
+        uint256 charm = 1e18;
+        uint256 preview = arena.doubOwedForBuy(charm);
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(charm);
+        assertEq(before - doub.balanceOf(alice), preview, "preview matches buy within epoch");
+    }
+
+    /// GitLab #315 — at hard-reset boundary, preview samples re-anchor before state write.
+    function test_doubOwedForBuy_matches_buy_at_hard_reset_boundary() public {
+        _wireKumbayaSpot();
+
+        vm.warp(arena.deadline() - 600);
+
+        kumbaya.setPair(address(cl8y), address(doub), 200_000e18, 100_000_000e18);
+
+        uint256 preview = arena.doubOwedForBuy(CHARM_MIN);
+        uint256 stalePriceOwed = Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD);
+        assertLt(preview, stalePriceOwed, "preview uses sampled anchor, not stale effective price");
+
+        uint256 before = doub.balanceOf(alice);
+        vm.prank(alice);
+        arena.buy(CHARM_MIN);
+        uint256 paid = before - doub.balanceOf(alice);
+
+        assertEq(preview, paid, "doubOwedForBuy equals buy DOUB at hard-reset boundary");
+        assertEq(paid, Math.mulDiv(CHARM_MIN, arena.effectiveCharmPriceWad(), WAD), "buy uses post-reset anchor");
+    }
+
     function test_buyWithCred_ignores_epoch_growth() public {
         cred.grantRole(cred.MINTER_ROLE(), admin);
         cred.mint(alice, 100_000e18);
