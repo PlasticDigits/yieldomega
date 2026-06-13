@@ -494,7 +494,7 @@ Onchain notifications: **`PodiumEpochFunded`** on each DOUB **`buy`** ([#300](ht
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
 | **`INV-ARENA-PRIZE-ROUTING-300-ZERO-ADMIN`** | DOUB **`buy`** sends **0%** to **`AdminSellVault`** | `TimeArena.t.sol::test_buy_routes_doub_split` |
-| **`INV-ARENA-PRIZE-ROUTING-300-25PCT`** | Each of 4 categories receives **25%** of buy (± remainder → Time Booster) | `ArenaPrizeRouting.t.sol`, `testFuzz_splitBuy_no_dust` |
+| **`INV-ARENA-PRIZE-ROUTING-300-25PCT`** | Each of 4 categories receives **25%** of buy (± remainder → Last Buy) | `ArenaPrizeRouting.t.sol`, `testFuzz_splitBuy_no_dust`, `testFuzz_epoch_split_per_category_bps` ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) |
 | **`INV-ARENA-PRIZE-ROUTING-300-702010`** | Per category: **70% / 20% / 10%** → `podiumEpoch[cat]`, `+1`, `+2` | `test_buy_routes_epoch_tranches_worked_example`, `testFuzz_epoch_split_per_category_bps` |
 | **`INV-ARENA-PRIZE-ROUTING-300-ROLL`** | `rollPodiumEpoch` pays active 4∶2∶1 and **`rollEpochTranches`** promotes seed/future | `test_roll_promotes_epoch_tranches_and_pays_active`, `test_finalize_warbow_podium_pays_after_roll` |
 | **`INV-ARENA-PRIZE-ROUTING-300-TOPUP`** | **`topUpPodiumPools`** unchanged (10:7.5 active:seed, 0% admin) | `TimeArena.t.sol::test_topUpPodiumPools_*` ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) |
