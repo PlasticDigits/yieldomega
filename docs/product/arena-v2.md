@@ -64,9 +64,9 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 ## Play CRED + epoch CHARM
 
 - **`PlayCred`**: non-transferable; **`MINTER_ROLE`** for TimeArena (+ optional **`CredGrantor`**).
-- Each DOUB buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
+- Each DOUB or CRED buy mints **35 CRED** (18 decimals) into the epoch accrual pool; holders claim **pro-rata** by **`charmWad[epoch][user]`** after that Last Buy epoch ends.
 - **`claimCred(epoch)`** zeros epoch CHARM weight and transfers accrued CRED (pro-rata plus any **`epochFixedCredBonus`** for that epoch).
-- **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing, no epoch pool accrual) — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
+- **`buyWithCred`**: burns `charmWad × 100e18 / 1e18` CRED (no DOUB routing; **35 CRED** epoch pool accrual per buy) — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268), [#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311).
 - **First buy ever** (DOUB or CRED, per wallet, not reset on timer hard-reset): schedules **150 CRED** claimable in **`lastBuyEpoch + 1`** after that buy completes (including same-tx hard-reset). Emits **`FirstBuyCredScheduled`**. **`buyCount`** tracks buys for podiums only; first-buy consumption is **`buyCount == 0`** before increment — [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268).
 - Referred **DOUB** buy: **5 CRED** flat to referrer and buyer (`REFERRAL_CRED_FLAT_WAD`; independent of epoch pool) — [#272](https://gitlab.com/PlasticDigits/yieldomega/-/issues/272). **`buyWithCred`** has no referral path.
 
