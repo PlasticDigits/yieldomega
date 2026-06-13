@@ -889,6 +889,10 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             }
             _updateTopThree(CAT_DEFENDED_STREAK, buyer, bestDefendedStreak[buyer]);
         } else if (remainingBefore >= DEFENDED_STREAK_WINDOW_SEC) {
+            if (_dsLastUnderWindowBuyer != address(0)) {
+                activeDefendedStreak[_dsLastUnderWindowBuyer] = 0;
+                _dsLastUnderWindowBuyer = address(0);
+            }
             activeDefendedStreak[buyer] = 0;
         }
     }
