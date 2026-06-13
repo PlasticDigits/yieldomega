@@ -5,7 +5,6 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
@@ -15,7 +14,6 @@ contract NonStandardERC20Test is Test {
     MockERC20FeeOnTransfer internal feeDoub;
     PlayCred internal cred;
     PodiumVaults internal vaults;
-    AdminSellVault internal adminVault;
     TimeArena internal arena;
 
     address internal alice = address(0xA11CE);
@@ -33,8 +31,7 @@ contract NonStandardERC20Test is Test {
         feeDoub = new MockERC20FeeOnTransfer(100);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(feeDoub, admin);
-        adminVault = new AdminSellVault(feeDoub, admin);
-        arena = _deployArena(feeDoub, vaults, adminVault);
+        arena = _deployArena(feeDoub, vaults);
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         cred.grantRole(cred.MINTER_ROLE(), admin);
         feeDoub.mint(alice, 1_000_000e18);
@@ -45,18 +42,17 @@ contract NonStandardERC20Test is Test {
         feeDoub.approve(address(arena), type(uint256).max);
     }
 
-    function _deployArena(MockERC20FeeOnTransfer doub, PodiumVaults v, AdminSellVault av)
+    function _deployArena(MockERC20FeeOnTransfer doub, PodiumVaults v)
         internal
         returns (TimeArena a)
     {
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));
-        av.setArena(address(a));
         a.startArena();
     }
 

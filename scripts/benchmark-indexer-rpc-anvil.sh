@@ -103,13 +103,13 @@ start_anvil_and_deploy() {
     --argjson chainId 31337 \
     --arg ta "${TA}" \
     --arg pv "${PV}" \
-    --arg av "${AV}" \
+   \
     --arg rr "${RR}" \
     --argjson deployBlock "${DEPLOY_BLOCK}" \
     '{
       _comment: "benchmark-indexer-rpc-anvil.sh",
       chainId: $chainId,
-      contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
+      contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
       deployBlock: $deployBlock
     }' >"${REGISTRY}"
 }

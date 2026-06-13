@@ -10,7 +10,6 @@ import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaXp} from "../src/arena/libraries/ArenaXp.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 import {MockERC20FeeOnTransfer} from "./mocks/MockERC20FeeOnTransfer.sol";
@@ -23,7 +22,6 @@ contract TimeArenaTest is Test {
     Doubloon doub;
     PlayCred cred;
     PodiumVaults vaults;
-    AdminSellVault adminVault;
     TimeArena arena;
 
     address alice = address(0xA11CE);
@@ -46,17 +44,15 @@ contract TimeArenaTest is Test {
         doub = new Doubloon(admin);
         cred = new PlayCred(admin);
         vaults = new PodiumVaults(doub, admin);
-        adminVault = new AdminSellVault(doub, admin);
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, vaults, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
 
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
 
@@ -81,7 +77,6 @@ contract TimeArenaTest is Test {
         arena.buy(charm);
 
         assertEq(doub.balanceOf(address(vaults)), owed);
-        assertEq(doub.balanceOf(address(adminVault)), 0);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), owed);
 
@@ -246,15 +241,13 @@ contract TimeArenaTest is Test {
     function test_feeOnTransfer_buy_reverts_erc20Parity() public {
         MockERC20FeeOnTransfer feeDoub = new MockERC20FeeOnTransfer(100);
         PodiumVaults v = new PodiumVaults(feeDoub, admin);
-        AdminSellVault av = new AdminSellVault(feeDoub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (feeDoub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (feeDoub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         TimeArena feeArena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(feeArena));
-        av.setArena(address(feeArena));
         feeArena.startArena();
         feeDoub.mint(alice, 1_000_000e18);
         vm.prank(alice);
@@ -1008,11 +1001,9 @@ contract TimeArenaTest is Test {
     }
 
     function test_topUpPodiumPools_700_matches_buy_prize_vaults() public {
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
         vm.prank(alice);
         arena.topUpPodiumPools(700e18);
         assertEq(doub.balanceOf(address(vaults)), 700e18);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
         assertEq(doub.balanceOf(address(arena)), 0);
         assertEq(arena.totalDoubRaised(), 0);
     }
@@ -1045,14 +1036,12 @@ contract TimeArenaTest is Test {
 
     function test_topUpPodiumPools_reverts_without_allowance_no_vault_mutation() public {
         uint256 vaultBefore = doub.balanceOf(address(vaults));
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
         vm.prank(bob);
         doub.approve(address(arena), 0);
         vm.prank(bob);
         vm.expectRevert();
         arena.topUpPodiumPools(1e18);
         assertEq(doub.balanceOf(address(vaults)), vaultBefore);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
     }
 
     /// GitLab #300: buy routes 100% to podiums; top-up (#261) uses legacy 10:7.5 active:seed — distinct paths.
@@ -1066,16 +1055,12 @@ contract TimeArenaTest is Test {
         topUpArena.topUpPodiumPools(700e18);
 
         assertEq(doub.balanceOf(address(_vaultsFor(buyArena))), 1000e18);
-        assertEq(doub.balanceOf(address(_adminFor(buyArena))), 0);
         assertEq(doub.balanceOf(address(_vaultsFor(topUpArena))), 700e18);
-        assertEq(doub.balanceOf(address(_adminFor(topUpArena))), 0);
     }
 
-    function test_topUpPodiumPools_1000_admin_vault_unchanged() public {
-        uint256 adminBefore = doub.balanceOf(address(adminVault));
+    function test_topUpPodiumPools_1000_routes_all_to_vaults() public {
         vm.prank(alice);
         arena.topUpPodiumPools(1000e18);
-        assertEq(doub.balanceOf(address(adminVault)), adminBefore);
         assertEq(doub.balanceOf(address(vaults)), 1000e18);
     }
 
@@ -1096,15 +1081,13 @@ contract TimeArenaTest is Test {
 
     function _newArena() internal returns (TimeArena a) {
         PodiumVaults v = new PodiumVaults(doub, admin);
-        AdminSellVault av = new AdminSellVault(doub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, v, av, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
+            (doub, v, address(0), address(cred), 1000e18, _ext, _init, _cap, _below, _to, 300, admin)
         );
         a = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(a));
-        av.setArena(address(a));
         a.startArena();
         vm.prank(alice);
         doub.approve(address(a), type(uint256).max);
@@ -1112,10 +1095,6 @@ contract TimeArenaTest is Test {
 
     function _vaultsFor(TimeArena a) internal view returns (PodiumVaults) {
         return PodiumVaults(a.podiumVaults());
-    }
-
-    function _adminFor(TimeArena a) internal view returns (AdminSellVault) {
-        return AdminSellVault(a.adminSellVault());
     }
 
     /// @dev Fresh arena + ReferralRegistry for GitLab #253 referral CRED tests.
@@ -1126,14 +1105,12 @@ contract TimeArenaTest is Test {
         reserve = new MockCL8Y();
         reg = UUPSDeployLib.deployReferralRegistry(IERC20(address(reserve)), 1e18, admin);
         PodiumVaults v = new PodiumVaults(doub, admin);
-        AdminSellVault av = new AdminSellVault(doub, admin);
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
             (
                 doub,
                 v,
-                av,
                 address(reg),
                 address(cred),
                 1000e18,
@@ -1148,7 +1125,6 @@ contract TimeArenaTest is Test {
         );
         ar = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         v.setArena(address(ar));
-        av.setArena(address(ar));
         cred.grantRole(cred.MINTER_ROLE(), address(ar));
         ar.startArena();
     }
