@@ -9,7 +9,7 @@ from typing import List, Tuple
 from web3 import Web3
 from web3.contract import Contract
 
-from timecurve_bot.strategies.common import CHARM_MAX_WAD, CHARM_MIN_WAD
+from timearena_bot.strategies.common import CHARM_MAX_WAD, CHARM_MIN_WAD
 
 # TimeArena category indices (see TimeArena.sol CAT_*)
 CAT_LAST_BUY = 0

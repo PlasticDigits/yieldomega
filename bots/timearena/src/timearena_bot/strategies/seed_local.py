@@ -10,7 +10,7 @@ import time
 from eth_account import Account
 from eth_account.signers.local import LocalAccount
 
-from timecurve_bot.actions import (
+from timearena_bot.actions import (
     account_from_config,
     approve_if_needed,
     buy,
@@ -18,13 +18,13 @@ from timecurve_bot.actions import (
     mint_mock_reserve,
     print_dry,
 )
-from timecurve_bot.config import BotConfig
-from timecurve_bot.strategies.common import APPROVE_LARGE, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
+from timearena_bot.config import BotConfig
+from timearena_bot.strategies.common import APPROVE_LARGE, charm_bounds, charm_for_buy, loop_mean_sec, sale_ended
 from web3 import Web3
 from web3.contract import Contract
 
-from timecurve_bot.anvil_accounts import private_key_hex
-from timecurve_bot.swarm_layout import SEED_LOCAL_SLOTS
+from timearena_bot.anvil_accounts import private_key_hex
+from timearena_bot.swarm_layout import SEED_LOCAL_SLOTS
 
 # Well-known Anvil test keys (local only — never use on mainnet).
 _ANVIL_KEYS = (
@@ -79,7 +79,7 @@ def _deterministic_buys_and_flag(
 
 
 def _accounts(cfg: BotConfig):
-    """If YIELDOMEGA_SEED_LOCAL_SLOT is set (0–2), use disjoint HD triples (matches `timecurve-bot swarm`)."""
+    """If YIELDOMEGA_SEED_LOCAL_SLOT is set (0–2), use disjoint HD triples (matches `timearena-bot swarm`)."""
     raw = os.getenv("YIELDOMEGA_SEED_LOCAL_SLOT", "").strip()
     if raw != "":
         slot = int(raw, 10)

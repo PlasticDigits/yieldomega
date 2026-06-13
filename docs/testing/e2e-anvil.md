@@ -15,14 +15,17 @@ This document describes **Playwright E2E tests that exercise the frontend agains
 
 <a id="indexer-first-vs-minimal-e2e-gitlab-301"></a>
 
-### Indexer-first vs minimal E2E ([GitLab #301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301))
+### Indexer-first vs minimal E2E ([GitLab #301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301), [#322](https://gitlab.com/PlasticDigits/yieldomega/-/issues/322))
 
-| Mode | Indexer | Arena display | Typical script |
-|------|---------|---------------|----------------|
-| **Minimal** | Omitted (`VITE_INDEXER_URL` unset) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` (mock wallet + contract writes still PASS) |
-| **Full stack** | Running + URL in `frontend/.env.local` | Live podiums, timers, buy hub from `GET /v1/arena/*` | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
+| Mode | Indexer | Arena display | Command |
+|------|---------|---------------|---------|
+| **Minimal** (default) | Omitted (`VITE_INDEXER_URL` empty) | Degraded banner; podiums/timers/sale head empty — **no** hidden browser RPC polling | `bash scripts/e2e-anvil.sh` |
+| **Indexer-first E2E** | Spawned by script; URL inlined at build | Live podiums + timer epoch from `GET /v1/arena/*` | `YIELDOMEGA_E2E_INDEXER=1 bash scripts/e2e-anvil.sh` |
+| **Full stack (manual QA)** | Running + URL in `frontend/.env.local` | Same as production display path | `bash scripts/start-qa-local-full-stack.sh` · `bash scripts/verify-podium-live-anvil.sh` |
 
-Production requires **`VITE_INDEXER_URL`**. E2E minimal mode documents the degraded path; it is not a substitute for full-stack Arena display QA. Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301).
+**Default Playwright specs** (`scripts/e2e-anvil.sh`): `e2e/anvil-arena-*.spec.ts` and **`e2e/anvil-referrals.spec.ts`** ([#64](https://gitlab.com/PlasticDigits/yieldomega/-/issues/64)). With **`YIELDOMEGA_E2E_INDEXER=1`**, also runs **`e2e/anvil-indexer-first.spec.ts`** (indexer status bar + protocol podiums + timer epoch).
+
+Production requires **`VITE_INDEXER_URL`**. Minimal E2E documents the degraded path; indexer-first E2E is optional and needs Postgres (native `:5433` or Docker `yieldomega-pg`). Policy: [arena-views §301](../frontend/arena-views.md#indexer-first-display-gitlab-301) · CI split: [ci.md §322](ci.md#gitlab-github-ci-split-gitlab-322).
 
 ## What this is **not** for
 

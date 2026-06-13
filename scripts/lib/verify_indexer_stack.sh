@@ -9,6 +9,8 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/verify_anvil_common.sh"
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/anvil_multicall3.sh"
 
 yieldomega_verify_write_anvil_registry() {
   local registry="${1:?registry path required}"
@@ -103,6 +105,8 @@ yieldomega_verify_boot_indexer_stack() {
   RPC="http://127.0.0.1:${PORT}"
   yieldomega_verify_pkill_stale "${PORT}"
   yieldomega_verify_start_anvil "${PORT}" "${VERIFY_ANVIL_LOG}"
+  yieldomega_ensure_anvil_multicall3 "${RPC}" \
+    || yieldomega_verify_die "Multicall3 deploy failed (chain-timer batching #307)"
   yieldomega_verify_deploy_dev_export "${root}" "${RPC}" "${DEPLOY_LOG}"
   yieldomega_verify_write_anvil_registry "${REGISTRY}" "${VERIFY_REGISTRY_COMMENT}" "${RPC}"
   yieldomega_verify_pg_reset_app_db "${PG_URL}"
