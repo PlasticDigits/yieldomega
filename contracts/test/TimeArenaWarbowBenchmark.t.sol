@@ -7,7 +7,6 @@ import {Doubloon} from "../src/tokens/Doubloon.sol";
 import {PlayCred} from "../src/PlayCred.sol";
 import {TimeArena} from "../src/arena/TimeArena.sol";
 import {PodiumVaults} from "../src/arena/PodiumVaults.sol";
-import {AdminSellVault} from "../src/arena/AdminSellVault.sol";
 import {ArenaPodiumTimerConfig} from "../src/arena/libraries/ArenaPodiumTimerConfig.sol";
 
 /// @dev GitLab #312 — Anvil gas benchmark for incremental WarBow top-3 ranking at scale.
@@ -30,16 +29,14 @@ contract TimeArenaWarbowBenchmarkTest is Test {
         doub = new Doubloon(address(this));
         PlayCred cred = new PlayCred(address(this));
         vaults = new PodiumVaults(doub, address(this));
-        AdminSellVault adminVault = new AdminSellVault(doub, address(this));
 
         TimeArena impl = new TimeArena();
         bytes memory data = abi.encodeCall(
             TimeArena.initialize,
-            (doub, vaults, adminVault, address(0), address(cred), 1000e18, ext, init, cap, below, to, 300, address(this))
+            (doub, vaults, address(0), address(cred), 1000e18, ext, init, cap, below, to, 300, address(this))
         );
         arena = TimeArena(payable(address(new ERC1967Proxy(address(impl), data))));
         vaults.setArena(address(arena));
-        adminVault.setArena(address(arena));
         cred.grantRole(cred.MINTER_ROLE(), address(arena));
         arena.startArena();
         doub.grantRole(doub.MINTER_ROLE(), address(this));

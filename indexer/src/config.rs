@@ -212,7 +212,6 @@ pub fn validate_address_registry_for_production(
     for (field, raw) in [
         ("TimeArena", reg.contracts.time_arena.as_str()),
         ("PodiumVaults", reg.contracts.podium_vaults.as_str()),
-        ("AdminSellVault", reg.contracts.admin_sell_vault.as_str()),
         ("ReferralRegistry", reg.contracts.referral_registry.as_str()),
     ] {
         let s = raw.trim();
@@ -230,7 +229,6 @@ pub fn validate_address_registry_for_production(
 
     let _ = strict_parse("TimeArena", &reg.contracts.time_arena)?;
     let _ = strict_parse("PodiumVaults", &reg.contracts.podium_vaults)?;
-    let _ = strict_parse("AdminSellVault", &reg.contracts.admin_sell_vault)?;
     let _ = strict_parse("ReferralRegistry", &reg.contracts.referral_registry)?;
 
     if !PRODUCTION_OPTIONAL_DEPLOY_BLOCK_CHAIN_IDS.contains(&chain_id) && reg.deploy_block == 0 {

@@ -5,7 +5,7 @@ description: WarBow PvP on TimeArena — DOUB steals, guard, revenge, flag; epoc
 
 # Play Time Arena — WarBow
 
-WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rules: [`docs/product/arena-v2.md` § WarBow](../../docs/product/arena-v2.md#warbow-doub) · [`docs/product/time-arena.md` § WarBow PvP](../../docs/product/time-arena.md) · invariants **`INV-TIME-ARENA-WARBOW-*`** in [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md).
+WarBow on **`TimeArena`** spends **DOUB** (not CL8Y). Canonical costs and BP rules: [`docs/product/arena-v2.md` § WarBow](../../docs/product/arena-v2.md#warbow-doub) · [`docs/product/time-arena.md` § WarBow PvP](../../docs/product/time-arena.md) · invariants **`INV-TIME-ARENA-WARBOW-*`**, **`INV-TIME-ARENA-PAUSE-MUTATING`**, **`INV-TIME-ARENA-WARBOW-REVERT-MATRIX`** in [`docs/testing/invariants-and-business-logic.md`](../../docs/testing/invariants-and-business-logic.md) ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)).
 
 ## DOUB costs (18 decimals)
 
