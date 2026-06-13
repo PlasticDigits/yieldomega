@@ -66,7 +66,10 @@ mod contracts {
                 uint256 poolPaid
             );
             event CredClaimed(address indexed user, uint256 indexed epoch, uint256 amount);
+            event FirstBuyCredScheduled(address indexed buyer, uint256 indexed targetEpoch, uint256 amount);
             event XpGained(address indexed player, uint256 amount, uint256 newLevel);
+            event LevelUp(address indexed player, uint256 newLevel);
+            event FeatureUnlocked(address indexed player, uint256 featureLevel);
             event WarBowSteal(
                 address indexed attacker,
                 address indexed victim,
@@ -77,6 +80,7 @@ mod contracts {
             event WarBowGuard(address indexed player, uint256 doubSpent, uint256 guardUntil);
             event WarBowRevenge(address indexed avenger, address indexed stealer, uint256 bpTaken, uint256 doubSpent);
             event WarBowFlagClaimed(address indexed player, uint256 bonusBp);
+            event WarbowPodiumFinalized(uint256 indexed epoch, address first, address second, address third);
             event ReferralApplied(
                 address indexed buyer,
                 address indexed referrer,
@@ -166,6 +170,22 @@ pub enum DecodedEvent {
         epoch: U256,
         amount: U256,
     },
+    ArenaFirstBuyCredScheduled {
+        buyer: Address,
+        target_epoch: U256,
+        amount: U256,
+    },
+    ArenaLevelUp {
+        player: Address,
+        new_level: U256,
+    },
+    ArenaFeatureUnlocked {
+        player: Address,
+        feature_level: U256,
+    },
+    ArenaPausedSet {
+        paused: bool,
+    },
     ArenaPodiumEpochRolled {
         category: u8,
         epoch: U256,
@@ -205,6 +225,12 @@ pub enum DecodedEvent {
     ArenaWarbowFlagClaimed {
         player: Address,
         bonus_bp: U256,
+    },
+    ArenaWarbowPodiumFinalized {
+        epoch: U256,
+        first: Address,
+        second: Address,
+        third: Address,
     },
     /// Explicit WarBow BP snapshot row (tests / operator backfill); not an onchain log topic.
     ArenaWarbowEpochScore {
@@ -311,6 +337,36 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             };
         }
     }
+    if topic0 == TimeArenaEvents::FirstBuyCredScheduled::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::FirstBuyCredScheduled::decode_log(log, true) {
+            return DecodedEvent::ArenaFirstBuyCredScheduled {
+                buyer: e.buyer,
+                target_epoch: e.targetEpoch,
+                amount: e.amount,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::LevelUp::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::LevelUp::decode_log(log, true) {
+            return DecodedEvent::ArenaLevelUp {
+                player: e.player,
+                new_level: e.newLevel,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::FeatureUnlocked::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::FeatureUnlocked::decode_log(log, true) {
+            return DecodedEvent::ArenaFeatureUnlocked {
+                player: e.player,
+                feature_level: e.featureLevel,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::PausedSet::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::PausedSet::decode_log(log, true) {
+            return DecodedEvent::ArenaPausedSet { paused: e.paused };
+        }
+    }
     if topic0 == TimeArenaEvents::PodiumEpochRolled::SIGNATURE_HASH {
         if let Ok(e) = TimeArenaEvents::PodiumEpochRolled::decode_log(log, true) {
             return DecodedEvent::ArenaPodiumEpochRolled {
@@ -376,6 +432,16 @@ fn decode_primitive_log(log: &Log, topic0: B256) -> DecodedEvent {
             return DecodedEvent::ArenaWarbowFlagClaimed {
                 player: e.player,
                 bonus_bp: e.bonusBp,
+            };
+        }
+    }
+    if topic0 == TimeArenaEvents::WarbowPodiumFinalized::SIGNATURE_HASH {
+        if let Ok(e) = TimeArenaEvents::WarbowPodiumFinalized::decode_log(log, true) {
+            return DecodedEvent::ArenaWarbowPodiumFinalized {
+                epoch: e.epoch,
+                first: e.first,
+                second: e.second,
+                third: e.third,
             };
         }
     }

@@ -65,6 +65,8 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Branding | Visible **Yield Omega** in console chrome; low-opacity bunny/shark accents | `ArenaSimplePage.tsx` |
 | Pay modes | DOUB-primary; ETH / USDM / Play CRED when configured | [arena-views pay modes](../frontend/arena-views.md#pay-modes) |
 | CSS naming | `arena-*` classes and testids only (no `timecurve-*`) | `bash scripts/check-arena-naming.sh` |
+| Forbidden copy | No `\bsale\b` on play console (pre-launch + live); pre-open uses **Arena Opens In** / arena-live framing ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) | `arenaSimplePlaySurface.test.ts`, `arenaSimplePhase.ts` |
+| Wallet profile | WarBow steal-target rival rows open **`WalletProfileModal`** via `onOpenWalletProfile` ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) | `ArenaWarbowHeroPanel.tsx`, `arenaSimplePlaySurface.test.ts` |
 
 **E2E:** `e2e/arena.spec.ts`, `e2e/anvil-arena-*.spec.ts` · **Manual:** [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291), [§292](manual-qa-checklists.md#manual-qa-issue-292)
 

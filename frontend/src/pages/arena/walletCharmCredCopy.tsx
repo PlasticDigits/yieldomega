@@ -28,7 +28,7 @@ export function walletCharmCredHelpCopy(): {
       },
       {
         heading: "CRED",
-        body: "Play CRED token. Each DOUB buy adds 35 CRED to the active Last Buy epoch pool. CRED Accrual previews your live share; after the epoch ends, Claim CRED pays pro-rata by epoch CHARM plus any fixed bonus. CRED Balance is spendable Play CRED in your wallet (buyWithCred burns 100 CRED per 1 CHARM).",
+        body: "Play CRED token. Each DOUB or CRED buy adds 35 CRED to the active Last Buy epoch pool. CRED Accrual previews your live share; after the epoch ends, Claim CRED pays pro-rata by epoch CHARM plus any fixed bonus. CRED Balance is spendable Play CRED in your wallet (buyWithCred burns 100 CRED per 1 CHARM).",
       },
     ],
   };
