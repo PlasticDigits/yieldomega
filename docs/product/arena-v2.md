@@ -43,7 +43,7 @@ On **`rollPodiumEpoch(category)`** (permissionless after deadline):
 
 ## DOUB prize routing (per buy) — [#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)
 
-**100%** of paid DOUB routes to **four podium prize vaults** (**0%** admin take on buys). Each category receives **25%** of the buy; within each category the share splits **70% / 20% / 10%** to **`podiumEpoch[cat]`**, **`+1`**, **`+2`** pools (active / seed / future). Remainder wei: category split residue → **Time Booster (cat 1)**; within-category residue → **+2 tranche**.
+**100%** of paid DOUB routes to **four podium prize vaults** (**0%** admin take on buys). Each category receives **25%** of the buy; within each category the share splits **70% / 20% / 10%** to **`podiumEpoch[cat]`**, **`+1`**, **`+2`** pools (active / seed / future). Remainder wei: category split residue → **Last Buy (cat 0)**; within-category residue → **+2 tranche**.
 
 | Tranche | Pool | Share of category |
 |---------|------|-------------------|
@@ -92,7 +92,7 @@ Events: **`PodiumEpochFunded(category, epoch, amount, pool)`** on buys; **`Podiu
 | Revenge | 1000e18 |
 | Flag claim | 0 |
 
-BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses, steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity.
+BP rules follow v1 [`primitives.md`](primitives.md) (buy bonuses including **streak-break** and **ambush** on qualifying buys ([#310](https://gitlab.com/PlasticDigits/yieldomega/-/issues/310)), steal band 2×–10×, flag plant/claim). All spends are **DOUB** pulls with balance-delta parity, then **100%** podium routing and **`totalDoubRaised`** increment — same split as **`buy`** ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)).
 
 ## Retired surfaces
 

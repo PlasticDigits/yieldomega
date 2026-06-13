@@ -6,6 +6,7 @@ import {TickMath} from "./v3/TickMath.sol";
 import {IUniswapV3Factory} from "./v3/IUniswapV3Factory.sol";
 import {IUniswapV3Pool} from "./v3/IUniswapV3Pool.sol";
 import {OracleLibrary} from "./v3/OracleLibrary.sol";
+import {ArenaCharmBounds} from "../arena/libraries/ArenaCharmBounds.sol";
 
 /// @notice TWAP-derived initial `charmPriceWad` for Arena production deploy (GitLab #303).
 /// @dev Sir-parity Kumbaya V3 oracle: 15-minute TWAP on **DOUB/CL8Y** (fee 100) and **CL8Y/WETH** (fee 100),
@@ -13,8 +14,8 @@ import {OracleLibrary} from "./v3/OracleLibrary.sol";
 ///      USDm ≈ $1. Floor rounding on `charmPriceWad` (protocol-favorable).
 library ArenaCharmPriceTwap {
     uint256 internal constant WAD = 1e18;
-    uint256 internal constant CHARM_MIN_WAD = 99e16;
-    uint256 internal constant CHARM_MAX_WAD = 10e18;
+    uint256 internal constant CHARM_MIN_WAD = ArenaCharmBounds.CHARM_MIN_WAD;
+    uint256 internal constant CHARM_MAX_WAD = ArenaCharmBounds.CHARM_MAX_WAD;
 
     /// @dev Sir Trading default TWAP horizon on MegaETH (docs.sir.trading — trustless oracle).
     uint32 internal constant SIR_TWAP_SECONDS = 900;

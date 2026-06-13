@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from timecurve_bot import swarm_runner
+from timearena_bot import swarm_runner
 
 
 def test_load_config_for_swarm_valueerror_prints_hint(capsys: pytest.CaptureFixture[str]) -> None:

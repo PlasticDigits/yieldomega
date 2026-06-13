@@ -20,7 +20,6 @@ export function parseHexAddress(v: string | undefined | null): HexAddress | unde
 export const addresses = {
   timeArena: parseHexAddress(import.meta.env.VITE_TIME_ARENA_ADDRESS),
   podiumVaults: parseHexAddress(import.meta.env.VITE_PODIUM_VAULTS_ADDRESS),
-  adminSellVault: parseHexAddress(import.meta.env.VITE_ADMIN_SELL_VAULT_ADDRESS),
   referralRegistry: parseHexAddress(import.meta.env.VITE_REFERRAL_REGISTRY_ADDRESS),
   /** Optional override when `TimeArena.playCred()` read is unavailable (#269). */
   playCred: parseHexAddress(import.meta.env.VITE_PLAY_CRED_ADDRESS),

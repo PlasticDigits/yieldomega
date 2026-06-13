@@ -7,7 +7,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 library ArenaBuyRouting {
     uint256 internal constant BPS_DENOM = 10_000;
 
-    /// @dev 25% per podium category; remainder wei → category 3 (Time Booster).
+    /// @dev 25% per podium category; remainder wei → category 0 (Last Buy).
     uint16 internal constant PODIUM_SHARE_BPS = 2500;
     uint16 internal constant TRANCHE_CURRENT_BPS = 7000;
     uint16 internal constant TRANCHE_NEXT_BPS = 2000;
@@ -19,7 +19,7 @@ library ArenaBuyRouting {
     uint8 internal constant NUM_PODIUMS = 4;
 
     /// @dev 100% to four podiums at 25% each; within each category 70% / 20% / 10% to epoch+0 / +1 / +2.
-    /// Remainder from `amount / 4` → category 3; within-category remainder → 10% tranche.
+    /// Remainder from `amount / 4` → category 0 (Last Buy); within-category remainder → 10% tranche.
     function splitBuyAmount(uint256 amount)
         internal
         pure
@@ -28,7 +28,7 @@ library ArenaBuyRouting {
         uint256 baseShare = amount / NUM_PODIUMS;
         uint256 catRem = amount % NUM_PODIUMS;
         for (uint8 i; i < NUM_PODIUMS; ++i) {
-            uint256 share = baseShare + (i == NUM_PODIUMS - 1 ? catRem : 0);
+            uint256 share = baseShare + (i == 0 ? catRem : 0);
             current[i] = Math.mulDiv(share, TRANCHE_CURRENT_BPS, BPS_DENOM);
             next[i] = Math.mulDiv(share, TRANCHE_NEXT_BPS, BPS_DENOM);
             next2[i] = share - current[i] - next[i];

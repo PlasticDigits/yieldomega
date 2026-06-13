@@ -63,7 +63,7 @@ yieldomega_export_deploy_addrs_from_log "${DEPLOY_LOG}" "${ROOT}"
 [[ -n "${TA:-}" ]] || die "TimeArena address missing after deploy"
 [[ -n "${DOUB:-}" ]] || die "Doubloon address missing after deploy"
 [[ -n "${PV:-}" ]] || die "PodiumVaults address missing after deploy"
-[[ -n "${AV:-}" ]] || die "AdminSellVault address missing after deploy"
+
 [[ -n "${CRED:-}" ]] || die "PlayCred address missing after deploy"
 
 DEPLOY_BLOCK="$(cast block-number --rpc-url "${RPC}")"
@@ -71,13 +71,12 @@ jq -n \
   --argjson chainId 31337 \
   --arg ta "${TA}" \
   --arg pv "${PV}" \
-  --arg av "${AV}" \
   --arg rr "${RR}" \
   --argjson deployBlock "${DEPLOY_BLOCK}" \
   '{
     _comment: "verify-vault-funding-anvil.sh",
     chainId: $chainId,
-    contracts: { TimeArena: $ta, PodiumVaults: $pv, AdminSellVault: $av, ReferralRegistry: $rr },
+    contracts: { TimeArena: $ta, PodiumVaults: $pv, ReferralRegistry: $rr },
     deployBlock: $deployBlock
   }' >"${REGISTRY}"
 
@@ -147,8 +146,8 @@ echo "${BY_TX}" | jq -e '[.items[].kind] | (map(select(. == "admin")) | length) 
 
 RECEIPT_LOGS="$(cast receipt "${BUY_TX}" --json --rpc-url "${RPC}")"
 CAST_VAULT_COUNT="$(echo "${RECEIPT_LOGS}" | jq -r \
-  --arg pv "${PV,,}" --arg av "${AV,,}" \
-  '[.logs[] | select((.address | ascii_downcase) == $pv or (.address | ascii_downcase) == $av)] | length')"
+  --arg pv "${PV,,}" \
+  '[.logs[] | select((.address | ascii_downcase) == $pv)] | length')"
 [[ "${CAST_VAULT_COUNT}" -eq 12 ]] || die "expected 12 PodiumEpochFunded logs in buy receipt, got ${CAST_VAULT_COUNT}"
 
 DB_SUM="$(psql "${PG_URL}" -tAc "SELECT COALESCE(SUM(amount_doub_wad), 0)::text FROM idx_arena_vault_funding WHERE tx_hash = '${BUY_TX}'")"

@@ -6,7 +6,7 @@ Each **`TimeArena.buy`** routes **100%** of paid **DOUB** to podium prize vaults
 
 | Layer | Share |
 |-------|-------|
-| Each of **4** podium categories | **25%** of buy (`amount / 4`; remainder → Time Booster) |
+| Each of **4** podium categories | **25%** of buy (`amount / 4`; remainder → Last Buy) |
 | Within each category → current epoch pool | **70%** of category share |
 | Within each category → next epoch pool | **20%** |
 | Within each category → epoch+2 pool | **10%** (absorbs within-category remainder) |

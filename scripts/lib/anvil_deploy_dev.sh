@@ -80,7 +80,7 @@ _yieldomega_resolve_mock_cl8y_addr() {
   printf '%s' ""
 }
 
-# Explicit export API — sets TA, PV, AV, RR, DOUB, CRED, CL8Y in the caller shell (GitLab #289).
+# Explicit export API — sets TA, PV, RR, DOUB, CRED, CL8Y in the caller shell (GitLab #289).
 yieldomega_export_deploy_addrs_from_log() {
   local deploy_log="${1:-${DEPLOY_LOG:-}}"
   local root="${2:-${ROOT:-}}"
@@ -90,7 +90,6 @@ yieldomega_export_deploy_addrs_from_log() {
   fi
   TA="$(_yieldomega_extract_addr_from_log "${deploy_log}" "TimeArena")"
   PV="$(_yieldomega_extract_addr_from_log "${deploy_log}" "PodiumVaults")"
-  AV="$(_yieldomega_extract_addr_from_log "${deploy_log}" "AdminSellVault")"
   RR="$(_yieldomega_extract_addr_from_log "${deploy_log}" "ReferralRegistry")"
   DOUB="$(_yieldomega_extract_addr_from_log "${deploy_log}" "Doubloon")"
   CRED="$(_yieldomega_extract_addr_from_log "${deploy_log}" "PlayCred")"
@@ -114,7 +113,7 @@ yieldomega_anvil_deploy_dev() {
     echo "yieldomega_anvil_deploy_dev: need ROOT, RPC, and DEPLOY_LOG set." >&2
     return 1
   fi
-  local ta pv av rr doub cred cl8y
+  local ta pv rr doub cred cl8y
   local kumbaya_weth kumbaya_usdm kumbaya_router kumbaya_buy_router
   local onchain_br exp_br
 
@@ -137,17 +136,16 @@ yieldomega_anvil_deploy_dev() {
 
   ta="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "TimeArena")"
   pv="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PodiumVaults")"
-  av="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "AdminSellVault")"
   rr="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "ReferralRegistry")"
   doub="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "Doubloon")"
   cred="$(_yieldomega_extract_addr_from_log "${DEPLOY_LOG}" "PlayCred")"
 
-  if [ -z "${ta}" ] || [ -z "${pv}" ] || [ -z "${av}" ] || [ -z "${rr}" ]; then
-    echo "Could not parse deploy addresses. Expected TimeArena, PodiumVaults, AdminSellVault, ReferralRegistry." >&2
+  if [ -z "${ta}" ] || [ -z "${pv}" ] || [ -z "${rr}" ]; then
+    echo "Could not parse deploy addresses. Expected TimeArena, PodiumVaults, ReferralRegistry." >&2
     return 1
   fi
 
-  echo "Addresses: TimeArena=${ta} PodiumVaults=${pv} AdminSellVault=${av} ReferralRegistry=${rr} Doubloon=${doub} PlayCred=${cred}"
+  echo "Addresses: TimeArena=${ta} PodiumVaults=${pv} ReferralRegistry=${rr} Doubloon=${doub} PlayCred=${cred}"
 
   if [ "${YIELDOMEGA_DEPLOY_KUMBAYA:-0}" = "1" ]; then
     echo "Deploying Kumbaya Anvil fixtures (YIELDOMEGA_DEPLOY_KUMBAYA=1)..."
