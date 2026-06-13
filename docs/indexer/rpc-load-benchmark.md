@@ -38,7 +38,7 @@ The script:
    - **active arena** — sustained `buy()` from three Anvil accounts
 3. Writes JSON + markdown under `docs/indexer/benchmarks/` (override with `BENCHMARK_OUT_DIR`).
 
-Env knobs documented in the issue: `RPC_URL`, `INGESTION_ENABLED`, `INDEXER_RPC_REQUEST_TIMEOUT_SEC`, Anvil block time (default instant mine).
+Env knobs documented in the issue: `RPC_URL`, `INGESTION_ENABLED`, `INDEXER_RPC_REQUEST_TIMEOUT_SEC`, Anvil block time (default instant mine). Chain-timer adaptive spacing ([#308](https://gitlab.com/PlasticDigits/yieldomega/-/issues/308)): **`CHAIN_TIMER_IDLE_POLL_MS`** (default **3000**), **`CHAIN_TIMER_DEADLINE_PROXIMITY_SEC`** (default **30**).
 
 ## Baseline findings (Anvil, schema 2.11.0)
 
@@ -54,12 +54,22 @@ Sample run (`docs/indexer/benchmarks/rpc-benchmark-20260610T111415Z.json`, 30s s
 
 Refresh baselines with `bash scripts/benchmark-indexer-rpc-anvil.sh` (use `BENCHMARK_SCENARIO_SEC=600` for production-style runs).
 
+### Post-#308 idle sample (20260613T071846Z, 120s scenario)
+
+Adaptive spacing + idle `eth_blockNumber` short-circuit when the head block is unchanged:
+
+| Metric | Pre-#308 baseline (`20260610T111415Z`) | Post-#308 |
+|--------|----------------------------------------|-----------|
+| idle `calls_per_min_1m` | **740** | **84** |
+| idle `peak_calls_10s` | **354** | **51** |
+| idle `eth_call` (chain_timer) | **672** / min | **32** total (one full poll + short-circuits) |
+
 ## Prioritized mitigation strategies
 
 | Strategy | Est. RPC reduction | Reactivity impact |
 |----------|-------------------|-------------------|
 | **Batch/multicall** for chain-timer `eth_call` fan-out | **40–60%** fewer round-trips per poll | Low if batched at same block tag; decode complexity |
-| **Adaptive poll interval** when head unchanged and timer epochs stable | **30–50%** steady-state | Must not miss timer UX thresholds near deadline |
+| **Adaptive poll interval** when head unchanged and timer epochs stable | **30–50%** steady-state | Shipped ([#308](https://gitlab.com/PlasticDigits/yieldomega/-/issues/308)): **1s** fast when head/epochs change or within **`CHAIN_TIMER_DEADLINE_PROXIMITY_SEC`**; **3s** idle otherwise (`CHAIN_TIMER_IDLE_POLL_MS`, max **3s** for timer freshness SLO) |
 | **Coalesce duplicate `eth_call`** at same block tag within one `poll_once` | **10–20%** | None |
 | **Derive live podium snapshots from logs** where `INV-INDEXER-PODIUM-PREDICT-LIVE` allows | Hot-path reduction on arena traffic | Verify parity with block-tagged `podium()` |
 | **Separate read RPC URL** for head poller vs ingestion (operator config) | Isolates bursts | Ops complexity; no per-process reduction |
