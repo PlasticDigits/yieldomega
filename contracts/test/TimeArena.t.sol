@@ -1337,4 +1337,170 @@ contract TimeArenaTest is Test {
         arena.grandfatherProgression(wallets);
         assertEq(arena.level(alice), 5);
     }
+
+    // --- GitLab #316: pause matrix (blocks all user-facing mutating paths via `_requireLive`) ---
+
+    /// Prevents buys while ops pause is active (front-run / incident response).
+    function test_pause_blocks_buy() public {
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.buy(1e18);
+    }
+
+    function test_pause_blocks_buyWithCred() public {
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.buyWithCred(1e18);
+    }
+
+    function test_pause_blocks_warbow_steal() public {
+        _seedWarbowStealBand(bob, alice);
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowSteal(bob, false);
+    }
+
+    function test_pause_blocks_warbow_guard() public {
+        _ensureLevel(alice, 4);
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowActivateGuard();
+    }
+
+    function test_pause_blocks_warbow_revenge() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        arena.setPaused(true);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: paused");
+        arena.warbowRevenge(alice);
+    }
+
+    function test_pause_blocks_claimWarBowFlag() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.warp(block.timestamp + arena.WARBOW_FLAG_SILENCE_SEC());
+        arena.setPaused(true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: paused");
+        arena.claimWarBowFlag();
+    }
+
+    // --- GitLab #316: WarBow revert matrix ---
+
+    /// Prevents stealing outside the 2×–10× BP band (whale griefing low-BP wallets).
+    function test_warbow_steal_reverts_steal_band() public {
+        _ensureLevel(alice, 4);
+        _boostWarbowVictim(alice);
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        arena.buy(1e18);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: steal band");
+        arena.warbowSteal(bob, false);
+    }
+
+    /// Prevents bypassing the daily steal cap without paying the override burn.
+    function test_warbow_steal_reverts_steal_limit() public {
+        _seedWarbowStealBand(bob, alice);
+        for (uint256 i; i < 3; ++i) {
+            vm.prank(alice);
+            arena.warbowSteal(bob, false);
+            _boostWarbowVictim(bob);
+        }
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: steal limit");
+        arena.warbowSteal(bob, false);
+    }
+
+    /// Prevents revenge after the 24h window (stale grudge txs).
+    function test_warbow_revenge_reverts_expired() public {
+        _seedWarbowStealBand(bob, alice);
+        vm.prank(alice);
+        arena.warbowSteal(bob, false);
+        uint256 exp = block.timestamp + arena.WARBOW_REVENGE_WINDOW_SEC();
+        while (arena.deadline() < exp + 1) {
+            _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(1e18);
+        }
+        vm.warp(exp + 1);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: revenge");
+        arena.warbowRevenge(alice);
+    }
+
+    function test_warbow_revenge_reverts_no_pending() public {
+        _ensureLevel(alice, 4);
+        _ensureLevel(bob, 4);
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: revenge");
+        arena.warbowRevenge(alice);
+    }
+
+    /// Prevents non-holders from claiming planted flags.
+    function test_warbow_flag_reverts_not_holder() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.warp(block.timestamp + arena.WARBOW_FLAG_SILENCE_SEC());
+        vm.prank(bob);
+        vm.expectRevert("TimeArena: not flag holder");
+        arena.claimWarBowFlag();
+    }
+
+    /// Prevents early flag claims before the silence period.
+    function test_warbow_flag_reverts_silence() public {
+        _ensureLevel(alice, 5);
+        arena.setTimeArenaBuyRouter(address(this));
+        doub.mint(address(this), 10_000e18);
+        doub.approve(address(arena), type(uint256).max);
+        arena.buyFor(alice, 1e18, bytes32(0), true);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: flag silence");
+        arena.claimWarBowFlag();
+    }
+
+    /// Prevents double-paying a WarBow epoch (admin finalize replay).
+    function test_finalize_warbow_podium_reverts_double() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        arena.buy(10e18);
+        uint8 cat = arena.CAT_WARBOW();
+        vm.warp(arena.podiumDeadline(cat) + 1);
+        arena.rollPodiumEpoch(cat);
+        (address[3] memory winners,) = arena.podium(cat);
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+        vm.expectRevert("TimeArena: finalized");
+        arena.finalizeWarbowPodium(0, winners[0], winners[1], winners[2]);
+    }
+
+    function test_finalize_warbow_podium_reverts_bad_epoch() public {
+        vm.expectRevert("TimeArena: bad epoch");
+        arena.finalizeWarbowPodium(99, alice, bob, address(0));
+    }
+
+    function test_warbow_steal_reverts_bad_victim_zero() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: bad victim");
+        arena.warbowSteal(address(0), false);
+    }
+
+    function test_warbow_steal_reverts_bad_victim_self() public {
+        _ensureLevel(alice, 4);
+        vm.prank(alice);
+        vm.expectRevert("TimeArena: bad victim");
+        arena.warbowSteal(alice, false);
+    }
 }
