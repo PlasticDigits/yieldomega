@@ -18,8 +18,8 @@ cd contracts && forge test --match-test test_benchmark_warbow_10k_player_ranking
 
 | Metric | Gas |
 |--------|-----|
-| Incremental top-3 update (one buy at player 5000) | **369,647** |
-| WarBow `rollPodiumEpoch` after 10k seeded BP | **107,387** |
+| Incremental top-3 update (one buy at player 5000) | **368,100–369,647** |
+| WarBow `rollPodiumEpoch` after 10k seeded BP | **107,387–125,594** |
 
 ## Interpretation
 
