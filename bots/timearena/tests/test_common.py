@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 """Pure helpers from strategies.common (no chain)."""
 
-from timecurve_bot.strategies.common import WAD
+from timearena_bot.strategies.common import WAD
 
 
 def test_wad_constant() -> None:

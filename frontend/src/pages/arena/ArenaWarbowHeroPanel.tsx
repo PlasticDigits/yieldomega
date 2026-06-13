@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { AmountDisplay } from "@/components/AmountDisplay";
 import { PlayerIdentity } from "@/components/arena";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -23,10 +23,17 @@ import {
 } from "@/pages/arena/useArenaWarbowHero";
 import type { SaleSessionPhase } from "@/pages/arena/arenaSimplePhase";
 
+function targetIsInsideAddressAction(target: EventTarget | null): boolean {
+  return Boolean(
+    target && (target as HTMLElement).closest?.("a[href], .address-inline__profile-btn"),
+  );
+}
+
 type Props = {
   phase: SaleSessionPhase;
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  /** Opens wallet profile modal instead of explorer (#258, #318). */
   onOpenWalletProfile?: (address: string) => void;
   warbowTargets?: readonly WarbowTarget[];
   /** Indexer-sourced viewer BP when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
@@ -219,7 +226,10 @@ export function ArenaWarbowHeroPanel({
                       "warbow-target-row",
                       selected ? "warbow-target-row--selected" : "",
                     ].filter(Boolean).join(" ")}
-                    onClick={() => w.setStealVictimInput(target.address)}
+                    onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                      if (targetIsInsideAddressAction(event.target)) return;
+                      w.setStealVictimInput(target.address);
+                    }}
                     data-testid={`warbow-target-${target.address.toLowerCase()}`}
                   >
                     <span className="warbow-target-row__main">

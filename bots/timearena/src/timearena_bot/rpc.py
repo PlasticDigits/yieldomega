@@ -9,7 +9,7 @@ from web3 import Web3
 from web3.contract import Contract
 from web3.middleware import ExtraDataToPOAMiddleware
 
-from timecurve_bot.config import BotConfig
+from timearena_bot.config import BotConfig
 
 
 def make_web3(rpc_url: str) -> Web3:
@@ -61,7 +61,7 @@ def anvil_dev_bootstrap_funding_if_enabled(
             "Anvil dev funding is only allowed when YIELDOMEGA_CHAIN_ID=31337 (local Anvil). "
             "Do not set YIELDOMEGA_ALLOW_ANVIL_FUNDING on mainnet."
         )
-    from timecurve_bot.actions import account_from_config, mint_mock_reserve
+    from timearena_bot.actions import account_from_config, mint_mock_reserve
 
     deployer = account_from_config(deployer_pk)
     for addr in recipient_addresses:

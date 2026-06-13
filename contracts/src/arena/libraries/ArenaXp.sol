@@ -2,11 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ArenaCharmBounds} from "./ArenaCharmBounds.sol";
 
 /// @notice XP and level math for TimeArena (#250, #265).
 library ArenaXp {
-    uint256 internal constant CHARM_MIN_WAD = 99e16;
-    uint256 internal constant CHARM_MAX_WAD = 10e18;
+    uint256 internal constant CHARM_MIN_WAD = ArenaCharmBounds.CHARM_MIN_WAD;
+    uint256 internal constant CHARM_MAX_WAD = ArenaCharmBounds.CHARM_MAX_WAD;
     uint256 internal constant MAX_LEVEL_UPS_PER_BUY = 5;
     /// @dev Player progression cap (#299); surplus XP at max level is discarded.
     uint256 internal constant MAX_PLAYER_LEVEL = 5;

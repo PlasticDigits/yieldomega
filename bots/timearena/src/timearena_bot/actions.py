@@ -12,7 +12,7 @@ from eth_account.signers.local import LocalAccount
 from web3 import Web3
 from web3.contract import Contract
 
-from timecurve_bot.referral_code import hash_referral_code, referral_code_from_env
+from timearena_bot.referral_code import hash_referral_code, referral_code_from_env
 
 
 def _tx_template(w3: Web3, account: LocalAccount) -> dict:
