@@ -1,29 +1,33 @@
 # Golden image finalize (yieldomega)
 
-You are finishing configuration of a **GCH agent VM golden image** for the YieldOmega EVM project. Bootstrap and **`bash scripts/e2e-anvil.sh`** have already run from `gch-cloud-setup.sh` (see `/home/agent/.gch/e2e-anvil.log` — must end with **`Done.`**).
+You are finishing configuration of a **GCH agent VM golden image** for the YieldOmega EVM project. Bootstrap scripts (`bootstrap-dev.sh`, `bootstrap-cloud-vm-toolchain.sh`, `bootstrap-cloud-postgres-native.sh`, `bootstrap-cloud-agent.sh`) have already run.
 
-Complete remaining verification and write the golden-image report. Use passwordless sudo as needed.
+Complete all verification below and write the golden-image report. Use passwordless sudo as needed.
 
 **Log first:** `mkdir -p /home/agent/.gch` and create or append **`/home/agent/.gch/golden-image-verify.log`**. Record **PASS/FAIL/SKIP** after each task. Do **not** end until the log exists with **`OVERALL:`**.
 
-**Do not run `bash scripts/e2e-anvil.sh` in this session.** The Cursor shell tool kills long foreground runs (~10 min, exit **143**). E2E is executed by setup, not the agent.
-
 ## Tasks
 
-1. **Anvil E2E gate (required)**
-   - Confirm `/home/agent/.gch/e2e-anvil.log` exists and ends with `Done.`
-   - Confirm `grep -q 'e2e-anvil.sh: PASS' /home/agent/.gch/golden-image-verify.log` (written by the script when `YIELDOMEGA_GOLDEN_IMAGE=1`)
-   - If either check fails, **stop** and report **OVERALL: FAIL** — admin must re-run setup E2E:
+1. **Anvil E2E (required — DO RUN)**
+   - **Run** the full orchestrator and capture output:
      ```bash
-     sudo -u agent env YIELDOMEGA_GOLDEN_IMAGE=1 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
-       bash -lc 'bash /home/agent/workspace/scripts/e2e-anvil.sh 2>&1 | tee /home/agent/.gch/e2e-anvil.log'
+     mkdir -p /home/agent/.gch
+     export PATH="$HOME/.foundry/bin:$PATH"
+     export YIELDOMEGA_GOLDEN_IMAGE=1
+     export PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64
+     cd /home/agent/workspace
+     unset KEY_EVM_1 KEY_EVM_2 KEY_EVM_3 ADDR_EVM_1 ADDR_EVM_2 ADDR_EVM_3 EVM_DEV_ADDRS \
+       VITE_TIME_ARENA_ADDRESS VITE_INDEXER_URL || true
+     bash scripts/e2e-anvil.sh 2>&1 | tee /home/agent/.gch/e2e-anvil.log
      ```
-     Do **not** attempt that re-run inside this agent session.
+   - What it does (see `docs/testing/e2e-anvil.md`): Anvil :8545 → `DeployDev` (+ Kumbaya fixtures) → `frontend/.env.production.local` → `npm run build` → `vite preview` :4173 → Playwright `e2e/anvil-arena-*.spec.ts` with mock wallet.
+   - **PASS** when the script prints **`Done.`** and exits **0**; append **`e2e-anvil.sh: PASS`** to the verify log.
+   - On failure, append **`e2e-anvil.sh: FAIL`** with last lines from `/home/agent/.gch/e2e-anvil.log` and continue other checks.
 
 2. **Rabby wallet extension**
    - `/opt/cursor/browser-extensions/rabby/manifest.json` present
    - Profile: `/opt/cursor/chrome-profile-rabby`
-   - If marker missing, import wallets (see `docs/testing/rabby-cloud-agent-qa.md`):
+   - If marker missing (`/opt/cursor/chrome-profile-rabby/.yieldomega-rabby-dev-wallets-ready`), import wallets:
      ```bash
      pkill -9 -f 'chrome-profile-rabby' 2>/dev/null || true
      rm -f /opt/cursor/chrome-profile-rabby/SingletonLock
@@ -38,11 +42,11 @@ Complete remaining verification and write the golden-image report. Use passwordl
 
 4. **Write report**
    - Append all results to `/home/agent/.gch/golden-image-verify.log`
-   - End with `OVERALL: PASS` only if e2e-anvil gate + Rabby smoke + postgres pass; else `OVERALL: FAIL` with blockers
-   - `test -f /home/agent/.gch/golden-image-verify.log && wc -l /home/agent/.gch/golden-image-verify.log`
+   - End with `OVERALL: PASS` only if **e2e-anvil.sh** + Rabby smoke + postgres pass; else `OVERALL: FAIL` with blockers
+   - Confirm: `test -f /home/agent/.gch/golden-image-verify.log && wc -l /home/agent/.gch/golden-image-verify.log`
 
 ## Constraints
 
-- **Mandatory log file** before exit.
+- **Mandatory log file** before exit — even on failure.
 - No pre-snapshot cleanup. No commits unless required to verify.
 - Docs: `AGENTS.md`, `docs/testing/e2e-anvil.md`, `docs/testing/rabby-cloud-agent-qa.md`

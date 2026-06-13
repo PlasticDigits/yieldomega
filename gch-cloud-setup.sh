@@ -197,25 +197,6 @@ if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
   }
 fi
 
-if [[ -f "${WORKSPACE}/scripts/e2e-anvil.sh" ]]; then
-  echo "==> Anvil E2E (required golden-image gate — runs outside Cursor agent; avoids shell-tool exit 143)"
-  mkdir -p "${AGENT_HOME}/.gch"
-  touch "${AGENT_HOME}/.gch/golden-image-verify.log"
-  chown "${AGENT_USER}:${AGENT_USER}" "${AGENT_HOME}/.gch/golden-image-verify.log"
-  _agent_sh env \
-    YIELDOMEGA_GOLDEN_IMAGE=1 \
-    PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 \
-    bash -lc "bash '${WORKSPACE}/scripts/e2e-anvil.sh' 2>&1 | tee '${AGENT_HOME}/.gch/e2e-anvil.log'"
-  if ! grep -q '^Done\.$' "${AGENT_HOME}/.gch/e2e-anvil.log"; then
-    echo "ERROR: e2e-anvil.sh did not complete successfully — see ${AGENT_HOME}/.gch/e2e-anvil.log" >&2
-    exit 1
-  fi
-  if ! grep -q 'e2e-anvil.sh: PASS' "${AGENT_HOME}/.gch/golden-image-verify.log"; then
-    echo "ERROR: golden-image verify log missing e2e-anvil PASS" >&2
-    exit 1
-  fi
-fi
-
 echo "==> Golden image finalize (Cursor agent)"
 if [[ ! -f "${FINALIZE_PROMPT}" ]]; then
   echo "ERROR: missing ${FINALIZE_PROMPT} in the project repo." >&2
