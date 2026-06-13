@@ -371,7 +371,7 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
             r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
                       timer_hard_reset, paid_with_cred, actual_seconds_added::text,
                       new_deadline::text, buy_index::text, log_index, pay_kind,
-                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
                FROM idx_arena_buy
                WHERE (
                    CASE WHEN block_timestamp IS NULL THEN 0 ELSE 1 END,
@@ -398,7 +398,7 @@ async fn arena_buys(State(state): State<AppState>, Query(p): Query<ListPageParam
             r#"SELECT buyer, charm_wad::text, doub_paid::text, block_number, tx_hash,
                       timer_hard_reset, paid_with_cred, actual_seconds_added::text,
                       new_deadline::text, buy_index::text, log_index, pay_kind,
-                      EXTRACT(EPOCH FROM block_timestamp)::text AS block_timestamp_sec
+                      FLOOR(EXTRACT(EPOCH FROM block_timestamp))::bigint::text AS block_timestamp_sec
                FROM idx_arena_buy
                ORDER BY block_timestamp DESC NULLS LAST, block_number DESC, log_index DESC
                LIMIT $1 OFFSET $2"#,
