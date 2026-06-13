@@ -27,6 +27,7 @@ Implementation: [`ArenaBuyRouting.sol`](src/arena/libraries/ArenaBuyRouting.sol)
 | Parameter | Default | Notes |
 |-----------|---------|-------|
 | `charmPriceWad` / `effectiveCharmPriceWad()` | **Epoch 0:** Kumbaya TWAP init ~**$1/CHARM** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); grows **+10%/day** until Last Buy hard reset re-anchors ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)); **DeployDev:** `1000e18` anchor | DOUB per 1e18 CHARM for `buy` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
+| `doubOwedForBuy(charmWad)` | **`view`** — same gross DOUB as immediate `buy` / `buyFor` ([#315](https://gitlab.com/PlasticDigits/yieldomega/-/issues/315)) | When Last Buy **remaining &lt; 780s** (cat 0 hard-reset band), samples TWAP/spot anchor **without** state write; else `charmWad × effectiveCharmPriceWad() / 1e18`. **`TimeArenaBuyRouter`** and integrators should use this for `exactOutput` sizing, not `effectiveCharmPriceWad()` alone. |
 | CHARM band | `99e16` – `10e18` | Fixed envelope; not bonding curve ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246)) |
 | Parameter | Cat 0 Last Buy | Cat 1 Time Booster | Cat 2 Defended Streak | Cat 3 WarBow | Notes |
 |-----------|----------------|--------------------|-----------------------|--------------|-------|
