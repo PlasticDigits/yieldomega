@@ -120,7 +120,7 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-PODIUM-DIVERGE`** | Per-category rolls reset one `podiumDeadline[cat]`; timers diverge across Streak / Booster / WarBow / Last Buy | `test_podium_timers_diverge_after_single_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-PODIUM-EPOCH-INDEP`** | `podiumEpoch[cat]` counters advance independently | `test_podium_epochs_independent_after_skewed_rolls` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
 | **`INV-TIME-ARENA-LAST-BUY-EPOCH`** | `lastBuyEpoch` bumps on Last Buy **hard reset** only (CHARM/CRED), not on other podium rolls | `test_timer_hard_reset_increments_epoch`, `test_last_buy_epoch_on_hard_reset_not_on_other_podium_roll` ([#247](https://gitlab.com/PlasticDigits/yieldomega/-/issues/247)) |
-| **`INV-TIME-ARENA-CRED-ACCRUE`** | DOUB buy adds **35 CRED** (18 dec) to epoch pool | `test_cred_accrue_on_doub_buy` |
+| **`INV-TIME-ARENA-CRED-ACCRUE`** | Each buy (DOUB or CRED) adds **35 CRED** (18 dec) to epoch pool | `test_cred_accrue_on_doub_buy`, `test_cred_accrue_on_cred_buy`, `test_buy_with_cred` ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)) |
 | **`INV-TIME-ARENA-CRED-CLAIM`** | `claimCred(epoch)` pro-rata by `epochCharmWad`; zeros weight; no double-claim | `test_cred_pro_rata_claim`, `test_cred_pro_rata_exact_1_2_split`, `test_claimCred_cannot_double_claim` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
 | **`INV-TIME-ARENA-CRED-BURN-BUY`** | `buyWithCred` burns **100 CRED** per 1e18 CHARM (`CRED_PER_CHARM_WAD`); same CHARM min/max band | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_charm_bounds` ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248), [#268](https://gitlab.com/PlasticDigits/yieldomega/-/issues/268)) · [detail §268](#timearena-cred-buy-gitlab-268) · `bash scripts/verify-cred-buy-anvil.sh` |
 | **`INV-PLAY-CRED-NON-TRANSFER`** | `PlayCred` mint/burn only; wallet transfer reverts | [`PlayCred.t.sol`](../../contracts/test/PlayCred.t.sol) ([#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248)) |
@@ -135,6 +135,11 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-TIME-ARENA-XP-GAS`** | Cached **`level`** + **`xpTowardNext`**; ≤5 level-ups/buy; no reset on epoch; O(1) views; matches `levelFromXp` after each buy | `ArenaXp.t.sol`, `TimeArena.t.sol::test_xp_*` ([#265](https://gitlab.com/PlasticDigits/yieldomega/-/issues/265)) · [manual QA §265](manual-qa-checklists.md#manual-qa-issue-265) · [detail §265](#timearena-xp-gas-gitlab-265) |
 | **`INV-TIME-ARENA-WARBOW-DOUB`** | WarBow spends are DOUB pulls (steal 1000 / guard 10000 / override 50000 / revenge 1000; flag claim 0) | `test_warbow_steal_pulls_doub`, `test_warbow_guard_pulls_doub`, `test_warbow_revenge_pulls_doub`, `test_warbow_steal_limit_override_pulls_doub`, `test_warbow_flag_claim_zero_doub` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
 | **`INV-TIME-ARENA-WARBOW-EPOCH-RESET`** | WarBow `rollPodiumEpoch` clears live BP (`warbowBpGeneration` bump) and podium; does **not** auto-pay (admin `finalizeWarbowPodium(epoch, …)` pays retained pool) | `test_warbow_epoch_roll_clears_battle_points`, `test_finalize_warbow_podium_pays_after_roll` ([#252](https://gitlab.com/PlasticDigits/yieldomega/-/issues/252)) |
+| **`INV-TIME-ARENA-PAUSE-MUTATING`** | `setPaused(true)` blocks `buy`, `buyWithCred`, `warbowSteal` / `warbowActivateGuard` / `warbowRevenge`, and `claimWarBowFlag` via `_requireLive` (`TimeArena: paused`); flag claim does **not** bypass pause | `test_pause_blocks_*` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) · [detail §316](#timearena-negative-tests-dry-gas-gitlab-316) |
+| **`INV-TIME-ARENA-WARBOW-REVERT-MATRIX`** | WarBow ingress reverts: steal band, daily cap (`steal limit`), revenge window, flag holder/silence, double finalize, bad victim/epoch | `test_warbow_*_reverts_*`, `test_finalize_warbow_podium_reverts_*` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
+| **`INV-TIME-ARENA-CHARM-BOUNDS-DRY`** | Single `ArenaCharmBounds` library supplies min/max WAD + `validate` for `TimeArena`, `ArenaXp`, `ArenaCharmPriceTwap` | `ArenaCharmBounds.sol`, `TimeArena.t.sol::test_buy_reverts_charm_*` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
+| **`INV-TIME-ARENA-BUY-ROUTING-GAS`** | Default `PodiumVaults` (all pool slots → `address(vaults)`) batches buy/top-up DOUB into **one** `safeTransfer` per routing call; per-tranche `PodiumEpochFunded` / `PodiumFunded` events unchanged; economics unchanged ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) | `TimeArena.sol::_routeDoubPrizeSplit`, `test_buy_routes_doub_split` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
+| **`INV-ERC20-123-NONSTANDARD`** | Fee-on-transfer DOUB reverts on buy, WarBow DOUB pulls, and `topUpPodiumPools` (`TimeArena: ERC20 parity`) | `NonStandardERC20.t.sol`, `TimeArena.t.sol::test_feeOnTransfer_buy_reverts_erc20Parity` ([#123](https://gitlab.com/PlasticDigits/yieldomega/-/issues/123), [#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
 | **`INV-TIME-ARENA-ALWAYS-LIVE`** | No sale-end or charm-redemption gates; only `paused` | `TimeArena.sol` + negative grep in arena contracts |
 | **`INV-REMOVAL-243-NO-LAUNCHPAD-LIFECYCLE`** | No retired v1 launchpad cores (`TimeCurve`, `LinearCharmPrice`), sale-end / charm-redemption / prize-distribution gates, or `/vesting` route; **`DoubPresaleVesting`** may deploy but is not wired through a sale lifecycle | `rg` clean in `contracts/src`; no `PresaleVestingPage`; `LaunchGate.tsx` routes; [`surfaceContent.ts`](../../frontend/src/lib/surfaceContent.ts) → `/arena` ([#243](https://gitlab.com/PlasticDigits/yieldomega/-/issues/243)) |
 | **`INV-FRONTEND-256-UNIFIED-ARENA`** | Unified **`/arena`**: single command-console surface; Last Buy hero primary; DOUB-primary pay toggles (DOUB/ETH/USDM/CRED); four podium cards with epoch + rankings; WarBow hero with onchain DOUB cost labels; BUY/AUDIT sub-nav only ([#256](https://gitlab.com/PlasticDigits/yieldomega/-/issues/256), [#291](https://gitlab.com/PlasticDigits/yieldomega/-/issues/291)) | `ArenaTimerChips.test.tsx`, [`arenaPayTokenOptions.ts`](../../frontend/src/lib/arenaPayTokenOptions.ts) (DOUB-primary labels), `arenaCommandConsoleStatic.test.ts`, `e2e/anvil-arena-01-mount.spec.ts`, `e2e/anvil-arena-*.spec.ts` · [arena-views § unified](../frontend/arena-views.md#unified-arena-page-gitlab-256) · [§291](../frontend/arena-views.md#arena-command-console-gitlab-291) |
@@ -152,7 +157,8 @@ Authoritative product rules: [`docs/product/time-arena.md`](../product/time-aren
 | **`INV-FRONTEND-262-DONATE-POOLS`** | AUDIT card disclosure + indexer empty/offline placeholders + write gate | `ArenaProtocolDonatePoolsSection.test.tsx`, `e2e/arena.spec.ts` |
 | **`INV-INDEXER-282-ARENA-BUYS-SECONDS`** | `GET /v1/arena/buys` items include **`actual_seconds_added`** (decimal string from `idx_arena_buy`; matches DB for `tx_hash`/`log_index`; not client-recomputed) | `integration_stage2.rs::api_arena_buys_actual_seconds_added_smoke`, `bash scripts/verify-wallet-profile-anvil.sh` ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)) |
 | **`INV-INDEXER-283-ARENA-BUYS-PARITY`** | `GET /v1/arena/buys` items include **`new_deadline`**, **`buy_index`**, **`log_index`**, **`block_timestamp`** (unix sec string or `null`; matches `idx_arena_buy` for `tx_hash`/`log_index`; not client-recomputed) | `integration_stage2.rs::api_arena_buys_actual_seconds_added_smoke`, `bash scripts/verify-wallet-profile-anvil.sh` ([#283](https://gitlab.com/PlasticDigits/yieldomega/-/issues/283)) |
-| **`INV-FRONTEND-258-WALLET-PROFILE`** | Participant **`AddressInline`** on live buy rows + podium winners opens profile modal (`onOpenProfile`); explorer link only inside modal; modal renders all stats sections from **`GET /v1/arena/wallet/{address}/stats`**; timer-extension chip needs **`actual_seconds_added`** on buy rows ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)); buy detail / React keys need full buy-row parity ([#283](https://gitlab.com/PlasticDigits/yieldomega/-/issues/283)) | `LiveBuyRow.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `ArenaSimplePodiumSection.test.tsx`, `WalletProfileModalSections.test.tsx`, `indexerApi.test.ts`, `bash scripts/verify-wallet-profile-anvil.sh` ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258)) · [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
+| **`INV-FRONTEND-258-WALLET-PROFILE`** | Participant **`AddressInline`** on live buy rows, podium winners, and WarBow steal-target rows opens profile modal (`onOpenProfile` / `onOpenWalletProfile`); explorer link only inside modal; modal renders all stats sections from **`GET /v1/arena/wallet/{address}/stats`**; timer-extension chip needs **`actual_seconds_added`** on buy rows ([#282](https://gitlab.com/PlasticDigits/yieldomega/-/issues/282)); buy detail / React keys need full buy-row parity ([#283](https://gitlab.com/PlasticDigits/yieldomega/-/issues/283)) | `LiveBuyRow.test.tsx`, `ArenaLiveBuysActivitySection.test.tsx`, `ArenaSimplePodiumSection.test.tsx`, `arenaSimplePlaySurface.test.ts`, `WalletProfileModalSections.test.tsx`, `indexerApi.test.ts`, `bash scripts/verify-wallet-profile-anvil.sh` ([#258](https://gitlab.com/PlasticDigits/yieldomega/-/issues/258), [#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) · [arena-views § wallet-profile](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
+| **`INV-FRONTEND-318-PLAY-SURFACE-COPY`** | Play route (`/`) has no user-visible `\bsale\b` framing (pre-launch + live); pre-open copy uses arena-live language from `arenaSimplePhase.ts`; buy/revert guard strings avoid sale wording on TimeArena paths ([#318](https://gitlab.com/PlasticDigits/yieldomega/-/issues/318)) | `arenaSimplePlaySurface.test.ts`, `revertMessage.test.ts`, `cd frontend && npm run typecheck && npm run lint && npm test` · [frontend-content-audit §318](frontend-content-audit.md) |
 | **`INV-INDEXER-278-LAST-BUY-EPOCH`** | `LastBuyEpochStarted` → `idx_arena_last_buy_epoch_started`; each `idx_arena_buy.last_buy_epoch` from ordered global head (not per-wallet `timer_hard_reset` window); wallet stats `epochs_participated` uses stored column | `last_buy_epoch_head.rs`, `persist.rs`, `integration_stage2.rs::last_buy_epoch_global_assignment_non_resetting_participant`, `bash scripts/verify-last-buy-epoch-anvil.sh` ([#278](https://gitlab.com/PlasticDigits/yieldomega/-/issues/278)) |
 | **`INV-INDEXER-267-VAULT-FUNDING`** | Buy-sourced **`PodiumEpochFunded`** (+ legacy top-up **`PodiumFunded`/`SeedFunded`**) → `idx_arena_vault_funding`; sum per `tx_hash` = `doub_paid` for DOUB buys; CRED buys have zero funding rows ([#300](https://gitlab.com/PlasticDigits/yieldomega/-/issues/300)) | `integration_stage2.rs` (`api_vault_funding_smoke`) · `bash scripts/verify-vault-funding-anvil.sh` |
 | **`INV-FRONTEND-264-ARENA-PAY-PAUSE`** | Arena routes gate writes on **`TimeArena.paused`** only (not `buyFeeRoutingEnabled`); DOUB direct **`buy`** + ETH/USDM **`TimeArenaBuyRouter.buyViaKumbaya`** when router set; env router mismatch fail-closed ([#264](https://gitlab.com/PlasticDigits/yieldomega/-/issues/264)) | `kumbayaRoutes.test.ts`, `arenaV2SaleSessionBridge.test.ts`, `e2e/anvil-arena-03-wallet-writes.spec.ts` (DOUB + ETH when Kumbaya env set) · see [§264](#arena-frontend-pay-pause-gitlab-264) |
@@ -310,12 +316,24 @@ Parent: [#248](https://gitlab.com/PlasticDigits/yieldomega/-/issues/248) (Play C
 |----|----------|-------------------|
 | **`INV-TIME-ARENA-CRED-BURN-SCALE`** | `credBurn = mulDiv(charmWad, CRED_PER_CHARM_WAD, WAD)`; reverts on zero burn / insufficient balance | `test_buy_with_cred`, `test_buyWithCred_10charm_burns_1000_cred`, `test_buyWithCred_min_charm_burns_scaled`, `test_buyWithCred_reverts_insufficient_cred` |
 | **`INV-TIME-ARENA-CRED-BURN-BOUNDS`** | Same **0.99–10** CHARM band as DOUB buys | `test_buyWithCred_reverts_charm_bounds` |
-| **`INV-TIME-ARENA-CRED-NO-POOL`** | CRED path accrues epoch CHARM weight only; **no** `epochCredPool` / DOUB routing | `test_buy_with_cred`, `test_cred_accrue_on_doub_buy` (contrast) |
+| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | CRED path accrues epoch CHARM weight **and** `epochCredPool += CRED_PER_BUY`; **no** DOUB routing | `test_cred_accrue_on_cred_buy`, `test_cred_pro_rata_mixed_doub_and_cred_buyers`, `test_cred_accrue_buyWithCred_at_epoch_boundary` ([#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311)) |
 | **`INV-TIME-ARENA-FIRST-BUY-SCHEDULE`** | `buyCount == 0` before increment → `epochFixedCredBonus[lastBuyEpoch+1] += 1100e18`; emits **`FirstBuyCredScheduled`** | `test_first_buy_doub_schedules_bonus`, `test_first_buy_cred_schedules_bonus_once`, `test_second_buy_no_additional_bonus`, `verify-cred-buy-anvil.sh` |
 | **`INV-TIME-ARENA-FIRST-BUY-EPOCH`** | Hard-reset in same tx uses **post-reset** `lastBuyEpoch + 1`; flag not reset on epoch roll | `test_first_buy_hard_reset_targets_post_epoch`, `test_first_buy_flag_survives_epoch_roll` |
 | **`INV-TIME-ARENA-FIRST-BUY-CLAIM`** | `pendingCred` / `claimCred` include bonus; bonus-only claim without CHARM weight; clears bonus on claim | `test_claim_cred_bonus_only_no_charm`, `test_claim_cred_pro_rata_plus_bonus`, `test_claimCred_reverts_active_epoch` |
 
-Frontend mirror: [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts) · `arenaCredBurn.test.ts`. UI pay path: [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269). Onboarding progression: [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299) · [detail §299](#arena-player-progression-gitlab-299).
+Frontend mirror: [`arenaCredBurn.ts`](../../frontend/src/lib/arenaCredBurn.ts) · `arenaCredBurn.test.ts`. UI pay path: [#269](https://gitlab.com/PlasticDigits/yieldomega/-/issues/269). Onboarding progression: [#299](https://gitlab.com/PlasticDigits/yieldomega/-/issues/299) · [detail §299](#arena-player-progression-gitlab-299). CRED pool parity: [#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311) · **`INV-TIME-ARENA-CRED-POOL-PARITY`**.
+
+<a id="timearena-cred-pool-parity-gitlab-311"></a>
+
+### TimeArena CRED pool parity (GitLab [#311](https://gitlab.com/PlasticDigits/yieldomega/-/issues/311))
+
+Parent gap analysis: [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309). **`buyWithCred`** mirrors DOUB buys for epoch economics: **`_accrueCharmAndCred`** with `codeHash = 0` (no referral mint). Supersedes **`INV-TIME-ARENA-CRED-NO-POOL`**. Onchain: [`TimeArena._buyCred`](../../contracts/src/arena/TimeArena.sol). Product: [arena-v2 § Play CRED](../product/arena-v2.md#play-cred--epoch-charm) · play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md). Anvil: `bash scripts/verify-cred-buy-anvil.sh`.
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-CRED-POOL-PARITY`** | Each `buyWithCred` adds **`CRED_PER_BUY`** (35e18) to `epochCredPool[lastBuyEpoch]`; CHARM weight unchanged vs prior CRED path | `test_cred_accrue_on_cred_buy`, `test_buy_with_cred` |
+| **`INV-TIME-ARENA-CRED-PRO-RATA-MIXED`** | Mixed DOUB/CRED buyers in one epoch split pool pro-rata by CHARM; CRED-only buyer cannot over-claim | `test_cred_pro_rata_mixed_doub_and_cred_buyers` |
+| **`INV-TIME-ARENA-CRED-EPOCH-BOUNDARY`** | Hard-reset `buyWithCred` credits **post-reset** epoch pool only | `test_cred_accrue_buyWithCred_at_epoch_boundary` |
 
 <a id="arena-player-progression-gitlab-299"></a>
 
@@ -404,11 +422,27 @@ Parent epic [#238](https://gitlab.com/PlasticDigits/yieldomega/-/issues/238). On
 | **`INV-TIME-ARENA-DOUB-PRICE`** | `buy(charmWad)` pulls **DOUB** = `charmWad × effectiveCharmPriceWad() / 1e18`; epoch anchor + growth ([#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)); **DeployDev / Anvil** default anchor **`1000e18`**; production epoch-0 init via **`INV-TIME-ARENA-CHARM-TWAP-INIT`** ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)) | `test_buy_routes_doub_split`, `testFuzz_buy_charmInBand_doubPullParity`, `TimeArenaEpochCharmPrice.t.sol` |
 | **`INV-TIME-ARENA-CHARM-TWAP-INIT`** | **MegaETH production** initial **`charmPriceWad`** from **Sir-parity Kumbaya V3 TWAP** (15m) on **DOUB/CL8Y (100)** + **CL8Y/WETH (100)** + **WETH/USDm (3000)** — reserve-asset bridge, **not** direct DOUB/WETH; **`charmPriceWad = floor(1e36 / doubUsdTwap)`** (~**$1** DOUB notional per 1 CHARM); spend band **`0.99×`–`10× charmPriceWad`**; **`ARENA_CHARM_PRICE_WAD`** override or fail-closed (no silent `1000e18` on 4326) ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)) | `ArenaCharmPriceTwap.t.sol`, `ArenaCharmPriceTwapFork.t.sol` (skip without `FORK_URL`), `DeployProductionCharmPrice.t.sol`, `bash scripts/compute-arena-charm-price-twap.sh`, `bash scripts/verify-arena-charm-twap.sh`, `DeployProduction.s.sol`, `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
 | **`INV-TIME-ARENA-SET-PRICE`** | Governance **`setCharmPriceWad`** (mutable, > 0) | `test_setCharmPriceWad_changes_doub_owed` |
-| **`INV-TIME-ARENA-CHARM-BAND`** | Fixed **0.99–10** CHARM (WAD) envelope | `test_buy_reverts_charm_*`, `testFuzz_buy_charmBelowMin_reverts`, `testFuzz_buy_charmAboveMax_reverts` |
+| **`INV-TIME-ARENA-CHARM-BAND`** | Fixed **0.99–10** CHARM (WAD) envelope via **`ArenaCharmBounds`** | `test_buy_reverts_charm_*`, `testFuzz_buy_charmBelowMin_reverts`, `testFuzz_buy_charmAboveMax_reverts`, `ArenaCharmBounds.sol` ([#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316)) |
 | **`INV-TIME-ARENA-COOLDOWN`** | Rolling per-wallet **`buyCooldownSec`** | `test_buy_reverts_on_cooldown` |
 | **`INV-TIME-ARENA-EPOCH-EVENT`** | **`LastBuyEpochStarted`** on hard reset | `test_emits_LastBuyEpochStarted_on_hard_reset` |
 
-Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246), [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). ERC-20 ingress: **`INV-ERC20-123`** below · `test_feeOnTransfer_buy_reverts_erc20Parity`.
+Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](https://gitlab.com/PlasticDigits/yieldomega/-/issues/246), [#305](https://gitlab.com/PlasticDigits/yieldomega/-/issues/305)). ERC-20 ingress: **`INV-ERC20-123`** · **`INV-ERC20-123-NONSTANDARD`** below · `NonStandardERC20.t.sol`, `test_feeOnTransfer_buy_reverts_erc20Parity`.
+
+<a id="timearena-negative-tests-dry-gas-gitlab-316"></a>
+
+### TimeArena negative tests, DRY charm bounds, buy routing gas (GitLab [#316](https://gitlab.com/PlasticDigits/yieldomega/-/issues/316))
+
+Gap follow-up from [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309). Onchain: [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · [`ArenaCharmBounds.sol`](../../contracts/src/arena/libraries/ArenaCharmBounds.sol). Play skills: [`play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md), [`play-time-arena-warbow`](../../skills/play-time-arena-warbow/SKILL.md).
+
+| ID | Property | Automated evidence |
+|----|----------|-------------------|
+| **`INV-TIME-ARENA-PAUSE-MUTATING`** | Pause blocks all `_requireLive` mutators: `buy`, `buyWithCred`, WarBow steal/guard/revenge, `claimWarBowFlag` | `test_pause_blocks_*` |
+| **`INV-TIME-ARENA-WARBOW-REVERT-MATRIX`** | Exact onchain revert strings for steal band, daily cap, revenge expiry, flag holder/silence, double finalize, bad victim/epoch | `test_warbow_*_reverts_*`, `test_finalize_warbow_podium_reverts_*` |
+| **`INV-TIME-ARENA-CHARM-BOUNDS-DRY`** | `ArenaCharmBounds.validate` is the single charm envelope for ingress + XP + TWAP spend band | `ArenaCharmBounds.sol`, `ArenaXp.sol`, `ArenaCharmPriceTwap.sol` |
+| **`INV-TIME-ARENA-BUY-ROUTING-GAS`** | When every `PodiumVaults` pool slot resolves to `address(vaults)`, one ERC-20 transfer per buy/top-up; tranche events unchanged | `TimeArena.sol::_routeDoubPrizeSplit`, `test_buy_routes_doub_split` |
+| **`INV-ERC20-123-NONSTANDARD`** | Fee-on-transfer token fails `_pullDoubExact` on buy, WarBow DOUB spend, and podium top-up | `NonStandardERC20.t.sol` |
+
+Verify: `cd contracts && forge test --match-contract "TimeArenaTest|NonStandardERC20Test" -vv` · full suite `cd contracts && forge test` (skip known `doub.csv` fork failures without gitignored CSV).
 
 <a id="timearena-epoch-charm-price-gitlab-305"></a>
 
@@ -420,6 +454,19 @@ Fuzz parity (DOUB pull + charm bounds): `TimeArena.t.sol::testFuzz_*` ([#246](ht
 | **`INV-TIME-ARENA-EPOCH-CHARM-GROWTH-MATH`** | **`effectiveCharmPriceWad()`** ≈ anchor × 1.1^(elapsed days); monotonic within epoch | `TimeArenaEpochCharmPrice.t.sol::test_effectiveCharmPriceWad_grows_10pct_per_day` |
 | **`INV-TIME-ARENA-INDEXER-EPOCH-PRICE`** | **`GET /v1/arena/timers`** exposes effective + anchor fields; **`GET /v1/arena/last-buy-epoch-pricing`** lists epoch anchors | `integration_stage2.rs`, `chain_timer.rs` |
 | **`INV-TIME-ARENA-FRONTEND-EFFECTIVE-PRICE`** | Buy sizing / Kumbaya quoter read **`effectiveCharmPriceWad`** (indexer-first via `charm_price_wad`) | `arenaV2SaleSessionBridge.test.ts`, `timeArenaBuySubmitSizing.test.ts` |
+
+<a id="timearena-doub-owed-preview-gitlab-315"></a>
+
+### TimeArena `doubOwedForBuy` preview (GitLab [#315](https://gitlab.com/PlasticDigits/yieldomega/-/issues/315))
+
+Onchain: [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) · router: [`TimeArenaBuyRouter.sol`](../../contracts/src/arena/TimeArenaBuyRouter.sol). Integrator: [kumbaya.md § doubOwedForBuy](../integrations/kumbaya.md). Play skill: [`skills/play-time-arena-doub`](../../skills/play-time-arena-doub/SKILL.md).
+
+| ID | Rule | Verify |
+|----|------|--------|
+| **`INV-TIME-ARENA-DOUB-OWED-PREVIEW`** | **`doubOwedForBuy(charmWad)`** is **`view`** / **`eth_call`**-safe; equals immediate **`buy`** DOUB pull within epoch and at Last Buy hard-reset boundary (samples TWAP/spot anchor without state write) | `TimeArenaEpochCharmPrice.t.sol::test_doubOwedForBuy_matches_buy_within_epoch`, `test_doubOwedForBuy_matches_buy_at_hard_reset_boundary` |
+| **`INV-TIME-ARENA-DOUB-OWED-ROUTER`** | **`TimeArenaBuyRouter.buyViaKumbaya`** sizes **`exactOutput`** from **`doubOwedForBuy`**, not **`effectiveCharmPriceWad`** alone | `TimeArenaBuyRouter.t.sol`, `VerifyTimeArenaBuyRouterAnvil.t.sol` |
+
+**TWAP manipulation:** hard-reset anchor uses **15-minute** V3 TWAP on production ([#303](https://gitlab.com/PlasticDigits/yieldomega/-/issues/303)); same-block spot sandwich cannot reduce DOUB owed below the sampled anchor for that transaction.
 
 <a id="arena-charm-twap-init-gitlab-303"></a>
 
@@ -494,7 +541,7 @@ Onchain notifications: **`PodiumEpochFunded`** on each DOUB **`buy`** ([#300](ht
 | ID | Property | Automated evidence |
 |----|----------|-------------------|
 | **`INV-ARENA-PRIZE-ROUTING-300-ZERO-ADMIN`** | DOUB **`buy`** sends **0%** to any admin fee sink; **`AdminSellVault`** not deployed ([#314](https://gitlab.com/PlasticDigits/yieldomega/-/issues/314)) | `TimeArena.t.sol::test_buy_routes_doub_split` |
-| **`INV-ARENA-PRIZE-ROUTING-300-25PCT`** | Each of 4 categories receives **25%** of buy (± remainder → Time Booster) | `ArenaPrizeRouting.t.sol`, `testFuzz_splitBuy_no_dust` |
+| **`INV-ARENA-PRIZE-ROUTING-300-25PCT`** | Each of 4 categories receives **25%** of buy (± remainder → Last Buy) | `ArenaPrizeRouting.t.sol`, `testFuzz_splitBuy_no_dust`, `testFuzz_epoch_split_per_category_bps` ([#313](https://gitlab.com/PlasticDigits/yieldomega/-/issues/313)) |
 | **`INV-ARENA-PRIZE-ROUTING-300-702010`** | Per category: **70% / 20% / 10%** → `podiumEpoch[cat]`, `+1`, `+2` | `test_buy_routes_epoch_tranches_worked_example`, `testFuzz_epoch_split_per_category_bps` |
 | **`INV-ARENA-PRIZE-ROUTING-300-ROLL`** | `rollPodiumEpoch` pays active 4∶2∶1 and **`rollEpochTranches`** promotes seed/future | `test_roll_promotes_epoch_tranches_and_pays_active`, `test_finalize_warbow_podium_pays_after_roll` |
 | **`INV-ARENA-PRIZE-ROUTING-300-TOPUP`** | **`topUpPodiumPools`** unchanged (10:7.5 active:seed, 0% admin) | `TimeArena.t.sol::test_topUpPodiumPools_*` ([#261](https://gitlab.com/PlasticDigits/yieldomega/-/issues/261)) |
@@ -538,6 +585,42 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 ### Indexer emitted-event coverage (GitLab [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112))
 
 **INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** and **DoubPresaleVesting** events remain first-class when deployed.
+
+<a id="indexer-timearena-events-gitlab-317"></a>
+
+#### TimeArena event completeness (GitLab [#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317))
+
+Follow-up to [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) / [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309). Every **`TimeArena`** log topic in [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) maps to decode + persist + reorg rollback:
+
+| Event | `DecodedEvent` | Postgres table |
+|-------|----------------|----------------|
+| `ArenaStarted` | `ArenaStarted` | `idx_arena_started` |
+| `LastBuyEpochStarted` | `ArenaLastBuyEpochStarted` | `idx_arena_last_buy_epoch_started` |
+| `LastBuyEpochCharmAnchored` | `ArenaLastBuyEpochCharmAnchored` | `idx_arena_last_buy_epoch_started` (anchor columns) |
+| `Buy` | `ArenaBuy` | `idx_arena_buy` |
+| `ReferralCredApplied` | `ArenaReferralCred` | `idx_arena_referral_cred` |
+| `CredClaimed` | `ArenaCredClaimed` | `idx_play_cred_claim` |
+| `FirstBuyCredScheduled` | `ArenaFirstBuyCredScheduled` | `idx_arena_first_buy_cred_scheduled` |
+| `XpGained` | `ArenaXpGained` | `idx_player_xp` |
+| `LevelUp` | `ArenaLevelUp` | `idx_arena_level_up` |
+| `FeatureUnlocked` | `ArenaFeatureUnlocked` | `idx_arena_feature_unlocked` |
+| `PausedSet` | `ArenaPausedSet` | `idx_arena_paused_set` |
+| `PodiumEpochRolled` | `ArenaPodiumEpochRolled` | `idx_arena_podium_epoch` |
+| `WarBowSteal` / `Guard` / `Revenge` | `ArenaWarbow*` | `idx_arena_warbow_*` |
+| `WarBowFlagClaimed` | `ArenaWarbowFlagClaimed` | `idx_arena_warbow_flag_claimed` |
+| `WarbowPodiumFinalized` | `ArenaWarbowPodiumFinalized` | `idx_arena_warbow_podium_finalized` |
+| `PodiumPoolsToppedUp` | `ArenaPodiumPoolTopUp` | `idx_arena_podium_pool_top_up` |
+| `ReferralApplied` | `ArenaReferralApplied` | `idx_arena_referral_applied` |
+
+Vault **`PodiumFunded` / `SeedFunded` / `PodiumEpochFunded` / `AdminVaultFunded`** decode from registry contracts into **`idx_arena_vault_funding`**. Derived **`idx_warbow_epoch_score`** and **`idx_arena_podium_live`** rows come from post-log **`eth_call`** side-effects in the same block transaction — failures **abort** the block ingest ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317); **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`**).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-317-TIMEARENA-EVENTS`** | All six previously missing events persist dedicated `idx_*` rows | [`integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after`](../../indexer/tests/integration_stage2.rs) |
+| **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`** | WarBow BP / live podium snapshot RPC errors roll back the block tx (no silent stale derived tables) | [`ingestion.rs`](../../indexer/src/ingestion.rs) · [indexer design §317](../indexer/design.md#ingest-side-effects-gitlab-317) |
+| **`INV-INDEXER-317-REORG`** | `rollback_after` clears new `idx_*` tables | `integration_stage2.rs` rollback assertions |
+
+Vault events and **`ReferralCodeRegistered`** remain per the table above and [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267).
 
 <a id="indexer-transactional-block-ingestion-gitlab-140"></a>
 
@@ -684,6 +767,18 @@ Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-r
 | **`INV-INDEXER-306-STATUS-METRICS`** | **`GET /v1/status`** (schema **≥ 2.11.0**) exposes **`rpc_metrics`** with **`calls_per_min_1m`**, **`peak_calls_10s`**, **`by_method`**, **`by_caller`** after warm-up | `bash scripts/verify-indexer-rpc-metrics.sh` · [`api.rs`](../../indexer/src/api.rs) · [`rpc_metrics.rs`](../../indexer/src/rpc_metrics.rs) |
 | **`INV-INDEXER-306-BENCHMARK-HARNESS`** | Reproducible localnet scenario script (idle, catch-up, active arena) samples status metrics | `bash scripts/benchmark-indexer-rpc-anvil.sh` · [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
 | **`INV-INDEXER-306-NO-REGRESSION`** | Ingestion liveness ([#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)) and arena head APIs ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) unchanged | `bash scripts/verify-podium-live-anvil.sh` · `cd indexer && cargo test` |
+
+<a id="indexer-adaptive-chain-timer-poll-gitlab-308"></a>
+
+### Indexer adaptive chain-timer poll spacing (GitLab [#308](https://gitlab.com/PlasticDigits/yieldomega/-/issues/308))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-308-ADAPTIVE-POLL`** | Chain-timer uses **1s** fast polls when `read_block_number`, `last_buy_epoch`, `podium_epochs`, or onchain deadlines change, or wall-clock is within **`CHAIN_TIMER_DEADLINE_PROXIMITY_SEC`** of any deadline; otherwise **`CHAIN_TIMER_IDLE_POLL_MS`** (default **3000**, max **3000**) with **1-call** `eth_blockNumber` short-circuit when the head block is unchanged | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · [`chain_timer.rs`](../../indexer/src/chain_timer.rs) · `cd indexer && cargo test chain_timer_poll` |
+| **`INV-INDEXER-308-FAILURE-BACKOFF`** | `RpcPollHealth` failure / HTTP **429** backoff tiers unchanged on poll errors (`chain_timer_sleep_after_cycle` delegates to `backoff_sleep` when poll fails or streak ≥ threshold) | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · [`rpc_poll_health.rs`](../../indexer/src/rpc_poll_health.rs) |
+| **`INV-INDEXER-308-TIMER-FRESHNESS`** | Idle spacing capped at **3s** so `GET /v1/arena/timers` `polled_at_ms` stays within operator SLO when RPC healthy | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · `bash scripts/benchmark-indexer-rpc-anvil.sh` |
+
+Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) · parent [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306).
 
 Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
 

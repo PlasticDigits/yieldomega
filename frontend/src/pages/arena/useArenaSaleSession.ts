@@ -1407,7 +1407,7 @@ export function useArenaSaleSession(
       return;
     }
     if (!address || !tc || !acceptedAsset) {
-      setBuyError("Connect a wallet and wait for sale state (indexer or contract reads).");
+      setBuyError("Connect a wallet and wait for arena state (indexer or contract reads).");
       return;
     }
     if (arenaPaused === true) {
