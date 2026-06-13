@@ -27,6 +27,7 @@ type Props = {
   phase: SaleSessionPhase;
   playerLevel?: bigint | number;
   onFeatureHelp?: (feature: ArenaFeatureKey) => void;
+  onOpenWalletProfile?: (address: string) => void;
   warbowTargets?: readonly WarbowTarget[];
   /** Indexer-sourced viewer BP when `VITE_INDEXER_URL` is set ([#301](https://gitlab.com/PlasticDigits/yieldomega/-/issues/301)). */
   indexerViewerBattlePoints?: bigint;
@@ -71,6 +72,7 @@ export function ArenaWarbowHeroPanel({
   phase,
   playerLevel,
   onFeatureHelp,
+  onOpenWalletProfile,
   warbowTargets = [],
   indexerViewerBattlePoints,
   indexerWarbowHead,
@@ -226,6 +228,7 @@ export function ArenaWarbowHeroPanel({
                         tailHexDigits={6}
                         size={18}
                         className="warbow-target-row__identity"
+                        onOpenProfile={onOpenWalletProfile}
                       />
                       <span className="warbow-target-row__meta">
                         {target.source === "podium" && target.rank ? `#${target.rank} WarBow` : "Recent buyer"}
@@ -249,7 +252,19 @@ export function ArenaWarbowHeroPanel({
                 <StatusMessage variant="error">{w.stealVictimFormatError}</StatusMessage>
               )}
               <p className="warbow-target-selection">
-                Target: <strong>{w.stealVictim ? <PlayerIdentity address={w.stealVictim} tailHexDigits={6} size={16} /> : "Select a rival"}</strong>
+                Target:{" "}
+                <strong>
+                  {w.stealVictim ? (
+                    <PlayerIdentity
+                      address={w.stealVictim}
+                      tailHexDigits={6}
+                      size={16}
+                      onOpenProfile={onOpenWalletProfile}
+                    />
+                  ) : (
+                    "Select a rival"
+                  )}
+                </strong>
               </p>
               <label className="warbow-hero-actions__checkbox">
                 <input
