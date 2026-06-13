@@ -66,7 +66,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 | Pay modes | DOUB-primary; ETH / USDM / Play CRED when configured | [arena-views pay modes](../frontend/arena-views.md#pay-modes) |
 | CSS naming | `arena-*` classes and testids only (no `timecurve-*`) | `bash scripts/check-arena-naming.sh` |
 
-**E2E:** `e2e/arena.spec.ts`, `e2e/anvil-arena-*.spec.ts` · **Manual:** [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291), [§292](manual-qa-checklists.md#manual-qa-issue-292)
+**E2E:** `e2e/arena.spec.ts`, `e2e/anvil-arena-*.spec.ts` · **Unit:** `ArenaSimplePage.test.tsx`, `ArenaWarbowHeroPanel.test.tsx`, `ArenaCharmCredCard.test.tsx`, `arenaSaleSessionBuyPreflight.test.ts` ([#321](https://gitlab.com/PlasticDigits/yieldomega/-/issues/321)) · **Manual:** [manual QA §291](manual-qa-checklists.md#manual-qa-issue-291), [§292](manual-qa-checklists.md#manual-qa-issue-292)
 
 ---
 
@@ -156,7 +156,7 @@ Canonical **product mechanics** live in [`time-arena.md`](../product/time-arena.
 
 | Check | Pass criteria | Doc |
 |-------|---------------|-----|
-| Modals | Dark glass; compact headings; explorer links secondary | [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) |
+| Modals | Dark glass; compact headings; explorer links secondary; `WalletProfileModal.test.tsx` covers close label + escaped addresses ([#321](https://gitlab.com/PlasticDigits/yieldomega/-/issues/321)) | [design §294](../frontend/design.md#shared-frontend-primitives-gitlab-294) |
 | Wallet profile | Participant `AddressInline` → `WalletProfileModal` | [arena-views §258](../frontend/arena-views.md#wallet-profile-modal-gitlab-258) |
 | Chain gate | `ChainMismatchWriteBarrier` blocks writes; switch-chain reachable | [wallet-connection §95](../frontend/wallet-connection.md#wrong-network-write-gating-issue-95) |
 | Amounts | Human-readable only; no raw wei/WAD in product UI | [design amount display](../frontend/design.md#amount-display-amountdisplay) |

@@ -796,6 +796,15 @@ export function ArenaSimplePage({
     <motion.button
       type="button"
       data-testid="arena-simple-buy-charm"
+      aria-label={
+        buyOnCooldown
+          ? `Buy CHARM — wallet cooldown ${formatMmSsCountdown(session.walletCooldownRemainingSec)} remaining`
+          : session.buySubmitBusy || session.isWriting
+            ? "Buy CHARM — processing transaction"
+            : payUsesKumbaya && session.swapQuoteLoading
+              ? "Buy CHARM — refreshing pay token quote"
+              : `Buy CHARM with ${primarySpendAssetLabel}`
+      }
       className={[
         "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
         buyOnCooldown ? "arena-simple__cta--cooldown" : "",
