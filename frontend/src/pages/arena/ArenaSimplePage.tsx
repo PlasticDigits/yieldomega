@@ -803,7 +803,7 @@ export function ArenaSimplePage({
             ? "Buy CHARM — processing transaction"
             : payUsesKumbaya && session.swapQuoteLoading
               ? "Buy CHARM — refreshing pay token quote"
-              : `Buy CHARM with ${primarySpendAssetLabel}`
+              : `Buy CHARM with ${paySpendSuffix}`
       }
       className={[
         "btn-primary btn-primary--priority arena-simple__cta arena-simple__cta--arcade",
