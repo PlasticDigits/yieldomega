@@ -24,6 +24,8 @@ MD_OUT="${OUT_DIR}/rpc-benchmark-${STAMP}.md"
 
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
 
 die() {
   echo "benchmark-indexer-rpc-anvil: $*" >&2
@@ -88,6 +90,8 @@ start_anvil_and_deploy() {
     cast block-number --rpc-url "${RPC}" >/dev/null 2>&1 && break
     sleep 0.5
   done
+
+  yieldomega_ensure_anvil_multicall3 "${RPC}" || die "Multicall3 deploy failed (chain-timer batching #307)"
 
   export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
   ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev
