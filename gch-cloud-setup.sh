@@ -166,14 +166,11 @@ if [[ -f "${WORKSPACE}/scripts/bootstrap-dev.sh" ]]; then
 fi
 
 if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-vm-toolchain.sh" ]]; then
-  echo "==> Project toolchain (Foundry/Anvil, Rust, glab, Rabby extension, Docker)"
+  echo "==> Project toolchain (Foundry/Anvil, Rust, glab, Rabby, Docker, Postgres)"
   _agent_sh bash -lc "bash '${WORKSPACE}/scripts/bootstrap-cloud-vm-toolchain.sh'"
 fi
 
-if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-postgres-native.sh" ]]; then
-  echo "==> Native Postgres (indexer)"
-  bash "${WORKSPACE}/scripts/bootstrap-cloud-postgres-native.sh"
-fi
+# Postgres is started by bootstrap-cloud-vm-toolchain.sh (do not run bootstrap-cloud-postgres-native.sh again as root — psql defaults to 5432 after port is moved to 5433).
 
 if [[ -f "${WORKSPACE}/scripts/bootstrap-cloud-agent.sh" ]]; then
   echo "==> Playwright + Rabby dev wallets"

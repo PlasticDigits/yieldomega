@@ -83,8 +83,13 @@ configure_listen_port() {
   if ! need_sudo; then
     return 0
   fi
-  local conf
-  conf="$(run_as_root -u postgres psql -tAc 'SHOW config_file;' 2>/dev/null | tr -d '[:space:]' || true)"
+  local conf="/etc/postgresql/${PG_VERSION}/${PG_CLUSTER_NAME}/postgresql.conf"
+  if [[ ! -f "${conf}" ]]; then
+    conf="$(run_as_root -u postgres psql -p "${PG_HOST_PORT}" -tAc 'SHOW config_file;' 2>/dev/null | tr -d '[:space:]' || true)"
+  fi
+  if [[ -z "${conf}" || ! -f "${conf}" ]]; then
+    conf="$(run_as_root -u postgres psql -tAc 'SHOW config_file;' 2>/dev/null | tr -d '[:space:]' || true)"
+  fi
   if [[ -z "${conf}" || ! -f "${conf}" ]]; then
     echo "bootstrap-cloud-postgres-native: could not resolve postgresql.conf." >&2
     return 1
