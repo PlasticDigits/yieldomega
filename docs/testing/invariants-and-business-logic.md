@@ -268,7 +268,7 @@ without replacing the established Yield Omega cast.
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh`; `cd frontend && npm run typecheck && npm run lint && npm test`; visual/browser pass of Home, countdown, `/arena`, `/arena/protocol`, and Referrals |
+| **`INV-FRONTEND-297-ART-MOTION-AUDIO`** | (see summary row above) | `bash scripts/check-art-readme-consumers.sh`; `cd frontend && npm run typecheck && npm run lint && npm test`; visual/browser pass of Home, countdown, **`/`**, `/arena/protocol`, and Referrals |
 
 <a id="frontend-ux-docs-e2e-gitlab-298"></a>
 
@@ -278,7 +278,20 @@ Follow-up to the cyberminimalist shell ([#290](https://gitlab.com/PlasticDigits/
 
 | ID | Property | Evidence |
 |----|----------|----------|
-| **`INV-FRONTEND-298-UX-DOCS-E2E`** | (see summary row above) | [frontend-content-audit.md](frontend-content-audit.md) · `cd frontend && npm run typecheck && npm run lint && npm test` · `bash scripts/check-arena-naming.sh` · `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts`; Rabby/Chromium visual pass per [manual QA §298](manual-qa-checklists.md#manual-qa-issue-298) |
+| **`INV-FRONTEND-298-UX-DOCS-E2E`** | (see summary row above) | [frontend-content-audit.md](frontend-content-audit.md) · `bash scripts/check-doc-anchors.sh` · `cd frontend && npm run typecheck && npm run lint && npm test` · `bash scripts/check-arena-naming.sh` · `cd frontend && CI=1 npm run test:e2e -- --workers=5 e2e/arena.spec.ts e2e/home.spec.ts e2e/navigation.spec.ts e2e/referrals-surface.spec.ts e2e/footer-site-links.spec.ts e2e/launch-countdown.spec.ts e2e/surface-shells.spec.ts e2e/referral-path.spec.ts`; Rabby/Chromium visual pass per [manual QA §298](manual-qa-checklists.md#manual-qa-issue-298) |
+
+<a id="docs-product-ui-reconcile-gitlab-320"></a>
+
+### Product / UI / ops doc reconcile (GitLab [#320](https://gitlab.com/PlasticDigits/yieldomega/-/issues/320))
+
+Follow-up to gap analysis [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309): product specs, content audit, pause ops, indexer design, and play skills agree with shipped `TimeArena` constants, `LaunchGate` routes, and indexer HTTP.
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-DOCS-320-PRODUCT-CONSTANTS`** | `MAX_PLAYER_LEVEL = 5`, `FIRST_BUY_CRED_BONUS = 1100e18`, `effectiveCharmPriceWad()` for DOUB buys documented consistently in [time-arena.md](../product/time-arena.md) and [arena-v2.md](../product/arena-v2.md) | Manual diff vs [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol), [`ArenaXp.sol`](../../contracts/src/arena/libraries/ArenaXp.sol) |
+| **`INV-DOCS-320-ROUTE-IA`** | Play **`/`**, AUDIT **`/arena/protocol`**, legacy **`/arena`** / **`/timecurve`** → **`/`**; no removed `ArenaSubnav` / decision row in audit docs | [frontend-content-audit.md](frontend-content-audit.md), [`LaunchGate.tsx`](../../frontend/src/app/LaunchGate.tsx), `frontendContentAudit.test.ts`, `e2e/navigation.spec.ts` |
+| **`INV-DOCS-320-PAUSE-OPS`** | Ops docs: **`claimWarBowFlag`** gated by **`paused`** via **`_requireLive()`** | [pause-and-final-signoff.md](../operations/pause-and-final-signoff.md), [final-signoff-and-value-movement.md](../operations/final-signoff-and-value-movement.md) |
+| **`INV-DOCS-320-INDEXER-ROUTES`** | [design.md](../indexer/design.md) lists **`GET /v1/arena/last-buy-epoch-pricing`**, **`GET /v1/arena/warbow/latest-bp`**, and **`limit`/`offset`** pagination (not cursor) | [`api_arena.rs`](../../indexer/src/api_arena.rs) |
 
 <a id="frontend-arena-css-naming-gitlab-280"></a>
 
