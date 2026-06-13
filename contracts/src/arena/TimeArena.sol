@@ -8,6 +8,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {TimeMath} from "../libraries/TimeMath.sol";
 import {ArenaBuyRouting} from "./libraries/ArenaBuyRouting.sol";
 import {ArenaPodiumSettlement} from "./libraries/ArenaPodiumSettlement.sol";
@@ -24,6 +25,7 @@ import {IPlayCred} from "../interfaces/IPlayCred.sol";
 /// @title TimeArena — persistent PvP timer arena (Arena v2)
 contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     uint8 public constant CAT_LAST_BUYERS = 0;
     uint8 public constant CAT_TIME_BOOSTER = 1;
@@ -145,6 +147,8 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     /// @dev Cached progression (#265); 0 means level 1. Append-only for UUPS upgrades.
     mapping(address => uint256) internal _cachedLevel;
     mapping(address => uint256) public xpTowardNext;
+    /// @dev WarBow BP holders in the current generation; used to promote challengers after BP drains (#312).
+    EnumerableSet.AddressSet private _warbowBpHolders;
 
     event ArenaStarted(uint256 startTimestamp, uint256 initialDeadline);
     event LastBuyEpochStarted(uint256 indexed epoch, uint256 deadline);
@@ -919,8 +923,13 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
         Podium storage p = _podiums[cat];
         for (uint8 r; r < 3; ++r) {
             if (p.winners[r] == entrant) {
+                uint256 oldVal = p.values[r];
                 p.values[r] = value;
-                _sortPodium(cat);
+                if (cat == CAT_WARBOW && value < oldVal) {
+                    _recomputeWarbowPodium();
+                } else {
+                    _sortPodium(cat);
+                }
                 return;
             }
         }
@@ -980,6 +989,46 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
     function _clearAllBattlePoints() private {
         warbowBpGeneration += 1;
         _clearPodium(CAT_WARBOW);
+        _warbowBpHolders.clear();
+    }
+
+    /// @dev Full top-3 recompute after BP drain; incremental insert cannot promote off-podium challengers.
+    function _recomputeWarbowPodium() private {
+        address best1;
+        address best2;
+        address best3;
+        uint256 v1;
+        uint256 v2;
+        uint256 v3;
+        uint256 len = _warbowBpHolders.length();
+        for (uint256 i; i < len; ++i) {
+            address candidate = _warbowBpHolders.at(i);
+            uint256 v = _effectiveBattlePoints(candidate);
+            if (v == 0) continue;
+            if (v > v1 || (v == v1 && uint160(candidate) < uint160(best1))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = best1;
+                v2 = v1;
+                best1 = candidate;
+                v1 = v;
+            } else if (v > v2 || (v == v2 && uint160(candidate) < uint160(best2))) {
+                best3 = best2;
+                v3 = v2;
+                best2 = candidate;
+                v2 = v;
+            } else if (v > v3 || (v == v3 && uint160(candidate) < uint160(best3))) {
+                best3 = candidate;
+                v3 = v;
+            }
+        }
+        Podium storage p = _podiums[CAT_WARBOW];
+        p.winners[0] = best1;
+        p.winners[1] = best2;
+        p.winners[2] = best3;
+        p.values[0] = v1;
+        p.values[1] = v2;
+        p.values[2] = v3;
     }
 
     function _effectiveBattlePoints(address user) private view returns (uint256) {
@@ -993,6 +1042,7 @@ contract TimeArena is Initializable, OwnableUpgradeable, ReentrancyGuard, UUPSUp
             battlePointsGeneration[user] = warbowBpGeneration;
         }
         _battlePoints[user] += amt;
+        if (amt > 0) _warbowBpHolders.add(user);
     }
 
     function _subBattlePoints(address user, uint256 amt) private {

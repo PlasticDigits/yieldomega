@@ -1101,6 +1101,75 @@ contract TimeArenaTest is Test {
         assertEq(winners[2], bob);
     }
 
+    /// Security: BP drain must promote off-podium challengers (stale slot after in-place decrease).
+    function test_warbow_podium_promotes_challenger_after_bp_decrease() public {
+        address charlie = address(0xE0E0);
+        address eve = address(0xC0FFEE);
+        address stealer = address(0x57EA1);
+        for (uint256 i; i < 3; ++i) {
+            address p = i == 0 ? charlie : (i == 1 ? eve : stealer);
+            doub.mint(p, 1_000_000e18);
+            vm.prank(p);
+            doub.approve(address(arena), type(uint256).max);
+        }
+
+        _ensureLevel(alice, 4);
+        for (uint256 i; i < 5; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(alice);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(bob, 4);
+        for (uint256 i; i < 4; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(bob);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(charlie, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(charlie);
+            arena.buy(CHARM_MIN);
+        }
+
+        _warpPastBuyCooldown();
+        _ensureLevel(eve, 4);
+        for (uint256 i; i < 3; ++i) {
+            if (i > 0) _warpPastBuyCooldown();
+            vm.prank(eve);
+            arena.buy(CHARM_MIN);
+        }
+
+        assertEq(arena.battlePoints(charlie), arena.battlePoints(eve));
+        assertGt(uint160(eve), uint160(charlie), "eve loses tie-break to charlie");
+
+        (address[3] memory beforeSteal,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(beforeSteal[2], charlie, "charlie on podium before steal");
+        assertTrue(beforeSteal[0] != eve && beforeSteal[1] != eve, "eve off podium before steal");
+
+        _ensureLevel(stealer, 4);
+        _warpPastBuyCooldown();
+        vm.prank(stealer);
+        arena.buy(CHARM_MIN);
+
+        uint256 charlieBp = arena.battlePoints(charlie);
+        uint256 stealerBp = arena.battlePoints(stealer);
+        assertGe(charlieBp, 2 * stealerBp, "steal band lower");
+        assertLe(charlieBp, 10 * stealerBp, "steal band upper");
+
+        _warpPastBuyCooldown();
+        vm.prank(stealer);
+        arena.warbowSteal(charlie, false);
+
+        assertLt(arena.battlePoints(charlie), arena.battlePoints(eve));
+        (address[3] memory afterSteal,) = arena.podium(arena.CAT_WARBOW());
+        assertEq(afterSteal[2], eve, "eve promoted after charlie BP drain");
+    }
+
     /// GitLab #312: equal BP tie-break favors lower address.
     function test_warbow_tie_break_lower_address_wins() public {
         address low = address(0x100);
