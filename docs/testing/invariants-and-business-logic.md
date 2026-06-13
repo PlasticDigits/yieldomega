@@ -539,6 +539,42 @@ If the variable is **unset** locally, that test **returns immediately** (passes 
 
 **INV-INDEXER-112:** Solidity `event`s emitted by **deployed Arena v2** contracts in [`indexer/src/decoder.rs`](../../indexer/src/decoder.rs) must each map to a **`DecodedEvent` variant**, a Postgres **`idx_*` table**, and **`persist_decoded_log_conn`** / **`rollback_after`** coverage in [`reorg.rs`](../../indexer/src/reorg.rs). **ReferralRegistry** and **DoubPresaleVesting** events remain first-class when deployed.
 
+<a id="indexer-timearena-events-gitlab-317"></a>
+
+#### TimeArena event completeness (GitLab [#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317))
+
+Follow-up to [#112](https://gitlab.com/PlasticDigits/yieldomega/-/issues/112) / [#309](https://gitlab.com/PlasticDigits/yieldomega/-/issues/309). Every **`TimeArena`** log topic in [`TimeArena.sol`](../../contracts/src/arena/TimeArena.sol) maps to decode + persist + reorg rollback:
+
+| Event | `DecodedEvent` | Postgres table |
+|-------|----------------|----------------|
+| `ArenaStarted` | `ArenaStarted` | `idx_arena_started` |
+| `LastBuyEpochStarted` | `ArenaLastBuyEpochStarted` | `idx_arena_last_buy_epoch_started` |
+| `LastBuyEpochCharmAnchored` | `ArenaLastBuyEpochCharmAnchored` | `idx_arena_last_buy_epoch_started` (anchor columns) |
+| `Buy` | `ArenaBuy` | `idx_arena_buy` |
+| `ReferralCredApplied` | `ArenaReferralCred` | `idx_arena_referral_cred` |
+| `CredClaimed` | `ArenaCredClaimed` | `idx_play_cred_claim` |
+| `FirstBuyCredScheduled` | `ArenaFirstBuyCredScheduled` | `idx_arena_first_buy_cred_scheduled` |
+| `XpGained` | `ArenaXpGained` | `idx_player_xp` |
+| `LevelUp` | `ArenaLevelUp` | `idx_arena_level_up` |
+| `FeatureUnlocked` | `ArenaFeatureUnlocked` | `idx_arena_feature_unlocked` |
+| `PausedSet` | `ArenaPausedSet` | `idx_arena_paused_set` |
+| `PodiumEpochRolled` | `ArenaPodiumEpochRolled` | `idx_arena_podium_epoch` |
+| `WarBowSteal` / `Guard` / `Revenge` | `ArenaWarbow*` | `idx_arena_warbow_*` |
+| `WarBowFlagClaimed` | `ArenaWarbowFlagClaimed` | `idx_arena_warbow_flag_claimed` |
+| `WarbowPodiumFinalized` | `ArenaWarbowPodiumFinalized` | `idx_arena_warbow_podium_finalized` |
+| `PodiumPoolsToppedUp` | `ArenaPodiumPoolTopUp` | `idx_arena_podium_pool_top_up` |
+| `ReferralApplied` | `ArenaReferralApplied` | `idx_arena_referral_applied` |
+
+Vault **`PodiumFunded` / `SeedFunded` / `PodiumEpochFunded` / `AdminVaultFunded`** decode from registry contracts into **`idx_arena_vault_funding`**. Derived **`idx_warbow_epoch_score`** and **`idx_arena_podium_live`** rows come from post-log **`eth_call`** side-effects in the same block transaction — failures **abort** the block ingest ([#317](https://gitlab.com/PlasticDigits/yieldomega/-/issues/317); **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`**).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-317-TIMEARENA-EVENTS`** | All six previously missing events persist dedicated `idx_*` rows | [`integration_stage2.rs::postgres_stage2_persist_all_events_and_rollback_after`](../../indexer/tests/integration_stage2.rs) |
+| **`INV-INDEXER-317-INGEST-SIDE-EFFECTS`** | WarBow BP / live podium snapshot RPC errors roll back the block tx (no silent stale derived tables) | [`ingestion.rs`](../../indexer/src/ingestion.rs) · [indexer design §317](../indexer/design.md#ingest-side-effects-gitlab-317) |
+| **`INV-INDEXER-317-REORG`** | `rollback_after` clears new `idx_*` tables | `integration_stage2.rs` rollback assertions |
+
+Vault events and **`ReferralCodeRegistered`** remain per the table above and [#267](https://gitlab.com/PlasticDigits/yieldomega/-/issues/267).
+
 <a id="indexer-transactional-block-ingestion-gitlab-140"></a>
 
 ### Indexer transactional per-block ingestion (GitLab [#140](https://gitlab.com/PlasticDigits/yieldomega/-/issues/140))
