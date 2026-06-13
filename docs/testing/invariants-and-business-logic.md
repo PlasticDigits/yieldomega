@@ -685,6 +685,18 @@ Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-r
 | **`INV-INDEXER-306-BENCHMARK-HARNESS`** | Reproducible localnet scenario script (idle, catch-up, active arena) samples status metrics | `bash scripts/benchmark-indexer-rpc-anvil.sh` · [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) |
 | **`INV-INDEXER-306-NO-REGRESSION`** | Ingestion liveness ([#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168)) and arena head APIs ([#254](https://gitlab.com/PlasticDigits/yieldomega/-/issues/254), [#273](https://gitlab.com/PlasticDigits/yieldomega/-/issues/273)) unchanged | `bash scripts/verify-podium-live-anvil.sh` · `cd indexer && cargo test` |
 
+<a id="indexer-adaptive-chain-timer-poll-gitlab-308"></a>
+
+### Indexer adaptive chain-timer poll spacing (GitLab [#308](https://gitlab.com/PlasticDigits/yieldomega/-/issues/308))
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-308-ADAPTIVE-POLL`** | Chain-timer uses **1s** fast polls when `read_block_number`, `last_buy_epoch`, `podium_epochs`, or onchain deadlines change, or wall-clock is within **`CHAIN_TIMER_DEADLINE_PROXIMITY_SEC`** of any deadline; otherwise **`CHAIN_TIMER_IDLE_POLL_MS`** (default **3000**, max **3000**) with **1-call** `eth_blockNumber` short-circuit when the head block is unchanged | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · [`chain_timer.rs`](../../indexer/src/chain_timer.rs) · `cd indexer && cargo test chain_timer_poll` |
+| **`INV-INDEXER-308-FAILURE-BACKOFF`** | `RpcPollHealth` failure / HTTP **429** backoff tiers unchanged on poll errors (`chain_timer_sleep_after_cycle` delegates to `backoff_sleep` when poll fails or streak ≥ threshold) | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · [`rpc_poll_health.rs`](../../indexer/src/rpc_poll_health.rs) |
+| **`INV-INDEXER-308-TIMER-FRESHNESS`** | Idle spacing capped at **3s** so `GET /v1/arena/timers` `polled_at_ms` stays within operator SLO when RPC healthy | [`chain_timer_poll.rs`](../../indexer/src/chain_timer_poll.rs) · `bash scripts/benchmark-indexer-rpc-anvil.sh` |
+
+Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) · parent [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306).
+
 Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
 
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
