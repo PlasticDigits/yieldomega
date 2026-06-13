@@ -4,6 +4,8 @@ You are finishing configuration of a **GCH agent VM golden image** for the Yield
 
 Complete any remaining setup and verify everything works. Use passwordless sudo as needed (`sudo` without a password).
 
+**Log first:** Before any other task, run `mkdir -p /home/agent/.gch` and create `/home/agent/.gch/golden-image-verify.log` with a header line. **Append PASS/FAIL/SKIP after each task below** — do not wait until the end. If you are running out of time or the session may stop, write `OVERALL:` and exit only after the log file exists.
+
 ## Tasks
 
 1. **Rabby wallet extension**
@@ -41,7 +43,7 @@ Complete any remaining setup and verify everything works. Use passwordless sudo 
    - `agent about`
    - `glab --version`
    - `bash scripts/verify-cloud-postgres.sh` (indexer Postgres on port 5433)
-   - Project tests: `FOUNDRY_PROFILE=ci forge test` (contracts), `cd frontend && npm test` if documented
+   - Project tests (optional on builder — record SKIP if not run): `FOUNDRY_PROFILE=ci forge test` in `contracts/`. Five failures in `DoubAirdropMegaethFork` (missing `doub.csv`) and occasional `DevStackIntegration` env ordering are **known/expected** — note counts, do not debug at length.
 
 5. **Write report (required — do this even if earlier steps fail)**
    - **Always** create `/home/agent/.gch/golden-image-verify.log` before you finish — success or failure.
