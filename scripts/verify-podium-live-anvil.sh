@@ -16,6 +16,8 @@ PODIUM_CATS=(0 3 2 1)
 
 # shellcheck source=scripts/lib/anvil_deploy_dev.sh
 source "${ROOT}/scripts/lib/anvil_deploy_dev.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
 
 die() {
   echo "verify-podium-live-anvil: $*" >&2
@@ -94,6 +96,8 @@ for _ in $(seq 1 30); do
   sleep 0.5
 done
 cast block-number --rpc-url "${RPC}" >/dev/null
+
+yieldomega_ensure_anvil_multicall3 "${RPC}" || die "Multicall3 deploy failed (chain-timer batching #307)"
 
 export YIELDOMEGA_DEPLOY_NO_COOLDOWN=1
 ROOT="${ROOT}" RPC="${RPC}" DEPLOY_LOG="${DEPLOY_LOG}" yieldomega_anvil_deploy_dev

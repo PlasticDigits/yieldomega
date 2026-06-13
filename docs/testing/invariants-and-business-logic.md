@@ -687,6 +687,21 @@ Cross-links: [`docs/indexer/design.md` §237](../indexer/design.md#megaeth-wss-r
 
 Cross-links: [`docs/indexer/design.md` §306](../indexer/design.md#indexer-json-rpc-load-benchmark-gitlab-306) · play skill [`skills/play-active-time-arena`](../../skills/play-active-time-arena/SKILL.md).
 
+<a id="indexer-chain-timer-multicall-gitlab-307"></a>
+
+### Indexer chain-timer Multicall3 batching (GitLab [#307](https://gitlab.com/PlasticDigits/yieldomega/-/issues/307))
+
+Parent: [#306](https://gitlab.com/PlasticDigits/yieldomega/-/issues/306). Head poller: [`chain_timer.rs`](../../indexer/src/chain_timer.rs) · transport: [`multicall.rs`](../../indexer/src/multicall.rs).
+
+| ID | Property | Evidence |
+|----|----------|----------|
+| **`INV-INDEXER-307-MULTICALL-BATCH`** | `poll_once` batches timer/sale-head/podium reads via Multicall3 **`aggregate3`** at one `read_block_number`; **`rpc_metrics`** counts **one** `eth_call` per aggregate | [`multicall.rs`](../../indexer/src/multicall.rs) · [`chain_timer.rs`](../../indexer/src/chain_timer.rs) · `bash scripts/verify-indexer-rpc-metrics.sh` |
+| **`INV-INDEXER-307-ANVIL-MULTICALL3`** | Fresh Anvil bootstraps Multicall3 at `0xcA11…CA11` before indexer start (signed deploy tx) | [`scripts/lib/anvil_multicall3.sh`](../../scripts/lib/anvil_multicall3.sh) · `start-local-anvil-stack.sh` · `benchmark-indexer-rpc-anvil.sh` |
+| **`INV-INDEXER-307-RPC-BURST`** | Idle localnet **`peak_calls_10s` ≤ 50** after warm-up (120s benchmark scenario) | `BENCHMARK_SCENARIO_SEC=120 bash scripts/benchmark-indexer-rpc-anvil.sh` · [`rpc-benchmark-20260613T071949Z.json`](../indexer/benchmarks/rpc-benchmark-20260613T071949Z.json) |
+| **`INV-INDEXER-307-FALLBACK`** | When Multicall3 is unavailable, sequential `eth_call` path preserves API shapes; poll failure triggers `RpcPollHealth` backoff (no stale-as-fresh) | [`chain_timer.rs`](../../indexer/src/chain_timer.rs) `poll_once_sequential` |
+
+Cross-links: [`docs/indexer/rpc-load-benchmark.md`](../indexer/rpc-load-benchmark.md) · [#306 invariants](#indexer-json-rpc-load-benchmark-gitlab-306).
+
 <a id="indexer-ingestion-liveness-and-rpc-timeouts-gitlab-168"></a>
 
 ### Indexer ingestion liveness + RPC timeouts (GitLab [#168](https://gitlab.com/PlasticDigits/yieldomega/-/issues/168))

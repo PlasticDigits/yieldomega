@@ -55,6 +55,8 @@ source "${ROOT}/scripts/lib/docker_cloud_agent.sh"
 source "${ROOT}/scripts/lib/postgres_cloud_agent.sh"
 # shellcheck source=scripts/lib/tcp_port.sh
 source "${ROOT}/scripts/lib/tcp_port.sh"
+# shellcheck source=scripts/lib/anvil_multicall3.sh
+source "${ROOT}/scripts/lib/anvil_multicall3.sh"
 RUN_JSON="${CONTRACTS}/broadcast/DeployDev.s.sol/31337/run-latest.json"
 REGISTRY_OUT="${CONTRACTS}/deployments/local-anvil-registry.json"
 
@@ -207,6 +209,8 @@ else
   done
 fi
 cast block-number --rpc-url "${RPC_URL}" >/dev/null || die "No RPC at ${RPC_URL}"
+
+yieldomega_ensure_anvil_multicall3 "${RPC_URL}" || die "Multicall3 deploy failed (chain-timer batching #307)"
 
 warn_swarm_buy_cooldown_if_needed
 
